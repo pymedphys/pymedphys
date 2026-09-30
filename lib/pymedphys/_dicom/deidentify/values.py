@@ -24,8 +24,11 @@ against the attribute's VM in the pinned PS3.6 data dictionary.
 
 Text values are decoded strings, so they contain no ISO/IEC 2022 escape
 sequences, which encoding adds, and no ESC. Whether a text value can be encoded
-in the data set's Specific Character Set (0008,0005) is checked when the value
-is written, not here.
+in the data set's Specific Character Set (0008,0005), and whether the first
+component group of a Person Name uses only the characters PS3.5 Section
+6.2.1.2 allows there, are checked when the value is written, not here; so is
+the VR of an attribute that PS3.6 gives alternatives, such as "US or SS",
+which the data set determines.
 
 What is wrong is described without quoting the value, so the result can be
 reported and logged even when the value is identifying.
@@ -36,6 +39,7 @@ from __future__ import annotations
 import datetime
 import math
 import re
+import struct
 import unicodedata
 from collections.abc import Callable, Sequence
 
@@ -46,7 +50,6 @@ from .uid_registry import is_uid
 # but only in the escape sequences that encoding adds.
 _TEXT_CONTROLS = frozenset({"\t", "\n", "\f", "\r"})
 _DEFAULT_REPERTOIRE = re.compile(r"[\x20-\x7e]*")
-_FL_MAX = 3.4028234663852886e38
 _UNLIMITED = 2**32 - 2
 
 _AS = re.compile(r"[0-9]{3}[DWMY]")
@@ -256,8 +259,14 @@ def _number_problem(vr: str, value: object) -> str | None:
         number = math.inf
     if isinstance(value, int) and math.isinf(number):
         return f"is too large for a 64-bit float, as a value of VR {vr} must not be"
-    if vr == "FL" and math.isfinite(number) and abs(number) > _FL_MAX:
-        return "is outside the range of a 32-bit float, as a value of VR FL must not be"
+    if vr == "FL" and math.isfinite(number):
+        try:
+            struct.pack("<f", number)
+        except OverflowError:
+            return (
+                "is outside the range of a 32-bit float, "
+                "as a value of VR FL must not be"
+            )
     return None
 
 
@@ -394,14 +403,16 @@ def values_problem(vr: str, vm: str, values: Sequence[object]) -> str | None:
     Raises
     ------
     TypeError
-        If ``values`` is a single string or bytes, as pydicom gives an
-        attribute with one value, rather than a sequence of values.
+        If ``values`` is not a sequence of values but a single value, as
+        pydicom gives an attribute with one value: for example a string,
+        bytes, or a :class:`pydicom.valuerep.PersonName`.
     ValueError
         If ``vr`` or ``vm`` is not of a form PS3.6 uses, or a VR is SQ.
     """
-    if isinstance(values, (str, bytes, bytearray)):
+    if isinstance(values, (str, bytes, bytearray)) or not isinstance(values, Sequence):
         raise TypeError(
-            "values must be a sequence of values, not a single string or bytes"
+            "values must be a sequence of values, not a single value such as a "
+            "string, bytes, or a pydicom PersonName"
         )
     alternatives = vr.split(" or ")
     if not all(alternative in CHECKED_VRS for alternative in alternatives):
@@ -411,6 +422,12 @@ def values_problem(vr: str, vm: str, values: Sequence[object]) -> str | None:
         return problem
     first = None
     for alternative in alternatives:
+        if alternative in _WORD_BYTES and len(values) > 1:
+            # PS3.5 Section 6.4: the VM of these VRs is always 1.
+            first = first or (
+                f"has {len(values)} values where VR {alternative} has one"
+            )
+            continue
         found = next(
             (
                 f"value {number} {problem}"

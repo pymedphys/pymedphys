@@ -494,7 +494,7 @@ tests = [
   "tests/dicom/test_deidentify_values.py::test_values_are_checked_for_their_vm_and_vr",
 ]
 note = '''
-The Type of each attribute of the first supported release's IODs, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value, and a value can be checked against its VR and VM before it is written. Remaining: resolving compound actions and synthesising dummy values from these Types (M3), and validating output against its IOD (M4).
+The Type of each attribute of the first supported release's IODs, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value, and a value can be checked against its VR and VM before it is written. Remaining: resolving compound actions and synthesising dummy values from these Types, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and validating output against its IOD (M4).
 '''
 
 [[requirement]]

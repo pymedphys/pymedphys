@@ -18,7 +18,7 @@ Unless noted, examples and limits are from the definitions in Table 6.2-1 of
 the 2026d PS3.5.
 """
 
-from pymedphys._imports import pytest
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import standard, values
 
@@ -99,6 +99,8 @@ VALID = [
     ("UV", 2**64 - 1),
     ("FL", 1.5),
     ("FL", -3.4028234663852886e38),
+    # How NumPy prints the largest 32-bit float, which rounds to it.
+    ("FL", 3.4028235e38),
     ("FL", 2),
     ("FD", 1e308),
     ("AT", 0x00100010),
@@ -159,6 +161,9 @@ INVALID = [
     ("LO", "SECRET\\SECRET"),
     ("LO", "SECRET\nSECRET"),
     ("LO", "SECRET\x00"),
+    # DELETE and a C1 control (PS3.5 Section 6.1.2.3).
+    ("LO", "SECRET\x7f"),
+    ("SH", "SECRET\x85"),
     # A decoded value has no escape sequences: encoding adds them.
     ("LO", "SECRET\x1b[31m"),
     ("SH", "SECRETSECRETSECRE"),
@@ -201,6 +206,7 @@ INVALID = [
     ("SV", -(2**63) - 1),
     ("UV", -1),
     ("FL", 3.5e38),
+    ("FL", 3.4028236e38),
     ("FL", "1.5"),
     ("FL", 2**1024),
     ("FD", 2**1024),
@@ -311,7 +317,19 @@ def test_values_are_checked_for_their_vm_and_vr():
     assert "secret" not in problem
 
 
+def test_a_byte_vr_has_one_value():
+    # PS3.5 Section 6.4: the VM of OB, OD, OF, OL, OV, OW, and UN is 1.
+    assert values.values_problem("OW", "1-n", [b"\x00\x01", b"\x00\x02"])
+    assert (
+        values.values_problem("US or SS or OW", "1-n or 1", [b"\x00\x01", b"\x00\x02"])
+        is not None
+    )
+    assert values.values_problem("US or SS or OW", "1-n or 1", [1, 2]) is None
+
+
 def test_alternative_vrs_and_vms_allow_any_that_fits():
+    # The engine checks the VR that the data set determines; on its own, a
+    # value may fit any alternative.
     # Such as LUT Data (0028,3006), "US or OW", and Pixel Padding Value
     # (0028,0120), "US or SS".
     assert values.values_problem("US or SS", "1", [-5]) is None
@@ -335,11 +353,27 @@ def test_every_vr_the_dictionary_uses_can_be_checked():
     assert set(values.CHECKED_VRS) == standard.VRS - {"SQ"}
 
 
-@pytest.mark.parametrize("single", ["ORIGINAL", b"\x00\x01", bytearray(b"\x00")])
-def test_a_single_string_or_bytes_is_not_taken_as_its_characters(single):
+@pytest.mark.parametrize(
+    "single",
+    [
+        "ORIGINAL",
+        b"\x00\x01",
+        bytearray(b"\x00"),
+        pydicom.valuerep.PersonName("Doe^John"),
+        {"ORIGINAL", "PRIMARY"},
+    ],
+)
+def test_a_single_value_is_not_taken_as_its_characters(single):
     # pydicom gives an attribute with one value as that value alone.
     with pytest.raises(TypeError, match="sequence of values"):
         values.values_problem("CS", "2-n", single)
+
+
+def test_pydicom_multiple_values_are_a_sequence():
+    dataset = pydicom.Dataset()
+    dataset.ImageType = ["ORIGINAL", "PRIMARY", "AXIAL"]
+
+    assert values.values_problem("CS", "2-n", dataset.ImageType) is None
 
 
 def test_every_vm_the_dictionary_uses_can_be_checked():
