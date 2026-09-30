@@ -19,6 +19,7 @@ the 2026d PS3.5.
 """
 
 import datetime
+import ipaddress
 
 from pymedphys._imports import hypothesis, pydicom, pytest
 
@@ -97,9 +98,11 @@ VALID = [
     # UI: numeric components without leading zeros, at most 64.
     ("UI", "1.2.840.10008.5.1.4.1.1.481.5"),
     ("UI", "2.25." + "9" * 59),
-    # UR: RFC 3986 characters, percent-encoded others, trailing padding.
+    # UR: a URI reference of RFC 3986, with trailing padding.
     ("UR", "https://example.org/path?q=a%20b#frag"),
     ("UR", "relative/path "),
+    ("UR", "https://user:pass@[2001:db8::7]:8080/a/b?c?d/e#f/g?h"),
+    ("UR", "urn:oasis:names:specification:docbook:dtd:xml:4.1.2"),
     # Binary numbers within their ranges.
     ("US", 0),
     ("US", 65535),
@@ -207,6 +210,21 @@ INVALID = [
     ("UR", "https://example.org/SECRET SECRET"),
     ("UR", "https://example.org/SECRET\\SECRET"),
     ("UR", "https://example.org/%zzSECRET"),
+    # URI characters that do not make a URI reference (RFC 3986): a second
+    # "#", a bracketed host that is no IP address, a malformed IPv6 address,
+    # an unclosed bracket, a port that is not a number, "[" in a path, "@"
+    # in a host, and a scheme that is empty or starts with a digit.
+    ("UR", "https://example.org/SECRET#a#b"),
+    ("UR", "https://[SECRET]/"),
+    ("UR", "https://[2001:db8::7::1]/SECRET"),
+    ("UR", "https://[2001:db8::7/SECRET"),
+    ("UR", "https://[::1]SECRET/"),
+    ("UR", "https://example.org:80SECRET/"),
+    ("UR", "https://example.org/SECRET[1]"),
+    ("UR", "https://example.org/SECRET["),
+    ("UR", "https://SECRET@SECRET@example.org/"),
+    ("UR", ":SECRET"),
+    ("UR", "1SECRET:x"),
     ("US", 65536),
     ("US", -1),
     ("US", True),
@@ -243,6 +261,95 @@ def test_invalid_values(vr, value):
     assert "SECRET" not in problem
     if isinstance(value, str) and len(value.strip()) > 2:
         assert value.strip() not in problem
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        # The URIs of RFC 3986 Section 1.1.2.
+        "ftp://ftp.is.co.za/rfc/rfc1808.txt",
+        "http://www.ietf.org/rfc/rfc2396.txt",
+        "ldap://[2001:db8::7]/c=GB?objectClass?one",
+        "mailto:John.Doe@example.com",
+        "news:comp.infosystems.www.servers.unix",
+        "tel:+1-816-555-1212",
+        "telnet://192.0.2.16:80/",
+        "urn:oasis:names:specification:docbook:dtd:xml:4.1.2",
+        # Relative references from RFC 3986 Section 5.4.
+        "g:h",
+        "./g",
+        "//g",
+        "?y",
+        "#s",
+        "g;x?y#s",
+        ".",
+        "../..",
+        "../../../g",
+        "/./g",
+        "g;x=1/../y",
+        "g?y/./x",
+        "g#s/../x",
+        # A colon after the first segment, an empty port, a percent-encoded
+        # host, and a host in the IPvFuture form.
+        "a/b:c",
+        "http://example.org:/",
+        "http://ex%41mple.org/",
+        "http://[v7.fe80::1+abc]/",
+    ],
+)
+def test_a_uri_reference_is_a_valid_ur_value(reference):
+    assert values.value_problem("UR", reference) is None
+
+
+def _is_ipv6_address(text):
+    try:
+        ipaddress.IPv6Address(text)
+    except ValueError:
+        return False
+    return True
+
+
+_HEX_COLON_DOT = "0123456789abcdefABCDEF:."
+
+
+# Each of the nine forms of IPv6address in RFC 3986 Section 3.2.2, including
+# RFC 4291's example of an IPv4-mapped address, and addresses that none fits.
+@hypothesis.example("1:2:3:4:5:6:7:8")
+@hypothesis.example("1:2:3:4:5:6:1.2.3.4")
+@hypothesis.example("::2:3:4:5:6:7:8")
+@hypothesis.example("1::3:4:5:6:7:8")
+@hypothesis.example("1:2::4:5:6:7:8")
+@hypothesis.example("1:2:3::5:6:7:8")
+@hypothesis.example("1:2:3:4::6:7:8")
+@hypothesis.example("1:2:3:4:5::7:8")
+@hypothesis.example("1:2:3:4:5:6::8")
+@hypothesis.example("1:2:3:4:5:6:7::")
+@hypothesis.example("::FFFF:129.144.52.38")
+@hypothesis.example("1:2:3:4:5:6:7:8:9")
+@hypothesis.example("1::2::3")
+@hypothesis.example("1::2:3:4:5:6:7:8")
+@hypothesis.example("1:2::3:4:5:6:7:8")
+@hypothesis.example("12345::")
+@hypothesis.example("::1.2.3.256")
+@hypothesis.example("::01.2.3.4")
+@hypothesis.example("1:2:3:4:5:6:7:1.2.3.4")
+@hypothesis.example(":1::")
+@hypothesis.example("")
+@hypothesis.given(
+    st.one_of(
+        st.text(alphabet=_HEX_COLON_DOT, max_size=45),
+        st.ip_addresses(v=6).map(str),
+        st.ip_addresses(v=6).map(lambda address: address.exploded),
+        st.ip_addresses(v=4).map(lambda address: f"::ffff:{address}"),
+    )
+)
+def test_a_bracketed_host_is_an_ipv6_address(host):
+    # Python's ipaddress module, an independent parser of the same textual
+    # forms (RFC 4291 Section 2.2), without the zone identifiers that RFC 3986
+    # does not allow and that "%" would introduce.
+    assert (values.value_problem("UR", f"//[{host}]/") is None) == _is_ipv6_address(
+        host
+    )
 
 
 BYTE_VRS = {"OB", "OD", "OF", "OL", "OV", "OW", "UN"}

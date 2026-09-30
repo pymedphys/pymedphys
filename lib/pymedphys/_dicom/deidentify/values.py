@@ -72,9 +72,52 @@ _DT = re.compile(
     r"(?P<offset>(?P<sign>[+-])(?P<zone_hours>[0-9]{2})(?P<zone_minutes>[0-9]{2}))?"
     r" *"
 )
-# RFC 3986 Section 2: unreserved and reserved characters, and "%" to start a
-# percent-encoded octet.
-_UR = re.compile(r"(?:[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=]|%[0-9A-Fa-f]{2})*")
+# A URI reference, the grammar of RFC 3986 Section 4.1 with its rules from
+# Sections 2 and 3 and Appendix A. IPv4address is left out of host because
+# reg-name matches every string it does.
+_UNRESERVED = r"A-Za-z0-9\-._~"
+_SUB_DELIMS = r"!$&'()*+,;="
+_PCT_ENCODED = r"%[0-9A-Fa-f]{2}"
+_PCHAR = rf"(?:[{_UNRESERVED}{_SUB_DELIMS}:@]|{_PCT_ENCODED})"
+_SEGMENT = rf"{_PCHAR}*"
+_SEGMENT_NZ = rf"{_PCHAR}+"
+_SEGMENT_NZ_NC = rf"(?:[{_UNRESERVED}{_SUB_DELIMS}@]|{_PCT_ENCODED})+"
+_H16 = r"[0-9A-Fa-f]{1,4}"
+_DEC_OCTET = r"(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])"
+_LS32 = rf"(?:{_H16}:{_H16}|{_DEC_OCTET}(?:\.{_DEC_OCTET}){{3}})"
+_IPV6_ADDRESS = "|".join(
+    [
+        rf"(?:{_H16}:){{6}}{_LS32}",
+        rf"::(?:{_H16}:){{5}}{_LS32}",
+        rf"(?:{_H16})?::(?:{_H16}:){{4}}{_LS32}",
+        rf"(?:(?:{_H16}:){{0,1}}{_H16})?::(?:{_H16}:){{3}}{_LS32}",
+        rf"(?:(?:{_H16}:){{0,2}}{_H16})?::(?:{_H16}:){{2}}{_LS32}",
+        rf"(?:(?:{_H16}:){{0,3}}{_H16})?::{_H16}:{_LS32}",
+        rf"(?:(?:{_H16}:){{0,4}}{_H16})?::{_LS32}",
+        rf"(?:(?:{_H16}:){{0,5}}{_H16})?::{_H16}",
+        rf"(?:(?:{_H16}:){{0,6}}{_H16})?::",
+    ]
+)
+_IPVFUTURE = rf"v[0-9A-Fa-f]+\.[{_UNRESERVED}{_SUB_DELIMS}:]+"
+_HOST = (
+    rf"(?:\[(?:{_IPV6_ADDRESS}|{_IPVFUTURE})\]"
+    rf"|(?:[{_UNRESERVED}{_SUB_DELIMS}]|{_PCT_ENCODED})*)"
+)
+_USERINFO = rf"(?:[{_UNRESERVED}{_SUB_DELIMS}:]|{_PCT_ENCODED})*"
+_AUTHORITY = rf"(?:{_USERINFO}@)?{_HOST}(?::[0-9]*)?"
+_PATH_ABEMPTY = rf"(?:/{_SEGMENT})*"
+_PATH_ABSOLUTE = rf"/(?:{_SEGMENT_NZ}{_PATH_ABEMPTY})?"
+_QUERY_OR_FRAGMENT = rf"(?:{_PCHAR}|[/?])*"
+_UR = re.compile(
+    # URI: a scheme and its hier-part, with a path-rootless.
+    rf"(?:[A-Za-z][A-Za-z0-9+\-.]*:"
+    rf"(?://{_AUTHORITY}{_PATH_ABEMPTY}|{_PATH_ABSOLUTE}"
+    rf"|{_SEGMENT_NZ}{_PATH_ABEMPTY}|)"
+    # relative-ref: its relative-part, with a path-noscheme.
+    rf"|(?://{_AUTHORITY}{_PATH_ABEMPTY}|{_PATH_ABSOLUTE}"
+    rf"|{_SEGMENT_NZ_NC}{_PATH_ABEMPTY}|))"
+    rf"(?:\?{_QUERY_OR_FRAGMENT})?(?:#{_QUERY_OR_FRAGMENT})?"
+)
 
 _INTEGER_RANGES = {
     "AT": (0, 2**32 - 1),
@@ -237,7 +280,7 @@ _STRING_CHECKS: dict[str, tuple[Callable[[str], bool], str]] = {
         lambda value: value == "" or is_uid(value),
         "numeric components without leading zeros, in at most 64 characters",
     ),
-    "UR": (_check_ur, "a URI of RFC 3986 characters, with no leading space"),
+    "UR": (_check_ur, "a URI reference of RFC 3986, with no leading space"),
     "UT": (_text(_UNLIMITED), "no control but TAB, CR, LF, FF"),
 }
 
