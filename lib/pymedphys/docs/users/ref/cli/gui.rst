@@ -30,8 +30,8 @@ port 8501:
    connection is unencrypted HTTP. Serve on another address only on a network
    where that is acceptable.
 
-With ``--address``, Streamlit accepts requests addressed to any host name. To
-accept only the names that clients use, set ``server.allowedHosts`` in
+With ``--address``, Streamlit accepts WebSocket connections addressed to any
+host name. To accept only the names that clients use, set ``server.allowedHosts`` in
 Streamlit's configuration file, ``.streamlit/config.toml`` in the home
 directory of the user who runs the GUI:
 
