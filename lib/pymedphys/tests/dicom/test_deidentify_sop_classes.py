@@ -15,10 +15,11 @@
 """DICOM PS3.4 Table B.5-1, generated from the standard, and the IOD of each SOP Class."""
 
 import dataclasses
+import io
 import json
 import re
 
-from pymedphys._imports import pytest
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import iods, sop_classes, standard, uid_registry
 
@@ -177,14 +178,47 @@ def test_an_unsupported_or_unlisted_sop_class_has_no_iod(sop_class):
     assert sop_classes.iod_for_sop_class(sop_class) is None
 
 
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_a_sop_class_uid_read_from_a_file_finds_its_iod():
+    rt_plan_storage = "1.2.840.10008.5.1.4.1.1.481.5"
+    dataset = pydicom.Dataset()
+    dataset.SOPClassUID = rt_plan_storage
+    dataset.SOPInstanceUID = "1.2.3.4"  # invented
+    dataset.file_meta = pydicom.dataset.FileMetaDataset()
+    dataset.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+    written = io.BytesIO()
+    pydicom.dcmwrite(written, dataset, enforce_file_format=True)
+
+    # PS3.5 Section 9.1 pads the odd-length UID with a NUL.
+    assert rt_plan_storage.encode() + b"\x00" in written.getvalue()
+    read = pydicom.dcmread(io.BytesIO(written.getvalue()))
+    found = sop_classes.iod_for_sop_class(read.SOPClassUID)
+
+    assert found is not None
+    assert found.name == "RT Plan"
+
+
+@pytest.mark.parametrize(
+    "padding",
+    # PS3.5 Section 9.1 pads an odd-length UID with a NUL; some writers pad
+    # with a space instead.
+    ["\x00", " ", " \x00"],
+)
+def test_trailing_padding_is_ignored(padding):
+    found = sop_classes.iod_for_sop_class("1.2.840.10008.5.1.4.1.1.481.5" + padding)
+
+    assert found is not None
+    assert found.name == "RT Plan"
+
+
 @pytest.mark.parametrize(
     "value",
     [
-        # A private SOP Class under an invented root.
+        # A Private SOP Class under an invented root.
         "1.2.3.4.5",
-        # Padding is not stripped, so a padded UID matches nothing.
-        "1.2.840.10008.5.1.4.1.1.481.5\x00",
-        "1.2.840.10008.5.1.4.1.1.481.5 ",
+        # Only trailing padding is removed.
+        " 1.2.840.10008.5.1.4.1.1.481.5",
+        "1.2.840.10008.5.1.4.1.1.481.5\x00.1",
         "",
     ],
 )

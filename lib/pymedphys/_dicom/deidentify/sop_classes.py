@@ -46,6 +46,7 @@ from .uid_registry import (
     is_uid,
     load_registry_table,
 )
+from .uids import normalise_uid
 
 # The IOD Specification column: an IOD's name followed by "IOD", as in
 # "CT Image IOD".
@@ -161,7 +162,9 @@ def iod_for_sop_class(
     Parameters
     ----------
     sop_class_uid : str
-        The instance's SOP Class UID (0008,0016), without padding.
+        The instance's SOP Class UID (0008,0016). Trailing NUL and space
+        padding is removed first: PS3.5 Section 9.1 pads a UID of odd length,
+        such as RT Plan Storage's, with a NUL.
     sop_classes : RegistryTable of StorageSOPClass, optional
         Table B.5-1. Defaults to :func:`load_storage_sop_classes`.
     iod_tables : IODTables, optional
@@ -173,9 +176,9 @@ def iod_for_sop_class(
     IOD or None
         The IOD that Table B.5-1 gives for the SOP Class, with its modules and
         attribute Types. None if Table B.5-1 does not list the UID, as for a
-        retired or Private SOP Class, a SOP Class that another part of PS3.4
-        defines, or a UID with padding; or if the IOD's Types are not
-        generated, as for MR Image Storage.
+        retired or Private SOP Class or a SOP Class that another part of PS3.4
+        defines; or if the IOD's Types are not generated, as for MR Image
+        Storage.
 
     Raises
     ------
@@ -200,7 +203,8 @@ def iod_for_sop_class(
         raise StandardTableError(
             "the SOP Class and IOD tables were generated from different editions"
         )
-    row = next((row for row in sop_classes.rows if row.uid == sop_class_uid), None)
+    uid = normalise_uid(sop_class_uid)
+    row = next((row for row in sop_classes.rows if row.uid == uid), None)
     if row is None:
         return None
     return iod_tables.iods.get(row.iod_name)
