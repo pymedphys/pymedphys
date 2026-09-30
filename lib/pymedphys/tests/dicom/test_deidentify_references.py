@@ -482,15 +482,17 @@ def test_a_sequence_read_as_unknown_is_decoded_with_its_dictionary_vr(build):
 @pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")
 @pytest.mark.parametrize(
     "tag, found",
-    [("(0044,0110)", True), ("(0042,0011)", False)],
-    ids=["dictionary-sq", "dictionary-ob"],
+    [("(0044,0110)", True), ("(3004,0082)", False), ("(0009,1010)", False)],
+    ids=["dictionary-sq", "dictionary-cs", "private"],
 )
 def test_an_unknown_value_is_decoded_only_where_the_dictionary_gives_sq(
     monkeypatch, tag, found
 ):
     # The value of an RT Assertions Sequence read from Implicit VR Little
-    # Endian, given as the UN value of RT Assertions Sequence (0044,0110) and
-    # of Encapsulated Document (0042,0011), whose dictionary VR is OB.
+    # Endian, given as the UN value of RT Assertions Sequence (0044,0110), of
+    # Commissioning Status (3004,0082), whose dictionary VR is CS, and of a
+    # private attribute, which the dictionary does not list. pydicom 3.0.2
+    # knows none of them, so it keeps the VR UN.
     dataset, sequence_tag, _ = _with_rt_assertion()
     encoded = _written_and_read(dataset, "1.2.840.10008.1.2")[sequence_tag].value
     _only_site(
@@ -500,6 +502,7 @@ def test_an_unknown_value_is_decoded_only_where_the_dictionary_gives_sq(
     dataset = synthetic.rt_plan()
     number = int(tag[1:5] + tag[6:10], 16)
     dataset[number] = pydicom.DataElement(number, "UN", encoded)
+    assert dataset[number].VR == "UN"
 
     record = InstanceRecord.from_dataset(dataset)
 
