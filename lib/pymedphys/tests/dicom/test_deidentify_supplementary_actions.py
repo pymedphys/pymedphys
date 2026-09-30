@@ -74,7 +74,7 @@ def test_the_basic_profile_keeps_no_person_name():
         # removes.
         ("(0040,A067)", "DocumentAuthorTrial", "X"),
         # Kept as received and never set to NO, since the pixel data are
-        # unchanged (D-015).
+        # unchanged.
         ("(0028,0301)", "BurnedInAnnotation", "K"),
         ("(0028,0302)", "RecognizableVisualFeatures", "K"),
     ],
@@ -84,6 +84,12 @@ def test_actions(tag, keyword, action):
 
     assert (rule.tag, rule.keyword, rule.action) == (tag, keyword, action)
     assert rule.note
+
+
+def test_notes_describe_decisions_rather_than_cite_their_numbers():
+    # Decision numbers belong to the design document and its register.
+    for rule in supplementary_actions.load_supplementary_actions().rules.values():
+        assert not re.search(r"\bD-[0-9]{3}\b", rule.note), rule.tag
 
 
 def test_the_actions_follow_the_editions_of_the_tables():

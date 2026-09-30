@@ -106,7 +106,7 @@ def _attribute_problem(
         return "names its attribute differently from the data dictionary"
     if tag in listed:
         return "is listed in Table E.1-1, whose action it must not change"
-    if _ROLE_VRS.intersection(dictionary[tag].vr.split(" or ")):
+    if _ROLE_VRS.intersection(dictionary[tag].vrs):
         return "is of a VR that a roles file covers"
     return None
 
@@ -195,7 +195,9 @@ def _load(path: pathlib.Path) -> SupplementaryActions:
     missing = sorted(
         tag
         for tag, attribute in attributes.items()
-        if attribute.vr in COVERED_VRS and tag not in listed and tag not in rules
+        if COVERED_VRS.intersection(attribute.vrs)
+        and tag not in listed
+        and tag not in rules
     )
     if missing:
         raise SupplementaryActionError(

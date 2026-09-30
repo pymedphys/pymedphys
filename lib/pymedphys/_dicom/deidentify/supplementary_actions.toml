@@ -27,13 +27,13 @@ note = "A person's name. PS3.6 marks it DICONDE, and none of the IODs whose Type
 tag = "(0028,0301)"
 keyword = "BurnedInAnnotation"
 action = "K"
-note = "The engine does not change pixel data, so the value is kept as received and never set to NO, and a received NO is not taken as evidence of safety (D-015). PS3.15 sets it to NO only under the Clean Pixel Data Option."
+note = "The engine does not change pixel data, so the value is kept as received and never set to NO, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under the Clean Pixel Data Option."
 
 [[attribute]]
 tag = "(0028,0302)"
 keyword = "RecognizableVisualFeatures"
 action = "K"
-note = "The engine does not change pixel data, so the value is kept as received and never set to NO, and a received NO is not taken as evidence of safety (D-015). PS3.15 sets it to NO only under the Clean Recognizable Visual Features Option."
+note = "The engine does not change pixel data, so the value is kept as received and never set to NO, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under the Clean Recognizable Visual Features Option."
 
 [[attribute]]
 tag = "(0040,A067)"
