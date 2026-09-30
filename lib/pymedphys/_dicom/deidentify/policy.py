@@ -41,11 +41,12 @@ temporal role, and makes no PS3.15 conformance claim. The same options chosen
 without the preset, and any other conflict, such as one a new edition of the
 table adds, are rejected.
 
-A preset is enabled only once its behaviour is implemented and validated. The
-first supported release covers the Basic Profile alone, so only ``basic`` is
-enabled, and the engine takes its policy from :func:`select_policy`, which
-refuses any other. A custom option set, or a policy composed from a given
-table, is validated but never enabled.
+A preset is enabled only once its behaviour is implemented and validated. No
+preset is enabled yet; ``basic``, the preset of the first supported release,
+which covers the Basic Profile alone, is to be enabled first. The engine takes
+its policy from :func:`select_policy`, which refuses a preset that is not
+enabled. A policy composed from a given table is never enabled, and a custom
+option set is validated but not enabled.
 """
 
 from __future__ import annotations
@@ -89,9 +90,9 @@ PRESETS: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
     }
 )
 DEFAULT_PRESET = "basic"
-# The presets whose behaviour is implemented and validated. The first
-# supported release covers the Basic Profile alone.
-ENABLED_PRESETS = frozenset({"basic"})
+# The presets whose behaviour is implemented and validated. None is yet;
+# ``basic``, the preset of the first supported release, is to be enabled first.
+ENABLED_PRESETS: frozenset[str] = frozenset()
 
 # The preset that resolves the conflicts below, and the actions it resolves.
 _TPS_IMPORT = "tps-import"
@@ -148,7 +149,9 @@ class Policy:
         the table's order. Only ``tps-import`` has any.
     enabled : bool
         Whether the engine may use the policy: only for an enabled preset,
-        composed from the pinned tables.
+        composed from the pinned tables. Only :func:`compose_policy` sets it,
+        so a policy constructed directly, or copied with
+        :func:`dataclasses.replace`, is not enabled.
     """
 
     preset: str | None
@@ -157,7 +160,9 @@ class Policy:
     # A mapping is not hashable, so it is left out of the hash.
     actions: Mapping[str, str] = dataclasses.field(hash=False)
     resolved: tuple[ResolvedConflict, ...]
-    enabled: bool
+    # Not an argument, so that neither the constructor nor dataclasses.replace
+    # can enable a policy; _compose sets it.
+    enabled: bool = dataclasses.field(default=False, init=False)
 
     @property
     def claims_conformance(self) -> bool:
@@ -193,8 +198,13 @@ def _checked_options(options: Iterable[str]) -> tuple[str, ...]:
         )
     unsupported = [o for o in OPTIONS if o in chosen and o not in TARGET_OPTIONS]
     if unsupported:
+        named = (
+            f"the option {unsupported[0]} is"
+            if len(unsupported) == 1
+            else f"the options {_join(unsupported)} are"
+        )
         raise PolicyError(
-            f"the options {_join(unsupported)} are outside the supported scope; "
+            f"{named} outside the supported scope; "
             f"the supported options are {_join(TARGET_OPTIONS)}"
         )
     return tuple(option for option in OPTIONS if option in chosen)
@@ -268,7 +278,7 @@ def _compose(
             _conflict_message(unresolved, preset is None and all(resolvable))
         )
 
-    return Policy(
+    composed = Policy(
         preset=preset,
         edition=table.edition,
         options=selected,
@@ -281,8 +291,11 @@ def _compose(
             }
         ),
         resolved=tuple(resolved.values()),
-        enabled=preset in ENABLED_PRESETS and pinned,
     )
+    if preset in ENABLED_PRESETS and pinned:
+        # The way a frozen dataclass sets a field that is not an argument.
+        object.__setattr__(composed, "enabled", True)
+    return composed
 
 
 def compose_policy(
@@ -328,7 +341,7 @@ def compose_policy(
 def compose_custom_policy(
     options: Iterable[str], *, table: ProfileTable | None = None
 ) -> Policy:
-    """Validate a custom set of options as a policy, which is never enabled.
+    """Validate a custom set of options as a policy, which is not enabled.
 
     A custom policy must be able to conform, so every conflict between its
     options is rejected, including those the ``tps-import`` preset resolves.
@@ -379,12 +392,19 @@ def select_policy(preset: str = DEFAULT_PRESET) -> Policy:
     PolicyError
         For any reason :func:`compose_policy` gives, or if the preset is not
         enabled because its behaviour is not yet implemented and validated.
+        No preset is enabled yet, so every preset is refused.
     """
     policy = compose_policy(preset)
     if not policy.enabled:
         enabled = [name for name in PRESETS if name in ENABLED_PRESETS]
+        if not enabled:
+            status = "no preset is enabled yet"
+        elif len(enabled) == 1:
+            status = f"only {enabled[0]} is enabled"
+        else:
+            status = f"only {_join(enabled)} are enabled"
         raise PolicyError(
             f"the {preset} preset is not enabled: its behaviour is not yet "
-            f"implemented and validated; the enabled presets are {_join(enabled)}"
+            f"implemented and validated; {status}"
         )
     return policy

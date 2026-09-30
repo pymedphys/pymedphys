@@ -180,23 +180,68 @@ def test_each_preset_gives_each_attribute_one_action(preset):
         assert composed.actions[resolution.conflict.tag] != "K"
 
 
-def test_only_the_basic_preset_is_enabled():
-    assert policy.ENABLED_PRESETS == frozenset({"basic"})
+def test_no_preset_is_enabled_yet():
+    assert policy.ENABLED_PRESETS == frozenset()
+    assert not any(policy.compose_policy(p).enabled for p in policy.PRESETS)
+    with pytest.raises(policy.PolicyError, match="^the basic preset is not enabled"):
+        policy.select_policy()
+
+
+def test_an_enabled_preset_is_selected(monkeypatch):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
+
     assert [p for p in policy.PRESETS if policy.compose_policy(p).enabled] == ["basic"]
     selected = policy.select_policy()
-    assert selected == policy.select_policy("basic")
+    assert selected == policy.select_policy("basic") == policy.compose_policy()
     assert selected.preset == "basic"
     assert selected.enabled
 
 
-@pytest.mark.parametrize("preset", ["tps-import", "public-release"])
+@pytest.mark.parametrize("preset", ["basic", "tps-import", "public-release"])
 def test_a_preset_that_is_not_enabled_is_not_selected(preset):
     message = (
         f"the {preset} preset is not enabled: its behaviour is not yet "
-        "implemented and validated; the enabled presets are basic"
+        "implemented and validated; no preset is enabled yet"
     )
     with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
         policy.select_policy(preset)
+
+
+@pytest.mark.parametrize(
+    "enabled, status",
+    [
+        ({"basic"}, "only basic is enabled"),
+        ({"public-release", "basic"}, "only basic and public-release are enabled"),
+    ],
+)
+def test_the_refusal_names_the_enabled_presets(monkeypatch, enabled, status):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset(enabled))
+    message = (
+        "the tps-import preset is not enabled: its behaviour is not yet "
+        f"implemented and validated; {status}"
+    )
+    with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
+        policy.select_policy("tps-import")
+
+
+def test_only_composing_an_enabled_preset_enables_a_policy(monkeypatch):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
+    selected = policy.select_policy()
+    custom = policy.compose_custom_policy([SAFE_PRIVATE])
+
+    # Python 3.13 changed the error from a ValueError to a TypeError.
+    with pytest.raises((TypeError, ValueError), match="enabled"):
+        dataclasses.replace(custom, enabled=True)
+    given = {f.name: getattr(selected, f.name) for f in dataclasses.fields(selected)}
+    with pytest.raises(TypeError, match="enabled"):
+        policy.Policy(**given)
+    # A copy, whether identical or altered, is not enabled.
+    del given["enabled"]
+    assert not policy.Policy(**given).enabled
+    assert not dataclasses.replace(selected).enabled
+    kept = types.MappingProxyType({**selected.actions, "(0010,0010)": "K"})
+    assert not dataclasses.replace(selected, actions=kept).enabled
+    assert hash(selected) == hash(policy.compose_policy())
 
 
 @pytest.mark.parametrize(
@@ -236,6 +281,19 @@ def test_the_tps_import_options_are_rejected_without_the_preset():
     assert "only the tps-import preset, which claims no PS3.15 conformance" in message
     table_order = [row.tag for row in _rows() if row.tag in DEVICE_DATE_CONFLICTS]
     assert TAG.findall(message) == table_order
+
+
+def test_the_tps_import_hint_needs_every_conflict_to_be_one_it_resolves():
+    # Retain Patient Characteristics keeping Allergies, which Clean
+    # Descriptors cleans, alongside the eleven that tps-import resolves.
+    table = _altered("(0010,2110)", PATIENT_CHARACTERISTICS, "K")
+
+    with pytest.raises(policy.PolicyError, match="no precedence") as raised:
+        policy.compose_custom_policy(policy.PRESETS["tps-import"], table=table)
+
+    message = str(raised.value)
+    assert set(TAG.findall(message)) == DEVICE_DATE_CONFLICTS | {"(0010,2110)"}
+    assert "only the tps-import preset" not in message
 
 
 def test_only_the_tps_import_preset_resolves_its_conflicts(monkeypatch):
@@ -295,6 +353,30 @@ def test_an_option_outside_the_supported_scope_is_rejected(option):
     assert ", ".join(policy.TARGET_OPTIONS[:-1]) in message
 
 
+@pytest.mark.parametrize(
+    "options, named",
+    [
+        (
+            ["retain_longitudinal_full_dates", MODIFIED_DATES],
+            "the option retain_longitudinal_full_dates is",
+        ),
+        (
+            ["retain_longitudinal_full_dates", "retain_uids"],
+            "the options retain_uids and retain_longitudinal_full_dates are",
+        ),
+    ],
+)
+def test_the_scope_error_agrees_in_number_with_its_options(options, named):
+    message = (
+        f"{named} outside the supported scope; the supported options are "
+        "retain_safe_private, retain_device_identity, "
+        "retain_patient_characteristics, retain_longitudinal_modified_dates, "
+        "and clean_descriptors"
+    )
+    with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
+        policy.compose_custom_policy(options)
+
+
 def test_an_unknown_preset_is_rejected():
     message = (
         "unknown preset 'research'; the presets are basic, tps-import, "
@@ -331,11 +413,13 @@ def test_a_table_of_another_edition_is_rejected():
         policy.compose_custom_policy([], table=table)
 
 
-def test_a_policy_from_a_given_table_is_not_enabled():
+def test_a_policy_from_a_given_table_is_not_enabled(monkeypatch):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
     given = policy.compose_policy("basic", table=standard.load_table_e1_1())
 
     assert dict(given.actions) == _basic()
     assert not given.enabled
+    assert policy.compose_policy("basic").enabled
 
 
 def test_the_policy_is_read_only():
