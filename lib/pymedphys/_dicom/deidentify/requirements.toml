@@ -35,9 +35,20 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 Each Attribute specified to be retained shall be retained. At the discretion of the de-identifier, Attributes may be added to the Data Set to be protected.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
-decisions = ["D-011"]
+decisions = ["D-007", "D-011"]
+implementation = ["_dicom/deidentify/actions.py", "_dicom/deidentify/policy.py"]
+tests = [
+  "tests/dicom/test_deidentify_actions.py::test_an_option_overrides_the_profile",
+  "tests/dicom/test_deidentify_policy.py::test_tps_import_keeps_device_identity_and_patient_characteristics",
+  "tests/dicom/test_deidentify_policy.py::test_a_custom_option_set_is_validated_and_never_enabled",
+  "tests/dicom/test_deidentify_policy.py::test_the_tps_import_options_are_rejected_without_the_preset",
+  "tests/dicom/test_deidentify_policy.py::test_a_conflict_that_a_new_edition_adds_is_rejected",
+]
+note = '''
+A policy keeps (K) each attribute that its selected options retain, and an option set that gives an attribute to be retained another action as well is rejected. The one exception is `tps-import`, which modifies eleven device dates and times that Retain Device Identity would keep and claims no PS3.15 conformance (D-007). Remaining: retaining each such attribute in a data set (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.1-03"
@@ -131,14 +142,20 @@ The Attributes listed in Table E.1-1 for each Profile or Option are contained in
 status = "partial"
 milestone = "M3"
 decisions = ["D-001", "D-007", "D-011"]
-implementation = ["_dicom/deidentify/actions.py", "_dicom/deidentify/standard.py"]
+implementation = [
+  "_dicom/deidentify/actions.py",
+  "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/standard.py",
+]
 tests = [
   "tests/dicom/test_deidentify_actions.py::test_the_basic_profile_alone_gives_each_attribute_its_profile_action",
   "tests/dicom/test_deidentify_actions.py::test_an_option_overrides_the_profile",
   "tests/dicom/test_deidentify_actions.py::test_each_attribute_has_one_action_or_a_conflict",
+  "tests/dicom/test_deidentify_policy.py::test_the_basic_policy_gives_each_attribute_its_basic_profile_action",
+  "tests/dicom/test_deidentify_policy.py::test_each_preset_gives_each_attribute_one_action",
 ]
 note = '''
-Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Remaining: protecting or retaining every instance of each attribute, at the top level and in sequences (M3).
+Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. Remaining: protecting or retaining every instance of each attribute, at the top level and in sequences (M3).
 '''
 
 [[requirement]]
@@ -329,6 +346,7 @@ milestone = "M3"
 decisions = ["D-006", "D-007"]
 implementation = [
   "_dicom/deidentify/dates.py",
+  "_dicom/deidentify/policy.py",
   "_dicom/deidentify/profiles.py",
   "_dicom/deidentify/temporal_roles.py",
 ]
@@ -344,9 +362,10 @@ tests = [
   "tests/dicom/test_deidentify_dates.py::test_local_times_keep_their_interval_to_values_with_their_own_offset",
   "tests/dicom/test_deidentify_dates.py::test_converting_to_local_time_keeps_every_interval",
   "tests/dicom/test_deidentify_dates.py::test_frame_origin_timestamps_keep_their_intervals",
+  "tests/dicom/test_deidentify_policy.py::test_tps_import_modifies_the_eleven_device_identity_and_date_conflicts",
 ]
 note = '''
-Each subject's offset is persisted in its profile, DA and DT values are shifted by whole weeks, keeping intervals, weekdays, and times, and every attribute that Table E.1-1 cleans under Modified Dates has a reviewed role that decides whether it is shifted or replaced by a dummy value. Time zone offsets become a nominal +0000 once each DT value with its own offset is in the instance's local time, which keeps every interval within the instance. Remaining: modifying every date and time in a data set (M3).
+Each subject's offset is persisted in its profile, DA and DT values are shifted by whole weeks, keeping intervals, weekdays, and times, and every attribute that Table E.1-1 cleans under Modified Dates has a reviewed role that decides whether it is shifted or replaced by a dummy value. Time zone offsets become a nominal +0000 once each DT value with its own offset is in the instance's local time, which keeps every interval within the instance. Under `tps-import`, the eleven device and beam hold dates and times that Retain Device Identity would keep are modified by their role instead. Remaining: modifying every date and time in a data set (M3).
 '''
 
 [[requirement]]
@@ -528,11 +547,16 @@ id = "MIDI-BP-05"
 text = '''
 Remove or replace the identities of other persons, departments, institutions, and organisations, except where they are needed for utility and a residual risk assessment supports keeping them.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-001"]
+implementation = ["_dicom/deidentify/supplementary_actions.py"]
+tests = [
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_the_basic_profile_keeps_no_person_name",
+]
 note = '''
-The Retain Institution Identity Option is not supported.
+Every person name in the pinned dictionary has an action that removes or replaces it under the Basic Profile, from Table E.1-1 or from a reviewed supplementary action. Remaining: rules for other identities in attributes that Table E.1-1 omits, such as operator-entered RT text (M2), and applying the actions to each data set (M3). The Retain Institution Identity Option is not supported.
 '''
 
 [[requirement]]
@@ -548,8 +572,10 @@ implementation = [
   "_dev/deid_tables/generate.py",
   "_dev/deid_tables/ps3_4.py",
   "_dev/deid_tables/ps3_6.py",
+  "_dicom/deidentify/scope.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/standard.py",
+  "_dicom/deidentify/supplementary_actions.py",
 ]
 tests = [
   "tests/dev/test_deid_tables.py::test_generate_writes_table_e1_1_with_its_provenance",
@@ -559,9 +585,12 @@ tests = [
   "tests/dicom/test_deidentify_standard.py::test_an_altered_row_is_rejected",
   "tests/dicom/test_deidentify_standard.py::test_every_table_e1_1_attribute_is_in_the_data_dictionary",
   "tests/dicom/test_deidentify_sop_classes.py::test_an_unsupported_or_unlisted_sop_class_has_no_iod",
+  "tests/dicom/test_deidentify_scope.py::test_a_standard_sop_class_of_another_iod_is_sequestered",
+  "tests/dicom/test_deidentify_scope.py::test_a_sop_class_that_table_b_5_1_does_not_list_is_sequestered",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",
 ]
 note = '''
-The rule tables and the PS3.6 data dictionary are generated from the pinned edition, and PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class. Remaining: the edition-check workflow (M1); supplementary rules for unsafe attributes that the tables omit, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestration of objects outside the supported scope (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names that Table E.1-1 omits. Remaining: the edition-check workflow (M1); supplementary rules for the other unsafe attributes that the tables omit, such as operator-entered RT text, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]
@@ -700,5 +729,5 @@ status = "planned"
 milestone = "M4"
 decisions = ["D-011", "D-012"]
 note = '''
-Each run writes a release report and a conformance statement that name the edition and Options.
+Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name.
 '''

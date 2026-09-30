@@ -70,7 +70,7 @@ These apply to `pymedphys.experimental.pseudonymisation`, the `pymedphys experim
 - Neither rebuilds the DICOM file preamble or File Meta Information, so the original Media Storage SOP Instance UID and Source Application Entity Title can remain in every output file.
 - Neither detects burned-in text or recognisable faces.
 - The library functions raise exceptions whose messages can include original file paths and attribute values, and pydicom's warnings and log messages can quote values or name the file being read. The commands and the app report errors by exception type only, replace each pydicom log message with a fixed summary that keeps at most the VR of an invalid value, and suppress pydicom's duplicate warnings. To see an error's full message, reproduce it by calling the library function in Python.
-- `pymedphys gui`, which runs the pseudonymisation app, listens on the network so that it can be served from a department server. It has no login, so anyone who can reach it can use the app and see the data loaded into it.
+- `pymedphys gui`, which runs the pseudonymisation app, has no login. By default it listens only on the computer that runs it. When it is started with `--address` to serve other computers, for example from a department server, anyone who can reach it can use the app and see the data loaded into it, and the connection is unencrypted HTTP. See [Graphical apps](../ref/cli/gui.rst).
 
 ## Planned replacement
 
