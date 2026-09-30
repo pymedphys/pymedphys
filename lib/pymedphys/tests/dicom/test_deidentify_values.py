@@ -70,16 +70,17 @@ VALID = [
     ("IS", " -7 "),
     ("IS", "2147483647"),
     ("IS", "-2147483648"),
-    # LO, SH: no backslash, no control character except ESC.
+    # LO, SH: no backslash or control character.
     ("LO", "L" * 64),
     ("LO", "Müller"),
     ("SH", "S" * 16),
-    # ST, LT, UT: text with TAB, CR, LF, FF, and ESC; a backslash is allowed.
+    # ST, LT, UT: text with TAB, CR, LF, and FF; a backslash is allowed. A
+    # decoded value has no ESC, which encoding adds.
     ("ST", "S" * 1024),
     ("ST", "First\\second\r\n\tthird\f"),
     ("LT", "L" * 10240),
     ("UT", "Unlimited\\text\n"),
-    # UC: no backslash, no control character except ESC.
+    # UC: no backslash or control character.
     ("UC", "U" * 100_000),
     # PN: up to three component groups of up to five components each.
     ("PN", "DEIDENTIFIED^ABCDEFGHIJKLMNOP"),
@@ -158,6 +159,9 @@ INVALID = [
     ("DS", "1.00000000000000001"),
     ("DS", "SECRET"),
     ("DT", "20071301"),
+    ("DT", "200713"),
+    ("DT", "20070230"),
+    ("DT", "20260930123456.123456+0100 "),
     ("DT", "20070101-0000"),
     ("DT", "20070101+1500"),
     ("DT", "20070101-1300"),
@@ -199,6 +203,9 @@ INVALID = [
     ("TM", "021 "),
     ("TM", "2400"),
     ("TM", "236"),
+    ("TM", "1260"),
+    ("TM", "120061"),
+    ("TM", "120000.123456  "),
     ("TM", "120000."),
     ("TM", " 1200"),
     ("TM", "12:00:00"),
@@ -295,6 +302,9 @@ def test_invalid_values(vr, value):
         "http://example.org:/",
         "http://ex%41mple.org/",
         "http://[v7.fe80::1+abc]/",
+        # ABNF literals, such as the "v" of IPvFuture, are case-insensitive
+        # (RFC 5234 Section 2.3).
+        "http://[V7.fe80::1+abc]/",
     ],
 )
 def test_a_uri_reference_is_a_valid_ur_value(reference):

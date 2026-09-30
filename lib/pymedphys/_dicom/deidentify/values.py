@@ -98,7 +98,7 @@ _IPV6_ADDRESS = "|".join(
         rf"(?:(?:{_H16}:){{0,6}}{_H16})?::",
     ]
 )
-_IPVFUTURE = rf"v[0-9A-Fa-f]+\.[{_UNRESERVED}{_SUB_DELIMS}:]+"
+_IPVFUTURE = rf"[vV][0-9A-Fa-f]+\.[{_UNRESERVED}{_SUB_DELIMS}:]+"
 _HOST = (
     rf"(?:\[(?:{_IPV6_ADDRESS}|{_IPVFUTURE})\]"
     rf"|(?:[{_UNRESERVED}{_SUB_DELIMS}]|{_PCT_ENCODED})*)"
