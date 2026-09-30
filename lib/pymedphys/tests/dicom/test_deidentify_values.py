@@ -130,7 +130,18 @@ VALID = [
 ]
 
 
-@pytest.mark.parametrize("vr, value", VALID)
+def _value_id(value):
+    """Shorten a long string value in a test ID.
+
+    pytest puts the test ID in the PYTEST_CURRENT_TEST environment variable,
+    which Windows limits to 32767 characters.
+    """
+    if isinstance(value, str) and len(value) > 64:
+        return f"{value[:8]}...{len(value)}chars"
+    return None
+
+
+@pytest.mark.parametrize("vr, value", VALID, ids=_value_id)
 def test_valid_values(vr, value):
     assert values.value_problem(vr, value) is None
 
@@ -260,7 +271,7 @@ INVALID = [
 ]
 
 
-@pytest.mark.parametrize("vr, value", INVALID)
+@pytest.mark.parametrize("vr, value", INVALID, ids=_value_id)
 def test_invalid_values(vr, value):
     problem = values.value_problem(vr, value)
 
