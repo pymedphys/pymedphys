@@ -36,10 +36,11 @@ from collections.abc import Callable, Mapping
 from pymedphys._data.download import download_with_progress
 from pymedphys._dicom.deidentify.codes import CODE_TABLES
 from pymedphys._dicom.deidentify.iods import IOD_MODULES_TABLE, MODULE_ATTRIBUTES_TABLE
+from pymedphys._dicom.deidentify.sop_classes import STORAGE_SOP_CLASS_TABLE
 from pymedphys._dicom.deidentify.standard import SCHEMA, STANDARD_DIR, content_sha256
 from pymedphys._dicom.deidentify.uid_registry import UID_TABLES
 
-from . import annex_e, chtml, ps3_3, ps3_6, ps3_16
+from . import annex_e, chtml, ps3_3, ps3_4, ps3_6, ps3_16
 from .sources import SourceDigestError, read_verified_source
 
 # NEMA serves the current edition only under "current". Superseded editions
@@ -128,6 +129,10 @@ PIN = Pin(
             "chtml/part16/sect_CID_7005.html",
             "15d1ca542b46cda0a5525f59ea8417f3d253e0259037ac5f567ccf31972f28b0",
         ),
+        PinnedSource(
+            "chtml/part04/sect_B.5.html",
+            "a2e6f76967f3bab769299715c01f59757cede79cb9314b5bad60bb72a11e8846",
+        ),
         # PS3.3 on one page: its module and macro tables span dozens of chtml
         # pages.
         PinnedSource(
@@ -194,6 +199,7 @@ _CODE_TABLE_PAGES = {
     "Table CID 7050": "chtml/part16/sect_CID_7050.html",
     "Table CID 7005": "chtml/part16/sect_CID_7005.html",
 }
+_SECTION_B_5 = "chtml/part04/sect_B.5.html"
 _PS3_3 = "html/part03.html"
 _PART = re.compile(r"part([0-9]{2})")
 
@@ -289,6 +295,14 @@ def _data_dictionary(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
     return _document(pin, _CHAPTER_6, ps3_6.TABLE_6_1, rows)
 
 
+def _storage_sop_classes(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    sop_classes = ps3_4.parse_table_b_5_1(
+        _select(pages, _SECTION_B_5, ps3_4.TABLE_B_5_1)
+    )
+    rows = [dataclasses.asdict(sop_class) for sop_class in sop_classes]
+    return _document(pin, _SECTION_B_5, ps3_4.TABLE_B_5_1, rows)
+
+
 def _ps3_3(
     pin: Pin, pages: Mapping[str, bytes]
 ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
@@ -339,6 +353,7 @@ _OUTPUTS: dict[str, Callable[[Pin, Mapping[str, bytes]], dict[str, object]]] = {
     "data_dictionary.json": _data_dictionary,
     "iod_modules.json": _iod_modules,
     "module_attributes.json": _module_attributes,
+    STORAGE_SOP_CLASS_TABLE.file: _storage_sop_classes,
     **{
         spec.file: _registry_table(_CHAPTER_A, label, ps3_6.parse_uid_table)
         for label, spec in UID_TABLES.items()
