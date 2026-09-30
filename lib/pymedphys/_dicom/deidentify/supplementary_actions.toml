@@ -1,0 +1,42 @@
+# Supplementary (L2) actions for attributes of the pinned PS3.6 data
+# dictionary that Table E.1-1 of PS3.15 omits, curated by hand. Each action is
+# a code of Table E.1-1a, and each rule says why the attribute has it.
+#
+# Every person name (PN) attribute that Table E.1-1 omits has a rule, so that
+# no person's name is kept merely because the table does not list it. A rule
+# never covers an attribute that Table E.1-1 lists, or a UI, DA, DT, or TM
+# attribute, which the roles files give roles.
+
+schema = "pymedphys-deid-supplementary-actions/1"
+edition = "2026d"
+acknowledgement = "DICOM PS3.6 2026d, © NEMA"
+
+[[attribute]]
+tag = "(0014,0104)"
+keyword = "SecondaryReviewerName"
+action = "X/Z/D"
+note = "A person's name. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so the action suits whatever Type an IOD gives it, as for Operators' Name in Table E.1-1."
+
+[[attribute]]
+tag = "(0014,2006)"
+keyword = "EvaluatorName"
+action = "X/Z/D"
+note = "A person's name. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so the action suits whatever Type an IOD gives it, as for Operators' Name in Table E.1-1."
+
+[[attribute]]
+tag = "(0028,0301)"
+keyword = "BurnedInAnnotation"
+action = "K"
+note = "The engine does not change pixel data, so the value is kept as received and never set to NO, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under the Clean Pixel Data Option."
+
+[[attribute]]
+tag = "(0028,0302)"
+keyword = "RecognizableVisualFeatures"
+action = "K"
+note = "The engine does not change pixel data, so the value is kept as received and never set to NO, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under the Clean Recognizable Visual Features Option."
+
+[[attribute]]
+tag = "(0040,A067)"
+keyword = "DocumentAuthorTrial"
+action = "X"
+note = "A person's name, retired in 2009 with the other (Trial) attributes of Structured Reporting; Table E.1-1 removes the others that name a person, Current Observer (Trial) and Verbal Source (Trial)."

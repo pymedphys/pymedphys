@@ -20,6 +20,7 @@ generated from the DICOM standard and the code that loads them, and the keys,
 keyed replacement UIDs, UID and temporal attribute roles, patient
 pseudonyms, subject profiles, date offsets, the actions of Table E.1-1
 under selected options, the presets and the validated policies composed from
-them, and the checks of values against their VR and VM that later stages
-will use.
+them, the checks of values against their VR and VM, the supplementary actions
+for attributes that Table E.1-1 omits, and the classification of instances as
+de-identified or sequestered, that later stages will use.
 """

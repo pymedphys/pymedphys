@@ -82,6 +82,7 @@ The engine will live in `lib/pymedphys/_dicom/deidentify/`, with its public API 
 2. **Rule layers.** Rules apply in this order: generated tables (L1), reviewed supplementary rules (L2), then validated user rules (L3).
    - L1 gives each attribute of Table E.1-1 the action of the selected options that give one, and otherwise the Profile's, since "a requirement for an Option, when implemented, overrides any requirement for the underlying Profile" (E.1.1). E.3.6 specifies Retain Longitudinal Temporal Information with Full Dates and with Modified Dates as mutually exclusive, so a selection of both is rejected. Otherwise PS3.15 defines no precedence between options, so an attribute to which two selected options give different actions has no L1 action and is reported as a conflict for policy validation (D-007, D-011). In 2026d, the only such options are Retain Device Identity and Modified Dates, on eleven attributes. Policy validation rejects every conflict except these, which only the `tps-import` preset resolves (D-011).
    - L2 covers attributes that Table E.1-1 omits but the de-identifier remains responsible for (E.1.1, Note 1 after Table E.1-1a). These are dates, times, and person names by VR; operator-entered RT text such as Beam Name, Dose Comment, and Radiation Machine Name; the role of every UI attribute (D-003); and the role of every temporal attribute (D-007). A test fails if the pinned dictionary contains an attribute in these categories with no rule.
+   - The L2 file `supplementary_actions.toml` gives an action of Table E.1-1a, with a note saying why, to attributes that Table E.1-1 omits and no roles file covers. Every person name that the table omits has one: in 2026d, Secondary Reviewer Name and Evaluator Name, which PS3.6 marks DICONDE and no supported IOD uses, get X/Z/D, and the retired Document Author (Trial) gets X, as the table gives the other (Trial) person names. Burned In Annotation and Recognizable Visual Features are kept (K), as D-015 requires. The file never covers an attribute that Table E.1-1 lists.
    - L2 only strengthens L1. It never retains a value that L1 removes, replaces, or cleans, unless a selected option permits it.
    - An element with VR UN is decoded with its dictionary VR and then handled by its rule. Attributes absent from the pinned dictionary and without an L2 rule are removed. Retired attributes follow Table E.1-1 where listed and L2 otherwise.
    - Compound actions such as X/Z/D are resolved from the attribute's Type in its module and sequence context for the IOD.
@@ -240,9 +241,9 @@ These are the active design decisions, not statements that the code implements t
 
 ### D-010: Unsupported object types
 
-- **Decision.** Sequester Structured Reports (including dose reports), Key Object Selection documents, Presentation States, instances of Private SOP Classes, and objects outside the supported scope. List them in the report and exclude them from the conformance claim.
+- **Decision.** Sequester Structured Reports (including dose reports), Key Object Selection documents, Presentation States, instances of Private SOP Classes, and objects outside the supported scope. List them in the report and exclude them from the conformance claim. An instance is classified from its SOP Class UID, through PS3.4 Table B.5-1, and from its file's transfer syntax. The first supported release de-identifies the CT Image, RT Structure Set, RT Plan, and RT Dose IODs in the Implicit VR Little Endian and Explicit VR Little Endian transfer syntaxes, and the report says why any other instance was sequestered: it had no SOP Class UID or one that is not text, its SOP Class is not a Standard Storage SOP Class of Table B.5-1, its IOD is not supported (the report names the IOD), or its transfer syntax is missing or not supported.
 - **Rationale.** The Basic Profile gives Content Sequence D, and E.3.4 Note 2 warns of significant risk in de-identifying Structured Reports without the Clean Structured Content Option. Presentation States can carry graphic and text annotations (MIDI §1.22.3). De-identification of Private SOP Classes is not defined (E.1.1, Note 6 after Table E.1-1a).
-- **Tests.** Each type is sequestered and reported, and never written to the release output.
+- **Tests.** Each type is sequestered and reported, and never written to the release output. The Storage SOP Classes of the first release's IODs are supported in both transfer syntaxes, and each other kind of SOP Class, and each other transfer syntax, is classified with its reason.
 
 ### D-011: Validated overrides and derived claims
 
@@ -288,7 +289,7 @@ These are the active design decisions, not statements that the code implements t
   - Keep Burned In Annotation (0028,0301) and Recognizable Visual Features (0028,0302) as received, since the pixel data are unchanged. Never change either to NO, and do not treat a received NO as evidence of safety.
   - A reported risk does not waive the `public-release` gates (D-017). Optical character recognition and defacing may later be added as optional plugins.
 - **Rationale.** PS3.15 sets these attributes to NO only as part of the Clean Pixel Data and Clean Recognizable Visual Features Options (E.3.1 and E.3.2), which the engine does not implement. Neither attribute is in Table E.1-1, so L2 needs an explicit rule.
-- **Tests.** Received values pass through unchanged, no output changes either attribute to NO, and detection results appear in the report.
+- **Tests.** The L2 rules keep both attributes; received values pass through unchanged, no output changes either attribute to NO, and detection results appear in the report.
 
 ### D-016: Confidential QC separate from release reports
 
