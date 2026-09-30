@@ -141,6 +141,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/scope.py",
         "lib/pymedphys/_dicom/deidentify/sop_classes.py",
         "lib/pymedphys/_dicom/deidentify/uids.py",
+        "lib/pymedphys/_dicom/deidentify/values.py",
         "lib/pymedphys/_experimental/cube.py",
         "lib/pymedphys/_gamma/__init__.py",
         "lib/pymedphys/_metersetmap/metersetmap.py",
