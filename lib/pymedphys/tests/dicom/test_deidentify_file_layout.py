@@ -14,6 +14,10 @@
 
 """The layout of a written DICOM file, read independently of pydicom."""
 
+# The tests share the element builders and hand-built files below, so they
+# stay in one module.
+# pylint: disable = too-many-lines
+
 import io
 import mmap
 import struct
@@ -328,14 +332,25 @@ def test_a_corrupted_file_is_still_mapped_byte_for_byte(changes):
     assert not (layout.readable and trailing)
 
 
+APPENDED = {
+    "bytes": b"APPENDED",
+    # Well-formed elements, each higher than the one before it, but after the
+    # data set's last element.
+    "name-and-birth-date": _explicit(0x00100010, "PN", NAME)
+    + _explicit(0x00100030, "DA", b"19710203"),
+    "text": _explicit(0x00081030, "LO", b"SYNTHETIC STUDY "),
+}
+
+
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
-def test_the_preamble_file_meta_padding_and_appended_bytes_are_labelled():
+@pytest.mark.parametrize("appended", APPENDED.values(), ids=APPENDED)
+def test_the_preamble_file_meta_padding_and_appended_bytes_are_labelled(appended):
     dataset = pydicom.Dataset()
     dataset.preamble = b"SYNTHETIC PREAMBLE".ljust(128, b"\x00")
     dataset.DataSetTrailingPadding = bytes(8)
     written = _write(dataset, EXPLICIT, SourceApplicationEntityTitle="SYNTHETIC_AE")
-    data = written + b"APPENDED"
+    data = written + appended
 
     layout = read_file_layout(data)
 
@@ -344,12 +359,38 @@ def test_the_preamble_file_meta_padding_and_appended_bytes_are_labelled():
     assert str(layout.locate(data.index(b"SYNTHETIC_AE"))) == (
         "File Meta Information element (0002,0016) (AE)"
     )
-    assert str(layout.locate(len(data) - 9)) == "Data Set Trailing Padding (FFFC,FFFC)"
-    assert layout.locate(len(data) - 9).region is Region.TRAILING_PADDING
+    padding = layout.locate(len(written) - 1)
+    assert str(padding) == "Data Set Trailing Padding (FFFC,FFFC)"
+    assert padding.region is Region.TRAILING_PADDING
+    # PS3.10 Section 7.2 makes the padding the data set's last element.
     assert layout.spans[-1] == Span(
-        len(data) - 8, len(data), None, Location(Region.TRAILING)
+        len(written), len(data), None, Location(Region.TRAILING)
     )
     assert str(layout.locate(len(data) - 1)) == "bytes after the last readable element"
+    assert not layout.readable
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize("transfer_syntax", [EXPLICIT, IMPLICIT])
+def test_an_element_appended_below_the_last_tag_is_trailing(transfer_syntax):
+    # Each tag is higher than the one before it in its data set (PS3.5
+    # Section 7.1), so an appended Patient's Name cannot follow (300A,0002).
+    dataset = pydicom.Dataset()
+    dataset.PatientName = "SYNTHETIC^NAME"
+    dataset.RTPlanLabel = "SYNTHETIC"
+    written = _write(dataset, transfer_syntax)
+    if transfer_syntax == EXPLICIT:
+        data = written + _explicit(0x00100010, "PN", NAME)
+    else:
+        data = written + _implicit(0x00100010, NAME)
+
+    layout = read_file_layout(data)
+
+    assert str(layout.locate(len(written) - 1)) == "data set element (300A,0002) (SH)"
+    assert layout.spans[-1] == Span(
+        len(written), len(data), None, Location(Region.TRAILING)
+    )
     assert not layout.readable
 
 
@@ -377,6 +418,42 @@ def test_a_private_sequence_in_implicit_vr_is_found_through_its_items(
     assert "data set element (0010,0010) (PN)" in described
     assert "data set element (0019,1001)[0] > (0010,0020) (LO)" in described
     assert "data set element (0019,1001)" in described
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize("undefined_length, vr", [(False, "UN"), (True, "SQ")])
+def test_a_private_sequence_read_in_implicit_vr_and_written_in_explicit_vr(
+    undefined_length, vr
+):
+    # pydicom reads a private sequence of defined length in implicit VR as UN
+    # and writes it unchanged, so its items stay in implicit VR (PS3.5
+    # Section 6.2.2); one of undefined length it reads and writes as SQ.
+    item = pydicom.Dataset()
+    item.PatientID = PATIENT_ID.decode().strip()
+    source = pydicom.Dataset()
+    source.PatientName = NAME.decode().strip()
+    source.add_new(0x00190010, "LO", "SYNTHETIC CREATOR")
+    source.add_new(0x00191001, "SQ", [item])
+    source[0x00191001].is_undefined_length = undefined_length
+    read = pydicom.dcmread(io.BytesIO(_write(source, IMPLICIT)))
+    data = _write(read, EXPLICIT)
+
+    layout = read_file_layout(data)
+
+    assert layout.readable
+    spans = {}  # the first span of each element, which holds its header
+    for span in layout.spans:
+        spans.setdefault(str(span.location.element), span)
+    sequence = spans["(0019,1001)"]
+    assert data[sequence.start + 4 : sequence.start + 6] == vr.encode()
+    assert sequence.location.vr == vr
+    element = spans["(0019,1001)[0] > (0010,0020)"]
+    header = bytes(data[element.start + 4 : element.value_start])
+    assert header == (b"LO\x0a\x00" if vr == "SQ" else b"\x0a\x00\x00\x00")
+    assert element.location.vr == "LO"
+    assert bytes(data[element.value_start : element.end]) == PATIENT_ID
+    assert str(spans["(0010,0010)"].location) == "data set element (0010,0010) (PN)"
 
 
 def test_a_un_value_of_undefined_length_is_read_as_implicit_vr_items():
@@ -427,9 +504,14 @@ def test_a_standard_sequence_written_as_un_has_its_dictionary_vr():
         pytest.param(_item(_implicit(0x00100020, PATIENT_ID)) + b"\x01\x02", id="more"),
         pytest.param(_item(length=8) + bytes(4), id="item-past-the-end"),
         pytest.param(_item(b"\x01\x02\x03\x04"), id="not-a-data-set"),
+        # (0010,0010) is lower than the tag before it in the item.
+        pytest.param(
+            _item(_implicit(0x00100020, PATIENT_ID) + _implicit(0x00100010, NAME)),
+            id="out-of-order",
+        ),
     ],
 )
-def test_a_un_value_whose_items_do_not_fill_it_is_one_value(value):
+def test_a_un_value_that_does_not_read_as_items_is_one_value(value):
     data = _file(EXPLICIT, _explicit(0x00191001, "UN", value))
 
     layout = read_file_layout(data)
@@ -490,6 +572,7 @@ def test_encapsulated_fragments_are_numbered_from_the_basic_offset_table():
     dataset = pydicom.Dataset()
     dataset.PixelData = encapsulate(frames)
     dataset["PixelData"].VR = "OB"
+    dataset.DataSetTrailingPadding = bytes(8)
     data = _write(dataset, pydicom.uid.JPEGBaseline8Bit)
 
     layout = read_file_layout(data)
@@ -501,6 +584,34 @@ def test_encapsulated_fragments_are_numbered_from_the_basic_offset_table():
     ]
     assert [item for item, _ in fragments] == [0, 1, 2]
     assert fragments[1:] == [(1, frames[0]), (2, frames[1])]
+    assert str(layout.spans[-1].location) == "Data Set Trailing Padding (FFFC,FFFC)"
+    assert layout.readable
+
+
+def test_an_ob_value_of_undefined_length_holds_numbered_items():
+    # PS3.5 Section 7.1.2: the value of an OB element of undefined length is
+    # items, ended by a Sequence Delimitation Item.
+    data = _file(
+        EXPLICIT,
+        _explicit(0x00190010, "LO", b"SYNTHETIC ")  # 174: 8 + 10
+        + _explicit(0x00191001, "OB", length=UNDEFINED)  # 192: 12
+        + _item(b"\x01\x02\x03\x04")  # 204: 8 + 4
+        + _item(b"SYNTHETIC ")  # 216: 8 + 10
+        + SEQUENCE_END  # 234: 8
+        + _explicit(0x00200010, "SH", b"SYNTHETIC "),  # 242: 8 + 10, to 260
+    )
+
+    layout = read_file_layout(data)
+
+    ob = "data set element (0019,1001) (OB)"
+    assert _described(layout)[4:] == [
+        (174, 192, 182, "data set element (0019,0010) (LO)"),
+        (192, 204, None, ob),
+        (204, 216, 212, "item 0 of " + ob),
+        (216, 234, 224, "item 1 of " + ob),
+        (234, 242, None, ob),
+        (242, 260, 250, "data set element (0020,0010) (SH)"),
+    ]
     assert layout.readable
 
 
@@ -608,6 +719,24 @@ def test_the_data_set_is_not_read_after_unreadable_file_meta_information():
     assert not layout.readable
 
 
+def test_file_meta_information_out_of_order_leaves_the_data_set_trailing():
+    # (0002,0001) is lower than the tag before it (PS3.5 Section 7.1).
+    uid = EXPLICIT.encode() + b"\x00"
+    data = (
+        bytes(128)
+        + b"DICM"
+        + _explicit(0x00020010, "UI", uid)  # 132: 8 + 20
+        + _explicit(0x00020001, "OB", b"\x00\x01")  # 160
+        + _explicit(0x00100010, "PN", NAME)
+    )
+
+    layout = read_file_layout(data)
+
+    assert layout.transfer_syntax == EXPLICIT
+    assert layout.spans[-1] == Span(160, len(data), None, Location(Region.TRAILING))
+    assert not layout.readable
+
+
 @pytest.mark.parametrize(
     "data",
     [
@@ -634,6 +763,44 @@ MALFORMED = {
     "a length past the end of the file": (
         _explicit(0x00100010, "PN", NAME, length=100),
         174,
+    ),
+    # Each tag is higher than the one before it in its data set (PS3.5
+    # Section 7.1); (0010,0010) at 192 is lower than (0010,0020).
+    "a tag lower than the one before it": (
+        _explicit(0x00100020, "LO", PATIENT_ID) + _explicit(0x00100010, "PN", NAME),
+        192,
+    ),
+    "a repeated tag": (_explicit(0x00100010, "PN", NAME) * 2, 198),
+    # Data Set Trailing Padding can only be the last element (PS3.10 Section
+    # 7.2), so even the higher tag of private group FFFD cannot follow it.
+    "an element after Data Set Trailing Padding": (
+        _explicit(0xFFFCFFFC, "OB", bytes(4))
+        + _explicit(0xFFFD0010, "LO", b"SYNTHETIC "),
+        190,
+    ),
+    "a tag lower than the one before it in an item": (
+        _explicit(
+            0x300A00B0,
+            "SQ",
+            _item(
+                _explicit(0x300A00C2, "LO", b"ARC1")
+                + _explicit(0x300A00C0, "IS", b"2 ")
+            ),
+        )
+        + _explicit(0x7FE00010, "OB", bytes(8)),
+        206,
+    ),
+    "an element after Data Set Trailing Padding in an item": (
+        _explicit(
+            0x300A00B0,
+            "SQ",
+            _item(
+                _explicit(0xFFFCFFFC, "OB", bytes(4))
+                + _explicit(0xFFFD0010, "LO", b"SYNTHETIC ")
+            ),
+        )
+        + _explicit(0x7FE00010, "OB", bytes(8)),
+        210,
     ),
     # The element at 194 claims 6 bytes, but its item holds only 2 more.
     "a length past the end of its item": (
@@ -689,8 +856,9 @@ def test_an_item_where_an_element_belongs_ends_reading_in_implicit_vr():
     assert not layout.readable
 
 
-def test_padding_inside_an_item_is_a_data_set_element():
-    # PS3.10 Section 7.2 allows Data Set Trailing Padding in nested data sets.
+def test_padding_inside_an_item_is_trailing_padding_at_its_path():
+    # PS3.10 Section 7.2 allows Data Set Trailing Padding in nested data sets,
+    # and its value has no significance wherever it is.
     data = _file(
         EXPLICIT,
         _explicit(0x300A00B0, "SQ", _item(_explicit(0xFFFCFFFC, "OB", bytes(4)))),
@@ -699,9 +867,85 @@ def test_padding_inside_an_item_is_a_data_set_element():
     layout = read_file_layout(data)
 
     assert layout.readable
-    assert layout.spans[-1].location == Location(
-        Region.DATA_SET, ElementPath((("(300A,00B0)", 0),), "(FFFC,FFFC)"), "OB"
+    padding = layout.spans[-1].location
+    assert padding == Location(
+        Region.TRAILING_PADDING,
+        ElementPath((("(300A,00B0)", 0),), "(FFFC,FFFC)"),
+        "OB",
     )
+    assert str(padding) == "Data Set Trailing Padding (FFFC,FFFC) in (300A,00B0)[0]"
+    deeper = ElementPath((("(300A,00B0)", 1), ("(300A,0111)", 0)), "(FFFC,FFFC)")
+    assert str(Location(Region.TRAILING_PADDING, deeper, "OB")) == (
+        "Data Set Trailing Padding (FFFC,FFFC) in (300A,00B0)[1] > (300A,0111)[0]"
+    )
+
+
+def test_each_item_has_its_own_order_of_tags():
+    # Each item's data set has its own order (PS3.5 Section 7.1): its tags can
+    # repeat another item's, or be lower than the tags around its sequence.
+    control_point = _explicit(0x300A0112, "IS", b"0 ") + _explicit(
+        0x300A011E, "DS", b"180 "
+    )
+    beam = (
+        _explicit(0x00080100, "SH", b"SYNTH ")
+        + _explicit(0x300A00C0, "IS", b"1 ")
+        + _explicit(0x300A0111, "SQ", _item(control_point) + _item(control_point))
+        + _explicit(0x300A0114, "DS", b"6 ")  # lower than (300A,011E)
+    )
+    data = _file(
+        EXPLICIT,
+        _explicit(0x00100010, "PN", NAME)
+        + _explicit(0x300A00B0, "SQ", length=UNDEFINED)
+        + _item(beam)
+        + _item(length=UNDEFINED)
+        + beam
+        + ITEM_END
+        + SEQUENCE_END
+        + _explicit(0x300A00B2, "SH", b"SYNTHETIC "),  # lower than (300A,0114)
+    )
+
+    layout = read_file_layout(data)
+
+    assert layout.readable
+    assert str(layout.spans[-1].location) == "data set element (300A,00B2) (SH)"
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize("transfer_syntax", [EXPLICIT, IMPLICIT])
+def test_private_blocks_overlays_and_padding_in_items_are_read(transfer_syntax):
+    items = []
+    for _ in range(2):
+        item = pydicom.Dataset()
+        item.PatientID = PATIENT_ID.decode().strip()
+        item.DataSetTrailingPadding = bytes(4)
+        items.append(item)
+    dataset = pydicom.Dataset()
+    dataset.PatientName = NAME.decode().strip()
+    dataset.add_new(0x00190010, "LO", "SYNTHETIC ONE")
+    dataset.add_new(0x00190011, "LO", "SYNTHETIC TWO")
+    dataset.add_new(0x00191001, "LO", "SYNTHETIC")
+    dataset.add_new(0x00191002, "SQ", items)
+    dataset.add_new(0x00191101, "LO", "SYNTHETIC")
+    dataset.add_new(0x60000010, "US", 4)
+    dataset.add_new(0x60020010, "US", 4)
+    dataset.PixelData = bytes(16)
+    dataset["PixelData"].VR = "OW"
+    dataset.DataSetTrailingPadding = bytes(8)
+    data = _write(dataset, transfer_syntax)
+
+    layout = read_file_layout(data)
+
+    assert layout.readable
+    assert [
+        str(span.location)
+        for span in layout.spans
+        if span.location.region is Region.TRAILING_PADDING
+    ] == [
+        "Data Set Trailing Padding (FFFC,FFFC) in (0019,1002)[0]",
+        "Data Set Trailing Padding (FFFC,FFFC) in (0019,1002)[1]",
+        "Data Set Trailing Padding (FFFC,FFFC)",
+    ]
 
 
 def test_a_vr_that_differs_from_ps3_6_is_read_as_written():
@@ -741,6 +985,27 @@ def test_a_repeating_group_in_implicit_vr_has_its_dictionary_vr():
         "data set element (6001,0010)",
         "data set element (6002,0010) (US)",
     ]
+
+
+@pytest.mark.parametrize(
+    "tag, vrs",
+    [
+        ("(0020,3105)", ("CS",)),  # Source Image IDs (0020,31xx)
+        ("(1000,0013)", ("US",)),  # Huffman Table Triplet (1000,xxx3)
+        ("(6002,3000)", ("OB", "OW")),  # Overlay Data (60xx,3000)
+        ("(7F02,0010)", ("OB", "OW")),  # Variable Pixel Data (7Fxx,0010)
+        # Transform Label (0028,0400) is LO, although it also matches Rows For
+        # Nth Order Coefficients (0028,04x0), which is US.
+        ("(0028,0400)", ("LO",)),
+        ("(0028,0410)", ("US",)),
+        ("(0010,0010)", ("PN",)),
+        ("(0010,EEEE)", ()),  # not listed
+        ("(0019,1001)", ()),  # private
+    ],
+)
+def test_a_tag_has_the_vrs_that_ps3_6_lists_for_it_or_its_mask(tag, vrs):
+    # PS3.6 writes "x" for any digit of a repeating group or masked element.
+    assert file_layout._dictionary_vrs(tag) == vrs  # pylint: disable = protected-access
 
 
 def _nested(depth):

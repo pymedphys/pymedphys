@@ -57,6 +57,7 @@ TAG_PATTERN = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
 
 _ITEM, _ITEM_END, _SEQUENCE_END = (0xFFFE, 0xE000), (0xFFFE, 0xE00D), (0xFFFE, 0xE0DD)
 _PIXEL_DATA, _PADDING, _UNDEFINED = (0x7FE0, 0x0010), (0xFFFC, 0xFFFC), 0xFFFFFFFF
+_ABOVE_EVERY_TAG = (0x10000, 0)  # so that no tag can follow the padding
 _Items = tuple[tuple[str, int], ...]
 
 
@@ -66,7 +67,7 @@ class Region(enum.Enum):
     PREAMBLE = "preamble"  # bytes 0 to 127
     FILE_META = "file-meta"  # the "DICM" prefix and the group 0002 elements
     DATA_SET = "data-set"
-    TRAILING_PADDING = "trailing-padding"  # (FFFC,FFFC) outside any item
+    TRAILING_PADDING = "trailing-padding"  # (FFFC,FFFC), in or outside an item
     TRAILING = "trailing-bytes"  # from where reading stopped to the end
 
 
@@ -132,7 +133,9 @@ class Location:
         several, as for a private attribute, it is UN as written, or ``None``
         in implicit VR.
     item : int, optional
-        The item of an encapsulated value, from 0, the Basic Offset Table.
+        The item in the value of Pixel Data, or of an element of VR OB, of
+        undefined length, from 0; in encapsulated Pixel Data, item 0 is the
+        Basic Offset Table.
     """
 
     region: Region
@@ -145,7 +148,9 @@ class Location:
         if self.element is None:
             return _PLACES.get(self.region, self.region.value)
         if self.region is Region.TRAILING_PADDING:
-            return f"Data Set Trailing Padding {self.element.tag}"
+            place = f"Data Set Trailing Padding {self.element.tag}"
+            items = " > ".join(f"{tag}[{item}]" for tag, item in self.element.items)
+            return f"{place} in {items}" if items else place
         part = (
             "File Meta Information" if self.region is Region.FILE_META else "data set"
         )
@@ -220,20 +225,25 @@ def read_file_layout(data: bytes | bytearray | memoryview | mmap.mmap) -> FileLa
     (0002,0010) says so, left trailing if it is missing or big endian, and
     otherwise read as Explicit VR Little Endian (Sections A.2 and A.4).
     Headers follow PS3.5 Section 7.1, and items and their delimiters Section
-    7.5. Pixel Data (7FE0,0010) of undefined length holds a Basic Offset Table
-    and fragments (Section A.4). A value holds items if its VR is SQ, or, in
-    implicit VR or VR UN, if PS3.6 gives its attribute VR SQ, or does not list
-    the attribute and the value's length is undefined or the value reads as
-    items to its end. Items in a value of VR UN are in implicit VR (Section
-    6.2.2). Data Set Trailing Padding (FFFC,FFFC) in an item is a data set
-    element (PS3.10 Section 7.2).
+    7.5. The value of Pixel Data (7FE0,0010), or of an element of VR OB, of
+    undefined length holds numbered items (Section 7.1.2): in encapsulated
+    Pixel Data, a Basic Offset Table and fragments (Section A.4). A value
+    holds data sets in items if its VR is SQ, or, in implicit VR or VR UN, if
+    PS3.6 gives its attribute VR SQ, or does not list the attribute and the
+    value's length is undefined or the value reads as items to its end. Items
+    in a value of VR UN are in implicit VR (Section 6.2.2). Data Set Trailing
+    Padding (FFFC,FFFC) is labelled as such in the data set and in any item
+    (PS3.10 Section 7.2).
 
     Reading stops at the first structure that cannot be read, such as an
-    unknown VR, an item where an element belongs, a length past the end of
-    what holds it, or nesting deeper than :data:`MAX_NESTING`; the rest of the
-    file is trailing. Only headers, the transfer syntax, and the first four
-    bytes of some values are read, so the time taken grows with the number of
-    elements and items, not with the size of their values.
+    unknown VR, an item where an element belongs, a tag no higher than the
+    one before it in the File Meta Information, the data set, or the same
+    item (PS3.5 Section 7.1), an element after Data Set Trailing Padding,
+    which can only be the last element (PS3.10 Section 7.2), a length past
+    the end of what holds it, or nesting deeper than :data:`MAX_NESTING`; the
+    rest of the file is trailing. Only headers, the transfer syntax, and the
+    first four bytes of some values are read, so the time taken grows with
+    the number of elements and items, not with the size of their values.
 
     Parameters
     ----------
@@ -262,15 +272,23 @@ def _dictionary() -> dict[str, tuple[str, ...]]:
     return {entry.tag: entry.vrs for entry in load_data_dictionary().attributes}
 
 
+@functools.cache
+def _masked() -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Return the entries whose tag has an "x" for any digit, in order.
+
+    PS3.6 writes "x" for a digit of a repeating group or masked element.
+    """
+    return tuple((tag, vrs) for tag, vrs in _dictionary().items() if "x" in tag)
+
+
 @functools.lru_cache(maxsize=4096)
 def _dictionary_vrs(tag: str) -> tuple[str, ...]:
     """Return the VRs PS3.6 gives a standard attribute, or ``()``."""
     dictionary = _dictionary()
     if tag in dictionary or int(tag[4], 16) % 2:  # an odd group is private
         return dictionary.get(tag, ())
-    # "x" stands for any digit of a repeating group or masked element.
-    for listed, vrs in dictionary.items():
-        if "x" in listed and all(a in ("x", b) for a, b in zip(listed, tag)):
+    for listed, vrs in _masked():
+        if all(a in ("x", b) for a, b in zip(listed, tag)):
             return vrs
     return ()
 
@@ -292,7 +310,9 @@ class _Reader:
         position = self._add(128, 132, None, Location(Region.FILE_META))
         readable, syntax = True, None
         try:
+            last: tuple[int, ...] = ()
             while self.data[position : position + 2] == b"\x02\x00":
+                last = self._tag_after(last, position, size)
                 position = self._element(position, size, True, ())
         except _Unreadable:
             readable = False
@@ -306,7 +326,9 @@ class _Reader:
             self.region = Region.DATA_SET
             explicit = syntax not in IMPLICIT_VR_TRANSFER_SYNTAXES
             try:
+                last = ()
                 while position < size:
+                    last = self._tag_after(last, position, size)
                     position = self._element(position, size, explicit, ())
             except _Unreadable:
                 readable = False
@@ -324,6 +346,20 @@ class _Reader:
         self.spans.append(Span(start, end, value, where))
         return end
 
+    def _tag_after(
+        self, last: tuple[int, ...], position: int, end: int
+    ) -> tuple[int, ...]:
+        """Return the tag at ``position``, which must be higher than ``last``.
+
+        Tags increase through each data set (PS3.5 Section 7.1), and Data Set
+        Trailing Padding can only be its last element (PS3.10 Section 7.2), so
+        for the padding this returns a value higher than every tag.
+        """
+        tag = self._unpack("<HH", position, end)
+        if tag <= last:
+            raise _Unreadable
+        return _ABOVE_EVERY_TAG if tag == _PADDING else tag
+
     def _element(self, position: int, end: int, explicit: bool, items: _Items) -> int:
         """Read the element at ``position``, and return where it ends."""
         tag = self._unpack("<HH", position, end)
@@ -340,7 +376,7 @@ class _Reader:
             raise _Unreadable
         path = ElementPath(items, "({:04X},{:04X})".format(*tag))
         known = _dictionary_vrs(path.tag) if vr in (None, "UN") else ()
-        padding = tag == _PADDING and not items and self.region is Region.DATA_SET
+        padding = tag == _PADDING and self.region is Region.DATA_SET
         region = Region.TRAILING_PADDING if padding else self.region
         where = Location(region, path, known[0] if len(known) == 1 else vr)
         # Whether the value holds items: True, False, or None if it does only
@@ -348,10 +384,12 @@ class _Reader:
         holds_items = None if vr in (None, "UN") and not known else "SQ" in (vr, *known)
         start = position + header
         if length == _UNDEFINED:
-            if tag != _PIXEL_DATA and holds_items is False:
+            # Numbered items, such as fragments (PS3.5 Sections 7.1.2 and A.4).
+            numbered = tag == _PIXEL_DATA or vr == "OB"
+            if not numbered and holds_items is False:
                 raise _Unreadable
             self._add(position, start, None, where)
-            if tag == _PIXEL_DATA:
+            if numbered:
                 return self._fragments(start, end, where)
             return self._items(start, end, True, vr == "SQ", path, where)
         stop = start + length
@@ -392,16 +430,18 @@ class _Reader:
                 raise _Unreadable
             position = self._add(position, position + 8, None, where)
             items = (*path.items, (path.tag, index))
+            last: tuple[int, ...] = ()  # each item holds a data set of its own
             while undefined or position < stop:
                 if undefined and self._unpack("<HHI", position, stop)[:2] == _ITEM_END:
                     position = self._add(position, position + 8, None, where)
                     break
+                last = self._tag_after(last, position, stop)
                 position = self._element(position, stop, explicit, items)
             index += 1
         return position
 
     def _fragments(self, position: int, end: int, where: Location) -> int:
-        """Read an encapsulated value's items, up to its delimiter."""
+        """Read a value's numbered items, up to its delimiter."""
         index = 0
         while True:
             group, number, length = self._unpack("<HHI", position, end)
