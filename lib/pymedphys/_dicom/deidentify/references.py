@@ -18,17 +18,21 @@ An IOD's reference sites are derived from the PS3.3 module and macro tables
 that :mod:`~pymedphys._dicom.deidentify.iods` generates, not listed by hand:
 each place inside a sequence where the IOD defines one of
 :data:`REFERENCE_TAGS`, such as Referenced SOP Instance UID (0008,1155) in an
-RT Plan's Referenced Structure Set Sequence (300C,0060). At the top level of
-the data set, the same Series and Study Instance UIDs identify the instance
-itself.
+RT Plan's Referenced Structure Set Sequence (300C,0060), with the attribute's
+Type there. At the top level of the data set, the same Series and Study
+Instance UIDs identify the instance itself.
 
 An :class:`InstanceRecord` holds what the reference graph
 (:mod:`~pymedphys._dicom.deidentify.reference_graph`) needs from one
 instance: its identifiers, and the value at each reference site with the
 Referenced SOP Class UID (0008,1150) beside it. Its ``repr`` shows only the
-IOD, so identifiers do not reach logs. Building one reads the data set
-without changing it, and neither logs nor warns; pydicom's own warnings while
-it decodes values are the entry point's to redact, as
+IOD, so identifiers do not reach logs. An attribute without a value at a
+Type 3 site is left out, since it means the same as an absent one (PS3.5
+Section 7.4.5). A sequence that pydicom does not know, which it reads as UN
+from Implicit VR Little Endian, is decoded with its VR in the pinned data
+dictionary. Building a record reads the data set without changing it, and
+neither logs nor warns; pydicom's own warnings while it decodes values are
+the entry point's to redact, as
 :func:`pymedphys._dicom.anonymise.diagnostics.redacted_pydicom_diagnostics`
 does for the legacy tools.
 """
@@ -45,6 +49,7 @@ from pymedphys._imports import pydicom
 
 from .iods import IOD
 from .sop_classes import iod_for_sop_class
+from .standard import load_data_dictionary
 from .uids import normalise_uid
 
 SOP_CLASS_TAG = "(0008,0016)"
@@ -93,11 +98,17 @@ class ReferenceSite:
         The tag of the referring attribute, a key of :data:`REFERENCE_TAGS`.
     level : Level
         What the attribute's value names.
+    type : str
+        The attribute's Type there, ``"1"``, ``"2"``, or ``"3"``: where the
+        IOD's modules give it several, the strictest, with 1C counting as 1
+        and 2C as 2, since a conditional element that is present has their
+        requirements (PS3.5 Sections 7.4.2 and 7.4.4).
     """
 
     path: tuple[str, ...]
     tag: str
     level: Level
+    type: str
 
     @property
     def attribute(self) -> tuple[str, ...]:
@@ -118,24 +129,34 @@ def reference_sites(iod: IOD) -> tuple[ReferenceSite, ...]:
     -------
     tuple of ReferenceSite
         One for each path and tag, in the order of the IOD's definitions,
-        even where several modules define the attribute there.
+        even where several modules define the attribute there, with the
+        strictest of their Types.
 
     Examples
     --------
     >>> rt_plan = iod_for_sop_class("1.2.840.10008.5.1.4.1.1.481.5")
     >>> [
-    ...     site.level.value
+    ...     (site.level.value, site.type)
     ...     for site in reference_sites(rt_plan)
     ...     if site.attribute == ("(300C,0060)", "(0008,1155)")
     ... ]  # Referenced Structure Set Sequence
-    ['instance']
+    [('instance', '1')]
     """
-    sites = dict.fromkeys(
-        ReferenceSite(definition.path, definition.tag, REFERENCE_TAGS[definition.tag])
+    places = dict.fromkeys(
+        (definition.path, definition.tag)
         for definition in iod.definitions
         if definition.path and definition.tag in REFERENCE_TAGS
     )
-    return tuple(sites)
+    # The strictest Type, with 1C counting as 1 and 2C as 2.
+    return tuple(
+        ReferenceSite(
+            path,
+            tag,
+            REFERENCE_TAGS[tag],
+            min(each.type.removesuffix("C") for each in iod.lookup(tag, path)),
+        )
+        for path, tag in places
+    )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -150,7 +171,9 @@ class Reference:
     target : str
         The UID the reference names, without trailing NUL and space padding,
         or ``""`` if the attribute has no value, or a value that is not one
-        UID, such as several values.
+        UID, such as several values. At a Type 3 site, an attribute without a
+        value means the same as an absent one (PS3.5 Section 7.4.5), so it
+        makes no reference.
     target_class : str or None
         The Referenced SOP Class UID (0008,1150) in the same item, without
         padding, or ``None`` if the item has none, or its value is not one
@@ -200,10 +223,12 @@ class InstanceRecord:
         found = []
         for site in sites:
             for item in _items(dataset, site.path):
-                if _element(item, site.tag) is not None:
-                    target = _uid(item, site.tag) or ""
-                    target_class = _uid(item, REFERENCED_SOP_CLASS_TAG)
-                    found.append(Reference(site, target, target_class))
+                element = _element(item, site.tag)
+                if element is None or (site.type == "3" and _is_empty(element)):
+                    continue
+                target = _uid(item, site.tag) or ""
+                target_class = _uid(item, REFERENCED_SOP_CLASS_TAG)
+                found.append(Reference(site, target, target_class))
         return cls(
             iod,
             _uid(dataset, IDENTITY_TAGS[Level.INSTANCE]),
@@ -241,6 +266,12 @@ def _uid(dataset: pydicom.Dataset, tag: str) -> str | None:
     return normalise_uid(str(element.value)) or None
 
 
+def _is_empty(element: pydicom.DataElement) -> bool:
+    """Return whether the element has no value, or only padding."""
+    value = element.value
+    return element.VM == 0 or (isinstance(value, str) and not normalise_uid(value))
+
+
 def _items(
     dataset: pydicom.Dataset, path: tuple[str, ...]
 ) -> Iterator[pydicom.Dataset]:
@@ -249,6 +280,34 @@ def _items(
         yield dataset
         return
     element = _element(dataset, path[0])
-    if element is not None and element.VR == "SQ":
-        for item in element.value:
+    if element is not None:
+        for item in _sequence(element, path[0]):
             yield from _items(item, path[1:])
+
+
+def _sequence(element: pydicom.DataElement, tag: str) -> Iterator[pydicom.Dataset]:
+    """Yield the items of a sequence, decoding a UN value with its dictionary VR.
+
+    PS3.5 Section 6.2.2 lets a reader that knows the VR of a UN value decode
+    it as Implicit VR Little Endian, whatever the transfer syntax. pydicom
+    reads a sequence it does not know as UN in Implicit VR Little Endian,
+    unless its length is undefined.
+    """
+    if element.VR == "SQ":
+        yield from element.value
+    elif (
+        element.VR == "UN"
+        and isinstance(element.value, bytes)
+        and tag in _dictionary_sequences()
+    ):
+        yield from pydicom.values.convert_SQ(element.value, True, True)
+
+
+@functools.lru_cache(maxsize=None)
+def _dictionary_sequences() -> frozenset[str]:
+    """Return the tags whose VR is SQ in the pinned data dictionary."""
+    return frozenset(
+        attribute.tag
+        for attribute in load_data_dictionary().attributes
+        if attribute.vr == "SQ"
+    )

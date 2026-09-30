@@ -21,14 +21,14 @@ graph resolves each reference to the inputs it names, and reports each input
 that lacks an identifier and each reference that names nothing in the
 collection.
 
-Two kinds of reference are not expected in the collection, so they are not
-followed. A reference to an instance whose Referenced SOP Class UID
-(0008,1150) is not a Standard Storage SOP Class of PS3.4 Table B.5-1 names
-something that is never stored, such as a performed procedure step, or a
-study through the retired Detached Study Management SOP Class that the RT
-Referenced Study Sequence uses (PS3.3 C.8.8.5.4). A UID that the pinned
-tables register, such as a well-known color palette, names a public
-definition.
+Two kinds of reference that name no input are not reported. A reference to
+an instance whose Referenced SOP Class UID (0008,1150) is not a Standard
+Storage SOP Class of PS3.4 Table B.5-1, such as a Private or retired SOP
+Class, resolves if it names an input; otherwise it is not reported, because
+such a class may name something that is not a stored instance, such as a
+performed procedure step, or a study or patient through a retired or private
+management class (PS3.3 C.8.8.5.4). A UID that the pinned tables register,
+such as a well-known color palette, names a public definition.
 
 A :class:`Finding` names inputs only by their positions in the records given
 to :func:`build_reference_graph`, and attributes only by their tags, so it
@@ -66,9 +66,12 @@ class FindingKind(enum.Enum):
         A value at one of the input's reference sites names no input at the
         site's level: no input has that SOP Instance UID, Series Instance
         UID, or Study Instance UID, without padding. An empty value, or one
-        that is not a single UID, names nothing. There is one finding for
-        each input and site, whose ``count`` is the number of distinct
-        values there that name nothing.
+        that is not a single UID, names nothing, except that an empty value
+        at a Type 3 site means the same as an absent one. A value that names
+        no input is not reported if its Referenced SOP Class UID is not a
+        Standard Storage SOP Class of Table B.5-1, or if the pinned tables
+        register it. There is one finding for each input and site, whose
+        ``count`` is the number of distinct values there that name nothing.
     """
 
     MISSING_IDENTIFIER = "missing-identifier"
@@ -172,20 +175,19 @@ def build_reference_graph(records: Sequence[InstanceRecord]) -> ReferenceGraph:
         unresolved: dict[ReferenceSite, set[str]] = {}
         for reference in record.references:
             site = reference.site
-            not_stored = (
+            unlisted_class = (
                 site.level is Level.INSTANCE
                 and reference.target_class is not None
                 and reference.target_class not in storage
             )
-            if not_stored or reference.target in registered:
-                continue
             targets = index[site.level].get(reference.target)
-            if targets is None:
+            if targets is not None:
+                if site.level is Level.INSTANCE:
+                    edges.update(
+                        Edge(position, site.attribute, target) for target in targets
+                    )
+            elif not (unlisted_class or reference.target in registered):
                 unresolved.setdefault(site, set()).add(reference.target)
-            elif site.level is Level.INSTANCE:
-                edges.update(
-                    Edge(position, site.attribute, target) for target in targets
-                )
         findings.extend(
             Finding(
                 FindingKind.DANGLING_REFERENCE,

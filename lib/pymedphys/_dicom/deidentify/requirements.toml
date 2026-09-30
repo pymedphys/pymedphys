@@ -511,6 +511,7 @@ tests = [
   "tests/dicom/test_deidentify_references.py::test_reference_sites_include_the_rt_references",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_consistent_collection_has_no_findings",
   "tests/dicom/test_deidentify_reference_graph.py::test_each_reference_resolves_to_its_instance",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_input_of_a_class_outside_table_b5_1_resolves",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_instance_not_in_the_collection_is_dangling",
 ]
 note = '''

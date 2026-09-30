@@ -104,12 +104,80 @@ def _id(value):
     return ">".join(value) if isinstance(value, tuple) else None
 
 
+def _only_site(monkeypatch, site):
+    """Make every instance's IOD define no reference but ``site``."""
+    monkeypatch.setattr(
+        references, "_iod_and_sites", lambda sop_class: ("RT Plan", (site,))
+    )
+
+
+def _written_and_read(dataset, transfer_syntax):
+    dataset.file_meta = pydicom.dataset.FileMetaDataset()
+    dataset.file_meta.TransferSyntaxUID = transfer_syntax
+    written = io.BytesIO()
+    pydicom.dcmwrite(written, dataset, enforce_file_format=True)
+    return pydicom.dcmread(io.BytesIO(written.getvalue()))
+
+
 @pytest.mark.parametrize("iod, attribute, level", RT_REFERENCES, ids=_id)
 def test_reference_sites_include_the_rt_references(iod, attribute, level):
-    site = ReferenceSite(attribute[:-1], attribute[-1], level)
+    sites = references.reference_sites(_iod(iod))
 
-    assert site in references.reference_sites(_iod(iod))
-    assert site.attribute == attribute
+    assert (attribute, level) in {(site.attribute, site.level) for site in sites}
+
+
+@pytest.mark.parametrize(
+    "iod, attribute, type_",
+    [
+        *((iod, synthetic.REQUESTED_STUDY, "3") for iod in FIRST_RELEASE_IODS),
+        ("RT Plan", synthetic.PERTINENT_DOCUMENTS, "3"),
+        ("RT Plan", synthetic.REFERENCED_STRUCTURE_SET, "1"),
+        # Referenced Patient Photo Sequence > Study Instance UID, Type 1C.
+        ("RT Plan", ("(0010,1100)", "(0020,000D)"), "1"),
+    ],
+    ids=_id,
+)
+def test_reference_sites_have_their_types_from_ps3_3(iod, attribute, type_):
+    sites = references.reference_sites(_iod(iod))
+
+    assert {site.attribute: site.type for site in sites}[attribute] == type_
+
+
+@pytest.mark.parametrize(
+    "types, strictest",
+    [
+        (("3", "1C"), "1"),
+        (("2C", "3"), "2"),
+        (("2", "1"), "1"),
+        (("3", "3"), "3"),
+        (("1C",), "1"),
+        (("2C",), "2"),
+    ],
+    ids=["3-and-1C", "2C-and-3", "2-and-1", "3-and-3", "1C", "2C"],
+)
+def test_a_site_has_the_strictest_type_of_its_definitions(types, strictest):
+    # A conditional element that is present has the requirements of Type 1
+    # or Type 2 (PS3.5 Sections 7.4.2 and 7.4.4).
+    iod = iods.IOD(
+        "Synthetic",
+        "Table A.0-1",
+        (),
+        tuple(
+            iods.AttributeDefinition(
+                ("(300C,0060)",),
+                "(0008,1155)",
+                "Referenced SOP Instance UID",
+                type_,
+                module,
+                (),
+            )
+            for type_, module in zip(types, "AB")
+        ),
+    )
+
+    assert references.reference_sites(iod) == (
+        ReferenceSite(("(300C,0060)",), "(0008,1155)", Level.INSTANCE, strictest),
+    )
 
 
 @pytest.mark.parametrize("name", FIRST_RELEASE_IODS)
@@ -120,6 +188,7 @@ def test_reference_sites_are_nested_and_distinct(name):
     assert all(site.path for site in sites)
     assert len({(site.path, site.tag) for site in sites}) == len(sites)
     assert all(references.REFERENCE_TAGS[site.tag] is site.level for site in sites)
+    assert {site.type for site in sites} <= {"1", "2", "3"}
 
 
 def test_an_attribute_defined_twice_at_one_place_is_one_site():
@@ -140,7 +209,7 @@ def test_an_attribute_defined_twice_at_one_place_is_one_site():
     )
 
     assert references.reference_sites(iod) == (
-        ReferenceSite(("(300C,0060)",), "(0008,1155)", Level.INSTANCE),
+        ReferenceSite(("(300C,0060)",), "(0008,1155)", Level.INSTANCE, "1"),
     )
 
 
@@ -252,6 +321,35 @@ def test_a_record_keeps_the_referenced_sop_class():
 
 @pytest.mark.pydicom
 @pytest.mark.parametrize(
+    "type_, kept",
+    [("1", True), ("2", True), ("3", False)],
+    ids=["type-1", "type-2", "type-3"],
+)
+def test_an_empty_value_is_absent_only_where_the_site_is_type_3(
+    monkeypatch, type_, kept
+):
+    # PS3.5 Section 7.4.5: a Type 3 element of zero length means the same as
+    # an absent one. A Type 2 element of zero length has an unknown value
+    # (7.4.3), and a Type 1 element must have one (7.4.1).
+    _only_site(
+        monkeypatch,
+        ReferenceSite(("(300C,0060)",), "(0008,1155)", Level.INSTANCE, type_),
+    )
+    dataset = synthetic.rt_plan()
+    dataset.ReferencedStructureSetSequence = [
+        synthetic.reference(synthetic.RT_STRUCTURE_SET_STORAGE, value)
+        for value in ["", "\x00", " \x00", [synthetic.PLAN, synthetic.PLAN]]
+    ]
+
+    record = InstanceRecord.from_dataset(dataset)
+
+    # Two values are not empty, whatever the Type.
+    assert len(record.references) == (4 if kept else 1)
+    assert {reference.target for reference in record.references} == {""}
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
     "sop_class",
     [
         synthetic.MR_IMAGE_STORAGE,
@@ -322,12 +420,89 @@ def test_a_record_read_from_a_file_matches_the_data_set(transfer_syntax):
         synthetic.reference(synthetic.RT_STRUCTURE_SET_STORAGE, "2.25.3011")
     ]
     expected = InstanceRecord.from_dataset(dataset)
-    dataset.file_meta = pydicom.dataset.FileMetaDataset()
-    dataset.file_meta.TransferSyntaxUID = transfer_syntax
-    written = io.BytesIO()
-    pydicom.dcmwrite(written, dataset, enforce_file_format=True)
 
-    read = pydicom.dcmread(io.BytesIO(written.getvalue()))
+    read = _written_and_read(dataset, transfer_syntax)
 
     assert InstanceRecord.from_dataset(read) == expected
     assert len(expected.references) == 9
+
+
+def _with_rt_assertion():
+    dataset = synthetic.rt_plan()
+    dataset.add(
+        synthetic.rt_assertions(
+            synthetic.reference(synthetic.ENCAPSULATED_PDF_STORAGE, "2.25.9030")
+        )
+    )
+    return dataset, synthetic.RT_ASSERTIONS_SEQUENCE, synthetic.PERTINENT_DOCUMENTS
+
+
+def _with_dose_calculation_model():
+    # Dose Calculation Model Sequence (3004,0080) > Dose Calculation Model
+    # Parameter Sequence (3004,0083), neither of which pydicom 3.0.2 knows.
+    parameter = synthetic.item(
+        ReferencedSOPSequence=[
+            synthetic.reference(synthetic.RT_PLAN_STORAGE, synthetic.PLAN)
+        ]
+    )
+    model = synthetic.item()
+    model.add(synthetic.sequence(0x30040083, [parameter]))
+    dataset = synthetic.rt_dose()
+    dataset.add(synthetic.sequence(0x30040080, [model]))
+    attribute = ("(3004,0080)", "(3004,0083)", "(0008,1199)", "(0008,1155)")
+    return dataset, 0x30040080, attribute
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")
+@pytest.mark.parametrize(
+    "build",
+    [_with_rt_assertion, _with_dose_calculation_model],
+    ids=["rt-assertions", "dose-calculation-model"],
+)
+def test_a_sequence_read_as_unknown_is_decoded_with_its_dictionary_vr(build):
+    # In Implicit VR Little Endian, pydicom reads a sequence of defined length
+    # that it does not know as UN. PS3.5 Section 6.2.2 lets a reader that
+    # knows the VR decode the value as Implicit VR Little Endian.
+    dataset, tag, attribute = build()
+    expected = InstanceRecord.from_dataset(dataset)
+
+    read = _written_and_read(dataset, "1.2.840.10008.1.2")
+    record = InstanceRecord.from_dataset(read)
+
+    assert record == expected
+    assert attribute in {reference.site.attribute for reference in record.references}
+    # The data set is unchanged.
+    assert read[tag].VR == "UN"
+    assert isinstance(read[tag].value, bytes)
+
+
+@pytest.mark.pydicom
+@pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")
+@pytest.mark.parametrize(
+    "tag, found",
+    [("(0044,0110)", True), ("(0042,0011)", False)],
+    ids=["dictionary-sq", "dictionary-ob"],
+)
+def test_an_unknown_value_is_decoded_only_where_the_dictionary_gives_sq(
+    monkeypatch, tag, found
+):
+    # The value of an RT Assertions Sequence read from Implicit VR Little
+    # Endian, given as the UN value of RT Assertions Sequence (0044,0110) and
+    # of Encapsulated Document (0042,0011), whose dictionary VR is OB.
+    dataset, sequence_tag, _ = _with_rt_assertion()
+    encoded = _written_and_read(dataset, "1.2.840.10008.1.2")[sequence_tag].value
+    _only_site(
+        monkeypatch,
+        ReferenceSite((tag, "(0038,0100)"), "(0008,1155)", Level.INSTANCE, "3"),
+    )
+    dataset = synthetic.rt_plan()
+    number = int(tag[1:5] + tag[6:10], 16)
+    dataset[number] = pydicom.DataElement(number, "UN", encoded)
+
+    record = InstanceRecord.from_dataset(dataset)
+
+    assert [reference.target for reference in record.references] == (
+        ["2.25.9030"] if found else []
+    )

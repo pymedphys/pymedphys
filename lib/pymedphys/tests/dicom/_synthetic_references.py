@@ -28,11 +28,16 @@ MR_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.4"
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
 RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
+ENCAPSULATED_PDF_STORAGE = "1.2.840.10008.5.1.4.1.1.104.1"
 # SOP Classes of other service classes, which PS3.4 Table B.5-1 does not
 # list. PS3.3 C.8.8.5.4 gives Detached Study Management, a retired SOP Class,
 # in the RT Referenced Study Sequence.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
 MODALITY_PERFORMED_PROCEDURE_STEP = "1.2.840.10008.3.1.2.3.3"
+# Storage SOP Classes that Table B.5-1 does not list either: a Private SOP
+# Class, invented under 2.25., and a retired one.
+PRIVATE_SOP_CLASS = "2.25.700"
+NM_IMAGE_STORAGE_RETIRED = "1.2.840.10008.5.1.4.1.1.5"
 # A well-known SOP Instance of PS3.6 Table A-1.
 HOT_IRON_COLOR_PALETTE = "1.2.840.10008.1.5.1"
 
@@ -45,6 +50,8 @@ PLAN_SERIES = "2.25.400"
 PLAN = "2.25.401"
 DOSE_SERIES = "2.25.500"
 DOSE = "2.25.501"
+OTHER_SERIES = "2.25.600"
+OTHER = "2.25.601"
 PATIENT_ID = "SYNTHETIC-7Q2K"
 PATIENTS_NAME = "FICTITIOUS^PERSON"
 
@@ -64,6 +71,11 @@ REFERENCED_STRUCTURE_SET = ("(300C,0060)", "(0008,1155)")
 REFERENCED_DOSE = ("(300C,0080)", "(0008,1155)")
 REFERENCED_PLAN = ("(300C,0002)", "(0008,1155)")
 REFERENCED_IMAGE = ("(0008,1140)", "(0008,1155)")
+# Places where every definition in the IOD is Type 3.
+REQUESTED_STUDY = ("(0040,0275)", "(0020,000D)")
+PERTINENT_DOCUMENTS = ("(0044,0110)", "(0038,0100)", "(0008,1155)")
+# RT Assertions Sequence, which pydicom 3.0.2 does not know.
+RT_ASSERTIONS_SEQUENCE = 0x00440110
 
 
 def uid(dataset, keyword, value):
@@ -104,6 +116,18 @@ def instance(sop_class, sop_instance, series, **sequences):
     for keyword, items in sequences.items():
         setattr(dataset, keyword, items)
     return dataset
+
+
+def sequence(tag, items):
+    """Return a sequence element, which need not be in pydicom's dictionary."""
+    return pydicom.DataElement(tag, "SQ", items)
+
+
+def rt_assertions(*documents):
+    """Return an RT Assertions Sequence whose item references ``documents``."""
+    return sequence(
+        RT_ASSERTIONS_SEQUENCE, [item(PertinentDocumentsSequence=list(documents))]
+    )
 
 
 def contour(sop_instance):

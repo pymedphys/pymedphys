@@ -161,8 +161,37 @@ def test_a_reference_to_a_series_or_study_not_in_the_collection_is_dangling(
 
 
 @pytest.mark.pydicom
+@pytest.mark.parametrize("padding", ["", "\x00"], ids=["unpadded", "padded"])
 @pytest.mark.parametrize(
-    "sequence, attribute, sop_class, followed",
+    "sop_class",
+    [synthetic.PRIVATE_SOP_CLASS, synthetic.NM_IMAGE_STORAGE_RETIRED],
+    ids=["private", "retired-storage"],
+)
+def test_a_reference_to_an_input_of_a_class_outside_table_b5_1_resolves(
+    sop_class, padding
+):
+    # A Private SOP Class can follow the semantics of the Storage Service Class
+    # (PS3.4 B.4.1.2), and a retired Storage SOP Class was stored under an
+    # earlier edition, so a collection can hold an instance of either.
+    datasets = synthetic.collection()
+    other = synthetic.instance(None, synthetic.OTHER, synthetic.OTHER_SERIES)
+    synthetic.uid(other, "SOPClassUID", sop_class + padding)
+    datasets.append(other)
+    datasets[PLAN].ReferencedImageSequence = [
+        synthetic.reference(sop_class + padding, synthetic.OTHER)
+    ]
+
+    graph = _graph(datasets)
+
+    assert not graph.findings
+    assert graph.edges == _graph(synthetic.collection()).edges | {
+        Edge(PLAN, synthetic.REFERENCED_IMAGE, len(datasets) - 1)
+    }
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "sequence, attribute, sop_class, dangling",
     [
         pytest.param(
             "ReferencedPerformedProcedureStepSequence",
@@ -188,6 +217,20 @@ def test_a_reference_to_a_series_or_study_not_in_the_collection_is_dangling(
         pytest.param(
             "ReferencedImageSequence",
             synthetic.REFERENCED_IMAGE,
+            synthetic.PRIVATE_SOP_CLASS,
+            False,
+            id="private",
+        ),
+        pytest.param(
+            "ReferencedImageSequence",
+            synthetic.REFERENCED_IMAGE,
+            synthetic.NM_IMAGE_STORAGE_RETIRED,
+            False,
+            id="retired-storage",
+        ),
+        pytest.param(
+            "ReferencedImageSequence",
+            synthetic.REFERENCED_IMAGE,
             synthetic.CT_IMAGE_STORAGE,
             True,
             id="ct-image-storage",
@@ -208,15 +251,30 @@ def test_a_reference_to_a_series_or_study_not_in_the_collection_is_dangling(
         ),
     ],
 )
-def test_references_to_classes_that_are_not_stored_are_not_followed(
-    sequence, attribute, sop_class, followed
+def test_a_missing_target_of_a_class_outside_table_b5_1_is_not_dangling(
+    sequence, attribute, sop_class, dangling
 ):
     datasets = synthetic.collection()
     setattr(datasets[PLAN], sequence, [synthetic.reference(sop_class, "2.25.9003")])
 
     findings = _graph(datasets).findings
 
-    assert findings == ((_dangling(PLAN, attribute),) if followed else ())
+    assert findings == ((_dangling(PLAN, attribute),) if dangling else ())
+
+
+@pytest.mark.pydicom
+def test_a_private_study_class_in_the_rt_referenced_study_sequence_is_not_dangling():
+    # PS3.3 C.8.8.5.4: the class is the study's own, which may be private, and
+    # the Referenced SOP Instance UID is the study's.
+    datasets = synthetic.collection()
+    frame = datasets[STRUCTURE_SET].ReferencedFrameOfReferenceSequence[0]
+    study = frame.RTReferencedStudySequence[0]
+    synthetic.uid(study, "ReferencedSOPClassUID", synthetic.PRIVATE_SOP_CLASS)
+
+    graph = _graph(datasets)
+
+    assert not graph.findings
+    assert graph.edges == _graph(synthetic.collection()).edges
 
 
 @pytest.mark.pydicom
@@ -236,7 +294,9 @@ def test_a_reference_to_a_well_known_instance_is_not_dangling(value):
 @pytest.mark.parametrize(
     "value", ["", "\x00", " \x00"], ids=["empty", "nul", "space-and-nul"]
 )
-def test_an_empty_reference_is_dangling(value):
+def test_an_empty_value_where_the_iod_requires_one_is_dangling(value):
+    # Referenced SOP Instance UID is Type 1 in the Referenced Structure Set
+    # Sequence of an RT Plan.
     datasets = synthetic.collection()
     datasets[PLAN].ReferencedStructureSetSequence = [
         synthetic.reference(synthetic.RT_STRUCTURE_SET_STORAGE, value)
@@ -245,6 +305,54 @@ def test_an_empty_reference_is_dangling(value):
     assert _graph(datasets).findings == (
         _dangling(PLAN, synthetic.REFERENCED_STRUCTURE_SET),
     )
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "value, dangling",
+    [
+        ("", False),
+        ("\x00", False),
+        (" \x00", False),
+        ("2.25.9004", True),
+        ([synthetic.STUDY, synthetic.STUDY], True),
+    ],
+    ids=["empty", "nul", "space-and-nul", "not-in-collection", "two-values"],
+)
+@pytest.mark.parametrize(
+    "position, attribute",
+    [
+        (0, synthetic.REQUESTED_STUDY),
+        (STRUCTURE_SET, synthetic.REQUESTED_STUDY),
+        (PLAN, synthetic.REQUESTED_STUDY),
+        (DOSE, synthetic.REQUESTED_STUDY),
+        (PLAN, synthetic.PERTINENT_DOCUMENTS),
+    ],
+    ids=[
+        "ct-request",
+        "structure-set-request",
+        "plan-request",
+        "dose-request",
+        "plan-document",
+    ],
+)
+def test_an_empty_value_where_the_iod_makes_a_reference_optional_is_absent(
+    position, attribute, value, dangling
+):
+    # PS3.5 7.4.5: a Type 3 element with zero length means the same as an
+    # absent one.
+    datasets = synthetic.collection()
+    if attribute == synthetic.REQUESTED_STUDY:
+        request = synthetic.item()
+        synthetic.uid(request, "StudyInstanceUID", value)
+        datasets[position].RequestAttributesSequence = [request]
+    else:
+        document = synthetic.reference(synthetic.ENCAPSULATED_PDF_STORAGE, value)
+        datasets[position].add(synthetic.rt_assertions(document))
+
+    findings = _graph(datasets).findings
+
+    assert findings == ((_dangling(position, attribute),) if dangling else ())
 
 
 @pytest.mark.pydicom
