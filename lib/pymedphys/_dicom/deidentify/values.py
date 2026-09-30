@@ -87,6 +87,8 @@ _INTEGER_RANGES = {
 }
 # The size in bytes of each word of a byte VR.
 _WORD_BYTES = {"OB": 1, "UN": 1, "OW": 2, "OF": 4, "OL": 4, "OD": 8, "OV": 8}
+# The VRs whose VM is always 1 (PS3.5 Section 6.4), whatever PS3.6 gives.
+_SINGLE_VALUED = frozenset({*_WORD_BYTES, "LT", "ST", "UR", "UT"})
 
 
 def _has_controls(value: str, allowed: frozenset[str]) -> bool:
@@ -391,7 +393,9 @@ def values_problem(vr: str, vm: str, values: Sequence[object]) -> str | None:
         The VM as PS3.6 gives it, as for :func:`vm_problem`.
     values : sequence
         The values, each as :func:`value_problem` takes it, or none for an
-        empty attribute.
+        empty attribute. pydicom's own value types, such as the ``DSfloat``,
+        ``IS``, and ``PersonName`` items of a ``MultiValue``, are not text;
+        pass them as ``str``.
 
     Returns
     -------
@@ -422,8 +426,7 @@ def values_problem(vr: str, vm: str, values: Sequence[object]) -> str | None:
         return problem
     first = None
     for alternative in alternatives:
-        if alternative in _WORD_BYTES and len(values) > 1:
-            # PS3.5 Section 6.4: the VM of these VRs is always 1.
+        if alternative in _SINGLE_VALUED and len(values) > 1:
             first = first or (
                 f"has {len(values)} values where VR {alternative} has one"
             )

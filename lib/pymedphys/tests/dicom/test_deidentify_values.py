@@ -18,9 +18,20 @@ Unless noted, examples and limits are from the definitions in Table 6.2-1 of
 the 2026d PS3.5.
 """
 
-from pymedphys._imports import pydicom, pytest
+import datetime
 
-from pymedphys._dicom.deidentify import standard, values
+from pymedphys._imports import hypothesis, pydicom, pytest
+
+from pymedphys._dicom.deidentify import (
+    dates,
+    keys,
+    pseudonyms,
+    standard,
+    uids,
+    values,
+)
+
+st = hypothesis.strategies
 
 VALID = [
     # AE: at most 16 characters, not only spaces.
@@ -317,6 +328,15 @@ def test_values_are_checked_for_their_vm_and_vr():
     assert "secret" not in problem
 
 
+@pytest.mark.parametrize("vr", ["LT", "ST", "UR", "UT"])
+def test_lt_st_ur_and_ut_have_one_value(vr):
+    # PS3.5 Section 6.4, although PS3.6 gives some such attributes VM 1-n,
+    # such as Data Streaming Protocol (0014,6025), an ST. Two ST values
+    # written with pydicom read back as one value containing a backslash.
+    assert values.values_problem(vr, "1-n", ["first", "second"]) is not None
+    assert values.values_problem(vr, "1-n", ["only"]) is None
+
+
 def test_a_byte_vr_has_one_value():
     # PS3.5 Section 6.4: the VM of OB, OD, OF, OL, OV, OW, and UN is 1.
     assert values.values_problem("OW", "1-n", [b"\x00\x01", b"\x00\x02"])
@@ -394,3 +414,24 @@ def test_problems_name_the_vr(vr, value):
 
     assert problem is not None
     assert f"a value of VR {vr}" in problem
+
+
+@hypothesis.given(
+    st.binary(min_size=32, max_size=32).map(keys.DeidKey),
+    st.text(min_size=1, max_size=16).filter(lambda value: value.strip(" \x00")),
+    st.dates(min_value=datetime.date(11, 1, 1)),
+    st.integers(min_value=dates.MIN_OFFSET_WEEKS, max_value=dates.MAX_OFFSET_WEEKS),
+)
+def test_the_primitives_write_valid_values(key, patient_id, day, weeks):
+    identity = pseudonyms.SubjectIdentity.from_patient_id(patient_id)
+    pseudonym = pseudonyms.patient_pseudonym(key, identity)
+    da = f"{day.year:04d}{day.month:02d}{day.day:02d}"
+
+    assert values.value_problem("LO", pseudonym.patient_id) is None
+    assert values.value_problem("PN", pseudonym.patients_name) is None
+    assert values.value_problem("UI", uids.replacement_uid(key, "1.2.3.4")) is None
+    assert values.value_problem("DA", dates.shift_date(da, weeks)) is None
+    assert (
+        values.value_problem("DT", dates.shift_datetime(da + "123456.5+1000", weeks))
+        is None
+    )
