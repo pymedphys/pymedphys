@@ -128,9 +128,18 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 The Attributes listed in Table E.1-1 for each Profile or Option are contained in Standard IODs, or may be contained in Standard Extended IODs. An implementation claiming conformance to the Basic Application Level Confidentiality Profile as a de-identifier shall protect or retain all instances of the Attributes listed in Table E.1-1, whether contained in the top level Data Set or embedded in an Item of a Sequence of Items. The action codes in Table E.1-1a are used in Table E.1-1.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
-decisions = ["D-001", "D-011"]
+decisions = ["D-001", "D-007", "D-011"]
+implementation = ["_dicom/deidentify/actions.py", "_dicom/deidentify/standard.py"]
+tests = [
+  "tests/dicom/test_deidentify_actions.py::test_the_basic_profile_alone_gives_each_attribute_its_profile_action",
+  "tests/dicom/test_deidentify_actions.py::test_an_option_overrides_the_profile",
+  "tests/dicom/test_deidentify_actions.py::test_each_attribute_has_one_action_or_a_conflict",
+]
+note = '''
+Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Remaining: protecting or retaining every instance of each attribute, at the top level and in sequences (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.2-01"
