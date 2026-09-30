@@ -22,7 +22,9 @@ IOD's modules, following every "Include" row, into the attributes it defines
 at each place in the data set, with their Types.
 
 The design resolves compound actions of Table E.1-1, such as X/Z/D, from these
-Types (PS3.15 E.1.1).
+Types (PS3.15 E.1.1). An instance names its SOP Class rather than its IOD;
+:func:`~pymedphys._dicom.deidentify.sop_classes.iod_for_sop_class` finds the
+IOD from its SOP Class UID.
 """
 
 from __future__ import annotations
