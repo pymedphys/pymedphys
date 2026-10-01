@@ -35,6 +35,8 @@ from collections.abc import Iterable, Mapping
 
 from .requirements import STATUSES, Requirement, RequirementsRegister
 
+SHIPPED_SOURCE = "pymedphys/_dicom/deidentify/requirements.toml"
+
 EXCLUDED = ("out-of-scope", "not-applicable")
 REMAINING = ("planned", "partial")
 
@@ -115,12 +117,16 @@ class TraceabilityMatrix:
     rows : tuple of MatrixRow
         One for each requirement, in the register's order.
     reports : tuple of str
-        The file names of the JUnit XML reports the results come from.
+        The JUnit XML reports the results come from, by file name, or by
+        path as given where several share a name.
+    source : str
+        The register the matrix was generated from.
     """
 
     register: RequirementsRegister
     rows: tuple[MatrixRow, ...]
     reports: tuple[str, ...]
+    source: str = SHIPPED_SOURCE
 
     def problems(self) -> tuple[str, ...]:
         """Each traced test that failed, was skipped, or did not run.
@@ -198,7 +204,9 @@ def _result(node_id: str, cases: Mapping[tuple[str, str, str], int]) -> TestResu
 
 
 def build_matrix(
-    register: RequirementsRegister, reports: Iterable[pathlib.Path] = ()
+    register: RequirementsRegister,
+    reports: Iterable[pathlib.Path] = (),
+    source: str | None = None,
 ) -> TraceabilityMatrix:
     """Build the requirements-to-tests matrix.
 
@@ -210,6 +218,9 @@ def build_matrix(
         pytest JUnit XML reports (``pytest --junitxml``), such as one for each
         environment that continuous integration tests. A traced test fails if
         any of its cases failed in any report.
+    source : str, optional
+        The register's path, for the matrix to name. Defaults to the
+        register shipped with PyMedPhys.
 
     Returns
     -------
@@ -237,10 +248,14 @@ def build_matrix(
         )
         for entry in register.requirements
     )
+    names = collections.Counter(path.name for path in reports)
     return TraceabilityMatrix(
         register=register,
         rows=rows,
-        reports=tuple(path.name for path in reports),
+        reports=tuple(
+            path.name if names[path.name] == 1 else str(path) for path in reports
+        ),
+        source=source or SHIPPED_SOURCE,
     )
 
 
@@ -300,7 +315,7 @@ def _summary(matrix: TraceabilityMatrix) -> list[str]:
         lines += [
             "",
             *_table(
-                ("Verdict", "Requirements"),
+                ("Traced tests", "Requirements"),
                 [
                     (verdict, str(verdicts[verdict]))
                     for verdict in ("passed", "failed", "incomplete")
@@ -333,7 +348,7 @@ def _overview(matrix: TraceabilityMatrix) -> list[str]:
             cells += (row.verdict or "",)
         rows.append(cells)
     if matrix.reports:
-        header += ("Verdict",)
+        header += ("Traced tests",)
     return ["## Requirements", "", *_table(header, rows)]
 
 
@@ -400,8 +415,10 @@ def render_markdown(matrix: TraceabilityMatrix) -> str:
         results = (
             "Test results are from "
             + ", ".join(f"`{name}`" for name in matrix.reports)
-            + ". A requirement passes only when every case of every test that "
-            "traces it passed; a skipped or missing case leaves it incomplete."
+            + ". The traced tests of a requirement pass only when every case of "
+            "every test that traces it passed, and a skipped or missing case "
+            "leaves them incomplete. Passing tests show the work done so far: "
+            "a partial requirement is not met until its remaining work is."
         )
     else:
         results = (
@@ -411,8 +428,8 @@ def render_markdown(matrix: TraceabilityMatrix) -> str:
     lines = [
         "# DICOM de-identification requirements-to-tests matrix",
         "",
-        "Generated from the PyMedPhys requirements register, "
-        "`pymedphys/_dicom/deidentify/requirements.toml`, which records each "
+        f"Generated from the PyMedPhys requirements register `{matrix.source}`, "
+        "which records each "
         f"paragraph of DICOM PS3.15 Annex E ({register.edition}) that contains "
         '"shall" and each best practice of the MIDI Task Group report. '
         f"PS3.15 text is reproduced verbatim from {register.acknowledgement}. "

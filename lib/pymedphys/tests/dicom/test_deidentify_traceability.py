@@ -220,6 +220,16 @@ def test_reports_are_combined(register, tmp_path):
     assert outcomes[CASES] == ("passed", (3, 0, 0))
 
 
+def test_reports_with_the_same_name_are_named_by_their_paths(register, tmp_path):
+    (tmp_path / "linux").mkdir()
+    (tmp_path / "windows").mkdir()
+    first = _passing(tmp_path / "linux" / "junit.xml")
+    second = _passing(tmp_path / "windows" / "junit.xml")
+    other = _passing(tmp_path / "macos.xml")
+    matrix = traceability.build_matrix(register, [first, second, other])
+    assert matrix.reports == (str(first), str(second), "macos.xml")
+
+
 def test_a_requirement_passes_only_when_each_traced_test_passed(register, tmp_path):
     passing = traceability.build_matrix(register, [_passing(tmp_path / "a.xml")])
     assert [row.verdict for row in passing.rows] == [
@@ -343,8 +353,12 @@ def test_the_markdown_gives_each_outcome(register, tmp_path):
     assert f"- `{CASES}`: failed (1 passed, 1 failed)\n" in markdown
     assert f"- `{METHOD}`: skipped (1 skipped)\n" in markdown
     assert f"- `{UNRUN}`: not run\n" in markdown
+    assert "| Traced tests | Requirements |" in markdown
     assert "| failed | 1 |" in markdown
     assert "| incomplete | 1 |" in markdown
+    assert "| Decisions | Tests | Traced tests |" in markdown
+    # A partial requirement whose tests pass is not thereby met.
+    assert "A requirement passes" not in markdown
 
 
 def test_the_markdown_is_deterministic_and_tidy(register, tmp_path):
@@ -375,15 +389,27 @@ def test_the_command_writes_the_matrix(register, tmp_path):
     output = tmp_path / "matrix.md"
     register_path = tmp_path / "requirements.toml"
     _run("--register", str(register_path), "--output", str(output))
-    assert output.read_text(encoding="utf-8") == traceability.render_markdown(
-        traceability.build_matrix(register)
+    markdown = output.read_text(encoding="utf-8")
+    assert markdown == traceability.render_markdown(
+        traceability.build_matrix(register, source=str(register_path))
+    )
+    # The matrix names the register it was generated from.
+    assert f"requirements register `{register_path}`" in markdown
+
+
+def test_the_matrix_names_the_shipped_register_by_default(register):
+    markdown = traceability.render_markdown(traceability.build_matrix(register))
+    assert (
+        "requirements register `pymedphys/_dicom/deidentify/requirements.toml`"
+        in markdown
     )
 
 
 def test_the_command_prints_the_matrix(register, tmp_path, capsys):
-    _run("--register", str(tmp_path / "requirements.toml"))
+    path = tmp_path / "requirements.toml"
+    _run("--register", str(path))
     assert capsys.readouterr().out == traceability.render_markdown(
-        traceability.build_matrix(register)
+        traceability.build_matrix(register, source=str(path))
     )
 
 
@@ -418,7 +444,9 @@ def test_the_check_fails_when_a_traced_test_did_not_pass(register, tmp_path, cap
     assert raised.value.code == 1
     # The matrix is still written, so that the failures can be read in it.
     assert output.read_text(encoding="utf-8") == traceability.render_markdown(
-        traceability.build_matrix(register, [report])
+        traceability.build_matrix(
+            register, [report], source=str(tmp_path / "requirements.toml")
+        )
     )
     err = capsys.readouterr().err
     assert f"PS3.15-E.1.1-01: {PLAIN} failed" in err

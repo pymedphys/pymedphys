@@ -189,7 +189,7 @@ def run_deid_matrix(args):
             pathlib.Path(args.register) if args.register else None
         )
         matrix = traceability.build_matrix(
-            register, [pathlib.Path(path) for path in args.junit]
+            register, [pathlib.Path(path) for path in args.junit], args.register
         )
     except (requirements.RequirementsError, traceability.TraceabilityError) as error:
         raise SystemExit(str(error)) from None
