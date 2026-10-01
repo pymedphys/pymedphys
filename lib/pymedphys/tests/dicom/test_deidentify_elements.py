@@ -805,6 +805,73 @@ def test_text_that_does_not_decode_in_its_character_set_is_refused():
 
 
 @pytest.mark.parametrize(
+    "character_set, tag, value",
+    [
+        # Where Value 1 is the Default Character Repertoire with code
+        # extensions, ISO 646 is active, with no G1 set, until an escape
+        # sequence (PS3.5 Section 6.1.2.5.4), but pydicom decodes a byte
+        # there as ISO 8859-1.
+        (b"\\ISO 2022 IR 87", "(0010,0010)", b"SENTINEL\xdc^REN\xc9"),
+        (b"ISO 2022 IR 6\\ISO 2022 IR 87", "(0010,0010)", b"SENTINEL\xdc^REN\xc9"),
+        (b"\\ISO 2022 IR 100", "(0010,0010)", b"SENTINEL\xdc^REN\xc9"),
+        (b"\\ISO 2022 IR 100", "(0008,1030)", b"SENTINEL\xdc"),
+        (b"ISO 2022 IR 6\\ISO 2022 IR 100", "(0008,1030)", b"SENTINEL\xdc"),
+        # pydicom would write this character without its escape sequence.
+        (b"\\ISO 2022 IR 100", "(0008,1030)", b"SENTINEL\x1b-A\xdc"),
+        # ISO_IR 13 is single-byte: JIS X 0201, not the kanji of Shift JIS.
+        (b"ISO_IR 13", "(0010,0010)", "SENTINEL^山田".encode("shift_jis")),
+    ],
+    ids=[
+        "ir-87",
+        "ir-6-ir-87",
+        "ir-100-pn",
+        "ir-100-lo",
+        "ir-6-ir-100-lo",
+        "ir-100-escaped",
+        "ir-13-kanji",
+    ],
+)
+def test_text_that_could_not_be_written_back_is_refused(character_set, tag, value):
+    # Reading is no more lenient than writing: what written_value_problem
+    # finds in the decoded text, the reader refuses.
+    dataset = pydicom.Dataset()
+    dataset[0x00080005] = _raw("(0008,0005)", None, character_set)
+    dataset[_tag(tag)] = _raw(tag, None, value)
+    codecs = elements.dataset_codecs(dataset)
+    vr = elements.dictionary_attribute(tag).vr
+    decoded = pydicom.values.convert_value(vr, dataset.get_item(_tag(tag)), codecs)
+
+    with pytest.raises(elements.UndecodableElement) as raised:
+        _read(dataset, _path(tag), codecs)
+
+    assert elements.written_value_problem(vr, "1", [str(decoded)], codecs)
+    assert raised.value.path == _path(tag)
+    assert str(raised.value) == (
+        f"{tag} could not be written back as VR {vr}, since value 1 cannot be "
+        "encoded in the data set's Specific Character Set"
+    )
+    assert SENTINEL not in repr(raised.value)
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@TRANSFER_SYNTAXES
+def test_text_in_a_character_set_with_code_extensions_is_read(transfer_syntax):
+    name = "YAMADA^TARO=山田^太郎=やまだ^たろう"
+    dataset = synthetic.rt_plan()
+    dataset.SpecificCharacterSet = ["", "ISO 2022 IR 87"]
+    dataset.PatientName = name
+    dataset.StudyDescription = "SYNTHETIC 研究"
+    read = _written_and_read(dataset, transfer_syntax)
+    codecs = elements.dataset_codecs(read)
+
+    found = [
+        _read(read, _path(tag), codecs).values for tag in ("(0010,0010)", "(0008,1030)")
+    ]
+
+    assert found == [(name,), ("SYNTHETIC 研究",)]
+
+
+@pytest.mark.parametrize(
     "value",
     [
         b"SENTINEL",  # not an item
@@ -1149,6 +1216,15 @@ def test_a_new_element_is_built_without_pydicoms_checks():
         # Ω is not in ISO 8859-1, and é is not in the default repertoire.
         ("(0010,0020)", "LO", ("SENTINELΩ",), ("latin_1",), "cannot be encoded"),
         ("(0010,0020)", "LO", ("SENTINELé",), ("iso8859",), "cannot be encoded"),
+        # pydicom would write é in ISO 8859-1, without the escape sequence of
+        # ISO 2022 IR 100, where Value 1 is the Default Character Repertoire.
+        (
+            "(0010,0020)",
+            "LO",
+            ("SENTINELé",),
+            ("iso8859", "latin_1"),
+            "cannot be encoded",
+        ),
         # ISO_IR 13 is single-byte: JIS X 0201, not the kanji of Shift JIS.
         ("(0010,0020)", "LO", ("SENTINEL山",), ("shift_jis",), "cannot be encoded"),
         # PS3.5 Section 6.2.1.2: in UTF-8, the first component group holds

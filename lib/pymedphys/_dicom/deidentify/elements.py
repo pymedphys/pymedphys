@@ -43,7 +43,9 @@ Character Set (0008,0005) of the data set, or of the item that has its own
 which pydicom reads as ISO 8859-1, text must be in ISO 646 (PS3.5 Section
 6.1.2.1). ``ISO_IR 6`` names that repertoire as the absence of a value does:
 PS3.3 Section C.12.1.1.2 does not list it among the Defined Terms, but real
-data commonly holds it.
+data commonly holds it. Nor is reading more lenient than writing: text that
+:func:`written_value_problem` finds could not be written back in its
+character set is refused.
 
 :func:`new_element` builds an element to write with pydicom's checks off,
 once :func:`written_value_problem` has checked its values.
@@ -247,8 +249,9 @@ def read_element(
     instance's. It raises :class:`UndecodableElement` if the value is
     deferred or shorter than its length, its VR is not one the pinned
     dictionary gives, contradicts the one the standard decides, or is in
-    doubt, or it does not decode exactly as its VR and character set; the
-    Default Character Repertoire alone holds only ISO 646.
+    doubt, or it does not decode exactly as its VR and character set, in
+    which the Default Character Repertoire alone holds only ISO 646, or
+    could not be written back in that character set.
 
     The data sets must hold each element read from a file as
     :func:`pydicom.dcmread` returned it, or as built in memory with its VR.
@@ -297,6 +300,11 @@ def read_element(
                 path,
                 f"could not be decoded as VR {vr} in the Default Character "
                 "Repertoire, ISO 646",
+            )
+        # Reading is no more lenient than writing.
+        if problem := _character_set_problem(vr, plain, codecs):
+            raise UndecodableElement(
+                path, f"could not be written back as VR {vr}, since {problem}"
             )
     return ElementValue(path, vr, plain, (), tuple(codecs))
 
@@ -564,15 +572,25 @@ def written_value_problem(
     person name's first component group is not in the set of Value 1 alone,
     or, where that is UTF-8, GB18030, or GBK, has a character outside the
     code points PS3.5 Section 6.2.1.2 allows there. It never quotes a value.
+    Where Value 1 is the Default Character Repertoire with code extensions,
+    a character of ISO 8859-1 outside ISO 646 cannot be encoded either:
+    pydicom would write it in ISO 8859-1, without the escape sequence of the
+    code extension that holds it (PS3.5 Section 6.1.2.5.3).
 
     >>> written_value_problem("PN", "1", ["ΩΜΕΓΑ^ΑΛΦΑ"], ("latin_1",))
     "value 1 cannot be encoded in the data set's Specific Character Set"
     >>> written_value_problem("PN", "1", ["ΩΜΕΓΑ^ΑΛΦΑ"], ("UTF8",)) is None
     True
     """
-    problem = values_problem(vr, vm, values)
-    if problem or vr not in _CHARACTER_SET_VRS:
-        return problem
+    return values_problem(vr, vm, values) or _character_set_problem(vr, values, codecs)
+
+
+def _character_set_problem(
+    vr: str, values: Sequence[object], codecs: Sequence[str]
+) -> str | None:
+    """Return why text values could not be written in the codecs, or None."""
+    if vr not in _CHARACTER_SET_VRS:
+        return None
     for number, value in enumerate(values, start=1):
         if not _encodable(str(value), codecs):
             return (
@@ -595,11 +613,18 @@ def written_value_problem(
 
 
 def _encodable(text: str, codecs: Sequence[str]) -> bool:
-    """Return whether each character has a codec that encodes it."""
+    """Return whether pydicom would write each character in a codec of its own."""
     # pydicom decodes the Default Character Repertoire as ISO 8859-1, but it
-    # is ISO 646 (PS3.5 Section 6.1.2.1).
+    # is ISO 646 (PS3.5 Section 6.1.2.1). As Value 1, pydicom also writes
+    # with it each character that ISO 8859-1 encodes, before trying the
+    # others.
     names = ["ascii" if codec == "iso8859" else codec for codec in codecs]
-    return all(any(_encodes(char, name) for name in names) for char in text)
+    latin = bool(codecs) and codecs[0] == "iso8859"
+    return all(
+        not (latin and "\x80" <= char <= "\xff")
+        and any(_encodes(char, name) for name in names)
+        for char in text
+    )
 
 
 @functools.lru_cache(maxsize=65536)
