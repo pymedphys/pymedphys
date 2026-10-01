@@ -1,0 +1,449 @@
+# Reviewed list: the anatomic regions of PS3.16 Annex L (Table L-1) that
+# lie in the head or neck, or contain it, curated by hand. A CT series
+# whose Body Part Examined (0018,0015) is one of these terms, or whose
+# Anatomic Region Sequence (0008,2218) gives one of these codes, declares
+# that it shows the head or neck, which raises its indicator of a
+# reconstructable face (MIDI report Section 1.18.3).
+#
+# The list takes every region of the head and neck: the head, face, skull,
+# brain and its ventricles, the eyes, ears, nose, mouth, jaws, teeth,
+# sinuses, salivary glands, pharynx, larynx, thyroid and parathyroid, the
+# cervical spine and atlanto-occipital joint, and the arteries and veins of
+# the head and neck, since an angiogram of any of them can cover the face.
+# It also takes the regions that contain the neck, such as Neck and Chest,
+# and Entire body.
+#
+# Each region has its SNOMED CT code (SCT), its SNOMED RT identifier (SRT),
+# which older instances give instead, and its Body Part Examined term where
+# Table L-1 gives one.
+
+schema = "pymedphys-deid-head-and-neck-regions/1"
+edition = "2026d"
+acknowledgement = "DICOM PS3.16 2026d, © NEMA"
+
+[[region]]
+meaning = "Anterior cerebral artery"
+sct = "60176003"
+srt = "T-45540"
+body_part = "ACA"
+
+[[region]]
+meaning = "Atlanto-occipital joint"
+sct = "20292002"
+srt = "T-15311"
+body_part = "ATLANTOOCCIPITAL"
+
+[[region]]
+meaning = "Brain"
+sct = "12738006"
+srt = "T-A0100"
+body_part = "BRAIN"
+
+[[region]]
+meaning = "Carotid Artery"
+sct = "69105007"
+srt = "T-45010"
+body_part = "CAROTID"
+
+[[region]]
+meaning = "Carotid bulb"
+sct = "21479005"
+srt = "T-45170"
+body_part = "BULB"
+
+[[region]]
+meaning = "Cerebellum"
+sct = "113305005"
+srt = "T-A6000"
+body_part = "CEREBELLUM"
+
+[[region]]
+meaning = "Cerebral artery"
+sct = "88556005"
+srt = "T-45510"
+body_part = "CEREBRALA"
+
+[[region]]
+meaning = "Cerebral hemisphere"
+sct = "372073000"
+srt = "T-A010F"
+body_part = "CEREBHEMISPHERE"
+
+[[region]]
+meaning = "Cervical spine"
+sct = "122494005"
+srt = "T-11501"
+body_part = "CSPINE"
+
+[[region]]
+meaning = "Cheek"
+sct = "60819002"
+srt = "T-D1206"
+body_part = "CHEEK"
+
+[[region]]
+meaning = "Common carotid artery"
+sct = "32062004"
+srt = "T-45100"
+body_part = "CCA"
+
+[[region]]
+meaning = "Cranial venous system"
+sct = "128320002"
+srt = "T-A0191"
+
+[[region]]
+meaning = "Ear"
+sct = "117590005"
+srt = "T-AB001"
+body_part = "EAR"
+
+[[region]]
+meaning = "Endo-nasal"
+sct = "53342003"
+srt = "T-21300"
+body_part = "ENDONASAL"
+
+[[region]]
+meaning = "Endo-nasopharyngeal"
+sct = "18962004"
+srt = "T-23050"
+body_part = "ENDONASOPHARYNYX"
+
+[[region]]
+meaning = "Entire body"
+sct = "38266002"
+srt = "T-D0010"
+body_part = "WHOLEBODY"
+
+[[region]]
+meaning = "External carotid artery"
+sct = "22286001"
+srt = "T-45200"
+body_part = "ECA"
+
+[[region]]
+meaning = "Eye"
+sct = "81745001"
+srt = "T-AA000"
+body_part = "EYE"
+
+[[region]]
+meaning = "Eye region"
+sct = "371398005"
+srt = "T-D0801"
+
+[[region]]
+meaning = "Eyelid"
+sct = "80243003"
+srt = "T-AA810"
+body_part = "EYELID"
+
+[[region]]
+meaning = "Face"
+sct = "89545001"
+srt = "T-D1200"
+body_part = "FACE"
+
+[[region]]
+meaning = "Facial artery"
+sct = "23074001"
+srt = "T-45240"
+body_part = "FACIALA"
+
+[[region]]
+meaning = "Facial bones"
+sct = "91397008"
+srt = "T-11196"
+
+[[region]]
+meaning = "Fontanel of skull"
+sct = "79361005"
+srt = "T-15200"
+body_part = "FONTANEL"
+
+[[region]]
+meaning = "Fourth ventricle"
+sct = "35918002"
+srt = "T-A1820"
+body_part = "4THVENTRICLE"
+
+[[region]]
+meaning = "Frontal sinus"
+sct = "55060009"
+srt = "T-22200"
+body_part = "FRONTALSINUS"
+
+[[region]]
+meaning = "Head"
+sct = "69536005"
+srt = "T-D1100"
+body_part = "HEAD"
+
+[[region]]
+meaning = "Head and Neck"
+sct = "774007"
+srt = "T-D1000"
+body_part = "HEADNECK"
+
+[[region]]
+meaning = "Hypopharynx"
+sct = "81502006"
+srt = "T-55300"
+body_part = "HYPOPHARYNX"
+
+[[region]]
+meaning = "Internal carotid artery"
+sct = "86117002"
+srt = "T-45300"
+body_part = "ICA"
+
+[[region]]
+meaning = "Intracranial"
+sct = "1101003"
+srt = "T-D1400"
+body_part = "INTRACRANIAL"
+
+[[region]]
+meaning = "Jaw region"
+sct = "661005"
+srt = "T-D1213"
+body_part = "JAW"
+
+[[region]]
+meaning = "Larynx"
+sct = "4596009"
+srt = "T-24100"
+body_part = "LARYNX"
+
+[[region]]
+meaning = "Lateral Ventricle"
+sct = "66720007"
+srt = "T-A1650"
+body_part = "LATVENTRICLE"
+
+[[region]]
+meaning = "Mandible"
+sct = "91609006"
+srt = "T-11180"
+body_part = "MANDIBLE"
+
+[[region]]
+meaning = "Mandibular dental arch"
+sct = "88176008"
+srt = "T-54170"
+
+[[region]]
+meaning = "Mandibular incisor teeth"
+sct = "442274007"
+srt = "T-540EE"
+
+[[region]]
+meaning = "Mastoid bone"
+sct = "59066005"
+srt = "T-11133"
+body_part = "MASTOID"
+
+[[region]]
+meaning = "Maxilla"
+sct = "70925003"
+srt = "T-11170"
+body_part = "MAXILLA"
+
+[[region]]
+meaning = "Maxillary dental arch"
+sct = "39481002"
+srt = "T-54160"
+
+[[region]]
+meaning = "Maxillary incisor teeth"
+sct = "442100006"
+srt = "T-540ED"
+
+[[region]]
+meaning = "Middle cerebral artery"
+sct = "17232002"
+srt = "T-45600"
+body_part = "MCA"
+
+[[region]]
+meaning = "Mouth"
+sct = "123851003"
+srt = "T-D0662"
+body_part = "MOUTH"
+
+[[region]]
+meaning = "Nasal bone"
+sct = "74386004"
+srt = "T-11149"
+
+[[region]]
+meaning = "Nasopharynx"
+sct = "360955006"
+srt = "T-2300C"
+body_part = "NASOPHARYNX"
+
+[[region]]
+meaning = "Neck"
+sct = "45048000"
+srt = "T-D1600"
+body_part = "NECK"
+
+[[region]]
+meaning = "Neck and Chest"
+sct = "417437006"
+srt = "R-FAB52"
+body_part = "NECKCHEST"
+
+[[region]]
+meaning = "Neck, Chest and Abdomen"
+sct = "416152001"
+srt = "R-FAB53"
+body_part = "NECKCHESTABDOMEN"
+
+[[region]]
+meaning = "Neck, Chest, Abdomen and Pelvis"
+sct = "416319003"
+srt = "R-FAB54"
+body_part = "NECKCHESTABDPELV"
+
+[[region]]
+meaning = "Nose"
+sct = "45206002"
+srt = "T-21000"
+body_part = "NOSE"
+
+[[region]]
+meaning = "Occipital artery"
+sct = "31145008"
+srt = "T-45250"
+body_part = "OCCPITALA"
+
+[[region]]
+meaning = "Occipital vein"
+sct = "32114007"
+srt = "T-48214"
+body_part = "OCCIPTALV"
+
+[[region]]
+meaning = "Optic canal"
+sct = "55024004"
+srt = "T-11102"
+body_part = "OPTICCANAL"
+
+[[region]]
+meaning = "Orbital structure"
+sct = "363654007"
+srt = "T-D14AE"
+body_part = "ORBIT"
+
+[[region]]
+meaning = "Paranasal sinus"
+sct = "2095001"
+srt = "T-22000"
+
+[[region]]
+meaning = "Parathyroid"
+sct = "111002"
+srt = "T-B7000"
+body_part = "PARATHYROID"
+
+[[region]]
+meaning = "Parotid gland"
+sct = "45289007"
+srt = "T-61100"
+body_part = "PAROTID"
+
+[[region]]
+meaning = "Pharynx"
+sct = "54066008"
+srt = "T-55000"
+body_part = "PHARYNX"
+
+[[region]]
+meaning = "Pharynx and larynx"
+sct = "312535008"
+srt = "T-20101"
+body_part = "PHARYNXLARYNX"
+
+[[region]]
+meaning = "Posterior cerebral artery"
+sct = "70382005"
+srt = "T-45900"
+body_part = "PCA"
+
+[[region]]
+meaning = "Scalp"
+sct = "41695006"
+srt = "T-D1160"
+body_part = "SCALP"
+
+[[region]]
+meaning = "Sella turcica"
+sct = "42575006"
+srt = "T-D1460"
+body_part = "SELLA"
+
+[[region]]
+meaning = "Skull"
+sct = "89546000"
+srt = "T-11100"
+body_part = "SKULL"
+
+[[region]]
+meaning = "Submandibular area"
+sct = "5713008"
+srt = "T-D1603"
+
+[[region]]
+meaning = "Submandibular gland"
+sct = "54019009"
+srt = "T-61300"
+body_part = "SUBMANDIBULAR"
+
+[[region]]
+meaning = "Superficial temporal artery"
+sct = "15672000"
+srt = "T-45270"
+
+[[region]]
+meaning = "Superior thyroid artery"
+sct = "72021004"
+srt = "T-45210"
+body_part = "SUPTHYROIDA"
+
+[[region]]
+meaning = "Supraclavicular region of neck"
+sct = "77621008"
+srt = "T-D1620"
+body_part = "SUPRACLAVICULAR"
+
+[[region]]
+meaning = "Temporomandibular joint"
+sct = "53620006"
+srt = "T-15290"
+body_part = "TMJ"
+
+[[region]]
+meaning = "Third ventricle"
+sct = "49841001"
+srt = "T-A1740"
+body_part = "3RDVENTRICLE"
+
+[[region]]
+meaning = "Thyroid"
+sct = "69748006"
+srt = "T-B6000"
+body_part = "THYROID"
+
+[[region]]
+meaning = "Tongue"
+sct = "21974007"
+srt = "T-53000"
+body_part = "TONGUE"
+
+[[region]]
+meaning = "Zygoma"
+sct = "13881006"
+srt = "T-11166"
+body_part = "ZYGOMA"
