@@ -59,6 +59,7 @@ def _altered(tag, option, action):
 def test_the_presets_are_the_designs_option_sets_in_the_tables_order():
     assert dict(policy.PRESETS) == {
         "basic": (),
+        "basic-clean-descriptors": (CLEAN_DESCRIPTORS,),
         "tps-import": (
             DEVICE_IDENTITY,
             PATIENT_CHARACTERISTICS,
@@ -67,7 +68,12 @@ def test_the_presets_are_the_designs_option_sets_in_the_tables_order():
         ),
         "public-release": (SAFE_PRIVATE, MODIFIED_DATES, CLEAN_DESCRIPTORS),
     }
-    assert list(policy.PRESETS) == ["basic", "tps-import", "public-release"]
+    assert list(policy.PRESETS) == [
+        "basic",
+        "basic-clean-descriptors",
+        "tps-import",
+        "public-release",
+    ]
     assert policy.DEFAULT_PRESET == "basic"
     assert policy.DEVICE_IDENTITY == DEVICE_IDENTITY
     assert policy.MODIFIED_DATES == MODIFIED_DATES
@@ -98,6 +104,45 @@ def test_the_basic_policy_gives_each_attribute_its_basic_profile_action():
     assert dict(basic.actions) == _basic()
     assert not basic.resolved
     assert basic.claims_conformance
+
+
+def test_basic_clean_descriptors_is_the_basic_profile_with_clean_descriptors():
+    composed = policy.compose_policy("basic-clean-descriptors")
+    effective = actions.effective_actions([CLEAN_DESCRIPTORS])
+    # The Option's action overrides the Profile's (PS3.15 E.1.1).
+    overridden = {
+        row.tag: row.options.get(CLEAN_DESCRIPTORS, row.basic_profile)
+        for row in _rows()
+    }
+    basic = _basic()
+    changed = {tag for tag, action in composed.actions.items() if action != basic[tag]}
+
+    assert composed.preset == "basic-clean-descriptors"
+    assert composed.edition == "2026d"
+    assert composed.options == (CLEAN_DESCRIPTORS,)
+    assert dict(composed.actions) == dict(effective.actions) == overridden
+    assert not effective.conflicts
+    assert not composed.resolved
+    assert composed.claims_conformance
+    assert len(changed) == 141
+    assert {composed.actions[tag] for tag in changed} == {"C"}
+    # Checked by hand against Table E.1-1 of the 2026d PS3.15.
+    assert composed.actions["(3006,0026)"] == "C"  # ROI Name, Z in the Profile
+    assert composed.actions["(3006,0085)"] == "C"  # ROI Observation Label, X
+    assert composed.actions["(300A,0002)"] == "C"  # RT Plan Label, D
+    assert composed.actions["(300A,00C3)"] == "C"  # Beam Description, X
+    assert composed.actions["(0008,103E)"] == "C"  # Series Description, X
+    # Clean Descriptors leaves identifiers and dates to the Profile.
+    assert composed.actions["(0010,0010)"] == "Z"  # Patient's Name
+    assert composed.actions["(0008,0020)"] == "Z"  # Study Date
+    # Its option is within the supported scope, and is valid as a custom set,
+    # which allows no conflict.
+    assert set(composed.options) <= set(policy.TARGET_OPTIONS)
+    custom = policy.compose_custom_policy(composed.options)
+    assert dict(custom.actions) == dict(composed.actions)
+    # Defined and validated, but not enabled until its behaviour is.
+    assert "basic-clean-descriptors" not in policy.ENABLED_PRESETS
+    assert not composed.enabled
 
 
 def test_public_release_cleans_dates_descriptors_and_safe_private_attributes():
@@ -168,7 +213,9 @@ def test_tps_import_changes_only_what_its_options_change():
     assert sum(tps.actions[tag] == "K" for tag in changed) == 51
 
 
-@pytest.mark.parametrize("preset", ["basic", "tps-import", "public-release"])
+@pytest.mark.parametrize(
+    "preset", ["basic", "basic-clean-descriptors", "tps-import", "public-release"]
+)
 def test_each_preset_gives_each_attribute_one_action(preset):
     composed = policy.compose_policy(preset)
 
@@ -197,7 +244,9 @@ def test_an_enabled_preset_is_selected(monkeypatch):
     assert selected.enabled
 
 
-@pytest.mark.parametrize("preset", ["basic", "tps-import", "public-release"])
+@pytest.mark.parametrize(
+    "preset", ["basic", "basic-clean-descriptors", "tps-import", "public-release"]
+)
 def test_a_preset_that_is_not_enabled_is_not_selected(preset):
     message = (
         f"the {preset} preset is not enabled: its behaviour is not yet "
@@ -379,8 +428,8 @@ def test_the_scope_error_agrees_in_number_with_its_options(options, named):
 
 def test_an_unknown_preset_is_rejected():
     message = (
-        "unknown preset 'research'; the presets are basic, tps-import, "
-        "and public-release"
+        "unknown preset 'research'; the presets are basic, "
+        "basic-clean-descriptors, tps-import, and public-release"
     )
     with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
         policy.compose_policy("research")
