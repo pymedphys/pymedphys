@@ -524,6 +524,8 @@ decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-0
 implementation = [
   "_dicom/deidentify/dummy_values.py",
   "_dicom/deidentify/iods.py",
+  "_dicom/deidentify/reference_graph.py",
+  "_dicom/deidentify/references.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/values.py",
 ]
@@ -538,9 +540,14 @@ tests = [
   "tests/dicom/test_deidentify_values.py::test_valid_values",
   "tests/dicom/test_deidentify_values.py::test_invalid_values",
   "tests/dicom/test_deidentify_values.py::test_values_are_checked_for_their_vm_and_vr",
+  "tests/dicom/test_deidentify_references.py::test_reference_sites_include_the_rt_references",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_consistent_collection_has_no_findings",
+  "tests/dicom/test_deidentify_reference_graph.py::test_each_reference_resolves_to_its_instance",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_input_of_a_class_outside_table_b5_1_resolves",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_instance_not_in_the_collection_is_dangling",
 ]
 note = '''
-The Type of each attribute of the first supported release's IODs, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Remaining: resolving compound actions from these Types and writing the dummy values they call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and validating output against its IOD (M4).
+The Type of each attribute of the first supported release's IODs, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. Remaining: resolving compound actions from these Types and writing the dummy values they call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking the collection's hierarchy and frames of reference in the first pass, validating output against its IOD, and checking after writing that references are intact (M4).
 '''
 
 [[requirement]]
