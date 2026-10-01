@@ -90,12 +90,14 @@ class FindingKind(enum.Enum):
         Several inputs have one SOP Instance UID, without padding, and the
         same content, as
         :mod:`~pymedphys._dicom.deidentify.references` defines it: their data
-        sets are equal once decoded, without the File Meta Information and
-        the preamble. Its one group holds them all. The instance is written
-        once.
+        sets decode to the same elements, with the same VRs and values,
+        without the File Meta Information and the preamble. Its one group
+        holds them all. The instance is written once.
     CONFLICTING_INSTANCE
-        Several inputs have one SOP Instance UID and different content. Its
-        groups hold the inputs with the same content. Every one of them is
+        Several inputs have one SOP Instance UID and different content,
+        including content that cannot show the inputs to be equal, such as
+        a private element that one input holds without a VR. Its groups
+        hold the inputs with the same content. Every one of them is
         sequestered.
     SERIES_IN_SEVERAL_STUDIES
         The inputs with one Series Instance UID have different Study

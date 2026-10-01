@@ -586,27 +586,56 @@ def test_copies_of_one_instance_are_duplicates(build, position):
     )
 
 
-@pytest.mark.pydicom
-@pytest.mark.usefixtures("pydicom_behaviour")
-def test_copies_in_implicit_and_explicit_vr_are_duplicates():
+def _private_text(dataset, value):
+    block = dataset.private_block(0x0009, "SYNTHETIC CREATOR 5T", create=True)
+    block.add_new(0x01, "LO", value)
+
+
+def _plans_in_implicit_and_explicit_vr(change=None):
+    """Return the collection, its plan read from Implicit VR, and a copy.
+
+    The copy, at position 6, is read from Explicit VR. ``change``, if given,
+    changes both plans before they are written.
+    """
+
     def plan():
         dataset = synthetic.rt_plan()
-        block = dataset.private_block(0x0009, "SYNTHETIC CREATOR 5T", create=True)
-        block.add_new(0x01, "LO", "SYNTHETIC PRIVATE TEXT")
+        if change is not None:
+            change(dataset)
         return dataset
 
     datasets = synthetic.collection()
     datasets[PLAN] = synthetic.written_and_read(plan(), "1.2.840.10008.1.2")
     datasets.append(synthetic.written_and_read(plan(), "1.2.840.10008.1.2.1"))
+    return datasets
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_copies_in_implicit_and_explicit_vr_are_duplicates():
+    # Every element of the plan has a VR in pydicom's data dictionary, so
+    # the Implicit VR copy decodes to the same elements, VRs, and values.
+    datasets = _plans_in_implicit_and_explicit_vr()
 
     assert _graph(datasets).findings == (
         Finding(DUPLICATE, ((PLAN, 6),), (SOP_INSTANCE_UID,)),
     )
 
 
-def _private_text(dataset, value):
-    block = dataset.private_block(0x0009, "SYNTHETIC CREATOR 5T", create=True)
-    block.add_new(0x01, "LO", value)
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_copies_in_implicit_and_explicit_vr_with_a_private_element_conflict():
+    # pydicom reads the private element from the Implicit VR copy as UN,
+    # without the VR that the Explicit VR copy holds, so the copies cannot be
+    # shown to be equal.
+    datasets = _plans_in_implicit_and_explicit_vr(
+        lambda dataset: _private_text(dataset, "SYNTHETIC PRIVATE TEXT")
+    )
+    assert datasets[PLAN][0x00091001].VR == "UN"
+
+    assert _graph(datasets).findings == (
+        Finding(CONFLICTING, ((PLAN,), (6,)), (SOP_INSTANCE_UID,)),
+    )
 
 
 @pytest.mark.pydicom

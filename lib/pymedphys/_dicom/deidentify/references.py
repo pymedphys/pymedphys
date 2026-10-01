@@ -36,31 +36,48 @@ the same as an absent one (PS3.5 Section 7.4.5). A sequence that pydicom
 does not know, which it reads as UN from Implicit VR Little Endian, is
 decoded with its VR in the pinned data dictionary.
 
-Two instances with the same content are identical copies. The content of a
-data set is its encoding in Implicit VR Little Endian (PS3.5 Sections 7.1.3
-and 7.5): each element's tag, value length, and value, in tag order, with
+Two instances are identical copies when their content is the same, and
+their content is the same only when their data sets decode to the same
+elements, with the same VRs and values. The content of a data set is, for each element in tag
+order: its tag; its VR; for a value that pydicom holds as bytes, other than
+an OB value, the value's byte order; and its value as Implicit VR Little
+Endian encodes it (PS3.5 Sections 7.1.3 and 7.5), with its length, and with
 every sequence and item of defined length. It leaves out the File Meta
 Information, group 0002, and group lengths (gggg,0000), which PS3.5 Section
 7.2 retires and whose values depend on the encoding; the preamble is not
-part of the data set. Each element is read, decoded, and encoded again, so
-the content depends neither on which little endian transfer syntax with
-native (uncompressed) Pixel Data the file has, such as Implicit VR or
-Explicit VR Little Endian, the length form of its sequences, or which
-values pydicom has read or deferred so far, nor on padding that decoding
-removes. Implicit VR holds no VRs, so a private element that pydicom reads
-from an Implicit VR file as UN, keeping its value as bytes, has the same
-content as the element read with its VR from an Explicit VR file, although
-pydicom holds the two with different VRs and values.
+part of the data set.
 
-Some differences of encoding remain in the content, and make copies
-conflict, which errs towards sequestering them. Encapsulated Pixel Data is
-compared in its encapsulated form, so a compressed and an uncompressed copy
-of an image conflict. A big endian file holds OW, OF, OD, OL, and OV values
-in its own byte order, which pydicom keeps, so a copy in the retired
-Explicit VR Big Endian conflicts with a little endian one. A private
-element read as UN keeps any trailing padding, which decoding a typed copy
-removes, and encoding adds back only the one space that makes the length
-even, so such copies can conflict.
+The VR is the one that applies in the data set: the VR that pydicom holds,
+except that a VR that pydicom decides only when it writes the data set,
+such as "US or SS", is decided as pydicom decides it, and that a UN value
+whose tag has one VR in the pinned data dictionary is decoded with that VR
+as Implicit VR Little Endian (PS3.5 Section 6.2.2), since pydicom reads an
+attribute that it does not know from an Implicit VR file as UN. Each element
+is read, decoded, and encoded again, so the content depends neither on
+which little endian transfer syntax with native (uncompressed) Pixel Data
+the file has, such as Implicit VR or Explicit VR Little Endian, as long as
+a data dictionary gives every element's VR, nor on the length form of its
+sequences, which values pydicom has read or deferred so far, or padding
+that decoding removes.
+
+Where the content cannot show that copies are equal, they conflict, which
+sequesters them. An element that neither pydicom's data dictionaries nor
+the pinned one lists, such as most private elements, has no VR in an
+Implicit VR file, so pydicom reads it as UN and keeps its value as bytes,
+which could encode a value of any VR. Such an element conflicts with a copy
+that holds it with a VR, as a copy read from an Explicit VR file does. The
+same bytes can also be different values in different byte orders: OD, OF,
+OL, OV, and OW values are in the byte order of their data set (PS3.5
+Section 7.3), which pydicom keeps. The byte order in the content is that of
+the data set that holds the value, or little endian for a value decoded
+from UN, and a data set built in memory, rather than read, has none. So a
+copy in the retired Explicit VR Big Endian conflicts with a little endian
+one that holds such a value, and a copy built in memory conflicts with one
+read from a file. Some differences of encoding also make copies conflict. Encapsulated Pixel Data
+is compared in its encapsulated form, so a compressed and an uncompressed
+copy of an image conflict, and so do copies of an image whose Pixel Data is
+8-bit, which Implicit VR Little Endian holds as OW and Explicit VR Little
+Endian can hold as OB (PS3.5 Annex A).
 
 A record keeps a digest of the content rather than the data set, so records
 stay small. It must be built from a data set read in full: not read with
@@ -77,10 +94,12 @@ does for the legacy tools.
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 import enum
 import functools
 import hashlib
+import re
 import struct
 import types
 from collections.abc import Iterator, Mapping
@@ -389,18 +408,24 @@ def _sequence(element: pydicom.DataElement, tag: str) -> Iterator[pydicom.Datase
     elif (
         element.VR == "UN"
         and isinstance(element.value, bytes)
-        and tag in _dictionary_sequences()
+        and _dictionary_vrs().get(tag) == "SQ"
     ):
         yield from pydicom.values.convert_SQ(element.value, True, True)
 
 
 @functools.lru_cache(maxsize=None)
-def _dictionary_sequences() -> frozenset[str]:
-    """Return the tags whose VR is SQ in the pinned data dictionary."""
-    return frozenset(
-        attribute.tag
-        for attribute in load_data_dictionary().attributes
-        if attribute.vr == "SQ"
+def _dictionary_vrs() -> Mapping[str, str]:
+    """Return the VR of each tag that has one VR in the pinned data dictionary.
+
+    A tag of a repeating group, such as (60xx,3000), and a tag whose VR
+    depends on the data set, such as "US or SS", are left out.
+    """
+    return types.MappingProxyType(
+        {
+            attribute.tag: attribute.vr
+            for attribute in load_data_dictionary().attributes
+            if re.fullmatch("[A-Z]{2}", attribute.vr) and attribute.vr != "UN"
+        }
     )
 
 
@@ -424,34 +449,46 @@ def _patient(dataset: pydicom.Dataset) -> SubjectIdentity | None:
 
 def _content_digest(dataset: pydicom.Dataset) -> bytes:
     digest = hashlib.sha256()
-    for encoded in _encoded(dataset, pydicom.charset.default_encoding, top=True):
+    for encoded in _encoded(dataset, pydicom.charset.default_encoding, [dataset]):
         digest.update(encoded)
     return digest.digest()
 
 
 def _encoded(
-    dataset: pydicom.Dataset, encodings: str | list[str], top: bool
+    dataset: pydicom.Dataset,
+    encodings: str | list[str],
+    ancestors: list[pydicom.Dataset],
 ) -> Iterator[bytes]:
-    """Yield the encoding of each element of the data set's content."""
+    """Yield the content of each element of ``dataset``, the first of ``ancestors``.
+
+    ``ancestors`` holds the data set and the items that contain it, nearest
+    first, up to the data set of the instance.
+    """
     encodings = dataset.get("SpecificCharacterSet", encodings)
     for tag in sorted(dataset.keys()):
-        if tag.element == 0 or (top and tag.group == 2):
+        if tag.element == 0 or (len(ancestors) == 1 and tag.group == 2):
             continue
-        element = dataset[tag]
+        element, byte_order = _as_held(dataset[tag], encodings, ancestors)
         if element.VR == "SQ":
-            items = b"".join(
-                _with_length(ITEM_TAG, b"".join(_encoded(item, encodings, False)))
-                for item in element.value
+            encoded = _with_length(
+                tag,
+                b"".join(
+                    _with_length(
+                        ITEM_TAG,
+                        b"".join(_encoded(item, encodings, [item, *ancestors])),
+                    )
+                    for item in element.value
+                ),
             )
-            yield _with_length(tag, items)
         else:
             written = pydicom.filebase.DicomBytesIO()
             written.is_implicit_VR = True
             written.is_little_endian = True
-            pydicom.filewriter.write_data_element(
-                written, _unambiguous(element), encodings
-            )
-            yield written.getvalue()
+            pydicom.filewriter.write_data_element(written, element, encodings)
+            encoded = written.getvalue()
+        vr = element.VR.encode()
+        # The tag, then the VR and the byte order, then the length and value.
+        yield encoded[:4] + struct.pack("<B", len(vr)) + vr + byte_order + encoded[4:]
 
 
 def _with_length(tag: int, value: bytes) -> bytes:
@@ -459,19 +496,56 @@ def _with_length(tag: int, value: bytes) -> bytes:
     return struct.pack("<HHI", tag >> 16, tag & 0xFFFF, len(value)) + value
 
 
-def _unambiguous(element: pydicom.DataElement) -> pydicom.DataElement:
-    """Return the element with a VR in which pydicom can write its value.
+def _as_held(
+    element: pydicom.DataElement,
+    encodings: str | list[str],
+    ancestors: list[pydicom.Dataset],
+) -> tuple[pydicom.DataElement, bytes]:
+    """Return the element with the VR that applies in its data set, and a byte order.
 
-    pydicom keeps a VR such as "US or SS" on a number that is set in memory,
-    and decides it only when it writes the whole data set. Implicit VR
-    encodes a number in range the same way as either.
+    The element is in the first of ``ancestors``, which holds its data set
+    and the items that contain it, nearest first. Its VR is the one that
+    pydicom holds, except that a UN value whose tag has one VR in the
+    pinned data dictionary is decoded with that VR as Implicit VR Little
+    Endian (PS3.5 Section 6.2.2), and that a VR that pydicom decides only
+    when it writes the data set, such as "US or SS", is decided as pydicom
+    decides it, from the data set and the items that contain it. Neither
+    changes the data set.
+
+    The byte order is ``b"<"`` for little endian, ``b">"`` for big endian,
+    or ``b"?"`` for none, for a value that pydicom holds as bytes, other
+    than an OB value, which is a stream of bytes: that of the data set, or
+    little endian for a value decoded from UN. A data set built in memory,
+    rather than read, has none. It is ``b"-"`` for any other value.
     """
-    if " or " not in element.VR or element.is_empty or isinstance(element.value, bytes):
-        return element
-    values = element.value if element.VM > 1 else [element.value]
-    return pydicom.DataElement(
-        element.tag,
-        "SS" if any(value < 0 for value in values) else "US",
-        element.value,
-        validation_mode=pydicom.config.IGNORE,
-    )
+    dataset = ancestors[0]
+    little_endian = dataset.original_encoding[1]
+    tag = f"({element.tag.group:04X},{element.tag.element:04X})"
+    if (
+        element.VR == "UN"
+        and isinstance(element.value, bytes)
+        and tag in _dictionary_vrs()
+    ):
+        raw = pydicom.dataelem.RawDataElement(
+            element.tag,
+            _dictionary_vrs()[tag],
+            len(element.value),
+            element.value,
+            0,
+            True,
+            True,
+        )
+        element = pydicom.dataelem.convert_raw_data_element(
+            raw, encoding=pydicom.charset.convert_encodings(encodings)
+        )
+        little_endian = True
+    elif element.VR in pydicom.valuerep.AMBIGUOUS_VR:
+        # pydicom decides the VR of the copy in place.
+        element = copy.copy(element)
+        pydicom.filewriter.correct_ambiguous_vr_element(
+            element, dataset, little_endian is not False, ancestors
+        )
+    held_as_bytes = isinstance(element.value, bytes) or element.is_buffered
+    if element.VR == "OB" or not held_as_bytes:
+        return element, b"-"
+    return element, {True: b"<", False: b">", None: b"?"}[little_endian]
