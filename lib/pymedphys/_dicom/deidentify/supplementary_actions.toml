@@ -840,7 +840,7 @@ tag = "(0014,0103)"
 keyword = "SecondaryReviewTime"
 action = "X/Z/D"
 options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
-note = "The time of a secondary review of an inspected object's data. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+note = "The time of a secondary review of an inspected object's data. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role; a shift of whole weeks leaves a time of day as it is, so the value is kept as received, as Study Time is."
 
 [[attribute]]
 tag = "(0014,1020)"
