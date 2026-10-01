@@ -115,7 +115,7 @@ tests = [
   "tests/dicom/test_deidentify_method_digest.py::test_a_small_synthetic_input_has_the_canonical_form_written_by_hand",
   "tests/dicom/test_deidentify_method_digest.py::test_any_part_of_the_policy_changes_the_digest",
   "tests/dicom/test_deidentify_method_digest.py::test_changing_adding_or_removing_an_engine_file_changes_the_digest",
-  "tests/dicom/test_deidentify_method_digest.py::test_the_python_implementation_and_version_and_each_library_version_change_the_digest",
+  "tests/dicom/test_deidentify_method_digest.py::test_python_and_library_versions_leave_the_digest_unchanged",
 ]
 note = '''
 The policy digest, the second value that every preset adds to De-identification Method, is computed as 64 lowercase hexadecimal digits, which fit one LO value, from the policy, everything the engine could apply, including its own source and rule files, whether or not the policy's options use them, and the versions of Python and of the libraries that the engine imports (D-024). Remaining: adding Patient Identity Removed, the CID 7050 codes, and both De-identification Method values to each data set (M3).

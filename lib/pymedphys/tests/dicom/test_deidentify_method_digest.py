@@ -14,13 +14,15 @@
 
 """The de-identification method digest of a policy and the engine that applies it.
 
-Every input is changed by monkeypatching or by injecting synthetic inputs, so
-no test edits the package's own files. The engine's files and tables are read
-once per process, so each test starts with them unread, and a test that
-edits a synthetic engine or tables reads them again, as a new process would.
+Every input of the method is changed by monkeypatching or by injecting
+synthetic inputs, so no test edits the package's own files, and each change
+must change the digest. The runtime environment (Python and the libraries
+that run the engine) is not part of the method, so changing it must leave
+the digest unchanged. The engine's files and tables are read once per
+process, so each test starts with them unread, and a test that edits a
+synthetic engine or tables reads them again, as a new process would.
 """
 
-import ast
 import dataclasses
 import hashlib
 import importlib
@@ -62,7 +64,8 @@ SOP_INSTANCE_UID = "(0008,0018)"
 
 # A small synthetic input, and its canonical form written out by hand from
 # the documented encoding. Its SHA-256 was computed from these bytes with
-# `printf '%s' '<bytes>' | sha256sum`, independently of the code under test.
+# `printf '%s' '<bytes>' | sha256sum`, and checked with `openssl dgst -sha256`,
+# independently of the code under test.
 SYNTHETIC_POLICY = policy.Policy(
     preset="basic",
     edition="2026d",
@@ -91,20 +94,11 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
         "dates.MIN_OFFSET_WEEKS": 52,
     },
     files={"policy.py": "f" * 64},
-    environment={
-        "pydicom.__version__": "3.0.2",
-        "platform.python_version": "3.14.0",
-        "platform.python_implementation": "CPython",
-    },
 )
 SYNTHETIC_CANONICAL_BYTES = (
     '{"engine_version":"0.42.0.dev1",'
-    '"environment":{'
-    '"platform.python_implementation":["str","CPython"],'
-    '"platform.python_version":["str","3.14.0"],'
-    '"pydicom.__version__":["str","3.0.2"]},'
     '"files":{"policy.py":"' + "f" * 64 + '"},'
-    '"format":"pymedphys-deid-policy-digest/1",'
+    '"format":"pymedphys-deid-method-digest/1",'
     '"generated_values":{'
     '"dates.MIN_OFFSET_WEEKS":["int",52],'
     '"dummy_values.CONSTANTS":["map",{"FL":["list",'
@@ -124,7 +118,7 @@ SYNTHETIC_CANONICAL_BYTES = (
     '"tables":{"e1_1.json":"' + "0" * 64 + '"},'
     '"vocabulary":null}'
 ).encode("utf-8")
-SYNTHETIC_SHA256 = "4657ba6f07dc332a9cfd7eddc7f1b13bc954d4587dbf342f802d5e1e1b27f315"
+SYNTHETIC_SHA256 = "0d049c74cb9b9a9c850327fe413725e9ceae827aafd8f9c8f6f1353dc9f94fa2"
 
 # Each parameter of generated values, and another value for it.
 GENERATED_VALUE_CHANGES = {
@@ -146,12 +140,34 @@ GENERATED_VALUE_CHANGES = {
     ),
 }
 
-# Each value of the environment: where it comes from, and another value for it.
-ENVIRONMENT_CHANGES = {
-    "platform.python_implementation": (platform, "python_implementation", "PyPy"),
-    "platform.python_version": (platform, "python_version", "3.14.1"),
-    "pydicom.__version__": ("pydicom", "__version__", "3.0.3"),
-    "tomlkit.__version__": ("tomlkit", "__version__", "0.15.2"),
+# The members of the canonical form: the inputs of the method, and no others.
+CANONICAL_MEMBERS = {
+    "format",
+    "engine_version",
+    "policy",
+    "tables",
+    "l2_rules",
+    "l3_rules",
+    "vocabulary",
+    "generated_values",
+    "files",
+}
+
+
+def _next_patch_release():
+    major, minor, micro = sys.version_info[:3]
+    return f"{major}.{minor}.{micro + 1}"
+
+
+# The runtime environment, which runs the method but is not part of it: where
+# each value comes from, and the values it can take instead, as an upgrade
+# or another interpreter would give. A test takes the first that differs from
+# the value now.
+RUNTIME_CHANGES = {
+    "python-implementation": (platform, "python_implementation", ("PyPy", "CPython")),
+    "python-version": (platform, "python_version", (_next_patch_release(),)),
+    "pydicom-version": ("pydicom", "__version__", ("3.0.3", "3.0.4")),
+    "tomlkit-version": ("tomlkit", "__version__", ("0.15.2", "0.15.3")),
 }
 
 ENGINE_FILES = {
@@ -568,60 +584,45 @@ def test_a_parameter_that_changes_only_its_type_changes_the_digest(name, value):
     ) != method_digest.canonical_bytes(SYNTHETIC_POLICY, SYNTHETIC_INPUTS)
 
 
-def _third_party_imports(path):
-    """Return the top-level names of the third-party modules a module imports.
+def test_the_canonical_form_holds_the_inputs_of_the_method_and_nothing_else(basic):
+    inputs = method_digest.digest_inputs(vocabulary=None)
 
-    A name imported from ``pymedphys._imports``, which imports it lazily, is
-    the module it names.
-    """
-    names = set()
-    for node in ast.walk(ast.parse(path.read_bytes())):
-        if isinstance(node, ast.Import):
-            names.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and not node.level and node.module:
-            if node.module == "pymedphys._imports":
-                names.update(alias.name for alias in node.names)
-            else:
-                names.add(node.module)
-    tops = {name.partition(".")[0] for name in names}
-    return tops - set(sys.stdlib_module_names) - {"__future__", "pymedphys"}
-
-
-def test_the_environment_is_python_and_every_library_that_the_engine_imports_in_order():
-    environment = method_digest.environment()
-    imported = set().union(
-        *(
-            _third_party_imports(path)
-            for path in method_digest.PACKAGE_DIR.rglob("*.py")
-            if "__pycache__" not in path.parts
-        )
+    assert set(json.loads(method_digest.canonical_bytes(basic, inputs))) == (
+        CANONICAL_MEMBERS
+    )
+    assert {field.name for field in dataclasses.fields(inputs)} == (
+        CANONICAL_MEMBERS - {"format", "policy", "l3_rules"}
     )
 
-    assert {"pydicom", "tomlkit"} <= imported
-    assert list(environment.items()) == [
-        ("platform.python_implementation", platform.python_implementation()),
-        ("platform.python_version", platform.python_version()),
-        *(
-            (f"{name}.__version__", importlib.import_module(name).__version__)
-            for name in sorted(imported)
-        ),
-    ]
-    assert method_digest.digest_inputs(vocabulary=None).environment == environment
+
+def _change_runtime(monkeypatch, name):
+    """Change one value of the runtime environment, as an upgrade would."""
+    module, attribute, candidates = RUNTIME_CHANGES[name]
+    if isinstance(module, str):
+        module = importlib.import_module(module)
+    current = getattr(module, attribute)
+    is_function = callable(current)
+    now = current() if is_function else current
+    other = next(value for value in candidates if value != now)
+    monkeypatch.setattr(module, attribute, (lambda: other) if is_function else other)
+    changed = getattr(module, attribute)
+    assert (changed() if is_function else changed) == other
 
 
-@pytest.mark.parametrize("name", list(ENVIRONMENT_CHANGES))
-def test_the_python_implementation_and_version_and_each_library_version_change_the_digest(
-    basic, monkeypatch, name
+@pytest.mark.parametrize(
+    "names",
+    [[name] for name in RUNTIME_CHANGES] + [list(RUNTIME_CHANGES)],
+    ids=[*RUNTIME_CHANGES, "all"],
+)
+def test_python_and_library_versions_leave_the_digest_unchanged(
+    basic, monkeypatch, read_again, names
 ):
-    before = method_digest.method_digest(basic, vocabulary=None)
-    module, attribute, value = ENVIRONMENT_CHANGES[name]
-    if module is platform:
-        monkeypatch.setattr(platform, attribute, lambda: value)
-    else:
-        monkeypatch.setattr(importlib.import_module(module), attribute, value)
+    before = method_digest.method_digest(basic, vocabulary=VOCABULARY)
+    for name in names:
+        _change_runtime(monkeypatch, name)
+    read_again()
 
-    assert method_digest.digest_inputs(vocabulary=None).environment[name] == value
-    assert method_digest.method_digest(basic, vocabulary=None) != before
+    assert method_digest.method_digest(basic, vocabulary=VOCABULARY) == before
 
 
 def test_every_module_rule_file_and_table_of_the_engine_is_covered():
@@ -801,7 +802,6 @@ def test_caches_and_files_of_other_types_are_not_covered(
         ("generated_values", 0.5 + 0j),
         ("generated_values", {7: "secret-value"}),
         ("generated_values", True),
-        ("environment", 0.5 + 0j),
         ("l2_rules", 0.5),
         ("l2_rules", b"secret-value"),
         ("l2_rules", {7: "secret-value"}),
