@@ -495,23 +495,39 @@ def _existing(dataset: pydicom.Dataset, tag: str, within: Sequence[str] = ()) ->
     gives the sequences whose items hold the attribute, outermost first, so
     that an error can say where it is.
     """
-    element = dataset.get(_int_tag(tag))
-    if element is None or element.VM == 0:
-        return []
     attribute = _dictionary()[tag]
+    where = "".join(
+        f" in an item of {_dictionary()[outer].name} {outer}"
+        for outer in reversed(within)
+    )
+    unreadable = MarkerError(
+        f"{attribute.name} {tag}{where} is not read as VR {attribute.vr}, "
+        "so its values cannot be kept or compared"
+    )
+    # An element read from a file stays raw until it is first accessed, when
+    # pydicom converts it with the VR in the file, and a value that VR cannot
+    # hold raises an error that can quote it. So the VR is checked first, and
+    # any error of the conversion is replaced, not chained.
+    stored = dataset.get_item(_int_tag(tag), keep_deferred=True)
+    if stored is None:
+        return []
+    if isinstance(stored, pydicom.dataelem.RawDataElement):
+        if not stored.length:
+            return []
+        if stored.VR not in (None, "UN", attribute.vr):
+            raise unreadable
+    try:
+        element = dataset[_int_tag(tag)]
+    except Exception:  # pylint: disable = broad-exception-caught
+        raise unreadable from None
+    if element.VM == 0:
+        return []
     value = element.value
     # A MultiValue or a Sequence; neither text nor bytes is mutable.
     kept = list(value) if isinstance(value, MutableSequence) else [value]
     kind = pydicom.Dataset if attribute.vr == "SQ" else str
     if element.VR != attribute.vr or not all(isinstance(v, kind) for v in kept):
-        where = "".join(
-            f" in an item of {_dictionary()[outer].name} {outer}"
-            for outer in reversed(within)
-        )
-        raise MarkerError(
-            f"{attribute.name} {tag}{where} is not read as VR {attribute.vr}, "
-            "so its values cannot be kept or compared"
-        )
+        raise unreadable
     return kept
 
 

@@ -1259,8 +1259,14 @@ def _written_and_read(dataset, transfer_syntax=pydicom.uid.ExplicitVRLittleEndia
         ("LongitudinalTemporalInformationModified", "DS", "SITEXYZ1"),
         ("DeidentificationMethod", "DS", "SITEXYZ1"),
         ("DeidentificationMethod", "FD", "SITEXYZ123"),
+        ("DeidentificationMethod", "LO", "SITEXYZ" * 12),
     ],
-    ids=["temporal-as-ds", "method-as-ds", "method-as-fd-of-wrong-length"],
+    ids=[
+        "temporal-as-ds",
+        "method-as-ds",
+        "method-as-fd-of-wrong-length",
+        "method-too-long-for-lo",
+    ],
 )
 def test_a_file_backed_existing_marker_of_another_vr_is_refused_without_its_value(
     keyword, vr, value
@@ -1269,9 +1275,12 @@ def test_a_file_backed_existing_marker_of_another_vr_is_refused_without_its_valu
     # it on first access; under strict reading, a value that its VR cannot hold
     # raises an error of pydicom's own, which can quote the value. The file is
     # written with the attribute's own VR, and then that VR's two bytes are
-    # changed, so the element keeps its length.
+    # changed, so the element keeps its length. A value too long for its own
+    # VR is refused by strict reading as it is converted.
     source = _identifying_dataset()
-    setattr(source, keyword, value)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        setattr(source, keyword, value)
     tag = pydicom.tag.Tag(keyword)
     own_vr = pydicom.datadict.dictionary_VR(tag)
     encoded = struct.pack("<HH", tag.group, tag.element) + own_vr.encode()
@@ -1279,7 +1288,9 @@ def test_a_file_backed_existing_marker_of_another_vr_is_refused_without_its_valu
     written.file_meta = pydicom.dataset.FileMetaDataset()
     written.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
     buffer = io.BytesIO()
-    pydicom.dcmwrite(buffer, written, enforce_file_format=True)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        pydicom.dcmwrite(buffer, written, enforce_file_format=True)
     data = buffer.getvalue()
     assert data.count(encoded) == 1
     data = data.replace(encoded, encoded[:4] + vr.encode())
