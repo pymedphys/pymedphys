@@ -37,9 +37,10 @@ is 128 zero bytes, which PS3.10 Section 7.1 sets for a preamble that is not
 used. :func:`write_file` writes a data set with both.
 
 The Implementation Class UID identifies the de-identifier, whatever its
-version. It is the ``2.25.`` UID (PS3.5 B.2) of the version 5 UUID of
-``https://docs.pymedphys.com/deidentify/implementation-class`` in the URL
-namespace, and never changes.
+version. It is the first UID of the arc ``1.2.826.0.1.3680043.10.188.1``,
+which PyMedPhys reserves for UIDs that it fixes in its design, under the root
+issued to PyMedPhys, ``PYMEDPHYS_ROOT_UID`` in ``pymedphys._dicom.uid``. It
+never changes.
 """
 
 from __future__ import annotations
@@ -50,15 +51,17 @@ from typing import BinaryIO
 
 from pymedphys._imports import pydicom
 
+from pymedphys._dicom.uid import PYMEDPHYS_FIXED_UID_ARC
 from pymedphys._version import __version__
 
 from . import scope, values
 
-# The "2.25." UID of the version 5 UUID of
-# "https://docs.pymedphys.com/deidentify/implementation-class" in the URL
-# namespace. It must never change, as it names the writer of every file the
-# engine has written.
-IMPLEMENTATION_CLASS_UID = "2.25.34576644949241753017331973314513799820"
+# The first UID of the arc 1.2.826.0.1.3680043.10.188.1, which PyMedPhys
+# reserves for UIDs that it fixes in its design, under the root issued to
+# PyMedPhys (PYMEDPHYS_ROOT_UID in pymedphys._dicom.uid). It must never
+# change, as it names the writer of every file the engine has written.
+IMPLEMENTATION_CLASS_UID = "1.2.826.0.1.3680043.10.188.1.1"
+assert IMPLEMENTATION_CLASS_UID == f"{PYMEDPHYS_FIXED_UID_ARC}.1"
 FILE_META_INFORMATION_VERSION = b"\x00\x01"
 PREAMBLE = bytes(128)
 

@@ -17,13 +17,14 @@
 import importlib
 import inspect
 import io
+import re
 import struct
-import uuid
 
 from pymedphys._imports import hypothesis, pydicom, pytest
 
 import pymedphys
 from pymedphys import _version
+from pymedphys._dicom import uid as pymedphys_uid
 from pymedphys._dicom.deidentify import file_meta, keys, uid_registry, uids, values
 
 st = hypothesis.strategies
@@ -38,8 +39,8 @@ FIXTURE_KEY = keys.DeidKey(bytes(range(32)))
 SOURCE_SOP_INSTANCE_UID = "1.2.840.99999.2.55.3.604688119.868.1234567890.1"
 REPLACEMENT_UID = uids.replacement_uid(FIXTURE_KEY, SOURCE_SOP_INSTANCE_UID)
 
-# The name the Implementation Class UID is derived from, as documented.
-IMPLEMENTATION_CLASS_NAME = "https://docs.pymedphys.com/deidentify/implementation-class"
+# The Implementation Class UID, as documented. It never changes.
+DOCUMENTED_IMPLEMENTATION_CLASS_UID = "1.2.826.0.1.3680043.10.188.1.1"
 # The seven elements, in order, with their VRs from PS3.6 Table 7-1, where
 # each has VM 1.
 EXPECTED_ELEMENTS = [
@@ -143,16 +144,36 @@ def _padded(value, pad):
     return encoded + pad * (len(encoded) % 2)
 
 
-def test_the_implementation_class_uid_is_derived_from_its_documented_name():
-    derived = uuid.uuid5(uuid.NAMESPACE_URL, IMPLEMENTATION_CLASS_NAME)
-    number = int(file_meta.IMPLEMENTATION_CLASS_UID.removeprefix("2.25."))
+def test_the_implementation_class_uid_is_the_first_uid_of_the_reserved_arc():
+    root = pymedphys_uid.PYMEDPHYS_ROOT_UID
+    arc = pymedphys_uid.PYMEDPHYS_FIXED_UID_ARC
 
-    assert file_meta.IMPLEMENTATION_CLASS_UID == f"2.25.{derived.int}"
-    assert uuid.UUID(int=number).version == 5
-    assert uuid.UUID(int=number).variant == uuid.RFC_4122
+    assert root == "1.2.826.0.1.3680043.10.188"
+    assert arc == f"{root}.1"
+    assert file_meta.IMPLEMENTATION_CLASS_UID == f"{arc}.1"
+    assert file_meta.IMPLEMENTATION_CLASS_UID.startswith(f"{root}.")
+    assert file_meta.IMPLEMENTATION_CLASS_UID == DOCUMENTED_IMPLEMENTATION_CLASS_UID
+
+
+def test_the_implementation_class_uid_is_a_valid_ui_value():
     assert uid_registry.is_uid(file_meta.IMPLEMENTATION_CLASS_UID)
     assert len(file_meta.IMPLEMENTATION_CLASS_UID) <= 64
     assert values.value_problem("UI", file_meta.IMPLEMENTATION_CLASS_UID) is None
+
+
+def test_a_generated_pymedphys_uid_never_falls_under_the_reserved_arc():
+    # A generated UID is the root and one component, whereas a UID under the
+    # arc has at least two components after the root.
+    root = pymedphys_uid.PYMEDPHYS_ROOT_UID
+    arc = pymedphys_uid.PYMEDPHYS_FIXED_UID_ARC
+
+    for _ in range(200):
+        generated = pymedphys_uid.generate_uid()
+
+        assert generated.startswith(f"{root}.")
+        assert re.fullmatch(r"0|[1-9][0-9]*", generated.removeprefix(f"{root}."))
+        assert not generated.startswith(f"{arc}.")
+        assert values.value_problem("UI", generated) is None
 
 
 def test_the_preamble_is_128_zero_bytes():
@@ -252,9 +273,7 @@ def test_the_file_meta_information_holds_the_given_and_documented_values():
     assert meta.MediaStorageSOPClassUID == RT_PLAN_STORAGE
     assert meta.MediaStorageSOPInstanceUID == REPLACEMENT_UID
     assert meta.TransferSyntaxUID == EXPLICIT_LE
-    assert meta.ImplementationClassUID == (
-        f"2.25.{uuid.uuid5(uuid.NAMESPACE_URL, IMPLEMENTATION_CLASS_NAME).int}"
-    )
+    assert meta.ImplementationClassUID == DOCUMENTED_IMPLEMENTATION_CLASS_UID
     assert meta.ImplementationVersionName == file_meta.implementation_version_name(
         pymedphys.__version__
     )
@@ -322,6 +341,15 @@ def test_a_written_file_has_a_zero_preamble_and_exactly_the_built_elements(
         _padded(file_meta.IMPLEMENTATION_CLASS_UID, b"\x00"),
         _padded(meta.ImplementationVersionName, b" "),
     ]
+    # The Implementation Class UID has an even length, so it is written as it
+    # is documented, without a padding byte, unlike the odd-length SOP Class
+    # UID.
+    assert elements[5] == (
+        0x00020012,
+        "UI",
+        DOCUMENTED_IMPLEMENTATION_CLASS_UID.encode("ascii"),
+    )
+    assert elements[2][2] == RT_PLAN_STORAGE.encode("ascii") + b"\x00"
 
 
 @pytest.mark.usefixtures("pydicom_behaviour")
