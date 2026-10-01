@@ -418,6 +418,104 @@ def test_without_a_vr_in_the_file_the_voi_lut_input_decides_its_descriptor(
     assert (descriptor.vr, descriptor.values) == (vr, DESCRIPTOR_VALUES[vr])
 
 
+# 40000 entries, the first mapped -1024, and 16 bits; then 2**16 entries, which
+# the first value gives as 0 (PS3.3 Sections C.11.1.1.1 and C.11.2.1.1).
+LARGE_DESCRIPTORS = [(40000, -1024, 16), (0, -1024, 16), (65535, -32768, 16)]
+
+
+@pytest.mark.parametrize("stated", ["SS", None, "UN"], ids=["ss", "implicit-vr", "un"])
+@pytest.mark.parametrize("values", LARGE_DESCRIPTORS, ids=["40000", "65536", "65535"])
+def test_the_first_and_third_values_of_an_ss_lut_descriptor_are_unsigned(
+    stated, values
+):
+    # "the first and third values are always by definition interpreted as
+    # unsigned", whichever VR the second needs (PS3.3 Section C.11.2.1.1).
+    encoded = struct.pack("<HhH", *values)
+    dataset = _voi_lut_image(_raw("(0028,3002)", stated, encoded))
+
+    descriptor = _read(dataset, VOI_LUT_DESCRIPTOR)
+
+    assert (descriptor.vr, descriptor.values) == ("SS", values)
+
+
+@pytest.mark.parametrize("stated", ["SS", None], ids=["ss", "implicit-vr"])
+def test_the_modality_lut_descriptor_keeps_its_first_value_unsigned(stated):
+    # Section C.11.1.1.1 says the same of the Modality LUT's descriptor,
+    # whose second value follows Pixel Representation.
+    dataset = _voi_lut_image(None, **_WITHOUT_RESCALE, PixelRepresentation=1)
+    item = pydicom.Dataset()
+    item[0x00283002] = _raw("(0028,3002)", stated, struct.pack("<HhH", 40000, -2, 16))
+    dataset.add(synthetic.sequence(0x00283000, [item]))
+
+    descriptor = _read(dataset, _path(("(0028,3000)", 0), "(0028,3002)"))
+
+    assert (descriptor.vr, descriptor.values) == ("SS", (40000, -2, 16))
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@TRANSFER_SYNTAXES
+@pytest.mark.parametrize("values", LARGE_DESCRIPTORS, ids=["40000", "65536", "65535"])
+def test_an_ss_lut_descriptor_with_unsigned_values_is_written_and_read_back(
+    transfer_syntax, values
+):
+    dataset = _voi_lut_image(None)
+    item = dataset.VOILUTSequence[0]
+    item[0x00283002] = elements.new_element(
+        VOI_LUT_DESCRIPTOR, "SS", values, elements.DEFAULT_CODECS
+    )
+    item.add_new(0x00283006, "US", [0, 1])
+
+    read = _written_and_read(dataset, transfer_syntax)
+    descriptor = _read(read, VOI_LUT_DESCRIPTOR)
+    stored = read.VOILUTSequence[0].get_item(0x00283002, keep_deferred=True).value
+
+    assert stored == struct.pack("<HhH", *values)
+    assert (descriptor.vr, descriptor.values) == ("SS", values)
+
+
+@pytest.mark.parametrize(
+    "vr, values",
+    [
+        ("SS", (65536, -1024, 16)),
+        ("SS", (-1, -1024, 16)),
+        ("SS", (4096, 32768, 16)),
+        ("SS", (4096, -1024, 65536)),
+        ("US", (4096, -1, 16)),
+    ],
+    ids=["first-too-large", "first-negative", "second-not-ss", "third", "us"],
+)
+def test_a_lut_descriptor_outside_its_ranges_is_not_built(vr, values):
+    with pytest.raises(ValueError, match="value [1-3] is not"):
+        elements.new_element(VOI_LUT_DESCRIPTOR, vr, values, elements.DEFAULT_CODECS)
+
+
+PRESENTATION_LUT_DESCRIPTOR = _path(("(2050,0010)", 0), "(0028,3002)")
+
+
+@pytest.mark.parametrize("stated", [None, "UN", "US"], ids=["implicit-vr", "un", "us"])
+def test_the_presentation_lut_descriptor_is_us(stated):
+    # "The Value Representation of the second Value is always US" (PS3.3
+    # Section C.11.4.1), whatever Pixel Representation says.
+    dataset = _voi_lut_image(None, PixelRepresentation=1)
+    item = pydicom.Dataset()
+    item[0x00283002] = _raw("(0028,3002)", stated, struct.pack("<HHH", 4096, 0, 12))
+    dataset.add(synthetic.sequence(0x20500010, [item]))
+
+    descriptor = _read(dataset, PRESENTATION_LUT_DESCRIPTOR)
+
+    assert (descriptor.vr, descriptor.values) == ("US", (4096, 0, 12))
+
+
+def test_a_presentation_lut_descriptor_stated_as_ss_is_refused():
+    dataset = _voi_lut_image(None)
+    item = pydicom.Dataset()
+    item[0x00283002] = _raw("(0028,3002)", "SS", struct.pack("<HHH", 4096, 0, 12))
+    dataset.add(synthetic.sequence(0x20500010, [item]))
+
+    with pytest.raises(elements.UndecodableElement, match="C.11.4.1 decides VR US"):
+        _read(dataset, PRESENTATION_LUT_DESCRIPTOR)
+
+
 @pytest.mark.parametrize(
     "changes",
     [
@@ -1231,6 +1329,21 @@ def test_a_new_element_is_built_without_pydicoms_checks():
         ),
         # ISO_IR 13 is single-byte: JIS X 0201, not the kanji of Shift JIS.
         ("(0010,0020)", "LO", ("SENTINEL山",), ("shift_jis",), "cannot be encoded"),
+        # Each character is one byte in JIS X 0201, but pydicom writes the
+        # whole value with replacement characters.
+        ("(0010,0020)", "LO", ("SENTINELｱ",), ("shift_jis",), "cannot be encoded"),
+        # JIS X 0201 puts the yen sign at 05/12, the backslash of ISO 646,
+        # which would split the value in two (PS3.5 Section 6.1.2.3), even
+        # with a second character set that pydicom does not choose for it.
+        ("(0010,0020)", "LO", ("SENTINEL¥",), ("shift_jis",), "cannot be encoded"),
+        (
+            "(0010,0020)",
+            "LO",
+            ("SENTINEL¥",),
+            ("shift_jis", "latin_1"),
+            "cannot be encoded",
+        ),
+        ("(0010,0010)", "PN", ("SENTINEL^¥",), ("shift_jis",), "cannot be encoded"),
         # PS3.5 Section 6.2.1.2: in UTF-8, the first component group holds
         # code points up to U+1FFF and a few Japanese punctuation marks and
         # kana only, and no code extensions are used in it.
@@ -1289,3 +1402,61 @@ def test_a_new_sequence_takes_only_data_sets_as_items():
         elements.new_element(
             _path(RT_ASSERTIONS), "SQ", ("SENTINEL",), elements.DEFAULT_CODECS
         )
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@TRANSFER_SYNTAXES
+@pytest.mark.parametrize(
+    "character_set, codecs, value",
+    [
+        ("ISO_IR 13", ("shift_jis",), "SENTINELｱ"),
+        ("ISO_IR 13", ("shift_jis",), "SENTINEL¥"),
+        (["ISO 2022 IR 13", "ISO 2022 IR 100"], ("shift_jis", "latin_1"), "SENTINEL¥"),
+    ],
+    ids=["latin-and-kana", "yen", "two-character-sets"],
+)
+def test_text_that_the_writer_would_change_is_refused_before_writing(
+    transfer_syntax, character_set, codecs, value
+):
+    # Written as pydicom would write it, each value reads back changed: with
+    # a replacement character, or split in two at the yen sign's byte.
+    dataset = synthetic.rt_plan()
+    dataset.SpecificCharacterSet = character_set
+    dataset.add(
+        pydicom.DataElement(
+            0x0008103E, "LO", value, validation_mode=pydicom.config.IGNORE
+        )
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        read = _written_and_read(dataset, transfer_syntax)
+
+    assert read.get(0x0008103E).value != value
+    with pytest.raises(ValueError, match="cannot be encoded") as raised:
+        elements.new_element(_path("(0008,103E)"), "LO", (value,), codecs)
+    assert SENTINEL not in str(raised.value)
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@TRANSFER_SYNTAXES
+@pytest.mark.parametrize(
+    "character_set, codecs, value",
+    [
+        ("ISO_IR 13", ("shift_jis",), "ｱｲｳ"),
+        ("ISO_IR 100", ("latin_1",), "Ångström"),
+        (["", "ISO 2022 IR 87"], ("iso8859", "iso2022_jp"), "PLAN 表"),
+    ],
+    ids=["kana", "latin-1", "jis-x-0208"],
+)
+def test_text_that_the_writer_keeps_is_built_and_read_back(
+    transfer_syntax, character_set, codecs, value
+):
+    dataset = synthetic.rt_plan()
+    dataset.SpecificCharacterSet = character_set
+    dataset[0x0008103E] = elements.new_element(
+        _path("(0008,103E)"), "LO", (value,), codecs
+    )
+
+    read = _written_and_read(dataset, transfer_syntax)
+
+    assert _read(read, _path("(0008,103E)"), codecs).values == (value,)

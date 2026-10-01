@@ -29,7 +29,10 @@ decides it (PS3.3 Section C.11.2.1.1): Pixel Representation without a
 Modality LUT or rescale, US after a Modality LUT, and after rescale SS where
 the rescaled range can be negative, as Hounsfield Units always can, and US
 otherwise. There, in explicit VR, either applies, since the standard has the
-VR follow what the second value needs. Real World Value First Value Mapped
+VR follow what the second value needs; in Presentation LUT Sequence
+(2050,0010) it is always US (Section C.11.4.1). The first and third values
+of a LUT Descriptor of VR SS are decoded and written as unsigned (Sections
+C.11.1.1.1 and C.11.2.1.1), so a table of 40000 entries keeps its count. Real World Value First Value Mapped
 (0040,9216) and Last Value Mapped (0040,9211) are SS for floating point
 pixel data (PS3.3 Section C.7.6.16.2.11.1.1), which the first supported
 release's IODs do not have, so without a VR in the file they are refused
@@ -45,7 +48,9 @@ which pydicom reads as ISO 8859-1, text must be in ISO 646 (PS3.5 Section
 PS3.3 Section C.12.1.1.2 does not list it among the Defined Terms, but real
 data commonly holds it. Nor is reading more lenient than writing: text that
 :func:`written_value_problem` finds could not be written back in its
-character set is refused.
+character set is refused: each value must be one that pydicom's writer
+encodes, as a whole and with the codec it chooses, as a value that reads
+back unchanged.
 
 :func:`new_element` builds an element to write with pydicom's checks off,
 once :func:`written_value_problem` has checked its values.
@@ -107,6 +112,7 @@ _SIGNEDNESS = {0: "US", 1: "SS"}
 _LUT_DESCRIPTOR = "(0028,3002)"
 _VOI_LUT_SEQUENCE = "(0028,3010)"
 _MODALITY_LUT_SEQUENCE = "(0028,3000)"
+_PRESENTATION_LUT_SEQUENCE = "(2050,0010)"
 _RESCALE_INTERCEPT = "(0028,1052)"
 _RESCALE_SLOPE = "(0028,1053)"
 _RESCALE_TYPE = "(0028,1054)"
@@ -256,6 +262,8 @@ def read_element(
         elif value is None or value in ("", b""):
             values = []
         plain = tuple(_plain(path, vr, each) for each in values)
+        if path.tag == _LUT_DESCRIPTOR and vr == "SS":
+            plain = _unsigned_descriptor(plain)
         # pydicom reads the Default Character Repertoire as ISO 8859-1, but it
         # is ISO 646 (PS3.5 Section 6.1.2.1).
         if (
@@ -330,15 +338,7 @@ def _decided_vr(
 ) -> tuple[str | None, str]:
     """Return the VR the standard decides of alternatives, if any, and what decides."""
     if alternatives == ("US", "SS"):
-        enclosing = path.items[-1][0] if path.items else None
-        if path.tag == _LUT_DESCRIPTOR and enclosing == _VOI_LUT_SEQUENCE:
-            # In explicit VR, "the explicit VR actually used is dictated by
-            # the VR needed to represent the second Value" (PS3.3 Section
-            # C.11.2.1.1), so the file's VR applies, whichever it is.
-            decided = None if stated else _voi_lut_input_vr(chain)
-            return decided, "PS3.3 Section C.11.2.1.1"
-        representation = _deciding(chain, _PIXEL_REPRESENTATION)
-        return _SIGNEDNESS.get(representation), "Pixel Representation (0028,0103)"
+        return _signedness(path, stated, chain)
     if stated is None and "OW" in alternatives:
         return "OW", "PS3.5 Section A.1"
     if path.tag == "(7FE0,0010)":
@@ -347,6 +347,24 @@ def _decided_vr(
         bits = _deciding(chain, "(0028,0100)")
         return ("OW" if bits > 8 else None), "Bits Allocated (0028,0100)"
     return None, "the standard"
+
+
+def _signedness(
+    path: ElementPath, stated: str | None, chain: tuple
+) -> tuple[str | None, str]:
+    """Return the VR the standard decides of US or SS, if any, and what decides."""
+    enclosing = path.items[-1][0] if path.items else None
+    if path.tag == _LUT_DESCRIPTOR and enclosing == _PRESENTATION_LUT_SEQUENCE:
+        # "The Value Representation of the second Value is always US".
+        return "US", "PS3.3 Section C.11.4.1"
+    if path.tag == _LUT_DESCRIPTOR and enclosing == _VOI_LUT_SEQUENCE:
+        # In explicit VR, "the explicit VR actually used is dictated by the
+        # VR needed to represent the second Value" (PS3.3 Section
+        # C.11.2.1.1), so the file's VR applies, whichever it is.
+        decided = None if stated else _voi_lut_input_vr(chain)
+        return decided, "PS3.3 Section C.11.2.1.1"
+    representation = _deciding(chain, _PIXEL_REPRESENTATION)
+    return _SIGNEDNESS.get(representation), "Pixel Representation (0028,0103)"
 
 
 def _voi_lut_input_vr(chain: tuple) -> str | None:
@@ -501,6 +519,21 @@ def _decoded(element, vr: str, codecs: list[str], path: ElementPath) -> object:
         raise UndecodableElement(path, f"could not be decoded as VR {vr}") from None
 
 
+def _unsigned_descriptor(values: tuple) -> tuple:
+    """Return SS LUT Descriptor values with the first and third unsigned.
+
+    "the first and third values are always by definition interpreted as
+    unsigned", whichever VR the second needs (PS3.3 Sections C.11.1.1.1 and
+    C.11.2.1.1); pydicom decodes all three as SS.
+    """
+    return tuple(
+        value + 0x10000
+        if index != 1 and isinstance(value, int) and value < 0
+        else value
+        for index, value in enumerate(values)
+    )
+
+
 def _plain(path: ElementPath, vr: str, value: object) -> str | int | float | bytes:
     """Return a decoded value as values_problem takes it, if it is of ``vr``."""
     valuerep = pydicom.valuerep
@@ -538,7 +571,12 @@ def written_value_problem(
     646 and a single-byte set takes one byte for each character; else that a
     person name's first component group is not in the set of Value 1 alone,
     or, where that is UTF-8, GB18030, or GBK, has a character outside the
-    code points PS3.5 Section 6.2.1.2 allows there. It never quotes a value.
+    code points PS3.5 Section 6.2.1.2 allows there. A text value must also
+    be one that pydicom's writer encodes, as a whole and with the codec it
+    chooses, as a single value that reads back unchanged: in ``ISO_IR 13``
+    it writes Latin letters and katakana together with replacement
+    characters, and the yen sign as the byte of the backslash that separates
+    values (PS3.5 Section 6.1.2.3). It never quotes a value.
     Where Value 1 is the Default Character Repertoire with code extensions,
     a character of ISO 8859-1 outside ISO 646 cannot be encoded either:
     pydicom would write it in ISO 8859-1, without the escape sequence of the
@@ -559,7 +597,9 @@ def _character_set_problem(
     if vr not in _CHARACTER_SET_VRS:
         return None
     for number, value in enumerate(values, start=1):
-        if not _encodable(str(value), codecs):
+        if not (
+            _encodable(str(value), codecs) and _written_back(vr, str(value), codecs)
+        ):
             return (
                 f"value {number} cannot be encoded in the data set's "
                 "Specific Character Set"
@@ -577,6 +617,37 @@ def _character_set_problem(
                 "does not allow in a person name's first component group"
             )
     return None
+
+
+def _written_back(vr: str, text: str, codecs: Sequence[str]) -> bool:
+    """Return whether pydicom writes a value as one that it reads back unchanged.
+
+    pydicom encodes the whole value with the codec it chooses, which can
+    differ from the one that encodes a character alone: in JIS X 0201
+    (``ISO_IR 13``), it writes Latin letters and katakana together with
+    replacement characters, and the yen sign as 05/12, the backslash that
+    separates values (PS3.5 Section 6.1.2.3), so the value reads back split.
+    Trailing spaces, which pad a value, do not count.
+    """
+    tag = pydicom.tag.Tag(0x00100010 if vr == "PN" else 0x00081030)
+    element = pydicom.DataElement(tag, vr, text, validation_mode=pydicom.config.IGNORE)
+    written = pydicom.filebase.DicomBytesIO()
+    written.is_little_endian, written.is_implicit_VR = True, True
+    try:
+        with redacted_pydicom_diagnostics():
+            pydicom.filewriter.write_data_element(written, element, list(codecs))
+            encoded = written.getvalue()[8:]
+            raw = pydicom.dataelem.RawDataElement(
+                tag, vr, len(encoded), encoded, 0, True, True
+            )
+            read = pydicom.values.convert_value(vr, raw, list(codecs))
+    # Any failure means that the value is not written back; its message can
+    # quote the value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return False
+    if isinstance(read, (list, pydicom.multival.MultiValue)):
+        return False
+    return str(read) == text.rstrip(" ")
 
 
 def _encodable(text: str, codecs: Sequence[str]) -> bool:
@@ -603,6 +674,21 @@ def _encodes(char: str, codec: str) -> bool:
     return codec in _MULTI_BYTE or len(encoded) == 1
 
 
+def _descriptor_problem(vm: str, values: Sequence[object]) -> str | None:
+    """Return what is wrong with the values of an SS LUT Descriptor, or None.
+
+    Its first and third values are unsigned whichever VR its second needs
+    (PS3.3 Sections C.11.1.1.1 and C.11.2.1.1), so they must be valid US,
+    and only its second a valid SS.
+    """
+    if len(values) != 3:  # which the VM, 3, does not allow
+        return values_problem("US", vm, values)
+    first, second, third = values
+    return values_problem("US", vm, (first, 0, third)) or values_problem(
+        "SS", vm, (0, second, 0)
+    )
+
+
 def new_element(
     path: ElementPath, vr: str, values: Sequence[object], codecs: Sequence[str]
 ) -> pydicom.DataElement:
@@ -613,7 +699,9 @@ def new_element(
     :class:`ElementValue`, or a sequence's items; and ``codecs`` are those of
     the data set it is written in. It raises :class:`ValueError` without the
     value for any other VR, an item that is not a data set, or a problem that
-    :func:`written_value_problem` finds.
+    :func:`written_value_problem` finds. A LUT Descriptor (0028,3002) of VR
+    SS takes its first and third values as US, as :func:`read_element` gives
+    them.
     """
     attribute = dictionary_attribute(path.tag)
     if attribute is None or vr not in attribute.vrs:
@@ -623,9 +711,21 @@ def new_element(
         if not all(isinstance(item, pydicom.Dataset) for item in values):
             raise ValueError(f"{path} needs data sets as its items")
         value = pydicom.Sequence(cast(Sequence[pydicom.Dataset], values))
-    elif problem := written_value_problem(vr, attribute.vm, values, codecs):
+    elif problem := (
+        _descriptor_problem(attribute.vm, values)
+        if path.tag == _LUT_DESCRIPTOR and vr == "SS"
+        else written_value_problem(vr, attribute.vm, values, codecs)
+    ):
         raise ValueError(f"{path} {problem}")
     else:
+        if path.tag == _LUT_DESCRIPTOR and vr == "SS":
+            # pydicom writes the first value as US and the others as SS, so
+            # the bytes of an unsigned third value above 32767 are those of
+            # its negative counterpart.
+            values = [
+                value - 0x10000 if index == 2 and value > 0x7FFF else value
+                for index, value in enumerate(cast(Sequence[int], values))
+            ]
         empty = pydicom.dataelem.empty_value_for_VR(vr)
         value = list(values) if len(values) > 1 else values[0] if values else empty
     with redacted_pydicom_diagnostics():
