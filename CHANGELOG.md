@@ -224,6 +224,14 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** CI and security workflows now validate
+  `merge_group` commits comprehensively while ordinary pull request checks
+  remain selective. The dependency audit stays advisory for queued merges;
+  Bandit and zizmor remain blocking. Once the `main-integrity` ruleset enables
+  the queue, approved pull requests can enter without merging the latest
+  `main` after an unrelated pull request lands. GitHub then validates the
+  prospective integrated state and merges each pull request individually.
+  [PR #2182](https://github.com/pymedphys/pymedphys/pull/2182)
 - **[Contributor facing only]** A stable release pull request has its own template, `.github/PULL_REQUEST_TEMPLATE/release.md`, opened with the `template` and `labels` parameters on the pull request URL. It records the release and next development versions, the preparation steps, a changelog review, and the steps after merging. The release guide has a new "Review the changelog" section with the review criteria and a check that no pull request link was lost in a rewrite, and the default pull request template points to the release template. [PR #2177](https://github.com/pymedphys/pymedphys/pull/2177)
 - **[Contributor facing only]** New bug reports use the organisation's `Bug` issue type instead of the `bug` label. Dependabot's GitHub Actions update pull requests carry `dependencies` without the old `CI / CD` label. [PR #2157](https://github.com/pymedphys/pymedphys/pull/2157)
 - **[Contributor facing only]** `SECURITY.md`, the workflow guide, and `AGENTS.md` describe the security checks configured in the repository's settings rather than in workflows: CodeQL code scanning through GitHub's default setup for Python and GitHub Actions, secret scanning with push protection, and Dependabot alerts, malware alerts, and security updates. `AGENTS.md` asks for each CodeQL finding to be fixed, or dismissed as won't fix with the reason. [PR #2148](https://github.com/pymedphys/pymedphys/pull/2148)

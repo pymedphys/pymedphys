@@ -50,6 +50,32 @@ def needs(job: str) -> set[str]:
 
 
 class WorkflowContractTests(unittest.TestCase):
+    def test_merge_groups_run_both_required_workflows(self):
+        for filename, summary_id, name in (
+            ("ci.yml", "summary", "CI Summary"),
+            ("security.yml", "security-summary", "Security Summary"),
+        ):
+            with self.subTest(workflow=filename):
+                text = (WORKFLOWS / filename).read_text(encoding="utf-8")
+                triggers = text.split("\npermissions:\n", 1)[0]
+                for event in ("push", "pull_request", "merge_group"):
+                    self.assertRegex(triggers, rf"(?m)^  {event}:$")
+                self.assertEqual(
+                    re.findall(r"(?m)^    name: (.+)$", jobs(filename)[summary_id]),
+                    [name],
+                )
+
+    def test_merge_group_dependency_audit_is_advisory(self):
+        audit = jobs("security.yml")["dependency-audit"]
+        self.assertEqual(
+            re.findall(r"(?m)^        continue-on-error: (.+)$", audit),
+            [
+                "${{ github.event_name == 'pull_request' || "
+                "github.event_name == 'push' || "
+                "github.event_name == 'merge_group' }}"
+            ],
+        )
+
     def test_weekly_updates_share_one_branch_and_base(self):
         # A manual run on a feature branch must not repurpose the shared PR.
         update = jobs("deps.yml")["update"]
