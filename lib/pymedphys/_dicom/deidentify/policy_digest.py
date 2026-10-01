@@ -48,20 +48,30 @@ Python and of the libraries that the engine imports:
   and editable installs share a version across commits, so these files
   identify their code where the version cannot. They and the generated
   tables are read once per process, when the first digest is computed, and
-  stand for the engine as first read in the process: every instance of a run
-  carries the same digest, and an edit to an editable install after that is
-  not seen until the process restarts;
+  stand for the engine as read then, not as imported. An edit after the
+  first digest is not seen until the process restarts, so every instance of
+  a run carries the same digest; an edit between importing the engine and
+  the first digest can give the old code the new files' digest. Editing or
+  reloading the engine's modules in a running process, for example with
+  ``importlib.reload`` or Jupyter's autoreload, is not supported, and the
+  digest is then not guaranteed to match the code that runs. The engine is
+  to compute the digest before it processes anything, so that the digest
+  stands for the code that runs;
 - the Python implementation and version, such as ``CPython`` and
   ``3.14.0``, and the version of each third-party library that this package
   imports: pydicom, which will read and write every DICOM file, and tomlkit,
-  which reads the rule files.
+  which reads the rule files. :func:`environment` gives these values.
 
 The digest therefore also changes when something the policy does not use
 changes, which is harmless; it never stays the same when one of these inputs
-changes, with the files and tables as first read in the process. It does not
-cover the operating system, compiled libraries, third-party libraries that
-this package does not import itself, or the code of a development install of
-pydicom, which keeps its version across commits.
+changes, with the files and tables as read at the first digest in the
+process. Of PyMedPhys's code outside this package, including the modules
+that this package imports, ``pymedphys._version``, ``pymedphys._config``,
+``pymedphys._imports``, and ``pymedphys._nomenclature.tg263``, the digest
+covers only PyMedPhys's version, which a development build keeps across
+commits. It does not cover the operating system, compiled libraries,
+third-party libraries that this package does not import itself, or the code
+of a development install of pydicom, which keeps its version across commits.
 """
 
 from __future__ import annotations
@@ -157,7 +167,7 @@ class DigestInputs:
         The Python implementation and version, and the version of each
         third-party library that the package imports, by where each comes
         from, such as ``"platform.python_version"`` or
-        ``"pydicom.__version__"``.
+        ``"pydicom.__version__"``, as :func:`environment` gives them.
     """
 
     engine_version: str
@@ -290,7 +300,7 @@ def canonical_bytes(policy: Policy, inputs: DigestInputs) -> bytes:
     """
     _check_policy(policy)
     generated = {_key(n): _typed(v) for n, v in inputs.generated_values.items()}
-    environment = {_key(n): _typed(v) for n, v in inputs.environment.items()}
+    typed_environment = {_key(n): _typed(v) for n, v in inputs.environment.items()}
     document = {
         "format": FORMAT,
         "engine_version": inputs.engine_version,
@@ -301,7 +311,7 @@ def canonical_bytes(policy: Policy, inputs: DigestInputs) -> bytes:
         "vocabulary": inputs.vocabulary,
         # Already JSON values, which _plain keeps as they are.
         "generated_values": generated,
-        "environment": environment,
+        "environment": typed_environment,
         "files": inputs.files,
     }
     return _encode(_plain(document))
@@ -358,8 +368,32 @@ def _file_digests(directory: pathlib.Path) -> Mapping[str, str]:
     return types.MappingProxyType(digests)
 
 
-def _environment() -> dict[str, object]:
-    """Return the Python implementation and version, and each library's version."""
+def environment() -> dict[str, str]:
+    """Return the Python implementation and version, and each library's version.
+
+    These are the values of the environment that the policy digest covers,
+    taken from the running interpreter and from each library as imported,
+    at each call. Each is keyed by where it comes from, in this order: the
+    Python implementation, ``"platform.python_implementation"``, such as
+    ``"CPython"``; the Python version, ``"platform.python_version"``, such
+    as ``"3.14.0"``; and the ``__version__`` of each third-party library
+    that this package imports, in alphabetical order:
+    ``"pydicom.__version__"`` and ``"tomlkit.__version__"``.
+
+    Returns
+    -------
+    dict of str to str
+        A new dictionary at each call, in the order above.
+
+    Examples
+    --------
+    >>> for name in environment():
+    ...     print(name)
+    platform.python_implementation
+    platform.python_version
+    pydicom.__version__
+    tomlkit.__version__
+    """
     return {
         "platform.python_implementation": platform.python_implementation(),
         "platform.python_version": platform.python_version(),
@@ -368,20 +402,20 @@ def _environment() -> dict[str, object]:
     }
 
 
-def digest_inputs(vocabulary: tg263.Nomenclature | None = None) -> DigestInputs:
+def digest_inputs(*, vocabulary: tg263.Nomenclature | None) -> DigestInputs:
     """Gather everything the policy digest covers apart from the policy.
 
     Reads the engine's own files once per process, at the first call: the
     generated tables, the supplementary rule files, and the package's source
-    and rule files. Takes the Python implementation and version from the
-    running interpreter, and each library's version from the library as
-    imported.
+    and rule files. Takes the Python implementation and version and each
+    library's version from :func:`environment`, at each call.
 
     Parameters
     ----------
-    vocabulary : ~pymedphys._nomenclature.tg263.Nomenclature, optional
+    vocabulary : ~pymedphys._nomenclature.tg263.Nomenclature or None
         The TG-263 vocabulary that descriptor cleaning matches ROI Names
-        against, or None without one.
+        against, or None without one. It must be given by name, and has no
+        default, so that every caller states whether there is one.
 
     Returns
     -------
@@ -432,13 +466,11 @@ def digest_inputs(vocabulary: tg263.Nomenclature | None = None) -> DigestInputs:
             for name in names
         },
         files=_file_digests(PACKAGE_DIR.resolve()),
-        environment=_environment(),
+        environment=environment(),
     )
 
 
-def policy_digest(
-    policy: Policy, *, vocabulary: tg263.Nomenclature | None = None
-) -> str:
+def policy_digest(policy: Policy, *, vocabulary: tg263.Nomenclature | None) -> str:
     """Return the policy digest of a policy, as 64 lowercase hexadecimal digits.
 
     The digest is the SHA-256 of :func:`canonical_bytes` of the policy and
@@ -452,9 +484,10 @@ def policy_digest(
     policy : Policy
         A validated policy, such as one from
         :func:`~pymedphys._dicom.deidentify.policy.compose_policy`.
-    vocabulary : ~pymedphys._nomenclature.tg263.Nomenclature, optional
+    vocabulary : ~pymedphys._nomenclature.tg263.Nomenclature or None
         The TG-263 vocabulary that descriptor cleaning matches ROI Names
-        against, or None without one.
+        against, or None without one. It must be given by name, and has no
+        default, so that every caller states whether there is one.
 
     Returns
     -------
@@ -470,11 +503,11 @@ def policy_digest(
     Examples
     --------
     >>> from pymedphys._dicom.deidentify.policy import compose_policy
-    >>> digest = policy_digest(compose_policy("basic"))
+    >>> digest = policy_digest(compose_policy("basic"), vocabulary=None)
     >>> len(digest), digest == digest.lower(), int(digest, 16) >= 0
     (64, True, True)
     """
     _check_policy(policy)
     return hashlib.sha256(
-        canonical_bytes(policy, digest_inputs(vocabulary))
+        canonical_bytes(policy, digest_inputs(vocabulary=vocabulary))
     ).hexdigest()

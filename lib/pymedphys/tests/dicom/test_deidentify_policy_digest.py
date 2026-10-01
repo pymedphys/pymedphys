@@ -236,7 +236,7 @@ def test_the_digest_is_only_64_lowercase_hexadecimal_digits_and_fits_one_lo_valu
 
 def test_the_digest_is_the_sha256_of_the_canonical_form(basic):
     canonical = policy_digest.canonical_bytes(
-        basic, policy_digest.digest_inputs(VOCABULARY)
+        basic, policy_digest.digest_inputs(vocabulary=VOCABULARY)
     )
 
     digest = policy_digest.policy_digest(basic, vocabulary=VOCABULARY)
@@ -294,11 +294,13 @@ def test_mappings_and_sets_are_encoded_in_a_defined_order():
 
 
 def test_the_engine_version_changes_the_digest(basic, monkeypatch):
-    before = policy_digest.policy_digest(basic)
+    before = policy_digest.policy_digest(basic, vocabulary=None)
     monkeypatch.setattr(_version, "__version__", _version.__version__ + "+local")
 
-    assert policy_digest.digest_inputs().engine_version.endswith("+local")
-    assert policy_digest.policy_digest(basic) != before
+    assert policy_digest.digest_inputs(vocabulary=None).engine_version.endswith(
+        "+local"
+    )
+    assert policy_digest.policy_digest(basic, vocabulary=None) != before
 
 
 def _with_changes(policy_, **changes):
@@ -363,14 +365,14 @@ def _resolved():
     ],
 )
 def test_any_part_of_the_policy_changes_the_digest(basic, change):
-    assert policy_digest.policy_digest(change(basic)) != policy_digest.policy_digest(
-        basic
-    )
+    assert policy_digest.policy_digest(
+        change(basic), vocabulary=None
+    ) != policy_digest.policy_digest(basic, vocabulary=None)
 
 
 def test_each_preset_has_its_own_digest():
     digests = {
-        policy_digest.policy_digest(policy.compose_policy(preset))
+        policy_digest.policy_digest(policy.compose_policy(preset), vocabulary=None)
         for preset in policy.PRESETS
     }
 
@@ -394,30 +396,36 @@ def _rewrite(path, rows, recorded=None, indent=1):
     "name", sorted(path.name for path in standard.STANDARD_DIR.glob("*.json"))
 )
 def test_any_generated_table_changes_the_digest(basic, tmp_path, monkeypatch, name):
-    before = policy_digest.policy_digest(basic)
+    before = policy_digest.policy_digest(basic, vocabulary=None)
     copy = _copied_tables(tmp_path)
     rows = json.loads((copy / name).read_text(encoding="utf-8"))["rows"]
     _rewrite(copy / name, rows[::-1])
     monkeypatch.setattr(standard, "STANDARD_DIR", copy)
 
-    assert policy_digest.digest_inputs().tables[name] == standard.content_sha256(
-        rows[::-1]
-    )
-    assert policy_digest.policy_digest(basic) != before
+    assert policy_digest.digest_inputs(vocabulary=None).tables[
+        name
+    ] == standard.content_sha256(rows[::-1])
+    assert policy_digest.policy_digest(basic, vocabulary=None) != before
 
 
-def test_the_tables_are_covered_by_their_content_not_their_layout(
-    basic, tmp_path, monkeypatch
+def test_a_reformatted_table_keeps_its_row_digest_but_changes_its_file_digest(
+    tmp_path, monkeypatch, read_again
 ):
-    before = policy_digest.policy_digest(basic)
-    copy = _copied_tables(tmp_path)
-    path = copy / "e1_1.json"
-    rows = json.loads(path.read_text(encoding="utf-8"))["rows"]
-    _rewrite(path, rows, indent=4)
+    modules = {n: c for n, c in ENGINE_FILES.items() if not n.startswith("_standard/")}
+    engine = _engine(tmp_path / "engine", modules)
+    tables = _copied_tables(engine)
+    monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
+    monkeypatch.setattr(standard, "STANDARD_DIR", tables)
+    before = policy_digest.digest_inputs(vocabulary=None)
+    path = tables / "e1_1.json"
+    layout = path.read_bytes()
+    _rewrite(path, json.loads(layout.decode("utf-8"))["rows"], indent=4)
+    read_again()
+    after = policy_digest.digest_inputs(vocabulary=None)
 
-    assert path.read_bytes() != (standard.STANDARD_DIR / "e1_1.json").read_bytes()
-    monkeypatch.setattr(standard, "STANDARD_DIR", copy)
-    assert policy_digest.policy_digest(basic) == before
+    assert path.read_bytes() != layout
+    assert after.tables == before.tables
+    assert after.files["_standard/e1_1.json"] != before.files["_standard/e1_1.json"]
 
 
 def test_a_table_that_does_not_match_its_recorded_digest_is_rejected(
@@ -430,7 +438,7 @@ def test_a_table_that_does_not_match_its_recorded_digest_is_rejected(
     monkeypatch.setattr(standard, "STANDARD_DIR", copy)
 
     with pytest.raises(standard.StandardTableError, match="e3_10_1.json rows do not"):
-        policy_digest.policy_digest(basic)
+        policy_digest.policy_digest(basic, vocabulary=None)
 
 
 def _changed_uid_roles():
@@ -476,22 +484,24 @@ def _changed_supplementary_actions():
 def test_any_supplementary_rule_changes_the_digest_even_one_the_options_do_not_use(
     basic, monkeypatch, module, name, changed
 ):
-    before = policy_digest.policy_digest(basic)
+    before = policy_digest.policy_digest(basic, vocabulary=None)
     rules = changed()
     monkeypatch.setattr(module, name, lambda: rules)
 
-    assert policy_digest.policy_digest(basic) != before
+    assert policy_digest.policy_digest(basic, vocabulary=None) != before
 
 
 def test_the_action_for_text_that_no_rule_covers_changes_the_digest(basic, monkeypatch):
-    before = policy_digest.policy_digest(basic)
+    before = policy_digest.policy_digest(basic, vocabulary=None)
     monkeypatch.setattr(supplementary_actions, "UNCOVERED_TEXT_ACTION", "X")
 
-    assert policy_digest.policy_digest(basic) != before
+    assert policy_digest.policy_digest(basic, vocabulary=None) != before
 
 
 def test_the_canonical_form_records_that_there_are_no_user_rules(basic):
-    canonical = policy_digest.canonical_bytes(basic, policy_digest.digest_inputs())
+    canonical = policy_digest.canonical_bytes(
+        basic, policy_digest.digest_inputs(vocabulary=None)
+    )
 
     assert json.loads(canonical)["l3_rules"] is None
 
@@ -516,14 +526,14 @@ def test_the_vocabulary_is_covered_by_the_digest_its_file_records(basic):
     recorded = json.loads(tg263.to_json(VOCABULARY))["content_sha256"]
     renamed = _vocabulary(*VOCABULARY.structures, file="another-name.xls")
 
-    assert policy_digest.digest_inputs(VOCABULARY).vocabulary == recorded
+    assert policy_digest.digest_inputs(vocabulary=VOCABULARY).vocabulary == recorded
     assert policy_digest.policy_digest(
         basic, vocabulary=renamed
     ) == policy_digest.policy_digest(basic, vocabulary=VOCABULARY)
 
 
 def test_the_parameters_of_generated_values_are_those_of_each_generated_value():
-    generated = policy_digest.digest_inputs().generated_values
+    generated = policy_digest.digest_inputs(vocabulary=None).generated_values
 
     assert set(generated) == set(GENERATED_VALUE_CHANGES)
     for name, (module, _) in GENERATED_VALUE_CHANGES.items():
@@ -532,11 +542,11 @@ def test_the_parameters_of_generated_values_are_those_of_each_generated_value():
 
 @pytest.mark.parametrize("name", list(GENERATED_VALUE_CHANGES))
 def test_any_parameter_of_generated_values_changes_the_digest(basic, monkeypatch, name):
-    before = policy_digest.policy_digest(basic)
+    before = policy_digest.policy_digest(basic, vocabulary=None)
     module, value = GENERATED_VALUE_CHANGES[name]
     monkeypatch.setattr(module, name.rpartition(".")[2], value)
 
-    assert policy_digest.policy_digest(basic) != before
+    assert policy_digest.policy_digest(basic, vocabulary=None) != before
 
 
 @pytest.mark.parametrize(
@@ -577,8 +587,8 @@ def _third_party_imports(path):
     return tops - set(sys.stdlib_module_names) - {"__future__", "pymedphys"}
 
 
-def test_the_environment_is_python_and_every_library_that_the_engine_imports():
-    environment = policy_digest.digest_inputs().environment
+def test_the_environment_is_python_and_every_library_that_the_engine_imports_in_order():
+    environment = policy_digest.environment()
     imported = set().union(
         *(
             _third_party_imports(path)
@@ -588,33 +598,34 @@ def test_the_environment_is_python_and_every_library_that_the_engine_imports():
     )
 
     assert {"pydicom", "tomlkit"} <= imported
-    assert environment == {
-        "platform.python_implementation": platform.python_implementation(),
-        "platform.python_version": platform.python_version(),
-        **{
-            f"{name}.__version__": importlib.import_module(name).__version__
-            for name in imported
-        },
-    }
+    assert list(environment.items()) == [
+        ("platform.python_implementation", platform.python_implementation()),
+        ("platform.python_version", platform.python_version()),
+        *(
+            (f"{name}.__version__", importlib.import_module(name).__version__)
+            for name in sorted(imported)
+        ),
+    ]
+    assert policy_digest.digest_inputs(vocabulary=None).environment == environment
 
 
 @pytest.mark.parametrize("name", list(ENVIRONMENT_CHANGES))
 def test_the_python_implementation_and_version_and_each_library_version_change_the_digest(
     basic, monkeypatch, name
 ):
-    before = policy_digest.policy_digest(basic)
+    before = policy_digest.policy_digest(basic, vocabulary=None)
     module, attribute, value = ENVIRONMENT_CHANGES[name]
     if module is platform:
         monkeypatch.setattr(platform, attribute, lambda: value)
     else:
         monkeypatch.setattr(importlib.import_module(module), attribute, value)
 
-    assert policy_digest.digest_inputs().environment[name] == value
-    assert policy_digest.policy_digest(basic) != before
+    assert policy_digest.digest_inputs(vocabulary=None).environment[name] == value
+    assert policy_digest.policy_digest(basic, vocabulary=None) != before
 
 
 def test_every_module_rule_file_and_table_of_the_engine_is_covered():
-    files = policy_digest.digest_inputs().files
+    files = policy_digest.digest_inputs(vocabulary=None).files
     package = importlib.import_module("pymedphys._dicom.deidentify")
     modules = {
         f"{module.name}.py"
@@ -653,11 +664,11 @@ def test_changing_adding_or_removing_an_engine_file_changes_the_digest(
 ):
     engine = _engine(tmp_path, ENGINE_FILES)
     monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
-    before = policy_digest.policy_digest(basic)
+    before = policy_digest.policy_digest(basic, vocabulary=None)
     change(engine)
     read_again()
 
-    assert policy_digest.policy_digest(basic) != before
+    assert policy_digest.policy_digest(basic, vocabulary=None) != before
 
 
 def test_every_file_of_the_engine_other_than_caches_has_a_covered_type():
@@ -676,7 +687,7 @@ def test_every_file_of_the_engine_other_than_caches_has_a_covered_type():
     )
 
     assert not uncovered, "the policy digest does not cover these types of file"
-    assert set(policy_digest.digest_inputs().files) == expected
+    assert set(policy_digest.digest_inputs(vocabulary=None).files) == expected
 
 
 def test_every_file_is_covered_when_the_engine_is_installed_below_a_hidden_directory(
@@ -688,7 +699,7 @@ def test_every_file_is_covered_when_the_engine_is_installed_below_a_hidden_direc
     )
     monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
 
-    assert set(policy_digest.digest_inputs().files) == set(ENGINE_FILES)
+    assert set(policy_digest.digest_inputs(vocabulary=None).files) == set(ENGINE_FILES)
 
 
 @pytest.mark.parametrize(
@@ -716,8 +727,8 @@ def test_the_digest_is_refused_without_the_engine_files(
     monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
 
     for compute in (
-        policy_digest.digest_inputs,
-        lambda: policy_digest.policy_digest(basic),
+        lambda: policy_digest.digest_inputs(vocabulary=None),
+        lambda: policy_digest.policy_digest(basic, vocabulary=None),
     ):
         with pytest.raises(policy_digest.PolicyDigestError, match=problem) as raised:
             compute()
@@ -741,12 +752,12 @@ def test_the_engine_files_and_tables_are_read_once_per_process(
     tables = _copied_tables(tmp_path)
     monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
     monkeypatch.setattr(standard, "STANDARD_DIR", tables)
-    first = policy_digest.policy_digest(basic)
+    first = policy_digest.policy_digest(basic, vocabulary=None)
     edit(engine, tables)
 
-    assert policy_digest.policy_digest(basic) == first
+    assert policy_digest.policy_digest(basic, vocabulary=None) == first
     read_again()
-    assert policy_digest.policy_digest(basic) != first
+    assert policy_digest.policy_digest(basic, vocabulary=None) != first
 
 
 def test_files_with_crlf_and_lf_line_endings_give_the_same_digest(
@@ -756,7 +767,7 @@ def test_files_with_crlf_and_lf_line_endings_give_the_same_digest(
     for newline in (b"\n", b"\r\n"):
         engine = _engine(tmp_path / str(len(newline)), ENGINE_FILES, newline)
         monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
-        digests.append(policy_digest.policy_digest(basic))
+        digests.append(policy_digest.policy_digest(basic, vocabulary=None))
 
     assert (tmp_path / "2" / "policy.py").read_bytes().count(b"\r\n") == 5
     assert digests[0] == digests[1]
@@ -767,7 +778,7 @@ def test_caches_and_files_of_other_types_are_not_covered(
 ):
     engine = _engine(tmp_path, ENGINE_FILES)
     monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
-    before = policy_digest.policy_digest(basic)
+    before = policy_digest.policy_digest(basic, vocabulary=None)
     _engine(
         engine,
         {
@@ -780,8 +791,8 @@ def test_caches_and_files_of_other_types_are_not_covered(
     )
     read_again()
 
-    assert set(policy_digest.digest_inputs().files) == set(ENGINE_FILES)
-    assert policy_digest.policy_digest(basic) == before
+    assert set(policy_digest.digest_inputs(vocabulary=None).files) == set(ENGINE_FILES)
+    assert policy_digest.policy_digest(basic, vocabulary=None) == before
 
 
 @pytest.mark.parametrize(
@@ -819,14 +830,22 @@ def test_a_vocabulary_whose_entries_cannot_be_encoded_is_rejected_without_quotin
     vocabulary = _vocabulary(_structure("secret\ud800", "Heart"))
 
     with pytest.raises(ValueError, match="UTF-8") as raised:
-        policy_digest.digest_inputs(vocabulary)
+        policy_digest.digest_inputs(vocabulary=vocabulary)
 
     assert "secret" not in str(raised.value)
 
 
+@pytest.mark.parametrize("vocabulary", [(), (None,)], ids=["left-out", "by-position"])
+def test_every_call_states_the_vocabulary_by_name(basic, vocabulary):
+    with pytest.raises(TypeError, match="vocabulary|positional"):
+        policy_digest.policy_digest(basic, *vocabulary)
+    with pytest.raises(TypeError, match="vocabulary|positional"):
+        policy_digest.digest_inputs(*vocabulary)
+
+
 def test_only_a_policy_and_a_tg263_vocabulary_are_accepted(basic):
     with pytest.raises(TypeError, match="policy must be"):
-        policy_digest.policy_digest({"preset": "basic"})
+        policy_digest.policy_digest({"preset": "basic"}, vocabulary=None)
     with pytest.raises(TypeError, match="policy must be"):
         policy_digest.canonical_bytes({"preset": "basic"}, SYNTHETIC_INPUTS)
     with pytest.raises(TypeError, match="vocabulary must be"):

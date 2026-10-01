@@ -166,7 +166,7 @@ def _marker_strings(found):
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
 def test_each_preset_adds_exactly_its_markers(preset):
     composed = policy.compose_policy(preset)
-    digest = policy_digest.policy_digest(composed)
+    digest = policy_digest.policy_digest(composed, vocabulary=None)
     claim, code_values, temporal = EXPECTED[preset]
     version = _version.__version__
 
@@ -301,7 +301,7 @@ def test_patient_identity_removed_is_never_no(preset):
 
 def test_the_second_method_value_is_exactly_the_policy_digest():
     composed = policy.compose_policy("basic")
-    digest = policy_digest.policy_digest(composed)
+    digest = policy_digest.policy_digest(composed, vocabulary=None)
 
     found = markers.markers_for(composed, digest, satisfied=())
 

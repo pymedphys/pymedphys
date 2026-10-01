@@ -19,7 +19,8 @@ package does not yet de-identify anything; so far it holds the rule tables
 generated from the DICOM standard and the code that loads them, and the
 parts that later stages will use: the keys, keyed replacement UIDs, UID and
 temporal attribute roles, patient pseudonyms, subject profiles, date
-offsets, the actions of Table E.1-1 under selected options, the presets and
+offsets, the actions of Table E.1-1 under selected options, the resolution
+of its compound actions from the attribute Types of PS3.3, the presets and
 the validated policies composed from them, the policy digest that identifies
 a policy and everything the engine could apply with it, the markers that
 record in each de-identified instance how it was de-identified, the checks

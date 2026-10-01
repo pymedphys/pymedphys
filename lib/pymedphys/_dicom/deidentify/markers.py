@@ -323,9 +323,8 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
     >>> from pymedphys._dicom.deidentify.policy import compose_policy
     >>> from pymedphys._dicom.deidentify.policy_digest import policy_digest
     >>> policy = compose_policy("basic-clean-descriptors")
-    >>> found = markers_for(
-    ...     policy, policy_digest(policy), satisfied=["clean_descriptors"]
-    ... )
+    >>> digest = policy_digest(policy, vocabulary=None)
+    >>> found = markers_for(policy, digest, satisfied=["clean_descriptors"])
     >>> found.method[0].split("; ")[1:]
     ['PS3.15 2026d', 'basic-clean-descriptors']
     >>> [(code.code_value, code.code_meaning) for code in found.method_codes]
