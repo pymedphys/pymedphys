@@ -106,6 +106,7 @@ The engine will live in `lib/pymedphys/_dicom/deidentify/`, with its public API 
    - A first pass builds a graph of instances and references. It reports dangling references, frame of reference mismatches, and inconsistent hierarchy using opaque identifiers, before anything is written.
    - After writing, the engine verifies one-to-one UID mappings; consistent references; consistent values for each entity above the instance level, such as Patient ID, Study ID, and Series Number (E.1.1 step 2, Note 3); absence of original UIDs where replacement or removal is required; and unchanged values where retention is required.
    - It searches each whole output file for source values that had to be removed or replaced, including the preamble, trailing padding, OB and UN values, and bitstream metadata.
+   - It reads each written file's structure independently of the library that wrote it, so that anything verification finds is located by element path, or in the preamble, the File Meta Information, Data Set Trailing Padding, or the bytes after the last readable element.
 9. **Risk detection and quality control.** Indicators for burned-in text and reconstructable faces (D-015), a restricted QC pack for human review (D-016), and statistical disclosure control (D-017).
 10. **Reports.**
     - Each run writes a machine-readable and human-readable release report, which contains no source values or original paths (D-016).
