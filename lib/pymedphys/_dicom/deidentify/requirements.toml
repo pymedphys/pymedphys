@@ -833,9 +833,26 @@ id = "MIDI-BP-18"
 text = '''
 Document the de-identification process in detail, including the release of PS3.15 and the Options used, and publish the documentation, or a reference to it, with the collection.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
-decisions = ["D-011", "D-012", "D-024", "D-029"]
+decisions = ["D-011", "D-012", "D-016", "D-024", "D-029"]
+implementation = [
+  "_dicom/deidentify/method_digest.py",
+  "_dicom/deidentify/release_report.py",
+  "_dicom/deidentify/runtime.py",
+]
+tests = [
+  "tests/dicom/test_deidentify_release_report.py::test_the_policy_section_names_the_edition_preset_and_options",
+  "tests/dicom/test_deidentify_release_report.py::test_the_document_has_the_sections_and_fields_the_design_lists",
+  "tests/dicom/test_deidentify_release_report.py::test_the_method_section_holds_the_digest_and_its_components",
+  "tests/dicom/test_deidentify_release_report.py::test_the_runtime_section_holds_the_values_of_software_versions",
+  "tests/dicom/test_deidentify_release_report.py::test_the_report_holds_no_path_of_the_installed_engine",
+  "tests/dicom/test_deidentify_release_report.py::test_the_report_holds_the_vocabulary_digest_not_its_entries",
+  "tests/dicom/test_deidentify_release_report.py::test_a_report_with_a_field_that_could_hold_a_value_or_path_is_refused",
+  "tests/dicom/test_deidentify_method_digest.py::test_the_components_of_a_small_synthetic_input_are_digests_of_its_members",
+  "tests/dicom/test_deidentify_method_digest.py::test_the_components_show_which_input_changed_the_digest",
+  "tests/dicom/test_deidentify_runtime.py::test_each_value_is_read_from_its_source_at_each_call",
+]
 note = '''
-Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name, and each instance's De-identification Method names PyMedPhys and the preset and gives the method digest (D-012, D-024). The release report also records the runtime environment that ran (D-029).
+Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name, and each instance's De-identification Method names PyMedPhys and the preset and gives the method digest (D-012, D-024). The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016). Remaining: writing the report for each run, with its sections on the run's instances and a human-readable form, and publishing it with the collection (M4); and the conformance statement (M6).
 '''
