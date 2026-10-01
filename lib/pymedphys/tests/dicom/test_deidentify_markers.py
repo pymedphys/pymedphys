@@ -28,6 +28,7 @@ import dataclasses
 import io
 import itertools
 import platform
+import struct
 import warnings
 
 from pymedphys._imports import pydicom, pytest, tomlkit
@@ -985,6 +986,139 @@ def test_an_existing_marker_that_is_not_read_as_its_vr_is_refused_not_dropped(
         markers.apply_markers(source, found)
 
     assert "SYNTHETIC" not in str(raised.value)
+
+
+@pytest.fixture(name="un_kept")
+def fixture_un_kept(monkeypatch):
+    """Keep the VR UN of an attribute that pydicom's dictionary knows.
+
+    pydicom otherwise gives such an element its dictionary VR when it is
+    added or read, and decodes its value. The setting is restored afterwards.
+    """
+    monkeypatch.setattr(pydicom.config, "replace_un_with_known_vr", False)
+
+
+ITEM_TAG = 0xFFFEE000
+
+
+def _implicit(tag, value):
+    """Return an element or item of defined length in Implicit VR Little Endian.
+
+    Its tag's group and element, then the length of ``value``, each little
+    endian, then ``value`` (PS3.5 Sections 7.1.3 and 7.5).
+    """
+    return struct.pack("<HHI", tag >> 16, tag & 0xFFFF, len(value)) + value
+
+
+# A Purpose of Reference Code Sequence of one synthetic item, as an element of
+# VR UN holds it: in Implicit VR Little Endian (PS3.5 Section 6.2.2), with
+# each text value padded with a space to an even length.
+UNDECODED_PURPOSE = _implicit(
+    ITEM_TAG,
+    _implicit(0x00080100, b"109104")
+    + _implicit(0x00080102, b"DCM ")
+    + _implicit(0x00080104, b"SYNTHETIC PURPOSE "),
+)
+# Each attribute that the markers compare in an item already present, after
+# the sequences that hold it, outermost first.
+COMPARED_IN_ITEMS = {
+    "equipment-manufacturer": ("ContributingEquipmentSequence", "Manufacturer"),
+    "equipment-software-versions": (
+        "ContributingEquipmentSequence",
+        "SoftwareVersions",
+    ),
+    "equipment-purpose": (
+        "ContributingEquipmentSequence",
+        "PurposeOfReferenceCodeSequence",
+    ),
+    "purpose-code-value": (
+        "ContributingEquipmentSequence",
+        "PurposeOfReferenceCodeSequence",
+        "CodeValue",
+    ),
+    "purpose-coding-scheme": (
+        "ContributingEquipmentSequence",
+        "PurposeOfReferenceCodeSequence",
+        "CodingSchemeDesignator",
+    ),
+    "method-code-value": ("DeidentificationMethodCodeSequence", "CodeValue"),
+    "method-coding-scheme": (
+        "DeidentificationMethodCodeSequence",
+        "CodingSchemeDesignator",
+    ),
+    "method-coding-scheme-version": (
+        "DeidentificationMethodCodeSequence",
+        "CodingSchemeVersion",
+    ),
+}
+
+
+def _holder(dataset, sequences):
+    """Return the first item of the innermost of nested sequences.
+
+    Each sequence, named by its keyword, is taken from the first item of the
+    one before it, and the data set itself where there are none.
+    """
+    for sequence in sequences:
+        dataset = dataset[sequence].value[0]
+    return dataset
+
+
+def _nested(dataset, path):
+    """Return the element at a path of keywords, in each sequence's first item."""
+    *sequences, keyword = path
+    return _holder(dataset, sequences)[keyword]
+
+
+@pytest.mark.usefixtures("pydicom_behaviour", "un_kept")
+@pytest.mark.parametrize("read_back", [False, True], ids=["in-memory", "read-back"])
+@pytest.mark.parametrize(
+    "path", list(COMPARED_IN_ITEMS.values()), ids=list(COMPARED_IN_ITEMS)
+)
+def test_an_attribute_compared_in_an_existing_item_not_read_as_its_vr_is_refused(
+    monkeypatch, path, read_back
+):
+    source = _identifying_dataset()
+    source.DeidentificationMethodCodeSequence = [_coded("113100", version="01")]
+    source.ContributingEquipmentSequence = [
+        _equipment("Synthetic Vendor", ["SYNTHETIC 9.9"])
+    ]
+    *sequences, keyword = path
+    undecoded, decoded_value = (
+        (UNDECODED_PURPOSE, [_coded("109104", meaning="SYNTHETIC PURPOSE")])
+        if keyword == "PurposeOfReferenceCodeSequence"
+        else (b"SYNTHETIC ID", "SYNTHETIC ID")
+    )
+    _holder(source, sequences).add_new(pydicom.tag.Tag(keyword), "UN", undecoded)
+    found = _found()
+    if read_back:
+        # Written as UN in Explicit VR. Where pydicom replaces UN with the
+        # dictionary VR, as it does by default, it decodes the attribute and
+        # the markers are added.
+        with monkeypatch.context() as patch:
+            patch.setattr(pydicom.config, "replace_un_with_known_vr", True)
+            decoded = _nested(_written_and_read(source), path)
+            assert decoded.VR == pydicom.datadict.dictionary_VR(keyword)
+            assert decoded.value == decoded_value
+            markers.apply_markers(_written_and_read(source), found)
+        source = _written_and_read(source)
+    assert _nested(source, path).VR == "UN"
+
+    def never(*args):
+        raise AssertionError("an attribute was written")
+
+    monkeypatch.setattr(markers, "_set", never)
+
+    with pytest.raises(markers.MarkerError) as raised:
+        markers.apply_markers(source, found)
+
+    # The message names the attribute, then each sequence that holds it, from
+    # the innermost out.
+    message = str(raised.value)
+    tags = [str(pydicom.tag.Tag(each)) for each in reversed(path)]
+    assert all(tag in message for tag in tags)
+    assert sorted(tags, key=message.index) == tags
+    assert "synthetic" not in message.lower()
 
 
 def test_an_empty_existing_marker_of_another_vr_is_replaced():

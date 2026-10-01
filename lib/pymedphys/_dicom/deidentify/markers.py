@@ -509,11 +509,13 @@ def _int_tag(tag: str) -> int:
     return int(tag[1:5] + tag[6:10], 16)
 
 
-def _existing(dataset: pydicom.Dataset, tag: str) -> list:
-    """Return an attribute's values or items, to be kept before the markers'.
+def _existing(dataset: pydicom.Dataset, tag: str, within: Sequence[str] = ()) -> list:
+    """Return an attribute's values or items, to be kept or compared.
 
     pydicom can give an attribute added as UN its dictionary VR while leaving
-    its value as bytes, so the values themselves are checked too.
+    its value as bytes, so the values themselves are checked too. ``within``
+    gives the sequences whose items hold the attribute, outermost first, so
+    that an error can say where it is.
     """
     element = dataset.get(_int_tag(tag))
     if element is None or element.VM == 0:
@@ -524,31 +526,27 @@ def _existing(dataset: pydicom.Dataset, tag: str) -> list:
     kept = list(value) if isinstance(value, MutableSequence) else [value]
     kind = pydicom.Dataset if attribute.vr == "SQ" else str
     if element.VR != attribute.vr or not all(isinstance(v, kind) for v in kept):
+        where = "".join(
+            f" in an item of {_dictionary()[outer].name} {outer}"
+            for outer in reversed(within)
+        )
         raise MarkerError(
-            f"{attribute.name} {tag} is not read as VR {attribute.vr}, "
+            f"{attribute.name} {tag}{where} is not read as VR {attribute.vr}, "
             "so its values cannot be kept or compared"
         )
     return kept
 
 
-def _values_of(item: pydicom.Dataset, tag: str) -> tuple:
-    """Return an attribute's values or items in an item, to compare them."""
-    element = item.get(_int_tag(tag))
-    if element is None or element.VM == 0:
-        return ()
-    value = element.value
-    return tuple(value) if isinstance(value, MutableSequence) else (value,)
-
-
-def _code_key(item: pydicom.Dataset) -> tuple:
+def _code_key(item: pydicom.Dataset, within: Sequence[str]) -> tuple:
     """Return what makes a code item the same code as another.
 
     Its Code Value and Coding Scheme Designator, and its Coding Scheme
     Version, which two items share only where neither has one or both have
-    the same.
+    the same. ``within`` gives the sequences that hold the item, outermost
+    first.
     """
     return tuple(
-        _values_of(item, tag)
+        _existing(item, tag, within)
         for tag in (_CODE_VALUE, _CODING_SCHEME_DESIGNATOR, _CODING_SCHEME_VERSION)
     )
 
@@ -559,13 +557,18 @@ def _equipment_key(item: pydicom.Dataset) -> tuple:
     Its Manufacturer, its Software Versions in order, and the Code Value and
     Coding Scheme Designator of each purpose of reference.
     """
+    within = (_CONTRIBUTING_EQUIPMENT,)
+    in_purpose = (*within, _PURPOSE_OF_REFERENCE)
     purposes = tuple(
-        (_values_of(code, _CODE_VALUE), _values_of(code, _CODING_SCHEME_DESIGNATOR))
-        for code in _values_of(item, _PURPOSE_OF_REFERENCE)
+        (
+            _existing(code, _CODE_VALUE, in_purpose),
+            _existing(code, _CODING_SCHEME_DESIGNATOR, in_purpose),
+        )
+        for code in _existing(item, _PURPOSE_OF_REFERENCE, within)
     )
     return (
-        _values_of(item, _MANUFACTURER),
-        _values_of(item, _SOFTWARE_VERSIONS),
+        _existing(item, _MANUFACTURER, within),
+        _existing(item, _SOFTWARE_VERSIONS, within),
         purposes,
     )
 
@@ -658,12 +661,14 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
         length, which pydicom reads with the padding as too long, as
         De-identification Method would where a value as long as LO allows
         follows a pair already present; if an attribute whose values are
-        kept or compared has values but another VR than the pinned
-        dictionary gives it, such as UN, so that keeping them could lose or
-        misread them; or if Longitudinal Temporal Information Modified
-        already holds something other than one of :data:`TEMPORAL_VALUES`,
-        so that the stricter value cannot be told. The message does not
-        quote the values.
+        kept or compared, including one compared in an item already
+        present, has values but another VR than the pinned dictionary gives
+        it, such as UN, so that keeping them could lose or misread them, in
+        which case the message names it and each sequence that holds it; or
+        if Longitudinal Temporal Information Modified already holds
+        something other than one of :data:`TEMPORAL_VALUES`, so that the
+        stricter value cannot be told. The message does not quote the
+        values.
     """
     if not isinstance(dataset, pydicom.Dataset):
         raise TypeError("dataset must be a pydicom Dataset")
@@ -674,6 +679,11 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
     method = _existing(marked, _DEIDENTIFICATION_METHOD)
     method_codes = _existing(marked, _DEIDENTIFICATION_METHOD_CODES)
     equipment_items = _existing(marked, _CONTRIBUTING_EQUIPMENT)
+    # The values compared in the items already present are checked before
+    # anything is written.
+    in_codes = (_DEIDENTIFICATION_METHOD_CODES,)
+    present_codes = [_code_key(item, in_codes) for item in method_codes]
+    present_equipment = [_equipment_key(item) for item in equipment_items]
     temporal = _stricter_temporal(marked, markers.temporal_information_modified)
 
     pair = list(markers.method)
@@ -688,18 +698,15 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
             "the de-identification markers cannot be written: "
             f"{attribute.name} {_DEIDENTIFICATION_METHOD} {problem}"
         )
-    present_codes = [_code_key(item) for item in method_codes]
     for item in map(_code_item, markers.method_codes):
-        if _code_key(item) not in present_codes:
+        if _code_key(item, in_codes) not in present_codes:
             method_codes.append(item)
-            present_codes.append(_code_key(item))
+            present_codes.append(_code_key(item, in_codes))
     equipment = pydicom.Dataset()
     _set(equipment, _MANUFACTURER, [markers.manufacturer])
     _set(equipment, _SOFTWARE_VERSIONS, list(markers.software_versions))
     _set(equipment, _PURPOSE_OF_REFERENCE, [_code_item(markers.purpose_of_reference)])
-    if all(
-        _equipment_key(item) != _equipment_key(equipment) for item in equipment_items
-    ):
+    if _equipment_key(equipment) not in present_equipment:
         equipment_items.append(equipment)
 
     _set(marked, _PATIENT_IDENTITY_REMOVED, [markers.patient_identity_removed])
