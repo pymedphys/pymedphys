@@ -22,6 +22,7 @@ from pymedphys._dicom.deidentify import compound_actions, dummy_values, iods, st
 
 resolve = compound_actions.resolve
 resolve_in_iod = compound_actions.resolve_in_iod
+resolve_plain_in_iod = compound_actions.resolve_plain_in_iod
 strictest_type = compound_actions.strictest_type
 
 # The action each compound action resolves to for each Type, worked by hand
@@ -52,6 +53,9 @@ SECRET = "Doe^Jane"
 INSTITUTION_NAME = "(0008,0080)"
 PATIENT_ID = "(0010,0020)"
 REFERENCED_STUDY_SEQUENCE = "(0008,1110)"
+VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"
+PERSON_IDENTIFICATION_CODE_SEQUENCE = "(0040,1101)"
+RT_ACCESSORY_HOLDER_SLOT_ID = "(300A,0611)"
 
 
 @pytest.fixture(name="tables", scope="module")
@@ -414,6 +418,182 @@ def test_a_plain_action_is_rejected(tables, action):
         resolve_in_iod(tables.iods["CT Image"], PATIENT_ID, (), action)
 
 
+def test_the_plain_actions_are_those_of_table_e1_1a():
+    assert compound_actions.PLAIN_ACTIONS == {"C", "D", "K", "U", "X", "Z"}
+    assert (
+        compound_actions.PLAIN_ACTIONS
+        == standard.ACTION_CODES - compound_actions.COMPOUND_ACTIONS
+    )
+
+
+def test_a_plain_d_on_an_attribute_the_iod_does_not_define_there_removes_it(tables):
+    ct = tables.iods["CT Image"]
+    rt_plan = tables.iods["RT Plan"]
+
+    # Note 13 after Table E.1-1a: Verifying Observer Sequence "is only
+    # defined in structured report IODs and hence is described in Table
+    # E.1-1 as D since it is Type 1C; if encountered in an image instance, it
+    # should simply be removed (treated as X)".
+    assert ct.lookup(VERIFYING_OBSERVER_SEQUENCE) == ()
+    assert resolve_plain_in_iod(ct, VERIFYING_OBSERVER_SEQUENCE, (), "D") == "X"
+    # Person Identification Code Sequence is not defined at the top level of
+    # the RT Plan IOD, nor within Referenced Image Sequence of a CT image.
+    assert rt_plan.lookup(PERSON_IDENTIFICATION_CODE_SEQUENCE) == ()
+    assert (
+        resolve_plain_in_iod(rt_plan, PERSON_IDENTIFICATION_CODE_SEQUENCE, (), "D")
+        == "X"
+    )
+    assert resolve_plain_in_iod(ct, PATIENT_ID, ("(0008,1140)",), "D") == "X"
+
+
+@pytest.mark.parametrize(
+    "iod, tag, path, attribute_type",
+    [
+        # Verifying Observer Sequence is Type 1C in the SR Document General
+        # Module.
+        ("Comprehensive SR", VERIFYING_OBSERVER_SEQUENCE, (), "1"),
+        # Person Identification Code Sequence is Type 1 in Referring
+        # Physician Identification Sequence, and Type 2C in Asserter
+        # Identification Sequence within RT Assertions Sequence.
+        ("RT Plan", PERSON_IDENTIFICATION_CODE_SEQUENCE, ("(0008,0096)",), "1"),
+        (
+            "RT Plan",
+            PERSON_IDENTIFICATION_CODE_SEQUENCE,
+            ("(0044,0110)", "(0044,0103)"),
+            "2",
+        ),
+    ],
+)
+def test_a_plain_d_on_an_attribute_the_iod_defines_there_stays_d(
+    tables, iod, tag, path, attribute_type
+):
+    assert strictest_type(tables.iods[iod], tag, path) == attribute_type
+    assert resolve_plain_in_iod(tables.iods[iod], tag, path, "D") == "D"
+
+
+def test_a_plain_d_on_a_type_3_attribute_stays_d(tmp_path):
+    # Only an attribute that the IOD does not define there is removed; one
+    # that it defines as Type 3 keeps the table's D.
+    iod = _synthetic_iod(tmp_path, ("M", "3"))
+
+    assert resolve_plain_in_iod(iod, INSTITUTION_NAME, (), "D") == "D"
+
+
+def test_a_plain_z_on_an_attribute_the_iod_does_not_define_there_empties_it(tables):
+    ct = tables.iods["CT Image"]
+
+    assert resolve_plain_in_iod(ct, VERIFYING_OBSERVER_SEQUENCE, (), "Z") == "Z"
+    assert ct.lookup(RT_ACCESSORY_HOLDER_SLOT_ID) == ()
+    assert resolve_plain_in_iod(ct, RT_ACCESSORY_HOLDER_SLOT_ID, (), "Z") == "Z"
+
+
+@pytest.mark.parametrize("attribute_type", ["1", "1C"])
+def test_a_plain_z_on_a_type_1_attribute_writes_the_dummy_value(
+    tmp_path, attribute_type
+):
+    # Table E.1-1a lets Z write "a non-zero length value that may be a dummy
+    # value and consistent with the VR", which D writes.
+    iod = _synthetic_iod(tmp_path, ("M", "3"), ("C", attribute_type))
+    path = ("(3006,0020)", "(3006,004D)")
+    (tmp_path / "nested").mkdir()
+    nested = _synthetic_iod(tmp_path / "nested", ("U", attribute_type), path=path)
+
+    assert resolve_plain_in_iod(iod, INSTITUTION_NAME, (), "Z") == "D"
+    assert resolve_plain_in_iod(nested, INSTITUTION_NAME, path, "Z") == "D"
+
+
+@pytest.mark.parametrize(
+    "iod, tag, path, attribute_type",
+    [
+        # Patient's Name is Type 2, and Consulting Physician's Name Type 3,
+        # at the top level of a CT image; RT Accessory Holder Slot ID is
+        # Type 2C in Patient Treatment Preparation Sequence > Patient
+        # Treatment Preparation Procedure Sequence > Patient Treatment
+        # Preparation Device Sequence.
+        ("CT Image", "(0010,0010)", (), "2"),
+        ("CT Image", "(0008,009C)", (), "3"),
+        (
+            "CT Image",
+            RT_ACCESSORY_HOLDER_SLOT_ID,
+            ("(300A,079F)", "(300A,0790)", "(300A,078F)"),
+            "2",
+        ),
+    ],
+)
+def test_a_plain_z_on_a_type_2_or_3_attribute_stays_z(
+    tables, iod, tag, path, attribute_type
+):
+    assert strictest_type(tables.iods[iod], tag, path) == attribute_type
+    assert resolve_plain_in_iod(tables.iods[iod], tag, path, "Z") == "Z"
+
+
+def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated_iods(
+    tables,
+):
+    # Table E.1-1 gives RT Accessory Holder Slot ID Z, and it is Type 1 in RT
+    # Accessory Holder Slot Sequence within RT Accessory Holder Definition
+    # Sequence of these IODs. No IOD of the first supported release has such
+    # a place. A new edition that changes where this happens fails here.
+    z = {
+        attribute.tag
+        for attribute in standard.load_table_e1_1().attributes
+        if "Z" in (attribute.basic_profile, *attribute.options.values())
+    }
+    dummy = {
+        (name, definition.path, definition.tag)
+        for name, iod in tables.iods.items()
+        for definition in iod.definitions
+        if definition.tag in z
+        and resolve_plain_in_iod(iod, definition.tag, definition.path, "Z") == "D"
+    }
+
+    path = ("(300A,0614)", "(300A,0610)")
+    assert dummy == {
+        (name, path, RT_ACCESSORY_HOLDER_SLOT_ID)
+        for name in (
+            "C-Arm Photon-Electron Radiation",
+            "C-Arm Photon-Electron Radiation Record",
+            "Robotic-Arm Radiation",
+            "Robotic-Arm Radiation Record",
+            "RT Patient Position Acquisition Instruction",
+        )
+    }
+    assert not set(FIRST_RELEASE_IODS) & {name for name, _, _ in dummy}
+
+
+@pytest.mark.parametrize("action", ["X", "K", "C", "U"])
+@pytest.mark.parametrize(
+    "iod, tag, path",
+    [
+        # Responsible Person is Type 2C in the Patient Module, and Series
+        # Description Type 1 in Source Series Information Sequence of the RT
+        # Structure Set IOD.
+        ("CT Image", "(0010,2297)", ()),
+        ("RT Structure Set", "(0008,103E)", ("(3006,004C)",)),
+        ("CT Image", "(0008,009C)", ()),
+        ("CT Image", VERIFYING_OBSERVER_SEQUENCE, ()),
+    ],
+)
+def test_the_other_plain_actions_are_unchanged(tables, action, iod, tag, path):
+    # A plain X on an attribute that the IOD requires is to write an empty
+    # or dummy value instead of removing it (D-020), which is pending review
+    # and not implemented yet, so X is unchanged even where the attribute is
+    # Type 1 or 2C.
+    assert resolve_plain_in_iod(tables.iods[iod], tag, path, action) == action
+
+
+@pytest.mark.parametrize("action", sorted(compound_actions.COMPOUND_ACTIONS))
+def test_resolve_plain_in_iod_rejects_a_compound_action(tables, action):
+    with pytest.raises(ValueError, match="not a plain action"):
+        resolve_plain_in_iod(tables.iods["CT Image"], PATIENT_ID, (), action)
+
+
+@pytest.mark.parametrize("action", ["x", "U*", "", " D", None, ("D",)])
+def test_resolve_plain_in_iod_rejects_an_unknown_action(tables, action):
+    with pytest.raises(ValueError, match="not a plain action"):
+        resolve_plain_in_iod(tables.iods["CT Image"], PATIENT_ID, (), action)
+
+
 @pytest.mark.parametrize(
     "action", ["X/U", "U*", "x/z", "X/Z/U", "D/Z", "", None, ("X", "Z")]
 )
@@ -451,6 +631,8 @@ def test_a_malformed_tag_is_rejected(tables, tag):
         strictest_type(ct, tag)
     with pytest.raises(ValueError, match="tag"):
         resolve_in_iod(ct, tag, (), "X/Z/D")
+    with pytest.raises(ValueError, match="tag"):
+        resolve_plain_in_iod(ct, tag, (), "D")
 
 
 @pytest.mark.parametrize(
@@ -472,6 +654,8 @@ def test_a_malformed_path_is_rejected(tables, path):
         strictest_type(ct, PATIENT_ID, path)
     with pytest.raises(ValueError, match="path"):
         resolve_in_iod(ct, PATIENT_ID, path, "Z/D")
+    with pytest.raises(ValueError, match="path"):
+        resolve_plain_in_iod(ct, PATIENT_ID, path, "Z")
 
 
 def test_a_path_may_be_any_sequence_of_tags(tables):
@@ -493,6 +677,9 @@ def test_a_path_may_be_any_sequence_of_tags(tables):
         lambda iod: resolve_in_iod(iod, SECRET, (), "X/Z/D"),
         lambda iod: resolve_in_iod(iod, PATIENT_ID, (SECRET,), "X/Z/D"),
         lambda iod: resolve_in_iod(iod, PATIENT_ID, (), SECRET),
+        lambda iod: resolve_plain_in_iod(iod, SECRET, (), "D"),
+        lambda iod: resolve_plain_in_iod(iod, PATIENT_ID, (SECRET,), "Z"),
+        lambda iod: resolve_plain_in_iod(iod, PATIENT_ID, (), SECRET),
     ],
 )
 def test_messages_repeat_no_value(tables, call):
