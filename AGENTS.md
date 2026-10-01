@@ -327,7 +327,7 @@ The project uses uv with optional dependency groups:
 
 4. **Anthropic Integration**: The experimental Mosaiq chat app and its SQL agent (`_ai/`) call Anthropic's API and need an API key. Their dependencies are in the opt-in `ai` extra, so import them only where they are used, and keep the rest of the GUI loadable without them.
 
-5. **Streamlit Apps**: Web-based tools for various tasks (anonymisation, metersetmap, dose analysis) in `_streamlit/apps/`. `pymedphys gui` serves them, and is meant to be run either on one computer or on a server that other computers connect to, for example within a radiotherapy department. Keep network serving supported; the GUI has no login, so document that anyone who can reach it can use its apps.
+5. **Streamlit Apps**: Web-based tools for various tasks (anonymisation, metersetmap, dose analysis) in `_streamlit/apps/`. `pymedphys gui` serves them, and is meant to be run either on one computer or on a server that other computers connect to, for example within a radiotherapy department. As the maintainers decided, it listens only on the loopback address unless `--address` is given. Keep network serving supported through that option; the GUI has no login, so document that anyone who can reach it can use its apps.
 
 6. **Database Connections**: Mosaiq integration requires appropriate database credentials and SQL Server access.
 

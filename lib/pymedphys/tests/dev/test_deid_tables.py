@@ -37,11 +37,18 @@ from pymedphys._dev.deid_tables import (
     chtml,
     generate,
     ps3_3,
+    ps3_4,
     ps3_6,
     ps3_16,
     sources,
 )
-from pymedphys._dicom.deidentify import codes, iods, standard, uid_registry
+from pymedphys._dicom.deidentify import (
+    codes,
+    iods,
+    sop_classes,
+    standard,
+    uid_registry,
+)
 from pymedphys.cli import define_parser
 
 E1_1_HEADER = (
@@ -434,6 +441,41 @@ def _table_6_1(header=TABLE_6_1_HEADER, rows=TABLE_6_1_ROWS):
 def _e1_1_table(header=E1_1_HEADER, rows=E1_1_ROWS):
     page = _page(_table("Table E.1-1. Fixture", header, rows))
     return chtml.select_table(chtml.extract_tables(page), "Table E.1-1")
+
+
+# Invented rows in the forms PS3.4 Table B.5-1 uses: two SOP Classes that share
+# an IOD, specializations that cite one section or several, and a name without
+# "Storage".
+TABLE_B_5_1_HEADER = (
+    "SOP Class Name",
+    "SOP Class UID",
+    "IOD Specification (defined in PS3.3)",
+    "Specialization",
+)
+TABLE_B_5_1_ROWS = (
+    ("Fixture Image Storage", "1.2.3.9.30.1", "Fixture Image IOD", ""),
+    (
+        "Fixture Image Storage - For Processing",
+        "1.2.3.9.30.1.1",
+        "Fixture Image IOD",
+        "B.5.1.99",
+    ),
+    (
+        "Enhanced Fixture Image Storage",
+        "1.2.3.9.30.2",
+        "Enhanced Fixture Image IOD",
+        "B.5.1.98 B.5.1.99",
+    ),
+    ("Fixture Report", "1.2.3.9.30.3", "Fixture Report IOD", ""),
+)
+TABLE_B_5_1 = _table(
+    "Table B.5-1. Standard SOP Classes", TABLE_B_5_1_HEADER, TABLE_B_5_1_ROWS
+)
+
+
+def _table_b_5_1(header=TABLE_B_5_1_HEADER, rows=TABLE_B_5_1_ROWS):
+    page = _page(_table("Table B.5-1. Fixture", header, rows))
+    return chtml.select_table(chtml.extract_tables(page), "Table B.5-1")
 
 
 def test_titles_attach_only_to_the_following_table():
@@ -1115,6 +1157,79 @@ def test_table_8_1_designators_may_share_a_uid():
     assert schemes[0].uid == schemes[1].uid
 
 
+def test_parse_table_b_5_1():
+    rows = ps3_4.parse_table_b_5_1(_table_b_5_1())
+
+    assert rows == tuple(sop_classes.StorageSOPClass(*row) for row in TABLE_B_5_1_ROWS)
+    assert rows[1].iod_name == rows[0].iod_name == "Fixture Image"
+
+
+def test_table_b_5_1_columns_are_mapped_by_header_text():
+    reordered = _table_b_5_1(
+        header=TABLE_B_5_1_HEADER[::-1],
+        rows=tuple(row[::-1] for row in TABLE_B_5_1_ROWS),
+    )
+
+    assert ps3_4.parse_table_b_5_1(reordered) == ps3_4.parse_table_b_5_1(_table_b_5_1())
+
+
+@pytest.mark.parametrize(
+    "header, message",
+    [
+        (
+            TABLE_B_5_1_HEADER[:3] + ("Specialisation",),
+            "unknown column 'Specialisation'",
+        ),
+        (TABLE_B_5_1_HEADER[:3], "missing column 'Specialization'"),
+    ],
+)
+def test_table_b_5_1_unknown_or_missing_columns_fail(header, message):
+    table = _table_b_5_1(
+        header=header, rows=tuple(row[: len(header)] for row in TABLE_B_5_1_ROWS)
+    )
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        ps3_4.parse_table_b_5_1(table)
+
+
+def test_table_b_5_1_without_rows_fails():
+    with pytest.raises(chtml.TableFormatError, match="has no rows"):
+        ps3_4.parse_table_b_5_1(_table_b_5_1(rows=()))
+
+
+@pytest.mark.parametrize(
+    "column, value, message",
+    [
+        (0, "", "row 1 has a name"),
+        (1, "1.02", "row 1 has a UID"),
+        (2, "Fixture Image", "row 1 has an IOD"),
+        (2, "IOD", "row 1 has an IOD"),
+        (3, "5.1.99", "row 1 has a specialization"),
+        (3, "B.5.1.98, B.5.1.99", "row 1 has a specialization"),
+    ],
+)
+def test_table_b_5_1_invalid_values_fail(column, value, message):
+    row = list(TABLE_B_5_1_ROWS[0])
+    row[column] = value
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        ps3_4.parse_table_b_5_1(_table_b_5_1(rows=(tuple(row),) + TABLE_B_5_1_ROWS[1:]))
+
+
+@pytest.mark.parametrize("column", [0, 1])
+def test_table_b_5_1_repeated_names_or_uids_fail(column):
+    repeated = list(TABLE_B_5_1_ROWS[1])
+    repeated[column] = TABLE_B_5_1_ROWS[0][column]
+
+    with pytest.raises(
+        chtml.TableFormatError,
+        match=re.escape(f"{TABLE_B_5_1_ROWS[0][column]} appears 2 times"),
+    ):
+        ps3_4.parse_table_b_5_1(
+            _table_b_5_1(rows=(TABLE_B_5_1_ROWS[0], tuple(repeated)))
+        )
+
+
 # PS3.3: an IOD modules table and the attribute tables it reaches. As in the
 # published tables, an Include row's text spans the name, tag, and Type
 # columns, or all four, a heading spans the whole table, and the IE column
@@ -1488,6 +1603,7 @@ FIXTURE_CHAPTER_A_PAGE = _page(*ANNEX_A_TABLES).encode("utf-8")
 FIXTURE_PS3_16_PAGES = {
     path: _ps3_16_page(labels).encode("utf-8") for path, labels in PS3_16_PAGES.items()
 }
+FIXTURE_B_5_PAGE = _page(TABLE_B_5_1).encode("utf-8")
 FIXTURE_PS3_3_PAGE = _page(*PS3_3_TABLES).encode("utf-8")
 # Each page at its path below output/, as NEMA publishes it.
 FIXTURE_PAGES = {
@@ -1496,6 +1612,7 @@ FIXTURE_PAGES = {
     "chtml/part06/chapter_6.html": FIXTURE_CHAPTER_6_PAGE,
     "chtml/part06/chapter_A.html": FIXTURE_CHAPTER_A_PAGE,
     **FIXTURE_PS3_16_PAGES,
+    "chtml/part04/sect_B.5.html": FIXTURE_B_5_PAGE,
     "html/part03.html": FIXTURE_PS3_3_PAGE,
 }
 FIXTURE_PIN = generate.Pin(
@@ -1662,6 +1779,32 @@ def test_generate_writes_the_ps3_16_tables(source_dir, tmp_path, label):
     assert document["content_sha256"] == standard.content_sha256(expected)
 
 
+def test_generate_writes_the_storage_sop_classes(source_dir, tmp_path):
+    output_dir = tmp_path / "tables"
+    digests = {pinned.path: pinned.sha256 for pinned in FIXTURE_PIN.sources}
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    document = json.loads((output_dir / "sop_classes.json").read_text(encoding="utf-8"))
+    rows = [
+        dict(zip(("name", "uid", "iod", "specialization"), row))
+        for row in TABLE_B_5_1_ROWS
+    ]
+    assert document["table"] == "PS3.4 Table B.5-1"
+    assert document["edition"] == "2099a"
+    assert document["acknowledgement"] == "DICOM PS3.4 2099a, \u00a9 NEMA"
+    assert document["sources"] == [
+        {
+            "path": "chtml/part04/sect_B.5.html",
+            "sha256": digests["chtml/part04/sect_B.5.html"],
+        }
+    ]
+    assert document["rows"] == rows
+    assert document["content_sha256"] == standard.content_sha256(rows)
+    assert sop_classes.STORAGE_SOP_CLASS_TABLE.table == document["table"]
+    assert sop_classes.STORAGE_SOP_CLASS_TABLE.file == "sop_classes.json"
+
+
 @pytest.mark.parametrize(
     "name, table, rows",
     [
@@ -1784,6 +1927,7 @@ def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp
         CURRENT_URL.replace("chtml/part15/chapter_E.html", path): page
         for path, page in FIXTURE_PS3_16_PAGES.items()
     }
+    b_5_current = CURRENT_URL.replace("part15/chapter_E.html", "part04/sect_B.5.html")
     ps3_3_current = CURRENT_URL.replace(
         "chtml/part15/chapter_E.html", "html/part03.html"
     )
@@ -1795,6 +1939,7 @@ def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp
             chapter_6_current: FIXTURE_CHAPTER_6_PAGE,
             chapter_a_current: FIXTURE_CHAPTER_A_PAGE,
             **ps3_16_current,
+            b_5_current: FIXTURE_B_5_PAGE,
             ps3_3_current: FIXTURE_PS3_3_PAGE,
         },
     )
@@ -1817,6 +1962,8 @@ def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp
             CURRENT_URL.replace("chtml/part15/chapter_E.html", path),
         )
     ] + [
+        EDITION_URL.replace("part15/chapter_E.html", "part04/sect_B.5.html"),
+        b_5_current,
         EDITION_URL.replace("chtml/part15/chapter_E.html", "html/part03.html"),
         ps3_3_current,
     ]
@@ -1827,6 +1974,7 @@ def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp
         "data_dictionary.json",
         "iod_modules.json",
         "module_attributes.json",
+        "sop_classes.json",
     ) + (
         tuple(spec.file for spec in uid_registry.UID_TABLES.values())
         + tuple(spec.file for spec in codes.CODE_TABLES.values())
