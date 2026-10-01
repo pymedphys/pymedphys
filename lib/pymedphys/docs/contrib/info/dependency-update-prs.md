@@ -94,7 +94,7 @@ update manually.
 Run these preparation commands from the repository root in Bash or PowerShell:
 
 ```shell
-uv sync --python 3.14 --locked --extra all --group dev
+uv sync --python 3.14 --locked
 uv run pymedphys dev propagate
 
 uv run pymedphys dev tests -m "not slow" --maxfail=3

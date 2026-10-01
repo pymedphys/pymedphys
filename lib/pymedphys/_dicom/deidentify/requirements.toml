@@ -569,7 +569,9 @@ tests = [
   "tests/dicom/test_deidentify_iods.py::test_an_attribute_can_have_a_different_type_in_each_module",
   "tests/dicom/test_deidentify_iods.py::test_types_depend_on_the_enclosing_sequence",
   "tests/dicom/test_deidentify_iods.py::test_macros_are_expanded_where_they_are_included",
+  "tests/dicom/test_deidentify_iods.py::test_functional_group_macros_are_expanded_in_each_functional_group_sequence",
   "tests/dicom/test_deidentify_sop_classes.py::test_the_first_supported_release_sop_classes_find_their_iods",
+  "tests/dicom/test_deidentify_sop_classes.py::test_every_storage_sop_class_finds_its_iod",
   "tests/dicom/test_deidentify_values.py::test_valid_values",
   "tests/dicom/test_deidentify_values.py::test_invalid_values",
   "tests/dicom/test_deidentify_values.py::test_values_are_checked_for_their_vm_and_vr",
@@ -583,9 +585,23 @@ tests = [
   "tests/dicom/test_deidentify_reference_graph.py::test_each_reference_resolves_to_its_instance",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_input_of_a_class_outside_table_b5_1_resolves",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_instance_not_in_the_collection_is_dangling",
+  "tests/dicom/test_deidentify_record_content.py::test_a_copy_in_another_encoding_has_the_same_content",
+  "tests/dicom/test_deidentify_record_content.py::test_any_change_to_the_data_set_changes_the_content",
+  "tests/dicom/test_deidentify_record_content.py::test_a_copy_whose_pixel_data_is_encoded_otherwise_conflicts",
+  "tests/dicom/test_deidentify_record_content.py::test_the_same_bytes_in_another_byte_order_conflict",
+  "tests/dicom/test_deidentify_record_content.py::test_a_private_number_in_another_vr_with_the_same_bytes_conflicts",
+  "tests/dicom/test_deidentify_record_content.py::test_an_element_read_as_unknown_conflicts_with_a_copy_that_has_its_vr",
+  "tests/dicom/test_deidentify_record_content.py::test_a_record_needs_a_data_set_read_in_full",
+  "tests/dicom/test_deidentify_reference_graph.py::test_copies_of_one_instance_are_duplicates",
+  "tests/dicom/test_deidentify_reference_graph.py::test_one_sop_instance_uid_with_different_content_conflicts",
+  "tests/dicom/test_deidentify_reference_graph.py::test_copies_in_implicit_and_explicit_vr_with_a_private_element_conflict",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_series_in_two_studies_is_inconsistent",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_study_with_two_patients_is_inconsistent",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_study_whose_instances_all_lack_a_patient_id_has_one_patient",
+  "tests/dicom/test_deidentify_reference_graph.py::test_the_instances_without_a_patient_id_are_grouped_as_one_patient",
 ]
 note = '''
-The Type of each attribute of the first supported release's IODs, and of every other composite IOD whose modules include no Functional Group Macros, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. Remaining: writing the dummy values that the resolved compound actions call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking the collection's hierarchy and frames of reference in the first pass, validating output against its IOD, and checking after writing that references are intact (M4).
+The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. It also reports instances that share a SOP Instance UID, as identical copies only where their decoded content, with each element's VR, is shown to be the same, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, each a Patient ID with its issuer, with the instances without a Patient ID as one more. Remaining: writing the dummy values that the resolved compound actions call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking frames of reference in the first pass, acting on its findings, validating output against its IOD, and checking after writing that references are intact (M4).
 '''
 
 [[requirement]]
@@ -649,7 +665,7 @@ tests = [
   "tests/dicom/test_deidentify_standard.py::test_each_table_is_generated_from_the_pinned_edition",
   "tests/dicom/test_deidentify_standard.py::test_an_altered_row_is_rejected",
   "tests/dicom/test_deidentify_standard.py::test_every_table_e1_1_attribute_is_in_the_data_dictionary",
-  "tests/dicom/test_deidentify_sop_classes.py::test_an_unsupported_or_unlisted_sop_class_has_no_iod",
+  "tests/dicom/test_deidentify_sop_classes.py::test_an_unlisted_sop_class_has_no_iod",
   "tests/dicom/test_deidentify_scope.py::test_a_standard_sop_class_of_another_iod_is_sequestered",
   "tests/dicom/test_deidentify_scope.py::test_a_sop_class_that_table_b_5_1_does_not_list_is_sequestered",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",

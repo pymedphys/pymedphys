@@ -41,7 +41,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           # user is a superset of mosaiq and provides the Streamlit GUI tests
           # with the app dependencies.
-          extras: 'dev tests user'
+          extras: 'tests'
 
       - name: Run unit tests
         id: tests
@@ -71,6 +71,71 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  # Each narrow extra, such as dicom, must list every package its feature uses.
+  # Install one extra alone, with only the test runner, and run that feature's
+  # tests: a missing package fails them. Tests of other features that sit in
+  # the same folders skip themselves when their packages are missing.
+  narrow-extras:
+    name: Extra ${{ matrix.extra }} alone
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Tests marked pydicom compare DICOM files, so they need dicom too.
+          - extra: gamma
+            marks: not slow and not pydicom
+            paths: tests/gamma tests/interp
+          - extra: dicom
+            marks: not slow
+            paths: tests/dicom
+          - extra: mosaiq
+            marks: not slow
+            paths: tests/mosaiq
+          - extra: icom
+            marks: not slow
+            paths: tests/icom
+          - extra: trf
+            marks: not slow
+            paths: tests/trf tests/logfiles
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          cache-data: 'true'
+          extras: ${{ matrix.extra }}
+          groups: 'test-runner'
+
+      - name: Run the feature's tests
+        id: tests
+        shell: bash
+        env:
+          PYTEST_ADDOPTS: ${{ inputs.extra-pytest-args }}
+          EXTRA: ${{ matrix.extra }}
+          MARKS: ${{ matrix.marks }}
+          TEST_PATHS: ${{ matrix.paths }}
+        run: |
+          set -euxo pipefail
+          mkdir -p test-results
+          read -ra paths <<< "${TEST_PATHS}"
+          # --no-sync keeps uv from installing anything beyond the extra.
+          uv run --no-sync -- pymedphys dev tests -m "${MARKS}" "${paths[@]}" \
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-extra-${EXTRA}.xml"
+
+      - name: Upload test results
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: junit-extra-${{ matrix.extra }}
+          path: test-results/*.xml
+          if-no-files-found: error
+          retention-days: 30
+
   # The declared minimum versions of NumPy (1.26) and pandas (2.0) are checked
   # together, whichever matrix runs. Python 3.11 is the only supported version
   # with wheels for both: NumPy 1.26 has none for Python 3.13 or later, and
@@ -89,7 +154,7 @@ jobs:
         with:
           cache-data: 'true'
           python-version: '3.11'
-          extras: 'dev tests user'
+          extras: 'tests'
 
       - name: Run unit tests at the minimum NumPy and pandas versions
         id: tests

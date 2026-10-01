@@ -24,12 +24,12 @@ deid-tables`` generates the whole table from the pinned edition as
 the tables of PS3.6 Annex A.
 
 :func:`iod_for_sop_class` returns the IOD, with the attribute Types that
-:mod:`~pymedphys._dicom.deidentify.iods` generates, only for the SOP Classes of
-those IODs. Any other SOP Class, whether a Standard SOP Class of an IOD whose
-Types are not yet generated, a retired or Private SOP Class, or one from a
-later edition, has none, and is outside the supported scope. Having Types does
-not make an IOD supported: :mod:`~pymedphys._dicom.deidentify.scope` decides
-that.
+:mod:`~pymedphys._dicom.deidentify.iods` generates, for the SOP Classes of
+those IODs, which in 2026d include every SOP Class of Table B.5-1. Any other
+SOP Class, whether a Standard SOP Class of an IOD whose Types are not
+generated, a retired or Private SOP Class, or one from a later edition, has
+none, and is outside the supported scope. Having Types does not make an IOD
+supported: :mod:`~pymedphys._dicom.deidentify.scope` decides that.
 """
 
 from __future__ import annotations
@@ -176,11 +176,11 @@ def iod_for_sop_class(
     Returns
     -------
     IOD or None
-        The IOD that Table B.5-1 gives for the SOP Class, with its modules and
-        attribute Types. None if Table B.5-1 does not list the UID, as for a
-        retired or Private SOP Class or a SOP Class that another part of PS3.4
-        defines; or if the IOD's Types are not generated, as for Enhanced CT
-        Image Storage, whose IOD has Functional Group Macros.
+        The IOD that Table B.5-1 gives for the SOP Class, with its modules,
+        Functional Group Macros, and attribute Types. None if Table B.5-1 does
+        not list the UID, as for a retired or Private SOP Class or a SOP Class
+        that another part of PS3.4 defines; or if the IOD's Types are not
+        generated.
 
     Raises
     ------
@@ -196,7 +196,9 @@ def iod_for_sop_class(
     'RT Plan'
     >>> iod_for_sop_class("1.2.840.10008.5.1.4.1.1.4").name  # MR Image Storage
     'MR Image'
-    >>> iod_for_sop_class("1.2.840.10008.5.1.4.1.1.2.1") is None  # Enhanced CT
+    >>> iod_for_sop_class("1.2.840.10008.5.1.4.1.1.2.1").name  # Enhanced CT Image
+    'Enhanced CT Image'
+    >>> iod_for_sop_class("1.2.840.10008.5.1.4.1.1.5") is None  # retired NM Image
     True
     """
     if sop_classes is None:
