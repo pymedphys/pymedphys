@@ -14,6 +14,10 @@
 
 """Reviewed supplementary (L2) actions for attributes that Table E.1-1 omits."""
 
+# The tests share the hand-checked lists of attributes and the helpers that
+# rewrite the rules file below, so they stay in one module.
+# pylint: disable = too-many-lines
+
 import collections
 import dataclasses
 import itertools
@@ -36,13 +40,70 @@ from pymedphys._dicom.deidentify import (
 # The actions of Table E.1-1a that never keep the value as received.
 REMOVING_ACTIONS = {"X", "Z", "D", "X/Z", "Z/D", "X/D", "X/Z/D"}
 TEXT_VRS = {"LO", "SH", "LT", "ST", "UC", "UT"}
+TEMPORAL_VRS = {"DA", "DT", "TM"}
 # The IODs of the first supported release.
 SUPPORTED_IODS = ("CT Image", "RT Dose", "RT Plan", "RT Structure Set")
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
+FULL_DATES = "retain_longitudinal_full_dates"
 MODIFIED_DATES = "retain_longitudinal_modified_dates"
 DEIDENTIFICATION_METHOD = "(0012,0063)"
 ALTERNATIVE_CALENDAR_DATES = ("(0010,0033)", "(0010,0034)")
+STUDY_UPDATE = "(0008,041F)"  # Study Update DateTime
+# The actions that Table E.1-1 gives nearly every date under the two Retain
+# Longitudinal Temporal Information Options.
+DATE_OPTIONS = {FULL_DATES: "K", MODIFIED_DATES: "C"}
+
+# The dates, times, and datetimes that Table E.1-1 omits, checked by hand
+# against the 2026d PS3.6 and PS3.15: three general attributes, eight that
+# PS3.6 marks DICONDE, and four that it marks DICOS.
+OMITTED_DATES = {
+    "(0008,0404)": "ItemInventoryDateTime",
+    "(0008,0416)": "ExpirationDateTime",
+    "(0008,041F)": "StudyUpdateDateTime",
+    "(0014,0102)": "SecondaryReviewDate",
+    "(0014,0103)": "SecondaryReviewTime",
+    "(0014,1020)": "ExpiryDate",
+    "(0014,3076)": "DateOfGainCalibration",
+    "(0014,3077)": "TimeOfGainCalibration",
+    "(0014,4076)": "ProcedureCreationDate",
+    "(0014,4078)": "ProcedureExpirationDate",
+    "(0014,407A)": "ProcedureLastModifiedDate",
+    "(4010,1025)": "RouteSegmentStartTime",
+    "(4010,1026)": "RouteSegmentEndTime",
+    "(4010,102B)": "AlarmDecisionTime",
+    "(4010,1041)": "OOIOwnerCreationTime",
+}
+# What each rule's note says Modified Dates does to the value, by the action
+# of its temporal role.
+SAID_OF = {
+    temporal_roles.TemporalAction.SHIFT: "shifts it with the subject's other dates",
+    temporal_roles.TemporalAction.DUMMY: "replaces it with a fixed dummy value",
+}
+# The claims that a note can make about the IODs that use its attribute,
+# which the generated IOD tables can check: that none uses it, or none uses
+# the only modules that define it ("which none of the IODs ... uses").
+NO_GENERATED_IOD_USES_IT = re.compile(
+    r"\b(?:none of the IODs whose Types are generated|no IOD whose Types are "
+    r"generated|none of the generated IODs) uses\b"
+)
+NO_SUPPORTED_IOD_USES_IT = re.compile(
+    r"\bno (?:supported IOD|IOD of the first supported release) uses\b"
+)
+INVENTORIED_STUDIES = "(0008,0423)"  # Inventoried Studies Sequence
+# The omitted dates that, of the IODs whose Types are generated, only the
+# Inventory IOD uses, in its Inventory Module, with the path and Type that
+# Table C.38.1-1 gives each, checked by hand against the 2026d PS3.3.
+INVENTORY_DATES = {
+    "(0008,0404)": ((INVENTORIED_STUDIES,), "1"),  # Item Inventory DateTime
+    "(0008,041F)": ((INVENTORIED_STUDIES,), "2"),  # Study Update DateTime
+    # Expiration DateTime, in File Access Sequence (0008,041A) of each
+    # inventoried instance of each inventoried series.
+    "(0008,0416)": (
+        (INVENTORIED_STUDIES, "(0008,0424)", "(0008,0425)", "(0008,041A)"),
+        "3",
+    ),
+}
 
 # Examples of each group of text attributes, from the design document.
 OPERATOR_TEXT = (
@@ -152,6 +213,26 @@ def _omitted_text():
 
 def _rules():
     return supplementary_actions.load_supplementary_actions().rules
+
+
+def _definitions_of(tags, names=None):
+    """Return where the IODs whose Types are generated define each of ``tags``.
+
+    Each definition, at any depth, is given as the IOD's name, the module's
+    name, the path, and the Type. Only the IODs in ``names`` are searched, if
+    given. An IOD's definitions include those in the items of every sequence;
+    the items of a table that includes itself repeat definitions already
+    listed.
+    """
+    tables = iods.load_iod_tables()
+    found = collections.defaultdict(set)
+    for name in tables.iods if names is None else names:
+        for definition in tables.iods[name].definitions:
+            if definition.tag in tags:
+                found[definition.tag].add(
+                    (name, definition.module, definition.path, definition.type)
+                )
+    return dict(found)
 
 
 def _custom_option_sets():
@@ -353,6 +434,160 @@ def test_the_declared_default_for_text_without_a_rule_removes_by_type():
     assert supplementary_actions.UNCOVERED_TEXT_ACTION == "X/Z/D"
 
 
+def test_every_date_and_time_that_table_e1_1_omits_has_a_rule():
+    # Derived here independently of the loader: Table E.1-1 lists no date or
+    # time by a masked tag, so an exact comparison of tags suffices.
+    dictionary = _dictionary()
+    listed = _table_e1_1()
+    omitted = {
+        tag
+        for tag, attribute in dictionary.items()
+        if TEMPORAL_VRS.intersection(attribute.vrs) and tag not in listed
+    }
+
+    assert omitted == set(OMITTED_DATES)
+    assert collections.Counter(dictionary[tag].status for tag in omitted) == {
+        "": 3,
+        "DICONDE": 8,
+        "DICOS": 4,
+    }
+    assert omitted <= set(_rules())
+
+
+def test_the_basic_profile_keeps_no_date_or_time():
+    # Table E.1-1 and the supplementary actions together give every date,
+    # time, and datetime in the dictionary an action that removes or
+    # replaces it.
+    listed = _table_e1_1()
+    rules = _rules()
+    basic = {
+        tag: listed[tag].basic_profile if tag in listed else rules[tag].action
+        for tag, attribute in _dictionary().items()
+        if TEMPORAL_VRS.intersection(attribute.vrs)
+    }
+
+    assert len(basic) == 184
+    assert set(basic.values()) <= REMOVING_ACTIONS
+
+
+@pytest.mark.parametrize("tag, keyword", OMITTED_DATES.items())
+def test_each_omitted_date_is_removed_by_type_and_kept_or_cleaned_by_the_date_options(
+    tag, keyword
+):
+    rule = _rules()[tag]
+
+    assert (rule.tag, rule.keyword, rule.action) == (tag, keyword, "X/Z/D")
+    assert dict(rule.options) == DATE_OPTIONS
+    assert rule.note.strip()
+
+
+def test_the_omitted_dates_take_the_date_option_actions_of_the_dates_the_table_lists():
+    # Table E.1-1 keeps under Full Dates, and cleans under Modified Dates,
+    # every date and time it lists but Patient's Birth Date, Patient's Birth
+    # Time, and GPS Time Stamp, which it removes under every option. The
+    # rules do the same for the dates that it omits.
+    dictionary = _dictionary()
+    date_options = collections.Counter(
+        tuple(
+            (option, action)
+            for option, action in row.options.items()
+            if option in (FULL_DATES, MODIFIED_DATES)
+        )
+        for tag, row in _table_e1_1().items()
+        if tag in dictionary and TEMPORAL_VRS.intersection(dictionary[tag].vrs)
+    )
+
+    assert date_options == {tuple(DATE_OPTIONS.items()): 166, (): 3}
+    for tag in OMITTED_DATES:
+        assert dict(_rules()[tag].options) == DATE_OPTIONS, tag
+
+
+@pytest.mark.parametrize(
+    "options, action",
+    [
+        ((), "X/Z/D"),
+        ((FULL_DATES,), "K"),
+        ((MODIFIED_DATES,), "C"),
+        # No other option gives them an action, so Retain Device Identity
+        # keeps none of them, not even the dates of gain calibration.
+        ((DEVICE_IDENTITY,), "X/Z/D"),
+        ((CLEAN_DESCRIPTORS,), "X/Z/D"),
+        ((FULL_DATES, DEVICE_IDENTITY, CLEAN_DESCRIPTORS), "K"),
+        ((DEVICE_IDENTITY, MODIFIED_DATES, CLEAN_DESCRIPTORS), "C"),
+    ],
+)
+def test_only_the_date_options_override_the_action_of_an_omitted_date(options, action):
+    effective = actions.effective_supplementary_actions(options)
+
+    assert not effective.conflicts
+    assert {effective.actions[tag] for tag in OMITTED_DATES} == {action}
+
+
+def test_every_policy_cleans_the_omitted_dates_only_under_modified_dates():
+    # Every preset, including basic (X/Z/D), and public-release and
+    # tps-import (C), and every custom option set.
+    for composed in _every_policy():
+        expected = "C" if MODIFIED_DATES in composed.options else "X/Z/D"
+        assert {composed.supplementary_actions[tag] for tag in OMITTED_DATES} == {
+            expected
+        }, composed.options
+        # No conflict involves them, for a preset to resolve.
+        assert not {r.conflict.tag for r in composed.resolved} & set(OMITTED_DATES)
+
+
+def test_each_date_rule_says_what_the_date_options_and_its_role_do():
+    rules = _rules()
+    roles = temporal_roles.load_temporal_roles()
+
+    for tag in OMITTED_DATES:
+        note = rules[tag].note
+        assert "kept (K) under Full Dates" in note, tag
+        assert "cleaned (C) under Modified Dates" in note, tag
+        assert SAID_OF[roles.role(tag).action] in note, tag
+    # The dates of gain calibration say why Retain Device Identity, which
+    # keeps the calibration dates that Table E.1-1 lists, does not keep them.
+    for tag in ("(0014,3076)", "(0014,3077)"):
+        assert roles.role(tag) is temporal_roles.TemporalRole.DEVICE
+        assert "Retain Device Identity" in rules[tag].note
+
+
+@pytest.mark.parametrize(
+    "claim, names, claimed_of",
+    [
+        # The DICONDE and DICOS person names and dates.
+        (
+            NO_GENERATED_IOD_USES_IT,
+            None,
+            {"(0014,0104)", "(0014,2006)"}
+            | (set(OMITTED_DATES) - set(INVENTORY_DATES)),
+        ),
+        (NO_SUPPORTED_IOD_USES_IT, SUPPORTED_IODS, set(INVENTORY_DATES)),
+    ],
+    ids=["generated", "supported"],
+)
+def test_a_note_that_no_iod_uses_its_attribute_is_true(claim, names, claimed_of):
+    # Checked again whenever the IOD tables are regenerated, since an IOD
+    # whose Types are newly generated can use an attribute that none did.
+    claimed = {tag for tag, rule in _rules().items() if claim.search(rule.note)}
+
+    assert claimed_of <= claimed
+    assert not _definitions_of(claimed, names)
+
+
+def test_only_the_inventory_iod_uses_the_inventory_dates_as_their_notes_say():
+    found = _definitions_of(set(INVENTORY_DATES))
+    rules = _rules()
+
+    for tag, (path, attribute_type) in INVENTORY_DATES.items():
+        assert found[tag] == {("Inventory", "Inventory", path, attribute_type)}, tag
+        note = rules[tag].note
+        assert (
+            f"PS3.3 defines it only in the Inventory Module, as Type {attribute_type}"
+            in note
+        ), tag
+        assert "Only the Inventory IOD uses the Inventory Module" in note, tag
+
+
 def test_the_options_override_the_basic_profile_action_of_a_rule():
     effective = actions.effective_supplementary_actions([CLEAN_DESCRIPTORS])
     rules = _rules()
@@ -430,10 +665,19 @@ def test_actions(tag, keyword, action):
     assert rule.note
 
 
-def test_the_vrs_the_roles_files_cover_are_left_to_them():
+def test_uids_are_left_to_their_roles_and_dates_have_actions_besides():
     # pylint: disable=protected-access
-    assert supplementary_actions._ROLE_VRS == (
-        uid_roles._FORMAT.vrs | temporal_roles._FORMAT.vrs
+    assert supplementary_actions._ROLES_ONLY_VRS == uid_roles._FORMAT.vrs
+    assert supplementary_actions.TEMPORAL_VRS == temporal_roles._FORMAT.vrs
+    assert supplementary_actions.COVERED_VRS == {"PN"} | TEMPORAL_VRS
+
+
+def test_each_option_that_can_give_an_action_names_the_attributes_it_applies_to():
+    # Otherwise a rule's action under such an option would raise a KeyError,
+    # not a SupplementaryActionError.
+    # pylint: disable=protected-access
+    assert set(supplementary_actions._OPTION_ATTRIBUTES) == set(
+        supplementary_actions.OPTION_ACTIONS
     )
 
 
@@ -524,9 +768,14 @@ BEAM_NAME = "(300A,00C2)"
             _first(tag="(50xx,200A)", keyword="TotalTime"),
             "rule 1 is listed in Table E.1-1",
         ),
+        # A date that Table E.1-1 lists keeps the table's actions.
+        (
+            _first(tag="(0008,0020)", keyword="StudyDate"),
+            "rule 1 is listed in Table E.1-1",
+        ),
         (
             _first(tag="(0008,0016)", keyword="SOPClassUID"),
-            "rule 1 is of a VR that a roles file covers",
+            "rule 1 is a UI attribute, which the UID roles file covers",
         ),
         (_first(action="retain"), "rule 1 has an action not defined in Table"),
         (_first(action="U*"), "rule 1 has an action not defined in Table"),
@@ -539,6 +788,10 @@ BEAM_NAME = "(300A,00C2)"
         (lambda d: _drop(d, BEAM_NAME), f"has no action for {BEAM_NAME}"),
         (lambda d: _drop(d, "(60xx,1500)"), "has no action for (60xx,1500)"),
         (lambda d: _drop(d, "(0008,0100)"), "has no action for (0008,0100)"),
+        # Dates and times that Table E.1-1 omits.
+        (lambda d: _drop(d, STUDY_UPDATE), f"has no action for {STUDY_UPDATE}"),
+        (lambda d: _drop(d, "(0014,3077)"), "has no action for (0014,3077)"),
+        (lambda d: _drop(d, "(4010,1041)"), "has no action for (4010,1041)"),
         # Option actions.
         (_rule(BEAM_NAME, options=1), "has options that are not a table"),
         (_rule(BEAM_NAME, options={}), "has options that are not a table"),
@@ -565,16 +818,28 @@ BEAM_NAME = "(300A,00C2)"
             "gives retain_device_identity an action other than K",
         ),
         (
-            _rule(BEAM_NAME, options={"retain_uids": "K"}),
-            "gives an action under retain_uids",
+            _rule(STUDY_UPDATE, options={FULL_DATES: "C", MODIFIED_DATES: "C"}),
+            "gives retain_longitudinal_full_dates an action other than K",
         ),
         (
-            _rule(BEAM_NAME, options={MODIFIED_DATES: "C"}),
-            "gives an action under retain_longitudinal_modified_dates",
+            _rule(STUDY_UPDATE, options={FULL_DATES: "K", MODIFIED_DATES: "K"}),
+            "gives retain_longitudinal_modified_dates an action other than C",
+        ),
+        (
+            _rule(BEAM_NAME, options={"retain_uids": "K"}),
+            "gives an action under retain_uids; a rule may give one only under "
+            "retain_device_identity, retain_longitudinal_full_dates, "
+            "retain_longitudinal_modified_dates, or clean_descriptors",
         ),
         (
             _rule(BEAM_NAME, options={DEVICE_IDENTITY: "K", CLEAN_DESCRIPTORS: "C"}),
-            "gives different actions under two or more options",
+            "gives different actions under two or more options that can be "
+            "selected together",
+        ),
+        (
+            _rule(STUDY_UPDATE, options={FULL_DATES: "K", CLEAN_DESCRIPTORS: "C"}),
+            "gives different actions under two or more options that can be "
+            "selected together",
         ),
         # An option action on a rule whose design does not allow one.
         (
@@ -586,8 +851,39 @@ BEAM_NAME = "(300A,00C2)"
             "has an option action, but its Basic Profile action keeps the value",
         ),
         (
+            _rule(STUDY_UPDATE, action="K"),
+            "has an option action, but its Basic Profile action keeps the value",
+        ),
+        (
             _first(options={CLEAN_DESCRIPTORS: "C"}),
-            "rule 1 has an option action, but is not a text attribute",
+            "rule 1 has an option action under clean_descriptors, but is not a "
+            "text attribute",
+        ),
+        # Each option gives an action only to the attributes it applies to.
+        (
+            _rule(BEAM_NAME, options={MODIFIED_DATES: "C"}),
+            "has an option action under retain_longitudinal_modified_dates, but is "
+            "not a date, time, or datetime attribute",
+        ),
+        (
+            _rule(BEAM_NAME, options={FULL_DATES: "K", MODIFIED_DATES: "C"}),
+            "has an option action under retain_longitudinal_full_dates, but is not "
+            "a date, time, or datetime attribute",
+        ),
+        (
+            _rule(STUDY_UPDATE, options={DEVICE_IDENTITY: "K"}),
+            "has an option action under retain_device_identity, but is not a text "
+            "attribute",
+        ),
+        # Every option is checked, not only the first.
+        (
+            _rule(STUDY_UPDATE, options={FULL_DATES: "K", DEVICE_IDENTITY: "K"}),
+            "has an option action under retain_device_identity, but is not a text "
+            "attribute",
+        ),
+        (
+            _rule(STUDY_UPDATE, options={CLEAN_DESCRIPTORS: "C"}),
+            "has an option action under clean_descriptors, but is not a text attribute",
         ),
     ],
 )
@@ -715,3 +1011,78 @@ def test_only_the_text_of_the_supported_iods_needs_rules(
         assert "(0018,9005)" not in (
             supplementary_actions.load_supplementary_actions(path).rules
         )
+
+
+NEW_TAG = "(0014,0109)"  # Not in the 2026d data dictionary.
+
+
+def _with_dictionary_attribute(tmp_path, vr):
+    """Return the data dictionary with an attribute of ``vr`` added at ``NEW_TAG``.
+
+    The dictionary is loaded, through the public loader, from a copy of the
+    generated file with the row added, as a regenerated dictionary would add
+    an attribute that Table E.1-1 omits.
+    """
+    document = json.loads(
+        (standard.STANDARD_DIR / "data_dictionary.json").read_text(encoding="utf-8")
+    )
+    document["rows"].append(
+        {
+            "tag": NEW_TAG,
+            "name": "Test Attribute",
+            "keyword": "TestAttribute",
+            "vr": vr,
+            "vm": "1",
+            "status": "",
+        }
+    )
+    document["content_sha256"] = standard.content_sha256(document["rows"])
+    path = tmp_path / "data_dictionary.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    return standard.load_data_dictionary(path)
+
+
+@pytest.mark.parametrize(
+    "vr, required",
+    [
+        ("DA", True),
+        ("DT", True),
+        ("TM", True),
+        ("PN", True),
+        # An attribute of another VR, such as CS, needs no rule.
+        ("CS", False),
+    ],
+)
+def test_a_new_attribute_that_table_e1_1_omits_needs_a_rule_by_its_vr(
+    tmp_path, monkeypatch, vr, required
+):
+    dictionary = _with_dictionary_attribute(tmp_path, vr)
+    monkeypatch.setattr(
+        supplementary_actions, "load_data_dictionary", lambda: dictionary
+    )
+    document = _document()
+    path = _write(tmp_path / "supplementary_actions.toml", document)
+
+    if not required:
+        assert (
+            NEW_TAG not in supplementary_actions.load_supplementary_actions(path).rules
+        )
+        return
+    with pytest.raises(
+        supplementary_actions.SupplementaryActionError,
+        match=re.escape(f"has no action for {NEW_TAG}"),
+    ):
+        supplementary_actions.load_supplementary_actions(path)
+    # A reviewed rule for the attribute lets the rules load again.
+    document["attribute"].append(
+        {
+            "tag": NEW_TAG,
+            "keyword": "TestAttribute",
+            "action": "X/Z/D",
+            "note": "A test.",
+        }
+    )
+    loaded = supplementary_actions.load_supplementary_actions(
+        _write(tmp_path / "reviewed.toml", document)
+    )
+    assert loaded.rules[NEW_TAG].action == "X/Z/D"

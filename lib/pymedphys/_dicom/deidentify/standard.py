@@ -53,6 +53,11 @@ OPTIONS = (
     "clean_structured_content",
     "clean_graphics",
 )
+# Options that PS3.15 specifies as mutually exclusive: E.3.6 for the two Retain
+# Longitudinal Temporal Information Options.
+MUTUALLY_EXCLUSIVE = (
+    frozenset({"retain_longitudinal_full_dates", "retain_longitudinal_modified_dates"}),
+)
 
 # The tag of the row of Table E.1-1 that covers every private attribute.
 PRIVATE_ATTRIBUTES_TAG = "(gggg,eeee) where gggg is odd"

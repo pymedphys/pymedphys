@@ -19,6 +19,14 @@ from pymedphys._imports import pydicom
 # Their service was used to obtain the following root UID for PyMedPhys:
 PYMEDPHYS_ROOT_UID = "1.2.826.0.1.3680043.10.188"
 
+# PyMedPhys reserves this arc for UIDs that it fixes in its design, which are
+# numbered under it, such as the de-identifier's Implementation Class UID
+# (".1.1" after the root). Every UID that PyMedPhys generates adds a single
+# component after the root: generate_uid below, which passes the root as
+# pydicom's prefix, and the hash of experimental pseudonymisation. The legacy
+# anonymise strategy can write the bare root. So none falls under this arc.
+PYMEDPHYS_FIXED_UID_ARC = f"{PYMEDPHYS_ROOT_UID}.1"
+
 DICOM_PLAN_UID = "1.2.840.10008.5.1.4.1.1.481.5"
 
 

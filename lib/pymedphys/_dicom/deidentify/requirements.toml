@@ -115,9 +115,21 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 If the Data Set being de-identified is being stored within a DICOM File, then the File Meta Information including the 128 byte preamble, if present, shall be replaced with a description of the de-identifying application. Otherwise, there is a risk that identity information may leak through unmodified File Meta Information or preamble. See PS3.10. This includes information regarding Application Entity Titles, Presentation Addresses, implementation information, and private information.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-002", "D-025", "D-027"]
+implementation = ["_dicom/deidentify/file_meta.py"]
+tests = [
+  "tests/dicom/test_deidentify_file_meta.py::test_the_file_meta_information_holds_exactly_the_seven_elements_in_order",
+  "tests/dicom/test_deidentify_file_meta.py::test_the_implementation_class_uid_is_the_first_uid_of_the_reserved_arc",
+  "tests/dicom/test_deidentify_file_meta.py::test_the_implementation_version_name_holds_the_version_where_it_fits",
+  "tests/dicom/test_deidentify_file_meta.py::test_the_group_length_counts_the_bytes_of_the_elements_after_it",
+  "tests/dicom/test_deidentify_file_meta.py::test_a_written_file_has_a_zero_preamble_and_exactly_the_built_elements",
+  "tests/dicom/test_deidentify_file_meta.py::test_no_source_file_meta_element_or_preamble_is_written",
+]
+note = '''
+The File Meta Information that replaces the source file's describes the de-identifier by a fixed Implementation Class UID under the PyMedPhys root and an Implementation Version Name, and holds no Application Entity Title, Presentation Address, or private element. A data set is written with it and a zeroed preamble, whatever File Meta Information and preamble the source file held. Remaining: writing each de-identified instance this way (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.1-07"
@@ -154,6 +166,7 @@ milestone = "M3"
 decisions = ["D-001", "D-007", "D-011", "D-020", "D-021", "D-028"]
 implementation = [
   "_dicom/deidentify/actions.py",
+  "_dicom/deidentify/compound_actions.py",
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/private_attributes.py",
   "_dicom/deidentify/standard.py",
@@ -166,9 +179,12 @@ tests = [
   "tests/dicom/test_deidentify_policy.py::test_each_preset_gives_each_attribute_one_action",
   "tests/dicom/test_deidentify_private_attributes.py::test_the_basic_profile_removes_every_private_attribute",
   "tests/dicom/test_deidentify_private_attributes.py::test_private_attributes_in_a_sequence_read_as_unknown_are_removed",
+  "tests/dicom/test_deidentify_compound_actions.py::test_each_compound_action_resolves_by_type",
+  "tests/dicom/test_deidentify_compound_actions.py::test_the_type_depends_on_the_enclosing_sequence",
+  "tests/dicom/test_deidentify_compound_actions.py::test_x_z_on_a_type_1_attribute_sequesters_the_instance",
 ]
 note = '''
-Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028). Remaining: protecting or retaining every instance of each other attribute, at the top level and in sequences, and removing private attributes from each instance the engine de-identifies (M3).
+Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute sequesters the instance (D-020). Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028). Remaining: protecting or retaining every instance of each other attribute, at the top level and in sequences, and removing private attributes from each instance the engine de-identifies (M3).
 '''
 
 [[requirement]]
@@ -521,11 +537,27 @@ id = "MIDI-BP-01"
 text = '''
 For public sharing, remove or replace all known direct identifiers and relevant indirect identifiers and sensitive information wherever they occur: collection descriptions, supporting data, structured and unstructured text, pixel data, and overlays. Justify retaining any indirect identifier with a collection-specific expert statistical analysis of residual risk against a predetermined threshold, which considers other public information about the subjects and holds only at the time it was done.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-017", "D-022", "D-023", "D-027"]
+decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027"]
+implementation = [
+  "_dicom/deidentify/file_layout.py",
+  "_dicom/deidentify/residuals.py",
+]
+tests = [
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_hidden_in_the_preamble_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_the_file_meta_information_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_data_set_trailing_padding_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_bytes_after_the_data_set_are_searched",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_an_ob_value_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_un_value_is_found_in_utf_16",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_private_element_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_nested_sequence_item_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_encapsulated_fragments_are_searched_for_every_form",
+  "tests/dicom/test_deidentify_residuals.py::test_a_clean_file_has_no_findings",
+]
 note = '''
-The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). A residual search fails any output file that still holds a source person name, UID, or date, or a source value outside its data set, and sends text findings to confidential review (D-027). `public-release` retains indirect identifiers only after its statistical assessment.
+The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. The pipeline is to fail any output file that still holds a source person name, UID, date, or direct identifier, or a source value outside its data set, and to send other text findings to confidential review (D-027). `public-release` retains indirect identifiers only after its statistical assessment. Remaining: removing and replacing identifiers in each data set (M3), and acting on what the search finds, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
 '''
 
 [[requirement]]
@@ -547,6 +579,7 @@ status = "partial"
 milestone = "M4"
 decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-026"]
 implementation = [
+  "_dicom/deidentify/compound_actions.py",
   "_dicom/deidentify/dummy_values.py",
   "_dicom/deidentify/iods.py",
   "_dicom/deidentify/reference_graph.py",
@@ -565,6 +598,11 @@ tests = [
   "tests/dicom/test_deidentify_values.py::test_valid_values",
   "tests/dicom/test_deidentify_values.py::test_invalid_values",
   "tests/dicom/test_deidentify_values.py::test_values_are_checked_for_their_vm_and_vr",
+  "tests/dicom/test_deidentify_compound_actions.py::test_an_attribute_gets_the_action_of_its_strictest_type_across_modules",
+  "tests/dicom/test_deidentify_compound_actions.py::test_no_required_attribute_with_a_compound_action_is_removed",
+  "tests/dicom/test_deidentify_compound_actions.py::test_no_attribute_with_x_z_is_type_1_in_the_first_release_iods",
+  "tests/dicom/test_deidentify_compound_actions.py::test_no_required_attribute_with_a_compound_action_is_removed_in_any_generated_iod",
+  "tests/dicom/test_deidentify_compound_actions.py::test_x_z_sequesters_only_referenced_study_sequence_in_two_generated_iods",
   "tests/dicom/test_deidentify_references.py::test_reference_sites_include_the_rt_references",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_consistent_collection_has_no_findings",
   "tests/dicom/test_deidentify_reference_graph.py::test_each_reference_resolves_to_its_instance",
@@ -572,7 +610,7 @@ tests = [
   "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_instance_not_in_the_collection_is_dangling",
 ]
 note = '''
-The Type of each attribute of the first supported release's IODs, and of every other composite IOD whose modules include no Functional Group Macros, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. Remaining: resolving compound actions from these Types and writing the dummy values they call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking the collection's hierarchy and frames of reference in the first pass, validating output against its IOD, and checking after writing that references are intact (M4).
+The Type of each attribute of the first supported release's IODs, and of every other composite IOD whose modules include no Functional Group Macros, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. Remaining: writing the dummy values that the resolved compound actions call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking the collection's hierarchy and frames of reference in the first pass, validating output against its IOD, and checking after writing that references are intact (M4).
 '''
 
 [[requirement]]
@@ -616,6 +654,7 @@ milestone = "M4"
 decisions = ["D-001", "D-010", "D-022", "D-023"]
 implementation = [
   "_dev/deid_tables/annex_e.py",
+  "_dev/deid_tables/edition_check.py",
   "_dev/deid_tables/generate.py",
   "_dev/deid_tables/ps3_4.py",
   "_dev/deid_tables/ps3_6.py",
@@ -631,6 +670,8 @@ tests = [
   "tests/dev/test_deid_tables.py::test_generate_writes_table_e1_1_with_its_provenance",
   "tests/dev/test_deid_tables.py::test_a_source_with_another_digest_is_not_parsed",
   "tests/dev/test_deid_tables.py::test_check_passes_only_when_the_tables_are_current",
+  "tests/dev/test_deid_tables.py::test_a_changed_cell_changes_exactly_its_table",
+  "tests/dev/test_deid_tables.py::test_a_page_that_cannot_be_parsed_fails_the_tables_it_serves",
   "tests/dicom/test_deidentify_standard.py::test_each_table_is_generated_from_the_pinned_edition",
   "tests/dicom/test_deidentify_standard.py::test_an_altered_row_is_rejected",
   "tests/dicom/test_deidentify_standard.py::test_every_table_e1_1_attribute_is_in_the_data_dictionary",
@@ -643,9 +684,12 @@ tests = [
   "tests/dicom/test_deidentify_supplementary_actions.py::test_the_rules_for_omitted_text_fall_in_the_reviewed_groups",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_each_group_takes_the_action_of_its_option",
   "tests/dicom/test_deidentify_private_attributes.py::test_every_odd_group_element_is_removed",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_every_date_and_time_that_table_e1_1_omits_has_a_rule",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_a_new_attribute_that_table_e1_1_omits_needs_a_rule_by_its_vr",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_only_the_date_options_override_the_action_of_an_omitted_date",
 ]
 note = '''
-The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names that Table E.1-1 omits and every text attribute that it omits and a supported IOD uses. Each such text attribute that an option retains is categorised by that option, as Table E.1-1 does: operator-typed text is cleaned under Clean Descriptors, and accessory and equipment identifiers are kept under Retain Device Identity (D-022). Without Retain Safe Private, every private attribute is removed from a data set, at every level (D-028). Remaining: the edition-check workflow (M1); supplementary rules for the dates and times that the tables omit (D-023) and a decision on the UR attributes they omit (D-022) (M2); removing private attributes from each instance the engine de-identifies (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names, dates, and times that Table E.1-1 omits and every text attribute that it omits and a supported IOD uses. Each such attribute that an option retains or cleans is categorised by that option, as Table E.1-1 does: operator-typed text is cleaned under Clean Descriptors, and accessory and equipment identifiers are kept under Retain Device Identity (D-022); the dates and times are kept under Retain Longitudinal Temporal Information with Full Dates and cleaned under Modified Dates (D-023). Without Retain Safe Private, every private attribute is removed from a data set, at every level (D-028). `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and `.github/workflows/deid-edition-check.yml` runs it monthly. Remaining: a decision on the UR attributes that the tables omit (D-022) (M2); removing private attributes from each instance the engine de-identifies (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]
