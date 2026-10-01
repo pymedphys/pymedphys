@@ -18,6 +18,7 @@ import copy
 import dataclasses
 import io
 import struct
+import traceback
 
 from pymedphys._imports import pydicom, pytest
 
@@ -43,6 +44,10 @@ SEQUENCE_DELIMITER = 0xFFFEE0DD
 PRIVATE_VALUE = "SYNTHETIC PRIVATE VALUE"
 PATIENT_ID = "SYNTHETIC-7Q2K"
 CODE_MEANING = "Prüfung"  # not ASCII, so its encoding matters
+UNKNOWN_CHARACTER_SET = "SITE-XYZ"
+# A Defined Term of the same length, written in its place and then replaced,
+# since pydicom does not write an unknown character set without a warning.
+PLACEHOLDER_CHARACTER_SET = "ISO_IR 6"
 # Read as an element's tag, its first bytes give an even group, so that a
 # private element with this value, read as an item, holds no odd group.
 PRIVATE_TEXT = b"PRIVATE TEXT"
@@ -129,12 +134,16 @@ def _odd_groups(dataset):
     return found
 
 
-def _written_and_read(dataset, transfer_syntax):
+def _written(dataset, transfer_syntax):
     dataset.file_meta = pydicom.dataset.FileMetaDataset()
     dataset.file_meta.TransferSyntaxUID = transfer_syntax
     written = io.BytesIO()
     pydicom.dcmwrite(written, dataset, enforce_file_format=True)
-    return pydicom.dcmread(io.BytesIO(written.getvalue()))
+    return written.getvalue()
+
+
+def _written_and_read(dataset, transfer_syntax):
+    return pydicom.dcmread(io.BytesIO(_written(dataset, transfer_syntax)))
 
 
 def _items(element):
@@ -167,6 +176,29 @@ def _sequence(tag, value, undefined=False):
     if undefined:
         return _undefined_length(tag, value, SEQUENCE_DELIMITER)
     return _encoded(tag, value)
+
+
+def _holder(dataset, path):
+    """Return the data set in ``dataset`` that holds the element at ``path``."""
+    for tag, index in path.items:
+        dataset = dataset[_number(tag)].value[index]
+    return dataset
+
+
+def _assert_refused(dataset, basic, path, value):
+    """Assert that both functions refuse ``dataset`` by ``path``.
+
+    Neither the message nor the traceback may quote ``value``.
+    """
+    for apply in (
+        private_attributes.private_attribute_paths,
+        private_attributes.without_private_attributes,
+    ):
+        with pytest.raises(private_attributes.PrivateAttributeError) as raised:
+            apply(dataset, basic)
+        assert raised.value.path == path
+        assert str(path) in str(raised.value)
+        assert value not in "".join(traceback.format_exception(raised.value))
 
 
 def _unknown(monkeypatch, tag, value):
@@ -851,3 +883,152 @@ def test_a_sequence_that_pydicom_cannot_decode_is_refused(basic):
             apply(dataset, basic)
         assert raised.value.path == ElementPath((), "(300A,00B0)")
         assert "SYN" not in str(raised.value)
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour", "reading_validation")
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "transfer_syntax", [IMPLICIT_VR, EXPLICIT_VR], ids=["implicit-vr", "explicit-vr"]
+)
+def test_an_unknown_character_set_in_an_item_read_from_a_file_is_refused(
+    caplog, basic, transfer_syntax
+):
+    # pydicom reads the items of Beam Sequence as it decodes the sequence. It
+    # reads the text of an item whose Specific Character Set it does not know
+    # with its default encoding, warning and logging with the value, or,
+    # raising its validation errors, raises an error that quotes it.
+    source = _plan()
+    source.BeamSequence[1].SpecificCharacterSet = PLACEHOLDER_CHARACTER_SET
+    written = _written(source, transfer_syntax)
+    placeholder = PLACEHOLDER_CHARACTER_SET.encode()
+    assert written.count(placeholder) == 1
+    read = pydicom.dcmread(
+        io.BytesIO(written.replace(placeholder, UNKNOWN_CHARACTER_SET.encode()))
+    )
+    caplog.clear()
+
+    _assert_refused(read, basic, ElementPath((), "(300A,00B0)"), UNKNOWN_CHARACTER_SET)
+    assert UNKNOWN_CHARACTER_SET not in caplog.text
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour", "reading_validation")
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize("depth", [0, 1], ids=["its-item", "a-nested-item"])
+def test_an_unknown_character_set_in_an_item_of_an_unknown_value_is_refused(
+    monkeypatch, caplog, basic, depth
+):
+    # The items of a UN value, and of each sequence nested in them, are
+    # decoded here, with the character set that each item gives.
+    character_set = _encoded(0x00080005, UNKNOWN_CHARACTER_SET.encode())
+    if depth:
+        value = _nested(_item(character_set + CODE_VALUE + MEANING), depth)
+        path = NESTED_PATHS[depth]
+    else:
+        value = _item(character_set + MEANING + PRIVATE_BLOCK)
+        path = ElementPath((), "(0044,0110)")
+    dataset = _plan()
+    dataset[RT_ASSERTIONS_SEQUENCE] = _unknown(
+        monkeypatch, RT_ASSERTIONS_SEQUENCE, value
+    )
+
+    _assert_refused(dataset, basic, path, UNKNOWN_CHARACTER_SET)
+    assert UNKNOWN_CHARACTER_SET not in caplog.text
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour", "reading_validation")
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "value",
+    [
+        UNKNOWN_CHARACTER_SET,
+        "latin_1",
+        "ISO-IR 100",
+        ["ISO_IR 192", "ISO 2022 IR 100"],
+    ],
+    ids=["unknown", "a-python-codec", "misspelt", "stand-alone-with-extensions"],
+)
+@pytest.mark.parametrize(
+    "where, path",
+    [
+        (ElementPath((), "(0008,0005)"), ElementPath((), "(0008,0005)")),
+        (
+            ElementPath((("(300A,00B0)", 1),), "(0008,0005)"),
+            ElementPath((), "(300A,00B0)"),
+        ),
+        (
+            ElementPath((("(300A,00B0)", 1), ("(300A,0111)", 0)), "(0008,0005)"),
+            ElementPath((("(300A,00B0)", 1),), "(300A,0111)"),
+        ),
+    ],
+    ids=["top-level", "in-an-item", "in-a-nested-item"],
+)
+def test_a_character_set_that_pydicom_does_not_map_as_given_is_refused(
+    caplog, basic, value, where, path
+):
+    # pydicom reads text in a Specific Character Set that is not one of its
+    # terms, or that gives a code extension with a character set that allows
+    # none, with another encoding than the one given. A character set in an
+    # item is refused by the path of the sequence that holds the item.
+    dataset = _plan()
+    _holder(dataset, where).add(
+        pydicom.DataElement(
+            0x00080005, "CS", value, validation_mode=pydicom.config.IGNORE
+        )
+    )
+    quoted = value if isinstance(value, str) else value[0]
+
+    _assert_refused(dataset, basic, path, quoted)
+    assert quoted not in caplog.text
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "value",
+    ["ISO_IR 100", ["", "ISO 2022 IR 87"], ["ISO 2022 IR 6", "ISO 2022 IR 100"]],
+    ids=["a-term", "code-extensions", "code-extensions-without-an-empty-value"],
+)
+def test_a_character_set_that_pydicom_maps_as_given_is_accepted(basic, value):
+    dataset = _plan()
+    dataset.BeamSequence[1].ControlPointSequence[0].SpecificCharacterSet = value
+
+    paths = private_attributes.private_attribute_paths(dataset, basic)
+    result = private_attributes.without_private_attributes(dataset, basic)
+
+    assert [str(path) for path in paths] == PLAN_PATHS
+    assert _odd_groups(result) == []
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour", "reading_validation")
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "vr, value",
+    [("OB", ASSERTION), ("UT", "SYNTHETIC TEXT")],
+    ids=["ob", "ut"],
+)
+@pytest.mark.parametrize(
+    "path",
+    [
+        ElementPath((), "(300A,00B0)"),
+        ElementPath((("(300A,00B0)", 0),), "(0044,0110)"),
+    ],
+    ids=["top-level", "in-an-item"],
+)
+def test_a_sequence_stored_with_another_vr_is_refused(basic, vr, value, path):
+    # Explicit VR Little Endian gives each element's VR. A sequence stored
+    # with one other than SQ or UN is not read as items, so a private
+    # attribute that it holds could not be found.
+    source = _plan()
+    _holder(source, path)[_number(path.tag)] = pydicom.DataElement(
+        _number(path.tag), vr, value
+    )
+    read = _written_and_read(source, EXPLICIT_VR)
+    raw = _holder(read, path).get_item(_number(path.tag), keep_deferred=True)
+    assert raw.VR == vr
+
+    _assert_refused(read, basic, path, "SYNTHETIC")
