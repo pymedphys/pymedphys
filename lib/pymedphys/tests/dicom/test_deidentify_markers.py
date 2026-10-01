@@ -28,6 +28,7 @@ import dataclasses
 import io
 import itertools
 import platform
+import warnings
 
 from pymedphys._imports import pydicom, pytest, tomlkit
 
@@ -115,7 +116,7 @@ def _expected(readable, digest, code_values, temporal, version):
     """The markers' data set, built from pydicom's own dictionary."""
     expected = pydicom.Dataset()
     expected.PatientIdentityRemoved = "YES"
-    expected.DeidentificationMethod = [readable, digest]
+    expected.DeidentificationMethod = [digest, readable]
     if code_values:
         expected.DeidentificationMethodCodeSequence = [
             _code_item(value, CID_7050[value]) for value in code_values
@@ -207,7 +208,7 @@ def test_basic_clean_descriptors_claims_clean_descriptors_only_where_satisfied()
     assert [code.code_value for code in claimed.method_codes] == ["113100", "113105"]
     assert [code.code_value for code in unclaimed.method_codes] == ["113100"]
     assert claimed.method == unclaimed.method
-    assert unclaimed.method[0].endswith("; PS3.15 2026d; basic-clean-descriptors")
+    assert unclaimed.method[1].endswith("; PS3.15 2026d; basic-clean-descriptors")
 
 
 def test_a_custom_option_set_is_named_as_one_and_claims_its_satisfied_options():
@@ -261,7 +262,7 @@ def test_tps_import_claims_no_ps3_15_conformance_and_adds_no_codes():
         composed, DIGEST, satisfied=policy.PRESETS["tps-import"]
     )
 
-    readable = found.method[0]
+    readable = found.method[1]
     assert readable == f"PyMedPhys {version}; no PS3.15 claim; tps-import"
     assert "2026d" not in readable
     assert not found.method_codes
@@ -318,13 +319,14 @@ def test_patient_identity_removed_is_never_no(preset):
         assert found.patient_identity_removed == "YES"
 
 
-def test_the_second_method_value_is_exactly_the_policy_digest():
+def test_the_first_method_value_is_exactly_the_policy_digest():
     composed = policy.compose_policy("basic")
     digest = policy_digest.policy_digest(composed, vocabulary=None)
 
     found = markers.markers_for(composed, digest, satisfied=())
 
-    assert found.method[1] == digest
+    assert found.method[0] == digest
+    assert found.method[1] == f"PyMedPhys {_version.__version__}; PS3.15 2026d; basic"
     assert len(found.method) == 2
 
 
@@ -430,7 +432,7 @@ def test_software_versions_and_the_readable_value_give_the_full_version(monkeypa
     found = markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
 
     assert found.software_versions[0] == version
-    assert found.method[0] == f"PyMedPhys {version}; PS3.15 2026d; basic"
+    assert found.method[1] == f"PyMedPhys {version}; PS3.15 2026d; basic"
     assert found.manufacturer == "PyMedPhys"
 
 
@@ -440,6 +442,17 @@ SYNTHETIC_ENVIRONMENT = {
     "pydicom.__version__": "3.1.0.dev0",
     "tomlkit.__version__": "0.13.2",
 }
+# With "tomlkit ", 64 characters, as many as LO allows.
+LONGEST_LIBRARY_VERSION = "1." + "0" * 54
+# Software Versions that end in a value as long as LO allows, with 7, 11, 18,
+# and 64 characters and three backslashes: 103 in all, odd, so that the
+# padding space follows the last value.
+ODD_SOFTWARE_VERSIONS = (
+    "0.42.10",
+    "PyPy 3.11.9",
+    "pydicom 3.1.0.dev0",
+    f"tomlkit {LONGEST_LIBRARY_VERSION}",
+)
 
 
 def _with_environment(monkeypatch, environment):
@@ -462,7 +475,7 @@ def test_software_versions_give_pymedphys_then_the_environment_the_digest_covers
     element = equipment["SoftwareVersions"]
     assert (element.VR, element.VM, list(element.value)) == ("LO", 4, expected)
     assert values.values_problem("LO", "1-n", expected) is None
-    assert found.method[0] == "PyMedPhys 0.42.0; PS3.15 2026d; basic"
+    assert found.method[1] == "PyMedPhys 0.42.0; PS3.15 2026d; basic"
 
 
 def test_the_libraries_follow_the_order_that_the_environment_gives(monkeypatch):
@@ -544,7 +557,10 @@ def test_an_environment_that_software_versions_cannot_record_is_refused(
         markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
 
 
-LONGEST_VERSION = "10.100.10.dev10"  # 15 characters
+# With "PyMedPhys ", "; PS3.15 2026d; ", and "basic-clean-descriptors", 63
+# characters: one fewer than LO allows, so that the padding that can follow
+# the readable value still fits.
+LONGEST_VERSION = "10.100.10.dev1"  # 14 characters
 
 
 def _policies():
@@ -552,20 +568,28 @@ def _policies():
     yield policy.compose_custom_policy(CUSTOM_OPTIONS)
 
 
-def test_every_version_of_up_to_15_characters_fits_every_readable_value(monkeypatch):
+def test_every_version_of_up_to_14_characters_fits_every_readable_value(monkeypatch):
     monkeypatch.setattr(_version, "__version__", LONGEST_VERSION)
-    assert len(LONGEST_VERSION) == 15
+    assert len(LONGEST_VERSION) == 14
 
     lengths = {}
     for composed in _policies():
         readable = markers.markers_for(
             composed, DIGEST, satisfied=composed.options
-        ).method[0]
+        ).method[1]
         assert values.value_problem("LO", readable) is None
         lengths[composed.preset] = len(readable)
 
-    assert max(lengths.values()) == 64
-    assert lengths["basic-clean-descriptors"] == 64
+    # Counted by hand: "PyMedPhys ", the version, then "; PS3.15 2026d; " and
+    # the preset, "custom option set" for a custom option set, or
+    # "; no PS3.15 claim; tps-import".
+    assert lengths == {
+        "basic": 45,
+        "basic-clean-descriptors": 63,
+        "tps-import": 53,
+        "public-release": 54,
+        None: 57,
+    }
 
 
 def test_a_readable_value_that_would_not_fit_is_refused_not_shortened(monkeypatch):
@@ -577,9 +601,12 @@ def test_a_readable_value_that_would_not_fit_is_refused_not_shortened(monkeypatc
         markers.markers_for(composed, DIGEST, satisfied=())
 
     assert version not in str(raised.value)
+    assert "readable value longer than 63 characters" in str(raised.value)
+    # As many characters as LO allows, one more than a readable value may have.
+    assert len(f"PyMedPhys {version}; PS3.15 2026d; basic-clean-descriptors") == 64
     # The other presets' readable values are shorter, so they still fit.
     found = markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
-    assert found.method[0] == f"PyMedPhys {version}; PS3.15 2026d; basic"
+    assert found.method[1] == f"PyMedPhys {version}; PS3.15 2026d; basic"
 
 
 def test_every_value_that_would_not_fit_is_reported(monkeypatch):
@@ -729,28 +756,28 @@ def test_a_different_digest_adds_its_pair_but_not_the_equal_codes_and_item():
     ("existing", "added"),
     [
         # Present as two consecutive values, in any place.
-        (["{readable}", "{digest}"], False),
-        (["SYNTHETIC TOOL 1", "{readable}", "{digest}", "SYNTHETIC TOOL 2"], False),
+        (["{digest}", "{readable}"], False),
+        (["SYNTHETIC TOOL 1", "{digest}", "{readable}", "SYNTHETIC TOOL 2"], False),
         # Present, but not as the pair.
         (["{readable}"], True),
         (["{digest}"], True),
-        (["{digest}", "{readable}"], True),
-        (["{readable}", "SYNTHETIC TOOL 1", "{digest}"], True),
-        (["{readable}", "{readable}"], True),
+        (["{readable}", "{digest}"], True),
+        (["{digest}", "SYNTHETIC TOOL 1", "{readable}"], True),
+        (["{digest}", "{digest}"], True),
     ],
 )
 def test_the_method_pair_is_added_unless_present_as_two_consecutive_values(
     existing, added
 ):
     found = _found()
-    readable, digest = found.method
+    digest, readable = found.method
     present = [value.format(readable=readable, digest=digest) for value in existing]
     source = _identifying_dataset()
     source.DeidentificationMethod = present
 
     marked = markers.apply_markers(source, found)
 
-    expected = [*present, readable, digest] if added else present
+    expected = [*present, digest, readable] if added else present
     assert list(marked.DeidentificationMethod) == expected
 
 
@@ -1007,31 +1034,206 @@ def test_nothing_but_the_markers_changes_and_the_source_is_untouched():
     assert marked == before
 
 
-@pytest.mark.parametrize(
-    "transfer_syntax",
-    [pydicom.uid.ImplicitVRLittleEndian, pydicom.uid.ExplicitVRLittleEndian],
-)
-def test_the_marked_data_set_is_written_and_read_back_unchanged(
-    pydicom_behaviour, transfer_syntax
-):
-    del pydicom_behaviour
-    source = _identifying_dataset()
-    source.file_meta = pydicom.dataset.FileMetaDataset()
-    source.file_meta.TransferSyntaxUID = transfer_syntax
-    found = markers.markers_for(
-        policy.compose_policy("public-release"),
-        DIGEST,
-        satisfied=policy.PRESETS["public-release"],
-    )
-    marked = markers.apply_markers(source, found)
+@pytest.fixture(name="strict_reading")
+def fixture_strict_reading():
+    """Read with pydicom's strict validation, and fail on any warning.
+
+    pydicom's reading validation mode and the warning filters are restored
+    afterwards, so other tests are unaffected.
+    """
+    with pydicom.config.strict_reading(), warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert pydicom.config.settings.reading_validation_mode == pydicom.config.RAISE
+        yield
+
+
+TRANSFER_SYNTAXES = [
+    pydicom.uid.ImplicitVRLittleEndian,
+    pydicom.uid.ExplicitVRLittleEndian,
+]
+
+
+def _written_and_read(dataset, transfer_syntax=pydicom.uid.ExplicitVRLittleEndian):
+    """Write a data set to a file in memory, and read the file back."""
+    written = copy.deepcopy(dataset)
+    written.file_meta = pydicom.dataset.FileMetaDataset()
+    written.file_meta.TransferSyntaxUID = transfer_syntax
     buffer = io.BytesIO()
-
-    pydicom.dcmwrite(buffer, marked, enforce_file_format=True)
+    pydicom.dcmwrite(buffer, written, enforce_file_format=True)
     buffer.seek(0)
-    read = pydicom.dcmread(buffer)
+    return pydicom.dcmread(buffer)
 
-    for keyword in MARKER_KEYWORDS:
-        assert read.data_element(keyword) == marked.data_element(keyword)
+
+def _marker_elements(dataset):
+    return {
+        keyword: dataset.data_element(keyword)
+        for keyword in MARKER_KEYWORDS
+        if keyword in dataset
+    }
+
+
+# Each policy whose markers are written and read back, and its satisfied
+# options.
+ROUND_TRIP_POLICIES = {
+    "basic": ("basic", ()),
+    "basic-clean-descriptors": ("basic-clean-descriptors", ("clean_descriptors",)),
+    "basic-clean-descriptors-unsatisfied": ("basic-clean-descriptors", ()),
+    "public-release": ("public-release", policy.PRESETS["public-release"]),
+    "tps-import": ("tps-import", ()),
+    "custom-option-set": (CUSTOM_OPTIONS, CUSTOM_OPTIONS),
+}
+# Versions of 11 and 14 characters, whose lengths differ by an odd number,
+# so that under each policy the De-identification Method values have an odd
+# length in all with one version and an even length with the other.
+ROUND_TRIP_VERSIONS = ("0.42.0.dev1", LONGEST_VERSION)
+DEIDENTIFICATION_METHOD_TAG = 0x00120063
+
+
+@pytest.mark.usefixtures("pydicom_behaviour", "strict_reading")
+@pytest.mark.parametrize(
+    "transfer_syntax", TRANSFER_SYNTAXES, ids=["implicit", "explicit"]
+)
+@pytest.mark.parametrize("name", list(ROUND_TRIP_POLICIES))
+def test_marked_output_reads_back_strictly_and_gains_nothing_when_marked_again(
+    monkeypatch, name, transfer_syntax
+):
+    selected, satisfied = ROUND_TRIP_POLICIES[name]
+    padded = set()
+
+    for version in ROUND_TRIP_VERSIONS:
+        monkeypatch.setattr(_version, "__version__", version)
+        found = markers.markers_for(_compose(selected), DIGEST, satisfied=satisfied)
+        marked = markers.apply_markers(_identifying_dataset(), found)
+
+        read = _written_and_read(marked, transfer_syntax)
+        # The bytes as written, before pydicom reads them and removes any
+        # padding: an odd length in all is padded with a trailing space.
+        encoded = read.get_item(DEIDENTIFICATION_METHOD_TAG).value
+        padded.add(encoded.endswith(b" "))
+        again = markers.apply_markers(read, found)
+
+        assert _marker_elements(read) == _marker_elements(marked)
+        assert _marker_elements(again) == _marker_elements(read)
+        assert list(read.DeidentificationMethod) == list(found.method)
+
+    assert padded == {True, False}
+
+
+@pytest.mark.usefixtures("strict_reading")
+def test_the_markers_follow_a_value_as_long_as_lo_allows(monkeypatch):
+    monkeypatch.setattr(_version, "__version__", "0.42.0.dev1")
+    # Another tool's value, as many characters as LO allows. With "SYNTHETIC
+    # AB" and a backslash before it, 77 characters, odd, so it would be read
+    # as too long if it stayed last. Reading such input is not this module's
+    # concern, so it is made in memory.
+    other = "SYNTHETIC TOOL " + "X" * 49
+    source = _identifying_dataset()
+    source.DeidentificationMethod = ["SYNTHETIC AB", other]
+    found = _found()
+
+    read = _written_and_read(markers.apply_markers(source, found))
+
+    assert len(other) == 64
+    assert list(read.DeidentificationMethod) == ["SYNTHETIC AB", other, *found.method]
+
+
+@pytest.mark.parametrize(
+    ("earlier", "refused"),
+    # The digest, basic's readable value of 37 characters under version
+    # 0.42.0, the other tool's value, and two backslashes make 167
+    # characters, odd; "SYNTHETIC TOOL" and one more backslash before them
+    # make 182, even.
+    [((), True), (("SYNTHETIC TOOL",), False)],
+    ids=["odd", "even"],
+)
+@pytest.mark.usefixtures("strict_reading")
+def test_a_present_pair_followed_by_a_value_that_padding_makes_too_long_is_refused(
+    monkeypatch, earlier, refused
+):
+    monkeypatch.setattr(_version, "__version__", "0.42.0")
+    found = _found()
+    digest, readable = found.method
+    # Another tool's value, as many characters as LO allows, after the pair
+    # from an earlier run, so that marking again adds nothing after it.
+    # Reading such input is not this module's concern, so it is made in
+    # memory.
+    other = "SYNTHETIC TOOL " + "X" * 49
+    present = [*earlier, digest, readable, other]
+    source = _identifying_dataset()
+    source.DeidentificationMethod = present
+    assert (len(readable), len(other)) == (37, 64)
+
+    if refused:
+
+        def never(*args):
+            raise AssertionError("an attribute was written")
+
+        monkeypatch.setattr(markers, "_set", never)
+        with pytest.raises(markers.MarkerError, match=r"\(0012,0063\)") as raised:
+            markers.apply_markers(source, found)
+        assert "SYNTHETIC" not in str(raised.value)
+        assert "X" * 49 not in str(raised.value)
+    else:
+        read = _written_and_read(markers.apply_markers(source, found))
+        assert list(read.DeidentificationMethod) == present
+
+
+@pytest.mark.parametrize(
+    ("version", "refused"),
+    # With "PyPy 3.11.9", "pydicom 3.1.0.dev0", the last value, and three
+    # backslashes, 102 characters, even, with a version of 6 characters, and
+    # 103, odd, with one of 7.
+    [("0.42.0", False), ("0.42.10", True)],
+)
+@pytest.mark.usefixtures("strict_reading")
+def test_software_versions_that_padding_would_make_too_long_are_refused(
+    monkeypatch, version, refused
+):
+    monkeypatch.setattr(_version, "__version__", version)
+    _with_environment(
+        monkeypatch,
+        {**SYNTHETIC_ENVIRONMENT, "tomlkit.__version__": LONGEST_LIBRARY_VERSION},
+    )
+    expected = [
+        version,
+        "PyPy 3.11.9",
+        "pydicom 3.1.0.dev0",
+        f"tomlkit {LONGEST_LIBRARY_VERSION}",
+    ]
+    assert refused == (expected == list(ODD_SOFTWARE_VERSIONS))
+    # pydicom itself reads the padded last value as too long.
+    alone = _identifying_dataset()
+    alone.SoftwareVersions = expected
+    read_alone = _written_and_read(alone)
+    composed = policy.compose_policy("basic")
+
+    if refused:
+        with pytest.raises(ValueError, match="exceeds the maximum length of 64"):
+            _ = read_alone.SoftwareVersions
+        with pytest.raises(markers.MarkerError, match=r"\(0018,1020\)") as raised:
+            markers.markers_for(composed, DIGEST, satisfied=())
+        assert LONGEST_LIBRARY_VERSION not in str(raised.value)
+    else:
+        assert list(read_alone.SoftwareVersions) == expected
+        found = markers.markers_for(composed, DIGEST, satisfied=())
+        marked = markers.apply_markers(_identifying_dataset(), found)
+        (equipment,) = _written_and_read(marked).ContributingEquipmentSequence
+        assert list(equipment.SoftwareVersions) == expected
+
+
+@pytest.mark.usefixtures("strict_reading")
+def test_a_single_value_as_long_as_its_vr_allows_is_written():
+    # A single value as long as its VR allows has an even length, so no
+    # padding follows it.
+    purpose = codes.CodedConcept("DCM", "109104", "Synthetic Purpose " + "X" * 46)
+    found = dataclasses.replace(_found(), purpose_of_reference=purpose)
+
+    marked = markers.apply_markers(_identifying_dataset(), found)
+    (equipment,) = _written_and_read(marked).ContributingEquipmentSequence
+
+    (code,) = equipment.PurposeOfReferenceCodeSequence
+    assert code.CodeMeaning == purpose.code_meaning
+    assert len(code.CodeMeaning) == 64
 
 
 @pytest.mark.parametrize(
@@ -1052,24 +1254,27 @@ LONG_TEXT = "x" * 80
     [
         ({"patient_identity_removed": "NO"}, markers.MarkerError, r"\(0012,0062\)"),
         ({"patient_identity_removed": ""}, markers.MarkerError, r"\(0012,0062\)"),
-        ({"method": (LONG_TEXT, DIGEST)}, markers.MarkerError, r"\(0012,0063\)"),
+        ({"method": (DIGEST, LONG_TEXT)}, markers.MarkerError, r"\(0012,0063\)"),
+        ({"method": (DIGEST, "x" * 64)}, markers.MarkerError, r"\(0012,0063\)"),
         (
-            {"patient_identity_removed": "NO", "method": (LONG_TEXT, DIGEST)},
+            {"patient_identity_removed": "NO", "method": (DIGEST, LONG_TEXT)},
             markers.MarkerError,
             r"\(0012,0062\).*\(0012,0063\)",
         ),
-        ({"method": ("SYNTHETIC",)}, markers.MarkerError, r"\(0012,0063\)"),
+        ({"method": (DIGEST,)}, markers.MarkerError, r"\(0012,0063\)"),
         (
-            {"method": ("SYNTHETIC", DIGEST, DIGEST)},
+            {"method": (DIGEST, DIGEST, "SYNTHETIC")},
             markers.MarkerError,
             r"\(0012,0063\)",
         ),
+        # The readable value first, as the digest's place.
+        ({"method": ("SYNTHETIC", DIGEST)}, ValueError, "64 lowercase hexadecimal"),
         (
-            {"method": ("SYNTHETIC", "A" * 64)},
+            {"method": ("A" * 64, "SYNTHETIC")},
             ValueError,
             "64 lowercase hexadecimal digits",
         ),
-        ({"method": ("SYNTHETIC", DIGEST.encode())}, TypeError, "digest must be text"),
+        ({"method": (DIGEST.encode(), "SYNTHETIC")}, TypeError, "digest must be text"),
         (
             {"temporal_information_modified": "modified"},
             markers.MarkerError,
@@ -1083,6 +1288,11 @@ LONG_TEXT = "x" * 80
         ({"manufacturer": "Py\\MedPhys"}, markers.MarkerError, r"\(0008,0070\)"),
         (
             {"software_versions": ("SYNTHETIC", LONG_TEXT)},
+            markers.MarkerError,
+            r"\(0018,1020\)",
+        ),
+        (
+            {"software_versions": ODD_SOFTWARE_VERSIONS},
             markers.MarkerError,
             r"\(0018,1020\)",
         ),
@@ -1101,15 +1311,18 @@ LONG_TEXT = "x" * 80
         "NO",
         "empty-identity-removed",
         "long-readable-value",
+        "readable-value-as-long-as-LO-allows",
         "NO-and-long-readable-value",
         "one-method-value",
         "three-method-values",
+        "readable-value-first",
         "upper-case-digest",
         "bytes-digest",
         "lower-case-temporal",
         "unenumerated-temporal",
         "backslash-manufacturer",
         "long-software-versions",
+        "software-versions-padded-too-long",
         "long-code-meaning",
         "backslash-code-value",
     ],
@@ -1134,6 +1347,8 @@ def test_markers_changed_after_markers_for_are_refused_before_they_are_written(
 
     assert LONG_TEXT not in str(raised.value)
     assert "A" * 64 not in str(raised.value)
+    assert "x" * 64 not in str(raised.value)
+    assert LONGEST_LIBRARY_VERSION not in str(raised.value)
 
 
 def test_arguments_of_the_wrong_type_are_refused():
