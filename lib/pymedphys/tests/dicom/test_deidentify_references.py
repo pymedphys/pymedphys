@@ -668,3 +668,54 @@ def test_an_unknown_value_is_decoded_only_where_the_dictionary_gives_sq(
     assert [reference.target for reference in record.references] == (
         ["2.25.9030"] if found else []
     )
+
+
+@pytest.mark.pydicom
+def test_an_unknown_value_is_decoded_as_implicit_vr_whatever_its_lengths(
+    monkeypatch,
+):
+    # Told that an item is Explicit VR, pydicom reads it as Implicit VR only
+    # if the two bytes after its first tag are not capital letters. Here they
+    # begin the first element's length, 0x4A4A, which reads as "JJ", so only
+    # decoding the value as Implicit VR finds the references.
+    uids = [f"2.25.{10000 + n}" for n in range(292)]
+    uids += [f"2.25.{1000000 + n}" for n in range(5)]
+    dataset = synthetic.rt_plan()
+    dataset.add(
+        synthetic.rt_assertions(
+            *(
+                synthetic.reference(synthetic.ENCAPSULATED_PDF_STORAGE, uid)
+                for uid in uids
+            )
+        )
+    )
+    expected = InstanceRecord.from_dataset(dataset)
+    documents = _encoded_items(
+        *(_encoded_reference(synthetic.ENCAPSULATED_PDF_STORAGE, uid) for uid in uids)
+    )
+    assert len(documents) == 0x4A4A
+    tag = synthetic.RT_ASSERTIONS_SEQUENCE
+    dataset[tag] = _unknown(
+        monkeypatch, tag, _encoded_items([_encoded(0x00380100, documents)])
+    )
+
+    record = InstanceRecord.from_dataset(dataset)
+
+    assert record == expected
+    assert [
+        reference.target
+        for reference in record.references
+        if reference.site.attribute == synthetic.PERTINENT_DOCUMENTS
+    ] == uids
+
+
+@pytest.mark.pydicom
+def test_an_unknown_value_of_zero_length_has_no_items(monkeypatch):
+    # pydicom reads a UN element of zero length with the value None.
+    dataset = synthetic.rt_plan()
+    tag = synthetic.RT_ASSERTIONS_SEQUENCE
+    dataset[tag] = _unknown(monkeypatch, tag, None)
+
+    record = InstanceRecord.from_dataset(dataset)
+
+    assert record == InstanceRecord.from_dataset(synthetic.rt_plan())

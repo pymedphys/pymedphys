@@ -48,9 +48,14 @@ def _dangling(position, attribute, count=1):
 
 @pytest.mark.pydicom
 def test_a_consistent_collection_has_no_findings():
-    graph = _graph(synthetic.collection())
+    records = [
+        InstanceRecord.from_dataset(dataset) for dataset in synthetic.collection()
+    ]
+
+    graph = reference_graph.build_reference_graph(records)
 
     assert not graph.findings
+    assert graph.records == tuple(records)
     assert len(graph.records) == 6
 
 
@@ -464,7 +469,7 @@ def test_an_instance_without_an_identifier_is_reported(keyword, tag, value):
     findings = _graph(datasets).findings
 
     assert [finding for finding in findings if finding.kind is MISSING] == [
-        Finding(MISSING, ((0,),), (tag,))
+        Finding(MISSING, ((0,),), (tag,), 0)
     ]
 
 
@@ -483,6 +488,7 @@ def test_findings_contain_no_values():
     graph = _graph(datasets)
 
     assert {finding.kind for finding in graph.findings} == {DANGLING, MISSING}
+    assert repr(graph) == f"ReferenceGraph(findings={graph.findings!r})"
     shown = repr(graph) + repr(graph.findings) + repr(sorted(graph.edges))
     shown += "".join(repr(record) for record in graph.records)
     values = {value for dataset in datasets for value in _text_values(dataset)}
