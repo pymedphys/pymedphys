@@ -24,8 +24,8 @@ and changes nothing else in it:
 - Patient Identity Removed (0012,0062) is YES under every policy, and never
   NO, replacing any value already present.
 - De-identification Method (0012,0063) keeps the values already present and
-  gains two: a readable value, and the policy digest as 64 lowercase
-  hexadecimal digits, unless that pair is already present as two consecutive
+  gains two: the policy digest as 64 lowercase hexadecimal digits, then a
+  readable value, unless that pair is already present as two consecutive
   values, when it gains neither. The readable value is
   ``PyMedPhys <version>; PS3.15 <edition>; <preset>`` for a policy that can
   claim conformance, with ``custom option set`` in place of the preset for a
@@ -61,20 +61,33 @@ and changes nothing else in it:
   as one value, such as ``CPython 3.14.0``, then each library's name and
   version, ``pydicom <version>`` and ``tomlkit <version>``.
 
+So output de-identified twice by the same release, policy, and environment
+carries the markers of one run, and a run with another digest adds its own
+pair of De-identification Method values.
+
 Each value is checked against its VR and VM in the pinned data dictionary,
-Patient Identity Removed is checked to be YES, and the second
+Patient Identity Removed is checked to be YES, and the first
 De-identification Method value to be 64 lowercase hexadecimal digits, both
 when :func:`markers_for` gives the markers and again when
 :func:`apply_markers` writes them, so that markers changed in between, such
 as with :func:`dataclasses.replace`, are refused before anything is written.
-A value that does not fit, such as a readable value longer than the 64
-characters of LO, is refused rather than shortened, and never written without
-the version. With edition 2026d, every version of up to 15 characters fits
-every preset's readable value.
+A value that does not fit is refused rather than shortened, and never written
+without the version.
 
-So output de-identified twice by the same release, policy, and environment
-carries the markers of one run, and a run with another digest adds its own
-pair of De-identification Method values.
+An attribute whose values have an odd length in all is padded with a
+trailing space after its last value. PS3.5 Section 6.4 allows the last value
+to exceed its VR's maximum length by that space, but pydicom checks each
+value's length before it removes the padding, so it reads a last value of
+the maximum length as too long: with a warning, or with an error under its
+strict reading. The digest, which has the 64 characters that LO allows,
+therefore comes before the readable value, and the readable value may have
+at most 63 characters, so that output reads cleanly. With edition 2026d,
+every version of up to 14 characters fits every preset's readable value.
+For the same reason, the markers are refused wherever an attribute that
+:func:`apply_markers` writes would end in a value of its VR's maximum length
+and have an odd length in all, as Software Versions could, or
+De-identification Method where another tool's value of that length follows a
+pair already present.
 
 The markers depend only on the policy, the digest, the satisfied options,
 PyMedPhys's version, and the environment, never on the data set, so they
@@ -143,6 +156,13 @@ _CODE_MEANING = "(0008,0104)"
 _CODING_SCHEME_VERSION = "(0008,0103)"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
+# The maximum length of a value of each VR that the markers write, in
+# characters (PS3.5 Table 6.2-1). Each is even, so padding can follow a value
+# of the maximum length only in an attribute of more than one value.
+_MAXIMUM_LENGTHS = types.MappingProxyType({"CS": 16, "LO": 64, "SH": 16})
+# The readable value is the last of the two De-identification Method values
+# that the markers add, so it leaves room for the padding that can follow it.
+_READABLE_LENGTH = _MAXIMUM_LENGTHS["LO"] - 1
 
 # The names that policy_digest.environment gives the Python implementation and
 # version, which Software Versions records as one value, and the end of the
@@ -171,7 +191,7 @@ class Markers:
         Patient Identity Removed (0012,0062): ``"YES"``.
     method : tuple of str
         The two values added to De-identification Method (0012,0063): the
-        readable value, then the policy digest.
+        policy digest, then the readable value.
     method_codes : tuple of CodedConcept
         The items added to De-identification Method Code Sequence
         (0012,0064): the Basic Profile's code and each satisfied option's,
@@ -294,20 +314,42 @@ def _check_digest(digest: object) -> None:
         raise ValueError("the policy digest must be 64 lowercase hexadecimal digits")
 
 
+def _padding_problem(vr: str, given: Sequence[str]) -> str | None:
+    """Return what is wrong if the padding would make the last value too long.
+
+    Values whose length in all, counting the backslash between each two, is
+    odd are padded with a trailing space after the last value (PS3.5 Section
+    6.4). pydicom checks each value's length before it removes the padding,
+    so it reads a last value of the VR's maximum length as too long. Lengths
+    are counted in characters, which in the Default Character Repertoire are
+    also bytes.
+    """
+    length = sum(len(value) for value in given) + len(given) - 1
+    if given and length % 2 and len(given[-1]) == _MAXIMUM_LENGTHS[vr]:
+        return (
+            "would have an odd length and end in a value of as many characters "
+            f"as VR {vr} allows, which pydicom reads with the padding as too long"
+        )
+    return None
+
+
 def _check(found: Markers) -> None:
     """Check the markers as they are to be written, and report each problem.
 
-    De-identification Method must gain two values, the second a policy
-    digest; Patient Identity Removed must be YES; and every value must fit
-    its VR and VM.
+    De-identification Method must gain two values, the first a policy
+    digest and the second a readable value of at most 63 characters;
+    Patient Identity Removed must be YES; every value must fit its VR and
+    VM; and no attribute may end in a value that the padding would make
+    too long.
     """
     if len(found.method) != 2:
         raise MarkerError(
             "the de-identification markers cannot be written: "
             f"De-identification Method {_DEIDENTIFICATION_METHOD} must gain two "
-            "values, the readable value and the policy digest"
+            "values, the policy digest and the readable value"
         )
-    _check_digest(found.method[1])
+    digest, readable = found.method
+    _check_digest(digest)
     problems = []
     if found.patient_identity_removed != "YES":
         name = _dictionary()[_PATIENT_IDENTITY_REMOVED].name
@@ -330,6 +372,16 @@ def _check(found: Markers) -> None:
     for tag, given in elements:
         attribute = _dictionary()[tag]
         problem = values_problem(attribute.vr, attribute.vm, given)
+        if (
+            not problem
+            and tag == _DEIDENTIFICATION_METHOD
+            and len(readable) > _READABLE_LENGTH
+        ):
+            problem = (
+                f"has a readable value longer than {_READABLE_LENGTH} characters, "
+                "which leaves no room for the padding that can follow it"
+            )
+        problem = problem or _padding_problem(attribute.vr, given)
         if problem:
             problems.append(f"{attribute.name} {tag} {problem}")
     if problems:
@@ -388,10 +440,12 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
     MarkerError
         If the policy resolves a conflict between options by keeping the
         value, so that Patient Identity Removed could be neither YES nor NO;
-        if a value does not fit its VR or VM, such as a readable value
-        longer than 64 characters or a library version too long for a
-        Software Versions value; or if the environment that the policy
-        digest covers lacks the Python implementation and version, or gives
+        if a value does not fit its VR or VM, such as a library version too
+        long for a Software Versions value; if the readable value is longer
+        than 63 characters; if an attribute would have an odd length and end
+        in a value of its VR's maximum length, which pydicom reads with the
+        padding as too long; or if the environment that the policy digest
+        covers lacks the Python implementation and version, or gives
         anything else that is not a library's version.
     ~pymedphys._dicom.deidentify.standard.StandardTableError
         If a pinned context group lacks a code that the markers write.
@@ -403,7 +457,9 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
     >>> policy = compose_policy("basic-clean-descriptors")
     >>> digest = policy_digest(policy, vocabulary=None)
     >>> found = markers_for(policy, digest, satisfied=["clean_descriptors"])
-    >>> found.method[0].split("; ")[1:]
+    >>> found.method[0] == digest
+    True
+    >>> found.method[1].split("; ")[1:]
     ['PS3.15 2026d', 'basic-clean-descriptors']
     >>> [(code.code_value, code.code_meaning) for code in found.method_codes]
     [('113100', 'Basic Application Confidentiality Profile'), ('113105', 'Clean Descriptors Option')]
@@ -436,7 +492,7 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         claim, method_codes = NO_CONFORMANCE_CLAIM, ()
     found = Markers(
         patient_identity_removed="YES",
-        method=(f"{MANUFACTURER} {version}; {claim}; {name}", digest),
+        method=(digest, f"{MANUFACTURER} {version}; {claim}; {name}"),
         method_codes=method_codes,
         temporal_information_modified=(
             "MODIFIED" if MODIFIED_DATES in policy.options else "REMOVED"
@@ -553,9 +609,9 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
     Patient Identity Removed replaces any value already present.
     De-identification Method, De-identification Method Code Sequence, and
     Contributing Equipment Sequence keep their values and items, and the
-    markers' follow them, apart from any already present: the readable value
-    and digest are added only where that pair is not already present as two
-    consecutive values; a code only where no item already present has the
+    markers' follow them, apart from any already present: the digest and
+    readable value are added only where that pair is not already present as
+    two consecutive values; a code only where no item already present has the
     same Code Value and Coding Scheme Designator, and the same Coding Scheme
     Version where either has one; and the equipment item only where no item
     already present has the same Manufacturer, the same Software Versions in
@@ -596,13 +652,18 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
         If ``markers`` sets Patient Identity Removed to anything but YES or
         Longitudinal Temporal Information Modified to anything but one of
         :data:`TEMPORAL_VALUES`, does not add exactly two De-identification
-        Method values, or has a value that does not fit its VR or VM; if an
-        attribute whose values are kept or compared has values but another VR
-        than the pinned dictionary gives it, such as UN, so that keeping them
-        could lose or misread them; or if Longitudinal Temporal Information
-        Modified already holds something other than one of
-        :data:`TEMPORAL_VALUES`, so that the stricter value cannot be told.
-        The message does not quote the values.
+        Method values, has a value that does not fit its VR or VM, or has a
+        readable value longer than 63 characters; if an attribute it writes
+        would have an odd length and end in a value of its VR's maximum
+        length, which pydicom reads with the padding as too long, as
+        De-identification Method would where a value as long as LO allows
+        follows a pair already present; if an attribute whose values are
+        kept or compared has values but another VR than the pinned
+        dictionary gives it, such as UN, so that keeping them could lose or
+        misread them; or if Longitudinal Temporal Information Modified
+        already holds something other than one of :data:`TEMPORAL_VALUES`,
+        so that the stricter value cannot be told. The message does not
+        quote the values.
     """
     if not isinstance(dataset, pydicom.Dataset):
         raise TypeError("dataset must be a pydicom Dataset")
@@ -618,6 +679,15 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
     pair = list(markers.method)
     if not any(method[i : i + 2] == pair for i in range(len(method) - 1)):
         method.extend(pair)
+    # _check has checked the markers' own values, but a value already present
+    # can end De-identification Method, after a pair already present.
+    attribute = _dictionary()[_DEIDENTIFICATION_METHOD]
+    problem = _padding_problem(attribute.vr, method)
+    if problem:
+        raise MarkerError(
+            "the de-identification markers cannot be written: "
+            f"{attribute.name} {_DEIDENTIFICATION_METHOD} {problem}"
+        )
     present_codes = [_code_key(item) for item in method_codes]
     for item in map(_code_item, markers.method_codes):
         if _code_key(item) not in present_codes:
