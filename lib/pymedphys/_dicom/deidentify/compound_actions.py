@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Resolve the compound actions of Table E.1-1a from an attribute's PS3.3 Type.
+"""Resolve the actions of Table E.1-1a from an attribute's PS3.3 Type.
 
 Table E.1-1 of DICOM PS3.15 gives some attributes a compound action, such as
 X/Z/D: remove the attribute (X) unless the IOD requires it, and otherwise
@@ -52,6 +52,11 @@ ROI Creator Sequence (3006,004D) within Structure Set ROI Sequence
 >>> resolve_in_iod(structure_set, "(0008,0080)", ("(0008,0096)",), "X/Z/D")
 'D'
 
+The Type also decides what two plain actions do
+(:func:`resolve_plain_in_iod`). A plain D on an attribute that the IOD does
+not define at that place gives X, following Note 13 after Table E.1-1a, and a
+plain Z on a Type 1 or 1C attribute gives D, as X/Z does there.
+
 This module chooses the action; it writes no value. Its errors never repeat
 a value.
 """
@@ -61,7 +66,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 
-from .iods import IOD
+from .iods import IOD, AttributeDefinition
 
 # The actions in the order in which they retain more: remove, empty, then
 # replace with a dummy value.
@@ -77,6 +82,8 @@ _OFFERS: Mapping[str, Mapping[str, str]] = {
     "X/Z/U*": {"X": "X", "Z": "Z", "D": "U"},
 }
 COMPOUND_ACTIONS = frozenset(_OFFERS)
+# The plain actions of Table E.1-1a.
+PLAIN_ACTIONS = frozenset({"C", "D", "K", "U", "X", "Z"})
 
 # Each Type of PS3.5 Section 7.4 by its strictness. No condition is
 # evaluated, so 1C counts as 1 and 2C as 2.
@@ -136,8 +143,11 @@ def strictest_type(iod: IOD, tag: str, path: Sequence[str] = ()) -> str:
         with upper-case hexadecimal digits, or if ``path`` is a single
         string.
     """
-    types = (_STRICTNESS[d.type] for d in iod.lookup(tag, _checked_path(tag, path)))
-    return min(types, default="3")
+    return _strictest(iod.lookup(tag, _checked_path(tag, path)))
+
+
+def _strictest(definitions: Sequence[AttributeDefinition]) -> str:
+    return min((_STRICTNESS[d.type] for d in definitions), default="3")
 
 
 def resolve(action: str, attribute_type: str) -> str:
@@ -149,9 +159,9 @@ def resolve(action: str, attribute_type: str) -> str:
     non-zero-length dummy value that Table E.1-1a allows Z.
 
     Plain actions (D, Z, X, K, C, and U) are rejected rather than passed
-    through. They do not depend on the Type, and passing X through would
-    suggest that removing the attribute had been checked against its Type,
-    which this module does not do for plain actions.
+    through: what D and Z do depends on whether and how the IOD defines the
+    attribute, not only on its Type, so :func:`resolve_plain_in_iod`
+    resolves them.
 
     Parameters
     ----------
@@ -226,3 +236,64 @@ def resolve_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -> str:
         malformed, as for :func:`strictest_type` and :func:`resolve`.
     """
     return resolve(action, strictest_type(iod, tag, path))
+
+
+def resolve_plain_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -> str:
+    """Return the action that a plain action gives an attribute in an IOD.
+
+    A plain D on an attribute that the IOD does not define at that place
+    gives X: Note 13 after Table E.1-1a says that an attribute given D
+    because an IOD requires it, "if encountered in an image instance, it
+    should simply be removed (treated as X)". A plain Z on an attribute that
+    is Type 1 or 1C there, by :func:`strictest_type`, gives D, the
+    non-zero-length dummy value that Table E.1-1a allows Z. Every other plain
+    action, and D and Z elsewhere, is returned unchanged; a plain Z on an
+    attribute that the IOD does not define there stays Z.
+
+    Parameters
+    ----------
+    iod : IOD
+        The instance's IOD.
+    tag : str
+        The attribute's tag, such as ``"(0040,A073)"``, with upper-case
+        hexadecimal digits.
+    path : sequence of str
+        The tags of the sequences whose items contain the attribute,
+        outermost first, or ``()`` at the top level of the data set.
+    action : str
+        A plain action of Table E.1-1a, one of :data:`PLAIN_ACTIONS`.
+
+    Returns
+    -------
+    str
+        ``"X"``, ``"Z"``, ``"D"``, ``"K"``, ``"C"``, or ``"U"``.
+
+    Raises
+    ------
+    ValueError
+        If ``action`` is not a plain action, or ``tag`` or ``path`` is
+        malformed, as for :func:`strictest_type`.
+
+    Examples
+    --------
+    Verifying Observer Sequence (0040,A073), which Table E.1-1 gives D, is
+    defined only in Structured Report IODs:
+
+    >>> from pymedphys._dicom.deidentify.iods import load_iod_tables
+    >>> iods = load_iod_tables().iods
+    >>> resolve_plain_in_iod(iods["CT Image"], "(0040,A073)", (), "D")
+    'X'
+    >>> resolve_plain_in_iod(iods["Comprehensive SR"], "(0040,A073)", (), "D")
+    'D'
+    """
+    definitions = iod.lookup(tag, _checked_path(tag, path))
+    if not isinstance(action, str) or action not in PLAIN_ACTIONS:
+        raise ValueError(
+            "action is not a plain action of Table E.1-1a: "
+            + ", ".join(sorted(PLAIN_ACTIONS))
+        )
+    if action == "D" and not definitions:
+        return "X"
+    if action == "Z" and _strictest(definitions) == "1":
+        return "D"
+    return action
