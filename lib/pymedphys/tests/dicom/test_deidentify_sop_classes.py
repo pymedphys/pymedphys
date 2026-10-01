@@ -181,6 +181,11 @@ def test_the_sop_classes_of_later_releases_find_their_iods():
         uid.RTBeamsTreatmentRecordStorage: "RT Beams Treatment Record",
         uid.RTIonPlanStorage: "RT Ion Plan",
         uid.SpatialRegistrationStorage: "Spatial Registration",
+        # IODs whose modules include Functional Group Macros.
+        uid.EnhancedCTImageStorage: "Enhanced CT Image",
+        uid.EnhancedMRImageStorage: "Enhanced MR Image",
+        uid.SegmentationStorage: "Segmentation",
+        uid.EnhancedPETImageStorage: "Enhanced PET Image",
     }
 
     found = {
@@ -195,20 +200,28 @@ def test_the_sop_classes_of_later_releases_find_their_iods():
 @pytest.mark.parametrize(
     "sop_class",
     [
-        # Storage SOP Classes whose IODs have Functional Group Macros, which
-        # are not yet generated: Enhanced CT Image and Segmentation.
-        "1.2.840.10008.5.1.4.1.1.2.1",
-        "1.2.840.10008.5.1.4.1.1.66.4",
         # SOP Classes that Table B.5-1 does not list: the retired Nuclear
         # Medicine Image Storage, Hanging Protocol Storage, which another
-        # service class defines, and Verification, which stores nothing.
+        # service class defines, Verification, which stores nothing, and Video
+        # Endoscopic Image Real-Time Communication, whose IOD the pin leaves
+        # out.
         "1.2.840.10008.5.1.4.1.1.5",
         "1.2.840.10008.5.1.4.38.1",
         "1.2.840.10008.1.1",
+        "1.2.840.10008.10.1",
     ],
 )
-def test_an_unsupported_or_unlisted_sop_class_has_no_iod(sop_class):
+def test_an_unlisted_sop_class_has_no_iod(sop_class):
     assert sop_classes.iod_for_sop_class(sop_class) is None
+
+
+def test_every_storage_sop_class_finds_its_iod():
+    # Every IOD of Table B.5-1 has generated Types in 2026d, including those
+    # whose modules include Functional Group Macros.
+    tables = iods.load_iod_tables()
+
+    for row in sop_classes.load_storage_sop_classes().rows:
+        assert sop_classes.iod_for_sop_class(row.uid) is tables.iods[row.iod_name]
 
 
 @pytest.mark.pydicom

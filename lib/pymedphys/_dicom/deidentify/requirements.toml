@@ -608,7 +608,7 @@ tests = [
   "tests/dicom/test_deidentify_standard.py::test_each_table_is_generated_from_the_pinned_edition",
   "tests/dicom/test_deidentify_standard.py::test_an_altered_row_is_rejected",
   "tests/dicom/test_deidentify_standard.py::test_every_table_e1_1_attribute_is_in_the_data_dictionary",
-  "tests/dicom/test_deidentify_sop_classes.py::test_an_unsupported_or_unlisted_sop_class_has_no_iod",
+  "tests/dicom/test_deidentify_sop_classes.py::test_an_unlisted_sop_class_has_no_iod",
   "tests/dicom/test_deidentify_scope.py::test_a_standard_sop_class_of_another_iod_is_sequestered",
   "tests/dicom/test_deidentify_scope.py::test_a_sop_class_that_table_b_5_1_does_not_list_is_sequestered",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",
