@@ -43,10 +43,14 @@ the vocabulary's spelling and a reason, never the source name, so they can be
 logged; recording each rename for audit in the confidential QC material is
 the caller's responsibility.
 
-Only a vocabulary converted from the AAPM TG-263 spreadsheet, whose entries
-are published, generic names, is used: :class:`RoiNameVocabulary` accepts a
+Automatic renaming is meant only for the published AAPM TG-263 list, whose
+entries are generic names. :class:`RoiNameVocabulary` accepts a
 :class:`~pymedphys._nomenclature.tg263.Nomenclature` that carries AAPM's
 attribution, which :func:`~pymedphys._nomenclature.tg263.load_json` requires.
+That shows only that the TG-263 converter made the vocabulary: the converter
+writes the attribution for any workbook with the TG-263 columns, including a
+list extended with local names, so it does not yet show that the entries are
+AAPM's.
 """
 
 from __future__ import annotations
@@ -109,8 +113,7 @@ class RoiNameVocabulary:
     Parameters
     ----------
     nomenclature : ~pymedphys._nomenclature.tg263.Nomenclature
-        Converted from the AAPM TG-263 spreadsheet, as its attribution
-        states.
+        Made by the TG-263 converter, as its attribution states.
 
     Raises
     ------
@@ -137,15 +140,19 @@ class RoiNameVocabulary:
         self._spellings: Mapping[str, frozenset[str]] = {
             normalised: frozenset(names) for normalised, names in spellings.items()
         }
+        self._names = frozenset().union(*self._spellings.values())
 
     @property
     def names(self) -> frozenset[str]:
         """Every vocabulary name that automatic cleaning can match."""
-        return frozenset().union(*self._spellings.values())
+        return self._names
 
-    def spellings(self, normalised: str) -> frozenset[str]:
-        """Return the vocabulary names with this normalised form."""
-        return self._spellings.get(normalised, frozenset())
+    def spellings(self, name: str) -> frozenset[str]:
+        """Return the vocabulary names that a ROI Name, without padding, matches."""
+        normalised = _normalised(name)
+        return (
+            self._spellings.get(normalised, frozenset()) if normalised else frozenset()
+        )
 
     def __repr__(self) -> str:
         return f"RoiNameVocabulary(names={len(self.names)})"
@@ -185,15 +192,15 @@ def clean_roi_names(
     names = _texts(names, "ROI Names")
     words, wholes = _identifier_words(_texts(identifiers, "identifiers"))
     stripped = [name.strip(_PADDING) for name in names]
-    spellings = [_spelling(name, vocabulary) for name in stripped]
+    matches = [vocabulary.spellings(name) for name in stripped]
     sources: dict[str, set[str]] = collections.defaultdict(set)
-    for name, spelling in zip(stripped, spellings):
-        if spelling is not None:
-            sources[spelling].add(name)
+    for name, spellings in zip(stripped, matches):
+        if len(spellings) == 1:
+            sources[next(iter(spellings))].add(name)
     decisions = []
-    for name, spelling in zip(stripped, spellings):
-        decision = _decide(name, vocabulary, words, wholes)
-        if decision.renamed and spelling is not None and len(sources[spelling]) > 1:
+    for name, spellings in zip(stripped, matches):
+        decision = _decide(name, spellings, words, wholes)
+        if decision.renamed and len(sources[decision.value or ""]) > 1:
             decision = RoiNameDecision(Reason.WOULD_DUPLICATE, None)
         decisions.append(decision)
     return tuple(decisions)
@@ -213,16 +220,6 @@ def _normalised(name: str) -> str:
     if not _PRINTABLE_ASCII.fullmatch(name):
         return ""
     return _DISREGARDED.sub("", name).lower()
-
-
-def _spelling(name: str, vocabulary: RoiNameVocabulary) -> str | None:
-    """Return the one vocabulary name a stripped name matches, or None."""
-    normalised = _normalised(name)
-    spellings = vocabulary.spellings(normalised) if normalised else frozenset()
-    if len(spellings) == 1:
-        (spelling,) = spellings
-        return spelling
-    return None
 
 
 def _words(text: str) -> set[str]:
@@ -246,13 +243,11 @@ def _identifier_words(identifiers: Sequence[str]) -> tuple[set[str], set[str]]:
 
 
 def _decide(
-    name: str, vocabulary: RoiNameVocabulary, words: set[str], wholes: set[str]
+    name: str, spellings: frozenset[str], words: set[str], wholes: set[str]
 ) -> RoiNameDecision:
     """Decide on one stripped name, before duplicates are considered."""
     if not name:
         return RoiNameDecision(Reason.EMPTY, "")
-    normalised = _normalised(name)
-    spellings = vocabulary.spellings(normalised) if normalised else frozenset()
     if not spellings:
         return RoiNameDecision(Reason.UNMATCHED, None)
     if len(spellings) > 1:
