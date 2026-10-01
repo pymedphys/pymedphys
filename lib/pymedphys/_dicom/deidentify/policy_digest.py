@@ -368,7 +368,7 @@ def _environment() -> dict[str, object]:
     }
 
 
-def digest_inputs(vocabulary: tg263.Nomenclature | None = None) -> DigestInputs:
+def digest_inputs(*, vocabulary: tg263.Nomenclature | None) -> DigestInputs:
     """Gather everything the policy digest covers apart from the policy.
 
     Reads the engine's own files once per process, at the first call: the
@@ -379,9 +379,10 @@ def digest_inputs(vocabulary: tg263.Nomenclature | None = None) -> DigestInputs:
 
     Parameters
     ----------
-    vocabulary : ~pymedphys._nomenclature.tg263.Nomenclature, optional
+    vocabulary : ~pymedphys._nomenclature.tg263.Nomenclature or None
         The TG-263 vocabulary that descriptor cleaning matches ROI Names
-        against, or None without one.
+        against, or None without one. It must be given by name, and has no
+        default, so that every caller states whether there is one.
 
     Returns
     -------
@@ -436,9 +437,7 @@ def digest_inputs(vocabulary: tg263.Nomenclature | None = None) -> DigestInputs:
     )
 
 
-def policy_digest(
-    policy: Policy, *, vocabulary: tg263.Nomenclature | None = None
-) -> str:
+def policy_digest(policy: Policy, *, vocabulary: tg263.Nomenclature | None) -> str:
     """Return the policy digest of a policy, as 64 lowercase hexadecimal digits.
 
     The digest is the SHA-256 of :func:`canonical_bytes` of the policy and
@@ -452,9 +451,10 @@ def policy_digest(
     policy : Policy
         A validated policy, such as one from
         :func:`~pymedphys._dicom.deidentify.policy.compose_policy`.
-    vocabulary : ~pymedphys._nomenclature.tg263.Nomenclature, optional
+    vocabulary : ~pymedphys._nomenclature.tg263.Nomenclature or None
         The TG-263 vocabulary that descriptor cleaning matches ROI Names
-        against, or None without one.
+        against, or None without one. It must be given by name, and has no
+        default, so that every caller states whether there is one.
 
     Returns
     -------
@@ -470,11 +470,11 @@ def policy_digest(
     Examples
     --------
     >>> from pymedphys._dicom.deidentify.policy import compose_policy
-    >>> digest = policy_digest(compose_policy("basic"))
+    >>> digest = policy_digest(compose_policy("basic"), vocabulary=None)
     >>> len(digest), digest == digest.lower(), int(digest, 16) >= 0
     (64, True, True)
     """
     _check_policy(policy)
     return hashlib.sha256(
-        canonical_bytes(policy, digest_inputs(vocabulary))
+        canonical_bytes(policy, digest_inputs(vocabulary=vocabulary))
     ).hexdigest()
