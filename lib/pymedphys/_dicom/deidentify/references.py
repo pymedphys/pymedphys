@@ -53,7 +53,7 @@ from pymedphys._imports import pydicom
 
 from .iods import IOD
 from .sop_classes import iod_for_sop_class
-from .standard import load_data_dictionary
+from .standard import sequence_tags
 from .uids import normalise_uid
 
 SOP_CLASS_TAG = "(0008,0016)"
@@ -327,16 +327,6 @@ def _sequence(element: pydicom.DataElement, tag: str) -> Iterator[pydicom.Datase
     elif (
         element.VR == "UN"
         and isinstance(element.value, bytes)
-        and tag in _dictionary_sequences()
+        and tag in sequence_tags()
     ):
         yield from pydicom.values.convert_SQ(element.value, True, True)
-
-
-@functools.lru_cache(maxsize=None)
-def _dictionary_sequences() -> frozenset[str]:
-    """Return the tags whose VR is SQ in the pinned data dictionary."""
-    return frozenset(
-        attribute.tag
-        for attribute in load_data_dictionary().attributes
-        if attribute.vr == "SQ"
-    )
