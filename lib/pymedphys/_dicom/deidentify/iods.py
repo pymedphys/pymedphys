@@ -12,14 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Load the attribute Types of the supported IODs, as DICOM PS3.3 defines them.
+"""Load the attribute Types of the composite IODs, as DICOM PS3.3 defines them.
 
 ``pymedphys dev deid-tables`` generates two tables from the pinned edition of
-PS3.3. ``iod_modules.json`` lists each supported IOD's modules, and
-``module_attributes.json`` holds the attribute tables of those modules and of
-every macro they include, with rows as published. The loader expands each
-IOD's modules, following every "Include" row, into the attributes it defines
-at each place in the data set, with their Types.
+PS3.3. ``iod_modules.json`` lists the modules of each composite IOD except
+those whose modules include Functional Group Macros, which are not yet
+generated, and ``module_attributes.json`` holds the attribute tables of those
+modules and of every macro they include, with rows as published apart from the
+named corrections in the generator's pin. The loader expands an IOD's modules
+when its Types are first needed, following every "Include" row, into the
+attributes it defines at each place in the data set, with their Types.
+
+Types are generated ahead of support: an IOD with Types is not thereby
+supported, and :mod:`~pymedphys._dicom.deidentify.scope` sequesters the
+instances of every IOD the release does not support.
 
 The design resolves compound actions of Table E.1-1, such as X/Z/D, from these
 Types (PS3.15 E.1.1). An instance names its SOP Class rather than its IOD;
@@ -180,8 +186,25 @@ class AttributeDefinition:
 
 
 @dataclasses.dataclass(frozen=True)
+class _Recursion:
+    """Where a table includes itself, so its items repeat the table's rows.
+
+    The items at ``path`` hold what the table's expansion at ``origin``
+    holds: the definitions whose tables start with ``tables``, the tables
+    included to reach it, ending with the table itself.
+    """
+
+    path: tuple[str, ...]
+    origin: tuple[str, ...]
+    tables: tuple[str, ...]
+
+
+@dataclasses.dataclass(frozen=True)
 class IOD:
     """An IOD's modules and the attributes they define.
+
+    The modules are expanded into definitions when first needed, and the
+    result is kept.
 
     Attributes
     ----------
@@ -191,29 +214,53 @@ class IOD:
         The label of its modules table, such as ``"Table A.3-1"``.
     modules : tuple of ModuleUsage
         Its modules, in the table's order.
-    definitions : tuple of AttributeDefinition
-        Every attribute its modules define, with each macro expanded, in the
-        order of the modules and their rows.
+    attribute_tables : Mapping of str to AttributeTable
+        The attribute tables its modules reach, by label.
     """
 
     name: str
     label: str
     modules: tuple[ModuleUsage, ...]
-    definitions: tuple[AttributeDefinition, ...] = dataclasses.field(repr=False)
-    _index: Mapping[tuple[tuple[str, ...], str], tuple[AttributeDefinition, ...]] = (
-        dataclasses.field(init=False, repr=False, compare=False)
+    attribute_tables: Mapping[str, AttributeTable] = dataclasses.field(
+        repr=False, compare=False
     )
 
-    def __post_init__(self) -> None:
+    @functools.cached_property
+    def definitions(self) -> tuple[AttributeDefinition, ...]:
+        """Every attribute its modules define, with each macro expanded.
+
+        In the order of the modules and their rows. Where a table includes
+        itself, the items it repeats are not listed again; :meth:`lookup`
+        finds their attributes at any depth.
+        """
+        return self._expansion[0]
+
+    @functools.cached_property
+    def _expansion(
+        self,
+    ) -> tuple[
+        tuple[AttributeDefinition, ...],
+        Mapping[tuple[tuple[str, ...], str], tuple[AttributeDefinition, ...]],
+        tuple[_Recursion, ...],
+    ]:
+        definitions: list[AttributeDefinition] = []
+        recursions: list[_Recursion] = []
         index: dict[tuple[tuple[str, ...], str], list[AttributeDefinition]] = (
             collections.defaultdict(list)
         )
-        for definition in self.definitions:
-            index[definition.path, definition.tag].append(definition)
-        object.__setattr__(
-            self,
-            "_index",
+        for module in self.modules:
+            for item in _definitions(
+                self.attribute_tables, module.table, module.module, (), ()
+            ):
+                if isinstance(item, _Recursion):
+                    recursions.append(item)
+                else:
+                    definitions.append(item)
+                    index[item.path, item.tag].append(item)
+        return (
+            tuple(definitions),
             types.MappingProxyType({key: tuple(value) for key, value in index.items()}),
+            tuple(recursions),
         )
 
     def lookup(
@@ -237,20 +284,34 @@ class IOD:
         tuple of AttributeDefinition
             One for each place in the IOD's modules that defines the
             attribute there, or ``()`` if none does. Different modules can
-            give the same attribute different Types.
+            give the same attribute different Types. Within the items of a
+            table that includes itself, such as nested Content Sequence
+            (0040,A730) items, the definitions are those of the table's own
+            rows, with ``path`` as given.
         """
+        _, index, recursions = self._expansion
         key = tuple(path)
-        found = self._index.get((key, tag), ())
+        found = index.get((key, tag), ())
         repeating = _REPEATING_GROUP.fullmatch(tag)
         if repeating:
             group, _, element = repeating.groups()
-            found += self._index.get((key, f"({group}xx,{element})"), ())
+            found += index.get((key, f"({group}xx,{element})"), ())
+        for recursion in recursions:
+            depth = len(recursion.path)
+            if key[:depth] != recursion.path:
+                continue
+            # The origin is shorter than the recursion's path, so this ends.
+            found += tuple(
+                dataclasses.replace(definition, path=key)
+                for definition in self.lookup(tag, recursion.origin + key[depth:])
+                if definition.tables[: len(recursion.tables)] == recursion.tables
+            )
         return found
 
 
 @dataclasses.dataclass(frozen=True)
 class IODTables:
-    """The supported IODs, as generated from one edition of PS3.3.
+    """The IODs whose Types are generated from one edition of PS3.3.
 
     Attributes
     ----------
@@ -305,8 +366,9 @@ def _row_problem(row: dict, above: AttributeRow | None) -> str | None:
     if problem:
         return problem
     # A row can be one level deeper than an attribute with a tag above it,
-    # which is then a sequence, and no deeper than any other row above it.
-    allowed = 0 if above is None else above.depth + bool(above.tag)
+    # which is then a sequence, or than an Include row above it, which
+    # _check_includes checks; and no deeper than any other row above it.
+    allowed = 0 if above is None else above.depth + bool(above.tag or above.include)
     if depth > allowed:
         return "is nested more deeply than the row above allows"
     return None
@@ -337,27 +399,65 @@ def _attribute_tables(document: dict, name: str) -> dict[str, AttributeTable]:
             rows.append(AttributeRow(**row))
         tables[label] = AttributeTable(label, entry["title"], tuple(rows))
 
+    checked: set[str] = set()
     for label in tables:
-        _check_includes(tables, label, (), name)
+        _check_includes(tables, label, (), name, checked)
     return tables
 
 
+def _sole_top_level_tag(table: AttributeTable) -> str | None:
+    """Return the tag of a table's only top-level row, or None."""
+    top = [row for row in table.rows if row.depth == 0]
+    return top[0].tag or None if len(top) == 1 else None
+
+
+def _below_own_sequence(rows: Sequence[AttributeRow], number: int) -> bool:
+    """Return whether a row is in the items of a sequence of its own table."""
+    enclosing = [row for row in rows[:number] if row.depth < rows[number].depth]
+    return bool(enclosing and enclosing[-1].tag)
+
+
 def _check_includes(
-    tables: Mapping[str, AttributeTable], label: str, chain: tuple[str, ...], name: str
+    tables: Mapping[str, AttributeTable],
+    label: str,
+    chain: tuple[str, ...],
+    name: str,
+    checked: set[str],
 ) -> None:
-    """Check that every table ``label`` includes exists and never includes itself."""
+    """Check the tables ``label`` includes, directly or through other tables.
+
+    Each must exist. A table can include itself only below one of its own
+    sequences, and no other table can include it again. Rows nested below an
+    Include row need the included table's only top-level row to have a tag.
+    """
     if label in chain:
         raise StandardTableError(
             f"{name}: {label} includes itself: "
             + " > ".join((*chain[chain.index(label) :], label))
         )
-    for row in tables[label].rows:
-        if row.include and row.include not in tables:
+    if label in checked:
+        return
+    rows = tables[label].rows
+    for number, row in enumerate(rows):
+        if not row.include:
+            continue
+        if row.include not in tables:
             raise StandardTableError(
                 f"{name}: {label} includes {row.include}, which is not in the file"
             )
-        if row.include:
-            _check_includes(tables, row.include, (*chain, label), name)
+        below = rows[number + 1] if number + 1 < len(rows) else None
+        if (
+            below is not None
+            and below.depth > row.depth
+            and _sole_top_level_tag(tables[row.include]) is None
+        ):
+            raise StandardTableError(
+                f"{name}: {label} row {number + 2} is nested below an Include of "
+                f"{row.include}, which has no single top-level attribute"
+            )
+        if row.include != label or not _below_own_sequence(rows, number):
+            _check_includes(tables, row.include, (*chain, label), name, checked)
+    checked.add(label)
 
 
 def _definitions(
@@ -366,12 +466,17 @@ def _definitions(
     module: str,
     enclosing: tuple[str, ...],
     via: tuple[str, ...],
-) -> Iterator[AttributeDefinition]:
-    """Yield the definitions of a table's rows, with each include expanded."""
+) -> Iterator[AttributeDefinition | _Recursion]:
+    """Yield the definitions of a table's rows, with each include expanded.
+
+    Where the table includes itself, yield where its rows repeat instead.
+    """
     path = list(enclosing)
     for row in tables[label].rows:
         del path[len(enclosing) + row.depth :]
-        if row.include:
+        if row.include == label:
+            yield _Recursion(tuple(path), enclosing, (*via, label))
+        elif row.include:
             yield from _definitions(
                 tables, row.include, module, tuple(path), (*via, label)
             )
@@ -379,6 +484,11 @@ def _definitions(
             yield AttributeDefinition(
                 tuple(path), row.tag, row.name, row.type, module, (*via, label)
             )
+        if row.include:
+            # Rows nested below the Include row are in the items of the
+            # included table's only top-level attribute.
+            path.append(_sole_top_level_tag(tables[row.include]) or "")
+        elif row.tag:
             path.append(row.tag)
 
 
@@ -416,21 +526,17 @@ def _iod(entry: object, tables: Mapping[str, AttributeTable], name: str) -> IOD:
     if len({module.module for module in modules}) != len(modules):
         raise StandardTableError(f"{name}: {label} lists a module more than once")
 
-    definitions = tuple(
-        definition
-        for module in modules
-        for definition in _definitions(tables, module.table, module.module, (), ())
-    )
-    return IOD(entry["iod"], label, tuple(modules), definitions)
+    return IOD(entry["iod"], label, tuple(modules), tables)
 
 
 def load_iod_tables(
     modules_path: pathlib.Path | None = None,
     attributes_path: pathlib.Path | None = None,
 ) -> IODTables:
-    """Load the supported IODs, as generated from the pinned edition of PS3.3.
+    """Load the IODs whose Types are generated from the pinned edition of PS3.3.
 
-    The files are read once and cached, keyed by their resolved paths.
+    The files are read and checked once and cached, keyed by their resolved
+    paths. Each IOD's modules are expanded when its Types are first needed.
 
     Parameters
     ----------
@@ -452,9 +558,11 @@ def load_iod_tables(
         without the copyright acknowledgement; if its rows differ from their
         recorded digest; if the files name different editions; or if a table,
         row, IOD, or module lacks its fields or has an invalid value. This
-        includes a row nested more deeply than the row above allows, an
-        Include of a table the file lacks, a table that includes itself, and
-        a module whose attribute table the file lacks.
+        includes a row nested more deeply than the row above allows, or below
+        an Include of a table without a single top-level attribute; an
+        Include of a table the file lacks; a table that includes itself other
+        than below one of its own sequences, or through other tables; and a
+        module whose attribute table the file lacks.
     """
     return _load_iod_tables(
         _default(modules_path, "iod_modules.json"),
@@ -473,7 +581,8 @@ def _load_iod_tables(
             f"{modules_path.name} and {attributes_path.name} name different editions"
         )
 
-    tables = _attribute_tables(attributes, attributes_path.name)
+    # Every IOD shares the tables, so none can change them.
+    tables = types.MappingProxyType(_attribute_tables(attributes, attributes_path.name))
     iods: dict[str, IOD] = {}
     for entry in modules["rows"]:
         iod = _iod(entry, tables, modules_path.name)
@@ -486,5 +595,5 @@ def _load_iod_tables(
         edition=modules["edition"],
         acknowledgement=modules["acknowledgement"],
         iods=types.MappingProxyType(iods),
-        attribute_tables=types.MappingProxyType(tables),
+        attribute_tables=tables,
     )
