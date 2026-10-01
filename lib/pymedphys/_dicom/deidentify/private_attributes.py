@@ -38,17 +38,27 @@ E.1-1a), so a private sequence is removed whole, whatever it holds, and is
 listed without its contents.
 
 Private attributes are found in the items of every standard sequence,
-including a value of VR UN whose attribute the pinned data dictionary gives
-VR SQ, as pydicom reads a sequence that it does not know from Implicit VR
-Little Endian. PS3.5 Section 6.2.2 lets such a value be decoded as Implicit
-VR Little Endian; it is decoded with the character set of the data set that
-holds it. pydicom decodes some malformed values without an error, as items
-that leave out part of the value, so a decoded value is accepted only if its
-items encode to the same bytes. A value of VR UN whose attribute the
-dictionary gives another VR holds no items, and one whose attribute the
-dictionary does not list is not searched, since the design has the engine
-remove an attribute that the dictionary does not list and no reviewed rule
-covers.
+including one of VR UN, as pydicom reads a sequence that it does not know
+from Implicit VR Little Endian. PS3.5 Section 6.2.2 lets a reader that knows
+the VR of a value of VR UN decode it as Implicit VR Little Endian. A value
+that pydicom leaves as UN, as it does where its own dictionary does not give
+the attribute VR SQ, is decoded here, with the character set of the data set
+that holds it. pydicom decodes some malformed values without an error, as
+items that leave out part of the value, so a value decoded here is accepted
+only if its items encode to the same bytes. pydicom writes the elements of
+those items as it read them, except a sequence of undefined length, which it
+decodes with the value, so that check does not see into a sequence of defined
+length nested in them. Each, at every depth, is decoded here and checked in
+the same way, with the character set of the item that holds it.
+
+A value of VR UN, or one read without a VR from Implicit VR Little Endian, is
+decoded only where the pinned dictionary or pydicom's gives its attribute VR
+SQ. pydicom would decode any other with its attribute's VR, which can raise an
+error or a warning that quotes the value, as diagnostics must never do, and
+would change a value that other rules act on. Such a value holds no items, and
+one whose attribute the dictionary does not list is not searched, since the
+design has the engine remove an attribute that the dictionary does not list
+and no reviewed rule covers.
 
 Elements are named by their paths, never by their values. Finding them decodes
 no value but those of sequences and of Specific Character Set (0008,0005), so
@@ -129,9 +139,9 @@ def private_attribute_paths(
         If ``policy`` selects the Retain Safe Private Option, or gives private
         attributes another action than removal (X).
     PrivateAttributeError
-        If pydicom cannot decode a standard sequence, or a value of VR UN
-        whose attribute the dictionary gives VR SQ does not decode to items
-        that encode it exactly.
+        If pydicom cannot decode a standard sequence, or a standard sequence
+        that pydicom leaves as VR UN, or a sequence nested at any depth in
+        its items, does not decode to items that encode it exactly.
 
     Examples
     --------
@@ -158,7 +168,8 @@ def without_private_attributes(
     The copy is a deep copy, from which the elements that
     :func:`private_attribute_paths` lists are removed, and nothing else
     changes, except that a standard sequence of VR UN from which one is
-    removed holds its decoded items, with VR SQ.
+    removed holds its decoded items, with VR SQ, and so does each sequence
+    nested in those items from which one is removed.
 
     Parameters
     ----------
@@ -204,12 +215,18 @@ def _check(policy: Policy) -> None:
 
 
 def _visit(
-    dataset: pydicom.Dataset, items: _Items, encodings: list[str], remove: bool
+    dataset: pydicom.Dataset,
+    items: _Items,
+    encodings: list[str],
+    remove: bool,
+    exact: bool = False,
 ) -> list[ElementPath]:
     """Return the paths of the private attributes in ``dataset``, at every level.
 
     Remove them too if ``remove`` is true. ``items`` is the path to
     ``dataset``, and ``encodings`` the Python encodings of its text.
+    ``exact`` is true in the items of a value that :func:`_decoded` checked,
+    and in every item nested in them, at any depth.
     """
     found: list[ElementPath] = []
     for tag in sorted(dataset.keys()):
@@ -219,60 +236,71 @@ def _visit(
             if remove:
                 del dataset[tag]
             continue
-        element = _possible_sequence(dataset, tag, path)
-        if element is None:
-            continue
-        sequence = _items(element, path, encodings)
+        sequence, decoded = _items(dataset, tag, path, encodings, exact)
         inner: list[ElementPath] = []
         for index, item in enumerate(sequence):
             within = (*items, (path.tag, index))
-            inner += _visit(item, within, _encodings(item, encodings), remove)
-        if remove and inner and element.VR == "UN":
+            item_encodings = _encodings(item, encodings)
+            inner += _visit(item, within, item_encodings, remove, exact or decoded)
+        if remove and inner and decoded:
             dataset[tag] = pydicom.DataElement(tag, "SQ", sequence)
         found += inner
     return found
 
 
-def _possible_sequence(
-    dataset: pydicom.Dataset, tag: pydicom.tag.BaseTag, path: ElementPath
-) -> pydicom.DataElement | None:
-    """Return the element at ``tag``, decoded, if its value can hold items.
+def _items(
+    dataset: pydicom.Dataset,
+    tag: pydicom.tag.BaseTag,
+    path: ElementPath,
+    encodings: list[str],
+    exact: bool,
+) -> tuple[Sequence[pydicom.Dataset], bool]:
+    """Return the items at ``tag``, and whether :func:`_decoded` decoded them.
 
-    An element that pydicom has not decoded keeps the VR it was read with,
-    or none if it was read from Implicit VR Little Endian, in which case
-    pydicom gives it the VR of its own dictionary, or UN.
+    pydicom keeps an element that it has not decoded raw, with the VR it was
+    read with, or none if it was read from Implicit VR Little Endian. A value
+    of VR UN, or of none, holds items only if the pinned dictionary or
+    pydicom's gives its attribute VR SQ; no other is decoded. pydicom decodes
+    a sequence when it is read, but a value that it leaves as UN, and a raw
+    element in an item that :func:`_decoded` checked (``exact``), whose bytes
+    pydicom would write as they are, are decoded and checked here.
     """
-    vr = dataset.get_item(tag, keep_deferred=True).VR
-    if vr is None:
-        try:
-            vr = pydicom.datadict.dictionary_VR(tag)
-        except KeyError:
-            vr = "UN"
-    if vr not in ("SQ", "UN"):
-        return None
+    element: pydicom.DataElement | pydicom.dataelem.RawDataElement = dataset.get_item(
+        tag, keep_deferred=True
+    )
+    if element.VR in (None, "UN"):
+        if not _is_sequence(tag, path):
+            return (), False
+    elif element.VR != "SQ":
+        return (), False
+    if exact and isinstance(element, pydicom.dataelem.RawDataElement):
+        return _decoded(element.value, path, encodings), True
     try:
-        return dataset[tag]
+        element = dataset[tag]
     except _DECODING_ERRORS as error:
         raise PrivateAttributeError(path) from error
-
-
-def _items(
-    element: pydicom.DataElement, path: ElementPath, encodings: list[str]
-) -> Sequence[pydicom.Dataset]:
-    """Return the items of a sequence, or of a UN value the dictionary makes one."""
     if element.VR == "SQ":
-        items: Sequence[pydicom.Dataset] = element.value
-        return items
-    if element.VR == "UN" and path.tag in sequence_tags():
-        return _decoded(element.value, path, encodings)
-    return ()
+        return element.value, False
+    if element.VR == "UN":
+        return _decoded(element.value, path, encodings), True
+    return (), False
+
+
+def _is_sequence(tag: pydicom.tag.BaseTag, path: ElementPath) -> bool:
+    """Return whether the pinned dictionary or pydicom's gives an attribute VR SQ."""
+    if path.tag in sequence_tags():
+        return True
+    try:
+        return pydicom.datadict.dictionary_VR(tag) == "SQ"
+    except KeyError:
+        return False
 
 
 def _decoded(
     value: bytes | None, path: ElementPath, encodings: list[str]
 ) -> pydicom.Sequence:
-    """Decode a UN value as Implicit VR Little Endian items, if they encode it."""
-    if not value:  # pydicom reads a UN value of zero length as None
+    """Decode a value as Implicit VR Little Endian items, if they encode it."""
+    if not value:  # pydicom reads a value of zero length as None
         return pydicom.Sequence()
     try:
         sequence = pydicom.values.convert_SQ(value, True, True, encodings)

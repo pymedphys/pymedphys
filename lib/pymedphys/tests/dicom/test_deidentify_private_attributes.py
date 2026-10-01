@@ -205,9 +205,9 @@ def _nested(value, depth, undefined=False):
     Its item holds Code Meaning and Concept Name Code Sequence (0040,A043). At
     depth 1, that sequence has ``value``; at depth 2, it holds an item with
     Code Value and Equivalent Code Sequence (0008,0121), which has ``value``.
-    The sequence with ``value`` is of defined length, and with ``undefined``,
-    every sequence and item that encloses it is of undefined length, which
-    pydicom decodes as it reads the value that holds it.
+    The sequence with ``value`` is of defined length. With ``undefined``,
+    every sequence and item that encloses it is of undefined length, and
+    pydicom decodes such a sequence as it reads the value that holds it.
     """
     if depth == 1:
         nested = _encoded(CONCEPT_NAME_CODE_SEQUENCE, value)
@@ -468,6 +468,28 @@ def test_a_sequence_read_from_explicit_vr_as_unknown_is_searched(monkeypatch, ba
     assert _odd_groups(written) == []
     assert [beam.BeamNumber for beam in written.BeamSequence] == [1, 2]
     assert written[RT_ASSERTIONS_SEQUENCE].value[0].CodeMeaning == CODE_MEANING
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_a_sequence_of_a_repeating_group_is_searched(basic):
+    # The pinned dictionary lists the retired Curve Referenced Overlay
+    # Sequence as (50xx,2600), and pydicom's dictionary gives it VR SQ in each
+    # of its groups, so it is decoded when read from Implicit VR Little Endian.
+    overlay = pydicom.Dataset()
+    _private(overlay, 0x0011, "SYNTHETIC CREATOR E", [(0x01, "LO", PRIVATE_VALUE)])
+    source = _plan()
+    source.add_new(0x50002600, "SQ", [overlay])
+    read = _written_and_read(source, IMPLICIT_VR)
+    assert read.get_item(0x50002600, keep_deferred=True).VR is None
+
+    paths = private_attributes.private_attribute_paths(read, basic)
+
+    assert [str(path) for path in paths] == [
+        *PLAN_PATHS,
+        "(5000,2600)[0] > (0011,0010)",
+        "(5000,2600)[0] > (0011,1001)",
+    ]
 
 
 @pytest.mark.pydicom
