@@ -154,6 +154,7 @@ milestone = "M3"
 decisions = ["D-001", "D-007", "D-011", "D-020", "D-021"]
 implementation = [
   "_dicom/deidentify/actions.py",
+  "_dicom/deidentify/compound_actions.py",
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/standard.py",
 ]
@@ -163,9 +164,12 @@ tests = [
   "tests/dicom/test_deidentify_actions.py::test_each_attribute_has_one_action_or_a_conflict",
   "tests/dicom/test_deidentify_policy.py::test_the_basic_policy_gives_each_attribute_its_basic_profile_action",
   "tests/dicom/test_deidentify_policy.py::test_each_preset_gives_each_attribute_one_action",
+  "tests/dicom/test_deidentify_compound_actions.py::test_each_compound_action_resolves_by_type",
+  "tests/dicom/test_deidentify_compound_actions.py::test_the_type_depends_on_the_enclosing_sequence",
+  "tests/dicom/test_deidentify_compound_actions.py::test_x_z_on_a_type_1_attribute_sequesters_the_instance",
 ]
 note = '''
-Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. Remaining: protecting or retaining every instance of each attribute, at the top level and in sequences (M3).
+Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute sequesters the instance (D-020). Remaining: protecting or retaining every instance of each attribute, at the top level and in sequences (M3).
 '''
 
 [[requirement]]
@@ -538,6 +542,7 @@ status = "partial"
 milestone = "M4"
 decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-026"]
 implementation = [
+  "_dicom/deidentify/compound_actions.py",
   "_dicom/deidentify/dummy_values.py",
   "_dicom/deidentify/iods.py",
   "_dicom/deidentify/reference_graph.py",
@@ -556,6 +561,11 @@ tests = [
   "tests/dicom/test_deidentify_values.py::test_valid_values",
   "tests/dicom/test_deidentify_values.py::test_invalid_values",
   "tests/dicom/test_deidentify_values.py::test_values_are_checked_for_their_vm_and_vr",
+  "tests/dicom/test_deidentify_compound_actions.py::test_an_attribute_gets_the_action_of_its_strictest_type_across_modules",
+  "tests/dicom/test_deidentify_compound_actions.py::test_no_required_attribute_with_a_compound_action_is_removed",
+  "tests/dicom/test_deidentify_compound_actions.py::test_no_attribute_with_x_z_is_type_1_in_the_first_release_iods",
+  "tests/dicom/test_deidentify_compound_actions.py::test_no_required_attribute_with_a_compound_action_is_removed_in_any_generated_iod",
+  "tests/dicom/test_deidentify_compound_actions.py::test_x_z_sequesters_only_referenced_study_sequence_in_two_generated_iods",
   "tests/dicom/test_deidentify_references.py::test_reference_sites_include_the_rt_references",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_consistent_collection_has_no_findings",
   "tests/dicom/test_deidentify_reference_graph.py::test_each_reference_resolves_to_its_instance",
@@ -563,7 +573,7 @@ tests = [
   "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_instance_not_in_the_collection_is_dangling",
 ]
 note = '''
-The Type of each attribute of the first supported release's IODs, and of every other composite IOD whose modules include no Functional Group Macros, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. Remaining: resolving compound actions from these Types and writing the dummy values they call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking the collection's hierarchy and frames of reference in the first pass, validating output against its IOD, and checking after writing that references are intact (M4).
+The Type of each attribute of the first supported release's IODs, and of every other composite IOD whose modules include no Functional Group Macros, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. Remaining: writing the dummy values that the resolved compound actions call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking the collection's hierarchy and frames of reference in the first pass, validating output against its IOD, and checking after writing that references are intact (M4).
 '''
 
 [[requirement]]
