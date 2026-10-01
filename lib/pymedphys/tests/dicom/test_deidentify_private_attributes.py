@@ -14,6 +14,10 @@
 
 """The removal of private attributes under the Basic Profile."""
 
+# The tests share the plan, the encoded values, and the invented values
+# below, so they stay in one module.
+# pylint: disable = too-many-lines
+
 import copy
 import dataclasses
 import io
