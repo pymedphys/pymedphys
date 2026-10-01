@@ -495,10 +495,11 @@ tests = [
   "tests/dicom/test_deidentify_private_attributes.py::test_an_unknown_character_set_in_an_item_read_from_a_file_is_refused",
   "tests/dicom/test_deidentify_private_attributes.py::test_an_unknown_character_set_in_an_item_of_an_unknown_value_is_refused",
   "tests/dicom/test_deidentify_private_attributes.py::test_a_character_set_that_pydicom_does_not_map_as_given_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_character_set_stored_with_another_vr_is_refused",
   "tests/dicom/test_deidentify_private_attributes.py::test_a_sequence_stored_with_another_vr_is_refused",
 ]
 note = '''
-Every element of an odd group, including private creators and the elements that PS3.5 does not allow, is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN, and a private sequence is removed with everything in it. A standard sequence that cannot be decoded exactly, that is stored with a VR other than SQ or UN, or whose items have a Specific Character Set that pydicom does not map as given, is refused by its path; it is removed where a rule removes it or a sequence that holds it, and otherwise its instance is sequestered (D-028). Remaining: removing them from each instance the engine de-identifies (M3).
+Every element of an odd group, including private creators and the elements that PS3.5 does not allow, is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN, and a private sequence is removed with everything in it. A standard sequence that cannot be decoded exactly, that is stored with a VR other than SQ or UN, or whose items have a Specific Character Set that pydicom does not map as given or that is stored with another VR, is refused by its path; it is removed where a rule removes it or a sequence that holds it, and otherwise its instance is sequestered (D-028). Remaining: removing them from each instance the engine de-identifies (M3).
 '''
 
 [[requirement]]

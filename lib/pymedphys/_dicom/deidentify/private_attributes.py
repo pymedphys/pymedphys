@@ -107,6 +107,9 @@ RETAIN_SAFE_PRIVATE = "retain_safe_private"
 # The action that removes an attribute, and a sequence with all its items.
 REMOVE = "X"
 _SPECIFIC_CHARACTER_SET = 0x00080005
+# The VRs with which a Specific Character Set can be stored: CS, or none in
+# Implicit VR, or UN, which pydicom reads with the dictionary's CS.
+_CHARACTER_SET_VRS = frozenset({None, "CS", "UN"})
 _TOP_LEVEL_CHARACTER_SET = ElementPath((), "(0008,0005)")
 # What pydicom raises when it cannot decode a value as items. Raising its
 # validation errors, it raises LookupError for a character set that it does
@@ -176,7 +179,8 @@ def private_attribute_paths(
         its items, does not decode to items that encode it exactly; if a
         standard sequence is stored with a VR other than SQ or UN; or if the
         data set, or an item of a standard sequence, has a Specific Character
-        Set that pydicom does not map to codecs as it is given.
+        Set that pydicom does not map to codecs as it is given, or that is
+        stored with a VR other than CS.
 
     Examples
     --------
@@ -368,9 +372,17 @@ def _encodings(
     items it holds, unless an item has one of its own. One is refused, by
     ``path``, unless pydicom maps it to codecs as it is given: each value is
     one of pydicom's terms, and, where there are several, none is ISO_IR 192,
-    GB18030, or GBK, which allow no code extensions.
+    GB18030, or GBK, which allow no code extensions. One stored with a VR
+    other than CS is refused too, before pydicom converts it, since
+    converting it could raise an error that quotes the value.
     """
-    element = dataset.get(_SPECIFIC_CHARACTER_SET)
+    stored = dataset.get_item(_SPECIFIC_CHARACTER_SET, keep_deferred=True)
+    if stored is not None and stored.VR not in _CHARACTER_SET_VRS:
+        raise PrivateAttributeError(path)
+    try:
+        element = dataset.get(_SPECIFIC_CHARACTER_SET)
+    except _DECODING_ERRORS:
+        raise PrivateAttributeError(path) from None
     if element is None or not element.value:
         return inherited or pydicom.charset.convert_encodings(None)
     value = element.value

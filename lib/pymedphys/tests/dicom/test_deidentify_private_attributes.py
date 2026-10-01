@@ -993,7 +993,12 @@ def test_a_character_set_that_pydicom_does_not_map_as_given_is_refused(
 @pytest.mark.filterwarnings("error")
 @pytest.mark.parametrize(
     "vr, value",
-    [("US", b"SITE-XY"), ("FD", b"SITE-XYZ1"), ("SQ", b"SITE-XYZ"), ("DS", b"SITE-XYZ")],
+    [
+        ("US", b"SITE-XY"),
+        ("FD", b"SITE-XYZ1"),
+        ("SQ", b"SITE-XYZ"),
+        ("DS", b"SITE-XYZ"),
+    ],
     ids=["us-of-odd-length", "fd-of-odd-length", "sq", "ds"],
 )
 @pytest.mark.parametrize(
