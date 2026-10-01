@@ -826,7 +826,9 @@ tests = [
   "tests/dicom/test_deidentify_markers.py::test_tps_import_claims_no_ps3_15_conformance_and_adds_no_codes",
   "tests/dicom/test_deidentify_markers.py::test_the_second_method_value_is_exactly_the_policy_digest",
   "tests/dicom/test_deidentify_markers.py::test_the_markers_are_defined_by_the_iod_and_the_equipment_item_is_complete",
+  "tests/dicom/test_deidentify_markers.py::test_software_versions_give_pymedphys_then_the_environment_the_digest_covers",
+  "tests/dicom/test_deidentify_markers.py::test_the_environment_is_the_one_the_digest_covers_in_the_same_process",
 ]
 note = '''
-Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the policy digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment (D-012, D-024). The validated policy records the edition, preset, and options. Remaining: the release report and conformance statement that each run writes, naming the edition and Options and describing the process in detail (M4).
+Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the policy digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives its version and the environment that the policy digest covers (D-012, D-024). The validated policy records the edition, preset, and options. Remaining: the release report and conformance statement that each run writes, naming the edition and Options and describing the process in detail (M4).
 '''

@@ -19,12 +19,17 @@ E.3.6, the codes of PS3.16 CID 7050 and CID 7005, and the SOP Common Module
 of PS3.3, independently of the code under test. All data are synthetic.
 """
 
+# The tests share the hand-written expected markers and synthetic data sets
+# below, so they stay in one module.
+# pylint: disable = too-many-lines
+
 import copy
 import dataclasses
 import io
 import itertools
+import platform
 
-from pymedphys._imports import pydicom, pytest
+from pymedphys._imports import pydicom, pytest, tomlkit
 
 from pymedphys import _version
 from pymedphys._dicom.deidentify import (
@@ -92,6 +97,20 @@ def _code_item(value, meaning):
     return item
 
 
+def _software_versions(version):
+    """PyMedPhys's version, then the running environment, as PS3.3 values.
+
+    Taken from the interpreter and the libraries themselves, independently
+    of the code under test.
+    """
+    return [
+        version,
+        f"{platform.python_implementation()} {platform.python_version()}",
+        f"pydicom {pydicom.__version__}",
+        f"tomlkit {tomlkit.__version__}",
+    ]
+
+
 def _expected(readable, digest, code_values, temporal, version):
     """The markers' data set, built from pydicom's own dictionary."""
     expected = pydicom.Dataset()
@@ -104,7 +123,7 @@ def _expected(readable, digest, code_values, temporal, version):
     expected.LongitudinalTemporalInformationModified = temporal
     equipment = pydicom.Dataset()
     equipment.Manufacturer = "PyMedPhys"
-    equipment.SoftwareVersions = version
+    equipment.SoftwareVersions = _software_versions(version)
     equipment.PurposeOfReferenceCodeSequence = [
         _code_item("109104", "De-identifying Equipment")
     ]
@@ -160,7 +179,7 @@ def _marker_strings(found):
         yield from (code.code_value, code.scheme_designator, code.code_meaning)
     yield found.temporal_information_modified
     yield found.manufacturer
-    yield found.software_versions
+    yield from found.software_versions
 
 
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
@@ -410,9 +429,119 @@ def test_software_versions_and_the_readable_value_give_the_full_version(monkeypa
 
     found = markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
 
-    assert found.software_versions == version
+    assert found.software_versions[0] == version
     assert found.method[0] == f"PyMedPhys {version}; PS3.15 2026d; basic"
     assert found.manufacturer == "PyMedPhys"
+
+
+SYNTHETIC_ENVIRONMENT = {
+    "platform.python_implementation": "PyPy",
+    "platform.python_version": "3.11.9",
+    "pydicom.__version__": "3.1.0.dev0",
+    "tomlkit.__version__": "0.13.2",
+}
+
+
+def _with_environment(monkeypatch, environment):
+    monkeypatch.setattr(policy_digest, "environment", lambda: dict(environment))
+
+
+def test_software_versions_give_pymedphys_then_the_environment_the_digest_covers(
+    monkeypatch,
+):
+    monkeypatch.setattr(_version, "__version__", "0.42.0")
+    _with_environment(monkeypatch, SYNTHETIC_ENVIRONMENT)
+    expected = ["0.42.0", "PyPy 3.11.9", "pydicom 3.1.0.dev0", "tomlkit 0.13.2"]
+
+    found = markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
+    (equipment,) = markers.apply_markers(
+        pydicom.Dataset(), found
+    ).ContributingEquipmentSequence
+
+    assert list(found.software_versions) == expected
+    element = equipment["SoftwareVersions"]
+    assert (element.VR, element.VM, list(element.value)) == ("LO", 4, expected)
+    assert values.values_problem("LO", "1-n", expected) is None
+    assert found.method[0] == "PyMedPhys 0.42.0; PS3.15 2026d; basic"
+
+
+def test_the_libraries_follow_the_order_that_the_environment_gives(monkeypatch):
+    _with_environment(
+        monkeypatch,
+        {
+            "platform.python_implementation": "CPython",
+            "platform.python_version": "3.14.0",
+            "tomlkit.__version__": "0.13.2",
+            "pydicom.__version__": "3.0.2",
+        },
+    )
+
+    found = markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
+
+    assert found.software_versions[1:] == (
+        "CPython 3.14.0",
+        "tomlkit 0.13.2",
+        "pydicom 3.0.2",
+    )
+
+
+def test_the_environment_is_the_one_the_digest_covers_in_the_same_process():
+    composed = policy.compose_policy("basic")
+    digest = policy_digest.policy_digest(composed, vocabulary=None)
+    covered = policy_digest.digest_inputs(vocabulary=None).environment
+
+    found = markers.markers_for(composed, digest, satisfied=())
+
+    assert found.software_versions == (
+        _version.__version__,
+        f"{covered['platform.python_implementation']} "
+        f"{covered['platform.python_version']}",
+        f"pydicom {covered['pydicom.__version__']}",
+        f"tomlkit {covered['tomlkit.__version__']}",
+    )
+    assert list(found.software_versions) == _software_versions(_version.__version__)
+
+
+def test_an_environment_value_too_long_for_lo_is_refused_not_shortened(monkeypatch):
+    composed = policy.compose_policy("basic")
+    # With "pydicom ", 64 characters, as many as LO allows.
+    longest = "1." + "0" * 54
+    too_long = longest + "0"
+
+    _with_environment(
+        monkeypatch, {**SYNTHETIC_ENVIRONMENT, "pydicom.__version__": longest}
+    )
+    found = markers.markers_for(composed, DIGEST, satisfied=())
+    _with_environment(
+        monkeypatch, {**SYNTHETIC_ENVIRONMENT, "pydicom.__version__": too_long}
+    )
+    with pytest.raises(markers.MarkerError, match=r"\(0018,1020\)") as raised:
+        markers.markers_for(composed, DIGEST, satisfied=())
+
+    assert found.software_versions[2] == f"pydicom {longest}"
+    assert len(found.software_versions[2]) == 64
+    assert too_long not in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    "environment",
+    [
+        {**SYNTHETIC_ENVIRONMENT, "platform.machine": "x86_64"},
+        {
+            name: value
+            for name, value in SYNTHETIC_ENVIRONMENT.items()
+            if name != "platform.python_version"
+        },
+    ],
+    ids=["another-entry", "no-python-version"],
+)
+def test_an_environment_that_software_versions_cannot_record_is_refused(
+    monkeypatch, environment
+):
+    _with_environment(monkeypatch, environment)
+
+    with pytest.raises(markers.MarkerError, match=r"\(0018,1020\)"):
+        markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
 
 
 LONGEST_VERSION = "10.100.10.dev10"  # 15 characters
@@ -704,7 +833,11 @@ LONG_TEXT = "x" * 80
             r"\(0028,0303\)",
         ),
         ({"manufacturer": "Py\\MedPhys"}, markers.MarkerError, r"\(0008,0070\)"),
-        ({"software_versions": LONG_TEXT}, markers.MarkerError, r"\(0018,1020\)"),
+        (
+            {"software_versions": ("SYNTHETIC", LONG_TEXT)},
+            markers.MarkerError,
+            r"\(0018,1020\)",
+        ),
         (
             {"method_codes": (codes.CodedConcept("DCM", "113100", LONG_TEXT),)},
             markers.MarkerError,

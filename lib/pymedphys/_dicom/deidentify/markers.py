@@ -44,9 +44,14 @@ and changes nothing else in it:
   Dates, and otherwise REMOVED, replacing any value already present.
 - Contributing Equipment Sequence (0018,A001) keeps the items already present
   and gains one that names PyMedPhys as its Manufacturer (0008,0070), gives
-  PyMedPhys's full version in Software Versions (0018,1020), and has DCM
-  109104 "De-identifying Equipment" from CID 7005 as its Purpose of Reference
-  Code Sequence (0040,A170).
+  in Software Versions (0018,1020) PyMedPhys's full version and then the
+  environment that the policy digest covers, and has DCM 109104
+  "De-identifying Equipment" from CID 7005 as its Purpose of Reference Code
+  Sequence (0040,A170). The environment is taken from
+  :func:`~pymedphys._dicom.deidentify.policy_digest.environment` when the
+  markers are computed, in its order: the Python implementation and version
+  as one value, such as ``CPython 3.14.0``, then each library's name and
+  version, ``pydicom <version>`` and ``tomlkit <version>``.
 
 Each value is checked against its VR and VM in the pinned data dictionary,
 Patient Identity Removed is checked to be YES, and the second
@@ -59,9 +64,9 @@ characters of LO, is refused rather than shortened, and never written without
 the version. With edition 2026d, every version of up to 15 characters fits
 every preset's readable value.
 
-The markers depend only on the policy, the digest, the satisfied options, and
-PyMedPhys's version, never on the data set, so they never quote a source
-value.
+The markers depend only on the policy, the digest, the satisfied options,
+PyMedPhys's version, and the environment, never on the data set, so they
+never quote a source value.
 """
 
 from __future__ import annotations
@@ -76,6 +81,7 @@ from collections.abc import Iterable, Iterator, MutableSequence, Sequence
 from pymedphys import _version
 from pymedphys._imports import pydicom
 
+from . import policy_digest
 from .codes import CodedConcept, load_context_group
 from .policy import MODIFIED_DATES, Policy
 from .standard import DictionaryAttribute, StandardTableError, load_data_dictionary
@@ -122,6 +128,13 @@ _CODE_MEANING = "(0008,0104)"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 
+# The names that policy_digest.environment gives the Python implementation and
+# version, which Software Versions records as one value, and the end of the
+# name it gives each library's version.
+_PYTHON_IMPLEMENTATION = "platform.python_implementation"
+_PYTHON_VERSION = "platform.python_version"
+_LIBRARY_VERSION = ".__version__"
+
 
 class MarkerError(ValueError):
     """The markers cannot be written as valid values.
@@ -153,8 +166,12 @@ class Markers:
     manufacturer : str
         Manufacturer (0008,0070) in the Contributing Equipment Sequence item:
         ``"PyMedPhys"``.
-    software_versions : str
-        Software Versions (0018,1020) in that item: PyMedPhys's full version.
+    software_versions : tuple of str
+        The values of Software Versions (0018,1020) in that item: PyMedPhys's
+        full version, then the environment that the policy digest covers, the
+        Python implementation and version as one value, such as
+        ``"CPython 3.14.0"``, then ``"pydicom <version>"`` and
+        ``"tomlkit <version>"``.
     purpose_of_reference : CodedConcept
         The item's Purpose of Reference Code Sequence (0040,A170) item: DCM
         109104 "De-identifying Equipment".
@@ -165,7 +182,7 @@ class Markers:
     method_codes: tuple[CodedConcept, ...]
     temporal_information_modified: str
     manufacturer: str
-    software_versions: str
+    software_versions: tuple[str, ...]
     purpose_of_reference: CodedConcept
 
 
@@ -180,6 +197,37 @@ def _code(cid: int, value: str) -> CodedConcept:
         if row.scheme_designator == DCM and row.code_value == value:
             return row
     raise StandardTableError(f"CID {cid} has no code {DCM} {value}")
+
+
+def _environment_versions() -> tuple[str, ...]:
+    """Return the environment that the policy digest covers, as Software Versions.
+
+    The Python implementation and version make one value, such as
+    ``"CPython 3.14.0"``, followed by each library's name and version, such
+    as ``"pydicom 3.0.2"``, in the order that the environment gives them.
+    """
+    covered = dict(policy_digest.environment())
+    implementation = covered.pop(_PYTHON_IMPLEMENTATION, None)
+    python = covered.pop(_PYTHON_VERSION, None)
+    unknown = [name for name in covered if not name.endswith(_LIBRARY_VERSION)]
+    problems = []
+    if implementation is None or python is None:
+        problems.append("it gives no Python implementation and version")
+    if unknown:
+        problems.append(
+            f"it gives {', '.join(unknown)}, which is neither the Python "
+            "implementation or version nor a library's version"
+        )
+    if problems:
+        raise MarkerError(
+            f"Software Versions {_SOFTWARE_VERSIONS} cannot record the "
+            "environment that the policy digest covers: " + "; ".join(problems)
+        )
+    libraries = (
+        f"{name.removesuffix(_LIBRARY_VERSION)} {version}"
+        for name, version in covered.items()
+    )
+    return (f"{implementation} {python}", *libraries)
 
 
 def _satisfied(policy: Policy, satisfied: Iterable[str]) -> tuple[str, ...]:
@@ -253,7 +301,7 @@ def _check(found: Markers) -> None:
         (_DEIDENTIFICATION_METHOD, found.method),
         (_TEMPORAL_INFORMATION_MODIFIED, [found.temporal_information_modified]),
         (_MANUFACTURER, [found.manufacturer]),
-        (_SOFTWARE_VERSIONS, [found.software_versions]),
+        (_SOFTWARE_VERSIONS, found.software_versions),
     ]
     for code in (*found.method_codes, found.purpose_of_reference):
         elements.extend(_code_elements(code))
@@ -270,6 +318,11 @@ def _check(found: Markers) -> None:
 
 def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Markers:
     """Return the markers of one instance de-identified under a policy.
+
+    The environment in Software Versions is taken from
+    :func:`~pymedphys._dicom.deidentify.policy_digest.environment` at this
+    call, so it is the environment that the policy digest covers when both
+    are computed in the same process.
 
     Parameters
     ----------
@@ -312,9 +365,12 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         does not quote the digest.
     MarkerError
         If the policy resolves a conflict between options by keeping the
-        value, so that Patient Identity Removed could be neither YES nor NO,
-        or if a value does not fit its VR or VM, such as a readable value
-        longer than 64 characters.
+        value, so that Patient Identity Removed could be neither YES nor NO;
+        if a value does not fit its VR or VM, such as a readable value
+        longer than 64 characters or a library version too long for a
+        Software Versions value; or if the environment that the policy
+        digest covers lacks the Python implementation and version, or gives
+        anything else that is not a library's version.
     ~pymedphys._dicom.deidentify.standard.StandardTableError
         If a pinned context group lacks a code that the markers write.
 
@@ -364,7 +420,7 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
             "MODIFIED" if MODIFIED_DATES in policy.options else "REMOVED"
         ),
         manufacturer=MANUFACTURER,
-        software_versions=version,
+        software_versions=(version, *_environment_versions()),
         purpose_of_reference=_code(7005, DEIDENTIFYING_EQUIPMENT),
     )
     _check(found)
@@ -467,7 +523,7 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
 
     equipment = pydicom.Dataset()
     _set(equipment, _MANUFACTURER, [markers.manufacturer])
-    _set(equipment, _SOFTWARE_VERSIONS, [markers.software_versions])
+    _set(equipment, _SOFTWARE_VERSIONS, list(markers.software_versions))
     _set(equipment, _PURPOSE_OF_REFERENCE, [_code_item(markers.purpose_of_reference)])
     _set(marked, _PATIENT_IDENTITY_REMOVED, [markers.patient_identity_removed])
     _set(marked, _DEIDENTIFICATION_METHOD, [*method, *markers.method])
