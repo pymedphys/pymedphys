@@ -424,7 +424,10 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   decisions, code, and tests that satisfy it. Its loader checks each entry's
   fields and statuses, and tests check that the decisions and code it cites
   exist, that pytest collects the tests it cites, and that it follows the
-  edition of the generated tables. The design document sets the scope of the
+  edition of the generated tables. `pymedphys dev deid-matrix` generates the
+  requirements-to-tests matrix from the register as Markdown, with the
+  exclusions and the reason for each, and with each traced test's outcome
+  when given pytest JUnit XML reports. The design document sets the scope of the
   first supported release: the Basic Profile, alone and with the Clean
   Descriptors Option, for uncompressed CT Image, RT Structure Set, RT Plan,
   and RT Dose instances, through the library and the command line.
