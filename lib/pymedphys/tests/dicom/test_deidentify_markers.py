@@ -25,6 +25,7 @@ of PS3.3, independently of the code under test. All data are synthetic.
 
 import copy
 import dataclasses
+import importlib
 import io
 import itertools
 import platform
@@ -38,8 +39,8 @@ from pymedphys._dicom.deidentify import (
     codes,
     iods,
     markers,
+    method_digest,
     policy,
-    policy_digest,
     standard,
     values,
 )
@@ -100,7 +101,7 @@ def _code_item(value, meaning):
 
 
 def _software_versions(version):
-    """PyMedPhys's version, then the running environment, as PS3.3 values.
+    """PyMedPhys's version, then the running Python, pydicom, and tomlkit.
 
     Taken from the interpreter and the libraries themselves, independently
     of the code under test.
@@ -187,7 +188,7 @@ def _marker_strings(found):
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
 def test_each_preset_adds_exactly_its_markers(preset):
     composed = policy.compose_policy(preset)
-    digest = policy_digest.policy_digest(composed, vocabulary=None)
+    digest = method_digest.method_digest(composed, vocabulary=None)
     claim, code_values, temporal = EXPECTED[preset]
     version = _version.__version__
 
@@ -320,9 +321,9 @@ def test_patient_identity_removed_is_never_no(preset):
         assert found.patient_identity_removed == "YES"
 
 
-def test_the_first_method_value_is_exactly_the_policy_digest():
+def test_the_first_method_value_is_exactly_the_method_digest():
     composed = policy.compose_policy("basic")
-    digest = policy_digest.policy_digest(composed, vocabulary=None)
+    digest = method_digest.method_digest(composed, vocabulary=None)
 
     found = markers.markers_for(composed, digest, satisfied=())
 
@@ -437,7 +438,9 @@ def test_software_versions_and_the_readable_value_give_the_full_version(monkeypa
     assert found.manufacturer == "PyMedPhys"
 
 
-SYNTHETIC_ENVIRONMENT = {
+# A synthetic value for each source of Software Versions after PyMedPhys's
+# version, by module and attribute.
+SYNTHETIC_RUNTIME = {
     "platform.python_implementation": "PyPy",
     "platform.python_version": "3.11.9",
     "pydicom.__version__": "3.1.0.dev0",
@@ -456,15 +459,27 @@ ODD_SOFTWARE_VERSIONS = (
 )
 
 
-def _with_environment(monkeypatch, environment):
-    monkeypatch.setattr(policy_digest, "environment", lambda: dict(environment))
+def _with_runtime(monkeypatch, runtime):
+    """Make the interpreter and the libraries give other versions.
+
+    Each name is a module and one of its attributes, such as
+    ``"platform.python_version"``, and the function or value it names is
+    replaced by one that gives the value, as an upgrade would change it.
+    """
+    for name, value in runtime.items():
+        module_name, attribute = name.rsplit(".", 1)
+        module = importlib.import_module(module_name)
+        if callable(getattr(module, attribute)):
+            monkeypatch.setattr(module, attribute, lambda value=value: value)
+        else:
+            monkeypatch.setattr(module, attribute, value)
 
 
-def test_software_versions_give_pymedphys_then_the_environment_the_digest_covers(
+def test_software_versions_give_pymedphys_then_python_pydicom_and_tomlkit(
     monkeypatch,
 ):
     monkeypatch.setattr(_version, "__version__", "0.42.0")
-    _with_environment(monkeypatch, SYNTHETIC_ENVIRONMENT)
+    _with_runtime(monkeypatch, SYNTHETIC_RUNTIME)
     expected = ["0.42.0", "PyPy 3.11.9", "pydicom 3.1.0.dev0", "tomlkit 0.13.2"]
 
     found = markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
@@ -479,83 +494,123 @@ def test_software_versions_give_pymedphys_then_the_environment_the_digest_covers
     assert found.method[1] == "PyMedPhys 0.42.0; PS3.15 2026d; basic"
 
 
-def test_the_libraries_follow_the_order_that_the_environment_gives(monkeypatch):
-    _with_environment(
+def test_software_versions_give_the_running_python_pydicom_and_tomlkit():
+    found = markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
+    (equipment,) = markers.apply_markers(
+        pydicom.Dataset(), found
+    ).ContributingEquipmentSequence
+
+    expected = _software_versions(_version.__version__)
+    assert list(found.software_versions) == expected
+    assert list(equipment.SoftwareVersions) == expected
+    assert expected[1].split(" ") == [
+        platform.python_implementation(),
+        platform.python_version(),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("source", "value", "position", "expected"),
+    [
+        (
+            "platform.python_implementation",
+            "SyntheticPython",
+            1,
+            "SyntheticPython {python_version}",
+        ),
+        ("platform.python_version", "3.99.0", 1, "{python_implementation} 3.99.0"),
+        ("pydicom.__version__", "9.9.9.dev9", 2, "pydicom 9.9.9.dev9"),
+        ("tomlkit.__version__", "9.9.9.dev9", 3, "tomlkit 9.9.9.dev9"),
+    ],
+    ids=["python-implementation", "python-version", "pydicom", "tomlkit"],
+)
+def test_each_source_of_software_versions_changes_its_own_value(
+    monkeypatch, source, value, position, expected
+):
+    composed = policy.compose_policy("basic")
+    running = list(
+        markers.markers_for(composed, DIGEST, satisfied=()).software_versions
+    )
+    expected = expected.format(
+        python_implementation=platform.python_implementation(),
+        python_version=platform.python_version(),
+    )
+    _with_runtime(monkeypatch, {source: value})
+
+    found = markers.markers_for(composed, DIGEST, satisfied=())
+
+    assert running[position] != expected
+    assert list(found.software_versions) == [
+        *running[:position],
+        expected,
+        *running[position + 1 :],
+    ]
+
+
+def test_python_and_library_versions_change_software_versions_not_the_digest(
+    monkeypatch,
+):
+    composed = policy.compose_policy("basic")
+
+    def mark(dataset):
+        # The engine's files and tables are read once per process, so they
+        # are read again, as in another process.
+        # pylint: disable = protected-access
+        method_digest._file_digests.cache_clear()
+        method_digest._table_digests.cache_clear()
+        digest = method_digest.method_digest(composed, vocabulary=None)
+        found = markers.markers_for(composed, digest, satisfied=())
+        return markers.apply_markers(dataset, found)
+
+    first = mark(pydicom.Dataset())
+    _with_runtime(
         monkeypatch,
         {
-            "platform.python_implementation": "CPython",
-            "platform.python_version": "3.14.0",
-            "tomlkit.__version__": "0.13.2",
-            "pydicom.__version__": "3.0.2",
+            "platform.python_implementation": "SyntheticPython",
+            "platform.python_version": "3.99.0",
+            "pydicom.__version__": "9.9.9.dev9",
+            "tomlkit.__version__": "9.9.9.dev9",
         },
     )
+    second = mark(pydicom.Dataset())
+    again = mark(first)
 
-    found = markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
-
-    assert found.software_versions[1:] == (
-        "CPython 3.14.0",
-        "tomlkit 0.13.2",
-        "pydicom 3.0.2",
-    )
-
-
-def test_the_environment_is_the_one_the_digest_covers_in_the_same_process():
-    composed = policy.compose_policy("basic")
-    digest = policy_digest.policy_digest(composed, vocabulary=None)
-    covered = policy_digest.digest_inputs(vocabulary=None).environment
-
-    found = markers.markers_for(composed, digest, satisfied=())
-
-    assert found.software_versions == (
+    assert list(second.DeidentificationMethod) == list(first.DeidentificationMethod)
+    (first_equipment,) = first.ContributingEquipmentSequence
+    (second_equipment,) = second.ContributingEquipmentSequence
+    assert list(second_equipment.SoftwareVersions) == [
         _version.__version__,
-        f"{covered['platform.python_implementation']} "
-        f"{covered['platform.python_version']}",
-        f"pydicom {covered['pydicom.__version__']}",
-        f"tomlkit {covered['tomlkit.__version__']}",
+        "SyntheticPython 3.99.0",
+        "pydicom 9.9.9.dev9",
+        "tomlkit 9.9.9.dev9",
+    ]
+    assert list(first_equipment.SoftwareVersions) == _software_versions(
+        _version.__version__
     )
-    assert list(found.software_versions) == _software_versions(_version.__version__)
+    # Output marked again in another runtime keeps one pair, and gains that
+    # runtime's equipment item.
+    assert list(again.DeidentificationMethod) == list(first.DeidentificationMethod)
+    assert list(again.ContributingEquipmentSequence) == [
+        first_equipment,
+        second_equipment,
+    ]
 
 
-def test_an_environment_value_too_long_for_lo_is_refused_not_shortened(monkeypatch):
+def test_a_library_version_too_long_for_lo_is_refused_not_shortened(monkeypatch):
     composed = policy.compose_policy("basic")
     # With "pydicom ", 64 characters, as many as LO allows.
     longest = "1." + "0" * 54
     too_long = longest + "0"
 
-    _with_environment(
-        monkeypatch, {**SYNTHETIC_ENVIRONMENT, "pydicom.__version__": longest}
-    )
+    _with_runtime(monkeypatch, {**SYNTHETIC_RUNTIME, "pydicom.__version__": longest})
     found = markers.markers_for(composed, DIGEST, satisfied=())
-    _with_environment(
-        monkeypatch, {**SYNTHETIC_ENVIRONMENT, "pydicom.__version__": too_long}
-    )
+    _with_runtime(monkeypatch, {**SYNTHETIC_RUNTIME, "pydicom.__version__": too_long})
     with pytest.raises(markers.MarkerError, match=r"\(0018,1020\)") as raised:
         markers.markers_for(composed, DIGEST, satisfied=())
 
     assert found.software_versions[2] == f"pydicom {longest}"
     assert len(found.software_versions[2]) == 64
     assert too_long not in str(raised.value)
-
-
-@pytest.mark.parametrize(
-    "environment",
-    [
-        {**SYNTHETIC_ENVIRONMENT, "platform.machine": "x86_64"},
-        {
-            name: value
-            for name, value in SYNTHETIC_ENVIRONMENT.items()
-            if name != "platform.python_version"
-        },
-    ],
-    ids=["another-entry", "no-python-version"],
-)
-def test_an_environment_that_software_versions_cannot_record_is_refused(
-    monkeypatch, environment
-):
-    _with_environment(monkeypatch, environment)
-
-    with pytest.raises(markers.MarkerError, match=r"\(0018,1020\)"):
-        markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
 
 
 # With "PyMedPhys ", "; PS3.15 2026d; ", and "basic-clean-descriptors", 63
@@ -1324,9 +1379,9 @@ def test_software_versions_that_padding_would_make_too_long_are_refused(
     monkeypatch, version, refused
 ):
     monkeypatch.setattr(_version, "__version__", version)
-    _with_environment(
+    _with_runtime(
         monkeypatch,
-        {**SYNTHETIC_ENVIRONMENT, "tomlkit.__version__": LONGEST_LIBRARY_VERSION},
+        {**SYNTHETIC_RUNTIME, "tomlkit.__version__": LONGEST_LIBRARY_VERSION},
     )
     expected = [
         version,

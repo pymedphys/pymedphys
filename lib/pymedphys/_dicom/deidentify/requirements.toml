@@ -126,7 +126,7 @@ tests = [
   "tests/dicom/test_deidentify_markers.py::test_clean_descriptors_is_the_one_selected_option_that_can_go_unsatisfied",
   "tests/dicom/test_deidentify_markers.py::test_tps_import_claims_no_ps3_15_conformance_and_adds_no_codes",
   "tests/dicom/test_deidentify_markers.py::test_patient_identity_removed_is_never_no",
-  "tests/dicom/test_deidentify_markers.py::test_the_first_method_value_is_exactly_the_policy_digest",
+  "tests/dicom/test_deidentify_markers.py::test_the_first_method_value_is_exactly_the_method_digest",
   "tests/dicom/test_deidentify_markers.py::test_every_code_is_a_row_of_the_pinned_context_groups",
   "tests/dicom/test_deidentify_markers.py::test_every_marker_value_is_valid_for_its_vr_and_vm",
   "tests/dicom/test_deidentify_markers.py::test_markers_changed_after_markers_for_are_refused_before_they_are_written",
@@ -880,10 +880,12 @@ implementation = [
 tests = [
   "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
   "tests/dicom/test_deidentify_markers.py::test_tps_import_claims_no_ps3_15_conformance_and_adds_no_codes",
-  "tests/dicom/test_deidentify_markers.py::test_the_first_method_value_is_exactly_the_policy_digest",
+  "tests/dicom/test_deidentify_markers.py::test_the_first_method_value_is_exactly_the_method_digest",
   "tests/dicom/test_deidentify_markers.py::test_the_markers_are_defined_by_the_iod_and_the_equipment_item_is_complete",
-  "tests/dicom/test_deidentify_markers.py::test_software_versions_give_pymedphys_then_the_environment_the_digest_covers",
-  "tests/dicom/test_deidentify_markers.py::test_the_environment_is_the_one_the_digest_covers_in_the_same_process",
+  "tests/dicom/test_deidentify_markers.py::test_software_versions_give_pymedphys_then_python_pydicom_and_tomlkit",
+  "tests/dicom/test_deidentify_markers.py::test_software_versions_give_the_running_python_pydicom_and_tomlkit",
+  "tests/dicom/test_deidentify_markers.py::test_each_source_of_software_versions_changes_its_own_value",
+  "tests/dicom/test_deidentify_markers.py::test_python_and_library_versions_change_software_versions_not_the_digest",
 ]
 note = '''
 Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the method digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives in Software Versions its version and the runtime environment that ran, which the method digest does not cover (D-012, D-024). The validated policy records the edition, preset, and options. Remaining: the release report and conformance statement that each run writes, naming the edition and Options and describing the process in detail, and the runtime environment that the release report records (D-029) (M4).
