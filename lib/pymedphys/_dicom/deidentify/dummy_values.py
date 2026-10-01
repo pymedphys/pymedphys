@@ -75,6 +75,8 @@ CONSTANTS: Mapping[str, tuple[str | int | float, str | int | float]] = (
 DUMMY_VRS = frozenset({*CONSTANTS, "UI"})
 
 _NUMBERS = frozenset({"DS", "IS", "FL", "FD", "SL", "SS", "SV", "UL", "US", "UV"})
+# The VRs whose values are numbers, not text, as values_problem takes them.
+_BINARY_NUMBERS = _NUMBERS - {"DS", "IS"}
 # Padding that a source value may carry: spaces, and NUL from some writers.
 _PADDING = " \x00"
 _UTC_OFFSET = re.compile(r"[+-][0-9]{4}$")
@@ -116,6 +118,21 @@ def _least_count(vm: str) -> int:
         if vm_problem(vm, count) is None:
             return count
     raise ValueError("the VM must allow at least one value")
+
+
+def _check_types(vr: str, source: Sequence[object]) -> None:
+    """Refuse a source value of another type than values_problem takes."""
+    if vr in _BINARY_NUMBERS:
+        kind = "a number"
+        wrong = any(
+            isinstance(value, bool) or not isinstance(value, (int, float))
+            for value in source
+        )
+    else:
+        kind = "text"
+        wrong = any(not isinstance(value, str) for value in source)
+    if wrong:
+        raise TypeError(f"each source value of VR {vr} must be {kind}")
 
 
 def _comparable(vr: str, value: object) -> object:
@@ -164,9 +181,9 @@ def values_for_d(
     D writes the VR's constant from :data:`CONSTANTS`, as many times as the
     fewest values the VM allows: once for VM 1 or 1-n, and twice for 2-2n.
     Where any source value equals the constant, it writes the second constant
-    instead, so no source value is written. A source value equals the
-    constant when the two are the same once both are read as their VR
-    defines them:
+    instead, so the value written always differs from the source's. A source
+    value equals the constant when the two are the same once both are read
+    as their VR defines them:
 
     - text and PN: ignoring case, and leading and trailing spaces and NULs;
       for PN, also trailing ``^`` and ``=`` delimiters, which do not change a
@@ -209,7 +226,10 @@ def values_for_d(
         If ``vr`` has no generic dummy value, or is UI and a source value is
         empty or there is none.
     TypeError
-        If ``source`` is a single value, such as a string, not a sequence.
+        If ``source`` is a single value, such as a string, not a sequence, or
+        holds a value of another type than ``values_problem`` takes for the
+        VR: text for the string VRs, and an ``int`` or ``float`` for the
+        binary numbers.
     ValueError
         If ``vr`` is not a single VR of PS3.5, or ``vm`` is not of a form
         PS3.6 uses.
@@ -227,11 +247,13 @@ def values_for_d(
     _check_vr(vr)
     count = _least_count(vm)
     if vr == "UI":
+        _check_types(vr, source)
         if not source or not all(normalise_uid(str(value)) for value in source):
             raise NoDummyValueError(vr, "an empty UI value has no keyed replacement")
         return tuple(replacement_uid(key, str(value)) for value in source)
     if vr not in CONSTANTS:
         raise NoDummyValueError(vr, f"VR {vr} has no generic dummy value")
+    _check_types(vr, source)
     first, second = CONSTANTS[vr]
     equal = any(_comparable(vr, value) == _comparable(vr, first) for value in source)
     return (second if equal else first,) * count

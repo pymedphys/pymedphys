@@ -14,6 +14,7 @@
 
 """The values that the Z and D actions write."""
 
+import datetime
 import io
 
 from pymedphys._imports import hypothesis, pydicom, pytest
@@ -167,7 +168,7 @@ def test_d_writes_the_second_constant_where_the_source_equals_the_first(vr, sour
 
 
 def test_any_source_value_equal_to_the_constant_gives_the_second_constant():
-    # None of the values written is one of the source values.
+    # The value written differs from the source's.
     assert dummy_values.values_for_d("LO", "1-n", ["Other", "DEIDENTIFIED"], KEY) == (
         "DE-IDENTIFIED",
     )
@@ -242,7 +243,8 @@ def test_every_dummy_value_is_valid_for_its_vr_and_the_attributes_vm():
     ],
 )
 def test_d_writes_the_fewest_values_the_vm_allows(vr, vm, written):
-    assert dummy_values.values_for_d(vr, vm, ["7"], KEY) == written
+    source = ["7"] if isinstance(written[0], str) else [7]
+    assert dummy_values.values_for_d(vr, vm, source, KEY) == written
     assert values.values_problem(vr, vm, written) is None
 
 
@@ -307,6 +309,27 @@ def test_a_vr_that_is_not_one_of_ps3_5_is_rejected(vr):
 def test_a_malformed_vm_is_rejected(vm):
     with pytest.raises(ValueError, match="VM"):
         dummy_values.values_for_d("LO", vm, [], KEY)
+
+
+@pytest.mark.parametrize(
+    "vr, value",
+    [
+        # Bytes would be compared and replaced as their repr, so a UID given as
+        # bytes would get another replacement than the same UID given as text.
+        ("UI", b"1.2.3"),
+        ("LO", b"DEIDENTIFIED"),
+        # A date object's text is not the DA form, so it would not be found
+        # equal to the constant.
+        ("DA", datetime.date(1900, 1, 1)),
+        ("PN", pydicom.valuerep.PersonName("DEIDENTIFIED")),
+        ("DS", 0.0),
+        ("FD", "0"),
+        ("US", True),
+    ],
+)
+def test_a_source_value_of_another_type_than_values_problem_takes_is_refused(vr, value):
+    with pytest.raises(TypeError, match=f"VR {vr}"):
+        dummy_values.values_for_d(vr, "1", [value], KEY)
 
 
 @pytest.mark.parametrize("single", ["DEIDENTIFIED", b"\x00\x01", 0])
