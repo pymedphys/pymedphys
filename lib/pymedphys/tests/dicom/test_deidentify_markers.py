@@ -562,6 +562,7 @@ def test_python_and_library_versions_change_software_versions_not_the_digest(
         found = markers.markers_for(composed, digest, satisfied=())
         return markers.apply_markers(dataset, found)
 
+    running = _software_versions(_version.__version__)
     first = mark(pydicom.Dataset())
     _with_runtime(
         monkeypatch,
@@ -584,9 +585,7 @@ def test_python_and_library_versions_change_software_versions_not_the_digest(
         "pydicom 9.9.9.dev9",
         "tomlkit 9.9.9.dev9",
     ]
-    assert list(first_equipment.SoftwareVersions) == _software_versions(
-        _version.__version__
-    )
+    assert list(first_equipment.SoftwareVersions) == running
     # Output marked again in another runtime keeps one pair, and gains that
     # runtime's equipment item.
     assert list(again.DeidentificationMethod) == list(first.DeidentificationMethod)

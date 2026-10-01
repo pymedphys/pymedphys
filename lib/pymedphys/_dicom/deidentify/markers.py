@@ -17,14 +17,14 @@
 DICOM PS3.15 E.1.1 has a de-identifier record what it did in each instance,
 and E.2 and E.3.6 say how the instance's dates were treated.
 :func:`markers_for` gives the markers of one instance from its validated
-policy, the policy digest, and the options that the instance's validated
-result satisfies, and :func:`apply_markers` adds them to a copy of a data set
+policy, the de-identification method digest, and the options that the
+instance's validated result satisfies, and :func:`apply_markers` adds them to a copy of a data set
 and changes nothing else in it:
 
 - Patient Identity Removed (0012,0062) is YES under every policy, and never
   NO, replacing any value already present.
 - De-identification Method (0012,0063) keeps the values already present and
-  gains two: the policy digest as 64 lowercase hexadecimal digits, then a
+  gains two: the method digest as 64 lowercase hexadecimal digits, then a
   readable value, unless that pair is already present as two consecutive
   values, when it gains neither. The readable value is
   ``PyMedPhys <version>; PS3.15 <edition>; <preset>`` for a policy that can
@@ -51,19 +51,20 @@ and changes nothing else in it:
 - Contributing Equipment Sequence (0018,A001) keeps the items already present
   and, unless one of them has the same Manufacturer, Software Versions in the
   same order, and purpose of reference, gains one that names PyMedPhys as its
-  Manufacturer (0008,0070), gives
-  in Software Versions (0018,1020) PyMedPhys's full version and then the
-  environment that the policy digest covers, and has DCM 109104
-  "De-identifying Equipment" from CID 7005 as its Purpose of Reference Code
-  Sequence (0040,A170). The environment is taken from
-  :func:`~pymedphys._dicom.deidentify.policy_digest.environment` when the
-  markers are computed, in its order: the Python implementation and version
-  as one value, such as ``CPython 3.14.0``, then each library's name and
-  version, ``pydicom <version>`` and ``tomlkit <version>``.
+  Manufacturer (0008,0070), gives four values in Software Versions
+  (0018,1020), and has DCM 109104 "De-identifying Equipment" from CID 7005
+  as its Purpose of Reference Code Sequence (0040,A170). Software Versions
+  gives PyMedPhys's full version; the Python implementation and version as
+  one value, such as ``CPython 3.14.0``; ``pydicom <version>``; and
+  ``tomlkit <version>``. They are read from the running process each time
+  the markers are computed, and record the runtime that ran, which the
+  method digest does not cover.
 
-So output de-identified twice by the same release, policy, and environment
-carries the markers of one run, and a run with another digest adds its own
-pair of De-identification Method values.
+So output de-identified twice by the same release and policy in the same
+runtime carries the markers of one run. A run with another digest adds its
+own pair of De-identification Method values, and a run in another runtime,
+whose digest is the same, adds only its own Contributing Equipment Sequence
+item.
 
 Each value is checked against its VR and VM in the pinned data dictionary,
 Patient Identity Removed is checked to be YES, and the first
@@ -90,8 +91,8 @@ De-identification Method where another tool's value of that length follows a
 pair already present.
 
 The markers depend only on the policy, the digest, the satisfied options,
-PyMedPhys's version, and the environment, never on the data set, so they
-never quote a source value.
+and the versions of PyMedPhys, Python, pydicom, and tomlkit, never on the
+data set, so they never quote a source value.
 """
 
 from __future__ import annotations
@@ -99,14 +100,14 @@ from __future__ import annotations
 import copy
 import dataclasses
 import functools
+import platform
 import re
 import types
 from collections.abc import Iterable, Iterator, MutableSequence, Sequence
 
 from pymedphys import _version
-from pymedphys._imports import pydicom
+from pymedphys._imports import pydicom, tomlkit
 
-from . import policy_digest
 from .codes import CodedConcept, load_context_group
 from .policy import MODIFIED_DATES, Policy
 from .standard import DictionaryAttribute, StandardTableError, load_data_dictionary
@@ -164,13 +165,6 @@ _MAXIMUM_LENGTHS = types.MappingProxyType({"CS": 16, "LO": 64, "SH": 16})
 # that the markers add, so it leaves room for the padding that can follow it.
 _READABLE_LENGTH = _MAXIMUM_LENGTHS["LO"] - 1
 
-# The names that policy_digest.environment gives the Python implementation and
-# version, which Software Versions records as one value, and the end of the
-# name it gives each library's version.
-_PYTHON_IMPLEMENTATION = "platform.python_implementation"
-_PYTHON_VERSION = "platform.python_version"
-_LIBRARY_VERSION = ".__version__"
-
 
 class MarkerError(ValueError):
     """The markers cannot be written as valid values.
@@ -191,7 +185,7 @@ class Markers:
         Patient Identity Removed (0012,0062): ``"YES"``.
     method : tuple of str
         The two values added to De-identification Method (0012,0063): the
-        policy digest, then the readable value.
+        method digest, then the readable value.
     method_codes : tuple of CodedConcept
         The items added to De-identification Method Code Sequence
         (0012,0064): the Basic Profile's code and each satisfied option's,
@@ -204,10 +198,10 @@ class Markers:
         ``"PyMedPhys"``.
     software_versions : tuple of str
         The values of Software Versions (0018,1020) in that item: PyMedPhys's
-        full version, then the environment that the policy digest covers, the
-        Python implementation and version as one value, such as
-        ``"CPython 3.14.0"``, then ``"pydicom <version>"`` and
-        ``"tomlkit <version>"``.
+        full version, the Python implementation and version as one value,
+        such as ``"CPython 3.14.0"``, ``"pydicom <version>"``, and
+        ``"tomlkit <version>"``. They record the runtime that ran, which the
+        method digest does not cover.
     purpose_of_reference : CodedConcept
         The item's Purpose of Reference Code Sequence (0040,A170) item: DCM
         109104 "De-identifying Equipment".
@@ -235,35 +229,21 @@ def _code(cid: int, value: str) -> CodedConcept:
     raise StandardTableError(f"CID {cid} has no code {DCM} {value}")
 
 
-def _environment_versions() -> tuple[str, ...]:
-    """Return the environment that the policy digest covers, as Software Versions.
+def _software_versions() -> tuple[str, str, str, str]:
+    """Return Software Versions as the running process gives them.
 
-    The Python implementation and version make one value, such as
-    ``"CPython 3.14.0"``, followed by each library's name and version, such
-    as ``"pydicom 3.0.2"``, in the order that the environment gives them.
+    PyMedPhys's full version; the Python implementation and version as one
+    value, such as ``"CPython 3.14.0"``; ``"pydicom <version>"``; and
+    ``"tomlkit <version>"``. They are read at each call rather than once at
+    import, so that they are the versions that compute the markers, and
+    importing this module loads neither pydicom nor tomlkit.
     """
-    covered = dict(policy_digest.environment())
-    implementation = covered.pop(_PYTHON_IMPLEMENTATION, None)
-    python = covered.pop(_PYTHON_VERSION, None)
-    unknown = [name for name in covered if not name.endswith(_LIBRARY_VERSION)]
-    problems = []
-    if implementation is None or python is None:
-        problems.append("it gives no Python implementation and version")
-    if unknown:
-        problems.append(
-            f"it gives {', '.join(unknown)}, which is neither the Python "
-            "implementation or version nor a library's version"
-        )
-    if problems:
-        raise MarkerError(
-            f"Software Versions {_SOFTWARE_VERSIONS} cannot record the "
-            "environment that the policy digest covers: " + "; ".join(problems)
-        )
-    libraries = (
-        f"{name.removesuffix(_LIBRARY_VERSION)} {version}"
-        for name, version in covered.items()
+    return (
+        _version.__version__,
+        f"{platform.python_implementation()} {platform.python_version()}",
+        f"pydicom {pydicom.__version__}",
+        f"tomlkit {tomlkit.__version__}",
     )
-    return (f"{implementation} {python}", *libraries)
 
 
 def _satisfied(policy: Policy, satisfied: Iterable[str]) -> tuple[str, ...]:
@@ -307,11 +287,11 @@ def _code_elements(code: CodedConcept) -> Iterator[tuple[str, Sequence[str]]]:
 
 
 def _check_digest(digest: object) -> None:
-    """Check the policy digest's form, without quoting it."""
+    """Check the method digest's form, without quoting it."""
     if not isinstance(digest, str):
-        raise TypeError("the policy digest must be text")
+        raise TypeError("the method digest must be text")
     if not _DIGEST.fullmatch(digest):
-        raise ValueError("the policy digest must be 64 lowercase hexadecimal digits")
+        raise ValueError("the method digest must be 64 lowercase hexadecimal digits")
 
 
 def _padding_problem(vr: str, given: Sequence[str]) -> str | None:
@@ -336,7 +316,7 @@ def _padding_problem(vr: str, given: Sequence[str]) -> str | None:
 def _check(found: Markers) -> None:
     """Check the markers as they are to be written, and report each problem.
 
-    De-identification Method must gain two values, the first a policy
+    De-identification Method must gain two values, the first a method
     digest and the second a readable value of at most 63 characters;
     Patient Identity Removed must be YES; every value must fit its VR and
     VM; and no attribute may end in a value that the padding would make
@@ -346,7 +326,7 @@ def _check(found: Markers) -> None:
         raise MarkerError(
             "the de-identification markers cannot be written: "
             f"De-identification Method {_DEIDENTIFICATION_METHOD} must gain two "
-            "values, the policy digest and the readable value"
+            "values, the method digest and the readable value"
         )
     digest, readable = found.method
     _check_digest(digest)
@@ -393,10 +373,9 @@ def _check(found: Markers) -> None:
 def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Markers:
     """Return the markers of one instance de-identified under a policy.
 
-    The environment in Software Versions is taken from
-    :func:`~pymedphys._dicom.deidentify.policy_digest.environment` at this
-    call, so it is the environment that the policy digest covers when both
-    are computed in the same process.
+    Software Versions is read from the running process at this call: the
+    versions of PyMedPhys, Python, pydicom, and tomlkit, which record the
+    runtime that ran and which the method digest does not cover.
 
     Parameters
     ----------
@@ -404,8 +383,8 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         The instance's validated policy, such as one from
         :func:`~pymedphys._dicom.deidentify.policy.compose_policy`.
     digest : str
-        The policy digest,
-        :func:`~pymedphys._dicom.deidentify.policy_digest.policy_digest` of
+        The de-identification method digest,
+        :func:`~pymedphys._dicom.deidentify.method_digest.method_digest` of
         the policy and the vocabulary that descriptor cleaning used.
     satisfied : iterable of str
         The policy's options that the instance's validated result satisfies,
@@ -442,20 +421,18 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         value, so that Patient Identity Removed could be neither YES nor NO;
         if a value does not fit its VR or VM, such as a library version too
         long for a Software Versions value; if the readable value is longer
-        than 63 characters; if an attribute would have an odd length and end
-        in a value of its VR's maximum length, which pydicom reads with the
-        padding as too long; or if the environment that the policy digest
-        covers lacks the Python implementation and version, or gives
-        anything else that is not a library's version.
+        than 63 characters; or if an attribute would have an odd length and
+        end in a value of its VR's maximum length, which pydicom reads with
+        the padding as too long.
     ~pymedphys._dicom.deidentify.standard.StandardTableError
         If a pinned context group lacks a code that the markers write.
 
     Examples
     --------
     >>> from pymedphys._dicom.deidentify.policy import compose_policy
-    >>> from pymedphys._dicom.deidentify.policy_digest import policy_digest
+    >>> from pymedphys._dicom.deidentify.method_digest import method_digest
     >>> policy = compose_policy("basic-clean-descriptors")
-    >>> digest = policy_digest(policy, vocabulary=None)
+    >>> digest = method_digest(policy, vocabulary=None)
     >>> found = markers_for(policy, digest, satisfied=["clean_descriptors"])
     >>> found.method[0] == digest
     True
@@ -480,7 +457,8 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         )
     options = _satisfied(policy, satisfied)
 
-    version = _version.__version__
+    software_versions = _software_versions()
+    version = software_versions[0]
     name = CUSTOM_OPTION_SET if policy.preset is None else policy.preset
     if policy.claims_conformance:
         claim = f"PS3.15 {policy.edition}"
@@ -498,7 +476,7 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
             "MODIFIED" if MODIFIED_DATES in policy.options else "REMOVED"
         ),
         manufacturer=MANUFACTURER,
-        software_versions=(version, *_environment_versions()),
+        software_versions=software_versions,
         purpose_of_reference=_code(7005, DEIDENTIFYING_EQUIPMENT),
     )
     _check(found)
@@ -647,9 +625,9 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
     ------
     TypeError
         If ``dataset`` is not a :class:`pydicom.Dataset`, ``markers`` is not
-        :class:`Markers`, or the policy digest in ``markers`` is not text.
+        :class:`Markers`, or the method digest in ``markers`` is not text.
     ValueError
-        If the policy digest in ``markers`` is not 64 lowercase hexadecimal
+        If the method digest in ``markers`` is not 64 lowercase hexadecimal
         digits. The message does not quote it.
     MarkerError
         If ``markers`` sets Patient Identity Removed to anything but YES or
