@@ -26,13 +26,15 @@ next of X, Z, and D that it offers applies, and in X/Z/U*, U, the replacement
 of the instance UIDs that the sequence contains, takes the place of D. An
 attribute that the IOD does not define at that place counts as Type 3.
 
-Where the Type requires an action that the compound action does not offer and
-no later one follows, as for X/Z on a Type 1 attribute, :class:`SequesterInstance`
-is raised and the instance must be sequestered. Table E.1-1a would let Z write
-a dummy value, and the design has a plain Z write D's dummy value where the
-attribute is Type 1 or 1C at its place, but whether the Z that X/Z offers may
-do the same there is not yet decided, so no action that X/Z offers keeps a
-Type 1 attribute valid.
+X/Z on a Type 1 or 1C attribute gives D. Table E.1-1a defines Z as a
+zero-length value or a non-zero-length dummy value consistent with the VR,
+and a plain Z on such an attribute writes D's dummy value, so where the Type
+requires a value, the Z that X/Z offers does the same: the resolver returns
+D, the action that writes it. No compound action therefore removes an
+attribute that its Type requires, or empties one that must have a value.
+Where the attribute's VR has no generic dummy value, as for a sequence,
+writing D is refused, and the attribute needs a reviewed rule or its instance
+is sequestered.
 
 For example, Table E.1-1 gives Institution Name (0008,0080) X/Z/D. The RT
 Structure Set IOD makes it Type 3 at the top level of the data set, Type 2 in
@@ -50,8 +52,8 @@ ROI Creator Sequence (3006,004D) within Structure Set ROI Sequence
 >>> resolve_in_iod(structure_set, "(0008,0080)", ("(0008,0096)",), "X/Z/D")
 'D'
 
-This module chooses the action; it writes no value. Its errors name tags,
-actions, and Types, never a value.
+This module chooses the action; it writes no value. Its errors never repeat
+a value.
 """
 
 from __future__ import annotations
@@ -65,10 +67,11 @@ from .iods import IOD
 # replace with a dummy value.
 _ORDER = ("X", "Z", "D")
 # What each compound action of Table E.1-1a, in the table's order, offers in
-# the place of X, Z, and D. In X/Z/U*, U takes the place of D.
+# the place of X, Z, and D. In X/Z/U*, U takes the place of D. In X/Z, Z with
+# a non-zero-length dummy value, which D writes, takes the place of D.
 _OFFERS: Mapping[str, Mapping[str, str]] = {
     "Z/D": {"Z": "Z", "D": "D"},
-    "X/Z": {"X": "X", "Z": "Z"},
+    "X/Z": {"X": "X", "Z": "Z", "D": "D"},
     "X/D": {"X": "X", "D": "D"},
     "X/Z/D": {"X": "X", "Z": "Z", "D": "D"},
     "X/Z/U*": {"X": "X", "Z": "Z", "D": "U"},
@@ -83,52 +86,6 @@ _TARGET = {"1": "D", "2": "Z", "3": "X"}
 
 # A tag as the IOD tables give it, with upper-case hexadecimal digits.
 _TAG_PATTERN = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
-
-
-class SequesterInstance(Exception):
-    """A compound action offers no action that the attribute's Type allows.
-
-    Raised where the attribute's Type requires an action that the compound
-    action does not offer and no later one follows, as for X/Z on a Type 1
-    attribute: whether the Z that X/Z offers may write a dummy value there, as
-    a plain Z does, is not yet decided, so no action that X/Z offers keeps a
-    Type 1 attribute valid, and the instance must be sequestered. It
-    is not a :class:`ValueError`, so code that rejects invalid input does not
-    catch it by accident.
-
-    Attributes
-    ----------
-    action : str
-        The compound action, such as ``"X/Z"``.
-    attribute_type : str
-        The Type that requires more than the action offers, such as ``"1"``.
-    tag : str or None
-        The attribute's tag, such as ``"(0010,2203)"``, or ``None`` when
-        :func:`resolve` was given a Type alone.
-    path : tuple of str
-        The tags of the sequences that contain the attribute, outermost
-        first, or ``()``.
-    """
-
-    def __init__(
-        self,
-        action: str,
-        attribute_type: str,
-        tag: str | None = None,
-        path: tuple[str, ...] = (),
-    ) -> None:
-        super().__init__(action, attribute_type, tag, path)
-        self.action = action
-        self.attribute_type = attribute_type
-        self.tag = tag
-        self.path = path
-
-    def __str__(self) -> str:
-        where = "" if self.tag is None else " on " + " > ".join((*self.path, self.tag))
-        return (
-            f"{self.action}{where} offers no action that Type "
-            f"{self.attribute_type} allows, so the instance must be sequestered"
-        )
 
 
 def _checked_path(tag: object, path: object) -> tuple[str, ...]:
@@ -188,7 +145,8 @@ def resolve(action: str, attribute_type: str) -> str:
 
     The Type calls for D (1 or 1C), Z (2 or 2C), or X (3). Where ``action``
     does not offer it, the next of X, Z, and D that ``action`` offers
-    applies. In X/Z/U*, U takes the place of D.
+    applies. In X/Z/U*, U takes the place of D, and in X/Z, D, the
+    non-zero-length dummy value that Table E.1-1a allows Z.
 
     Plain actions (D, Z, X, K, C, and U) are rejected rather than passed
     through. They do not depend on the Type, and passing X through would
@@ -211,15 +169,14 @@ def resolve(action: str, attribute_type: str) -> str:
 
     Raises
     ------
-    SequesterInstance
-        If the Type requires an action that ``action`` does not offer and no
-        later one follows: X/Z on Type 1 or 1C.
     ValueError
         If ``action`` is not a compound action, or ``attribute_type`` is not
         a Type.
 
     Examples
     --------
+    >>> resolve("X/Z", "1")
+    'D'
     >>> resolve("X/D", "2")
     'D'
     >>> resolve("Z/D", "3")
@@ -235,10 +192,8 @@ def resolve(action: str, attribute_type: str) -> str:
         raise ValueError("attribute_type is not a Type: 1, 1C, 2, 2C, or 3")
     offers = _OFFERS[action]
     target = _TARGET[_STRICTNESS[attribute_type]]
-    for candidate in _ORDER[_ORDER.index(target) :]:
-        if candidate in offers:
-            return offers[candidate]
-    raise SequesterInstance(action, attribute_type)
+    # Every compound action offers D, or U in its place, so one follows.
+    return next(offers[c] for c in _ORDER[_ORDER.index(target) :] if c in offers)
 
 
 def resolve_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -> str:
@@ -266,15 +221,8 @@ def resolve_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -> str:
 
     Raises
     ------
-    SequesterInstance
-        If X/Z applies to an attribute whose strictest Type there is 1 or
-        1C. It names the tag, the path, the action, and the Type.
     ValueError
         If ``action`` is not a compound action, or ``tag`` or ``path`` is
         malformed, as for :func:`strictest_type` and :func:`resolve`.
     """
-    attribute_type = strictest_type(iod, tag, path)
-    try:
-        return resolve(action, attribute_type)
-    except SequesterInstance:
-        raise SequesterInstance(action, attribute_type, tag, tuple(path)) from None
+    return resolve(action, strictest_type(iod, tag, path))
