@@ -587,7 +587,7 @@ note = "A keyword for a private data element, in the form of the keywords of PS3
 tag = "(0008,1090)"
 keyword = "ManufacturerModelName"
 action = "K"
-note = "The manufacturer's name for the model of the equipment or device, the same for every unit of that model. It identifies a product rather than one device, and Table E.1-1 omits it while listing Device Serial Number, which identifies one device. It is kept, as information about the acquisition."
+note = "The manufacturer's name for the model of the equipment or device, the same for every unit of a commercial model. It identifies a product rather than one device, and Table E.1-1 omits it while listing Device Serial Number, which identifies one device. It is kept, as information about the acquisition. A device made in-house for one patient, such as a bolus that Patient Treatment Preparation Device Sequence (PS3.3 Table 10.35-1, Type 2) records, can have a model name typed by hand that names the hospital; as for Manufacturer, that residual risk is accepted under the first release's presets, and only the `public-release` preset has a person review every distinct retained string."
 
 [[attribute]]
 tag = "(0010,0213)"
@@ -665,7 +665,7 @@ note = "The name of a brachytherapy source's isotope, such as Ir-192, from the p
 tag = "(3010,001A)"
 keyword = "ManufacturerModelVersion"
 action = "K"
-note = "The version of the manufacturer's model of a device, which identifies a product rather than one device, like Manufacturer's Model Name, so it is kept."
+note = "The version of the manufacturer's model of a device, which identifies a product rather than one device, like Manufacturer's Model Name, so it is kept, with the same accepted residual risk for a device made in-house for one patient."
 
 [[attribute]]
 tag = "(3010,001D)"
