@@ -71,7 +71,7 @@ from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
 
 from .file_layout import ElementPath, reads_as_items
 from .sop_classes import load_storage_sop_classes
-from .standard import VRS, DictionaryAttribute, load_data_dictionary
+from .standard import VRS, dictionary_attribute
 from .uids import normalise_uid
 from .values import values_problem
 
@@ -164,39 +164,6 @@ class ElementValue:
 
     def __repr__(self) -> str:
         return f"ElementValue(path={str(self.path)!r}, vr={self.vr!r})"
-
-
-@functools.cache
-def _dictionary() -> tuple[dict, list[DictionaryAttribute]]:
-    attributes = load_data_dictionary().attributes
-    masked = [each for each in attributes if "x" in each.tag]
-    return {each.tag: each for each in attributes if "x" not in each.tag}, masked
-
-
-def dictionary_attribute(tag: str) -> DictionaryAttribute | None:
-    """Return the pinned dictionary's attribute for a tag such as ``"(6002,3000)"``.
-
-    An "x" in the dictionary's tags stands for any digit, but in (50xx,eeee)
-    and (60xx,eeee) only for the groups that repeat, 5000 to 501E and 6000 to
-    601E (PS3.5 Section 7.6). An odd group is private, so it has none.
-
-    >>> dictionary_attribute("(6002,3000)").keyword
-    'OverlayData'
-    >>> dictionary_attribute("(6020,3000)") is None
-    True
-    """
-    exact, masked = _dictionary()
-    if tag in exact or int(tag[4], 16) % 2:
-        return exact.get(tag)
-    return next(
-        (
-            each
-            for each in masked
-            if all(digit in ("x", found) for digit, found in zip(each.tag, tag))
-            and (each.tag[1:3] not in ("50", "60") or tag[3] in "01")
-        ),
-        None,
-    )
 
 
 def dataset_codecs(

@@ -29,7 +29,7 @@ import warnings
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import elements
+from pymedphys._dicom.deidentify import elements, file_layout
 from pymedphys._dicom.deidentify.file_layout import ElementPath, reads_as_items
 
 from . import _synthetic_references as synthetic
@@ -573,6 +573,10 @@ def test_the_pinned_dictionary_masks_only_its_repeating_groups(tag, expected):
     dataset[_tag(tag)] = _raw(tag, None, b"AB")
 
     assert (attribute.vr if attribute else None) == expected
+    # The reader of a written file's layout finds the same.
+    assert file_layout._dictionary_vrs(tag) == (  # pylint: disable = protected-access
+        attribute.vrs if attribute else ()
+    )
     # Without a VR in the dictionary or the file, the value is kept as bytes;
     # with one in the file, it is decoded with that VR.
     if expected is None:
