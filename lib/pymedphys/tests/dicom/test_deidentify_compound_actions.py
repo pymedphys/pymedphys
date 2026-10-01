@@ -14,6 +14,7 @@
 
 """Compound actions of Table E.1-1a, resolved from the strictest PS3.3 Type."""
 
+import json
 import pickle
 
 from pymedphys._imports import pytest
@@ -59,34 +60,64 @@ def _tables():
     return iods.load_iod_tables()
 
 
-def _synthetic_iod(*definitions):
+def _row(depth, name, tag, attribute_type):
+    return {
+        "depth": depth,
+        "name": name,
+        "tag": tag,
+        "type": attribute_type,
+        "include": "",
+    }
+
+
+def _synthetic_iod(tmp_path, *definitions, path=()):
     """Return an IOD with one module of each usage, M, C, and U.
 
-    Each definition is ``(usage, type)`` for Institution Name at the top
-    level, in the module of that usage.
+    Each definition is ``(usage, type)`` for Institution Name, in the module
+    of that usage, within the sequences whose tags ``path`` gives, outermost
+    first. A module without a definition holds only Manufacturer (0008,0070).
+
+    The IOD is written as synthetic generated tables and read back with
+    :func:`~pymedphys._dicom.deidentify.iods.load_iod_tables`, so it does not
+    depend on how the loader builds an IOD.
     """
-    modules = tuple(
-        iods.ModuleUsage(
-            "Equipment", f"Module {usage}", "C.0", usage, "", "Table C.0-1"
+    types = dict(definitions)
+    modules, tables = [], []
+    for number, usage in enumerate(("M", "C", "U"), start=1):
+        label = f"Table C.0-{number}"
+        if usage in types:
+            sequences = [
+                _row(depth, f"Sequence {depth}", tag, "3")
+                for depth, tag in enumerate(path)
+            ]
+            rows = [
+                *sequences,
+                _row(len(path), "Institution Name", INSTITUTION_NAME, types[usage]),
+            ]
+        else:
+            rows = [_row(0, "Manufacturer", "(0008,0070)", "3")]
+        title = f"Module {usage} Module Attributes"
+        tables.append({"label": label, "title": title, "rows": rows})
+        modules.append(
+            {
+                "information_entity": "Equipment",
+                "module": f"Module {usage}",
+                "section": "C.0",
+                "usage": usage,
+                "condition": "",
+                "table": label,
+            }
         )
-        for usage in ("M", "C", "U")
-    )
-    return iods.IOD(
-        "Synthetic",
-        "Table A.0-1",
-        modules,
-        tuple(
-            iods.AttributeDefinition(
-                (),
-                INSTITUTION_NAME,
-                "Institution Name",
-                attribute_type,
-                f"Module {usage}",
-                ("Table C.0-1",),
-            )
-            for usage, attribute_type in definitions
-        ),
-    )
+    iod = {"label": "Table A.0-1", "iod": "Synthetic", "modules": modules}
+
+    paths = []
+    for name, rows in (("iod_modules.json", [iod]), ("module_attributes.json", tables)):
+        # Keep the generated file's header, with these rows and their digest.
+        document = json.loads((standard.STANDARD_DIR / name).read_text("utf-8"))
+        document.update(rows=rows, content_sha256=standard.content_sha256(rows))
+        paths.append(tmp_path / name)
+        paths[-1].write_text(json.dumps(document), encoding="utf-8")
+    return iods.load_iod_tables(*paths).iods["Synthetic"]
 
 
 def test_the_compound_actions_are_those_of_table_e1_1a():
@@ -121,8 +152,8 @@ def test_each_compound_action_resolves_by_type(action, attribute_type, expected)
         (("3", "1"), "1"),
     ],
 )
-def test_the_strictest_type_counts_1c_as_1_and_2c_as_2(types, expected):
-    iod = _synthetic_iod(*zip(("M", "C", "U"), types))
+def test_the_strictest_type_counts_1c_as_1_and_2c_as_2(tmp_path, types, expected):
+    iod = _synthetic_iod(tmp_path, *zip(("M", "C", "U"), types))
 
     assert strictest_type(iod, INSTITUTION_NAME) == expected
 
@@ -130,11 +161,12 @@ def test_the_strictest_type_counts_1c_as_1_and_2c_as_2(types, expected):
 @pytest.mark.parametrize("usage", ["M", "C", "U"])
 @pytest.mark.parametrize("attribute_type, expected", [("1C", "D"), ("2C", "Z")])
 def test_a_module_of_any_usage_can_give_the_strictest_type(
-    usage, attribute_type, expected
+    tmp_path, usage, attribute_type, expected
 ):
     # The other two modules make the attribute Type 3, so only the module of
     # this usage can make it required.
     iod = _synthetic_iod(
+        tmp_path,
         *((other, "3") for other in ("M", "C", "U") if other != usage),
         (usage, attribute_type),
     )
@@ -228,8 +260,8 @@ def test_an_attribute_the_iod_does_not_define_there_is_type_3(tables, action, ex
 
 
 @pytest.mark.parametrize("attribute_type", ["1", "1C"])
-def test_x_z_on_a_type_1_attribute_sequesters_the_instance(attribute_type):
-    iod = _synthetic_iod(("M", "3"), ("C", attribute_type))
+def test_x_z_on_a_type_1_attribute_sequesters_the_instance(tmp_path, attribute_type):
+    iod = _synthetic_iod(tmp_path, ("M", "3"), ("C", attribute_type))
 
     with pytest.raises(SequesterInstance) as raised:
         resolve_in_iod(iod, INSTITUTION_NAME, (), "X/Z")
@@ -259,23 +291,9 @@ def test_sequestering_is_not_a_value_error():
             pytest.fail("a ValueError handler caught the sequestration")
 
 
-def test_the_sequestration_message_names_only_tags_actions_and_the_type():
-    iod = iods.IOD(
-        "Synthetic",
-        "Table A.0-1",
-        (iods.ModuleUsage("Equipment", "Module M", "C.0", "M", "", "Table C.0-1"),),
-        (
-            iods.AttributeDefinition(
-                ("(3006,0020)", "(3006,004D)"),
-                INSTITUTION_NAME,
-                "Institution Name",
-                "1",
-                "Module M",
-                ("Table C.0-1",),
-            ),
-        ),
-    )
+def test_the_sequestration_message_names_only_tags_actions_and_the_type(tmp_path):
     path = ("(3006,0020)", "(3006,004D)")
+    iod = _synthetic_iod(tmp_path, ("M", "1"), path=path)
 
     with pytest.raises(SequesterInstance) as raised:
         resolve_in_iod(iod, INSTITUTION_NAME, path, "X/Z")
