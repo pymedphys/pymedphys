@@ -27,18 +27,22 @@ caller to decide.
 **Forms.** A value is searched as given, composed (NFC), and decomposed
 (NFD), split at backslashes unless its VR is LT, ST, UR, or UT, and stripped
 of spaces, NULs, and whitespace at either end. A person name (PN) is searched
-whole, by each component group, by its family, given, and middle names, and
-by each word of those names between spaces or hyphens; where the family or
-given name is shorter than :data:`MIN_CHARACTERS`, also as "GIVEN FAMILY",
-"FAMILY GIVEN", and "FAMILY, GIVEN". A date (DA) is also searched as
-YYYY-MM-DD, YYYY:MM:DD (as EXIF writes dates), DD/MM/YYYY, MM/DD/YYYY, and
-DD.MM.YYYY, and a datetime (DT) by its date in each of these and as YYYYMMDD.
-A UID (UI) or text (AE, LO, LT, SH, ST, UC, UR, or UT) is searched as it is,
-by up to its first :data:`MAX_CHARACTERS` characters. Forms with fewer than
+whole, by each component group, by its family, given, and middle names, by
+each word of those names between spaces or hyphens, and with its family and
+given names run together in either order. Where the family or given name is
+shorter than :data:`MIN_CHARACTERS`, they are also searched in either order
+with a space or an ideographic space (U+3000) between them, and as "FAMILY,
+GIVEN". A name with an ASCII apostrophe is also searched with U+2019 in its
+place, and without it. A date (DA), including one written as YYYY.MM.DD, as
+ACR-NEMA wrote dates, is also searched as YYYYMMDD, YYYY-MM-DD, YYYY:MM:DD
+(as EXIF writes dates), DD/MM/YYYY, MM/DD/YYYY, and DD.MM.YYYY, and a
+datetime (DT) by its date in each of these. A UID (UI) or text (AE, LO, LT,
+SH, ST, UC, UR, or UT) is searched as it is, by up to its first
+:data:`MAX_CHARACTERS` characters. Forms with fewer than
 :data:`MIN_CHARACTERS` characters once composed are not searched, nor are
-binary values or the codes, numbers, ages, times, and tags that occur
-throughout files (AS, AT, CS, DS, FD, FL, IS, SL, SS, SV, TM, UL, US, and
-UV).
+binary values, datetimes without a full date, or the codes, numbers, ages,
+times, and tags that occur throughout files (AS, AT, CS, DS, FD, FL, IS, SL,
+SS, SV, TM, UL, US, and UV).
 
 **Encodings.** Each form is searched in UTF-8, ISO 8859-1, UTF-16LE, and the
 source's character set, in which it can also be spelt with ISO 2022 escape
@@ -66,7 +70,11 @@ data set, and values of VR OD, OF, OL, OV, and OW) are searched only for
 forms of at least :data:`MIN_BYTES_IN_NUMBERS` bytes that are not UTF-16LE,
 since shorter forms and UTF-16LE text match sample values by chance. Every
 other byte, including encapsulated fragments and bytes that could not be read
-as elements, is searched for every form.
+as elements, is searched for every form. ASCII case is folded byte by byte,
+so a byte from 0x41 to 0x5A inside a character of several bytes, as in
+UTF-16LE, Shift_JIS, or GBK, is folded too, and some text outside ASCII
+matches a form by chance: in UTF-16LE, "屑" (U+5C51) folds as "山" (U+5C71)
+does. This errs towards a finding.
 
 **Reporting.** Each source attribute is reported once for each place it is
 found, by the widest form there, in the order of :class:`Form`, with the
@@ -397,6 +405,11 @@ def _derive(value: SourceValue) -> Iterator[_Needle | NotSearched]:
             if text:
                 yield omission(form, Omission.TOO_SHORT)
             continue
+        # Without a full date, a datetime is a number found throughout files.
+        partial = not (len(text) >= 8 and text[:8].isdigit())
+        if kind is ValueKind.DATETIME and form is Form.VALUE and partial:
+            yield omission(form, Omission.NOT_DISTINCTIVE)
+            continue
         # A time can follow a date, and anything the first characters of a
         # longer value.
         open_end = kind in _DATES or len(text) > MAX_CHARACTERS
@@ -416,15 +429,20 @@ def _derive(value: SourceValue) -> Iterator[_Needle | NotSearched]:
 
 
 def _forms(text: str, vr: str, kind: ValueKind) -> Iterator[tuple[Form, str]]:
-    """Yield each form of a value as given, NFC, and NFD, some of them empty."""
+    """Yield each form of each way of writing a value, some of them empty."""
     composed, decomposed = (unicodedata.normalize(f, text) for f in ("NFC", "NFD"))
-    for written in dict.fromkeys((text, composed, decomposed)):
+    writings = [text, composed, decomposed]
+    if kind is ValueKind.PERSON_NAME:  # also with U+2019 for each apostrophe, or none
+        writings += [w.replace("'", new) for w in writings for new in ("\u2019", "")]
+    for written in dict.fromkeys(writings):
         for one in [written] if vr in _SINGLE_VALUED else written.split("\\"):
             one = one.strip(_PADDING)
             if kind is not ValueKind.PERSON_NAME:
                 yield Form.VALUE, one
-                date = one[:8] if kind in _DATES and _is_date(one[:8]) else ""
-                if date and kind is ValueKind.DATETIME:
+                # ACR-NEMA wrote a date as YYYY.MM.DD.
+                stem = one.replace(".", "") if kind is ValueKind.DATE else one
+                date = stem[:8] if kind in _DATES and _is_date(stem[:8]) else ""
+                if date and date != one:
                     yield Form.DATE_DICOM, date
                 for form, spelling in _DATE_SPELLINGS.items() if date else ():
                     yield form, spelling.format(date[:4], date[4:6], date[6:])
@@ -436,9 +454,11 @@ def _forms(text: str, vr: str, kind: ValueKind) -> Iterator[tuple[Form, str]]:
                 family, given, middle = (parts + ["", ""])[:3]
                 yield Form.NAME_GROUP, group
                 short = min(_length(family), _length(given)) < MIN_CHARACTERS
+                for separator in ("", " ", "\u3000") if family and given else ():
+                    if short or not separator:  # run together, or with a space
+                        yield Form.NAME_JOINED, f"{given}{separator}{family}"
+                        yield Form.NAME_JOINED, f"{family}{separator}{given}"
                 if family and given and short:
-                    yield Form.NAME_JOINED, f"{given} {family}"
-                    yield Form.NAME_JOINED, f"{family} {given}"
                     yield Form.NAME_JOINED, f"{family}, {given}"
                 for part in (family, given, middle):
                     yield Form.NAME_COMPONENT, part

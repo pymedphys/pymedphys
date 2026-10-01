@@ -354,6 +354,103 @@ def test_a_short_name_is_found_joined():
     )
 
 
+YAMADA = "Yamada^Tarou=山田^太郎=やまだ^たろう"
+# Each name, its codecs, the codec its copies are written in, the copies,
+# and which of them are found as joined names.
+WRITTEN_TOGETHER = {
+    "japanese-utf-8": (
+        YAMADA,
+        (),
+        "utf-8",
+        ["山田太郎", "山田\u3000太郎", "やまだたろう"],
+        [0, 1, 2],
+    ),
+    "japanese-shift-jis": (
+        YAMADA,
+        ("shift_jis",),
+        "shift_jis",
+        ["山田太郎", "山田\u3000太郎", "やまだたろう"],
+        [0, 1, 2],
+    ),
+    "japanese-euc-jp": (
+        YAMADA,
+        ("euc_jp",),
+        "euc_jp",
+        ["山田太郎", "山田\u3000太郎", "やまだたろう"],
+        [0, 1, 2],
+    ),
+    "japanese-iso-2022": (
+        YAMADA,
+        ("iso8859", "iso2022_jp"),
+        "iso2022_jp",
+        ["山田太郎", "やまだたろう"],
+        [0, 1],
+    ),
+    "ideographic-space": ("Tanaka^Makoto=田中^誠", (), "utf-8", ["田中\u3000誠"], [0]),
+    "chinese-utf-8": ("Ouyang^Mingyu=欧阳^明宇", (), "utf-8", ["欧阳明宇"], [0]),
+    "chinese-gb18030": (
+        "Ouyang^Mingyu=欧阳^明宇",
+        ("GB18030",),
+        "GB18030",
+        ["欧阳明宇"],
+        [0],
+    ),
+    # A letter at an outer edge rejects a match, as for any person name form.
+    "latin": (
+        "QUILLON^ZEBEDEE",
+        (),
+        "utf-8",
+        ["QUILLONZEBEDEE", "ZebedeeQuillon", "XQUILLONZEBEDEE"],
+        [0, 1],
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    "name, codecs, codec, copies, found",
+    WRITTEN_TOGETHER.values(),
+    ids=WRITTEN_TOGETHER,
+)
+def test_a_name_is_found_written_together(name, codecs, codec, copies, found):
+    source = _source("(0010,0010)", "PN", name, codecs)
+    data = _private(*(("LT", copy.encode(codec)) for copy in copies))
+
+    result = find_residuals(data, [source])
+
+    assert _summary(result) == [
+        ("(0010,0010)", Form.NAME_JOINED, codec, f"(0019,100{number})")
+        for number in found
+    ]
+
+
+def test_a_name_too_short_written_together_is_listed():
+    source = _source("(0010,0010)", "PN", "王^小明")
+
+    result = find_residuals(_texts("王小明", "王 小明"), [source])
+
+    assert _summary(result) == [
+        ("(0010,0010)", Form.NAME_JOINED, "utf-8", "(0019,1001)")
+    ]
+    path = _path("(0010,0010)")
+    assert result.not_searched == (
+        NotSearched(path, "PN", Form.NAME_JOINED, Omission.TOO_SHORT),
+        NotSearched(path, "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT),
+    )
+
+
+def test_a_name_with_an_apostrophe_is_found_with_any_apostrophe_or_none():
+    source = _source("(0010,0010)", "PN", "O'NEILL^SIOBHAN")
+    data = _texts("Dr O'Neill", "Dr O\u2019Neill", "Dr ONeill", "Dr Neill")
+
+    result = find_residuals(data, [source])
+
+    assert _summary(result) == [
+        ("(0010,0010)", Form.NAME_COMPONENT, "utf-8", f"(0019,100{number})")
+        for number in range(3)
+    ]
+    assert not result.not_searched
+
+
 def test_a_name_with_one_short_part_is_found_joined_and_by_the_other():
     source = _source("(0010,0010)", "PN", "QUILLON^LI")
     data = _texts("Li Quillon", "Dr Quillon")
@@ -458,6 +555,34 @@ def test_a_date_is_found_in_other_spellings():
     spellings = ["dd/mm/yyyy", "mm/dd/yyyy", "dd.mm.yyyy", "exif"]
     for finding, spelling in zip(result.findings, spellings):
         assert f" found as date {spelling}, utf-8, " in str(finding)
+
+
+@pytest.mark.parametrize("value", ["2024", "202405"])
+def test_a_datetime_without_a_full_date_is_not_searched(value):
+    source = _source("(0008,002A)", "DT", value)
+    data = _texts("2024-05-17", "Version 2024.1", "1.2.2024.5", "20240517")
+
+    result = find_residuals(data, [source])
+
+    assert not result.findings
+    assert result.not_searched == (
+        NotSearched(_path("(0008,002A)"), "DT", Form.VALUE, Omission.NOT_DISTINCTIVE),
+    )
+
+
+def test_an_acr_nema_date_is_found_in_each_spelling():
+    # ACR-NEMA wrote dates as YYYY.MM.DD.
+    source = _source("(0010,0030)", "DA", "1971.02.03")
+    data = _texts("19710203", "1971-02-03", "1971.02.03", "03/02/1971")
+
+    result = find_residuals(data, [source])
+
+    assert _summary(result) == [
+        ("(0010,0030)", Form.DATE_DICOM, "utf-8", "(0019,1000)"),
+        ("(0010,0030)", Form.DATE_ISO, "utf-8", "(0019,1001)"),
+        ("(0010,0030)", Form.VALUE, "utf-8", "(0019,1002)"),
+        ("(0010,0030)", Form.DATE_DMY_SLASH, "utf-8", "(0019,1003)"),
+    ]
 
 
 def test_a_date_is_found_at_the_start_of_a_datetime():
@@ -767,7 +892,13 @@ CODE_EXTENSIONS = {
         "황보서윤",
         [(Form.NAME_GROUP, "utf-8", "(0008,0090)")],
         [(Form.NAME_COMPONENT, "euc_kr", "(0019,1001)")],
-        [Form.VALUE, Form.NAME_GROUP, Form.NAME_JOINED, Form.NAME_COMPONENT],
+        [
+            (Form.VALUE, Omission.CODE_EXTENSIONS),
+            (Form.NAME_GROUP, Omission.CODE_EXTENSIONS),
+            (Form.NAME_JOINED, Omission.CODE_EXTENSIONS),
+            (Form.NAME_COMPONENT, Omission.CODE_EXTENSIONS),
+            (Form.NAME_COMPONENT, Omission.TOO_SHORT),
+        ],
     ),
     "chinese": (
         ["", "ISO 2022 IR 58"],
@@ -775,7 +906,14 @@ CODE_EXTENSIONS = {
         None,
         [(Form.VALUE, "iso_ir_58", "(0008,0090)")],
         [],
-        [Form.VALUE, Form.NAME_GROUP, Form.NAME_JOINED],
+        [
+            (Form.VALUE, Omission.CODE_EXTENSIONS),
+            (Form.NAME_GROUP, Omission.CODE_EXTENSIONS),
+            # "张小东" and "小东张", run together, are too short to search.
+            (Form.NAME_JOINED, Omission.TOO_SHORT),
+            (Form.NAME_JOINED, Omission.CODE_EXTENSIONS),
+            (Form.NAME_COMPONENT, Omission.TOO_SHORT),
+        ],
     ),
 }
 
@@ -807,12 +945,15 @@ def test_forms_with_code_extensions_are_searched_in_their_codec_and_listed(
         for form, encoding, tag in in_name + in_copy
     ]
     path = _path("(0010,0010)")
-    assert result.not_searched == (
-        *(
-            NotSearched(path, "PN", f, Omission.CODE_EXTENSIONS, codecs[1])
-            for f in listed
-        ),
-        NotSearched(path, "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT),
+    assert result.not_searched == tuple(
+        NotSearched(
+            path,
+            "PN",
+            form,
+            reason,
+            codecs[1] if reason is Omission.CODE_EXTENSIONS else None,
+        )
+        for form, reason in listed
     )
 
 
@@ -833,10 +974,11 @@ def test_character_sets_without_code_extensions_are_searched_in_their_codec(
 
     # They use no escape sequences, so the whole name is found.
     assert _summary(result) == [("(0010,0010)", Form.VALUE, codec, "(0008,0090)")]
+    path = _path("(0010,0010)")
+    # "张小东" and "小东张", run together, are too short to search.
     assert result.not_searched == (
-        NotSearched(
-            _path("(0010,0010)"), "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT
-        ),
+        NotSearched(path, "PN", Form.NAME_JOINED, Omission.TOO_SHORT),
+        NotSearched(path, "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT),
     )
 
 
@@ -1028,6 +1170,7 @@ def test_every_vr_is_searched_or_reported():
 
     for vr in CHECKED_VRS:
         value = b"\x01\x02\x03\x04" if vr in binary else "ABCDEFGH"
+        value = "20240517" if vr == "DT" else value  # a datetime needs a full date
         result = find_residuals(_file(), [_source("(0019,1001)", vr, value)])
         reasons = {omission.reason for omission in result.not_searched}
         if vr in searched:
