@@ -12,14 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Load the attribute Types of the supported IODs, as DICOM PS3.3 defines them.
+"""Load the attribute Types of the composite IODs, as DICOM PS3.3 defines them.
 
 ``pymedphys dev deid-tables`` generates two tables from the pinned edition of
-PS3.3. ``iod_modules.json`` lists each supported IOD's modules, and
-``module_attributes.json`` holds the attribute tables of those modules and of
-every macro they include, with rows as published. The loader expands an IOD's
-modules when its Types are first needed, following every "Include" row, into
-the attributes it defines at each place in the data set, with their Types.
+PS3.3. ``iod_modules.json`` lists the modules of each composite IOD except
+those whose modules include Functional Group Macros, which are not yet
+generated, and ``module_attributes.json`` holds the attribute tables of those
+modules and of every macro they include, with rows as published. The loader
+expands an IOD's modules when its Types are first needed, following every
+"Include" row, into the attributes it defines at each place in the data set,
+with their Types.
+
+Types are generated ahead of support: an IOD with Types is not thereby
+supported, and :mod:`~pymedphys._dicom.deidentify.scope` sequesters the
+instances of every IOD the release does not support.
 
 The design resolves compound actions of Table E.1-1, such as X/Z/D, from these
 Types (PS3.15 E.1.1). An instance names its SOP Class rather than its IOD;
