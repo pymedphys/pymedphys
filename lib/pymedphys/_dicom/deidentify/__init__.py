@@ -21,7 +21,7 @@ parts that later stages will use: the keys, keyed replacement UIDs, UID and
 temporal attribute roles, patient pseudonyms, subject profiles, date
 offsets, the actions of Table E.1-1 under selected options, the resolution
 of its compound actions from the attribute Types of PS3.3, the presets and
-the validated policies composed from them, the policy digest that identifies
+the validated policies composed from them, the method digest that identifies
 a policy and everything the engine could apply with it, the checks of values
 against their VR and VM, the zero-length and dummy values that the Z and D
 actions write, the supplementary actions for attributes that Table E.1-1

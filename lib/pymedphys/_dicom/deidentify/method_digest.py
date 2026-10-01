@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The policy digest, which identifies a policy and the engine that applies it.
+"""The de-identification method digest of a policy and the engine that applies it.
 
 Every preset will add the digest to De-identification Method (0012,0063) of
 each instance it de-identifies, as exactly 64 lowercase hexadecimal digits, so
 that a file can be traced to the policy and the engine that produced it.
-:func:`policy_digest` gives the SHA-256 of a canonical form
+:func:`method_digest` gives the SHA-256 of a canonical form
 (:func:`canonical_bytes`) of the policy, of everything the engine could
 apply, whether or not the policy's options use it, and of the versions of
 Python and of the libraries that the engine imports:
@@ -132,13 +132,13 @@ _SCALARS: tuple[tuple[type, str, Callable[[Any], str | int]], ...] = (
 )
 
 
-class PolicyDigestError(RuntimeError):
-    """The engine's files cannot be found, so the policy digest cannot cover them."""
+class MethodDigestError(RuntimeError):
+    """The engine's files cannot be found, so the method digest cannot cover them."""
 
 
 @dataclasses.dataclass(frozen=True)
-class DigestInputs:
-    """Everything the policy digest covers apart from the policy.
+class MethodDigestInputs:
+    """Everything the method digest covers apart from the policy.
 
     :func:`digest_inputs` gathers them from the engine.
 
@@ -187,13 +187,13 @@ def _encode(value: object) -> bytes:
         return text.encode("utf-8")
     except UnicodeEncodeError:
         raise ValueError(
-            "an input of the policy digest has text that cannot be encoded as UTF-8"
+            "an input of the method digest has text that cannot be encoded as UTF-8"
         ) from None
 
 
 def _key(key: object) -> str:
     if not isinstance(key, str):
-        raise TypeError("a mapping in the policy digest has a key that is not text")
+        raise TypeError("a mapping in the method digest has a key that is not text")
     return key
 
 
@@ -247,7 +247,7 @@ def _check_policy(policy: object) -> None:
         raise TypeError("policy must be a Policy")
 
 
-def canonical_bytes(policy: Policy, inputs: DigestInputs) -> bytes:
+def canonical_bytes(policy: Policy, inputs: MethodDigestInputs) -> bytes:
     """Return the canonical form of a policy and the inputs of its digest.
 
     The form is one JSON object (RFC 8259), with the members ``format``
@@ -280,7 +280,7 @@ def canonical_bytes(policy: Policy, inputs: DigestInputs) -> bytes:
     policy : Policy
         A validated policy, such as one from
         :func:`~pymedphys._dicom.deidentify.policy.compose_policy`.
-    inputs : DigestInputs
+    inputs : MethodDigestInputs
 
     Returns
     -------
@@ -357,13 +357,13 @@ def _file_digests(directory: pathlib.Path) -> Mapping[str, str]:
             data = path.read_bytes().replace(b"\r\n", b"\n")
             digests[relative.as_posix()] = hashlib.sha256(data).hexdigest()
     if not digests:
-        raise PolicyDigestError(
-            "the policy digest found no source or rule files of the engine"
+        raise MethodDigestError(
+            "the method digest found no source or rule files of the engine"
         )
-    if "policy_digest.py" not in digests:
-        raise PolicyDigestError(
-            "the files that the policy digest found do not include "
-            "policy_digest.py, so they are not the engine's"
+    if "method_digest.py" not in digests:
+        raise MethodDigestError(
+            "the files that the method digest found do not include "
+            "method_digest.py, so they are not the engine's"
         )
     return types.MappingProxyType(digests)
 
@@ -371,7 +371,7 @@ def _file_digests(directory: pathlib.Path) -> Mapping[str, str]:
 def environment() -> dict[str, str]:
     """Return the Python implementation and version, and each library's version.
 
-    These are the values of the environment that the policy digest covers,
+    These are the values of the environment that the method digest covers,
     taken from the running interpreter and from each library as imported,
     at each call. Each is keyed by where it comes from, in this order: the
     Python implementation, ``"platform.python_implementation"``, such as
@@ -402,8 +402,8 @@ def environment() -> dict[str, str]:
     }
 
 
-def digest_inputs(*, vocabulary: tg263.Nomenclature | None) -> DigestInputs:
-    """Gather everything the policy digest covers apart from the policy.
+def digest_inputs(*, vocabulary: tg263.Nomenclature | None) -> MethodDigestInputs:
+    """Gather everything the method digest covers apart from the policy.
 
     Reads the engine's own files once per process, at the first call: the
     generated tables, the supplementary rule files, and the package's source
@@ -419,7 +419,7 @@ def digest_inputs(*, vocabulary: tg263.Nomenclature | None) -> DigestInputs:
 
     Returns
     -------
-    DigestInputs
+    MethodDigestInputs
 
     Raises
     ------
@@ -431,9 +431,9 @@ def digest_inputs(*, vocabulary: tg263.Nomenclature | None) -> DigestInputs:
     ~pymedphys._dicom.deidentify.standard.StandardTableError
         If a generated table cannot be read, or its rows do not match the
         digest it records.
-    PolicyDigestError
+    MethodDigestError
         If the package's source and rule files cannot be found, or do not
-        include this module's own source, ``policy_digest.py``.
+        include this module's own source, ``method_digest.py``.
     """
     if vocabulary is not None and not isinstance(vocabulary, tg263.Nomenclature):
         raise TypeError("vocabulary must be a TG-263 Nomenclature or None")
@@ -446,7 +446,7 @@ def digest_inputs(*, vocabulary: tg263.Nomenclature | None) -> DigestInputs:
             raise ValueError(
                 "the vocabulary has an entry that cannot be encoded as UTF-8"
             ) from None
-    return DigestInputs(
+    return MethodDigestInputs(
         engine_version=_version.__version__,
         tables=_table_digests(standard.STANDARD_DIR.resolve()),
         l2_rules={
@@ -470,8 +470,8 @@ def digest_inputs(*, vocabulary: tg263.Nomenclature | None) -> DigestInputs:
     )
 
 
-def policy_digest(policy: Policy, *, vocabulary: tg263.Nomenclature | None) -> str:
-    """Return the policy digest of a policy, as 64 lowercase hexadecimal digits.
+def method_digest(policy: Policy, *, vocabulary: tg263.Nomenclature | None) -> str:
+    """Return the method digest of a policy, as 64 lowercase hexadecimal digits.
 
     The digest is the SHA-256 of :func:`canonical_bytes` of the policy and
     :func:`digest_inputs`, so it changes whenever the policy changes, or
@@ -497,13 +497,13 @@ def policy_digest(policy: Policy, *, vocabulary: tg263.Nomenclature | None) -> s
     ------
     TypeError, ValueError
         For any reason :func:`digest_inputs` or :func:`canonical_bytes` gives.
-    ~pymedphys._dicom.deidentify.standard.StandardTableError, PolicyDigestError
+    ~pymedphys._dicom.deidentify.standard.StandardTableError, MethodDigestError
         For any reason :func:`digest_inputs` gives.
 
     Examples
     --------
     >>> from pymedphys._dicom.deidentify.policy import compose_policy
-    >>> digest = policy_digest(compose_policy("basic"), vocabulary=None)
+    >>> digest = method_digest(compose_policy("basic"), vocabulary=None)
     >>> len(digest), digest == digest.lower(), int(digest, 16) >= 0
     (64, True, True)
     """
