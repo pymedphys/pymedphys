@@ -992,6 +992,41 @@ def test_a_character_set_that_pydicom_does_not_map_as_given_is_refused(
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.filterwarnings("error")
 @pytest.mark.parametrize(
+    "vr, value",
+    [("US", b"SITE-XY"), ("FD", b"SITE-XYZ1"), ("SQ", b"SITE-XYZ"), ("DS", b"SITE-XYZ")],
+    ids=["us-of-odd-length", "fd-of-odd-length", "sq", "ds"],
+)
+@pytest.mark.parametrize(
+    "where, path",
+    [
+        (ElementPath((), "(0008,0005)"), ElementPath((), "(0008,0005)")),
+        (
+            ElementPath((("(300A,00B0)", 1),), "(0008,0005)"),
+            ElementPath((), "(300A,00B0)"),
+        ),
+    ],
+    ids=["top-level", "in-an-item"],
+)
+def test_a_character_set_stored_with_another_vr_is_refused(
+    caplog, basic, vr, value, where, path
+):
+    # A raw Specific Character Set with a VR other than CS, in a data set
+    # built in memory, is converted by pydicom when it is first accessed:
+    # with a value that the VR cannot hold, pydicom raises an error of its own,
+    # and otherwise it gives a value that is not a character set.
+    dataset = _plan()
+    _holder(dataset, where)[0x00080005] = pydicom.dataelem.RawDataElement(
+        pydicom.tag.Tag(0x00080005), vr, len(value), value, 0, False, True
+    )
+
+    _assert_refused(dataset, basic, path, "SITE-XY")
+    assert "SITE-XY" not in caplog.text
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
     "value",
     ["ISO_IR 100", ["", "ISO 2022 IR 87"], ["ISO 2022 IR 6", "ISO 2022 IR 100"]],
     ids=["a-term", "code-extensions", "code-extensions-without-an-empty-value"],
