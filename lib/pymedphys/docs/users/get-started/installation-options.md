@@ -48,6 +48,36 @@ A plain `pymedphys` install keeps the core package small.
 Many user-facing features need optional dependencies, so PyMedPhys exposes
 extras for common workflows.
 
+## What happens when a package is missing
+
+PyMedPhys loads an optional package only when you use a feature that needs it.
+So `import pymedphys` works on any install, and so does every feature whose
+packages you have installed.
+
+If you use a feature that needs a package you do not have, PyMedPhys stops with
+an error that names the package and the command that installs it, for example:
+
+```text
+ModuleNotFoundError: PyMedPhys could not import "numpy" (needed for "numpy.inf"). It is provided by "numpy", which is in the optional "user" extra. Install the extra with:
+
+    python -m pip install "pymedphys[user]==0.42.0"
+```
+
+Run that command in the same environment, then restart Python, your notebook
+kernel, or `pymedphys gui`. The command keeps your installed version of
+PyMedPhys and adds the missing packages. It suggests the `user` extra because
+that extra covers every feature except the experimental AI chat app. If you
+manage the environment with `uv`, run the same requirement with
+`uv pip install` instead of `python -m pip install`.
+
+If you installed a development version from a source checkout, the message
+instead suggests `python -m pip install -e ".[user]"`, to run in that checkout.
+
+A smaller install is quicker to set up and has fewer packages to keep up to
+date, but only if it includes everything your work uses. For how this works
+inside PyMedPhys, see
+[Lazy imports and optional dependencies](../../contrib/info/lazy-imports.md).
+
 ## Important note about the commands on this page
 
 The example commands below assume you already created a virtual environment,
@@ -72,6 +102,14 @@ They help on shells that would otherwise interpret square brackets.
 | `mosaiq` | `uv pip install "pymedphys[mosaiq]"` | Mosaiq data access and reporting                                     | site-specific connectivity and credentials are still required                 |
 | `ai`     | `uv pip install "pymedphys[ai]"`     | the experimental Mosaiq chat app in the GUI                          | sends questions and query results to Anthropic's API; combine with `user`     |
 | `all`    | `uv pip install "pymedphys[all]"`    | contributors and power users                                         | large install that also pulls in development, test, and documentation tooling |
+
+```{note}
+The narrower extras do not yet include everything their features need. For
+example, `dicom` does not include NumPy, which `pymedphys.dicom.anonymise` and
+`pymedphys dicom anonymise` use, and `mosaiq` does not include `keyring`, which
+`pymedphys.mosaiq.connect` uses. Until they are fixed, prefer `user`, or install
+the packages that the error messages name.
+```
 
 ## Recommended combinations
 

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pandas as pd
 import base64
 import logging
 
+from pymedphys._imports import pandas as pd
 from pymedphys._imports import pymssql
 
 from . import generate, utilities

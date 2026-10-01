@@ -9,6 +9,7 @@ docs-guide
 release-guide
 workflows
 dependency-update-prs
+lazy-imports
 deidentification-design
 dicom-coordinate-validation
 dicom-coordinates-illustrated

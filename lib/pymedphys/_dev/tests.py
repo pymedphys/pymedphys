@@ -25,6 +25,8 @@ from pymedphys._imports import pytest, tabulate, tqdm
 
 import pymedphys._utilities.test as pmp_test_utils
 
+from . import import_policy
+
 LIBRARY_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 REPO_ROOT = LIBRARY_ROOT.parent.parent
 PYLINT_RC_FILE = LIBRARY_ROOT.joinpath(".pylintrc")
@@ -34,45 +36,20 @@ def run_tests(_, remaining):
     _call_pytest(remaining, "pytest")
 
 
-def _is_within_scopes(import_path, scopes):
-    for scope in scopes:
-        if import_path.startswith(scope):
-            return True
-
-    return False
-
-
 def run_clean_imports(_):
-    ignore_scopes = [
-        "pymedphys.docs",
-        "pymedphys._imports",
-        # TODO: Remove the following modules if they aren't being maintained
-        # see <https://github.com/pymedphys/pymedphys/issues/1382>
-        "pymedphys._experimental.paulking",
+    """Import every module in a real install, with only the extras it needs.
+
+    ``pymedphys._dev.import_policy`` says which modules need an extra at import
+    time. The unit tests check the same policy against a simulated base
+    install; this command checks it against real, non-editable installs.
+    """
+    module_names = import_policy.module_names()
+    base_import_paths = [
+        name for name in module_names if import_policy.required_extra(name) is None
     ]
-    tests_scopes = ["pymedphys.conftest", "pymedphys.tests"]
-
-    relative_paths = [
-        path.relative_to(LIBRARY_ROOT.parent)
-        for path in LIBRARY_ROOT.parent.rglob("**/*.py")
+    extra_import_paths = [
+        name for name in module_names if import_policy.required_extra(name) is not None
     ]
-
-    all_import_paths = [
-        ".".join(path.with_suffix("").parts).replace("-", "_")
-        for path in relative_paths
-    ]
-
-    clean_import_paths = []
-    tests_import_paths = []
-    for import_path in all_import_paths:
-        if _is_within_scopes(import_path, ignore_scopes):
-            continue
-
-        if _is_within_scopes(import_path, tests_scopes):
-            tests_import_paths.append(import_path)
-            continue
-
-        clean_import_paths.append(import_path)
 
     python_executable = pmp_test_utils.get_executable_even_when_embedded()
 
@@ -85,16 +62,17 @@ def run_clean_imports(_):
             [new_python_executable, "-m", "pip", "install", "."], cwd=REPO_ROOT
         )
 
-        print("\nImporting all modules that should be able to handle a clean import...")
-        failures = _import_and_print(new_python_executable, clean_import_paths)
+        print("\nImporting the modules that need no extra...")
+        failures = _import_and_print(new_python_executable, base_import_paths)
 
-        print("Installing PyMedPhys with tests dependencies...\n")
+        print("Installing PyMedPhys with the user, ai, and tests extras...\n")
         subprocess.check_call(
-            [new_python_executable, "-m", "pip", "install", ".[tests]"], cwd=REPO_ROOT
+            [new_python_executable, "-m", "pip", "install", ".[user,ai,tests]"],
+            cwd=REPO_ROOT,
         )
 
-        print("\nImporting all modules that should be able to handle a tests import...")
-        failures += _import_and_print(new_python_executable, tests_import_paths)
+        print("\nImporting the modules that need an extra...")
+        failures += _import_and_print(new_python_executable, extra_import_paths)
 
     if failures:
         print(f"{failures} module(s) failed to import.")

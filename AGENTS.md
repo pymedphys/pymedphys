@@ -175,6 +175,10 @@ Use this list wherever metadata needs the maintainers.
   `~/.streamlit`. The Zenodo cache stays shared through `PYMEDPHYS_DATA_DIR`,
   which `pymedphys._data.download.get_data_dir` honours. Write test outputs to
   `tmp_path`, never beside cached data files.
+- Tests must also pass from an installed wheel, because the published-release
+  jobs run the installed package's suite. Read only files inside the package,
+  and take the package's own requirements from `importlib.metadata`, never from
+  `pyproject.toml` or other files outside `lib/pymedphys`.
 - `dev tests` and `dev doctests` bypass user logging configuration during CLI
   startup, before pytest can isolate the home directory. Keep this boundary:
   opening a configured log can modify user files before any test runs.
@@ -240,6 +244,13 @@ The project uses uv with optional dependency groups:
 - `docs`: Documentation building
 - `tests`: Testing dependencies
 - Specific features: `dicom`, `mosaiq`, `icom`, etc.
+
+### Optional Dependencies
+
+- Import every third-party package other than the base dependencies through `pymedphys._imports`, for example `from pymedphys._imports import numpy as np`. It imports the package on first use and, when the package is missing, names the extra that provides it. Register a new package in `lib/pymedphys/_imports/imports.py`, and add it to `DISTRIBUTION_FOR_IMPORT` in `lib/pymedphys/_extras.py` when its import name differs from its distribution name.
+- Every module must import with only the base dependencies, except those listed in `REQUIRED_EXTRAS` in `lib/pymedphys/_dev/import_policy.py`: the Streamlit apps, the AI modules, and the tests. So outside those, do not use an optional package when a module is imported: not at module level, in decorators, default arguments, or class bodies, nor in annotations unless the module has `from __future__ import annotations`.
+- The tests in `lib/pymedphys/tests/imports` check both rules in every unit test job, by importing each module in a fresh interpreter in which only the standard library and the base dependencies can be imported. `pymedphys dev imports` checks the same policy against real installs.
+- `lib/pymedphys/docs/contrib/info/lazy-imports.md` explains the mechanism, the messages users see, and these rules with examples. Update it when they change.
 
 ### Packaging
 
