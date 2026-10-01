@@ -18,6 +18,10 @@ Every data set is synthetic, built here or by ``_synthetic_references``.
 Values that must never appear in a message carry the text ``SENTINEL``.
 """
 
+# The tests share the element builders below, so they stay in one module.
+# pylint: disable = too-many-lines
+
+import copy
 import io
 import logging
 import struct
@@ -25,7 +29,7 @@ import warnings
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import elements
+from pymedphys._dicom.deidentify import elements, file_layout
 from pymedphys._dicom.deidentify.file_layout import ElementPath, reads_as_items
 
 from . import _synthetic_references as synthetic
@@ -243,14 +247,231 @@ def test_us_or_ss_without_a_pixel_representation_of_0_or_1_is_refused(
 
 
 @pytest.mark.parametrize(
-    "representation, stated", [(0, "SS"), (1, "US")], ids=["us-as-ss", "ss-as-us"]
+    "tag, stated, attributes, rule",
+    [
+        ("(0028,0120)", "SS", {}, "Pixel Representation (0028,0103) decides VR US"),
+        (
+            "(0028,0120)",
+            "US",
+            {"PixelRepresentation": 1},
+            "Pixel Representation (0028,0103) decides VR SS",
+        ),
+        (
+            "(7FE0,0010)",
+            "OB",
+            {"BitsAllocated": 16},
+            "Bits Allocated (0028,0100) decides VR OW",
+        ),
+    ],
+    ids=["us-as-ss", "ss-as-us", "ow-as-ob"],
 )
-def test_a_vr_that_pixel_representation_contradicts_is_refused(representation, stated):
-    dataset = _image(representation)
-    dataset.add_new(0x00280120, stated, 2)
+def test_a_vr_that_the_deciding_rule_contradicts_is_refused(
+    tag, stated, attributes, rule
+):
+    # The pinned dictionary gives each VR, but not where the rule that
+    # decides between them gives the other.
+    dataset = _image(0, **attributes)
+    dataset[_tag(tag)] = _raw(tag, stated, b"SENTINEL")
 
-    with pytest.raises(elements.UndecodableElement, match="conflicts"):
-        _read(dataset, _path("(0028,0120)"))
+    with pytest.raises(elements.UndecodableElement) as raised:
+        _read(dataset, _path(tag))
+
+    assert raised.value.path == _path(tag)
+    assert str(raised.value) == f"{tag} has VR {stated}, but {rule}"
+
+
+VOI_LUT_DESCRIPTOR = _path(("(0028,3010)", 0), "(0028,3002)")
+# 4096 entries, the first mapped -1024 as SS or 64512 as US, and 16 bits.
+DESCRIPTOR = struct.pack("<HhH", 4096, -1024, 16)
+DESCRIPTOR_VALUES = {"SS": (4096, -1024, 16), "US": (4096, 64512, 16)}
+SECONDARY_CAPTURE_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.7"
+
+
+def _voi_lut_image(descriptor, **changes):
+    """Return a CT image whose VOI LUT Sequence item holds ``descriptor``.
+
+    Its stored values are unsigned, 12 of 16 bits, and its output is in
+    Hounsfield Units, as ``changes`` do not replace or, where None, remove.
+    A value of bytes is held as an element that Implicit VR wrote, and a
+    list as a sequence of copies of its items.
+    """
+    dataset = synthetic.ct_slice(0)
+    attributes = {
+        "BitsAllocated": 16,
+        "BitsStored": 12,
+        "HighBit": 11,
+        "PixelRepresentation": 0,
+        "RescaleIntercept": "-1024",
+        "RescaleSlope": "1",
+        "RescaleType": "HU",
+        **changes,
+    }
+    for keyword, value in attributes.items():
+        tag = pydicom.datadict.tag_for_keyword(keyword)
+        if isinstance(value, bytes):
+            dataset[tag] = _raw(f"({tag >> 16:04X},{tag & 0xFFFF:04X})", None, value)
+        elif value is not None:
+            setattr(dataset, keyword, copy.deepcopy(value))
+    item = pydicom.Dataset()
+    if descriptor is not None:
+        item[0x00283002] = descriptor
+    dataset.add(synthetic.sequence(0x00283010, [item]))
+    return dataset
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@TRANSFER_SYNTAXES
+def test_the_voi_lut_descriptor_of_a_ct_in_hounsfield_units_is_ss(transfer_syntax):
+    # PS3.3 Section C.11.2.1.1: the second value is SS "if the possible
+    # output range after application of the Rescale Slope and Intercept may
+    # be signed", as Hounsfield Units always are, so Pixel Representation 0
+    # does not decide it.
+    dataset = _voi_lut_image(None)
+    item = dataset.VOILUTSequence[0]
+    item.add_new(0x00283002, "SS", [4096, -1024, 16])
+    item.add_new(0x00283006, "US", [0] * 4096)
+
+    read = _written_and_read(dataset, transfer_syntax)
+    descriptor = _read(read, VOI_LUT_DESCRIPTOR)
+
+    assert (descriptor.vr, descriptor.values) == ("SS", (4096, -1024, 16))
+
+
+@pytest.mark.parametrize(
+    "stated, changes",
+    [
+        ("SS", {}),
+        ("US", {}),
+        # Without rescale, Pixel Representation 0 would decide US.
+        ("SS", {"RescaleIntercept": None, "RescaleSlope": None, "RescaleType": None}),
+    ],
+    ids=["ss", "us", "ss-without-rescale"],
+)
+def test_the_voi_lut_descriptor_takes_the_vr_that_explicit_vr_states(stated, changes):
+    # In Explicit VR, "the explicit VR actually used is dictated by the VR
+    # needed to represent the second Value" (PS3.3 Section C.11.2.1.1), so
+    # the file decides, and the bytes are the same either way.
+    dataset = _voi_lut_image(_raw("(0028,3002)", stated, DESCRIPTOR), **changes)
+
+    descriptor = _read(dataset, VOI_LUT_DESCRIPTOR)
+
+    assert (descriptor.vr, descriptor.values) == (stated, DESCRIPTOR_VALUES[stated])
+
+
+_WITHOUT_RESCALE = {"RescaleIntercept": None, "RescaleSlope": None, "RescaleType": None}
+
+
+@pytest.mark.parametrize("stated", [None, "UN"], ids=["implicit-vr", "un"])
+@pytest.mark.parametrize(
+    "changes, vr",
+    [
+        # Hounsfield Units are always signed (the Note in Section C.11.2.1.1).
+        ({}, "SS"),
+        ({"RescaleIntercept": "0"}, "SS"),
+        # A CT Image leaves out Rescale Type only where it is HU (PS3.3
+        # Table C.8-3), but another image does not say so.
+        ({"RescaleType": None, "RescaleIntercept": "0"}, "SS"),
+        (
+            {
+                "RescaleType": None,
+                "RescaleIntercept": "0",
+                "SOPClassUID": SECONDARY_CAPTURE_IMAGE_STORAGE,
+            },
+            "US",
+        ),
+        # Otherwise the output range of the stored values that Bits Stored and
+        # Pixel Representation give decides (Section C.11.1.1.1).
+        ({"RescaleType": None, "RescaleIntercept": "-1024"}, "SS"),
+        ({"RescaleType": "US", "RescaleIntercept": "0"}, "US"),
+        ({"RescaleType": "US", "RescaleIntercept": "-0.5"}, "SS"),
+        ({"RescaleType": "US", "RescaleIntercept": "4095", "RescaleSlope": "-1"}, "US"),
+        ({"RescaleType": "US", "RescaleIntercept": "4094", "RescaleSlope": "-1"}, "SS"),
+        (
+            {"RescaleType": "US", "RescaleIntercept": "2048", "PixelRepresentation": 1},
+            "US",
+        ),
+        (
+            {"RescaleType": "US", "RescaleIntercept": "2047", "PixelRepresentation": 1},
+            "SS",
+        ),
+        # Without a Modality LUT or rescale, Pixel Representation decides.
+        (_WITHOUT_RESCALE, "US"),
+        ({**_WITHOUT_RESCALE, "PixelRepresentation": 1}, "SS"),
+        # The output of a Modality LUT "is always unsigned" (C.11.1.1.1).
+        (
+            {
+                **_WITHOUT_RESCALE,
+                "PixelRepresentation": 1,
+                "ModalityLUTSequence": [pydicom.Dataset()],
+            },
+            "US",
+        ),
+    ],
+)
+def test_without_a_vr_in_the_file_the_voi_lut_input_decides_its_descriptor(
+    stated, changes, vr
+):
+    dataset = _voi_lut_image(_raw("(0028,3002)", stated, DESCRIPTOR), **changes)
+
+    descriptor = _read(dataset, VOI_LUT_DESCRIPTOR)
+
+    assert (descriptor.vr, descriptor.values) == (vr, DESCRIPTOR_VALUES[vr])
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {**_WITHOUT_RESCALE, "PixelRepresentation": None},
+        {"RescaleType": "US", "PixelRepresentation": None},
+        {"RescaleType": "US", "BitsStored": None},
+        {"RescaleType": "US", "BitsStored": b"\x00\x00"},
+        {"RescaleType": "US", "RescaleSlope": None},
+        {"RescaleType": "US", "RescaleIntercept": b"SENTINEL"},
+        {"RescaleType": "US", "RescaleIntercept": b"1\\2 "},
+        {"RescaleType": "US", "RescaleIntercept": b""},
+        # Whether the output is in HU is in doubt.
+        {"RescaleType": b"", "RescaleIntercept": "0"},
+        {"RescaleType": b"HU\\US ", "RescaleIntercept": "0"},
+        # PS3.3 Table C.11-1b allows a Modality LUT Sequence only without
+        # rescale, and with a single item.
+        {"ModalityLUTSequence": [pydicom.Dataset()]},
+        {**_WITHOUT_RESCALE, "ModalityLUTSequence": []},
+        {
+            **_WITHOUT_RESCALE,
+            "ModalityLUTSequence": [pydicom.Dataset(), pydicom.Dataset()],
+        },
+        # The rescale of each frame of a multi-frame image is in a functional
+        # group, which is not read here.
+        {"SharedFunctionalGroupsSequence": [pydicom.Dataset()]},
+    ],
+    ids=[
+        "no-pixel-representation",
+        "rescale-without-pixel-representation",
+        "no-bits-stored",
+        "no-bits",
+        "no-slope",
+        "intercept-not-a-number",
+        "two-intercepts",
+        "empty-intercept",
+        "empty-rescale-type",
+        "two-rescale-types",
+        "modality-lut-and-rescale",
+        "modality-lut-without-items",
+        "modality-lut-with-two-items",
+        "functional-groups",
+    ],
+)
+def test_a_voi_lut_descriptor_whose_input_is_not_decided_is_refused(changes):
+    dataset = _voi_lut_image(_raw("(0028,3002)", None, DESCRIPTOR), **changes)
+
+    with pytest.raises(elements.UndecodableElement) as raised:
+        _read(dataset, VOI_LUT_DESCRIPTOR)
+
+    assert raised.value.path == VOI_LUT_DESCRIPTOR
+    assert str(raised.value) == (
+        f"{VOI_LUT_DESCRIPTOR} has VR US or SS, and nothing in the data sets "
+        "that hold it decides which, as PS3.3 Section C.11.2.1.1 would"
+    )
 
 
 @pytest.mark.parametrize(
@@ -295,24 +516,24 @@ def test_encapsulated_pixel_data_is_ob():
 
     assert _read(dataset, _path("(7FE0,0010)")).values == (fragments,)
     dataset[0x7FE00010] = _raw("(7FE0,0010)", "OW", fragments, 0xFFFFFFFF)
-    with pytest.raises(elements.UndecodableElement, match="conflicts"):
+    with pytest.raises(elements.UndecodableElement) as raised:
         _read(dataset, _path("(7FE0,0010)"))
+    assert str(raised.value) == (
+        "(7FE0,0010) has VR OW, but encapsulation (PS3.5 Section A.4) decides VR OB"
+    )
 
 
 @pytest.mark.parametrize(
-    "tag, stated, attributes",
+    "tag, stated",
     [
-        ("(7FE0,0010)", "OB", {"BitsAllocated": 16}),
-        ("(0028,3006)", "SS", {}),
+        ("(0028,3006)", "SS"),
         # Patient ID is LO in the pinned dictionary.
-        ("(0010,0020)", "SH", {}),
-        ("(0010,0020)", "UT", {}),
+        ("(0010,0020)", "SH"),
+        ("(0010,0020)", "UT"),
     ],
 )
-def test_a_vr_that_conflicts_with_the_pinned_dictionary_is_refused(
-    tag, stated, attributes
-):
-    dataset = _image(0, **attributes)
+def test_a_vr_that_conflicts_with_the_pinned_dictionary_is_refused(tag, stated):
+    dataset = _image(0)
     dataset[_tag(tag)] = _raw(tag, stated, b"SENTINEL")
 
     with pytest.raises(elements.UndecodableElement) as raised:
@@ -320,7 +541,7 @@ def test_a_vr_that_conflicts_with_the_pinned_dictionary_is_refused(
 
     assert raised.value.path == _path(tag)
     assert str(raised.value) == (
-        f"{tag} has VR {stated}, which conflicts with the pinned data dictionary"
+        f"{tag} has VR {stated}, which the pinned data dictionary does not give it"
     )
 
 
@@ -331,7 +552,7 @@ def test_a_vr_written_in_a_file_that_conflicts_is_refused():
 
     read = _written_and_read(dataset, EXPLICIT)
 
-    with pytest.raises(elements.UndecodableElement, match="VR SH, which conflicts"):
+    with pytest.raises(elements.UndecodableElement, match="VR SH, which the pinned"):
         _read(read, _path("(0010,0020)"))
 
 
@@ -352,6 +573,10 @@ def test_the_pinned_dictionary_masks_only_its_repeating_groups(tag, expected):
     dataset[_tag(tag)] = _raw(tag, None, b"AB")
 
     assert (attribute.vr if attribute else None) == expected
+    # The reader of a written file's layout finds the same.
+    assert file_layout._dictionary_vrs(tag) == (  # pylint: disable = protected-access
+        attribute.vrs if attribute else ()
+    )
     # Without a VR in the dictionary or the file, the value is kept as bytes;
     # with one in the file, it is decoded with that VR.
     if expected is None:
@@ -485,23 +710,22 @@ def test_iso_ir_6_gives_the_default_character_repertoire(transfer_syntax):
     assert (name.values, name.codecs) == ((synthetic.PATIENTS_NAME,), codecs)
 
 
-@pytest.mark.parametrize("decoded_first", [False, True], ids=["raw", "decoded"])
+@pytest.mark.parametrize("in_memory", [False, True], ids=["raw", "in-memory"])
 @pytest.mark.parametrize(
     "value",
     [None, "", "ISO_IR 6", "ISO 2022 IR 6"],
     ids=["absent", "empty", "ISO_IR 6", "ISO 2022 IR 6"],
 )
-def test_a_byte_outside_the_default_character_repertoire_is_refused(
-    value, decoded_first
-):
+def test_a_byte_outside_the_default_character_repertoire_is_refused(value, in_memory):
     # The Default Character Repertoire is ISO 646 (PS3.5 Section 6.1.2.1),
-    # whose bytes are below 0x80, but pydicom reads it as ISO 8859-1.
+    # whose bytes are below 0x80, but pydicom reads it as ISO 8859-1. Text
+    # set in memory is checked as text.
     dataset = pydicom.Dataset()
     if value is not None:
         dataset[0x00080005] = _raw("(0008,0005)", None, value.encode())
     dataset[0x00100010] = _raw("(0010,0010)", None, b"SENTINEL^REN\xc9 ")
-    if decoded_first:  # as pydicom leaves an element that has been read
-        assert dataset[0x00100010].value == "SENTINEL^RENÉ"
+    if in_memory:
+        dataset[0x00100010] = pydicom.DataElement(0x00100010, "PN", "SENTINEL^RENÉ")
     codecs = elements.dataset_codecs(dataset)
 
     with pytest.raises(elements.UndecodableElement) as raised:
@@ -585,6 +809,73 @@ def test_text_that_does_not_decode_in_its_character_set_is_refused():
 
 
 @pytest.mark.parametrize(
+    "character_set, tag, value",
+    [
+        # Where Value 1 is the Default Character Repertoire with code
+        # extensions, ISO 646 is active, with no G1 set, until an escape
+        # sequence (PS3.5 Section 6.1.2.5.4), but pydicom decodes a byte
+        # there as ISO 8859-1.
+        (b"\\ISO 2022 IR 87", "(0010,0010)", b"SENTINEL\xdc^REN\xc9"),
+        (b"ISO 2022 IR 6\\ISO 2022 IR 87", "(0010,0010)", b"SENTINEL\xdc^REN\xc9"),
+        (b"\\ISO 2022 IR 100", "(0010,0010)", b"SENTINEL\xdc^REN\xc9"),
+        (b"\\ISO 2022 IR 100", "(0008,1030)", b"SENTINEL\xdc"),
+        (b"ISO 2022 IR 6\\ISO 2022 IR 100", "(0008,1030)", b"SENTINEL\xdc"),
+        # pydicom would write this character without its escape sequence.
+        (b"\\ISO 2022 IR 100", "(0008,1030)", b"SENTINEL\x1b-A\xdc"),
+        # ISO_IR 13 is single-byte: JIS X 0201, not the kanji of Shift JIS.
+        (b"ISO_IR 13", "(0010,0010)", "SENTINEL^山田".encode("shift_jis")),
+    ],
+    ids=[
+        "ir-87",
+        "ir-6-ir-87",
+        "ir-100-pn",
+        "ir-100-lo",
+        "ir-6-ir-100-lo",
+        "ir-100-escaped",
+        "ir-13-kanji",
+    ],
+)
+def test_text_that_could_not_be_written_back_is_refused(character_set, tag, value):
+    # Reading is no more lenient than writing: what written_value_problem
+    # finds in the decoded text, the reader refuses.
+    dataset = pydicom.Dataset()
+    dataset[0x00080005] = _raw("(0008,0005)", None, character_set)
+    dataset[_tag(tag)] = _raw(tag, None, value)
+    codecs = elements.dataset_codecs(dataset)
+    vr = elements.dictionary_attribute(tag).vr
+    decoded = pydicom.values.convert_value(vr, dataset.get_item(_tag(tag)), codecs)
+
+    with pytest.raises(elements.UndecodableElement) as raised:
+        _read(dataset, _path(tag), codecs)
+
+    assert elements.written_value_problem(vr, "1", [str(decoded)], codecs)
+    assert raised.value.path == _path(tag)
+    assert str(raised.value) == (
+        f"{tag} could not be written back as VR {vr}, since value 1 cannot be "
+        "encoded in the data set's Specific Character Set"
+    )
+    assert SENTINEL not in repr(raised.value)
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@TRANSFER_SYNTAXES
+def test_text_in_a_character_set_with_code_extensions_is_read(transfer_syntax):
+    name = "YAMADA^TARO=山田^太郎=やまだ^たろう"
+    dataset = synthetic.rt_plan()
+    dataset.SpecificCharacterSet = ["", "ISO 2022 IR 87"]
+    dataset.PatientName = name
+    dataset.StudyDescription = "SYNTHETIC 研究"
+    read = _written_and_read(dataset, transfer_syntax)
+    codecs = elements.dataset_codecs(read)
+
+    found = [
+        _read(read, _path(tag), codecs).values for tag in ("(0010,0010)", "(0008,1030)")
+    ]
+
+    assert found == [(name,), ("SYNTHETIC 研究",)]
+
+
+@pytest.mark.parametrize(
     "value",
     [
         b"SENTINEL",  # not an item
@@ -643,6 +934,84 @@ def test_an_absent_element_is_a_key_error():
 )
 def test_a_sequence_value_that_holds_only_items_reads_as_items(value, explicit):
     assert reads_as_items(value, explicit=explicit)
+
+
+def _accessed(dataset, tag, access):
+    """Access an element through pydicom, which decodes it in place."""
+    number = _tag(tag)
+    if access == "index":
+        return dataset[number]
+    if access == "get":
+        return dataset.get(number)
+    if access == "attribute":
+        return getattr(dataset, pydicom.datadict.keyword_for_tag(number))
+    return list(dataset)
+
+
+ACCESSES = pytest.mark.parametrize("access", ["index", "get", "attribute", "iteration"])
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@ACCESSES
+def test_a_un_sequence_that_pydicom_has_decoded_is_refused(monkeypatch, access):
+    # Elements in an item whose tags do not increase (PS3.5 Section 7.1), in
+    # Referenced Study Sequence written as UN. pydicom reads its items when
+    # the element is accessed, without complaint.
+    item = _encoded(_tag("(0008,1155)"), b"2.25.2\x00") + _encoded(
+        _tag("(0008,1150)"), b"1.2.3\x00"
+    )
+    dataset = synthetic.rt_plan()
+    dataset[0x00081110] = _unknown(monkeypatch, 0x00081110, _encoded(0xFFFEE000, item))
+    read = _written_and_read(dataset, EXPLICIT)
+    path = _path("(0008,1110)")
+
+    with pytest.raises(elements.UndecodableElement, match="items that cannot be"):
+        _read(read, path)
+    _accessed(read, "(0008,1110)", access)
+    with pytest.raises(elements.UndecodableElement) as raised:
+        _read(read, path)
+
+    assert read[0x00081110].VR == "SQ"
+    assert str(raised.value) == (
+        f"{path} was decoded by pydicom before it was read here, so its "
+        "encoded value cannot be checked"
+    )
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@ACCESSES
+def test_a_vr_that_pydicom_has_chosen_is_refused(access):
+    # Without Pixel Representation, nothing decides whether Smallest Image
+    # Pixel Value is US or SS, but pydicom chooses one as it decodes it.
+    dataset = synthetic.rt_plan()
+    dataset[0x00280106] = _raw("(0028,0106)", None, b"\xff\xff")
+    read = _written_and_read(dataset, IMPLICIT)
+    path = _path("(0028,0106)")
+
+    with pytest.raises(elements.UndecodableElement, match="nothing in the data"):
+        _read(read, path)
+    _accessed(read, "(0028,0106)", access)
+    with pytest.raises(elements.UndecodableElement, match="decoded by pydicom"):
+        _read(read, path)
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@TRANSFER_SYNTAXES
+def test_what_dcmread_decodes_itself_is_read(transfer_syntax):
+    # dcmread decodes Specific Character Set, and reads a sequence of
+    # undefined length as items, before anything accesses them.
+    dataset = _plan_with_assertions(_assertion())
+    dataset.SpecificCharacterSet = "ISO_IR 100"
+    dataset[_tag(RT_ASSERTIONS)].is_undefined_length = True
+    read = _written_and_read(dataset, transfer_syntax)
+    held = read.get_item(_tag(RT_ASSERTIONS), keep_deferred=True)
+    assert isinstance(held, pydicom.DataElement) and held.is_undefined_length
+
+    codecs = elements.dataset_codecs(read)
+    name = _read(read, ASSERTER_NAME_PATH, codecs)
+
+    assert codecs == ("latin_1",)
+    assert (name.vr, name.values) == ("PN", (ASSERTER_NAME,))
 
 
 @pytest.mark.usefixtures("pydicom_behaviour")
@@ -851,6 +1220,15 @@ def test_a_new_element_is_built_without_pydicoms_checks():
         # Ω is not in ISO 8859-1, and é is not in the default repertoire.
         ("(0010,0020)", "LO", ("SENTINELΩ",), ("latin_1",), "cannot be encoded"),
         ("(0010,0020)", "LO", ("SENTINELé",), ("iso8859",), "cannot be encoded"),
+        # pydicom would write é in ISO 8859-1, without the escape sequence of
+        # ISO 2022 IR 100, where Value 1 is the Default Character Repertoire.
+        (
+            "(0010,0020)",
+            "LO",
+            ("SENTINELé",),
+            ("iso8859", "latin_1"),
+            "cannot be encoded",
+        ),
         # ISO_IR 13 is single-byte: JIS X 0201, not the kanji of Shift JIS.
         ("(0010,0020)", "LO", ("SENTINEL山",), ("shift_jis",), "cannot be encoded"),
         # PS3.5 Section 6.2.1.2: in UTF-8, the first component group holds

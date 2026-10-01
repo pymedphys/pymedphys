@@ -33,7 +33,7 @@ import mmap
 import re
 import struct
 
-from .standard import VRS, load_data_dictionary
+from .standard import VRS, dictionary_attribute
 from .uids import normalise_uid
 
 # The VRs whose explicit VR header is 8 bytes, with a 16-bit length (PS3.5
@@ -290,30 +290,11 @@ class _Unreadable(Exception):
     """A structure that cannot be read, where reading stops."""
 
 
-@functools.cache
-def _dictionary() -> dict[str, tuple[str, ...]]:
-    return {entry.tag: entry.vrs for entry in load_data_dictionary().attributes}
-
-
-@functools.cache
-def _masked() -> tuple[tuple[str, tuple[str, ...]], ...]:
-    """Return the entries whose tag has an "x" for any digit, in order.
-
-    PS3.6 writes "x" for a digit of a repeating group or masked element.
-    """
-    return tuple((tag, vrs) for tag, vrs in _dictionary().items() if "x" in tag)
-
-
 @functools.lru_cache(maxsize=4096)
 def _dictionary_vrs(tag: str) -> tuple[str, ...]:
     """Return the VRs PS3.6 gives a standard attribute, or ``()``."""
-    dictionary = _dictionary()
-    if tag in dictionary or int(tag[4], 16) % 2:  # an odd group is private
-        return dictionary.get(tag, ())
-    for listed, vrs in _masked():
-        if all(a in ("x", b) for a, b in zip(listed, tag)):
-            return vrs
-    return ()
+    attribute = dictionary_attribute(tag)
+    return attribute.vrs if attribute else ()
 
 
 class _Reader:

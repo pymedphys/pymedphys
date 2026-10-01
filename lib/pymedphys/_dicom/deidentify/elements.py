@@ -20,19 +20,32 @@ for anything it cannot decode exactly. UN is decoded as Implicit VR Little
 Endian (PS3.5 Section 6.2.2), including a sequence that pydicom does not
 know, such as RT Assertions Sequence (0044,0110), once
 :func:`.file_layout.reads_as_items` finds that items fill it: pydicom reads
-malformed items silently. A VR in the file must be one the dictionary gives.
-US or SS follows Pixel Representation (0028,0103) in the nearest data set
-that has it (PS3.3 Sections C.7.5.1, C.7.6.3, and C.11.1.1.1). Without a VR
-in the file, OB or OW, and US or OW, are OW, as PS3.5 Section A.1 gives
-Pixel, Overlay, and Waveform Data, whose bytes are the same either way; in
-explicit VR, Pixel Data is OB if encapsulated (Section A.4) and OW where
-Bits Allocated (0028,0100) is more than 8 (Section A.2). Text is decoded in
-the Specific Character Set (0008,0005) of the data set, or of the item that
-has its own (PS3.5 Section 7.5.3). Where that is the Default Character
-Repertoire alone, which pydicom reads as ISO 8859-1, text must be in ISO 646
-(PS3.5 Section 6.1.2.1). ``ISO_IR 6`` names that repertoire as the absence
-of a value does: PS3.3 Section C.12.1.1.2 does not list it among the Defined
-Terms, but real data commonly holds it.
+malformed items silently. A VR in the file must be one the dictionary gives,
+and not contradict the one that the standard decides of alternatives. US or
+SS follows Pixel Representation (0028,0103) in the nearest data set that has
+it (PS3.3 Sections C.7.5.1, C.7.6.3, and C.11.1.1.1), but for LUT Descriptor
+(0028,3002) in VOI LUT Sequence (0028,3010), the input to the VOI LUT
+decides it (PS3.3 Section C.11.2.1.1): Pixel Representation without a
+Modality LUT or rescale, US after a Modality LUT, and after rescale SS where
+the rescaled range can be negative, as Hounsfield Units always can, and US
+otherwise. There, in explicit VR, either applies, since the standard has the
+VR follow what the second value needs. Real World Value First Value Mapped
+(0040,9216) and Last Value Mapped (0040,9211) are SS for floating point
+pixel data (PS3.3 Section C.7.6.16.2.11.1.1), which the first supported
+release's IODs do not have, so without a VR in the file they are refused
+where Pixel Representation is absent. Without a VR in the file, OB or OW,
+and US or OW, are OW, as PS3.5 Section A.1 gives Pixel, Overlay, and
+Waveform Data, whose bytes are the same either way; in explicit VR, Pixel
+Data is OB if encapsulated (Section A.4) and OW where Bits Allocated
+(0028,0100) is more than 8 (Section A.2). Text is decoded in the Specific
+Character Set (0008,0005) of the data set, or of the item that has its own
+(PS3.5 Section 7.5.3). Where that is the Default Character Repertoire alone,
+which pydicom reads as ISO 8859-1, text must be in ISO 646 (PS3.5 Section
+6.1.2.1). ``ISO_IR 6`` names that repertoire as the absence of a value does:
+PS3.3 Section C.12.1.1.2 does not list it among the Defined Terms, but real
+data commonly holds it. Nor is reading more lenient than writing: text that
+:func:`written_value_problem` finds could not be written back in its
+character set is refused.
 
 :func:`new_element` builds an element to write with pydicom's checks off,
 once :func:`written_value_problem` has checked its values.
@@ -47,6 +60,7 @@ neither walks a data set nor applies an action.
 from __future__ import annotations
 
 import dataclasses
+import decimal
 import functools
 from collections.abc import Sequence
 from typing import cast
@@ -56,7 +70,9 @@ from pymedphys._imports import pydicom
 from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
 
 from .file_layout import ElementPath, reads_as_items
-from .standard import VRS, DictionaryAttribute, load_data_dictionary
+from .sop_classes import load_storage_sop_classes
+from .standard import VRS, dictionary_attribute
+from .uids import normalise_uid
 from .values import values_problem
 
 # The codecs of the Default Character Repertoire, as pydicom names them.
@@ -84,6 +100,20 @@ _FIRST_GROUP = (
     (0x30A0, 0x30FF),
 )  # fmt: skip
 _CHARACTER_SET_VRS = frozenset({"LO", "LT", "PN", "SH", "ST", "UC", "UT"})
+_SOP_CLASS_UID = "(0008,0016)"
+_BITS_STORED = "(0028,0101)"
+_PIXEL_REPRESENTATION = "(0028,0103)"
+_SIGNEDNESS = {0: "US", 1: "SS"}
+_LUT_DESCRIPTOR = "(0028,3002)"
+_VOI_LUT_SEQUENCE = "(0028,3010)"
+_MODALITY_LUT_SEQUENCE = "(0028,3000)"
+_RESCALE_INTERCEPT = "(0028,1052)"
+_RESCALE_SLOPE = "(0028,1053)"
+_RESCALE_TYPE = "(0028,1054)"
+# What a VOI LUT's input comes from, if not the stored values.
+_VOI_LUT_INPUT = (_MODALITY_LUT_SEQUENCE, _RESCALE_INTERCEPT, _RESCALE_SLOPE)
+# Shared and Per-Frame Functional Groups Sequence.
+_FUNCTIONAL_GROUPS = ("(5200,9229)", "(5200,9230)")
 # The type that pydicom decodes each value of a binary VR as.
 _BINARY_TYPES: dict[str, type] = {
     **dict.fromkeys(("OB", "OD", "OF", "OL", "OV", "OW", "UN"), bytes),
@@ -136,39 +166,6 @@ class ElementValue:
         return f"ElementValue(path={str(self.path)!r}, vr={self.vr!r})"
 
 
-@functools.cache
-def _dictionary() -> tuple[dict, list[DictionaryAttribute]]:
-    attributes = load_data_dictionary().attributes
-    masked = [each for each in attributes if "x" in each.tag]
-    return {each.tag: each for each in attributes if "x" not in each.tag}, masked
-
-
-def dictionary_attribute(tag: str) -> DictionaryAttribute | None:
-    """Return the pinned dictionary's attribute for a tag such as ``"(6002,3000)"``.
-
-    An "x" in the dictionary's tags stands for any digit, but in (50xx,eeee)
-    and (60xx,eeee) only for the groups that repeat, 5000 to 501E and 6000 to
-    601E (PS3.5 Section 7.6). An odd group is private, so it has none.
-
-    >>> dictionary_attribute("(6002,3000)").keyword
-    'OverlayData'
-    >>> dictionary_attribute("(6020,3000)") is None
-    True
-    """
-    exact, masked = _dictionary()
-    if tag in exact or int(tag[4], 16) % 2:
-        return exact.get(tag)
-    return next(
-        (
-            each
-            for each in masked
-            if all(digit in ("x", found) for digit, found in zip(each.tag, tag))
-            and (each.tag[1:3] not in ("50", "60") or tag[3] in "01")
-        ),
-        None,
-    )
-
-
 def dataset_codecs(
     dataset: pydicom.Dataset,
     inherited: tuple[str, ...] = DEFAULT_CODECS,
@@ -215,16 +212,34 @@ def read_element(
     """Decode the element at ``path`` in ``dataset``, which is not changed.
 
     ``codecs`` are the data set's, from :func:`dataset_codecs`, and
-    ``ancestors`` the data sets that hold it, nearest first. It raises
-    :class:`UndecodableElement` if the value is deferred or shorter than its
-    length, its VR conflicts with the pinned dictionary or is in doubt, or it
-    does not decode exactly as its VR and character set; the Default
-    Character Repertoire alone holds only ISO 646.
+    ``ancestors`` the data sets that hold it, nearest first, up to the
+    instance's. It raises :class:`UndecodableElement` if the value is
+    deferred or shorter than its length, its VR is not one the pinned
+    dictionary gives, contradicts the one the standard decides, or is in
+    doubt, or it does not decode exactly as its VR and character set, in
+    which the Default Character Repertoire alone holds only ISO 646, or
+    could not be written back in that character set.
+
+    The data sets must hold each element read from a file as
+    :func:`pydicom.dcmread` returned it, or as built in memory with its VR.
+    Accessing an element read from a file through pydicom, by indexing,
+    attribute, ``get``, or iteration, decodes it in place: pydicom then
+    holds no encoded value to check, and has chosen any VR in doubt itself,
+    reading a sequence of VR UN without checking its items. Such an element
+    raises :class:`UndecodableElement`, except Specific Character Set
+    (0008,0005), which dcmread decodes itself, and a sequence of undefined
+    length, which it reads as items.
     """
     with redacted_pydicom_diagnostics():
         element = dataset.get_item(_number(path.tag), keep_deferred=True)
         if element is None:
             raise KeyError(str(path))
+        if _decoded_by_pydicom(element, path.tag):
+            raise UndecodableElement(
+                path,
+                "was decoded by pydicom before it was read here, so its encoded "
+                "value cannot be checked",
+            )
         if isinstance(element, pydicom.dataelem.RawDataElement):
             undefined = element.length == _UNDEFINED
         else:
@@ -253,11 +268,28 @@ def read_element(
                 f"could not be decoded as VR {vr} in the Default Character "
                 "Repertoire, ISO 646",
             )
+        # Reading is no more lenient than writing.
+        if problem := _character_set_problem(vr, plain, codecs):
+            raise UndecodableElement(
+                path, f"could not be written back as VR {vr}, since {problem}"
+            )
     return ElementValue(path, vr, plain, (), tuple(codecs))
 
 
 def _number(tag: str) -> int:
     return int(tag[1:5] + tag[6:10], 16)
+
+
+def _decoded_by_pydicom(element: object, tag: str) -> bool:
+    """Return whether pydicom has decoded an element read from a file."""
+    # pydicom records where in the file it read the value of each element it
+    # decodes from one, and of no element built in memory.
+    return (
+        isinstance(element, pydicom.DataElement)
+        and element.file_tell is not None
+        and tag != _CHARACTER_SET
+        and not (element.VR == "SQ" and element.is_undefined_length)
+    )
 
 
 def _applicable_vr(
@@ -267,40 +299,174 @@ def _applicable_vr(
     attribute = dictionary_attribute(path.tag)
     if attribute is None or not attribute.vrs:
         return stated or "UN"
-    alternatives, decided = attribute.vrs, None
-    if len(alternatives) == 1:
-        decided = alternatives[0]
-    elif alternatives == ("US", "SS"):
-        decided = {0: "US", 1: "SS"}.get(_deciding(chain, "(0028,0103)"))
-    elif stated is None and "OW" in alternatives:
-        decided = "OW"
-    elif path.tag == "(7FE0,0010)":
-        bits = _deciding(chain, "(0028,0100)")
-        decided = "OB" if undefined else "OW" if bits > 8 else None
-    if stated and (stated not in alternatives or decided not in (None, stated)):
+    alternatives = attribute.vrs
+    if stated is not None and stated not in alternatives:
         raise UndecodableElement(
-            path, f"has VR {stated}, which conflicts with the pinned data dictionary"
+            path, f"has VR {stated}, which the pinned data dictionary does not give it"
+        )
+    if len(alternatives) == 1:
+        return alternatives[0]
+    decided, rule = _decided_vr(path, alternatives, stated, undefined, chain)
+    if stated is not None and decided not in (None, stated):
+        raise UndecodableElement(
+            path, f"has VR {stated}, but {rule} decides VR {decided}"
         )
     applicable = stated or decided
     if applicable is None:
         raise UndecodableElement(
             path,
             f"has VR {attribute.vr}, and nothing in the data sets that hold it "
-            "decides which, as Pixel Representation (0028,0103) would",
+            f"decides which, as {rule} would",
         )
     return applicable
+
+
+def _decided_vr(
+    path: ElementPath,
+    alternatives: tuple[str, ...],
+    stated: str | None,
+    undefined: bool,
+    chain: tuple,
+) -> tuple[str | None, str]:
+    """Return the VR the standard decides of alternatives, if any, and what decides."""
+    if alternatives == ("US", "SS"):
+        enclosing = path.items[-1][0] if path.items else None
+        if path.tag == _LUT_DESCRIPTOR and enclosing == _VOI_LUT_SEQUENCE:
+            # In explicit VR, "the explicit VR actually used is dictated by
+            # the VR needed to represent the second Value" (PS3.3 Section
+            # C.11.2.1.1), so the file's VR applies, whichever it is.
+            decided = None if stated else _voi_lut_input_vr(chain)
+            return decided, "PS3.3 Section C.11.2.1.1"
+        representation = _deciding(chain, _PIXEL_REPRESENTATION)
+        return _SIGNEDNESS.get(representation), "Pixel Representation (0028,0103)"
+    if stated is None and "OW" in alternatives:
+        return "OW", "PS3.5 Section A.1"
+    if path.tag == "(7FE0,0010)":
+        if undefined:
+            return "OB", "encapsulation (PS3.5 Section A.4)"
+        bits = _deciding(chain, "(0028,0100)")
+        return ("OW" if bits > 8 else None), "Bits Allocated (0028,0100)"
+    return None, "the standard"
+
+
+def _voi_lut_input_vr(chain: tuple) -> str | None:
+    """Return the VR of a VOI LUT Descriptor's second value, or None if in doubt.
+
+    PS3.3 Section C.11.2.1.1 gives it as "the same as specified by Pixel
+    Representation (0028,0103), if there is no Modality LUT or Rescale Slope
+    and Intercept specified; SS if the possible output range after
+    application of the Rescale Slope and Intercept may be signed; [and] US
+    otherwise". Its Note adds that HU "are always signed", and a CT Image
+    leaves Rescale Type (0028,1054) out only where it is HU (PS3.3 Table
+    C.8-3). Section C.11.1.1.1 gives the output range of rescale "from
+    (minimum pixel value*Rescale Slope+Rescale Intercept) to (maximum pixel
+    value*Rescale Slope+Rescale Intercept), where the minimum and maximum
+    pixel values are determined by Bits Stored and Pixel Representation",
+    and that of a Modality LUT Sequence (0028,3000) as "always unsigned".
+
+    The nearest data set of ``chain`` that has a Modality LUT Sequence,
+    Rescale Intercept (0028,1052), or Rescale Slope (0028,1053) gives them.
+    A data set with both a Modality LUT and rescale, which PS3.3 Table C.11-1b
+    does not allow, or functional groups, where the rescale of each frame is
+    in a Functional Group Macro, decides nothing.
+    """
+    if any(_number(tag) in each for each in chain for tag in _FUNCTIONAL_GROUPS):
+        return None
+    source = next(
+        (each for each in chain if any(_number(tag) in each for tag in _VOI_LUT_INPUT)),
+        None,
+    )
+    if source is None:
+        return _SIGNEDNESS.get(_deciding(chain, _PIXEL_REPRESENTATION))
+    if _number(_MODALITY_LUT_SEQUENCE) in source:
+        rescaled = any(_number(tag) in source for tag in _VOI_LUT_INPUT[1:])
+        lut = _single_value(source, _MODALITY_LUT_SEQUENCE)
+        return None if rescaled or lut is None else "US"
+    return _rescaled_vr(source, chain)
+
+
+def _rescaled_vr(source: pydicom.Dataset, chain: tuple) -> str | None:
+    """Return SS if the output of rescale can be negative, US if not, or None."""
+    if _number(_RESCALE_TYPE) in source:
+        rescale_type = _single_value(source, _RESCALE_TYPE)
+        if rescale_type is None:
+            return None
+        hounsfield = rescale_type == "HU"
+    else:
+        hounsfield = _is_ct_image(chain)
+    if hounsfield:
+        return "SS"
+    slope = _decimal(_single_value(source, _RESCALE_SLOPE))
+    intercept = _decimal(_single_value(source, _RESCALE_INTERCEPT))
+    bits = _deciding(chain, _BITS_STORED)
+    representation = _deciding(chain, _PIXEL_REPRESENTATION)
+    if slope is None or intercept is None or bits < 1 or representation not in (0, 1):
+        return None
+    lowest, highest = (
+        (-(2 ** (bits - 1)), 2 ** (bits - 1) - 1)
+        if representation
+        else (0, 2**bits - 1)
+    )
+    signed = min(lowest * slope, highest * slope) + intercept < 0
+    return "SS" if signed else "US"
+
+
+def _is_ct_image(chain: tuple) -> bool:
+    """Return whether the SOP Class of the instance is one of the CT Image IOD."""
+    sop_class = next(
+        (
+            _single_value(each, _SOP_CLASS_UID)
+            for each in chain
+            if _number(_SOP_CLASS_UID) in each
+        ),
+        None,
+    )
+    return isinstance(sop_class, str) and normalise_uid(sop_class) in _ct_image_uids()
+
+
+@functools.cache
+def _ct_image_uids() -> frozenset[str]:
+    rows = load_storage_sop_classes().rows
+    return frozenset(row.uid for row in rows if row.iod_name == "CT Image")
+
+
+def _decimal(value: object) -> decimal.Decimal | None:
+    """Return a DS value as a finite decimal, or None if it is not one."""
+    if not isinstance(value, str):
+        return None
+    try:
+        number = decimal.Decimal(value)
+    except decimal.InvalidOperation:
+        return None
+    return number if number.is_finite() else None
+
+
+def _single_value(dataset: pydicom.Dataset, tag: str) -> object:
+    """Return the one value of ``tag`` in ``dataset``, or None.
+
+    A sequence's one value is its item. The element is decoded in the
+    Default Character Repertoire, so text outside it gives None, as does an
+    element that is absent, cannot be decoded, or has another number of
+    values.
+    """
+    if _number(tag) not in dataset:
+        return None
+    try:
+        found = read_element(dataset, ElementPath((), tag), DEFAULT_CODECS)
+    except UndecodableElement:
+        return None
+    values = found.items if found.vr == "SQ" else found.values
+    if len(values) != 1:
+        return None
+    return values[0].strip(" ") if isinstance(values[0], str) else values[0]
 
 
 def _deciding(chain: tuple, tag: str) -> int:
     """Return the one value of ``tag`` in the nearest data set that has it, or -1."""
     for dataset in chain:
         if _number(tag) in dataset:
-            try:
-                found = read_element(dataset, ElementPath((), tag), DEFAULT_CODECS)
-            except UndecodableElement:
-                return -1
-            values = found.values
-            return cast(int, values[0]) if len(values) == 1 else -1
+            value = _single_value(dataset, tag)
+            return value if isinstance(value, int) else -1
     return -1
 
 
@@ -373,15 +539,25 @@ def written_value_problem(
     person name's first component group is not in the set of Value 1 alone,
     or, where that is UTF-8, GB18030, or GBK, has a character outside the
     code points PS3.5 Section 6.2.1.2 allows there. It never quotes a value.
+    Where Value 1 is the Default Character Repertoire with code extensions,
+    a character of ISO 8859-1 outside ISO 646 cannot be encoded either:
+    pydicom would write it in ISO 8859-1, without the escape sequence of the
+    code extension that holds it (PS3.5 Section 6.1.2.5.3).
 
     >>> written_value_problem("PN", "1", ["ΩΜΕΓΑ^ΑΛΦΑ"], ("latin_1",))
     "value 1 cannot be encoded in the data set's Specific Character Set"
     >>> written_value_problem("PN", "1", ["ΩΜΕΓΑ^ΑΛΦΑ"], ("UTF8",)) is None
     True
     """
-    problem = values_problem(vr, vm, values)
-    if problem or vr not in _CHARACTER_SET_VRS:
-        return problem
+    return values_problem(vr, vm, values) or _character_set_problem(vr, values, codecs)
+
+
+def _character_set_problem(
+    vr: str, values: Sequence[object], codecs: Sequence[str]
+) -> str | None:
+    """Return why text values could not be written in the codecs, or None."""
+    if vr not in _CHARACTER_SET_VRS:
+        return None
     for number, value in enumerate(values, start=1):
         if not _encodable(str(value), codecs):
             return (
@@ -404,11 +580,18 @@ def written_value_problem(
 
 
 def _encodable(text: str, codecs: Sequence[str]) -> bool:
-    """Return whether each character has a codec that encodes it."""
+    """Return whether pydicom would write each character in a codec of its own."""
     # pydicom decodes the Default Character Repertoire as ISO 8859-1, but it
-    # is ISO 646 (PS3.5 Section 6.1.2.1).
+    # is ISO 646 (PS3.5 Section 6.1.2.1). As Value 1, pydicom also writes
+    # with it each character that ISO 8859-1 encodes, before trying the
+    # others.
     names = ["ascii" if codec == "iso8859" else codec for codec in codecs]
-    return all(any(_encodes(char, name) for name in names) for char in text)
+    latin = bool(codecs) and codecs[0] == "iso8859"
+    return all(
+        not (latin and "\x80" <= char <= "\xff")
+        and any(_encodes(char, name) for name in names)
+        for char in text
+    )
 
 
 @functools.lru_cache(maxsize=65536)

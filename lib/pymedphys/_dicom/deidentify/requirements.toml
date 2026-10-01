@@ -195,6 +195,8 @@ tests = [
   "tests/dicom/test_deidentify_element_rules.py::test_the_overlay_masks_match_every_repeating_group",
   "tests/dicom/test_deidentify_element_rules.py::test_no_mask_matches_outside_the_repeating_groups",
   "tests/dicom/test_deidentify_element_rules.py::test_a_sequence_given_c_takes_its_basic_profile_action",
+  "tests/dicom/test_deidentify_elements.py::test_a_un_sequence_that_pydicom_has_decoded_is_refused",
+  "tests/dicom/test_deidentify_elements.py::test_text_that_could_not_be_written_back_is_refused",
 ]
 note = '''
 Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute sequesters the instance (D-020). Each element, at the top level or in an item, is read with the VR that the pinned data dictionary gives its attribute, so that the attributes inside a sequence that pydicom does not know and reads as UN, such as an RT Plan's RT Assertions Sequence, can be found; an element whose VR conflicts with the dictionary, or whose value or items do not decode exactly, is reported as undecodable rather than read as pydicom guesses it. Each element, at the top level or in an item, takes the rule of the first source that covers it: the engine's own removals, Table E.1-1's Private Attributes row, the table's other rows, whose masked tags match only the repeating groups, the supplementary rules and UID roles, removal by Type of other text, and the rule for attributes that no rule covers (D-022); a sequence to which an option gives C takes its Basic Profile action (D-009). Remaining: protecting or retaining every instance of each attribute, at the top level and in sequences (M3).
@@ -617,6 +619,8 @@ tests = [
   "tests/dicom/test_deidentify_reference_graph.py::test_a_study_whose_instances_all_lack_a_patient_id_has_one_patient",
   "tests/dicom/test_deidentify_reference_graph.py::test_the_instances_without_a_patient_id_are_grouped_as_one_patient",
   "tests/dicom/test_deidentify_elements.py::test_us_or_ss_is_resolved_from_pixel_representation",
+  "tests/dicom/test_deidentify_elements.py::test_the_voi_lut_descriptor_of_a_ct_in_hounsfield_units_is_ss",
+  "tests/dicom/test_deidentify_elements.py::test_without_a_vr_in_the_file_the_voi_lut_input_decides_its_descriptor",
   "tests/dicom/test_deidentify_elements.py::test_written_elements_carry_the_pinned_vr_and_round_trip",
   "tests/dicom/test_deidentify_elements.py::test_a_written_value_problem_is_described_without_quoting_it",
 ]
