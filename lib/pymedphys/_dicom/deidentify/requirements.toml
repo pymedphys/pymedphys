@@ -142,9 +142,21 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 If the Data Set being de-identified is being stored within a DICOM File, then the File Meta Information including the 128 byte preamble, if present, shall be replaced with a description of the de-identifying application. Otherwise, there is a risk that identity information may leak through unmodified File Meta Information or preamble. See PS3.10. This includes information regarding Application Entity Titles, Presentation Addresses, implementation information, and private information.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-002", "D-025", "D-027"]
+implementation = ["_dicom/deidentify/file_meta.py"]
+tests = [
+  "tests/dicom/test_deidentify_file_meta.py::test_the_file_meta_information_holds_exactly_the_seven_elements_in_order",
+  "tests/dicom/test_deidentify_file_meta.py::test_the_implementation_class_uid_is_the_first_uid_of_the_reserved_arc",
+  "tests/dicom/test_deidentify_file_meta.py::test_the_implementation_version_name_holds_the_version_where_it_fits",
+  "tests/dicom/test_deidentify_file_meta.py::test_the_group_length_counts_the_bytes_of_the_elements_after_it",
+  "tests/dicom/test_deidentify_file_meta.py::test_a_written_file_has_a_zero_preamble_and_exactly_the_built_elements",
+  "tests/dicom/test_deidentify_file_meta.py::test_no_source_file_meta_element_or_preamble_is_written",
+]
+note = '''
+The File Meta Information that replaces the source file's describes the de-identifier by a fixed Implementation Class UID under the PyMedPhys root and an Implementation Version Name, and holds no Application Entity Title, Presentation Address, or private element. A data set is written with it and a zeroed preamble, whatever File Meta Information and preamble the source file held. Remaining: writing each de-identified instance this way (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.1-07"
