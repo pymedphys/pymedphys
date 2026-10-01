@@ -41,15 +41,17 @@ throughout files (AS, AT, CS, DS, FD, FL, IS, SL, SS, SV, TM, UL, US, and
 UV).
 
 **Encodings.** Each form is searched in UTF-8, ISO 8859-1, UTF-16LE, and the
-source's character set, but not in the source's character set where it needs
-ISO 2022 escape sequences, whose bytes depend on the text around them: where
-the codec writes them itself, or, for a form that is not ASCII, where
-Specific Character Set (0008,0005) has more than one value, so that each
-component in another character set starts with one (PS3.5 Section
-6.1.2.5.3). ASCII letters match in either case, and text with other letters
-is also searched in upper, lower, and title case, so a capital inside a word
-on a letter outside ASCII, as in a McDonald-style spelling in Cyrillic, is
-found only where the whole form is in one of those cases.
+source's character set, in which it can also be spelt with ISO 2022 escape
+sequences: where the codec writes them itself, or, for a form that is not
+ASCII, where Specific Character Set (0008,0005) has more than one value, so
+that a writer puts one before each component in another character set (PS3.5
+Section 6.1.2.5.3). Such a form is searched as the codec encodes it, which
+finds a single component after its escape sequence, or text written without
+them, and is listed, since its spellings with other escape sequences are not
+searched. ASCII letters match in either case, and text with other letters is
+also searched in upper, lower, and title case, so a capital inside a word on
+a letter outside ASCII, as in a McDonald-style spelling in Cyrillic, is found
+only where the whole form is in one of those cases.
 
 **Matching.** Letters and digits are those of ASCII; in UTF-16LE each
 neighbouring character is two bytes. A match is rejected where a digit
@@ -150,12 +152,14 @@ _DATE_SPELLINGS = {
 
 
 class Omission(enum.Enum):
-    """Why a form was not searched."""
+    """Why a form, or a spelling of it, was not searched."""
 
     TOO_SHORT = "too-short"  # shorter than MIN_CHARACTERS characters
     NOT_DISTINCTIVE = "not-distinctive"  # a code, number, age, time, or tag
     BINARY = "binary"  # a value of VR OB, OD, OF, OL, OV, OW, or UN
-    CODE_EXTENSIONS = "code-extensions"  # needs ISO 2022 escape sequences
+    # Searched as its codec encodes it, but not with other ISO 2022 escape
+    # sequences, such as a writer puts before each component.
+    CODE_EXTENSIONS = "code-extensions"
 
 
 def _words(member: enum.Enum) -> str:
@@ -268,7 +272,7 @@ class Finding:
 
 @dataclasses.dataclass(frozen=True)
 class NotSearched:
-    """A form of a source value that was not searched, and why.
+    """A form of a source value, or a spelling of it, that was not searched.
 
     Attributes
     ----------
@@ -277,7 +281,8 @@ class NotSearched:
     form : Form
     reason : Omission
     encoding : str, optional
-        For code extensions, the codec it was not searched in.
+        For code extensions, the codec in which the form was not searched
+        with escape sequences other than the codec's own.
     """
 
     source: ElementPath
@@ -288,10 +293,11 @@ class NotSearched:
 
     def __str__(self) -> str:
         """Describe the omission by its source, VR, form, and reason."""
-        codec = f" in {self.encoding}" if self.encoding else ""
+        form = _words(self.form)
+        if self.encoding:
+            form += f" with other ISO 2022 escape sequences in {self.encoding}"
         return (
-            f"{self.vr} from {self.source}: {_words(self.form)} not searched: "
-            f"{_words(self.reason)}{codec}"
+            f"{self.vr} from {self.source}: {form} not searched: {_words(self.reason)}"
         )
 
 
@@ -404,10 +410,9 @@ def _derive(value: SourceValue) -> Iterator[_Needle | NotSearched]:
                 continue
             if escaped and codec not in CODECS:
                 yield omission(form, Omission.CODE_EXTENSIONS, codec)
-            else:
-                seen.add(encoded.lower())
-                origin, wide = (value.source, kind, form, codec), codec == "utf-16-le"
-                yield _Needle(encoded.lower(), origin, wide, before, after, digits)
+            seen.add(encoded.lower())
+            origin, wide = (value.source, kind, form, codec), codec == "utf-16-le"
+            yield _Needle(encoded.lower(), origin, wide, before, after, digits)
 
 
 def _forms(text: str, vr: str, kind: ValueKind) -> Iterator[tuple[Form, str]]:

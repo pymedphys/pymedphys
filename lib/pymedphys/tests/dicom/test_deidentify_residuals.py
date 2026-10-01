@@ -721,7 +721,7 @@ def test_a_value_is_found_in_its_character_set_utf_8_and_utf_16(name, codec, rep
     ]
 
 
-def test_a_form_that_needs_code_extensions_is_not_searched_in_that_codec():
+def test_a_form_is_searched_with_the_escape_sequences_its_codec_writes():
     source = _source("(0010,0010)", "PN", "Yamada^Tarou=山田^太郎", ("iso2022_jp",))
     data = _private(
         ("LO", "山田^太郎".encode("iso2022_jp")),
@@ -732,9 +732,12 @@ def test_a_form_that_needs_code_extensions_is_not_searched_in_that_codec():
     result = find_residuals(data, [source])
 
     assert _summary(result) == [
+        ("(0010,0010)", Form.NAME_GROUP, "iso2022_jp", "(0019,1000)"),
         ("(0010,0010)", Form.NAME_GROUP, "utf-8", "(0019,1001)"),
         ("(0010,0010)", Form.NAME_COMPONENT, "utf-8", "(0019,1002)"),
     ]
+    # Spellings with escape sequences that another writer places otherwise
+    # are not searched.
     path = _path("(0010,0010)")
     assert result.not_searched == (
         NotSearched(path, "PN", Form.VALUE, Omission.CODE_EXTENSIONS, "iso2022_jp"),
@@ -747,56 +750,93 @@ def test_a_form_that_needs_code_extensions_is_not_searched_in_that_codec():
         NotSearched(path, "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT),
     )
     assert str(result.not_searched[0]) == (
-        "PN from (0010,0010): value not searched: code extensions in iso2022_jp"
+        "PN from (0010,0010): value with other ISO 2022 escape sequences in "
+        "iso2022_jp not searched: code extensions"
     )
 
 
-# Specific Character Sets, and names written with them. With more than one
-# value, each component in another character set starts with an ISO 2022
-# escape sequence (PS3.5 Section 6.1.2.5.3, and Annexes I and K).
-CHARACTER_SETS = {
-    "korean": (["", "ISO 2022 IR 149"], "Hong^Gildong=洪^吉洞=홍^길동"),
-    "chinese": (["", "ISO 2022 IR 58"], "Zhang^XiaoDong=张^小东="),
-    "gb18030": ("GB18030", "Zhang^XiaoDong=张^小东="),
-    "gbk": ("GBK", "Zhang^XiaoDong=张^小东="),
+# With more than one value in Specific Character Set, each component in
+# another character set starts with an ISO 2022 escape sequence (PS3.5
+# Section 6.1.2.5.3, and Annexes I and K), although pydicom writes none in
+# ISO 2022 IR 58 text. The Korean name has an invented family name of four
+# syllables, long enough to search, which is also copied on its own.
+CODE_EXTENSIONS = {
+    "korean": (
+        ["", "ISO 2022 IR 149"],
+        "HWANGBOSEOYUN^ARAM==황보서윤^아람",
+        "황보서윤",
+        [(Form.NAME_GROUP, "utf-8", "(0008,0090)")],
+        [(Form.NAME_COMPONENT, "euc_kr", "(0019,1001)")],
+        [Form.VALUE, Form.NAME_GROUP, Form.NAME_JOINED, Form.NAME_COMPONENT],
+    ),
+    "chinese": (
+        ["", "ISO 2022 IR 58"],
+        "Zhang^XiaoDong=张^小东=",
+        None,
+        [(Form.VALUE, "iso_ir_58", "(0008,0090)")],
+        [],
+        [Form.VALUE, Form.NAME_GROUP, Form.NAME_JOINED],
+    ),
 }
 
 
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize(
-    "character_set, name", CHARACTER_SETS.values(), ids=CHARACTER_SETS
+    "character_set, name, copy, in_name, in_copy, listed",
+    CODE_EXTENSIONS.values(),
+    ids=CODE_EXTENSIONS,
 )
-def test_forms_needing_code_extensions_are_listed_not_searched(character_set, name):
+def test_forms_with_code_extensions_are_searched_in_their_codec_and_listed(
+    character_set, name, copy, in_name, in_copy, listed
+):
     dataset = pydicom.Dataset()
     dataset.SpecificCharacterSet = character_set
     dataset.ReferringPhysicianName = name
+    if copy:
+        dataset.add_new(0x00190010, "LO", "PRIVATE")
+        dataset.add_new(0x00191001, "LO", copy)
     data = _write(dataset)
     codecs = tuple(pydicom.charset.convert_encodings(character_set))
     source = _source("(0010,0010)", "PN", name, codecs)
 
     result = find_residuals(data, [source])
 
-    path = _path("(0010,0010)")
-    if len(codecs) == 1:
-        # GB18030 and GBK use no escape sequences, so the whole name is found.
-        assert _summary(result) == [
-            ("(0010,0010)", Form.VALUE, codecs[0], "(0008,0090)")
-        ]
-        assert result.not_searched == (
-            NotSearched(path, "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT),
-        )
-        return
     assert _summary(result) == [
-        ("(0010,0010)", Form.NAME_GROUP, "utf-8", "(0008,0090)")
+        ("(0010,0010)", form, encoding, tag)
+        for form, encoding, tag in in_name + in_copy
     ]
-    escaped = [
-        NotSearched(path, "PN", form, Omission.CODE_EXTENSIONS, codecs[1])
-        for form in (Form.VALUE, Form.NAME_GROUP, Form.NAME_JOINED)
-    ]
+    path = _path("(0010,0010)")
     assert result.not_searched == (
-        *escaped,
+        *(
+            NotSearched(path, "PN", f, Omission.CODE_EXTENSIONS, codecs[1])
+            for f in listed
+        ),
         NotSearched(path, "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT),
+    )
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize("character_set", ["GB18030", "GBK"])
+def test_character_sets_without_code_extensions_are_searched_in_their_codec(
+    character_set,
+):
+    name = "Zhang^XiaoDong=张^小东="
+    dataset = pydicom.Dataset()
+    dataset.SpecificCharacterSet = character_set
+    dataset.ReferringPhysicianName = name
+    data = _write(dataset)
+    (codec,) = pydicom.charset.convert_encodings(character_set)
+
+    result = find_residuals(data, [_source("(0010,0010)", "PN", name, (codec,))])
+
+    # They use no escape sequences, so the whole name is found.
+    assert _summary(result) == [("(0010,0010)", Form.VALUE, codec, "(0008,0090)")]
+    assert result.not_searched == (
+        NotSearched(
+            _path("(0010,0010)"), "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT
+        ),
     )
 
 
