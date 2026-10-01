@@ -7,18 +7,20 @@ PyMedPhys uses GitHub Actions for continuous integration and deployment. The wor
 ## Workflow Architecture
 
 ```text
-Push / pull request -> ci.yml
-                       |-- pre-commit.yml
-                       |-- lint.yml
-                       |-- type-check.yml
-                       |-- unit-tests.yml
-                       |-- integration-tests.yml (selected runs)
-                       |-- mosaiq-db-tests.yml (selected runs)
-                       |-- docs.yml (documentation PRs)
-                       `-- CI Summary
+ci.yml <- pull request (selective), merge_group (comprehensive), main push
+  |-- pre-commit.yml
+  |-- lint.yml
+  |-- type-check.yml
+  |-- unit-tests.yml
+  |-- integration-tests.yml (selected PRs; every merge group)
+  |-- mosaiq-db-tests.yml (selected PRs; every merge group)
+  |-- docs.yml (selected PRs; every merge group)
+  `-- CI Summary
 
 Manual run -> docs.yml
-Schedule / manual run / main push / PR -> security.yml
+security.yml <- schedule, manual run, main push, PR, merge_group
+  |-- dependency audit / Bandit / zizmor (selected PRs; every merge group)
+  `-- Security Summary
 Schedule / manual run -> deps.yml
 Schedule / manual run -> deid-edition-check.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
@@ -36,7 +38,7 @@ Main push / PR labelled rtd-preview -> Read the Docs (see "Read the Docs" below)
 Coordinates all CI checks based on file changes, labels, and event types.
 
 - **Triggers**: Push to main, pull requests (including label changes, which queue
-  behind an in-flight run rather than cancelling it)
+  behind an in-flight run rather than cancelling it), and merge groups
 - **Jobs**:
   - `changes`: Tests the selection/gating policy and reads the tested merge diff
   - `pre-commit`: Auto-formatting and basic checks
@@ -82,14 +84,14 @@ so git reports only the link itself, which selects every check that a changed
 path can select. A symlink or submodule is never exempt, whatever its name,
 because it can stand in for any content. Package modules still select
 documentation because autodoc and notebooks import them. The full OS/Python
-matrix and integration checks remain unconditional on main. Read the Docs
+matrix and integration checks run on merge groups and main pushes. Read the Docs
 publishes main documentation independently, as "Read the Docs" below
 describes.
 
 Integration tests, database tests and the full unit-test matrix are too costly
-for every PR. Apart from main and the labels, integration and database tests
-run only when a PR changes an input that no standard check validates, as the
-table lists: an input of the generated-file drift check, the wheel build, the
+for every PR. Apart from merge groups, main pushes and the labels, integration
+and database tests run only when a PR changes an input that no standard check
+validates, as the table lists: an input of the generated-file drift check, the wheel build, the
 Windows and macOS tooling tests, the example scripts, the slow tests, the
 doctests and their shared inputs, or the database code and its locked drivers.
 An unclassified path selects every standard check, but not these. Unit tests
@@ -112,7 +114,8 @@ with doctests, including `_metersetmap/metersetmap.py`, already select
 integration tests through the existing path rules. Every push to `main` runs
 both suites, and the release workflow runs the slow tests before publishing.
 Add `full-test` to a pull request that substantially changes code exercised by
-slow tests. When CI fails on a push to `main`, the `report-main-failure` job
+slow tests. Merge groups run both suites before merging. When CI fails on a
+push to `main`, the `report-main-failure` job
 opens or comments on the issue titled "CI failed on main", linking to the run.
 Close the issue once `main` is green again.
 
@@ -160,7 +163,8 @@ Static type checking for type safety.
 Fast unit tests with smart matrix strategy.
 
 - **Features**:
-  - Full OS and Python matrix on main (Ubuntu, Windows, macOS; Python 3.11, 3.12, 3.13, 3.14)
+  - Full OS and Python matrix on merge groups and main pushes (Ubuntu, Windows,
+    macOS; Python 3.11, 3.12, 3.13, 3.14)
   - Quick mode for other PRs (Ubuntu + Python 3.14). The selector's
     `run-full-matrix` output decides, and only an explicit `false` keeps the
     quick matrix
@@ -207,16 +211,17 @@ Comprehensive testing beyond unit tests.
     generated files unchanged (exported requirements, `dependency-extra.txt`,
     `pyproject.hash`, `_version.py`); this check reports even when the wheel
     checks fail
-- **Triggers**: Main branch, `full-test`, or a PR that changes dependency or
-  build metadata, `ci.yml`, `.github/actions/`, `.github/scripts/`,
+- **Triggers**: Merge groups, main pushes, `full-test`, or a PR that changes
+  dependency or build metadata, `ci.yml`, `.github/actions/`, `.github/scripts/`,
   `integration-tests.yml` or `examples/`, or a symlink or submodule
 
 #### `mosaiq-db-tests.yml`
 SQL Server integration tests for Mosaiq database functionality.
 
 - **Service**: SQL Server 2022 container
-- **Triggers**: Main pushes, database or shared code changes, dependency
-  metadata or shared CI configuration, or `database` / `full-test` labels
+- **Triggers**: Merge groups, main pushes, database or shared code changes,
+  dependency metadata or shared CI configuration, or `database` / `full-test`
+  labels
 - **Features**: Waits for SQL Server to accept connections, then runs the tests once;
   test failures are not hidden by retries. The CSV-backed tests load the mimic
   tables once per module through a read-only connection
@@ -297,10 +302,10 @@ into the project environment.
   - `dependency-audit`: pip-audit over an export of `uv.lock` containing all
     extras. The audit runs on Ubuntu/Python 3.12 and evaluates dependency
     markers for that environment; it is not a separate audit of every
-    OS/Python combination. Advisory on pull requests and pushes so a
-    newly published advisory cannot turn an unrelated commit red; blocking on
-    scheduled and manual runs, where a failure opens or updates the issue
-    labelled `security-audit`
+    OS/Python combination. Advisory on pull requests, pushes and merge groups
+    so a newly published advisory cannot turn an unrelated change red;
+    blocking on scheduled and manual runs, where a failure opens or updates the
+    issue labelled `security-audit`
   - `python-security`: Bandit, configured in `[tool.bandit]` in
     `pyproject.toml`. Blocking when selected; SARIF is uploaded as an artefact and to
     code scanning when the event has permission (fork PRs cannot upload there)
@@ -309,13 +314,14 @@ into the project environment.
     above. The offline audits also run through pre-commit; the online ones,
     including the check that each pin's version comment names the tag that
     carries the pinned commit, run only here
-- **Triggers**: Weekly, manually, on main pushes, and on every PR (including
-  label changes); job-level selection chooses scans while `Security Summary`
-  always runs. Python changes retain all three scans: online audits can discover
-  new vulnerabilities without a lockfile or workflow edit. Unknown inputs also
+- **Triggers**: Weekly, manually, on main pushes, on merge groups, and on every
+  PR (including label changes); job-level selection chooses scans while
+  `Security Summary` always runs. Python changes retain all three scans: online
+  audits can discover new vulnerabilities without a lockfile or workflow edit. Unknown inputs also
   select all scans
-- **Coverage**: Change selection applies only to PRs; scheduled and manual runs scan
-  even when the last commit did not change security-related files
+- **Coverage**: Change selection applies only to PRs; merge groups, main pushes,
+  scheduled and manual runs scan even when the last commit did not change
+  security-related files
 - **Summary**: Requires every selected scan to succeed
 - **Not in the workflow**: CodeQL code scanning uses GitHub's default setup for Python and GitHub Actions with the default query suite. It runs on pushes to `main`, on pull requests from branches of this repository (not forks), and weekly, and its pull request check is not required for merging. Secret scanning with push protection, and Dependabot alerts, malware alerts, and security updates, are also repository settings (Settings, then Advanced Security); Dependabot raises its alerts from the same lockfiles
 
@@ -411,6 +417,21 @@ Selected from the complete merge diff and labels:
 ├── docs-check
 └── dependency-audit / python-security / workflow-audit
 ```
+
+## Merge Queue Workflow
+
+An approved PR with passing ordinary checks and resolved review conversations
+can enter the merge queue without first merging the latest `main` into its
+branch. Contributors should normally add it to the queue instead of updating
+the branch solely because another PR landed.
+
+GitHub builds a prospective integrated state against the current `main` and
+earlier queued PRs, then starts `ci.yml` and `security.yml` on `merge_group`.
+Unlike ordinary PR runs, the selector enables the full OS/Python matrix,
+integration and database tests, documentation build, and all security scans.
+`CI Summary` and `Security Summary` must pass on that state before it merges.
+The queue may test up to three prospective states concurrently and merges PRs
+individually with merge commits.
 
 ## Main Branch Workflow
 
@@ -570,14 +591,15 @@ request broader coverage and trigger another CI run.
 ### What a successful summary means
 
 - Ordinary PRs use Ubuntu and Python 3.14 when unit tests are selected. The
-  full OS/Python matrix runs on main pushes and `full-test` PRs; integration
-  tests also run on PRs that change their inputs. A green ordinary PR
-  therefore does not mean the full matrix or the integration tests ran before
-  merging.
+  full OS/Python matrix runs on merge groups, main pushes and `full-test` PRs;
+  integration tests also run on PRs that change their inputs. A green ordinary
+  PR therefore does not mean the full matrix or the integration tests ran before
+  entering the queue; merge-group validation runs them before merging.
 - Pyright is blocking. MyPy remains optional through `continue-on-error`.
-- Dependency vulnerabilities are advisory on PRs and pushes. Requiring either
-  `Dependency Audit` or `Security Summary` does not turn pip-audit findings into
-  a blocking policy; scheduled/manual scans handle them as described above.
+- Dependency vulnerabilities are advisory on PRs, pushes and merge groups.
+  Requiring either `Dependency Audit` or `Security Summary` does not turn
+  pip-audit findings into a blocking policy; scheduled/manual scans handle them
+  as described above.
 - Bandit and zizmor findings at the configured threshold are blocking when
   selected. Documentation builds are blocking when selected; external link
   failures remain advisory if the link checker produces its report.
@@ -586,10 +608,11 @@ request broader coverage and trigger another CI run.
 
 | Ruleset | Policy | Bypass |
 |---------|--------|--------|
-| `main-integrity` | Require `CI Summary` and `Security Summary`, require an up-to-date branch, block force pushes and branch deletion | None, including admins |
+| `main-integrity` | Require `CI Summary` and `Security Summary` on the prospective merge, use the merge queue instead of requiring PR branches to contain the latest `main`, block force pushes and branch deletion | None, including admins |
 | `main-reviews` | Require a PR, one approval by an eligible reviewer, and resolution of review conversations | Repository admins, for pull requests only |
 
-Contributors with Write access may merge once these requirements pass. Review is
+Contributors with Write access may queue a PR once its PR checks and review
+requirements pass. GitHub merges it after the merge-group checks pass. Review is
 encouraged for admin-authored PRs too, but an admin may explicitly bypass the
 review ruleset. GitHub grants bypass to the person merging, regardless of the
 PR author. The bypass does not waive the separate CI ruleset or permit direct
@@ -599,8 +622,9 @@ By maintainer choice, **Dismiss stale approvals when new commits are pushed**
 and **Require approval of the most recent reviewable push** remain **off**.
 An approval can therefore remain valid after later commits; authors should
 request another review for substantive changes. Required checks still need to
-pass for the current commit. Code Owner approval is not required. Keep the
-additional-approval setting for unattributed Copilot PRs enabled.
+pass for the current PR commit and the prospective queued merge. Code Owner
+approval is not required. Keep the additional-approval setting for unattributed
+Copilot PRs enabled.
 
 ### Maintaining the gates
 

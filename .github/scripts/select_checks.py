@@ -16,8 +16,9 @@
 
 Diff the tested merge tree against its base parent, with rename detection off,
 so deletions and both sides of a rename remain visible. Two checkout generations
-suffice and there is no API file-count limit. Main, release and manual runs keep
-full validation. On pull requests only known inputs skip standard checks, while
+suffice and there is no API file-count limit. Merge groups and other non-PR
+events select every output, except push runs omit documentation, which Read the
+Docs publishes. On pull requests only known inputs skip standard checks, while
 the costly integration and database tests and the full unit-test matrix follow
 their labels and their own inputs. Links and unverifiable diffs select every
 check that a changed path can select.
@@ -42,11 +43,12 @@ OUTPUTS = (
     "run-python-security",
     "run-workflow-audit",
 )
-# Only main and the full-test label widen the unit tests to every OS and
-# Python version; no changed path does.
+# Merge groups, other non-PR events and the full-test label widen the unit tests
+# to every OS and Python version; no changed path does.
 PATH_SELECTABLE = tuple(output for output in OUTPUTS if output != "run-full-matrix")
-# Integration and database tests are too costly for every PR. Beyond main and
-# the labels, they run only for their own inputs, links and unverified diffs.
+# Integration and database tests are too costly for every PR. On PRs they run
+# for labels, their inputs, links and unverified diffs; merge groups and other
+# non-PR events always include them.
 COST_GATED = ("run-integration", "run-database", "run-full-matrix")
 STANDARD = tuple(output for output in OUTPUTS if output not in COST_GATED)
 # Labels compare case-insensitively, as GitHub's contains() does.
@@ -140,6 +142,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/keys.py",
         "lib/pymedphys/_dicom/deidentify/output_names.py",
         "lib/pymedphys/_dicom/deidentify/pseudonyms.py",
+        "lib/pymedphys/_dicom/deidentify/references.py",
         "lib/pymedphys/_dicom/deidentify/scope.py",
         "lib/pymedphys/_dicom/deidentify/sop_classes.py",
         "lib/pymedphys/_dicom/deidentify/uids.py",
