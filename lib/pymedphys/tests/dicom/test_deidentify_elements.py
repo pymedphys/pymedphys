@@ -18,6 +18,10 @@ Every data set is synthetic, built here or by ``_synthetic_references``.
 Values that must never appear in a message carry the text ``SENTINEL``.
 """
 
+# The tests share the element builders below, so they stay in one module.
+# pylint: disable = too-many-lines
+
+import copy
 import io
 import logging
 import struct
@@ -243,14 +247,231 @@ def test_us_or_ss_without_a_pixel_representation_of_0_or_1_is_refused(
 
 
 @pytest.mark.parametrize(
-    "representation, stated", [(0, "SS"), (1, "US")], ids=["us-as-ss", "ss-as-us"]
+    "tag, stated, attributes, rule",
+    [
+        ("(0028,0120)", "SS", {}, "Pixel Representation (0028,0103) decides VR US"),
+        (
+            "(0028,0120)",
+            "US",
+            {"PixelRepresentation": 1},
+            "Pixel Representation (0028,0103) decides VR SS",
+        ),
+        (
+            "(7FE0,0010)",
+            "OB",
+            {"BitsAllocated": 16},
+            "Bits Allocated (0028,0100) decides VR OW",
+        ),
+    ],
+    ids=["us-as-ss", "ss-as-us", "ow-as-ob"],
 )
-def test_a_vr_that_pixel_representation_contradicts_is_refused(representation, stated):
-    dataset = _image(representation)
-    dataset.add_new(0x00280120, stated, 2)
+def test_a_vr_that_the_deciding_rule_contradicts_is_refused(
+    tag, stated, attributes, rule
+):
+    # The pinned dictionary gives each VR, but not where the rule that
+    # decides between them gives the other.
+    dataset = _image(0, **attributes)
+    dataset[_tag(tag)] = _raw(tag, stated, b"SENTINEL")
 
-    with pytest.raises(elements.UndecodableElement, match="conflicts"):
-        _read(dataset, _path("(0028,0120)"))
+    with pytest.raises(elements.UndecodableElement) as raised:
+        _read(dataset, _path(tag))
+
+    assert raised.value.path == _path(tag)
+    assert str(raised.value) == f"{tag} has VR {stated}, but {rule}"
+
+
+VOI_LUT_DESCRIPTOR = _path(("(0028,3010)", 0), "(0028,3002)")
+# 4096 entries, the first mapped -1024 as SS or 64512 as US, and 16 bits.
+DESCRIPTOR = struct.pack("<HhH", 4096, -1024, 16)
+DESCRIPTOR_VALUES = {"SS": (4096, -1024, 16), "US": (4096, 64512, 16)}
+SECONDARY_CAPTURE_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.7"
+
+
+def _voi_lut_image(descriptor, **changes):
+    """Return a CT image whose VOI LUT Sequence item holds ``descriptor``.
+
+    Its stored values are unsigned, 12 of 16 bits, and its output is in
+    Hounsfield Units, as ``changes`` do not replace or, where None, remove.
+    A value of bytes is held as an element that Implicit VR wrote, and a
+    list as a sequence of copies of its items.
+    """
+    dataset = synthetic.ct_slice(0)
+    attributes = {
+        "BitsAllocated": 16,
+        "BitsStored": 12,
+        "HighBit": 11,
+        "PixelRepresentation": 0,
+        "RescaleIntercept": "-1024",
+        "RescaleSlope": "1",
+        "RescaleType": "HU",
+        **changes,
+    }
+    for keyword, value in attributes.items():
+        tag = pydicom.datadict.tag_for_keyword(keyword)
+        if isinstance(value, bytes):
+            dataset[tag] = _raw(f"({tag >> 16:04X},{tag & 0xFFFF:04X})", None, value)
+        elif value is not None:
+            setattr(dataset, keyword, copy.deepcopy(value))
+    item = pydicom.Dataset()
+    if descriptor is not None:
+        item[0x00283002] = descriptor
+    dataset.add(synthetic.sequence(0x00283010, [item]))
+    return dataset
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@TRANSFER_SYNTAXES
+def test_the_voi_lut_descriptor_of_a_ct_in_hounsfield_units_is_ss(transfer_syntax):
+    # PS3.3 Section C.11.2.1.1: the second value is SS "if the possible
+    # output range after application of the Rescale Slope and Intercept may
+    # be signed", as Hounsfield Units always are, so Pixel Representation 0
+    # does not decide it.
+    dataset = _voi_lut_image(None)
+    item = dataset.VOILUTSequence[0]
+    item.add_new(0x00283002, "SS", [4096, -1024, 16])
+    item.add_new(0x00283006, "US", [0] * 4096)
+
+    read = _written_and_read(dataset, transfer_syntax)
+    descriptor = _read(read, VOI_LUT_DESCRIPTOR)
+
+    assert (descriptor.vr, descriptor.values) == ("SS", (4096, -1024, 16))
+
+
+@pytest.mark.parametrize(
+    "stated, changes",
+    [
+        ("SS", {}),
+        ("US", {}),
+        # Without rescale, Pixel Representation 0 would decide US.
+        ("SS", {"RescaleIntercept": None, "RescaleSlope": None, "RescaleType": None}),
+    ],
+    ids=["ss", "us", "ss-without-rescale"],
+)
+def test_the_voi_lut_descriptor_takes_the_vr_that_explicit_vr_states(stated, changes):
+    # In Explicit VR, "the explicit VR actually used is dictated by the VR
+    # needed to represent the second Value" (PS3.3 Section C.11.2.1.1), so
+    # the file decides, and the bytes are the same either way.
+    dataset = _voi_lut_image(_raw("(0028,3002)", stated, DESCRIPTOR), **changes)
+
+    descriptor = _read(dataset, VOI_LUT_DESCRIPTOR)
+
+    assert (descriptor.vr, descriptor.values) == (stated, DESCRIPTOR_VALUES[stated])
+
+
+_WITHOUT_RESCALE = {"RescaleIntercept": None, "RescaleSlope": None, "RescaleType": None}
+
+
+@pytest.mark.parametrize("stated", [None, "UN"], ids=["implicit-vr", "un"])
+@pytest.mark.parametrize(
+    "changes, vr",
+    [
+        # Hounsfield Units are always signed (the Note in Section C.11.2.1.1).
+        ({}, "SS"),
+        ({"RescaleIntercept": "0"}, "SS"),
+        # A CT Image leaves out Rescale Type only where it is HU (PS3.3
+        # Table C.8-3), but another image does not say so.
+        ({"RescaleType": None, "RescaleIntercept": "0"}, "SS"),
+        (
+            {
+                "RescaleType": None,
+                "RescaleIntercept": "0",
+                "SOPClassUID": SECONDARY_CAPTURE_IMAGE_STORAGE,
+            },
+            "US",
+        ),
+        # Otherwise the output range of the stored values that Bits Stored and
+        # Pixel Representation give decides (Section C.11.1.1.1).
+        ({"RescaleType": None, "RescaleIntercept": "-1024"}, "SS"),
+        ({"RescaleType": "US", "RescaleIntercept": "0"}, "US"),
+        ({"RescaleType": "US", "RescaleIntercept": "-0.5"}, "SS"),
+        ({"RescaleType": "US", "RescaleIntercept": "4095", "RescaleSlope": "-1"}, "US"),
+        ({"RescaleType": "US", "RescaleIntercept": "4094", "RescaleSlope": "-1"}, "SS"),
+        (
+            {"RescaleType": "US", "RescaleIntercept": "2048", "PixelRepresentation": 1},
+            "US",
+        ),
+        (
+            {"RescaleType": "US", "RescaleIntercept": "2047", "PixelRepresentation": 1},
+            "SS",
+        ),
+        # Without a Modality LUT or rescale, Pixel Representation decides.
+        (_WITHOUT_RESCALE, "US"),
+        ({**_WITHOUT_RESCALE, "PixelRepresentation": 1}, "SS"),
+        # The output of a Modality LUT "is always unsigned" (C.11.1.1.1).
+        (
+            {
+                **_WITHOUT_RESCALE,
+                "PixelRepresentation": 1,
+                "ModalityLUTSequence": [pydicom.Dataset()],
+            },
+            "US",
+        ),
+    ],
+)
+def test_without_a_vr_in_the_file_the_voi_lut_input_decides_its_descriptor(
+    stated, changes, vr
+):
+    dataset = _voi_lut_image(_raw("(0028,3002)", stated, DESCRIPTOR), **changes)
+
+    descriptor = _read(dataset, VOI_LUT_DESCRIPTOR)
+
+    assert (descriptor.vr, descriptor.values) == (vr, DESCRIPTOR_VALUES[vr])
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {**_WITHOUT_RESCALE, "PixelRepresentation": None},
+        {"RescaleType": "US", "PixelRepresentation": None},
+        {"RescaleType": "US", "BitsStored": None},
+        {"RescaleType": "US", "BitsStored": b"\x00\x00"},
+        {"RescaleType": "US", "RescaleSlope": None},
+        {"RescaleType": "US", "RescaleIntercept": b"SENTINEL"},
+        {"RescaleType": "US", "RescaleIntercept": b"1\\2 "},
+        {"RescaleType": "US", "RescaleIntercept": b""},
+        # Whether the output is in HU is in doubt.
+        {"RescaleType": b"", "RescaleIntercept": "0"},
+        {"RescaleType": b"HU\\US ", "RescaleIntercept": "0"},
+        # PS3.3 Table C.11-1b allows a Modality LUT Sequence only without
+        # rescale, and with a single item.
+        {"ModalityLUTSequence": [pydicom.Dataset()]},
+        {**_WITHOUT_RESCALE, "ModalityLUTSequence": []},
+        {
+            **_WITHOUT_RESCALE,
+            "ModalityLUTSequence": [pydicom.Dataset(), pydicom.Dataset()],
+        },
+        # The rescale of each frame of a multi-frame image is in a functional
+        # group, which is not read here.
+        {"SharedFunctionalGroupsSequence": [pydicom.Dataset()]},
+    ],
+    ids=[
+        "no-pixel-representation",
+        "rescale-without-pixel-representation",
+        "no-bits-stored",
+        "no-bits",
+        "no-slope",
+        "intercept-not-a-number",
+        "two-intercepts",
+        "empty-intercept",
+        "empty-rescale-type",
+        "two-rescale-types",
+        "modality-lut-and-rescale",
+        "modality-lut-without-items",
+        "modality-lut-with-two-items",
+        "functional-groups",
+    ],
+)
+def test_a_voi_lut_descriptor_whose_input_is_not_decided_is_refused(changes):
+    dataset = _voi_lut_image(_raw("(0028,3002)", None, DESCRIPTOR), **changes)
+
+    with pytest.raises(elements.UndecodableElement) as raised:
+        _read(dataset, VOI_LUT_DESCRIPTOR)
+
+    assert raised.value.path == VOI_LUT_DESCRIPTOR
+    assert str(raised.value) == (
+        f"{VOI_LUT_DESCRIPTOR} has VR US or SS, and nothing in the data sets "
+        "that hold it decides which, as PS3.3 Section C.11.2.1.1 would"
+    )
 
 
 @pytest.mark.parametrize(
@@ -295,24 +516,24 @@ def test_encapsulated_pixel_data_is_ob():
 
     assert _read(dataset, _path("(7FE0,0010)")).values == (fragments,)
     dataset[0x7FE00010] = _raw("(7FE0,0010)", "OW", fragments, 0xFFFFFFFF)
-    with pytest.raises(elements.UndecodableElement, match="conflicts"):
+    with pytest.raises(elements.UndecodableElement) as raised:
         _read(dataset, _path("(7FE0,0010)"))
+    assert str(raised.value) == (
+        "(7FE0,0010) has VR OW, but encapsulation (PS3.5 Section A.4) decides VR OB"
+    )
 
 
 @pytest.mark.parametrize(
-    "tag, stated, attributes",
+    "tag, stated",
     [
-        ("(7FE0,0010)", "OB", {"BitsAllocated": 16}),
-        ("(0028,3006)", "SS", {}),
+        ("(0028,3006)", "SS"),
         # Patient ID is LO in the pinned dictionary.
-        ("(0010,0020)", "SH", {}),
-        ("(0010,0020)", "UT", {}),
+        ("(0010,0020)", "SH"),
+        ("(0010,0020)", "UT"),
     ],
 )
-def test_a_vr_that_conflicts_with_the_pinned_dictionary_is_refused(
-    tag, stated, attributes
-):
-    dataset = _image(0, **attributes)
+def test_a_vr_that_conflicts_with_the_pinned_dictionary_is_refused(tag, stated):
+    dataset = _image(0)
     dataset[_tag(tag)] = _raw(tag, stated, b"SENTINEL")
 
     with pytest.raises(elements.UndecodableElement) as raised:
@@ -320,7 +541,7 @@ def test_a_vr_that_conflicts_with_the_pinned_dictionary_is_refused(
 
     assert raised.value.path == _path(tag)
     assert str(raised.value) == (
-        f"{tag} has VR {stated}, which conflicts with the pinned data dictionary"
+        f"{tag} has VR {stated}, which the pinned data dictionary does not give it"
     )
 
 
@@ -331,7 +552,7 @@ def test_a_vr_written_in_a_file_that_conflicts_is_refused():
 
     read = _written_and_read(dataset, EXPLICIT)
 
-    with pytest.raises(elements.UndecodableElement, match="VR SH, which conflicts"):
+    with pytest.raises(elements.UndecodableElement, match="VR SH, which the pinned"):
         _read(read, _path("(0010,0020)"))
 
 

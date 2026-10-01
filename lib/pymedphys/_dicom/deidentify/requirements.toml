@@ -606,6 +606,8 @@ tests = [
   "tests/dicom/test_deidentify_reference_graph.py::test_a_study_whose_instances_all_lack_a_patient_id_has_one_patient",
   "tests/dicom/test_deidentify_reference_graph.py::test_the_instances_without_a_patient_id_are_grouped_as_one_patient",
   "tests/dicom/test_deidentify_elements.py::test_us_or_ss_is_resolved_from_pixel_representation",
+  "tests/dicom/test_deidentify_elements.py::test_the_voi_lut_descriptor_of_a_ct_in_hounsfield_units_is_ss",
+  "tests/dicom/test_deidentify_elements.py::test_without_a_vr_in_the_file_the_voi_lut_input_decides_its_descriptor",
   "tests/dicom/test_deidentify_elements.py::test_written_elements_carry_the_pinned_vr_and_round_trip",
   "tests/dicom/test_deidentify_elements.py::test_a_written_value_problem_is_described_without_quoting_it",
 ]
