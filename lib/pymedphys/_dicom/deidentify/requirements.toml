@@ -131,9 +131,11 @@ tests = [
   "tests/dicom/test_deidentify_markers.py::test_every_marker_value_is_valid_for_its_vr_and_vm",
   "tests/dicom/test_deidentify_markers.py::test_markers_changed_after_markers_for_are_refused_before_they_are_written",
   "tests/dicom/test_deidentify_markers.py::test_existing_markers_and_contributing_equipment_items_are_kept",
+  "tests/dicom/test_deidentify_markers.py::test_the_same_release_and_policy_applied_twice_gives_the_markers_of_one_run",
+  "tests/dicom/test_deidentify_markers.py::test_a_code_already_present_is_not_added_again_and_new_codes_follow",
 ]
 note = '''
-The markers of an instance are computed from its policy, the policy digest, and the options it satisfies, and added to a copy of its data set (D-012). Patient Identity Removed is set to YES. De-identification Method keeps its values and gains two: a readable value naming PyMedPhys, its version, the PS3.15 edition, and the preset, and the policy digest, 64 lowercase hexadecimal digits computed from the policy and everything the engine could apply, including its own source and rule files, and the versions of Python and of the libraries that the engine imports (D-024). De-identification Method Code Sequence keeps its items and gains the CID 7050 codes of the Basic Profile and of each satisfied option. Under a policy that claims conformance, every selected option must be satisfied except Clean Descriptors, so that the codes name each option whose actions the instance carries. `tps-import`, which claims no conformance, adds no code and says so in its readable value. Remaining: adding the markers to each instance the engine de-identifies, from its validated result (M3).
+The markers of an instance are computed from its policy, the policy digest, and the options it satisfies, and added to a copy of its data set (D-012). Patient Identity Removed is set to YES. De-identification Method keeps its values and, unless they already include the pair as two consecutive values, gains two: a readable value naming PyMedPhys, its version, the PS3.15 edition, and the preset, and the policy digest, 64 lowercase hexadecimal digits computed from the policy and everything the engine could apply, including its own source and rule files, and the versions of Python and of the libraries that the engine imports (D-024). De-identification Method Code Sequence keeps its items and gains the CID 7050 codes of the Basic Profile and of each satisfied option that it does not already hold. Under a policy that claims conformance, every selected option must be satisfied except Clean Descriptors, so that the codes name each option whose actions the instance carries. `tps-import`, which claims no conformance, adds no code and says so in its readable value. Remaining: adding the markers to each instance the engine de-identifies, from its validated result (M3).
 '''
 
 [[requirement]]
@@ -282,9 +284,11 @@ implementation = ["_dicom/deidentify/markers.py"]
 tests = [
   "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
   "tests/dicom/test_deidentify_markers.py::test_existing_markers_and_contributing_equipment_items_are_kept",
+  "tests/dicom/test_deidentify_markers.py::test_temporal_information_modified_keeps_the_stricter_value",
+  "tests/dicom/test_deidentify_markers.py::test_an_unknown_temporal_information_modified_is_refused_without_quoting_it",
 ]
 note = '''
-Every policy that does not apply Modified Dates, the only Retain Longitudinal Temporal Information Option in scope, sets Longitudinal Temporal Information Modified to REMOVED in its markers, replacing any value already present (D-012). Remaining: adding it to each instance the engine de-identifies (M3).
+Every policy that does not apply Modified Dates, the only Retain Longitudinal Temporal Information Option in scope, sets Longitudinal Temporal Information Modified to REMOVED in its markers, replacing any value already present, since REMOVED is the strictest, and refusing a present value that is not UNMODIFIED, MODIFIED, or REMOVED (D-012). Remaining: adding it to each instance the engine de-identifies (M3).
 '''
 
 [[requirement]]
@@ -442,9 +446,10 @@ implementation = ["_dicom/deidentify/markers.py"]
 tests = [
   "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
   "tests/dicom/test_deidentify_markers.py::test_a_custom_option_set_with_modified_dates_marks_dates_as_modified",
+  "tests/dicom/test_deidentify_markers.py::test_temporal_information_modified_keeps_the_stricter_value",
 ]
 note = '''
-Every policy that applies Modified Dates, including `tps-import`, sets Longitudinal Temporal Information Modified to MODIFIED in its markers (D-012). Remaining: adding it to each instance the engine de-identifies (M3).
+Every policy that applies Modified Dates, including `tps-import`, sets Longitudinal Temporal Information Modified to MODIFIED in its markers, unless REMOVED is already present from an earlier run, which is kept because the dates that run removed are not restored (D-012). Remaining: adding it to each instance the engine de-identifies (M3).
 '''
 
 [[requirement]]

@@ -632,7 +632,8 @@ def test_existing_markers_and_contributing_equipment_items_are_kept(existing_met
     source = _identifying_dataset()
     if existing_method is not None:
         source.DeidentificationMethod = existing_method
-    earlier_code = _code_item("113100", CID_7050["113100"])
+    # A code from another de-identifier that this run does not add.
+    earlier_code = _code_item("113108", CID_7050["113108"])
     source.DeidentificationMethodCodeSequence = [earlier_code]
     earlier_equipment = pydicom.Dataset()
     earlier_equipment.Manufacturer = "Synthetic Vendor"
@@ -690,6 +691,238 @@ def test_markers_added_to_marked_output_keep_the_earlier_markers():
         assert list(twice.data_element(keyword).value)[: len(earlier)] == earlier
 
 
+def _found(preset="basic", digest=DIGEST):
+    composed = policy.compose_policy(preset)
+    return markers.markers_for(composed, digest, satisfied=composed.options)
+
+
+@pytest.mark.parametrize("preset", list(policy.PRESETS))
+def test_the_same_release_and_policy_applied_twice_gives_the_markers_of_one_run(
+    preset,
+):
+    found = _found(preset)
+    once = markers.apply_markers(_identifying_dataset(), found)
+    once.PatientIdentityRemoved = "NO"
+
+    twice = markers.apply_markers(once, found)
+
+    once.PatientIdentityRemoved = "YES"
+    assert twice == once
+
+
+def test_a_different_digest_adds_its_pair_but_not_the_equal_codes_and_item():
+    other_digest = "fedcba9876543210" * 4
+    found, other = _found(), _found(digest=other_digest)
+    once = markers.apply_markers(_identifying_dataset(), found)
+
+    twice = markers.apply_markers(once, other)
+
+    assert list(twice.DeidentificationMethod) == [*found.method, *other.method]
+    for keyword in (
+        "DeidentificationMethodCodeSequence",
+        "ContributingEquipmentSequence",
+    ):
+        assert twice.data_element(keyword) == once.data_element(keyword)
+
+
+@pytest.mark.parametrize(
+    ("existing", "added"),
+    [
+        # Present as two consecutive values, in any place.
+        (["{readable}", "{digest}"], False),
+        (["SYNTHETIC TOOL 1", "{readable}", "{digest}", "SYNTHETIC TOOL 2"], False),
+        # Present, but not as the pair.
+        (["{readable}"], True),
+        (["{digest}"], True),
+        (["{digest}", "{readable}"], True),
+        (["{readable}", "SYNTHETIC TOOL 1", "{digest}"], True),
+        (["{readable}", "{readable}"], True),
+    ],
+)
+def test_the_method_pair_is_added_unless_present_as_two_consecutive_values(
+    existing, added
+):
+    found = _found()
+    readable, digest = found.method
+    present = [value.format(readable=readable, digest=digest) for value in existing]
+    source = _identifying_dataset()
+    source.DeidentificationMethod = present
+
+    marked = markers.apply_markers(source, found)
+
+    expected = [*present, readable, digest] if added else present
+    assert list(marked.DeidentificationMethod) == expected
+
+
+def _coded(value, designator="DCM", meaning=None, version=None):
+    item = pydicom.Dataset()
+    item.CodeValue = value
+    item.CodingSchemeDesignator = designator
+    if version is not None:
+        item.CodingSchemeVersion = version
+    item.CodeMeaning = meaning or CID_7050.get(value, "Synthetic Local Code")
+    return item
+
+
+@pytest.mark.parametrize(
+    ("existing", "expected_values"),
+    [
+        # Another de-identifier's codes, one with its own wording, are kept in
+        # their order, and only the run's other codes follow, in its order.
+        (
+            [
+                _coded("113105"),
+                _coded("113100", meaning="Basic Application Confidentiality"),
+            ],
+            ["113105", "113100", "113111", "113107"],
+        ),
+        # A code of another scheme, or of a stated scheme version, differs.
+        (
+            [_coded("113100", designator="99SYN")],
+            ["113100", "113100", "113111", "113107", "113105"],
+        ),
+        (
+            [_coded("113100", version="01")],
+            ["113100", "113100", "113111", "113107", "113105"],
+        ),
+    ],
+    ids=["same-codes", "other-scheme", "scheme-version"],
+)
+def test_a_code_already_present_is_not_added_again_and_new_codes_follow(
+    existing, expected_values
+):
+    source = _identifying_dataset()
+    source.DeidentificationMethodCodeSequence = existing
+    found = _found("public-release")
+
+    marked = markers.apply_markers(source, found)
+
+    items = list(marked.DeidentificationMethodCodeSequence)
+    assert items[: len(existing)] == existing
+    assert [item.CodeValue for item in items] == expected_values
+    for item in items[len(existing) :]:
+        assert "CodingSchemeVersion" not in item
+
+
+def _equipment(manufacturer, versions, purpose="109104"):
+    item = pydicom.Dataset()
+    item.Manufacturer = manufacturer
+    item.SoftwareVersions = list(versions)
+    item.PurposeOfReferenceCodeSequence = [_coded(purpose, meaning="Synthetic Purpose")]
+    return item
+
+
+@pytest.mark.parametrize(
+    ("change", "added"),
+    [
+        ({}, False),
+        # Other attributes of an item do not make it differ.
+        ({"ContributionDescription": "SYNTHETIC DESCRIPTION"}, False),
+        ({"Manufacturer": "Synthetic Vendor"}, True),
+        ({"SoftwareVersions": ["0.41.0", "CPython 3.11.9"]}, True),
+        ({"reversed": True}, True),
+        ({"purpose": "109103"}, True),
+    ],
+    ids=[
+        "equal",
+        "equal-with-description",
+        "other-manufacturer",
+        "other-versions",
+        "versions-in-another-order",
+        "other-purpose",
+    ],
+)
+def test_an_equal_equipment_item_is_not_added_again(change, added):
+    found = _found()
+    versions = list(found.software_versions)
+    if change.get("reversed"):
+        versions.reverse()
+    existing = _equipment(
+        change.get("Manufacturer", "PyMedPhys"),
+        change.get("SoftwareVersions", versions),
+        change.get("purpose", "109104"),
+    )
+    if "ContributionDescription" in change:
+        existing.ContributionDescription = change["ContributionDescription"]
+    source = _identifying_dataset()
+    source.ContributingEquipmentSequence = [existing]
+    alone = markers.apply_markers(pydicom.Dataset(), found)
+
+    marked = markers.apply_markers(source, found)
+
+    expected = [existing, *alone.ContributingEquipmentSequence] if added else [existing]
+    assert list(marked.ContributingEquipmentSequence) == expected
+
+
+# The stricter of the value already present and this run's, written out by
+# hand in the order UNMODIFIED, MODIFIED, REMOVED.
+STRICTER = {
+    ("UNMODIFIED", "UNMODIFIED"): "UNMODIFIED",
+    ("UNMODIFIED", "MODIFIED"): "MODIFIED",
+    ("UNMODIFIED", "REMOVED"): "REMOVED",
+    ("MODIFIED", "UNMODIFIED"): "MODIFIED",
+    ("MODIFIED", "MODIFIED"): "MODIFIED",
+    ("MODIFIED", "REMOVED"): "REMOVED",
+    ("REMOVED", "UNMODIFIED"): "REMOVED",
+    ("REMOVED", "MODIFIED"): "REMOVED",
+    ("REMOVED", "REMOVED"): "REMOVED",
+}
+
+
+@pytest.mark.parametrize(("present", "new"), list(STRICTER))
+def test_temporal_information_modified_keeps_the_stricter_value(present, new):
+    source = _identifying_dataset()
+    source.LongitudinalTemporalInformationModified = present
+    found = dataclasses.replace(_found(), temporal_information_modified=new)
+
+    marked = markers.apply_markers(source, found)
+
+    assert marked.LongitudinalTemporalInformationModified == STRICTER[present, new]
+
+
+@pytest.mark.parametrize("present", [None, ""])
+def test_temporal_information_modified_without_a_value_takes_this_runs(present):
+    source = _identifying_dataset()
+    if present is not None:
+        source.LongitudinalTemporalInformationModified = present
+    found = _found("public-release")
+
+    marked = markers.apply_markers(source, found)
+
+    assert marked.LongitudinalTemporalInformationModified == "MODIFIED"
+
+
+@pytest.mark.parametrize(
+    "present",
+    ["SYNTHETIC", "SYNTHETIC_MOD", ["SYNTHETIC", "REMOVED"]],
+)
+def test_an_unknown_temporal_information_modified_is_refused_without_quoting_it(
+    monkeypatch, present
+):
+    source = _identifying_dataset()
+    source.LongitudinalTemporalInformationModified = present
+
+    def never(*args):
+        raise AssertionError("an attribute was written")
+
+    monkeypatch.setattr(markers, "_set", never)
+
+    with pytest.raises(markers.MarkerError, match=r"\(0028,0303\)") as raised:
+        markers.apply_markers(source, _found())
+
+    assert "SYNTHETIC" not in str(raised.value)
+
+
+@pytest.mark.parametrize("temporal", ["UNMODIFIED", "MODIFIED", "REMOVED"])
+def test_the_markers_may_give_any_enumerated_temporal_value(temporal):
+    found = dataclasses.replace(_found(), temporal_information_modified=temporal)
+
+    marked = markers.apply_markers(pydicom.Dataset(), found)
+
+    assert marked.LongitudinalTemporalInformationModified == temporal
+    assert marked.PatientIdentityRemoved == "YES"
+
+
 @pytest.mark.parametrize(
     ("keyword", "vr", "value", "replace_un"),
     [
@@ -699,8 +932,18 @@ def test_markers_added_to_marked_output_keep_the_earlier_markers():
         ("DeidentificationMethod", "UN", "SYNTHETIC IDENTIFIER", False),
         ("DeidentificationMethod", "UT", "SYNTHETIC IDENTIFIER", True),
         ("ContributingEquipmentSequence", "UN", b"SYNTHETIC IDENTIFIER", False),
+        ("LongitudinalTemporalInformationModified", "UN", b"SYNTHETIC", True),
+        ("LongitudinalTemporalInformationModified", "UN", b"SYNTHETIC", False),
     ],
-    ids=["LO-bytes", "UN-bytes", "UN-text", "UT-text", "UN-sequence"],
+    ids=[
+        "LO-bytes",
+        "UN-bytes",
+        "UN-text",
+        "UT-text",
+        "UN-sequence",
+        "CS-bytes-temporal",
+        "UN-bytes-temporal",
+    ],
 )
 def test_an_existing_marker_that_is_not_read_as_its_vr_is_refused_not_dropped(
     monkeypatch, keyword, vr, value, replace_un
@@ -832,6 +1075,11 @@ LONG_TEXT = "x" * 80
             markers.MarkerError,
             r"\(0028,0303\)",
         ),
+        (
+            {"temporal_information_modified": "PARTIAL"},
+            markers.MarkerError,
+            r"\(0028,0303\)",
+        ),
         ({"manufacturer": "Py\\MedPhys"}, markers.MarkerError, r"\(0008,0070\)"),
         (
             {"software_versions": ("SYNTHETIC", LONG_TEXT)},
@@ -859,6 +1107,7 @@ LONG_TEXT = "x" * 80
         "upper-case-digest",
         "bytes-digest",
         "lower-case-temporal",
+        "unenumerated-temporal",
         "backslash-manufacturer",
         "long-software-versions",
         "long-code-meaning",

@@ -25,7 +25,8 @@ and changes nothing else in it:
   NO, replacing any value already present.
 - De-identification Method (0012,0063) keeps the values already present and
   gains two: a readable value, and the policy digest as 64 lowercase
-  hexadecimal digits. The readable value is
+  hexadecimal digits, unless that pair is already present as two consecutive
+  values, when it gains neither. The readable value is
   ``PyMedPhys <version>; PS3.15 <edition>; <preset>`` for a policy that can
   claim conformance, with ``custom option set`` in place of the preset for a
   custom option set, and ``PyMedPhys <version>; no PS3.15 claim; tps-import``
@@ -37,13 +38,20 @@ and changes nothing else in it:
   Descriptors, which is satisfied only by output whose retained descriptors
   have passed pooled human review, and otherwise goes unsatisfied because
   the Basic Profile's actions apply to the descriptors instead.
-  ``tps-import`` adds no code, and the sequence is left out where it would
-  have no item, since a present Type 1C sequence needs one.
+  A code is not added where an item already present has the same Code
+  Value and Coding Scheme Designator, and the same Coding Scheme Version
+  where either has one. ``tps-import`` adds no code, and the sequence is left
+  out where it would have no item, since a present Type 1C sequence needs
+  one.
 - Longitudinal Temporal Information Modified (0028,0303) is MODIFIED where
   the policy applies Retain Longitudinal Temporal Information with Modified
-  Dates, and otherwise REMOVED, replacing any value already present.
+  Dates, and otherwise REMOVED, or the value already present where that is
+  stricter, in the order UNMODIFIED, MODIFIED, REMOVED. A value already
+  present that is not one of these is refused.
 - Contributing Equipment Sequence (0018,A001) keeps the items already present
-  and gains one that names PyMedPhys as its Manufacturer (0008,0070), gives
+  and, unless one of them has the same Manufacturer, Software Versions in the
+  same order, and purpose of reference, gains one that names PyMedPhys as its
+  Manufacturer (0008,0070), gives
   in Software Versions (0018,1020) PyMedPhys's full version and then the
   environment that the policy digest covers, and has DCM 109104
   "De-identifying Equipment" from CID 7005 as its Purpose of Reference Code
@@ -63,6 +71,10 @@ A value that does not fit, such as a readable value longer than the 64
 characters of LO, is refused rather than shortened, and never written without
 the version. With edition 2026d, every version of up to 15 characters fits
 every preset's readable value.
+
+So output de-identified twice by the same release, policy, and environment
+carries the markers of one run, and a run with another digest adds its own
+pair of De-identification Method values.
 
 The markers depend only on the policy, the digest, the satisfied options,
 PyMedPhys's version, and the environment, never on the data set, so they
@@ -110,6 +122,9 @@ OPTION_CODES = types.MappingProxyType(
 )
 # The CID 7005 code of De-identifying Equipment.
 DEIDENTIFYING_EQUIPMENT = "109104"
+# The values of Longitudinal Temporal Information Modified, from the least
+# strict to the strictest.
+TEMPORAL_VALUES = ("UNMODIFIED", "MODIFIED", "REMOVED")
 # The one selected option that a policy claiming conformance can leave
 # unsatisfied: the Basic Profile's actions then apply to the descriptors.
 _CLEAN_DESCRIPTORS = "clean_descriptors"
@@ -125,6 +140,7 @@ _PURPOSE_OF_REFERENCE = "(0040,A170)"
 _CODE_VALUE = "(0008,0100)"
 _CODING_SCHEME_DESIGNATOR = "(0008,0102)"
 _CODE_MEANING = "(0008,0104)"
+_CODING_SCHEME_VERSION = "(0008,0103)"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 
@@ -296,6 +312,12 @@ def _check(found: Markers) -> None:
     if found.patient_identity_removed != "YES":
         name = _dictionary()[_PATIENT_IDENTITY_REMOVED].name
         problems.append(f"{name} {_PATIENT_IDENTITY_REMOVED} is not YES")
+    if found.temporal_information_modified not in TEMPORAL_VALUES:
+        name = _dictionary()[_TEMPORAL_INFORMATION_MODIFIED].name
+        problems.append(
+            f"{name} {_TEMPORAL_INFORMATION_MODIFIED} is not "
+            f"{', '.join(TEMPORAL_VALUES[:-1])}, or {TEMPORAL_VALUES[-1]}"
+        )
     elements = [
         (_PATIENT_IDENTITY_REMOVED, [found.patient_identity_removed]),
         (_DEIDENTIFICATION_METHOD, found.method),
@@ -448,9 +470,66 @@ def _existing(dataset: pydicom.Dataset, tag: str) -> list:
     if element.VR != attribute.vr or not all(isinstance(v, kind) for v in kept):
         raise MarkerError(
             f"{attribute.name} {tag} is not read as VR {attribute.vr}, "
-            "so its values cannot be kept"
+            "so its values cannot be kept or compared"
         )
     return kept
+
+
+def _values_of(item: pydicom.Dataset, tag: str) -> tuple:
+    """Return an attribute's values or items in an item, to compare them."""
+    element = item.get(_int_tag(tag))
+    if element is None or element.VM == 0:
+        return ()
+    value = element.value
+    return tuple(value) if isinstance(value, MutableSequence) else (value,)
+
+
+def _code_key(item: pydicom.Dataset) -> tuple:
+    """Return what makes a code item the same code as another.
+
+    Its Code Value and Coding Scheme Designator, and its Coding Scheme
+    Version, which two items share only where neither has one or both have
+    the same.
+    """
+    return tuple(
+        _values_of(item, tag)
+        for tag in (_CODE_VALUE, _CODING_SCHEME_DESIGNATOR, _CODING_SCHEME_VERSION)
+    )
+
+
+def _equipment_key(item: pydicom.Dataset) -> tuple:
+    """Return what makes a Contributing Equipment Sequence item equal another.
+
+    Its Manufacturer, its Software Versions in order, and the Code Value and
+    Coding Scheme Designator of each purpose of reference.
+    """
+    purposes = tuple(
+        (_values_of(code, _CODE_VALUE), _values_of(code, _CODING_SCHEME_DESIGNATOR))
+        for code in _values_of(item, _PURPOSE_OF_REFERENCE)
+    )
+    return (
+        _values_of(item, _MANUFACTURER),
+        _values_of(item, _SOFTWARE_VERSIONS),
+        purposes,
+    )
+
+
+def _stricter_temporal(dataset: pydicom.Dataset, given: str) -> str:
+    """Return the stricter of the value already present and ``given``."""
+    present = _existing(dataset, _TEMPORAL_INFORMATION_MODIFIED)
+    if not present:
+        return given
+    # _existing has checked that each value is text.
+    value = str(present[0]).strip(" ") if len(present) == 1 else ""
+    if value not in TEMPORAL_VALUES:
+        name = _dictionary()[_TEMPORAL_INFORMATION_MODIFIED].name
+        raise MarkerError(
+            f"{name} {_TEMPORAL_INFORMATION_MODIFIED} already holds something "
+            f"other than one of {', '.join(TEMPORAL_VALUES[:-1])}, or "
+            f"{TEMPORAL_VALUES[-1]}, so the stricter of it and the markers' "
+            "value cannot be told"
+        )
+    return max(value, given, key=TEMPORAL_VALUES.index)
 
 
 def _set(dataset: pydicom.Dataset, tag: str, given: list) -> None:
@@ -471,13 +550,23 @@ def _code_item(code: CodedConcept) -> pydicom.Dataset:
 def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset:
     """Return a copy of a data set with the markers added, and nothing else changed.
 
-    Patient Identity Removed and Longitudinal Temporal Information Modified
-    replace any value already present. De-identification Method, De-
-    identification Method Code Sequence, and Contributing Equipment Sequence
-    keep their values and items, and the markers' follow them. A
-    De-identification Method Code Sequence that would have no item, as under
-    ``tps-import`` where none was present, is left out, since the Patient
-    Module makes it Type 1C and so, where present, it needs one.
+    Patient Identity Removed replaces any value already present.
+    De-identification Method, De-identification Method Code Sequence, and
+    Contributing Equipment Sequence keep their values and items, and the
+    markers' follow them, apart from any already present: the readable value
+    and digest are added only where that pair is not already present as two
+    consecutive values; a code only where no item already present has the
+    same Code Value and Coding Scheme Designator, and the same Coding Scheme
+    Version where either has one; and the equipment item only where no item
+    already present has the same Manufacturer, the same Software Versions in
+    the same order, and the same purpose of reference, by its Code Value and
+    Coding Scheme Designator. Longitudinal Temporal Information Modified
+    becomes the stricter of the value already present and the markers', in
+    the order of :data:`TEMPORAL_VALUES`, so that it never returns towards a
+    less strict state; an empty value counts as absent. A De-identification
+    Method Code Sequence that would have no item, as under ``tps-import``
+    where none was present, is left out, since the Patient Module makes it
+    Type 1C and so, where present, it needs one.
 
     Parameters
     ----------
@@ -504,12 +593,16 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
         If the policy digest in ``markers`` is not 64 lowercase hexadecimal
         digits. The message does not quote it.
     MarkerError
-        If ``markers`` sets Patient Identity Removed to anything but YES,
-        does not add exactly two De-identification Method values, or has a
-        value that does not fit its VR or VM; or if an attribute whose values
-        are kept has values but another VR than the pinned dictionary gives
-        it, such as UN, so that keeping them could lose or misread them. The
-        message does not quote the values.
+        If ``markers`` sets Patient Identity Removed to anything but YES or
+        Longitudinal Temporal Information Modified to anything but one of
+        :data:`TEMPORAL_VALUES`, does not add exactly two De-identification
+        Method values, or has a value that does not fit its VR or VM; if an
+        attribute whose values are kept or compared has values but another VR
+        than the pinned dictionary gives it, such as UN, so that keeping them
+        could lose or misread them; or if Longitudinal Temporal Information
+        Modified already holds something other than one of
+        :data:`TEMPORAL_VALUES`, so that the stricter value cannot be told.
+        The message does not quote the values.
     """
     if not isinstance(dataset, pydicom.Dataset):
         raise TypeError("dataset must be a pydicom Dataset")
@@ -520,21 +613,32 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
     method = _existing(marked, _DEIDENTIFICATION_METHOD)
     method_codes = _existing(marked, _DEIDENTIFICATION_METHOD_CODES)
     equipment_items = _existing(marked, _CONTRIBUTING_EQUIPMENT)
+    temporal = _stricter_temporal(marked, markers.temporal_information_modified)
 
+    pair = list(markers.method)
+    if not any(method[i : i + 2] == pair for i in range(len(method) - 1)):
+        method.extend(pair)
+    present_codes = [_code_key(item) for item in method_codes]
+    for item in map(_code_item, markers.method_codes):
+        if _code_key(item) not in present_codes:
+            method_codes.append(item)
+            present_codes.append(_code_key(item))
     equipment = pydicom.Dataset()
     _set(equipment, _MANUFACTURER, [markers.manufacturer])
     _set(equipment, _SOFTWARE_VERSIONS, list(markers.software_versions))
     _set(equipment, _PURPOSE_OF_REFERENCE, [_code_item(markers.purpose_of_reference)])
+    if all(
+        _equipment_key(item) != _equipment_key(equipment) for item in equipment_items
+    ):
+        equipment_items.append(equipment)
+
     _set(marked, _PATIENT_IDENTITY_REMOVED, [markers.patient_identity_removed])
-    _set(marked, _DEIDENTIFICATION_METHOD, [*method, *markers.method])
-    method_codes.extend(map(_code_item, markers.method_codes))
+    _set(marked, _DEIDENTIFICATION_METHOD, method)
     if method_codes:
         _set(marked, _DEIDENTIFICATION_METHOD_CODES, method_codes)
     else:
         # Type 1C in the Patient Module, so where present it needs an item.
         marked.pop(_int_tag(_DEIDENTIFICATION_METHOD_CODES), None)
-    _set(
-        marked, _TEMPORAL_INFORMATION_MODIFIED, [markers.temporal_information_modified]
-    )
-    _set(marked, _CONTRIBUTING_EQUIPMENT, [*equipment_items, equipment])
+    _set(marked, _TEMPORAL_INFORMATION_MODIFIED, [temporal])
+    _set(marked, _CONTRIBUTING_EQUIPMENT, equipment_items)
     return marked
