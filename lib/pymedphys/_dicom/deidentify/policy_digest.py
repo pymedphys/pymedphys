@@ -44,7 +44,11 @@ Python and of the libraries that the engine imports:
   checkout gives each file the same digest. ``__pycache__`` and names that
   start with ``.``, such as the caches that tools write, are left out.
   Development builds and editable installs share a version across commits,
-  so these files identify their code where the version cannot;
+  so these files identify their code where the version cannot. They and the
+  generated tables are read once per process, when the first digest is
+  computed, and stand for the engine as first read in the process: every
+  instance of a run carries the same digest, and an edit to an editable
+  install after that is not seen until the process restarts;
 - the Python implementation and version, such as ``CPython`` and
   ``3.14.0``, and the version of each third-party library that this package
   imports: pydicom, which will read and write every DICOM file, and tomlkit,
@@ -52,15 +56,17 @@ Python and of the libraries that the engine imports:
 
 The digest therefore also changes when something the policy does not use
 changes, which is harmless; it never stays the same when one of these inputs
-changes. It does not cover the operating system, compiled libraries,
-third-party libraries that this package does not import itself, or the code
-of a development install of pydicom, which keeps its version across commits.
+changes, with the files and tables as first read in the process. It does not
+cover the operating system, compiled libraries, third-party libraries that
+this package does not import itself, or the code of a development install of
+pydicom, which keeps its version across commits.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import enum
+import functools
 import hashlib
 import json
 import pathlib
@@ -295,8 +301,12 @@ def canonical_bytes(policy: Policy, inputs: DigestInputs) -> bytes:
     return _encode(_plain(document))
 
 
-def _table_digests(directory: pathlib.Path) -> dict[str, str]:
-    """Return each generated table's content digest, checked against its record."""
+@functools.lru_cache(maxsize=None)
+def _table_digests(directory: pathlib.Path) -> Mapping[str, str]:
+    """Return each generated table's content digest, checked against its record.
+
+    Each directory is read once and cached, keyed by its resolved path.
+    """
     digests = {}
     for path in sorted(directory.glob("*.json")):
         try:
@@ -312,11 +322,15 @@ def _table_digests(directory: pathlib.Path) -> dict[str, str]:
                 "regenerate the tables with pymedphys dev deid-tables"
             )
         digests[path.name] = digest
-    return digests
+    return types.MappingProxyType(digests)
 
 
-def _file_digests(directory: pathlib.Path) -> dict[str, str]:
-    """Return the SHA-256 of each source and rule file, with CRLF read as LF."""
+@functools.lru_cache(maxsize=None)
+def _file_digests(directory: pathlib.Path) -> Mapping[str, str]:
+    """Return the SHA-256 of each source and rule file, with CRLF read as LF.
+
+    Each directory is read once and cached, keyed by its resolved path.
+    """
     digests = {}
     for path in directory.rglob("*"):
         relative = path.relative_to(directory)
@@ -324,7 +338,7 @@ def _file_digests(directory: pathlib.Path) -> dict[str, str]:
         if path.suffix in COVERED_SUFFIXES and not cached and path.is_file():
             data = path.read_bytes().replace(b"\r\n", b"\n")
             digests[relative.as_posix()] = hashlib.sha256(data).hexdigest()
-    return digests
+    return types.MappingProxyType(digests)
 
 
 def _environment() -> dict[str, object]:
@@ -340,10 +354,11 @@ def _environment() -> dict[str, object]:
 def digest_inputs(vocabulary: tg263.Nomenclature | None = None) -> DigestInputs:
     """Gather everything the policy digest covers apart from the policy.
 
-    Reads the engine's own files: the generated tables, the supplementary
-    rule files, and the package's source and rule files. Takes the Python
-    implementation and version from the running interpreter, and each
-    library's version from the library as imported.
+    Reads the engine's own files once per process, at the first call: the
+    generated tables, the supplementary rule files, and the package's source
+    and rule files. Takes the Python implementation and version from the
+    running interpreter, and each library's version from the library as
+    imported.
 
     Parameters
     ----------
@@ -379,7 +394,7 @@ def digest_inputs(vocabulary: tg263.Nomenclature | None = None) -> DigestInputs:
             ) from None
     return DigestInputs(
         engine_version=_version.__version__,
-        tables=_table_digests(standard.STANDARD_DIR),
+        tables=_table_digests(standard.STANDARD_DIR.resolve()),
         l2_rules={
             uid_roles.UID_ROLES_PATH.name: uid_roles.load_uid_roles(),
             temporal_roles.TEMPORAL_ROLES_PATH.name: temporal_roles.load_temporal_roles(),
@@ -396,7 +411,7 @@ def digest_inputs(vocabulary: tg263.Nomenclature | None = None) -> DigestInputs:
             for module, names in GENERATED_VALUE_PARAMETERS
             for name in names
         },
-        files=_file_digests(PACKAGE_DIR),
+        files=_file_digests(PACKAGE_DIR.resolve()),
         environment=_environment(),
     )
 

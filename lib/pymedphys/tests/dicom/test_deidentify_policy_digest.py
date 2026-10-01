@@ -15,7 +15,9 @@
 """The policy digest, which identifies a policy and the engine that applies it.
 
 Every input is changed by monkeypatching or by injecting synthetic inputs, so
-no test edits the package's own files.
+no test edits the package's own files. The engine's files and tables are read
+once per process, so each test starts with them unread, and a test that
+edits a synthetic engine or tables reads them again, as a new process would.
 """
 
 import ast
@@ -162,6 +164,25 @@ ENGINE_FILES = {
 @pytest.fixture(name="basic", scope="module")
 def _basic():
     return policy.compose_policy("basic")
+
+
+def _forget_reads():
+    """Forget the engine's files and tables, which are read once per process."""
+    # pylint: disable = protected-access
+    policy_digest._file_digests.cache_clear()
+    policy_digest._table_digests.cache_clear()
+
+
+@pytest.fixture(name="read_again", autouse=True)
+def _read_again():
+    """Start and end each test with the engine's files and tables unread.
+
+    Gives a function that makes the next digest read them again, as a new
+    process would.
+    """
+    _forget_reads()
+    yield _forget_reads
+    _forget_reads()
 
 
 def _engine(directory, files, newline=b"\n"):
@@ -625,14 +646,40 @@ def test_every_module_rule_file_and_table_of_the_engine_is_covered():
     ids=["module", "rule-file", "table", "added", "removed", "renamed"],
 )
 def test_changing_adding_or_removing_an_engine_file_changes_the_digest(
-    basic, tmp_path, monkeypatch, change
+    basic, tmp_path, monkeypatch, read_again, change
 ):
     engine = _engine(tmp_path, ENGINE_FILES)
     monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
     before = policy_digest.policy_digest(basic)
     change(engine)
+    read_again()
 
     assert policy_digest.policy_digest(basic) != before
+
+
+def _edit_a_file(engine, _tables):
+    (engine / "policy.py").write_bytes(b"ACTION = 'K'\n")
+
+
+def _edit_a_table(_engine_dir, tables):
+    rows = json.loads((tables / "e1_1.json").read_text(encoding="utf-8"))["rows"]
+    _rewrite(tables / "e1_1.json", rows[::-1])
+
+
+@pytest.mark.parametrize("edit", [_edit_a_file, _edit_a_table], ids=["file", "table"])
+def test_the_engine_files_and_tables_are_read_once_per_process(
+    basic, tmp_path, monkeypatch, read_again, edit
+):
+    engine = _engine(tmp_path / "engine", ENGINE_FILES)
+    tables = _copied_tables(tmp_path)
+    monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
+    monkeypatch.setattr(standard, "STANDARD_DIR", tables)
+    first = policy_digest.policy_digest(basic)
+    edit(engine, tables)
+
+    assert policy_digest.policy_digest(basic) == first
+    read_again()
+    assert policy_digest.policy_digest(basic) != first
 
 
 def test_files_with_crlf_and_lf_line_endings_give_the_same_digest(
@@ -648,7 +695,9 @@ def test_files_with_crlf_and_lf_line_endings_give_the_same_digest(
     assert digests[0] == digests[1]
 
 
-def test_caches_and_files_of_other_types_are_not_covered(basic, tmp_path, monkeypatch):
+def test_caches_and_files_of_other_types_are_not_covered(
+    basic, tmp_path, monkeypatch, read_again
+):
     engine = _engine(tmp_path, ENGINE_FILES)
     monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
     before = policy_digest.policy_digest(basic)
@@ -662,6 +711,7 @@ def test_caches_and_files_of_other_types_are_not_covered(basic, tmp_path, monkey
             "notes.txt": b"notes",
         },
     )
+    read_again()
 
     assert set(policy_digest.digest_inputs().files) == set(ENGINE_FILES)
     assert policy_digest.policy_digest(basic) == before
