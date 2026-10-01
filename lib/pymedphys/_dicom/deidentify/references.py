@@ -28,37 +28,96 @@ Series and Study Instance UIDs identify the instance itself.
 
 An :class:`InstanceRecord` holds what the reference graph
 (:mod:`~pymedphys._dicom.deidentify.reference_graph`) needs from one
-instance: its identifiers, and the value at each reference site with the
-Referenced SOP Class UID (0008,1150) beside it. Its ``repr`` shows only the
-IOD, so identifiers do not reach logs. An attribute without a value at a
-Type 3 site is left out, since it means the same as an absent one (PS3.5
-Section 7.4.5). A sequence that pydicom does not know, which it reads as UN
-from Implicit VR Little Endian, is decoded with its VR in the pinned data
-dictionary. Building a record reads the data set without changing it, and
-neither logs nor warns; pydicom's own warnings while it decodes values are
-the entry point's to redact, as
+instance: its identifiers, its patient, a digest of its content, and the
+value at each reference site with the Referenced SOP Class UID (0008,1150)
+beside it. Its ``repr`` shows only the IOD, so identifiers do not reach logs.
+An attribute without a value at a Type 3 site is left out, since it means
+the same as an absent one (PS3.5 Section 7.4.5). A sequence that pydicom
+does not know, which it reads as UN from Implicit VR Little Endian, is
+decoded with its VR in the pinned data dictionary.
+
+Two instances are identical copies when their content is the same, and
+their content is the same only when their data sets decode to the same
+elements, with the same VRs and values. The content of a data set is, for each element in tag
+order: its tag; its VR; for a value that pydicom holds as bytes, other than
+an OB value, the value's byte order; and its value as Implicit VR Little
+Endian encodes it (PS3.5 Sections 7.1.3 and 7.5), with its length, and with
+every sequence and item of defined length. It leaves out the File Meta
+Information, group 0002, and group lengths (gggg,0000), which PS3.5 Section
+7.2 retires and whose values depend on the encoding; the preamble is not
+part of the data set.
+
+The VR is the one that applies in the data set: the VR that pydicom holds,
+except that a VR that pydicom decides only when it writes the data set,
+such as "US or SS", is decided as pydicom decides it, and that a UN value
+whose tag has one VR in the pinned data dictionary is decoded with that VR
+as Implicit VR Little Endian (PS3.5 Section 6.2.2), since pydicom reads an
+attribute that it does not know from an Implicit VR file as UN. Each element
+is read, decoded, and encoded again, so the content depends neither on
+which little endian transfer syntax with native (uncompressed) Pixel Data
+the file has, such as Implicit VR or Explicit VR Little Endian, as long as
+a data dictionary gives every element's VR, nor on the length form of its
+sequences, which values pydicom has read or deferred so far, or padding
+that decoding removes.
+
+Where the content cannot show that copies are equal, they conflict, which
+sequesters them. An element that neither pydicom's data dictionaries nor
+the pinned one lists, such as most private elements, has no VR in an
+Implicit VR file, so pydicom reads it as UN and keeps its value as bytes,
+which could encode a value of any VR. Such an element conflicts with a copy
+that holds it with a VR, as a copy read from an Explicit VR file does. The
+same bytes can also be different values in different byte orders: OD, OF,
+OL, OV, and OW values are in the byte order of their data set (PS3.5
+Section 7.3), which pydicom keeps. The byte order in the content is that of
+the data set that holds the value, or little endian for a value decoded
+from UN, and a data set built in memory, rather than read, has none. So a
+copy in the retired Explicit VR Big Endian conflicts with a little endian
+one that holds such a value, and a copy built in memory conflicts with one
+read from a file. Some differences of encoding also make copies conflict. Encapsulated Pixel Data
+is compared in its encapsulated form, so a compressed and an uncompressed
+copy of an image conflict, and so do copies of an image whose Pixel Data is
+8-bit, which Implicit VR Little Endian holds as OW and Explicit VR Little
+Endian can hold as OB (PS3.5 Annex A).
+
+A record keeps a digest of the content rather than the data set, so records
+stay small. It must be built from a data set read in full: not read with
+``stop_before_pixels`` or ``specific_tags``, and with every deferred value
+still readable from its file. Otherwise two copies that differ only in the
+elements left unread would have the same content.
+
+Building a record reads every value of the data set without changing it, and
+neither logs nor warns; pydicom's own warnings and errors while it reads,
+decodes, and encodes values are the entry point's to redact, as
 :func:`pymedphys._dicom.anonymise.diagnostics.redacted_pydicom_diagnostics`
 does for the legacy tools.
 """
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 import enum
 import functools
+import hashlib
+import re
+import struct
 import types
 from collections.abc import Iterator, Mapping
 
 from pymedphys._imports import pydicom
 
 from .iods import IOD
+from .pseudonyms import SubjectIdentity
 from .sop_classes import iod_for_sop_class
-from .standard import sequence_tags
+from .standard import load_data_dictionary
 from .uids import normalise_uid
 
 SOP_CLASS_TAG = "(0008,0016)"
 REFERENCED_SOP_CLASS_TAG = "(0008,1150)"
 REFERENCED_SOP_INSTANCE_TAG = "(0008,1155)"
+PATIENT_ID_TAG = "(0010,0020)"
+ISSUER_OF_PATIENT_ID_TAG = "(0010,0021)"
+ITEM_TAG = 0xFFFEE000
 
 
 class Level(enum.Enum):
@@ -236,6 +295,17 @@ class InstanceRecord:
     references : tuple of Reference
         Every value at the IOD's reference sites, by site in the order of
         :func:`reference_sites`, then in the order of the items.
+    patient : SubjectIdentity or None
+        The identity of the instance's Patient ID (0010,0020) with its Issuer
+        of Patient ID (0010,0021), from which pseudonyms are derived, taking
+        each attribute's text with any several values joined by backslashes.
+        ``None`` if the Patient ID is absent, not text, or empty once its
+        padding is removed: such an instance names no patient.
+    digest : bytes
+        The SHA-256 digest of the data set's content, as the module describes
+        it, so two data sets have the same digest exactly when their content
+        is the same. It only compares the inputs of a run, and is never
+        stored or reported.
     """
 
     iod: str | None
@@ -243,10 +313,19 @@ class InstanceRecord:
     series: str | None = dataclasses.field(repr=False)
     study: str | None = dataclasses.field(repr=False)
     references: tuple[Reference, ...] = dataclasses.field(repr=False)
+    patient: SubjectIdentity | None = dataclasses.field(repr=False)
+    digest: bytes = dataclasses.field(repr=False)
 
     @classmethod
     def from_dataset(cls, dataset: pydicom.Dataset) -> InstanceRecord:
-        """Return the record of a data set, without changing the data set."""
+        """Return the record of a data set, without changing the data set.
+
+        ``dataset`` must be read in full: not read with
+        ``stop_before_pixels`` or ``specific_tags``, and with every deferred
+        value still readable from its file. The digest covers only the
+        elements the data set holds, so copies that differ only in elements
+        left unread would otherwise be identical.
+        """
         sop_class = _uid(dataset, SOP_CLASS_TAG)
         iod, sites = _iod_and_sites(sop_class) if sop_class else (None, ())
         found = []
@@ -264,6 +343,8 @@ class InstanceRecord:
             _uid(dataset, IDENTITY_TAGS[Level.SERIES]),
             _uid(dataset, IDENTITY_TAGS[Level.STUDY]),
             tuple(found),
+            _patient(dataset),
+            _content_digest(dataset),
         )
 
     def identifier(self, level: Level) -> str | None:
@@ -327,6 +408,144 @@ def _sequence(element: pydicom.DataElement, tag: str) -> Iterator[pydicom.Datase
     elif (
         element.VR == "UN"
         and isinstance(element.value, bytes)
-        and tag in sequence_tags()
+        and _dictionary_vrs().get(tag) == "SQ"
     ):
         yield from pydicom.values.convert_SQ(element.value, True, True)
+
+
+@functools.lru_cache(maxsize=None)
+def _dictionary_vrs() -> Mapping[str, str]:
+    """Return the VR of each tag that has one VR in the pinned data dictionary.
+
+    A tag of a repeating group, such as (60xx,3000), and a tag whose VR
+    depends on the data set, such as "US or SS", are left out.
+    """
+    return types.MappingProxyType(
+        {
+            attribute.tag: attribute.vr
+            for attribute in load_data_dictionary().attributes
+            if re.fullmatch("[A-Z]{2}", attribute.vr) and attribute.vr != "UN"
+        }
+    )
+
+
+def _text(dataset: pydicom.Dataset, tag: str) -> str:
+    """Return the attribute's text, with several values joined by backslashes."""
+    element = _element(dataset, tag)
+    value = None if element is None else element.value
+    if isinstance(value, pydicom.multival.MultiValue):
+        return "\\".join(str(each) for each in value)
+    return value if isinstance(value, str) else ""
+
+
+def _patient(dataset: pydicom.Dataset) -> SubjectIdentity | None:
+    try:
+        return SubjectIdentity.from_patient_id(
+            _text(dataset, PATIENT_ID_TAG), _text(dataset, ISSUER_OF_PATIENT_ID_TAG)
+        )
+    except ValueError:  # The Patient ID is empty.
+        return None
+
+
+def _content_digest(dataset: pydicom.Dataset) -> bytes:
+    digest = hashlib.sha256()
+    for encoded in _encoded(dataset, pydicom.charset.default_encoding, [dataset]):
+        digest.update(encoded)
+    return digest.digest()
+
+
+def _encoded(
+    dataset: pydicom.Dataset,
+    encodings: str | list[str],
+    ancestors: list[pydicom.Dataset],
+) -> Iterator[bytes]:
+    """Yield the content of each element of ``dataset``, the first of ``ancestors``.
+
+    ``ancestors`` holds the data set and the items that contain it, nearest
+    first, up to the data set of the instance.
+    """
+    encodings = dataset.get("SpecificCharacterSet", encodings)
+    for tag in sorted(dataset.keys()):
+        if tag.element == 0 or (len(ancestors) == 1 and tag.group == 2):
+            continue
+        element, byte_order = _as_held(dataset[tag], encodings, ancestors)
+        if element.VR == "SQ":
+            encoded = _with_length(
+                tag,
+                b"".join(
+                    _with_length(
+                        ITEM_TAG,
+                        b"".join(_encoded(item, encodings, [item, *ancestors])),
+                    )
+                    for item in element.value
+                ),
+            )
+        else:
+            written = pydicom.filebase.DicomBytesIO()
+            written.is_implicit_VR = True
+            written.is_little_endian = True
+            pydicom.filewriter.write_data_element(written, element, encodings)
+            encoded = written.getvalue()
+        vr = element.VR.encode()
+        # The tag, then the VR and the byte order, then the length and value.
+        yield encoded[:4] + struct.pack("<B", len(vr)) + vr + byte_order + encoded[4:]
+
+
+def _with_length(tag: int, value: bytes) -> bytes:
+    """Return the tag, the value's length, and the value (PS3.5 Section 7.1.3)."""
+    return struct.pack("<HHI", tag >> 16, tag & 0xFFFF, len(value)) + value
+
+
+def _as_held(
+    element: pydicom.DataElement,
+    encodings: str | list[str],
+    ancestors: list[pydicom.Dataset],
+) -> tuple[pydicom.DataElement, bytes]:
+    """Return the element with the VR that applies in its data set, and a byte order.
+
+    The element is in the first of ``ancestors``, which holds its data set
+    and the items that contain it, nearest first. Its VR is the one that
+    pydicom holds, except that a UN value whose tag has one VR in the
+    pinned data dictionary is decoded with that VR as Implicit VR Little
+    Endian (PS3.5 Section 6.2.2), and that a VR that pydicom decides only
+    when it writes the data set, such as "US or SS", is decided as pydicom
+    decides it, from the data set and the items that contain it. Neither
+    changes the data set.
+
+    The byte order is ``b"<"`` for little endian, ``b">"`` for big endian,
+    or ``b"?"`` for none, for a value that pydicom holds as bytes, other
+    than an OB value, which is a stream of bytes: that of the data set, or
+    little endian for a value decoded from UN. A data set built in memory,
+    rather than read, has none. It is ``b"-"`` for any other value.
+    """
+    dataset = ancestors[0]
+    little_endian = dataset.original_encoding[1]
+    tag = f"({element.tag.group:04X},{element.tag.element:04X})"
+    if (
+        element.VR == "UN"
+        and isinstance(element.value, bytes)
+        and tag in _dictionary_vrs()
+    ):
+        raw = pydicom.dataelem.RawDataElement(
+            element.tag,
+            _dictionary_vrs()[tag],
+            len(element.value),
+            element.value,
+            0,
+            True,
+            True,
+        )
+        element = pydicom.dataelem.convert_raw_data_element(
+            raw, encoding=pydicom.charset.convert_encodings(encodings)
+        )
+        little_endian = True
+    elif element.VR in pydicom.valuerep.AMBIGUOUS_VR:
+        # pydicom decides the VR of the copy in place.
+        element = copy.copy(element)
+        pydicom.filewriter.correct_ambiguous_vr_element(
+            element, dataset, little_endian is not False, ancestors
+        )
+    held_as_bytes = isinstance(element.value, bytes) or element.is_buffered
+    if element.VR == "OB" or not held_as_bytes:
+        return element, b"-"
+    return element, {True: b"<", False: b">", None: b"?"}[little_endian]

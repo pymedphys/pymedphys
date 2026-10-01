@@ -29,6 +29,15 @@ Edge = reference_graph.Edge
 Finding = reference_graph.Finding
 DANGLING = reference_graph.FindingKind.DANGLING_REFERENCE
 MISSING = reference_graph.FindingKind.MISSING_IDENTIFIER
+DUPLICATE = reference_graph.FindingKind.DUPLICATE_INSTANCE
+CONFLICTING = reference_graph.FindingKind.CONFLICTING_INSTANCE
+SEVERAL_STUDIES = reference_graph.FindingKind.SERIES_IN_SEVERAL_STUDIES
+SEVERAL_PATIENTS = reference_graph.FindingKind.STUDY_WITH_SEVERAL_PATIENTS
+SOP_INSTANCE_UID, SERIES_INSTANCE_UID, STUDY_INSTANCE_UID = (
+    "(0008,0018)",
+    "(0020,000E)",
+    "(0020,000D)",
+)
 
 # Positions in synthetic.collection().
 CT_POSITIONS = (0, 1, 2)
@@ -549,3 +558,419 @@ def test_findings_are_ordered_by_kind_then_position():
         _dangling(PLAN, synthetic.REFERENCED_STRUCTURE_SET),
         _dangling(PLAN, synthetic.REFERENCED_DOSE),
     )
+
+
+SOURCE_ISSUER = "SYNTHETIC-ISSUER-3H8M"
+OTHER_ISSUER = "SYNTHETIC-ISSUER-9W4D"
+OTHER_PATIENT_ID = "SYNTHETIC-5R8N"
+OTHER_STUDY = "2.25.110"
+# How to build another copy of an instance in synthetic.collection(), and
+# the position of the instance there.
+INSTANCES = [
+    pytest.param(lambda: synthetic.ct_slice(0), 0, id="ct-slice"),
+    pytest.param(synthetic.structure_set, STRUCTURE_SET, id="structure-set"),
+    pytest.param(synthetic.rt_plan, PLAN, id="plan"),
+    pytest.param(synthetic.rt_dose, DOSE, id="dose"),
+]
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("build, position", INSTANCES)
+def test_copies_of_one_instance_are_duplicates(build, position):
+    datasets = synthetic.collection() + [build(), build()]
+
+    graph = _graph(datasets)
+
+    assert graph.findings == (
+        Finding(DUPLICATE, ((position, 6, 7),), (SOP_INSTANCE_UID,)),
+    )
+
+
+def _private_text(dataset, value):
+    block = dataset.private_block(0x0009, "SYNTHETIC CREATOR 5T", create=True)
+    block.add_new(0x01, "LO", value)
+
+
+def _plans_in_implicit_and_explicit_vr(change=None):
+    """Return the collection, its plan read from Implicit VR, and a copy.
+
+    The copy, at position 6, is read from Explicit VR. ``change``, if given,
+    changes both plans before they are written.
+    """
+
+    def plan():
+        dataset = synthetic.rt_plan()
+        if change is not None:
+            change(dataset)
+        return dataset
+
+    datasets = synthetic.collection()
+    datasets[PLAN] = synthetic.written_and_read(plan(), "1.2.840.10008.1.2")
+    datasets.append(synthetic.written_and_read(plan(), "1.2.840.10008.1.2.1"))
+    return datasets
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_copies_in_implicit_and_explicit_vr_are_duplicates():
+    # Every element of the plan has a VR in pydicom's data dictionary, so
+    # the Implicit VR copy decodes to the same elements, VRs, and values.
+    datasets = _plans_in_implicit_and_explicit_vr()
+
+    assert _graph(datasets).findings == (
+        Finding(DUPLICATE, ((PLAN, 6),), (SOP_INSTANCE_UID,)),
+    )
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_copies_in_implicit_and_explicit_vr_with_a_private_element_conflict():
+    # pydicom reads the private element from the Implicit VR copy as UN,
+    # without the VR that the Explicit VR copy holds, so the copies cannot be
+    # shown to be equal.
+    datasets = _plans_in_implicit_and_explicit_vr(
+        lambda dataset: _private_text(dataset, "SYNTHETIC PRIVATE TEXT")
+    )
+    assert datasets[PLAN][0x00091001].VR == "UN"
+
+    assert _graph(datasets).findings == (
+        Finding(CONFLICTING, ((PLAN,), (6,)), (SOP_INSTANCE_UID,)),
+    )
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda dataset: setattr(dataset, "PatientName", "FICTITIOUS^OTHER"),
+        lambda dataset: setattr(dataset, "StudyDescription", "SYNTHETIC"),
+        lambda dataset: delattr(dataset, "PatientName"),
+        lambda dataset: _private_text(dataset, "SYNTHETIC PRIVATE TEXT"),
+    ],
+    ids=["changed-value", "added-element", "removed-element", "private-element"],
+)
+@pytest.mark.parametrize("build, position", INSTANCES)
+def test_one_sop_instance_uid_with_different_content_conflicts(build, position, change):
+    changed = build()
+    change(changed)
+    datasets = synthetic.collection() + [changed]
+
+    assert _graph(datasets).findings == (
+        Finding(CONFLICTING, ((position,), (6,)), (SOP_INSTANCE_UID,)),
+    )
+
+
+@pytest.mark.pydicom
+def test_conflicting_copies_are_grouped_by_content():
+    def changed(value):
+        dataset = synthetic.ct_slice(1)
+        _private_text(dataset, value)
+        return dataset
+
+    datasets = synthetic.collection() + [
+        changed("SYNTHETIC-A"),
+        synthetic.ct_slice(1),
+        changed("SYNTHETIC-B"),
+        changed("SYNTHETIC-A"),
+    ]
+
+    assert _graph(datasets).findings == (
+        Finding(CONFLICTING, ((1, 7), (6, 9), (8,)), (SOP_INSTANCE_UID,)),
+    )
+
+
+@pytest.mark.pydicom
+def test_references_to_a_duplicated_instance_resolve_to_each_copy():
+    datasets = synthetic.collection() + [synthetic.ct_slice(0)]
+
+    graph = _graph(datasets)
+
+    assert graph.findings == (Finding(DUPLICATE, ((0, 6),), (SOP_INSTANCE_UID,)),)
+    assert graph.edges == _graph(synthetic.collection()).edges | {
+        Edge(STRUCTURE_SET, attribute, 6)
+        for attribute in (synthetic.CONTOUR_IMAGES, synthetic.ROI_CONTOUR_IMAGES)
+    }
+
+
+@pytest.mark.pydicom
+def test_each_copy_of_an_instance_reports_its_dangling_references_once():
+    # Without the second CT slice, each copy of the structure set has one
+    # distinct missing instance at each of the two sites, however many
+    # copies there are.
+    datasets = synthetic.collection()
+    del datasets[1]
+    datasets.append(synthetic.structure_set())
+
+    findings = _graph(datasets).findings
+
+    assert findings == (
+        _dangling(2, synthetic.CONTOUR_IMAGES),
+        _dangling(2, synthetic.ROI_CONTOUR_IMAGES),
+        _dangling(5, synthetic.CONTOUR_IMAGES),
+        _dangling(5, synthetic.ROI_CONTOUR_IMAGES),
+        Finding(DUPLICATE, ((2, 5),), (SOP_INSTANCE_UID,)),
+    )
+
+
+@pytest.mark.pydicom
+def test_an_instance_without_a_sop_instance_uid_is_no_duplicate():
+    datasets = synthetic.collection() + [synthetic.ct_slice(0), synthetic.ct_slice(0)]
+    for dataset in datasets[-2:]:
+        del dataset.SOPInstanceUID
+
+    findings = _graph(datasets).findings
+
+    # The first CT slice and its copies would be duplicates.
+    assert findings == (
+        Finding(MISSING, ((6,),), (SOP_INSTANCE_UID,)),
+        Finding(MISSING, ((7,),), (SOP_INSTANCE_UID,)),
+    )
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "study, several",
+    [
+        (OTHER_STUDY, True),
+        (OTHER_STUDY + "\x00", True),
+        (synthetic.STUDY + "\x00", False),
+        (synthetic.STUDY, False),
+    ],
+    ids=["other-study", "other-study-padded", "same-study-padded", "same-study"],
+)
+def test_a_series_in_two_studies_is_inconsistent(study, several):
+    datasets = synthetic.collection()
+    synthetic.uid(datasets[1], "StudyInstanceUID", study)
+
+    findings = _graph(datasets).findings
+
+    assert findings == (
+        (Finding(SEVERAL_STUDIES, ((0, 2), (1,)), (SERIES_INSTANCE_UID,)),)
+        if several
+        else ()
+    )
+
+
+@pytest.mark.pydicom
+def test_a_series_in_three_studies_is_grouped_by_study():
+    datasets = synthetic.collection() + [synthetic.ct_slice(0)]
+    synthetic.uid(datasets[6], "SOPInstanceUID", "2.25.204")
+    synthetic.uid(datasets[1], "StudyInstanceUID", OTHER_STUDY)
+    synthetic.uid(datasets[6], "StudyInstanceUID", "2.25.120")
+    synthetic.uid(datasets[2], "StudyInstanceUID", OTHER_STUDY)
+
+    assert _graph(datasets).findings == (
+        Finding(SEVERAL_STUDIES, ((0,), (1, 2), (6,)), (SERIES_INSTANCE_UID,)),
+    )
+
+
+@pytest.mark.pydicom
+def test_an_instance_without_a_study_does_not_name_another_study():
+    datasets = synthetic.collection()
+    del datasets[1].StudyInstanceUID
+
+    assert _graph(datasets).findings == (
+        Finding(MISSING, ((1,),), (STUDY_INSTANCE_UID,)),
+    )
+
+
+def _set_patient(dataset, patient_id, issuer):
+    """Set the Patient ID and its issuer, where each is given."""
+    for keyword, value in [("PatientID", patient_id), ("IssuerOfPatientID", issuer)]:
+        if value is None:
+            if keyword in dataset:
+                delattr(dataset, keyword)
+        else:
+            setattr(dataset, keyword, value)
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "first, second, several",
+    [
+        ((synthetic.PATIENT_ID, None), (OTHER_PATIENT_ID, None), True),
+        # The same Patient ID from another issuer is another subject.
+        (
+            (synthetic.PATIENT_ID, SOURCE_ISSUER),
+            (synthetic.PATIENT_ID, OTHER_ISSUER),
+            True,
+        ),
+        ((synthetic.PATIENT_ID, SOURCE_ISSUER), (synthetic.PATIENT_ID, None), True),
+        ((synthetic.PATIENT_ID, SOURCE_ISSUER), (synthetic.PATIENT_ID, ""), True),
+        ((synthetic.PATIENT_ID, SOURCE_ISSUER), (synthetic.PATIENT_ID, "  "), True),
+        (
+            (synthetic.PATIENT_ID, SOURCE_ISSUER),
+            (synthetic.PATIENT_ID, SOURCE_ISSUER),
+            False,
+        ),
+        ((synthetic.PATIENT_ID, None), (synthetic.PATIENT_ID, ""), False),
+        # Padding is not significant (PS3.5 Section 6.2).
+        (
+            (synthetic.PATIENT_ID, SOURCE_ISSUER),
+            (synthetic.PATIENT_ID + " ", " " + SOURCE_ISSUER + "\x00"),
+            False,
+        ),
+        # An instance without a Patient ID is a patient apart from every
+        # identity, and the instances without one are one patient.
+        ((synthetic.PATIENT_ID, SOURCE_ISSUER), (None, SOURCE_ISSUER), True),
+        ((synthetic.PATIENT_ID, SOURCE_ISSUER), ("", SOURCE_ISSUER), True),
+        ((synthetic.PATIENT_ID, None), (" ", None), True),
+        ((None, SOURCE_ISSUER), (synthetic.PATIENT_ID, SOURCE_ISSUER), True),
+        ((None, SOURCE_ISSUER), ("  ", OTHER_ISSUER), False),
+    ],
+    ids=[
+        "other-patient-id",
+        "other-issuer",
+        "issuer-and-none",
+        "issuer-and-empty",
+        "issuer-and-padding",
+        "same-issuer",
+        "none-and-empty",
+        "padded",
+        "no-patient-id",
+        "empty-patient-id",
+        "padding-only-patient-id",
+        "one-patient-id",
+        "no-patient-ids",
+    ],
+)
+def test_a_study_with_two_patients_is_inconsistent(first, second, several):
+    datasets = synthetic.collection()
+    for dataset in datasets:
+        _set_patient(dataset, *first)
+    _set_patient(datasets[PLAN], *second)
+
+    findings = _graph(datasets).findings
+
+    assert findings == (
+        (Finding(SEVERAL_PATIENTS, ((0, 1, 2, 3, 5), (PLAN,)), (STUDY_INSTANCE_UID,)),)
+        if several
+        else ()
+    )
+
+
+@pytest.mark.pydicom
+def test_patients_in_different_studies_are_consistent():
+    other = synthetic.ct_slice(0)
+    synthetic.uid(other, "SOPInstanceUID", "2.25.1201")
+    synthetic.uid(other, "SeriesInstanceUID", "2.25.1200")
+    synthetic.uid(other, "StudyInstanceUID", OTHER_STUDY)
+    other.PatientID = OTHER_PATIENT_ID
+
+    assert not _graph(synthetic.collection() + [other]).findings
+
+
+@pytest.mark.pydicom
+def test_a_study_with_three_patients_is_grouped_by_patient():
+    datasets = synthetic.collection()
+    _set_patient(datasets[1], synthetic.PATIENT_ID, SOURCE_ISSUER)
+    _set_patient(datasets[PLAN], OTHER_PATIENT_ID, None)
+    _set_patient(datasets[DOSE], synthetic.PATIENT_ID, SOURCE_ISSUER)
+
+    assert _graph(datasets).findings == (
+        Finding(
+            SEVERAL_PATIENTS, ((0, 2, 3), (1, DOSE), (PLAN,)), (STUDY_INSTANCE_UID,)
+        ),
+    )
+
+
+@pytest.mark.pydicom
+def test_a_study_whose_instances_all_lack_a_patient_id_has_one_patient():
+    # Whether the Patient ID is absent, empty, or only padding, and whatever
+    # the issuer.
+    datasets = synthetic.collection()
+    forms = [(None, None), ("", SOURCE_ISSUER), ("  ", OTHER_ISSUER), (None, "")]
+    for position, dataset in enumerate(datasets):
+        _set_patient(dataset, *forms[position % len(forms)])
+
+    assert InstanceRecord.from_dataset(datasets[2]).patient is None
+    assert not _graph(datasets).findings
+
+
+@pytest.mark.pydicom
+def test_the_instances_without_a_patient_id_are_grouped_as_one_patient():
+    datasets = synthetic.collection()
+    _set_patient(datasets[1], None, SOURCE_ISSUER)
+    _set_patient(datasets[STRUCTURE_SET], "", None)
+    _set_patient(datasets[PLAN], OTHER_PATIENT_ID, None)
+    _set_patient(datasets[DOSE], "  ", OTHER_ISSUER)
+
+    assert _graph(datasets).findings == (
+        Finding(
+            SEVERAL_PATIENTS,
+            ((0, 2), (1, STRUCTURE_SET, DOSE), (PLAN,)),
+            (STUDY_INSTANCE_UID,),
+        ),
+    )
+
+
+def _inconsistent_collection():
+    """Return a collection with each kind of finding, and their values."""
+    datasets = synthetic.collection()
+    datasets[DOSE].PatientID = OTHER_PATIENT_ID
+    datasets[PLAN].IssuerOfPatientID = SOURCE_ISSUER
+    synthetic.uid(datasets[2], "StudyInstanceUID", OTHER_STUDY)
+    del datasets[STRUCTURE_SET].SeriesInstanceUID
+    conflicting = synthetic.rt_plan()
+    _private_text(conflicting, "SYNTHETIC PRIVATE TEXT")
+    datasets += [synthetic.ct_slice(1), conflicting]
+    datasets[PLAN].ReferencedRTPlanSequence = [
+        synthetic.reference(synthetic.RT_PLAN_STORAGE, "2.25.9013")
+    ]
+    values = {
+        OTHER_PATIENT_ID,
+        SOURCE_ISSUER,
+        OTHER_STUDY,
+        "2.25.9013",
+        "SYNTHETIC PRIVATE TEXT",
+    }
+    return datasets, values
+
+
+@pytest.mark.pydicom
+def test_findings_are_ordered_by_kind_from_instance_to_study():
+    datasets, _ = _inconsistent_collection()
+
+    findings = _graph(datasets).findings
+
+    assert findings == (
+        Finding(MISSING, ((STRUCTURE_SET,),), (SERIES_INSTANCE_UID,)),
+        _dangling(PLAN, synthetic.REFERENCED_PLAN),
+        Finding(DUPLICATE, ((1, 6),), (SOP_INSTANCE_UID,)),
+        Finding(CONFLICTING, ((PLAN,), (7,)), (SOP_INSTANCE_UID,)),
+        Finding(SEVERAL_STUDIES, ((0, 1, 6), (2,)), (SERIES_INSTANCE_UID,)),
+        Finding(
+            SEVERAL_PATIENTS,
+            ((0, 1, 3, 6, 7), (PLAN,), (DOSE,)),
+            (STUDY_INSTANCE_UID,),
+        ),
+    )
+
+
+@pytest.mark.pydicom
+def test_hierarchy_findings_contain_no_values(caplog, capsys):
+    datasets, planted = _inconsistent_collection()
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with caplog.at_level(logging.DEBUG):
+            graph = _graph(datasets)
+
+    assert not caught
+    assert not caplog.records
+    assert capsys.readouterr() == ("", "")
+    assert {finding.kind for finding in graph.findings} == set(
+        reference_graph.FindingKind
+    )
+    assert repr(graph) == f"ReferenceGraph(findings={graph.findings!r})"
+    shown = [repr(graph), str(graph), repr(sorted(graph.edges))]
+    shown += [repr(finding) + str(finding) for finding in graph.findings]
+    shown += [repr(record) + str(record) for record in graph.records]
+    shown += [repr(record.patient) + str(record.patient) for record in graph.records]
+    shown = "".join(shown).lower()
+    values = {value for dataset in datasets for value in _text_values(dataset)}
+    assert planted | {synthetic.PATIENT_ID, synthetic.STUDY} <= values
+    for value in values:
+        assert value.lower() not in shown
+    for record in graph.records:
+        assert record.digest.hex() not in shown
