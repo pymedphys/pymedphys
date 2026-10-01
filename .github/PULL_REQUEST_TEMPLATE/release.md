@@ -1,6 +1,8 @@
 <!-- markdownlint-disable-file MD041 -->
 <!-- Template for a stable release pull request. Set VERSION and NEXT below, then follow https://docs.pymedphys.com/en/latest/contrib/info/release-guide.html. Write for readers who are physicists rather than full-time software developers: CONTRIBUTING.md, under "Open and review a pull request", has the rules. A development release needs no release pull request. -->
 
+- [ ] I have reviewed the [release guide](https://docs.pymedphys.com/en/latest/contrib/info/release-guide.html) before preparing this stable-release pull request.
+
 ## Summary
 
 <!-- In plain words: what users get in this release, and what they should check before upgrading. Link the version's section of CHANGELOG.md. -->
