@@ -28,15 +28,33 @@ Series and Study Instance UIDs identify the instance itself.
 
 An :class:`InstanceRecord` holds what the reference graph
 (:mod:`~pymedphys._dicom.deidentify.reference_graph`) needs from one
-instance: its identifiers, and the value at each reference site with the
-Referenced SOP Class UID (0008,1150) beside it. Its ``repr`` shows only the
-IOD, so identifiers do not reach logs. An attribute without a value at a
-Type 3 site is left out, since it means the same as an absent one (PS3.5
-Section 7.4.5). A sequence that pydicom does not know, which it reads as UN
-from Implicit VR Little Endian, is decoded with its VR in the pinned data
-dictionary. Building a record reads the data set without changing it, and
-neither logs nor warns; pydicom's own warnings while it decodes values are
-the entry point's to redact, as
+instance: its identifiers, its patient, a digest of its content, and the
+value at each reference site with the Referenced SOP Class UID (0008,1150)
+beside it. Its ``repr`` shows only the IOD, so identifiers do not reach logs.
+An attribute without a value at a Type 3 site is left out, since it means
+the same as an absent one (PS3.5 Section 7.4.5). A sequence that pydicom
+does not know, which it reads as UN from Implicit VR Little Endian, is
+decoded with its VR in the pinned data dictionary.
+
+Two instances with the same content are identical copies. The content of a
+data set is its encoding in Implicit VR Little Endian (PS3.5 Sections 7.1.3
+and 7.5): each element's tag, value length, and value, in tag order, with
+every sequence and item of defined length. It leaves out the File Meta
+Information, group 0002, and group lengths (gggg,0000), which PS3.5 Section
+7.2 retires and whose values depend on the encoding; the preamble is not
+part of the data set. Each element is read, decoded, and encoded again, so
+the content depends neither on the file's transfer syntax, the length form
+of its sequences, or which values pydicom has read or deferred so far, nor
+on padding that decoding removes. Implicit VR holds no VRs, so a private
+element that pydicom reads from an Implicit VR file as UN, keeping its value
+as bytes, has the same content as the element read with its VR from an
+Explicit VR file, although pydicom holds the two with different VRs and
+values. A record keeps a digest of the content rather than the data set, so
+records stay small.
+
+Building a record reads every value of the data set without changing it, and
+neither logs nor warns; pydicom's own warnings and errors while it reads,
+decodes, and encodes values are the entry point's to redact, as
 :func:`pymedphys._dicom.anonymise.diagnostics.redacted_pydicom_diagnostics`
 does for the legacy tools.
 """
@@ -46,12 +64,15 @@ from __future__ import annotations
 import dataclasses
 import enum
 import functools
+import hashlib
+import struct
 import types
 from collections.abc import Iterator, Mapping
 
 from pymedphys._imports import pydicom
 
 from .iods import IOD
+from .pseudonyms import SubjectIdentity
 from .sop_classes import iod_for_sop_class
 from .standard import load_data_dictionary
 from .uids import normalise_uid
@@ -59,6 +80,9 @@ from .uids import normalise_uid
 SOP_CLASS_TAG = "(0008,0016)"
 REFERENCED_SOP_CLASS_TAG = "(0008,1150)"
 REFERENCED_SOP_INSTANCE_TAG = "(0008,1155)"
+PATIENT_ID_TAG = "(0010,0020)"
+ISSUER_OF_PATIENT_ID_TAG = "(0010,0021)"
+ITEM_TAG = 0xFFFEE000
 
 
 class Level(enum.Enum):
@@ -236,6 +260,17 @@ class InstanceRecord:
     references : tuple of Reference
         Every value at the IOD's reference sites, by site in the order of
         :func:`reference_sites`, then in the order of the items.
+    patient : SubjectIdentity or None
+        The identity of the instance's Patient ID (0010,0020) with its Issuer
+        of Patient ID (0010,0021), from which pseudonyms are derived, taking
+        each attribute's text with any several values joined by backslashes.
+        ``None`` if the Patient ID is absent, not text, or empty once its
+        padding is removed: such an instance names no patient.
+    digest : bytes
+        The SHA-256 digest of the data set's content, as the module describes
+        it, so two data sets have the same digest exactly when their content
+        is the same. It only compares the inputs of a run, and is never
+        stored or reported.
     """
 
     iod: str | None
@@ -243,6 +278,8 @@ class InstanceRecord:
     series: str | None = dataclasses.field(repr=False)
     study: str | None = dataclasses.field(repr=False)
     references: tuple[Reference, ...] = dataclasses.field(repr=False)
+    patient: SubjectIdentity | None = dataclasses.field(repr=False)
+    digest: bytes = dataclasses.field(repr=False)
 
     @classmethod
     def from_dataset(cls, dataset: pydicom.Dataset) -> InstanceRecord:
@@ -264,6 +301,8 @@ class InstanceRecord:
             _uid(dataset, IDENTITY_TAGS[Level.SERIES]),
             _uid(dataset, IDENTITY_TAGS[Level.STUDY]),
             tuple(found),
+            _patient(dataset),
+            _content_digest(dataset),
         )
 
     def identifier(self, level: Level) -> str | None:
@@ -339,4 +378,77 @@ def _dictionary_sequences() -> frozenset[str]:
         attribute.tag
         for attribute in load_data_dictionary().attributes
         if attribute.vr == "SQ"
+    )
+
+
+def _text(dataset: pydicom.Dataset, tag: str) -> str:
+    """Return the attribute's text, with several values joined by backslashes."""
+    element = _element(dataset, tag)
+    value = None if element is None else element.value
+    if isinstance(value, pydicom.multival.MultiValue):
+        return "\\".join(str(each) for each in value)
+    return value if isinstance(value, str) else ""
+
+
+def _patient(dataset: pydicom.Dataset) -> SubjectIdentity | None:
+    try:
+        return SubjectIdentity.from_patient_id(
+            _text(dataset, PATIENT_ID_TAG), _text(dataset, ISSUER_OF_PATIENT_ID_TAG)
+        )
+    except ValueError:  # The Patient ID is empty.
+        return None
+
+
+def _content_digest(dataset: pydicom.Dataset) -> bytes:
+    digest = hashlib.sha256()
+    for encoded in _encoded(dataset, pydicom.charset.default_encoding, top=True):
+        digest.update(encoded)
+    return digest.digest()
+
+
+def _encoded(
+    dataset: pydicom.Dataset, encodings: str | list[str], top: bool
+) -> Iterator[bytes]:
+    """Yield the encoding of each element of the data set's content."""
+    encodings = dataset.get("SpecificCharacterSet", encodings)
+    for tag in sorted(dataset.keys()):
+        if tag.element == 0 or (top and tag.group == 2):
+            continue
+        element = dataset[tag]
+        if element.VR == "SQ":
+            items = b"".join(
+                _with_length(ITEM_TAG, b"".join(_encoded(item, encodings, False)))
+                for item in element.value
+            )
+            yield _with_length(tag, items)
+        else:
+            written = pydicom.filebase.DicomBytesIO()
+            written.is_implicit_VR = True
+            written.is_little_endian = True
+            pydicom.filewriter.write_data_element(
+                written, _unambiguous(element), encodings
+            )
+            yield written.getvalue()
+
+
+def _with_length(tag: int, value: bytes) -> bytes:
+    """Return the tag, the value's length, and the value (PS3.5 Section 7.1.3)."""
+    return struct.pack("<HHI", tag >> 16, tag & 0xFFFF, len(value)) + value
+
+
+def _unambiguous(element: pydicom.DataElement) -> pydicom.DataElement:
+    """Return the element with a VR in which pydicom can write its value.
+
+    pydicom keeps a VR such as "US or SS" on a number that is set in memory,
+    and decides it only when it writes the whole data set. Implicit VR
+    encodes a number in range the same way as either.
+    """
+    if " or " not in element.VR or element.is_empty or isinstance(element.value, bytes):
+        return element
+    values = element.value if element.VM > 1 else [element.value]
+    return pydicom.DataElement(
+        element.tag,
+        "SS" if any(value < 0 for value in values) else "US",
+        element.value,
+        validation_mode=pydicom.config.IGNORE,
     )
