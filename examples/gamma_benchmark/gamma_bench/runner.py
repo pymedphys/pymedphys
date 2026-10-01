@@ -152,12 +152,12 @@ def resolved_config(path, require_checkouts=True):
         if Path(python).is_absolute():
             executable = python
         elif (path.parent / python).is_file():
-            executable = str((path.parent / python).resolve())
+            executable = path.parent / python
         else:
             executable = shutil.which(python)
         if not executable or not Path(executable).is_file():
             raise ValueError(f"Python executable not found: {python}")
-        spec["python"] = str(Path(executable).resolve())
+        spec["python"] = os.path.abspath(os.fspath(executable))
     options = config.setdefault("gamma_options", {})
     if not isinstance(options, dict):
         raise ValueError(
