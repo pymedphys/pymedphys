@@ -22,6 +22,7 @@ temporal attribute roles, patient pseudonyms, subject profiles, date
 offsets, the actions of Table E.1-1 under selected options, the presets and
 the validated policies composed from them, the checks of values against
 their VR and VM, the supplementary actions for attributes that Table E.1-1
-omits, the classification of instances as de-identified or sequestered, and
-the names of the files and directories that output is written to.
+omits, the classification of instances as de-identified or sequestered, the
+names of the files and directories that output is written to, and the File
+Meta Information and zeroed preamble that replace the source file's.
 """
