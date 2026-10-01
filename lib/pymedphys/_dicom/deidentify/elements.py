@@ -28,7 +28,11 @@ Pixel, Overlay, and Waveform Data, whose bytes are the same either way; in
 explicit VR, Pixel Data is OB if encapsulated (Section A.4) and OW where
 Bits Allocated (0028,0100) is more than 8 (Section A.2). Text is decoded in
 the Specific Character Set (0008,0005) of the data set, or of the item that
-has its own (PS3.5 Section 7.5.3).
+has its own (PS3.5 Section 7.5.3). Where that is the Default Character
+Repertoire alone, which pydicom reads as ISO 8859-1, text must be in ISO 646
+(PS3.5 Section 6.1.2.1). ``ISO_IR 6`` names that repertoire as the absence
+of a value does: PS3.3 Section C.12.1.1.2 does not list it among the Defined
+Terms, but real data commonly holds it.
 
 :func:`new_element` builds an element to write with pydicom's checks off,
 once :func:`written_value_problem` has checked its values.
@@ -57,6 +61,8 @@ from .values import values_problem
 
 # The codecs of the Default Character Repertoire, as pydicom names them.
 DEFAULT_CODECS = ("iso8859",)
+# Not a Defined Term, but it names the Default Character Repertoire.
+_DEFAULT_TERM = "ISO_IR 6"
 _UNDEFINED = 0xFFFFFFFF
 _CHARACTER_SET = "(0008,0005)"
 # The Defined Terms of PS3.3 Tables C.12-2 to C.12-5 that pydicom 3.0 can
@@ -174,8 +180,10 @@ def dataset_codecs(
     it has its own Specific Character Set (0008,0005) (PS3.5 Section 7.5.3),
     and ``items`` the items that hold it, as in :class:`ElementPath`. It
     raises :class:`UndecodableElement` unless each value is a Defined Term of
-    PS3.3 Section C.12.1.1.2 that pydicom can decode, only the first is
-    empty, and several all use ISO 2022 code extensions.
+    PS3.3 Section C.12.1.1.2 that pydicom can decode, or the only value is
+    ``ISO_IR 6``, which gives the Default Character Repertoire as an absent
+    value does; only the first is empty; and several all use ISO 2022 code
+    extensions.
 
     >>> item = pydicom.Dataset()
     >>> item.SpecificCharacterSet = ["", "ISO 2022 IR 87"]
@@ -187,9 +195,11 @@ def dataset_codecs(
     path = ElementPath(items, _CHARACTER_SET)
     values = read_element(dataset, path, DEFAULT_CODECS).values
     terms = [str(value).strip(" ") for value in values] or [""]
+    single = len(terms) == 1
     if not all(
         (term == "" and index == 0)
-        or (term in _TERMS and (len(terms) == 1 or term.startswith("ISO 2022")))
+        or (term == _DEFAULT_TERM and single)
+        or (term in _TERMS and (single or term.startswith("ISO 2022")))
         for index, term in enumerate(terms)
     ):
         raise UndecodableElement(path, "is not a supported Specific Character Set")
@@ -208,7 +218,8 @@ def read_element(
     ``ancestors`` the data sets that hold it, nearest first. It raises
     :class:`UndecodableElement` if the value is deferred or shorter than its
     length, its VR conflicts with the pinned dictionary or is in doubt, or it
-    does not decode exactly as its VR and character set.
+    does not decode exactly as its VR and character set; the Default
+    Character Repertoire alone holds only ISO 646.
     """
     with redacted_pydicom_diagnostics():
         element = dataset.get_item(_number(path.tag), keep_deferred=True)
@@ -230,6 +241,18 @@ def read_element(
         elif value is None or value in ("", b""):
             values = []
         plain = tuple(_plain(path, vr, each) for each in values)
+        # pydicom reads the Default Character Repertoire as ISO 8859-1, but it
+        # is ISO 646 (PS3.5 Section 6.1.2.1).
+        if (
+            vr in _CHARACTER_SET_VRS
+            and tuple(codecs) == DEFAULT_CODECS
+            and not all(str(each).isascii() for each in plain)
+        ):
+            raise UndecodableElement(
+                path,
+                f"could not be decoded as VR {vr} in the Default Character "
+                "Repertoire, ISO 646",
+            )
     return ElementValue(path, vr, plain, (), tuple(codecs))
 
 

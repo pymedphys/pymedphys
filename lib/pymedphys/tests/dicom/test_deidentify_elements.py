@@ -391,6 +391,7 @@ def test_an_item_level_character_set_applies_to_its_item(transfer_syntax):
     [
         (None, elements.DEFAULT_CODECS),
         ("", elements.DEFAULT_CODECS),
+        ("ISO_IR 6", elements.DEFAULT_CODECS),
         ("ISO_IR 100", ("latin_1",)),
         ("ISO_IR 192", ("UTF8",)),
         ("GB18030", ("GB18030",)),
@@ -434,7 +435,10 @@ def test_each_defined_term_that_pydicom_decodes_is_accepted(term):
     [
         "ISO_IR 203",  # Defined Terms that pydicom 3.0 cannot decode
         "ISO 2022 IR 203",
-        "ISO_IR 6",  # not a Defined Term: ISO-IR 6 is given by no value
+        # ISO_IR 6, which names the Default Character Repertoire, is accepted
+        # only alone: with code extensions, it is ISO 2022 IR 6.
+        ["ISO_IR 6", "ISO 2022 IR 87"],
+        ["ISO 2022 IR 100", "ISO_IR 6"],
         "ISO-IR 100",
         "SENTINEL",
         ["ISO_IR 192", "ISO 2022 IR 100"],  # UTF-8 has no code extensions
@@ -463,6 +467,82 @@ def test_a_specific_character_set_not_in_the_default_repertoire_is_refused():
 
     with pytest.raises(elements.UndecodableElement, match="Specific Character Set"):
         elements.dataset_codecs(item)
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@TRANSFER_SYNTAXES
+def test_iso_ir_6_gives_the_default_character_repertoire(transfer_syntax):
+    # PS3.3 Section C.12.1.1.2 gives the Default Character Repertoire by the
+    # absence of a value, but real data often names it ISO_IR 6.
+    dataset = synthetic.rt_plan()
+    dataset.SpecificCharacterSet = "ISO_IR 6"
+    read = _written_and_read(dataset, transfer_syntax)
+
+    codecs = elements.dataset_codecs(read)
+    name = _read(read, _path("(0010,0010)"), codecs)
+
+    assert codecs == elements.DEFAULT_CODECS
+    assert (name.values, name.codecs) == ((synthetic.PATIENTS_NAME,), codecs)
+
+
+@pytest.mark.parametrize("decoded_first", [False, True], ids=["raw", "decoded"])
+@pytest.mark.parametrize(
+    "value",
+    [None, "", "ISO_IR 6", "ISO 2022 IR 6"],
+    ids=["absent", "empty", "ISO_IR 6", "ISO 2022 IR 6"],
+)
+def test_a_byte_outside_the_default_character_repertoire_is_refused(
+    value, decoded_first
+):
+    # The Default Character Repertoire is ISO 646 (PS3.5 Section 6.1.2.1),
+    # whose bytes are below 0x80, but pydicom reads it as ISO 8859-1.
+    dataset = pydicom.Dataset()
+    if value is not None:
+        dataset[0x00080005] = _raw("(0008,0005)", None, value.encode())
+    dataset[0x00100010] = _raw("(0010,0010)", None, b"SENTINEL^REN\xc9 ")
+    if decoded_first:  # as pydicom leaves an element that has been read
+        assert dataset[0x00100010].value == "SENTINEL^RENÉ"
+    codecs = elements.dataset_codecs(dataset)
+
+    with pytest.raises(elements.UndecodableElement) as raised:
+        _read(dataset, _path("(0010,0010)"), codecs)
+
+    assert codecs == elements.DEFAULT_CODECS
+    assert raised.value.path == _path("(0010,0010)")
+    assert "Default Character Repertoire" in str(raised.value)
+    assert SENTINEL not in str(raised.value) and SENTINEL not in repr(raised.value)
+    assert raised.value.__cause__ is None
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")
+@TRANSFER_SYNTAXES
+def test_an_item_whose_character_set_is_iso_ir_6_takes_the_default_repertoire(
+    transfer_syntax,
+):
+    # pydicom writes ISO_IR 6 text as ISO 8859-1, so É becomes the byte 0xC9.
+    default = _assertion(SpecificCharacterSet="ISO_IR 6")
+    beyond = _assertion(f"{SENTINEL}^RENÉ", SpecificCharacterSet="ISO_IR 6")
+    dataset = _plan_with_assertions(default, beyond)
+    dataset.SpecificCharacterSet = "ISO_IR 100"
+    dataset.PatientName = "SØRENSEN^ÅSE"
+    read = _written_and_read(dataset, transfer_syntax)
+    codecs = elements.dataset_codecs(read)
+    beyond_path = _path((RT_ASSERTIONS, 1), (ASSERTER, 0), PERSON_NAME)
+
+    top = _read(read, _path("(0010,0010)"), codecs)
+    asserter = _read(read, ASSERTER_NAME_PATH, codecs)
+    with pytest.raises(elements.UndecodableElement) as raised:
+        _read(read, beyond_path, codecs)
+
+    assert (top.values, top.codecs) == (("SØRENSEN^ÅSE",), ("latin_1",))
+    assert (asserter.values, asserter.codecs) == (
+        (ASSERTER_NAME,),
+        elements.DEFAULT_CODECS,
+    )
+    assert raised.value.path == beyond_path
+    assert "Default Character Repertoire" in str(raised.value)
+    assert SENTINEL not in str(raised.value) and SENTINEL not in repr(raised.value)
 
 
 @pytest.mark.parametrize(
