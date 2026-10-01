@@ -24,22 +24,25 @@ place in the file that :func:`~.file_layout.read_file_layout` gives. It lists
 what it did not search, and why. Whether a file may be released is for its
 caller to decide.
 
-**Forms.** A value is searched as given, composed (NFC), and decomposed
-(NFD), split at backslashes unless its VR is LT, ST, UR, or UT, and stripped
+**Forms.** A value is searched as given, composed (NFC), decomposed (NFD),
+with compatibility characters replaced (NFKC and NFKD), and with each
+character that has a half-width or full-width form written in its other
+width, such as ``ﾔﾏﾀﾞ`` for ``ヤマダ`` or ``ＹＡＭＡＤＡ`` for ``YAMADA``. It is
+split at backslashes unless its VR is LT, ST, UR, or UT, and stripped
 of spaces, NULs, and whitespace at either end. A person name (PN) is searched
 whole, by each component group, by its family, given, and middle names, by
 each word of those names between spaces or hyphens, and with its family and
 given names run together in either order. Where the family or given name is
 shorter than :data:`MIN_CHARACTERS`, they are also searched in either order
 with a space or an ideographic space (U+3000) between them, and as "FAMILY,
-GIVEN". A name with an ASCII apostrophe is also searched with U+2019 in its
-place, and without it. A date (DA), including one written as YYYY.MM.DD, as
+GIVEN". A name with an apostrophe, whether ASCII's or U+2018, U+2019, or
+U+02BC, is also searched with ASCII's, with U+2019, and without it. A date (DA), including one written as YYYY.MM.DD, as
 ACR-NEMA wrote dates, is also searched as YYYYMMDD, YYYY-MM-DD, YYYY:MM:DD
 (as EXIF writes dates), DD/MM/YYYY, MM/DD/YYYY, and DD.MM.YYYY, and a
 datetime (DT) by its date in each of these. A UID (UI) or text (AE, LO, LT,
 SH, ST, UC, UR, or UT) is searched as it is, by up to its first
 :data:`MAX_CHARACTERS` characters. Forms with fewer than
-:data:`MIN_CHARACTERS` characters once composed are not searched, nor are
+:data:`MIN_CHARACTERS` characters once composed (NFKC) are not searched, nor are
 binary values, datetimes without a full date, or the codes, numbers, ages,
 times, and tags that occur throughout files (AS, AT, CS, DS, FD, FL, IS, SL,
 SS, SV, TM, UL, US, and UV).
@@ -52,7 +55,10 @@ that a writer puts one before each component in another character set (PS3.5
 Section 6.1.2.5.3). Such a form is searched as the codec encodes it, which
 finds a single component after its escape sequence, or text written without
 them, and is listed, since its spellings with other escape sequences are not
-searched. ASCII letters match in either case, and text with other letters is
+searched. Where the codec designates a character set before the form and
+resets after it, the bytes between them are also searched, as a longer run
+in that character set, such as the form followed by an honorific, writes
+them. ASCII letters match in either case, and text with other letters is
 also searched in upper, lower, and title case, so a capital inside a word on
 a letter outside ASCII, as in a McDonald-style spelling in Cyrillic, is found
 only where the whole form is in one of those cases.
@@ -93,6 +99,7 @@ import datetime
 import enum
 import functools
 import mmap
+import re
 import string
 import unicodedata
 from collections.abc import Iterable, Iterator
@@ -115,6 +122,16 @@ _DIGITS = frozenset(string.digits.encode())
 _LETTERS = frozenset(string.ascii_letters.encode())
 _PADDING = "\x00" + string.whitespace
 _ASCII = bytes(range(0x20, 0x7F)).decode("ascii")
+# The marks that names use for an apostrophe besides ASCII's.
+_APOSTROPHES = str.maketrans("\u2018\u2019\u02bc", "'" * 3)
+# Each character of the Halfwidth and Fullwidth Forms block, by the character
+# that NFKC gives for it, except backslash and the delimiters of names.
+_WIDTHS = {unicodedata.normalize("NFKC", chr(c)): chr(c) for c in range(0xFF01, 0xFFEF)}
+_OTHER_WIDTH = str.maketrans(
+    {k: v for k, v in _WIDTHS.items() if len(k) == 1 and k not in "\\^="}
+)
+# A run in one character set: its designation, its bytes, and its reset.
+_RUN = re.compile(rb"\x1b[\x20-\x2f]+[\x30-\x7e]([^\x1b]+)\x1b[\x20-\x2f]+[\x30-\x7e]")
 
 
 class ValueKind(enum.Enum):
@@ -141,7 +158,7 @@ class Form(enum.Enum):
     NAME_JOINED = "name-joined"  # family and given names, where one is short
     NAME_COMPONENT = "name-component"  # a family, given, or middle name
     NAME_WORD = "name-word"  # a word of a component, between spaces or hyphens
-    DATE_DICOM = "date-yyyymmdd"  # the date of a datetime
+    DATE_DICOM = "date-yyyymmdd"  # of a datetime, or of an ACR-NEMA date
     DATE_ISO = "date-iso"  # a date as YYYY-MM-DD
     DATE_EXIF = "date-exif"  # a date as YYYY:MM:DD, as EXIF writes it
     DATE_DMY_SLASH = "date-dd/mm/yyyy"
@@ -426,14 +443,21 @@ def _derive(value: SourceValue) -> Iterator[_Needle | NotSearched]:
             seen.add(encoded.lower())
             origin, wide = (value.source, kind, form, codec), codec == "utf-16-le"
             yield _Needle(encoded.lower(), origin, wide, before, after, digits)
+            # A run that the codec designates and resets is also searched
+            # without them, as it is written inside a longer run.
+            run = _RUN.fullmatch(encoded)
+            if run and run[1].lower() not in seen:
+                seen.add(run[1].lower())
+                yield _Needle(run[1].lower(), origin, wide, before, after, digits)
 
 
 def _forms(text: str, vr: str, kind: ValueKind) -> Iterator[tuple[Form, str]]:
     """Yield each form of each way of writing a value, some of them empty."""
-    composed, decomposed = (unicodedata.normalize(f, text) for f in ("NFC", "NFD"))
-    writings = [text, composed, decomposed]
-    if kind is ValueKind.PERSON_NAME:  # also with U+2019 for each apostrophe, or none
-        writings += [w.replace("'", new) for w in writings for new in ("\u2019", "")]
+    normal = [unicodedata.normalize(f, text) for f in ("NFC", "NFD", "NFKC", "NFKD")]
+    writings = [text, *normal, normal[3].translate(_OTHER_WIDTH)]
+    if kind is ValueKind.PERSON_NAME:  # each apostrophe as ', as U+2019, or none
+        plain = [written.translate(_APOSTROPHES) for written in writings]
+        writings += [w.replace("'", new) for w in plain for new in ("'", "\u2019", "")]
     for written in dict.fromkeys(writings):
         for one in [written] if vr in _SINGLE_VALUED else written.split("\\"):
             one = one.strip(_PADDING)
@@ -467,8 +491,8 @@ def _forms(text: str, vr: str, kind: ValueKind) -> Iterator[tuple[Form, str]]:
 
 
 def _length(text: str) -> int:
-    """Return the number of characters in ``text`` once composed (NFC)."""
-    return len(unicodedata.normalize("NFC", text))
+    """Return the number of characters in ``text`` once composed (NFKC)."""
+    return len(unicodedata.normalize("NFKC", text))
 
 
 def _is_date(text: str) -> bool:

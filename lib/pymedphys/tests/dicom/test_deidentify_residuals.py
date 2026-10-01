@@ -438,8 +438,18 @@ def test_a_name_too_short_written_together_is_listed():
     )
 
 
-def test_a_name_with_an_apostrophe_is_found_with_any_apostrophe_or_none():
-    source = _source("(0010,0010)", "PN", "O'NEILL^SIOBHAN")
+@pytest.mark.parametrize(
+    "apostrophe",
+    ["'", "\u2019", "\u2018", "\u02bc"],
+    ids=[
+        "ascii",
+        "right-single-quotation-mark",
+        "left-single-quotation-mark",
+        "modifier-letter",
+    ],
+)
+def test_a_name_with_an_apostrophe_is_found_with_any_apostrophe_or_none(apostrophe):
+    source = _source("(0010,0010)", "PN", f"O{apostrophe}NEILL^SIOBHAN")
     data = _texts("Dr O'Neill", "Dr O\u2019Neill", "Dr ONeill", "Dr Neill")
 
     result = find_residuals(data, [source])
@@ -449,6 +459,57 @@ def test_a_name_with_an_apostrophe_is_found_with_any_apostrophe_or_none():
         for number in range(3)
     ]
     assert not result.not_searched
+
+
+# Each name, its codecs, the codec of the copy, the copy, and the form found.
+# Each character is written in its other width, half or full, or as NFKC
+# gives it.
+WIDTHS = {
+    "half-width-source": ("ﾔﾏﾀﾞ^ﾀﾛｳ", (), "utf-8", "ヤマダタロウ", Form.NAME_JOINED),
+    "half-width-copy": ("ヤマダ^タロウ", (), "utf-8", "ﾔﾏﾀﾞﾀﾛｳ", Form.NAME_JOINED),
+    "half-width-copy-in-shift-jis": (
+        "ヤマダ^タロウ",
+        ("shift_jis",),
+        "shift_jis",
+        "ﾔﾏﾀﾞﾀﾛｳ",
+        Form.NAME_JOINED,
+    ),
+    "full-width-copy": (
+        "YAMADA^TAROU",
+        (),
+        "utf-8",
+        "Dr ＹＡＭＡＤＡ",
+        Form.NAME_COMPONENT,
+    ),
+}
+
+
+@pytest.mark.parametrize("name, codecs, codec, copy, form", WIDTHS.values(), ids=WIDTHS)
+def test_a_name_is_found_in_its_other_width(name, codecs, codec, copy, form):
+    source = _source("(0010,0010)", "PN", name, codecs)
+
+    result = find_residuals(_private(("LT", copy.encode(codec))), [source])
+
+    assert _summary(result) == [("(0010,0010)", form, codec, "(0019,1000)")]
+
+
+def test_a_run_in_one_character_set_is_found_inside_a_longer_run():
+    # The codec designates JIS X 0208 before each run and resets after it,
+    # so "山田太郎" inside a longer run has no escape sequences around it.
+    source = _source("(0010,0010)", "PN", YAMADA, ("iso8859", "iso2022_jp"))
+    copies = ["山田太郎様", "患者山田太郎", "山田太郎"]
+    data = _private(*(("LT", copy.encode("iso2022_jp")) for copy in copies))
+
+    result = find_residuals(data, [source])
+
+    assert _summary(result) == [
+        ("(0010,0010)", Form.NAME_JOINED, "iso2022_jp", f"(0019,100{number})")
+        for number in range(3)
+    ]
+    # Spellings with escape sequences placed otherwise are still not searched.
+    assert (Form.NAME_JOINED, Omission.CODE_EXTENSIONS) in {
+        (omission.form, omission.reason) for omission in result.not_searched
+    }
 
 
 def test_a_name_with_one_short_part_is_found_joined_and_by_the_other():
@@ -651,6 +712,20 @@ NORMALISATIONS = {
         "\uf900\u5c71\u75c5\u9662",
         (),
         "\uf900\u5c71\u75c5\u9662",
+        "utf-8",
+    ),
+    # A compatibility character, such as "№", which NFKC replaces with "No",
+    # kept in a copy that is composed or decomposed otherwise.
+    "nfc-copy-keeping-a-compatibility-character": (
+        _nfd("ZIMMER № 12, MÜLLER"),
+        (),
+        _nfc("ZIMMER № 12, MÜLLER"),
+        "utf-8",
+    ),
+    "nfd-copy-keeping-a-compatibility-character": (
+        _nfc("ZIMMER № 12, MÜLLER"),
+        (),
+        _nfd("ZIMMER № 12, MÜLLER"),
         "utf-8",
     ),
 }
@@ -873,6 +948,10 @@ def test_a_form_is_searched_with_the_escape_sequences_its_codec_writes():
             path, "PN", Form.NAME_JOINED, Omission.CODE_EXTENSIONS, "iso2022_jp"
         ),
         NotSearched(path, "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT),
+        # "Ｙａｍａｄａ", in full-width Latin letters.
+        NotSearched(
+            path, "PN", Form.NAME_COMPONENT, Omission.CODE_EXTENSIONS, "iso2022_jp"
+        ),
     )
     assert str(result.not_searched[0]) == (
         "PN from (0010,0010): value with other ISO 2022 escape sequences in "
@@ -913,6 +992,8 @@ CODE_EXTENSIONS = {
             (Form.NAME_JOINED, Omission.TOO_SHORT),
             (Form.NAME_JOINED, Omission.CODE_EXTENSIONS),
             (Form.NAME_COMPONENT, Omission.TOO_SHORT),
+            # "Ｚｈａｎｇ", in full-width Latin letters.
+            (Form.NAME_COMPONENT, Omission.CODE_EXTENSIONS),
         ],
     ),
 }
@@ -994,6 +1075,20 @@ def test_forms_already_searched_in_iso_8859_1_are_not_listed():
         ("(0010,0010)", Form.NAME_COMPONENT, "latin-1", "(0019,1000)")
     ]
     assert not result.not_searched
+
+
+def test_half_width_characters_are_counted_once_composed():
+    # "ﾔﾏﾀﾞ" is four characters, but "ヤマダ", three, once composed (NFKC).
+    source = _source("(0010,0010)", "PN", "ﾔﾏﾀﾞ^TAROU")
+
+    result = find_residuals(_texts("Dr ﾔﾏﾀﾞ"), [source])
+
+    assert not result.findings
+    assert result.not_searched == (
+        NotSearched(
+            _path("(0010,0010)"), "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT
+        ),
+    )
 
 
 def test_lengths_are_counted_once_composed():
