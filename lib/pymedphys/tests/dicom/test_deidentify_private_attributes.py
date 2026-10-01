@@ -586,6 +586,44 @@ def test_a_sequence_read_from_implicit_vr_as_unknown_is_searched(basic):
 
 
 @pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour", "reading_validation")
+@pytest.mark.parametrize("reading_validation", ["raise"], indirect=True)
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "path",
+    [
+        ElementPath((), "(0044,0110)"),
+        ElementPath((("(300A,00B0)", 0),), "(3004,0080)"),
+    ],
+    ids=["top-level", "in-an-item"],
+)
+def test_a_sequence_that_pydicom_cannot_look_up_is_refused(basic, path):
+    # Raising its validation errors, pydicom 3.0.2 raises KeyError for an
+    # element read from Implicit VR Little Endian whose attribute its
+    # dictionary does not list, such as RT Assertions Sequence (0044,0110)
+    # or Dose Calculation Model Sequence (3004,0080).
+    assertion = pydicom.Dataset()
+    assertion.CodeMeaning = "SYNTHETIC"
+    _private(assertion, 0x0011, "SYNTHETIC CREATOR D", [(0x01, "LO", PRIVATE_VALUE)])
+    source = _plan()
+    holder = source
+    for tag, index in path.items:
+        holder = holder[_number(tag)].value[index]
+    holder.add(pydicom.DataElement(_number(path.tag), "SQ", [assertion]))
+    read = _written_and_read(source, IMPLICIT_VR)
+
+    for apply in (
+        private_attributes.private_attribute_paths,
+        private_attributes.without_private_attributes,
+    ):
+        with pytest.raises(private_attributes.PrivateAttributeError) as raised:
+            apply(read, basic)
+        assert raised.value.path == path
+        assert str(path) in str(raised.value)
+        assert "SYNTHETIC" not in str(raised.value)
+
+
+@pytest.mark.pydicom
 @pytest.mark.parametrize(
     "value",
     [
