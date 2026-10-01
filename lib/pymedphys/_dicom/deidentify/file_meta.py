@@ -237,6 +237,13 @@ def write_file(
         As :func:`file_meta_information` does, naming the data set's SOP
         Class UID or SOP Instance UID if either is missing or not valid.
         Nothing is written then.
+
+    Notes
+    -----
+    Errors and warnings that pydicom raises while it encodes the data set
+    are passed on unchanged, and they can quote values; a write that fails
+    part-way can leave a partial file at a path destination. The engine's
+    entry point is to redact the first and remove the second.
     """
     meta = file_meta_information(
         sop_class_uid=dataset.get("SOPClassUID"),

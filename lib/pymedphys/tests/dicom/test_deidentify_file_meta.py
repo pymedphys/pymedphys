@@ -176,6 +176,35 @@ def test_a_generated_pymedphys_uid_never_falls_under_the_reserved_arc():
         assert values.value_problem("UI", generated) is None
 
 
+@pytest.mark.parametrize(
+    "source_uid",
+    [
+        "1.2.840.10008.5.1.4.1.1.2",
+        "1.2.826.0.1.3680043.10.188.1.1",
+        "2.25.34576644949241753017331973314513799820",
+        "9" * 64,
+    ],
+)
+def test_a_pseudonymised_pymedphys_uid_never_falls_under_the_reserved_arc(
+    source_uid,
+):
+    # Experimental pseudonymisation also writes UIDs under the root, as the
+    # root and one component made from a hash of the source UID.
+    from pymedphys._experimental.pseudonymisation import (  # pylint: disable = import-outside-toplevel
+        strategy,
+    )
+
+    root = pymedphys_uid.PYMEDPHYS_ROOT_UID
+    arc = pymedphys_uid.PYMEDPHYS_FIXED_UID_ARC
+
+    # pylint: disable = protected-access
+    pseudonymised = strategy._pseudonymise_UI(source_uid)
+
+    assert pseudonymised.startswith(f"{root}.")
+    assert re.fullmatch(r"0|[1-9][0-9]*", pseudonymised.removeprefix(f"{root}."))
+    assert not pseudonymised.startswith(f"{arc}.")
+
+
 def test_the_preamble_is_128_zero_bytes():
     assert file_meta.PREAMBLE == bytes(128)
     assert isinstance(file_meta.PREAMBLE, bytes)
