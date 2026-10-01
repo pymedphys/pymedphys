@@ -33,8 +33,10 @@ that do not depend on the instances of a run:
 :func:`report_document` gives a report as JSON values, and :func:`to_json`
 as text; each first checks that every field has the form of a digest, a
 version, a known edition, preset, or option, or a file name or path within
-the engine's package, so that a report can hold neither a source value nor
-a path outside the package. A field that fails is named, never quoted.
+the engine's package. Every field is built from the policy, the engine's own
+files, and the versions that run it, never from DICOM data, and the check is
+a backstop: a field of another form, which could be a source value or a path
+outside the package, is refused. A field that fails is named, never quoted.
 
 The sections that describe a run's instances, such as residual search
 findings and sequestered instances, are to follow.
@@ -207,7 +209,9 @@ def _digests(field: str, value: object, name: re.Pattern | None) -> dict[str, st
 
 
 def _policy_section(record: PolicyRecord) -> dict:
-    if record.preset is not None and record.preset not in PRESETS:
+    if record.preset is not None and not (
+        isinstance(record.preset, str) and record.preset in PRESETS
+    ):
         raise _refuse("preset", "is not a preset")
     if not _matches(_EDITION, record.edition):
         raise _refuse("edition", "is not an edition")

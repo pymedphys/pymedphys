@@ -310,6 +310,12 @@ def _engine_files(report, path):
         ),
         (
             lambda r: dataclasses.replace(
+                r, policy=dataclasses.replace(r.policy, preset=[SENTINEL])
+            ),
+            "preset",
+        ),
+        (
+            lambda r: dataclasses.replace(
                 r, policy=dataclasses.replace(r.policy, options=(SENTINEL,))
             ),
             "options",
@@ -335,6 +341,7 @@ def _engine_files(report, path):
         "engine-version",
         "runtime-value",
         "preset",
+        "unhashable-preset",
         "options",
         "edition",
     ],
