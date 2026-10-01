@@ -63,9 +63,9 @@ changes, which is harmless; it never stays the same when one of these inputs
 changes, with the files and tables as read at the first digest in the
 process. Of PyMedPhys's code outside this package, including the modules
 that this package imports, ``pymedphys._version``, ``pymedphys._config``,
-``pymedphys._imports``, and ``pymedphys._nomenclature.tg263``, the digest
-covers only PyMedPhys's version, which a development build keeps across
-commits.
+``pymedphys._dicom.uid``, ``pymedphys._imports``, and
+``pymedphys._nomenclature.tg263``, the digest covers only PyMedPhys's
+version, which a development build keeps across commits.
 
 The runtime environment is not an input. The Python implementation and
 version, and the versions of pydicom, tomlkit, and other libraries, run the
