@@ -106,6 +106,18 @@ def _table_e1_1():
     return {row.tag: row for row in standard.load_table_e1_1().attributes}
 
 
+def _supported_text():
+    """Return the text attributes that a supported IOD uses, at any depth."""
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    return {
+        definition.tag
+        for name in SUPPORTED_IODS
+        for definition in tables.iods[name].definitions
+        if TEXT_VRS.intersection(dictionary[definition.tag].vrs)
+    }
+
+
 def _omitted_text():
     """Return the text attributes that a supported IOD uses and Table E.1-1 omits.
 
@@ -113,16 +125,7 @@ def _omitted_text():
     supported IODs' text attributes by a masked tag, such as the Curve group's
     (50xx,xxxx), so an exact comparison of tags suffices.
     """
-    dictionary = _dictionary()
-    listed = _table_e1_1()
-    tables = iods.load_iod_tables()
-    return {
-        definition.tag
-        for name in SUPPORTED_IODS
-        for definition in tables.iods[name].definitions
-        if TEXT_VRS.intersection(dictionary[definition.tag].vrs)
-        and definition.tag not in listed
-    }
+    return _supported_text() - set(_table_e1_1())
 
 
 def _rules():
@@ -244,11 +247,17 @@ def test_each_preset_gives_each_group_its_action(
 
 
 def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
-    basic = policy.compose_policy("basic").supplementary_actions
-    kept = {tag for tag in _omitted_text() if basic[tag] == "K"}
+    # Every text attribute of the supported IODs, whether Table E.1-1 lists
+    # it or a supplementary rule covers it.
+    composed = policy.compose_policy("basic")
+    basic = {
+        tag: composed.actions.get(tag) or composed.supplementary_actions[tag]
+        for tag in _supported_text()
+    }
 
-    assert kept == KEPT_TEXT
-    assert {basic[tag] for tag in _omitted_text() - KEPT_TEXT} <= REMOVING_ACTIONS
+    assert len(basic) == 228
+    assert {tag for tag, action in basic.items() if action == "K"} == KEPT_TEXT
+    assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
 
 def test_no_option_keeps_more_than_the_coded_text_and_device_identity():

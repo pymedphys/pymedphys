@@ -715,19 +715,19 @@ note = "A description of each de-identification already applied. PS3.15 E.1.1 ha
 tag = "(0008,0116)"
 keyword = "CodingSchemeResponsibleOrganization"
 action = "X/Z/D"
-note = "The organisation responsible for a coding scheme, which PS3.3 says may include contact information, so for a local scheme it names the institution and can name a person. Table E.1-1 does not clean the names of people or organisations, such as Institution Name, under Clean Descriptors, so it is removed by Type under every option."
+note = "The organisation responsible for a coding scheme, which PS3.3 says may include contact information, so for a local scheme it names the institution and can name a person. Table E.1-1 removes names of people and organisations, such as Operators' Name, Institution Name, and Clinical Trial Sponsor Name, under every supported option, so it is removed by Type under every option too."
 
 [[attribute]]
 tag = "(0010,0214)"
 keyword = "StrainStockNumber"
 action = "X/Z/D"
-note = "The stock number of a non-human subject's strain, issued by the organisation in Strain Source, which can be the institution's own colony. Table E.1-1 removes identifiers issued by organisations, such as Accession Number and Container Identifier, under every option, so it is removed by Type too."
+note = "The stock number of a non-human subject's strain, issued by the organisation in Strain Source, which can be the institution's own colony. Table E.1-1 removes comparable identifiers, such as Accession Number and Container Identifier, under every option, so it is removed by Type under every option too."
 
 [[attribute]]
 tag = "(0010,0217)"
 keyword = "StrainSource"
 action = "X/Z/D"
-note = "The organisation that supplied a non-human subject, which can be the institution's own colony. Table E.1-1 does not clean the names of organisations, such as Institution Name and Clinical Trial Sponsor Name, under Clean Descriptors, so it is removed by Type under every option."
+note = "The organisation that supplied a non-human subject, which can be the institution's own colony. Table E.1-1 removes names of organisations, such as Institution Name and Clinical Trial Sponsor Name, under every supported option, so it is removed by Type under every option too."
 
 [[attribute]]
 tag = "(0010,2295)"
@@ -739,13 +739,13 @@ note = "The number of a non-human subject in a breed registry, which identifies 
 tag = "(0018,1803)"
 keyword = "NTPSourceAddress"
 action = "X/Z/D"
-note = "The IP address of the time server, which identifies a network and so usually the institution. Table E.1-1 cleans network identities, such as Station AE Title, at most, even under Retain Device Identity, and a supplementary rule can only keep a value under that option, so it is removed by Type under every option."
+note = "The IP address of the time server, which identifies a network and so usually the institution. Table E.1-1 at most cleans network identities, such as Station AE Title, even under Retain Device Identity, and a supplementary rule can only keep a value under that option, so it is removed by Type under every option."
 
 [[attribute]]
 tag = "(0024,0202)"
 keyword = "AlgorithmSource"
 action = "X/Z/D"
-note = "The source of an algorithm, which PS3.3 says can be a manufacturer, researcher, or university, so it can name a person or the institution. Table E.1-1 does not clean the names of people or organisations, such as Operators' Name and Institution Name, under Clean Descriptors, so it is removed by Type under every option."
+note = "The source of an algorithm, which PS3.3 says can be a manufacturer, researcher, or university, so it can name a person or the institution. Table E.1-1 removes names of people and organisations, such as Operators' Name and Institution Name, under every supported option, so it is removed by Type under every option too."
 
 [[attribute]]
 tag = "(0040,0031)"
