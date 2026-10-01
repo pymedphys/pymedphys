@@ -20,7 +20,7 @@ jobs:
       - uses: ./.github/actions/setup-project
         with:
           cache-data: 'true'
-          extras: 'docs'
+          groups: 'docs'
 
       # Executing the notebooks is most of the build. jupyter-cache keeps the
       # outputs of each notebook whose code is unchanged, and this cache keeps
@@ -61,7 +61,7 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'docs'
+          groups: 'docs'
 
       - name: Check external links
         id: linkcheck

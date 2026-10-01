@@ -281,6 +281,30 @@ TABLE_6_1_ROWS = (
     ),
     ("(0998,0050)", "Fixture Inspection", "FixtureInspection", "DS", "3", "DICONDE"),
     ("(0998,0060)", "Fixture Scan", "FixtureScan", "CS", "1-n", "DICOS"),
+    (
+        "(0998,0080)",
+        "Fixture Shared Groups Sequence",
+        "FixtureSharedGroupsSequence",
+        "SQ",
+        "1",
+        "",
+    ),
+    (
+        "(0998,0090)",
+        "Fixture Frame Groups Sequence",
+        "FixtureFrameGroupsSequence",
+        "SQ",
+        "1",
+        "",
+    ),
+    (
+        "(0998,00A0)",
+        "Fixture Measures Sequence",
+        "FixtureMeasuresSequence",
+        "SQ",
+        "1",
+        "",
+    ),
 )
 TABLE_6_1 = _table(
     "Table 6-1. Fixture Registry of DICOM Data Elements",
@@ -1337,8 +1361,10 @@ PS3_3_REFERENCE_MACRO = _spanning_table(
         _include(1, "Table 10-96", "Fixture Reference Macro Attributes", "Nested."),
     ),
 )
-# An IOD whose module includes the IOD's Functional Group Macros, which the
-# fixture pin names, and the table that lists those macros.
+# An IOD whose module includes the IOD's Functional Group Macros, in the
+# items of two sequences, as the Multi-frame Functional Groups Module does,
+# and the table that lists those macros. The second macro's table is titled
+# "Functional Group Macro Attributes", as a few published ones are.
 PS3_3_ENHANCED_IOD = _spanning_table(
     "Table A.99-2. Fixture Enhanced Image IOD Modules",
     IOD_HEADER,
@@ -1347,18 +1373,86 @@ PS3_3_ENHANCED_IOD = _spanning_table(
         ("Image", "Fixture Functional Groups", "C.99.5", "M"),
     ),
 )
+FUNCTIONAL_GROUP_HEADER = ("Functional Group Macro", "Section", "Usage")
 PS3_3_FUNCTIONAL_GROUP_MACROS = _spanning_table(
     "Table A.99-3. Fixture Enhanced Image Functional Group Macros",
-    ("Functional Group Macro", "Section", "Usage"),
-    (("Fixture Measures", "C.99.5.1", "M"),),
+    FUNCTIONAL_GROUP_HEADER,
+    (
+        ("Fixture Measures", "C.99.5.1", "M"),
+        (
+            "Fixture Code",
+            "C.99.5.2",
+            "C - Required if invented. May not be used as a Shared Functional Group.",
+        ),
+    ),
 )
 PS3_3_FUNCTIONAL_GROUPS = _spanning_table(
     "Table C.99-5. Fixture Functional Groups Module Attributes",
     ATTRIBUTE_HEADER,
     (
-        ("Fixture Code Sequence", "(0998,0040)", "1", "Invented."),
+        ("Fixture Shared Groups Sequence", "(0998,0080)", "1", "Invented."),
+        (
+            (
+                "&gt;Include zero or more Functional Group Macros that are shared "
+                "by all Frames.",
+                1,
+                3,
+            ),
+            "Invented.",
+        ),
+        ("Fixture Frame Groups Sequence", "(0998,0090)", "1C", "Invented."),
         (("&gt;Include one or more Functional Group Macros.", 1, 3), "Invented."),
+        ("Fixture Inspection", "(0998,0050)", "3", "Invented."),
     ),
+)
+PS3_3_MEASURES_MACRO = _spanning_table(
+    "Table C.99-6. Fixture Measures Macro Attributes",
+    ATTRIBUTE_HEADER,
+    (
+        ("Fixture Measures Sequence", "(0998,00A0)", "1", "Invented."),
+        ("&gt;Fixture Inspection", "(0998,0050)", "1C", "Invented."),
+    ),
+)
+PS3_3_CODE_GROUP_MACRO = _spanning_table(
+    "Table C.99-7. Fixture Code Functional Group Macro Attributes",
+    ATTRIBUTE_HEADER,
+    (
+        ("Fixture Code Sequence", "(0998,0040)", "2", "Invented."),
+        _include(1, "Table 10-99", "Fixture Code Macro Attributes", "Invented."),
+    ),
+)
+# An IOD whose Functional Group Macros the text gives as another IOD's, as
+# PS3.3 gives the Enhanced MR Color Image IOD those of the Enhanced MR Image
+# IOD.
+PS3_3_ENHANCED_COLOR_IOD = _spanning_table(
+    "Table A.99-4. Fixture Enhanced Color Image IOD Modules",
+    IOD_HEADER,
+    (
+        ("Patient", "Fixture Patient", "C.99.1", "M"),
+        ("Image", "Fixture Functional Groups", "C.99.5", "M"),
+    ),
+)
+# An IOD whose module gives an attribute that the data dictionary lacks, as
+# the real-time IODs' Current Frame Functional Groups Module does, after one
+# that only it has, whose table is not generated either.
+PS3_3_REAL_TIME_IOD = _spanning_table(
+    "Table A.99-5. Fixture Real-Time Image IOD Modules",
+    IOD_HEADER,
+    (
+        ("Patient", "Fixture Patient", "C.99.1", "M"),
+        (("Image", 2, 1), "Fixture Stream", "C.99.7", "M"),
+        ("Fixture Real-Time", "C.99.6", "M"),
+    ),
+)
+PS3_3_STREAM = _spanning_table(
+    "Table C.99-10. Fixture Stream Module Attributes",
+    ATTRIBUTE_HEADER,
+    (("Fixture Inspection", "(0998,0050)", "1", "Invented."),),
+)
+PS3_3_REAL_TIME = _spanning_table(
+    "Table C.99-8. Fixture Real-Time Module Attributes",
+    ATTRIBUTE_HEADER,
+    (("Fixture Stream Sequence", "(0998,00B0)", "1", "Invented."),),
 )
 # A Normalized IOD, as Annex B defines them, in their layout.
 PS3_3_NORMALIZED_IOD = _spanning_table(
@@ -1369,12 +1463,18 @@ PS3_3_NORMALIZED_IOD = _spanning_table(
 PS3_3_TABLES = (
     _section("A.99.3", PS3_3_IOD),
     _section("A.99.4", PS3_3_ENHANCED_IOD, PS3_3_FUNCTIONAL_GROUP_MACROS),
+    _section("A.99.5", PS3_3_ENHANCED_COLOR_IOD),
+    _section("A.99.6", PS3_3_REAL_TIME_IOD),
     _section("B.99.1", PS3_3_NORMALIZED_IOD),
     _section("C.99.1", PS3_3_PATIENT, PS3_3_PATIENT_MACRO),
     _section("C.99.2", PS3_3_IMAGE),
     _section("C.99.3", PS3_3_OTHER),
     _section("C.99.4b", PS3_3_CONTRAST),
     _section("C.99.5", PS3_3_FUNCTIONAL_GROUPS),
+    _section("C.99.5.1", PS3_3_MEASURES_MACRO),
+    _section("C.99.5.2", PS3_3_CODE_GROUP_MACRO),
+    _section("C.99.6", PS3_3_REAL_TIME),
+    _section("C.99.7", PS3_3_STREAM),
     _section("10.96", PS3_3_REFERENCE_MACRO),
     _section("10.98", PS3_3_WILDCARD_MACRO),
     _section("10.99", PS3_3_CODE_MACRO),
@@ -1383,7 +1483,13 @@ PS3_3_DICTIONARY = {row[0]: row[3] for row in TABLE_6_1_ROWS}
 PS3_3_CORRECTIONS = (
     ps3_3.Correction("Table C.99-4", "Contrast Module", "Contrast Module Attributes"),
 )
-PS3_3_FUNCTIONAL_GROUP_IODS = (("Table A.99-2", "Fixture Enhanced Image"),)
+# Fixture Stream Sequence (0998,00B0) is not in the fixture dictionary.
+PS3_3_LEFT_OUT_IODS = (
+    ps3_3.LeftOutIOD("Table A.99-5", "Fixture Real-Time Image", "(0998,00B0)"),
+)
+PS3_3_SHARED_FUNCTIONAL_GROUPS = (
+    ("Fixture Enhanced Color Image", "Fixture Enhanced Image"),
+)
 
 
 def _ps3_3_tables(*tables):
@@ -1394,9 +1500,24 @@ def _ps3_3_tables(*tables):
     return ps3_3.correct(extracted, PS3_3_CORRECTIONS)
 
 
-def _collect(*tables, functional_group_iods=PS3_3_FUNCTIONAL_GROUP_IODS):
+def _collect(
+    *tables,
+    left_out_iods=PS3_3_LEFT_OUT_IODS,
+    shared_functional_groups=PS3_3_SHARED_FUNCTIONAL_GROUPS,
+):
     return ps3_3.collect(
-        _ps3_3_tables(*tables), PS3_3_DICTIONARY, functional_group_iods
+        _ps3_3_tables(*tables),
+        PS3_3_DICTIONARY,
+        left_out_iods=left_out_iods,
+        shared_functional_groups=shared_functional_groups,
+    )
+
+
+def _replace_section(number, *tables):
+    """Return the fixture's sections, with the given tables in section ``number``."""
+    return tuple(
+        _section(number, *tables) if f'id="sect_{number}"' in section else section
+        for section in PS3_3_TABLES
     )
 
 
@@ -1456,6 +1577,47 @@ EXPECTED_IOD = {
         },
     ],
 }
+EXPECTED_FUNCTIONAL_GROUP_MACROS = [
+    {
+        "macro": "Fixture Measures",
+        "section": "C.99.5.1",
+        "usage": "M",
+        "condition": "",
+        "table": "Table C.99-6",
+    },
+    {
+        "macro": "Fixture Code",
+        "section": "C.99.5.2",
+        "usage": "C",
+        "condition": (
+            "Required if invented. May not be used as a Shared Functional Group."
+        ),
+        "table": "Table C.99-7",
+    },
+]
+EXPECTED_ENHANCED_IODS = [
+    {
+        "label": label,
+        "iod": iod,
+        "modules": [
+            EXPECTED_IOD["modules"][0],
+            {
+                "information_entity": "Image",
+                "module": "Fixture Functional Groups",
+                "section": "C.99.5",
+                "usage": "M",
+                "condition": "",
+                "table": "Table C.99-5",
+            },
+        ],
+        # The second IOD has the first one's macros, as the pin gives.
+        "functional_group_macros": EXPECTED_FUNCTIONAL_GROUP_MACROS,
+    }
+    for label, iod in [
+        ("Table A.99-2", "Fixture Enhanced Image"),
+        ("Table A.99-4", "Fixture Enhanced Color Image"),
+    ]
+]
 EXPECTED_ATTRIBUTE_TABLES = [
     {
         "label": "Table 10-96",
@@ -1517,6 +1679,34 @@ EXPECTED_ATTRIBUTE_TABLES = [
             _attribute(1, "Fixture Scan", "(0998,0060)", "1C"),
         ],
     },
+    {
+        "label": "Table C.99-5",
+        "title": "Fixture Functional Groups Module Attributes",
+        "rows": [
+            _attribute(0, "Fixture Shared Groups Sequence", "(0998,0080)", "1"),
+            # Each IOD's Functional Group Macros, in the items above.
+            _include_row(1, "Functional Group Macros"),
+            _attribute(0, "Fixture Frame Groups Sequence", "(0998,0090)", "1C"),
+            _include_row(1, "Functional Group Macros"),
+            _attribute(0, "Fixture Inspection", "(0998,0050)", "3"),
+        ],
+    },
+    {
+        "label": "Table C.99-6",
+        "title": "Fixture Measures Macro Attributes",
+        "rows": [
+            _attribute(0, "Fixture Measures Sequence", "(0998,00A0)", "1"),
+            _attribute(1, "Fixture Inspection", "(0998,0050)", "1C"),
+        ],
+    },
+    {
+        "label": "Table C.99-7",
+        "title": "Fixture Code Functional Group Macro Attributes",
+        "rows": [
+            _attribute(0, "Fixture Code Sequence", "(0998,0040)", "2"),
+            _include_row(1, "Table 10-99"),
+        ],
+    },
 ]
 
 
@@ -1525,9 +1715,11 @@ def test_parse_an_iod_modules_table():
 
     parsed = ps3_3.parse_iod_table("Table A.99-1", table)
 
-    # The IE cell spans the rows of its entity; the table is found later.
+    # The IE cell spans the rows of its entity; the table and the Functional
+    # Group Macros are found later.
     assert parsed == {
-        **EXPECTED_IOD,
+        "label": EXPECTED_IOD["label"],
+        "iod": EXPECTED_IOD["iod"],
         "modules": [
             {key: value for key, value in module.items() if key != "table"}
             for module in EXPECTED_IOD["modules"]
@@ -1593,6 +1785,18 @@ def test_malformed_attribute_tables_fail(old, new, message):
         ps3_3.parse_attribute_table("Table C.99-1", table, PS3_3_DICTIONARY)
 
 
+def test_an_undefined_attribute_error_carries_its_tag():
+    page = _page(PS3_3_PATIENT.replace("(0998,0060)", "(0998,0070)", 1))
+    table = chtml.select_table(
+        chtml.extract_tables(page, expand_spans=True), "Table C.99-1", allow_merged=True
+    )
+
+    with pytest.raises(ps3_3.UndefinedAttributeError) as raised:
+        ps3_3.parse_attribute_table("Table C.99-1", table, PS3_3_DICTIONARY)
+
+    assert raised.value.tag == "(0998,0070)"
+
+
 def test_rows_nest_only_below_a_sequence():
     # Fixture's Name is PN, so nothing can be nested below it.
     page = _page(
@@ -1613,59 +1817,433 @@ def test_collect_finds_each_module_table_and_every_table_it_includes():
 
     # Only the IOD Modules tables of Annex A are composite IODs: the fixture's
     # Normalized IOD, Table B.99-1, is not collected, nor is the IOD that the
-    # pin names for its Functional Group Macros, or their table.
-    assert iod_tables == [EXPECTED_IOD]
-    # Sorted by label, with numbers compared as numbers. Table C.99-5, which
-    # only the IOD left out uses, is not collected.
+    # pin leaves out. The Functional Group Macros of each IOD are listed with
+    # it.
+    assert iod_tables == [EXPECTED_IOD, *EXPECTED_ENHANCED_IODS]
+    # Sorted by label, with numbers compared as numbers, and including the
+    # tables of the Functional Group Macros. Tables C.99-8 and C.99-10, which
+    # only the IOD left out uses, are not collected.
     assert attribute_tables == EXPECTED_ATTRIBUTE_TABLES
 
 
-def test_an_iod_whose_modules_include_functional_group_macros_must_be_named():
+def test_parse_a_functional_group_macros_table():
+    table = _ps3_3_table("Table A.99-3")
+
+    parsed = ps3_3.parse_functional_group_table("Table A.99-3", table)
+
+    # Each macro's table is found later, in its section.
+    assert parsed == {
+        "label": "Table A.99-3",
+        "iod": "Fixture Enhanced Image",
+        "macros": [
+            {key: value for key, value in macro.items() if key != "table"}
+            for macro in EXPECTED_FUNCTIONAL_GROUP_MACROS
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    "replace, replacement, message",
+    [
+        (
+            "Image Functional Group Macros",
+            "Image Functional Groups",
+            "not a Functional Group Macros table",
+        ),
+        (">Usage<", ">Use<", "unknown column 'Use'"),
+        (">C.99.5.1<", ">Section C.99.5.1<", "row 1 has no section reference"),
+        (">M<", ">R<", "row 1 has an unknown usage"),
+        (">C - Required", ">C – Required", "row 2 has an unknown usage"),
+        (">Fixture Code<", ">Fixture Measures<", "Fixture Measures appears 2 times"),
+        (">Fixture Measures<", "><", "row 1 has an empty cell"),
+    ],
+)
+def test_malformed_functional_group_macros_tables_fail(replace, replacement, message):
+    page = _page(PS3_3_FUNCTIONAL_GROUP_MACROS.replace(replace, replacement, 1))
+    table = chtml.select_table(
+        chtml.extract_tables(page, expand_spans=True), "Table A.99-3", allow_merged=True
+    )
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        ps3_3.parse_functional_group_table("Table A.99-3", table)
+
+
+def test_a_functional_group_macros_row_includes_the_iods_macros():
+    table = _ps3_3_table("Table C.99-5")
+
+    parsed = ps3_3.parse_attribute_table("Table C.99-5", table, PS3_3_DICTIONARY)
+
+    # Never an attribute: an Include, at its depth, of what each IOD lists.
+    assert parsed["rows"][1] == _include_row(1, iods.FUNCTIONAL_GROUP_MACROS)
+    assert parsed["rows"][3] == _include_row(1, iods.FUNCTIONAL_GROUP_MACROS)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Without its ">", or in other words than the published ones.
+        "Include one or more Functional Group Macros.",
+        "&gt;Include some Functional Group Macros.",
+    ],
+)
+def test_an_unknown_functional_group_macros_row_fails(text):
+    page = _page(
+        PS3_3_FUNCTIONAL_GROUPS.replace(
+            "&gt;Include one or more Functional Group Macros.", text
+        )
+    )
+    table = chtml.select_table(
+        chtml.extract_tables(page, expand_spans=True), "Table C.99-5", allow_merged=True
+    )
+
+    with pytest.raises(chtml.TableFormatError, match="row 4 is not an attribute"):
+        ps3_3.parse_attribute_table("Table C.99-5", table, PS3_3_DICTIONARY)
+
+
+def test_rows_cannot_nest_below_an_include_of_functional_group_macros():
+    # Fixture Inspection, two levels down, is one below the Include row.
+    tables = _replace_section(
+        "C.99.5",
+        PS3_3_FUNCTIONAL_GROUPS.replace(
+            ">Fixture Inspection<", ">&gt;&gt;Fixture Inspection<"
+        ),
+    )
+
     with pytest.raises(
         chtml.TableFormatError,
-        match="Table A.99-2 includes Functional Group Macros through Table C.99-5",
+        match="Table C.99-5 nests rows below its Include of Functional Group Macros",
     ):
-        _collect(functional_group_iods=())
+        _collect(*tables)
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        # Two attributes at the top level.
+        (
+            ("Fixture Measures Sequence", "(0998,00A0)", "1", "Invented."),
+            ("Fixture Inspection", "(0998,0050)", "3", "Invented."),
+        ),
+        # One, which is not a sequence.
+        (("Fixture Inspection", "(0998,0050)", "3", "Invented."),),
+        # A macro's attributes, without a sequence of their own.
+        (_include(0, "Table 10-99", "Fixture Code Macro Attributes"),),
+    ],
+)
+def test_a_functional_group_macro_defines_exactly_one_sequence(rows):
+    # Each Functional Group is a sequence of its own (PS3.3 C.7.6.16.1.1), so
+    # a macro of any other layout fails.
+    macro = _spanning_table(
+        "Table C.99-6. Fixture Measures Macro Attributes", ATTRIBUTE_HEADER, rows
+    )
+
+    with pytest.raises(
+        chtml.TableFormatError,
+        match=re.escape(
+            "Table C.99-6, the Fixture Measures Functional Group Macro of Table "
+            "A.99-3, does not define exactly one top-level attribute, a sequence"
+        ),
+    ):
+        _collect(*_replace_section("C.99.5.1", macro))
+
+
+def test_a_functional_group_macro_cannot_include_functional_group_macros():
+    macro = _spanning_table(
+        "Table C.99-6. Fixture Measures Macro Attributes",
+        ATTRIBUTE_HEADER,
+        (
+            ("Fixture Measures Sequence", "(0998,00A0)", "1", "Invented."),
+            (("&gt;Include one or more Functional Group Macros.", 1, 3), "Invented."),
+        ),
+    )
+
+    with pytest.raises(
+        chtml.TableFormatError,
+        match="Table C.99-6, the Fixture Measures Functional Group Macro of Table "
+        "A.99-3, includes Functional Group Macros",
+    ):
+        _collect(*_replace_section("C.99.5.1", macro))
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        _include(1, "Table 10-99", "Fixture Code Macro Attributes")[0][0],
+        "&gt;Include one or more Functional Group Macros.",
+    ],
+)
+def test_an_include_row_spans_the_tag_column(text):
+    # A row with a tag of its own is an attribute, whatever its name says.
+    page = _page(
+        _spanning_table(
+            "Table C.99-9. Fixture Include Macro Attributes",
+            ATTRIBUTE_HEADER,
+            (
+                ("Fixture Code Sequence", "(0998,0040)", "1", "Invented."),
+                (text, "(0998,0050)", "3", "Invented."),
+            ),
+        )
+    )
+    table = chtml.select_table(
+        chtml.extract_tables(page, expand_spans=True), "Table C.99-9", allow_merged=True
+    )
+
+    rows = ps3_3.parse_attribute_table("Table C.99-9", table, PS3_3_DICTIONARY)["rows"]
+
+    assert (rows[1]["tag"], rows[1]["type"], rows[1]["include"]) == (
+        "(0998,0050)",
+        "3",
+        "",
+    )
+
+
+def test_a_module_or_macro_with_two_tables_in_its_section_fails():
+    twice = PS3_3_MEASURES_MACRO.replace("Table C.99-6.", "Table C.99-6b.")
+
+    with pytest.raises(
+        chtml.TableFormatError,
+        match=re.escape(
+            "Table A.99-3 lists Fixture Measures, but C.99.5.1 has 2 tables "
+            "titled Fixture Measures Macro Attributes or Fixture Measures "
+            "Functional Group Macro Attributes"
+        ),
+    ):
+        _collect(*_replace_section("C.99.5.1", PS3_3_MEASURES_MACRO, twice))
+
+
+def test_functional_group_macros_included_through_another_table_count():
+    # The Fixture Other Module includes the Functional Groups Module's table,
+    # so the Fixture Image IOD reaches Functional Group Macros, and has no
+    # table of them.
+    other = _spanning_table(
+        "Table C.99-3. Fixture Other Module Attributes",
+        ("Attribute Name", "Tag", "Type", "Description"),
+        (
+            ("Fixture Inspection", "(0998,0050)", "2C", "Invented."),
+            _include(0, "Table C.99-5", "Fixture Functional Groups Module Attributes"),
+        ),
+    )
+
+    with pytest.raises(
+        chtml.TableFormatError,
+        match=re.escape(
+            "Table A.99-1 includes Functional Group Macros, but no table lists them"
+        ),
+    ):
+        _collect(*_replace_section("C.99.3", other))
+
+
+def test_a_functional_group_macro_needs_exactly_one_table_in_its_section():
+    measures = PS3_3_MEASURES_MACRO.replace(
+        "Fixture Measures Macro", "Fixture Measure Macro"
+    )
+
+    with pytest.raises(
+        chtml.TableFormatError,
+        match=re.escape(
+            "Table A.99-3 lists Fixture Measures, but C.99.5.1 has no tables "
+            "titled Fixture Measures Macro Attributes or Fixture Measures "
+            "Functional Group Macro Attributes"
+        ),
+    ):
+        _collect(*_replace_section("C.99.5.1", measures))
+
+
+def _without_functional_group_macros(*sections):
+    """Return the fixture's sections, without Table A.99-3 or the given ones."""
+    return tuple(
+        _section("A.99.4", PS3_3_ENHANCED_IOD)
+        if 'id="sect_A.99.4"' in section
+        else section
+        for section in PS3_3_TABLES
+        if not any(f'id="sect_{number}"' in section for number in sections)
+    )
+
+
+@pytest.mark.parametrize(
+    "tables, shared, message",
+    [
+        # An IOD whose modules include Functional Group Macros needs a table
+        # of its own, or one that the pin gives it.
+        (
+            PS3_3_TABLES,
+            (),
+            "Table A.99-4 includes Functional Group Macros, but no table lists them",
+        ),
+        (
+            _without_functional_group_macros(),
+            (),
+            "Table A.99-2 includes Functional Group Macros, but no table lists them",
+        ),
+        # The pin gives an IOD another's macros only where the IOD has none.
+        (
+            PS3_3_TABLES,
+            (
+                *PS3_3_SHARED_FUNCTIONAL_GROUPS,
+                ("Fixture Enhanced Image", "Fixture Enhanced Color Image"),
+            ),
+            "the pin gives Fixture Enhanced Image the Functional Group Macros of "
+            "Fixture Enhanced Color Image, but it has its own, in Table A.99-3",
+        ),
+        (
+            _without_functional_group_macros(),
+            PS3_3_SHARED_FUNCTIONAL_GROUPS,
+            "the pin gives Fixture Enhanced Color Image the Functional Group Macros "
+            "of Fixture Enhanced Image, which has no Functional Group Macros table",
+        ),
+        (
+            PS3_3_TABLES,
+            (
+                *PS3_3_SHARED_FUNCTIONAL_GROUPS,
+                ("Fixture Image", "Fixture Enhanced Image"),
+            ),
+            "Table A.99-1 has Functional Group Macros, but no module includes them",
+        ),
+        (
+            PS3_3_TABLES,
+            (
+                *PS3_3_SHARED_FUNCTIONAL_GROUPS,
+                ("Fixture Absent Image", "Fixture Enhanced Image"),
+            ),
+            "the pin gives Functional Group Macros to IODs of no IOD Modules table "
+            "of Annex A: Fixture Absent Image",
+        ),
+    ],
+)
+def test_each_iod_with_functional_group_macros_has_exactly_one_table_of_them(
+    tables, shared, message
+):
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        _collect(*tables, shared_functional_groups=shared)
+
+
+@pytest.mark.parametrize(
+    "title, message",
+    [
+        # Macros for an IOD whose modules include none.
+        (
+            "Table A.99-9. Fixture Image Functional Group Macros",
+            "Table A.99-1 has Functional Group Macros, but no module includes them",
+        ),
+        # Macros for an IOD that Annex A does not define.
+        (
+            "Table A.99-9. Fixture Absent Image Functional Group Macros",
+            "Table A.99-9 lists the Functional Group Macros of Fixture Absent Image, "
+            "which no IOD Modules table of Annex A defines",
+        ),
+        # A second table for an IOD.
+        (
+            "Table A.99-9. Fixture Enhanced Image Functional Group Macros",
+            "Fixture Enhanced Image appears 2 times",
+        ),
+    ],
+)
+def test_every_functional_group_macros_table_belongs_to_one_iod(title, message):
+    extra = _spanning_table(
+        title, FUNCTIONAL_GROUP_HEADER, (("Fixture Measures", "C.99.5.1", "M"),)
+    )
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        _collect(*PS3_3_TABLES, _section("A.99.9", extra))
+
+
+def test_an_iod_the_pin_does_not_leave_out_must_be_generated():
+    # The real-time fixture gives an attribute that the dictionary lacks.
+    with pytest.raises(
+        chtml.TableFormatError,
+        match=re.escape("row 1 has (0998,00B0), which PS3.6 does not define"),
+    ):
+        _collect(left_out_iods=())
+
+
+def _left_out(table, iod, undefined_tag="(0998,00B0)"):
+    return ps3_3.LeftOutIOD(table, iod, undefined_tag)
 
 
 @pytest.mark.parametrize(
     "named, message",
     [
         (
-            (("Table A.99-2", "Fixture Image"),),
-            "the pin names Table A.99-2 for another IOD",
+            (_left_out("Table A.99-5", "Fixture Image"),),
+            "the pin names Table A.99-5 for another IOD",
+        ),
+        # The pin leaves out only IODs that cannot be generated.
+        (
+            (*PS3_3_LEFT_OUT_IODS, _left_out("Table A.99-1", "Fixture Image")),
+            "the pin leaves out Table A.99-1, whose Types can be generated",
         ),
         (
-            (*PS3_3_FUNCTIONAL_GROUP_IODS, ("Table A.99-1", "Fixture Image")),
-            "names Table A.99-1, whose modules include no Functional Group Macros",
-        ),
-        (
-            (*PS3_3_FUNCTIONAL_GROUP_IODS, ("Table A.99-3", "Fixture Enhanced Image")),
+            (
+                *PS3_3_LEFT_OUT_IODS,
+                _left_out("Table A.99-3", "Fixture Enhanced Image"),
+            ),
             "not IOD Modules tables of Annex A: Table A.99-3",
         ),
         (
-            (*PS3_3_FUNCTIONAL_GROUP_IODS, ("Table B.99-1", "Fixture Session")),
+            (*PS3_3_LEFT_OUT_IODS, _left_out("Table B.99-1", "Fixture Session")),
             "not IOD Modules tables of Annex A: Table B.99-1",
         ),
     ],
 )
-def test_the_pin_names_exactly_the_iods_with_functional_group_macros(named, message):
+def test_the_pin_leaves_out_exactly_the_iods_that_cannot_be_generated(named, message):
     with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
-        _collect(functional_group_iods=named)
+        _collect(left_out_iods=named)
 
 
-def test_a_functional_group_macros_row_is_never_parsed_as_an_attribute():
-    table = _ps3_3_table("Table C.99-5")
+def test_an_iod_left_out_for_the_attribute_the_pin_records_is_not_generated():
+    iod_tables, attribute_tables = _collect()
 
-    with pytest.raises(
-        chtml.TableFormatError,
-        match="row 2 includes an IOD's Functional Group Macros, which are not generated",
-    ):
-        ps3_3.parse_attribute_table("Table C.99-5", table, PS3_3_DICTIONARY)
+    assert "Fixture Real-Time Image" not in {iod["iod"] for iod in iod_tables}
+    assert not {"Table C.99-8", "Table C.99-10"} & {
+        table["label"] for table in attribute_tables
+    }
+
+
+@pytest.mark.parametrize(
+    "tables, undefined_tag, message",
+    [
+        # The pin records an attribute other than the one the IOD lacks.
+        (
+            PS3_3_TABLES,
+            "(0006,0001)",
+            "the pin leaves out Table A.99-5 for (0006,0001), but Table C.99-8 "
+            "row 1 has (0998,00B0), which PS3.6 does not define",
+        ),
+        # The IOD lacks another attribute in a module that comes before the one
+        # whose attribute the pin records, as a later edition might add.
+        (
+            _replace_section(
+                "C.99.7", PS3_3_STREAM.replace("(0998,0050)", "(0998,00C0)")
+            ),
+            "(0998,00B0)",
+            "the pin leaves out Table A.99-5 for (0998,00B0), but Table C.99-10 "
+            "row 1 has (0998,00C0), which PS3.6 does not define",
+        ),
+    ],
+)
+def test_an_iod_left_out_must_fail_for_the_attribute_the_pin_records(
+    tables, undefined_tag, message
+):
+    named = (_left_out("Table A.99-5", "Fixture Real-Time Image", undefined_tag),)
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        _collect(*tables, left_out_iods=named)
+
+
+def test_an_iod_left_out_must_fail_only_for_an_undefined_attribute():
+    # Any other problem in its tables fails generation.
+    real_time = PS3_3_REAL_TIME.replace(">1<", ">4<")
+
+    with pytest.raises(chtml.TableFormatError, match="row 1 is not an attribute"):
+        _collect(*_replace_section("C.99.6", real_time))
 
 
 def test_collect_fails_when_no_iod_is_generated():
-    tables = tuple(table for table in PS3_3_TABLES if "sect_A.99.3" not in table)
+    tables = tuple(
+        table
+        for table in PS3_3_TABLES
+        if not any(f"sect_A.99.{number}" in table for number in (3, 4, 5))
+    )
 
     with pytest.raises(
         chtml.TableFormatError, match="no IOD Modules table of Annex A is generated"
@@ -1782,7 +2360,7 @@ def test_a_module_needs_exactly_one_table_in_its_section():
 
     with pytest.raises(
         chtml.TableFormatError,
-        match="no Fixture Image Module Attributes table in C.99.2",
+        match="C.99.2 has no tables titled Fixture Image Module Attributes",
     ):
         _collect(*moved)
 
@@ -1892,6 +2470,24 @@ def test_a_correction_that_does_not_apply_to_exactly_one_row_fails(correction, m
         ps3_3.correct(tables, (correction,))
 
 
+def test_a_correction_can_replace_text_in_a_stated_number_of_rows():
+    # Text in identical cells, such as a usage two macros share, is corrected
+    # in each of them, and only if it occurs in exactly that many rows.
+    tables = chtml.extract_tables(_page(*PS3_3_TABLES), expand_spans=True)
+    twice = ps3_3.Correction("Table C.99-6", "Invented.", "Corrected.", rows=2)
+
+    corrected = ps3_3.correct(tables, (twice,))
+
+    measures = chtml.select_table(corrected, "Table C.99-6", allow_merged=True)
+    assert [row[3] for row in measures.rows] == ["Corrected.", "Corrected."]
+    with pytest.raises(
+        chtml.TableFormatError, match=re.escape("has 'Invented.' in 1 rows")
+    ):
+        ps3_3.correct(
+            tables, (dataclasses.replace(twice, table="Table C.99-3", rows=2),)
+        )
+
+
 def test_a_correction_that_an_edition_has_made_no_longer_applies():
     # The fixture's correction adds "Attributes" to a title, so its published
     # text is still found once an edition fixes the title itself.
@@ -1957,7 +2553,8 @@ FIXTURE_PIN = generate.Pin(
         generate.PinnedSource(path, hashlib.sha256(page).hexdigest())
         for path, page in FIXTURE_PAGES.items()
     ),
-    functional_group_iods=PS3_3_FUNCTIONAL_GROUP_IODS,
+    left_out_iods=PS3_3_LEFT_OUT_IODS,
+    shared_functional_groups=PS3_3_SHARED_FUNCTIONAL_GROUPS,
     corrections=PS3_3_CORRECTIONS,
 )
 
@@ -2145,7 +2742,11 @@ def test_generate_writes_the_storage_sop_classes(source_dir, tmp_path):
 @pytest.mark.parametrize(
     "name, table, rows",
     [
-        ("iod_modules.json", "PS3.3 IOD Modules", [EXPECTED_IOD]),
+        (
+            "iod_modules.json",
+            "PS3.3 IOD Modules",
+            [EXPECTED_IOD, *EXPECTED_ENHANCED_IODS],
+        ),
         (
             "module_attributes.json",
             "PS3.3 Module Attributes",
@@ -2176,11 +2777,22 @@ def test_the_ps3_3_tables_are_named_as_the_loader_expects():
 @pytest.mark.parametrize(
     "change, message",
     [
+        ({"left_out_iods": ()}, "which PS3.6 does not define"),
         (
-            {"functional_group_iods": ()},
-            "Table A.99-2 includes Functional Group Macros",
+            {
+                "left_out_iods": (
+                    ps3_3.LeftOutIOD(
+                        "Table A.99-5", "Fixture Real-Time Image", "(0998,00C0)"
+                    ),
+                )
+            },
+            r"the pin leaves out Table A\.99-5 for \(0998,00C0\)",
         ),
-        ({"corrections": ()}, "no Fixture Contrast Module Attributes table"),
+        (
+            {"shared_functional_groups": ()},
+            "Table A.99-4 includes Functional Group Macros, but no table lists them",
+        ),
+        ({"corrections": ()}, "no tables titled Fixture Contrast Module Attributes"),
         (
             {"corrections": (ps3_3.Correction("Table C.99-3", "Absent", "Text"),)},
             "its correction no longer applies",
@@ -2197,58 +2809,40 @@ def test_a_pin_that_no_longer_matches_ps3_3_fails(
     assert not (tmp_path / "tables").exists()
 
 
-def test_the_pin_names_the_iods_left_for_their_functional_group_macros():
-    # Each of these 2026d IODs lists a module, such as the Multi-frame
-    # Functional Groups Module, that includes the IOD's Functional Group
-    # Macros. Generation fails if an edition adds or removes one, and so
-    # does this test until it is updated with the pin.
-    assert dict(generate.PIN.functional_group_iods) == {
-        "Table A.8-3": "Multi-frame Grayscale Byte Secondary Capture Image",
-        "Table A.8-4": "Multi-frame Grayscale Word Secondary Capture Image",
-        "Table A.8-5": "Multi-frame True Color Secondary Capture Image",
-        "Table A.32.8-1": "VL Whole Slide Microscopy Image",
-        "Table A.32.9-1": "Real-Time Video Endoscopic Image",
-        "Table A.32.10-1": "Real-Time Video Photographic Image",
-        "Table A.34.11-1": "Real-Time Audio Waveform",
-        "Table A.36-1": "Enhanced MR Image",
-        "Table A.36-3": "MR Spectroscopy",
-        "Table A.36-5": "Enhanced MR Color Image",
-        "Table A.38-1": "Enhanced CT Image",
-        "Table A.47-1": "Enhanced XA Image",
-        "Table A.48-1": "Enhanced XRF Image",
-        "Table A.51-1": "Segmentation",
-        "Table A.52.3-1": "Ophthalmic Tomography Image",
-        "Table A.53-1": "X-Ray 3D Angiographic Image",
-        "Table A.54-1": "X-Ray 3D Craniofacial Image",
-        "Table A.55-1": "Breast Tomosynthesis Image",
-        "Table A.56-1": "Enhanced PET Image",
-        "Table A.59-1": "Enhanced US Volume",
-        "Table A.66.3-1": "Intravascular Optical Coherence Tomography Image",
-        "Table A.70-1": "Legacy Converted Enhanced CT Image",
-        "Table A.71-1": "Legacy Converted Enhanced MR Image",
-        "Table A.72-1": "Legacy Converted Enhanced PET Image",
-        "Table A.74-1": "Breast Projection X-Ray Image",
-        "Table A.75-1": "Parametric Map",
-        "Table A.84-1": (
-            "Ophthalmic Optical Coherence Tomography B-scan Volume Analysis"
+def test_the_pin_leaves_out_the_real_time_iods():
+    # Their Current Frame Functional Groups Module gives Current Frame
+    # Functional Groups Sequence (0006,0001), which 2026d PS3.6 defines in
+    # Table 9-1, not in the data dictionary of Table 6-1. Generation fails if
+    # an edition adds an IOD that cannot be generated, if one of these can
+    # be, or if one first gives another attribute that Table 6-1 lacks, and
+    # so does this test until it is updated with the pin.
+    assert set(generate.PIN.left_out_iods) == {
+        ps3_3.LeftOutIOD(
+            "Table A.32.9-1", "Real-Time Video Endoscopic Image", "(0006,0001)"
         ),
-        "Table A.86.1.15-1": "Enhanced RT Image",
-        "Table A.86.1.16-1": "Enhanced Continuous RT Image",
-        "Table A.89.3-1": "Photoacoustic Image",
-        "Table A.90.1.3-1": "Confocal Microscopy Image",
-        "Table A.90.2.3-1": "Confocal Microscopy Tiled Pyramidal Image",
-        "Table A.91-1": "Height Map Segmentation",
+        ps3_3.LeftOutIOD(
+            "Table A.32.10-1", "Real-Time Video Photographic Image", "(0006,0001)"
+        ),
+        ps3_3.LeftOutIOD("Table A.34.11-1", "Real-Time Audio Waveform", "(0006,0001)"),
     }
-    assert len(generate.PIN.functional_group_iods) == 33
 
 
-def test_every_storage_sop_class_iod_is_generated_or_named_in_the_pin():
+def test_the_pin_gives_an_iod_the_functional_group_macros_its_text_names():
+    # PS3.3 A.36.4.4: "Table A.36-2 specifies the use of the Functional Group
+    # Macros used in the Multi-frame Functional Groups Module for the Enhanced
+    # MR Color Image IOD", and Table A.36-2 is the Enhanced MR Image IOD's.
+    assert dict(generate.PIN.shared_functional_groups) == {
+        "Enhanced MR Color Image": "Enhanced MR Image"
+    }
+
+
+def test_every_storage_sop_class_iod_is_generated():
     generated = set(iods.load_iod_tables().iods)
-    named = {name for _, name in generate.PIN.functional_group_iods}
+    left_out = {entry.iod for entry in generate.PIN.left_out_iods}
     storage = {row.iod_name for row in sop_classes.load_storage_sop_classes().rows}
 
-    assert not generated & named
-    assert storage <= generated | named
+    assert not generated & left_out
+    assert storage <= generated
 
 
 def test_generation_is_byte_for_byte_reproducible(source_dir, tmp_path):

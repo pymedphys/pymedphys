@@ -20,6 +20,10 @@ from pymedphys._dicom.coords import xyz_axes_from_dataset
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.dose import get_dose_grid_structure_mask
 
+# The structure mask is private and uses matplotlib, which no public DICOM
+# function needs, so the dicom extra's CI job skips this file.
+pytest.importorskip("matplotlib")
+
 
 @pytest.mark.pydicom
 def test_structure_dose_mask():
