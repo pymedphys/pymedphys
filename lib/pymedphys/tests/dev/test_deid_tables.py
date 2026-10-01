@@ -1886,6 +1886,25 @@ def test_a_correction_that_does_not_apply_to_exactly_one_row_fails(correction, m
         ps3_3.correct(tables, (correction,))
 
 
+def test_a_correction_that_an_edition_has_made_no_longer_applies():
+    # The fixture's correction adds "Attributes" to a title, so its published
+    # text is still found once an edition fixes the title itself.
+    fixed = tuple(
+        table.replace("Contrast Module</strong>", "Contrast Module Attributes</strong>")
+        for table in PS3_3_TABLES
+    )
+    tables = chtml.extract_tables(_page(*fixed), expand_spans=True)
+
+    with pytest.raises(
+        chtml.TableFormatError,
+        match=re.escape(
+            "Table C.99-4 already has 'Contrast Module Attributes', so its "
+            "correction no longer applies"
+        ),
+    ):
+        ps3_3.correct(tables, PS3_3_CORRECTIONS)
+
+
 def test_a_source_is_read_only_when_its_digest_matches(tmp_path):
     source = tmp_path / "chapter_E.html"
     source.write_bytes(b"<html></html>")

@@ -31,8 +31,8 @@ The composite IODs are the modules tables of Annex A. Those whose modules
 include an IOD's Functional Group Macros, such as the Multi-frame Functional
 Groups Module, are not yet generated.
 
-Rows are kept as published: macros are not expanded, and attribute
-descriptions are omitted. Tables must be extracted with their merged cells
+Rows are kept as published, apart from the pin's named corrections: macros
+are not expanded, and attribute descriptions are omitted. Tables must be extracted with their merged cells
 expanded, because an "Include" row's text spans several columns.
 """
 
@@ -96,8 +96,9 @@ class Correction:
         The table's label, such as ``"Table A.29.3-1"``.
     published : str
         The text as published. It must occur in exactly one row of the table,
-        counting its title and its header as rows, so a correction fails once
-        a later edition changes the text.
+        counting its title and its header as rows, and that row must not
+        already have the corrected text, so a correction fails once a later
+        edition changes the text.
     corrected : str
         The text that replaces it in that row.
     """
@@ -116,7 +117,8 @@ def correct(
     ------
     TableFormatError
         If a correction's table is missing or not unique, or its published
-        text does not occur in exactly one row.
+        text does not occur in exactly one row, or that row already has the
+        corrected text.
     """
     corrected = list(tables)
     for correction in corrections:
@@ -131,6 +133,13 @@ def correct(
             raise TableFormatError(
                 f"{correction.table} has {correction.published!r} in "
                 f"{len(found)} rows, so its correction no longer applies"
+            )
+        # The published text can be part of the corrected text, as when a
+        # correction adds a word, so it is still found once fixed.
+        if any(correction.corrected in cell for cell in lines[found[0]]):
+            raise TableFormatError(
+                f"{correction.table} already has {correction.corrected!r}, so "
+                "its correction no longer applies"
             )
         lines[found[0]] = tuple(
             cell.replace(correction.published, correction.corrected)
