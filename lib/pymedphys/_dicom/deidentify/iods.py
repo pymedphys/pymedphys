@@ -18,10 +18,10 @@
 PS3.3. ``iod_modules.json`` lists the modules of each composite IOD except
 those whose modules include Functional Group Macros, which are not yet
 generated, and ``module_attributes.json`` holds the attribute tables of those
-modules and of every macro they include, with rows as published. The loader
-expands an IOD's modules when its Types are first needed, following every
-"Include" row, into the attributes it defines at each place in the data set,
-with their Types.
+modules and of every macro they include, with rows as published apart from the
+named corrections in the generator's pin. The loader expands an IOD's modules
+when its Types are first needed, following every "Include" row, into the
+attributes it defines at each place in the data set, with their Types.
 
 Types are generated ahead of support: an IOD with Types is not thereby
 supported, and :mod:`~pymedphys._dicom.deidentify.scope` sequesters the
@@ -581,7 +581,8 @@ def _load_iod_tables(
             f"{modules_path.name} and {attributes_path.name} name different editions"
         )
 
-    tables = _attribute_tables(attributes, attributes_path.name)
+    # Every IOD shares the tables, so none can change them.
+    tables = types.MappingProxyType(_attribute_tables(attributes, attributes_path.name))
     iods: dict[str, IOD] = {}
     for entry in modules["rows"]:
         iod = _iod(entry, tables, modules_path.name)
@@ -594,5 +595,5 @@ def _load_iod_tables(
         edition=modules["edition"],
         acknowledgement=modules["acknowledgement"],
         iods=types.MappingProxyType(iods),
-        attribute_tables=types.MappingProxyType(tables),
+        attribute_tables=tables,
     )

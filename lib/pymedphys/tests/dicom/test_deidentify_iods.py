@@ -333,6 +333,16 @@ def test_each_iod_is_expanded_when_its_types_are_first_needed(tmp_path):
     assert ct.definitions is ct.definitions
 
 
+def test_an_iods_attribute_tables_cannot_be_changed(tables):
+    ct = tables.iods["CT Image"]
+    macro = ct.attribute_tables["Table 10-18"]
+
+    # They are shared by every IOD of the cached tables.
+    with pytest.raises(TypeError):
+        ct.attribute_tables["Table C.7-1"] = macro  # type: ignore[index]
+    assert ct.attribute_tables is tables.attribute_tables
+
+
 def test_every_definition_is_reachable_through_its_path(tables):
     for iod in tables.iods.values():
         sequences = {(d.path, d.tag) for d in iod.definitions}
