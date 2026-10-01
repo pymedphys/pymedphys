@@ -138,8 +138,9 @@ All Data Elements with a Group Number of 0004 shall be removed from any SOP Inst
 '''
 status = "planned"
 milestone = "M4"
+decisions = ["D-016"]
 note = '''
-Group 0004 is removed with the rest of the file container. A DICOMDIR is only ever regenerated from the de-identified files, never passed through.
+Group 0004 is removed with the rest of the file container. A source DICOMDIR is never passed through, and none is written, since the output is a plain directory tree rather than a File-set (D-016).
 '''
 
 [[requirement]]
@@ -220,7 +221,7 @@ The Conformance Statement of an application that claims conformance to the Basic
 '''
 status = "planned"
 milestone = "M6"
-decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-021"]
+decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-021", "D-026"]
 note = '''
 The generated conformance statement covers each item, including the key scope within which replacements stay consistent.
 '''
@@ -519,7 +520,7 @@ Do not let de-identification compromise conformance with the standards that defi
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021"]
+decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-026"]
 implementation = [
   "_dicom/deidentify/dummy_values.py",
   "_dicom/deidentify/iods.py",

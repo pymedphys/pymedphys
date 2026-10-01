@@ -44,10 +44,9 @@ table adds, are rejected.
 A preset is enabled only once its behaviour is implemented and validated. No
 preset is enabled yet; the first supported release is to enable ``basic``, the
 Basic Profile alone, and a preset that adds the Clean Descriptors Option to
-it. The engine takes
-its policy from :func:`select_policy`, which refuses a preset that is not
-enabled. A policy composed from a given table is never enabled, and a custom
-option set is validated but not enabled.
+it. The engine takes its policy from :func:`select_policy`, which refuses a
+preset that is not enabled. A policy composed from a given table is never
+enabled, and a custom option set is validated but not enabled.
 """
 
 from __future__ import annotations
