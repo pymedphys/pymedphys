@@ -581,8 +581,8 @@ def _third_party_imports(path):
     return tops - set(sys.stdlib_module_names) - {"__future__", "pymedphys"}
 
 
-def test_the_environment_is_python_and_every_library_that_the_engine_imports():
-    environment = policy_digest.digest_inputs(vocabulary=None).environment
+def test_the_environment_is_python_and_every_library_that_the_engine_imports_in_order():
+    environment = policy_digest.environment()
     imported = set().union(
         *(
             _third_party_imports(path)
@@ -592,14 +592,15 @@ def test_the_environment_is_python_and_every_library_that_the_engine_imports():
     )
 
     assert {"pydicom", "tomlkit"} <= imported
-    assert environment == {
-        "platform.python_implementation": platform.python_implementation(),
-        "platform.python_version": platform.python_version(),
-        **{
-            f"{name}.__version__": importlib.import_module(name).__version__
-            for name in imported
-        },
-    }
+    assert list(environment.items()) == [
+        ("platform.python_implementation", platform.python_implementation()),
+        ("platform.python_version", platform.python_version()),
+        *(
+            (f"{name}.__version__", importlib.import_module(name).__version__)
+            for name in sorted(imported)
+        ),
+    ]
+    assert policy_digest.digest_inputs(vocabulary=None).environment == environment
 
 
 @pytest.mark.parametrize("name", list(ENVIRONMENT_CHANGES))

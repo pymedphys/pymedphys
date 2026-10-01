@@ -54,7 +54,7 @@ Python and of the libraries that the engine imports:
 - the Python implementation and version, such as ``CPython`` and
   ``3.14.0``, and the version of each third-party library that this package
   imports: pydicom, which will read and write every DICOM file, and tomlkit,
-  which reads the rule files.
+  which reads the rule files. :func:`environment` gives these values.
 
 The digest therefore also changes when something the policy does not use
 changes, which is harmless; it never stays the same when one of these inputs
@@ -157,7 +157,7 @@ class DigestInputs:
         The Python implementation and version, and the version of each
         third-party library that the package imports, by where each comes
         from, such as ``"platform.python_version"`` or
-        ``"pydicom.__version__"``.
+        ``"pydicom.__version__"``, as :func:`environment` gives them.
     """
 
     engine_version: str
@@ -290,7 +290,7 @@ def canonical_bytes(policy: Policy, inputs: DigestInputs) -> bytes:
     """
     _check_policy(policy)
     generated = {_key(n): _typed(v) for n, v in inputs.generated_values.items()}
-    environment = {_key(n): _typed(v) for n, v in inputs.environment.items()}
+    typed_environment = {_key(n): _typed(v) for n, v in inputs.environment.items()}
     document = {
         "format": FORMAT,
         "engine_version": inputs.engine_version,
@@ -301,7 +301,7 @@ def canonical_bytes(policy: Policy, inputs: DigestInputs) -> bytes:
         "vocabulary": inputs.vocabulary,
         # Already JSON values, which _plain keeps as they are.
         "generated_values": generated,
-        "environment": environment,
+        "environment": typed_environment,
         "files": inputs.files,
     }
     return _encode(_plain(document))
@@ -358,8 +358,32 @@ def _file_digests(directory: pathlib.Path) -> Mapping[str, str]:
     return types.MappingProxyType(digests)
 
 
-def _environment() -> dict[str, object]:
-    """Return the Python implementation and version, and each library's version."""
+def environment() -> dict[str, str]:
+    """Return the Python implementation and version, and each library's version.
+
+    These are the values of the environment that the policy digest covers,
+    taken from the running interpreter and from each library as imported,
+    at each call. Each is keyed by where it comes from, in this order: the
+    Python implementation, ``"platform.python_implementation"``, such as
+    ``"CPython"``; the Python version, ``"platform.python_version"``, such
+    as ``"3.14.0"``; and the ``__version__`` of each third-party library
+    that this package imports, in alphabetical order:
+    ``"pydicom.__version__"`` and ``"tomlkit.__version__"``.
+
+    Returns
+    -------
+    dict of str to str
+        A new dictionary at each call, in the order above.
+
+    Examples
+    --------
+    >>> for name in environment():
+    ...     print(name)
+    platform.python_implementation
+    platform.python_version
+    pydicom.__version__
+    tomlkit.__version__
+    """
     return {
         "platform.python_implementation": platform.python_implementation(),
         "platform.python_version": platform.python_version(),
@@ -373,9 +397,8 @@ def digest_inputs(*, vocabulary: tg263.Nomenclature | None) -> DigestInputs:
 
     Reads the engine's own files once per process, at the first call: the
     generated tables, the supplementary rule files, and the package's source
-    and rule files. Takes the Python implementation and version from the
-    running interpreter, and each library's version from the library as
-    imported.
+    and rule files. Takes the Python implementation and version and each
+    library's version from :func:`environment`, at each call.
 
     Parameters
     ----------
@@ -433,7 +456,7 @@ def digest_inputs(*, vocabulary: tg263.Nomenclature | None) -> DigestInputs:
             for name in names
         },
         files=_file_digests(PACKAGE_DIR.resolve()),
-        environment=_environment(),
+        environment=environment(),
     )
 
 
