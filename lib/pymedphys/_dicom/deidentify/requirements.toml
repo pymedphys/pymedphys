@@ -247,11 +247,23 @@ The Conformance Statement of an application that claims conformance to the Basic
 - which Options are supported;
 - any additional restrictions (e. g. key sizes for public keys).
 '''
-status = "planned"
+status = "partial"
 milestone = "M6"
-decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-021", "D-026"]
+decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-020", "D-021", "D-026"]
+implementation = ["_dicom/deidentify/conformance.py"]
+tests = [
+  "tests/dicom/test_deidentify_conformance.py::test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_action",
+  "tests/dicom/test_deidentify_conformance.py::test_every_ui_attribute_that_the_table_omits_is_listed_by_its_role",
+  "tests/dicom/test_deidentify_conformance.py::test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_them",
+  "tests/dicom/test_deidentify_conformance.py::test_the_dummy_values_are_those_that_d_writes",
+  "tests/dicom/test_deidentify_conformance.py::test_the_key_and_the_scope_of_referential_integrity_are_described",
+  "tests/dicom/test_deidentify_conformance.py::test_no_attribute_is_encrypted_for_later_reidentification",
+  "tests/dicom/test_deidentify_conformance.py::test_options_outside_the_supported_scope_are_listed_as_not_supported",
+  "tests/dicom/test_deidentify_conformance.py::test_a_statement_with_sections_still_to_describe_makes_no_claim",
+  "tests/dicom/test_deidentify_conformance.py::test_no_enabled_preset_has_an_incomplete_statement",
+]
 note = '''
-The generated conformance statement covers each item, including the key scope within which replacements stay consistent.
+The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters. It lists the action of each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020); the values that Z, D, and U write, including the keyed pseudonyms and replacement UIDs (D-003, D-005, D-021); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); and the options applied, those that can be composed, and those that are not supported. A statement lists what it cannot yet describe and then claims nothing. Remaining: the attributes and values that the markers insert (D-012), the action for every other element, the action where an IOD requires an attribute that a plain X or Z would leave invalid (D-020), and writing the statement with each run (M6).
 '''
 
 [[requirement]]
@@ -833,9 +845,15 @@ id = "MIDI-BP-18"
 text = '''
 Document the de-identification process in detail, including the release of PS3.15 and the Options used, and publish the documentation, or a reference to it, with the collection.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
 decisions = ["D-011", "D-012", "D-024", "D-029"]
+implementation = ["_dicom/deidentify/conformance.py"]
+tests = [
+  "tests/dicom/test_deidentify_conformance.py::test_the_statement_names_the_edition_preset_and_options",
+  "tests/dicom/test_deidentify_conformance.py::test_the_method_digest_is_the_policys_with_the_same_vocabulary",
+  "tests/dicom/test_deidentify_conformance.py::test_the_statement_is_the_same_every_time_it_is_generated",
+]
 note = '''
-Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name, and each instance's De-identification Method names PyMedPhys and the preset and gives the method digest (D-012, D-024). The release report also records the runtime environment that ran (D-029).
+Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name, and each instance's De-identification Method names PyMedPhys and the preset and gives the method digest (D-012, D-024). The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers, and the same policy and engine always give the same text. Remaining: writing the statement and the release report with each run, the release report's record of the runtime environment that ran (D-029), and publishing the statement with each release (M4, M6).
 '''
