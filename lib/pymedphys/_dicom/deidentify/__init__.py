@@ -22,7 +22,9 @@ temporal attribute roles, patient pseudonyms, subject profiles, date
 offsets, the actions of Table E.1-1 under selected options, the resolution
 of its compound actions from the attribute Types of PS3.3, the presets and
 the validated policies composed from them, the method digest that identifies
-a policy and everything the engine could apply with it, the decoding of each
+a policy and everything the engine could apply with it, the admission of a
+source file whose whole structure is read from its own bytes, kept as
+immutable evidence, the decoding of each
 element with the VR of the pinned data dictionary, the checks of values
 against their VR and VM and of the elements built to be written, the
 zero-length and dummy values that the Z and D actions write, the

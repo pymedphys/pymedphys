@@ -181,6 +181,29 @@ class Span:
 
 
 @dataclasses.dataclass(frozen=True)
+class Extent:
+    """Where one element is, from its header to the end of its value.
+
+    Attributes
+    ----------
+    start, value_start, end : int
+        Where the element's header starts, where its value starts, and where
+        its value ends, after any items and their delimiters.
+    location : Location
+    vr : str, optional
+        The VR as written, or ``None`` in implicit VR.
+    undefined_length : bool
+    """
+
+    start: int
+    value_start: int
+    end: int
+    location: Location
+    vr: str | None
+    undefined_length: bool
+
+
+@dataclasses.dataclass(frozen=True)
 class FileLayout:
     """Where each byte of a file belongs.
 
@@ -196,12 +219,16 @@ class FileLayout:
         the file ends inside a sequence or item.
     spans : tuple of Span
         Each starting where the one before ends, from 0 to ``size``.
+    elements : tuple of Extent
+        Each element that was read in full, in the order of the file, a
+        sequence before the elements of its items.
     """
 
     size: int
     transfer_syntax: str | None = dataclasses.field(repr=False)
     readable: bool
     spans: tuple[Span, ...] = dataclasses.field(repr=False)
+    elements: tuple[Extent, ...] = dataclasses.field(default=(), repr=False)
 
     def locate(self, offset: int) -> Location:
         """Return the location of the byte at ``offset``.
@@ -303,6 +330,7 @@ class _Reader:
     def __init__(self, data: memoryview) -> None:
         self.data = data
         self.spans: list[Span] = []
+        self.extents: list[Extent | None] = []
         self.region = Region.FILE_META
 
     def read(self) -> FileLayout:
@@ -339,7 +367,10 @@ class _Reader:
         end = self.spans[-1].end
         if end < size:
             self._add(end, size, None, Location(Region.TRAILING))
-        return FileLayout(size, syntax, readable and end == size, tuple(self.spans))
+        extents = tuple(each for each in self.extents if each is not None)
+        return FileLayout(
+            size, syntax, readable and end == size, tuple(self.spans), extents
+        )
 
     def holds_items(self, explicit: bool) -> bool:
         """Return whether the data, from start to end, are a sequence's items."""
@@ -398,6 +429,29 @@ class _Reader:
         # when it reads as items to its end.
         holds_items = None if vr in (None, "UN") and not known else "SQ" in (vr, *known)
         start = position + header
+        undefined = length == _UNDEFINED
+        # Each element's extent is recorded before those in its items.
+        index = len(self.extents)
+        self.extents.append(None)
+        end_of_value = self._value(
+            position, start, end, length, holds_items, (vr, tag, path, where)
+        )
+        self.extents[index] = Extent(
+            position, start, end_of_value, where, vr, undefined
+        )
+        return end_of_value
+
+    def _value(
+        self,
+        position: int,
+        start: int,
+        end: int,
+        length: int,
+        holds_items: bool | None,
+        element: tuple,
+    ) -> int:
+        """Read an element's value from ``start``, and return where it ends."""
+        vr, tag, path, where = element
         if length == _UNDEFINED:
             # Numbered items, such as fragments (PS3.5 Sections 7.1.2 and A.4).
             numbered = tag == _PIXEL_DATA or vr == "OB"
@@ -412,7 +466,7 @@ class _Reader:
             raise _Unreadable
         peek = self.data[start : min(start + 4, stop)] == b"\xfe\xff\x00\xe0"
         if holds_items or (holds_items is None and peek):
-            mark = len(self.spans)
+            mark, extents = len(self.spans), len(self.extents)
             self._add(position, start, None, where)
             try:
                 return self._items(start, stop, False, vr == "SQ", path, where)
@@ -420,6 +474,7 @@ class _Reader:
                 if holds_items:
                     raise
                 del self.spans[mark:]
+                del self.extents[extents:]
         return self._add(position, stop, start, where)
 
     def _items(
