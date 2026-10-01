@@ -210,8 +210,8 @@ jobs:
         shell: bash
         env:
           PYDICOM: ${{ matrix.pydicom }}
-          # The lowest release that pydicom>=3.0 in pyproject.toml allows.
-          PYDICOM_MINIMUM: '3.0.0'
+          # The lowest release that pydicom>=3.0.2 in pyproject.toml allows.
+          PYDICOM_MINIMUM: '3.0.2'
         run: |
           set -euxo pipefail
           mkdir -p test-results

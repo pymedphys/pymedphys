@@ -187,7 +187,7 @@ therefore the required CI or release summary.
 The `pydicom-versions` job runs the de-identification tests (the
 `test_deidentify_*` modules in `tests/dicom` and `tests/dev/test_deid_tables.py`,
 without the slow tests) with two versions of pydicom, alongside both the quick
-and full matrices: `minimum`, 3.0.0, the lowest release that `pydicom>=3.0` in
+and full matrices: `minimum`, 3.0.2, the lowest release that `pydicom>=3.0.2` in
 `pyproject.toml` allows, and `latest`, the newest release, which it resolves
 from the package index with `uv pip compile` each time it runs. Raise the
 minimum in the job when the declared one is raised. Each runs on Ubuntu with
