@@ -277,7 +277,9 @@ def _items(
         return _decoded(element.value, path, encodings), True
     try:
         element = dataset[tag]
-    except _DECODING_ERRORS as error:
+    # pydicom raises KeyError, when it raises its validation errors, for an
+    # element without a VR whose attribute its dictionary does not list.
+    except (*_DECODING_ERRORS, KeyError) as error:
         raise PrivateAttributeError(path) from error
     if element.VR == "SQ":
         return element.value, False
