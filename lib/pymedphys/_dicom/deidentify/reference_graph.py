@@ -18,8 +18,9 @@ The first pass of a run records each input as an
 :class:`~pymedphys._dicom.deidentify.references.InstanceRecord` and builds a
 :class:`ReferenceGraph` from the records before anything is written. The
 graph resolves each reference to the inputs it names, and reports each input
-that lacks an identifier and each reference that names nothing in the
-collection.
+that lacks an identifier, each reference that names nothing in the
+collection, and an inconsistent hierarchy: inputs that share a SOP Instance
+UID, a series in several studies, and a study of several patients.
 
 A reference resolves by the level of its site, to each input with that SOP
 Instance UID, Series Instance UID, or Study Instance UID. Referenced SOP
@@ -39,9 +40,12 @@ public definition.
 
 A :class:`Finding` names inputs only by their positions in the records given
 to :func:`build_reference_graph`, and attributes only by their tags, so it
-cannot hold a UID, a name, a date, or a path. The findings only report: how a
-report presents them, and whether a finding blocks writing or sequesters an
-input, are decided later with the rest of the pipeline.
+cannot hold a UID, a name, a date, or a path. The graph only reports. Each
+kind of finding has a consequence in the design, which its description in
+:class:`FindingKind` gives and the pipeline is to carry out, from writing an
+input with a dangling reference as usual to stopping the run for a study of
+several patients. How a report presents findings is decided with the rest of
+the pipeline.
 """
 
 from __future__ import annotations
@@ -49,7 +53,7 @@ from __future__ import annotations
 import collections
 import dataclasses
 import enum
-from collections.abc import Sequence
+from collections.abc import Callable, Hashable, Iterator, Sequence
 from typing import NamedTuple
 
 from .references import IDENTITY_TAGS, InstanceRecord, Level, ReferenceSite
@@ -81,13 +85,56 @@ class FindingKind(enum.Enum):
         and its Referenced SOP Class UID is not a Standard Storage SOP Class
         of Table B.5-1. There is one finding for each input and site, whose
         ``count`` is the number of distinct values there that name nothing.
+        It is reported only, and the input is written as usual.
+    DUPLICATE_INSTANCE
+        Several inputs have one SOP Instance UID, without padding, and the
+        same content, as
+        :mod:`~pymedphys._dicom.deidentify.references` defines it: their data
+        sets decode to the same elements, with the same VRs and values,
+        without the File Meta Information and the preamble. Its one group
+        holds them all. The instance is written once.
+    CONFLICTING_INSTANCE
+        Several inputs have one SOP Instance UID and different content,
+        including content that cannot show the inputs to be equal, such as
+        a private element that one input holds without a VR. Its groups
+        hold the inputs with the same content. Every one of them is
+        sequestered.
+    SERIES_IN_SEVERAL_STUDIES
+        The inputs with one Series Instance UID have different Study
+        Instance UIDs. Its groups hold the inputs of each study. The series
+        is sequestered.
+    STUDY_WITH_SEVERAL_PATIENTS
+        The inputs with one Study Instance UID have different patients, each
+        the identity of a Patient ID with its Issuer of Patient ID (0010,0021),
+        from which pseudonyms are derived. The same Patient ID from another
+        issuer, or from none, is another patient. The inputs without a
+        Patient ID together count as one more patient, apart from every
+        identity, so a study that mixes inputs with and without a Patient ID
+        has several patients, and a study whose inputs all lack one has one.
+        Such an input needs a curated identity before it can have a
+        pseudonym, and that identity would give it a different pseudonym
+        from the rest of its study. Its groups hold the inputs of each
+        patient. The run stops before anything is written.
+
+    A finding that compares inputs leaves out each input that lacks a UID
+    that it compares, which is reported as missing. Its ``attribute`` is the
+    tag of the UID that its inputs share: SOP Instance UID for duplicates and
+    conflicts, Series Instance UID for a series, and Study Instance UID for a
+    study. What the pipeline does with an input that lacks one of these UIDs
+    is not yet decided.
     """
 
     MISSING_IDENTIFIER = "missing-identifier"
     DANGLING_REFERENCE = "dangling-reference"
+    DUPLICATE_INSTANCE = "duplicate-instance"
+    CONFLICTING_INSTANCE = "conflicting-instance"
+    SERIES_IN_SEVERAL_STUDIES = "series-in-several-studies"
+    STUDY_WITH_SEVERAL_PATIENTS = "study-with-several-patients"
 
 
 _RANK = {kind: rank for rank, kind in enumerate(FindingKind)}
+# The patient of every input without a Patient ID, apart from every identity.
+_WITHOUT_PATIENT_ID = object()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -98,8 +145,10 @@ class Finding:
     ----------
     kind : FindingKind
     instances : tuple of tuple of int
-        The positions of the inputs concerned, in groups. Each kind so far
-        concerns one input, as ``((position,),)``.
+        The positions of the inputs concerned, in groups: ``((position,),)``
+        for a missing identifier or a dangling reference, and otherwise the
+        groups that :class:`FindingKind` gives, by first position, each in
+        ascending order.
     attribute : tuple of str
         The tags from the outermost sequence to the attribute concerned,
         such as ``("(300C,0060)", "(0008,1155)")``.
@@ -207,7 +256,47 @@ def build_reference_graph(records: Sequence[InstanceRecord]) -> ReferenceGraph:
             for site, values in unresolved.items()
         )
 
+    findings.extend(_hierarchy_findings(records, index))
     findings.sort(
         key=lambda finding: (_RANK[finding.kind], finding.instances, finding.attribute)
     )
     return ReferenceGraph(records, frozenset(edges), tuple(findings))
+
+
+def _hierarchy_findings(
+    records: tuple[InstanceRecord, ...], index: dict[Level, dict[str, list[int]]]
+) -> Iterator[Finding]:
+    """Yield the findings of inputs that share an identifier but disagree."""
+    sop_instance, series, study = (IDENTITY_TAGS[level] for level in Level)
+    for positions in index[Level.INSTANCE].values():
+        if len(positions) > 1:
+            groups = _grouped(positions, lambda position: records[position].digest)
+            kind = FindingKind.CONFLICTING_INSTANCE
+            if len(groups) == 1:
+                kind = FindingKind.DUPLICATE_INSTANCE
+            yield Finding(kind, groups, (sop_instance,))
+    for positions in index[Level.SERIES].values():
+        groups = _grouped(positions, lambda position: records[position].study)
+        if len(groups) > 1:
+            yield Finding(FindingKind.SERIES_IN_SEVERAL_STUDIES, groups, (series,))
+    for positions in index[Level.STUDY].values():
+        groups = _grouped(positions, lambda position: _patient(records[position]))
+        if len(groups) > 1:
+            yield Finding(FindingKind.STUDY_WITH_SEVERAL_PATIENTS, groups, (study,))
+
+
+def _patient(record: InstanceRecord) -> Hashable:
+    """Return the record's patient, the same for every input without a Patient ID."""
+    return _WITHOUT_PATIENT_ID if record.patient is None else record.patient
+
+
+def _grouped(
+    positions: list[int], key: Callable[[int], Hashable | None]
+) -> tuple[tuple[int, ...], ...]:
+    """Group the positions by their key, leaving out those whose key is None."""
+    groups: dict[Hashable, list[int]] = {}
+    for position in positions:
+        value = key(position)
+        if value is not None:
+            groups.setdefault(value, []).append(position)
+    return tuple(tuple(group) for group in groups.values())

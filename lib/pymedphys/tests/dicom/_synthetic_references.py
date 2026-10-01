@@ -18,8 +18,11 @@
 them from its Referenced Frame of Reference Sequence and its ROI Contour
 Sequence, an RT Plan that references the structure set and the dose, and an
 RT Dose that references the plan and the structure set. Every instance UID is
-invented under ``2.25.``, and the patient is fictitious.
+invented under ``2.25.``, and the patient is fictitious. :func:`written_and_read`
+writes an instance to a file in memory and reads it back.
 """
+
+import io
 
 from pymedphys._imports import pydicom
 
@@ -209,3 +212,12 @@ def collection():
         rt_plan(),
         rt_dose(),
     ]
+
+
+def written_and_read(dataset, transfer_syntax):
+    """Return ``dataset`` written in ``transfer_syntax`` and read back."""
+    dataset.file_meta = pydicom.dataset.FileMetaDataset()
+    dataset.file_meta.TransferSyntaxUID = transfer_syntax
+    written = io.BytesIO()
+    pydicom.dcmwrite(written, dataset, enforce_file_format=True)
+    return pydicom.dcmread(io.BytesIO(written.getvalue()))
