@@ -137,6 +137,23 @@ def test_implicit_vr_evidence_records_no_vr():
     assert evidence.value_field(BEAM_NAME_PATH) == DESCRIPTION
 
 
+@pytest.mark.parametrize(
+    "transfer_syntax, data_set",
+    [(EXPLICIT, _explicit_data_set()), (IMPLICIT, _implicit_data_set())],
+    ids=["explicit-vr", "implicit-vr"],
+)
+def test_evidence_counts_the_items_of_each_value_that_holds_them(
+    transfer_syntax, data_set
+):
+    evidence = source.read_source(_file(transfer_syntax, data_set))
+
+    counts = {path: evidence.element(path).items for path in evidence.paths()}
+
+    assert counts[_path("(300A,00B0)")] == 2
+    assert counts[_path("(0044,0110)")] == 1
+    assert counts[NAME_PATH] is None
+
+
 def test_a_sequence_of_undefined_length_has_no_single_value_field():
     evidence = source.read_source(_file(EXPLICIT, _explicit_data_set()))
 
@@ -151,6 +168,17 @@ def test_a_malformed_structure_is_refused(data_set, stop):
 
     assert raised.value.reason is source.SourceReason.STRUCTURE
     assert raised.value.offset == stop
+
+
+def test_a_file_that_ends_inside_a_sequence_is_refused_at_its_end():
+    # Without its sequence delimiter, the file ends inside Beam Sequence.
+    data = _file(EXPLICIT, _explicit_data_set()[:-24])
+
+    with pytest.raises(source.SourceRefused) as raised:
+        source.read_source(data)
+
+    assert raised.value.reason is source.SourceReason.STRUCTURE
+    assert raised.value.offset == len(data)
 
 
 @pytest.mark.parametrize(
@@ -351,6 +379,73 @@ def test_a_structure_that_does_not_match_its_source_is_refused(tag, replacement)
 
     with pytest.raises(elements.UndecodableElement, match="does not match"):
         elements.read_element(dataset, path, elements.DEFAULT_CODECS, source=evidence)
+
+
+def _without_the_first_item(dataset):
+    del dataset[BEAM_SEQUENCE].value[0]
+
+
+def _with_another_item(dataset):
+    dataset[BEAM_SEQUENCE].value.append(pydicom.Dataset())
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "transfer_syntax, data_set",
+    [(EXPLICIT, _explicit_data_set()), (IMPLICIT, _implicit_data_set())],
+    ids=["undefined-length", "defined-length"],
+)
+@pytest.mark.parametrize(
+    "change", [_without_the_first_item, _with_another_item], ids=["fewer", "more"]
+)
+def test_a_sequence_with_other_items_than_its_source_is_refused(
+    transfer_syntax, data_set, change
+):
+    evidence = source.read_source(_file(transfer_syntax, data_set))
+    dataset = evidence.dataset()
+    change(dataset)
+
+    with pytest.raises(elements.UndecodableElement, match="does not match"):
+        elements.read_element(
+            dataset, _path("(300A,00B0)"), elements.DEFAULT_CODECS, source=evidence
+        )
+
+
+def _with_character_set(term):
+    return _explicit(0x00080005, "CS", term) + _explicit_data_set()
+
+
+def _set_latin_1(dataset):
+    dataset.SpecificCharacterSet = "ISO_IR 100"
+
+
+def _delete_character_set(dataset):
+    del dataset.SpecificCharacterSet
+
+
+@pytest.mark.parametrize(
+    "data_set, change, reason",
+    [
+        (_explicit_data_set(), _set_latin_1, "does not match"),
+        (_with_character_set(b"ISO_IR 144"), _set_latin_1, None),
+        (_with_character_set(b"ISO_IR 144"), _delete_character_set, "does not match"),
+    ],
+    ids=["added", "changed", "deleted"],
+)
+def test_the_character_set_of_source_text_is_the_sources(data_set, change, reason):
+    # Text is decoded from the source's bytes, so in the character set the
+    # source declares, whatever the data set now holds.
+    evidence = source.read_source(_file(EXPLICIT, data_set))
+    dataset = evidence.dataset()
+    elements.dataset_codecs(dataset, source=evidence)
+    change(dataset)
+
+    if reason is None:
+        codecs = elements.dataset_codecs(dataset, source=evidence)
+        assert codecs == (pydicom.charset.python_encoding["ISO_IR 144"],)
+    else:
+        with pytest.raises(elements.UndecodableElement, match=reason):
+            elements.dataset_codecs(dataset, source=evidence)
 
 
 def test_an_element_absent_from_its_source_is_refused():

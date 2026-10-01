@@ -46,7 +46,6 @@ from pymedphys._imports import pydicom
 from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
 
 from .file_layout import (
-    IMPLICIT_VR_TRANSFER_SYNTAXES,
     ElementPath,
     Extent,
     Region,
@@ -120,6 +119,9 @@ class SourceEvidence:
         """Yield the path of each element of the data set, in file order."""
         return iter(self._elements)
 
+    def __contains__(self, path: object) -> bool:
+        return path in self._elements
+
     def element(self, path: ElementPath) -> Extent:
         """Return where the element at ``path`` is; :class:`KeyError` if absent."""
         return self._elements[path]
@@ -192,16 +194,14 @@ def read_source(data: bytes | bytearray | memoryview) -> SourceEvidence:
     if syntax not in SUPPORTED_TRANSFER_SYNTAXES:
         raise SourceRefused(SourceReason.TRANSFER_SYNTAX)
     if not layout.readable:
-        trailing = layout.spans[-1]
-        raise SourceRefused(SourceReason.STRUCTURE, trailing.start)
+        # Reading stopped where the trailing bytes start, or, inside a
+        # sequence or item, at the end of the file.
+        last = layout.spans[-1]
+        stop = last.start if last.location.region is Region.TRAILING else layout.size
+        raise SourceRefused(SourceReason.STRUCTURE, stop)
     elements = tuple(
         extent
         for extent in layout.elements
         if extent.location.region in _DATA_SET_REGIONS
     )
     return SourceEvidence(data, syntax, elements)
-
-
-def is_implicit(evidence: SourceEvidence) -> bool:
-    """Return whether the evidence's data set is in implicit VR."""
-    return evidence.transfer_syntax in IMPLICIT_VR_TRANSFER_SYNTAXES

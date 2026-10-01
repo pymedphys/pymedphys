@@ -177,6 +177,8 @@ def dataset_codecs(
     dataset: pydicom.Dataset,
     inherited: tuple[str, ...] = DEFAULT_CODECS,
     items: tuple[tuple[str, int], ...] = (),
+    *,
+    source: SourceEvidence | None = None,
 ) -> tuple[str, ...]:
     """Return the codecs, as pydicom names them, of a data set's text.
 
@@ -189,15 +191,24 @@ def dataset_codecs(
     value does; only the first is empty; and several all use ISO 2022 code
     extensions.
 
+    Given the ``source`` that the data set was read from, the value is read
+    from the source's bytes, as :func:`read_element` reads it, and a data
+    set that has a Specific Character Set where its source has none, or
+    none where its source has one, raises :class:`UndecodableElement`. The
+    codecs of text read from a source are then always those it declares.
+
     >>> item = pydicom.Dataset()
     >>> item.SpecificCharacterSet = ["", "ISO 2022 IR 87"]
     >>> dataset_codecs(item)
     ('iso8859', 'iso2022_jp')
     """
-    if _number(_CHARACTER_SET) not in dataset:
-        return tuple(inherited)
     path = ElementPath(items, _CHARACTER_SET)
-    values = read_element(dataset, path, DEFAULT_CODECS).values
+    held = _number(_CHARACTER_SET) in dataset
+    if source is not None and held != (path in source):
+        raise UndecodableElement(path, "does not match its source")
+    if not held:
+        return tuple(inherited)
+    values = read_element(dataset, path, DEFAULT_CODECS, source=source).values
     terms = [str(value).strip(" ") for value in values] or [""]
     single = len(terms) == 1
     if not all(
@@ -244,10 +255,14 @@ def read_element(
     holds at ``path``, so it may have been decoded by pydicom already. It
     raises :class:`UndecodableElement` if the source has no element at
     ``path``, or if the data set's element, still encoded, holds other bytes
-    or another VR, or was built in memory. A sequence of undefined length is
-    read from the items that ``dcmread`` built, whose elements are then read
-    against the source in turn. The elements of ``ancestors`` that decide a
-    VR are read without the source.
+    or another VR, was built in memory, or is a decoded sequence with
+    another number of items. An element that pydicom has decoded is read
+    from the source whatever value it now holds, since pydicom keeps no
+    encoded form of it to compare. A sequence of undefined length is read
+    from the items that ``dcmread`` built, whose elements are then read
+    against the source in turn. ``codecs`` must then come from
+    :func:`dataset_codecs` given the same source. The elements of
+    ``ancestors`` that decide a VR are read without the source.
     """
     with redacted_pydicom_diagnostics():
         element = dataset.get_item(_number(path.tag), keep_deferred=True)
@@ -310,6 +325,10 @@ def _from_source(element, path: ElementPath, source: SourceEvidence):
     except KeyError:
         raise UndecodableElement(path, "is not in its source") from None
     raw = isinstance(element, pydicom.dataelem.RawDataElement)
+    # pydicom reads a sequence of undefined length as items, so they are
+    # counted, as are the items of any sequence it has decoded.
+    if not raw and element.VR == "SQ" and len(element.value) != extent.items:
+        raise UndecodableElement(path, "does not match its source")
     if extent.undefined_length:
         undefined = element.length == _UNDEFINED if raw else element.is_undefined_length
         if not undefined:
