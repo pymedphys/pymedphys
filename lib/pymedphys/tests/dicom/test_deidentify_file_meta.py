@@ -324,11 +324,11 @@ def test_a_written_file_has_a_zero_preamble_and_exactly_the_built_elements(
     ]
 
 
+@pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize("transfer_syntax_uid", [IMPLICIT_LE, EXPLICIT_LE])
 def test_a_written_file_reads_back_with_the_same_file_meta_information(
-    tmp_path, pydicom_behaviour, transfer_syntax_uid
+    tmp_path, transfer_syntax_uid
 ):
-    del pydicom_behaviour
     dataset = _dataset()
     path = tmp_path / "instance.dcm"
 
@@ -376,8 +376,8 @@ def test_the_source_file_holds_every_identifying_element():
         assert source.file_meta[tag].value == value
 
 
-def test_no_source_file_meta_element_or_preamble_is_written(pydicom_behaviour):
-    del pydicom_behaviour
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_no_source_file_meta_element_or_preamble_is_written():
     source = _source_file()
     source_meta, source_preamble = source.file_meta, source.preamble
     source.SOPInstanceUID = REPLACEMENT_UID

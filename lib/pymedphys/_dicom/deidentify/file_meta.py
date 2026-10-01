@@ -211,8 +211,10 @@ def write_file(
     UID and SOP Instance UID, whatever ``dataset.file_meta`` and
     ``dataset.preamble`` hold. pydicom's ``dcmwrite(...,
     enforce_file_format=True)``, which writes it, would otherwise keep the
-    source file's preamble and File Meta elements. The data set given is not
-    changed.
+    source file's preamble and File Meta elements. The data set's
+    ``file_meta`` and ``preamble`` are not changed, but, as in any pydicom
+    write, its ambiguous VRs may be resolved and its raw elements decoded in
+    place.
 
     Parameters
     ----------
