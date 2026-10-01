@@ -2217,6 +2217,15 @@ def test_the_pin_names_the_iods_left_for_their_functional_group_macros():
     assert len(generate.PIN.functional_group_iods) == 33
 
 
+def test_every_storage_sop_class_iod_is_generated_or_named_in_the_pin():
+    generated = set(iods.load_iod_tables().iods)
+    named = {name for _, name in generate.PIN.functional_group_iods}
+    storage = {row.iod_name for row in sop_classes.load_storage_sop_classes().rows}
+
+    assert not generated & named
+    assert storage <= generated | named
+
+
 def test_generation_is_byte_for_byte_reproducible(source_dir, tmp_path):
     generate.generate(FIXTURE_PIN, tmp_path / "a", source_dir=source_dir)
     generate.generate(FIXTURE_PIN, tmp_path / "b", source_dir=source_dir)
