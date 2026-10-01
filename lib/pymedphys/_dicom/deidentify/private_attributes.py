@@ -51,6 +51,17 @@ decodes with the value, so that check does not see into a sequence of defined
 length nested in them. Each, at every depth, is decoded here and checked in
 the same way, with the character set of the item that holds it.
 
+An item's text is in the Specific Character Set (0008,0005) of the item, or
+else of the data set that holds it (PS3.5 Section 7.5.3). pydicom does not
+map every value to codecs as it is given: a value that is not among its
+terms, or several values that include ISO_IR 192, GB18030, or GBK, which
+allow no code extensions. It reads text in such a character set with its
+default encoding or one that it guesses, or, raising its validation errors,
+raises an error. Such a character set is refused rather than read that way:
+in an item, by the path of the sequence that holds the item, since pydicom
+may already have read the item as it decoded the sequence, and at the top
+level by its own path.
+
 A value of VR UN, or one read without a VR from Implicit VR Little Endian, is
 decoded only where the pinned dictionary or pydicom's gives its attribute VR
 SQ. pydicom would decode any other with its attribute's VR, which can raise an
@@ -58,12 +69,20 @@ error or a warning that quotes the value, as diagnostics must never do, and
 would change a value that other rules act on. Such a value holds no items, and
 one whose attribute the dictionary does not list is not searched, since the
 design has the engine remove an attribute that the dictionary does not list
-and no reviewed rule covers.
+and no reviewed rule covers. Explicit VR Little Endian can also store a
+standard sequence with a VR other than SQ or UN, such as OB. pydicom does not
+read such a value as items, so it is refused.
 
 Elements are named by their paths, never by their values. Finding them decodes
 no value but those of sequences and of Specific Character Set (0008,0005), so
-no private value is decoded. The File Meta Information is not part of the data
-set; the design has the engine replace it whole.
+no private value is decoded. pydicom's warnings and log records can quote the
+values that it decodes, so the search runs within
+:func:`pymedphys._dicom.anonymise.diagnostics.redacted_pydicom_diagnostics`,
+which ignores pydicom's warnings for the rest of the process and summarises
+its log records while the search runs. pydicom's errors, whose messages can
+also quote a value, are replaced by :class:`PrivateAttributeError`, not
+chained to it. The File Meta Information is not part of the data set; the
+design has the engine replace it whole.
 
 The Retain Safe Private Option keeps the private attributes that are known to
 be safe. No reviewed rules yet say which are, so a policy that selects it is
@@ -78,6 +97,8 @@ from collections.abc import Sequence
 
 from pymedphys._imports import pydicom
 
+from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
+
 from .file_layout import ElementPath
 from .policy import Policy, PolicyError
 from .standard import PRIVATE_ATTRIBUTES_TAG, sequence_tags
@@ -86,13 +107,22 @@ RETAIN_SAFE_PRIVATE = "retain_safe_private"
 # The action that removes an attribute, and a sequence with all its items.
 REMOVE = "X"
 _SPECIFIC_CHARACTER_SET = 0x00080005
-# What pydicom raises when it cannot decode a value as items.
-_DECODING_ERRORS = (EOFError, OSError, ValueError, struct.error)
+_TOP_LEVEL_CHARACTER_SET = ElementPath((), "(0008,0005)")
+# What pydicom raises when it cannot decode a value as items. Raising its
+# validation errors, it raises LookupError for a character set that it does
+# not know, and KeyError, a LookupError, for an element without a VR whose
+# attribute its dictionary does not list.
+_DECODING_ERRORS = (EOFError, LookupError, OSError, ValueError, struct.error)
 _Items = tuple[tuple[str, int], ...]
 
 
 class PrivateAttributeError(Exception):
-    """A value that may hold private attributes cannot be read as items.
+    """A value that may hold private attributes cannot be decoded exactly.
+
+    The value is that of a standard sequence, whose items can also be
+    refused for their Specific Character Set (0008,0005), or of the top
+    level's Specific Character Set, which applies to the text of each item
+    that does not have its own.
 
     The private attributes in it cannot all be found, so its instance is
     sequestered, unless a sequence that is removed holds the value, or is the
@@ -104,13 +134,13 @@ class PrivateAttributeError(Exception):
     Attributes
     ----------
     path : ElementPath
-        The element whose value cannot be read.
+        The element whose value cannot be decoded exactly.
     """
 
     def __init__(self, path: ElementPath) -> None:
         super().__init__(
-            f"the value of {path} cannot be read as items, so the private "
-            "attributes that it may hold cannot be found"
+            f"the value of {path} cannot be decoded exactly, so the private "
+            "attributes that the data set may hold cannot all be found"
         )
         self.path = path
 
@@ -143,7 +173,10 @@ def private_attribute_paths(
     PrivateAttributeError
         If pydicom cannot decode a standard sequence, or a standard sequence
         that pydicom leaves as VR UN, or a sequence nested at any depth in
-        its items, does not decode to items that encode it exactly.
+        its items, does not decode to items that encode it exactly; if a
+        standard sequence is stored with a VR other than SQ or UN; or if the
+        data set, or an item of a standard sequence, has a Specific Character
+        Set that pydicom does not map to codecs as it is given.
 
     Examples
     --------
@@ -159,7 +192,9 @@ def private_attribute_paths(
     ['(0009,0010)', '(0009,1001)', '(300A,00B0)[1] > (300B,0010)']
     """
     _check(policy)
-    return tuple(_visit(dataset, (), _encodings(dataset, None), remove=False))
+    with redacted_pydicom_diagnostics():
+        encodings = _encodings(dataset, None, _TOP_LEVEL_CHARACTER_SET)
+        return tuple(_visit(dataset, (), encodings, remove=False))
 
 
 def without_private_attributes(
@@ -195,8 +230,10 @@ def without_private_attributes(
         As :func:`private_attribute_paths` raises it.
     """
     _check(policy)
-    result = copy.deepcopy(dataset)
-    _visit(result, (), _encodings(result, None), remove=True)
+    with redacted_pydicom_diagnostics():
+        result = copy.deepcopy(dataset)
+        encodings = _encodings(result, None, _TOP_LEVEL_CHARACTER_SET)
+        _visit(result, (), encodings, remove=True)
     return result
 
 
@@ -242,7 +279,7 @@ def _visit(
         inner: list[ElementPath] = []
         for index, item in enumerate(sequence):
             within = (*items, (path.tag, index))
-            item_encodings = _encodings(item, encodings)
+            item_encodings = _encodings(item, encodings, path)
             inner += _visit(item, within, item_encodings, remove, exact or decoded)
         if remove and inner and decoded:
             dataset[tag] = pydicom.DataElement(tag, "SQ", sequence)
@@ -262,7 +299,9 @@ def _items(
     pydicom keeps an element that it has not decoded raw, with the VR it was
     read with, or none if it was read from Implicit VR Little Endian. A value
     of VR UN, or of none, holds items only if the pinned dictionary or
-    pydicom's gives its attribute VR SQ; no other is decoded. pydicom decodes
+    pydicom's gives its attribute VR SQ; no other is decoded. A value whose
+    VR is neither SQ nor UN, where either dictionary gives its attribute VR
+    SQ, is refused, since its items could not be searched. pydicom decodes
     a sequence when it is read, but a value that it leaves as UN, and a raw
     element in an item that :func:`_decoded` checked (``exact``), whose bytes
     pydicom would write as they are, are decoded and checked here.
@@ -274,15 +313,15 @@ def _items(
         if not _is_sequence(tag, path):
             return (), False
     elif element.VR != "SQ":
+        if _is_sequence(tag, path):
+            raise PrivateAttributeError(path)
         return (), False
     if exact and isinstance(element, pydicom.dataelem.RawDataElement):
         return _decoded(element.value, path, encodings), True
     try:
         element = dataset[tag]
-    # pydicom raises KeyError, when it raises its validation errors, for an
-    # element without a VR whose attribute its dictionary does not list.
-    except (*_DECODING_ERRORS, KeyError) as error:
-        raise PrivateAttributeError(path) from error
+    except _DECODING_ERRORS:
+        raise PrivateAttributeError(path) from None
     if element.VR == "SQ":
         return element.value, False
     if element.VR == "UN":
@@ -313,20 +352,32 @@ def _decoded(
         encoded.is_implicit_VR = True
         for item in sequence:
             pydicom.filewriter.write_sequence_item(encoded, item, encodings)
-    except _DECODING_ERRORS as error:
-        raise PrivateAttributeError(path) from error
+    except _DECODING_ERRORS:
+        raise PrivateAttributeError(path) from None
     if encoded.getvalue() != value:
         raise PrivateAttributeError(path)
     return sequence
 
 
-def _encodings(dataset: pydicom.Dataset, inherited: list[str] | None) -> list[str]:
+def _encodings(
+    dataset: pydicom.Dataset, inherited: list[str] | None, path: ElementPath
+) -> list[str]:
     """Return the Python encodings of the text in ``dataset``.
 
     A data set's Specific Character Set (0008,0005) applies to it and to the
-    items it holds, unless an item has one of its own.
+    items it holds, unless an item has one of its own. One is refused, by
+    ``path``, unless pydicom maps it to codecs as it is given: each value is
+    one of pydicom's terms, and, where there are several, none is ISO_IR 192,
+    GB18030, or GBK, which allow no code extensions.
     """
     element = dataset.get(_SPECIFIC_CHARACTER_SET)
-    if element is not None and element.value:
-        return pydicom.charset.convert_encodings(element.value)
-    return inherited or pydicom.charset.convert_encodings(None)
+    if element is None or not element.value:
+        return inherited or pydicom.charset.convert_encodings(None)
+    value = element.value
+    terms = [value] if isinstance(value, str) else list(value)
+    if not all(term in pydicom.charset.python_encoding for term in terms) or (
+        len(terms) > 1
+        and any(term in pydicom.charset.STAND_ALONE_ENCODINGS for term in terms)
+    ):
+        raise PrivateAttributeError(path)
+    return pydicom.charset.convert_encodings(terms)
