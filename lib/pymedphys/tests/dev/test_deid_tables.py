@@ -1230,7 +1230,7 @@ def test_table_b_5_1_repeated_names_or_uids_fail(column):
         )
 
 
-# PS3.3: an IOD modules table and the attribute tables it reaches. As in the
+# PS3.3: IOD modules tables and the attribute tables they reach. As in the
 # published tables, an Include row's text spans the name, tag, and Type
 # columns, or all four, a heading spans the whole table, and the IE column
 # spans the rows of each information entity.
@@ -1249,13 +1249,16 @@ def _include(depth, label, title, description=None):
     return ((text, 1, 3), description) if description else ((text, 1, 4),)
 
 
+IOD_HEADER = ("IE", "Module", "Reference", "Usage")
 PS3_3_IOD = _spanning_table(
     "Table A.99-1. Fixture Image IOD Modules",
-    ("IE", "Module", "Reference", "Usage"),
+    IOD_HEADER,
     (
         ("Patient", "Fixture Patient", "C.99.1", "M"),
-        (("Image", 2, 1), "Fixture Image", "C.99.2", "C - Required if invented."),
+        (("Image", 3, 1), "Fixture Image", "C.99.2", "C - Required if invented."),
         ("Fixture Other", "C.99.3", "U"),
+        # A section inserted after C.99.4, as C.7.6.4b follows C.7.6.4.
+        ("Fixture Contrast", "C.99.4b", "U"),
     ),
 )
 PS3_3_PATIENT = _spanning_table(
@@ -1305,21 +1308,90 @@ PS3_3_WILDCARD_MACRO = _spanning_table(
         ("Fixture Code Sequence", "(0998,0040)", "3", "Invented."),
         (("&gt;Any Attribute from the fixture.", 1, 2), "2", "Invented."),
         _include(1, "Table 10-99", "Fixture Code Macro Attributes"),
+        ("&gt;Fixture Scan", "(0998,0060)", "3", "Invented."),
     ),
+)
+# Published without "Attributes" in its title, which the fixture pin corrects.
+PS3_3_CONTRAST = _spanning_table(
+    "Table C.99-4. Fixture Contrast Module",
+    ATTRIBUTE_HEADER,
+    (
+        _include(0, "Table 10-96", "Fixture Reference Macro Attributes"),
+        # In the items of the included table's only top-level attribute.
+        ("&gt;Fixture Scan", "(0998,0060)", "1C", "Invented."),
+    ),
+)
+PS3_3_REFERENCE_MACRO = _spanning_table(
+    "Table 10-96. Fixture Reference Macro Attributes",
+    ATTRIBUTE_HEADER,
+    (
+        ("Fixture Code Sequence", "(0998,0040)", "1", "Invented."),
+        ("&gt;Fixture Inspection", "(0998,0050)", "3", "Invented."),
+        # A tree of references, as Table C.38.2-3 describes.
+        _include(1, "Table 10-96", "Fixture Reference Macro Attributes", "Nested."),
+    ),
+)
+# An IOD whose module includes the IOD's Functional Group Macros, which the
+# fixture pin names, and the table that lists those macros.
+PS3_3_ENHANCED_IOD = _spanning_table(
+    "Table A.99-2. Fixture Enhanced Image IOD Modules",
+    IOD_HEADER,
+    (
+        ("Patient", "Fixture Patient", "C.99.1", "M"),
+        ("Image", "Fixture Functional Groups", "C.99.5", "M"),
+    ),
+)
+PS3_3_FUNCTIONAL_GROUP_MACROS = _spanning_table(
+    "Table A.99-3. Fixture Enhanced Image Functional Group Macros",
+    ("Functional Group Macro", "Section", "Usage"),
+    (("Fixture Measures", "C.99.5.1", "M"),),
+)
+PS3_3_FUNCTIONAL_GROUPS = _spanning_table(
+    "Table C.99-5. Fixture Functional Groups Module Attributes",
+    ATTRIBUTE_HEADER,
+    (
+        ("Fixture Code Sequence", "(0998,0040)", "1", "Invented."),
+        (("&gt;Include one or more Functional Group Macros.", 1, 3), "Invented."),
+    ),
+)
+# A Normalized IOD, as Annex B defines them, in their layout.
+PS3_3_NORMALIZED_IOD = _spanning_table(
+    "Table B.99-1. Fixture Session IOD Modules",
+    ("Module", "Reference", "Module Description"),
+    (("Fixture Patient", "C.99.1", "Invented."),),
 )
 PS3_3_TABLES = (
     _section("A.99.3", PS3_3_IOD),
+    _section("A.99.4", PS3_3_ENHANCED_IOD, PS3_3_FUNCTIONAL_GROUP_MACROS),
+    _section("B.99.1", PS3_3_NORMALIZED_IOD),
     _section("C.99.1", PS3_3_PATIENT, PS3_3_PATIENT_MACRO),
     _section("C.99.2", PS3_3_IMAGE),
     _section("C.99.3", PS3_3_OTHER),
+    _section("C.99.4b", PS3_3_CONTRAST),
+    _section("C.99.5", PS3_3_FUNCTIONAL_GROUPS),
+    _section("10.96", PS3_3_REFERENCE_MACRO),
     _section("10.98", PS3_3_WILDCARD_MACRO),
     _section("10.99", PS3_3_CODE_MACRO),
 )
 PS3_3_DICTIONARY = {row[0]: row[3] for row in TABLE_6_1_ROWS}
+PS3_3_CORRECTIONS = (
+    ps3_3.Correction("Table C.99-4", "Contrast Module", "Contrast Module Attributes"),
+)
+PS3_3_FUNCTIONAL_GROUP_IODS = (("Table A.99-2", "Fixture Enhanced Image"),)
 
 
 def _ps3_3_tables(*tables):
-    return chtml.extract_tables(_page(*(tables or PS3_3_TABLES)), expand_spans=True)
+    """Return the fixture's tables, or the given ones, with the corrections."""
+    extracted = chtml.extract_tables(
+        _page(*(tables or PS3_3_TABLES)), expand_spans=True
+    )
+    return ps3_3.correct(extracted, PS3_3_CORRECTIONS)
+
+
+def _collect(*tables, functional_group_iods=PS3_3_FUNCTIONAL_GROUP_IODS):
+    return ps3_3.collect(
+        _ps3_3_tables(*tables), PS3_3_DICTIONARY, functional_group_iods
+    )
 
 
 def _ps3_3_table(label, *tables):
@@ -1368,9 +1440,26 @@ EXPECTED_IOD = {
             "condition": "",
             "table": "Table C.99-3",
         },
+        {
+            "information_entity": "Image",
+            "module": "Fixture Contrast",
+            "section": "C.99.4b",
+            "usage": "U",
+            "condition": "",
+            "table": "Table C.99-4",
+        },
     ],
 }
 EXPECTED_ATTRIBUTE_TABLES = [
+    {
+        "label": "Table 10-96",
+        "title": "Fixture Reference Macro Attributes",
+        "rows": [
+            _attribute(0, "Fixture Code Sequence", "(0998,0040)", "1"),
+            _attribute(1, "Fixture Inspection", "(0998,0050)", "3"),
+            _include_row(1, "Table 10-96"),
+        ],
+    },
     {
         "label": "Table 10-98",
         "title": "Fixture Wildcard Macro Attributes",
@@ -1378,6 +1467,7 @@ EXPECTED_ATTRIBUTE_TABLES = [
             _attribute(0, "Fixture Code Sequence", "(0998,0040)", "3"),
             _attribute(1, "Any Attribute from the fixture.", "", "2"),
             _include_row(1, "Table 10-99"),
+            _attribute(1, "Fixture Scan", "(0998,0060)", "3"),
         ],
     },
     {
@@ -1413,6 +1503,14 @@ EXPECTED_ATTRIBUTE_TABLES = [
         "title": "Fixture Other Module Attributes",
         "rows": [_attribute(0, "Fixture Inspection", "(0998,0050)", "2C")],
     },
+    {
+        "label": "Table C.99-4",
+        "title": "Fixture Contrast Module Attributes",
+        "rows": [
+            _include_row(0, "Table 10-96"),
+            _attribute(1, "Fixture Scan", "(0998,0060)", "1C"),
+        ],
+    },
 ]
 
 
@@ -1432,27 +1530,23 @@ def test_parse_an_iod_modules_table():
 
 
 @pytest.mark.parametrize(
-    "replace, message",
+    "replace, replacement, message",
     [
-        ("Fixture Image IOD Modules", "not an IOD Modules table"),
-        (">C.99.1<", "no section reference"),
-        (">M<", "unknown usage"),
-        (">C - Required if invented.<", "unknown usage"),
-        (">Fixture Other<", "Fixture Patient appears 2 times"),
-        (">Usage<", "unknown column"),
-        (">Patient<", "empty cell"),
+        ("Fixture Image IOD Modules", "Fixture Image Modules", "not an IOD Modules"),
+        (">C.99.1<", ">Section C.99.1<", "row 1 has no section reference"),
+        # A section number ends in at most one lower-case letter.
+        (">C.99.4b<", ">C.99.4B<", "row 4 has no section reference"),
+        (">C.99.4b<", ">C.99.4bb<", "row 4 has no section reference"),
+        (">C.99.4b<", ">C.99b.4<", "row 4 has no section reference"),
+        (">M<", ">R<", "unknown usage"),
+        (">C - Required if invented.<", ">C Required if invented.<", "unknown usage"),
+        (">C - Required if invented.<", ">C – Required if invented.<", "unknown usage"),
+        (">Fixture Other<", ">Fixture Patient<", "Fixture Patient appears 2 times"),
+        (">Usage<", ">Use<", "unknown column"),
+        (">Patient<", "><", "empty cell"),
     ],
 )
-def test_malformed_iod_modules_tables_fail(replace, message):
-    replacement = {
-        "Fixture Image IOD Modules": "Fixture Image Modules",
-        ">C.99.1<": ">Section C.99.1<",
-        ">M<": ">R<",
-        ">C - Required if invented.<": ">C Required if invented.<",
-        ">Fixture Other<": ">Fixture Patient<",
-        ">Usage<": ">Use<",
-        ">Patient<": "><",
-    }[replace]
+def test_malformed_iod_modules_tables_fail(replace, replacement, message):
     page = _page(PS3_3_IOD.replace(replace, replacement, 1))
     table = chtml.select_table(
         chtml.extract_tables(page, expand_spans=True), "Table A.99-1", allow_merged=True
@@ -1477,7 +1571,8 @@ def test_parse_attribute_tables(expected):
         ("(0998,0060)", "(0998,0070)", "(0998,0070), which PS3.6 does not define"),
         (">1C<", ">4<", "row 4 is not an attribute, an Include, or a heading"),
         (">1C<", "><", "row 4 is not an attribute, an Include, or a heading"),
-        (">Fixture Scan<", ">&gt;&gt;Fixture Scan<", "row 4 is nested more deeply"),
+        # Two levels below the Include row above it.
+        (">Fixture Scan<", ">&gt;&gt;&gt;Fixture Scan<", "row 4 is nested more deeply"),
         (">Fixture's Name<", ">&gt;Fixture's Name<", "row 1 is nested more deeply"),
         (">Tag<", ">Tags<", "unknown column"),
     ],
@@ -1508,13 +1603,151 @@ def test_rows_nest_only_below_a_sequence():
 
 
 def test_collect_finds_each_module_table_and_every_table_it_includes():
-    iod_tables, attribute_tables = ps3_3.collect(
-        _ps3_3_tables(), ("Table A.99-1",), PS3_3_DICTIONARY
+    iod_tables, attribute_tables = _collect()
+
+    # Only the IOD Modules tables of Annex A are composite IODs: the fixture's
+    # Normalized IOD, Table B.99-1, is not collected, nor is the IOD that the
+    # pin names for its Functional Group Macros, or their table.
+    assert iod_tables == [EXPECTED_IOD]
+    # Sorted by label, with numbers compared as numbers. Table C.99-5, which
+    # only the IOD left out uses, is not collected.
+    assert attribute_tables == EXPECTED_ATTRIBUTE_TABLES
+
+
+def test_an_iod_whose_modules_include_functional_group_macros_must_be_named():
+    with pytest.raises(
+        chtml.TableFormatError,
+        match="Table A.99-2 includes Functional Group Macros through Table C.99-5",
+    ):
+        _collect(functional_group_iods=())
+
+
+@pytest.mark.parametrize(
+    "named, message",
+    [
+        (
+            (("Table A.99-2", "Fixture Image"),),
+            "the pin names Table A.99-2 for another IOD",
+        ),
+        (
+            (*PS3_3_FUNCTIONAL_GROUP_IODS, ("Table A.99-1", "Fixture Image")),
+            "names Table A.99-1, whose modules include no Functional Group Macros",
+        ),
+        (
+            (*PS3_3_FUNCTIONAL_GROUP_IODS, ("Table A.99-3", "Fixture Enhanced Image")),
+            "not IOD Modules tables of Annex A: Table A.99-3",
+        ),
+        (
+            (*PS3_3_FUNCTIONAL_GROUP_IODS, ("Table B.99-1", "Fixture Session")),
+            "not IOD Modules tables of Annex A: Table B.99-1",
+        ),
+    ],
+)
+def test_the_pin_names_exactly_the_iods_with_functional_group_macros(named, message):
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        _collect(functional_group_iods=named)
+
+
+def test_a_functional_group_macros_row_is_never_parsed_as_an_attribute():
+    table = _ps3_3_table("Table C.99-5")
+
+    with pytest.raises(
+        chtml.TableFormatError,
+        match="row 2 includes an IOD's Functional Group Macros, which are not generated",
+    ):
+        ps3_3.parse_attribute_table("Table C.99-5", table, PS3_3_DICTIONARY)
+
+
+def test_collect_fails_when_no_iod_is_generated():
+    tables = tuple(table for table in PS3_3_TABLES if "sect_A.99.3" not in table)
+
+    with pytest.raises(
+        chtml.TableFormatError, match="no IOD Modules table of Annex A is generated"
+    ):
+        _collect(*tables)
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        # Two attributes at the top level.
+        (
+            ("Fixture Code Sequence", "(0998,0040)", "1", "Invented."),
+            ("Fixture Inspection", "(0998,0050)", "3", "Invented."),
+        ),
+        # One, which is not a sequence.
+        (("Fixture Inspection", "(0998,0050)", "3", "Invented."),),
+    ],
+)
+def test_rows_nest_below_an_include_only_of_a_single_sequence(rows):
+    macro = _spanning_table(
+        "Table 10-96. Fixture Reference Macro Attributes", ATTRIBUTE_HEADER, rows
+    )
+    tables = tuple(
+        _section("10.96", macro) if "sect_10.96" in table else table
+        for table in PS3_3_TABLES
     )
 
-    assert iod_tables == [EXPECTED_IOD]
-    # Sorted by label, with numbers compared as numbers.
-    assert attribute_tables == EXPECTED_ATTRIBUTE_TABLES
+    with pytest.raises(
+        chtml.TableFormatError,
+        match="Table C.99-4 nests rows below its Include of Table 10-96, which "
+        "does not define exactly one top-level attribute, a sequence",
+    ):
+        _collect(*tables)
+
+
+def test_rows_nest_at_most_one_level_below_an_include():
+    page = _page(PS3_3_CONTRAST.replace("&gt;Fixture Scan", "&gt;&gt;Fixture Scan"))
+    table = chtml.select_table(
+        chtml.extract_tables(page, expand_spans=True), "Table C.99-4", allow_merged=True
+    )
+
+    with pytest.raises(chtml.TableFormatError, match="row 2 is nested more deeply"):
+        ps3_3.parse_attribute_table("Table C.99-4", table, PS3_3_DICTIONARY)
+
+
+@pytest.mark.parametrize(
+    "rows, reference, message",
+    [
+        # Each of Tables 10-96 and 10-99 includes the other below a sequence.
+        (
+            (
+                ("Fixture Code Sequence", "(0998,0040)", "3", "Invented."),
+                _include(1, "Table 10-96", "Fixture Reference Macro Attributes"),
+            ),
+            "Table 10-99",
+            "Table 10-99 includes itself: Table 10-99 > Table 10-96 > Table 10-99",
+        ),
+        # Table 10-99 includes itself below the sequence of a macro it
+        # includes, not one of its own.
+        (
+            (
+                ("Fixture Inspection", "(0998,0050)", "1", "Invented."),
+                _include(0, "Table 10-96", "Fixture Reference Macro Attributes"),
+                ("&gt;Fixture Scan", "(0998,0060)", "3", "Invented."),
+                _include(1, "Table 10-99", "Fixture Code Macro Attributes"),
+            ),
+            "Table 10-96",
+            "Table 10-99 includes itself: Table 10-99 > Table 10-99",
+        ),
+    ],
+)
+def test_a_table_includes_itself_only_below_its_own_sequence(rows, reference, message):
+    code_macro = _spanning_table(
+        "Table 10-99. Fixture Code Macro Attributes", ATTRIBUTE_HEADER, rows
+    )
+    # Table 10-96 includes the reference below its own sequence.
+    tables = tuple(
+        _section("10.99", code_macro)
+        if "sect_10.99" in table
+        else table.replace("Include Table 10-96", f"Include {reference}")
+        if "sect_10.96" in table
+        else table
+        for table in PS3_3_TABLES
+    )
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        _collect(*tables)
 
 
 def test_labels_sort_by_their_numbers():
@@ -1545,34 +1778,112 @@ def test_a_module_needs_exactly_one_table_in_its_section():
         chtml.TableFormatError,
         match="no Fixture Image Module Attributes table in C.99.2",
     ):
-        ps3_3.collect(_ps3_3_tables(*moved), ("Table A.99-1",), PS3_3_DICTIONARY)
+        _collect(*moved)
 
 
 def test_an_include_of_a_missing_table_fails():
     tables = tuple(table for table in PS3_3_TABLES if "sect_10.99" not in table)
 
     with pytest.raises(chtml.TableFormatError, match="no table titled 'Table 10-99'"):
-        ps3_3.collect(_ps3_3_tables(*tables), ("Table A.99-1",), PS3_3_DICTIONARY)
+        _collect(*tables)
 
 
-def test_a_cycle_of_includes_fails():
+@pytest.mark.parametrize(
+    "rows, message",
+    [
+        (
+            (_include(0, "Table 10-97", "Fixture Cycle Macro Attributes"),),
+            "Table 10-97 includes itself: Table 10-97 > Table 10-97",
+        ),
+        # Through another table.
+        (
+            (_include(0, "Table 10-98", "Fixture Wildcard Macro Attributes"),),
+            "Table 10-97 includes itself: Table 10-97 > Table 10-98 > Table 10-97",
+        ),
+    ],
+)
+def test_a_cycle_of_includes_fails(rows, message):
     cycle = _section(
         "10.97",
         _spanning_table(
-            "Table 10-97. Fixture Cycle Macro Attributes",
-            ATTRIBUTE_HEADER,
-            (_include(0, "Table 10-97", "Fixture Cycle Macro Attributes"),),
+            "Table 10-97. Fixture Cycle Macro Attributes", ATTRIBUTE_HEADER, rows
         ),
+    )
+    wildcard = PS3_3_WILDCARD_MACRO.replace(
+        "</tbody>",
+        '<tr valign="top"><td align="left" rowspan="1" colspan="4"><p>Include '
+        "Table 10-97 “Fixture Cycle Macro Attributes”</p></td></tr></tbody>",
     )
     tables = tuple(
         table.replace("Table 10-98", "Table 10-97", 1)
         if "sect_C.99.2" in table
+        else _section("10.98", wildcard)
+        if "sect_10.98" in table
         else table
         for table in PS3_3_TABLES
     ) + (cycle,)
 
-    with pytest.raises(chtml.TableFormatError, match="Table 10-97 includes itself"):
-        ps3_3.collect(_ps3_3_tables(*tables), ("Table A.99-1",), PS3_3_DICTIONARY)
+    # Such a cycle would repeat forever.
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        _collect(*tables)
+
+
+def test_a_correction_replaces_text_in_one_row_of_its_table():
+    tables = chtml.extract_tables(_page(*PS3_3_TABLES), expand_spans=True)
+
+    corrected = ps3_3.correct(
+        tables,
+        (
+            # In a title, a header, and a row.
+            ps3_3.Correction("Table C.99-4", "Contrast Module", "Contrast Module X"),
+            ps3_3.Correction("Table C.99-3", "Description", "Attribute Description"),
+            ps3_3.Correction("Table A.99-1", "C.99.4b", "C.99.4c"),
+        ),
+    )
+
+    def select(label):
+        return chtml.select_table(corrected, label, allow_merged=True)
+
+    assert select("Table C.99-4").title == "Table C.99-4. Fixture Contrast Module X"
+    assert select("Table C.99-3").header == ATTRIBUTE_HEADER
+    assert select("Table A.99-1").rows[3] == (
+        "Image",
+        "Fixture Contrast",
+        "C.99.4c",
+        "U",
+    )
+    assert (
+        select("Table A.99-1").rows[:3]
+        == chtml.select_table(tables, "Table A.99-1", allow_merged=True).rows[:3]
+    )
+    unchanged = ("Table C.99-4.", "Table C.99-3.", "Table A.99-1.")
+    assert [table for table in corrected if not table.title.startswith(unchanged)] == [
+        table for table in tables if not table.title.startswith(unchanged)
+    ]
+
+
+@pytest.mark.parametrize(
+    "correction, message",
+    [
+        (
+            ps3_3.Correction("Table C.99-4", "Absent text", "Text"),
+            "Table C.99-4 has 'Absent text' in 0 rows, so its correction no longer",
+        ),
+        (
+            ps3_3.Correction("Table C.99-1", "Invented.", "Text"),
+            "Table C.99-1 has 'Invented.' in 3 rows",
+        ),
+        (
+            ps3_3.Correction("Table C.99-9", "Fixture", "Text"),
+            "no table titled 'Table C.99-9'",
+        ),
+    ],
+)
+def test_a_correction_that_does_not_apply_to_exactly_one_row_fails(correction, message):
+    tables = chtml.extract_tables(_page(*PS3_3_TABLES), expand_spans=True)
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        ps3_3.correct(tables, (correction,))
 
 
 def test_a_source_is_read_only_when_its_digest_matches(tmp_path):
@@ -1621,7 +1932,8 @@ FIXTURE_PIN = generate.Pin(
         generate.PinnedSource(path, hashlib.sha256(page).hexdigest())
         for path, page in FIXTURE_PAGES.items()
     ),
-    iod_tables=("Table A.99-1",),
+    functional_group_iods=PS3_3_FUNCTIONAL_GROUP_IODS,
+    corrections=PS3_3_CORRECTIONS,
 )
 
 
@@ -1836,12 +2148,73 @@ def test_the_ps3_3_tables_are_named_as_the_loader_expects():
     assert iods.MODULE_ATTRIBUTES_TABLE == "PS3.3 Module Attributes"
 
 
-def test_a_pin_without_iod_tables_fails(source_dir, tmp_path):
-    pin = dataclasses.replace(FIXTURE_PIN, iod_tables=())
+@pytest.mark.parametrize(
+    "change, message",
+    [
+        (
+            {"functional_group_iods": ()},
+            "Table A.99-2 includes Functional Group Macros",
+        ),
+        ({"corrections": ()}, "no Fixture Contrast Module Attributes table"),
+        (
+            {"corrections": (ps3_3.Correction("Table C.99-3", "Absent", "Text"),)},
+            "its correction no longer applies",
+        ),
+    ],
+)
+def test_a_pin_that_no_longer_matches_ps3_3_fails(
+    source_dir, tmp_path, change, message
+):
+    pin = dataclasses.replace(FIXTURE_PIN, **change)
 
-    with pytest.raises(chtml.TableFormatError, match="names no IOD modules tables"):
+    with pytest.raises(chtml.TableFormatError, match=message):
         generate.generate(pin, tmp_path / "tables", source_dir=source_dir)
     assert not (tmp_path / "tables").exists()
+
+
+def test_the_pin_names_the_iods_left_for_their_functional_group_macros():
+    # Each of these 2026d IODs lists a module, such as the Multi-frame
+    # Functional Groups Module, that includes the IOD's Functional Group
+    # Macros. Generation fails if an edition adds or removes one, and so
+    # does this test until it is updated with the pin.
+    assert dict(generate.PIN.functional_group_iods) == {
+        "Table A.8-3": "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Table A.8-4": "Multi-frame Grayscale Word Secondary Capture Image",
+        "Table A.8-5": "Multi-frame True Color Secondary Capture Image",
+        "Table A.32.8-1": "VL Whole Slide Microscopy Image",
+        "Table A.32.9-1": "Real-Time Video Endoscopic Image",
+        "Table A.32.10-1": "Real-Time Video Photographic Image",
+        "Table A.34.11-1": "Real-Time Audio Waveform",
+        "Table A.36-1": "Enhanced MR Image",
+        "Table A.36-3": "MR Spectroscopy",
+        "Table A.36-5": "Enhanced MR Color Image",
+        "Table A.38-1": "Enhanced CT Image",
+        "Table A.47-1": "Enhanced XA Image",
+        "Table A.48-1": "Enhanced XRF Image",
+        "Table A.51-1": "Segmentation",
+        "Table A.52.3-1": "Ophthalmic Tomography Image",
+        "Table A.53-1": "X-Ray 3D Angiographic Image",
+        "Table A.54-1": "X-Ray 3D Craniofacial Image",
+        "Table A.55-1": "Breast Tomosynthesis Image",
+        "Table A.56-1": "Enhanced PET Image",
+        "Table A.59-1": "Enhanced US Volume",
+        "Table A.66.3-1": "Intravascular Optical Coherence Tomography Image",
+        "Table A.70-1": "Legacy Converted Enhanced CT Image",
+        "Table A.71-1": "Legacy Converted Enhanced MR Image",
+        "Table A.72-1": "Legacy Converted Enhanced PET Image",
+        "Table A.74-1": "Breast Projection X-Ray Image",
+        "Table A.75-1": "Parametric Map",
+        "Table A.84-1": (
+            "Ophthalmic Optical Coherence Tomography B-scan Volume Analysis"
+        ),
+        "Table A.86.1.15-1": "Enhanced RT Image",
+        "Table A.86.1.16-1": "Enhanced Continuous RT Image",
+        "Table A.89.3-1": "Photoacoustic Image",
+        "Table A.90.1.3-1": "Confocal Microscopy Image",
+        "Table A.90.2.3-1": "Confocal Microscopy Tiled Pyramidal Image",
+        "Table A.91-1": "Height Map Segmentation",
+    }
+    assert len(generate.PIN.functional_group_iods) == 33
 
 
 def test_generation_is_byte_for_byte_reproducible(source_dir, tmp_path):
