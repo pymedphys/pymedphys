@@ -500,11 +500,27 @@ id = "MIDI-BP-01"
 text = '''
 For public sharing, remove or replace all known direct identifiers and relevant indirect identifiers and sensitive information wherever they occur: collection descriptions, supporting data, structured and unstructured text, pixel data, and overlays. Justify retaining any indirect identifier with a collection-specific expert statistical analysis of residual risk against a predetermined threshold, which considers other public information about the subjects and holds only at the time it was done.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-017", "D-022", "D-023", "D-027"]
+decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027"]
+implementation = [
+  "_dicom/deidentify/file_layout.py",
+  "_dicom/deidentify/residuals.py",
+]
+tests = [
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_hidden_in_the_preamble_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_the_file_meta_information_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_data_set_trailing_padding_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_bytes_after_the_data_set_are_searched",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_an_ob_value_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_un_value_is_found_in_utf_16",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_private_element_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_nested_sequence_item_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_encapsulated_fragments_are_searched_for_every_form",
+  "tests/dicom/test_deidentify_residuals.py::test_a_clean_file_has_no_findings",
+]
 note = '''
-The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). A residual search fails any output file that still holds a source person name, UID, or date, or a source value outside its data set, and sends text findings to confidential review (D-027). `public-release` retains indirect identifiers only after its statistical assessment.
+The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. The pipeline is to fail any output file that still holds a source person name, UID, date, or direct identifier, or a source value outside its data set, and to send other text findings to confidential review (D-027). `public-release` retains indirect identifiers only after its statistical assessment. Remaining: removing and replacing identifiers in each data set (M3), and acting on what the search finds, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
 '''
 
 [[requirement]]
@@ -603,6 +619,7 @@ milestone = "M4"
 decisions = ["D-001", "D-010", "D-022", "D-023"]
 implementation = [
   "_dev/deid_tables/annex_e.py",
+  "_dev/deid_tables/edition_check.py",
   "_dev/deid_tables/generate.py",
   "_dev/deid_tables/ps3_4.py",
   "_dev/deid_tables/ps3_6.py",
@@ -617,6 +634,8 @@ tests = [
   "tests/dev/test_deid_tables.py::test_generate_writes_table_e1_1_with_its_provenance",
   "tests/dev/test_deid_tables.py::test_a_source_with_another_digest_is_not_parsed",
   "tests/dev/test_deid_tables.py::test_check_passes_only_when_the_tables_are_current",
+  "tests/dev/test_deid_tables.py::test_a_changed_cell_changes_exactly_its_table",
+  "tests/dev/test_deid_tables.py::test_a_page_that_cannot_be_parsed_fails_the_tables_it_serves",
   "tests/dicom/test_deidentify_standard.py::test_each_table_is_generated_from_the_pinned_edition",
   "tests/dicom/test_deidentify_standard.py::test_an_altered_row_is_rejected",
   "tests/dicom/test_deidentify_standard.py::test_every_table_e1_1_attribute_is_in_the_data_dictionary",
@@ -628,9 +647,12 @@ tests = [
   "tests/dicom/test_deidentify_supplementary_actions.py::test_only_the_text_of_the_supported_iods_needs_rules",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_the_rules_for_omitted_text_fall_in_the_reviewed_groups",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_each_group_takes_the_action_of_its_option",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_every_date_and_time_that_table_e1_1_omits_has_a_rule",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_a_new_attribute_that_table_e1_1_omits_needs_a_rule_by_its_vr",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_only_the_date_options_override_the_action_of_an_omitted_date",
 ]
 note = '''
-The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names that Table E.1-1 omits and every text attribute that it omits and a supported IOD uses. Each such text attribute that an option retains is categorised by that option, as Table E.1-1 does: operator-typed text is cleaned under Clean Descriptors, and accessory and equipment identifiers are kept under Retain Device Identity (D-022). Remaining: the edition-check workflow (M1); supplementary rules for the dates and times that the tables omit (D-023) and a decision on the UR attributes they omit (D-022) (M2); private attributes (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names, dates, and times that Table E.1-1 omits and every text attribute that it omits and a supported IOD uses. Each such attribute that an option retains or cleans is categorised by that option, as Table E.1-1 does: operator-typed text is cleaned under Clean Descriptors, and accessory and equipment identifiers are kept under Retain Device Identity (D-022); the dates and times are kept under Retain Longitudinal Temporal Information with Full Dates and cleaned under Modified Dates (D-023). `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and `.github/workflows/deid-edition-check.yml` runs it monthly. Remaining: a decision on the UR attributes that the tables omit (D-022) (M2); private attributes (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]

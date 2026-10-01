@@ -6,15 +6,19 @@
 # no person's name is kept merely because the table does not list it. So does
 # every text attribute (VR LO, SH, LT, ST, UC, or UT) that Table E.1-1 omits
 # and an IOD of the supported scope uses, at any depth, so that no
-# operator-typed text is kept merely because the table does not list it. A
-# rule never covers an attribute that Table E.1-1 lists, or a UI, DA, DT, or
-# TM attribute, which the roles files give roles.
+# operator-typed text is kept merely because the table does not list it. So
+# does every date, time, and datetime (DA, DT, or TM) attribute that Table
+# E.1-1 omits, besides the role that the temporal roles file gives it. A rule
+# never covers an attribute that Table E.1-1 lists, or a UI attribute, which
+# the UID roles file gives a role.
 #
 # "action" is the Basic Profile action. As in Table E.1-1, "options" can give
 # an action under an option, which overrides it when that option is selected:
-# only C under clean_descriptors and K under retain_device_identity, only for
-# a text attribute, and only over an action that removes or replaces the
-# value.
+# for a text attribute, only C under clean_descriptors and K under
+# retain_device_identity; for a date, time, or datetime, only K under
+# retain_longitudinal_full_dates and C under
+# retain_longitudinal_modified_dates; and only over an action that removes or
+# replaces the value.
 
 schema = "pymedphys-deid-supplementary-actions/1"
 edition = "2026d"
@@ -794,3 +798,116 @@ tag = "(0010,0034)"
 keyword = "PatientDeathDateInAlternativeCalendar"
 action = "X"
 note = "The patient's date of death in an alternative calendar. Its VR is LO, but it holds a date in no specified format, so it could be neither shifted nor checked; it is removed under every option, like the alternative calendar date of birth. It is Type 3 in the Patient Module."
+
+# Dates, times, and datetimes that Table E.1-1 omits: removed by Type, as the
+# Basic Profile removes or replaces every date and time that the table lists;
+# and, as the table gives nearly all of those, kept under Retain Longitudinal
+# Temporal Information with Full Dates and cleaned under Retain Longitudinal
+# Temporal Information with Modified Dates, which modifies each by its
+# temporal role. Full Dates and Modified Dates are mutually exclusive, so
+# their actions never conflict.
+
+[[attribute]]
+tag = "(0008,0404)"
+keyword = "ItemInventoryDateTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When the inventory information for a study was created, which PS3.3 requires to be at or after the inventory's Content Date and Content Time. PS3.3 defines it only in the Inventory Module, as Type 1 in Inventoried Studies Sequence. Only the Inventory IOD uses the Inventory Module, and no IOD of the first supported release uses it. It is removed by Type, which gives it a dummy value where it is Type 1, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+
+[[attribute]]
+tag = "(0008,0416)"
+keyword = "ExpirationDateTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When a storage system expects an instance, or an inventory, to stop being available. PS3.3 defines it only in the Inventory Module, as Type 3 in File Access Sequence within the items of inventoried studies, series, and instances, and in the Inventory Creation Module, which describes an Inventory Creation request or response rather than a stored instance. Only the Inventory IOD uses the Inventory Module, and no IOD of the first supported release uses it. It is removed by Type, which removes it where it is Type 3, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
+
+[[attribute]]
+tag = "(0008,041F)"
+keyword = "StudyUpdateDateTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When a storage system last updated a study's instances or metadata, first set when the system received the study. PS3.3 defines it only in the Inventory Module, as Type 2 in Inventoried Studies Sequence. Only the Inventory IOD uses the Inventory Module, and no IOD of the first supported release uses it. It is removed by Type, which empties it where it is Type 2, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+
+[[attribute]]
+tag = "(0014,0102)"
+keyword = "SecondaryReviewDate"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "The date of a secondary review of an inspected object's data. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+
+[[attribute]]
+tag = "(0014,0103)"
+keyword = "SecondaryReviewTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "The time of a secondary review of an inspected object's data. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role; a shift of whole weeks leaves a time of day as it is, so the value is kept as received, as Study Time is."
+
+[[attribute]]
+tag = "(0014,1020)"
+keyword = "ExpiryDate"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "An expiry date that DICONDE defines outside PS3.3. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
+
+[[attribute]]
+tag = "(0014,3076)"
+keyword = "DateOfGainCalibration"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "The date on which the equipment's gain was calibrated. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role. Unlike the calibration dates that Table E.1-1 lists, it is not kept under Retain Device Identity: that option does not require it, since the table omits it, and keeping it would conflict with Modified Dates."
+
+[[attribute]]
+tag = "(0014,3077)"
+keyword = "TimeOfGainCalibration"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "The time at which the equipment's gain was calibrated. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role. Unlike the calibration times that Table E.1-1 lists, it is not kept under Retain Device Identity: that option does not require it, since the table omits it, and keeping it would conflict with Modified Dates."
+
+[[attribute]]
+tag = "(0014,4076)"
+keyword = "ProcedureCreationDate"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When an inspection procedure, which applies to many inspected objects, was created. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
+
+[[attribute]]
+tag = "(0014,4078)"
+keyword = "ProcedureExpirationDate"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When an inspection procedure, which applies to many inspected objects, expires. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
+
+[[attribute]]
+tag = "(0014,407A)"
+keyword = "ProcedureLastModifiedDate"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When an inspection procedure, which applies to many inspected objects, was last modified. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
+
+[[attribute]]
+tag = "(4010,1025)"
+keyword = "RouteSegmentStartTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When an inspected object began a segment of its route. PS3.6 marks it DICOS, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+
+[[attribute]]
+tag = "(4010,1026)"
+keyword = "RouteSegmentEndTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When an inspected object ended a segment of its route. PS3.6 marks it DICOS, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+
+[[attribute]]
+tag = "(4010,102B)"
+keyword = "AlarmDecisionTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When an alarm decision was made about an inspected object. PS3.6 marks it DICOS, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+
+[[attribute]]
+tag = "(4010,1041)"
+keyword = "OOIOwnerCreationTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "A time about the owner of an object of inspection that DICOS defines outside PS3.3, whose relationship to the inspection PS3.3 does not document. PS3.6 marks it DICOS, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
