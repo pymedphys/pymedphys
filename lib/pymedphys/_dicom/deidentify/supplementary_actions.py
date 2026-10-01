@@ -41,6 +41,10 @@ overrides its Basic Profile action when the option is selected:
 - De-identification Method (0012,0063) is kept, and the engine adds its own
   values to it.
 
+URN Code Value (0008,0120) and Coding Scheme URL (0008,010E), UR attributes
+that the table omits, are kept too, since they name coding concepts and
+schemes, like Code Value and Coding Scheme Designator.
+
 Every date, time, and datetime attribute (VR DA, DT, or TM) that the table
 omits has a rule too: removal by Type (X/Z/D), as the Basic Profile removes or
 replaces every date and time that the table lists, with K under Retain

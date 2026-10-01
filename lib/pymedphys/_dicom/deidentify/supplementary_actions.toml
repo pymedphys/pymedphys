@@ -8,9 +8,11 @@
 # and an IOD of the supported scope uses, at any depth, so that no
 # operator-typed text is kept merely because the table does not list it. So
 # does every date, time, and datetime (DA, DT, or TM) attribute that Table
-# E.1-1 omits, besides the role that the temporal roles file gives it. A rule
-# never covers an attribute that Table E.1-1 lists, or a UI attribute, which
-# the UID roles file gives a role.
+# E.1-1 omits, besides the role that the temporal roles file gives it. Other
+# attributes that the table omits have a rule only where one has been
+# reviewed, such as the two URLs below that name coding concepts and schemes.
+# A rule never covers an attribute that Table E.1-1 lists, or a UI attribute,
+# which the UID roles file gives a role.
 #
 # "action" is the Basic Profile action. As in Table E.1-1, "options" can give
 # an action under an option, which overrides it when that option is selected:
@@ -690,6 +692,21 @@ tag = "(0012,0063)"
 keyword = "DeidentificationMethod"
 action = "K"
 note = "A description of each de-identification already applied. PS3.15 E.1.1 has a de-identifier add its own description to this attribute, so the engine keeps the values already present and adds two of its own: a readable value naming PyMedPhys, its version, the PS3.15 edition, and the preset, and the method digest."
+
+# URLs that name coding concepts and schemes: kept under every option, like
+# the codes they qualify.
+
+[[attribute]]
+tag = "(0008,010E)"
+keyword = "CodingSchemeURL"
+action = "K"
+note = "The URL of the resource that defines a coding scheme, which names the scheme like Coding Scheme Designator, so it is kept. A local scheme's URL can name an institution's host; that residual risk is accepted because it names an institution, not a patient, as for Manufacturer."
+
+[[attribute]]
+tag = "(0008,0120)"
+keyword = "URNCodeValue"
+action = "K"
+note = "The value of a coded entry written as a URN or URL, used instead of Code Value where the code is one, so it is kept like Code Value. A code of a local scheme can name an institution's host; that residual risk is accepted because it names an institution, not a patient, as for Manufacturer."
 
 # Names and identifiers of people, organisations, records, and networks,
 # identifiers that a device reads, and the text of overlays: removed by Type
