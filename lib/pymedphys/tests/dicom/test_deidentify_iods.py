@@ -292,7 +292,7 @@ def test_rows_nested_below_an_include_are_in_its_only_sequence(tables):
     assert sr.lookup("(0008,1160)", ("(0040,A730)",)) == ()
 
 
-@pytest.mark.parametrize("depth", [1, 2, 5])
+@pytest.mark.parametrize("depth", [1, 2, 3, 5])
 def test_a_table_that_includes_itself_defines_items_at_any_depth(tables, depth):
     sr = tables.iods["Comprehensive SR"]
     content = ("(0040,A730)",) * depth
