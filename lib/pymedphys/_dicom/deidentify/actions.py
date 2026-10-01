@@ -31,7 +31,8 @@ given no action; what a policy does about it is decided when the policy is
 validated.
 
 These are the actions of Table E.1-1 alone. Compound actions such as X/Z/D
-are resolved later, from the attribute's Type in its IOD, and reviewed
+are resolved later, from the attribute's Type in its IOD, by
+:mod:`~pymedphys._dicom.deidentify.compound_actions`, and reviewed
 supplementary rules add attributes the table omits.
 """
 
