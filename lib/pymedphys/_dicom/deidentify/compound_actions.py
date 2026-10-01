@@ -29,8 +29,10 @@ attribute that the IOD does not define at that place counts as Type 3.
 Where the Type requires an action that the compound action does not offer and
 no later one follows, as for X/Z on a Type 1 attribute, :class:`SequesterInstance`
 is raised and the instance must be sequestered. Table E.1-1a would let Z write
-a dummy value, but the design has Z write a zero-length value, so no action
-that X/Z offers keeps a Type 1 attribute valid.
+a dummy value, and the design has a plain Z write D's dummy value where the
+attribute is Type 1 or 1C at its place, but whether the Z that X/Z offers may
+do the same there is not yet decided, so no action that X/Z offers keeps a
+Type 1 attribute valid.
 
 For example, Table E.1-1 gives Institution Name (0008,0080) X/Z/D. The RT
 Structure Set IOD makes it Type 3 at the top level of the data set, Type 2 in
@@ -88,8 +90,9 @@ class SequesterInstance(Exception):
 
     Raised where the attribute's Type requires an action that the compound
     action does not offer and no later one follows, as for X/Z on a Type 1
-    attribute: since Z writes a zero-length value, no action that X/Z offers
-    keeps a Type 1 attribute valid, and the instance must be sequestered. It
+    attribute: whether the Z that X/Z offers may write a dummy value there, as
+    a plain Z does, is not yet decided, so no action that X/Z offers keeps a
+    Type 1 attribute valid, and the instance must be sequestered. It
     is not a :class:`ValueError`, so code that rejects invalid input does not
     catch it by accident.
 
