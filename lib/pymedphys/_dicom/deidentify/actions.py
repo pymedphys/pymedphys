@@ -44,14 +44,8 @@ import dataclasses
 import types
 from collections.abc import Iterable, Mapping
 
-from .standard import OPTIONS, ProfileTable, load_table_e1_1
+from .standard import MUTUALLY_EXCLUSIVE, OPTIONS, ProfileTable, load_table_e1_1
 from .supplementary_actions import SupplementaryActions, load_supplementary_actions
-
-# Options that PS3.15 specifies as mutually exclusive: E.3.6 for the two Retain
-# Longitudinal Temporal Information Options.
-MUTUALLY_EXCLUSIVE = (
-    frozenset({"retain_longitudinal_full_dates", "retain_longitudinal_modified_dates"}),
-)
 
 
 @dataclasses.dataclass(frozen=True)
