@@ -409,3 +409,42 @@ def test_the_attributes_read_have_their_pinned_vrs():
     }
     for tag, vr in pixel_risk.READ_VRS.items():
         assert dictionary[tag] == vr, tag
+
+
+@pytest.mark.parametrize("value", [b"+-1 ", b"--5 ", b"1.0 ", b"  ", b"1\\2 "])
+@pytest.mark.parametrize("where", [0x30060080, 0x30060039])
+def test_a_malformed_roi_number_is_unreadable_evidence(value, where):
+    dataset = _structure_set([_roi(7, "EXTERNAL")], [_contour(7, 1)])
+    item = dataset[where].value[0]
+    _with_raw(item, 0x30060084, "IS", value)
+    assessment = pixel_risk.assess_pixel_risk(dataset)
+    assert [(f.indicator, f.risk) for f in assessment.findings] == [
+        (Indicator.UNREADABLE, Risk.RECONSTRUCTABLE_FACE)
+    ]
+    assert SENTINEL not in repr(assessment)
+
+
+@pytest.mark.parametrize("value", [b"+7", b"7 ", b" 7"])
+def test_a_signed_or_padded_roi_number_is_read(value):
+    dataset = _structure_set([_roi(7, "EXTERNAL")], [_contour(7, 1)])
+    _with_raw(dataset.ROIContourSequence[0], 0x30060084, "IS", value)
+    assert _found(pixel_risk.assess_pixel_risk(dataset)) == {
+        (Indicator.PATIENT_SURFACE_CONTOUR, "(3006,0039)[0] > (3006,0040)")
+    }
+
+
+@TRANSFER_SYNTAXES
+@pytest.mark.filterwarnings("ignore:Invalid value for VR CS")
+def test_lower_case_values_still_give_their_indicators(transfer_syntax):
+    # CS values are upper case (PS3.5 Table 6.2-1), but a writer that breaks
+    # the rule should not hide an indicator.
+    dataset = _ct(
+        BurnedInAnnotation="yes",
+        RecognizableVisualFeatures="Yes",
+        ImageType=["DERIVED", "secondary"],
+    )
+    assert {f.indicator for f in _assess(dataset, transfer_syntax).findings} == {
+        Indicator.BURNED_IN_ANNOTATION,
+        Indicator.RECOGNIZABLE_VISUAL_FEATURES,
+        Indicator.SECONDARY_IMAGE,
+    }

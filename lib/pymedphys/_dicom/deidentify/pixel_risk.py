@@ -42,10 +42,12 @@ The indicators are:
   is EXTERNAL, the patient's outline, and that has contours: the outline of
   the head can be reconstructed into a face (MIDI report Section 1.20.4).
 
-An attribute that cannot be read as its VR in the pinned data dictionary is
-itself reported, as unreadable evidence of the risk that it bears on, since
-reading it could otherwise hide an indicator. Findings name attribute paths,
-never values.
+Values are compared whatever their case, though CS is upper case, so that a
+writer's lower-case "yes" does not hide an indicator. An attribute that
+cannot be read as its VR in the pinned data dictionary, such as an ROI
+number that is not an integer, is itself reported, as unreadable evidence
+of the risk that it bears on, since reading it could otherwise hide an
+indicator. Findings name attribute paths, never values.
 
 Reading leaves the data set as it was: pydicom converts an element read from
 a file on first access, in place, and under strict reading its errors can
@@ -61,6 +63,7 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+import re
 from collections.abc import Iterator, MutableSequence
 
 from pymedphys._imports import pydicom
@@ -196,6 +199,8 @@ READ_VRS = {
 _PIXEL_DATA_TAGS = (0x7FE00008, 0x7FE00009, 0x7FE00010)
 _OVERLAY_DATA_ELEMENT = 0x3000
 _UNDEFINED_LENGTH = 0xFFFFFFFF
+# An IS value: an optional sign and digits (PS3.5 Table 6.2-1).
+_INTEGER = re.compile(r"[+-]?[0-9]+")
 
 
 class _Unreadable(Exception):
@@ -255,10 +260,13 @@ def _decoded(vr: str, value: bytes, stored) -> object:
         raise _Unreadable from None
     values = [part.strip(" \x00") for part in text.split("\\")] if text else []
     if vr == "CS":
-        return values
-    if len(values) > 1 or (values and not values[0].lstrip("+-").isdigit()):
+        # CS is upper case, but a lower-case value must not hide an indicator.
+        return [value.upper() for value in values]
+    if not values:
+        return None
+    if len(values) > 1 or not _INTEGER.fullmatch(values[0]):
         raise _Unreadable
-    return int(values[0]) if values and values[0] else None
+    return int(values[0])
 
 
 def _whole(item: pydicom.Dataset) -> bool:
@@ -298,12 +306,12 @@ def _converted(vr: str, value: object) -> object:
     if value is None or value == "":
         return []
     if isinstance(value, str):
-        return [value.strip(" ")]
+        return [value.strip(" ").upper()]
     if not isinstance(value, MutableSequence) or not all(
         isinstance(each, str) for each in value
     ):
         raise _Unreadable
-    return [each.strip(" ") for each in value]
+    return [each.strip(" ").upper() for each in value]
 
 
 def assess_pixel_risk(dataset: pydicom.Dataset) -> PixelRiskAssessment:
