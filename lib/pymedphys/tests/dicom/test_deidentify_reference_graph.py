@@ -781,10 +781,13 @@ def _set_patient(dataset, patient_id, issuer):
             (synthetic.PATIENT_ID + " ", " " + SOURCE_ISSUER + "\x00"),
             False,
         ),
-        # An instance without a Patient ID names no patient.
-        ((synthetic.PATIENT_ID, SOURCE_ISSUER), (None, SOURCE_ISSUER), False),
-        ((synthetic.PATIENT_ID, SOURCE_ISSUER), ("", SOURCE_ISSUER), False),
-        ((synthetic.PATIENT_ID, None), (" ", None), False),
+        # An instance without a Patient ID is a patient apart from every
+        # identity, and the instances without one are one patient.
+        ((synthetic.PATIENT_ID, SOURCE_ISSUER), (None, SOURCE_ISSUER), True),
+        ((synthetic.PATIENT_ID, SOURCE_ISSUER), ("", SOURCE_ISSUER), True),
+        ((synthetic.PATIENT_ID, None), (" ", None), True),
+        ((None, SOURCE_ISSUER), (synthetic.PATIENT_ID, SOURCE_ISSUER), True),
+        ((None, SOURCE_ISSUER), ("  ", OTHER_ISSUER), False),
     ],
     ids=[
         "other-patient-id",
@@ -798,6 +801,8 @@ def _set_patient(dataset, patient_id, issuer):
         "no-patient-id",
         "empty-patient-id",
         "padding-only-patient-id",
+        "one-patient-id",
+        "no-patient-ids",
     ],
 )
 def test_a_study_with_two_patients_is_inconsistent(first, second, several):
@@ -836,6 +841,36 @@ def test_a_study_with_three_patients_is_grouped_by_patient():
     assert _graph(datasets).findings == (
         Finding(
             SEVERAL_PATIENTS, ((0, 2, 3), (1, DOSE), (PLAN,)), (STUDY_INSTANCE_UID,)
+        ),
+    )
+
+
+@pytest.mark.pydicom
+def test_a_study_whose_instances_all_lack_a_patient_id_has_one_patient():
+    # Whether the Patient ID is absent, empty, or only padding, and whatever
+    # the issuer.
+    datasets = synthetic.collection()
+    forms = [(None, None), ("", SOURCE_ISSUER), ("  ", OTHER_ISSUER), (None, "")]
+    for position, dataset in enumerate(datasets):
+        _set_patient(dataset, *forms[position % len(forms)])
+
+    assert InstanceRecord.from_dataset(datasets[2]).patient is None
+    assert not _graph(datasets).findings
+
+
+@pytest.mark.pydicom
+def test_the_instances_without_a_patient_id_are_grouped_as_one_patient():
+    datasets = synthetic.collection()
+    _set_patient(datasets[1], None, SOURCE_ISSUER)
+    _set_patient(datasets[STRUCTURE_SET], "", None)
+    _set_patient(datasets[PLAN], OTHER_PATIENT_ID, None)
+    _set_patient(datasets[DOSE], "  ", OTHER_ISSUER)
+
+    assert _graph(datasets).findings == (
+        Finding(
+            SEVERAL_PATIENTS,
+            ((0, 2), (1, STRUCTURE_SET, DOSE), (PLAN,)),
+            (STUDY_INSTANCE_UID,),
         ),
     )
 

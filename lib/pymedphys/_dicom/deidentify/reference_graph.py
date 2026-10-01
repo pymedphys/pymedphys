@@ -105,16 +105,21 @@ class FindingKind(enum.Enum):
         The inputs with one Study Instance UID have different patients, each
         the identity of a Patient ID with its Issuer of Patient ID (0010,0021),
         from which pseudonyms are derived. The same Patient ID from another
-        issuer, or from none, is another patient, and an input without a
-        Patient ID names no patient. Its groups hold the inputs of each
+        issuer, or from none, is another patient. The inputs without a
+        Patient ID together count as one more patient, apart from every
+        identity, so a study that mixes inputs with and without a Patient ID
+        has several patients, and a study whose inputs all lack one has one.
+        Such an input needs a curated identity before it can have a
+        pseudonym, and that identity would give it a different pseudonym
+        from the rest of its study. Its groups hold the inputs of each
         patient. The run stops before anything is written.
 
-    A finding that compares inputs leaves out each input that lacks the
-    identifier compared, which is reported as missing. Its ``attribute`` is
-    that identifier's tag: SOP Instance UID for duplicates and conflicts,
-    Series Instance UID for a series, and Study Instance UID for a study.
-    What the pipeline does with an input that lacks an identifier is not yet
-    decided.
+    A finding that compares inputs leaves out each input that lacks a UID
+    that it compares, which is reported as missing. Its ``attribute`` is the
+    tag of the UID that its inputs share: SOP Instance UID for duplicates and
+    conflicts, Series Instance UID for a series, and Study Instance UID for a
+    study. What the pipeline does with an input that lacks one of these UIDs
+    is not yet decided.
     """
 
     MISSING_IDENTIFIER = "missing-identifier"
@@ -126,6 +131,8 @@ class FindingKind(enum.Enum):
 
 
 _RANK = {kind: rank for rank, kind in enumerate(FindingKind)}
+# The patient of every input without a Patient ID, apart from every identity.
+_WITHOUT_PATIENT_ID = object()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -271,9 +278,14 @@ def _hierarchy_findings(
         if len(groups) > 1:
             yield Finding(FindingKind.SERIES_IN_SEVERAL_STUDIES, groups, (series,))
     for positions in index[Level.STUDY].values():
-        groups = _grouped(positions, lambda position: records[position].patient)
+        groups = _grouped(positions, lambda position: _patient(records[position]))
         if len(groups) > 1:
             yield Finding(FindingKind.STUDY_WITH_SEVERAL_PATIENTS, groups, (study,))
+
+
+def _patient(record: InstanceRecord) -> Hashable:
+    """Return the record's patient, the same for every input without a Patient ID."""
+    return _WITHOUT_PATIENT_ID if record.patient is None else record.patient
 
 
 def _grouped(
