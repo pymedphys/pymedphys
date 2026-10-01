@@ -32,11 +32,20 @@ RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
 # so that it reads them from Implicit VR Little Endian as UN.
 RT_ASSERTIONS_SEQUENCE = 0x00440110
 DOSE_CALCULATION_MODEL_SEQUENCE = 0x30040080
+# Sequences that pydicom 3.0.2 knows.
+BEAM_SEQUENCE = 0x300A00B0
+CONCEPT_NAME_CODE_SEQUENCE = 0x0040A043
+EQUIVALENT_CODE_SEQUENCE = 0x00080121
 ITEM = 0xFFFEE000
+ITEM_DELIMITER = 0xFFFEE00D
+SEQUENCE_DELIMITER = 0xFFFEE0DD
 # Invented values, which no error message or path may quote.
 PRIVATE_VALUE = "SYNTHETIC PRIVATE VALUE"
 PATIENT_ID = "SYNTHETIC-7Q2K"
 CODE_MEANING = "Prüfung"  # not ASCII, so its encoding matters
+# Read as an element's tag, its first bytes give an even group, so that a
+# private element with this value, read as an item, holds no odd group.
+PRIVATE_TEXT = b"PRIVATE TEXT"
 
 # The private attributes of _plan(), in the order the data set holds them.
 PLAN_PATHS = [
@@ -140,6 +149,26 @@ def _encoded(tag, value):
     return struct.pack("<HHI", tag >> 16, tag & 0xFFFF, len(value)) + value
 
 
+def _undefined_length(tag, value, delimiter):
+    """Return an element or item of undefined length, ended by ``delimiter``."""
+    header = struct.pack("<HHI", tag >> 16, tag & 0xFFFF, 0xFFFFFFFF)
+    return header + value + _encoded(delimiter, b"")
+
+
+def _item(value, undefined=False):
+    """Return an item of defined or undefined length in Implicit VR Little Endian."""
+    if undefined:
+        return _undefined_length(ITEM, value, ITEM_DELIMITER)
+    return _encoded(ITEM, value)
+
+
+def _sequence(tag, value, undefined=False):
+    """Return a sequence of defined or undefined length in Implicit VR Little Endian."""
+    if undefined:
+        return _undefined_length(tag, value, SEQUENCE_DELIMITER)
+    return _encoded(tag, value)
+
+
 def _unknown(monkeypatch, tag, value):
     """Return an element whose VR is UN, whatever pydicom's dictionary knows."""
     with monkeypatch.context() as patch:
@@ -147,15 +176,52 @@ def _unknown(monkeypatch, tag, value):
         return pydicom.DataElement(tag, "UN", value)
 
 
-# The value of an RT Assertions Sequence of one item, as Implicit VR Little
-# Endian, whose item holds Code Meaning (0008,0104), in UTF-8, and a private
-# block with one element.
-ASSERTION = _encoded(
-    ITEM,
-    _encoded(0x00080104, CODE_MEANING.encode("utf-8") + b" ")
-    + _encoded(0x00110010, b"SYNTHETIC CREATOR D ")
-    + _encoded(0x00111001, PRIVATE_VALUE.encode() + b" "),
+# Elements as Implicit VR Little Endian: Code Value (0008,0100); Code Meaning
+# (0008,0104), in UTF-8; and a private block with one element.
+CODE_VALUE = _encoded(0x00080100, b"AB")
+MEANING = _encoded(0x00080104, CODE_MEANING.encode("utf-8") + b" ")
+PRIVATE_BLOCK = _encoded(0x00110010, b"SYNTHETIC CREATOR D ") + _encoded(
+    0x00111001, PRIVATE_VALUE.encode() + b" "
 )
+# The value of an RT Assertions Sequence of one item, which holds Code Meaning
+# and the private block.
+ASSERTION = _encoded(ITEM, MEANING + PRIVATE_BLOCK)
+# Values that pydicom 3.0.2 reads as a sequence without an error, as items
+# that leave out part of the value.
+MALFORMED = {
+    "an-element-without-an-item": _encoded(0x00111001, CODE_VALUE),
+    "text-without-an-item": _encoded(0x00111001, PRIVATE_TEXT),
+    "an-element-after-an-item": _item(CODE_VALUE) + _encoded(0x00111001, PRIVATE_TEXT),
+    "item-too-short": struct.pack("<HHI", 0xFFFE, 0xE000, 4)
+    + CODE_VALUE
+    + _encoded(0x00111001, PRIVATE_TEXT),
+    "not-items": b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a",
+}
+
+
+def _nested(value, depth, undefined=False):
+    """Return an RT Assertions Sequence value whose items nest ``value``.
+
+    Its item holds Code Meaning and Concept Name Code Sequence (0040,A043). At
+    depth 1, that sequence has ``value``; at depth 2, it holds an item with
+    Code Value and Equivalent Code Sequence (0008,0121), which has ``value``.
+    The sequence with ``value`` is of defined length, and with ``undefined``,
+    every sequence and item that encloses it is of undefined length, which
+    pydicom decodes as it reads the value that holds it.
+    """
+    if depth == 1:
+        nested = _encoded(CONCEPT_NAME_CODE_SEQUENCE, value)
+    else:
+        item = _item(CODE_VALUE + _encoded(EQUIVALENT_CODE_SEQUENCE, value), undefined)
+        nested = _sequence(CONCEPT_NAME_CODE_SEQUENCE, item, undefined)
+    return _item(MEANING + nested, undefined)
+
+
+# The path of the sequence that has the value, at each depth of _nested().
+NESTED_PATHS = {
+    1: ElementPath((("(0044,0110)", 0),), "(0040,A043)"),
+    2: ElementPath((("(0044,0110)", 0), ("(0040,A043)", 0)), "(0008,0121)"),
+}
 
 
 def test_the_basic_profile_removes_every_private_attribute(basic):
@@ -320,6 +386,90 @@ def test_finding_private_attributes_decodes_no_other_value(basic):
         assert isinstance(beam.get_item(tag, keep_deferred=True), raw)
 
 
+@pytest.fixture(name="reading_validation", params=["default", "raise"])
+def fixture_reading_validation(request, monkeypatch):
+    """Read values with pydicom's default validation, then raising on errors.
+
+    monkeypatch restores pydicom's setting afterwards. The public setter
+    cannot restore its default, which follows another setting.
+    """
+    if request.param == "raise":
+        monkeypatch.setattr(
+            pydicom.config.settings, "_reading_validation_mode", pydicom.config.RAISE
+        )
+    return request.param
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour", "reading_validation")
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "tag, value",
+    [
+        (0x00280010, b"\x01\x02\x03"),  # Rows, US, whose value has 2 bytes
+        (0x00081155, b"2.25.SYNTHETIC"),  # Referenced SOP Instance UID, UI
+        (0x00100010, b"SYNTHETIC^NAME"),  # Patient's Name, PN
+    ],
+    ids=["us-of-the-wrong-length", "invalid-ui", "pn"],
+)
+def test_an_unknown_value_read_from_explicit_vr_is_left_unless_a_sequence(
+    monkeypatch, basic, tag, value
+):
+    # Explicit VR Little Endian can carry the value of any attribute with VR
+    # UN. pydicom decodes one with its attribute's VR when it is read, which
+    # can raise an error or warning that quotes the value, so only a value
+    # that can hold items is decoded.
+    source = _plan()
+    source[tag] = _unknown(monkeypatch, tag, value)
+    read = _written_and_read(source, EXPLICIT_VR)
+    raw = read.get_item(tag, keep_deferred=True)
+    assert isinstance(raw, pydicom.dataelem.RawDataElement)
+    assert (raw.VR, raw.value) == ("UN", value)
+
+    paths = private_attributes.private_attribute_paths(read, basic)
+    result = private_attributes.without_private_attributes(read, basic)
+
+    assert [str(path) for path in paths] == PLAN_PATHS
+    # The element stays as it was read, in the source and in the copy.
+    assert read.get_item(tag, keep_deferred=True) == raw
+    assert result.get_item(tag, keep_deferred=True) == raw
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour", "reading_validation")
+@pytest.mark.filterwarnings("error")
+def test_a_sequence_read_from_explicit_vr_as_unknown_is_searched(monkeypatch, basic):
+    # Explicit VR Little Endian can carry a sequence with VR UN, as Implicit
+    # VR Little Endian (PS3.5 Section 6.2.2). pydicom decodes Beam Sequence,
+    # which it knows, as it is read; RT Assertions Sequence it does not know.
+    beams = _written_and_read(_plan(), IMPLICIT_VR).get_item(
+        BEAM_SEQUENCE, keep_deferred=True
+    )
+    source = _plan()
+    source.SpecificCharacterSet = "ISO_IR 192"
+    source[BEAM_SEQUENCE] = _unknown(monkeypatch, BEAM_SEQUENCE, beams.value)
+    source[RT_ASSERTIONS_SEQUENCE] = _unknown(
+        monkeypatch, RT_ASSERTIONS_SEQUENCE, ASSERTION
+    )
+    read = _written_and_read(source, EXPLICIT_VR)
+    for tag in [BEAM_SEQUENCE, RT_ASSERTIONS_SEQUENCE]:
+        assert read.get_item(tag, keep_deferred=True).VR == "UN"
+
+    paths = private_attributes.private_attribute_paths(read, basic)
+    result = private_attributes.without_private_attributes(read, basic)
+
+    assert [str(path) for path in paths] == [
+        *PLAN_PATHS[:-4],
+        "(0044,0110)[0] > (0011,0010)",
+        "(0044,0110)[0] > (0011,1001)",
+        *PLAN_PATHS[-4:],
+    ]
+    written = _written_and_read(result, EXPLICIT_VR)
+    assert _odd_groups(written) == []
+    assert [beam.BeamNumber for beam in written.BeamSequence] == [1, 2]
+    assert written[RT_ASSERTIONS_SEQUENCE].value[0].CodeMeaning == CODE_MEANING
+
+
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_private_attributes_in_a_sequence_read_as_unknown_are_removed(
@@ -414,19 +564,132 @@ def test_a_sequence_read_from_implicit_vr_as_unknown_is_searched(basic):
 
 
 @pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "value",
+    [
+        _encoded(ITEM, _encoded(0x00080104, b"SYNTHETIC ")),
+        _item(MEANING, undefined=True),
+        _item(MEANING) + _item(b""),
+        _nested(b"", 1),
+        _nested(_item(CODE_VALUE), 1),
+        _nested(_item(CODE_VALUE, undefined=True), 1, undefined=True),
+        _nested(_item(CODE_VALUE), 2),
+        _nested(_item(CODE_VALUE, undefined=True), 2, undefined=True),
+    ],
+    ids=[
+        "an-item",
+        "an-item-of-undefined-length",
+        "an-empty-item",
+        "an-empty-nested-sequence",
+        "a-nested-sequence",
+        "a-nested-sequence-of-undefined-length",
+        "nested-at-depth-2",
+        "nested-at-depth-2-of-undefined-length",
+    ],
+)
 def test_a_sequence_read_as_unknown_without_private_attributes_is_unchanged(
-    monkeypatch, basic
+    monkeypatch, basic, value
 ):
-    value = _encoded(ITEM, _encoded(0x00080104, b"SYNTHETIC "))
     dataset = _plan()
     dataset[RT_ASSERTIONS_SEQUENCE] = _unknown(
         monkeypatch, RT_ASSERTIONS_SEQUENCE, value
     )
 
+    paths = private_attributes.private_attribute_paths(dataset, basic)
     result = private_attributes.without_private_attributes(dataset, basic)
 
+    assert [str(path) for path in paths] == PLAN_PATHS
     assert result[RT_ASSERTIONS_SEQUENCE].VR == "UN"
     assert result[RT_ASSERTIONS_SEQUENCE].value == value
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "undefined", [False, True], ids=["defined-length", "undefined-length"]
+)
+@pytest.mark.parametrize("depth", [1, 2], ids=["depth-1", "depth-2"])
+def test_private_attributes_in_a_sequence_nested_in_an_unknown_value_are_removed(
+    monkeypatch, basic, depth, undefined
+):
+    # A sequence nested in the items of a decoded UN value is searched too,
+    # and its text decoded in the character set of the item that holds it.
+    dataset = _plan()
+    dataset.SpecificCharacterSet = "ISO_IR 192"
+    innermost = _item(CODE_VALUE + MEANING + PRIVATE_BLOCK, undefined)
+    value = _nested(innermost, depth, undefined)
+    dataset[RT_ASSERTIONS_SEQUENCE] = _unknown(
+        monkeypatch, RT_ASSERTIONS_SEQUENCE, value
+    )
+    within = f"{NESTED_PATHS[depth]}[0]"
+
+    paths = private_attributes.private_attribute_paths(dataset, basic)
+    result = private_attributes.without_private_attributes(dataset, basic)
+
+    assert [str(path) for path in paths] == [
+        *PLAN_PATHS[:-4],
+        f"{within} > (0011,0010)",
+        f"{within} > (0011,1001)",
+        *PLAN_PATHS[-4:],
+    ]
+    assert _odd_groups(result) == []
+    item = result[RT_ASSERTIONS_SEQUENCE].value[0]
+    for tag, index in (*NESTED_PATHS[depth].items[1:], (NESTED_PATHS[depth].tag, 0)):
+        item = item[_number(tag)].value[index]
+    assert list(item.keys()) == [0x00080100, 0x00080104]
+    assert item.CodeMeaning == CODE_MEANING
+    # The source keeps its encoded value.
+    assert dataset[RT_ASSERTIONS_SEQUENCE].value == value
+    written = _written_and_read(result, EXPLICIT_VR)
+    assert _odd_groups(written) == []
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "undefined", [False, True], ids=["defined-length", "undefined-length"]
+)
+@pytest.mark.parametrize("depth", [1, 2], ids=["depth-1", "depth-2"])
+@pytest.mark.parametrize("value", list(MALFORMED.values()), ids=list(MALFORMED))
+def test_a_malformed_sequence_nested_in_an_unknown_value_is_refused(
+    monkeypatch, basic, value, depth, undefined
+):
+    # pydicom writes the elements of a decoded item as it read them, so a
+    # sequence of defined length in one encodes to the same bytes however
+    # pydicom decodes it. Its own items must encode it exactly too.
+    dataset = _plan()
+    dataset[RT_ASSERTIONS_SEQUENCE] = _unknown(
+        monkeypatch, RT_ASSERTIONS_SEQUENCE, _nested(value, depth, undefined)
+    )
+
+    for apply in (
+        private_attributes.private_attribute_paths,
+        private_attributes.without_private_attributes,
+    ):
+        with pytest.raises(private_attributes.PrivateAttributeError) as raised:
+            apply(dataset, basic)
+        assert raised.value.path == NESTED_PATHS[depth]
+        assert str(NESTED_PATHS[depth]) in str(raised.value)
+        assert "PRIVATE" not in str(raised.value)
+
+
+@pytest.mark.pydicom
+def test_a_malformed_nested_sequence_is_refused_beside_private_attributes(
+    monkeypatch, basic
+):
+    # Finding a private attribute in an item does not end the checks.
+    nested = _encoded(CONCEPT_NAME_CODE_SEQUENCE, MALFORMED["text-without-an-item"])
+    dataset = _plan()
+    dataset[RT_ASSERTIONS_SEQUENCE] = _unknown(
+        monkeypatch, RT_ASSERTIONS_SEQUENCE, _item(MEANING + PRIVATE_BLOCK + nested)
+    )
+
+    for apply in (
+        private_attributes.private_attribute_paths,
+        private_attributes.without_private_attributes,
+    ):
+        with pytest.raises(private_attributes.PrivateAttributeError) as raised:
+            apply(dataset, basic)
+        assert raised.value.path == NESTED_PATHS[1]
 
 
 @pytest.mark.pydicom
