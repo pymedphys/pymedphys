@@ -451,12 +451,11 @@ def test_an_empty_value_is_absent_only_where_the_site_is_type_3(
 @pytest.mark.parametrize(
     "sop_class",
     [
-        "1.2.840.10008.5.1.4.1.1.66.4",  # Segmentation awaits Functional Groups
         "2.25.999",  # not a Standard SOP Class
         None,
         [synthetic.RT_PLAN_STORAGE, synthetic.RT_PLAN_STORAGE],
     ],
-    ids=["deferred-iod", "unlisted", "absent", "two-values"],
+    ids=["unlisted", "absent", "two-values"],
 )
 def test_an_instance_without_generated_iod_tables_has_no_references(sop_class):
     dataset = synthetic.rt_plan()
@@ -491,6 +490,67 @@ def test_a_record_finds_references_of_a_generated_iod_beyond_the_first_release()
     )
     assert reference.target == synthetic.CT_SLICES[0]
     assert reference.target_class == synthetic.CT_IMAGE_STORAGE
+
+
+SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.4"
+# Referenced SOP Instance UID of each source image in the Derivation Image
+# Functional Group (PS3.3 C.7.6.16.2.6), in the Shared and the Per-Frame
+# Functional Groups Sequences.
+SHARED_SOURCE_IMAGE = ("(5200,9229)", "(0008,9124)", "(0008,2112)", "(0008,1155)")
+PER_FRAME_SOURCE_IMAGE = (
+    "(5200,9230)",
+    "(0008,9124)",
+    "(0008,2112)",
+    "(0008,1155)",
+)
+
+
+def test_functional_group_macros_have_reference_sites():
+    segmentation = _iod("Segmentation")
+
+    sites = {site.attribute: site for site in references.reference_sites(segmentation)}
+
+    for attribute in (SHARED_SOURCE_IMAGE, PER_FRAME_SOURCE_IMAGE):
+        assert sites[attribute] == ReferenceSite(
+            attribute[:-1], attribute[-1], Level.INSTANCE, "1"
+        )
+
+
+@pytest.mark.pydicom
+def test_a_record_finds_references_in_functional_groups():
+    # A segmentation of two CT slices, whose second frame names its source in
+    # the Per-Frame Functional Groups Sequence, and whose first frame names
+    # none.
+    def frame(*slices):
+        return synthetic.item(
+            DerivationImageSequence=[
+                synthetic.item(
+                    SourceImageSequence=[
+                        synthetic.reference(synthetic.CT_IMAGE_STORAGE, slice_)
+                        for slice_ in slices
+                    ]
+                )
+            ]
+        )
+
+    dataset = synthetic.instance(
+        SEGMENTATION_STORAGE,
+        "2.25.9101",
+        "2.25.9102",
+        SharedFunctionalGroupsSequence=[frame(synthetic.CT_SLICES[0])],
+        PerFrameFunctionalGroupsSequence=[frame(), frame(synthetic.CT_SLICES[1])],
+    )
+
+    record = InstanceRecord.from_dataset(dataset)
+
+    assert record.iod == "Segmentation"
+    assert [
+        (reference.site.attribute, reference.target, reference.target_class)
+        for reference in record.references
+    ] == [
+        (SHARED_SOURCE_IMAGE, synthetic.CT_SLICES[0], synthetic.CT_IMAGE_STORAGE),
+        (PER_FRAME_SOURCE_IMAGE, synthetic.CT_SLICES[1], synthetic.CT_IMAGE_STORAGE),
+    ]
 
 
 @pytest.mark.pydicom

@@ -15,13 +15,24 @@
 """Load the attribute Types of the composite IODs, as DICOM PS3.3 defines them.
 
 ``pymedphys dev deid-tables`` generates two tables from the pinned edition of
-PS3.3. ``iod_modules.json`` lists the modules of each composite IOD except
-those whose modules include Functional Group Macros, which are not yet
-generated, and ``module_attributes.json`` holds the attribute tables of those
-modules and of every macro they include, with rows as published apart from the
-named corrections in the generator's pin. The loader expands an IOD's modules
-when its Types are first needed, following every "Include" row, into the
-attributes it defines at each place in the data set, with their Types.
+PS3.3. ``iod_modules.json`` lists the modules of each composite IOD that the
+generator's pin does not leave out, and the Functional Group Macros of those
+that have them, and ``module_attributes.json`` holds the attribute tables of
+those modules and macros and of every macro they include, with rows as
+published apart from the named corrections in the generator's pin. The loader
+expands an IOD's modules when its Types are first needed, following every
+"Include" row, into the attributes it defines at each place in the data set,
+with their Types.
+
+A module such as the Multi-frame Functional Groups Module (PS3.3 C.7.6.16)
+includes "Functional Group Macros" in the items of its Shared and Per-Frame
+Functional Groups Sequences (5200,9229) and (5200,9230), and each IOD that
+uses it lists its own macros, each with a usage, in a table such as Table
+A.38-2. The loader expands that IOD's macros at each such place. A macro's
+usage applies to the macro as a module's applies to the module: whether the
+instance must, under its condition must, or may include the macro's
+Functional Group Sequence, in the Shared item or in each Per-Frame item. The
+Types of the macro's attributes apply wherever it is included.
 
 Types are generated ahead of support: an IOD with Types is not thereby
 supported, and :mod:`~pymedphys._dicom.deidentify.scope` sequesters the
@@ -53,6 +64,10 @@ from .standard import (
 
 IOD_MODULES_TABLE = "PS3.3 IOD Modules"
 MODULE_ATTRIBUTES_TABLE = "PS3.3 Module Attributes"
+# What an "Include" row includes in place of a table's label where a module
+# includes the Functional Group Macros that each IOD lists, as Table
+# C.7.6.16-1 does in its Shared and Per-Frame Functional Groups Sequences.
+FUNCTIONAL_GROUP_MACROS = "Functional Group Macros"
 
 # The attribute Types of PS3.5 Section 7.4.
 ATTRIBUTE_TYPES = frozenset({"1", "1C", "2", "2C", "3"})
@@ -62,9 +77,12 @@ MODULE_USAGES = frozenset({"M", "C", "U"})
 TABLE_LABEL_PATTERN = re.compile(r"Table [0-9A-Z](?:[0-9A-Za-z.\-]*[0-9A-Za-z])?")
 
 _IOD_FIELDS = frozenset({"label", "iod", "modules"})
+# Only an IOD whose modules include Functional Group Macros lists them.
+_MACROS_FIELD = "functional_group_macros"
 _MODULE_FIELDS = frozenset(
     {"information_entity", "module", "section", "usage", "condition", "table"}
 )
+_MACRO_FIELDS = frozenset({"macro", "section", "usage", "condition", "table"})
 _TABLE_FIELDS = frozenset({"label", "title", "rows"})
 _ROW_FIELDS = frozenset({"depth", "name", "tag", "type", "include"})
 # The even groups 5000-501E and 6000-601E repeat (PS3.5 Section 7.6); PS3.3
@@ -104,6 +122,39 @@ class ModuleUsage:
 
 
 @dataclasses.dataclass(frozen=True)
+class FunctionalGroupMacro:
+    """One row of an IOD's Functional Group Macros table, such as Table A.38-2.
+
+    Attributes
+    ----------
+    macro : str
+        The macro's name, such as ``"Pixel Measures"``.
+    section : str
+        The section of PS3.3 that defines the macro, such as
+        ``"C.7.6.16.2.1"``.
+    usage : str
+        ``"M"`` (mandatory), ``"C"`` (conditional), or ``"U"``
+        (user-optional): whether an instance must, under ``condition`` must,
+        or may include the macro's Functional Group Sequence, in the Shared
+        Functional Groups Sequence or in each item of the Per-Frame
+        Functional Groups Sequence (PS3.3 C.7.6.16.1.1).
+    condition : str
+        The text after the usage code, such as a conditional macro's
+        condition or "May not be used as a Shared Functional Group.", or
+        ``""``.
+    table : str
+        The label of the macro's attribute table, such as
+        ``"Table C.7.6.16-2"``.
+    """
+
+    macro: str
+    section: str
+    usage: str
+    condition: str
+    table: str
+
+
+@dataclasses.dataclass(frozen=True)
 class AttributeRow:
     """One row of a module or macro attribute table, as published.
 
@@ -124,7 +175,8 @@ class AttributeRow:
         an "Include" row.
     include : str
         For an "Include" row, the label of the included table, whose rows are
-        added at this row's depth; otherwise ``""``.
+        added at this row's depth, or :data:`FUNCTIONAL_GROUP_MACROS`, for the
+        macros of the IOD; otherwise ``""``.
     """
 
     depth: int
@@ -175,6 +227,10 @@ class AttributeDefinition:
     tables : tuple of str
         The labels of the tables that lead to the definition: the module's
         attribute table, then each macro table included, outermost first.
+    functional_group : str
+        The name of the IOD's Functional Group Macro that defines it, such as
+        ``"Pixel Measures"``, whose usage the IOD's
+        :attr:`~IOD.functional_group_macros` give; or ``""`` outside one.
     """
 
     path: tuple[str, ...]
@@ -183,6 +239,7 @@ class AttributeDefinition:
     type: str
     module: str
     tables: tuple[str, ...]
+    functional_group: str = ""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -216,6 +273,9 @@ class IOD:
         Its modules, in the table's order.
     attribute_tables : Mapping of str to AttributeTable
         The attribute tables its modules reach, by label.
+    functional_group_macros : tuple of FunctionalGroupMacro
+        The macros its modules include where they include Functional Group
+        Macros, in the order of the IOD's table of them, or ``()``.
     """
 
     name: str
@@ -224,6 +284,7 @@ class IOD:
     attribute_tables: Mapping[str, AttributeTable] = dataclasses.field(
         repr=False, compare=False
     )
+    functional_group_macros: tuple[FunctionalGroupMacro, ...] = ()
 
     @functools.cached_property
     def definitions(self) -> tuple[AttributeDefinition, ...]:
@@ -250,7 +311,12 @@ class IOD:
         )
         for module in self.modules:
             for item in _definitions(
-                self.attribute_tables, module.table, module.module, (), ()
+                self.attribute_tables,
+                module.table,
+                module.module,
+                (),
+                (),
+                self.functional_group_macros,
             ):
                 if isinstance(item, _Recursion):
                     recursions.append(item)
@@ -339,7 +405,9 @@ def _fields_problem(entry: object, fields: frozenset[str], what: str) -> str | N
 
 def _include_problem(row: dict) -> str | None:
     """Return what is wrong with an "Include" row, or None."""
-    if not TABLE_LABEL_PATTERN.fullmatch(row["include"]):
+    if row["include"] != FUNCTIONAL_GROUP_MACROS and not TABLE_LABEL_PATTERN.fullmatch(
+        row["include"]
+    ):
         return "includes something that is not a table label"
     if row["name"] or row["tag"] or row["type"]:
         return "is an Include row with a name, tag, or Type"
@@ -405,6 +473,26 @@ def _attribute_tables(document: dict, name: str) -> dict[str, AttributeTable]:
     return tables
 
 
+def _including_functional_groups(
+    tables: Mapping[str, AttributeTable],
+) -> frozenset[str]:
+    """Return the tables that include Functional Group Macros, or a table that does."""
+    including: dict[str, bool] = {}
+
+    def includes(label: str) -> bool:
+        if label not in including:
+            # A table that includes itself adds nothing it lacks.
+            including[label] = False
+            including[label] = any(
+                row.include == FUNCTIONAL_GROUP_MACROS
+                or (row.include and includes(row.include))
+                for row in tables[label].rows
+            )
+        return including[label]
+
+    return frozenset(label for label in tables if includes(label))
+
+
 def _sole_top_level_tag(table: AttributeTable) -> str | None:
     """Return the tag of a table's only top-level row, or None."""
     top = [row for row in table.rows if row.depth == 0]
@@ -441,11 +529,18 @@ def _check_includes(
     for number, row in enumerate(rows):
         if not row.include:
             continue
+        below = rows[number + 1] if number + 1 < len(rows) else None
+        if row.include == FUNCTIONAL_GROUP_MACROS:
+            if below is not None and below.depth > row.depth:
+                raise StandardTableError(
+                    f"{name}: {label} row {number + 2} is nested below an Include "
+                    "of Functional Group Macros"
+                )
+            continue
         if row.include not in tables:
             raise StandardTableError(
                 f"{name}: {label} includes {row.include}, which is not in the file"
             )
-        below = rows[number + 1] if number + 1 < len(rows) else None
         if (
             below is not None
             and below.depth > row.depth
@@ -466,25 +561,52 @@ def _definitions(
     module: str,
     enclosing: tuple[str, ...],
     via: tuple[str, ...],
+    macros: Sequence[FunctionalGroupMacro],
+    functional_group: str = "",
 ) -> Iterator[AttributeDefinition | _Recursion]:
     """Yield the definitions of a table's rows, with each include expanded.
 
     Where the table includes itself, yield where its rows repeat instead.
+    Where it includes Functional Group Macros, yield those of each of
+    ``macros``, which include no others.
     """
     path = list(enclosing)
     for row in tables[label].rows:
         del path[len(enclosing) + row.depth :]
-        if row.include == label:
+        if row.include == FUNCTIONAL_GROUP_MACROS:
+            for macro in macros:
+                yield from _definitions(
+                    tables,
+                    macro.table,
+                    module,
+                    tuple(path),
+                    (*via, label),
+                    (),
+                    macro.macro,
+                )
+        elif row.include == label:
             yield _Recursion(tuple(path), enclosing, (*via, label))
         elif row.include:
             yield from _definitions(
-                tables, row.include, module, tuple(path), (*via, label)
+                tables,
+                row.include,
+                module,
+                tuple(path),
+                (*via, label),
+                macros,
+                functional_group,
             )
         elif row.tag:
             yield AttributeDefinition(
-                tuple(path), row.tag, row.name, row.type, module, (*via, label)
+                tuple(path),
+                row.tag,
+                row.name,
+                row.type,
+                module,
+                (*via, label),
+                functional_group,
             )
-        if row.include:
+        if row.include and row.include != FUNCTIONAL_GROUP_MACROS:
             # Rows nested below the Include row are in the items of the
             # included table's only top-level attribute.
             path.append(_sole_top_level_tag(tables[row.include]) or "")
@@ -492,11 +614,55 @@ def _definitions(
             path.append(row.tag)
 
 
-def _iod(entry: object, tables: Mapping[str, AttributeTable], name: str) -> IOD:
-    if not isinstance(entry, dict) or set(entry) != _IOD_FIELDS:
+def _usage_problem(
+    row: dict, fields: frozenset[str], what: str, tables: Mapping[str, AttributeTable]
+) -> str | None:
+    """Return what is wrong with a module or a macro that an IOD lists, or None.
+
+    ``row`` is as read from the file, so it may not be a dictionary at all.
+    """
+    problem = _fields_problem(row, fields, what)
+    if problem:
+        return problem
+    if not all(_is_text(row[field], empty=field == "condition") for field in fields):
+        return "has a field that is not text, or is empty"
+    if row["usage"] not in MODULE_USAGES:
+        return "has a usage other than M, C, or U"
+    if row["table"] not in tables:
+        return f"refers to {row['table']}, which is not in the attribute tables"
+    return None
+
+
+def _macro_problem(
+    macro: dict, tables: Mapping[str, AttributeTable], including: frozenset[str]
+) -> str | None:
+    """Return what is wrong with a Functional Group Macro an IOD lists, or None.
+
+    Each Functional Group is one sequence (PS3.3 C.7.6.16.1.1), so its macro
+    has exactly one top-level attribute and includes no Functional Groups.
+    """
+    problem = _usage_problem(macro, _MACRO_FIELDS, "a macro", tables)
+    if problem:
+        return problem
+    table = macro["table"]
+    if table in including:
+        return f"has {table}, which includes Functional Group Macros"
+    if _sole_top_level_tag(tables[table]) is None:
+        return f"has {table}, which does not define exactly one top-level attribute"
+    return None
+
+
+def _iod(
+    entry: object,
+    tables: Mapping[str, AttributeTable],
+    including: frozenset[str],
+    name: str,
+) -> IOD:
+    if not isinstance(entry, dict) or set(entry) - {_MACROS_FIELD} != _IOD_FIELDS:
         raise StandardTableError(
             f"{name} has an IOD without exactly the fields "
             + ", ".join(sorted(_IOD_FIELDS))
+            + f", and optionally {_MACROS_FIELD}"
         )
     label = entry["label"]
     if not isinstance(label, str) or not TABLE_LABEL_PATTERN.fullmatch(label):
@@ -505,28 +671,44 @@ def _iod(entry: object, tables: Mapping[str, AttributeTable], name: str) -> IOD:
         raise StandardTableError(f"{name}: {label} has no IOD name")
     if not isinstance(entry["modules"], list) or not entry["modules"]:
         raise StandardTableError(f"{name}: {label} has no modules")
+    listed = entry.get(_MACROS_FIELD)
+    if _MACROS_FIELD in entry and not (isinstance(listed, list) and listed):
+        raise StandardTableError(
+            f"{name}: {label} has Functional Group Macros that are not a non-empty list"
+        )
 
     modules: list[ModuleUsage] = []
     for number, module in enumerate(entry["modules"], start=1):
-        problem = _fields_problem(module, _MODULE_FIELDS, "a module")
-        if not problem and not all(
-            _is_text(module[field], empty=field == "condition")
-            for field in _MODULE_FIELDS
-        ):
-            problem = "has a module field that is not text, or is empty"
-        elif not problem and module["usage"] not in MODULE_USAGES:
-            problem = "has a usage other than M, C, or U"
-        elif not problem and module["table"] not in tables:
-            problem = (
-                f"refers to {module['table']}, which is not in the attribute tables"
-            )
+        problem = _usage_problem(module, _MODULE_FIELDS, "a module", tables)
         if problem:
             raise StandardTableError(f"{name}: {label} module {number} {problem}")
         modules.append(ModuleUsage(**module))
     if len({module.module for module in modules}) != len(modules):
         raise StandardTableError(f"{name}: {label} lists a module more than once")
 
-    return IOD(entry["iod"], label, tuple(modules), tables)
+    macros: list[FunctionalGroupMacro] = []
+    for number, macro in enumerate(listed or (), start=1):
+        problem = _macro_problem(macro, tables, including)
+        if problem:
+            raise StandardTableError(
+                f"{name}: {label} functional group macro {number} {problem}"
+            )
+        macros.append(FunctionalGroupMacro(**macro))
+    if len({macro.macro for macro in macros}) != len(macros):
+        raise StandardTableError(
+            f"{name}: {label} lists a Functional Group Macro more than once"
+        )
+    # Without its macros, an IOD's Types would be incomplete.
+    if any(module.table in including for module in modules) != bool(macros):
+        raise StandardTableError(
+            f"{name}: {label} lists Functional Group Macros, but no module "
+            "includes them"
+            if macros
+            else f"{name}: {label} has a module that includes Functional Group "
+            "Macros, but lists none"
+        )
+
+    return IOD(entry["iod"], label, tuple(modules), tables, tuple(macros))
 
 
 def load_iod_tables(
@@ -557,12 +739,16 @@ def load_iod_tables(
         If either file is missing, unreadable, not the expected table, or
         without the copyright acknowledgement; if its rows differ from their
         recorded digest; if the files name different editions; or if a table,
-        row, IOD, or module lacks its fields or has an invalid value. This
-        includes a row nested more deeply than the row above allows, or below
-        an Include of a table without a single top-level attribute; an
-        Include of a table the file lacks; a table that includes itself other
-        than below one of its own sequences, or through other tables; and a
-        module whose attribute table the file lacks.
+        row, IOD, module, or Functional Group Macro lacks its fields or has an
+        invalid value. This includes a row nested more deeply than the row
+        above allows, or below an Include of Functional Group Macros or of a
+        table without a single top-level attribute; an Include of a table the
+        file lacks; a table that includes itself other than below one of its
+        own sequences, or through other tables; a module or macro whose
+        attribute table the file lacks; a macro whose table has more than one
+        top-level attribute or includes Functional Group Macros; and an IOD
+        that lists Functional Group Macros without a module that includes
+        them, or the reverse.
     """
     return _load_iod_tables(
         _default(modules_path, "iod_modules.json"),
@@ -583,9 +769,10 @@ def _load_iod_tables(
 
     # Every IOD shares the tables, so none can change them.
     tables = types.MappingProxyType(_attribute_tables(attributes, attributes_path.name))
+    including = _including_functional_groups(tables)
     iods: dict[str, IOD] = {}
     for entry in modules["rows"]:
-        iod = _iod(entry, tables, modules_path.name)
+        iod = _iod(entry, tables, including, modules_path.name)
         if iod.name in iods:
             raise StandardTableError(
                 f"{modules_path.name} lists {iod.name} more than once"

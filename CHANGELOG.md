@@ -306,10 +306,16 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   record a de-identification method, the purposes of reference for
   contributing equipment, the IOD of each Storage SOP Class, and each
   attribute's Type in each module and sequence of an IOD. Types are
-  generated for 141 of the 174 composite IODs in 2026d, ahead of the
-  releases that support them. The other 33, such as Enhanced CT Image and Segmentation, have modules that
-  include Functional Group Macros, which are not yet generated; the pin names
-  each of them, and generation fails if an edition adds or removes one. It
+  generated for 171 of the 174 composite IODs in 2026d, ahead of the
+  releases that support them, including 30 of the 33 whose modules include
+  Functional Group Macros, such as Enhanced CT Image and Segmentation: each
+  such IOD's macros, with their usage, come from the Functional Group Macros
+  table that PS3.3 gives it, and their Types apply within both the Shared and
+  the Per-Frame Functional Groups Sequences. The pin leaves out the three
+  real-time IODs, whose Current Frame Functional Groups Sequence (0006,0001)
+  PS3.6 defines outside its data dictionary, and generation fails if an IOD
+  it does not leave out cannot be generated, or one it leaves out can be, or
+  fails for an attribute other than the one the pin records for it. It
   downloads each source
   page, or reads it from `--source-dir`, and parses it only after checking its
   SHA-256 digest against the pin. The parsers map columns by their header
@@ -324,8 +330,10 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   PyMedPhys does not list fails generation until it is reviewed. The PS3.3
   parser reads the published layouts of the composite IODs: section numbers
   with a letter, such as C.7.6.4b; rows nested below an included macro whose
-  only attribute is a sequence; and a macro that includes itself within one
-  of its sequences, such as the Document Relationship Macro. Errors in the
+  only attribute is a sequence; a macro that includes itself within one
+  of its sequences, such as the Document Relationship Macro; and the row of
+  a module, such as the Multi-frame Functional Groups Module, that includes
+  the IOD's Functional Group Macros. Errors in the
   published 2026d tables, such as a usage separated from its condition by an
   en dash, a module table whose title differs from the module's name, and a
   module listed with the wrong section, are corrected by named corrections in
@@ -349,9 +357,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   following every included macro, into each attribute's Type at each place in
   the data set, at any depth of a macro that includes itself.
   `iod_for_sop_class` finds an instance's IOD, with those Types, from its SOP
-  Class UID, and finds none for the SOP Classes of IODs without generated
-  Types or for a UID that Table B.5-1 does not list, such as a retired or
-  Private SOP Class.
+  Class UID, for every SOP Class of Table B.5-1, and finds none for a UID
+  that the table does not list, such as a retired or Private SOP Class.
   `--check` exits with status 1 when the
   committed tables are missing or out of date. `--check-current` generates
   the tables from NEMA's current edition instead, with the same parsers and
@@ -368,7 +375,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   de-identifies CT Image, RT Structure Set, RT Plan, and RT Dose instances in
   Implicit or Explicit VR Little Endian, and gives the reason for
   sequestering any other.
-  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112), [PR #2130](https://github.com/pymedphys/pymedphys/pull/2130), [PR #2158](https://github.com/pymedphys/pymedphys/pull/2158), [PR #2163](https://github.com/pymedphys/pymedphys/pull/2163), [PR #2173](https://github.com/pymedphys/pymedphys/pull/2173), [PR #2181](https://github.com/pymedphys/pymedphys/pull/2181)
+  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112), [PR #2130](https://github.com/pymedphys/pymedphys/pull/2130), [PR #2158](https://github.com/pymedphys/pymedphys/pull/2158), [PR #2163](https://github.com/pymedphys/pymedphys/pull/2163), [PR #2173](https://github.com/pymedphys/pymedphys/pull/2173), [PR #2181](https://github.com/pymedphys/pymedphys/pull/2181), [PR #2188](https://github.com/pymedphys/pymedphys/pull/2188)
 - **[Contributor facing only]** A private module,
   `pymedphys._nomenclature.tg263`, converts a copy of AAPM's TG-263 Structure
   Spreadsheet to JSON, the first step towards descriptor cleaning
