@@ -30,6 +30,7 @@ import io
 import itertools
 import platform
 import struct
+import traceback
 import warnings
 
 from pymedphys._imports import pydicom, pytest, tomlkit
@@ -1250,6 +1251,53 @@ def _written_and_read(dataset, transfer_syntax=pydicom.uid.ExplicitVRLittleEndia
     pydicom.dcmwrite(buffer, written, enforce_file_format=True)
     buffer.seek(0)
     return pydicom.dcmread(buffer)
+
+
+@pytest.mark.parametrize(
+    "keyword, vr, value",
+    [
+        ("LongitudinalTemporalInformationModified", "DS", "SITEXYZ1"),
+        ("DeidentificationMethod", "DS", "SITEXYZ1"),
+        ("DeidentificationMethod", "FD", "SITEXYZ123"),
+    ],
+    ids=["temporal-as-ds", "method-as-ds", "method-as-fd-of-wrong-length"],
+)
+def test_a_file_backed_existing_marker_of_another_vr_is_refused_without_its_value(
+    keyword, vr, value
+):
+    # pydicom reads an element from a file without converting it, and converts
+    # it on first access; under strict reading, a value that its VR cannot hold
+    # raises an error of pydicom's own, which can quote the value. The file is
+    # written with the attribute's own VR, and then that VR's two bytes are
+    # changed, so the element keeps its length.
+    source = _identifying_dataset()
+    setattr(source, keyword, value)
+    tag = pydicom.tag.Tag(keyword)
+    own_vr = pydicom.datadict.dictionary_VR(tag)
+    encoded = struct.pack("<HH", tag.group, tag.element) + own_vr.encode()
+    written = copy.deepcopy(source)
+    written.file_meta = pydicom.dataset.FileMetaDataset()
+    written.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+    buffer = io.BytesIO()
+    pydicom.dcmwrite(buffer, written, enforce_file_format=True)
+    data = buffer.getvalue()
+    assert data.count(encoded) == 1
+    data = data.replace(encoded, encoded[:4] + vr.encode())
+    read = pydicom.dcmread(io.BytesIO(data))
+    raw = read.get_item(tag, keep_deferred=True)
+    assert isinstance(raw, pydicom.dataelem.RawDataElement)
+    assert raw.VR == vr
+
+    with (
+        pydicom.config.strict_reading(),
+        warnings.catch_warnings(),
+        pytest.raises(markers.MarkerError) as raised,
+    ):
+        warnings.simplefilter("error")
+        markers.apply_markers(read, _found())
+
+    assert str(tag) in str(raised.value)
+    assert "SITEXYZ" not in "".join(traceback.format_exception(raised.value))
 
 
 def _marker_elements(dataset):
