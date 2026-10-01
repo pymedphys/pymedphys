@@ -23,6 +23,7 @@ offsets, the actions of Table E.1-1 under selected options, the presets and
 the validated policies composed from them, the checks of values against
 their VR and VM, the supplementary actions for attributes that Table E.1-1
 omits, the classification of instances as de-identified or sequestered, the
-names of the files and directories that output is written to, and a reader
-that maps each byte of a written file to where it belongs.
+names of the files and directories that output is written to, a reader
+that maps each byte of a written file to where it belongs, and a search of
+written files for the source values that had to be removed or replaced.
 """
