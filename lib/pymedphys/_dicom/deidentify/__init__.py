@@ -21,10 +21,11 @@ parts that later stages will use: the keys, keyed replacement UIDs, UID and
 temporal attribute roles, patient pseudonyms, subject profiles, date
 offsets, the actions of Table E.1-1 under selected options, the presets and
 the validated policies composed from them, the policy digest that identifies
-a policy and everything the engine could apply with it, the checks of values
-against their VR and VM, the zero-length and dummy values that the Z and D
-actions write, the supplementary actions for attributes that Table E.1-1
-omits, including every text attribute that the supported IODs use, with
+a policy and everything the engine could apply with it, the markers that
+record in each de-identified instance how it was de-identified, the checks
+of values against their VR and VM, the zero-length and dummy values that the
+Z and D actions write, the supplementary actions for attributes that Table
+E.1-1 omits, including every text attribute that the supported IODs use, with
 their actions under options, the classification of instances as
 de-identified or sequestered, the names of the files and directories that
 output is written to, the first pass's graph of the references between
