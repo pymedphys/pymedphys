@@ -359,8 +359,10 @@ de-identification tables generated from the pinned edition, as the
   pages from NEMA's `current/` directory and compares the tables generated from
   them with the committed ones, without writing them. Its check job can only
   read the repository
-- **Failures**: when a table would change, a page cannot be fetched or parsed,
-  or the check stops without a result, a separate job, the only one that can
+- **Failures**: when a table would change, a page cannot be fetched, a table
+  cannot be generated from the pages (as also happens when the pin's named
+  corrections or its list of IODs with Functional Group Macros no longer match
+  a new edition), or the check stops without a result, a separate job, the only one that can
   write issues and which runs no repository code, opens or comments on the
   issue titled "DICOM edition check: the de-identification tables need
   attention" with the check's report and a link to the run. Close the issue
