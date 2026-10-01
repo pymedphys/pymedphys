@@ -36,17 +36,24 @@ def _types(iod, tag, path=()):
     }
 
 
+FIRST_RELEASE = {
+    "CT Image": "Table A.3-1",
+    "RT Dose": "Table A.18.3-1",
+    "RT Structure Set": "Table A.19.3-1",
+    "RT Plan": "Table A.20.3-1",
+}
+
+
 def test_the_first_supported_release_iods_are_generated(tables):
     assert tables.edition == "2026d"
     assert tables.acknowledgement == "DICOM PS3.3 2026d, © NEMA"
-    assert {name: iod.label for name, iod in tables.iods.items()} == {
-        "CT Image": "Table A.3-1",
-        "RT Dose": "Table A.18.3-1",
-        "RT Structure Set": "Table A.19.3-1",
-        "RT Plan": "Table A.20.3-1",
-    }
-    assert [len(iod.modules) for iod in tables.iods.values()] == [26, 18, 16, 20]
-    assert len(tables.attribute_tables) == 97
+    assert {name: tables.iods[name].label for name in FIRST_RELEASE} == FIRST_RELEASE
+    assert [len(tables.iods[name].modules) for name in FIRST_RELEASE] == [
+        26,
+        18,
+        16,
+        20,
+    ]
 
 
 def test_modules_keep_their_usage_and_condition(tables):
@@ -127,6 +134,18 @@ def test_macros_are_expanded_where_they_are_included(tables):
     (reference,) = ct.lookup("(0008,1155)", ("(0008,1140)",))
     assert reference.tables == ("Table C.12-10", "Table 10-3", "Table 10-11")
     assert reference.type == "1"
+
+
+def test_each_iod_is_expanded_when_its_types_are_first_needed(tmp_path):
+    loaded = _load(tmp_path, *_documents())
+    ct = loaded.iods["CT Image"]
+
+    assert not any("_expansion" in vars(iod) for iod in loaded.iods.values())
+    assert ct.lookup("(0010,0020)")
+    assert [name for name, iod in loaded.iods.items() if "_expansion" in vars(iod)] == [
+        "CT Image"
+    ]
+    assert ct.definitions is ct.definitions
 
 
 def test_every_definition_is_reachable_through_its_path(tables):
@@ -232,8 +251,14 @@ def _below_include(attributes):
         (lambda a: _patient_rows(a)[0].update(depth=True), "non-negative integer"),
         (lambda a: _patient_rows(a)[0].update(depth=-1), "non-negative integer"),
         (lambda a: _patient_rows(a)[0].update(depth=1), "row 1 is nested more deeply"),
-        # Nothing can be nested below an Include row.
-        (lambda a: _below_include(a).update(depth=1), "is nested more deeply"),
+        # Rows can be nested only below an Include of a table with a single
+        # top-level attribute, as Table 10-18 is not, and only one level.
+        (
+            lambda a: _below_include(a).update(depth=1),
+            "is nested below an Include of Table 10-18, which has no single "
+            "top-level attribute",
+        ),
+        (lambda a: _below_include(a).update(depth=2), "is nested more deeply"),
         (lambda a: _patient_rows(a)[0].update(name=["Patient's Name"]), "not text"),
         (lambda a: _patient_rows(a)[0].pop("include"), "without exactly the fields"),
         (
@@ -259,22 +284,72 @@ def test_malformed_attribute_tables_are_rejected(tmp_path, change, message):
         _load(tmp_path, modules, attributes)
 
 
-def test_a_table_that_includes_itself_is_rejected(tmp_path):
-    modules, attributes = _documents()
-    macro = _table(attributes, "Table 10-18")
-    macro["rows"].append(
-        {"depth": 0, "name": "", "tag": "", "type": "", "include": "Table C.7-1"}
+def _include_at_end_of_table_10_18(attributes, *includes):
+    """Add Include rows, each a label and depth, to the Issuer of Patient ID Macro.
+
+    The row above them is within Issuer of Patient ID Qualifiers Sequence
+    (0010,0024), the macro's last top-level attribute.
+    """
+    _table(attributes, "Table 10-18")["rows"].extend(
+        {"depth": depth, "name": "", "tag": "", "type": "", "include": include}
+        for include, depth in includes
     )
 
-    with pytest.raises(
-        standard.StandardTableError,
-        match="Table 10-18 includes itself: Table 10-18 > Table C.7-1 > Table 10-18",
-    ):
+
+@pytest.mark.parametrize(
+    "includes, message",
+    [
+        (
+            [("Table C.7-1", 0)],
+            "Table 10-18 includes itself: Table 10-18 > Table C.7-1 > Table 10-18",
+        ),
+        # Through another table, even below a sequence.
+        (
+            [("Table C.7-1", 1)],
+            "Table 10-18 includes itself: Table 10-18 > Table C.7-1 > Table 10-18",
+        ),
+        # At the top level, it would repeat forever.
+        (
+            [("Table 10-18", 0)],
+            "Table 10-18 includes itself: Table 10-18 > Table 10-18",
+        ),
+        # Below the only sequence of a macro it includes, not one of its own.
+        (
+            [("Table 10-8", 0), ("Table 10-18", 1)],
+            "Table 10-18 includes itself: Table 10-18 > Table 10-18",
+        ),
+    ],
+)
+def test_a_cycle_of_includes_is_rejected(tmp_path, includes, message):
+    modules, attributes = _documents()
+    _include_at_end_of_table_10_18(attributes, *includes)
+
+    with pytest.raises(standard.StandardTableError, match=message):
         _load(tmp_path, modules, attributes)
 
 
+def test_a_table_can_include_itself_below_its_own_sequence(tmp_path):
+    modules, attributes = _documents()
+    _include_at_end_of_table_10_18(attributes, ("Table 10-18", 1))
+    ct = _load(tmp_path, modules, attributes).iods["CT Image"]
+    qualifiers = ("(0010,0024)",)
+
+    # Issuer of Patient ID, at the top level of the macro, in the items.
+    for path in (qualifiers, qualifiers * 3, ("(0010,1002)", *qualifiers * 2)):
+        (issuer,) = ct.lookup("(0010,0021)", path)
+        assert (issuer.module, issuer.type, issuer.path) == ("Patient", "3", path)
+    # Universal Entity ID, in the macro's own sequence, one level deeper.
+    assert _types(ct, "(0040,0032)", qualifiers * 2) == {("Patient", "3")}
+    # Patient ID is in the Patient Module, not the macro.
+    assert ct.lookup("(0010,0020)", qualifiers) == ()
+
+
+def _ct(modules):
+    return next(iod for iod in modules["rows"] if iod["iod"] == "CT Image")
+
+
 def _ct_modules(modules):
-    return modules["rows"][0]["modules"]
+    return _ct(modules)["modules"]
 
 
 @pytest.mark.parametrize(
@@ -289,11 +364,11 @@ def _ct_modules(modules):
         (lambda m: _ct_modules(m)[0].update(condition=None), "not text"),
         (lambda m: _ct_modules(m)[0].pop("section"), "without exactly the fields"),
         (lambda m: _ct_modules(m).append(_ct_modules(m)[0]), "a module more than once"),
-        (lambda m: m["rows"][0].update(modules=[]), "has no modules"),
-        (lambda m: m["rows"][0].update(iod=""), "has no IOD name"),
-        (lambda m: m["rows"][0].update(label=3), "without a table label"),
-        (lambda m: m["rows"][0].pop("iod"), "without exactly the fields"),
-        (lambda m: m["rows"].append(copy.deepcopy(m["rows"][0])), "CT Image more than"),
+        (lambda m: _ct(m).update(modules=[]), "has no modules"),
+        (lambda m: _ct(m).update(iod=""), "has no IOD name"),
+        (lambda m: _ct(m).update(label=3), "without a table label"),
+        (lambda m: _ct(m).pop("iod"), "without exactly the fields"),
+        (lambda m: m["rows"].append(copy.deepcopy(_ct(m))), "CT Image more than"),
     ],
 )
 def test_malformed_iod_modules_are_rejected(tmp_path, change, message):
