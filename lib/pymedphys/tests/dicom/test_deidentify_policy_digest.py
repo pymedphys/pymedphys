@@ -15,16 +15,22 @@
 """The policy digest, which identifies a policy and the engine that applies it.
 
 Every input is changed by monkeypatching or by injecting synthetic inputs, so
-no test edits the package's own files.
+no test edits the package's own files. The engine's files and tables are read
+once per process, so each test starts with them unread, and a test that
+edits a synthetic engine or tables reads them again, as a new process would.
 """
 
+import ast
 import dataclasses
 import hashlib
 import importlib
 import json
+import pathlib
 import pkgutil
+import platform
 import re
 import shutil
+import sys
 import types
 import uuid
 
@@ -85,9 +91,18 @@ SYNTHETIC_INPUTS = policy_digest.DigestInputs(
         "dates.MIN_OFFSET_WEEKS": 52,
     },
     files={"policy.py": "f" * 64},
+    environment={
+        "pydicom.__version__": "3.0.2",
+        "platform.python_version": "3.14.0",
+        "platform.python_implementation": "CPython",
+    },
 )
 SYNTHETIC_CANONICAL_BYTES = (
     '{"engine_version":"0.42.0.dev1",'
+    '"environment":{'
+    '"platform.python_implementation":["str","CPython"],'
+    '"platform.python_version":["str","3.14.0"],'
+    '"pydicom.__version__":["str","3.0.2"]},'
     '"files":{"policy.py":"' + "f" * 64 + '"},'
     '"format":"pymedphys-deid-policy-digest/1",'
     '"generated_values":{'
@@ -109,7 +124,7 @@ SYNTHETIC_CANONICAL_BYTES = (
     '"tables":{"e1_1.json":"' + "0" * 64 + '"},'
     '"vocabulary":null}'
 ).encode("utf-8")
-SYNTHETIC_SHA256 = "4d0fd3bb98419a4854e8fe8e43fe9bdcecdca833167aae277ea5059945d47368"
+SYNTHETIC_SHA256 = "4657ba6f07dc332a9cfd7eddc7f1b13bc954d4587dbf342f802d5e1e1b27f315"
 
 # Each parameter of generated values, and another value for it.
 GENERATED_VALUE_CHANGES = {
@@ -131,8 +146,17 @@ GENERATED_VALUE_CHANGES = {
     ),
 }
 
+# Each value of the environment: where it comes from, and another value for it.
+ENVIRONMENT_CHANGES = {
+    "platform.python_implementation": (platform, "python_implementation", "PyPy"),
+    "platform.python_version": (platform, "python_version", "3.14.1"),
+    "pydicom.__version__": ("pydicom", "__version__", "3.0.3"),
+    "tomlkit.__version__": ("tomlkit", "__version__", "0.15.2"),
+}
+
 ENGINE_FILES = {
     "__init__.py": b'"""A package."""\n',
+    "policy_digest.py": b'FORMAT = "digest/1"\n',
     "policy.py": b"ACTION = 'X'\n\n\ndef action():\n    return ACTION\n",
     "rules.toml": b'schema = "rules/1"\n\n[[attribute]]\ntag = "(0008,0018)"\n',
     "_standard/table.json": b'{\n "rows": [\n  {"tag": "(0010,0010)"}\n ]\n}\n',
@@ -144,8 +168,28 @@ def _basic():
     return policy.compose_policy("basic")
 
 
+def _forget_reads():
+    """Forget the engine's files and tables, which are read once per process."""
+    # pylint: disable = protected-access
+    policy_digest._file_digests.cache_clear()
+    policy_digest._table_digests.cache_clear()
+
+
+@pytest.fixture(name="read_again", autouse=True)
+def _read_again():
+    """Start and end each test with the engine's files and tables unread.
+
+    Gives a function that makes the next digest read them again, as a new
+    process would.
+    """
+    _forget_reads()
+    yield _forget_reads
+    _forget_reads()
+
+
 def _engine(directory, files, newline=b"\n"):
     """Write a synthetic engine package, with ``newline`` ending each line."""
+    directory.mkdir(parents=True, exist_ok=True)
     for name, content in files.items():
         path = directory / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -514,6 +558,61 @@ def test_a_parameter_that_changes_only_its_type_changes_the_digest(name, value):
     ) != policy_digest.canonical_bytes(SYNTHETIC_POLICY, SYNTHETIC_INPUTS)
 
 
+def _third_party_imports(path):
+    """Return the top-level names of the third-party modules a module imports.
+
+    A name imported from ``pymedphys._imports``, which imports it lazily, is
+    the module it names.
+    """
+    names = set()
+    for node in ast.walk(ast.parse(path.read_bytes())):
+        if isinstance(node, ast.Import):
+            names.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and not node.level and node.module:
+            if node.module == "pymedphys._imports":
+                names.update(alias.name for alias in node.names)
+            else:
+                names.add(node.module)
+    tops = {name.partition(".")[0] for name in names}
+    return tops - set(sys.stdlib_module_names) - {"__future__", "pymedphys"}
+
+
+def test_the_environment_is_python_and_every_library_that_the_engine_imports():
+    environment = policy_digest.digest_inputs().environment
+    imported = set().union(
+        *(
+            _third_party_imports(path)
+            for path in policy_digest.PACKAGE_DIR.rglob("*.py")
+            if "__pycache__" not in path.parts
+        )
+    )
+
+    assert {"pydicom", "tomlkit"} <= imported
+    assert environment == {
+        "platform.python_implementation": platform.python_implementation(),
+        "platform.python_version": platform.python_version(),
+        **{
+            f"{name}.__version__": importlib.import_module(name).__version__
+            for name in imported
+        },
+    }
+
+
+@pytest.mark.parametrize("name", list(ENVIRONMENT_CHANGES))
+def test_the_python_implementation_and_version_and_each_library_version_change_the_digest(
+    basic, monkeypatch, name
+):
+    before = policy_digest.policy_digest(basic)
+    module, attribute, value = ENVIRONMENT_CHANGES[name]
+    if module is platform:
+        monkeypatch.setattr(platform, attribute, lambda: value)
+    else:
+        monkeypatch.setattr(importlib.import_module(module), attribute, value)
+
+    assert policy_digest.digest_inputs().environment[name] == value
+    assert policy_digest.policy_digest(basic) != before
+
+
 def test_every_module_rule_file_and_table_of_the_engine_is_covered():
     files = policy_digest.digest_inputs().files
     package = importlib.import_module("pymedphys._dicom.deidentify")
@@ -550,14 +649,104 @@ def test_every_module_rule_file_and_table_of_the_engine_is_covered():
     ids=["module", "rule-file", "table", "added", "removed", "renamed"],
 )
 def test_changing_adding_or_removing_an_engine_file_changes_the_digest(
-    basic, tmp_path, monkeypatch, change
+    basic, tmp_path, monkeypatch, read_again, change
 ):
     engine = _engine(tmp_path, ENGINE_FILES)
     monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
     before = policy_digest.policy_digest(basic)
     change(engine)
+    read_again()
 
     assert policy_digest.policy_digest(basic) != before
+
+
+def test_every_file_of_the_engine_other_than_caches_has_a_covered_type():
+    package = policy_digest.PACKAGE_DIR
+    expected = set()
+    for path in package.rglob("*"):
+        relative = path.relative_to(package)
+        if path.is_file() and not any(
+            part == "__pycache__" or part.startswith(".") for part in relative.parts
+        ):
+            expected.add(relative.as_posix())
+    uncovered = sorted(
+        name
+        for name in expected
+        if pathlib.PurePosixPath(name).suffix not in policy_digest.COVERED_SUFFIXES
+    )
+
+    assert not uncovered, "the policy digest does not cover these types of file"
+    assert set(policy_digest.digest_inputs().files) == expected
+
+
+def test_every_file_is_covered_when_the_engine_is_installed_below_a_hidden_directory(
+    tmp_path, monkeypatch
+):
+    site_packages = tmp_path / ".venv" / "lib" / "python3.14" / "site-packages"
+    engine = _engine(
+        site_packages / "pymedphys" / "_dicom" / "deidentify", ENGINE_FILES
+    )
+    monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
+
+    assert set(policy_digest.digest_inputs().files) == set(ENGINE_FILES)
+
+
+@pytest.mark.parametrize(
+    "files, problem",
+    [
+        (None, "found no source or rule files"),
+        ({}, "found no source or rule files"),
+        (
+            {"notes.txt": b"notes", "__pycache__/policy_digest.cpython-313.pyc": b""},
+            "found no source or rule files",
+        ),
+        (
+            {n: c for n, c in ENGINE_FILES.items() if n != "policy_digest.py"},
+            "do not include policy_digest.py",
+        ),
+    ],
+    ids=["missing", "empty", "no-covered-files", "without-its-own-module"],
+)
+def test_the_digest_is_refused_without_the_engine_files(
+    basic, tmp_path, monkeypatch, files, problem
+):
+    engine = tmp_path / "engine"
+    if files is not None:
+        _engine(engine, files)
+    monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
+
+    for compute in (
+        policy_digest.digest_inputs,
+        lambda: policy_digest.policy_digest(basic),
+    ):
+        with pytest.raises(policy_digest.PolicyDigestError, match=problem) as raised:
+            compute()
+        assert str(tmp_path) not in str(raised.value)
+
+
+def _edit_a_file(engine, _tables):
+    (engine / "policy.py").write_bytes(b"ACTION = 'K'\n")
+
+
+def _edit_a_table(_engine_dir, tables):
+    rows = json.loads((tables / "e1_1.json").read_text(encoding="utf-8"))["rows"]
+    _rewrite(tables / "e1_1.json", rows[::-1])
+
+
+@pytest.mark.parametrize("edit", [_edit_a_file, _edit_a_table], ids=["file", "table"])
+def test_the_engine_files_and_tables_are_read_once_per_process(
+    basic, tmp_path, monkeypatch, read_again, edit
+):
+    engine = _engine(tmp_path / "engine", ENGINE_FILES)
+    tables = _copied_tables(tmp_path)
+    monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
+    monkeypatch.setattr(standard, "STANDARD_DIR", tables)
+    first = policy_digest.policy_digest(basic)
+    edit(engine, tables)
+
+    assert policy_digest.policy_digest(basic) == first
+    read_again()
+    assert policy_digest.policy_digest(basic) != first
 
 
 def test_files_with_crlf_and_lf_line_endings_give_the_same_digest(
@@ -573,7 +762,9 @@ def test_files_with_crlf_and_lf_line_endings_give_the_same_digest(
     assert digests[0] == digests[1]
 
 
-def test_caches_and_files_of_other_types_are_not_covered(basic, tmp_path, monkeypatch):
+def test_caches_and_files_of_other_types_are_not_covered(
+    basic, tmp_path, monkeypatch, read_again
+):
     engine = _engine(tmp_path, ENGINE_FILES)
     monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
     before = policy_digest.policy_digest(basic)
@@ -587,6 +778,7 @@ def test_caches_and_files_of_other_types_are_not_covered(basic, tmp_path, monkey
             "notes.txt": b"notes",
         },
     )
+    read_again()
 
     assert set(policy_digest.digest_inputs().files) == set(ENGINE_FILES)
     assert policy_digest.policy_digest(basic) == before
@@ -598,6 +790,7 @@ def test_caches_and_files_of_other_types_are_not_covered(basic, tmp_path, monkey
         ("generated_values", 0.5 + 0j),
         ("generated_values", {7: "secret-value"}),
         ("generated_values", True),
+        ("environment", 0.5 + 0j),
         ("l2_rules", 0.5),
         ("l2_rules", b"secret-value"),
         ("l2_rules", {7: "secret-value"}),
