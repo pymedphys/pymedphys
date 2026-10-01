@@ -16,7 +16,7 @@ import base64
 import logging
 
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import pymssql
+from pymedphys._imports import pymssql, sqlalchemy
 
 from . import generate, utilities
 
@@ -41,6 +41,13 @@ COLUMN_TYPES_TO_USE = {
     "largebinary",
     "bit",
 }
+
+# SQL Server stores a DECIMAL declared without a scale as a whole number, which
+# would round every decimal column, such as a control point's Index or gantry
+# angle, to an integer. The type map records only "decimal", so give every such
+# column room for the most decimal places in the CSV files, 11.
+DECIMAL_PRECISION = 38
+DECIMAL_SCALE = 12
 
 
 def create_db_with_tables_from_csv():
@@ -82,11 +89,20 @@ def create_tables_from_csv(database):
             if a_type == sql_types_map["datetime"]:
                 table[column_name] = pd.to_datetime(table[column_name], format="mixed")
 
+        dtype = {
+            column_name: (
+                sqlalchemy.types.DECIMAL(DECIMAL_PRECISION, DECIMAL_SCALE)
+                if a_type == sql_types_map["decimal"]
+                else a_type
+            )
+            for column_name, a_type in types_map[table_name].items()
+        }
+
         generate.dataframe_to_sql(
             table,
             table_name,
             index_label=index_label,
-            dtype=types_map[table_name],
+            dtype=dtype,
             database=database,
             if_exists="replace",
         )

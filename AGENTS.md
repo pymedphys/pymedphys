@@ -9,7 +9,7 @@ the [contributor language policy](CONTRIBUTING.md#language), for every change.
 
 ```bash
 # Install with uv (required for development)
-uv sync --python 3.14 --locked --extra all --group dev
+uv sync --python 3.14 --locked
 
 # Install pre-commit hooks
 uv run -- pre-commit install
@@ -68,8 +68,8 @@ uv run -- pymedphys dev docs
 ```
 
 Documentation notebooks must use declared, locked dependencies rather than
-installing packages while running. Add documentation dependencies to both the
-`docs` and `all` extras and regenerate `uv.lock`; CI and ReadTheDocs both
+installing packages while running. Add documentation dependencies to the
+`docs` dependency group and regenerate `uv.lock`; CI and ReadTheDocs both
 install the documentation environment from it.
 Unexpected notebook errors and documentation build warnings fail the build.
 An install cell kept for readers running a notebook elsewhere (for example on
@@ -235,15 +235,23 @@ Use this list wherever metadata needs the maintainers.
 
 ### Dependencies and Extras
 
-The project uses uv with optional dependency groups:
+Extras (`[project.optional-dependencies]`) are published and are for people who install PyMedPhys. Dependency groups (`[dependency-groups]`) are not published and are for working on PyMedPhys from a checkout. uv.lock pins both.
 
-- `user`: Standard user installation
-- `ai`: The Anthropic dependencies of the experimental Mosaiq chat app; opt-in, never part of `user`
-- `all`: All features including development tools
-- `dev`: Development tools (linting, formatting)
-- `docs`: Documentation building
-- `tests`: Testing dependencies
-- Specific features: `dicom`, `mosaiq`, `icom`, etc.
+- Extras:
+  - `user`: every dependency of the library, CLI, and GUI; the documented install.
+  - `ai`: the experimental Mosaiq chat app's Anthropic dependencies; opt-in, never part of `user`.
+  - `tests`: `user` plus what running the installed test suite needs.
+  - `all`: `user`, `ai`, and `tests`.
+  - `gamma`, `dicom`, `mosaiq`, `icom`, `trf`: narrow extras, one per feature. Each lists every package its feature's public functions and commands import, directly or through PyMedPhys code, not only those its dependencies happen to bring. The `narrow-extras` job in `unit-tests.yml` installs each alone with the `test-runner` group and runs its feature's tests, and `mosaiq-db-tests.yml` does the same for `mosaiq` against SQL Server. Add a new feature extra only with a matrix entry there. Every package in a feature extra must also be in `user`, which missing-package messages suggest; a test in `lib/pymedphys/tests/imports` checks this. Plotting helpers, private code, and the GUI are not part of any narrow extra; `user` covers them.
+  - `cli`: an alias for `user`, because the command line spans every feature.
+- Groups:
+  - `dev`, the default: PyMedPhys with every extra, plus the `docs`, `lint`, and `pre-commit` groups. A plain `uv sync` installs it.
+  - `docs`: the documentation build, including the packages its notebooks run.
+  - `lint`: linters, type checkers, and stubs.
+  - `pre-commit` and `script-tests`: the small sets their CI jobs install on their own.
+  - `test-runner`: pytest and the packages the tests themselves use, without any feature's packages, for the narrow-extras jobs. `mosaiq-db-fixtures` adds what loading the test Mosaiq database needs.
+- When a narrow-extras job fails because a feature's code needs a package, add the package to that extra. Skip a test with `pytest.importorskip` only when it exercises another feature, private code, or a plotting helper that shares the folder, and say which in a comment.
+- Put a tool that only contributors or CI use in a group, never an extra. CI jobs install only what they need, through the `extras` and `groups` inputs of `.github/actions/setup-project`, which always passes `--no-default-groups`.
 
 ### Optional Dependencies
 
@@ -503,7 +511,7 @@ detailed explanations of individual features.
 When updating dependencies:
 
 1. Update version constraints in `pyproject.toml`
-2. Run `uv lock --upgrade` and then `uv sync --python 3.14 --locked --extra all --group dev` to regenerate `uv.lock`
+2. Run `uv lock --upgrade` and then `uv sync --python 3.14 --locked` to regenerate `uv.lock`
 3. Run `uv run pymedphys dev propagate` to regenerate the exported
    `requirements.txt`, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
    fails when these drift from `pyproject.toml` and `uv.lock`

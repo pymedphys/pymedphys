@@ -1,9 +1,11 @@
 import os
 import warnings
 
-import anthropic
 import pytest
-from anthropic.types import TextBlock
+
+# Anthropic's SDK is in the optional ``ai`` extra, not in ``tests``.
+anthropic = pytest.importorskip("anthropic")
+TextBlock = pytest.importorskip("anthropic.types").TextBlock
 
 
 # Custom pytest plugin to improve error output

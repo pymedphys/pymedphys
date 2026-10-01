@@ -230,8 +230,9 @@ def test_imports_map_to_their_distribution(import_name, distribution):
 @pytest.mark.parametrize(
     "import_name, extra",
     [
-        # ``user`` is suggested wherever it applies: the narrower extras
-        # each miss dependencies of the features they are named after.
+        # ``user`` is suggested wherever it applies, even where a narrow
+        # extra such as ``dicom`` also provides the package: ``user`` always
+        # covers the feature being used.
         ("numpy", "user"),
         ("pydicom.dataset", "user"),
         ("pandas", "user"),
@@ -239,7 +240,10 @@ def test_imports_map_to_their_distribution(import_name, distribution):
         ("PIL", "user"),
         ("anthropic", "ai"),
         ("pytest", "tests"),
-        ("tabulate", "dev"),
+        # ``pymedphys dev imports`` and its tests use tabulate.
+        ("tabulate", "tests"),
+        # Development tools are in dependency groups, not extras.
+        ("pylint", None),
         ("not_a_dependency", None),
     ],
 )
@@ -267,6 +271,8 @@ def test_development_hints_do_not_replace_the_install_with_a_release():
         ("tkinter.filedialog", "standard library"),
         ("tomlkit", "Reinstall PyMedPhys"),
         ("not_a_dependency", 'python -m pip install "not_a_dependency"'),
+        # A development tool used by a ``pymedphys dev`` command.
+        ("pylint", "uv sync"),
     ],
 )
 def test_other_missing_imports_are_explained(import_name, expected):
@@ -292,6 +298,24 @@ def test_every_registered_import_comes_from_a_declared_dependency():
         and _extras.extra_for(root) is None
     ]
     assert undeclared == []
+
+
+def test_user_holds_every_package_of_every_feature_extra():
+    # Missing-package messages suggest only user, ai, or tests, so a package
+    # that only a feature extra such as dicom lists would be reported as
+    # provided by no extra.
+    by_extra = {}
+    for requirement in importlib.metadata.requires("pymedphys") or []:
+        extra = re.search(r"""extra\s*==\s*["']([^"']+)["']""", requirement)
+        if extra:
+            name = re.match(r"[A-Za-z0-9._-]+", requirement).group()
+            by_extra.setdefault(extra.group(1), set()).add(_extras.normalise(name))
+
+    # ai is separate by design, and tests and all add to user.
+    feature_extras = set(by_extra) - {"user", "ai", "tests", "all"}
+    assert {"gamma", "dicom", "mosaiq", "icom", "trf"} <= feature_extras
+    for extra in feature_extras:
+        assert by_extra[extra] <= by_extra["user"], extra
 
 
 def test_the_distribution_table_matches_the_installed_packages():
