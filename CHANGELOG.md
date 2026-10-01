@@ -286,9 +286,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   `pymedphys dev deid-tables`, generates Tables E.1-1, E.1-1a, and E.3.10-1
   of DICOM PS3.15, Tables 6-1 and A-1 to A-4 of PS3.6, Tables 8-1 and 8-2
   and context groups CID 7050 and CID 7005 of PS3.16, Table B.5-1 of PS3.4,
-  and the modules of the
-  CT Image, RT Dose, RT Structure Set, and RT Plan IODs with the attribute
-  tables of those modules and their macros from PS3.3, as JSON from NEMA's
+  and the modules of the composite IODs of PS3.3 Annex A with the attribute
+  tables of those modules and their macros, as JSON from NEMA's
   HTML publication of the pinned edition, 2026d, the first step towards the
   de-identification rule tables: the attribute confidentiality profile, its
   action codes, the safe private attributes, the data dictionary, the
@@ -296,7 +295,11 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   groups and templates, the coding schemes and their UIDs, the codes that
   record a de-identification method, the purposes of reference for
   contributing equipment, the IOD of each Storage SOP Class, and each
-  attribute's Type in each module and sequence of a supported IOD. It
+  attribute's Type in each module and sequence of an IOD. Types are
+  generated for 141 of the 174 composite IODs in 2026d, ahead of the
+  releases that support them. The other 33, such as Enhanced CT Image and Segmentation, have modules that
+  include Functional Group Macros, which are not yet generated; the pin names
+  each of them, and generation fails if an edition adds or removes one. It
   downloads each source
   page, or reads it from `--source-dir`, and parses it only after checking its
   SHA-256 digest against the pin. The parsers map columns by their header
@@ -308,7 +311,15 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   identifiers, designators, or codes. Table E.1-1a must define exactly the action
   codes PyMedPhys implements, so a new edition that adds or removes one fails
   until the engine handles it. Likewise, a UID type in Table A-1 that
-  PyMedPhys does not list fails generation until it is reviewed. Each generated file records the edition, its
+  PyMedPhys does not list fails generation until it is reviewed. The PS3.3
+  parser reads the published layouts of the composite IODs: section numbers
+  with a letter, such as C.7.6.4b; rows nested below an included macro whose
+  only attribute is a sequence; and a macro that includes itself within one
+  of its sequences, such as the Document Relationship Macro. Errors in the
+  published 2026d tables, such as a usage separated from its condition by an
+  en dash, a module table whose title differs from the module's name, and a
+  module listed with the wrong section, are corrected by named corrections in
+  the pin, each of which fails generation once it no longer applies. Each generated file records the edition, its
   source page's digest, a digest of its rows, and the copyright attribution
   of its part, such as "DICOM PS3.15 2026d, © NEMA", and the same input always
   produces the same bytes. The generated tables ship in the package, in
@@ -324,11 +335,13 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   (`load_storage_sop_classes`) that
   check each row's fields, types, and values and reject a table whose rows no
   longer match their recorded digest. PS3.3's tables are kept as published,
-  and its loader expands each IOD's modules, following every included macro,
-  into each attribute's Type at each place in the data set.
+  and its loader expands an IOD's modules when its Types are first needed,
+  following every included macro, into each attribute's Type at each place in
+  the data set, at any depth of a macro that includes itself.
   `iod_for_sop_class` finds an instance's IOD, with those Types, from its SOP
-  Class UID, and finds none for the SOP Classes of other IODs or for a UID
-  that Table B.5-1 does not list, such as a retired or Private SOP Class.
+  Class UID, and finds none for the SOP Classes of IODs without generated
+  Types or for a UID that Table B.5-1 does not list, such as a retired or
+  Private SOP Class.
   `--check` exits with status 1 when the
   committed tables are missing or out of date.
   `pymedphys._dicom.deidentify.scope` uses Table B.5-1 to classify an
@@ -336,7 +349,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   de-identifies CT Image, RT Structure Set, RT Plan, and RT Dose instances in
   Implicit or Explicit VR Little Endian, and gives the reason for
   sequestering any other.
-  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112), [PR #2130](https://github.com/pymedphys/pymedphys/pull/2130), [PR #2158](https://github.com/pymedphys/pymedphys/pull/2158), [PR #2163](https://github.com/pymedphys/pymedphys/pull/2163)
+  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112), [PR #2130](https://github.com/pymedphys/pymedphys/pull/2130), [PR #2158](https://github.com/pymedphys/pymedphys/pull/2158), [PR #2163](https://github.com/pymedphys/pymedphys/pull/2163), [PR #2173](https://github.com/pymedphys/pymedphys/pull/2173)
 - **[Contributor facing only]** A private module,
   `pymedphys._nomenclature.tg263`, converts a copy of AAPM's TG-263 Structure
   Spreadsheet to JSON, the first step towards descriptor cleaning

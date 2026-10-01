@@ -126,10 +126,23 @@ def test_every_storage_sop_class_is_a_current_sop_class_in_ps3_6():
         assert not registered[row.uid].retired, row.name
 
 
-def test_every_generated_iod_is_the_iod_of_a_storage_sop_class():
+def test_the_generated_iods_without_a_storage_sop_class_are_known():
+    # Other parts of PS3.4 define the SOP Classes of these IODs, so no SOP
+    # Class of Table B.5-1 finds them.
     named = {row.iod_name for row in sop_classes.load_storage_sop_classes().rows}
 
-    assert set(iods.load_iod_tables().iods) <= named
+    assert set(iods.load_iod_tables().iods) - named == {
+        "CT Defined Procedure Protocol",
+        "Color Palette",
+        "Generic Implant Template",
+        "Hanging Protocol",
+        "Implant Assembly Template",
+        "Implant Template Group",
+        "Inventory",
+        "Protocol Approval",
+        "Rendition Selection Document",
+        "XA Defined Procedure Protocol",
+    }
 
 
 @pytest.mark.pydicom
@@ -157,15 +170,35 @@ def test_the_first_supported_release_sop_classes_find_their_iods():
         assert iod is tables.iods[iod.name]
 
 
+@pytest.mark.pydicom
+def test_the_sop_classes_of_later_releases_find_their_iods():
+    from pydicom import uid
+
+    expected = {
+        uid.MRImageStorage: "MR Image",
+        uid.PositronEmissionTomographyImageStorage: "Positron Emission Tomography Image",
+        uid.RTImageStorage: "RT Image",
+        uid.RTBeamsTreatmentRecordStorage: "RT Beams Treatment Record",
+        uid.RTIonPlanStorage: "RT Ion Plan",
+        uid.SpatialRegistrationStorage: "Spatial Registration",
+    }
+
+    found = {
+        sop_class: sop_classes.iod_for_sop_class(sop_class) for sop_class in expected
+    }
+
+    assert {
+        sop_class: iod.name if iod else None for sop_class, iod in found.items()
+    } == expected
+
+
 @pytest.mark.parametrize(
     "sop_class",
     [
-        # Storage SOP Classes whose IODs have no generated Types: MR Image,
-        # Enhanced CT Image, RT Ion Plan, and RT Beams Treatment Record.
-        "1.2.840.10008.5.1.4.1.1.4",
+        # Storage SOP Classes whose IODs have Functional Group Macros, which
+        # are not yet generated: Enhanced CT Image and Segmentation.
         "1.2.840.10008.5.1.4.1.1.2.1",
-        "1.2.840.10008.5.1.4.1.1.481.8",
-        "1.2.840.10008.5.1.4.1.1.481.4",
+        "1.2.840.10008.5.1.4.1.1.66.4",
         # SOP Classes that Table B.5-1 does not list: the retired Nuclear
         # Medicine Image Storage, Hanging Protocol Storage, which another
         # service class defines, and Verification, which stores nothing.
