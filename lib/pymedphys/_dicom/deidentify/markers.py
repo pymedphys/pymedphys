@@ -18,8 +18,8 @@ DICOM PS3.15 E.1.1 has a de-identifier record what it did in each instance,
 and E.2 and E.3.6 say how the instance's dates were treated.
 :func:`markers_for` gives the markers of one instance from its validated
 policy, the de-identification method digest, and the options that the
-instance's validated result satisfies, and :func:`apply_markers` adds them to a copy of a data set
-and changes nothing else in it:
+instance's validated result satisfies, and :func:`apply_markers` adds them
+to a copy of a data set and changes nothing else in it:
 
 - Patient Identity Removed (0012,0062) is YES under every policy, and never
   NO, replacing any value already present.
