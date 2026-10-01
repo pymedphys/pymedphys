@@ -33,8 +33,9 @@ DT value with its own offset is converted to the instance's local time
 (:func:`~pymedphys._dicom.deidentify.dates.to_local_datetime`). That keeps
 every interval within the instance and does not reveal the season of the
 original date through daylight saving. Without the option, Table E.1-1
-decides. The file's format and
-loader are shared with the other roles files
+decides, or, for an attribute that it omits, the attribute's supplementary
+action (:mod:`~pymedphys._dicom.deidentify.supplementary_actions`). The file's
+format and loader are shared with the other roles files
 (:mod:`~pymedphys._dicom.deidentify.attribute_roles`).
 """
 

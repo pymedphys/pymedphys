@@ -41,9 +41,19 @@ overrides its Basic Profile action when the option is selected:
 - De-identification Method (0012,0063) is kept, and the engine adds its own
   values to it.
 
+Every date, time, and datetime attribute (VR DA, DT, or TM) that the table
+omits has a rule too: removal by Type (X/Z/D), as the Basic Profile removes or
+replaces every date and time that the table lists, with K under Retain
+Longitudinal Temporal Information with Full Dates and C under Modified Dates,
+as the table gives nearly every date it lists. Each also has a temporal role
+(:mod:`~pymedphys._dicom.deidentify.temporal_roles`), which decides how
+Modified Dates cleans it: a subject event moves with the subject's other
+dates, and any other date takes a fixed dummy value.
+
 A rule may give only C under Clean Descriptors and K under Retain Device
-Identity, only to a text attribute, and only over a Basic Profile action that
-removes or replaces the value.
+Identity to a text attribute, and only K under Full Dates and C under Modified
+Dates to a date, time, or datetime, in each case only over a Basic Profile
+action that removes or replaces the value.
 :func:`~pymedphys._dicom.deidentify.actions.effective_supplementary_actions`
 gives each rule's action under the selected options, as
 :func:`~pymedphys._dicom.deidentify.actions.effective_actions` does for Table
@@ -53,19 +63,16 @@ uses: removal by Type. Nothing applies it yet; the engine (M3) will apply it to
 such attributes.
 
 The file gives actions only to attributes that the table omits, so it never
-changes an action the table gives. UI, DA, DT, and TM attributes are left to
-the roles files (:mod:`~pymedphys._dicom.deidentify.uid_roles` and
-:mod:`~pymedphys._dicom.deidentify.temporal_roles`), which give each of them a
-role. The temporal roles act only under Modified Dates. The Basic Profile
-action of a date or time that Table E.1-1 omits is X/Z/D; to give it here, the
-loader, which rejects a rule for an attribute of these VRs, will need to
-accept Basic Profile actions for dates and times.
+changes an action the table gives. UI attributes are left to the UID roles
+file (:mod:`~pymedphys._dicom.deidentify.uid_roles`), which gives each of them
+a role.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import functools
+import itertools
 import pathlib
 import types
 from collections.abc import Mapping
@@ -76,6 +83,7 @@ from .iods import load_iod_tables
 from .scope import SUPPORTED_IODS
 from .standard import (
     ACTION_CODES,
+    MUTUALLY_EXCLUSIVE,
     OPTIONS,
     ProfileTable,
     load_data_dictionary,
@@ -87,8 +95,10 @@ SUPPLEMENTARY_ACTIONS_PATH = (
     pathlib.Path(__file__).resolve().parent / "supplementary_actions.toml"
 )
 
+# The date, time, and datetime VRs, whose attributes also have temporal roles.
+TEMPORAL_VRS = frozenset({"DA", "DT", "TM"})
 # Every attribute of these VRs that Table E.1-1 omits needs an action.
-COVERED_VRS = frozenset({"PN"})
+COVERED_VRS = frozenset({"PN"}) | TEMPORAL_VRS
 # The text VRs. Every attribute of these VRs that Table E.1-1 omits and a
 # supported IOD uses needs an action.
 TEXT_VRS = frozenset({"LO", "SH", "LT", "ST", "UC", "UT"})
@@ -97,17 +107,35 @@ TEXT_VRS = frozenset({"LO", "SH", "LT", "ST", "UC", "UT"})
 # (M3) will apply it; nothing applies it yet.
 UNCOVERED_TEXT_ACTION = "X/Z/D"
 # The options under which a rule may give an action, and the action each may
-# give: Retain Device Identity keeps (K) a device identifier, as Table E.1-1
-# keeps the device identifiers it lists, and Clean Descriptors cleans (C) a
-# descriptor. Each overrides a Basic Profile action that removes or replaces
-# the value.
+# give, as Table E.1-1 gives them: Retain Device Identity keeps (K) a device
+# identifier, and Clean Descriptors cleans (C) a descriptor; Retain
+# Longitudinal Temporal Information with Full Dates keeps (K) a date, and with
+# Modified Dates cleans it (C) by its temporal role. Each overrides a Basic
+# Profile action that removes or replaces the value.
 OPTION_ACTIONS: Mapping[str, str] = types.MappingProxyType(
-    {"retain_device_identity": "K", "clean_descriptors": "C"}
+    {
+        "retain_device_identity": "K",
+        "retain_longitudinal_full_dates": "K",
+        "retain_longitudinal_modified_dates": "C",
+        "clean_descriptors": "C",
+    }
+)
+# The attributes, by VR, to which each option may give its action, and what
+# they are called in messages.
+_TEXT = (TEXT_VRS, "a text attribute")
+_TEMPORAL = (TEMPORAL_VRS, "a date, time, or datetime attribute")
+_OPTION_ATTRIBUTES: Mapping[str, tuple[frozenset[str], str]] = types.MappingProxyType(
+    {
+        "retain_device_identity": _TEXT,
+        "retain_longitudinal_full_dates": _TEMPORAL,
+        "retain_longitudinal_modified_dates": _TEMPORAL,
+        "clean_descriptors": _TEXT,
+    }
 )
 # The actions of Table E.1-1a that never keep the value as received.
 _REMOVING = frozenset({"X", "Z", "D", "X/Z", "X/D", "Z/D", "X/Z/D"})
-# The VRs whose attributes the roles files give roles.
-_ROLE_VRS = frozenset({"UI", "DA", "DT", "TM"})
+# The VRs whose attributes only a roles file covers.
+_ROLES_ONLY_VRS = frozenset({"UI"})
 _FIELDS = frozenset({"tag", "keyword", "action", "note"})
 _OPTIONAL_FIELDS = frozenset({"options"})
 
@@ -200,8 +228,8 @@ def _attribute_problem(
         return "names its attribute differently from the data dictionary"
     if tag in listed:
         return "is listed in Table E.1-1, whose action it must not change"
-    if _ROLE_VRS.intersection(dictionary[tag].vrs):
-        return "is of a VR that a roles file covers"
+    if _ROLES_ONLY_VRS.intersection(dictionary[tag].vrs):
+        return "is a UI attribute, which the UID roles file covers"
     return None
 
 
@@ -212,13 +240,19 @@ def _option_problem(option: str, given: object) -> str | None:
     if not isinstance(given, str) or given not in ACTION_CODES:
         return "has an option action not defined in Table E.1-1a"
     if option not in OPTION_ACTIONS:
+        *others, last = OPTION_ACTIONS
         return (
             f"gives an action under {option}; a rule may give one only under "
-            + " and ".join(OPTION_ACTIONS)
+            f"{', '.join(others)}, or {last}"
         )
     if given != OPTION_ACTIONS[option]:
         return f"gives {option} an action other than {OPTION_ACTIONS[option]}"
     return None
+
+
+def _exclusive(first: str, second: str) -> bool:
+    """Whether PS3.15 makes two options mutually exclusive."""
+    return any({first, second} <= options for options in MUTUALLY_EXCLUSIVE)
 
 
 def _options_problem(options: object, action: str, vrs: tuple[str, ...]) -> str | None:
@@ -231,15 +265,20 @@ def _options_problem(options: object, action: str, vrs: tuple[str, ...]) -> str 
     )
     if problem:
         return problem
-    if len(set(options.values())) > 1:
+    if any(
+        options[first] != options[second] and not _exclusive(first, second)
+        for first, second in itertools.combinations(options, 2)
+    ):
         return (
-            "gives different actions under two or more options, "
-            "between which PS3.15 defines no precedence"
+            "gives different actions under two or more options that can be "
+            "selected together, between which PS3.15 defines no precedence"
         )
     if action not in _REMOVING:
         return "has an option action, but its Basic Profile action keeps the value"
-    if not TEXT_VRS.intersection(vrs):
-        return "has an option action, but is not a text attribute"
+    for option in options:
+        allowed, kind = _OPTION_ATTRIBUTES[option]
+        if not allowed.intersection(vrs):
+            return f"has an option action under {option}, but is not {kind}"
     return None
 
 
@@ -301,15 +340,18 @@ def load_supplementary_actions(
         and note, and optionally options; has a rule for an attribute that is
         not in the data dictionary, with another keyword, that Table E.1-1
         lists (exactly or by a masked tag, as it lists the Curve group), or
-        of a VR that a roles file covers; has an action not defined in Table
-        E.1-1a, or an empty note; has options that are not a non-empty table,
-        or that name an option Table E.1-1 does not define, give an action
-        not defined in Table E.1-1a, give an action other than those in
-        :data:`OPTION_ACTIONS`, or give different actions under different
-        options; has options on a rule whose Basic Profile action keeps the
-        value or whose attribute is not text; repeats a tag; or has no action
-        for a person name that Table E.1-1 omits, or for a text attribute that
-        it omits and a supported IOD uses.
+        that is a UI attribute; has an action not defined in Table E.1-1a, or
+        an empty note; has options that are not a non-empty table, or that
+        name an option Table E.1-1 does not define, give an action not
+        defined in Table E.1-1a, give an action other than those in
+        :data:`OPTION_ACTIONS`, or give different actions under two options
+        that are not mutually exclusive; has options on a rule whose Basic
+        Profile action keeps the value, or an option action for an attribute
+        that the option does not apply to (text for Clean Descriptors and
+        Retain Device Identity, a date, time, or datetime for the Retain
+        Longitudinal Temporal Information Options); repeats a tag; or has no
+        action for a person name, date, time, or datetime that Table E.1-1
+        omits, or for a text attribute that it omits and a supported IOD uses.
     """
     return _load((path or SUPPLEMENTARY_ACTIONS_PATH).resolve())
 
