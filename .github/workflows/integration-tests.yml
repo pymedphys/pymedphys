@@ -54,6 +54,9 @@ jobs:
       - name: Run the gamma benchmark tooling tests
         run: uv run python -m unittest discover -s examples -p 'test_gamma_*.py'
 
+      - name: Run the gamma comparison harness mock tests
+        run: uv run --no-sync pytest examples/gamma_benchmark/tests
+
   slow-tests:
     name: Slow Tests
     if: ${{ inputs.run-slow }}
@@ -66,7 +69,7 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'dev tests'
+          extras: 'tests'
           cache-data: 'true'
 
       # The slow tests are independent, and processes that share the data
@@ -127,9 +130,11 @@ jobs:
         with:
           persist-credentials: false
 
+      # Building needs only the project and uv; propagation also formats the
+      # generated version file with Ruff, from the pre-commit group.
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'dev'
+          groups: 'pre-commit'
 
       - name: Build the sdist, then the wheel from it
         if: inputs.run-wheel-build

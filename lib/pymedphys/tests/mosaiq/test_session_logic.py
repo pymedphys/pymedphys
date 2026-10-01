@@ -23,6 +23,10 @@ from pymedphys._mosaiq.sessions import (
     sessions_for_site,
 )
 
+# Session clustering is private and uses scikit-learn, which the mosaiq extra
+# does not include, so the mosaiq extra's database job skips this file.
+pytest.importorskip("sklearn")
+
 
 @pytest.fixture(name="connection")
 def fixture_check_create_test_db():

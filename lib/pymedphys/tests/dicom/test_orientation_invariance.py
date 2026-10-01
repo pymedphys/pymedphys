@@ -120,6 +120,16 @@ def _box_structure(contours):
     )
 
 
+def _skip_without_other_feature(module):
+    """Skip where a package that DICOM itself does not need is missing.
+
+    CI runs these tests with only the dicom extra. Gamma's default
+    interpolation needs numba, from the gamma extra, and the private structure
+    mask uses matplotlib, which no public DICOM function needs.
+    """
+    pytest.importorskip(module)
+
+
 @pytest.mark.pydicom
 @pytest.mark.parametrize("orientation", sorted(STORAGE_ORDER))
 @pytest.mark.parametrize("reverse_slices", [False, True])
@@ -141,6 +151,8 @@ def test_all_encodings_recover_the_same_physical_grid(orientation, reverse_slice
 def test_gamma_is_invariant_for_every_orientation_pair(
     reference_orientation, evaluation_orientation, interp_algo
 ):
+    if interp_algo == "pymedphys":
+        _skip_without_other_feature("numba")
     axes, pixels = _physical_grid()
     reference = _encode_grid(reference_orientation, axes, pixels)
     options = {
@@ -179,6 +191,7 @@ def test_gamma_is_invariant_for_every_orientation_pair(
 def test_same_orientation_crop_retains_physical_registration(
     orientation, dimension, end
 ):
+    _skip_without_other_feature("numba")
     axes, pixels = _physical_grid()
     selection = [slice(None)] * 3
     selection[dimension] = slice(1, None) if end == "first" else slice(None, -1)
@@ -220,6 +233,7 @@ def test_dicom_interpolation_uses_physical_coordinates(orientation):
 @pytest.mark.parametrize("square", [False, True])
 @pytest.mark.parametrize("reverse_slices", [False, True])
 def test_structure_mask_matches_raw_dose(orientation, square, reverse_slices):
+    _skip_without_other_feature("matplotlib")
     axes, pixels = _physical_grid()
     if square:
         axes = (*axes[:2], axes[2][:-1])
@@ -263,6 +277,7 @@ def test_structure_mask_matches_raw_dose(orientation, square, reverse_slices):
 def test_structure_mask_applies_each_contour_to_its_own_slice(
     orientation, reverse_slices, contour_order
 ):
+    _skip_without_other_feature("matplotlib")
     axes, pixels = _physical_grid()
     dataset = _encode_grid(orientation, axes, pixels, reverse_slices)
     structure = _box_structure(
@@ -290,6 +305,7 @@ def test_structure_mask_applies_each_contour_to_its_own_slice(
 @pytest.mark.pydicom
 @pytest.mark.parametrize("orientation", sorted(STORAGE_ORDER))
 def test_structure_mask_and_dose_on_a_single_slice(orientation):
+    _skip_without_other_feature("matplotlib")
     axes, pixels = _physical_grid()
     axes = (axes[0][1:2], *axes[1:])
     pixels = pixels[1:2]
