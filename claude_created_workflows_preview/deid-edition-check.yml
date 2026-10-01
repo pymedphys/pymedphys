@@ -85,7 +85,7 @@ jobs:
           if [[ "${STATUS}" == "changed" ]]; then
             summary="Generating the de-identification tables from NEMA's current edition of the DICOM standard would change the tables on \`${REF_NAME}\`."
           else
-            summary="The edition check on \`${REF_NAME}\` could not fetch or parse a page of NEMA's current edition of the DICOM standard, or did not finish."
+            summary="The edition check on \`${REF_NAME}\` could not fetch a page of NEMA's current edition of the DICOM standard, could not generate a table from it (as also happens when the pin's named corrections or its list of IODs with Functional Group Macros no longer match the new edition), or did not finish."
           fi
           body="${RUNNER_TEMP}/body.md"
           {
