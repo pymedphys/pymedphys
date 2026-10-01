@@ -12,30 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The patient and the content that an instance record holds for the hierarchy."""
+"""The patient and the source bytes that an instance record holds for the hierarchy."""
 
 import hashlib
 import io
 import struct
-import warnings
 
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import pseudonyms, reference_graph
+from pymedphys._dicom.deidentify.file_layout import Region, read_file_layout
 from pymedphys._dicom.deidentify.references import InstanceRecord
 
 from . import _synthetic_references as synthetic
 
 SOURCE_ISSUER = "SYNTHETIC-ISSUER-3H8M"
 PRIVATE_CREATOR = "SYNTHETIC CREATOR 5T"
-IMPLICIT_VR = "1.2.840.10008.1.2"
-EXPLICIT_VR = "1.2.840.10008.1.2.1"
+IMPLICIT_VR = synthetic.IMPLICIT_VR_LITTLE_ENDIAN
+EXPLICIT_VR = synthetic.EXPLICIT_VR_LITTLE_ENDIAN
 EXPLICIT_VR_BIG_ENDIAN = "1.2.840.10008.1.2.2"
+DEFLATED_EXPLICIT_VR = "1.2.840.10008.1.2.1.99"
 # Person Names to Use Sequence (SQ) and Name to Use (LT), which the pinned
 # data dictionary lists and pydicom 3.0.2 does not.
 PERSON_NAMES_TO_USE = 0x00100011
 NAME_TO_USE = 0x00100012
-# Two copies of one SOP Instance UID with different content.
+# Two copies of one SOP Instance UID with different source bytes.
 CONFLICTING = reference_graph.Finding(
     reference_graph.FindingKind.CONFLICTING_INSTANCE, ((0,), (1,)), ("(0008,0018)",)
 )
@@ -82,7 +83,7 @@ def test_a_record_holds_the_patient_identity(patient_id, issuer, expected):
     if issuer is not None:
         dataset.IssuerOfPatientID = issuer
 
-    record = InstanceRecord.from_dataset(dataset)
+    record = synthetic.record(dataset)
 
     assert record.patient == (
         None
@@ -94,13 +95,14 @@ def test_a_record_holds_the_patient_identity(patient_id, issuer, expected):
 @pytest.mark.pydicom
 def test_a_patient_id_that_is_not_text_names_no_patient(monkeypatch):
     # pydicom keeps the value of a UN element as bytes when it does not
-    # replace UN with the VR it knows.
+    # replace UN with the VR it knows, here also when it reads the file.
     dataset = synthetic.rt_plan()
     monkeypatch.setattr(pydicom.config, "replace_un_with_known_vr", False)
     dataset[0x00100020] = pydicom.DataElement(0x00100020, "UN", b"SYNTHETIC-7Q2K")
-    assert dataset[0x00100020].VR == "UN"
+    data = synthetic.written(dataset)
+    assert synthetic.read(data)[0x00100020].VR == "UN"
 
-    assert InstanceRecord.from_dataset(dataset).patient is None
+    assert InstanceRecord.from_file(data).patient is None
 
 
 def _with_values_whose_vr_is_decided_on_writing(dataset):
@@ -116,24 +118,18 @@ def _with_values_whose_vr_is_decided_on_writing(dataset):
     return dataset
 
 
-def _with_standard_elements():
-    """Return an RT Plan whose every element has a VR in a data dictionary.
+def _plan():
+    """Return an RT Plan with an issuer, values of several VRs, and private elements.
 
-    It has an issuer, values whose VR pydicom decides only when it writes
-    them, and a sequence and text that pydicom 3.0.2 does not know, but the
-    pinned data dictionary does.
+    It has values whose VR pydicom decides only when it writes them, a
+    sequence and text that pydicom 3.0.2 does not know, but the pinned data
+    dictionary does, and private elements, one a sequence.
     """
     dataset = _with_values_whose_vr_is_decided_on_writing(synthetic.rt_plan())
     dataset.IssuerOfPatientID = SOURCE_ISSUER
     name = synthetic.item()
     name.add_new(NAME_TO_USE, "LT", "FICTITIOUS NAME")
     dataset.add(synthetic.sequence(PERSON_NAMES_TO_USE, [name]))
-    return dataset
-
-
-def _with_private_elements():
-    """Return the RT Plan with standard elements and private ones, one a sequence."""
-    dataset = _with_standard_elements()
     block = dataset.private_block(0x0009, PRIVATE_CREATOR, create=True)
     block.add_new(0x01, "LO", "SYNTHETIC PRIVATE TEXT")
     block.add_new(0x02, "US", 7)
@@ -141,48 +137,64 @@ def _with_private_elements():
     return dataset
 
 
-def _digest(dataset):
-    return InstanceRecord.from_dataset(dataset).digest
+def _digest(data):
+    return InstanceRecord.from_file(data).digest
 
 
 def _private(dataset, offset):
     return dataset.private_block(0x0009, PRIVATE_CREATOR)[offset]
 
 
-def _read_in_full(dataset, transfer_syntax):
-    """Return ``dataset`` written in ``transfer_syntax``, read, and every value read."""
-    read = synthetic.written_and_read(dataset, transfer_syntax)
-    assert [element.value for element in read.iterall()]
-    return read
+def _data_set_start(data):
+    """Return where the data set starts, after the File Meta Information.
+
+    The preamble and "DICM" are 132 bytes, and File Meta Information Group
+    Length (0002,0000), the first element, is 12 bytes in Explicit VR Little
+    Endian, with its value at bytes 140 to 143 (PS3.10 Section 7.1).
+    """
+    (length,) = struct.unpack_from("<I", data, 140)
+    return 144 + length
 
 
-def _read_after_reading_every_value(dataset):
-    return _read_in_full(dataset, IMPLICIT_VR)
+def _element(tag, vr, value):
+    """Return an element in Explicit VR Little Endian with a 16-bit length.
+
+    Its tag's group and element, its VR, and its value's length, each little
+    endian, then its value (PS3.5 Section 7.1.2 and Table 7.1-2).
+    """
+    header = struct.pack("<HH2sH", tag >> 16, tag & 0xFFFF, vr.encode(), len(value))
+    return header + value
 
 
-def _with_padding(dataset):
-    # pydicom removes trailing padding when it decodes a value it knows.
-    dataset.PatientName = synthetic.PATIENTS_NAME + "  "
-    dataset.PatientID = synthetic.PATIENT_ID + "  "
-    return synthetic.written_and_read(dataset, IMPLICIT_VR)
+def _group_length(group):
+    """Return a group length (gggg,0000) whose value is arbitrary (PS3.5 7.2)."""
+    return _element(group << 16, "UL", struct.pack("<I", 0x1234))
 
 
-def _with_undefined_lengths(dataset):
-    for element in dataset.iterall():
-        if element.VR == "SQ":
-            element.is_undefined_length = True
-    return synthetic.written_and_read(dataset, EXPLICIT_VR)
+# Data Set Trailing Padding (FFFC,FFFC) of four bytes, as OB, whose header is
+# 12 bytes in Explicit VR (PS3.5 Table 7.1-1, PS3.10 Section 7.2).
+TRAILING_PADDING = struct.pack("<HH2s2xI", 0xFFFC, 0xFFFC, b"OB", 4) + bytes(4)
 
 
-def _deferred(dataset):
-    # pydicom reads each value longer than 4 bytes only when it is accessed.
-    dataset.file_meta = pydicom.dataset.FileMetaDataset()
-    dataset.file_meta.TransferSyntaxUID = IMPLICIT_VR
-    written = io.BytesIO()
-    pydicom.dcmwrite(written, dataset, enforce_file_format=True)
-    read = pydicom.dcmread(io.BytesIO(written.getvalue()), defer_size=4)
-    assert read.get_item(0x7FE00010, keep_deferred=True).value is None
-    return read
+def _inserted(data, inserted, where):
+    """Return ``data`` with ``inserted`` before the first element ``where`` picks.
+
+    ``where`` is given the path of each data set element in file order.
+    """
+    start = next(
+        span.start
+        for span in read_file_layout(data).spans
+        if span.location.region is Region.DATA_SET and where(span.location.element)
+    )
+    return data[:start] + inserted + data[start:]
+
+
+def _top_level_group(group):
+    return lambda path: not path.items and path.tag[1:5] == f"{group:04X}"
+
+
+def _written_again(dataset):
+    return synthetic.written(dataset)
 
 
 def _with_other_file_meta_and_preamble(dataset):
@@ -193,116 +205,123 @@ def _with_other_file_meta_and_preamble(dataset):
     dataset.file_meta.SourceApplicationEntityTitle = "SYNTHETIC-AE"
     written = io.BytesIO()
     pydicom.dcmwrite(written, dataset, enforce_file_format=True)
-    return pydicom.dcmread(io.BytesIO(written.getvalue()))
+    data = written.getvalue()
+    plain = synthetic.written(_plan())
+    assert data[: _data_set_start(data)] != plain[: _data_set_start(plain)]
+    return data
 
 
 def _with_group_lengths(dataset):
-    # pydicom does not write group lengths, so they are added after reading.
-    read = synthetic.written_and_read(dataset, EXPLICIT_VR)
-    read.add_new(0x00080000, "UL", 1)
-    read.add_new(0x00100000, "UL", 2)
-    read.ReferencedDoseSequence[0].add_new(0x00080000, "UL", 3)
-    return read
+    # pydicom does not write group lengths, so they are inserted.
+    data = synthetic.written(dataset)
+    for group in (0x0008, 0x0010):
+        data = _inserted(data, _group_length(group), _top_level_group(group))
+    assert 0x00080000 in synthetic.read(data)
+    return data
+
+
+def _with_trailing_padding(dataset):
+    data = synthetic.written(dataset) + TRAILING_PADDING
+    assert 0xFFFCFFFC in synthetic.read(data)
+    return data
 
 
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
-@pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")
 @pytest.mark.parametrize(
     "copy",
     [
-        lambda dataset: synthetic.written_and_read(dataset, IMPLICIT_VR),
-        lambda dataset: synthetic.written_and_read(dataset, EXPLICIT_VR),
-        _read_after_reading_every_value,
-        _with_undefined_lengths,
-        _deferred,
+        _written_again,
         _with_other_file_meta_and_preamble,
         _with_group_lengths,
-        _with_padding,
+        _with_trailing_padding,
     ],
     ids=[
-        "implicit-vr",
-        "explicit-vr",
-        "every-value-read",
-        "undefined-lengths",
-        "deferred",
+        "written-again",
         "other-file-meta-and-preamble",
         "group-lengths",
-        "padding",
+        "trailing-padding",
     ],
 )
-def test_a_copy_in_another_encoding_has_the_same_content(copy):
-    # Copies of a data set without private elements, in Implicit VR and
-    # Explicit VR Little Endian, decode to the same elements, VRs, and
-    # values, since every element has a VR in a data dictionary. pydicom
-    # reads Person Names to Use Sequence and the Name to Use in its item
-    # from the Implicit VR copy as UN, and the content decodes them with
-    # their VRs in the pinned data dictionary.
-    expected = _digest(
-        synthetic.written_and_read(_with_standard_elements(), EXPLICIT_VR)
-    )
+def test_copies_with_the_same_source_bytes_have_the_same_digest(copy):
+    # The preamble, the File Meta Information, and the top-level group
+    # lengths and Data Set Trailing Padding are not part of the source bytes.
+    expected = _digest(synthetic.written(_plan()))
 
-    assert _digest(copy(_with_standard_elements())) == expected
+    assert expected is not None
+    assert _digest(copy(_plan())) == expected
+
+
+def _undefined_lengths(dataset):
+    for element in dataset.iterall():
+        if element.VR == "SQ":
+            element.is_undefined_length = True
+            for item in element.value:
+                item.is_undefined_length_sequence_item = True
+    return dataset
 
 
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
-@pytest.mark.parametrize(
-    "transfer_syntax", [IMPLICIT_VR, EXPLICIT_VR], ids=["implicit-vr", "explicit-vr"]
-)
-def test_a_vr_that_pydicom_decides_on_writing_is_the_vr_it_writes(transfer_syntax):
-    # The data set holds no values as bytes, so it has the content of a copy
-    # read from a file, whose VRs pydicom decided when it wrote the file.
-    dataset = _with_values_whose_vr_is_decided_on_writing(synthetic.rt_plan())
-    del dataset.PixelData
-    read = synthetic.written_and_read(
-        _with_values_whose_vr_is_decided_on_writing(synthetic.rt_plan()),
-        transfer_syntax,
-    )
-    del read.PixelData
+def test_copies_in_implicit_and_explicit_vr_have_different_digests():
+    implicit = synthetic.written(synthetic.rt_plan(), IMPLICIT_VR)
+    explicit = synthetic.written(synthetic.rt_plan(), EXPLICIT_VR)
 
-    assert _digest(dataset) == _digest(read)
-    assert read["LargestImagePixelValue"].VR == "SS"
-    # The data set is unchanged.
-    assert dataset["LargestImagePixelValue"].VR == "US or SS"
-
-
-def _unknown(monkeypatch, tag, value):
-    """Return an element whose VR is UN, whatever pydicom's dictionary knows."""
-    with monkeypatch.context() as patch:
-        patch.setattr(pydicom.config, "replace_un_with_known_vr", False)
-        return pydicom.DataElement(tag, "UN", value)
+    assert synthetic.read(implicit) == synthetic.read(explicit)
+    assert None not in (_digest(implicit), _digest(explicit))
+    assert _digest(implicit) != _digest(explicit)
 
 
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
-@pytest.mark.parametrize(
-    "keyword, value, encoded",
-    [
-        ("AccessionNumber", "SYNTHETIC-A1", b"SYNTHETIC-A1"),
-        ("StudyDescription", "SYNTHETIC", b"SYNTHETIC "),
-        ("Rows", 258, b"\x02\x01"),
-        ("RedPaletteColorLookupTableData", b"\x01\x00\x02\x00", b"\x01\x00\x02\x00"),
-    ],
-    ids=["sh", "lo-padded", "us", "ow"],
-)
-def test_a_value_held_as_unknown_has_the_content_of_its_dictionary_vr(
-    monkeypatch, keyword, value, encoded
-):
-    # PS3.5 Section 6.2.2 lets a reader that knows the VR of a UN value decode
-    # it as Implicit VR Little Endian, whatever the transfer syntax.
-    typed = synthetic.rt_plan()
-    setattr(typed, keyword, value)
-    typed = synthetic.written_and_read(typed, EXPLICIT_VR)
-    unknown = synthetic.written_and_read(synthetic.rt_plan(), EXPLICIT_VR)
-    tag = typed[keyword].tag
-    unknown[tag] = _unknown(monkeypatch, tag, encoded)
-    assert unknown[tag].VR == "UN"
+def test_sequences_of_undefined_length_have_another_digest():
+    defined = synthetic.written(synthetic.rt_plan())
+    undefined = synthetic.written(_undefined_lengths(synthetic.rt_plan()))
 
-    assert _digest(unknown) == _digest(typed)
-    # The data set is unchanged.
-    assert unknown[tag].VR == "UN"
-    assert unknown[tag].value == encoded
+    assert synthetic.read(defined) == synthetic.read(undefined)
+    assert _digest(defined) != _digest(undefined)
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_a_value_with_more_padding_has_another_digest():
+    # pydicom removes the trailing spaces of a Person Name when it decodes it.
+    plain = synthetic.written(synthetic.rt_plan())
+    dataset = synthetic.rt_plan()
+    dataset.PatientName = synthetic.PATIENTS_NAME + "  "
+    padded = synthetic.written(dataset)
+
+    assert synthetic.read(padded).PatientName == synthetic.PATIENTS_NAME
+    assert _digest(plain) != _digest(padded)
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_a_group_length_in_an_item_changes_the_digest():
+    # Every sequence and item has undefined length, so the group length
+    # needs no other length changed.
+    data = synthetic.written(_undefined_lengths(synthetic.rt_plan()))
+    in_item = _inserted(
+        data,
+        _group_length(0x0008),
+        lambda path: path.items == (("(300C,0080)", 0),),
+    )
+
+    assert 0x00080000 in synthetic.read(in_item).ReferencedDoseSequence[0]
+    assert _digest(in_item) not in (None, _digest(data))
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_the_same_data_set_in_another_transfer_syntax_has_another_digest():
+    # RLE Lossless encodes the data set as Explicit VR Little Endian (PS3.5
+    # Section A.4.2), so a data set without Pixel Data has the same bytes.
+    explicit = synthetic.written(synthetic.rt_plan(), EXPLICIT_VR)
+    rle = synthetic.written(synthetic.rt_plan(), pydicom.uid.RLELossless)
+
+    assert explicit[_data_set_start(explicit) :] == rle[_data_set_start(rle) :]
+    assert None not in (_digest(explicit), _digest(rle))
+    assert _digest(explicit) != _digest(rle)
 
 
 def _changed(attribute, value):
@@ -373,6 +392,7 @@ def _changed_private_vr(dataset):
         _without_items,
         _changed("SmallestImagePixelValue", -4),
         _changed("LargestImagePixelValue", None),
+        _changed("PixelData", b"\x02\x01" * 4),
         _changed_private(0x01, "SYNTHETIC PRIVATE TEXT 2"),
         _changed_private(0x02, 8),
         _changed_private_item,
@@ -390,6 +410,7 @@ def _changed_private_vr(dataset):
         "removed-item",
         "changed-signed-number",
         "emptied-signed-number",
+        "changed-pixel-data",
         "changed-private-text",
         "changed-private-number",
         "changed-private-item",
@@ -398,24 +419,97 @@ def _changed_private_vr(dataset):
         "changed-private-vr",
     ],
 )
-def test_any_change_to_the_data_set_changes_the_content(change):
-    changed = _with_private_elements()
+def test_any_change_to_the_data_set_changes_the_digest(change):
+    changed = _plan()
     change(changed)
-    # Before writing the data set, which settles its VRs.
-    in_memory = _digest(changed)
 
-    # Both copies are in Explicit VR, which keeps the private elements' VRs,
-    # so only the change can make them differ.
-    original = synthetic.written_and_read(_with_private_elements(), EXPLICIT_VR)
-    explicit = synthetic.written_and_read(changed, EXPLICIT_VR)
-
-    assert _digest(original) != _digest(explicit)
-    assert _digest(_with_private_elements()) != in_memory
+    assert _digest(synthetic.written(changed)) not in (
+        None,
+        _digest(synthetic.written(_plan())),
+    )
 
 
-def _findings(*datasets):
-    records = [InstanceRecord.from_dataset(dataset) for dataset in datasets]
+def _without_transfer_syntax(data):
+    """Return the file with File Meta Information that has no Transfer Syntax UID."""
+    meta = b"".join(
+        _element(tag, "UI", uid)
+        for tag, uid in [(0x00020002, b"2.25.1\x00"), (0x00020003, b"2.25.2\x00")]
+    )
+    length = _element(0x00020000, "UL", struct.pack("<I", len(meta)))
+    return data[:132] + length + meta + data[_data_set_start(data) :]
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+# pydicom reads the last UID of the truncated file without its last bytes.
+@pytest.mark.filterwarnings("ignore:Invalid value for VR UI:UserWarning")
+@pytest.mark.parametrize(
+    "unsound",
+    [
+        lambda: synthetic.written(synthetic.rt_plan(), EXPLICIT_VR_BIG_ENDIAN),
+        lambda: synthetic.written(synthetic.rt_plan(), DEFLATED_EXPLICIT_VR),
+        lambda: synthetic.written(synthetic.rt_plan()) + b"\x01\x02\x03",
+        lambda: synthetic.written(synthetic.rt_plan())[:-3],
+        lambda: _without_transfer_syntax(synthetic.written(synthetic.rt_plan())),
+    ],
+    ids=[
+        "big-endian",
+        "deflated",
+        "trailing-bytes",
+        "truncated",
+        "no-transfer-syntax",
+    ],
+)
+def test_a_file_whose_bytes_cannot_be_shown_sound_has_no_digest(unsound):
+    # pydicom reads each of these files, so the record has its identity.
+    record = InstanceRecord.from_file(unsound())
+
+    assert record.digest is None
+    assert record.sop_instance == synthetic.PLAN
+
+
+@pytest.mark.pydicom
+def test_the_digest_is_of_the_transfer_syntax_and_the_data_set_bytes():
+    # A data set with a group length and Data Set Trailing Padding, both of
+    # which are left out of the digest, as the File Meta Information is.
+    dataset = pydicom.Dataset()
+    dataset.SOPClassUID = synthetic.CT_IMAGE_STORAGE
+    dataset.SOPInstanceUID = "2.25.71"
+    dataset.PatientID = "SYNTHETIC-X"
+    plain = synthetic.written(dataset)
+    data = _inserted(plain, _group_length(0x0010), _top_level_group(0x0010))
+    data += TRAILING_PADDING
+    assert len(data) == len(plain) + 12 + len(TRAILING_PADDING)
+
+    expected = hashlib.sha256(
+        EXPLICIT_VR.encode() + b"\x00" + plain[_data_set_start(plain) :]
+    ).digest()
+
+    assert _digest(data) == _digest(plain) == expected
+
+
+def _findings(*files):
+    records = [InstanceRecord.from_file(data) for data in files]
     return reference_graph.build_reference_graph(records).findings
+
+
+@pytest.mark.pydicom
+def test_copies_whose_bytes_cannot_be_shown_sound_conflict_each_alone():
+    # The same file without a digest twice, a copy in another transfer
+    # syntax that also has none, and a copy that has one.
+    big_endian = synthetic.written(synthetic.ct_slice(0), EXPLICIT_VR_BIG_ENDIAN)
+    deflated = synthetic.written(synthetic.ct_slice(0), DEFLATED_EXPLICIT_VR)
+    sound = synthetic.written(synthetic.ct_slice(0))
+    assert _digest(big_endian) is _digest(deflated) is None
+
+    assert _findings(big_endian, big_endian, deflated, sound) == (
+        reference_graph.Finding(
+            reference_graph.FindingKind.CONFLICTING_INSTANCE,
+            ((0,), (1,), (2,), (3,)),
+            ("(0008,0018)",),
+        ),
+    )
+    assert _findings(sound, big_endian) == (CONFLICTING,)
 
 
 PIXELS = (0, 1, 2, 3, 4, 5)
@@ -440,21 +534,22 @@ def _rle_lossless(dataset):
     # pydicom's own RLE Lossless encoder needs no optional codec, and
     # encapsulates Pixel Data (PS3.5 Section A.4). It starts from a data set
     # with a transfer syntax.
-    dataset = synthetic.written_and_read(dataset, EXPLICIT_VR)
+    dataset = synthetic.read(synthetic.written(dataset))
     dataset.compress(
         pydicom.uid.RLELossless, encoding_plugin="pydicom", generate_instance_uid=False
     )
-    return synthetic.written_and_read(dataset, pydicom.uid.RLELossless)
+    return synthetic.written(dataset, pydicom.uid.RLELossless)
 
 
 def _big_endian(dataset):
     # A big endian file holds an OW value in big endian byte order (PS3.5
-    # Section 7.3), and pydicom keeps the value's bytes as the file has them.
+    # Section 7.3).
     dataset.PixelData = struct.pack(">6H", *PIXELS)
-    return synthetic.written_and_read(dataset, EXPLICIT_VR_BIG_ENDIAN)
+    return synthetic.written(dataset, EXPLICIT_VR_BIG_ENDIAN)
 
 
-def _pixels(dataset):
+def _pixels(data):
+    dataset = synthetic.read(data)
     decoder = pydicom.pixels.get_decoder(dataset.file_meta.TransferSyntaxUID)
     return decoder.as_array(dataset)[0].ravel().tolist()
 
@@ -465,17 +560,13 @@ def _pixels(dataset):
     "copy", [_rle_lossless, _big_endian], ids=["rle-lossless", "big-endian"]
 )
 def test_a_copy_whose_pixel_data_is_encoded_otherwise_conflicts(copy):
-    # The content holds Pixel Data as the file encodes it, so copies of one
-    # image conflict, and are sequestered, when one is compressed or big
-    # endian.
-    native = synthetic.written_and_read(_image(), EXPLICIT_VR)
+    # Copies of one image conflict, and are sequestered, when one is
+    # compressed or big endian.
+    native = synthetic.written(_image())
     other = copy(_image())
 
     assert _pixels(other) == _pixels(native) == list(PIXELS)
     assert _findings(native, other) == (CONFLICTING,)
-    # Only Pixel Data differs.
-    del native.PixelData, other.PixelData
-    assert _digest(native) == _digest(other)
 
 
 @pytest.mark.pydicom
@@ -487,13 +578,12 @@ def test_the_same_bytes_in_another_byte_order_conflict():
     def image(transfer_syntax):
         dataset = _image()
         dataset.PixelData = b"\x01\x00" * len(PIXELS)
-        return _read_in_full(dataset, transfer_syntax)
+        return synthetic.written(dataset, transfer_syntax)
 
     little = image(EXPLICIT_VR)
     big = image(EXPLICIT_VR_BIG_ENDIAN)
 
-    assert little.PixelData == big.PixelData
-    assert little["PixelData"].VR == big["PixelData"].VR == "OW"
+    assert synthetic.read(little).PixelData == synthetic.read(big).PixelData
     assert _pixels(little) == [1] * len(PIXELS)
     assert _pixels(big) == [256] * len(PIXELS)
     assert _findings(little, big) == (CONFLICTING,)
@@ -504,40 +594,40 @@ def test_the_same_bytes_in_another_byte_order_conflict():
 def test_8_bit_pixel_data_in_implicit_and_explicit_vr_conflicts():
     # Implicit VR Little Endian holds native Pixel Data as OW, and pydicom
     # writes 8-bit Pixel Data in Explicit VR Little Endian as OB (PS3.5
-    # Annex A), so the copies have different VRs.
+    # Annex A).
     def image(transfer_syntax):
         dataset = _image()
         dataset.BitsAllocated = dataset.BitsStored = 8
         dataset.HighBit = 7
         dataset.PixelData = bytes(PIXELS)
-        return _read_in_full(dataset, transfer_syntax)
+        return synthetic.written(dataset, transfer_syntax)
 
     implicit = image(IMPLICIT_VR)
     explicit = image(EXPLICIT_VR)
 
     assert _pixels(implicit) == _pixels(explicit) == list(PIXELS)
-    assert (implicit["PixelData"].VR, explicit["PixelData"].VR) == ("OW", "OB")
+    assert synthetic.read(explicit)["PixelData"].VR == "OB"
     assert _findings(implicit, explicit) == (CONFLICTING,)
 
 
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_a_private_number_in_another_vr_with_the_same_bytes_conflicts():
-    # Two copies of a CT slice, each written in Explicit VR Little Endian and
-    # read in full, whose private element under one creator holds the same
-    # two bytes, ff ff: -1 as SS in one copy, 65535 as US in the other.
+    # Two copies of a CT slice, each written in Explicit VR Little Endian,
+    # whose private element under one creator holds the same two bytes,
+    # ff ff: -1 as SS in one copy, 65535 as US in the other.
     def ct_slice(vr, value):
         dataset = synthetic.ct_slice(0)
         block = dataset.private_block(0x0009, PRIVATE_CREATOR, create=True)
         block.add_new(0x01, vr, value)
-        return _read_in_full(dataset, EXPLICIT_VR)
+        return synthetic.written(dataset)
 
     signed = ct_slice("SS", -1)
     unsigned = ct_slice("US", 65535)
 
     assert struct.pack("<h", -1) == struct.pack("<H", 65535) == b"\xff\xff"
-    assert (signed[0x00091001].VR, signed[0x00091001].value) == ("SS", -1)
-    assert (unsigned[0x00091001].VR, unsigned[0x00091001].value) == ("US", 65535)
+    assert synthetic.read(signed)[0x00091001].VR == "SS"
+    assert synthetic.read(unsigned)[0x00091001].VR == "US"
     assert _findings(signed, unsigned) == (CONFLICTING,)
 
 
@@ -572,9 +662,7 @@ def test_an_element_read_as_unknown_conflicts_with_a_copy_that_has_its_vr(
     tag, vr, value
 ):
     # Implicit VR Little Endian holds no VRs, and no data dictionary gives
-    # this element's VR, so pydicom reads it from the Implicit VR copy as UN
-    # and keeps its bytes. Without a VR to decode them with, the copies
-    # cannot be shown to be equal.
+    # this element's VR, so pydicom reads it from the Implicit VR copy as UN.
     def ct_slice():
         dataset = synthetic.ct_slice(0)
         held = value
@@ -587,173 +675,9 @@ def test_an_element_read_as_unknown_conflicts_with_a_copy_that_has_its_vr(
             block.add_new(0x01, vr, held)
         return dataset
 
-    implicit = _read_in_full(ct_slice(), IMPLICIT_VR)
-    explicit = _read_in_full(ct_slice(), EXPLICIT_VR)
+    implicit = synthetic.written(ct_slice(), IMPLICIT_VR)
+    explicit = synthetic.written(ct_slice(), EXPLICIT_VR)
 
-    assert implicit[tag].VR == "UN"
-    assert explicit[tag].VR == vr
+    assert synthetic.read(implicit)[tag].VR == "UN"
+    assert synthetic.read(explicit)[tag].VR == vr
     assert _findings(implicit, explicit) == (CONFLICTING,)
-
-
-def _read(dataset, **options):
-    """Return ``dataset`` written in Explicit VR and read with ``options``."""
-    dataset.file_meta = pydicom.dataset.FileMetaDataset()
-    dataset.file_meta.TransferSyntaxUID = EXPLICIT_VR
-    written = io.BytesIO()
-    pydicom.dcmwrite(written, dataset, enforce_file_format=True)
-    return pydicom.dcmread(io.BytesIO(written.getvalue()), **options)
-
-
-@pytest.mark.pydicom
-@pytest.mark.usefixtures("pydicom_behaviour")
-@pytest.mark.parametrize(
-    "options, change",
-    [
-        ({"stop_before_pixels": True}, _changed("PixelData", b"\x02\x01" * 4)),
-        (
-            {"specific_tags": ["SOPClassUID", "SOPInstanceUID"]},
-            _changed("PatientName", "FICTITIOUS^OTHER"),
-        ),
-    ],
-    ids=["stop-before-pixels", "specific-tags"],
-)
-def test_a_record_needs_a_data_set_read_in_full(options, change):
-    # A record has the content of the data set it is given, so copies that
-    # differ only in the elements that reading skipped would be identical.
-    changed = _with_private_elements()
-    change(changed)
-
-    assert _digest(_read(changed)) != _digest(_read(_with_private_elements()))
-    assert _digest(_read(changed, **options)) == _digest(
-        _read(_with_private_elements(), **options)
-    )
-
-
-def _content(tag, vr, value, byte_order=b"-"):
-    """Return an element's content, built by hand.
-
-    Its tag's group and element, each little endian; the length of its VR,
-    in one byte, then the VR; one byte for the byte order of a value that
-    pydicom holds as bytes, other than an OB value, ``<`` for little endian,
-    ``>`` for big endian, and ``?`` for none, or ``-`` for any other value;
-    then the value's length, little endian, and the value, each as Implicit
-    VR Little Endian encodes them (PS3.5 Sections 7.1.3 and 7.5).
-    """
-    return (
-        struct.pack("<HHB", tag >> 16, tag & 0xFFFF, len(vr))
-        + vr.encode()
-        + byte_order
-        + struct.pack("<I", len(value))
-        + value
-    )
-
-
-def _item(*contents):
-    """Return an item of defined length: its tag, length, and contents."""
-    value = b"".join(contents)
-    return struct.pack("<HHI", 0xFFFE, 0xE000, len(value)) + value
-
-
-def _uid(uid):
-    # A UID of odd length has a trailing NUL (PS3.5 Section 9.1).
-    return uid.encode() + b"\x00" * (len(uid) % 2)
-
-
-@pytest.mark.pydicom
-def test_the_content_is_each_elements_tag_vr_and_value_without_the_file_meta():
-    # Each element in tag order, with every sequence and item of defined
-    # length, and without group lengths (PS3.5 Section 7.2). Group 0002 is
-    # the File Meta Information only at the top level (PS3.10 Section 7.1).
-    dataset = pydicom.Dataset()
-    dataset.file_meta = pydicom.dataset.FileMetaDataset()
-    dataset.file_meta.TransferSyntaxUID = EXPLICIT_VR
-    dataset.PatientID = "SYNTHETIC-X"
-    dataset.add_new(0x00080000, "UL", 1)
-    dataset.SOPInstanceUID = "2.25.71"
-    image = synthetic.reference(None, "2.25.72")
-    image.add_new(0x00080000, "UL", 2)
-    image.add_new(0x00020010, "UI", IMPLICIT_VR)
-    dataset.ReferencedImageSequence = [image]
-    dataset["ReferencedImageSequence"].is_undefined_length = True
-    dataset.add_new(0x00020010, "UI", IMPLICIT_VR)
-    dataset.Rows = 258
-    encoded_image = _item(
-        _content(0x00020010, "UI", _uid(IMPLICIT_VR)),
-        _content(0x00081155, "UI", _uid("2.25.72")),
-    )
-    expected = b"".join(
-        [
-            _content(0x00080018, "UI", _uid("2.25.71")),
-            _content(0x00081140, "SQ", encoded_image),
-            _content(0x00100020, "LO", b"SYNTHETIC-X "),
-            _content(0x00280010, "US", b"\x02\x01"),
-        ]
-    )
-
-    assert _digest(dataset) == hashlib.sha256(expected).digest()
-
-
-@pytest.mark.pydicom
-@pytest.mark.usefixtures("pydicom_behaviour")
-@pytest.mark.parametrize(
-    "transfer_syntax, byte_order",
-    [
-        (None, b"?"),
-        (EXPLICIT_VR, b"<"),
-        (EXPLICIT_VR_BIG_ENDIAN, b">"),
-    ],
-    ids=["built-in-memory", "little-endian", "big-endian"],
-)
-def test_a_value_held_as_bytes_has_the_byte_order_of_its_data_set(
-    monkeypatch, transfer_syntax, byte_order
-):
-    # pydicom holds an OW value as bytes in the byte order of its file (PS3.5
-    # Section 7.3), and a data set built in memory has none. An OB value is a
-    # stream of bytes, in no byte order. A UN value is decoded as Implicit VR
-    # Little Endian, whatever the transfer syntax (PS3.5 Section 6.2.2).
-    dataset = pydicom.Dataset()
-    dataset.SOPClassUID = synthetic.CT_IMAGE_STORAGE
-    dataset.SOPInstanceUID = "2.25.71"
-    dataset.RedPaletteColorLookupTableData = b"\x01\x00\x02\x00"
-    dataset.EncapsulatedDocument = b"\x01\x00"
-    if transfer_syntax is not None:
-        dataset = synthetic.written_and_read(dataset, transfer_syntax)
-    # Green Palette Color Lookup Table Data, whose dictionary VR is OW.
-    dataset[0x00281202] = _unknown(monkeypatch, 0x00281202, b"\x03\x00")
-    expected = b"".join(
-        [
-            _content(0x00080016, "UI", _uid(synthetic.CT_IMAGE_STORAGE)),
-            _content(0x00080018, "UI", _uid("2.25.71")),
-            _content(0x00281201, "OW", b"\x01\x00\x02\x00", byte_order),
-            _content(0x00281202, "OW", b"\x03\x00", b"<"),
-            _content(0x00420011, "OB", b"\x01\x00"),
-        ]
-    )
-
-    assert _digest(dataset) == hashlib.sha256(expected).digest()
-
-
-@pytest.mark.pydicom
-@pytest.mark.usefixtures("pydicom_behaviour")
-@pytest.mark.parametrize("nested", [False, True], ids=["top-level", "in-an-item"])
-def test_text_is_compared_in_its_character_set(nested):
-    # The letters differ only outside ISO 8859-1, pydicom's default, so
-    # encoding them without the data set's character set would lose them.
-    def plan(letter):
-        dataset = synthetic.rt_plan()
-        dataset.SpecificCharacterSet = "ISO_IR 192"
-        if nested:
-            dataset.OtherPatientIDsSequence = [
-                synthetic.item(PatientID=f"SYNTHETIC-{letter}")
-            ]
-        else:
-            dataset.PatientID = f"SYNTHETIC-{letter}"
-        return dataset
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        first, second = (_digest(plan(letter)) for letter in "\u0100\u0102")
-        read = _digest(synthetic.written_and_read(plan("\u0100"), IMPLICIT_VR))
-
-    assert first != second
-    assert read == first

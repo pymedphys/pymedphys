@@ -18,13 +18,19 @@
 them from its Referenced Frame of Reference Sequence and its ROI Contour
 Sequence, an RT Plan that references the structure set and the dose, and an
 RT Dose that references the plan and the structure set. Every instance UID is
-invented under ``2.25.``, and the patient is fictitious. :func:`written_and_read`
-writes an instance to a file in memory and reads it back.
+invented under ``2.25.``, and the patient is fictitious. :func:`written` writes
+an instance to a file in memory, and :func:`record` records the file.
 """
 
 import io
+import warnings
 
 from pymedphys._imports import pydicom
+
+from pymedphys._dicom.deidentify.references import InstanceRecord
+
+IMPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2"
+EXPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2.1"
 
 CT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.2"
 MR_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.4"
@@ -214,10 +220,32 @@ def collection():
     ]
 
 
-def written_and_read(dataset, transfer_syntax):
-    """Return ``dataset`` written in ``transfer_syntax`` and read back."""
+def written(dataset, transfer_syntax=EXPLICIT_VR_LITTLE_ENDIAN):
+    """Return ``dataset`` written as a file in ``transfer_syntax``.
+
+    The data set is given File Meta Information, with placeholders for the
+    SOP Class and Instance UIDs where it has none, and pydicom decides in
+    place any VR that it decides only on writing.
+    """
     dataset.file_meta = pydicom.dataset.FileMetaDataset()
     dataset.file_meta.TransferSyntaxUID = transfer_syntax
-    written = io.BytesIO()
-    pydicom.dcmwrite(written, dataset, enforce_file_format=True)
-    return pydicom.dcmread(io.BytesIO(written.getvalue()))
+    dataset.file_meta.MediaStorageSOPClassUID = "2.25.1"
+    dataset.file_meta.MediaStorageSOPInstanceUID = "2.25.2"
+    data = io.BytesIO()
+    with warnings.catch_warnings():
+        # pydicom copies the data set's SOP Class and Instance UIDs into the
+        # File Meta Information, validating them, but uid() lets them be
+        # padded.
+        warnings.filterwarnings("ignore", "Invalid value for VR UI", UserWarning)
+        pydicom.dcmwrite(data, dataset, enforce_file_format=True)
+    return data.getvalue()
+
+
+def read(data):
+    """Return the data set of a file written by :func:`written`."""
+    return pydicom.dcmread(io.BytesIO(data))
+
+
+def record(dataset, transfer_syntax=EXPLICIT_VR_LITTLE_ENDIAN):
+    """Return the record of ``dataset`` written in ``transfer_syntax``."""
+    return InstanceRecord.from_file(written(dataset, transfer_syntax))
