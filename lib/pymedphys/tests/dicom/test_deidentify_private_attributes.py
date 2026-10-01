@@ -633,11 +633,12 @@ def test_a_sequence_read_from_implicit_vr_as_unknown_is_searched(basic):
     ],
     ids=["top-level", "in-an-item"],
 )
-def test_a_sequence_that_pydicom_cannot_look_up_is_refused(basic, path):
+def test_a_sequence_that_pydicom_cannot_look_up_is_searched(basic, path):
     # Raising its validation errors, pydicom 3.0.2 raises KeyError for an
     # element read from Implicit VR Little Endian whose attribute its
     # dictionary does not list, such as RT Assertions Sequence (0044,0110)
-    # or Dose Calculation Model Sequence (3004,0080).
+    # or Dose Calculation Model Sequence (3004,0080). The raw value is
+    # decoded and checked without pydicom's lookup.
     assertion = pydicom.Dataset()
     assertion.CodeMeaning = "SYNTHETIC"
     _private(assertion, 0x0011, "SYNTHETIC CREATOR D", [(0x01, "LO", PRIVATE_VALUE)])
@@ -648,15 +649,15 @@ def test_a_sequence_that_pydicom_cannot_look_up_is_refused(basic, path):
     holder.add(pydicom.DataElement(_number(path.tag), "SQ", [assertion]))
     read = _written_and_read(source, IMPLICIT_VR)
 
-    for apply in (
-        private_attributes.private_attribute_paths,
-        private_attributes.without_private_attributes,
-    ):
-        with pytest.raises(private_attributes.PrivateAttributeError) as raised:
-            apply(read, basic)
-        assert raised.value.path == path
-        assert str(path) in str(raised.value)
-        assert "SYNTHETIC" not in str(raised.value)
+    paths = private_attributes.private_attribute_paths(read, basic)
+    result = private_attributes.without_private_attributes(read, basic)
+
+    within = (*path.items, (path.tag, 0))
+    assert ElementPath(within, "(0011,0010)") in paths
+    assert ElementPath(within, "(0011,1001)") in paths
+    sequence = _holder(result, path)[_number(path.tag)]
+    assert sequence.VR == "SQ"
+    assert [list(item.keys()) for item in sequence.value] == [[0x00080104]]
 
 
 @pytest.mark.pydicom
@@ -766,6 +767,28 @@ def test_a_malformed_sequence_nested_in_an_unknown_value_is_refused(
         assert raised.value.path == NESTED_PATHS[depth]
         assert str(NESTED_PATHS[depth]) in str(raised.value)
         assert "PRIVATE" not in str(raised.value)
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour", "reading_validation")
+@pytest.mark.parametrize(
+    "transfer_syntax, vr",
+    [(EXPLICIT_VR, "UN"), (IMPLICIT_VR, None)],
+    ids=["explicit-vr-unknown", "implicit-vr"],
+)
+@pytest.mark.parametrize("value", list(MALFORMED.values()), ids=list(MALFORMED))
+def test_a_malformed_known_sequence_read_without_vr_sq_is_refused(
+    monkeypatch, basic, value, transfer_syntax, vr
+):
+    # pydicom decodes a raw value of Beam Sequence, which it knows, as a
+    # sequence when it is first accessed, and can leave out the bytes that it
+    # cannot read as items. The raw value must encode exactly as its items.
+    source = _plan()
+    source[BEAM_SEQUENCE] = _unknown(monkeypatch, BEAM_SEQUENCE, value)
+    read = _written_and_read(source, transfer_syntax)
+    assert read.get_item(BEAM_SEQUENCE, keep_deferred=True).VR == vr
+
+    _assert_refused(read, basic, ElementPath((), "(300A,00B0)"), "PRIVATE")
 
 
 @pytest.mark.pydicom

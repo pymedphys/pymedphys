@@ -40,12 +40,13 @@ listed without its contents.
 Private attributes are found in the items of every standard sequence,
 including one of VR UN, as pydicom reads a sequence that it does not know
 from Implicit VR Little Endian. PS3.5 Section 6.2.2 lets a reader that knows
-the VR of a value of VR UN decode it as Implicit VR Little Endian. A value
-that pydicom leaves as UN, as it does where its own dictionary does not give
-the attribute VR SQ, is decoded here, with the character set of the data set
-that holds it. pydicom decodes some malformed values without an error, as
-items that leave out part of the value, so a value decoded here is accepted
-only if its items encode to the same bytes. pydicom writes the elements of
+the VR of a value of VR UN decode it as Implicit VR Little Endian. A value of
+VR UN, or one read without a VR from Implicit VR Little Endian, that pydicom
+has not yet decoded is decoded here, with the character set of the data set
+that holds it, even where pydicom's dictionary gives the attribute VR SQ.
+pydicom decodes some malformed values without an error, as items that leave
+out part of the value, so a value decoded here is accepted only if its items
+encode to the same bytes. pydicom writes the elements of
 those items as it read them, except a sequence of undefined length, which it
 decodes with the value, so that check does not see into a sequence of defined
 length nested in them. Each, at every depth, is decoded here and checked in
@@ -305,10 +306,11 @@ def _items(
     of VR UN, or of none, holds items only if the pinned dictionary or
     pydicom's gives its attribute VR SQ; no other is decoded. A value whose
     VR is neither SQ nor UN, where either dictionary gives its attribute VR
-    SQ, is refused, since its items could not be searched. pydicom decodes
-    a sequence when it is read, but a value that it leaves as UN, and a raw
-    element in an item that :func:`_decoded` checked (``exact``), whose bytes
-    pydicom would write as they are, are decoded and checked here.
+    SQ, is refused, since its items could not be searched. A raw value of VR
+    UN or of none, and a raw element in an item that :func:`_decoded` checked
+    (``exact``), whose bytes pydicom would write as they are, are decoded and
+    checked here, since pydicom can decode a malformed value without an
+    error. A sequence that pydicom decoded as it read it is used as it is.
     """
     element: pydicom.DataElement | pydicom.dataelem.RawDataElement = dataset.get_item(
         tag, keep_deferred=True
@@ -320,7 +322,9 @@ def _items(
         if _is_sequence(tag, path):
             raise PrivateAttributeError(path)
         return (), False
-    if exact and isinstance(element, pydicom.dataelem.RawDataElement):
+    if isinstance(element, pydicom.dataelem.RawDataElement) and (
+        exact or element.VR in (None, "UN")
+    ):
         return _decoded(element.value, path, encodings), True
     try:
         element = dataset[tag]
