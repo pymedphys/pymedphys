@@ -105,9 +105,21 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 The Attribute Patient Identity Removed (0012,0062) shall be replaced or added to the Data Set with a value of YES. Additionally, one or more codes from CID 7050 “De-identification Method” corresponding to the Profile and Options used shall be added to De-identification Method Code Sequence (0012,0064), and/or a text string describing the method used shall be inserted in or added to De-identification Method (0012,0063).
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-012", "D-024"]
+implementation = ["_dicom/deidentify/method_digest.py"]
+tests = [
+  "tests/dicom/test_deidentify_method_digest.py::test_the_digest_is_only_64_lowercase_hexadecimal_digits_and_fits_one_lo_value",
+  "tests/dicom/test_deidentify_method_digest.py::test_the_same_inputs_always_give_the_same_digest",
+  "tests/dicom/test_deidentify_method_digest.py::test_a_small_synthetic_input_has_the_canonical_form_written_by_hand",
+  "tests/dicom/test_deidentify_method_digest.py::test_any_part_of_the_policy_changes_the_digest",
+  "tests/dicom/test_deidentify_method_digest.py::test_changing_adding_or_removing_an_engine_file_changes_the_digest",
+  "tests/dicom/test_deidentify_method_digest.py::test_python_and_library_versions_leave_the_digest_unchanged",
+]
+note = '''
+The de-identification method digest, the second value that every preset adds to De-identification Method, is computed as 64 lowercase hexadecimal digits, which fit one LO value, from the policy and everything the engine could apply, including its own source and rule files, whether or not the policy's options use them. It identifies the policy and the PyMedPhys implementation and resources that apply it, not the runtime environment, which Software Versions records instead, so upgrading Python, pydicom, or tomlkit leaves it unchanged (D-012, D-024). The digest is PyMedPhys's own provenance, added beside the readable description that this paragraph allows; PS3.15 does not require it. Remaining: adding Patient Identity Removed, the CID 7050 codes, and both De-identification Method values to each data set (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.1-06"
@@ -599,7 +611,9 @@ tests = [
   "tests/dicom/test_deidentify_iods.py::test_an_attribute_can_have_a_different_type_in_each_module",
   "tests/dicom/test_deidentify_iods.py::test_types_depend_on_the_enclosing_sequence",
   "tests/dicom/test_deidentify_iods.py::test_macros_are_expanded_where_they_are_included",
+  "tests/dicom/test_deidentify_iods.py::test_functional_group_macros_are_expanded_in_each_functional_group_sequence",
   "tests/dicom/test_deidentify_sop_classes.py::test_the_first_supported_release_sop_classes_find_their_iods",
+  "tests/dicom/test_deidentify_sop_classes.py::test_every_storage_sop_class_finds_its_iod",
   "tests/dicom/test_deidentify_values.py::test_valid_values",
   "tests/dicom/test_deidentify_values.py::test_invalid_values",
   "tests/dicom/test_deidentify_values.py::test_values_are_checked_for_their_vm_and_vr",
@@ -629,7 +643,7 @@ tests = [
   "tests/dicom/test_deidentify_reference_graph.py::test_the_instances_without_a_patient_id_are_grouped_as_one_patient",
 ]
 note = '''
-The Type of each attribute of the first supported release's IODs, and of every other composite IOD whose modules include no Functional Group Macros, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. It also reports instances that share a SOP Instance UID, as identical copies only where their decoded content, with each element's VR, is shown to be the same, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, each a Patient ID with its issuer, with the instances without a Patient ID as one more. Remaining: writing the dummy values that the resolved compound actions call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking frames of reference in the first pass, acting on its findings, validating output against its IOD, and checking after writing that references are intact (M4).
+The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. It also reports instances that share a SOP Instance UID, as identical copies only where their decoded content, with each element's VR, is shown to be the same, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, each a Patient ID with its issuer, with the instances without a Patient ID as one more. Remaining: writing the dummy values that the resolved compound actions call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking frames of reference in the first pass, acting on its findings, validating output against its IOD, and checking after writing that references are intact (M4).
 '''
 
 [[requirement]]
@@ -694,7 +708,7 @@ tests = [
   "tests/dicom/test_deidentify_standard.py::test_each_table_is_generated_from_the_pinned_edition",
   "tests/dicom/test_deidentify_standard.py::test_an_altered_row_is_rejected",
   "tests/dicom/test_deidentify_standard.py::test_every_table_e1_1_attribute_is_in_the_data_dictionary",
-  "tests/dicom/test_deidentify_sop_classes.py::test_an_unsupported_or_unlisted_sop_class_has_no_iod",
+  "tests/dicom/test_deidentify_sop_classes.py::test_an_unlisted_sop_class_has_no_iod",
   "tests/dicom/test_deidentify_scope.py::test_a_standard_sop_class_of_another_iod_is_sequestered",
   "tests/dicom/test_deidentify_scope.py::test_a_sop_class_that_table_b_5_1_does_not_list_is_sequestered",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",
@@ -863,7 +877,7 @@ Document the de-identification process in detail, including the release of PS3.1
 '''
 status = "planned"
 milestone = "M4"
-decisions = ["D-011", "D-012", "D-024"]
+decisions = ["D-011", "D-012", "D-024", "D-029"]
 note = '''
-Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name, and each instance's De-identification Method names PyMedPhys and the preset and gives the policy digest (D-012, D-024).
+Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name, and each instance's De-identification Method names PyMedPhys and the preset and gives the method digest (D-012, D-024). The release report also records the runtime environment that ran (D-029).
 '''

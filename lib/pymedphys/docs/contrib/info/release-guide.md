@@ -58,7 +58,7 @@ Set `version = "VERSION"` near the top of `pyproject.toml`, then refresh the loc
 
 ```bash
 uv lock
-uv sync --python 3.14 --locked --extra all --group dev
+uv sync --python 3.14 --locked
 uv run -- pymedphys dev propagate
 ```
 

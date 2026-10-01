@@ -25,7 +25,7 @@ will contribute through a fork, substitute your fork's clone URL.
     git clone https://github.com/pymedphys/pymedphys.git
     cd pymedphys
     uv python install 3.14
-    uv sync --python 3.14 --locked --extra all --group dev
+    uv sync --python 3.14 --locked
     uv run pre-commit install
 
 The current source supports Python 3.11, 3.12, 3.13, and 3.14. Python 3.14 matches

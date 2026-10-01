@@ -48,7 +48,7 @@ AUTOGEN_MESSAGE = [
 def propagate_all(args):
     if args.update:
         subprocess.check_call(["uv", "lock", "--upgrade"])
-        subprocess.check_call(["uv", "sync", "--extra", "all", "--group", "dev"])
+        subprocess.check_call(["uv", "sync"])
 
     propagate_version()
     propagate_extras()
@@ -203,36 +203,63 @@ def _make_requirements_txt(
             f.write(pymedphys_install_command)
 
 
+_REQUIREMENT_RE = re.compile(
+    r"\s*([A-Za-z0-9][A-Za-z0-9._\-]*)"  # distribution name
+    r"(?:\[([^\]]*)\])?"  # optional [extras]
+    r"(?:\s*(?:==|>=|<=|~=|!=|===|>|<).*)?$"  # optional version specifier
+)
+
+PROJECT_NAME = "pymedphys"
+
+
+def packages_by_extra(optional_dependencies):
+    """Return the sorted distribution names each extra installs.
+
+    An extra may require PyMedPhys itself with other extras, as
+    ``all = ["pymedphys[user,tests]"]`` does. Such a requirement is replaced by
+    the packages of the extras it names, so each list holds only real
+    distributions. Versions and environment markers are dropped.
+    """
+
+    def parse(requirement):
+        head = str(requirement).split(";", 1)[0].strip()
+        match = _REQUIREMENT_RE.match(head)
+        if match is None:
+            return head, []
+        extras = [e.strip() for e in (match[2] or "").split(",") if e.strip()]
+        return match[1], extras
+
+    def expand(extra, seen):
+        if extra not in optional_dependencies:
+            raise ValueError(f"An extra names the undefined extra {extra!r}.")
+        if extra in seen:
+            return set()
+        seen.add(extra)
+
+        packages = set()
+        for requirement in optional_dependencies[extra]:
+            name, named_extras = parse(requirement)
+            if name.lower() == PROJECT_NAME:
+                for named in named_extras:
+                    packages |= expand(named, seen)
+            else:
+                packages.add(name)
+        return packages
+
+    return {
+        extra: sorted(expand(extra, set()), key=str.lower)
+        for extra in optional_dependencies
+    }
+
+
 def propagate_extras():
-    """Write extras -> base package lists to dependency-extra.txt (multiline).
-    Also guarantees an 'all' entry: uses explicit 'all' extra if present,
-    otherwise builds a union of all extras."""
+    """Write each extra's distributions to dependency-extra.txt.
+
+    ``pymedphys._extras`` reads the file to say which extra provides a missing
+    package.
+    """
     py = read_pyproject()
-    real_extras = py["project"]["optional-dependencies"]
-
-    name_re = re.compile(
-        r"\s*([A-Za-z0-9][A-Za-z0-9._\-]*)"  # base name
-        r"(?:\[[^\]]*\])?"  # optional [extras]
-        r"(?:\s*(?:==|>=|<=|~=|!=|===|>|<).*)?$"  # optional version spec
-    )
-
-    def base_name(spec: str) -> str:
-        head = spec.split(";", 1)[0].strip()  # drop any ; markers
-        m = name_re.match(head)
-        return m[1] if m else head
-
-    # Build extras -> package list
-    extras_map = {}
-    for extra_name, req_list in real_extras.items():
-        pkgs = {base_name(str(req)) for req in req_list}
-        extras_map[extra_name] = sorted(pkgs, key=str.lower)
-
-    # Ensure 'all' exists (prefer explicit; else union of all extras)
-    if "all" not in extras_map:
-        union_pkgs = set()
-        for _, v in extras_map.items():
-            union_pkgs.update(v)
-        extras_map["all"] = sorted(union_pkgs, key=str.lower)
+    extras_map = packages_by_extra(py["project"]["optional-dependencies"])
 
     # Emit as multiline TOML arrays with LF newlines
     tbl = tomlkit.table()

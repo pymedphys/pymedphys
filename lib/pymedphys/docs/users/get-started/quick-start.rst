@@ -83,16 +83,13 @@ For most users:
 
     uv pip install "pymedphys[user]"
 
-Other common installs
----------------------
+Other installs
+--------------
 
-If you need a narrower install, here are some common patterns:
-
-.. code:: bash
-
-    uv pip install "pymedphys[dicom,cli]"
-    uv pip install "pymedphys[mosaiq,cli]"
-    uv pip install "pymedphys[user,icom]"
+For a smaller install that covers one feature, use its extra instead:
+``gamma``, ``dicom``, ``mosaiq``, ``icom``, or ``trf``. Combine them with
+commas, for example ``"pymedphys[gamma,dicom]"``. The optional ``ai`` extra
+adds the experimental AI chat app.
 
 Because ``.venv`` exists in the current folder, ``uv pip install`` will
 install into that environment automatically.
