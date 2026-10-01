@@ -18,6 +18,7 @@ from pathlib import Path
 import shutil
 import sys
 import types
+import venv
 
 import numpy as np
 import pytest
@@ -176,6 +177,80 @@ def test_controller_round_trip_two_cases_and_resume(tmp_path, mock_source, monke
     with pytest.raises(ValueError, match="changed"):
         runner.execute_run(resolved, plan, output, resume=True, make_report=False)
     assert not (output / ".run.lock").exists()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX venv symlinks are required")
+@pytest.mark.parametrize("python_path_mode", ["absolute", "relative"])
+def test_resolved_config_preserves_symlinked_virtual_environment(
+    tmp_path, mock_source, monkeypatch, python_path_mode
+):
+    environment = tmp_path / "selected-environment"
+    venv.EnvBuilder(with_pip=False, symlinks=True).create(environment)
+    python = environment / "bin" / "python"
+    assert python.is_symlink()
+
+    site_packages = (
+        environment
+        / "lib"
+        / f"python{sys.version_info.major}.{sys.version_info.minor}"
+        / "site-packages"
+    )
+    assert site_packages.is_dir()
+
+    import psutil
+
+    dependency_paths = {
+        Path(np.__file__).resolve().parents[1],
+        Path(psutil.__file__).resolve().parents[1],
+    }
+    (site_packages / "gamma-benchmark-test-support.pth").write_text(
+        "\n".join(sorted(str(path) for path in dependency_paths)) + "\n",
+        encoding="utf-8",
+    )
+    (site_packages / "gamma_benchmark_venv_only.py").write_text(
+        'VALUE = "selected-venv"\n',
+        encoding="utf-8",
+    )
+
+    config_path = tmp_path / "configuration.json"
+    configuration = mock_config(mock_source)
+    configured_python = (
+        str(python)
+        if python_path_mode == "absolute"
+        else str(python.relative_to(tmp_path))
+    )
+    for spec in configuration["versions"]:
+        spec["python"] = configured_python
+        spec["checkout"] = "checkout"
+    write_json(config_path, configuration)
+
+    resolved = runner.resolved_config(config_path)
+    assert all(spec["python"] == str(python) for spec in resolved["versions"])
+    assert all(Path(spec["python"]).is_symlink() for spec in resolved["versions"])
+
+    implementation_file = mock_source / "lib" / "pymedphys" / "__init__.py"
+    with implementation_file.open("a", encoding="utf-8") as stream:
+        stream.write(
+            "\n"
+            "def requires_selected_venv(*args, **kwargs):\n"
+            "    import sys\n"
+            "    from pathlib import Path\n"
+            "    import gamma_benchmark_venv_only\n"
+            "    assert Path(sys.prefix).resolve() == "
+            "Path(os.environ['EXPECTED_WORKER_PREFIX']).resolve()\n"
+            "    assert gamma_benchmark_venv_only.VALUE == 'selected-venv'\n"
+            "    return constant(*args, **kwargs)\n"
+        )
+
+    monkeypatch.setenv("EXPECTED_WORKER_PREFIX", str(environment))
+    job = make_job(
+        tmp_path / f"venv-{python_path_mode}",
+        mock_source,
+        "requires_selected_venv",
+    )
+    job["implementation"] = resolved["versions"][0]
+    result = run_mock_worker(job)
+    assert result["status"] == "ok", result.get("error")
 
 
 def test_shared_output_buffer_does_not_hide_nonrepeatability(tmp_path, mock_source):
