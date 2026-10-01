@@ -78,7 +78,8 @@ _FIRST_GROUP = (
     (0x30A0, 0x30FF),
 )  # fmt: skip
 _CHARACTER_SET_VRS = frozenset({"LO", "LT", "PN", "SH", "ST", "UC", "UT"})
-_NUMBER_VRS: dict[str, type] = {
+# The type that pydicom decodes each value of a binary VR as.
+_BINARY_TYPES: dict[str, type] = {
     **dict.fromkeys(("OB", "OD", "OF", "OL", "OV", "OW", "UN"), bytes),
     **dict.fromkeys(("AT", "SL", "SS", "SV", "UL", "US", "UV"), int),
     **dict.fromkeys(("FD", "FL"), float),
@@ -314,7 +315,7 @@ def _decoded(element, vr: str, codecs: list[str], path: ElementPath) -> object:
 def _plain(path: ElementPath, vr: str, value: object) -> str | int | float | bytes:
     """Return a decoded value as values_problem takes it, if it is of ``vr``."""
     valuerep = pydicom.valuerep
-    kind = _NUMBER_VRS.get(vr)
+    kind = _BINARY_TYPES.get(vr)
     if kind is not None:
         if isinstance(value, kind):
             return cast(str | int | float | bytes, kind(value))
