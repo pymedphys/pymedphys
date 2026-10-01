@@ -408,18 +408,24 @@ def test_any_generated_table_changes_the_digest(basic, tmp_path, monkeypatch, na
     assert policy_digest.policy_digest(basic, vocabulary=None) != before
 
 
-def test_the_tables_are_covered_by_their_content_not_their_layout(
-    basic, tmp_path, monkeypatch
+def test_a_reformatted_table_keeps_its_row_digest_but_changes_its_file_digest(
+    tmp_path, monkeypatch, read_again
 ):
-    before = policy_digest.policy_digest(basic, vocabulary=None)
-    copy = _copied_tables(tmp_path)
-    path = copy / "e1_1.json"
-    rows = json.loads(path.read_text(encoding="utf-8"))["rows"]
-    _rewrite(path, rows, indent=4)
+    modules = {n: c for n, c in ENGINE_FILES.items() if not n.startswith("_standard/")}
+    engine = _engine(tmp_path / "engine", modules)
+    tables = _copied_tables(engine)
+    monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
+    monkeypatch.setattr(standard, "STANDARD_DIR", tables)
+    before = policy_digest.digest_inputs(vocabulary=None)
+    path = tables / "e1_1.json"
+    layout = path.read_bytes()
+    _rewrite(path, json.loads(layout.decode("utf-8"))["rows"], indent=4)
+    read_again()
+    after = policy_digest.digest_inputs(vocabulary=None)
 
-    assert path.read_bytes() != (standard.STANDARD_DIR / "e1_1.json").read_bytes()
-    monkeypatch.setattr(standard, "STANDARD_DIR", copy)
-    assert policy_digest.policy_digest(basic, vocabulary=None) == before
+    assert path.read_bytes() != layout
+    assert after.tables == before.tables
+    assert after.files["_standard/e1_1.json"] != before.files["_standard/e1_1.json"]
 
 
 def test_a_table_that_does_not_match_its_recorded_digest_is_rejected(
