@@ -131,9 +131,10 @@ needed; the `database` label requests the database tests.
 jobs remain visible in the PR's checks list and **Checks** tab. A green summary
 means the checks selected for that run passed, not that every possible test ran.
 
-Contributors with Write access can merge once the branch is up to date, the
-required checks pass, review conversations are resolved, and an eligible
-reviewer has approved. Admins may explicitly bypass the review requirement;
+Contributors with Write access can add a PR to the merge queue once its required
+checks pass, review conversations are resolved, and an eligible reviewer has
+approved. The branch need not include the latest `main`: the queue tests the
+prospective merged state. Admins may explicitly bypass the review requirement;
 review is encouraged for their PRs too. The CI requirements still apply.
 Approvals are not automatically dismissed by later commits, so request another
 review when making substantive changes after approval.

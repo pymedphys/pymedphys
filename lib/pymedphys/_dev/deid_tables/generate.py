@@ -36,10 +36,11 @@ from collections.abc import Callable, Mapping
 from pymedphys._data.download import download_with_progress
 from pymedphys._dicom.deidentify.codes import CODE_TABLES
 from pymedphys._dicom.deidentify.iods import IOD_MODULES_TABLE, MODULE_ATTRIBUTES_TABLE
+from pymedphys._dicom.deidentify.sop_classes import STORAGE_SOP_CLASS_TABLE
 from pymedphys._dicom.deidentify.standard import SCHEMA, STANDARD_DIR, content_sha256
 from pymedphys._dicom.deidentify.uid_registry import UID_TABLES
 
-from . import annex_e, chtml, ps3_3, ps3_6, ps3_16
+from . import annex_e, chtml, ps3_3, ps3_4, ps3_6, ps3_16
 from .sources import SourceDigestError, read_verified_source
 
 # NEMA serves the current edition only under "current". Superseded editions
@@ -84,15 +85,33 @@ class Pin:
         The edition, such as ``"2026d"``.
     sources : tuple of PinnedSource
         Its source pages.
-    iod_tables : tuple of str
-        The labels of the PS3.3 IOD modules tables whose attribute Types are
-        generated, such as ``"Table A.3-1"``. Labels can change between
-        editions.
+    left_out_iods : tuple of LeftOutIOD
+        Each IOD of PS3.3 Annex A whose Types are not generated, because a
+        table it reaches gives an attribute that the generated data
+        dictionary, PS3.6 Table 6-1, does not define: the label of its "IOD
+        Modules" table, its name, and that attribute's tag, such as
+        ``LeftOutIOD("Table A.34.11-1", "Real-Time Audio Waveform",
+        "(0006,0001)")``. The Types of every other IOD in Annex A are
+        generated. Labels can change between editions, so generation checks
+        each name, and fails if a named IOD can be generated, or if the first
+        attribute it gives that the data dictionary lacks is not the one
+        named with it.
+    shared_functional_groups : tuple of (str, str)
+        The name of each IOD whose Functional Group Macros PS3.3 gives in its
+        text as those of another IOD's table, and the name of that IOD, such
+        as ``("Enhanced MR Color Image", "Enhanced MR Image")``. Every other
+        IOD whose modules include Functional Group Macros has a table of them
+        titled with its own name.
+    corrections : tuple of Correction
+        Corrections to errors in the edition's PS3.3 tables. Generation fails
+        if one no longer applies.
     """
 
     edition: str
     sources: tuple[PinnedSource, ...]
-    iod_tables: tuple[str, ...]
+    left_out_iods: tuple[ps3_3.LeftOutIOD, ...]
+    shared_functional_groups: tuple[tuple[str, str], ...]
+    corrections: tuple[ps3_3.Correction, ...]
 
 
 # To move to a new edition, update the edition and every digest, regenerate,
@@ -128,6 +147,10 @@ PIN = Pin(
             "chtml/part16/sect_CID_7005.html",
             "15d1ca542b46cda0a5525f59ea8417f3d253e0259037ac5f567ccf31972f28b0",
         ),
+        PinnedSource(
+            "chtml/part04/sect_B.5.html",
+            "a2e6f76967f3bab769299715c01f59757cede79cb9314b5bad60bb72a11e8846",
+        ),
         # PS3.3 on one page: its module and macro tables span dozens of chtml
         # pages.
         PinnedSource(
@@ -135,12 +158,65 @@ PIN = Pin(
             "6756c17c08913360c729b666277fb6eed6fda5d1d5b9fde427bbf27c6c1feec6",
         ),
     ),
-    # The IODs of the first supported release.
-    iod_tables=(
-        "Table A.3-1",  # CT Image
-        "Table A.18.3-1",  # RT Dose
-        "Table A.19.3-1",  # RT Structure Set
-        "Table A.20.3-1",  # RT Plan
+    # The real-time IODs' Current Frame Functional Groups Module gives Current
+    # Frame Functional Groups Sequence (0006,0001), which PS3.6 defines in
+    # Table 9-1, Registry of DICOM Dynamic RTP Payload Elements, not in Table
+    # 6-1.
+    left_out_iods=(
+        ps3_3.LeftOutIOD(
+            "Table A.32.9-1", "Real-Time Video Endoscopic Image", "(0006,0001)"
+        ),
+        ps3_3.LeftOutIOD(
+            "Table A.32.10-1", "Real-Time Video Photographic Image", "(0006,0001)"
+        ),
+        ps3_3.LeftOutIOD("Table A.34.11-1", "Real-Time Audio Waveform", "(0006,0001)"),
+    ),
+    # Section A.36.4.4: "Table A.36-2 specifies the use of the Functional
+    # Group Macros used in the Multi-frame Functional Groups Module for the
+    # Enhanced MR Color Image IOD."
+    shared_functional_groups=(("Enhanced MR Color Image", "Enhanced MR Image"),),
+    corrections=(
+        # A usage code separated from its condition by an en dash, by a
+        # hyphen without a space, or by nothing, rather than " - ". The two
+        # Plane macros of Table A.75-2 have the same usage.
+        ps3_3.Correction("Table A.29.3-1", "C – ", "C - "),
+        ps3_3.Correction("Table A.50-1", "C – ", "C - "),
+        ps3_3.Correction("Table A.80.2.3-1", "C Required", "C - Required"),
+        ps3_3.Correction("Table A.54-2", "M- May", "M - May"),
+        ps3_3.Correction("Table A.55-2", "U – May", "U - May"),
+        ps3_3.Correction("Table A.75-2", "C – Required", "C - Required", rows=2),
+        ps3_3.Correction("Table A.86.1.15-2", "M The units", "M - The units"),
+        ps3_3.Correction("Table A.86.1.16-2", "M The units", "M - The units"),
+        # The Implant Template Group Module's table is in C.29.3.1, below the
+        # section the IOD cites; the Enhanced Contrast/Bolus Module is C.7.6.4b,
+        # not the Contrast/Bolus Module's C.7.6.4.
+        ps3_3.Correction("Table A.63-1", "C.29.3", "C.29.3.1"),
+        ps3_3.Correction("Table A.66.3-1", "C.7.6.4", "C.7.6.4b"),
+        # Module tables whose titles differ from "<module> Module Attributes".
+        ps3_3.Correction("Table C.8-13", "Multi-Gated", "Multi-gated"),
+        ps3_3.Correction("Table C.8-62", "Multi-Gated", "Multi-gated"),
+        ps3_3.Correction("Table C.8.19.2-1", "Module Table", "Module Attributes"),
+        ps3_3.Correction(
+            "Table C.39.1-1", "Relationship Module", "Relationship Module Attributes"
+        ),
+        # A macro table titled differently from its section, "Frame VOI LUT
+        # With LUT Macro", and from the Functional Group Macros tables that
+        # list it.
+        ps3_3.Correction(
+            "Table C.7.6.16-11b", "Frame VOI LUT with LUT", "Frame VOI LUT With LUT"
+        ),
+        # A name column headed "Attribute name", and an Include row with a
+        # space after its ">" characters.
+        ps3_3.Correction("Table C.11.5-1", "Attribute name", "Attribute Name"),
+        ps3_3.Correction("Table C.11.25-1", ">> Include", ">>Include"),
+        # The X-Ray Grid Macro's Include of the X-Ray Grid Description Macro,
+        # published at the top level, outside the macro's Functional Group
+        # Sequence, X-Ray Grid Sequence (0018,9555), whose Grid (0018,1166) it
+        # describes. The X-Ray Filter Macro nests its description in its
+        # sequence, and each Functional Group is one sequence (C.7.6.16.1.1).
+        ps3_3.Correction(
+            "Table C.8.31.7-1", "Include Table C.8-36b", ">Include Table C.8-36b"
+        ),
     ),
 )
 
@@ -194,6 +270,7 @@ _CODE_TABLE_PAGES = {
     "Table CID 7050": "chtml/part16/sect_CID_7050.html",
     "Table CID 7005": "chtml/part16/sect_CID_7005.html",
 }
+_SECTION_B_5 = "chtml/part04/sect_B.5.html"
 _PS3_3 = "html/part03.html"
 _PART = re.compile(r"part([0-9]{2})")
 
@@ -289,19 +366,28 @@ def _data_dictionary(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
     return _document(pin, _CHAPTER_6, ps3_6.TABLE_6_1, rows)
 
 
+def _storage_sop_classes(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    sop_classes = ps3_4.parse_table_b_5_1(
+        _select(pages, _SECTION_B_5, ps3_4.TABLE_B_5_1)
+    )
+    rows = [dataclasses.asdict(sop_class) for sop_class in sop_classes]
+    return _document(pin, _SECTION_B_5, ps3_4.TABLE_B_5_1, rows)
+
+
 def _ps3_3(
     pin: Pin, pages: Mapping[str, bytes]
 ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
     """Return the IOD modules tables and the attribute tables they reach."""
-    if not pin.iod_tables:
-        raise chtml.TableFormatError("the pin names no IOD modules tables")
     dictionary = {
         attribute.tag: attribute.vr
         for attribute in ps3_6.parse_table_6_1(
             _select(pages, _CHAPTER_6, ps3_6.TABLE_6_1)
         )
     }
-    return ps3_3.collect(_tables(pages[_PS3_3], True), pin.iod_tables, dictionary)
+    tables = ps3_3.correct(_tables(pages[_PS3_3], True), pin.corrections)
+    return ps3_3.collect(
+        tables, dictionary, pin.left_out_iods, pin.shared_functional_groups
+    )
 
 
 def _iod_modules(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
@@ -339,6 +425,7 @@ _OUTPUTS: dict[str, Callable[[Pin, Mapping[str, bytes]], dict[str, object]]] = {
     "data_dictionary.json": _data_dictionary,
     "iod_modules.json": _iod_modules,
     "module_attributes.json": _module_attributes,
+    STORAGE_SOP_CLASS_TABLE.file: _storage_sop_classes,
     **{
         spec.file: _registry_table(_CHAPTER_A, label, ps3_6.parse_uid_table)
         for label, spec in UID_TABLES.items()

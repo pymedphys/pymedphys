@@ -1,5 +1,10 @@
 # Gamma performance: a two-hour workstation audit
 
+For editable, fixed workload sweeps across named PyMedPhys versions, local
+checkouts, or both interpolators in one checkout, use the
+[reusable gamma benchmark](gamma-benchmark.md). This page
+describes the calibrated workstation audit and its recorded evidence.
+
 This audit compares complete gamma calculations using **old and new PyMedPhys
 source, each with the PyMedPhys and SciPy interpolators**. It records absolute
 seconds, scaling curves and **PyMedPhys speed / SciPy speed**, checks the numerical

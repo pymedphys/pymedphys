@@ -64,7 +64,7 @@ user = [
   "scipy",
   "shapely>=1.7.0",
   "sqlalchemy",
-  "streamlit>=1.54",
+  "streamlit>=1.61",
   "timeago",
   "toml",
   "tqdm",

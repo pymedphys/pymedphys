@@ -346,7 +346,7 @@ Extras (`[project.optional-dependencies]`) are published and are for people who 
 
 4. **Anthropic Integration**: The experimental Mosaiq chat app and its SQL agent (`_ai/`) call Anthropic's API and need an API key. Their dependencies are in the opt-in `ai` extra, so import them only where they are used, and keep the rest of the GUI loadable without them.
 
-5. **Streamlit Apps**: Web-based tools for various tasks (anonymisation, metersetmap, dose analysis) in `_streamlit/apps/`. `pymedphys gui` serves them, and is meant to be run either on one computer or on a server that other computers connect to, for example within a radiotherapy department. Keep network serving supported; the GUI has no login, so document that anyone who can reach it can use its apps.
+5. **Streamlit Apps**: Web-based tools for various tasks (anonymisation, metersetmap, dose analysis) in `_streamlit/apps/`. `pymedphys gui` serves them, and is meant to be run either on one computer or on a server that other computers connect to, for example within a radiotherapy department. As the maintainers decided, it listens only on the loopback address unless `--address` is given. Keep network serving supported through that option; the GUI has no login, so document that anyone who can reach it can use its apps.
 
 6. **Database Connections**: Mosaiq integration requires appropriate database credentials and SQL Server access.
 
@@ -450,11 +450,12 @@ detailed explanations of individual features.
   inputs are known to be unaffected. Unknown paths select every standard check;
   symlinks, submodules and an unverifiable diff select every check a path can
   select. Integration and database tests and the full unit-test matrix are
-  cost-gated, as the maintainers decided: beyond main and the `full-test` and
-  `database` labels, integration and database tests run only for the inputs
-  that no standard check validates, listed in `select_checks.py`. Add an input
-  there when only a cost-gated job validates it. Packaging filters, slow-test
-  modules, modules with doctests, and shared test fixtures and data are
+  cost-gated on PRs, as the maintainers decided; merge groups and main pushes
+  run them in full. Beyond the `full-test` and `database` labels, integration
+  and database tests run on PRs only for inputs that no standard check validates,
+  listed in `select_checks.py`.
+  Add an input there when only a cost-gated job validates it. Packaging filters,
+  slow-test modules, modules with doctests, and shared test fixtures and data are
   integration inputs. Policy tests require `SLOW_TEST_FILES` and `DOCTEST_FILES`
   to equal what a scan of the package finds, so update them in the pull request
   that adds, removes or renames such a module. `select_checks.py` alone reads
@@ -479,9 +480,9 @@ detailed explanations of individual features.
 
 - `security.yml` runs three scanners through `uvx` at pinned versions: pip-audit
   on the exported lockfile, Bandit on the package, and zizmor on the workflows.
-  The dependency audit is advisory on pull requests and pushes and blocking on
-  scheduled and manual runs, where a failure opens or updates the issue labelled
-  `security-audit`. Bandit and zizmor block on every event.
+  The dependency audit is advisory on pull requests, pushes and merge groups,
+  and blocking on scheduled and manual runs, where a failure opens or updates
+  the issue labelled `security-audit`. Bandit and zizmor block on every event.
 - Workflow files staged in `claude_created_workflows_preview/` are unclassified
   inputs to `.github/scripts/select_checks.py` and select every scan. Zizmor
   audits them in place, so a staged workflow must be clean before a maintainer

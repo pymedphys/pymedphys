@@ -135,7 +135,9 @@ To launch the graphical apps from a ``user`` installation, run:
 
     pymedphys gui
 
-See :doc:`Graphical apps <../ref/cli/gui>` for the available CLI options.
+Only this computer can connect to the apps. See
+:doc:`Graphical apps <../ref/cli/gui>` for the available CLI options,
+including serving the apps to other computers.
 
 If you plan to use command line workflows, continue to
 :doc:`Using the CLI <cli>`.
