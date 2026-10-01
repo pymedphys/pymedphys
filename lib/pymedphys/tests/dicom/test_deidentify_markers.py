@@ -271,15 +271,30 @@ def test_tps_import_keeps_earlier_codes_and_writes_no_empty_code_sequence(earlie
         assert "DeidentificationMethodCodeSequence" not in marked
 
 
-@pytest.mark.parametrize("preset", list(policy.PRESETS))
-def test_patient_identity_removed_is_never_no(preset):
-    composed = policy.compose_policy(preset)
+def _legitimate_satisfied(preset):
+    """Each list of satisfied options that a preset's instance can have.
+
+    ``tps-import`` adds no codes, so any of its options can be satisfied.
+    Under every other preset, each selected option is satisfied, except that
+    Clean Descriptors can go unsatisfied.
+    """
     options = policy.PRESETS[preset]
     subsets = itertools.chain.from_iterable(
         itertools.combinations(options, size) for size in range(len(options) + 1)
     )
+    return [
+        satisfied
+        for satisfied in subsets
+        if preset == "tps-import"
+        or set(options) - {"clean_descriptors"} <= set(satisfied)
+    ]
 
-    for satisfied in subsets:
+
+@pytest.mark.parametrize("preset", list(policy.PRESETS))
+def test_patient_identity_removed_is_never_no(preset):
+    composed = policy.compose_policy(preset)
+
+    for satisfied in _legitimate_satisfied(preset):
         found = markers.markers_for(composed, DIGEST, satisfied=satisfied)
         assert found.patient_identity_removed == "YES"
 
@@ -414,7 +429,9 @@ def test_every_version_of_up_to_15_characters_fits_every_readable_value(monkeypa
 
     lengths = {}
     for composed in _policies():
-        readable = markers.markers_for(composed, DIGEST, satisfied=()).method[0]
+        readable = markers.markers_for(
+            composed, DIGEST, satisfied=composed.options
+        ).method[0]
         assert values.value_problem("LO", readable) is None
         lengths[composed.preset] = len(readable)
 
@@ -684,12 +701,122 @@ def test_an_option_that_the_policy_does_not_select_cannot_be_satisfied():
         )
 
 
+def _compose(selected):
+    """A preset's policy, or a custom option set's."""
+    if isinstance(selected, str):
+        return policy.compose_policy(selected)
+    return policy.compose_custom_policy(selected)
+
+
+@pytest.mark.parametrize(
+    ("selected", "satisfied", "missing"),
+    [
+        # The codes would claim that the Basic Profile removed the dates that
+        # Modified Dates shifted, and contradict MODIFIED.
+        (
+            "public-release",
+            ["retain_safe_private", "clean_descriptors"],
+            ["retain_longitudinal_modified_dates"],
+        ),
+        (
+            "public-release",
+            [],
+            ["retain_safe_private", "retain_longitudinal_modified_dates"],
+        ),
+        # The codes would claim the Basic Profile alone, which removes the
+        # Device Serial Number that Retain Device Identity keeps.
+        (("retain_device_identity",), [], ["retain_device_identity"]),
+        (
+            CUSTOM_OPTIONS,
+            ["retain_device_identity"],
+            ["retain_patient_characteristics"],
+        ),
+    ],
+)
+def test_a_satisfied_list_that_leaves_out_a_selected_option_is_refused(
+    selected, satisfied, missing
+):
+    with pytest.raises(ValueError, match="leaves out") as raised:
+        markers.markers_for(_compose(selected), DIGEST, satisfied=satisfied)
+
+    message = str(raised.value)
+    for option in missing:
+        assert option in message
+    for option in set(satisfied) - {"clean_descriptors"}:
+        assert option not in message
+    assert not isinstance(raised.value, markers.MarkerError)
+
+
+@pytest.mark.parametrize(
+    ("preset", "satisfied", "code_values", "temporal"),
+    [
+        ("basic-clean-descriptors", [], ["113100"], "REMOVED"),
+        (
+            "public-release",
+            ["retain_safe_private", "retain_longitudinal_modified_dates"],
+            ["113100", "113111", "113107"],
+            "MODIFIED",
+        ),
+    ],
+)
+def test_clean_descriptors_is_the_one_selected_option_that_can_go_unsatisfied(
+    preset, satisfied, code_values, temporal
+):
+    found = markers.markers_for(
+        policy.compose_policy(preset), DIGEST, satisfied=satisfied
+    )
+
+    assert [code.code_value for code in found.method_codes] == code_values
+    assert found.temporal_information_modified == temporal
+
+
+def test_tps_import_needs_no_option_satisfied_and_least_of_all_its_unmet_one():
+    composed = policy.compose_policy("tps-import")
+    unmet = {option for resolved in composed.resolved for option in resolved.unmet}
+    assert unmet == {"retain_device_identity"}
+    met = [option for option in composed.options if option not in unmet]
+
+    for satisfied in ([], ["retain_patient_characteristics"], met):
+        found = markers.markers_for(composed, DIGEST, satisfied=satisfied)
+        assert not found.method_codes
+        assert found.temporal_information_modified == "MODIFIED"
+
+
+def test_an_option_that_the_policy_records_as_unmet_is_never_required(monkeypatch):
+    # Only tps-import records an unmet option, and it claims no conformance,
+    # so a policy that claims conformance is simulated to check that the
+    # unmet option is left out of the required ones in its own right.
+    monkeypatch.setattr(
+        policy.Policy, "claims_conformance", property(lambda self: True)
+    )
+    composed = policy.compose_policy("tps-import")
+
+    found = markers.markers_for(
+        composed,
+        DIGEST,
+        satisfied=[
+            "retain_patient_characteristics",
+            "retain_longitudinal_modified_dates",
+        ],
+    )
+    with pytest.raises(ValueError, match="leaves out") as raised:
+        markers.markers_for(composed, DIGEST, satisfied=[])
+
+    assert [code.code_value for code in found.method_codes] == [
+        "113100",
+        "113108",
+        "113107",
+    ]
+    assert "retain_patient_characteristics" in str(raised.value)
+    assert "retain_device_identity" not in str(raised.value)
+
+
 def test_a_policy_with_an_option_that_has_no_code_is_refused():
     outside = dataclasses.replace(
         policy.compose_policy("basic"), options=("retain_uids",)
     )
 
-    with pytest.raises(ValueError, match="retain_uids"):
+    with pytest.raises(ValueError, match="retain_uids have no code"):
         markers.markers_for(outside, DIGEST, satisfied=())
 
 

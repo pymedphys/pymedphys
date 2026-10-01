@@ -122,6 +122,8 @@ tests = [
   "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
   "tests/dicom/test_deidentify_markers.py::test_basic_clean_descriptors_claims_clean_descriptors_only_where_satisfied",
   "tests/dicom/test_deidentify_markers.py::test_a_custom_option_set_is_named_as_one_and_claims_its_satisfied_options",
+  "tests/dicom/test_deidentify_markers.py::test_a_satisfied_list_that_leaves_out_a_selected_option_is_refused",
+  "tests/dicom/test_deidentify_markers.py::test_clean_descriptors_is_the_one_selected_option_that_can_go_unsatisfied",
   "tests/dicom/test_deidentify_markers.py::test_tps_import_claims_no_ps3_15_conformance_and_adds_no_codes",
   "tests/dicom/test_deidentify_markers.py::test_patient_identity_removed_is_never_no",
   "tests/dicom/test_deidentify_markers.py::test_the_second_method_value_is_exactly_the_policy_digest",
@@ -130,7 +132,7 @@ tests = [
   "tests/dicom/test_deidentify_markers.py::test_existing_markers_and_contributing_equipment_items_are_kept",
 ]
 note = '''
-The markers of an instance are computed from its policy, the policy digest, and the options it satisfies, and added to a copy of its data set (D-012). Patient Identity Removed is set to YES. De-identification Method keeps its values and gains two: a readable value naming PyMedPhys, its version, the PS3.15 edition, and the preset, and the policy digest, 64 lowercase hexadecimal digits computed from the policy and everything the engine could apply, including its own source and rule files, and the versions of Python and of the libraries that the engine imports (D-024). De-identification Method Code Sequence keeps its items and gains the CID 7050 codes of the Basic Profile and of each satisfied option. `tps-import`, which claims no conformance, adds no code and says so in its readable value. Remaining: adding the markers to each instance the engine de-identifies, from its validated result (M3).
+The markers of an instance are computed from its policy, the policy digest, and the options it satisfies, and added to a copy of its data set (D-012). Patient Identity Removed is set to YES. De-identification Method keeps its values and gains two: a readable value naming PyMedPhys, its version, the PS3.15 edition, and the preset, and the policy digest, 64 lowercase hexadecimal digits computed from the policy and everything the engine could apply, including its own source and rule files, and the versions of Python and of the libraries that the engine imports (D-024). De-identification Method Code Sequence keeps its items and gains the CID 7050 codes of the Basic Profile and of each satisfied option. Under a policy that claims conformance, every selected option must be satisfied except Clean Descriptors, so that the codes name each option whose actions the instance carries. `tps-import`, which claims no conformance, adds no code and says so in its readable value. Remaining: adding the markers to each instance the engine de-identifies, from its validated result (M3).
 '''
 
 [[requirement]]

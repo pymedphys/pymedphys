@@ -33,8 +33,10 @@ and changes nothing else in it:
 - De-identification Method Code Sequence (0012,0064) keeps the items already
   present and, for a policy that can claim conformance, gains the CID 7050
   codes of the Basic Profile and of each satisfied option, in Table E.1-1's
-  order of options. Clean Descriptors, for example, is satisfied only by
-  output whose retained descriptors have passed pooled human review.
+  order of options. Every selected option must be satisfied except Clean
+  Descriptors, which is satisfied only by output whose retained descriptors
+  have passed pooled human review, and otherwise goes unsatisfied because
+  the Basic Profile's actions apply to the descriptors instead.
   ``tps-import`` adds no code, and the sequence is left out where it would
   have no item, since a present Type 1C sequence needs one.
 - Longitudinal Temporal Information Modified (0028,0303) is MODIFIED where
@@ -97,6 +99,9 @@ OPTION_CODES = types.MappingProxyType(
 )
 # The CID 7005 code of De-identifying Equipment.
 DEIDENTIFYING_EQUIPMENT = "109104"
+# The one selected option that a policy claiming conformance can leave
+# unsatisfied: the Basic Profile's actions then apply to the descriptors.
+_CLEAN_DESCRIPTORS = "clean_descriptors"
 
 _PATIENT_IDENTITY_REMOVED = "(0012,0062)"
 _DEIDENTIFICATION_METHOD = "(0012,0063)"
@@ -173,7 +178,13 @@ def _code(cid: int, value: str) -> CodedConcept:
 
 
 def _satisfied(policy: Policy, satisfied: Iterable[str]) -> tuple[str, ...]:
-    """Return the satisfied options in the policy's order, after checking them."""
+    """Return the satisfied options in the policy's order, after checking them.
+
+    Under a policy that can claim conformance, every selected option but
+    Clean Descriptors must be satisfied, so that the codes name each option
+    whose actions the instance carries. An option that the policy records as
+    unmet is never required.
+    """
     if isinstance(satisfied, str):
         raise TypeError(
             "satisfied must be a collection of option names, not a single string"
@@ -184,6 +195,18 @@ def _satisfied(policy: Policy, satisfied: Iterable[str]) -> tuple[str, ...]:
         raise ValueError(
             f"the policy does not select {', '.join(unselected)}, "
             "so no instance can satisfy it"
+        )
+    unmet = {option for resolution in policy.resolved for option in resolution.unmet}
+    missing = [
+        option
+        for option in policy.options
+        if option not in chosen and option != _CLEAN_DESCRIPTORS and option not in unmet
+    ]
+    if policy.claims_conformance and missing:
+        raise ValueError(
+            f"satisfied leaves out {', '.join(missing)}, which the policy "
+            f"selects; only {_CLEAN_DESCRIPTORS} can go unsatisfied, since the "
+            "Basic Profile's actions then apply to the descriptors"
         )
     return tuple(option for option in policy.options if option in chosen)
 
@@ -231,10 +254,14 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         the policy and the vocabulary that descriptor cleaning used.
     satisfied : iterable of str
         The policy's options that the instance's validated result satisfies,
-        whose codes a policy that can claim conformance adds. Clean
-        Descriptors is satisfied only by output whose retained descriptors
-        have passed pooled human review; an instance that applies the Basic
+        whose codes a policy that can claim conformance adds. Such a policy
+        must have every selected option satisfied except Clean Descriptors,
+        which is satisfied only by output whose retained descriptors have
+        passed pooled human review; an instance that applies the Basic
         Profile's actions to its descriptors instead does not satisfy it.
+        ``tps-import``, which claims no conformance and adds no codes, needs
+        none satisfied, and never the Retain Device Identity that it records
+        as unmet.
 
     Returns
     -------
@@ -248,10 +275,13 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         not text, or ``satisfied`` is a single string rather than a
         collection of names.
     ValueError
-        If ``digest`` is not 64 lowercase hexadecimal digits, ``satisfied``
-        names an option that the policy does not select, or the policy
-        selects an option without a CID 7050 code here, which a validated
-        policy never does. The message does not quote the digest.
+        If ``digest`` is not 64 lowercase hexadecimal digits; if
+        ``satisfied`` names an option that the policy does not select, or,
+        under a policy that can claim conformance, leaves out a selected
+        option other than Clean Descriptors, in which case the message names
+        each option left out; or if the policy selects an option without a
+        CID 7050 code here, which a validated policy never does. The message
+        does not quote the digest.
     MarkerError
         If the policy resolves a conflict between options by keeping the
         value, so that Patient Identity Removed could be neither YES nor NO,
@@ -279,7 +309,6 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         raise TypeError("the policy digest must be text")
     if not _DIGEST.fullmatch(digest):
         raise ValueError("the policy digest must be 64 lowercase hexadecimal digits")
-    options = _satisfied(policy, satisfied)
     uncoded = [option for option in policy.options if option not in OPTION_CODES]
     if uncoded:
         raise ValueError(
@@ -291,6 +320,7 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
             "the policy keeps a value that a selected option modifies, so "
             "Patient Identity Removed can be set to neither YES nor NO"
         )
+    options = _satisfied(policy, satisfied)
 
     version = _version.__version__
     name = CUSTOM_OPTION_SET if policy.preset is None else policy.preset
