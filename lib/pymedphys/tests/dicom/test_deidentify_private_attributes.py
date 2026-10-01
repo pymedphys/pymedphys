@@ -1,0 +1,530 @@
+# Copyright (C) 2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""The removal of private attributes under the Basic Profile."""
+
+import copy
+import dataclasses
+import io
+import struct
+
+from pymedphys._imports import pydicom, pytest
+
+from pymedphys._dicom.deidentify import policy, private_attributes
+from pymedphys._dicom.deidentify.file_layout import ElementPath
+
+PRIVATE_ROW = "(gggg,eeee) where gggg is odd"
+IMPLICIT_VR = "1.2.840.10008.1.2"
+EXPLICIT_VR = "1.2.840.10008.1.2.1"
+RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
+# Sequences of the pinned data dictionary that pydicom 3.0.2 does not know,
+# so that it reads them from Implicit VR Little Endian as UN.
+RT_ASSERTIONS_SEQUENCE = 0x00440110
+DOSE_CALCULATION_MODEL_SEQUENCE = 0x30040080
+ITEM = 0xFFFEE000
+# Invented values, which no error message or path may quote.
+PRIVATE_VALUE = "SYNTHETIC PRIVATE VALUE"
+PATIENT_ID = "SYNTHETIC-7Q2K"
+CODE_MEANING = "Prüfung"  # not ASCII, so its encoding matters
+
+# The private attributes of _plan(), in the order the data set holds them.
+PLAN_PATHS = [
+    "(0009,0010)",  # a private creator
+    "(0009,1001)",  # its private data element
+    "(0009,1002)",  # a private sequence, removed with its items
+    "(0019,0010)",  # a private creator that reserves a block with no elements
+    "(0021,1001)",  # a private data element whose block has no creator
+    "(300A,00B0)[0] > (300B,0010)",
+    "(300A,00B0)[0] > (300B,1001)",
+    "(300A,00B0)[1] > (300A,0111)[0] > (300B,0010)",
+    "(300A,00B0)[1] > (300A,0111)[0] > (300B,1002)",
+]
+
+
+@pytest.fixture(name="basic", scope="module")
+def fixture_basic():
+    return policy.compose_policy("basic")
+
+
+def _private(dataset, group, creator, elements):
+    """Reserve block 0x10 of ``group`` for ``creator`` and add its elements."""
+    dataset.add_new((group << 16) | 0x0010, "LO", creator)
+    for element, vr, value in elements:
+        dataset.add_new((group << 16) | 0x1000 | element, vr, value)
+
+
+def _plan():
+    """Return an RT Plan with private attributes at the top level and nested."""
+    dataset = pydicom.Dataset()
+    dataset.SOPClassUID = RT_PLAN_STORAGE
+    dataset.SOPInstanceUID = "2.25.401"
+    dataset.PatientID = PATIENT_ID
+    contents = pydicom.Dataset()
+    contents.PatientID = PATIENT_ID
+    _private(contents, 0x0011, "SYNTHETIC CREATOR B", [(0x01, "SH", "SYNTHETIC")])
+    _private(
+        dataset,
+        0x0009,
+        "SYNTHETIC CREATOR A",
+        [(0x01, "LO", PRIVATE_VALUE), (0x02, "SQ", [contents])],
+    )
+    # Added out of order, to show that they are listed in the data set's order.
+    dataset.add_new(0x00211001, "LO", PRIVATE_VALUE)
+    dataset.add_new(0x00190010, "LO", "SYNTHETIC EMPTY BLOCK")
+    first, second, control_point = (pydicom.Dataset() for _ in range(3))
+    first.BeamNumber = 1
+    _private(first, 0x300B, "SYNTHETIC CREATOR C", [(0x01, "DS", "1.5")])
+    control_point.ControlPointIndex = 0
+    _private(control_point, 0x300B, "SYNTHETIC CREATOR C", [(0x02, "LO", "SYN")])
+    second.BeamNumber = 2
+    second.ControlPointSequence = [control_point]
+    dataset.BeamSequence = [first, second]
+    return dataset
+
+
+def _without(dataset, paths):
+    """Return a deep copy of ``dataset`` without the elements at ``paths``."""
+    result = copy.deepcopy(dataset)
+    for path in paths:
+        holder = result
+        for tag, index in path.items:
+            holder = holder[_number(tag)].value[index]
+        del holder[_number(path.tag)]
+    return result
+
+
+def _number(tag):
+    return int(tag[1:5] + tag[6:10], 16)
+
+
+def _odd_groups(dataset):
+    """Return every odd-group tag in ``dataset`` and the items of its sequences."""
+    found = []
+    for element in dataset:
+        if element.tag.group % 2:
+            found.append(element.tag)
+        elif element.VR == "SQ":
+            for item in element.value:
+                found += _odd_groups(item)
+    return found
+
+
+def _written_and_read(dataset, transfer_syntax):
+    dataset.file_meta = pydicom.dataset.FileMetaDataset()
+    dataset.file_meta.TransferSyntaxUID = transfer_syntax
+    written = io.BytesIO()
+    pydicom.dcmwrite(written, dataset, enforce_file_format=True)
+    return pydicom.dcmread(io.BytesIO(written.getvalue()))
+
+
+def _items(element):
+    """Return the items of a sequence, decoding one that pydicom read as UN."""
+    if element.VR == "UN":
+        return pydicom.values.convert_SQ(element.value, True, True)
+    return element.value
+
+
+def _encoded(tag, value):
+    """Return an element or item of defined length in Implicit VR Little Endian."""
+    return struct.pack("<HHI", tag >> 16, tag & 0xFFFF, len(value)) + value
+
+
+def _unknown(monkeypatch, tag, value):
+    """Return an element whose VR is UN, whatever pydicom's dictionary knows."""
+    with monkeypatch.context() as patch:
+        patch.setattr(pydicom.config, "replace_un_with_known_vr", False)
+        return pydicom.DataElement(tag, "UN", value)
+
+
+# The value of an RT Assertions Sequence of one item, as Implicit VR Little
+# Endian, whose item holds Code Meaning (0008,0104), in UTF-8, and a private
+# block with one element.
+ASSERTION = _encoded(
+    ITEM,
+    _encoded(0x00080104, CODE_MEANING.encode("utf-8") + b" ")
+    + _encoded(0x00110010, b"SYNTHETIC CREATOR D ")
+    + _encoded(0x00111001, PRIVATE_VALUE.encode() + b" "),
+)
+
+
+def test_the_basic_profile_removes_every_private_attribute(basic):
+    dataset = _plan()
+
+    paths = private_attributes.private_attribute_paths(dataset, basic)
+    result = private_attributes.without_private_attributes(dataset, basic)
+
+    assert all(isinstance(path, ElementPath) for path in paths)
+    assert [str(path) for path in paths] == PLAN_PATHS
+    assert _odd_groups(result) == []
+    # Nothing else changes, in the copy or in the source.
+    assert result == _without(_plan(), paths)
+    assert dataset == _plan()
+
+
+def test_a_private_sequence_is_removed_with_everything_in_it(basic):
+    # X removes a sequence with all its items and their attributes (Table
+    # E.1-1a), so the standard and private attributes in a private sequence
+    # are removed with it, and only the sequence is listed.
+    dataset = _plan()
+
+    paths = private_attributes.private_attribute_paths(dataset, basic)
+    result = private_attributes.without_private_attributes(dataset, basic)
+
+    assert ElementPath((), "(0009,1002)") in paths
+    assert not any(path.items[:1] == (("(0009,1002)", 0),) for path in paths)
+    assert 0x00091002 not in result
+
+
+@pytest.mark.parametrize(
+    "tag",
+    [
+        0x00010010,  # groups that PS3.5 Section 7.8.1 excludes from private use
+        0x00030010,
+        0x00051000,
+        0x00070001,
+        0xFFFF0010,
+        0x00090000,  # a private group length, retired (PS3.5 Section 7.2)
+        0x00090001,  # elements that PS3.5 Section 7.8.1 does not allow
+        0x0009000F,
+        0x00090100,
+        0x00090FFF,
+        0x000900FF,  # the last private creator
+        0x0009FFFF,  # the last element of the last block
+    ],
+    ids=lambda tag: f"{tag >> 16:04X},{tag & 0xFFFF:04X}",
+)
+def test_every_odd_group_element_is_removed(basic, tag):
+    # Table E.1-1 gives every attribute "(gggg,eeee) where gggg is odd" X,
+    # whether or not it is a valid private creator or private data element.
+    dataset = pydicom.Dataset()
+    dataset.PatientID = PATIENT_ID
+    dataset.add_new(tag, "LO", PRIVATE_VALUE)
+    item = copy.deepcopy(dataset)
+    dataset.BeamSequence = [item]
+    name = f"({tag >> 16:04X},{tag & 0xFFFF:04X})"
+
+    paths = private_attributes.private_attribute_paths(dataset, basic)
+    result = private_attributes.without_private_attributes(dataset, basic)
+
+    assert sorted(str(path) for path in paths) == sorted(
+        [name, f"(300A,00B0)[0] > {name}"]
+    )
+    assert _odd_groups(result) == []
+    assert result.PatientID == result.BeamSequence[0].PatientID == PATIENT_ID
+
+
+@pytest.mark.parametrize("preset", ["basic", "basic-clean-descriptors", "tps-import"])
+def test_each_preset_without_retain_safe_private_removes_private_attributes(preset):
+    composed = policy.compose_policy(preset)
+
+    paths = private_attributes.private_attribute_paths(_plan(), composed)
+    result = private_attributes.without_private_attributes(_plan(), composed)
+
+    assert [str(path) for path in paths] == PLAN_PATHS
+    assert _odd_groups(result) == []
+
+
+@pytest.mark.parametrize(
+    "composed",
+    [
+        lambda: policy.compose_policy("public-release"),
+        lambda: policy.compose_custom_policy(["retain_safe_private"]),
+    ],
+    ids=["public-release", "custom"],
+)
+@pytest.mark.parametrize(
+    "apply",
+    [
+        private_attributes.private_attribute_paths,
+        private_attributes.without_private_attributes,
+    ],
+    ids=["paths", "copy"],
+)
+def test_retain_safe_private_is_refused(composed, apply):
+    # The option keeps private attributes that are known to be safe, which
+    # needs reviewed rules for which are, and none exist yet.
+    with pytest.raises(policy.PolicyError, match="Retain Safe Private"):
+        apply(_plan(), composed())
+
+
+@pytest.mark.parametrize(
+    "actions",
+    [
+        lambda actions: {**actions, PRIVATE_ROW: "C"},
+        lambda actions: {**actions, PRIVATE_ROW: "K"},
+        lambda actions: {
+            tag: action for tag, action in actions.items() if tag != PRIVATE_ROW
+        },
+    ],
+    ids=["clean", "keep", "missing"],
+)
+def test_a_policy_that_does_not_remove_private_attributes_is_refused(basic, actions):
+    changed = dataclasses.replace(basic, actions=actions(dict(basic.actions)))
+
+    with pytest.raises(policy.PolicyError, match="private attributes"):
+        private_attributes.private_attribute_paths(_plan(), changed)
+    with pytest.raises(policy.PolicyError, match="private attributes"):
+        private_attributes.without_private_attributes(_plan(), changed)
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "transfer_syntax", [IMPLICIT_VR, EXPLICIT_VR], ids=["implicit-vr", "explicit-vr"]
+)
+@pytest.mark.parametrize("undefined", [False, True], ids=["defined", "undefined"])
+def test_private_attributes_read_from_a_file_are_removed(
+    basic, transfer_syntax, undefined
+):
+    # From Implicit VR Little Endian, pydicom reads a private sequence of
+    # defined length as UN, and one of undefined length as SQ.
+    source = _plan()
+    source[0x00091002].is_undefined_length = undefined
+    read = _written_and_read(source, transfer_syntax)
+
+    paths = private_attributes.private_attribute_paths(read, basic)
+    result = private_attributes.without_private_attributes(read, basic)
+
+    assert [str(path) for path in paths] == PLAN_PATHS
+    written = _written_and_read(result, transfer_syntax)
+    assert _odd_groups(written) == []
+    assert written.PatientID == PATIENT_ID
+    assert [beam.BeamNumber for beam in written.BeamSequence] == [1, 2]
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_finding_private_attributes_decodes_no_other_value(basic):
+    # Read from Implicit VR Little Endian, each element stays raw until it is
+    # decoded. Only sequences need decoding to find what they hold.
+    read = _written_and_read(_plan(), IMPLICIT_VR)
+
+    private_attributes.private_attribute_paths(read, basic)
+
+    raw = pydicom.dataelem.RawDataElement
+    for tag in [0x00090010, 0x00091001, 0x00091002, 0x00211001, 0x00100020]:
+        assert isinstance(read.get_item(tag, keep_deferred=True), raw)
+    beam = read.BeamSequence[0]
+    for tag in [0x300B0010, 0x300B1001, 0x300A00C0]:
+        assert isinstance(beam.get_item(tag, keep_deferred=True), raw)
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_private_attributes_in_a_sequence_read_as_unknown_are_removed(
+    monkeypatch, basic
+):
+    # PS3.5 Section 6.2.2 lets a reader that knows the VR of a UN value decode
+    # it as Implicit VR Little Endian.
+    dataset = _plan()
+    dataset.SpecificCharacterSet = "ISO_IR 192"
+    dataset[RT_ASSERTIONS_SEQUENCE] = _unknown(
+        monkeypatch, RT_ASSERTIONS_SEQUENCE, ASSERTION
+    )
+
+    paths = private_attributes.private_attribute_paths(dataset, basic)
+    result = private_attributes.without_private_attributes(dataset, basic)
+
+    assert [str(path) for path in paths] == [
+        *PLAN_PATHS[:-4],
+        "(0044,0110)[0] > (0011,0010)",
+        "(0044,0110)[0] > (0011,1001)",
+        *PLAN_PATHS[-4:],
+    ]
+    assertions = result[RT_ASSERTIONS_SEQUENCE]
+    assert assertions.VR == "SQ"
+    assert _odd_groups(result) == []
+    # The item keeps Code Meaning, decoded in the data set's character set.
+    assert [list(item.keys()) for item in assertions.value] == [[0x00080104]]
+    assert assertions.value[0].CodeMeaning == CODE_MEANING
+    # The source keeps its encoded value.
+    assert dataset[RT_ASSERTIONS_SEQUENCE].VR == "UN"
+    assert dataset[RT_ASSERTIONS_SEQUENCE].value == ASSERTION
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "outer, inner",
+    [("ISO_IR 192", None), ("ISO_IR 192", ""), (None, "ISO_IR 192")],
+    ids=["inherited", "inherited-past-an-empty-one", "the-items-own"],
+)
+def test_a_sequence_read_as_unknown_takes_its_items_character_set(
+    monkeypatch, basic, outer, inner
+):
+    # An item takes the character set of the data set that holds it, unless
+    # it has a Specific Character Set of its own.
+    dataset = _plan()
+    beam = dataset.BeamSequence[1]
+    if outer is not None:
+        dataset.SpecificCharacterSet = outer
+    if inner is not None:
+        beam.SpecificCharacterSet = inner
+    beam[DOSE_CALCULATION_MODEL_SEQUENCE] = _unknown(
+        monkeypatch, DOSE_CALCULATION_MODEL_SEQUENCE, ASSERTION
+    )
+
+    result = private_attributes.without_private_attributes(dataset, basic)
+
+    model = result.BeamSequence[1][DOSE_CALCULATION_MODEL_SEQUENCE]
+    assert model.VR == "SQ"
+    assert model.value[0].CodeMeaning == CODE_MEANING
+    # Explicit VR Little Endian carries the VR, SQ, so the value is read back
+    # as items, and its text as it was.
+    written = _written_and_read(result, EXPLICIT_VR)
+    assert _odd_groups(written) == []
+    model = written.BeamSequence[1][DOSE_CALCULATION_MODEL_SEQUENCE]
+    assert model.value[0].CodeMeaning == CODE_MEANING
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")
+def test_a_sequence_read_from_implicit_vr_as_unknown_is_searched(basic):
+    # pydicom 3.0.2 reads an RT Assertions Sequence of defined length from
+    # Implicit VR Little Endian as UN, since it does not know it; a pydicom
+    # that knows it reads it as SQ. Either way, its private attributes are
+    # found and removed.
+    assertion = pydicom.Dataset()
+    assertion.CodeMeaning = "SYNTHETIC"
+    _private(assertion, 0x0011, "SYNTHETIC CREATOR D", [(0x01, "LO", PRIVATE_VALUE)])
+    source = _plan()
+    source.add(pydicom.DataElement(RT_ASSERTIONS_SEQUENCE, "SQ", [assertion]))
+    read = _written_and_read(source, IMPLICIT_VR)
+
+    paths = private_attributes.private_attribute_paths(read, basic)
+    result = private_attributes.without_private_attributes(read, basic)
+
+    assert "(0044,0110)[0] > (0011,1001)" in [str(path) for path in paths]
+    written = _written_and_read(result, IMPLICIT_VR)
+    assert [list(item.keys()) for item in _items(written[RT_ASSERTIONS_SEQUENCE])] == [
+        [0x00080104]
+    ]
+
+
+@pytest.mark.pydicom
+def test_a_sequence_read_as_unknown_without_private_attributes_is_unchanged(
+    monkeypatch, basic
+):
+    value = _encoded(ITEM, _encoded(0x00080104, b"SYNTHETIC "))
+    dataset = _plan()
+    dataset[RT_ASSERTIONS_SEQUENCE] = _unknown(
+        monkeypatch, RT_ASSERTIONS_SEQUENCE, value
+    )
+
+    result = private_attributes.without_private_attributes(dataset, basic)
+
+    assert result[RT_ASSERTIONS_SEQUENCE].VR == "UN"
+    assert result[RT_ASSERTIONS_SEQUENCE].value == value
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "tag",
+    [0x30040082, 0x0044FFF0],
+    ids=["dictionary-cs", "not-in-dictionary"],
+)
+def test_an_unknown_value_is_decoded_only_where_the_dictionary_gives_sq(
+    monkeypatch, basic, tag
+):
+    # Commissioning Status (3004,0082) is CS, and (0044,FFF0) is not in the
+    # pinned dictionary, so neither value holds items to search, even when its
+    # bytes read as items. The engine removes an attribute that the
+    # dictionary does not list.
+    dataset = _plan()
+    dataset[tag] = _unknown(monkeypatch, tag, ASSERTION)
+
+    paths = private_attributes.private_attribute_paths(dataset, basic)
+    result = private_attributes.without_private_attributes(dataset, basic)
+
+    assert [str(path) for path in paths] == PLAN_PATHS
+    assert result[tag].VR == "UN"
+    assert result[tag].value == ASSERTION
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "value",
+    [
+        b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a",
+        _encoded(0x00111001, PRIVATE_VALUE.encode() + b" "),
+        ASSERTION[:-6],
+        ASSERTION + b"\x00\x00",
+        struct.pack("<HHI", 0xFFFE, 0xE000, 100) + ASSERTION[8:],
+        _encoded(ITEM, struct.pack("<HHI", 0x0011, 0x1001, 100) + b"SYNTHETIC "),
+    ],
+    ids=[
+        "not-items",
+        "an-element-without-an-item",
+        "truncated",
+        "trailing-bytes",
+        "item-too-long",
+        "element-too-long",
+    ],
+)
+def test_an_unknown_value_that_cannot_be_read_as_items_is_refused(
+    monkeypatch, basic, value
+):
+    # pydicom decodes some malformed values without an error, as items that
+    # leave out part of the value, which could hold a private attribute.
+    dataset = _plan()
+    dataset.BeamSequence[0][RT_ASSERTIONS_SEQUENCE] = _unknown(
+        monkeypatch, RT_ASSERTIONS_SEQUENCE, value
+    )
+
+    for apply in (
+        private_attributes.private_attribute_paths,
+        private_attributes.without_private_attributes,
+    ):
+        with pytest.raises(private_attributes.PrivateAttributeError) as raised:
+            apply(dataset, basic)
+        assert raised.value.path == ElementPath((("(300A,00B0)", 0),), "(0044,0110)")
+        assert "(300A,00B0)[0] > (0044,0110)" in str(raised.value)
+        assert "SYNTHETIC" not in str(raised.value)
+        assert not isinstance(raised.value, ValueError)
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("value", [None, b""], ids=["none", "empty"])
+def test_an_unknown_value_of_zero_length_has_no_items(monkeypatch, basic, value):
+    # pydicom reads a UN element of zero length with the value None.
+    dataset = _plan()
+    dataset[RT_ASSERTIONS_SEQUENCE] = _unknown(
+        monkeypatch, RT_ASSERTIONS_SEQUENCE, value
+    )
+
+    paths = private_attributes.private_attribute_paths(dataset, basic)
+    result = private_attributes.without_private_attributes(dataset, basic)
+
+    assert [str(path) for path in paths] == PLAN_PATHS
+    assert result[RT_ASSERTIONS_SEQUENCE].value == value
+
+
+@pytest.mark.pydicom
+def test_a_sequence_that_pydicom_cannot_decode_is_refused(basic):
+    # A Beam Sequence read from Explicit VR Little Endian, still raw, whose
+    # value of three bytes is too short to hold an item.
+    dataset = _plan()
+    dataset[0x300A00B0] = pydicom.dataelem.RawDataElement(
+        pydicom.tag.Tag(0x300A00B0), "SQ", 3, b"SYN", 0, False, True
+    )
+
+    for apply in (
+        private_attributes.private_attribute_paths,
+        private_attributes.without_private_attributes,
+    ):
+        with pytest.raises(private_attributes.PrivateAttributeError) as raised:
+            apply(dataset, basic)
+        assert raised.value.path == ElementPath((), "(300A,00B0)")
+        assert "SYN" not in str(raised.value)
