@@ -64,11 +64,15 @@ import dataclasses
 import enum
 from collections.abc import Sequence
 
-from .elements import dictionary_attribute
 from .file_layout import TAG_PATTERN
 from .iods import IOD
 from .policy import Policy, PolicyError
-from .standard import _RESERVED_ODD_GROUPS, DictionaryAttribute, load_table_e1_1
+from .standard import (
+    _RESERVED_ODD_GROUPS,
+    DictionaryAttribute,
+    dictionary_attribute,
+    load_table_e1_1,
+)
 from .supplementary_actions import TEXT_VRS, UNCOVERED_TEXT_ACTION
 from .uid_roles import load_uid_roles
 

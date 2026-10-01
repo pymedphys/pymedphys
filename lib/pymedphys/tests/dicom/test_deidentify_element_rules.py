@@ -19,9 +19,11 @@ rule files, or checked by hand against the 2026d PS3.3, PS3.5, PS3.6, and
 PS3.15, never taken from the module's own output.
 """
 
+import ast
 import dataclasses
 import functools
 import itertools
+import pathlib
 import re
 
 from pymedphys._imports import hypothesis, pytest
@@ -628,3 +630,18 @@ def test_the_rules_keep_their_policy():
     composed = policy.compose_policy("basic-clean-descriptors")
 
     assert ElementRules(composed).policy is composed
+
+
+def test_rules_classify_with_the_pinned_dictionary_not_the_decoder():
+    # Deciding an element's rule needs only its pinned classification, so
+    # the rules depend on the standard data, not on the module that decodes
+    # values (the B+ decision of 1 October 2026).
+    source = pathlib.Path(element_rules.__file__).read_text(encoding="utf-8")
+    imported = {
+        node.module
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.ImportFrom)
+    }
+
+    assert "elements" not in imported
+    assert "standard" in imported
