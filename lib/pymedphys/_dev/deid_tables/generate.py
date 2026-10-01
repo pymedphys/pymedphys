@@ -85,15 +85,21 @@ class Pin:
         The edition, such as ``"2026d"``.
     sources : tuple of PinnedSource
         Its source pages.
-    iod_tables : tuple of str
-        The labels of the PS3.3 IOD modules tables whose attribute Types are
-        generated, such as ``"Table A.3-1"``. Labels can change between
-        editions.
+    functional_group_iods : tuple of (str, str)
+        The label and IOD name of each "IOD Modules" table of PS3.3 Annex A
+        whose Types are not generated, because its modules include Functional
+        Group Macros, such as ``("Table A.38-1", "Enhanced CT Image")``. The
+        Types of every other IOD in Annex A are generated. Labels can change
+        between editions, so generation checks each name.
+    corrections : tuple of Correction
+        Corrections to errors in the edition's PS3.3 tables. Generation fails
+        if one no longer applies.
     """
 
     edition: str
     sources: tuple[PinnedSource, ...]
-    iod_tables: tuple[str, ...]
+    functional_group_iods: tuple[tuple[str, str], ...]
+    corrections: tuple[ps3_3.Correction, ...]
 
 
 # To move to a new edition, update the edition and every digest, regenerate,
@@ -140,12 +146,69 @@ PIN = Pin(
             "6756c17c08913360c729b666277fb6eed6fda5d1d5b9fde427bbf27c6c1feec6",
         ),
     ),
-    # The IODs of the first supported release.
-    iod_tables=(
-        "Table A.3-1",  # CT Image
-        "Table A.18.3-1",  # RT Dose
-        "Table A.19.3-1",  # RT Structure Set
-        "Table A.20.3-1",  # RT Plan
+    # A module of each of these IODs, such as the Multi-frame Functional
+    # Groups Module, includes the Functional Group Macros that the IOD lists
+    # in a table of its own, which is not yet generated.
+    functional_group_iods=(
+        ("Table A.8-3", "Multi-frame Grayscale Byte Secondary Capture Image"),
+        ("Table A.8-4", "Multi-frame Grayscale Word Secondary Capture Image"),
+        ("Table A.8-5", "Multi-frame True Color Secondary Capture Image"),
+        ("Table A.32.8-1", "VL Whole Slide Microscopy Image"),
+        ("Table A.32.9-1", "Real-Time Video Endoscopic Image"),
+        ("Table A.32.10-1", "Real-Time Video Photographic Image"),
+        ("Table A.34.11-1", "Real-Time Audio Waveform"),
+        ("Table A.36-1", "Enhanced MR Image"),
+        ("Table A.36-3", "MR Spectroscopy"),
+        ("Table A.36-5", "Enhanced MR Color Image"),
+        ("Table A.38-1", "Enhanced CT Image"),
+        ("Table A.47-1", "Enhanced XA Image"),
+        ("Table A.48-1", "Enhanced XRF Image"),
+        ("Table A.51-1", "Segmentation"),
+        ("Table A.52.3-1", "Ophthalmic Tomography Image"),
+        ("Table A.53-1", "X-Ray 3D Angiographic Image"),
+        ("Table A.54-1", "X-Ray 3D Craniofacial Image"),
+        ("Table A.55-1", "Breast Tomosynthesis Image"),
+        ("Table A.56-1", "Enhanced PET Image"),
+        ("Table A.59-1", "Enhanced US Volume"),
+        ("Table A.66.3-1", "Intravascular Optical Coherence Tomography Image"),
+        ("Table A.70-1", "Legacy Converted Enhanced CT Image"),
+        ("Table A.71-1", "Legacy Converted Enhanced MR Image"),
+        ("Table A.72-1", "Legacy Converted Enhanced PET Image"),
+        ("Table A.74-1", "Breast Projection X-Ray Image"),
+        ("Table A.75-1", "Parametric Map"),
+        (
+            "Table A.84-1",
+            "Ophthalmic Optical Coherence Tomography B-scan Volume Analysis",
+        ),
+        ("Table A.86.1.15-1", "Enhanced RT Image"),
+        ("Table A.86.1.16-1", "Enhanced Continuous RT Image"),
+        ("Table A.89.3-1", "Photoacoustic Image"),
+        ("Table A.90.1.3-1", "Confocal Microscopy Image"),
+        ("Table A.90.2.3-1", "Confocal Microscopy Tiled Pyramidal Image"),
+        ("Table A.91-1", "Height Map Segmentation"),
+    ),
+    corrections=(
+        # A usage code separated from its condition by an en dash, or by
+        # nothing, rather than " - ".
+        ps3_3.Correction("Table A.29.3-1", "C – ", "C - "),
+        ps3_3.Correction("Table A.50-1", "C – ", "C - "),
+        ps3_3.Correction("Table A.80.2.3-1", "C Required", "C - Required"),
+        # The Implant Template Group Module's table is in C.29.3.1, below the
+        # section the IOD cites; the Enhanced Contrast/Bolus Module is C.7.6.4b,
+        # not the Contrast/Bolus Module's C.7.6.4.
+        ps3_3.Correction("Table A.63-1", "C.29.3", "C.29.3.1"),
+        ps3_3.Correction("Table A.66.3-1", "C.7.6.4", "C.7.6.4b"),
+        # Module tables whose titles differ from "<module> Module Attributes".
+        ps3_3.Correction("Table C.8-13", "Multi-Gated", "Multi-gated"),
+        ps3_3.Correction("Table C.8-62", "Multi-Gated", "Multi-gated"),
+        ps3_3.Correction("Table C.8.19.2-1", "Module Table", "Module Attributes"),
+        ps3_3.Correction(
+            "Table C.39.1-1", "Relationship Module", "Relationship Module Attributes"
+        ),
+        # A name column headed "Attribute name", and an Include row with a
+        # space after its ">" characters.
+        ps3_3.Correction("Table C.11.5-1", "Attribute name", "Attribute Name"),
+        ps3_3.Correction("Table C.11.25-1", ">> Include", ">>Include"),
     ),
 )
 
@@ -307,15 +370,14 @@ def _ps3_3(
     pin: Pin, pages: Mapping[str, bytes]
 ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
     """Return the IOD modules tables and the attribute tables they reach."""
-    if not pin.iod_tables:
-        raise chtml.TableFormatError("the pin names no IOD modules tables")
     dictionary = {
         attribute.tag: attribute.vr
         for attribute in ps3_6.parse_table_6_1(
             _select(pages, _CHAPTER_6, ps3_6.TABLE_6_1)
         )
     }
-    return ps3_3.collect(_tables(pages[_PS3_3], True), pin.iod_tables, dictionary)
+    tables = ps3_3.correct(_tables(pages[_PS3_3], True), pin.corrections)
+    return ps3_3.collect(tables, dictionary, pin.functional_group_iods)
 
 
 def _iod_modules(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:

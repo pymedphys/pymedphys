@@ -139,6 +139,31 @@ def _iod(name):
     return iods.load_iod_tables().iods[name]
 
 
+def _synthetic_iod(definitions):
+    """Build module tables for the reference definitions under test."""
+    modules = []
+    tables = {}
+    for index, definition in enumerate(definitions):
+        label = f"Table C.0-{index + 1}"
+        rows = tuple(
+            iods.AttributeRow(depth, "Sequence", tag, "3", "")
+            for depth, tag in enumerate(definition.path)
+        ) + (
+            iods.AttributeRow(
+                len(definition.path),
+                definition.name,
+                definition.tag,
+                definition.type,
+                "",
+            ),
+        )
+        modules.append(
+            iods.ModuleUsage("Image", definition.module, "C.0", "M", "", label)
+        )
+        tables[label] = iods.AttributeTable(label, "Synthetic", rows)
+    return iods.IOD("Synthetic", "Table A.0-1", tuple(modules), tables)
+
+
 def _id(value):
     return ">".join(value) if isinstance(value, tuple) else None
 
@@ -189,10 +214,7 @@ def test_reference_sites_have_their_types_from_ps3_3(iod, attribute, type_):
 def test_a_site_has_the_strictest_type_of_its_definitions(types, strictest):
     # A conditional element that is present has the requirements of Type 1
     # or Type 2 (PS3.5 Sections 7.4.2 and 7.4.4).
-    iod = iods.IOD(
-        "Synthetic",
-        "Table A.0-1",
-        (),
+    iod = _synthetic_iod(
         tuple(
             iods.AttributeDefinition(
                 ("(300C,0060)",),
@@ -250,7 +272,7 @@ def test_referenced_sop_instance_uid_names_a_study_in_a_study_sequence(
     # Instance UID is the study's, and the Referenced SOP Class UID is the
     # study's own class, such as the retired Detached Study Management.
     definition = iods.AttributeDefinition(path, tag, "Synthetic", "1", "A", ())
-    iod = iods.IOD("Synthetic", "Table A.0-1", (), (definition,))
+    iod = _synthetic_iod((definition,))
 
     assert references.reference_sites(iod) == (ReferenceSite(path, tag, level, "1"),)
 
@@ -277,10 +299,7 @@ def test_an_attribute_defined_twice_at_one_place_is_one_site():
             path, "(0008,1155)", "Referenced SOP Instance UID", "1", module, ()
         )
 
-    iod = iods.IOD(
-        "Synthetic",
-        "Table A.0-1",
-        (),
+    iod = _synthetic_iod(
         (
             definition((), "A"),
             definition(("(300C,0060)",), "A"),
@@ -293,14 +312,14 @@ def test_an_attribute_defined_twice_at_one_place_is_one_site():
     )
 
 
-def test_every_nested_instance_uid_is_followed_or_reviewed():
+def test_every_first_release_nested_instance_uid_is_followed_or_reviewed():
     # A new edition that defines another instance UID inside a sequence fails
     # here until someone decides whether it is a reference.
     roles = uid_roles.load_uid_roles().rules
     nested = {
         definition.tag
-        for iod in iods.load_iod_tables().iods.values()
-        for definition in iod.definitions
+        for name in FIRST_RELEASE_IODS
+        for definition in _iod(name).definitions
         if definition.path
         and definition.tag in roles
         and roles[definition.tag].role is uid_roles.UIDRole.INSTANCE
@@ -432,14 +451,14 @@ def test_an_empty_value_is_absent_only_where_the_site_is_type_3(
 @pytest.mark.parametrize(
     "sop_class",
     [
-        synthetic.MR_IMAGE_STORAGE,
+        "1.2.840.10008.5.1.4.1.1.66.4",  # Segmentation awaits Functional Groups
         "2.25.999",  # not a Standard SOP Class
         None,
         [synthetic.RT_PLAN_STORAGE, synthetic.RT_PLAN_STORAGE],
     ],
-    ids=["another-iod", "unlisted", "absent", "two-values"],
+    ids=["deferred-iod", "unlisted", "absent", "two-values"],
 )
-def test_an_instance_of_another_iod_has_no_references(sop_class):
+def test_an_instance_without_generated_iod_tables_has_no_references(sop_class):
     dataset = synthetic.rt_plan()
     del dataset.SOPClassUID
     if sop_class is not None:
@@ -450,6 +469,28 @@ def test_an_instance_of_another_iod_has_no_references(sop_class):
     assert record.iod is None
     assert record.references == ()
     assert record.sop_instance == synthetic.PLAN
+
+
+@pytest.mark.pydicom
+def test_a_record_finds_references_of_a_generated_iod_beyond_the_first_release():
+    dataset = synthetic.instance(
+        synthetic.MR_IMAGE_STORAGE,
+        "2.25.9001",
+        "2.25.9002",
+        ReferencedImageSequence=[
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, synthetic.CT_SLICES[0])
+        ],
+    )
+
+    record = InstanceRecord.from_dataset(dataset)
+
+    assert record.iod == "MR Image"
+    (reference,) = record.references
+    assert reference.site == ReferenceSite(
+        ("(0008,1140)",), "(0008,1155)", Level.INSTANCE, "1"
+    )
+    assert reference.target == synthetic.CT_SLICES[0]
+    assert reference.target_class == synthetic.CT_IMAGE_STORAGE
 
 
 @pytest.mark.pydicom
