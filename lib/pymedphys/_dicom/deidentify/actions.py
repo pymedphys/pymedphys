@@ -34,7 +34,8 @@ Reviewed supplementary rules give actions to attributes that the table omits
 (:mod:`~pymedphys._dicom.deidentify.supplementary_actions`). A rule, like a
 row of the table, can give an action under an option, and
 :func:`effective_supplementary_actions` resolves it in the same way. Compound
-actions such as X/Z/D are resolved later, from the attribute's Type in its IOD.
+actions such as X/Z/D are resolved later, from the attribute's Type in its IOD,
+by :mod:`~pymedphys._dicom.deidentify.compound_actions`.
 """
 
 from __future__ import annotations
