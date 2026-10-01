@@ -249,11 +249,27 @@ def read_element(
     dictionary gives, contradicts the one the standard decides, or is in
     doubt, or it does not decode exactly as its VR and character set; the
     Default Character Repertoire alone holds only ISO 646.
+
+    The data sets must hold each element read from a file as
+    :func:`pydicom.dcmread` returned it, or as built in memory with its VR.
+    Accessing an element read from a file through pydicom, by indexing,
+    attribute, ``get``, or iteration, decodes it in place: pydicom then
+    holds no encoded value to check, and has chosen any VR in doubt itself,
+    reading a sequence of VR UN without checking its items. Such an element
+    raises :class:`UndecodableElement`, except Specific Character Set
+    (0008,0005), which dcmread decodes itself, and a sequence of undefined
+    length, which it reads as items.
     """
     with redacted_pydicom_diagnostics():
         element = dataset.get_item(_number(path.tag), keep_deferred=True)
         if element is None:
             raise KeyError(str(path))
+        if _decoded_by_pydicom(element, path.tag):
+            raise UndecodableElement(
+                path,
+                "was decoded by pydicom before it was read here, so its encoded "
+                "value cannot be checked",
+            )
         if isinstance(element, pydicom.dataelem.RawDataElement):
             undefined = element.length == _UNDEFINED
         else:
@@ -287,6 +303,18 @@ def read_element(
 
 def _number(tag: str) -> int:
     return int(tag[1:5] + tag[6:10], 16)
+
+
+def _decoded_by_pydicom(element: object, tag: str) -> bool:
+    """Return whether pydicom has decoded an element read from a file."""
+    # pydicom records where in the file it read the value of each element it
+    # decodes from one, and of no element built in memory.
+    return (
+        isinstance(element, pydicom.DataElement)
+        and element.file_tell is not None
+        and tag != _CHARACTER_SET
+        and not (element.VR == "SQ" and element.is_undefined_length)
+    )
 
 
 def _applicable_vr(

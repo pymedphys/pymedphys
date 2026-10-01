@@ -706,23 +706,22 @@ def test_iso_ir_6_gives_the_default_character_repertoire(transfer_syntax):
     assert (name.values, name.codecs) == ((synthetic.PATIENTS_NAME,), codecs)
 
 
-@pytest.mark.parametrize("decoded_first", [False, True], ids=["raw", "decoded"])
+@pytest.mark.parametrize("in_memory", [False, True], ids=["raw", "in-memory"])
 @pytest.mark.parametrize(
     "value",
     [None, "", "ISO_IR 6", "ISO 2022 IR 6"],
     ids=["absent", "empty", "ISO_IR 6", "ISO 2022 IR 6"],
 )
-def test_a_byte_outside_the_default_character_repertoire_is_refused(
-    value, decoded_first
-):
+def test_a_byte_outside_the_default_character_repertoire_is_refused(value, in_memory):
     # The Default Character Repertoire is ISO 646 (PS3.5 Section 6.1.2.1),
-    # whose bytes are below 0x80, but pydicom reads it as ISO 8859-1.
+    # whose bytes are below 0x80, but pydicom reads it as ISO 8859-1. Text
+    # set in memory is checked as text.
     dataset = pydicom.Dataset()
     if value is not None:
         dataset[0x00080005] = _raw("(0008,0005)", None, value.encode())
     dataset[0x00100010] = _raw("(0010,0010)", None, b"SENTINEL^REN\xc9 ")
-    if decoded_first:  # as pydicom leaves an element that has been read
-        assert dataset[0x00100010].value == "SENTINEL^RENÉ"
+    if in_memory:
+        dataset[0x00100010] = pydicom.DataElement(0x00100010, "PN", "SENTINEL^RENÉ")
     codecs = elements.dataset_codecs(dataset)
 
     with pytest.raises(elements.UndecodableElement) as raised:
@@ -864,6 +863,84 @@ def test_an_absent_element_is_a_key_error():
 )
 def test_a_sequence_value_that_holds_only_items_reads_as_items(value, explicit):
     assert reads_as_items(value, explicit=explicit)
+
+
+def _accessed(dataset, tag, access):
+    """Access an element through pydicom, which decodes it in place."""
+    number = _tag(tag)
+    if access == "index":
+        return dataset[number]
+    if access == "get":
+        return dataset.get(number)
+    if access == "attribute":
+        return getattr(dataset, pydicom.datadict.keyword_for_tag(number))
+    return list(dataset)
+
+
+ACCESSES = pytest.mark.parametrize("access", ["index", "get", "attribute", "iteration"])
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@ACCESSES
+def test_a_un_sequence_that_pydicom_has_decoded_is_refused(monkeypatch, access):
+    # Elements in an item whose tags do not increase (PS3.5 Section 7.1), in
+    # Referenced Study Sequence written as UN. pydicom reads its items when
+    # the element is accessed, without complaint.
+    item = _encoded(_tag("(0008,1155)"), b"2.25.2\x00") + _encoded(
+        _tag("(0008,1150)"), b"1.2.3\x00"
+    )
+    dataset = synthetic.rt_plan()
+    dataset[0x00081110] = _unknown(monkeypatch, 0x00081110, _encoded(0xFFFEE000, item))
+    read = _written_and_read(dataset, EXPLICIT)
+    path = _path("(0008,1110)")
+
+    with pytest.raises(elements.UndecodableElement, match="items that cannot be"):
+        _read(read, path)
+    _accessed(read, "(0008,1110)", access)
+    with pytest.raises(elements.UndecodableElement) as raised:
+        _read(read, path)
+
+    assert read[0x00081110].VR == "SQ"
+    assert str(raised.value) == (
+        f"{path} was decoded by pydicom before it was read here, so its "
+        "encoded value cannot be checked"
+    )
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@ACCESSES
+def test_a_vr_that_pydicom_has_chosen_is_refused(access):
+    # Without Pixel Representation, nothing decides whether Smallest Image
+    # Pixel Value is US or SS, but pydicom chooses one as it decodes it.
+    dataset = synthetic.rt_plan()
+    dataset[0x00280106] = _raw("(0028,0106)", None, b"\xff\xff")
+    read = _written_and_read(dataset, IMPLICIT)
+    path = _path("(0028,0106)")
+
+    with pytest.raises(elements.UndecodableElement, match="nothing in the data"):
+        _read(read, path)
+    _accessed(read, "(0028,0106)", access)
+    with pytest.raises(elements.UndecodableElement, match="decoded by pydicom"):
+        _read(read, path)
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@TRANSFER_SYNTAXES
+def test_what_dcmread_decodes_itself_is_read(transfer_syntax):
+    # dcmread decodes Specific Character Set, and reads a sequence of
+    # undefined length as items, before anything accesses them.
+    dataset = _plan_with_assertions(_assertion())
+    dataset.SpecificCharacterSet = "ISO_IR 100"
+    dataset[_tag(RT_ASSERTIONS)].is_undefined_length = True
+    read = _written_and_read(dataset, transfer_syntax)
+    held = read.get_item(_tag(RT_ASSERTIONS), keep_deferred=True)
+    assert isinstance(held, pydicom.DataElement) and held.is_undefined_length
+
+    codecs = elements.dataset_codecs(read)
+    name = _read(read, ASSERTER_NAME_PATH, codecs)
+
+    assert codecs == ("latin_1",)
+    assert (name.vr, name.values) == ("PN", (ASSERTER_NAME,))
 
 
 @pytest.mark.usefixtures("pydicom_behaviour")
