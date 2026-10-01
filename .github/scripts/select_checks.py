@@ -140,6 +140,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/compound_actions.py",
         "lib/pymedphys/_dicom/deidentify/dates.py",
         "lib/pymedphys/_dicom/deidentify/dummy_values.py",
+        "lib/pymedphys/_dicom/deidentify/elements.py",
         "lib/pymedphys/_dicom/deidentify/keys.py",
         "lib/pymedphys/_dicom/deidentify/output_names.py",
         "lib/pymedphys/_dicom/deidentify/pseudonyms.py",

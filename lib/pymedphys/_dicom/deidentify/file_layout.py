@@ -18,7 +18,9 @@ Verification must say where in a written file it finds something: in the
 preamble, a File Meta Information element, a data set element, Data Set
 Trailing Padding, or the bytes after the last element that could be read.
 :func:`read_file_layout` reads a DICOM PS3.10 file's structure from its bytes
-alone, independently of the library that wrote it.
+alone, independently of the library that wrote it. :func:`reads_as_items`
+reads the value of a sequence in the same way, so that a decoder can check
+its items before it trusts them.
 """
 
 from __future__ import annotations
@@ -263,6 +265,27 @@ def read_file_layout(data: bytes | bytearray | memoryview | mmap.mmap) -> FileLa
         return _Reader(octets).read()
 
 
+def reads_as_items(value: bytes | bytearray | memoryview, *, explicit: bool) -> bool:
+    """Return whether the encoded value of a sequence holds only items.
+
+    The value is read as :func:`read_file_layout` reads a sequence, with the
+    items nested in its items: each item of defined length must fit in what
+    holds it, and each of undefined length must end with its delimiter; each
+    item's data set must be readable, with each tag higher than the one
+    before it; and nothing may follow the last item.
+
+    Parameters
+    ----------
+    value : bytes, bytearray, or memoryview
+        The value of an element of VR SQ, without its header.
+    explicit : bool
+        Whether the items are in explicit VR. Those in a value of VR UN are
+        not (PS3.5 Section 6.2.2).
+    """
+    with memoryview(value) as view, view.cast("B") as octets:
+        return _Reader(octets).holds_items(explicit)
+
+
 class _Unreadable(Exception):
     """A structure that cannot be read, where reading stops."""
 
@@ -336,6 +359,17 @@ class _Reader:
         if end < size:
             self._add(end, size, None, Location(Region.TRAILING))
         return FileLayout(size, syntax, readable and end == size, tuple(self.spans))
+
+    def holds_items(self, explicit: bool) -> bool:
+        """Return whether the data, from start to end, are a sequence's items."""
+        # The sequence's own tag does not change how its items are read.
+        sequence = ElementPath((), "(0000,0000)")
+        where = Location(Region.DATA_SET)
+        try:
+            self._items(0, len(self.data), False, explicit, sequence, where)
+        except _Unreadable:
+            return False
+        return True
 
     def _unpack(self, form: str, position: int, end: int) -> tuple[int, ...]:
         if position + struct.calcsize(form) > end:
