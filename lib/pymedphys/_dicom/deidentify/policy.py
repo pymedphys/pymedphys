@@ -19,6 +19,8 @@ Level Confidentiality Profile, chosen from the Options that the design
 document's Scope targets:
 
 - ``basic``, the default: the Basic Profile alone;
+- ``basic-clean-descriptors``: Clean Descriptors, so that cleaned
+  descriptors, such as structure names that match TG-263, can be kept;
 - ``tps-import``: Retain Device Identity, Retain Patient Characteristics,
   Retain Longitudinal Temporal Information with Modified Dates, and Clean
   Descriptors, for copies in non-clinical treatment planning systems;
@@ -46,11 +48,11 @@ without the preset, and any other conflict, such as one a new edition of the
 table adds, are rejected.
 
 A preset is enabled only once its behaviour is implemented and validated. No
-preset is enabled yet; the first supported release is to enable ``basic``, the
-Basic Profile alone, and a preset that adds the Clean Descriptors Option to
-it. The engine takes its policy from :func:`select_policy`, which refuses a
-preset that is not enabled. A policy composed from a given table is never
-enabled, and a custom option set is validated but not enabled.
+preset is enabled yet; the first supported release is to enable ``basic`` and
+``basic-clean-descriptors``. The engine takes its policy from
+:func:`select_policy`, which refuses a preset that is not enabled. A policy
+composed from a given table is never enabled, and a custom option set is
+validated but not enabled.
 """
 
 from __future__ import annotations
@@ -80,6 +82,7 @@ TARGET_OPTIONS = (
 PRESETS: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
     {
         "basic": (),
+        "basic-clean-descriptors": ("clean_descriptors",),
         "tps-import": (
             DEVICE_IDENTITY,
             "retain_patient_characteristics",
@@ -95,8 +98,7 @@ PRESETS: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
 )
 DEFAULT_PRESET = "basic"
 # The presets whose behaviour is implemented and validated. None is yet; the
-# first supported release is to enable ``basic`` and a preset that adds the
-# Clean Descriptors Option to it.
+# first supported release is to enable ``basic`` and ``basic-clean-descriptors``.
 ENABLED_PRESETS: frozenset[str] = frozenset()
 
 # The preset that resolves the conflicts below, and the actions it resolves.
