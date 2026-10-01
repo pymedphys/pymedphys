@@ -95,9 +95,11 @@ class PrivateAttributeError(Exception):
     """A value that may hold private attributes cannot be read as items.
 
     The private attributes in it cannot all be found, so its instance is
-    sequestered. This is not a :class:`ValueError`, so a handler for invalid
-    arguments cannot catch it by accident. The message names the element by
-    its path and never quotes a value.
+    sequestered, unless a sequence that is removed holds the value, or is the
+    value, and so removes it with everything in it. This is not a
+    :class:`ValueError`, so a handler for invalid arguments cannot catch it
+    by accident. The message names the element by its path and never quotes
+    a value.
 
     Attributes
     ----------
