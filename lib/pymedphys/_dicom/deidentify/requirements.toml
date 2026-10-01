@@ -570,6 +570,7 @@ milestone = "M4"
 decisions = ["D-001", "D-010", "D-022", "D-023"]
 implementation = [
   "_dev/deid_tables/annex_e.py",
+  "_dev/deid_tables/edition_check.py",
   "_dev/deid_tables/generate.py",
   "_dev/deid_tables/ps3_4.py",
   "_dev/deid_tables/ps3_6.py",
@@ -582,6 +583,8 @@ tests = [
   "tests/dev/test_deid_tables.py::test_generate_writes_table_e1_1_with_its_provenance",
   "tests/dev/test_deid_tables.py::test_a_source_with_another_digest_is_not_parsed",
   "tests/dev/test_deid_tables.py::test_check_passes_only_when_the_tables_are_current",
+  "tests/dev/test_deid_tables.py::test_a_changed_cell_changes_exactly_its_table",
+  "tests/dev/test_deid_tables.py::test_a_page_that_cannot_be_parsed_fails_the_tables_it_serves",
   "tests/dicom/test_deidentify_standard.py::test_each_table_is_generated_from_the_pinned_edition",
   "tests/dicom/test_deidentify_standard.py::test_an_altered_row_is_rejected",
   "tests/dicom/test_deidentify_standard.py::test_every_table_e1_1_attribute_is_in_the_data_dictionary",
@@ -591,7 +594,7 @@ tests = [
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",
 ]
 note = '''
-The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names that Table E.1-1 omits. Remaining: the edition-check workflow (M1); supplementary rules for the other unsafe attributes that the tables omit, such as operator-typed RT text, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names that Table E.1-1 omits. `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and a monthly workflow that runs it is staged. Remaining: moving that workflow into `.github/workflows/` (M1); supplementary rules for the other unsafe attributes that the tables omit, such as operator-typed RT text, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]

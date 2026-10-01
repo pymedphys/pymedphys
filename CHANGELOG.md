@@ -343,7 +343,16 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   Types or for a UID that Table B.5-1 does not list, such as a retired or
   Private SOP Class.
   `--check` exits with status 1 when the
-  committed tables are missing or out of date.
+  committed tables are missing or out of date. `--check-current` generates
+  the tables from NEMA's current edition instead, with the same parsers and
+  the pin's corrections, and compares each table's rows with the committed
+  table's recorded digest without writing anything: it names the edition the
+  pages give, the tables that would change, and the pages that could not be
+  fetched or parsed, without quoting them, and exits with status 1 when a
+  table would change and 3 when a page failed; `--json` also writes the
+  result as JSON. The `deid-edition-check.yml` workflow runs it monthly and
+  opens or updates one issue when a table would change, a page fails, or the
+  check stops without a result.
   `pymedphys._dicom.deidentify.scope` uses Table B.5-1 to classify an
   instance as de-identified or sequestered: the first supported release
   de-identifies CT Image, RT Structure Set, RT Plan, and RT Dose instances in

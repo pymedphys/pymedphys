@@ -20,6 +20,7 @@ Push / pull request -> ci.yml
 Manual run -> docs.yml
 Schedule / manual run / main push / PR -> security.yml
 Schedule / manual run -> deps.yml
+Schedule / manual run -> deid-edition-check.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 
@@ -339,6 +340,25 @@ Automated dependency updates for Python packages.
 - **Dependabot** (`.github/dependabot.yml`) owns the GitHub Actions pins (one
   grouped weekly PR) and raises security-fix PRs for Python packages; it does
   not open version-update PRs for Python packages
+
+#### `deid-edition-check.yml`
+
+Checks whether NEMA's current edition of the DICOM standard would change the
+de-identification tables generated from the pinned edition, as the
+[de-identification design](deidentification-design.md) requires.
+
+- **Schedule**: Monthly (the 3rd), or manually
+- **Steps**: installs the project with the `user` extra and runs
+  `pymedphys dev deid-tables --check-current`, which downloads the pinned
+  pages from NEMA's `current/` directory and compares the tables generated from
+  them with the committed ones, without writing them. Its check job can only
+  read the repository
+- **Failures**: when a table would change, a page cannot be fetched or parsed,
+  or the check stops without a result, a separate job, the only one that can
+  write issues and which runs no repository code, opens or comments on the
+  issue titled "DICOM edition check: the de-identification tables need
+  attention" with the check's report and a link to the run. Close the issue
+  once the pin has moved; a later finding opens a new one
 
 ### AI Assistance
 
