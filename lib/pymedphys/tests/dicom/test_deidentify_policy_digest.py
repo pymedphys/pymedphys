@@ -18,13 +18,16 @@ Every input is changed by monkeypatching or by injecting synthetic inputs, so
 no test edits the package's own files.
 """
 
+import ast
 import dataclasses
 import hashlib
 import importlib
 import json
 import pkgutil
+import platform
 import re
 import shutil
+import sys
 import types
 import uuid
 
@@ -85,9 +88,18 @@ SYNTHETIC_INPUTS = policy_digest.DigestInputs(
         "dates.MIN_OFFSET_WEEKS": 52,
     },
     files={"policy.py": "f" * 64},
+    environment={
+        "pydicom.__version__": "3.0.2",
+        "platform.python_version": "3.14.0",
+        "platform.python_implementation": "CPython",
+    },
 )
 SYNTHETIC_CANONICAL_BYTES = (
     '{"engine_version":"0.42.0.dev1",'
+    '"environment":{'
+    '"platform.python_implementation":["str","CPython"],'
+    '"platform.python_version":["str","3.14.0"],'
+    '"pydicom.__version__":["str","3.0.2"]},'
     '"files":{"policy.py":"' + "f" * 64 + '"},'
     '"format":"pymedphys-deid-policy-digest/1",'
     '"generated_values":{'
@@ -109,7 +121,7 @@ SYNTHETIC_CANONICAL_BYTES = (
     '"tables":{"e1_1.json":"' + "0" * 64 + '"},'
     '"vocabulary":null}'
 ).encode("utf-8")
-SYNTHETIC_SHA256 = "4d0fd3bb98419a4854e8fe8e43fe9bdcecdca833167aae277ea5059945d47368"
+SYNTHETIC_SHA256 = "4657ba6f07dc332a9cfd7eddc7f1b13bc954d4587dbf342f802d5e1e1b27f315"
 
 # Each parameter of generated values, and another value for it.
 GENERATED_VALUE_CHANGES = {
@@ -129,6 +141,14 @@ GENERATED_VALUE_CHANGES = {
             {**dummy_values.CONSTANTS, "DA": ("19000101", "19000103")}
         ),
     ),
+}
+
+# Each value of the environment: where it comes from, and another value for it.
+ENVIRONMENT_CHANGES = {
+    "platform.python_implementation": (platform, "python_implementation", "PyPy"),
+    "platform.python_version": (platform, "python_version", "3.14.1"),
+    "pydicom.__version__": ("pydicom", "__version__", "3.0.3"),
+    "tomlkit.__version__": ("tomlkit", "__version__", "0.15.2"),
 }
 
 ENGINE_FILES = {
@@ -514,6 +534,61 @@ def test_a_parameter_that_changes_only_its_type_changes_the_digest(name, value):
     ) != policy_digest.canonical_bytes(SYNTHETIC_POLICY, SYNTHETIC_INPUTS)
 
 
+def _third_party_imports(path):
+    """Return the top-level names of the third-party modules a module imports.
+
+    A name imported from ``pymedphys._imports``, which imports it lazily, is
+    the module it names.
+    """
+    names = set()
+    for node in ast.walk(ast.parse(path.read_bytes())):
+        if isinstance(node, ast.Import):
+            names.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and not node.level and node.module:
+            if node.module == "pymedphys._imports":
+                names.update(alias.name for alias in node.names)
+            else:
+                names.add(node.module)
+    tops = {name.partition(".")[0] for name in names}
+    return tops - set(sys.stdlib_module_names) - {"__future__", "pymedphys"}
+
+
+def test_the_environment_is_python_and_every_library_that_the_engine_imports():
+    environment = policy_digest.digest_inputs().environment
+    imported = set().union(
+        *(
+            _third_party_imports(path)
+            for path in policy_digest.PACKAGE_DIR.rglob("*.py")
+            if "__pycache__" not in path.parts
+        )
+    )
+
+    assert {"pydicom", "tomlkit"} <= imported
+    assert environment == {
+        "platform.python_implementation": platform.python_implementation(),
+        "platform.python_version": platform.python_version(),
+        **{
+            f"{name}.__version__": importlib.import_module(name).__version__
+            for name in imported
+        },
+    }
+
+
+@pytest.mark.parametrize("name", list(ENVIRONMENT_CHANGES))
+def test_the_python_implementation_and_version_and_each_library_version_change_the_digest(
+    basic, monkeypatch, name
+):
+    before = policy_digest.policy_digest(basic)
+    module, attribute, value = ENVIRONMENT_CHANGES[name]
+    if module is platform:
+        monkeypatch.setattr(platform, attribute, lambda: value)
+    else:
+        monkeypatch.setattr(importlib.import_module(module), attribute, value)
+
+    assert policy_digest.digest_inputs().environment[name] == value
+    assert policy_digest.policy_digest(basic) != before
+
+
 def test_every_module_rule_file_and_table_of_the_engine_is_covered():
     files = policy_digest.digest_inputs().files
     package = importlib.import_module("pymedphys._dicom.deidentify")
@@ -598,6 +673,7 @@ def test_caches_and_files_of_other_types_are_not_covered(basic, tmp_path, monkey
         ("generated_values", 0.5 + 0j),
         ("generated_values", {7: "secret-value"}),
         ("generated_values", True),
+        ("environment", 0.5 + 0j),
         ("l2_rules", 0.5),
         ("l2_rules", b"secret-value"),
         ("l2_rules", {7: "secret-value"}),
