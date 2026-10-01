@@ -21,7 +21,7 @@ import warnings
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import pseudonyms
+from pymedphys._dicom.deidentify import pseudonyms, reference_graph
 from pymedphys._dicom.deidentify.references import InstanceRecord
 
 from . import _synthetic_references as synthetic
@@ -30,6 +30,10 @@ SOURCE_ISSUER = "SYNTHETIC-ISSUER-3H8M"
 PRIVATE_CREATOR = "SYNTHETIC CREATOR 5T"
 IMPLICIT_VR = "1.2.840.10008.1.2"
 EXPLICIT_VR = "1.2.840.10008.1.2.1"
+# Two copies of one SOP Instance UID with different content.
+CONFLICTING = reference_graph.Finding(
+    reference_graph.FindingKind.CONFLICTING_INSTANCE, ((0,), (1,)), ("(0008,0018)",)
+)
 
 
 @pytest.mark.pydicom
@@ -308,6 +312,126 @@ def test_any_change_to_the_data_set_changes_the_content(change):
 
     assert _digest(implicit) != _digest(explicit)
     assert _digest(_with_private_elements()) != in_memory
+
+
+def _findings(*datasets):
+    records = [InstanceRecord.from_dataset(dataset) for dataset in datasets]
+    return reference_graph.build_reference_graph(records).findings
+
+
+PIXELS = (0, 1, 2, 3, 4, 5)
+
+
+def _image():
+    """Return a CT slice with an image of two rows of three pixels."""
+    dataset = synthetic.ct_slice(0)
+    dataset.SamplesPerPixel = 1
+    dataset.PhotometricInterpretation = "MONOCHROME2"
+    dataset.Rows = 2
+    dataset.Columns = 3
+    dataset.BitsAllocated = 16
+    dataset.BitsStored = 16
+    dataset.HighBit = 15
+    dataset.PixelRepresentation = 0
+    dataset.PixelData = struct.pack("<6H", *PIXELS)
+    return dataset
+
+
+def _rle_lossless(dataset):
+    # pydicom's own RLE Lossless encoder needs no optional codec, and
+    # encapsulates Pixel Data (PS3.5 Section A.4). It starts from a data set
+    # with a transfer syntax.
+    dataset = synthetic.written_and_read(dataset, EXPLICIT_VR)
+    dataset.compress(
+        pydicom.uid.RLELossless, encoding_plugin="pydicom", generate_instance_uid=False
+    )
+    return synthetic.written_and_read(dataset, pydicom.uid.RLELossless)
+
+
+def _big_endian(dataset):
+    # A big endian file holds an OW value in big endian byte order (PS3.5
+    # Section 7.3), and pydicom keeps the value's bytes as the file has them.
+    dataset.PixelData = struct.pack(">6H", *PIXELS)
+    return synthetic.written_and_read(dataset, pydicom.uid.ExplicitVRBigEndian)
+
+
+def _pixels(dataset):
+    decoder = pydicom.pixels.get_decoder(dataset.file_meta.TransferSyntaxUID)
+    return decoder.as_array(dataset)[0].ravel().tolist()
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "copy", [_rle_lossless, _big_endian], ids=["rle-lossless", "big-endian"]
+)
+def test_a_copy_whose_pixel_data_is_encoded_otherwise_conflicts(copy):
+    # The content holds Pixel Data as the file encodes it, so copies of one
+    # image conflict, and are sequestered, when one is compressed or big
+    # endian.
+    native = synthetic.written_and_read(_image(), EXPLICIT_VR)
+    other = copy(_image())
+
+    assert _pixels(other) == _pixels(native) == list(PIXELS)
+    assert _findings(native, other) == (CONFLICTING,)
+    # Only Pixel Data differs.
+    del native.PixelData, other.PixelData
+    assert _digest(native) == _digest(other)
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_padding_that_a_private_element_read_as_un_keeps_makes_copies_conflict():
+    # pydicom reads the private element from the Implicit VR file as UN and
+    # keeps its bytes, and from the Explicit VR file as LO, removing its
+    # trailing spaces; encoding adds back only the one that makes the
+    # length even.
+    def ct_slice():
+        dataset = synthetic.ct_slice(0)
+        block = dataset.private_block(0x0009, PRIVATE_CREATOR, create=True)
+        block.add_new(0x01, "LO", "SYNTHETIC PRIVATE TEXT  ")
+        return dataset
+
+    implicit = synthetic.written_and_read(ct_slice(), IMPLICIT_VR)
+    explicit = synthetic.written_and_read(ct_slice(), EXPLICIT_VR)
+
+    assert implicit[0x00091001].value == b"SYNTHETIC PRIVATE TEXT  "
+    assert explicit[0x00091001].value == "SYNTHETIC PRIVATE TEXT"
+    assert _findings(implicit, explicit) == (CONFLICTING,)
+
+
+def _read(dataset, **options):
+    """Return ``dataset`` written in Explicit VR and read with ``options``."""
+    dataset.file_meta = pydicom.dataset.FileMetaDataset()
+    dataset.file_meta.TransferSyntaxUID = EXPLICIT_VR
+    written = io.BytesIO()
+    pydicom.dcmwrite(written, dataset, enforce_file_format=True)
+    return pydicom.dcmread(io.BytesIO(written.getvalue()), **options)
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "options, change",
+    [
+        ({"stop_before_pixels": True}, _changed("PixelData", b"\x02\x01" * 4)),
+        (
+            {"specific_tags": ["SOPClassUID", "SOPInstanceUID"]},
+            _changed("PatientName", "FICTITIOUS^OTHER"),
+        ),
+    ],
+    ids=["stop-before-pixels", "specific-tags"],
+)
+def test_a_record_needs_a_data_set_read_in_full(options, change):
+    # A record has the content of the data set it is given, so copies that
+    # differ only in the elements that reading skipped would be identical.
+    changed = _with_private_elements()
+    change(changed)
+
+    assert _digest(_read(changed)) != _digest(_read(_with_private_elements()))
+    assert _digest(_read(changed, **options)) == _digest(
+        _read(_with_private_elements(), **options)
+    )
 
 
 def _encoded(tag, value):

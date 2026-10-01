@@ -43,14 +43,30 @@ every sequence and item of defined length. It leaves out the File Meta
 Information, group 0002, and group lengths (gggg,0000), which PS3.5 Section
 7.2 retires and whose values depend on the encoding; the preamble is not
 part of the data set. Each element is read, decoded, and encoded again, so
-the content depends neither on the file's transfer syntax, the length form
-of its sequences, or which values pydicom has read or deferred so far, nor
-on padding that decoding removes. Implicit VR holds no VRs, so a private
-element that pydicom reads from an Implicit VR file as UN, keeping its value
-as bytes, has the same content as the element read with its VR from an
-Explicit VR file, although pydicom holds the two with different VRs and
-values. A record keeps a digest of the content rather than the data set, so
-records stay small.
+the content depends neither on which little endian transfer syntax with
+native (uncompressed) Pixel Data the file has, such as Implicit VR or
+Explicit VR Little Endian, the length form of its sequences, or which
+values pydicom has read or deferred so far, nor on padding that decoding
+removes. Implicit VR holds no VRs, so a private element that pydicom reads
+from an Implicit VR file as UN, keeping its value as bytes, has the same
+content as the element read with its VR from an Explicit VR file, although
+pydicom holds the two with different VRs and values.
+
+Some differences of encoding remain in the content, and make copies
+conflict, which errs towards sequestering them. Encapsulated Pixel Data is
+compared in its encapsulated form, so a compressed and an uncompressed copy
+of an image conflict. A big endian file holds OW, OF, OD, OL, and OV values
+in its own byte order, which pydicom keeps, so a copy in the retired
+Explicit VR Big Endian conflicts with a little endian one. A private
+element read as UN keeps any trailing padding, which decoding a typed copy
+removes, and encoding adds back only the one space that makes the length
+even, so such copies can conflict.
+
+A record keeps a digest of the content rather than the data set, so records
+stay small. It must be built from a data set read in full: not read with
+``stop_before_pixels`` or ``specific_tags``, and with every deferred value
+still readable from its file. Otherwise two copies that differ only in the
+elements left unread would have the same content.
 
 Building a record reads every value of the data set without changing it, and
 neither logs nor warns; pydicom's own warnings and errors while it reads,
@@ -283,7 +299,14 @@ class InstanceRecord:
 
     @classmethod
     def from_dataset(cls, dataset: pydicom.Dataset) -> InstanceRecord:
-        """Return the record of a data set, without changing the data set."""
+        """Return the record of a data set, without changing the data set.
+
+        ``dataset`` must be read in full: not read with
+        ``stop_before_pixels`` or ``specific_tags``, and with every deferred
+        value still readable from its file. The digest covers only the
+        elements the data set holds, so copies that differ only in elements
+        left unread would otherwise be identical.
+        """
         sop_class = _uid(dataset, SOP_CLASS_TAG)
         iod, sites = _iod_and_sites(sop_class) if sop_class else (None, ())
         found = []
