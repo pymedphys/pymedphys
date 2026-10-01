@@ -303,6 +303,39 @@ def test_the_tables_can_be_given(tmp_path):
     assert found.name == "RT Dose"
 
 
+def test_a_listed_sop_class_of_an_iod_without_types_has_no_iod(tmp_path):
+    # As for an edition whose Table B.5-1 lists a SOP Class of an IOD that the
+    # pin leaves out: RT Plan Storage, given a real-time IOD.
+    document = _shipped()
+    plan = next(row for row in document["rows"] if row["name"] == "RT Plan Storage")
+    plan["iod"] = "Real-Time Audio Waveform IOD"
+    table = sop_classes.load_storage_sop_classes(
+        _write(tmp_path / SPEC.file, _redigested(document))
+    )
+    tables = iods.load_iod_tables()
+    assert "Real-Time Audio Waveform" not in tables.iods
+
+    found = sop_classes.iod_for_sop_class(
+        "1.2.840.10008.5.1.4.1.1.481.5", sop_classes=table, iod_tables=tables
+    )
+
+    assert found is None
+
+
+def test_given_iod_tables_without_the_listed_iod_find_none():
+    shipped = iods.load_iod_tables()
+    tables = dataclasses.replace(
+        shipped,
+        iods={name: iod for name, iod in shipped.iods.items() if name != "RT Plan"},
+    )
+
+    found = sop_classes.iod_for_sop_class(
+        "1.2.840.10008.5.1.4.1.1.481.5", iod_tables=tables
+    )
+
+    assert found is None
+
+
 @pytest.mark.parametrize(
     "field, value, message",
     [
