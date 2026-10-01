@@ -85,14 +85,17 @@ class Pin:
         The edition, such as ``"2026d"``.
     sources : tuple of PinnedSource
         Its source pages.
-    left_out_iods : tuple of (str, str)
-        The label and IOD name of each "IOD Modules" table of PS3.3 Annex A
-        whose Types are not generated, because a table it reaches gives an
-        attribute that the generated data dictionary, PS3.6 Table 6-1, does
-        not define, such as ``("Table A.34.11-1", "Real-Time Audio
-        Waveform")``. The Types of every other IOD in Annex A are generated.
-        Labels can change between editions, so generation checks each name,
-        and fails if a named IOD can be generated.
+    left_out_iods : tuple of LeftOutIOD
+        Each IOD of PS3.3 Annex A whose Types are not generated, because a
+        table it reaches gives an attribute that the generated data
+        dictionary, PS3.6 Table 6-1, does not define: the label of its "IOD
+        Modules" table, its name, and that attribute's tag, such as
+        ``LeftOutIOD("Table A.34.11-1", "Real-Time Audio Waveform",
+        "(0006,0001)")``. The Types of every other IOD in Annex A are
+        generated. Labels can change between editions, so generation checks
+        each name, and fails if a named IOD can be generated, or if the first
+        attribute it gives that the data dictionary lacks is not the one
+        named with it.
     shared_functional_groups : tuple of (str, str)
         The name of each IOD whose Functional Group Macros PS3.3 gives in its
         text as those of another IOD's table, and the name of that IOD, such
@@ -106,7 +109,7 @@ class Pin:
 
     edition: str
     sources: tuple[PinnedSource, ...]
-    left_out_iods: tuple[tuple[str, str], ...]
+    left_out_iods: tuple[ps3_3.LeftOutIOD, ...]
     shared_functional_groups: tuple[tuple[str, str], ...]
     corrections: tuple[ps3_3.Correction, ...]
 
@@ -160,9 +163,13 @@ PIN = Pin(
     # Table 9-1, Registry of DICOM Dynamic RTP Payload Elements, not in Table
     # 6-1.
     left_out_iods=(
-        ("Table A.32.9-1", "Real-Time Video Endoscopic Image"),
-        ("Table A.32.10-1", "Real-Time Video Photographic Image"),
-        ("Table A.34.11-1", "Real-Time Audio Waveform"),
+        ps3_3.LeftOutIOD(
+            "Table A.32.9-1", "Real-Time Video Endoscopic Image", "(0006,0001)"
+        ),
+        ps3_3.LeftOutIOD(
+            "Table A.32.10-1", "Real-Time Video Photographic Image", "(0006,0001)"
+        ),
+        ps3_3.LeftOutIOD("Table A.34.11-1", "Real-Time Audio Waveform", "(0006,0001)"),
     ),
     # Section A.36.4.4: "Table A.36-2 specifies the use of the Functional
     # Group Macros used in the Multi-frame Functional Groups Module for the

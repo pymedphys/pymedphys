@@ -37,7 +37,7 @@ its own, such as Table A.38-2 "Enhanced CT Image Functional Group Macros".
 Each macro's attribute table, such as Table C.7.6.16-2 "Pixel Measures Macro
 Attributes", defines one Functional Group Sequence (C.7.6.16.1.1). The pin
 leaves out the IODs whose tables give an attribute that the generated data
-dictionary does not define.
+dictionary does not define, and records that attribute's tag with each.
 
 Rows are kept as published, apart from the pin's named corrections: macros
 are not expanded, and attribute descriptions are omitted. Tables must be
@@ -106,7 +106,38 @@ _COMPOSITE_IOD_PREFIX = "Table A."
 
 
 class UndefinedAttributeError(TableFormatError):
-    """A table gives an attribute that the pinned data dictionary does not define."""
+    """A table gives an attribute that the pinned data dictionary does not define.
+
+    Attributes
+    ----------
+    tag : str
+        The attribute's tag, such as ``"(0006,0001)"``.
+    """
+
+    def __init__(self, tag: str, message: str) -> None:
+        super().__init__(message)
+        self.tag = tag
+
+
+@dataclasses.dataclass(frozen=True)
+class LeftOutIOD:
+    """An IOD of Annex A whose Types are not generated, and why.
+
+    Attributes
+    ----------
+    table : str
+        The label of its "IOD Modules" table, such as ``"Table A.34.11-1"``.
+    iod : str
+        Its name, such as ``"Real-Time Audio Waveform"``.
+    undefined_tag : str
+        The tag of the attribute that a table it reaches gives and the data
+        dictionary does not define, such as ``"(0006,0001)"``. Where its
+        tables give several, the first that :func:`collect` reaches.
+    """
+
+    table: str
+    iod: str
+    undefined_tag: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -329,7 +360,7 @@ def _row(
     if attribute_type in ATTRIBUTE_TYPES and (tag == name or is_dictionary_tag(tag)):
         if tag != name and tag not in dictionary:
             raise UndefinedAttributeError(
-                f"{label} row {number} has {tag}, which PS3.6 does not define"
+                tag, f"{label} row {number} has {tag}, which PS3.6 does not define"
             )
         # A row whose name spans the tag column describes attributes in words.
         return {
@@ -455,12 +486,12 @@ def _annex_a_labels(tables: Sequence[HtmlTable], suffix: str) -> list[str]:
 
 
 def _composite_iods(
-    tables: Sequence[HtmlTable], left_out_iods: Iterable[tuple[str, str]]
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    tables: Sequence[HtmlTable], left_out_iods: Iterable[LeftOutIOD]
+) -> tuple[list[dict[str, Any]], list[tuple[dict[str, Any], LeftOutIOD]]]:
     """Return the IODs of Annex A to generate, and those the pin leaves out."""
-    left_out = dict(left_out_iods)
+    left_out = {entry.table: entry for entry in left_out_iods}
     iods: list[dict[str, Any]] = []
-    named: list[dict[str, Any]] = []
+    named: list[tuple[dict[str, Any], LeftOutIOD]] = []
     for label in _annex_a_labels(tables, _IOD_TITLE_SUFFIX):
         iod = parse_iod_table(label, select_table(tables, label, allow_merged=True))
         for module in iod["modules"]:
@@ -473,10 +504,11 @@ def _composite_iods(
             )
         if label not in left_out:
             iods.append(iod)
-        elif left_out.pop(label) != iod["iod"]:
+            continue
+        entry = left_out.pop(label)
+        if entry.iod != iod["iod"]:
             raise TableFormatError(f"the pin names {label} for another IOD")
-        else:
-            named.append(iod)
+        named.append((iod, entry))
     if left_out:
         raise TableFormatError(
             "the pin names tables that are not IOD Modules tables of Annex A: "
@@ -661,7 +693,7 @@ def _check_nesting_below_includes(
 def collect(
     tables: Sequence[HtmlTable],
     dictionary: Mapping[str, str],
-    left_out_iods: Iterable[tuple[str, str]] = (),
+    left_out_iods: Iterable[LeftOutIOD] = (),
     shared_functional_groups: Iterable[tuple[str, str]] = (),
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Parse the composite IODs' modules tables and every attribute table they reach.
@@ -672,10 +704,11 @@ def collect(
         Every table of PS3.3, extracted with merged cells expanded.
     dictionary : mapping of str to str
         The VR of each tag in the pinned PS3.6 data dictionary.
-    left_out_iods : iterable of (str, str)
-        The label and IOD name of each modules table that is left out because
-        a table it reaches gives an attribute that ``dictionary`` lacks, such
-        as ``("Table A.34.11-1", "Real-Time Audio Waveform")``.
+    left_out_iods : iterable of LeftOutIOD
+        Each IOD whose modules table is left out because a table it reaches
+        gives an attribute that ``dictionary`` lacks, with that attribute's
+        tag, such as ``LeftOutIOD("Table A.34.11-1", "Real-Time Audio
+        Waveform", "(0006,0001)")``.
     shared_functional_groups : iterable of (str, str)
         The name of each IOD whose Functional Group Macros are those of
         another IOD's table, rather than of a table titled with its own name,
@@ -711,9 +744,10 @@ def collect(
         IOD another's macros when it has its own or the other has none; if a
         Functional Group Macro does not define exactly one top-level
         attribute, a sequence, or includes Functional Group Macros; if an IOD
-        that is not left out gives an attribute that ``dictionary`` lacks, or
-        one that is left out does not, or is not an IOD Modules table of
-        Annex A or names another IOD; if no IOD remains; if a table includes
+        that is not left out gives an attribute that ``dictionary`` lacks; if
+        one that is left out gives none, first gives one other than the one
+        recorded with it, is not an IOD Modules table of Annex A, or names
+        another IOD; if no IOD remains; if a table includes
         itself other than below one of its own sequences, or through other
         tables; or if rows are nested below an "Include" row of Functional
         Group Macros, or of a table that does not define exactly one
@@ -721,22 +755,27 @@ def collect(
     """
     iods, left_out = _composite_iods(tables, left_out_iods)
     groups = _functional_group_tables(
-        tables, [*iods, *left_out], shared_functional_groups
+        tables, [*iods, *(iod for iod, _ in left_out)], shared_functional_groups
     )
     parsed: dict[str, dict[str, Any]] = {}
     checked: set[str] = set()
     for iod in iods:
         _expand(tables, dictionary, iod, groups, parsed, checked)
     _check_nesting_below_includes(parsed, dictionary)
-    for iod in left_out:
+    for iod, entry in left_out:
         # Its tables are parsed apart, so that none is generated.
         trial = dict(parsed)
         try:
             _expand(tables, dictionary, iod, groups, trial, set(checked))
             _check_nesting_below_includes(trial, dictionary)
-        except UndefinedAttributeError:
-            continue
+        except UndefinedAttributeError as error:
+            if error.tag == entry.undefined_tag:
+                continue
+            raise TableFormatError(
+                f"the pin leaves out {entry.table} for {entry.undefined_tag}, "
+                f"but {error}"
+            ) from error
         raise TableFormatError(
-            f"the pin leaves out {iod['label']}, whose Types can be generated"
+            f"the pin leaves out {entry.table}, whose Types can be generated"
         )
     return iods, [parsed[label] for label in sorted(parsed, key=natural_key)]

@@ -1483,7 +1483,10 @@ PS3_3_DICTIONARY = {row[0]: row[3] for row in TABLE_6_1_ROWS}
 PS3_3_CORRECTIONS = (
     ps3_3.Correction("Table C.99-4", "Contrast Module", "Contrast Module Attributes"),
 )
-PS3_3_LEFT_OUT_IODS = (("Table A.99-5", "Fixture Real-Time Image"),)
+# Fixture Stream Sequence (0998,00B0) is not in the fixture dictionary.
+PS3_3_LEFT_OUT_IODS = (
+    ps3_3.LeftOutIOD("Table A.99-5", "Fixture Real-Time Image", "(0998,00B0)"),
+)
 PS3_3_SHARED_FUNCTIONAL_GROUPS = (
     ("Fixture Enhanced Color Image", "Fixture Enhanced Image"),
 )
@@ -1780,6 +1783,18 @@ def test_malformed_attribute_tables_fail(old, new, message):
 
     with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
         ps3_3.parse_attribute_table("Table C.99-1", table, PS3_3_DICTIONARY)
+
+
+def test_an_undefined_attribute_error_carries_its_tag():
+    page = _page(PS3_3_PATIENT.replace("(0998,0060)", "(0998,0070)", 1))
+    table = chtml.select_table(
+        chtml.extract_tables(page, expand_spans=True), "Table C.99-1", allow_merged=True
+    )
+
+    with pytest.raises(ps3_3.UndefinedAttributeError) as raised:
+        ps3_3.parse_attribute_table("Table C.99-1", table, PS3_3_DICTIONARY)
+
+    assert raised.value.tag == "(0998,0070)"
 
 
 def test_rows_nest_only_below_a_sequence():
@@ -2141,24 +2156,31 @@ def test_an_iod_the_pin_does_not_leave_out_must_be_generated():
         _collect(left_out_iods=())
 
 
+def _left_out(table, iod, undefined_tag="(0998,00B0)"):
+    return ps3_3.LeftOutIOD(table, iod, undefined_tag)
+
+
 @pytest.mark.parametrize(
     "named, message",
     [
         (
-            (("Table A.99-5", "Fixture Image"),),
+            (_left_out("Table A.99-5", "Fixture Image"),),
             "the pin names Table A.99-5 for another IOD",
         ),
         # The pin leaves out only IODs that cannot be generated.
         (
-            (*PS3_3_LEFT_OUT_IODS, ("Table A.99-1", "Fixture Image")),
+            (*PS3_3_LEFT_OUT_IODS, _left_out("Table A.99-1", "Fixture Image")),
             "the pin leaves out Table A.99-1, whose Types can be generated",
         ),
         (
-            (*PS3_3_LEFT_OUT_IODS, ("Table A.99-3", "Fixture Enhanced Image")),
+            (
+                *PS3_3_LEFT_OUT_IODS,
+                _left_out("Table A.99-3", "Fixture Enhanced Image"),
+            ),
             "not IOD Modules tables of Annex A: Table A.99-3",
         ),
         (
-            (*PS3_3_LEFT_OUT_IODS, ("Table B.99-1", "Fixture Session")),
+            (*PS3_3_LEFT_OUT_IODS, _left_out("Table B.99-1", "Fixture Session")),
             "not IOD Modules tables of Annex A: Table B.99-1",
         ),
     ],
@@ -2166,6 +2188,46 @@ def test_an_iod_the_pin_does_not_leave_out_must_be_generated():
 def test_the_pin_leaves_out_exactly_the_iods_that_cannot_be_generated(named, message):
     with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
         _collect(left_out_iods=named)
+
+
+def test_an_iod_left_out_for_the_attribute_the_pin_records_is_not_generated():
+    iod_tables, attribute_tables = _collect()
+
+    assert "Fixture Real-Time Image" not in {iod["iod"] for iod in iod_tables}
+    assert not {"Table C.99-8", "Table C.99-10"} & {
+        table["label"] for table in attribute_tables
+    }
+
+
+@pytest.mark.parametrize(
+    "tables, undefined_tag, message",
+    [
+        # The pin records an attribute other than the one the IOD lacks.
+        (
+            PS3_3_TABLES,
+            "(0006,0001)",
+            "the pin leaves out Table A.99-5 for (0006,0001), but Table C.99-8 "
+            "row 1 has (0998,00B0), which PS3.6 does not define",
+        ),
+        # The IOD lacks another attribute in a module that comes before the one
+        # whose attribute the pin records, as a later edition might add.
+        (
+            _replace_section(
+                "C.99.7", PS3_3_STREAM.replace("(0998,0050)", "(0998,00C0)")
+            ),
+            "(0998,00B0)",
+            "the pin leaves out Table A.99-5 for (0998,00B0), but Table C.99-10 "
+            "row 1 has (0998,00C0), which PS3.6 does not define",
+        ),
+    ],
+)
+def test_an_iod_left_out_must_fail_for_the_attribute_the_pin_records(
+    tables, undefined_tag, message
+):
+    named = (_left_out("Table A.99-5", "Fixture Real-Time Image", undefined_tag),)
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        _collect(*tables, left_out_iods=named)
 
 
 def test_an_iod_left_out_must_fail_only_for_an_undefined_attribute():
@@ -2717,6 +2779,16 @@ def test_the_ps3_3_tables_are_named_as_the_loader_expects():
     [
         ({"left_out_iods": ()}, "which PS3.6 does not define"),
         (
+            {
+                "left_out_iods": (
+                    ps3_3.LeftOutIOD(
+                        "Table A.99-5", "Fixture Real-Time Image", "(0998,00C0)"
+                    ),
+                )
+            },
+            r"the pin leaves out Table A\.99-5 for \(0998,00C0\)",
+        ),
+        (
             {"shared_functional_groups": ()},
             "Table A.99-4 includes Functional Group Macros, but no table lists them",
         ),
@@ -2741,12 +2813,17 @@ def test_the_pin_leaves_out_the_real_time_iods():
     # Their Current Frame Functional Groups Module gives Current Frame
     # Functional Groups Sequence (0006,0001), which 2026d PS3.6 defines in
     # Table 9-1, not in the data dictionary of Table 6-1. Generation fails if
-    # an edition adds an IOD that cannot be generated, or if one of these can
-    # be, and so does this test until it is updated with the pin.
-    assert dict(generate.PIN.left_out_iods) == {
-        "Table A.32.9-1": "Real-Time Video Endoscopic Image",
-        "Table A.32.10-1": "Real-Time Video Photographic Image",
-        "Table A.34.11-1": "Real-Time Audio Waveform",
+    # an edition adds an IOD that cannot be generated, if one of these can
+    # be, or if one first gives another attribute that Table 6-1 lacks, and
+    # so does this test until it is updated with the pin.
+    assert set(generate.PIN.left_out_iods) == {
+        ps3_3.LeftOutIOD(
+            "Table A.32.9-1", "Real-Time Video Endoscopic Image", "(0006,0001)"
+        ),
+        ps3_3.LeftOutIOD(
+            "Table A.32.10-1", "Real-Time Video Photographic Image", "(0006,0001)"
+        ),
+        ps3_3.LeftOutIOD("Table A.34.11-1", "Real-Time Audio Waveform", "(0006,0001)"),
     }
 
 
@@ -2761,7 +2838,7 @@ def test_the_pin_gives_an_iod_the_functional_group_macros_its_text_names():
 
 def test_every_storage_sop_class_iod_is_generated():
     generated = set(iods.load_iod_tables().iods)
-    left_out = {name for _, name in generate.PIN.left_out_iods}
+    left_out = {entry.iod for entry in generate.PIN.left_out_iods}
     storage = {row.iod_name for row in sop_classes.load_storage_sop_classes().rows}
 
     assert not generated & left_out

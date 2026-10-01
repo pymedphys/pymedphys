@@ -313,7 +313,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   the Per-Frame Functional Groups Sequences. The pin leaves out the three
   real-time IODs, whose Current Frame Functional Groups Sequence (0006,0001)
   PS3.6 defines outside its data dictionary, and generation fails if an IOD
-  it does not leave out cannot be generated, or one it leaves out can be. It
+  it does not leave out cannot be generated, or one it leaves out can be, or
+  fails for an attribute other than the one the pin records for it. It
   downloads each source
   page, or reads it from `--source-dir`, and parses it only after checking its
   SHA-256 digest against the pin. The parsers map columns by their header
