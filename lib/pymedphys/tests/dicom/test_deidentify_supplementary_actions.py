@@ -585,3 +585,49 @@ def test_rules_for_iod_tables_of_another_edition_are_rejected(tmp_path, monkeypa
         supplementary_actions.load_supplementary_actions(
             _write(tmp_path / "supplementary_actions.toml", _document())
         )
+
+
+def _with_definition(iod_name, tag):
+    """Return the IOD tables with an IOD that defines ``tag`` in a sequence."""
+    tables = iods.load_iod_tables()
+    definition = iods.AttributeDefinition(
+        path=("(300A,00B0)",), tag=tag, name="", type="3", module="", tables=()
+    )
+    given = dict(tables.iods)
+    if iod_name in given:
+        given[iod_name] = dataclasses.replace(
+            given[iod_name], definitions=(*given[iod_name].definitions, definition)
+        )
+    else:
+        given[iod_name] = iods.IOD(iod_name, "Table A.0-0", (), (definition,))
+    return dataclasses.replace(tables, iods=types.MappingProxyType(given))
+
+
+@pytest.mark.parametrize(
+    "iod_name, required",
+    [
+        # A supported IOD that comes to use Pulse Sequence Name, which has no
+        # rule, at any depth, needs a rule for it.
+        ("RT Plan", True),
+        # An IOD that is not supported does not, even once its Types are
+        # generated.
+        ("MR Image", False),
+    ],
+)
+def test_only_the_text_of_the_supported_iods_needs_rules(
+    tmp_path, monkeypatch, iod_name, required
+):
+    tables = _with_definition(iod_name, "(0018,9005)")
+    monkeypatch.setattr(supplementary_actions, "load_iod_tables", lambda: tables)
+    path = _write(tmp_path / "supplementary_actions.toml", _document())
+
+    if required:
+        with pytest.raises(
+            supplementary_actions.SupplementaryActionError,
+            match=re.escape("has no action for (0018,9005)"),
+        ):
+            supplementary_actions.load_supplementary_actions(path)
+    else:
+        assert "(0018,9005)" not in (
+            supplementary_actions.load_supplementary_actions(path).rules
+        )
