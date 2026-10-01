@@ -1,4 +1,5 @@
 from pymedphys._dev import docs, propagate, tests
+from pymedphys._dev.deid_tables import edition_check
 from pymedphys._dev.deid_tables import generate as deid_tables
 
 
@@ -95,12 +96,40 @@ def add_deid_tables_parser(dev_subparsers):
             "package's _dicom/deidentify/_standard directory."
         ),
     )
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--check",
         action="store_true",
         help="Exit with status 1 if the tables in --output-dir are missing or differ.",
     )
-    parser.set_defaults(func=deid_tables.deid_tables_cli)
+    mode.add_argument(
+        "--check-current",
+        action="store_true",
+        help=(
+            "Generate the tables from NEMA's current edition, or from the pages "
+            "in --source-dir, without checking the pinned digests or writing "
+            "the tables, and compare each table's rows with those in "
+            "--output-dir. Lists the tables that would change and the pages "
+            "that could not be fetched or parsed, without quoting them. Exits "
+            "with status 0 if no table would change, 1 if a table would change, "
+            "and 3 if a page could not be fetched or a table generated."
+        ),
+    )
+    parser.add_argument(
+        "--json",
+        metavar="FILE",
+        help="With --check-current, also write the result to FILE as JSON.",
+    )
+    parser.set_defaults(func=run_deid_tables)
+
+
+def run_deid_tables(args):
+    if args.check_current:
+        edition_check.edition_check_cli(args)
+    elif args.json:
+        raise SystemExit("--json is only written with --check-current")
+    else:
+        deid_tables.deid_tables_cli(args)
 
 
 def add_clean_imports_parser(dev_subparsers):

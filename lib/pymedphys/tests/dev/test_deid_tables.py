@@ -26,15 +26,21 @@ from the standard: every attribute in it is invented.
 
 import dataclasses
 import hashlib
+import http.client
+import io
 import json
 import re
+import types
 import urllib.error
+import urllib.request
 
 from pymedphys._imports import pytest
 
+from pymedphys._data import retry
 from pymedphys._dev.deid_tables import (
     annex_e,
     chtml,
+    edition_check,
     generate,
     ps3_3,
     ps3_4,
@@ -2293,7 +2299,7 @@ def test_a_source_with_another_digest_is_not_parsed(source_dir, tmp_path):
     assert not (tmp_path / "tables").exists()
 
 
-def _fake_downloads(monkeypatch, responses):
+def _fake_downloads(monkeypatch, responses, module=generate):
     """Serve ``responses[url]`` bytes, or a 404 for any other URL."""
     requested = []
 
@@ -2304,7 +2310,7 @@ def _fake_downloads(monkeypatch, responses):
         with open(filepath, "wb") as file:
             file.write(responses[url])
 
-    monkeypatch.setattr(generate, "download_with_progress", download)
+    monkeypatch.setattr(module, "download_with_progress", download)
     return requested
 
 
@@ -2419,3 +2425,319 @@ def test_the_command_generates_and_checks(monkeypatch, source_dir, tmp_path):
     with pytest.raises(SystemExit) as exit_info:
         run("--check")
     assert exit_info.value.code == 1
+
+
+# The edition check, with the fixture pages, or altered copies of them, served
+# as NEMA's current edition.
+CHAPTER_E = "chtml/part15/chapter_E.html"
+CHAPTER_6 = "chtml/part06/chapter_6.html"
+SECTION_E3_10 = "chtml/part15/sect_E.3.10.html"
+# A column heading no published table has, which the report must not quote.
+SECRET = "Fixture Secret Column"
+
+
+@pytest.fixture(name="tables_dir")
+def _tables_dir(source_dir, tmp_path):
+    """The tables generated from the fixture pages, standing for the committed ones."""
+    directory = tmp_path / "tables"
+    generate.generate(FIXTURE_PIN, directory, source_dir=source_dir)
+    return directory
+
+
+def _check_current(tables_dir, replaced=None, error=None, unfetched=()):
+    """Check the fixture pages, with ``replaced`` pages and ``unfetched`` raising ``error``."""
+    pages = {**FIXTURE_PAGES, **(replaced or {})}
+
+    def fetch(path):
+        if path in unfetched:
+            raise error
+        return pages[path]
+
+    return edition_check.check_current(FIXTURE_PIN, tables_dir, fetch)
+
+
+def _replace(page, old, new):
+    assert page.count(old) == 1
+    return page.replace(old, new)
+
+
+def _e1_1_page(rows):
+    """The fixture's chapter E page, with ``rows`` in Table E.1-1."""
+    return _page(
+        E1_1A,
+        _table(
+            "Table E.1-1. Fixture Confidentiality Profile Attributes",
+            E1_1_HEADER,
+            rows,
+        ),
+    ).encode("utf-8")
+
+
+def _http_error(code):
+    return urllib.error.HTTPError(SECTION_E3_10, code, "Fixture", None, None)
+
+
+def _report(result):
+    return "\n".join(edition_check.report_lines(result)) + json.dumps(
+        dataclasses.asdict(result)
+    )
+
+
+def test_the_pinned_pages_change_no_table(tables_dir):
+    result = _check_current(tables_dir)
+
+    assert result.status == "unchanged"
+    assert result.pinned_edition == "2099a"
+    assert not result.changed_pages
+    assert not result.changed_tables
+    assert not result.unfetched_pages
+    assert not result.failed_tables
+    assert result.editions == dict.fromkeys(FIXTURE_PAGES)
+    assert edition_check.report_lines(result)[-1] == "Result: unchanged"
+
+
+def test_a_page_that_changes_no_table_changes_nothing(tables_dir):
+    release = (
+        '<span class="documentreleaseinformation">'
+        "DICOM PS3.15 2099b - Fixture Profiles</span>"
+    )
+    page = _replace(FIXTURE_PAGE, b"<body>", b"<body>" + release.encode("utf-8"))
+
+    result = _check_current(tables_dir, {CHAPTER_E: page})
+
+    assert result.status == "unchanged"
+    assert result.changed_pages == (CHAPTER_E,)
+    assert result.editions[CHAPTER_E] == "2099b"
+    assert result.editions["html/part03.html"] is None
+    assert "Edition the current pages name: 2099b, none" in (
+        edition_check.report_lines(result)
+    )
+
+
+def test_a_changed_cell_changes_exactly_its_table(tables_dir):
+    assert _e1_1_page(E1_1_ROWS) == FIXTURE_PAGE
+    rows = list(E1_1_ROWS)
+    # The Basic Profile action of Fixture Label, from Z to X.
+    assert rows[1][4] == "Z"
+    rows[1] = rows[1][:4] + ("X",) + rows[1][5:]
+
+    result = _check_current(tables_dir, {CHAPTER_E: _e1_1_page(rows)})
+
+    assert result.status == "changed"
+    assert result.changed_tables == ("e1_1.json",)
+    assert not result.failed_tables
+    assert edition_check.report_lines(result)[-3:] == [
+        "Tables that would change:",
+        "  e1_1.json",
+        "Result: changed",
+    ]
+
+
+@pytest.mark.parametrize(
+    "path, page, tables",
+    [
+        (
+            CHAPTER_E,
+            _replace(
+                FIXTURE_PAGE,
+                b"<p>Clean Graph. Opt.</p>",
+                f"<p>{SECRET}</p>".encode("utf-8"),
+            ),
+            ["e1_1.json"],
+        ),
+        # The PS3.3 tables check each tag against the data dictionary, so they
+        # fail with it.
+        (
+            CHAPTER_6,
+            _replace(
+                FIXTURE_CHAPTER_6_PAGE,
+                b"<p>Keyword</p>",
+                f"<p>{SECRET}</p>".encode("utf-8"),
+            ),
+            ["data_dictionary.json", "iod_modules.json", "module_attributes.json"],
+        ),
+    ],
+)
+def test_a_page_that_cannot_be_parsed_fails_the_tables_it_serves(
+    tables_dir, path, page, tables
+):
+    result = _check_current(tables_dir, {path: page})
+
+    assert result.status == "failed"
+    assert result.failed_tables == {
+        table: edition_check.TableFailure((path,), "TableFormatError")
+        for table in tables
+    }
+    assert not result.changed_tables
+    assert SECRET not in _report(result)
+
+
+@pytest.mark.parametrize(
+    "error, reported",
+    [
+        (_http_error(404), "HTTP 404"),
+        (TimeoutError("timed out"), "TimeoutError"),
+        (http.client.IncompleteRead(b""), "IncompleteRead"),
+        (FileNotFoundError(SECTION_E3_10), "FileNotFoundError"),
+    ],
+)
+def test_a_page_that_cannot_be_fetched_fails_the_tables_that_read_it(
+    tables_dir, error, reported
+):
+    result = _check_current(tables_dir, error=error, unfetched={SECTION_E3_10})
+
+    assert result.status == "failed"
+    assert result.unfetched_pages == {SECTION_E3_10: reported}
+    assert result.failed_tables == {
+        "e3_10_1.json": edition_check.TableFailure((SECTION_E3_10,), "not fetched")
+    }
+    assert not result.changed_tables
+    assert SECTION_E3_10 not in result.editions
+    assert f"  {SECTION_E3_10} ({reported})" in edition_check.report_lines(result)
+
+
+def test_a_failure_outranks_a_change(tables_dir):
+    rows = [E1_1_ROWS[0], E1_1_ROWS[2]]
+    error = _http_error(503)
+
+    result = _check_current(
+        tables_dir, {CHAPTER_E: _e1_1_page(rows)}, error, {SECTION_E3_10}
+    )
+
+    assert result.changed_tables == ("e1_1.json",)
+    assert result.status == "failed"
+
+
+def test_a_missing_committed_table_would_change(tables_dir):
+    (tables_dir / "e1_1a.json").unlink()
+
+    assert _check_current(tables_dir).changed_tables == ("e1_1a.json",)
+
+
+def test_the_edition_check_downloads_each_page_from_current(monkeypatch, tables_dir):
+    current = "https://dicom.nema.org/medical/dicom/current/output/{}"
+    requested = _fake_downloads(
+        monkeypatch,
+        {current.format(path): page for path, page in FIXTURE_PAGES.items()},
+        module=edition_check,
+    )
+
+    result = edition_check.check_current(
+        FIXTURE_PIN, tables_dir, edition_check.download_current
+    )
+
+    assert requested == [current.format(path) for path in FIXTURE_PAGES]
+    assert result.status == "unchanged"
+
+
+def _files(directory):
+    return {
+        path: (path.read_bytes(), path.stat().st_mtime_ns) if path.is_file() else None
+        for path in directory.rglob("*")
+    }
+
+
+@pytest.mark.parametrize(
+    "replaced, status, exit_status",
+    [
+        ({}, "unchanged", None),
+        ({CHAPTER_E: _e1_1_page(E1_1_ROWS[:2])}, "changed", 1),
+        ({CHAPTER_6: b"<html></html>"}, "failed", 3),
+    ],
+)
+def test_the_command_checks_the_current_pages_and_writes_only_its_report(
+    monkeypatch, tmp_path, tables_dir, capsys, replaced, status, exit_status
+):
+    monkeypatch.setattr(generate, "PIN", FIXTURE_PIN)
+    current_dir = tmp_path / "current"
+    for path, page in {**FIXTURE_PAGES, **replaced}.items():
+        (current_dir / path).parent.mkdir(parents=True, exist_ok=True)
+        (current_dir / path).write_bytes(page)
+    monkeypatch.chdir(tables_dir)
+    before = _files(tmp_path)
+    report = tmp_path / "report.json"
+    args = define_parser().parse_args(
+        [
+            "dev",
+            "deid-tables",
+            "--check-current",
+            "--source-dir",
+            str(current_dir),
+            "--output-dir",
+            str(tables_dir),
+            "--json",
+            str(report),
+        ]
+    )
+
+    if exit_status is None:
+        args.func(args)
+    else:
+        with pytest.raises(SystemExit) as exit_info:
+            args.func(args)
+        assert exit_info.value.code == exit_status
+
+    document = json.loads(report.read_text(encoding="utf-8"))
+    assert document["status"] == status
+    assert document["pinned_edition"] == "2099a"
+    assert capsys.readouterr().out.endswith(f"Result: {status}\n")
+    report.unlink()
+    assert _files(tmp_path) == before
+
+
+class _Response(io.BytesIO):
+    """What ``urlopen`` returns for a page, with its length."""
+
+    def __init__(self, page):
+        super().__init__(page)
+        self.headers = {"Content-Length": str(len(page))}
+
+
+def test_a_retried_download_leaves_only_the_report_on_standard_output(
+    monkeypatch, tables_dir, capsys
+):
+    # The workflow copies standard output into the issue it opens, so the
+    # downloader's message that it will retry must go to standard error.
+    monkeypatch.setattr(generate, "PIN", FIXTURE_PIN)
+    current = "https://dicom.nema.org/medical/dicom/current/output/"
+    refused = []
+
+    def urlopen(url, timeout):
+        assert timeout > 0
+        path = url.removeprefix(current)
+        if path == SECTION_E3_10 and not refused:
+            refused.append(path)
+            raise urllib.error.HTTPError(url, 503, "Service Unavailable", None, None)
+        return _Response(FIXTURE_PAGES[path])
+
+    # The downloader opens each URL with urllib.request.urlopen.
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    sleeps = []
+    monkeypatch.setattr(retry, "time", types.SimpleNamespace(sleep=sleeps.append))
+    args = define_parser().parse_args(
+        ["dev", "deid-tables", "--check-current", "--output-dir", str(tables_dir)]
+    )
+
+    args.func(args)
+
+    captured = capsys.readouterr()
+    assert refused == [SECTION_E3_10]
+    assert len(sleeps) == 1
+    assert "HTTP Error 503: Service Unavailable, Retrying" in captured.err
+    report = edition_check.report_lines(_check_current(tables_dir))
+    assert report[-1] == "Result: unchanged"
+    assert captured.out == "\n".join(report) + "\n"
+
+
+def test_the_check_options_exclude_each_other(tmp_path):
+    parser = define_parser()
+    with pytest.raises(SystemExit) as exit_info:
+        parser.parse_args(["dev", "deid-tables", "--check", "--check-current"])
+    assert exit_info.value.code == 2
+
+    args = parser.parse_args(
+        ["dev", "deid-tables", "--check", "--json", str(tmp_path / "report.json")]
+    )
+    with pytest.raises(SystemExit, match="--check-current"):
+        args.func(args)
+    assert not (tmp_path / "report.json").exists()
