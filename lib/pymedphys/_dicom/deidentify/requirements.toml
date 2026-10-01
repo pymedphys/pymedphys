@@ -548,6 +548,8 @@ tests = [
   "tests/dicom/test_deidentify_compound_actions.py::test_an_attribute_gets_the_action_of_its_strictest_type_across_modules",
   "tests/dicom/test_deidentify_compound_actions.py::test_no_required_attribute_with_a_compound_action_is_removed",
   "tests/dicom/test_deidentify_compound_actions.py::test_no_attribute_with_x_z_is_type_1_in_the_first_release_iods",
+  "tests/dicom/test_deidentify_compound_actions.py::test_no_required_attribute_with_a_compound_action_is_removed_in_any_generated_iod",
+  "tests/dicom/test_deidentify_compound_actions.py::test_x_z_sequesters_only_referenced_study_sequence_in_two_generated_iods",
   "tests/dicom/test_deidentify_references.py::test_reference_sites_include_the_rt_references",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_consistent_collection_has_no_findings",
   "tests/dicom/test_deidentify_reference_graph.py::test_each_reference_resolves_to_its_instance",

@@ -53,6 +53,7 @@ SECRET = "Doe^Jane"
 
 INSTITUTION_NAME = "(0008,0080)"
 PATIENT_ID = "(0010,0020)"
+REFERENCED_STUDY_SEQUENCE = "(0008,1110)"
 
 
 @pytest.fixture(name="tables", scope="module")
@@ -321,30 +322,120 @@ def _compound_attributes():
     }
 
 
-def test_no_required_attribute_with_a_compound_action_is_removed(tables):
+@pytest.fixture(name="resolutions", scope="module")
+def _resolutions(tables):
+    """Return how each compound action resolves in each generated IOD.
+
+    For each IOD by name, one ``(path, tag, action, types, found)`` for each
+    compound action that Table E.1-1 gives an attribute, at each place where
+    the IOD defines the attribute: ``types`` are the Types of its definitions
+    there, and ``found`` is the resolved action, or the
+    :class:`SequesterInstance` raised.
+    """
     by_tag = {}
     for tag, action in _compound_attributes():
         by_tag.setdefault(tag, set()).add(action)
 
+    resolutions = {}
+    for name, iod in tables.iods.items():
+        places = {(d.path, d.tag) for d in iod.definitions if d.tag in by_tag}
+        in_iod = []
+        for path, tag in sorted(places):
+            types = frozenset(d.type for d in iod.lookup(tag, path))
+            for action in sorted(by_tag[tag]):
+                try:
+                    found = resolve_in_iod(iod, tag, path, action)
+                except SequesterInstance as error:
+                    found = error
+                in_iod.append((path, tag, action, types, found))
+        resolutions[name] = tuple(in_iod)
+    return resolutions
+
+
+def _check_kept_where_required(where, types, found):
+    """Check that a resolved action keeps the attribute where its Type requires it."""
+    if types & {"1", "1C"}:
+        # Neither removed nor emptied.
+        assert found in {"D", "U"}, where
+    elif types & REQUIRED:
+        assert found != "X", where
+    else:
+        assert found in {"X", "Z"}, where
+
+
+def test_no_required_attribute_with_a_compound_action_is_removed(resolutions):
     resolved = set()
     for name in FIRST_RELEASE_IODS:
-        iod = tables.iods[name]
-        places = {(d.path, d.tag) for d in iod.definitions if d.tag in by_tag}
-        for path, tag in places:
-            types = {d.type for d in iod.lookup(tag, path)}
-            for action in by_tag[tag]:
-                found = resolve_in_iod(iod, tag, path, action)
-                resolved.add(found)
-                if types & {"1", "1C"}:
-                    # Neither removed nor emptied.
-                    assert found in {"D", "U"}, (name, path, tag, action)
-                elif types & REQUIRED:
-                    assert found != "X", (name, path, tag, action)
-                else:
-                    assert found in {"X", "Z"}, (name, path, tag, action)
+        for path, tag, action, types, found in resolutions[name]:
+            where = (name, path, tag, action)
+            # No compound action sequesters an instance of these IODs.
+            assert not isinstance(found, SequesterInstance), where
+            _check_kept_where_required(where, types, found)
+            resolved.add(found)
 
     # Every outcome occurs, so the sweep is not vacuous.
     assert resolved == {"X", "Z", "D", "U"}
+
+
+def test_no_required_attribute_with_a_compound_action_is_removed_in_any_generated_iod(
+    resolutions,
+):
+    resolved = set()
+    for name, in_iod in resolutions.items():
+        for path, tag, action, types, found in in_iod:
+            where = (name, path, tag, action)
+            if isinstance(found, SequesterInstance):
+                # Only X/Z on a Type 1 or 1C attribute sequesters the
+                # instance, and the exception says where.
+                assert action == "X/Z" and types & {"1", "1C"}, where
+                assert (found.action, found.attribute_type) == ("X/Z", "1"), where
+                assert (found.tag, found.path) == (tag, path), where
+            else:
+                _check_kept_where_required(where, types, found)
+                resolved.add(found)
+
+    # The sweep covers the first supported release's IODs and the others.
+    assert set(FIRST_RELEASE_IODS) < set(resolutions)
+    # Every outcome occurs, so the sweep is not vacuous.
+    assert resolved == {"X", "Z", "D", "U"}
+
+
+def test_x_z_sequesters_only_referenced_study_sequence_in_two_generated_iods(
+    resolutions,
+):
+    # Table E.1-1 gives Referenced Study Sequence X/Z under the Basic Profile,
+    # and the Related Information Entities Macro (PS3.3 Table 10.37-1) makes
+    # it Type 1 within these sequences, so no action that X/Z offers keeps it
+    # valid there. A new edition that changes where this happens fails here.
+    sequestered = {
+        (name, path, tag)
+        for name, in_iod in resolutions.items()
+        for path, tag, _, _, found in in_iod
+        if isinstance(found, SequesterInstance)
+    }
+
+    assert sequestered == {
+        (
+            "RT Patient Position Acquisition Instruction",
+            # Acquisition Task Sequence > Acquisition Subtask Sequence >
+            # Referenced Position Reference Instance Sequence
+            ("(3002,0118)", "(3002,011A)", "(3002,0132)"),
+            REFERENCED_STUDY_SEQUENCE,
+        ),
+        (
+            "RT Physician Intent",
+            # RT Physician Intent Sequence > RT Physician Intent Input
+            # Instance Sequence
+            ("(3010,0057)", "(3010,005F)"),
+            REFERENCED_STUDY_SEQUENCE,
+        ),
+        (
+            "RT Physician Intent",
+            # RT Prescription Sequence > Planning Input Information Sequence
+            ("(3010,006B)", "(3010,0076)"),
+            REFERENCED_STUDY_SEQUENCE,
+        ),
+    }
 
 
 def test_no_attribute_with_x_z_is_type_1_in_the_first_release_iods(tables):
