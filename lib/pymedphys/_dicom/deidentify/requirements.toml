@@ -16,7 +16,7 @@ Each Attribute to be protected shall then either be removed from the Data Set, o
 '''
 status = "partial"
 milestone = "M3"
-decisions = ["D-001", "D-003", "D-005", "D-011"]
+decisions = ["D-001", "D-003", "D-005", "D-011", "D-020", "D-021"]
 implementation = ["_dicom/deidentify/pseudonyms.py"]
 tests = [
   "tests/dicom/test_deidentify_pseudonyms.py::test_a_pseudonym_follows_the_specified_derivation",
@@ -37,7 +37,7 @@ Each Attribute specified to be retained shall be retained. At the discretion of 
 '''
 status = "partial"
 milestone = "M3"
-decisions = ["D-007", "D-011"]
+decisions = ["D-007", "D-011", "D-022", "D-023"]
 implementation = ["_dicom/deidentify/actions.py", "_dicom/deidentify/policy.py"]
 tests = [
   "tests/dicom/test_deidentify_actions.py::test_an_option_overrides_the_profile",
@@ -47,7 +47,7 @@ tests = [
   "tests/dicom/test_deidentify_policy.py::test_a_conflict_that_a_new_edition_adds_is_rejected",
 ]
 note = '''
-A policy keeps (K) each attribute that its selected options retain, and an option set that gives an attribute to be retained another action as well is rejected. The one exception is `tps-import`, which modifies eleven device dates and times that Retain Device Identity would keep and claims no PS3.15 conformance (D-007). Remaining: retaining each such attribute in a data set (M3).
+Reviewed rules add the text attributes, dates, and times that Table E.1-1 omits to those protected (D-022, D-023). A policy keeps (K) each attribute that its selected options retain, and an option set that gives an attribute to be retained another action as well is rejected. The one exception is `tps-import`, which modifies eleven device and beam hold dates and times that Retain Device Identity would keep and claims no PS3.15 conformance (D-007). Remaining: retaining each such attribute in a data set (M3).
 '''
 
 [[requirement]]
@@ -98,7 +98,7 @@ The Attribute Patient Identity Removed (0012,0062) shall be replaced or added to
 '''
 status = "planned"
 milestone = "M3"
-decisions = ["D-012"]
+decisions = ["D-012", "D-024"]
 
 [[requirement]]
 id = "PS3.15-E.1.1-06"
@@ -108,7 +108,7 @@ If the Data Set being de-identified is being stored within a DICOM File, then th
 '''
 status = "planned"
 milestone = "M3"
-decisions = ["D-002"]
+decisions = ["D-002", "D-025", "D-027"]
 
 [[requirement]]
 id = "PS3.15-E.1.1-07"
@@ -142,7 +142,7 @@ The Attributes listed in Table E.1-1 for each Profile or Option are contained in
 '''
 status = "partial"
 milestone = "M3"
-decisions = ["D-001", "D-007", "D-011"]
+decisions = ["D-001", "D-007", "D-011", "D-020", "D-021"]
 implementation = [
   "_dicom/deidentify/actions.py",
   "_dicom/deidentify/policy.py",
@@ -212,7 +212,7 @@ The Conformance Statement of an application that claims conformance to the Basic
 '''
 status = "planned"
 milestone = "M6"
-decisions = ["D-003", "D-004", "D-005", "D-013"]
+decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-021", "D-026"]
 note = '''
 The generated conformance statement covers each item, including the key scope within which replacements stay consistent.
 '''
@@ -306,9 +306,9 @@ When this Option is specified in addition to the Basic Application Level Confide
 '''
 status = "planned"
 milestone = "M4"
-decisions = ["D-009"]
+decisions = ["D-009", "D-022"]
 note = '''
-The Option is claimed only for output whose retained descriptors have passed pooled human review (D-009), which needs the QC pack (M4).
+The first supported release includes the Option, and keeps only the ROI names that exactly match a TG-263 name. The Option is claimed only for output whose retained descriptors have passed pooled human review (D-009), which needs the QC pack (M4).
 '''
 
 [[requirement]]
@@ -416,7 +416,7 @@ When this Option is specified in addition to the Basic Application Level Confide
 '''
 status = "planned"
 milestone = "M3"
-decisions = ["D-003", "D-007"]
+decisions = ["D-003", "D-007", "D-022"]
 note = '''
 `tps-import` also selects Modified Dates, which conflicts with this Option for device dates, so its output claims neither (D-007).
 '''
@@ -489,9 +489,9 @@ For public sharing, remove or replace all known direct identifiers and relevant 
 '''
 status = "planned"
 milestone = "M4"
-decisions = ["D-001", "D-017"]
+decisions = ["D-001", "D-017", "D-022", "D-023", "D-027"]
 note = '''
-The Basic Profile's actions remove or replace identifiers, and `public-release` retains indirect identifiers only after its statistical assessment.
+The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). A residual search fails any output file that still holds a source person name, UID, or date, or a source value outside its data set, and sends text findings to confidential review (D-027). `public-release` retains indirect identifiers only after its statistical assessment.
 '''
 
 [[requirement]]
@@ -511,7 +511,7 @@ Do not let de-identification compromise conformance with the standards that defi
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-003", "D-005", "D-008", "D-011"]
+decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-026"]
 implementation = [
   "_dicom/deidentify/iods.py",
   "_dicom/deidentify/reference_graph.py",
@@ -545,7 +545,7 @@ Preserve as much information about image acquisition as possible, including mach
 '''
 status = "planned"
 milestone = "M3"
-decisions = ["D-007"]
+decisions = ["D-007", "D-022"]
 note = '''
 `tps-import` retains device identity. `public-release` omits it, because device serial numbers and machine names can identify an institution and, with dates, individual treatments.
 '''
@@ -557,14 +557,14 @@ Remove or replace the identities of other persons, departments, institutions, an
 '''
 status = "partial"
 milestone = "M3"
-decisions = ["D-001"]
+decisions = ["D-001", "D-022"]
 implementation = ["_dicom/deidentify/supplementary_actions.py"]
 tests = [
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_the_basic_profile_keeps_no_person_name",
 ]
 note = '''
-Every person name in the pinned dictionary has an action that removes or replaces it under the Basic Profile, from Table E.1-1 or from a reviewed supplementary action. Remaining: rules for other identities in attributes that Table E.1-1 omits, such as operator-entered RT text (M2), and applying the actions to each data set (M3). The Retain Institution Identity Option is not supported.
+Every person name in the pinned dictionary has an action that removes or replaces it under the Basic Profile, from Table E.1-1 or from a reviewed supplementary action. Remaining: rules for other identities in attributes that Table E.1-1 omits, such as operator-typed RT text (M2), and applying the actions to each data set (M3). The Retain Institution Identity Option is not supported.
 '''
 
 [[requirement]]
@@ -574,7 +574,7 @@ Use the release of PS3.15 current at the time of de-identification as the refere
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-010"]
+decisions = ["D-001", "D-010", "D-022", "D-023"]
 implementation = [
   "_dev/deid_tables/annex_e.py",
   "_dev/deid_tables/generate.py",
@@ -598,7 +598,7 @@ tests = [
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",
 ]
 note = '''
-The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names that Table E.1-1 omits. Remaining: the edition-check workflow (M1); supplementary rules for the other unsafe attributes that the tables omit, such as operator-entered RT text, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names that Table E.1-1 omits. Remaining: the edition-check workflow (M1); supplementary rules for the other unsafe attributes that the tables omit, such as operator-typed RT text, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]
@@ -650,7 +650,7 @@ Remove or replace all unstructured text, whether in data elements, pixel data, o
 '''
 status = "planned"
 milestone = "M4"
-decisions = ["D-009", "D-017"]
+decisions = ["D-009", "D-017", "D-022", "D-027"]
 
 [[requirement]]
 id = "MIDI-BP-12"
@@ -723,9 +723,9 @@ Use human quality control to confirm that de-identification both removed what it
 '''
 status = "planned"
 milestone = "M4"
-decisions = ["D-016", "D-017"]
+decisions = ["D-016", "D-017", "D-027"]
 note = '''
-D-016 provides the confidential QC pack, and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. This practice is not implemented until M4 covers both, or the design assigns them to whoever releases the data.
+D-016 provides the confidential QC pack, to which the residual search sends its text findings (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. This practice is not implemented until M4 covers both, or the design assigns them to whoever releases the data.
 '''
 
 [[requirement]]
@@ -735,7 +735,7 @@ Document the de-identification process in detail, including the release of PS3.1
 '''
 status = "planned"
 milestone = "M4"
-decisions = ["D-011", "D-012"]
+decisions = ["D-011", "D-012", "D-024"]
 note = '''
-Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name.
+Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name, and each instance's De-identification Method names PyMedPhys and the preset and gives the policy digest (D-012, D-024).
 '''
