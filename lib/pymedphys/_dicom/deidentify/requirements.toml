@@ -68,7 +68,7 @@ If used, all instances of the Encrypted Attributes Data Set shall be encoded wit
 status = "out-of-scope"
 decisions = ["D-013"]
 note = '''
-The engine does not write the Encrypted Attributes Sequence (D-013).
+The engine does not write the Encrypted Attributes Sequence, and removes any that its input carries (D-013).
 '''
 
 [[requirement]]
