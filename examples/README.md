@@ -1,5 +1,12 @@
 # Example status
 
+The [reusable gamma benchmark](gamma_benchmark/README.md) compares named
+PyMedPhys versions or checkouts, or both interpolators in one checkout, using
+editable, fixed workload plans. It checks
+every returned gamma array before accepting paired speed-ups and produces an
+offline report. See its [comparison guide and measurement protocol](../lib/pymedphys/docs/contrib/info/gamma-benchmark.md)
+for controlled sweeps of grid size, cutoff, search settings, and resource budgets.
+
 `gamma_scaling_background.py` runs the comprehensive gamma performance study
 in the background, with progress reporting, stop/resume and one upload ZIP:
 

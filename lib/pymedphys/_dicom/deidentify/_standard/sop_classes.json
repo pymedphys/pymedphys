@@ -1,0 +1,1053 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.4 Table B.5-1",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.4 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "chtml/part04/sect_B.5.html",
+   "sha256": "a2e6f76967f3bab769299715c01f59757cede79cb9314b5bad60bb72a11e8846"
+  }
+ ],
+ "content_sha256": "46ac6eead8e2a8646f0f3a7ae02138d52fc1d7ee18034488928b24cd4215e4ac",
+ "rows": [
+  {
+   "name": "Computed Radiography Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.1",
+   "iod": "Computed Radiography Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Digital X-Ray Image Storage - For Presentation",
+   "uid": "1.2.840.10008.5.1.4.1.1.1.1",
+   "iod": "Digital X-Ray Image IOD",
+   "specialization": "B.5.1.1"
+  },
+  {
+   "name": "Digital X-Ray Image Storage - For Processing",
+   "uid": "1.2.840.10008.5.1.4.1.1.1.1.1",
+   "iod": "Digital X-Ray Image IOD",
+   "specialization": "B.5.1.1"
+  },
+  {
+   "name": "Digital Mammography X-Ray Image Storage - For Presentation",
+   "uid": "1.2.840.10008.5.1.4.1.1.1.2",
+   "iod": "Digital Mammography X-Ray Image IOD",
+   "specialization": "B.5.1.2"
+  },
+  {
+   "name": "Digital Mammography X-Ray Image Storage - For Processing",
+   "uid": "1.2.840.10008.5.1.4.1.1.1.2.1",
+   "iod": "Digital Mammography X-Ray Image IOD",
+   "specialization": "B.5.1.2"
+  },
+  {
+   "name": "Digital Intra-Oral X-Ray Image Storage - For Presentation",
+   "uid": "1.2.840.10008.5.1.4.1.1.1.3",
+   "iod": "Digital Intra-Oral X-Ray Image IOD",
+   "specialization": "B.5.1.3"
+  },
+  {
+   "name": "Digital Intra-Oral X-Ray Image Storage - For Processing",
+   "uid": "1.2.840.10008.5.1.4.1.1.1.3.1",
+   "iod": "Digital Intra-Oral X-Ray Image IOD",
+   "specialization": "B.5.1.3"
+  },
+  {
+   "name": "CT Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.2",
+   "iod": "CT Image IOD",
+   "specialization": "B.5.1.26"
+  },
+  {
+   "name": "CT Image Storage - For Processing",
+   "uid": "1.2.840.10008.5.1.4.1.1.2.3",
+   "iod": "CT Image IOD",
+   "specialization": "B.5.1.26"
+  },
+  {
+   "name": "Enhanced CT Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.2.1",
+   "iod": "Enhanced CT Image IOD",
+   "specialization": "B.5.1.7 B.5.1.23 B.5.1.26"
+  },
+  {
+   "name": "Enhanced CT Image Storage - For Processing",
+   "uid": "1.2.840.10008.5.1.4.1.1.2.4",
+   "iod": "Enhanced CT Image IOD",
+   "specialization": "B.5.1.7 B.5.1.23 B.5.1.26"
+  },
+  {
+   "name": "Legacy Converted Enhanced CT Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.2.2",
+   "iod": "Legacy Converted Enhanced CT Image IOD",
+   "specialization": "B.5.1.7 B.5.1.23 B.5.1.26"
+  },
+  {
+   "name": "Legacy Converted Enhanced CT Image Storage - For Processing",
+   "uid": "1.2.840.10008.5.1.4.1.1.2.5",
+   "iod": "Legacy Converted Enhanced CT Image IOD",
+   "specialization": "B.5.1.7 B.5.1.23 B.5.1.26"
+  },
+  {
+   "name": "Ultrasound Multi-frame Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.3.1",
+   "iod": "Ultrasound Multi-frame Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "MR Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.4",
+   "iod": "MR Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Enhanced MR Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.4.1",
+   "iod": "Enhanced MR Image IOD",
+   "specialization": "B.5.1.6 B.5.1.23"
+  },
+  {
+   "name": "MR Spectroscopy Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.4.2",
+   "iod": "MR Spectroscopy IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Enhanced MR Color Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.4.3",
+   "iod": "Enhanced MR Color Image IOD",
+   "specialization": "B.5.1.8 B.5.1.23"
+  },
+  {
+   "name": "Legacy Converted Enhanced MR Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.4.4",
+   "iod": "Legacy Converted Enhanced MR Image IOD",
+   "specialization": "B.5.1.6 B.5.1.23"
+  },
+  {
+   "name": "Ultrasound Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.6.1",
+   "iod": "Ultrasound Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Enhanced US Volume Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.6.2",
+   "iod": "Enhanced US Volume IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Photoacoustic Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.6.3",
+   "iod": "Photoacoustic Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Secondary Capture Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.7",
+   "iod": "Secondary Capture Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Multi-frame Single Bit Secondary Capture Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.7.1",
+   "iod": "Multi-frame Single Bit Secondary Capture Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Multi-frame Grayscale Byte Secondary Capture Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.7.2",
+   "iod": "Multi-frame Grayscale Byte Secondary Capture Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Multi-frame Grayscale Word Secondary Capture Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.7.3",
+   "iod": "Multi-frame Grayscale Word Secondary Capture Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Multi-frame True Color Secondary Capture Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.7.4",
+   "iod": "Multi-frame True Color Secondary Capture Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "12-lead ECG Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.1.1",
+   "iod": "12-Lead ECG IOD",
+   "specialization": ""
+  },
+  {
+   "name": "General ECG Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.1.2",
+   "iod": "General ECG IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Ambulatory ECG Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.1.3",
+   "iod": "Ambulatory ECG IOD",
+   "specialization": ""
+  },
+  {
+   "name": "General 32-bit ECG Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.1.4",
+   "iod": "General 32-bit ECG IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Hemodynamic Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.2.1",
+   "iod": "Hemodynamic Waveform IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Cardiac Electrophysiology Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.3.1",
+   "iod": "Basic Cardiac Electrophysiology Waveform IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Basic Voice Audio Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.4.1",
+   "iod": "Basic Voice Audio Waveform IOD",
+   "specialization": ""
+  },
+  {
+   "name": "General Audio Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.4.2",
+   "iod": "General Audio Waveform IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Arterial Pulse Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.5.1",
+   "iod": "Arterial Pulse Waveform IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Respiratory Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.6.1",
+   "iod": "Respiratory Waveform IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Multi-channel Respiratory Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.6.2",
+   "iod": "Multi-channel Respiratory Waveform IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Routine Scalp Electroencephalogram Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.7.1",
+   "iod": "Routine Scalp Electroencephalogram IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Electromyogram Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.7.2",
+   "iod": "Electromyogram IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Electrooculogram Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.7.3",
+   "iod": "Electrooculogram IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Sleep Electroencephalogram Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.7.4",
+   "iod": "Sleep Electroencephalogram IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Body Position Waveform Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.8.1",
+   "iod": "Body Position Waveform IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Waveform Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.100.1",
+   "iod": "Waveform Presentation State IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Waveform Acquisition Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.9.100.2",
+   "iod": "Waveform Acquisition Presentation State IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Grayscale Softcopy Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.11.1",
+   "iod": "Grayscale Softcopy Presentation State IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Color Softcopy Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.11.2",
+   "iod": "Color Softcopy Presentation State IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Pseudo-Color Softcopy Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.11.3",
+   "iod": "Pseudo-Color Softcopy Presentation State IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Blending Softcopy Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.11.4",
+   "iod": "Blending Softcopy Presentation State IOD",
+   "specialization": ""
+  },
+  {
+   "name": "XA/XRF Grayscale Softcopy Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.11.5",
+   "iod": "XA/XRF Grayscale Softcopy Presentation State IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Grayscale Planar MPR Volumetric Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.11.6",
+   "iod": "Planar MPR Volumetric Presentation State IOD",
+   "specialization": "B.5.1.19"
+  },
+  {
+   "name": "Compositing Planar MPR Volumetric Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.11.7",
+   "iod": "Planar MPR Volumetric Presentation State IOD",
+   "specialization": "B.5.1.19"
+  },
+  {
+   "name": "Advanced Blending Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.11.8",
+   "iod": "Advanced Blending Presentation State IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Volume Rendering Volumetric Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.11.9",
+   "iod": "Volume Rendering Volumetric Presentation State IOD",
+   "specialization": "B.5.1.24"
+  },
+  {
+   "name": "Segmented Volume Rendering Volumetric Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.11.10",
+   "iod": "Volume Rendering Volumetric Presentation State IOD",
+   "specialization": "B.5.1.24"
+  },
+  {
+   "name": "Multiple Volume Rendering Volumetric Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.11.11",
+   "iod": "Volume Rendering Volumetric Presentation State IOD",
+   "specialization": "B.5.1.24"
+  },
+  {
+   "name": "Variable Modality LUT Softcopy Presentation State Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.11.12",
+   "iod": "Variable Modality LUT Softcopy Presentation State IOD",
+   "specialization": ""
+  },
+  {
+   "name": "X-Ray Angiographic Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.12.1",
+   "iod": "X-Ray Angiographic Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Enhanced XA Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.12.1.1",
+   "iod": "Enhanced XA Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "X-Ray Radiofluoroscopic Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.12.2",
+   "iod": "X-Ray Radiofluoroscopic Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Enhanced XRF Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.12.2.1",
+   "iod": "Enhanced XRF Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "X-Ray 3D Angiographic Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.13.1.1",
+   "iod": "X-Ray 3D Angiographic Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "X-Ray 3D Craniofacial Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.13.1.2",
+   "iod": "X-Ray 3D Craniofacial Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Breast Tomosynthesis Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.13.1.3",
+   "iod": "Breast Tomosynthesis Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Breast Projection X-Ray Image Storage - For Presentation",
+   "uid": "1.2.840.10008.5.1.4.1.1.13.1.4",
+   "iod": "Breast Projection X-Ray Image IOD",
+   "specialization": "B.5.1.18"
+  },
+  {
+   "name": "Breast Projection X-Ray Image Storage - For Processing",
+   "uid": "1.2.840.10008.5.1.4.1.1.13.1.5",
+   "iod": "Breast Projection X-Ray Image IOD",
+   "specialization": "B.5.1.18"
+  },
+  {
+   "name": "Intravascular Optical Coherence Tomography Image Storage - For Presentation",
+   "uid": "1.2.840.10008.5.1.4.1.1.14.1",
+   "iod": "Intravascular Optical Coherence Tomography Image IOD",
+   "specialization": "B.5.1.13"
+  },
+  {
+   "name": "Intravascular Optical Coherence Tomography Image Storage - For Processing",
+   "uid": "1.2.840.10008.5.1.4.1.1.14.2",
+   "iod": "Intravascular Optical Coherence Tomography Image IOD",
+   "specialization": "B.5.1.13"
+  },
+  {
+   "name": "Nuclear Medicine Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.20",
+   "iod": "Nuclear Medicine Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Parametric Map Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.30",
+   "iod": "Parametric Map IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Raw Data Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.66",
+   "iod": "Raw Data IOD",
+   "specialization": "B.5.1.22"
+  },
+  {
+   "name": "Spatial Registration Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.66.1",
+   "iod": "Spatial Registration IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Spatial Fiducials Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.66.2",
+   "iod": "Spatial Fiducials IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Deformable Spatial Registration Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.66.3",
+   "iod": "Deformable Spatial Registration IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Segmentation Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.66.4",
+   "iod": "Segmentation IOD",
+   "specialization": "B.5.1.25"
+  },
+  {
+   "name": "Surface Segmentation Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.66.5",
+   "iod": "Surface Segmentation IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Tractography Results Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.66.6",
+   "iod": "Tractography Results IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Label Map Segmentation Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.66.7",
+   "iod": "Segmentation IOD",
+   "specialization": "B.5.1.25"
+  },
+  {
+   "name": "Height Map Segmentation Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.66.8",
+   "iod": "Height Map Segmentation IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Real World Value Mapping Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.67",
+   "iod": "Real World Value Mapping IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Surface Scan Mesh Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.68.1",
+   "iod": "Surface Scan Mesh IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Surface Scan Point Cloud Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.68.2",
+   "iod": "Surface Scan Point Cloud IOD",
+   "specialization": ""
+  },
+  {
+   "name": "VL Endoscopic Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.1",
+   "iod": "VL Endoscopic Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Video Endoscopic Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.1.1",
+   "iod": "Video Endoscopic Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "VL Microscopic Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.2",
+   "iod": "VL Microscopic Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Video Microscopic Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.2.1",
+   "iod": "Video Microscopic Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "VL Slide-Coordinates Microscopic Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.3",
+   "iod": "VL Slide-Coordinates Microscopic Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "VL Photographic Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.4",
+   "iod": "VL Photographic Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Video Photographic Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.4.1",
+   "iod": "Video Photographic Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Ophthalmic Photography 8 Bit Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.5.1",
+   "iod": "Ophthalmic Photography 8 Bit Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Ophthalmic Photography 16 Bit Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.5.2",
+   "iod": "Ophthalmic Photography 16 Bit Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Stereometric Relationship Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.5.3",
+   "iod": "Stereometric Relationship IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Ophthalmic Tomography Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.5.4",
+   "iod": "Ophthalmic Tomography Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Wide Field Ophthalmic Photography Stereographic Projection Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.5.5",
+   "iod": "Wide Field Ophthalmic Photography Stereographic Projection Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Wide Field Ophthalmic Photography 3D Coordinates Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.5.6",
+   "iod": "Wide Field Ophthalmic Photography 3D Coordinates Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Ophthalmic Optical Coherence Tomography En Face Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.5.7",
+   "iod": "Ophthalmic Optical Coherence Tomography En Face Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Ophthalmic Optical Coherence Tomography B-scan Volume Analysis Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.5.8",
+   "iod": "Ophthalmic Optical Coherence Tomography B-scan Volume Analysis IOD",
+   "specialization": ""
+  },
+  {
+   "name": "VL Whole Slide Microscopy Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.6",
+   "iod": "VL Whole Slide Microscopy Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Dermoscopic Photography Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.7",
+   "iod": "Dermoscopic Photography Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Confocal Microscopy Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.8",
+   "iod": "Confocal Microscopy Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Confocal Microscopy Tiled Pyramidal Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.77.1.9",
+   "iod": "Confocal Microscopy Tiled Pyramidal Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Lensometry Measurements Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.78.1",
+   "iod": "Lensometry Measurements IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Autorefraction Measurements Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.78.2",
+   "iod": "Autorefraction Measurements IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Keratometry Measurements Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.78.3",
+   "iod": "Keratometry Measurements IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Subjective Refraction Measurements Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.78.4",
+   "iod": "Subjective Refraction Measurements IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Visual Acuity Measurements Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.78.5",
+   "iod": "Visual Acuity Measurements IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Spectacle Prescription Report Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.78.6",
+   "iod": "Spectacle Prescription Report IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Ophthalmic Axial Measurements Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.78.7",
+   "iod": "Ophthalmic Axial Measurements IOD",
+   "specialization": "B.5.1.11"
+  },
+  {
+   "name": "Intraocular Lens Calculations Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.78.8",
+   "iod": "Intraocular Lens Calculations IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Macular Grid Thickness and Volume Report",
+   "uid": "1.2.840.10008.5.1.4.1.1.79.1",
+   "iod": "Macular Grid Thickness and Volume Report IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Ophthalmic Visual Field Static Perimetry Measurements Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.80.1",
+   "iod": "Ophthalmic Visual Field Static Perimetry Measurements IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Ophthalmic Thickness Map Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.81.1",
+   "iod": "Ophthalmic Thickness Map IOD",
+   "specialization": "B.5.1.14"
+  },
+  {
+   "name": "Corneal Topography Map Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.82.1",
+   "iod": "Corneal Topography Map IOD",
+   "specialization": "B.5.1.17"
+  },
+  {
+   "name": "Basic Text SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.11",
+   "iod": "Basic Text SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Enhanced SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.22",
+   "iod": "Enhanced SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Comprehensive SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.33",
+   "iod": "Comprehensive SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Comprehensive 3D SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.34",
+   "iod": "Comprehensive 3D SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Extensible SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.35",
+   "iod": "Extensible SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Procedure Log Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.40",
+   "iod": "Procedure Log IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Mammography CAD SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.50",
+   "iod": "Mammography CAD SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Key Object Selection Document Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.59",
+   "iod": "Key Object Selection Document IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Chest CAD SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.65",
+   "iod": "Chest CAD SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "X-Ray Radiation Dose SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.67",
+   "iod": "X-Ray Radiation Dose SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Radiopharmaceutical Radiation Dose SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.68",
+   "iod": "Radiopharmaceutical Radiation Dose SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Colon CAD SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.69",
+   "iod": "Colon CAD SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Implantation Plan SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.70",
+   "iod": "Implantation Plan SR Document IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Acquisition Context SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.71",
+   "iod": "Acquisition Context SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Simplified Adult Echo SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.72",
+   "iod": "Simplified Adult Echo SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Patient Radiation Dose SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.73",
+   "iod": "Patient Radiation Dose SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Planned Imaging Agent Administration SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.74",
+   "iod": "Planned Imaging Agent Administration SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Performed Imaging Agent Administration SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.75",
+   "iod": "Performed Imaging Agent Administration SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Enhanced X-Ray Radiation Dose SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.76",
+   "iod": "Enhanced X-Ray Radiation Dose SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Waveform Annotation SR Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.88.77",
+   "iod": "Waveform Annotation SR IOD",
+   "specialization": "B.5.1.5"
+  },
+  {
+   "name": "Content Assessment Results Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.90.1",
+   "iod": "Content Assessment Results IOD",
+   "specialization": "B.5.1.20"
+  },
+  {
+   "name": "Microscopy Bulk Simple Annotations Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.91.1",
+   "iod": "Microscopy Bulk Simple Annotations IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Encapsulated PDF Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.104.1",
+   "iod": "Encapsulated PDF IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Encapsulated CDA Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.104.2",
+   "iod": "Encapsulated CDA IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Encapsulated STL Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.104.3",
+   "iod": "Encapsulated STL IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Encapsulated OBJ Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.104.4",
+   "iod": "Encapsulated OBJ IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Encapsulated MTL Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.104.5",
+   "iod": "Encapsulated MTL IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Positron Emission Tomography Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.128",
+   "iod": "Positron Emission Tomography Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Enhanced PET Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.130",
+   "iod": "Enhanced PET Image IOD",
+   "specialization": "B.5.1.16 B.5.1.23"
+  },
+  {
+   "name": "Legacy Converted Enhanced PET Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.128.1",
+   "iod": "Legacy Converted Enhanced PET Image IOD",
+   "specialization": "B.5.1.23"
+  },
+  {
+   "name": "Basic Structured Display Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.131",
+   "iod": "Basic Structured Display IOD",
+   "specialization": "B.5.1.9"
+  },
+  {
+   "name": "CT Performed Procedure Protocol Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.200.2",
+   "iod": "CT Performed Procedure Protocol IOD",
+   "specialization": "B.5.1.21"
+  },
+  {
+   "name": "XA Performed Procedure Protocol Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.200.8",
+   "iod": "XA Performed Procedure Protocol IOD",
+   "specialization": "B.5.1.21"
+  },
+  {
+   "name": "RT Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.1",
+   "iod": "RT Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Dose Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.2",
+   "iod": "RT Dose IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Structure Set Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.3",
+   "iod": "RT Structure Set IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Beams Treatment Record Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.4",
+   "iod": "RT Beams Treatment Record IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Plan Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.5",
+   "iod": "RT Plan IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Brachy Treatment Record Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.6",
+   "iod": "RT Brachy Treatment Record IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Treatment Summary Record Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.7",
+   "iod": "RT Treatment Summary Record IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Ion Plan Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.8",
+   "iod": "RT Ion Plan IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Ion Beams Treatment Record Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.9",
+   "iod": "RT Ion Beams Treatment Record IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Physician Intent Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.10",
+   "iod": "RT Physician Intent IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Segment Annotation Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.11",
+   "iod": "RT Segment Annotation IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Radiation Set Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.12",
+   "iod": "RT Radiation Set IOD",
+   "specialization": ""
+  },
+  {
+   "name": "C-Arm Photon-Electron Radiation Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.13",
+   "iod": "C-Arm Photon-Electron Radiation IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Tomotherapeutic Radiation Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.14",
+   "iod": "Tomotherapeutic Radiation IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Robotic-Arm Radiation Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.15",
+   "iod": "Robotic-Arm Radiation IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Radiation Record Set Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.16",
+   "iod": "RT Radiation Record Set IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Radiation Salvage Record Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.17",
+   "iod": "RT Radiation Salvage Record IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Tomotherapeutic Radiation Record Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.18",
+   "iod": "Tomotherapeutic Radiation Record IOD",
+   "specialization": ""
+  },
+  {
+   "name": "C-Arm Photon-Electron Radiation Record Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.19",
+   "iod": "C-Arm Photon-Electron Radiation Record IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Robotic Radiation Record Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.20",
+   "iod": "Robotic-Arm Radiation Record IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Radiation Set Delivery Instruction Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.21",
+   "iod": "RT Radiation Set Delivery Instruction IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Treatment Preparation Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.22",
+   "iod": "RT Treatment Preparation IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Enhanced RT Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.23",
+   "iod": "Enhanced RT Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "Enhanced Continuous RT Image Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.24",
+   "iod": "Enhanced Continuous RT Image IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Patient Position Acquisition Instruction Storage",
+   "uid": "1.2.840.10008.5.1.4.1.1.481.25",
+   "iod": "RT Patient Position Acquisition Instruction IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Beams Delivery Instruction Storage",
+   "uid": "1.2.840.10008.5.1.4.34.7",
+   "iod": "RT Beams Delivery Instruction IOD",
+   "specialization": ""
+  },
+  {
+   "name": "RT Brachy Application Setup Delivery Instruction Storage",
+   "uid": "1.2.840.10008.5.1.4.34.10",
+   "iod": "RT Brachy Application Setup Delivery Instruction IOD",
+   "specialization": ""
+  }
+ ]
+}

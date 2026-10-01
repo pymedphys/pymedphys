@@ -68,11 +68,40 @@ For a stable release, rename `## Unreleased` in `CHANGELOG.md` to `## [VERSION]`
 
 For a development release, leave `CHANGELOG.md` unchanged: its entries stay under `## Unreleased` until the stable release.
 
+### Review the changelog
+
+The release notes are what users read to decide whether to upgrade, so review them as a whole before opening the pull request. Every entry follows the changelog rules in [Open and review a pull request](https://github.com/pymedphys/pymedphys/blob/main/CONTRIBUTING.md#open-and-review-a-pull-request) and `AGENTS.md`; for the release as a whole, check that:
+
+- entries describe the change relative to the previous stable release, and related entries are consolidated into one that describes the final effect;
+- each entry states what changed, its effect, and what users should do, and ends with links to its pull requests;
+- results that earlier versions returned without an error are flagged at the top of the section, with the affected inputs and functions, and listed under (Potentially) breaking changes;
+- the sections are ordered for a reader deciding whether to upgrade, with warnings and breaking changes ahead of contributor-facing changes, and each long entry leads with its effect before its detail;
+- unused sections are removed.
+
+Make the editorial changes in a commit of their own, so that reviewers can read them apart from the version and generated files. A rewrite can drop an entry unnoticed, so confirm that every pull request link in `## Unreleased` on `main` still appears in the new section. In Bash, this prints nothing when none is missing:
+
+```bash
+links() { awk '/^## /{n++} n==1' | grep -oE 'pull/[0-9]+' | sort -u; }
+comm -23 <(git show origin/main:CHANGELOG.md | links) <(links < CHANGELOG.md)
+```
+
+If the rewrite is too large for one reviewer to check, merge it to `main` first, under `## Unreleased`, in a pull request of its own.
+
+For the GitHub release, write a short summary of the version's section that links to it, rather than pasting the whole section.
+
 ### Open the pull request
 
 Commit all changes, push, and open a pull request into `main`. The CI and security summaries must pass; inspect their constituent checks as described in the [workflow guide](workflows.md).
 
-For a stable release, add the `full-test` label so the full unit-test matrix, integration checks, and Mosaiq database tests run before merging. A development release does not need it: the Release workflow runs the full unit-test matrix and integration tests before publishing, and a failure there only delays a pre-release.
+For a stable release, open the pull request from this link, which fills the description from the [release template](https://github.com/pymedphys/pymedphys/blob/main/.github/PULL_REQUEST_TEMPLATE/release.md) and adds the `full-test` label, then complete the template:
+
+```text
+https://github.com/pymedphys/pymedphys/compare/main...VERSION-release-prep?expand=1&template=release.md&labels=full-test
+```
+
+GitHub has no template chooser for pull requests, so the `template` parameter is the only way to select this template. It applies only to a pull request opened in the browser through this link; a tool that opens the pull request itself must be given the template's text as the description, for example `gh pr create --body-file .github/PULL_REQUEST_TEMPLATE/release.md`. The `full-test` label runs the full unit-test matrix, integration checks, and Mosaiq database tests before merging.
+
+A development release needs no pull request or template, and does not need the label: the Release workflow runs the full unit-test matrix and integration tests before publishing, and a failure there only delays a pre-release.
 
 ### If checks fail
 

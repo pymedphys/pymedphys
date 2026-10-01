@@ -7,6 +7,7 @@ on:
     branches: [main]
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
+  merge_group:
   workflow_dispatch:
 
 # Read-only by default. Jobs that upload SARIF or open issues add what they need.
@@ -29,8 +30,8 @@ env:
   ZIZMOR_VERSION: 1.30.1
 
 jobs:
-  # PR scans follow their inputs. Main, scheduled and manual runs always
-  # scan, because new vulnerabilities can appear without repository changes.
+  # PR scans follow their inputs. Main pushes, merge groups, scheduled and
+  # manual runs always scan, because vulnerabilities can appear without changes.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -73,11 +74,11 @@ jobs:
           uv export --frozen --all-extras --no-emit-project --no-hashes
           --output-file audit-requirements.txt
 
-      # Advisory on pull requests and pushes: an advisory published against a
-      # dependency must not turn an unrelated commit red. Blocking on scheduled
-      # and manual runs, which is where new advisories are meant to surface.
+      # Advisory on pull requests, pushes and merge groups: a new dependency
+      # advisory must not block an unrelated change. Scheduled and manual scans
+      # remain blocking so they surface new advisories.
       - name: Run pip-audit
-        continue-on-error: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+        continue-on-error: ${{ github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'merge_group' }}
         run: |
           # PYSEC-2025-183 (PyJWT "weak encryption") is disputed upstream and
           # has no fixed version.
@@ -247,9 +248,9 @@ jobs:
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
 
-          The dependency audit is advisory on pull requests and pushes, and
-          blocking on scheduled and manual runs, where a failure opens or
-          updates the issue labelled `security-audit`. Bandit and zizmor block
-          on every event. Secret scanning and push protection are GitHub-native
-          repository settings rather than workflow jobs.
+          The dependency audit is advisory on pull requests, pushes and merge
+          groups, and blocking on scheduled and manual runs, where a failure
+          opens or updates the issue labelled `security-audit`. Bandit and
+          zizmor block on every event. Secret scanning and push protection are
+          GitHub-native repository settings rather than workflow jobs.
           EOF

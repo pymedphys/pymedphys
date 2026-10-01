@@ -53,6 +53,11 @@ OPTIONS = (
     "clean_structured_content",
     "clean_graphics",
 )
+# Options that PS3.15 specifies as mutually exclusive: E.3.6 for the two Retain
+# Longitudinal Temporal Information Options.
+MUTUALLY_EXCLUSIVE = (
+    frozenset({"retain_longitudinal_full_dates", "retain_longitudinal_modified_dates"}),
+)
 
 # A private Data Element as Table E.3.10-1 gives it, such as "(0019,xx0C)":
 # the group, "xx" for the private block, and the element within the block.

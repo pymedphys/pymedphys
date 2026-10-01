@@ -16,9 +16,18 @@ Each Attribute to be protected shall then either be removed from the Data Set, o
 '''
 status = "partial"
 milestone = "M3"
-decisions = ["D-001", "D-003", "D-005", "D-011"]
-implementation = ["_dicom/deidentify/pseudonyms.py"]
+decisions = ["D-001", "D-003", "D-005", "D-011", "D-020", "D-021"]
+implementation = [
+  "_dicom/deidentify/dummy_values.py",
+  "_dicom/deidentify/pseudonyms.py",
+]
 tests = [
+  "tests/dicom/test_deidentify_dummy_values.py::test_z_writes_a_zero_length_value",
+  "tests/dicom/test_deidentify_dummy_values.py::test_d_writes_its_vrs_constant",
+  "tests/dicom/test_deidentify_dummy_values.py::test_d_writes_the_second_constant_where_the_source_equals_the_first",
+  "tests/dicom/test_deidentify_dummy_values.py::test_different_source_values_give_the_same_dummy_value",
+  "tests/dicom/test_deidentify_dummy_values.py::test_ui_takes_the_keyed_replacement",
+  "tests/dicom/test_deidentify_dummy_values.py::test_a_vr_without_a_generic_dummy_value_is_refused",
   "tests/dicom/test_deidentify_pseudonyms.py::test_a_pseudonym_follows_the_specified_derivation",
   "tests/dicom/test_deidentify_pseudonyms.py::test_a_pseudonym_is_valid_for_its_vr_and_conspicuous",
   "tests/dicom/test_deidentify_pseudonyms.py::test_different_subjects_give_different_pseudonyms",
@@ -26,7 +35,7 @@ tests = [
   "tests/dicom/test_deidentify_pseudonyms.py::test_a_pseudonym_does_not_contain_the_identifier",
 ]
 note = '''
-Patient ID and Patient's Name have keyed replacement values that keep subjects separate and do not contain the source identifier. Remaining: removing or replacing each Attribute to be protected in a data set (M3).
+Patient ID and Patient's Name have keyed replacement values that keep subjects separate and do not contain the source identifier. Z writes a zero-length value, and D a conspicuous constant for each VR that does not depend on the source value, or a second constant where the source value equals the first, so the replacement always differs from it; a UI value takes its keyed replacement, and D on an attribute of any other VR is refused until a reviewed rule covers it (D-021). Remaining: removing or replacing each Attribute to be protected in a data set (M3).
 '''
 
 [[requirement]]
@@ -35,9 +44,20 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 Each Attribute specified to be retained shall be retained. At the discretion of the de-identifier, Attributes may be added to the Data Set to be protected.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
-decisions = ["D-011"]
+decisions = ["D-007", "D-011", "D-022", "D-023"]
+implementation = ["_dicom/deidentify/actions.py", "_dicom/deidentify/policy.py"]
+tests = [
+  "tests/dicom/test_deidentify_actions.py::test_an_option_overrides_the_profile",
+  "tests/dicom/test_deidentify_policy.py::test_tps_import_keeps_device_identity_and_patient_characteristics",
+  "tests/dicom/test_deidentify_policy.py::test_a_custom_option_set_is_validated_and_never_enabled",
+  "tests/dicom/test_deidentify_policy.py::test_the_tps_import_options_are_rejected_without_the_preset",
+  "tests/dicom/test_deidentify_policy.py::test_a_conflict_that_a_new_edition_adds_is_rejected",
+]
+note = '''
+Reviewed rules add the text attributes, dates, and times that Table E.1-1 omits to those protected (D-022, D-023). A policy keeps (K) each attribute that its selected options retain, and an option set that gives an attribute to be retained another action as well is rejected. The one exception is `tps-import`, which modifies eleven device and beam hold dates and times that Retain Device Identity would keep and claims no PS3.15 conformance (D-007). Remaining: retaining each such attribute in a data set (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.1-03"
@@ -87,7 +107,7 @@ The Attribute Patient Identity Removed (0012,0062) shall be replaced or added to
 '''
 status = "planned"
 milestone = "M3"
-decisions = ["D-012"]
+decisions = ["D-012", "D-024"]
 
 [[requirement]]
 id = "PS3.15-E.1.1-06"
@@ -95,9 +115,21 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 If the Data Set being de-identified is being stored within a DICOM File, then the File Meta Information including the 128 byte preamble, if present, shall be replaced with a description of the de-identifying application. Otherwise, there is a risk that identity information may leak through unmodified File Meta Information or preamble. See PS3.10. This includes information regarding Application Entity Titles, Presentation Addresses, implementation information, and private information.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
-decisions = ["D-002"]
+decisions = ["D-002", "D-025", "D-027"]
+implementation = ["_dicom/deidentify/file_meta.py"]
+tests = [
+  "tests/dicom/test_deidentify_file_meta.py::test_the_file_meta_information_holds_exactly_the_seven_elements_in_order",
+  "tests/dicom/test_deidentify_file_meta.py::test_the_implementation_class_uid_is_the_first_uid_of_the_reserved_arc",
+  "tests/dicom/test_deidentify_file_meta.py::test_the_implementation_version_name_holds_the_version_where_it_fits",
+  "tests/dicom/test_deidentify_file_meta.py::test_the_group_length_counts_the_bytes_of_the_elements_after_it",
+  "tests/dicom/test_deidentify_file_meta.py::test_a_written_file_has_a_zero_preamble_and_exactly_the_built_elements",
+  "tests/dicom/test_deidentify_file_meta.py::test_no_source_file_meta_element_or_preamble_is_written",
+]
+note = '''
+The File Meta Information that replaces the source file's describes the de-identifier by a fixed Implementation Class UID under the PyMedPhys root and an Implementation Version Name, and holds no Application Entity Title, Presentation Address, or private element. A data set is written with it and a zeroed preamble, whatever File Meta Information and preamble the source file held. Remaining: writing each de-identified instance this way (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.1-07"
@@ -118,8 +150,9 @@ All Data Elements with a Group Number of 0004 shall be removed from any SOP Inst
 '''
 status = "planned"
 milestone = "M4"
+decisions = ["D-016"]
 note = '''
-Group 0004 is removed with the rest of the file container. A DICOMDIR is only ever regenerated from the de-identified files, never passed through.
+Group 0004 is removed with the rest of the file container. A source DICOMDIR is never passed through, and none is written, since the output is a plain directory tree rather than a File-set (D-016).
 '''
 
 [[requirement]]
@@ -128,9 +161,28 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 The Attributes listed in Table E.1-1 for each Profile or Option are contained in Standard IODs, or may be contained in Standard Extended IODs. An implementation claiming conformance to the Basic Application Level Confidentiality Profile as a de-identifier shall protect or retain all instances of the Attributes listed in Table E.1-1, whether contained in the top level Data Set or embedded in an Item of a Sequence of Items. The action codes in Table E.1-1a are used in Table E.1-1.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
-decisions = ["D-001", "D-011"]
+decisions = ["D-001", "D-007", "D-011", "D-020", "D-021"]
+implementation = [
+  "_dicom/deidentify/actions.py",
+  "_dicom/deidentify/compound_actions.py",
+  "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/standard.py",
+]
+tests = [
+  "tests/dicom/test_deidentify_actions.py::test_the_basic_profile_alone_gives_each_attribute_its_profile_action",
+  "tests/dicom/test_deidentify_actions.py::test_an_option_overrides_the_profile",
+  "tests/dicom/test_deidentify_actions.py::test_each_attribute_has_one_action_or_a_conflict",
+  "tests/dicom/test_deidentify_policy.py::test_the_basic_policy_gives_each_attribute_its_basic_profile_action",
+  "tests/dicom/test_deidentify_policy.py::test_each_preset_gives_each_attribute_one_action",
+  "tests/dicom/test_deidentify_compound_actions.py::test_each_compound_action_resolves_by_type",
+  "tests/dicom/test_deidentify_compound_actions.py::test_the_type_depends_on_the_enclosing_sequence",
+  "tests/dicom/test_deidentify_compound_actions.py::test_x_z_on_a_type_1_attribute_sequesters_the_instance",
+]
+note = '''
+Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute sequesters the instance (D-020). Remaining: protecting or retaining every instance of each attribute, at the top level and in sequences (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.2-01"
@@ -185,7 +237,7 @@ The Conformance Statement of an application that claims conformance to the Basic
 '''
 status = "planned"
 milestone = "M6"
-decisions = ["D-003", "D-004", "D-005", "D-013"]
+decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-021", "D-026"]
 note = '''
 The generated conformance statement covers each item, including the key scope within which replacements stay consistent.
 '''
@@ -279,9 +331,9 @@ When this Option is specified in addition to the Basic Application Level Confide
 '''
 status = "planned"
 milestone = "M4"
-decisions = ["D-009"]
+decisions = ["D-009", "D-022"]
 note = '''
-The Option is claimed only for output whose retained descriptors have passed pooled human review (D-009), which needs the QC pack (M4).
+The first supported release includes the Option, and keeps only the ROI names that exactly match a TG-263 name. The Option is claimed only for output whose retained descriptors have passed pooled human review (D-009), which needs the QC pack (M4).
 '''
 
 [[requirement]]
@@ -320,6 +372,7 @@ milestone = "M3"
 decisions = ["D-006", "D-007"]
 implementation = [
   "_dicom/deidentify/dates.py",
+  "_dicom/deidentify/policy.py",
   "_dicom/deidentify/profiles.py",
   "_dicom/deidentify/temporal_roles.py",
 ]
@@ -335,9 +388,10 @@ tests = [
   "tests/dicom/test_deidentify_dates.py::test_local_times_keep_their_interval_to_values_with_their_own_offset",
   "tests/dicom/test_deidentify_dates.py::test_converting_to_local_time_keeps_every_interval",
   "tests/dicom/test_deidentify_dates.py::test_frame_origin_timestamps_keep_their_intervals",
+  "tests/dicom/test_deidentify_policy.py::test_tps_import_modifies_the_eleven_device_identity_and_date_conflicts",
 ]
 note = '''
-Each subject's offset is persisted in its profile, DA and DT values are shifted by whole weeks, keeping intervals, weekdays, and times, and every attribute that Table E.1-1 cleans under Modified Dates has a reviewed role that decides whether it is shifted or replaced by a dummy value. Time zone offsets become a nominal +0000 once each DT value with its own offset is in the instance's local time, which keeps every interval within the instance. Remaining: modifying every date and time in a data set (M3).
+Each subject's offset is persisted in its profile, DA and DT values are shifted by whole weeks, keeping intervals, weekdays, and times, and every attribute that Table E.1-1 cleans under Modified Dates has a reviewed role that decides whether it is shifted or replaced by a dummy value. Time zone offsets become a nominal +0000 once each DT value with its own offset is in the instance's local time, which keeps every interval within the instance. Under `tps-import`, the eleven device and beam hold dates and times that Retain Device Identity would keep are modified by their role instead. Remaining: modifying every date and time in a data set (M3).
 '''
 
 [[requirement]]
@@ -387,7 +441,7 @@ When this Option is specified in addition to the Basic Application Level Confide
 '''
 status = "planned"
 milestone = "M3"
-decisions = ["D-003", "D-007"]
+decisions = ["D-003", "D-007", "D-022"]
 note = '''
 `tps-import` also selects Modified Dates, which conflicts with this Option for device dates, so its output claims neither (D-007).
 '''
@@ -458,11 +512,27 @@ id = "MIDI-BP-01"
 text = '''
 For public sharing, remove or replace all known direct identifiers and relevant indirect identifiers and sensitive information wherever they occur: collection descriptions, supporting data, structured and unstructured text, pixel data, and overlays. Justify retaining any indirect identifier with a collection-specific expert statistical analysis of residual risk against a predetermined threshold, which considers other public information about the subjects and holds only at the time it was done.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-017"]
+decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027"]
+implementation = [
+  "_dicom/deidentify/file_layout.py",
+  "_dicom/deidentify/residuals.py",
+]
+tests = [
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_hidden_in_the_preamble_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_the_file_meta_information_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_data_set_trailing_padding_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_bytes_after_the_data_set_are_searched",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_an_ob_value_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_un_value_is_found_in_utf_16",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_private_element_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_nested_sequence_item_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_encapsulated_fragments_are_searched_for_every_form",
+  "tests/dicom/test_deidentify_residuals.py::test_a_clean_file_has_no_findings",
+]
 note = '''
-The Basic Profile's actions remove or replace identifiers, and `public-release` retains indirect identifiers only after its statistical assessment.
+The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. The pipeline is to fail any output file that still holds a source person name, UID, date, or direct identifier, or a source value outside its data set, and to send other text findings to confidential review (D-027). `public-release` retains indirect identifiers only after its statistical assessment. Remaining: removing and replacing identifiers in each data set (M3), and acting on what the search finds, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
 '''
 
 [[requirement]]
@@ -482,16 +552,56 @@ Do not let de-identification compromise conformance with the standards that defi
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-003", "D-005", "D-008", "D-011"]
-implementation = ["_dicom/deidentify/iods.py"]
+decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-026"]
+implementation = [
+  "_dicom/deidentify/compound_actions.py",
+  "_dicom/deidentify/dummy_values.py",
+  "_dicom/deidentify/iods.py",
+  "_dicom/deidentify/reference_graph.py",
+  "_dicom/deidentify/references.py",
+  "_dicom/deidentify/sop_classes.py",
+  "_dicom/deidentify/values.py",
+]
 tests = [
+  "tests/dicom/test_deidentify_dummy_values.py::test_every_dummy_value_is_valid_for_its_vr_and_the_attributes_vm",
+  "tests/dicom/test_deidentify_dummy_values.py::test_table_e1_1_attributes_without_a_generic_dummy_value_are_refused",
   "tests/dicom/test_deidentify_iods.py::test_the_first_supported_release_iods_are_generated",
   "tests/dicom/test_deidentify_iods.py::test_an_attribute_can_have_a_different_type_in_each_module",
   "tests/dicom/test_deidentify_iods.py::test_types_depend_on_the_enclosing_sequence",
   "tests/dicom/test_deidentify_iods.py::test_macros_are_expanded_where_they_are_included",
+  "tests/dicom/test_deidentify_iods.py::test_functional_group_macros_are_expanded_in_each_functional_group_sequence",
+  "tests/dicom/test_deidentify_sop_classes.py::test_the_first_supported_release_sop_classes_find_their_iods",
+  "tests/dicom/test_deidentify_sop_classes.py::test_every_storage_sop_class_finds_its_iod",
+  "tests/dicom/test_deidentify_values.py::test_valid_values",
+  "tests/dicom/test_deidentify_values.py::test_invalid_values",
+  "tests/dicom/test_deidentify_values.py::test_values_are_checked_for_their_vm_and_vr",
+  "tests/dicom/test_deidentify_compound_actions.py::test_an_attribute_gets_the_action_of_its_strictest_type_across_modules",
+  "tests/dicom/test_deidentify_compound_actions.py::test_no_required_attribute_with_a_compound_action_is_removed",
+  "tests/dicom/test_deidentify_compound_actions.py::test_no_attribute_with_x_z_is_type_1_in_the_first_release_iods",
+  "tests/dicom/test_deidentify_compound_actions.py::test_no_required_attribute_with_a_compound_action_is_removed_in_any_generated_iod",
+  "tests/dicom/test_deidentify_compound_actions.py::test_x_z_sequesters_only_referenced_study_sequence_in_two_generated_iods",
+  "tests/dicom/test_deidentify_references.py::test_reference_sites_include_the_rt_references",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_consistent_collection_has_no_findings",
+  "tests/dicom/test_deidentify_reference_graph.py::test_each_reference_resolves_to_its_instance",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_input_of_a_class_outside_table_b5_1_resolves",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_instance_not_in_the_collection_is_dangling",
+  "tests/dicom/test_deidentify_record_content.py::test_a_copy_in_another_encoding_has_the_same_content",
+  "tests/dicom/test_deidentify_record_content.py::test_any_change_to_the_data_set_changes_the_content",
+  "tests/dicom/test_deidentify_record_content.py::test_a_copy_whose_pixel_data_is_encoded_otherwise_conflicts",
+  "tests/dicom/test_deidentify_record_content.py::test_the_same_bytes_in_another_byte_order_conflict",
+  "tests/dicom/test_deidentify_record_content.py::test_a_private_number_in_another_vr_with_the_same_bytes_conflicts",
+  "tests/dicom/test_deidentify_record_content.py::test_an_element_read_as_unknown_conflicts_with_a_copy_that_has_its_vr",
+  "tests/dicom/test_deidentify_record_content.py::test_a_record_needs_a_data_set_read_in_full",
+  "tests/dicom/test_deidentify_reference_graph.py::test_copies_of_one_instance_are_duplicates",
+  "tests/dicom/test_deidentify_reference_graph.py::test_one_sop_instance_uid_with_different_content_conflicts",
+  "tests/dicom/test_deidentify_reference_graph.py::test_copies_in_implicit_and_explicit_vr_with_a_private_element_conflict",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_series_in_two_studies_is_inconsistent",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_study_with_two_patients_is_inconsistent",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_study_whose_instances_all_lack_a_patient_id_has_one_patient",
+  "tests/dicom/test_deidentify_reference_graph.py::test_the_instances_without_a_patient_id_are_grouped_as_one_patient",
 ]
 note = '''
-The Type of each attribute of the first supported release's IODs, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value. Remaining: resolving compound actions and synthesising dummy values from these Types (M3), and validating output against its IOD (M4).
+The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. It also reports instances that share a SOP Instance UID, as identical copies only where their decoded content, with each element's VR, is shown to be the same, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, each a Patient ID with its issuer, with the instances without a Patient ID as one more. Remaining: writing the dummy values that the resolved compound actions call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking frames of reference in the first pass, acting on its findings, validating output against its IOD, and checking after writing that references are intact (M4).
 '''
 
 [[requirement]]
@@ -501,7 +611,7 @@ Preserve as much information about image acquisition as possible, including mach
 '''
 status = "planned"
 milestone = "M3"
-decisions = ["D-007"]
+decisions = ["D-007", "D-022"]
 note = '''
 `tps-import` retains device identity. `public-release` omits it, because device serial numbers and machine names can identify an institution and, with dates, individual treatments.
 '''
@@ -511,11 +621,18 @@ id = "MIDI-BP-05"
 text = '''
 Remove or replace the identities of other persons, departments, institutions, and organisations, except where they are needed for utility and a residual risk assessment supports keeping them.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
-decisions = ["D-001"]
+decisions = ["D-001", "D-022"]
+implementation = ["_dicom/deidentify/supplementary_actions.py"]
+tests = [
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_the_basic_profile_keeps_no_person_name",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_no_option_keeps_more_than_the_coded_text_and_device_identity",
+]
 note = '''
-The Retain Institution Identity Option is not supported.
+Every person name in the pinned dictionary has an action that removes or replaces it under the Basic Profile, from Table E.1-1 or from a reviewed supplementary action. Every text attribute that a supported IOD uses is removed or replaced too, other than coded and technical values and De-identification Method, which the engine adds to; the names and identifiers of people, organisations, records, and networks, and identifiers that a device reads, among those that Table E.1-1 omits are removed under every option, and accessory and equipment identifiers are kept only under Retain Device Identity (D-022). Remaining, and undecided (D-022): rules for the UR attributes that Table E.1-1 omits; sequence-level rules for sequences that it omits whose kept codes can identify an institution or say something about the patient, such as Requesting Service Code Sequence (0032,1034), Patient's Size Code Sequence (0010,1021), Issuer of Patient ID Qualifiers Sequence (0010,0024), Issuer of Accession Number Sequence (0008,0051), and Reason For Performed Procedure Code Sequence (0040,1012); and whether the kept codes of local coding schemes, and in-house private creators, which can carry an institution's name or abbreviation, need a reviewed rule. Also remaining: applying the actions to each data set (M3). The Retain Institution Identity Option is not supported.
 '''
 
 [[requirement]]
@@ -525,23 +642,43 @@ Use the release of PS3.15 current at the time of de-identification as the refere
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-010"]
+decisions = ["D-001", "D-010", "D-022", "D-023"]
 implementation = [
   "_dev/deid_tables/annex_e.py",
+  "_dev/deid_tables/edition_check.py",
   "_dev/deid_tables/generate.py",
+  "_dev/deid_tables/ps3_4.py",
   "_dev/deid_tables/ps3_6.py",
+  "_dicom/deidentify/actions.py",
+  "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/scope.py",
+  "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/standard.py",
+  "_dicom/deidentify/supplementary_actions.py",
 ]
 tests = [
   "tests/dev/test_deid_tables.py::test_generate_writes_table_e1_1_with_its_provenance",
   "tests/dev/test_deid_tables.py::test_a_source_with_another_digest_is_not_parsed",
   "tests/dev/test_deid_tables.py::test_check_passes_only_when_the_tables_are_current",
+  "tests/dev/test_deid_tables.py::test_a_changed_cell_changes_exactly_its_table",
+  "tests/dev/test_deid_tables.py::test_a_page_that_cannot_be_parsed_fails_the_tables_it_serves",
   "tests/dicom/test_deidentify_standard.py::test_each_table_is_generated_from_the_pinned_edition",
   "tests/dicom/test_deidentify_standard.py::test_an_altered_row_is_rejected",
   "tests/dicom/test_deidentify_standard.py::test_every_table_e1_1_attribute_is_in_the_data_dictionary",
+  "tests/dicom/test_deidentify_sop_classes.py::test_an_unlisted_sop_class_has_no_iod",
+  "tests/dicom/test_deidentify_scope.py::test_a_standard_sop_class_of_another_iod_is_sequestered",
+  "tests/dicom/test_deidentify_scope.py::test_a_sop_class_that_table_b_5_1_does_not_list_is_sequestered",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_only_the_text_of_the_supported_iods_needs_rules",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_the_rules_for_omitted_text_fall_in_the_reviewed_groups",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_each_group_takes_the_action_of_its_option",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_every_date_and_time_that_table_e1_1_omits_has_a_rule",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_a_new_attribute_that_table_e1_1_omits_needs_a_rule_by_its_vr",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_only_the_date_options_override_the_action_of_an_omitted_date",
 ]
 note = '''
-The rule tables and the PS3.6 data dictionary are generated from the pinned edition. Remaining: the edition-check workflow (M1); supplementary rules for unsafe attributes that the tables omit, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestration of objects outside the supported scope (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names, dates, and times that Table E.1-1 omits and every text attribute that it omits and a supported IOD uses. Each such attribute that an option retains or cleans is categorised by that option, as Table E.1-1 does: operator-typed text is cleaned under Clean Descriptors, and accessory and equipment identifiers are kept under Retain Device Identity (D-022); the dates and times are kept under Retain Longitudinal Temporal Information with Full Dates and cleaned under Modified Dates (D-023). `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and `.github/workflows/deid-edition-check.yml` runs it monthly. Remaining: a decision on the UR attributes that the tables omit (D-022) (M2); private attributes (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]
@@ -591,9 +728,17 @@ id = "MIDI-BP-11"
 text = '''
 Remove or replace all unstructured text, whether in data elements, pixel data, or overlays, or, where it is needed for utility, scan it for identifiers and sensitive information, manually or automatically with human review.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
-decisions = ["D-009", "D-017"]
+decisions = ["D-009", "D-017", "D-022", "D-027"]
+implementation = ["_dicom/deidentify/supplementary_actions.py"]
+tests = [
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text",
+]
+note = '''
+Under the Basic Profile, every text attribute that a supported IOD uses is removed or replaced, by Table E.1-1 or a reviewed supplementary rule, except coded and technical values and De-identification Method, which the engine adds to (D-022). Remaining: applying the actions to each data set (M3); and cleaning descriptors with pooled human review, the residual search, and reporting indicators of burned-in text, since the engine does not change pixel data (M4).
+'''
 
 [[requirement]]
 id = "MIDI-BP-12"
@@ -666,9 +811,9 @@ Use human quality control to confirm that de-identification both removed what it
 '''
 status = "planned"
 milestone = "M4"
-decisions = ["D-016", "D-017"]
+decisions = ["D-016", "D-017", "D-027"]
 note = '''
-D-016 provides the confidential QC pack, and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. This practice is not implemented until M4 covers both, or the design assigns them to whoever releases the data.
+D-016 provides the confidential QC pack, to which the residual search sends its text findings (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. This practice is not implemented until M4 covers both, or the design assigns them to whoever releases the data.
 '''
 
 [[requirement]]
@@ -678,7 +823,7 @@ Document the de-identification process in detail, including the release of PS3.1
 '''
 status = "planned"
 milestone = "M4"
-decisions = ["D-011", "D-012"]
+decisions = ["D-011", "D-012", "D-024"]
 note = '''
-Each run writes a release report and a conformance statement that name the edition and Options.
+Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name, and each instance's De-identification Method names PyMedPhys and the preset and gives the policy digest (D-012, D-024).
 '''
