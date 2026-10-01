@@ -672,6 +672,88 @@ def test_a_malformed_digest_is_refused_without_quoting_it(digest):
     assert not digest or digest not in str(raised.value)
 
 
+LONG_TEXT = "x" * 80
+
+
+@pytest.mark.parametrize(
+    ("changes", "error", "match"),
+    [
+        ({"patient_identity_removed": "NO"}, markers.MarkerError, r"\(0012,0062\)"),
+        ({"patient_identity_removed": ""}, markers.MarkerError, r"\(0012,0062\)"),
+        ({"method": (LONG_TEXT, DIGEST)}, markers.MarkerError, r"\(0012,0063\)"),
+        (
+            {"patient_identity_removed": "NO", "method": (LONG_TEXT, DIGEST)},
+            markers.MarkerError,
+            r"\(0012,0062\).*\(0012,0063\)",
+        ),
+        ({"method": ("SYNTHETIC",)}, markers.MarkerError, r"\(0012,0063\)"),
+        (
+            {"method": ("SYNTHETIC", DIGEST, DIGEST)},
+            markers.MarkerError,
+            r"\(0012,0063\)",
+        ),
+        (
+            {"method": ("SYNTHETIC", "A" * 64)},
+            ValueError,
+            "64 lowercase hexadecimal digits",
+        ),
+        ({"method": ("SYNTHETIC", DIGEST.encode())}, TypeError, "digest must be text"),
+        (
+            {"temporal_information_modified": "modified"},
+            markers.MarkerError,
+            r"\(0028,0303\)",
+        ),
+        ({"manufacturer": "Py\\MedPhys"}, markers.MarkerError, r"\(0008,0070\)"),
+        ({"software_versions": LONG_TEXT}, markers.MarkerError, r"\(0018,1020\)"),
+        (
+            {"method_codes": (codes.CodedConcept("DCM", "113100", LONG_TEXT),)},
+            markers.MarkerError,
+            r"\(0008,0104\)",
+        ),
+        (
+            {"purpose_of_reference": codes.CodedConcept("DCM", "1\\09104", "Synth")},
+            markers.MarkerError,
+            r"\(0008,0100\)",
+        ),
+    ],
+    ids=[
+        "NO",
+        "empty-identity-removed",
+        "long-readable-value",
+        "NO-and-long-readable-value",
+        "one-method-value",
+        "three-method-values",
+        "upper-case-digest",
+        "bytes-digest",
+        "lower-case-temporal",
+        "backslash-manufacturer",
+        "long-software-versions",
+        "long-code-meaning",
+        "backslash-code-value",
+    ],
+)
+def test_markers_changed_after_markers_for_are_refused_before_they_are_written(
+    monkeypatch, changes, error, match
+):
+    found = markers.markers_for(
+        policy.compose_policy("public-release"),
+        DIGEST,
+        satisfied=policy.PRESETS["public-release"],
+    )
+    changed = dataclasses.replace(found, **changes)
+
+    def never(*args):
+        raise AssertionError("an attribute was written")
+
+    monkeypatch.setattr(markers, "_set", never)
+
+    with pytest.raises(error, match=match) as raised:
+        markers.apply_markers(_identifying_dataset(), changed)
+
+    assert LONG_TEXT not in str(raised.value)
+    assert "A" * 64 not in str(raised.value)
+
+
 def test_arguments_of_the_wrong_type_are_refused():
     basic = policy.compose_policy("basic")
     found = markers.markers_for(basic, DIGEST, satisfied=())

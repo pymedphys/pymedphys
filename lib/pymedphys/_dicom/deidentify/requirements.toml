@@ -129,6 +129,7 @@ tests = [
   "tests/dicom/test_deidentify_markers.py::test_the_second_method_value_is_exactly_the_policy_digest",
   "tests/dicom/test_deidentify_markers.py::test_every_code_is_a_row_of_the_pinned_context_groups",
   "tests/dicom/test_deidentify_markers.py::test_every_marker_value_is_valid_for_its_vr_and_vm",
+  "tests/dicom/test_deidentify_markers.py::test_markers_changed_after_markers_for_are_refused_before_they_are_written",
   "tests/dicom/test_deidentify_markers.py::test_existing_markers_and_contributing_equipment_items_are_kept",
 ]
 note = '''

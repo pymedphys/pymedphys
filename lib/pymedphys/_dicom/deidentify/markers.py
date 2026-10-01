@@ -48,11 +48,16 @@ and changes nothing else in it:
   109104 "De-identifying Equipment" from CID 7005 as its Purpose of Reference
   Code Sequence (0040,A170).
 
-Each value is checked against its VR and VM in the pinned data dictionary
-before it is written. A value that does not fit, such as a readable value
-longer than the 64 characters of LO, is refused rather than shortened, and
-never written without the version. With edition 2026d, every version of up
-to 15 characters fits every preset's readable value.
+Each value is checked against its VR and VM in the pinned data dictionary,
+Patient Identity Removed is checked to be YES, and the second
+De-identification Method value to be 64 lowercase hexadecimal digits, both
+when :func:`markers_for` gives the markers and again when
+:func:`apply_markers` writes them, so that markers changed in between, such
+as with :func:`dataclasses.replace`, are refused before anything is written.
+A value that does not fit, such as a readable value longer than the 64
+characters of LO, is refused rather than shortened, and never written without
+the version. With edition 2026d, every version of up to 15 characters fits
+every preset's readable value.
 
 The markers depend only on the policy, the digest, the satisfied options, and
 PyMedPhys's version, never on the data set, so they never quote a source
@@ -217,8 +222,32 @@ def _code_elements(code: CodedConcept) -> Iterator[tuple[str, Sequence[str]]]:
     yield _CODE_MEANING, [code.code_meaning]
 
 
+def _check_digest(digest: object) -> None:
+    """Check the policy digest's form, without quoting it."""
+    if not isinstance(digest, str):
+        raise TypeError("the policy digest must be text")
+    if not _DIGEST.fullmatch(digest):
+        raise ValueError("the policy digest must be 64 lowercase hexadecimal digits")
+
+
 def _check(found: Markers) -> None:
-    """Check every value against its VR and VM, and report each one that fails."""
+    """Check the markers as they are to be written, and report each problem.
+
+    De-identification Method must gain two values, the second a policy
+    digest; Patient Identity Removed must be YES; and every value must fit
+    its VR and VM.
+    """
+    if len(found.method) != 2:
+        raise MarkerError(
+            "the de-identification markers cannot be written: "
+            f"De-identification Method {_DEIDENTIFICATION_METHOD} must gain two "
+            "values, the readable value and the policy digest"
+        )
+    _check_digest(found.method[1])
+    problems = []
+    if found.patient_identity_removed != "YES":
+        name = _dictionary()[_PATIENT_IDENTITY_REMOVED].name
+        problems.append(f"{name} {_PATIENT_IDENTITY_REMOVED} is not YES")
     elements = [
         (_PATIENT_IDENTITY_REMOVED, [found.patient_identity_removed]),
         (_DEIDENTIFICATION_METHOD, found.method),
@@ -228,7 +257,6 @@ def _check(found: Markers) -> None:
     ]
     for code in (*found.method_codes, found.purpose_of_reference):
         elements.extend(_code_elements(code))
-    problems = []
     for tag, given in elements:
         attribute = _dictionary()[tag]
         problem = values_problem(attribute.vr, attribute.vm, given)
@@ -305,10 +333,7 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
-    if not isinstance(digest, str):
-        raise TypeError("the policy digest must be text")
-    if not _DIGEST.fullmatch(digest):
-        raise ValueError("the policy digest must be 64 lowercase hexadecimal digits")
+    _check_digest(digest)
     uncoded = [option for option in policy.options if option not in OPTION_CODES]
     if uncoded:
         raise ValueError(
@@ -405,7 +430,10 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
         The data set after every other action of the policy. It is not
         changed.
     markers : Markers
-        From :func:`markers_for`.
+        From :func:`markers_for`. They are checked again as
+        :func:`markers_for` checks them, before anything is written, since
+        they can be changed after it gives them, such as with
+        :func:`dataclasses.replace`.
 
     Returns
     -------
@@ -415,17 +443,24 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
     Raises
     ------
     TypeError
-        If ``dataset`` is not a :class:`pydicom.Dataset` or ``markers`` is
-        not :class:`Markers`.
+        If ``dataset`` is not a :class:`pydicom.Dataset`, ``markers`` is not
+        :class:`Markers`, or the policy digest in ``markers`` is not text.
+    ValueError
+        If the policy digest in ``markers`` is not 64 lowercase hexadecimal
+        digits. The message does not quote it.
     MarkerError
-        If an attribute whose values are kept has values but another VR than
-        the pinned dictionary gives it, such as UN, so that keeping them
-        could lose or misread them. The message does not quote them.
+        If ``markers`` sets Patient Identity Removed to anything but YES,
+        does not add exactly two De-identification Method values, or has a
+        value that does not fit its VR or VM; or if an attribute whose values
+        are kept has values but another VR than the pinned dictionary gives
+        it, such as UN, so that keeping them could lose or misread them. The
+        message does not quote the values.
     """
     if not isinstance(dataset, pydicom.Dataset):
         raise TypeError("dataset must be a pydicom Dataset")
     if not isinstance(markers, Markers):
         raise TypeError("markers must be Markers, from markers_for")
+    _check(markers)
     marked = copy.deepcopy(dataset)
     method = _existing(marked, _DEIDENTIFICATION_METHOD)
     method_codes = _existing(marked, _DEIDENTIFICATION_METHOD_CODES)
