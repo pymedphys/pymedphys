@@ -115,9 +115,21 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 If the Data Set being de-identified is being stored within a DICOM File, then the File Meta Information including the 128 byte preamble, if present, shall be replaced with a description of the de-identifying application. Otherwise, there is a risk that identity information may leak through unmodified File Meta Information or preamble. See PS3.10. This includes information regarding Application Entity Titles, Presentation Addresses, implementation information, and private information.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-002", "D-025", "D-027"]
+implementation = ["_dicom/deidentify/file_meta.py"]
+tests = [
+  "tests/dicom/test_deidentify_file_meta.py::test_the_file_meta_information_holds_exactly_the_seven_elements_in_order",
+  "tests/dicom/test_deidentify_file_meta.py::test_the_implementation_class_uid_is_the_first_uid_of_the_reserved_arc",
+  "tests/dicom/test_deidentify_file_meta.py::test_the_implementation_version_name_holds_the_version_where_it_fits",
+  "tests/dicom/test_deidentify_file_meta.py::test_the_group_length_counts_the_bytes_of_the_elements_after_it",
+  "tests/dicom/test_deidentify_file_meta.py::test_a_written_file_has_a_zero_preamble_and_exactly_the_built_elements",
+  "tests/dicom/test_deidentify_file_meta.py::test_no_source_file_meta_element_or_preamble_is_written",
+]
+note = '''
+The File Meta Information that replaces the source file's describes the de-identifier by a fixed Implementation Class UID under the PyMedPhys root and an Implementation Version Name, and holds no Application Entity Title, Presentation Address, or private element. A data set is written with it and a zeroed preamble, whatever File Meta Information and preamble the source file held. Remaining: writing each de-identified instance this way (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.1-07"
@@ -573,9 +585,23 @@ tests = [
   "tests/dicom/test_deidentify_reference_graph.py::test_each_reference_resolves_to_its_instance",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_input_of_a_class_outside_table_b5_1_resolves",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_instance_not_in_the_collection_is_dangling",
+  "tests/dicom/test_deidentify_record_content.py::test_a_copy_in_another_encoding_has_the_same_content",
+  "tests/dicom/test_deidentify_record_content.py::test_any_change_to_the_data_set_changes_the_content",
+  "tests/dicom/test_deidentify_record_content.py::test_a_copy_whose_pixel_data_is_encoded_otherwise_conflicts",
+  "tests/dicom/test_deidentify_record_content.py::test_the_same_bytes_in_another_byte_order_conflict",
+  "tests/dicom/test_deidentify_record_content.py::test_a_private_number_in_another_vr_with_the_same_bytes_conflicts",
+  "tests/dicom/test_deidentify_record_content.py::test_an_element_read_as_unknown_conflicts_with_a_copy_that_has_its_vr",
+  "tests/dicom/test_deidentify_record_content.py::test_a_record_needs_a_data_set_read_in_full",
+  "tests/dicom/test_deidentify_reference_graph.py::test_copies_of_one_instance_are_duplicates",
+  "tests/dicom/test_deidentify_reference_graph.py::test_one_sop_instance_uid_with_different_content_conflicts",
+  "tests/dicom/test_deidentify_reference_graph.py::test_copies_in_implicit_and_explicit_vr_with_a_private_element_conflict",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_series_in_two_studies_is_inconsistent",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_study_with_two_patients_is_inconsistent",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_study_whose_instances_all_lack_a_patient_id_has_one_patient",
+  "tests/dicom/test_deidentify_reference_graph.py::test_the_instances_without_a_patient_id_are_grouped_as_one_patient",
 ]
 note = '''
-The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. Remaining: writing the dummy values that the resolved compound actions call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking the collection's hierarchy and frames of reference in the first pass, validating output against its IOD, and checking after writing that references are intact (M4).
+The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. It also reports instances that share a SOP Instance UID, as identical copies only where their decoded content, with each element's VR, is shown to be the same, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, each a Patient ID with its issuer, with the instances without a Patient ID as one more. Remaining: writing the dummy values that the resolved compound actions call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking frames of reference in the first pass, acting on its findings, validating output against its IOD, and checking after writing that references are intact (M4).
 '''
 
 [[requirement]]

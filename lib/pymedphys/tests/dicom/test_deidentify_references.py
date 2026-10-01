@@ -14,7 +14,6 @@
 
 """Where an instance refers to others, from PS3.3, and what an instance record holds."""
 
-import io
 import pickle
 import struct
 
@@ -174,14 +173,6 @@ def _only_site(monkeypatch, site):
     monkeypatch.setattr(
         references, "_iod_and_sites", lambda sop_class: ("RT Plan", (site,))
     )
-
-
-def _written_and_read(dataset, transfer_syntax):
-    dataset.file_meta = pydicom.dataset.FileMetaDataset()
-    dataset.file_meta.TransferSyntaxUID = transfer_syntax
-    written = io.BytesIO()
-    pydicom.dcmwrite(written, dataset, enforce_file_format=True)
-    return pydicom.dcmread(io.BytesIO(written.getvalue()))
 
 
 @pytest.mark.parametrize("iod, attribute, level", RT_REFERENCES, ids=_id)
@@ -611,7 +602,7 @@ def test_a_record_read_from_a_file_matches_the_data_set(transfer_syntax):
     ]
     expected = InstanceRecord.from_dataset(dataset)
 
-    read = _written_and_read(dataset, transfer_syntax)
+    read = synthetic.written_and_read(dataset, transfer_syntax)
 
     assert InstanceRecord.from_dataset(read) == expected
     assert len(expected.references) == 9
@@ -734,7 +725,7 @@ def test_a_record_read_from_implicit_vr_has_the_references_in_unknown_sequences(
     dataset, _, attribute, _ = build()
     expected = InstanceRecord.from_dataset(dataset)
 
-    read = _written_and_read(dataset, "1.2.840.10008.1.2")
+    read = synthetic.written_and_read(dataset, "1.2.840.10008.1.2")
     record = InstanceRecord.from_dataset(read)
 
     assert record == expected
@@ -819,4 +810,7 @@ def test_an_unknown_value_of_zero_length_has_no_items(monkeypatch):
 
     record = InstanceRecord.from_dataset(dataset)
 
-    assert record == InstanceRecord.from_dataset(synthetic.rt_plan())
+    plain = InstanceRecord.from_dataset(synthetic.rt_plan())
+    assert record.references == plain.references
+    # The empty element is still part of the data set's content.
+    assert record.digest != plain.digest
