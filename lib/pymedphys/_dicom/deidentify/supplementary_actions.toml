@@ -812,21 +812,21 @@ tag = "(0008,0404)"
 keyword = "ItemInventoryDateTime"
 action = "X/Z/D"
 options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
-note = "When the inventory information for a study was created, which PS3.3 requires to be at or after the inventory's Content Date and Content Time. PS3.3 defines it only in the Inventory modules, which none of the IODs whose Types are generated uses, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+note = "When the inventory information for a study was created, which PS3.3 requires to be at or after the inventory's Content Date and Content Time. PS3.3 defines it only in the Inventory Module, as Type 1 in Inventoried Studies Sequence. Only the Inventory IOD uses the Inventory Module, and no IOD of the first supported release uses it. It is removed by Type, which gives it a dummy value where it is Type 1, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
 
 [[attribute]]
 tag = "(0008,0416)"
 keyword = "ExpirationDateTime"
 action = "X/Z/D"
 options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
-note = "When a storage system expects an instance, or an inventory, to stop being available. PS3.3 defines it only in the Inventory modules, which none of the IODs whose Types are generated uses, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
+note = "When a storage system expects an instance, or an inventory, to stop being available. PS3.3 defines it only in the Inventory Module, as Type 3 in File Access Sequence within the items of inventoried studies, series, and instances, and in the Inventory Creation Module, which describes an Inventory Creation request or response rather than a stored instance. Only the Inventory IOD uses the Inventory Module, and no IOD of the first supported release uses it. It is removed by Type, which removes it where it is Type 3, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
 
 [[attribute]]
 tag = "(0008,041F)"
 keyword = "StudyUpdateDateTime"
 action = "X/Z/D"
 options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
-note = "When a storage system last updated a study's instances or metadata, first set when the system received the study. PS3.3 defines it only in the Inventory modules, which none of the IODs whose Types are generated uses, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+note = "When a storage system last updated a study's instances or metadata, first set when the system received the study. PS3.3 defines it only in the Inventory Module, as Type 2 in Inventoried Studies Sequence. Only the Inventory IOD uses the Inventory Module, and no IOD of the first supported release uses it. It is removed by Type, which empties it where it is Type 2, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
 
 [[attribute]]
 tag = "(0014,0102)"

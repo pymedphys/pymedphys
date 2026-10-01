@@ -14,6 +14,10 @@
 
 """Reviewed supplementary (L2) actions for attributes that Table E.1-1 omits."""
 
+# The tests share the hand-checked lists of attributes and the helpers that
+# rewrite the rules file below, so they stay in one module.
+# pylint: disable = too-many-lines
+
 import collections
 import dataclasses
 import itertools
@@ -75,6 +79,30 @@ OMITTED_DATES = {
 SAID_OF = {
     temporal_roles.TemporalAction.SHIFT: "shifts it with the subject's other dates",
     temporal_roles.TemporalAction.DUMMY: "replaces it with a fixed dummy value",
+}
+# The claims that a note can make about the IODs that use its attribute,
+# which the generated IOD tables can check: that none uses it, or none uses
+# the only modules that define it ("which none of the IODs ... uses").
+NO_GENERATED_IOD_USES_IT = re.compile(
+    r"\b(?:none of the IODs whose Types are generated|no IOD whose Types are "
+    r"generated|none of the generated IODs) uses\b"
+)
+NO_SUPPORTED_IOD_USES_IT = re.compile(
+    r"\bno (?:supported IOD|IOD of the first supported release) uses\b"
+)
+INVENTORIED_STUDIES = "(0008,0423)"  # Inventoried Studies Sequence
+# The omitted dates that, of the IODs whose Types are generated, only the
+# Inventory IOD uses, in its Inventory Module, with the path and Type that
+# Table C.38.1-1 gives each, checked by hand against the 2026d PS3.3.
+INVENTORY_DATES = {
+    "(0008,0404)": ((INVENTORIED_STUDIES,), "1"),  # Item Inventory DateTime
+    "(0008,041F)": ((INVENTORIED_STUDIES,), "2"),  # Study Update DateTime
+    # Expiration DateTime, in File Access Sequence (0008,041A) of each
+    # inventoried instance of each inventoried series.
+    "(0008,0416)": (
+        (INVENTORIED_STUDIES, "(0008,0424)", "(0008,0425)", "(0008,041A)"),
+        "3",
+    ),
 }
 
 # Examples of each group of text attributes, from the design document.
@@ -185,6 +213,26 @@ def _omitted_text():
 
 def _rules():
     return supplementary_actions.load_supplementary_actions().rules
+
+
+def _definitions_of(tags, names=None):
+    """Return where the IODs whose Types are generated define each of ``tags``.
+
+    Each definition, at any depth, is given as the IOD's name, the module's
+    name, the path, and the Type. Only the IODs in ``names`` are searched, if
+    given. An IOD's definitions include those in the items of every sequence;
+    the items of a table that includes itself repeat definitions already
+    listed.
+    """
+    tables = iods.load_iod_tables()
+    found = collections.defaultdict(set)
+    for name in tables.iods if names is None else names:
+        for definition in tables.iods[name].definitions:
+            if definition.tag in tags:
+                found[definition.tag].add(
+                    (name, definition.module, definition.path, definition.type)
+                )
+    return dict(found)
 
 
 def _custom_option_sets():
@@ -503,6 +551,43 @@ def test_each_date_rule_says_what_the_date_options_and_its_role_do():
         assert "Retain Device Identity" in rules[tag].note
 
 
+@pytest.mark.parametrize(
+    "claim, names, claimed_of",
+    [
+        # The DICONDE and DICOS person names and dates.
+        (
+            NO_GENERATED_IOD_USES_IT,
+            None,
+            {"(0014,0104)", "(0014,2006)"}
+            | (set(OMITTED_DATES) - set(INVENTORY_DATES)),
+        ),
+        (NO_SUPPORTED_IOD_USES_IT, SUPPORTED_IODS, set(INVENTORY_DATES)),
+    ],
+    ids=["generated", "supported"],
+)
+def test_a_note_that_no_iod_uses_its_attribute_is_true(claim, names, claimed_of):
+    # Checked again whenever the IOD tables are regenerated, since an IOD
+    # whose Types are newly generated can use an attribute that none did.
+    claimed = {tag for tag, rule in _rules().items() if claim.search(rule.note)}
+
+    assert claimed_of <= claimed
+    assert not _definitions_of(claimed, names)
+
+
+def test_only_the_inventory_iod_uses_the_inventory_dates_as_their_notes_say():
+    found = _definitions_of(set(INVENTORY_DATES))
+    rules = _rules()
+
+    for tag, (path, attribute_type) in INVENTORY_DATES.items():
+        assert found[tag] == {("Inventory", "Inventory", path, attribute_type)}, tag
+        note = rules[tag].note
+        assert (
+            f"PS3.3 defines it only in the Inventory Module, as Type {attribute_type}"
+            in note
+        ), tag
+        assert "Only the Inventory IOD uses the Inventory Module" in note, tag
+
+
 def test_the_options_override_the_basic_profile_action_of_a_rule():
     effective = actions.effective_supplementary_actions([CLEAN_DESCRIPTORS])
     rules = _rules()
@@ -585,6 +670,15 @@ def test_uids_are_left_to_their_roles_and_dates_have_actions_besides():
     assert supplementary_actions._ROLES_ONLY_VRS == uid_roles._FORMAT.vrs
     assert supplementary_actions.TEMPORAL_VRS == temporal_roles._FORMAT.vrs
     assert supplementary_actions.COVERED_VRS == {"PN"} | TEMPORAL_VRS
+
+
+def test_each_option_that_can_give_an_action_names_the_attributes_it_applies_to():
+    # Otherwise a rule's action under such an option would raise a KeyError,
+    # not a SupplementaryActionError.
+    # pylint: disable=protected-access
+    assert set(supplementary_actions._OPTION_ATTRIBUTES) == set(
+        supplementary_actions.OPTION_ACTIONS
+    )
 
 
 def test_every_note_says_why_without_citing_a_decision_number():
