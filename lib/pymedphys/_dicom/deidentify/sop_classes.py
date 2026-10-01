@@ -25,9 +25,11 @@ the tables of PS3.6 Annex A.
 
 :func:`iod_for_sop_class` returns the IOD, with the attribute Types that
 :mod:`~pymedphys._dicom.deidentify.iods` generates, only for the SOP Classes of
-those IODs. Any other SOP Class, whether a Standard SOP Class of another IOD,
-a retired or Private SOP Class, or one from a later edition, has none, and is
-outside the supported scope.
+those IODs. Any other SOP Class, whether a Standard SOP Class of an IOD whose
+Types are not yet generated, a retired or Private SOP Class, or one from a
+later edition, has none, and is outside the supported scope. Having Types does
+not make an IOD supported: :mod:`~pymedphys._dicom.deidentify.scope` decides
+that.
 """
 
 from __future__ import annotations
@@ -177,8 +179,8 @@ def iod_for_sop_class(
         The IOD that Table B.5-1 gives for the SOP Class, with its modules and
         attribute Types. None if Table B.5-1 does not list the UID, as for a
         retired or Private SOP Class or a SOP Class that another part of PS3.4
-        defines; or if the IOD's Types are not generated, as for MR Image
-        Storage.
+        defines; or if the IOD's Types are not generated, as for Enhanced CT
+        Image Storage, whose IOD has Functional Group Macros.
 
     Raises
     ------
@@ -192,7 +194,9 @@ def iod_for_sop_class(
     --------
     >>> iod_for_sop_class("1.2.840.10008.5.1.4.1.1.481.5").name  # RT Plan Storage
     'RT Plan'
-    >>> iod_for_sop_class("1.2.840.10008.5.1.4.1.1.4") is None  # MR Image Storage
+    >>> iod_for_sop_class("1.2.840.10008.5.1.4.1.1.4").name  # MR Image Storage
+    'MR Image'
+    >>> iod_for_sop_class("1.2.840.10008.5.1.4.1.1.2.1") is None  # Enhanced CT
     True
     """
     if sop_classes is None:

@@ -30,9 +30,11 @@ the attribute has a value. Such an attribute is reported as a conflict and
 given no action; what a policy does about it is decided when the policy is
 validated.
 
-These are the actions of Table E.1-1 alone. Compound actions such as X/Z/D
-are resolved later, from the attribute's Type in its IOD, and reviewed
-supplementary rules add attributes the table omits.
+Reviewed supplementary rules give actions to attributes that the table omits
+(:mod:`~pymedphys._dicom.deidentify.supplementary_actions`). A rule, like a
+row of the table, can give an action under an option, and
+:func:`effective_supplementary_actions` resolves it in the same way. Compound
+actions such as X/Z/D are resolved later, from the attribute's Type in its IOD.
 """
 
 from __future__ import annotations
@@ -42,6 +44,7 @@ import types
 from collections.abc import Iterable, Mapping
 
 from .standard import OPTIONS, ProfileTable, load_table_e1_1
+from .supplementary_actions import SupplementaryActions, load_supplementary_actions
 
 # Options that PS3.15 specifies as mutually exclusive: E.3.6 for the two Retain
 # Longitudinal Temporal Information Options.
@@ -57,9 +60,10 @@ class OptionConflict:
     Attributes
     ----------
     name : str
-        The attribute's name, as Table E.1-1 gives it.
+        The attribute's name, as Table E.1-1 gives it, or the keyword of a
+        supplementary rule.
     tag : str
-        The attribute's tag, as Table E.1-1 gives it, such as
+        The attribute's tag, as Table E.1-1 or the rule gives it, such as
         ``"(0018,1200)"``.
     actions : Mapping of str to str
         The action of each selected option that gives the attribute one, in
@@ -75,18 +79,18 @@ class OptionConflict:
 
 @dataclasses.dataclass(frozen=True)
 class EffectiveActions:
-    """The actions of Table E.1-1 under the Basic Profile and selected options.
+    """The actions of Table E.1-1, or of the supplementary rules, under options.
 
     Attributes
     ----------
     edition : str
-        The edition of the table, such as ``"2026d"``.
+        The edition of the table or rules, such as ``"2026d"``.
     options : tuple of str
         The selected options, once each, in the table's order, such as
         ``("retain_uids", "clean_descriptors")``.
     actions : Mapping of str to str
         Each attribute's action code, such as ``"X/Z/D"`` or ``"K"``, keyed
-        by its tag as Table E.1-1 gives it, including
+        by its tag as Table E.1-1 or the rule gives it, including
         ``"(gggg,eeee) where gggg is odd"`` for private attributes. An
         attribute in :attr:`conflicts` has none. Read-only.
     conflicts : tuple of OptionConflict
@@ -157,28 +161,73 @@ def effective_actions(
     selected = _selected(options)
     if table is None:
         table = load_table_e1_1()
+    rows = ((r.name, r.tag, r.basic_profile, r.options) for r in table.attributes)
+    return _resolve(table.edition, selected, rows)
 
+
+def effective_supplementary_actions(
+    options: Iterable[str] = (), rules: SupplementaryActions | None = None
+) -> EffectiveActions:
+    """Return each supplementary rule's action under the Basic Profile and ``options``.
+
+    A rule's action under a selected option overrides its Basic Profile
+    action, as an option's action does in Table E.1-1, such as C for Beam
+    Name under Clean Descriptors.
+
+    Parameters
+    ----------
+    options : iterable of str, optional
+        The selected options, as for :func:`effective_actions`. Defaults to
+        none: the Basic Profile alone.
+    rules : SupplementaryActions, optional
+        The rules. Defaults to
+        :func:`~pymedphys._dicom.deidentify.supplementary_actions.load_supplementary_actions`.
+
+    Returns
+    -------
+    EffectiveActions
+        Keyed by each rule's tag. A rule to which the selected options give
+        different actions is a conflict, named by its keyword, with no
+        action; the loader rejects such a rule, so the shipped rules have
+        none.
+
+    Raises
+    ------
+    TypeError
+        If ``options`` is a single string rather than a collection of names.
+    ValueError
+        For the options :func:`effective_actions` rejects.
+    """
+    selected = _selected(options)
+    if rules is None:
+        rules = load_supplementary_actions()
+    rows = ((r.keyword, r.tag, r.action, r.options) for r in rules.rules.values())
+    return _resolve(rules.edition, selected, rows)
+
+
+def _resolve(
+    edition: str,
+    selected: tuple[str, ...],
+    rows: Iterable[tuple[str, str, str, Mapping[str, str]]],
+) -> EffectiveActions:
+    """Give each row, a name, tag, profile action, and option actions, its action."""
     resolved: dict[str, str] = {}
     conflicts: list[OptionConflict] = []
-    for attribute in table.attributes:
+    for name, tag, basic_profile, option_actions in rows:
         given = {
-            option: attribute.options[option]
+            option: option_actions[option]
             for option in selected
-            if option in attribute.options
+            if option in option_actions
         }
         if len(set(given.values())) > 1:
-            conflicts.append(
-                OptionConflict(
-                    attribute.name, attribute.tag, types.MappingProxyType(given)
-                )
-            )
+            conflicts.append(OptionConflict(name, tag, types.MappingProxyType(given)))
         elif given:
-            resolved[attribute.tag] = next(iter(given.values()))
+            resolved[tag] = next(iter(given.values()))
         else:
-            resolved[attribute.tag] = attribute.basic_profile
+            resolved[tag] = basic_profile
 
     return EffectiveActions(
-        edition=table.edition,
+        edition=edition,
         options=selected,
         actions=types.MappingProxyType(resolved),
         conflicts=tuple(conflicts),

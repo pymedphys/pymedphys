@@ -1,5 +1,6 @@
 <!-- markdownlint-disable-file MD041 -->
 <!-- Write for readers who are physicists rather than full-time software developers: plain language and examples first, technical detail under "Reviewer focus". CONTRIBUTING.md, under "Open and review a pull request", has the rules. -->
+<!-- Preparing a stable release? Discard this text and reopen the pull request form with "&template=release.md" added to its URL, as the release guide describes. -->
 
 ## Summary
 
