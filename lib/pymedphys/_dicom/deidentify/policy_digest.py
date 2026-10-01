@@ -48,9 +48,15 @@ Python and of the libraries that the engine imports:
   and editable installs share a version across commits, so these files
   identify their code where the version cannot. They and the generated
   tables are read once per process, when the first digest is computed, and
-  stand for the engine as first read in the process: every instance of a run
-  carries the same digest, and an edit to an editable install after that is
-  not seen until the process restarts;
+  stand for the engine as read then, not as imported. An edit after the
+  first digest is not seen until the process restarts, so every instance of
+  a run carries the same digest; an edit between importing the engine and
+  the first digest can give the old code the new files' digest. Editing or
+  reloading the engine's modules in a running process, for example with
+  ``importlib.reload`` or Jupyter's autoreload, is not supported, and the
+  digest is then not guaranteed to match the code that runs. The engine is
+  to compute the digest before it processes anything, so that the digest
+  stands for the code that runs;
 - the Python implementation and version, such as ``CPython`` and
   ``3.14.0``, and the version of each third-party library that this package
   imports: pydicom, which will read and write every DICOM file, and tomlkit,
@@ -58,10 +64,14 @@ Python and of the libraries that the engine imports:
 
 The digest therefore also changes when something the policy does not use
 changes, which is harmless; it never stays the same when one of these inputs
-changes, with the files and tables as first read in the process. It does not
-cover the operating system, compiled libraries, third-party libraries that
-this package does not import itself, or the code of a development install of
-pydicom, which keeps its version across commits.
+changes, with the files and tables as read at the first digest in the
+process. Of PyMedPhys's code outside this package, including the modules
+that this package imports, ``pymedphys._version``, ``pymedphys._config``,
+``pymedphys._imports``, and ``pymedphys._nomenclature.tg263``, the digest
+covers only PyMedPhys's version, which a development build keeps across
+commits. It does not cover the operating system, compiled libraries,
+third-party libraries that this package does not import itself, or the code
+of a development install of pydicom, which keeps its version across commits.
 """
 
 from __future__ import annotations
