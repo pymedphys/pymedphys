@@ -487,11 +487,27 @@ id = "MIDI-BP-01"
 text = '''
 For public sharing, remove or replace all known direct identifiers and relevant indirect identifiers and sensitive information wherever they occur: collection descriptions, supporting data, structured and unstructured text, pixel data, and overlays. Justify retaining any indirect identifier with a collection-specific expert statistical analysis of residual risk against a predetermined threshold, which considers other public information about the subjects and holds only at the time it was done.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-017"]
+decisions = ["D-001", "D-015", "D-016", "D-017"]
+implementation = [
+  "_dicom/deidentify/file_layout.py",
+  "_dicom/deidentify/residuals.py",
+]
+tests = [
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_hidden_in_the_preamble_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_the_file_meta_information_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_data_set_trailing_padding_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_bytes_after_the_data_set_are_searched",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_an_ob_value_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_un_value_is_found_in_utf_16",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_private_element_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_nested_sequence_item_is_found",
+  "tests/dicom/test_deidentify_residuals.py::test_encapsulated_fragments_are_searched_for_every_form",
+  "tests/dicom/test_deidentify_residuals.py::test_a_clean_file_has_no_findings",
+]
 note = '''
-The Basic Profile's actions remove or replace identifiers, and `public-release` retains indirect identifiers only after its statistical assessment.
+The Basic Profile's actions remove or replace identifiers, and `public-release` retains indirect identifiers only after its statistical assessment. Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. Remaining: removing and replacing identifiers in each data set (M3), and acting on what the search finds, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
 '''
 
 [[requirement]]
