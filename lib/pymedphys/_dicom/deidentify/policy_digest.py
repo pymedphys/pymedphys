@@ -42,13 +42,15 @@ Python and of the libraries that the engine imports:
   and the requirements register beside them; and its generated tables. Each
   is read as bytes, with CRLF line endings normalised to LF, so a Windows
   checkout gives each file the same digest. ``__pycache__`` and names that
-  start with ``.``, such as the caches that tools write, are left out.
-  Development builds and editable installs share a version across commits,
-  so these files identify their code where the version cannot. They and the
-  generated tables are read once per process, when the first digest is
-  computed, and stand for the engine as first read in the process: every
-  instance of a run carries the same digest, and an edit to an editable
-  install after that is not seen until the process restarts;
+  start with ``.`` within the package, such as the caches that tools write,
+  are left out. The digest is refused if none of these files can be found,
+  or if they do not include this module's own source. Development builds
+  and editable installs share a version across commits, so these files
+  identify their code where the version cannot. They and the generated
+  tables are read once per process, when the first digest is computed, and
+  stand for the engine as first read in the process: every instance of a run
+  carries the same digest, and an edit to an editable install after that is
+  not seen until the process restarts;
 - the Python implementation and version, such as ``CPython`` and
   ``3.14.0``, and the version of each third-party library that this package
   imports: pydicom, which will read and write every DICOM file, and tomlkit,
@@ -118,6 +120,10 @@ _SCALARS: tuple[tuple[type, str, Callable[[Any], str | int]], ...] = (
     (bytes, "bytes", bytes.hex),
     (uuid.UUID, "uuid", str),
 )
+
+
+class PolicyDigestError(RuntimeError):
+    """The engine's files cannot be found, so the policy digest cannot cover them."""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -329,7 +335,9 @@ def _table_digests(directory: pathlib.Path) -> Mapping[str, str]:
 def _file_digests(directory: pathlib.Path) -> Mapping[str, str]:
     """Return the SHA-256 of each source and rule file, with CRLF read as LF.
 
-    Each directory is read once and cached, keyed by its resolved path.
+    Each directory is read once and cached, keyed by its resolved path. A
+    directory without this module's own source is refused, since its files
+    cannot be the engine's.
     """
     digests = {}
     for path in directory.rglob("*"):
@@ -338,6 +346,15 @@ def _file_digests(directory: pathlib.Path) -> Mapping[str, str]:
         if path.suffix in COVERED_SUFFIXES and not cached and path.is_file():
             data = path.read_bytes().replace(b"\r\n", b"\n")
             digests[relative.as_posix()] = hashlib.sha256(data).hexdigest()
+    if not digests:
+        raise PolicyDigestError(
+            "the policy digest found no source or rule files of the engine"
+        )
+    if "policy_digest.py" not in digests:
+        raise PolicyDigestError(
+            "the files that the policy digest found do not include "
+            "policy_digest.py, so they are not the engine's"
+        )
     return types.MappingProxyType(digests)
 
 
@@ -380,6 +397,9 @@ def digest_inputs(vocabulary: tg263.Nomenclature | None = None) -> DigestInputs:
     ~pymedphys._dicom.deidentify.standard.StandardTableError
         If a generated table cannot be read, or its rows do not match the
         digest it records.
+    PolicyDigestError
+        If the package's source and rule files cannot be found, or do not
+        include this module's own source, ``policy_digest.py``.
     """
     if vocabulary is not None and not isinstance(vocabulary, tg263.Nomenclature):
         raise TypeError("vocabulary must be a TG-263 Nomenclature or None")
@@ -442,8 +462,10 @@ def policy_digest(
 
     Raises
     ------
-    TypeError, ValueError, ~pymedphys._dicom.deidentify.standard.StandardTableError
+    TypeError, ValueError
         For any reason :func:`digest_inputs` or :func:`canonical_bytes` gives.
+    ~pymedphys._dicom.deidentify.standard.StandardTableError, PolicyDigestError
+        For any reason :func:`digest_inputs` gives.
 
     Examples
     --------

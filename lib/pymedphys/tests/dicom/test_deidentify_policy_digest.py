@@ -25,6 +25,7 @@ import dataclasses
 import hashlib
 import importlib
 import json
+import pathlib
 import pkgutil
 import platform
 import re
@@ -155,6 +156,7 @@ ENVIRONMENT_CHANGES = {
 
 ENGINE_FILES = {
     "__init__.py": b'"""A package."""\n',
+    "policy_digest.py": b'FORMAT = "digest/1"\n',
     "policy.py": b"ACTION = 'X'\n\n\ndef action():\n    return ACTION\n",
     "rules.toml": b'schema = "rules/1"\n\n[[attribute]]\ntag = "(0008,0018)"\n',
     "_standard/table.json": b'{\n "rows": [\n  {"tag": "(0010,0010)"}\n ]\n}\n',
@@ -187,6 +189,7 @@ def _read_again():
 
 def _engine(directory, files, newline=b"\n"):
     """Write a synthetic engine package, with ``newline`` ending each line."""
+    directory.mkdir(parents=True, exist_ok=True)
     for name, content in files.items():
         path = directory / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -655,6 +658,70 @@ def test_changing_adding_or_removing_an_engine_file_changes_the_digest(
     read_again()
 
     assert policy_digest.policy_digest(basic) != before
+
+
+def test_every_file_of_the_engine_other_than_caches_has_a_covered_type():
+    package = policy_digest.PACKAGE_DIR
+    expected = set()
+    for path in package.rglob("*"):
+        relative = path.relative_to(package)
+        if path.is_file() and not any(
+            part == "__pycache__" or part.startswith(".") for part in relative.parts
+        ):
+            expected.add(relative.as_posix())
+    uncovered = sorted(
+        name
+        for name in expected
+        if pathlib.PurePosixPath(name).suffix not in policy_digest.COVERED_SUFFIXES
+    )
+
+    assert not uncovered, "the policy digest does not cover these types of file"
+    assert set(policy_digest.digest_inputs().files) == expected
+
+
+def test_every_file_is_covered_when_the_engine_is_installed_below_a_hidden_directory(
+    tmp_path, monkeypatch
+):
+    site_packages = tmp_path / ".venv" / "lib" / "python3.14" / "site-packages"
+    engine = _engine(
+        site_packages / "pymedphys" / "_dicom" / "deidentify", ENGINE_FILES
+    )
+    monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
+
+    assert set(policy_digest.digest_inputs().files) == set(ENGINE_FILES)
+
+
+@pytest.mark.parametrize(
+    "files, problem",
+    [
+        (None, "found no source or rule files"),
+        ({}, "found no source or rule files"),
+        (
+            {"notes.txt": b"notes", "__pycache__/policy_digest.cpython-313.pyc": b""},
+            "found no source or rule files",
+        ),
+        (
+            {n: c for n, c in ENGINE_FILES.items() if n != "policy_digest.py"},
+            "do not include policy_digest.py",
+        ),
+    ],
+    ids=["missing", "empty", "no-covered-files", "without-its-own-module"],
+)
+def test_the_digest_is_refused_without_the_engine_files(
+    basic, tmp_path, monkeypatch, files, problem
+):
+    engine = tmp_path / "engine"
+    if files is not None:
+        _engine(engine, files)
+    monkeypatch.setattr(policy_digest, "PACKAGE_DIR", engine)
+
+    for compute in (
+        policy_digest.digest_inputs,
+        lambda: policy_digest.policy_digest(basic),
+    ):
+        with pytest.raises(policy_digest.PolicyDigestError, match=problem) as raised:
+            compute()
+        assert str(tmp_path) not in str(raised.value)
 
 
 def _edit_a_file(engine, _tables):
