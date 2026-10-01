@@ -47,9 +47,10 @@ removes or replaces the value.
 :func:`~pymedphys._dicom.deidentify.actions.effective_supplementary_actions`
 gives each rule's action under the selected options, as
 :func:`~pymedphys._dicom.deidentify.actions.effective_actions` does for Table
-E.1-1. A text attribute that the table omits and no rule covers, such as one
-that no supported IOD uses, is removed by Type
-(:data:`UNCOVERED_TEXT_ACTION`).
+E.1-1. :data:`UNCOVERED_TEXT_ACTION` declares the action for a text attribute
+that the table omits and no rule covers, such as one that no supported IOD
+uses: removal by Type. Nothing applies it yet; the engine (M3) will apply it to
+such attributes.
 
 The file gives actions only to attributes that the table omits, so it never
 changes an action the table gives. UI, DA, DT, and TM attributes are left to
@@ -92,7 +93,8 @@ COVERED_VRS = frozenset({"PN"})
 # supported IOD uses needs an action.
 TEXT_VRS = frozenset({"LO", "SH", "LT", "ST", "UC", "UT"})
 # The action for a text attribute that Table E.1-1 omits and no rule covers,
-# under every option: removed, emptied, or replaced by its Type.
+# under every option: removed, emptied, or replaced by its Type. The engine
+# (M3) will apply it; nothing applies it yet.
 UNCOVERED_TEXT_ACTION = "X/Z/D"
 # The options under which a rule may give an action, and the action each may
 # give: Retain Device Identity keeps (K) a device identifier, as Table E.1-1

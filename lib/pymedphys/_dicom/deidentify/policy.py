@@ -157,9 +157,9 @@ class Policy:
         options, keyed by its tag as the data dictionary gives it, such as
         ``"(300A,00C2)"`` for Beam Name: the actions of attributes that
         Table E.1-1 omits. A text attribute that the table omits and no rule
-        covers takes
-        :data:`~pymedphys._dicom.deidentify.supplementary_actions.UNCOVERED_TEXT_ACTION`.
-        Read-only.
+        covers has no entry; the engine (M3) will apply
+        :data:`~pymedphys._dicom.deidentify.supplementary_actions.UNCOVERED_TEXT_ACTION`
+        to it. Read-only.
     enabled : bool
         Whether the engine may use the policy: only for an enabled preset,
         composed from the pinned tables. Only :func:`compose_policy` sets it,

@@ -17,6 +17,7 @@
 import collections
 import dataclasses
 import itertools
+import json
 import re
 import types
 
@@ -335,7 +336,7 @@ def test_deidentification_method_keeps_earlier_values_for_the_engine_to_add_to()
         assert composed.supplementary_actions[DEIDENTIFICATION_METHOD] == "K"
 
 
-def test_a_text_attribute_without_a_rule_is_removed_by_type():
+def test_the_declared_default_for_text_without_a_rule_removes_by_type():
     rules = _rules()
     listed = _table_e1_1()
     uncovered = {
@@ -633,20 +634,56 @@ def test_rules_for_iod_tables_of_another_edition_are_rejected(tmp_path, monkeypa
         )
 
 
-def _with_definition(iod_name, tag):
-    """Return the IOD tables with an IOD that defines ``tag`` in a sequence."""
-    tables = iods.load_iod_tables()
-    definition = iods.AttributeDefinition(
-        path=("(300A,00B0)",), tag=tag, name="", type="3", module="", tables=()
+def _with_definition(tmp_path, iod_name, tag):
+    """Return IOD tables in which ``iod_name`` defines ``tag`` in a sequence.
+
+    The tables are loaded, through the public loader, from copies of the
+    generated files with a module added: its attribute table defines ``tag``
+    in Beam Sequence (300A,00B0). An IOD that the files lack is added too.
+    """
+    modules, attributes = (
+        json.loads((standard.STANDARD_DIR / name).read_text(encoding="utf-8"))
+        for name in ("iod_modules.json", "module_attributes.json")
     )
-    given = dict(tables.iods)
-    if iod_name in given:
-        given[iod_name] = dataclasses.replace(
-            given[iod_name], definitions=(*given[iod_name].definitions, definition)
-        )
-    else:
-        given[iod_name] = iods.IOD(iod_name, "Table A.0-0", (), (definition,))
-    return dataclasses.replace(tables, iods=types.MappingProxyType(given))
+    attributes["rows"].append(
+        {
+            "label": "Table X.0-1",
+            "title": "Test Module Attributes",
+            "rows": [
+                {
+                    "depth": 0,
+                    "name": "Beam Sequence",
+                    "tag": "(300A,00B0)",
+                    "type": "3",
+                    "include": "",
+                },
+                {"depth": 1, "name": "Test", "tag": tag, "type": "3", "include": ""},
+            ],
+        }
+    )
+    entry = next((row for row in modules["rows"] if row["iod"] == iod_name), None)
+    if entry is None:
+        entry = {"label": "Table X.0-2", "iod": iod_name, "modules": []}
+        modules["rows"].append(entry)
+    entry["modules"].append(
+        {
+            "information_entity": "Equipment",
+            "module": "Test",
+            "section": "X.0",
+            "usage": "U",
+            "condition": "",
+            "table": "Table X.0-1",
+        }
+    )
+    paths = []
+    for name, document in (
+        ("iod_modules.json", modules),
+        ("module_attributes.json", attributes),
+    ):
+        document["content_sha256"] = standard.content_sha256(document["rows"])
+        paths.append(tmp_path / name)
+        paths[-1].write_text(json.dumps(document), encoding="utf-8")
+    return iods.load_iod_tables(*paths)
 
 
 @pytest.mark.parametrize(
@@ -663,7 +700,8 @@ def _with_definition(iod_name, tag):
 def test_only_the_text_of_the_supported_iods_needs_rules(
     tmp_path, monkeypatch, iod_name, required
 ):
-    tables = _with_definition(iod_name, "(0018,9005)")
+    tables = _with_definition(tmp_path, iod_name, "(0018,9005)")
+    assert tables.iods[iod_name].lookup("(0018,9005)", ["(300A,00B0)"])
     monkeypatch.setattr(supplementary_actions, "load_iod_tables", lambda: tables)
     path = _write(tmp_path / "supplementary_actions.toml", _document())
 
