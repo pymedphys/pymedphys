@@ -15,24 +15,22 @@
 """Compound actions of Table E.1-1a, resolved from the strictest PS3.3 Type."""
 
 import json
-import pickle
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import compound_actions, iods, standard
+from pymedphys._dicom.deidentify import compound_actions, dummy_values, iods, standard
 
-SequesterInstance = compound_actions.SequesterInstance
 resolve = compound_actions.resolve
 resolve_in_iod = compound_actions.resolve_in_iod
 strictest_type = compound_actions.strictest_type
 
-SEQUESTER = "sequester"
 # The action each compound action resolves to for each Type, worked by hand
 # from the design: the target is D for Type 1, Z for Type 2, and X for Type 3;
 # where the compound action does not offer it, the next of X, Z, and D that it
-# offers; U in the place of D in X/Z/U*; and sequestration where none follows.
+# offers; U in the place of D in X/Z/U*; and D for X/Z on Type 1, since Table
+# E.1-1a lets Z write a non-zero-length dummy value, which D writes.
 RESOLUTIONS = {
-    "X/Z": {"1": SEQUESTER, "1C": SEQUESTER, "2": "Z", "2C": "Z", "3": "X"},
+    "X/Z": {"1": "D", "1C": "D", "2": "Z", "2C": "Z", "3": "X"},
     "X/D": {"1": "D", "1C": "D", "2": "D", "2C": "D", "3": "X"},
     "Z/D": {"1": "D", "1C": "D", "2": "Z", "2C": "Z", "3": "Z"},
     "X/Z/D": {"1": "D", "1C": "D", "2": "Z", "2C": "Z", "3": "X"},
@@ -131,11 +129,7 @@ def test_the_compound_actions_are_those_of_table_e1_1a():
 
 @pytest.mark.parametrize("action, attribute_type, expected", CASES)
 def test_each_compound_action_resolves_by_type(action, attribute_type, expected):
-    if expected == SEQUESTER:
-        with pytest.raises(SequesterInstance):
-            resolve(action, attribute_type)
-    else:
-        assert resolve(action, attribute_type) == expected
+    assert resolve(action, attribute_type) == expected
 
 
 @pytest.mark.parametrize(
@@ -261,55 +255,18 @@ def test_an_attribute_the_iod_does_not_define_there_is_type_3(tables, action, ex
 
 
 @pytest.mark.parametrize("attribute_type", ["1", "1C"])
-def test_x_z_on_a_type_1_attribute_sequesters_the_instance(tmp_path, attribute_type):
+def test_x_z_on_a_type_1_attribute_writes_the_dummy_value(tmp_path, attribute_type):
+    # Table E.1-1a lets Z write a non-zero-length dummy value consistent with
+    # the VR, so where the Type requires a value, X/Z gives D, the action
+    # that writes the dummy value, rather than sequestering the instance.
     iod = _synthetic_iod(tmp_path, ("M", "3"), ("C", attribute_type))
-
-    with pytest.raises(SequesterInstance) as raised:
-        resolve_in_iod(iod, INSTITUTION_NAME, (), "X/Z")
-    error = raised.value
-
-    assert (error.action, error.attribute_type) == ("X/Z", "1")
-    assert (error.tag, error.path) == (INSTITUTION_NAME, ())
-    assert "sequester" in str(error)
-
-    with pytest.raises(SequesterInstance) as raised:
-        resolve("X/Z", attribute_type)
-    assert (raised.value.action, raised.value.attribute_type) == (
-        "X/Z",
-        attribute_type,
-    )
-    assert (raised.value.tag, raised.value.path) == (None, ())
-
-
-def test_sequestering_is_not_a_value_error():
-    # Code that rejects invalid input by catching ValueError must not also
-    # swallow an instance that has to be sequestered.
-    assert not issubclass(SequesterInstance, ValueError)
-    with pytest.raises(SequesterInstance):
-        try:
-            resolve("X/Z", "1")
-        except ValueError:
-            pytest.fail("a ValueError handler caught the sequestration")
-
-
-def test_the_sequestration_message_names_only_tags_actions_and_the_type(tmp_path):
     path = ("(3006,0020)", "(3006,004D)")
-    iod = _synthetic_iod(tmp_path, ("M", "1"), path=path)
+    (tmp_path / "nested").mkdir()
+    nested = _synthetic_iod(tmp_path / "nested", ("U", attribute_type), path=path)
 
-    with pytest.raises(SequesterInstance) as raised:
-        resolve_in_iod(iod, INSTITUTION_NAME, path, "X/Z")
-
-    assert str(raised.value) == (
-        "X/Z on (3006,0020) > (3006,004D) > (0008,0080) offers no action that "
-        "Type 1 allows, so the instance must be sequestered"
-    )
-    assert repr(raised.value) == (
-        "SequesterInstance('X/Z', '1', '(0008,0080)', ('(3006,0020)', '(3006,004D)'))"
-    )
-    # It survives pickling, as between processes.
-    copied = pickle.loads(pickle.dumps(raised.value))
-    assert (copied.action, copied.tag, copied.path) == ("X/Z", INSTITUTION_NAME, path)
-    assert str(copied) == str(raised.value)
+    assert resolve("X/Z", attribute_type) == "D"
+    assert resolve_in_iod(iod, INSTITUTION_NAME, (), "X/Z") == "D"
+    assert resolve_in_iod(nested, INSTITUTION_NAME, path, "X/Z") == "D"
 
 
 def _compound_attributes():
@@ -329,8 +286,7 @@ def _resolutions(tables):
     For each IOD by name, one ``(path, tag, action, types, found)`` for each
     compound action that Table E.1-1 gives an attribute, at each place where
     the IOD defines the attribute: ``types`` are the Types of its definitions
-    there, and ``found`` is the resolved action, or the
-    :class:`SequesterInstance` raised.
+    there, and ``found`` is the resolved action.
     """
     by_tag = {}
     for tag, action in _compound_attributes():
@@ -343,10 +299,7 @@ def _resolutions(tables):
         for path, tag in sorted(places):
             types = frozenset(d.type for d in iod.lookup(tag, path))
             for action in sorted(by_tag[tag]):
-                try:
-                    found = resolve_in_iod(iod, tag, path, action)
-                except SequesterInstance as error:
-                    found = error
+                found = resolve_in_iod(iod, tag, path, action)
                 in_iod.append((path, tag, action, types, found))
         resolutions[name] = tuple(in_iod)
     return resolutions
@@ -368,8 +321,6 @@ def test_no_required_attribute_with_a_compound_action_is_removed(resolutions):
     for name in FIRST_RELEASE_IODS:
         for path, tag, action, types, found in resolutions[name]:
             where = (name, path, tag, action)
-            # No compound action sequesters an instance of these IODs.
-            assert not isinstance(found, SequesterInstance), where
             _check_kept_where_required(where, types, found)
             resolved.add(found)
 
@@ -383,16 +334,8 @@ def test_no_required_attribute_with_a_compound_action_is_removed_in_any_generate
     resolved = set()
     for name, in_iod in resolutions.items():
         for path, tag, action, types, found in in_iod:
-            where = (name, path, tag, action)
-            if isinstance(found, SequesterInstance):
-                # Only X/Z on a Type 1 or 1C attribute sequesters the
-                # instance, and the exception says where.
-                assert action == "X/Z" and types & {"1", "1C"}, where
-                assert (found.action, found.attribute_type) == ("X/Z", "1"), where
-                assert (found.tag, found.path) == (tag, path), where
-            else:
-                _check_kept_where_required(where, types, found)
-                resolved.add(found)
+            _check_kept_where_required((name, path, tag, action), types, found)
+            resolved.add(found)
 
     # The sweep covers the first supported release's IODs and the others.
     assert set(FIRST_RELEASE_IODS) < set(resolutions)
@@ -400,21 +343,21 @@ def test_no_required_attribute_with_a_compound_action_is_removed_in_any_generate
     assert resolved == {"X", "Z", "D", "U"}
 
 
-def test_x_z_sequesters_only_referenced_study_sequence_in_two_generated_iods(
+def test_x_z_gives_d_only_to_referenced_study_sequence_in_two_generated_iods(
     resolutions,
 ):
     # Table E.1-1 gives Referenced Study Sequence X/Z under the Basic Profile,
     # and the Related Information Entities Macro (PS3.3 Table 10.37-1) makes
-    # it Type 1 within these sequences, so no action that X/Z offers keeps it
-    # valid there. A new edition that changes where this happens fails here.
-    sequestered = {
+    # it Type 1 within these sequences, so X/Z gives D there. A new edition
+    # that changes where this happens fails here.
+    dummy = {
         (name, path, tag)
         for name, in_iod in resolutions.items()
-        for path, tag, _, _, found in in_iod
-        if isinstance(found, SequesterInstance)
+        for path, tag, action, _, found in in_iod
+        if action == "X/Z" and found == "D"
     }
 
-    assert sequestered == {
+    assert dummy == {
         (
             "RT Patient Position Acquisition Instruction",
             # Acquisition Task Sequence > Acquisition Subtask Sequence >
@@ -436,6 +379,11 @@ def test_x_z_sequesters_only_referenced_study_sequence_in_two_generated_iods(
             REFERENCED_STUDY_SEQUENCE,
         ),
     }
+    # It is a sequence, which has no generic dummy value, so D refuses it
+    # until a reviewed rule covers it, and its instance is sequestered.
+    dictionary = {a.tag: a for a in standard.load_data_dictionary().attributes}
+    assert dictionary[REFERENCED_STUDY_SEQUENCE].vrs == ("SQ",)
+    assert "SQ" not in dummy_values.CONSTANTS
 
 
 def test_no_attribute_with_x_z_is_type_1_in_the_first_release_iods(tables):
