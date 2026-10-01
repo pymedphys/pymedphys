@@ -23,6 +23,7 @@ import io
 import json
 import logging
 import struct
+import unicodedata
 import warnings
 from unittest import mock
 
@@ -376,6 +377,25 @@ def test_middle_names_are_searched_but_not_prefixes_or_suffixes():
     ]
 
 
+def test_each_word_of_a_compound_name_is_searched():
+    source = _source("(0010,0010)", "PN", "DE LA CRUZ^ANNE-MARIE")
+    data = _texts("Seen by Dr Cruz", "Marie", "Cruzado", "ANNE-MARIE", "Annette")
+
+    result = find_residuals(data, [source])
+
+    assert _summary(result) == [
+        ("(0010,0010)", Form.NAME_WORD, "utf-8", "(0019,1000)"),
+        ("(0010,0010)", Form.NAME_WORD, "utf-8", "(0019,1001)"),
+        ("(0010,0010)", Form.NAME_COMPONENT, "utf-8", "(0019,1003)"),
+    ]
+    assert result.not_searched == (
+        NotSearched(_path("(0010,0010)"), "PN", Form.NAME_WORD, Omission.TOO_SHORT),
+    )
+    assert str(result.findings[0]).startswith(
+        "person name from (0010,0010) found as name word, utf-8"
+    )
+
+
 def test_a_component_inside_a_longer_word_is_not_a_finding():
     source = _source("(0010,0010)", "PN", "MARY^QUILLON")
     data = _private(
@@ -412,6 +432,32 @@ def test_a_date_is_found_in_dicom_and_iso_forms():
         ("(0010,0030)", Form.VALUE, "utf-8", "(0019,1003)"),
     ]
     assert {finding.kind for finding in result.findings} == {ValueKind.DATE}
+
+
+def test_a_date_is_found_in_other_spellings():
+    datetime = _source("(0008,002A)", "DT", "20240517101500")
+    data = _texts(
+        "born 03/02/1971",
+        "born 02/03/1971",
+        "born 03.02.1971",
+        "1971:02:03 08:30:00",  # as EXIF writes a date and time
+        "103/02/1971",
+        "on 17.05.2024",
+    )
+
+    result = find_residuals(data, [BIRTH_SOURCE, datetime])
+
+    assert _summary(result) == [
+        ("(0010,0030)", Form.DATE_DMY_SLASH, "utf-8", "(0019,1000)"),
+        ("(0010,0030)", Form.DATE_MDY_SLASH, "utf-8", "(0019,1001)"),
+        ("(0010,0030)", Form.DATE_DMY_DOT, "utf-8", "(0019,1002)"),
+        ("(0010,0030)", Form.DATE_EXIF, "utf-8", "(0019,1003)"),
+        ("(0008,002A)", Form.DATE_DMY_DOT, "utf-8", "(0019,1005)"),
+    ]
+    # Reports name the spelling without quoting the date.
+    spellings = ["dd/mm/yyyy", "mm/dd/yyyy", "dd.mm.yyyy", "exif"]
+    for finding, spelling in zip(result.findings, spellings):
+        assert f" found as date {spelling}, utf-8, " in str(finding)
 
 
 def test_a_date_is_found_at_the_start_of_a_datetime():
@@ -451,13 +497,53 @@ def test_each_of_several_values_is_searched_without_its_padding():
     ]
 
 
-def test_a_value_is_searched_in_its_composed_form():
-    # "MÜLLER^JÖRG" with each diaeresis as a combining character (NFD).
-    source = _source("(0010,0010)", "PN", "MU\u0308LLER^JO\u0308RG")
+def _nfc(text):
+    return unicodedata.normalize("NFC", text)
 
-    result = find_residuals(_texts("MÜLLER^JÖRG"), [source])
 
-    assert _summary(result) == [("(0010,0010)", Form.VALUE, "utf-8", "(0019,1000)")]
+def _nfd(text):
+    return unicodedata.normalize("NFD", text)
+
+
+# Each source value, its codecs, the copy written in the file, and the
+# encoding of the copy. In NFD, each accented letter is a base letter and a
+# combining character, and each Hangul syllable is conjoining jamo.
+NORMALISATIONS = {
+    "nfd-source-nfc-copy": (_nfd("MÜLLER^JÖRG"), (), _nfc("MÜLLER^JÖRG"), "utf-8"),
+    "nfd-source-nfd-copy": (_nfd("MÜLLER^JÖRG"), (), _nfd("MÜLLER^JÖRG"), "utf-8"),
+    "nfc-source-nfd-copy": (_nfc("MÜLLER^JÖRG"), (), _nfd("MÜLLER^JÖRG"), "utf-8"),
+    "nfd-copy-in-utf-16": ("MÜLLER^JÖRG", (), _nfd("MÜLLER^JÖRG"), "utf-16-le"),
+    "nfd-copy-in-gb18030": (
+        "MÜLLER^JÖRG",
+        ("GB18030",),
+        _nfd("MÜLLER^JÖRG"),
+        "GB18030",
+    ),
+    "vietnamese-tone-marks": ("NGUYỄN^THỊ", (), _nfd("NGUYỄN^THỊ"), "utf-8"),
+    "hangul-jamo": ("서울병원", (), _nfd("서울병원"), "utf-8"),
+    # NFC replaces a CJK compatibility ideograph, U+F900, with U+8C48.
+    "compatibility-ideograph": (
+        "\uf900\u5c71\u75c5\u9662",
+        (),
+        "\uf900\u5c71\u75c5\u9662",
+        "utf-8",
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    "value, codecs, copy, encoding", NORMALISATIONS.values(), ids=NORMALISATIONS
+)
+def test_a_value_is_found_composed_decomposed_or_as_written(
+    value, codecs, copy, encoding
+):
+    source = _source("(0008,0080)", "LO", value, codecs)
+    data = _private(("UN" if encoding == "utf-16-le" else "LT", copy.encode(encoding)))
+
+    result = find_residuals(data, [source])
+
+    assert _summary(result) == [("(0008,0080)", Form.VALUE, encoding, "(0019,1000)")]
+    assert not result.not_searched
 
 
 def test_a_number_inside_a_longer_number_is_not_a_finding():
@@ -573,6 +659,44 @@ def test_case_does_not_hide_a_value():
     ]
 
 
+# Names in upper case, their source character sets, and copies written in
+# title case, whose first letters are not ASCII.
+TITLE_CASE = {
+    "cyrillic": ("ИВАНОВ^ИВАН", "iso_ir_144", "Пациент Иванов Иван", "iso_ir_144"),
+    # Python gives "Παπαδοπουλος" its final sigma.
+    "greek": (
+        "ΠΑΠΑΔΟΠΟΥΛΟΣ^ΓΙΩΡΓΟΣ",
+        "iso_ir_126",
+        "Παπαδοπουλος Γιωργος",
+        "iso_ir_126",
+    ),
+    # ISO 8859-9 encodes these letters as ISO 8859-1 does.
+    "turkish": ("ÖZTÜRK^AYŞE", "iso_ir_148", "Dr Öztürk", "latin-1"),
+    "latin-1": ("ÅSTRÖM^ØYVIND", "latin_1", "Åström", "latin-1"),
+}
+
+
+@pytest.mark.parametrize(
+    "name, codec, copy, reported", TITLE_CASE.values(), ids=TITLE_CASE
+)
+def test_a_name_is_found_in_title_case(name, codec, copy, reported):
+    source = _source("(0010,0010)", "PN", name, (codec,))
+    data = _private(
+        ("LO", copy.encode(codec)),
+        ("LO", copy.encode("utf-8")),
+        ("UN", copy.encode("utf-16-le")),
+    )
+
+    result = find_residuals(data, [source])
+
+    assert _summary(result) == [
+        ("(0010,0010)", Form.NAME_COMPONENT, reported, "(0019,1000)"),
+        ("(0010,0010)", Form.NAME_COMPONENT, "utf-8", "(0019,1001)"),
+        ("(0010,0010)", Form.NAME_COMPONENT, "utf-16-le", "(0019,1002)"),
+    ]
+    assert not result.not_searched
+
+
 @pytest.mark.parametrize(
     "name, codec, reported",
     [
@@ -624,6 +748,86 @@ def test_a_form_that_needs_code_extensions_is_not_searched_in_that_codec():
     )
     assert str(result.not_searched[0]) == (
         "PN from (0010,0010): value not searched: code extensions in iso2022_jp"
+    )
+
+
+# Specific Character Sets, and names written with them. With more than one
+# value, each component in another character set starts with an ISO 2022
+# escape sequence (PS3.5 Section 6.1.2.5.3, and Annexes I and K).
+CHARACTER_SETS = {
+    "korean": (["", "ISO 2022 IR 149"], "Hong^Gildong=洪^吉洞=홍^길동"),
+    "chinese": (["", "ISO 2022 IR 58"], "Zhang^XiaoDong=张^小东="),
+    "gb18030": ("GB18030", "Zhang^XiaoDong=张^小东="),
+    "gbk": ("GBK", "Zhang^XiaoDong=张^小东="),
+}
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "character_set, name", CHARACTER_SETS.values(), ids=CHARACTER_SETS
+)
+def test_forms_needing_code_extensions_are_listed_not_searched(character_set, name):
+    dataset = pydicom.Dataset()
+    dataset.SpecificCharacterSet = character_set
+    dataset.ReferringPhysicianName = name
+    data = _write(dataset)
+    codecs = tuple(pydicom.charset.convert_encodings(character_set))
+    source = _source("(0010,0010)", "PN", name, codecs)
+
+    result = find_residuals(data, [source])
+
+    path = _path("(0010,0010)")
+    if len(codecs) == 1:
+        # GB18030 and GBK use no escape sequences, so the whole name is found.
+        assert _summary(result) == [
+            ("(0010,0010)", Form.VALUE, codecs[0], "(0008,0090)")
+        ]
+        assert result.not_searched == (
+            NotSearched(path, "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT),
+        )
+        return
+    assert _summary(result) == [
+        ("(0010,0010)", Form.NAME_GROUP, "utf-8", "(0008,0090)")
+    ]
+    escaped = [
+        NotSearched(path, "PN", form, Omission.CODE_EXTENSIONS, codecs[1])
+        for form in (Form.VALUE, Form.NAME_GROUP, Form.NAME_JOINED)
+    ]
+    assert result.not_searched == (
+        *escaped,
+        NotSearched(path, "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT),
+    )
+
+
+def test_forms_already_searched_in_iso_8859_1_are_not_listed():
+    # Code extensions, with ISO 8859-1 as the extension, whose forms are
+    # searched as ISO 8859-1 whatever the escape sequences around them.
+    source = _source("(0010,0010)", "PN", "MÜLLER^JÖRG", ("iso8859", "latin_1"))
+    data = _private(("LO", "Dr MÜLLER".encode("latin-1")))
+
+    result = find_residuals(data, [source])
+
+    assert _summary(result) == [
+        ("(0010,0010)", Form.NAME_COMPONENT, "latin-1", "(0019,1000)")
+    ]
+    assert not result.not_searched
+
+
+def test_lengths_are_counted_once_composed():
+    # "ZOË" has three characters composed (NFC) and four decomposed (NFD).
+    source = _source("(0010,0010)", "PN", "ZOË^QUILLON")
+    data = _texts(_nfd("Dr Zoë."), _nfd("QUILLON ZOË"))
+
+    result = find_residuals(data, [source])
+
+    assert _summary(result) == [
+        ("(0010,0010)", Form.NAME_JOINED, "utf-8", "(0019,1001)")
+    ]
+    assert result.not_searched == (
+        NotSearched(
+            _path("(0010,0010)"), "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT
+        ),
     )
 
 

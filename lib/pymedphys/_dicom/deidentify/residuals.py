@@ -24,24 +24,32 @@ place in the file that :func:`~.file_layout.read_file_layout` gives. It lists
 what it did not search, and why. Whether a file may be released is for its
 caller to decide.
 
-**Forms.** A value is normalised to NFC, split at backslashes unless its VR
-is LT, ST, UR, or UT, and stripped of spaces, NULs, and whitespace at either
-end. A person name (PN) is searched whole, by each component group, and by
-its family, given, and middle names; where the family or given name is
-shorter than :data:`MIN_CHARACTERS`, also as "GIVEN FAMILY", "FAMILY GIVEN",
-and "FAMILY, GIVEN". A date (DA) is also searched as YYYY-MM-DD, and a
-datetime (DT) by its date in both forms. A UID (UI) or text (AE, LO, LT, SH,
-ST, UC, UR, or UT) is searched as it is, by up to its first
-:data:`MAX_CHARACTERS` characters. Forms shorter than :data:`MIN_CHARACTERS`
-are not searched, nor are binary values or the codes, numbers, ages, times,
-and tags that occur throughout files (AS, AT, CS, DS, FD, FL, IS, SL, SS, SV,
-TM, UL, US, and UV).
+**Forms.** A value is searched as given, composed (NFC), and decomposed
+(NFD), split at backslashes unless its VR is LT, ST, UR, or UT, and stripped
+of spaces, NULs, and whitespace at either end. A person name (PN) is searched
+whole, by each component group, by its family, given, and middle names, and
+by each word of those names between spaces or hyphens; where the family or
+given name is shorter than :data:`MIN_CHARACTERS`, also as "GIVEN FAMILY",
+"FAMILY GIVEN", and "FAMILY, GIVEN". A date (DA) is also searched as
+YYYY-MM-DD, YYYY:MM:DD (as EXIF writes dates), DD/MM/YYYY, MM/DD/YYYY, and
+DD.MM.YYYY, and a datetime (DT) by its date in each of these and as YYYYMMDD.
+A UID (UI) or text (AE, LO, LT, SH, ST, UC, UR, or UT) is searched as it is,
+by up to its first :data:`MAX_CHARACTERS` characters. Forms with fewer than
+:data:`MIN_CHARACTERS` characters once composed are not searched, nor are
+binary values or the codes, numbers, ages, times, and tags that occur
+throughout files (AS, AT, CS, DS, FD, FL, IS, SL, SS, SV, TM, UL, US, and
+UV).
 
 **Encodings.** Each form is searched in UTF-8, ISO 8859-1, UTF-16LE, and the
-source's character set, except where the source's character set needs ISO
-2022 escape sequences for it, since their bytes depend on the text around
-them. ASCII letters match in either case, and text with other letters is
-also searched in upper and lower case.
+source's character set, but not in the source's character set where it needs
+ISO 2022 escape sequences, whose bytes depend on the text around them: where
+the codec writes them itself, or, for a form that is not ASCII, where
+Specific Character Set (0008,0005) has more than one value, so that each
+component in another character set starts with one (PS3.5 Section
+6.1.2.5.3). ASCII letters match in either case, and text with other letters
+is also searched in upper, lower, and title case, so a capital inside a word
+on a letter outside ASCII, as in a McDonald-style spelling in Cyrillic, is
+found only where the whole form is in one of those cases.
 
 **Matching.** Letters and digits are those of ASCII; in UTF-16LE each
 neighbouring character is two bytes. A match is rejected where a digit
@@ -87,7 +95,7 @@ MIN_BYTES_IN_NUMBERS = 8  # the shortest form searched in values that hold numbe
 MAX_CHARACTERS = 256  # longer values are searched by their first 256 characters
 CODECS = ("utf-8", "latin-1", "utf-16-le")
 CHUNK_BYTES = 64 * 2**20  # the bytes lower-cased at a time
-_PREFIX_BYTES = 6  # forms that start with the same bytes are searched together
+_PREFIX_BYTES = 5  # forms that start with the same bytes are searched together
 
 _BINARY = frozenset({"OB", "OD", "OF", "OL", "OV", "OW", "UN"})
 _SINGLE_VALUED = frozenset({"LT", "ST", "UR", "UT"})
@@ -122,11 +130,23 @@ class Form(enum.Enum):
     NAME_GROUP = "name-group"  # a component group of a person name
     NAME_JOINED = "name-joined"  # family and given names, where one is short
     NAME_COMPONENT = "name-component"  # a family, given, or middle name
+    NAME_WORD = "name-word"  # a word of a component, between spaces or hyphens
     DATE_DICOM = "date-yyyymmdd"  # the date of a datetime
     DATE_ISO = "date-iso"  # a date as YYYY-MM-DD
+    DATE_EXIF = "date-exif"  # a date as YYYY:MM:DD, as EXIF writes it
+    DATE_DMY_SLASH = "date-dd/mm/yyyy"
+    DATE_MDY_SLASH = "date-mm/dd/yyyy"
+    DATE_DMY_DOT = "date-dd.mm.yyyy"
 
 
 _ORDER = {form: index for index, form in enumerate(Form)}
+_DATE_SPELLINGS = {
+    Form.DATE_ISO: "{0}-{1}-{2}",
+    Form.DATE_EXIF: "{0}:{1}:{2}",
+    Form.DATE_DMY_SLASH: "{2}/{1}/{0}",
+    Form.DATE_MDY_SLASH: "{1}/{2}/{0}",
+    Form.DATE_DMY_DOT: "{2}.{1}.{0}",
+}
 
 
 class Omission(enum.Enum):
@@ -363,8 +383,11 @@ def _derive(value: SourceValue) -> Iterator[_Needle | NotSearched]:
         yield omission(Form.VALUE, reason)
         return
     seen: set[bytes] = set()
+    # With more than one value, Specific Character Set (0008,0005) switches
+    # character sets with ISO 2022 escape sequences (PS3.3 C.12.1.1.2).
+    extended = len(value.codecs) > 1
     for form, text in _forms(str(value.value), value.vr, kind):
-        if len(text) < MIN_CHARACTERS:
+        if _length(text) < MIN_CHARACTERS:
             if text:
                 yield omission(form, Omission.TOO_SHORT)
             continue
@@ -376,49 +399,60 @@ def _derive(value: SourceValue) -> Iterator[_Needle | NotSearched]:
         after = frozenset() if open_end else _edge(text[-1], word)
         digits = text.isascii() and text.isdigit()
         for codec, encoded in _encodings(text, value.codecs):
-            if b"\x1b" in encoded and codec not in CODECS:
+            escaped = b"\x1b" in encoded or (extended and not text.isascii())
+            if encoded.lower() in seen:
+                continue
+            if escaped and codec not in CODECS:
                 yield omission(form, Omission.CODE_EXTENSIONS, codec)
-            elif encoded.lower() not in seen:
+            else:
                 seen.add(encoded.lower())
                 origin, wide = (value.source, kind, form, codec), codec == "utf-16-le"
                 yield _Needle(encoded.lower(), origin, wide, before, after, digits)
 
 
 def _forms(text: str, vr: str, kind: ValueKind) -> Iterator[tuple[Form, str]]:
-    """Yield each form of a value, widest first, some of them empty."""
-    text = unicodedata.normalize("NFC", text)
-    for one in [text] if vr in _SINGLE_VALUED else text.split("\\"):
-        one = one.strip(_PADDING)
-        if kind is not ValueKind.PERSON_NAME:
-            yield Form.VALUE, one
-            iso = _iso_date(one[:8]) if kind in _DATES else None
-            if iso and kind is ValueKind.DATETIME:
-                yield Form.DATE_DICOM, one[:8]
-            if iso:
-                yield Form.DATE_ISO, iso
-            continue
-        yield Form.VALUE, one.rstrip("=^ ")
-        for group in one.split("="):
-            group = group.strip(_PADDING).rstrip("^ ")
-            parts = [part.strip(_PADDING) for part in group.split("^")]
-            family, given, middle = (parts + ["", ""])[:3]
-            yield Form.NAME_GROUP, group
-            if family and given and min(len(family), len(given)) < MIN_CHARACTERS:
-                yield Form.NAME_JOINED, f"{given} {family}"
-                yield Form.NAME_JOINED, f"{family} {given}"
-                yield Form.NAME_JOINED, f"{family}, {given}"
-            for part in (family, given, middle):
-                yield Form.NAME_COMPONENT, part
+    """Yield each form of a value as given, NFC, and NFD, some of them empty."""
+    composed, decomposed = (unicodedata.normalize(f, text) for f in ("NFC", "NFD"))
+    for written in dict.fromkeys((text, composed, decomposed)):
+        for one in [written] if vr in _SINGLE_VALUED else written.split("\\"):
+            one = one.strip(_PADDING)
+            if kind is not ValueKind.PERSON_NAME:
+                yield Form.VALUE, one
+                date = one[:8] if kind in _DATES and _is_date(one[:8]) else ""
+                if date and kind is ValueKind.DATETIME:
+                    yield Form.DATE_DICOM, date
+                for form, spelling in _DATE_SPELLINGS.items() if date else ():
+                    yield form, spelling.format(date[:4], date[4:6], date[6:])
+                continue
+            yield Form.VALUE, one.rstrip("=^ ")
+            for group in one.split("="):
+                group = group.strip(_PADDING).rstrip("^ ")
+                parts = [part.strip(_PADDING) for part in group.split("^")]
+                family, given, middle = (parts + ["", ""])[:3]
+                yield Form.NAME_GROUP, group
+                short = min(_length(family), _length(given)) < MIN_CHARACTERS
+                if family and given and short:
+                    yield Form.NAME_JOINED, f"{given} {family}"
+                    yield Form.NAME_JOINED, f"{family} {given}"
+                    yield Form.NAME_JOINED, f"{family}, {given}"
+                for part in (family, given, middle):
+                    yield Form.NAME_COMPONENT, part
+                    if len(words := part.replace("-", " ").split()) > 1:
+                        yield from ((Form.NAME_WORD, word) for word in words)
 
 
-def _iso_date(date: str) -> str | None:
-    """Return a valid YYYYMMDD date as YYYY-MM-DD, or ``None``."""
-    if not (len(date) == 8 and date.isascii() and date.isdigit()):
-        return None
+def _length(text: str) -> int:
+    """Return the number of characters in ``text`` once composed (NFC)."""
+    return len(unicodedata.normalize("NFC", text))
+
+
+def _is_date(text: str) -> bool:
+    """Return whether ``text`` is a valid Gregorian date as YYYYMMDD."""
     try:
-        return datetime.date.fromisoformat(date).isoformat()
+        datetime.date.fromisoformat(text)  # which reads digits of ASCII only
     except ValueError:
-        return None
+        return False
+    return len(text) == 8 and text.isdigit()
 
 
 def _edge(char: str, word: bool) -> frozenset[int]:
@@ -433,7 +467,7 @@ def _edge(char: str, word: bool) -> frozenset[int]:
 def _encodings(text: str, codecs: tuple[str, ...]) -> Iterator[tuple[str, bytes]]:
     """Yield each codec, and each case of ``text`` that it can encode."""
     for codec in dict.fromkeys((*CODECS, *codecs)):
-        for variant in dict.fromkeys((text, text.upper(), text.lower())):
+        for variant in dict.fromkeys((text, text.upper(), text.lower(), text.title())):
             try:
                 encoded = variant.encode(codec)
             except UnicodeEncodeError:
@@ -456,8 +490,8 @@ def _search(
 ) -> _Found:
     """Return the first finding of the widest form of each source in each place.
 
-    Needles that start with the same bytes are found together, and each
-    match of those bytes is checked against each of them.
+    Needles that start with the same bytes are found together: at each match
+    of those bytes, the bytes of each of their lengths are looked up.
     """
     starts = [span.start for span in spans]
     text: list[tuple[int, int]] = []  # the ranges outside values that hold numbers
@@ -467,10 +501,11 @@ def _search(
             text.append((position, span.value_start))
             position = span.end
     text.append((position, size))
-    groups: dict[tuple[bytes, bool], list[int]] = {}
+    groups: dict[tuple[bytes, bool], dict[bytes, list[int]]] = {}
     for index, needle in enumerate(needles):
         everywhere = not needle.wide and len(needle.folded) >= MIN_BYTES_IN_NUMBERS
-        groups.setdefault((needle.folded[:_PREFIX_BYTES], everywhere), []).append(index)
+        group = groups.setdefault((needle.folded[:_PREFIX_BYTES], everywhere), {})
+        group.setdefault(needle.folded, []).append(index)
     resume = [0] * len(needles)  # where each needle's next match can start
     found: _Found = {}
     longest = max((len(needle.folded) for needle in needles), default=1)
@@ -480,24 +515,23 @@ def _search(
         clipped = [(max(low, chunk), min(high, stop)) for low, high in text]
         ranges = {True: [(chunk, stop)], False: [(a, b) for a, b in clipped if a < b]}
         searches = (
-            (prefix, members, low, high)
-            for (prefix, everywhere), members in groups.items()
-            for low, high in ranges[everywhere]
+            (key[0], group, sorted(set(map(len, group))), low, high)
+            for key, group in groups.items()
+            for low, high in ranges[key[1]]
         )
-        for prefix, members, low, high in searches:
+        for prefix, group, sizes, low, high in searches:
             end = high - chunk + len(prefix) - 1  # matches start before high
             position = block.find(prefix, low - chunk, end)
             while position != -1:
                 offset = chunk + position
-                for index in members:
-                    needle = needles[index]
-                    if resume[index] <= offset and block.startswith(
-                        needle.folded, position
-                    ):
+                hits = (block[position : position + size] for size in sizes)
+                for index in [index for hit in hits for index in group.get(hit, ())]:
+                    if resume[index] <= offset:
                         span = spans[bisect.bisect_right(starts, offset) - 1]
-                        resume[index] = _judge(octets, needle, offset, span, found)
-                following = min(resume[index] for index in members) - chunk
-                position = block.find(prefix, max(position + 1, following), end)
+                        resume[index] = _judge(
+                            octets, needles[index], offset, span, found
+                        )
+                position = block.find(prefix, position + 1, end)
     return found
 
 
