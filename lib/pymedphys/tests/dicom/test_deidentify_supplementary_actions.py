@@ -57,9 +57,30 @@ ACCESSORY_IDENTIFIERS = (
     "(300A,00F5)",  # Block Tray ID
     "(300A,0108)",  # Applicator ID
     "(300A,00E5)",  # Compensator ID
-    "(300A,00F9)",  # Accessory Code
+    "(300A,00DC)",  # Bolus ID
     "(300A,0421)",  # General Accessory ID
 )
+# The text attributes that the supported IODs use and Table E.1-1 omits that
+# are removed by Type under every option, checked by hand against the 2026d
+# PS3.3: names and identifiers of people, organisations, records, and
+# networks, identifiers that a device reads, and the text of overlays.
+REMOVED_UNDER_EVERY_OPTION = {
+    "(0008,0116)",  # Coding Scheme Responsible Organization
+    "(0008,0122)",  # Mapping Resource Name
+    "(0010,0214)",  # Strain Stock Number
+    "(0010,0217)",  # Strain Source
+    "(0010,2295)",  # Breed Registration Number
+    "(0018,1803)",  # NTP Source Address
+    "(0024,0202)",  # Algorithm Source
+    "(0040,0031)",  # Local Namespace Entity ID
+    "(0040,0032)",  # Universal Entity ID
+    "(0040,E001)",  # HL7 Instance Identifier
+    "(0088,0130)",  # Storage Media File-set ID
+    "(300A,00F9)",  # Accessory Code
+    "(300A,0355)",  # Tray Accessory Code
+    "(60xx,0022)",  # Overlay Description
+    "(60xx,1500)",  # Overlay Label
+}
 # Every text attribute that the supported IODs use, Table E.1-1 omits, and
 # the Basic Profile keeps, checked by hand against the 2026d PS3.3: coded
 # values, and technical values that the equipment or software writes.
@@ -194,17 +215,33 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 47,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 46,
         # Accessory and equipment identifiers.
-        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 21,
+        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 19,
         # Coded and technical values, and De-identification Method.
         ("K", ()): 28,
         # Names and identifiers of people, organisations, records, and
-        # networks, and the text of overlays.
-        ("X/Z/D", ()): 12,
+        # networks, identifiers that a device reads, and the text of overlays.
+        ("X/Z/D", ()): 15,
         # Patient's Birth and Death Dates in Alternative Calendar.
         ("X", ()): 2,
     }
+
+
+def test_names_identifiers_and_overlay_text_are_removed_under_every_option():
+    rules = _rules()
+
+    assert {
+        tag
+        for tag in _omitted_text()
+        if rules[tag].action == "X/Z/D" and not rules[tag].options
+    } == REMOVED_UNDER_EVERY_OPTION
+    for composed in _every_policy():
+        for tag in REMOVED_UNDER_EVERY_OPTION:
+            assert composed.supplementary_actions[tag] == "X/Z/D", (
+                tag,
+                composed.options,
+            )
 
 
 @pytest.mark.parametrize(

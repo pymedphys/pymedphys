@@ -65,13 +65,6 @@ options = { clean_descriptors = "C" }
 note = "The full name of a coding scheme. A local scheme's name is typed by whoever defines the scheme and can name the institution, and the codes do not need it, since Coding Scheme Designator identifies the scheme. It is therefore treated as typed text: removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
-tag = "(0008,0122)"
-keyword = "MappingResourceName"
-action = "X/Z/D"
-options = { clean_descriptors = "C" }
-note = "The name of the mapping resource that defines a context group, such as DICOM Content Mapping Resource. The codes do not need it, since Mapping Resource (0008,0105) identifies the resource, and a local resource's name is typed and can name the institution, so it is treated as typed text, like Coding Scheme Name: removed by Type, and cleaned as a descriptor under Clean Descriptors."
-
-[[attribute]]
 tag = "(0008,030E)"
 keyword = "PrivateDataElementDescription"
 action = "X/Z/D"
@@ -436,14 +429,14 @@ tag = "(300A,00DC)"
 keyword = "BolusID"
 action = "X/Z/D"
 options = { retain_device_identity = "K" }
-note = "A user-supplied identifier for a bolus, an accessory that can be made for one patient. Accessory identifiers are device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+note = "A user-supplied identifier for a bolus, as PS3.3 Table C.8-50 calls it, an accessory often made for one patient, so it can carry the patient's name. Accessory identifiers are device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name. So `tps-import`, which keeps device identity, keeps it as typed."
 
 [[attribute]]
 tag = "(300A,00E5)"
 keyword = "CompensatorID"
 action = "X/Z/D"
 options = { retain_device_identity = "K" }
-note = "A user-supplied identifier for a compensator, an accessory made for one patient. Accessory identifiers are device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+note = "A user-supplied identifier for a compensator, as PS3.3 Table C.8-50 calls it, an accessory usually made for one patient, so it can carry the patient's name. Accessory identifiers are device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name. So `tps-import`, which keeps device identity, keeps it as typed."
 
 [[attribute]]
 tag = "(300A,00EF)"
@@ -458,13 +451,6 @@ keyword = "BlockTrayID"
 action = "X/Z/D"
 options = { retain_device_identity = "K" }
 note = "A user-supplied identifier for a block tray, an accessory of one treatment machine. Accessory identifiers are device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
-
-[[attribute]]
-tag = "(300A,00F9)"
-keyword = "AccessoryCode"
-action = "X/Z/D"
-options = { retain_device_identity = "K" }
-note = "A machine-readable identifier, such as a bar code, for an accessory, block, or compensator, and so possibly for one made for one patient. Accessory identifiers are device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
 
 [[attribute]]
 tag = "(300A,0108)"
@@ -523,13 +509,6 @@ options = { retain_device_identity = "K" }
 note = "A user or machine supplied identifier for a channel shield. Accessory identifiers are device identity: removed by Type, which empties it where it is Type 2, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
 
 [[attribute]]
-tag = "(300A,0355)"
-keyword = "TrayAccessoryCode"
-action = "X/Z/D"
-options = { retain_device_identity = "K" }
-note = "A machine-readable identifier, such as a bar code, for the tray of a block or compensator. Accessory identifiers are device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
-
-[[attribute]]
 tag = "(300A,0421)"
 keyword = "GeneralAccessoryID"
 action = "X/Z/D"
@@ -542,7 +521,7 @@ note = "A user or machine supplied identifier for a general accessory. Accessory
 tag = "(0008,0070)"
 keyword = "Manufacturer"
 action = "K"
-note = "The name of the company that made the equipment or device, which the equipment itself writes in the General Equipment Module. It is the same for every unit of every model the company makes, so it identifies no device, person, or institution, and Table E.1-1 omits it while listing the identifiers of single devices, such as Device Serial Number. It is kept, as information about the acquisition."
+note = "The name of the company that made the equipment or device, which the equipment itself writes in the General Equipment Module. It is kept because it is Type 1 in Contributing Equipment Sequence (PS3.3 Table C.12-1), so it cannot be removed there, and because Table E.1-1 omits it deliberately while listing the identifiers of single devices, such as Device Serial Number; for equipment that a company makes, it names the maker of a product that many sites share. A device made in-house, as Patient Treatment Preparation Device Sequence (Table 10.35-1, Type 2), Device Sequence, or Container Component Sequence can record, can carry the hospital as its Manufacturer. That residual risk is accepted: the value names an institution, not a patient, and every distinct retained string is reviewed by a person before a public release."
 
 [[attribute]]
 tag = "(0008,0100)"
@@ -709,13 +688,20 @@ action = "K"
 note = "A description of each de-identification already applied. PS3.15 E.1.1 has a de-identifier add its own description to this attribute, so the engine keeps the values already present and adds two of its own: a readable value naming PyMedPhys, its version, the PS3.15 edition, and the preset, and the policy digest."
 
 # Names and identifiers of people, organisations, records, and networks,
-# and the text of overlays: removed by Type under every option.
+# identifiers that a device reads, and the text of overlays: removed by Type
+# under every option.
 
 [[attribute]]
 tag = "(0008,0116)"
 keyword = "CodingSchemeResponsibleOrganization"
 action = "X/Z/D"
 note = "The organisation responsible for a coding scheme, which PS3.3 says may include contact information, so for a local scheme it names the institution and can name a person. Table E.1-1 removes names of people and organisations, such as Operators' Name, Institution Name, and Clinical Trial Sponsor Name, under every supported option, so it is removed by Type under every option too."
+
+[[attribute]]
+tag = "(0008,0122)"
+keyword = "MappingResourceName"
+action = "X/Z/D"
+note = "The name of the mapping resource that defines a context group, such as DICOM Content Mapping Resource. PS3.3 Section 8.4 says that its value may denote the institution or organisation that specified the value set, so it can name the institution, and the codes do not need it, since Mapping Resource (0008,0105) identifies the resource. Like Coding Scheme Responsible Organization, it is removed by Type under every option."
 
 [[attribute]]
 tag = "(0010,0214)"
@@ -770,6 +756,18 @@ tag = "(0088,0130)"
 keyword = "StorageMediaFileSetID"
 action = "X/Z/D"
 note = "A human-readable identifier of the storage media that hold a referenced instance, which can be typed with a patient's name or a date. It is removed by Type under every option, like other identifiers of records; in the supported IODs it occurs only within Referenced Patient Photo Sequence, which Table E.1-1 removes."
+
+[[attribute]]
+tag = "(300A,00F9)"
+keyword = "AccessoryCode"
+action = "X/Z/D"
+note = "A machine-readable identifier for an accessory, block, or compensator, which PS3.3 Tables C.8-48 and C.8-50 describe as 'intended to be read by a device such as a bar-code reader', nearly the words in which Table 10.36-1 describes Device Alternate Identifier (3010,001B). Table E.1-1 empties that attribute (Z) and gives it no action under Retain Device Identity. A block or compensator is usually made for one patient, so its code can refer to them, and the labels of such items are cleaned rather than kept, so it is removed by Type under every option."
+
+[[attribute]]
+tag = "(300A,0355)"
+keyword = "TrayAccessoryCode"
+action = "X/Z/D"
+note = "A machine-readable identifier for the tray of a block or compensator, which PS3.3 Table C.8-50 describes as 'intended to be read by a device such as a bar-code reader', nearly the words in which Table 10.36-1 describes Device Alternate Identifier (3010,001B). Table E.1-1 empties that attribute (Z) and gives it no action under Retain Device Identity. The tray carries a block or compensator, which is usually made for one patient, and the labels of such items are cleaned rather than kept, so it is removed by Type under every option, like Accessory Code."
 
 [[attribute]]
 tag = "(60xx,0022)"

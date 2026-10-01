@@ -34,10 +34,10 @@ overrides its Basic Profile action when the option is selected:
 - coded and technical values, such as Code Value and Convolution Kernel, are
   kept;
 - names and identifiers of people, organisations, records, and networks, such
-  as Universal Entity ID, and the text of overlays, are removed by Type under
-  every option, as are the two dates in an alternative calendar, Patient's
-  Birth Date in Alternative Calendar and Patient's Death Date in Alternative
-  Calendar (X);
+  as Universal Entity ID, identifiers that a device reads, such as Accessory
+  Code, and the text of overlays, are removed by Type under every option, as
+  are the two dates in an alternative calendar, Patient's Birth Date in
+  Alternative Calendar and Patient's Death Date in Alternative Calendar (X);
 - De-identification Method (0012,0063) is kept, and the engine adds its own
   values to it.
 
