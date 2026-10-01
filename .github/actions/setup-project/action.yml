@@ -8,6 +8,11 @@ inputs:
   extras:
     description: Space-separated list of extras to install
     default: ''
+  groups:
+    description: >-
+      Space-separated list of dependency groups to install. The default dev
+      group, which holds everything, is never installed unless listed.
+    default: ''
   install-project:
     description: Install the locked project environment
     default: 'true'
@@ -32,7 +37,7 @@ runs:
         # Each environment must be able to save its complete dependency set.
         # Otherwise a fast tool-only job can claim the shared immutable key.
         # setup-uv's key already includes the OS and the full Python version.
-        cache-suffix: ${{ inputs.extras || github.job }}
+        cache-suffix: ${{ (inputs.extras || inputs.groups) && format('{0}+{1}', inputs.extras, inputs.groups) || github.job }}
         cache-dependency-glob: |
           uv.lock
           pyproject.toml
@@ -42,13 +47,16 @@ runs:
       shell: bash
       env:
         EXTRAS: ${{ inputs.extras }}
+        GROUPS: ${{ inputs.groups }}
       run: |
         set -euxo pipefail
-        if [ -n "$EXTRAS" ]; then
-          uv sync --frozen $(echo $EXTRAS | xargs -n1 echo --extra)
-        else
-          uv sync --frozen
-        fi
+        args=(--frozen --no-default-groups)
+        for extra in $EXTRAS; do args+=(--extra "$extra"); done
+        for group in $GROUPS; do args+=(--group "$group"); done
+        uv sync "${args[@]}"
+        # Later `uv run` calls sync again; keep them from adding the default
+        # dev group, which would install every extra and tool.
+        echo "UV_NO_DEFAULT_GROUPS=1" >> "$GITHUB_ENV"
 
     # Jobs that decide later whether they need data use cache-data directly.
     - name: Cache PyMedPhys data

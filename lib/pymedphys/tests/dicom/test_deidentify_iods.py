@@ -14,8 +14,13 @@
 
 """The attribute Types of the composite IODs, generated from DICOM PS3.3."""
 
+# The tests of modules and of Functional Group Macros alter the same generated
+# files with the same helpers, so they stay in one module.
+# pylint: disable = too-many-lines
+
 import copy
 import json
+import re
 
 from pymedphys._imports import pytest
 
@@ -56,15 +61,18 @@ def test_the_first_supported_release_iods_are_generated(tables):
     ]
 
 
-def test_every_composite_iod_without_functional_group_macros_is_generated(tables):
+def test_every_composite_iod_but_the_real_time_ones_is_generated(tables):
     # Counted from the published 2026d PS3.3: 174 IOD Modules tables in Annex
-    # A, 33 of whose IODs have Functional Group Macros.
-    assert len(tables.iods) == 141
-    assert len(tables.attribute_tables) == 471
+    # A, three of them for real-time IODs whose module gives an attribute that
+    # PS3.6 defines in Table 9-1, outside the data dictionary.
+    assert len(tables.iods) == 171
+    assert len(tables.attribute_tables) == 664
     assert all(iod.label.startswith("Table A.") for iod in tables.iods.values())
-    # Segmentation and Enhanced CT Image are among those left out.
-    assert "Segmentation" not in tables.iods
-    assert "Enhanced CT Image" not in tables.iods
+    assert "Real-Time Audio Waveform" not in tables.iods
+    # Including the IODs whose modules include Functional Group Macros.
+    assert sum(bool(iod.functional_group_macros) for iod in tables.iods.values()) == 30
+    assert tables.iods["Segmentation"].label == "Table A.51-1"
+    assert tables.iods["Enhanced CT Image"].label == "Table A.38-1"
 
 
 def test_modules_keep_their_usage_and_condition(tables):
@@ -378,6 +386,287 @@ def test_rows_that_describe_attributes_in_words_have_no_tag(tables):
     ]
 
 
+# The Shared and Per-Frame Functional Groups Sequences (5200,9229) and
+# (5200,9230) of the Multi-frame Functional Groups Module, whose items each
+# include the IOD's Functional Group Macros (PS3.3 C.7.6.16).
+SHARED = ("(5200,9229)",)
+PER_FRAME = ("(5200,9230)",)
+
+
+def _group_types(iod, tag, path):
+    return {
+        (definition.functional_group, definition.type)
+        for definition in iod.lookup(tag, path)
+    }
+
+
+@pytest.mark.parametrize("groups", [SHARED, PER_FRAME])
+@pytest.mark.parametrize(
+    "iod, tag, path, expected",
+    [
+        # Pixel Measures Sequence, and Pixel Spacing within it (Table
+        # C.7.6.16-2); Frame Content Sequence (Table C.7.6.16-3); Plane
+        # Position Sequence, and Image Position (Patient) within it (Table
+        # C.7.6.16-4).
+        ("Enhanced CT Image", "(0028,9110)", (), {("Pixel Measures", "1")}),
+        (
+            "Enhanced CT Image",
+            "(0028,0030)",
+            ("(0028,9110)",),
+            {("Pixel Measures", "1C")},
+        ),
+        ("Enhanced CT Image", "(0020,9111)", (), {("Frame Content", "1")}),
+        (
+            "Enhanced CT Image",
+            "(0020,9113)",
+            (),
+            {("Plane Position (Patient)", "1")},
+        ),
+        (
+            "Enhanced CT Image",
+            "(0020,0032)",
+            ("(0020,9113)",),
+            {("Plane Position (Patient)", "1C")},
+        ),
+        # Frame Type within CT Image Frame Type Sequence (Table C.8-114).
+        (
+            "Enhanced CT Image",
+            "(0008,9007)",
+            ("(0018,9329)",),
+            {("CT Image Frame Type", "1")},
+        ),
+        ("Segmentation", "(0028,9110)", (), {("Pixel Measures", "1")}),
+        (
+            "Segmentation",
+            "(0028,0030)",
+            ("(0028,9110)",),
+            {("Pixel Measures", "1C")},
+        ),
+        ("Segmentation", "(0020,9113)", (), {("Plane Position (Patient)", "1")}),
+        # Referenced Segment Number within Segment Identification Sequence
+        # (Table C.8.20-3).
+        (
+            "Segmentation",
+            "(0062,000B)",
+            ("(0062,000A)",),
+            {("Segmentation", "1")},
+        ),
+        # The source images within Derivation Image Sequence (Table
+        # C.7.6.16-7), whose references come from the Image SOP Instance
+        # Reference Macro.
+        ("Segmentation", "(0008,9124)", (), {("Derivation Image", "2")}),
+        (
+            "Segmentation",
+            "(0008,1155)",
+            ("(0008,9124)", "(0008,2112)"),
+            {("Derivation Image", "1")},
+        ),
+    ],
+)
+def test_functional_group_macros_are_expanded_in_each_functional_group_sequence(
+    tables, groups, iod, tag, path, expected
+):
+    found = tables.iods[iod].lookup(tag, (*groups, *path))
+
+    assert {(d.functional_group, d.type) for d in found} == expected
+    assert {d.module for d in found} == {"Multi-frame Functional Groups"}
+    assert all(d.tables[0] == "Table C.7.6.16-1" for d in found)
+
+
+def test_attributes_of_functional_group_macros_are_only_in_their_items(tables):
+    ct = tables.iods["Enhanced CT Image"]
+
+    # Pixel Spacing is defined only within Pixel Measures Sequence, and the
+    # macros' sequences only in the items of the Functional Groups Sequences.
+    assert ct.lookup("(0028,0030)") == ()
+    assert ct.lookup("(0028,9110)") == ()
+    assert ct.lookup("(0028,0030)", SHARED) == ()
+    # The module's other attributes are outside any functional group.
+    (frames,) = ct.lookup("(0028,0008)")
+    assert (frames.module, frames.functional_group, frames.type) == (
+        "Multi-frame Functional Groups",
+        "",
+        "1",
+    )
+    # Each IOD with Functional Group Macros has the module's two sequences.
+    assert _types(ct, "(5200,9229)") == {("Multi-frame Functional Groups", "1")}
+    assert _types(ct, "(5200,9230)") == {("Multi-frame Functional Groups", "1C")}
+
+
+def _macros(iod):
+    return {
+        macro.macro: (macro.usage, macro.condition)
+        for macro in iod.functional_group_macros
+    }
+
+
+def test_each_functional_group_macro_has_its_usage_and_condition(tables):
+    # From Tables A.38-2 and A.51-2.
+    ct = _macros(tables.iods["Enhanced CT Image"])
+    segmentation = _macros(tables.iods["Segmentation"])
+
+    assert len(ct) == 29
+    assert ct["Pixel Measures"] == ("M", "")
+    assert ct["Frame VOI LUT"] == ("U", "")
+    assert ct["Frame Content"] == (
+        "M",
+        "May not be used as a Shared Functional Group.",
+    )
+    assert ct["Cardiac Synchronization"][0] == "C"
+    assert ct["Cardiac Synchronization"][1].startswith(
+        "Required if Cardiac Synchronization Technique (0018,9037)"
+    )
+    assert list(segmentation) == [
+        "Pixel Measures",
+        "Plane Position (Patient)",
+        "Plane Orientation (Patient)",
+        "Plane Position (Slide)",
+        "Derivation Image",
+        "Frame Content",
+        "Segmentation",
+    ]
+    assert {usage for usage, _ in segmentation.values()} == {"C"}
+    assert segmentation["Segmentation"][1] == (
+        "Required if Dimension Organization Type (0020,9311) is not TILED_FULL "
+        "and Segmentation Type (0062,0001) is not LABELMAP."
+    )
+    (macro,) = [
+        macro
+        for macro in tables.iods["Segmentation"].functional_group_macros
+        if macro.macro == "Pixel Measures"
+    ]
+    assert macro == iods.FunctionalGroupMacro(
+        "Pixel Measures",
+        "C.7.6.16.2.1",
+        "C",
+        macro.condition,
+        "Table C.7.6.16-2",
+    )
+    assert macro.condition.startswith(
+        "Required if Derivation Image Functional Group (C.7.6.16.2.6) is not present"
+    )
+
+
+def test_a_definition_names_its_macro_so_its_usage_can_be_found(tables):
+    segmentation = tables.iods["Segmentation"]
+    usage = {macro.macro: macro.usage for macro in segmentation.functional_group_macros}
+
+    # Referenced Segment Number is Type 1 wherever its conditional macro is.
+    (number,) = segmentation.lookup("(0062,000B)", (*PER_FRAME, "(0062,000A)"))
+    assert (number.type, usage[number.functional_group]) == ("1", "C")
+    # An attribute outside every macro names none.
+    (series,) = segmentation.lookup("(0020,000E)")
+    assert series.functional_group == ""
+
+
+@pytest.mark.parametrize(
+    "iod, sequences",
+    [
+        ("Enhanced CT Image", {SHARED, PER_FRAME}),
+        ("Segmentation", {SHARED, PER_FRAME}),
+        # The Sparse Multi-frame Functional Groups Module's Shared Functional
+        # Groups Sequence and Selected Frame Functional Groups Sequence.
+        ("Enhanced Continuous RT Image", {SHARED, ("(3002,0101)",)}),
+    ],
+)
+def test_each_macro_is_in_every_sequence_that_includes_the_macros(
+    tables, iod, sequences
+):
+    found = tables.iods[iod]
+
+    assert found.functional_group_macros
+    for macro in found.functional_group_macros:
+        # The macro's only top-level attribute, its Functional Group Sequence,
+        # is in the items of each sequence that includes the macros.
+        paths = {
+            definition.path
+            for definition in found.definitions
+            if definition.tables[1:] == (macro.table,)
+            and definition.functional_group == macro.macro
+            and len(definition.path) == 1
+        }
+        assert paths == sequences, macro.macro
+
+
+def test_an_iod_can_have_the_functional_group_macros_of_another(tables):
+    # Section A.36.4.4 gives the Enhanced MR Color Image IOD the macros of
+    # Table A.36-2, the Enhanced MR Image IOD's.
+    color = tables.iods["Enhanced MR Color Image"]
+
+    assert color.functional_group_macros == (
+        tables.iods["Enhanced MR Image"].functional_group_macros
+    )
+    assert _group_types(color, "(0028,9110)", PER_FRAME) == {("Pixel Measures", "1")}
+
+
+@pytest.mark.parametrize(
+    "iod, macro, expected",
+    [
+        # Published with an en dash, a hyphen without a space, or nothing,
+        # between usage and condition.
+        (
+            "Parametric Map",
+            "Plane Position (Patient)",
+            ("C.7.6.16.2.3", "C", "Required if the Frame of Reference is defined"),
+        ),
+        (
+            "Parametric Map",
+            "Plane Orientation (Patient)",
+            ("C.7.6.16.2.4", "C", "Required if the Frame of Reference is defined"),
+        ),
+        (
+            "X-Ray 3D Craniofacial Image",
+            "Frame Content",
+            ("C.7.6.16.2.2", "M", "May not be used as a Shared Functional Group."),
+        ),
+        (
+            "Breast Tomosynthesis Image",
+            "Breast Biopsy Target",
+            ("C.8.21.5.2", "U", "May not be used as a Shared Functional Group."),
+        ),
+        (
+            "Enhanced RT Image",
+            "RT Image Frame General Content",
+            ("C.36.2.4.8", "M", "The units for Start Cumulative Meterset"),
+        ),
+        (
+            "Enhanced Continuous RT Image",
+            "RT Image Frame General Content",
+            ("C.36.2.4.8", "M", "The units for Start Cumulative Meterset"),
+        ),
+        # Its table is titled "Frame VOI LUT with LUT Macro Attributes".
+        (
+            "Breast Projection X-Ray Image",
+            "Frame VOI LUT With LUT",
+            ("C.7.6.16.2.10b", "M", ""),
+        ),
+    ],
+)
+def test_functional_group_macros_whose_published_rows_are_corrected(
+    tables, iod, macro, expected
+):
+    (found,) = [m for m in tables.iods[iod].functional_group_macros if m.macro == macro]
+    section, usage, condition = expected
+
+    assert (found.section, found.usage) == (section, usage)
+    assert found.condition.startswith(condition)
+    assert bool(found.condition) == bool(condition)
+
+
+def test_the_x_ray_grid_description_is_in_its_functional_group_sequence(tables):
+    # Table C.8.31.7-1 publishes its Include of the X-Ray Grid Description
+    # Macro at the top level, so that the macro would have attributes outside
+    # its sequence; the pin nests it in X-Ray Grid Sequence (0018,9555), as
+    # the X-Ray Filter Macro nests its description in its sequence.
+    breast = tables.iods["Breast Projection X-Ray Image"]
+
+    # Grid Absorbing Material.
+    assert _group_types(breast, "(0018,7040)", (*PER_FRAME, "(0018,9555)")) == {
+        ("X-Ray Grid", "3")
+    }
+    assert breast.lookup("(0018,7040)", PER_FRAME) == ()
+
+
 def test_the_loader_caches_by_resolved_path(tables):
     assert iods.load_iod_tables(MODULES_FILE, ATTRIBUTES_FILE) is tables
 
@@ -571,4 +860,168 @@ def test_malformed_iod_modules_are_rejected(tmp_path, change, message):
     change(modules)
 
     with pytest.raises(standard.StandardTableError, match=message):
+        _load(tmp_path, modules, attributes)
+
+
+def _iod_entry(modules, name):
+    return next(iod for iod in modules["rows"] if iod["iod"] == name)
+
+
+def _segmentation_macros(modules):
+    return _iod_entry(modules, "Segmentation")["functional_group_macros"]
+
+
+@pytest.mark.parametrize(
+    "change, message",
+    [
+        # Types would be incomplete without the macros, or the macros unused.
+        (
+            lambda m: _iod_entry(m, "Segmentation").pop("functional_group_macros"),
+            "Table A.51-1 has a module that includes Functional Group Macros, "
+            "but lists none",
+        ),
+        (
+            lambda m: _ct(m).update(
+                functional_group_macros=copy.deepcopy(_segmentation_macros(m))
+            ),
+            "Table A.3-1 lists Functional Group Macros, but no module includes them",
+        ),
+        (
+            lambda m: _segmentation_macros(m)[0].update(usage="R"),
+            "Table A.51-1 functional group macro 1 has a usage other than M, C, or U",
+        ),
+        (
+            lambda m: _segmentation_macros(m)[0].update(table="Table 99-99"),
+            "macro 1 refers to Table 99-99, which is not in the attribute tables",
+        ),
+        (
+            lambda m: _segmentation_macros(m)[0].update(condition=None),
+            "macro 1 has a field that is not text, or is empty",
+        ),
+        (
+            lambda m: _segmentation_macros(m)[0].update(macro=""),
+            "macro 1 has a field that is not text, or is empty",
+        ),
+        (
+            lambda m: _segmentation_macros(m)[0].pop("section"),
+            "functional group macro 1 has a macro without exactly the fields",
+        ),
+        (
+            lambda m: _segmentation_macros(m).append(_segmentation_macros(m)[0]),
+            "Table A.51-1 lists a Functional Group Macro more than once",
+        ),
+        # Each Functional Group is one sequence (PS3.3 C.7.6.16.1.1), and
+        # contains no other Functional Groups.
+        (
+            lambda m: _segmentation_macros(m)[0].update(table="Table 10-18"),
+            "macro 1 has Table 10-18, which does not define exactly one "
+            "top-level attribute",
+        ),
+        (
+            lambda m: _segmentation_macros(m)[0].update(table="Table C.7.6.16-1"),
+            "macro 1 has Table C.7.6.16-1, which includes Functional Group Macros",
+        ),
+        # Only an IOD with macros lists them.
+        (
+            lambda m: _segmentation_macros(m).clear(),
+            "Table A.51-1 has Functional Group Macros that are not a non-empty list",
+        ),
+        (
+            lambda m: _ct(m).update(functional_group_macros=None),
+            "Table A.3-1 has Functional Group Macros that are not a non-empty list",
+        ),
+        (
+            lambda m: _ct(m).update(groups=[]),
+            "has an IOD without exactly the fields iod, label, modules, and "
+            "optionally functional_group_macros",
+        ),
+    ],
+)
+def test_malformed_functional_group_macros_are_rejected(tmp_path, change, message):
+    modules, attributes = _documents()
+    change(modules)
+
+    with pytest.raises(standard.StandardTableError, match=re.escape(message)):
+        _load(tmp_path, modules, attributes)
+
+
+def _multi_frame_rows(attributes):
+    return _table(attributes, "Table C.7.6.16-1")["rows"]
+
+
+@pytest.mark.parametrize(
+    "change, message",
+    [
+        # Rows cannot extend the items of the IOD's macros.
+        (
+            lambda a: _multi_frame_rows(a).insert(
+                2,
+                {
+                    "depth": 2,
+                    "name": "Pixel Spacing",
+                    "tag": "(0028,0030)",
+                    "type": "1",
+                    "include": "",
+                },
+            ),
+            "Table C.7.6.16-1 row 3 is nested below an Include of Functional Group "
+            "Macros",
+        ),
+        (
+            lambda a: _multi_frame_rows(a)[1].update(type="1"),
+            "Include row with a name, tag, or Type",
+        ),
+        (
+            lambda a: _multi_frame_rows(a)[1].update(include="Functional Groups"),
+            "includes something that is not a table label",
+        ),
+    ],
+)
+def test_malformed_includes_of_functional_group_macros_are_rejected(
+    tmp_path, change, message
+):
+    modules, attributes = _documents()
+    change(attributes)
+
+    with pytest.raises(standard.StandardTableError, match=re.escape(message)):
+        _load(tmp_path, modules, attributes)
+
+
+def _include_row(depth, include):
+    return {"depth": depth, "name": "", "tag": "", "type": "", "include": include}
+
+
+def test_functional_group_macros_are_expanded_where_any_table_includes_them(
+    tmp_path,
+):
+    # A module can include the macros through a table it includes, rather
+    # than in its own rows, as an edition could publish them.
+    modules, attributes = _documents()
+    shared = _multi_frame_rows(attributes)
+    shared[1] = _include_row(1, "Table 99-1")
+    attributes["rows"].append(
+        {
+            "label": "Table 99-1",
+            "title": "Fixture Functional Groups Macro Attributes",
+            "rows": [_include_row(0, iods.FUNCTIONAL_GROUP_MACROS)],
+        }
+    )
+    ct = _load(tmp_path, modules, attributes).iods["Enhanced CT Image"]
+
+    (measures,) = ct.lookup("(0028,9110)", SHARED)
+    assert (measures.functional_group, measures.type) == ("Pixel Measures", "1")
+    assert measures.tables == ("Table C.7.6.16-1", "Table 99-1", "Table C.7.6.16-2")
+
+
+def test_an_iod_that_includes_functional_group_macros_through_a_table_lists_them(
+    tmp_path,
+):
+    modules, attributes = _documents()
+    # Every IOD with the Patient Module would then reach the macros.
+    _patient_rows(attributes).append(_include_row(0, "Table C.7.6.16-1"))
+
+    with pytest.raises(
+        standard.StandardTableError,
+        match="has a module that includes Functional Group Macros, but lists none",
+    ):
         _load(tmp_path, modules, attributes)

@@ -58,7 +58,7 @@ jobs:
           fi
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
-          uv sync --frozen --extra all --group dev
+          uv sync --frozen
           # Exported requirements.txt, dependency-extra.txt, pyproject.hash.
           uv run pymedphys dev propagate
 
