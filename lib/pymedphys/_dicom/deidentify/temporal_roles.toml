@@ -18,7 +18,8 @@
 # selected, subject-event and radiation-source values move by the subject's
 # offset, a time-zone value becomes +0000 once every DT value with its own
 # offset is in the instance's local time, and values of every other role are
-# replaced by a fixed dummy value. Otherwise Table E.1-1 decides.
+# replaced by a fixed dummy value. Otherwise Table E.1-1 decides, or, for an
+# attribute that it omits, the attribute's supplementary action.
 #
 # Rules also cover attributes that Table E.1-1 omits, and attributes of other
 # VRs that it cleans under Modified Dates. A subject event that Table E.1-1
