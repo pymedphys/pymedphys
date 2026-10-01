@@ -105,9 +105,21 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 The Attribute Patient Identity Removed (0012,0062) shall be replaced or added to the Data Set with a value of YES. Additionally, one or more codes from CID 7050 “De-identification Method” corresponding to the Profile and Options used shall be added to De-identification Method Code Sequence (0012,0064), and/or a text string describing the method used shall be inserted in or added to De-identification Method (0012,0063).
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-012", "D-024"]
+implementation = ["_dicom/deidentify/method_digest.py"]
+tests = [
+  "tests/dicom/test_deidentify_method_digest.py::test_the_digest_is_only_64_lowercase_hexadecimal_digits_and_fits_one_lo_value",
+  "tests/dicom/test_deidentify_method_digest.py::test_the_same_inputs_always_give_the_same_digest",
+  "tests/dicom/test_deidentify_method_digest.py::test_a_small_synthetic_input_has_the_canonical_form_written_by_hand",
+  "tests/dicom/test_deidentify_method_digest.py::test_any_part_of_the_policy_changes_the_digest",
+  "tests/dicom/test_deidentify_method_digest.py::test_changing_adding_or_removing_an_engine_file_changes_the_digest",
+  "tests/dicom/test_deidentify_method_digest.py::test_python_and_library_versions_leave_the_digest_unchanged",
+]
+note = '''
+The de-identification method digest, the second value that every preset adds to De-identification Method, is computed as 64 lowercase hexadecimal digits, which fit one LO value, from the policy and everything the engine could apply, including its own source and rule files, whether or not the policy's options use them. It identifies the policy and the PyMedPhys implementation and resources that apply it, not the runtime environment, which Software Versions records instead, so upgrading Python, pydicom, or tomlkit leaves it unchanged (D-012, D-024). The digest is PyMedPhys's own provenance, added beside the readable description that this paragraph allows; PS3.15 does not require it. Remaining: adding Patient Identity Removed, the CID 7050 codes, and both De-identification Method values to each data set (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.1.1-06"
@@ -823,7 +835,7 @@ Document the de-identification process in detail, including the release of PS3.1
 '''
 status = "planned"
 milestone = "M4"
-decisions = ["D-011", "D-012", "D-024"]
+decisions = ["D-011", "D-012", "D-024", "D-029"]
 note = '''
-Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name, and each instance's De-identification Method names PyMedPhys and the preset and gives the policy digest (D-012, D-024).
+Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name, and each instance's De-identification Method names PyMedPhys and the preset and gives the method digest (D-012, D-024). The release report also records the runtime environment that ran (D-029).
 '''
