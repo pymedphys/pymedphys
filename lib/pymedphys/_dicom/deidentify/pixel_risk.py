@@ -205,6 +205,7 @@ _CODE_VALUE = "(0008,0100)"
 _CODING_SCHEME_DESIGNATOR = "(0008,0102)"
 _ANATOMIC_REGION_SEQUENCE = "(0008,2218)"
 _BODY_PART_EXAMINED = "(0018,0015)"
+_NUMBER_OF_FRAMES = "(0028,0008)"
 
 # The VR in the pinned data dictionary of each attribute read, which a test
 # checks against it.
@@ -223,6 +224,7 @@ READ_VRS = {
     _CODING_SCHEME_DESIGNATOR: "SH",
     _ANATOMIC_REGION_SEQUENCE: "SQ",
     _BODY_PART_EXAMINED: "CS",
+    _NUMBER_OF_FRAMES: "IS",
 }
 
 _PIXEL_DATA_TAGS = (0x7FE00008, 0x7FE00009, 0x7FE00010)
@@ -485,10 +487,21 @@ HEAD_AND_NECK_REGIONS_PATH = (
     pathlib.Path(__file__).resolve().parent / "head_and_neck_regions.toml"
 )
 _REGIONS_SCHEMA = "pymedphys-deid-head-and-neck-regions/1"
-_REGION_FIELDS = {"meaning", "sct", "srt"}
-# CT Image Storage, and CT Image Storage - For Processing.
-_CT_IMAGE_SOP_CLASSES = frozenset(
+_REGION_FIELDS = {"meaning", "sct"}
+# CT Image Storage, and CT Image Storage - For Processing, each instance of
+# which is one frame.
+_SINGLE_FRAME_CT_SOP_CLASSES = frozenset(
     {"1.2.840.10008.5.1.4.1.1.2", "1.2.840.10008.5.1.4.1.1.2.3"}
+)
+# Enhanced CT Image Storage and Legacy Converted Enhanced CT Image Storage,
+# and their For Processing classes, whose instances hold Number of Frames.
+_MULTI_FRAME_CT_SOP_CLASSES = frozenset(
+    {
+        "1.2.840.10008.5.1.4.1.1.2.1",
+        "1.2.840.10008.5.1.4.1.1.2.4",
+        "1.2.840.10008.5.1.4.1.1.2.2",
+        "1.2.840.10008.5.1.4.1.1.2.5",
+    }
 )
 _TERM = re.compile(r"[A-Z0-9_ ]{1,16}")
 
@@ -505,8 +518,9 @@ class HeadAndNeckRegions:
         Their Body Part Examined (0018,0015) terms.
     codes : frozenset of (str, str)
         Their codes, as (Coding Scheme Designator, Code Value): each region's
-        SNOMED CT code under ``SCT`` and its SNOMED RT identifier under
-        ``SRT``.
+        SNOMED CT code under ``SCT``, and its SNOMED RT identifier, where it
+        has one, under ``SRT`` and under ``SNM3``, since the identifiers
+        carry forward the SNOMED 3 codes that older instances give.
     """
 
     edition: str
@@ -536,13 +550,17 @@ def _load_regions(path: pathlib.Path) -> HeadAndNeckRegions:
     for region in data["region"]:
         if (
             not isinstance(region, dict)
-            or not _REGION_FIELDS <= set(region) <= _REGION_FIELDS | {"body_part"}
+            or not _REGION_FIELDS
+            <= set(region)
+            <= _REGION_FIELDS | {"srt", "body_part"}
             or not all(isinstance(value, str) and value for value in region.values())
             or not region["sct"].isdigit()
             or not _TERM.fullmatch(region.get("body_part", "X"))
         ):
             raise ValueError(f"{path.name} has a malformed region")
-        codes.update({("SCT", region["sct"]), ("SRT", region["srt"])})
+        codes.add(("SCT", region["sct"]))
+        if "srt" in region:
+            codes.update({("SRT", region["srt"]), ("SNM3", region["srt"])})
         if "body_part" in region:
             body_parts.add(region["body_part"])
     return HeadAndNeckRegions(edition, frozenset(body_parts), frozenset(codes))
@@ -566,9 +584,10 @@ def load_head_and_neck_regions(
         If the file cannot be read; has another schema, an edition other
         than the pinned data dictionary's, an acknowledgement other than that
         of its edition, or other fields; or
-        has a region without exactly a meaning, a numeric SNOMED CT code, a
-        SNOMED RT identifier, and an optional Body Part Examined term of at
-        most 16 upper-case letters, digits, underscores, and spaces.
+        has a region without exactly a meaning, a numeric SNOMED CT code, an
+        optional SNOMED RT identifier, and an optional Body Part Examined
+        term of at most 16 upper-case letters, digits, underscores, and
+        spaces.
     """
     return _load_regions((path or HEAD_AND_NECK_REGIONS_PATH).resolve())
 
@@ -603,12 +622,16 @@ def assess_ct_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFindin
     """Read a series' indicators of a reconstructable face.
 
     Without inspecting pixel data, the engine cannot tell whether a series
-    covers the face, so every CT volume is reported: a series with at least
-    two CT images that are not localizers, whose Image Type (0008,0008) has
-    a third value of LOCALIZER (PS3.3 Section C.8.2.1.1.1). A CT image whose
-    SOP Class UID (0008,0016) cannot be read counts as one. A volume whose
-    Body Part Examined (0018,0015) or Anatomic Region Sequence (0008,2218)
-    names a region in :func:`load_head_and_neck_regions` is also reported as
+    covers the face, so every CT volume is reported: a series whose CT
+    images, of any CT Image Storage SOP Class, hold at least two frames that
+    are not localizers, whose Image Type (0008,0008) has a third value of
+    LOCALIZER (PS3.3 Sections C.8.2.1.1.1 and C.8.16.1.3). A single-frame CT
+    image is one frame; an Enhanced or Legacy Converted Enhanced CT image
+    holds its Number of Frames (0028,0008), one if it is absent, and is a
+    volume by itself if that cannot be read. An instance whose SOP Class
+    UID (0008,0016) cannot be read counts as a frame. A volume whose Body
+    Part Examined (0018,0015) or Anatomic Region Sequence (0008,2218) names
+    a region in :func:`load_head_and_neck_regions` is also reported as
     showing the head or neck. How finely a series samples the face changes
     how readily it can be recognised (MIDI report Section 1.18.3.2), but no
     spacing makes it safe, so spacing decides nothing here.
@@ -622,19 +645,23 @@ def assess_ct_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFindin
     -------
     tuple of SeriesFinding
         The CT volume first, then the head or neck by attribute, then
-        unreadable evidence by instance; nothing for a series that is no CT
-        volume.
+        unreadable evidence by instance, which is reported whether or not
+        the series is a CT volume.
     """
     regions = load_head_and_neck_regions()
     volume: list[int] = []
+    frames = 0
     head: dict[ElementPath, list[int]] = {}
     unreadable: list[SeriesFinding] = []
     for index, dataset in enumerate(instances):
         try:
-            if not _is_ct_image(dataset):
-                continue
+            multi_frame = _multi_frame_ct(dataset)
         except _Unreadable:
             unreadable.append(_unreadable_in(index, ElementPath((), _SOP_CLASS_UID)))
+            multi_frame = False
+        else:
+            if multi_frame is None:
+                continue
         try:
             image_type = _read(dataset, _IMAGE_TYPE) or []
         except _Unreadable:
@@ -642,11 +669,12 @@ def assess_ct_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFindin
         assert isinstance(image_type, list)
         if image_type[2:3] == ["LOCALIZER"]:
             continue
+        frames += _frames(dataset, index, unreadable) if multi_frame else 1
         volume.append(index)
         for path in _head_or_neck(dataset, regions, index, unreadable):
             head.setdefault(path, []).append(index)
-    if len(volume) < 2:
-        return ()
+    if frames < 2:
+        return tuple(unreadable)
     return (
         SeriesFinding(Indicator.CT_VOLUME, tuple(volume)),
         *(
@@ -663,10 +691,33 @@ def _unreadable_in(index: int, path: ElementPath) -> SeriesFinding:
     )
 
 
-def _is_ct_image(dataset: pydicom.Dataset) -> bool:
+def _multi_frame_ct(dataset: pydicom.Dataset) -> bool | None:
+    """Return whether a CT image is multi-frame, or ``None`` for another class."""
     uids = _read(dataset, _SOP_CLASS_UID) or []
     assert isinstance(uids, list)
-    return len(uids) == 1 and normalise_uid(uids[0]) in _CT_IMAGE_SOP_CLASSES
+    if len(uids) > 1:
+        raise _Unreadable
+    uid = normalise_uid(uids[0]) if uids else None
+    if uid in _SINGLE_FRAME_CT_SOP_CLASSES:
+        return False
+    if uid in _MULTI_FRAME_CT_SOP_CLASSES:
+        return True
+    return None
+
+
+def _frames(dataset: pydicom.Dataset, index: int, unreadable: list) -> int:
+    """Return how many frames a multi-frame CT image holds, for a volume."""
+    try:
+        frames = _read(dataset, _NUMBER_OF_FRAMES)
+        if frames is None:
+            return 1
+        assert isinstance(frames, int)
+        if frames < 1:
+            raise _Unreadable
+    except _Unreadable:
+        unreadable.append(_unreadable_in(index, ElementPath((), _NUMBER_OF_FRAMES)))
+        return 2
+    return frames
 
 
 def _head_or_neck(
@@ -695,12 +746,27 @@ def _head_or_neck(
     assert isinstance(items, list)
     for number, item in enumerate(items):
         within = ((_ANATOMIC_REGION_SEQUENCE, number),)
-        try:
-            code = _read(item, _CODE_VALUE) or []
-            scheme = _read(item, _CODING_SCHEME_DESIGNATOR) or []
-        except _Unreadable:
-            unreadable.append(_unreadable_in(index, ElementPath(within, _CODE_VALUE)))
-            continue
-        assert isinstance(code, list) and isinstance(scheme, list)
-        if len(code) == len(scheme) == 1 and (scheme[0], code[0]) in regions.codes:
-            yield ElementPath(within, _CODE_VALUE)
+        # Code Value is Type 1C, absent where Long Code Value or URN Code
+        # Value holds a code too long for it, which no code of the list is
+        # (PS3.3 Section 8.8).
+        values = []
+        for tag in (_CODING_SCHEME_DESIGNATOR, _CODE_VALUE):
+            try:
+                value = _read(item, tag) or []
+                assert isinstance(value, list)
+                if len(value) > 1:
+                    raise _Unreadable
+            except _Unreadable:
+                unreadable.append(_unreadable_in(index, ElementPath(within, tag)))
+                break
+            values.append(value)
+        else:
+            scheme, code = values
+            # SH is case sensitive, but a lower-case code must not hide the
+            # head or neck.
+            if (
+                scheme
+                and code
+                and (scheme[0].upper(), code[0].upper()) in regions.codes
+            ):
+                yield ElementPath(within, _CODE_VALUE)

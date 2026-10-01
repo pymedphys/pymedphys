@@ -826,6 +826,8 @@ tests = [
   "tests/dicom/test_deidentify_pixel_risk.py::test_every_ct_volume_may_hold_a_reconstructable_face",
   "tests/dicom/test_deidentify_pixel_risk.py::test_a_volume_that_names_the_head_or_neck_says_so",
   "tests/dicom/test_deidentify_pixel_risk.py::test_an_anatomic_region_code_can_name_the_head",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_one_multi_frame_ct_image_can_be_a_volume",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_unreadable_evidence_is_reported_without_a_volume",
 ]
 note = '''
 Recognizable Visual Features of YES, an RT Structure Set's contours of an ROI that it calls EXTERNAL, the patient's outline, and every CT volume, whatever its slice spacing, are reported as indicators of a reconstructable face, and a volume that names a region of the head or neck as showing it. Remaining: reporting them, and the `public-release` assessment and face review (M4).
