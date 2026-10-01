@@ -27,9 +27,13 @@ document's Scope targets:
 
 Composing a policy gives each attribute of Table E.1-1 its action under the
 preset's options (:func:`~pymedphys._dicom.deidentify.actions.effective_actions`),
-after checking that the options are within the supported scope and that the
-table is of the same edition as the data dictionary, against which the
-supplementary rules were reviewed.
+and each reviewed supplementary rule, for an attribute that the table omits,
+its action under the same options
+(:func:`~pymedphys._dicom.deidentify.actions.effective_supplementary_actions`),
+such as C for Beam Name under Clean Descriptors. It first checks that the
+options are within the supported scope and that the table is of the same
+edition as the data dictionary, against which the supplementary rules were
+reviewed.
 
 PS3.15 defines no precedence between options, so an attribute to which two
 selected options give different actions makes the policy invalid. The one
@@ -55,7 +59,7 @@ import dataclasses
 import types
 from collections.abc import Iterable, Mapping
 
-from .actions import OptionConflict, effective_actions
+from .actions import OptionConflict, effective_actions, effective_supplementary_actions
 from .attribute_roles import AttributeRoles
 from .standard import OPTIONS, ProfileTable, load_data_dictionary, load_table_e1_1
 from .temporal_roles import TemporalRole, load_temporal_roles
@@ -148,6 +152,14 @@ class Policy:
     resolved : tuple of ResolvedConflict
         The conflicts between selected options that the preset resolves, in
         the table's order. Only ``tps-import`` has any.
+    supplementary_actions : Mapping of str to str
+        The action of each reviewed supplementary rule under the selected
+        options, keyed by its tag as the data dictionary gives it, such as
+        ``"(300A,00C2)"`` for Beam Name: the actions of attributes that
+        Table E.1-1 omits. A text attribute that the table omits and no rule
+        covers takes
+        :data:`~pymedphys._dicom.deidentify.supplementary_actions.UNCOVERED_TEXT_ACTION`.
+        Read-only.
     enabled : bool
         Whether the engine may use the policy: only for an enabled preset,
         composed from the pinned tables. Only :func:`compose_policy` sets it,
@@ -158,9 +170,10 @@ class Policy:
     preset: str | None
     edition: str
     options: tuple[str, ...]
-    # A mapping is not hashable, so it is left out of the hash.
+    # Mappings are not hashable, so they are left out of the hash.
     actions: Mapping[str, str] = dataclasses.field(hash=False)
     resolved: tuple[ResolvedConflict, ...]
+    supplementary_actions: Mapping[str, str] = dataclasses.field(hash=False)
     # Not an argument, so that neither the constructor nor dataclasses.replace
     # can enable a policy; _compose sets it.
     enabled: bool = dataclasses.field(default=False, init=False)
@@ -263,13 +276,15 @@ def _compose(
         )
 
     effective = effective_actions(selected, table=table)
+    supplementary = effective_supplementary_actions(selected)
+    conflicts = effective.conflicts + supplementary.conflicts
     resolved: dict[str, ResolvedConflict] = {}
     unresolved: list[OptionConflict] = []
     resolvable: list[ResolvedConflict | None] = []
-    if effective.conflicts:
+    if conflicts:
         roles = load_temporal_roles()
-        resolvable = [_resolution(c, roles) for c in effective.conflicts]
-    for conflict, resolution in zip(effective.conflicts, resolvable):
+        resolvable = [_resolution(c, roles) for c in conflicts]
+    for conflict, resolution in zip(conflicts, resolvable):
         if preset == _TPS_IMPORT and resolution is not None:
             resolved[conflict.tag] = resolution
         else:
@@ -292,6 +307,7 @@ def _compose(
             }
         ),
         resolved=tuple(resolved.values()),
+        supplementary_actions=supplementary.actions,
     )
     if preset in ENABLED_PRESETS and pinned:
         # The way a frozen dataclass sets a field that is not an argument.
@@ -327,8 +343,9 @@ def compose_policy(
     PolicyError
         If ``preset`` is not one of :data:`PRESETS`; if the table is of
         another edition than the data dictionary; or if two of the preset's
-        options give an attribute different actions, other than the
-        conflicts the ``tps-import`` preset resolves.
+        options give an attribute of the table, or a supplementary rule,
+        different actions, other than the conflicts the ``tps-import``
+        preset resolves.
     """
     if not isinstance(preset, str):
         raise TypeError("preset must be the name of a preset")
