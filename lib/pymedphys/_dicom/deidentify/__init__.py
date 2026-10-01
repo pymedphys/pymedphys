@@ -24,7 +24,8 @@ the validated policies composed from them, the checks of values against
 their VR and VM, the zero-length and dummy values that the Z and D actions
 write, the supplementary actions for attributes that Table E.1-1 omits, the
 classification of instances as de-identified or sequestered, the names of
-the files and directories that output is written to, a reader that maps each
-byte of a written file to where it belongs, and a search of written files for
-the source values that had to be removed or replaced.
+the files and directories that output is written to, the first pass's graph
+of the references between instances, a reader that maps each byte of a
+written file to where it belongs, and a search of written files for the
+source values that had to be removed or replaced.
 """
