@@ -178,9 +178,12 @@ def test_institution_name_in_a_structure_set_is_resolved_by_its_type_at_each_pla
 
     text = conformance.render_markdown(_statement("basic"))
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
-    assert row.count(" at ") == 2
-    assert "(3006,0020) > (3006,004D) in RT Structure Set" in row.split(". Z at ")[1]
-    assert "D at (0008,0096);" in row
+    zeroed = row.split(". Z within ")[1]
+    assert (
+        "Structure Set ROI Sequence (3006,0020) > ROI Creator Sequence (3006,004D) "
+        "in RT Structure Set" in zeroed
+    )
+    assert "D within Referring Physician Identification Sequence (0008,0096);" in row
     assert row.endswith("X elsewhere |")
 
 
@@ -201,7 +204,8 @@ def test_a_place_that_sequesters_the_instance_is_listed_as_such(monkeypatch):
     text = conformance.render_markdown(statement)
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert (
-        "instance sequestered at (3006,0020) > (3006,004D) in RT Structure Set" in row
+        "instance sequestered within Structure Set ROI Sequence (3006,0020) > "
+        "ROI Creator Sequence (3006,004D) in RT Structure Set" in row
     )
 
 
@@ -336,6 +340,40 @@ def test_a_complete_statement_of_an_enabled_preset_claims_conformance(monkeypatc
         "Application Level Confidentiality Profile" in text
     )
     assert "Not yet described" not in text
+
+
+def test_a_compound_action_that_no_supported_iod_defines_resolves_elsewhere():
+    statement = _statement("basic")
+    text = conformance.render_markdown(statement)
+    undefined = [
+        e
+        for e in statement.attributes
+        if e.action in compound_actions.COMPOUND_ACTIONS and not e.places
+    ]
+    assert undefined
+    for entry in undefined:
+        row = next(line for line in text.splitlines() if f"| {entry.tag} |" in line)
+        assert row.endswith(f"| {entry.elsewhere} elsewhere |"), row
+
+
+def test_places_name_their_enclosing_sequences():
+    text = conformance.render_markdown(_statement("basic"))
+    row = next(line for line in text.splitlines() if "| (0010,0020) |" in line)
+    assert "D within Other Patient IDs Sequence (0010,1002);" in row
+    assert row.endswith(". Z elsewhere |")
+
+
+def test_retained_safe_private_attributes_are_pending_where_selected(preset):
+    composed = policy.compose_policy(preset)
+    pending = _statement(preset).pending
+    assert (conformance.PENDING_SAFE_PRIVATE in pending) == (
+        "retain_safe_private" in composed.options
+    )
+
+
+def test_synthetic_birth_dates_are_pending_only_for_tps_import(preset):
+    pending = _statement(preset).pending
+    assert (conformance.PENDING_BIRTH_DATES in pending) == (preset == "tps-import")
 
 
 def test_cleaning_is_pending_only_for_a_policy_that_cleans(preset):

@@ -35,8 +35,9 @@ change and the same inputs always give the same text.
 - that no attribute is encrypted for later re-identification (D-013).
 
 What the statement cannot yet describe from the engine is listed in it, under
-"Not yet described" (:data:`PENDING`), and a statement with such a list makes
-no conformance claim. A preset is to be enabled only once its statement is
+"Not yet described" (:data:`PENDING`, and the items that apply only to
+some policies, such as :data:`PENDING_CLEANING`), and a statement with such
+a list makes no conformance claim. A preset is to be enabled only once its statement is
 complete. The statement names tags, actions, and the engine's parameters,
 never a value from an instance.
 """
@@ -105,9 +106,22 @@ PENDING = (
 )
 # Pending only for a policy that gives an attribute C.
 PENDING_CLEANING = (
-    "The manner of cleaning each attribute to which the policy gives C "
-    "(PS3.15 E.3.5 and E.3.6, D-007, D-009)."
+    "The manner of cleaning each attribute to which the policy gives C, "
+    "including how dates and times are modified and how retained patient "
+    "characteristics are cleaned (PS3.15 E.3.5, E.3.6, and E.3.7; D-007, "
+    "D-009)."
 )
+# Pending only for a policy that selects Retain Safe Private.
+PENDING_SAFE_PRIVATE = (
+    "The safe private attributes that the policy retains, and the basis on "
+    "which each is retained (PS3.15 E.3.10)."
+)
+# Pending only for tps-import, whose Z writes a synthetic birth date.
+PENDING_BIRTH_DATES = (
+    "The synthetic birth date that Z writes to Patient's Birth Date "
+    "(0010,0030) in place of a zero-length value (D-008, D-021)."
+)
+_TPS_IMPORT = "tps-import"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -334,7 +348,15 @@ def conformance_statement(
         if row.uid in SUPPORTED_TRANSFER_SYNTAXES
     )
     actions = {*policy.actions.values(), *policy.supplementary_actions.values()}
-    pending = PENDING + ((PENDING_CLEANING,) if "C" in actions else ())
+    pending = PENDING + tuple(
+        item
+        for item, applies in (
+            (PENDING_CLEANING, "C" in actions),
+            (PENDING_SAFE_PRIVATE, "retain_safe_private" in policy.options),
+            (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
+        )
+        if applies
+    )
     tables = (
         table,
         load_table_e1_1a(),
@@ -374,11 +396,13 @@ def _cell(text: str) -> str:
     return text.replace("|", "\\|")
 
 
-def _resolution(entry: AttributeAction, iods: tuple[str, ...]) -> str:
+def _resolution(
+    entry: AttributeAction, iods: tuple[str, ...], names: Mapping[str, str]
+) -> str:
     """Describe where a compound action resolves to an action other than its
-    action elsewhere, naming the IODs only where not every supported IOD
-    defines the attribute there."""
-    if not entry.places:
+    action elsewhere, naming each enclosing sequence, and naming the IODs only
+    where not every supported IOD defines the attribute there."""
+    if not entry.elsewhere:
         return ""
     found: dict[str, dict[tuple[str, ...], list[str]]] = {}
     for place in entry.places:
@@ -389,12 +413,16 @@ def _resolution(entry: AttributeAction, iods: tuple[str, ...]) -> str:
     parts = []
     for action, paths in found.items():
         where = [
-            (" > ".join(path) if path else "the top level")
-            + ("" if tuple(names) == iods else " in " + _join(names))
-            for path, names in paths.items()
+            (
+                "within " + " > ".join(f"{names[t]} {t}" for t in path)
+                if path
+                else "at the top level"
+            )
+            + ("" if tuple(iods_here) == iods else " in " + _join(iods_here))
+            for path, iods_here in paths.items()
         ]
         label = "instance sequestered" if action == SEQUESTER else action
-        parts.append(f"{label} at " + "; ".join(where) + ". ")
+        parts.append(f"{label} " + "; ".join(where) + ". ")
     return "".join(parts) + f"{entry.elsewhere} elsewhere"
 
 
@@ -459,6 +487,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         gives the same text.
     """
     meanings = {c.code_value: c.code_meaning for c in load_context_group(7050).rows}
+    sequences = {a.tag: a.name for a in load_data_dictionary().attributes}
 
     def option(name: str) -> str:
         return f"{meanings[OPTION_CODES[name]]} (DCM {OPTION_CODES[name]})"
@@ -548,7 +577,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
                     e.name,
                     e.rule,
                     _code(e.action),
-                    _resolution(e, statement.iods),
+                    _resolution(e, statement.iods, sequences),
                 )
                 for e in statement.attributes
             ),
@@ -556,7 +585,8 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "",
         "## Values written",
         "",
-        "Z writes a zero-length value. D writes one constant for each VR, "
+        "Z writes a zero-length value, except where this statement says "
+        "otherwise. D writes one constant for each VR, "
         "valid for that VR, whatever the source value. Where any source value "
         "equals the first constant, as the VR defines equality, D writes the "
         "second, so the value always changes. It writes the fewest values that "
