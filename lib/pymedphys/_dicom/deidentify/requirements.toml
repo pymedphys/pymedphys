@@ -524,6 +524,8 @@ decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-0
 implementation = [
   "_dicom/deidentify/dummy_values.py",
   "_dicom/deidentify/iods.py",
+  "_dicom/deidentify/reference_graph.py",
+  "_dicom/deidentify/references.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/values.py",
 ]
@@ -538,9 +540,14 @@ tests = [
   "tests/dicom/test_deidentify_values.py::test_valid_values",
   "tests/dicom/test_deidentify_values.py::test_invalid_values",
   "tests/dicom/test_deidentify_values.py::test_values_are_checked_for_their_vm_and_vr",
+  "tests/dicom/test_deidentify_references.py::test_reference_sites_include_the_rt_references",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_consistent_collection_has_no_findings",
+  "tests/dicom/test_deidentify_reference_graph.py::test_each_reference_resolves_to_its_instance",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_input_of_a_class_outside_table_b5_1_resolves",
+  "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_instance_not_in_the_collection_is_dangling",
 ]
 note = '''
-The Type of each attribute of the first supported release's IODs, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Remaining: resolving compound actions from these Types and writing the dummy values they call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and validating output against its IOD (M4).
+The Type of each attribute of the first supported release's IODs, and of every other composite IOD whose modules include no Functional Group Macros, in each module and sequence, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. Remaining: resolving compound actions from these Types and writing the dummy values they call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking the collection's hierarchy and frames of reference in the first pass, validating output against its IOD, and checking after writing that references are intact (M4).
 '''
 
 [[requirement]]
@@ -567,9 +574,11 @@ implementation = ["_dicom/deidentify/supplementary_actions.py"]
 tests = [
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_the_basic_profile_keeps_no_person_name",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_no_option_keeps_more_than_the_coded_text_and_device_identity",
 ]
 note = '''
-Every person name in the pinned dictionary has an action that removes or replaces it under the Basic Profile, from Table E.1-1 or from a reviewed supplementary action. Remaining: rules for other identities in attributes that Table E.1-1 omits, such as operator-typed RT text (M2), and applying the actions to each data set (M3). The Retain Institution Identity Option is not supported.
+Every person name in the pinned dictionary has an action that removes or replaces it under the Basic Profile, from Table E.1-1 or from a reviewed supplementary action. Every text attribute that a supported IOD uses is removed or replaced too, other than coded and technical values and De-identification Method, which the engine adds to; the names and identifiers of people, organisations, records, and networks, and identifiers that a device reads, among those that Table E.1-1 omits are removed under every option, and accessory and equipment identifiers are kept only under Retain Device Identity (D-022). Remaining, and undecided (D-022): rules for the UR attributes that Table E.1-1 omits; sequence-level rules for sequences that it omits whose kept codes can identify an institution or say something about the patient, such as Requesting Service Code Sequence (0032,1034), Patient's Size Code Sequence (0010,1021), Issuer of Patient ID Qualifiers Sequence (0010,0024), Issuer of Accession Number Sequence (0008,0051), and Reason For Performed Procedure Code Sequence (0040,1012); and whether the kept codes of local coding schemes, and in-house private creators, which can carry an institution's name or abbreviation, need a reviewed rule. Also remaining: applying the actions to each data set (M3). The Retain Institution Identity Option is not supported.
 '''
 
 [[requirement]]
@@ -585,6 +594,8 @@ implementation = [
   "_dev/deid_tables/generate.py",
   "_dev/deid_tables/ps3_4.py",
   "_dev/deid_tables/ps3_6.py",
+  "_dicom/deidentify/actions.py",
+  "_dicom/deidentify/policy.py",
   "_dicom/deidentify/scope.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/standard.py",
@@ -601,9 +612,13 @@ tests = [
   "tests/dicom/test_deidentify_scope.py::test_a_standard_sop_class_of_another_iod_is_sequestered",
   "tests/dicom/test_deidentify_scope.py::test_a_sop_class_that_table_b_5_1_does_not_list_is_sequestered",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_only_the_text_of_the_supported_iods_needs_rules",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_the_rules_for_omitted_text_fall_in_the_reviewed_groups",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_each_group_takes_the_action_of_its_option",
 ]
 note = '''
-The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names that Table E.1-1 omits. Remaining: the edition-check workflow (M1); supplementary rules for the other unsafe attributes that the tables omit, such as operator-typed RT text, and categorisation of retained elements by Option (M2); private attributes (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names that Table E.1-1 omits and every text attribute that it omits and a supported IOD uses. Each such text attribute that an option retains is categorised by that option, as Table E.1-1 does: operator-typed text is cleaned under Clean Descriptors, and accessory and equipment identifiers are kept under Retain Device Identity (D-022). Remaining: the edition-check workflow (M1); supplementary rules for the dates and times that the tables omit (D-023) and a decision on the UR attributes they omit (D-022) (M2); private attributes (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]
@@ -653,9 +668,17 @@ id = "MIDI-BP-11"
 text = '''
 Remove or replace all unstructured text, whether in data elements, pixel data, or overlays, or, where it is needed for utility, scan it for identifiers and sensitive information, manually or automatically with human review.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
 decisions = ["D-009", "D-017", "D-022", "D-027"]
+implementation = ["_dicom/deidentify/supplementary_actions.py"]
+tests = [
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text",
+]
+note = '''
+Under the Basic Profile, every text attribute that a supported IOD uses is removed or replaced, by Table E.1-1 or a reviewed supplementary rule, except coded and technical values and De-identification Method, which the engine adds to (D-022). Remaining: applying the actions to each data set (M3); and cleaning descriptors with pooled human review, the residual search, and reporting indicators of burned-in text, since the engine does not change pixel data (M4).
+'''
 
 [[requirement]]
 id = "MIDI-BP-12"

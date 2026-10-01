@@ -21,7 +21,12 @@ import types
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import actions, policy, standard
+from pymedphys._dicom.deidentify import (
+    actions,
+    policy,
+    standard,
+    supplementary_actions,
+)
 from pymedphys._dicom.deidentify.temporal_roles import TemporalRole
 from pymedphys.tests.dicom.test_deidentify_actions import DEVICE_DATE_CONFLICTS
 
@@ -175,6 +180,12 @@ def test_each_preset_gives_each_attribute_one_action(preset):
     assert list(composed.actions) == [row.tag for row in _rows()]
     assert set(composed.actions.values()) <= standard.ACTION_CODES
     assert composed.options == policy.PRESETS[preset]
+    # Every supplementary rule has an action too, for an attribute that
+    # Table E.1-1 omits.
+    rules = supplementary_actions.load_supplementary_actions().rules
+    assert set(composed.supplementary_actions) == set(rules)
+    assert not set(composed.supplementary_actions) & set(composed.actions)
+    assert set(composed.supplementary_actions.values()) <= standard.ACTION_CODES
     for resolution in composed.resolved:
         assert resolution.action != "K"
         assert composed.actions[resolution.conflict.tag] != "K"
@@ -263,6 +274,9 @@ def test_a_custom_option_set_is_validated_and_never_enabled(options):
     custom = policy.compose_custom_policy(reversed(options))
 
     assert dict(custom.actions) == dict(actions.effective_actions(options).actions)
+    assert dict(custom.supplementary_actions) == dict(
+        actions.effective_supplementary_actions(options).actions
+    )
     assert custom.options == options
     assert custom.preset is None
     assert not custom.enabled
@@ -427,6 +441,8 @@ def test_the_policy_is_read_only():
 
     with pytest.raises(TypeError):
         tps.actions["(0010,0010)"] = "K"  # type: ignore[index]
+    with pytest.raises(TypeError):
+        tps.supplementary_actions["(300A,00C2)"] = "K"  # type: ignore[index]
     with pytest.raises(TypeError):
         policy.PRESETS["basic"] = (DEVICE_IDENTITY,)  # type: ignore[index]
     with pytest.raises(dataclasses.FrozenInstanceError):
