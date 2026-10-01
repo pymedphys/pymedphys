@@ -89,7 +89,7 @@ KEPT_TEXT = {
     "(3002,0052)",  # Fluence Mode ID
     "(300A,007B)",  # Fraction Pattern
     "(300A,0226)",  # Source Isotope Name
-    "(3010,001A)",  # Manufacturer Model Version
+    "(3010,001A)",  # Manufacturer's Model Version
     "(3010,001D)",  # Device Alternate Identifier Format
     "(60xx,0045)",  # Overlay Subtype
 }
