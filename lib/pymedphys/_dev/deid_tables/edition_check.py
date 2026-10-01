@@ -24,12 +24,14 @@ types of error, never the pages' text.
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import hashlib
 import http.client
 import json
 import pathlib
 import re
+import sys
 import tempfile
 import urllib.error
 from collections.abc import Callable, Iterator, Mapping
@@ -209,9 +211,16 @@ def check_current(pin: Pin, tables_dir: pathlib.Path, fetch: Fetch) -> EditionCh
 
 
 def download_current(path: str) -> bytes:
-    """Download the page at ``path`` below ``output/`` from NEMA's ``current/``."""
+    """Download the page at ``path`` below ``output/`` from NEMA's ``current/``.
+
+    What the downloader prints, such as that it will retry, goes to standard
+    error, so that standard output carries only the report.
+    """
     url = _SOURCE_URLS[0].format(edition="current", path=path)
-    with tempfile.TemporaryDirectory() as work_dir:
+    with (
+        tempfile.TemporaryDirectory() as work_dir,
+        contextlib.redirect_stdout(sys.stderr),
+    ):
         destination = pathlib.Path(work_dir) / "page.html"
         download_with_progress(url, destination)
         return destination.read_bytes()

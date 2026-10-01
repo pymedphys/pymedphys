@@ -27,12 +27,16 @@ from the standard: every attribute in it is invented.
 import dataclasses
 import hashlib
 import http.client
+import io
 import json
 import re
+import types
 import urllib.error
+import urllib.request
 
 from pymedphys._imports import pytest
 
+from pymedphys._data import retry
 from pymedphys._dev.deid_tables import (
     annex_e,
     chtml,
@@ -2679,6 +2683,50 @@ def test_the_command_checks_the_current_pages_and_writes_only_its_report(
     assert capsys.readouterr().out.endswith(f"Result: {status}\n")
     report.unlink()
     assert _files(tmp_path) == before
+
+
+class _Response(io.BytesIO):
+    """What ``urlopen`` returns for a page, with its length."""
+
+    def __init__(self, page):
+        super().__init__(page)
+        self.headers = {"Content-Length": str(len(page))}
+
+
+def test_a_retried_download_leaves_only_the_report_on_standard_output(
+    monkeypatch, tables_dir, capsys
+):
+    # The workflow copies standard output into the issue it opens, so the
+    # downloader's message that it will retry must go to standard error.
+    monkeypatch.setattr(generate, "PIN", FIXTURE_PIN)
+    current = "https://dicom.nema.org/medical/dicom/current/output/"
+    refused = []
+
+    def urlopen(url, timeout):
+        assert timeout > 0
+        path = url.removeprefix(current)
+        if path == SECTION_E3_10 and not refused:
+            refused.append(path)
+            raise urllib.error.HTTPError(url, 503, "Service Unavailable", None, None)
+        return _Response(FIXTURE_PAGES[path])
+
+    # The downloader opens each URL with urllib.request.urlopen.
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    sleeps = []
+    monkeypatch.setattr(retry, "time", types.SimpleNamespace(sleep=sleeps.append))
+    args = define_parser().parse_args(
+        ["dev", "deid-tables", "--check-current", "--output-dir", str(tables_dir)]
+    )
+
+    args.func(args)
+
+    captured = capsys.readouterr()
+    assert refused == [SECTION_E3_10]
+    assert len(sleeps) == 1
+    assert "HTTP Error 503: Service Unavailable, Retrying" in captured.err
+    report = edition_check.report_lines(_check_current(tables_dir))
+    assert report[-1] == "Result: unchanged"
+    assert captured.out == "\n".join(report) + "\n"
 
 
 def test_the_check_options_exclude_each_other(tmp_path):
