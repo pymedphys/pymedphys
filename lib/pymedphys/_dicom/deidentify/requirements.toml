@@ -212,7 +212,7 @@ The Conformance Statement of an application that claims conformance to the Basic
 '''
 status = "planned"
 milestone = "M6"
-decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-021"]
+decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-021", "D-026"]
 note = '''
 The generated conformance statement covers each item, including the key scope within which replacements stay consistent.
 '''
@@ -511,7 +511,7 @@ Do not let de-identification compromise conformance with the standards that defi
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021"]
+decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-026"]
 implementation = [
   "_dicom/deidentify/iods.py",
   "_dicom/deidentify/sop_classes.py",
