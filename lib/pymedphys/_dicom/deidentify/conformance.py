@@ -29,9 +29,11 @@ writes it as CommonMark:
   syntaxes they are read in (D-010);
 - the action that the engine applies to each attribute of Table E.1-1, of
   each supplementary rule, and of each UI attribute that the table omits, by
-  its UID role (D-003), with each compound action resolved at every place
-  where a supported IOD defines the attribute (D-020), and where the engine
-  applies another action than the policy gives, the reason;
+  its UID role (D-003), with each compound action, and each plain X, Z, and
+  D, resolved at every place where a supported IOD defines the attribute,
+  other than within a sequence that is removed with its contents (D-020),
+  and where the engine applies another action than the policy gives, the
+  reason;
 - the rules that give every other element its action
   (:mod:`~pymedphys._dicom.deidentify.element_rules`, D-022);
 - the values that Z, D, and U write (D-003, D-005, and D-021);
@@ -43,8 +45,9 @@ writes it as CommonMark:
 
 What the statement cannot yet describe from the engine is listed in it, under
 "Not yet described" (:data:`PENDING`, and the items that apply only to
-some policies, such as :data:`PENDING_CLEANING`), and a statement with such
-a list makes no conformance claim. A preset is to be enabled only once its statement is
+some policies, such as :data:`PENDING_CLEANING` and
+:data:`PENDING_REMOVAL_EXTENT`), and a statement with such a list makes no
+conformance claim. A preset is to be enabled only once its statement is
 complete. The statement names tags, actions, and the engine's parameters,
 never a value from an instance.
 """
@@ -54,7 +57,7 @@ from __future__ import annotations
 import dataclasses
 import re
 import types
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 
 from pymedphys import _version
 from pymedphys._nomenclature import tg263
@@ -86,6 +89,7 @@ from .supplementary_actions import TEXT_VRS, UNCOVERED_TEXT_ACTION
 from .temporal_roles import load_temporal_roles
 from .uid_registry import load_uid_values
 from .uid_roles import UIDRole, load_uid_roles
+from .walker import DESCENDED
 
 # The CID 7050 code of each option of Table E.1-1: those of the supported
 # options from the markers, and those of the others, which the statement
@@ -164,6 +168,15 @@ PENDING_BIRTH_DATES = (
     "The synthetic birth date that Z writes to Patient's Birth Date "
     "(0010,0030) in place of a zero-length value (D-008, D-021)."
 )
+# Pending only for a policy whose statement lists a place where D-020 removes
+# more than the attribute, which the walker does not yet plan.
+PENDING_REMOVAL_EXTENT = (
+    "Where an IOD requires an attribute to which the policy gives a plain X, "
+    "the removal with it of its enclosing sequence or its overlay group, or "
+    "the sequestration of the instance, that D-020 decides: the engine does "
+    "not yet apply these, and removes the attribute alone. The places listed "
+    "above show what D-020 decides."
+)
 _TPS_IMPORT = "tps-import"
 _FULL_DATES = "retain_longitudinal_full_dates"
 _CLEAN_DESCRIPTORS = "clean_descriptors"
@@ -215,12 +228,13 @@ class AttributeAction:
     action : str
         The action code of Table E.1-1a under the policy, such as ``"X/Z/D"``.
     places : tuple of Place
-        For a compound action, its action at each place where a supported
-        IOD defines the attribute, by IOD name and then in the IOD's order;
-        otherwise ``()``.
+        For a compound action, or a plain X, Z, or D, its action at each
+        place where a supported IOD defines the attribute, other than within
+        a sequence that is removed with its contents, by IOD name and then
+        in the IOD's order; otherwise ``()``.
     elsewhere : str
-        For a compound action, its action where the IOD does not define the
-        attribute, which counts as Type 3; otherwise ``""``.
+        For a compound action, or a plain X, Z, or D, its action where the IOD
+        does not define the attribute, which counts as Type 3; otherwise ``""``.
     policy_action : str
         The action that the policy gives, where the engine applies another
         one as ``action``; otherwise ``""``.
@@ -436,7 +450,36 @@ def _place(iod: IOD, name: str, tag: str, path: tuple[str, ...], action: str) ->
     return Place(name, path, "X")
 
 
-def _places(tag: str, action: str) -> tuple[tuple[Place, ...], str]:
+# The action that the applied rules give a sequence at its place in an IOD.
+SequenceAction = Callable[[IOD, str, tuple[str, ...]], str]
+
+
+def _removed_with_a_sequence(
+    iod: IOD, path: tuple[str, ...], sequence_action: SequenceAction
+) -> bool:
+    """Whether a sequence enclosing ``path`` is removed with its contents.
+
+    The walker keeps a sequence as a container only under K or U; under any
+    other action, everything in it goes with it, and takes no action of its
+    own.
+    """
+    for depth, sequence in enumerate(path):
+        within = path[:depth]
+        action = sequence_action(iod, sequence, within)
+        if action in compound_actions.COMPOUND_ACTIONS:
+            action = compound_actions.resolve_in_iod(iod, sequence, within, action)
+        elif action in compound_actions.PLAIN_ACTIONS:
+            action = compound_actions.resolve_plain_in_iod(
+                iod, sequence, within, action
+            )
+        if action not in DESCENDED:
+            return True
+    return False
+
+
+def _places(
+    tag: str, action: str, sequence_action: SequenceAction
+) -> tuple[tuple[Place, ...], str]:
     if action in compound_actions.COMPOUND_ACTIONS:
         elsewhere = compound_actions.resolve(action, "3")
     elif action in _PLAIN_ELSEWHERE:
@@ -446,7 +489,8 @@ def _places(tag: str, action: str) -> tuple[tuple[Place, ...], str]:
     # A tag of a repeating group, such as (60xx,0022), is looked up as that of
     # its first group, which every group's definition matches. A row that
     # stays masked, such as the Private Attributes row or (50xx,xxxx), has no
-    # place in an IOD.
+    # place in an IOD. A place within a sequence that is removed with its
+    # contents is not listed, since the attribute is removed with it.
     concrete = _REPEATING.sub(r"(\g<1>00,", tag)
     if not _CONCRETE_TAG.fullmatch(concrete):
         return (), ""
@@ -455,12 +499,18 @@ def _places(tag: str, action: str) -> tuple[tuple[Place, ...], str]:
     for name in sorted(SUPPORTED_IODS):
         iod = tables.iods[name]
         for path in dict.fromkeys(d.path for d in iod.definitions if d.tag == tag):
-            places.append(_place(iod, name, concrete, path, action))
+            if not _removed_with_a_sequence(iod, path, sequence_action):
+                places.append(_place(iod, name, concrete, path, action))
     return tuple(places), elsewhere
 
 
-def _attribute(
-    tag: str, name: str, rule: str, given: str, rules: ElementRules | None
+def _attribute(  # pylint: disable=too-many-arguments
+    tag: str,
+    name: str,
+    rule: str,
+    given: str,
+    rules: ElementRules | None,
+    sequence_action: SequenceAction,
 ) -> AttributeAction:
     """Return the action that the engine applies to one listed attribute."""
     # A masked tag is looked up as one of the tags it covers, as for its
@@ -468,11 +518,13 @@ def _attribute(
     # action, which its row gives every tag it covers.
     concrete = _REPEATING.sub(r"(\g<1>00,", tag)
     if rules is None or not _CONCRETE_TAG.fullmatch(concrete):
-        return AttributeAction(tag, name, rule, given, *_places(tag, given))
+        places = _places(tag, given, sequence_action)
+        return AttributeAction(tag, name, rule, given, *places)
     applied = rules.rule(concrete)
     if applied.action == given:
-        return AttributeAction(tag, name, rule, given, *_places(tag, given))
-    places = _places(tag, applied.action)
+        places = _places(tag, given, sequence_action)
+        return AttributeAction(tag, name, rule, given, *places)
+    places = _places(tag, applied.action, sequence_action)
     return AttributeAction(
         tag, name, rule, applied.action, *places, given, _reason(applied, given)
     )
@@ -500,20 +552,35 @@ def _reason(applied: ElementRule, given: str) -> str:
     )
 
 
+def _sequence_action(policy: Policy, rules: ElementRules | None) -> SequenceAction:
+    """Return the action that the applied rules give a sequence at a place.
+
+    Without element rules, which the engine refuses for some policies, the
+    policy's own action applies, U for a UID, and K for any other sequence.
+    """
+    if rules is not None:
+        return lambda iod, tag, path: rules.rule(tag, path, iod=iod).action
+    given = {**policy.actions, **policy.supplementary_actions}
+    roles = load_uid_roles().rules
+    return lambda iod, tag, path: given.get(tag, "U" if tag in roles else "K")
+
+
 def _attributes(
     policy: Policy, rules: ElementRules | None
 ) -> Iterator[AttributeAction]:
     names = {a.tag: a.name for a in load_data_dictionary().attributes}
     table = load_table_e1_1().attributes
+    sequence_action = _sequence_action(policy, rules)
     for row in table:
-        yield _attribute(row.tag, row.name, TABLE_E1_1, policy.actions[row.tag], rules)
+        given = policy.actions[row.tag]
+        yield _attribute(row.tag, row.name, TABLE_E1_1, given, rules, sequence_action)
     for tag, action in policy.supplementary_actions.items():
-        yield _attribute(tag, names[tag], SUPPLEMENTARY, action, rules)
+        yield _attribute(tag, names[tag], SUPPLEMENTARY, action, rules, sequence_action)
     listed = {row.tag for row in table}
     for tag, rule in load_uid_roles().rules.items():
         if tag not in listed:
             role = UID_INSTANCE if rule.role is UIDRole.INSTANCE else UID_DEFINITION
-            yield _attribute(tag, names[tag], role, "U", rules)
+            yield _attribute(tag, names[tag], role, "U", rules, sequence_action)
 
 
 def _other_elements() -> OtherElements:
@@ -638,6 +705,11 @@ def conformance_statement(
         rules = None
     attributes = tuple(_attributes(policy, rules))
     actions = {entry.action for entry in attributes}
+    extended = any(
+        place.action == SEQUESTER or place.removes
+        for entry in attributes
+        for place in entry.places
+    )
     pending = PENDING + tuple(
         item
         for item, applies in (
@@ -645,6 +717,7 @@ def conformance_statement(
             (PENDING_CLEANING, "C" in actions),
             (PENDING_SAFE_PRIVATE, "retain_safe_private" in policy.options),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
+            (PENDING_REMOVAL_EXTENT, extended),
         )
         if applies
     )
