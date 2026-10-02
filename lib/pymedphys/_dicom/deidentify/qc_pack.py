@@ -840,13 +840,20 @@ def write_qc_pack(
     target.mkdir(mode=_DIRECTORY_MODE, parents=True, exist_ok=True)
     if os.name == "posix":
         target.chmod(_DIRECTORY_MODE)  # mkdir's mode is masked by the umask
-    _write_new(target / MARKER_FILE, FORMAT + "\n")
-    _write_new(target / PACK_FILE, document)
-    _write_new(target / NOTICE_FILE, NOTICE)
+    write_new(target / MARKER_FILE, FORMAT + "\n")
+    write_new(target / PACK_FILE, document)
+    write_new(target / NOTICE_FILE, NOTICE)
     return target / PACK_FILE
 
 
-def _write_new(path: Path, text: str) -> None:
+def write_new(path: Path, text: str) -> None:
+    """Write ASCII text to a new file, mode 0o600 on POSIX, never overwriting.
+
+    Raises
+    ------
+    FileExistsError
+        If the file exists.
+    """
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
     descriptor = os.open(path, flags, _FILE_MODE)
     with os.fdopen(descriptor, "wb") as file:
