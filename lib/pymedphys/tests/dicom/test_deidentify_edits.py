@@ -25,6 +25,7 @@ from pymedphys._imports import pytest
 from pymedphys._dicom.deidentify import edits, elements, source, walker
 from pymedphys._dicom.deidentify.edits import EditKind
 from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.pseudonyms import SubjectIdentity, patient_pseudonym
 from pymedphys._dicom.deidentify.uids import UIDOutcome, replacement_uid
 
 from .test_deidentify_file_layout import EXPLICIT, _explicit, _file
@@ -274,4 +275,28 @@ def test_a_removed_sequence_whose_items_cannot_be_read_is_not_collected(
     assert missing == {
         _path(("(0010,1002)", 0), "(0010,0020)"),
         _path(("(0010,1002)", 0), ("(0010,1002)", 0), "(0010,0020)"),
+    }
+
+
+def test_patients_name_and_id_take_the_pseudonyms_of_a_given_identity():
+    evidence = source.read_source(
+        _file(
+            EXPLICIT,
+            _explicit(0x00100010, "PN", b"SENTINEL^NAME ")
+            + _explicit(0x00100020, "LO", b"SENTINEL ID "),
+        )
+    )
+    plan = walker.plan_instance(evidence, _rules(), _rt_plan())
+    identity = SubjectIdentity.from_patient_id("SENTINEL ID")
+    pseudonym = patient_pseudonym(KEY, identity)
+
+    result = edits.edit_instance(evidence, plan, KEY, identity)
+
+    assert [(edit.kind, edit.values) for edit in result.edits] == [
+        (EditKind.REPLACE, (pseudonym.patients_name,)),
+        (EditKind.REPLACE, (pseudonym.patient_id,)),
+    ]
+    # The source values are still collected.
+    assert {value.source for value in result.source_values} == {
+        edit.path for edit in result.edits
     }

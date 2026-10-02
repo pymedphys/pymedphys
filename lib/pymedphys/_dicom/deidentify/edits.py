@@ -31,9 +31,10 @@ each element of the data set, in file order, an :class:`Edit`:
   (:func:`~pymedphys._dicom.deidentify.uids.transform_uid`).
 
 Patient's Name (0010,0010) and Patient ID (0010,0020) at the top level of
-the data set take the subject's keyed pseudonyms under Z and D (D-005), and
-C cleans the value (D-009), so their edits are pending, for later steps to
-give. So is D on Person Identification Code Sequence (0040,1101), whose
+the data set take the subject's keyed pseudonyms under Z and D (D-005),
+given the subject's identity, which the run resolves across its instances;
+without one, their edits are pending. C cleans the value (D-009), so its
+edit is pending, for a later step to give. So is D on Person Identification Code Sequence (0040,1101), whose
 reviewed dummy item (D-021) is written with the engine's other values.
 
 It also collects, for the residual search
@@ -64,6 +65,7 @@ from .dummy_values import NoDummyValueError, values_for_d
 from .elements import ElementValue, UndecodableElement
 from .file_layout import ElementPath
 from .keys import DeidKey
+from .pseudonyms import SubjectIdentity, patient_pseudonym
 from .residuals import SourceValue
 from .source import SourceEvidence
 from .standard import dictionary_attribute
@@ -313,9 +315,33 @@ def _uids(path: ElementPath, value: ElementValue, key: DeidKey) -> Edit:
     )
 
 
-def _edit(element: ElementPlan, value: ElementValue | None, key: DeidKey) -> Edit:
+def _pseudonym(
+    path: ElementPath, action: str, key: DeidKey, identity: SubjectIdentity
+) -> Edit:
+    pseudonym = patient_pseudonym(key, identity)
+    if path.tag == "(0010,0010)":
+        value = pseudonym.patients_name
+    else:
+        value = pseudonym.patient_id
+    return Edit(path, action, EditKind.REPLACE, (value,))
+
+
+def _edit(
+    element: ElementPlan,
+    value: ElementValue | None,
+    key: DeidKey,
+    identity: SubjectIdentity | None,
+) -> Edit:
     """Return the edit of an element whose needed value, if any, is read."""
     kind = _kind(element)
+    path = element.path
+    if (
+        kind is EditKind.PENDING
+        and identity is not None
+        and not path.items
+        and path.tag in PSEUDONYM_TAGS
+    ):
+        return _pseudonym(path, element.action, key, identity)
     if kind is not EditKind.REPLACE:
         return Edit(
             element.path, element.action, kind, removed_with=element.removed_with
@@ -327,7 +353,10 @@ def _edit(element: ElementPlan, value: ElementValue | None, key: DeidKey) -> Edi
 
 
 def edit_instance(
-    source: SourceEvidence, plan: InstancePlan, key: DeidKey
+    source: SourceEvidence,
+    plan: InstancePlan,
+    key: DeidKey,
+    identity: SubjectIdentity | None = None,
 ) -> InstanceEdits:
     """Return what each element of a planned data set becomes.
 
@@ -338,7 +367,11 @@ def edit_instance(
     plan : InstancePlan
         Its plan, from :func:`~pymedphys._dicom.deidentify.walker.plan_instance`.
     key : DeidKey
-        The run's key, for keyed replacement UIDs.
+        The run's key, for keyed replacement UIDs and pseudonyms.
+    identity : SubjectIdentity, optional
+        The subject's identity, as the run resolves it, for the pseudonyms
+        of Patient's Name and Patient ID. Without one, their edits are
+        pending.
 
     Returns
     -------
@@ -380,7 +413,7 @@ def edit_instance(
                     )
                 except ValueError:
                     missing.append(NotCollected(element.path, "could not be collected"))
-            found.append(_edit(element, value, key))
+            found.append(_edit(element, value, key, identity))
     except _Sequester as raised:
         return InstanceEdits((), (), (), (raised.sequestration,))
     return InstanceEdits(tuple(found), tuple(collected), tuple(missing), ())
