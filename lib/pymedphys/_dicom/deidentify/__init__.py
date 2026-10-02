@@ -33,6 +33,6 @@ names of the files and directories that output is written to, the File Meta
 Information and zeroed preamble that replace the source file's, the first
 pass's graph of the references between instances, a reader that maps each
 byte of a written file to where it belongs, a search of written files for
-the source values that had to be removed or replaced, and the conformance
-statement generated from a policy.
+the source values that had to be removed or replaced, the removal of
+private attributes, and the conformance statement generated from a policy.
 """
