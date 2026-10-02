@@ -147,6 +147,16 @@ class UndecodableElement(Exception):
         return f"{self.path} {self.reason}"
 
 
+class OutsideDefaultRepertoire(UndecodableElement):
+    """Text outside ISO 646 where the Default Character Repertoire alone applies.
+
+    No Specific Character Set applies to it, so pydicom reads it as ISO
+    8859-1. Where its rule removes or replaces it, it is read that way, with
+    ``outside_repertoire_as_latin_1``, to be searched for, as the maintainer
+    decided on 1 October 2026.
+    """
+
+
 @dataclasses.dataclass(frozen=True, repr=False)
 class ElementValue:
     """An element as the rules act on it. Its ``repr`` shows only path and VR.
@@ -230,6 +240,7 @@ def read_element(
     ancestors: Sequence[pydicom.Dataset] = (),
     *,
     source: SourceEvidence | None = None,
+    outside_repertoire_as_latin_1: bool = False,
 ) -> ElementValue:
     """Decode the element at ``path`` in ``dataset``, which is not changed.
 
@@ -265,6 +276,14 @@ def read_element(
     against the source in turn. ``codecs`` must then come from
     :func:`dataset_codecs` given the same source. The elements of
     ``ancestors`` that decide a VR are read without the source.
+
+    Text outside ISO 646 where the Default Character Repertoire alone
+    applies, including an escape sequence, raises
+    :class:`OutsideDefaultRepertoire`, unless ``outside_repertoire_as_latin_1``
+    is given. That text is then read from its bytes as ISO 8859-1, before
+    pydicom would interpret any escape sequence, so that every byte is a
+    character. It is split into values and stripped of padding by its VR,
+    and is not checked as written back, since it never is.
     """
     with redacted_pydicom_diagnostics():
         element = dataset.get_item(_number(path.tag), keep_deferred=True)
@@ -284,6 +303,10 @@ def read_element(
             undefined = element.is_undefined_length
         stated = str(element.VR) if element.VR in VRS - {"UN"} else None
         vr = _applicable_vr(path, stated, undefined, (dataset, *ancestors))
+        if (literal := _outside_repertoire(element, vr, codecs)) is not None:
+            if not outside_repertoire_as_latin_1:
+                raise OutsideDefaultRepertoire(path, _OUTSIDE.format(vr=vr))
+            return ElementValue(path, vr, literal, (), tuple(codecs))
         value = _decoded(element, vr, list(codecs), path)
         if vr == "SQ":
             items = tuple(cast(Sequence[pydicom.Dataset], value))
@@ -299,21 +322,61 @@ def read_element(
         # pydicom reads the Default Character Repertoire as ISO 8859-1, but it
         # is ISO 646 (PS3.5 Section 6.1.2.1).
         if (
-            vr in _CHARACTER_SET_VRS
+            not outside_repertoire_as_latin_1
+            and vr in _CHARACTER_SET_VRS
             and tuple(codecs) == DEFAULT_CODECS
-            and not all(str(each).isascii() for each in plain)
+            and not all(_in_iso_646(str(each)) for each in plain)
         ):
-            raise UndecodableElement(
-                path,
-                f"could not be decoded as VR {vr} in the Default Character "
-                "Repertoire, ISO 646",
-            )
-        # Reading is no more lenient than writing.
-        if problem := _character_set_problem(vr, plain, codecs):
+            raise OutsideDefaultRepertoire(path, _OUTSIDE.format(vr=vr))
+        # Reading is no more lenient than writing, but for text read as ISO
+        # 8859-1 in place of ISO 646, which is never written back.
+        latin_1 = outside_repertoire_as_latin_1 and tuple(codecs) == DEFAULT_CODECS
+        if not latin_1 and (problem := _character_set_problem(vr, plain, codecs)):
             raise UndecodableElement(
                 path, f"could not be written back as VR {vr}, since {problem}"
             )
     return ElementValue(path, vr, plain, (), tuple(codecs))
+
+
+_OUTSIDE = (
+    "could not be decoded as VR {vr} in the Default Character Repertoire, ISO 646"
+)
+# VRs whose leading spaces are not significant (PS3.5 Table 6.2-1).
+_LEADING_SPACES_INSIGNIFICANT = frozenset({"LO", "SH"})
+
+
+def _in_iso_646(text: str) -> bool:
+    # ESC begins a code extension, which the Default Character Repertoire
+    # alone does not allow (PS3.5 Section 6.1.2.5.3).
+    return text.isascii() and "\x1b" not in text
+
+
+def _outside_repertoire(
+    element: object, vr: str, codecs: Sequence[str]
+) -> tuple[str, ...] | None:
+    """Return text outside ISO 646 that no character set applies to, literally.
+
+    Where the Default Character Repertoire alone applies, the encoded bytes
+    of a text value with a byte from 0x80 or an escape are read as ISO
+    8859-1, before pydicom interprets any escape sequence, so that every
+    byte is a character; otherwise None.
+    """
+    if not (
+        isinstance(element, pydicom.dataelem.RawDataElement)
+        and isinstance(element.value, bytes)
+        and element.length == len(element.value)
+        and vr in _CHARACTER_SET_VRS
+        and tuple(codecs) == DEFAULT_CODECS
+    ):
+        return None
+    text = element.value.decode("latin-1")
+    if _in_iso_646(text):
+        return None
+    values = [text] if vr in ("LT", "ST", "UT") else text.split("\\")
+    stripped = [value.rstrip(" \x00") for value in values]
+    if vr in _LEADING_SPACES_INSIGNIFICANT:
+        stripped = [value.lstrip(" ") for value in stripped]
+    return tuple(stripped) if any(stripped) else ()
 
 
 def _number(tag: str) -> int:
