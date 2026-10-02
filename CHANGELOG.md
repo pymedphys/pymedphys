@@ -424,11 +424,14 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   decisions, code, and tests that satisfy it. Its loader checks each entry's
   fields and statuses, and tests check that the decisions and code it cites
   exist, that pytest collects the tests it cites, and that it follows the
-  edition of the generated tables. The design document sets the scope of the
+  edition of the generated tables. `pymedphys dev deid-matrix` generates the
+  requirements-to-tests matrix from the register as Markdown, with the
+  exclusions and the reason for each, and with each traced test's outcome
+  when given pytest JUnit XML reports. The design document sets the scope of the
   first supported release: the Basic Profile, alone and with the Clean
   Descriptors Option, for uncompressed CT Image, RT Structure Set, RT Plan,
   and RT Dose instances, through the library and the command line.
-  [PR #2061](https://github.com/pymedphys/pymedphys/pull/2061), [PR #2101](https://github.com/pymedphys/pymedphys/pull/2101), [PR #2170](https://github.com/pymedphys/pymedphys/pull/2170)
+  [PR #2061](https://github.com/pymedphys/pymedphys/pull/2061), [PR #2101](https://github.com/pymedphys/pymedphys/pull/2101), [PR #2170](https://github.com/pymedphys/pymedphys/pull/2170), [PR #2200](https://github.com/pymedphys/pymedphys/pull/2200)
 - **[Contributor facing only]** DICOM coordinate and dose tests use local synthetic fixtures; the validation record above retains the historical fixture provenance. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
 - **[Contributor facing only]** `examples/` contains the gamma benchmark tooling behind the performance audit. The integration Doctests job runs its unit tests whenever `examples/` changes. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
 - **[Contributor facing only]** The test suite now runs with `HOME` and

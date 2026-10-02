@@ -74,7 +74,7 @@ Identifiers are stable and never reused. `PS3.15-E.1.1-01` numbers the paragraph
 - `pymedphys._dicom.deidentify.requirements.load_requirements` rejects malformed or inconsistent entries, such as an implemented requirement without tests or an exclusion without a note. Tests check that every cited decision and module exists, that pytest collects every cited test, and that the register follows the edition of the generated tables.
 - A new edition updates the register with the tables, after comparing it with every Annex E page of that edition: add paragraphs, update changed text, and remove deleted paragraphs without reusing their identifiers.
 - Normative text without "shall", such as the paragraphs after Table E.1-1a on actions for Sequences and on Options overriding the Profile, gets entries when the engine implements it.
-- The traceability matrix for each release (D-018) is generated from the register.
+- The traceability matrix for each release (D-018) is generated from the register by `pymedphys dev deid-matrix`, as Markdown, and is not committed. It summarises the entries by status and source, and lists each requirement with its milestone, decisions, modules, and traced tests, the exclusions with the reason for each, and the remaining work with its milestone. Given pytest JUnit XML reports with `--junit`, one for each tested environment, it gives each traced test's outcome. A requirement's traced tests pass only when every case of every test that traces it passed in every report: a skipped case, or a test or case that one report lacks although another ran it, leaves them incomplete; passing tests do not make a partial requirement met. `--check` exits with status 1 when a traced test failed, was skipped, or did not run.
 
 ## Architecture
 
