@@ -24,20 +24,26 @@ there was a problem, and never what was read.
 
 The redaction is scoped, not a filter: it adds nothing to Python's warning
 filters, which are process-wide and cannot be removed safely while other
-threads run, so warnings are still shown, counted, or raised as the
+threads run, so warnings are still shown, recorded, or raised as the
 caller's filters say, and every other thread, and this one outside the
-context, sees the original messages. It works through the two documented
-hooks, :func:`warnings.showwarning` and the log record factory
-(:func:`logging.setLogRecordFactory`), each wrapped once with a function
-that redacts only within the context and otherwise passes everything on
-unchanged. A hook that other code installs later is wrapped in turn when
-the context is next entered.
+context, sees the original messages. It works through two hooks, each
+wrapped once with a function that redacts only within the context and
+otherwise passes everything on unchanged: the log record factory
+(:func:`logging.setLogRecordFactory`), and the function to which CPython's
+:mod:`warnings` passes each warning to be shown or recorded,
+``warnings._showwarnmsg``. That hook, unlike :func:`warnings.showwarning`,
+is not replaced by :class:`warnings.catch_warnings`, which replaces
+``showwarning`` for the whole process whichever thread enters it, so a
+warning recorded by such a block, in any thread, is recorded redacted. A
+hook that other code replaces is wrapped in turn when the context is next
+entered.
 
 What it does not cover: a warning that the caller's filters turn into an
 exception, which the engine replaces without chaining wherever it calls
-pydicom; and a warning recorded by a :class:`warnings.catch_warnings` block
-entered after the context, which holds the original message for the code
-that recorded it.
+pydicom; a record rebuilt by :func:`logging.makeLogRecord`, which names it
+only after creating it; and, while the context is active, a log record
+factory or ``warnings._showwarnmsg`` that another thread installs, until
+the context is next entered.
 """
 
 from __future__ import annotations
@@ -136,9 +142,10 @@ def _wrapped_factory(
 
     def make_record(*args, **kwargs) -> logging.LogRecord:
         record = factory(*args, **kwargs)
-        if _redacting() and (
-            record.name == _LOGGER or record.name.startswith(f"{_LOGGER}.")
-        ):
+        # logging.makeLogRecord creates a record without a name, and sets
+        # its name and message afterwards.
+        name = record.name if isinstance(record.name, str) else ""
+        if _redacting() and (name == _LOGGER or name.startswith(f"{_LOGGER}.")):
             try:
                 message = record.getMessage()
             # A record whose arguments do not fit its message cannot be
@@ -158,21 +165,29 @@ def _wrapped_factory(
     return make_record
 
 
-def _wrapped_showwarning(show: Callable[..., None]) -> Callable[..., None]:
-    """Wrap :func:`warnings.showwarning` to summarise warnings within the context."""
+def _wrapped_showwarnmsg(
+    show: Callable[[warnings.WarningMessage], None],
+) -> Callable[[warnings.WarningMessage], None]:
+    """Wrap ``warnings._showwarnmsg`` to summarise warnings within the context."""
 
-    def showwarning(message, category, filename, lineno, file=None, line=None):
+    def showwarnmsg(message: warnings.WarningMessage) -> None:
         if _redacting():
             # The location can be the source file's path when pydicom warns
             # from code that a caller passed in, so it is not shown either.
-            message = safe_summary(str(message), WARNING_SUMMARY)
-            filename, lineno, line = "<pydicom>", 0, ""
+            message = warnings.WarningMessage(
+                safe_summary(str(message.message), WARNING_SUMMARY),
+                message.category,
+                "<pydicom>",
+                0,
+                message.file,
+                "",
+            )
             for counts in _SCOPE.active:
                 counts.warnings += 1
-        show(message, category, filename, lineno, file, line)
+        show(message)
 
-    showwarning.redacts = True  # type: ignore[attr-defined]
-    return showwarning
+    showwarnmsg.redacts = True  # type: ignore[attr-defined]
+    return showwarnmsg
 
 
 def _install() -> None:
@@ -180,8 +195,15 @@ def _install() -> None:
     factory = logging.getLogRecordFactory()
     if not getattr(factory, "redacts", False):
         logging.setLogRecordFactory(_wrapped_factory(factory))
-    if not getattr(warnings.showwarning, "redacts", False):
-        warnings.showwarning = _wrapped_showwarning(warnings.showwarning)
+    # CPython passes every warning that its filters do not ignore or raise
+    # to the warnings module's _showwarnmsg, looked up for each warning,
+    # which then calls showwarning or, within catch_warnings(record=True),
+    # records it. Unlike showwarning, which catch_warnings replaces and
+    # restores for the whole process whichever thread enters it, nothing in
+    # the standard library replaces _showwarnmsg.
+    show = warnings._showwarnmsg  # type: ignore[attr-defined]  # pylint: disable = protected-access
+    if not getattr(show, "redacts", False):
+        warnings._showwarnmsg = _wrapped_showwarnmsg(show)  # type: ignore[attr-defined]  # pylint: disable = protected-access
 
 
 @contextlib.contextmanager

@@ -17,6 +17,7 @@
 import io
 import logging
 import threading
+import time
 import warnings
 
 import pytest
@@ -117,7 +118,17 @@ def test_a_pydicom_warning_is_summarised():
             _warn_from_pydicom(f"bad value {SENTINEL} in /data/{SENTINEL}")
     assert [str(each.message) for each in caught] == [WARNING_SUMMARY]
     assert caught[0].category is UserWarning
-    assert SENTINEL not in caught[0].filename
+    assert (caught[0].filename, caught[0].lineno) == ("<pydicom>", 0)
+
+
+def test_a_warning_attributed_to_a_source_file_hides_its_path():
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with redacted_diagnostics():
+            warnings.warn_explicit(SENTINEL, UserWarning, f"/data/{SENTINEL}.dcm", 1)
+    assert [(str(each.message), each.filename) for each in caught] == [
+        (WARNING_SUMMARY, "<pydicom>")
+    ]
 
 
 def test_any_warning_within_the_context_is_summarised():
@@ -224,6 +235,104 @@ def test_only_the_thread_within_the_context_is_redacted(caplog):
     )
 
 
+def test_a_record_rebuilt_from_a_dictionary_does_not_fail():
+    with redacted_diagnostics():
+        record = logging.makeLogRecord({"name": "pydicom", "msg": "rebuilt"})
+    assert record.getMessage() == "rebuilt"
+
+
+def test_a_warning_recorded_by_a_block_entered_within_the_context_is_summarised():
+    with redacted_diagnostics():
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            _warn_from_pydicom(SENTINEL)
+    assert [str(each.message) for each in caught] == [WARNING_SUMMARY]
+
+
+def _in_threads(redacting, other):
+    """Run ``redacting`` within the context while ``other`` runs in a second thread."""
+    errors = []
+
+    def run(target):
+        try:
+            target()
+        except Exception as error:  # pylint: disable = broad-exception-caught
+            errors.append(error)
+
+    threads = [
+        threading.Thread(target=run, args=(each,)) for each in (redacting, other)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(10)
+    assert not errors
+
+
+def test_another_threads_recording_block_does_not_lift_the_redaction(capsys):
+    # catch_warnings replaces warnings.showwarning for the whole process,
+    # whichever thread enters it. With context-aware warnings, the warning
+    # is shown, not recorded by the other thread's block.
+    entered, recording, warned = (threading.Event() for _ in range(3))
+    caught = []
+
+    def redacting():
+        with redacted_diagnostics():
+            entered.set()
+            recording.wait(5)
+            _warn_from_pydicom(SENTINEL)
+            warned.set()
+
+    def other():
+        entered.wait(5)
+        with warnings.catch_warnings(record=True) as log:
+            warnings.simplefilter("always")
+            recording.set()
+            warned.wait(5)
+        caught.extend(log)
+
+    _in_threads(redacting, other)
+    shown = capsys.readouterr().err
+    assert [str(each.message) for each in caught] in ([WARNING_SUMMARY], [])
+    assert WARNING_SUMMARY in shown or caught
+    assert SENTINEL not in shown
+
+
+def test_another_thread_restoring_the_hooks_does_not_lift_the_redaction():
+    # A block entered before the context was first entered restores, on
+    # exit, the hooks it saved, which do not redact.
+    stream = io.StringIO()
+    entered, exited, warned = (threading.Event() for _ in range(3))
+
+    def show(  # pylint: disable = unused-argument
+        message, category, filename, lineno, file=None, line=None
+    ):
+        stream.write(warnings.formatwarning(message, category, filename, lineno, line))
+
+    def redacting():
+        entered.wait(5)
+        with redacted_diagnostics():
+            exited.wait(5)
+            _warn_from_pydicom(SENTINEL)
+            warned.set()
+
+    def other():
+        with warnings.catch_warnings():
+            warnings.simplefilter("always")
+            warnings.showwarning = show
+            entered.set()
+            time.sleep(0.2)
+        warnings.simplefilter("always")
+        warnings.showwarning = show
+        exited.set()
+        warned.wait(5)
+
+    with warnings.catch_warnings():
+        _in_threads(redacting, other)
+    assert WARNING_SUMMARY in stream.getvalue()
+    assert SENTINEL not in stream.getvalue()
+
+
 def test_hooks_replaced_later_are_wrapped_again(caplog):
     caplog.set_level(logging.DEBUG, logger="pydicom")
     with redacted_diagnostics():
@@ -234,16 +343,22 @@ def test_hooks_replaced_later_are_wrapped_again(caplog):
         return logging.LogRecord(*args, **kwargs)
 
     logging.setLogRecordFactory(replacement)
+    original = warnings._showwarnmsg  # pylint: disable = protected-access
+
+    def show(message):
+        original(message)
+
     try:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            warnings.showwarning = warnings._showwarning_orig  # pylint: disable = protected-access
+            warnings._showwarnmsg = show  # pylint: disable = protected-access
             with redacted_diagnostics():
                 _warn_from_pydicom(SENTINEL)
         assert [str(each.message) for each in caught] == [WARNING_SUMMARY]
         assert [record.getMessage() for record in caplog.records] == [SUMMARY]
     finally:
         logging.setLogRecordFactory(factory)
+        warnings._showwarnmsg = original  # pylint: disable = protected-access
 
 
 def test_exceptions_pass_through_unchanged():
