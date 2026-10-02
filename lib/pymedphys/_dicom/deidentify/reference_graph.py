@@ -88,16 +88,18 @@ class FindingKind(enum.Enum):
         It is reported only, and the input is written as usual.
     DUPLICATE_INSTANCE
         Several inputs have one SOP Instance UID, without padding, and the
-        same content, as
-        :mod:`~pymedphys._dicom.deidentify.references` defines it: their data
-        sets decode to the same elements, with the same VRs and values,
-        without the File Meta Information and the preamble. Its one group
-        holds them all. The instance is written once.
+        same source bytes, as :mod:`~pymedphys._dicom.deidentify.references`
+        defines them: the same Transfer Syntax UID, and the same bytes of
+        the data set, without the preamble, the File Meta Information, and
+        the top-level group lengths and Data Set Trailing Padding. Its one
+        group holds them all. The instance is written once.
     CONFLICTING_INSTANCE
-        Several inputs have one SOP Instance UID and different content,
-        including content that cannot show the inputs to be equal, such as
-        a private element that one input holds without a VR. Its groups
-        hold the inputs with the same content. Every one of them is
+        Several inputs have one SOP Instance UID and different source bytes,
+        including copies that differ only in their encoding, such as one in
+        Implicit VR and one in Explicit VR Little Endian. Its groups hold the
+        inputs with the same source bytes, except that an input whose bytes
+        cannot be shown to be sound, such as one whose structure cannot be
+        read to its end, is a group of its own. Every one of them is
         sequestered.
     SERIES_IN_SEVERAL_STUDIES
         The inputs with one Series Instance UID have different Study
@@ -270,7 +272,7 @@ def _hierarchy_findings(
     sop_instance, series, study = (IDENTITY_TAGS[level] for level in Level)
     for positions in index[Level.INSTANCE].values():
         if len(positions) > 1:
-            groups = _grouped(positions, lambda position: records[position].digest)
+            groups = _grouped(positions, lambda position: _source(records, position))
             kind = FindingKind.CONFLICTING_INSTANCE
             if len(groups) == 1:
                 kind = FindingKind.DUPLICATE_INSTANCE
@@ -283,6 +285,12 @@ def _hierarchy_findings(
         groups = _grouped(positions, lambda position: _patient(records[position]))
         if len(groups) > 1:
             yield Finding(FindingKind.STUDY_WITH_SEVERAL_PATIENTS, groups, (study,))
+
+
+def _source(records: tuple[InstanceRecord, ...], position: int) -> Hashable:
+    """Return the record's digest, or a key of its own if it has none."""
+    digest = records[position].digest
+    return ("unshown", position) if digest is None else digest
 
 
 def _patient(record: InstanceRecord) -> Hashable:
