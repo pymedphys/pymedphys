@@ -14,15 +14,15 @@
 
 """The values that the Z and D actions of Table E.1-1a write.
 
-Z writes a zero-length value. D writes one conspicuous constant for each VR,
-the same whatever the source value, so it reveals nothing, links no records,
-and is reproducible: ``DEIDENTIFIED`` for the text VRs (LO, SH, LT, ST, UC,
-and UT) and PN, ``19000101`` for DA, ``000000`` for TM, ``19000101000000``
-for DT, and zero for the numeric strings (DS and IS) and the binary numbers
-(FL, FD, SL, SS, SV, UL, US, and UV). Where the source value equals that
-constant, D writes a second one, so the value always changes:
-``DE-IDENTIFIED``, ``19000102``, ``000001``, ``19000101000001``, or one. A UI
-value takes its keyed replacement
+Z writes a zero-length value, except as below. D writes one conspicuous
+constant for each VR, the same whatever the source value, so it reveals
+nothing, links no records, and is reproducible: ``DEIDENTIFIED`` for the text
+VRs (LO, SH, LT, ST, UC, and UT) and PN, ``19000101`` for DA, ``000000`` for
+TM, ``19000101000000`` for DT, and zero for the numeric strings (DS and IS)
+and the binary numbers (FL, FD, SL, SS, SV, UL, US, and UV). Where the source
+value equals that constant, D writes a second one, so the value always
+changes: ``DE-IDENTIFIED``, ``19000102``, ``000001``, ``19000101000001``, or
+one. A UI value takes its keyed replacement
 (:func:`~pymedphys._dicom.deidentify.uids.replacement_uid`).
 
 Every other VR, such as CS, SQ, AE, AS, AT, OB, OW, UN, and UR, has no
@@ -30,6 +30,10 @@ generic dummy value. D on an attribute of such a VR raises
 :class:`NoDummyValueError`: the attribute needs a reviewed rule of its own,
 and without one its instance is sequestered rather than given an invalid
 value.
+
+Where an attribute is Type 1 or 1C at its place in the data set, Z writes
+D's dummy value, from :func:`values_for_d`, since a zero-length value would
+make the attribute invalid there.
 
 Some attributes take other values, which the engine writes instead of
 calling this module. Under every preset, Patient ID (0010,0020) and Patient's
@@ -162,7 +166,9 @@ def values_for_z(vr: str) -> tuple[()]:
     """Return the values that Z writes: none, a zero-length value.
 
     An attribute without values is valid for every VR and VM, and is encoded
-    with a value length of zero; for SQ, it is a sequence of no items.
+    with a value length of zero; for SQ, it is a sequence of no items. Where
+    the attribute is Type 1 or 1C at its place in the data set, Z writes the
+    values of :func:`values_for_d` instead.
 
     Raises
     ------
