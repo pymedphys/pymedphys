@@ -350,7 +350,8 @@ def _raw_value(
     sequence would pass for an empty one. Its bytes are read from the file or
     buffer the data set was read from, as pydicom reads a deferred value,
     without converting them, and the value is refused by ``path`` if they
-    cannot be read or are not of the length the element was stored with.
+    cannot be read, including from a source cut short since, or are not of
+    the length the element was stored with.
     """
     if element.value is not None or element.length == 0:
         return element.value
@@ -368,7 +369,9 @@ def _raw_value(
             getattr(dataset, "timestamp", None),
             element,
         )
-    except (*_DECODING_ERRORS, TypeError):
+    except (*_DECODING_ERRORS, TypeError, StopIteration):
+        # pydicom raises StopIteration when the source ends at or within the
+        # element's header.
         raise PrivateAttributeError(path) from None
     if not isinstance(read.value, bytes) or len(read.value) != element.length:
         raise PrivateAttributeError(path)
