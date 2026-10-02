@@ -23,7 +23,9 @@ import pickle
 from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import edits, elements, residuals, source, walker
+from pymedphys._dicom.deidentify.dummy_values import DummyElement
 from pymedphys._dicom.deidentify.edits import EditKind
+from pymedphys._dicom.deidentify.element_rules import RuleSource
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.pseudonyms import SubjectIdentity, patient_pseudonym
@@ -33,9 +35,12 @@ from .test_deidentify_file_layout import EXPLICIT, _explicit, _file, _item
 from .test_deidentify_walker import (
     BEAM_SEQUENCE,
     OTHER_IDS,
+    PHOTO_ITEM,
+    PHOTOS,
     _by_path,
     _Overridden,
     _path,
+    _patient_setup_photo,
     _rt_plan,
     _rt_plan_data_set,
     _rules,
@@ -78,6 +83,9 @@ def test_each_element_has_one_edit_in_file_order():
     assert [edit.action for edit in result.edits] == [e.action for e in plan.elements]
     assert not result.sequestrations
     assert not result.not_collected
+    # Every value is in the Default Character Repertoire, or read in a
+    # Specific Character Set.
+    assert result.read_as_latin_1 == ()
 
     found = {edit.path: edit for edit in result.edits}
     assert found[_path("(0008,0005)")].kind is EditKind.KEEP
@@ -240,6 +248,10 @@ def test_removed_text_outside_iso_646_without_a_character_set_is_collected():
         _path("(0008,1030)"): ("LO", "SENTINEL \xe9"),
         _path(("(0010,1002)", 0), "(0010,0020)"): ("LO", "SENTINEL \xe9"),
     }
+    assert result.read_as_latin_1 == (
+        _path("(0008,1030)"),
+        _path(("(0010,1002)", 0), "(0010,0020)"),
+    )
 
 
 def test_replaced_text_outside_iso_646_without_a_character_set_is_replaced():
@@ -249,6 +261,7 @@ def test_replaced_text_outside_iso_646_without_a_character_set_is_replaced():
     (label,) = result.edits
     assert (label.kind, label.values) == (EditKind.REPLACE, ("DEIDENTIFIED",))
     assert _collected(result) == {_path("(300A,0002)"): ("SH", "SENTINEL \xe9")}
+    assert result.read_as_latin_1 == (_path("(300A,0002)"),)
 
 
 @pytest.mark.parametrize(
@@ -307,12 +320,19 @@ def test_a_sequestered_plan_is_not_edited():
 
 def test_results_hold_no_value_in_their_reprs(monkeypatch):
     _, result = _edits()
+    _, latin_1 = _edits(
+        _explicit(0x00081030, "LO", b"SENTINEL \xe9")
+        + _person_identification_codes(b"SENTINEL")
+    )
+    assert latin_1.read_as_latin_1
     _refusing(monkeypatch, _path("(0008,1030)"))
     _, failed = _edits(_explicit(0x00081030, "LO", b"SENTINEL DESC "))
     assert failed.not_collected
     shown = (
         repr(result)
         + repr(failed)
+        + repr(latin_1)
+        + "".join(repr(edit) for edit in latin_1.edits)
         + "".join(repr(edit) for edit in result.edits)
         + "".join(repr(missing) for missing in failed.not_collected)
         + repr(pickle.loads(pickle.dumps(result.edits)))
@@ -456,6 +476,8 @@ def test_an_items_character_set_is_inherited_or_its_own():
 @pytest.mark.parametrize("action", ["K", "X"])
 def test_an_unsupported_character_set_in_an_item_sequesters_the_instance(action):
     # D-010, whether the item is kept, with nothing in it read, or removed.
+    # Beam Sequence is Type 1, so the engine's rule removes it, as a plain X
+    # from Table E.1-1 would sequester the instance (D-020).
     data_set = _explicit(
         0x300A00B0,
         "SQ",
@@ -464,7 +486,9 @@ def test_an_unsupported_character_set_in_an_item_sequesters_the_instance(action)
             + _explicit(0x300A00C0, "IS", b"1 ")
         ),
     )
-    _, result = _edits(data_set, _Overridden({"(300A,00B0)": action}))
+    _, result = _edits(
+        data_set, _Overridden({"(300A,00B0)": action}, RuleSource.ENGINE)
+    )
 
     (sequestration,) = result.sequestrations
     assert sequestration.path == _path(("(300A,00B0)", 0), "(0008,0005)")
@@ -475,12 +499,133 @@ def test_an_unsupported_character_set_in_an_item_sequesters_the_instance(action)
 
 def test_an_undecodable_patient_id_that_is_removed_is_not_collected(monkeypatch):
     _refusing(monkeypatch, _path("(0010,0020)"))
+    # The engine's rule removes it alone; a plain X from Table E.1-1 would
+    # sequester the instance, as Patient ID is Type 2 (D-020).
     _, result = _edits(
         _explicit(0x00100020, "LO", b"SENTINEL ID "),
-        _Overridden({"(0010,0020)": "X"}),
+        _Overridden({"(0010,0020)": "X"}, RuleSource.ENGINE),
     )
 
     (patient_id,) = result.edits
     assert patient_id.kind is EditKind.REMOVE
     assert not result.sequestrations
     assert [missing.path for missing in result.not_collected] == [_path("(0010,0020)")]
+
+
+CODES = _path(("(0044,0110)", 0), ("(0044,0103)", 0), "(0040,1101)")
+CODE_ITEM = (*CODES.items, (CODES.tag, 0))
+CODE_VALUE = walker.ElementPath(CODE_ITEM, "(0008,0100)")
+
+
+def _person_identification_codes(value, meaning=b"SENTINEL^NAME "):
+    """Person Identification Code Sequence (0040,1101) in RT Assertions.
+
+    RT Assertions Sequence (0044,0110) and Asserter Identification Sequence
+    (0044,0103) are kept, so D applies to the codes (D-021).
+    """
+    code = _explicit(0x00080100, "SH", value)
+    code += _explicit(0x00080102, "SH", b"99LOCAL ")
+    code += _explicit(0x00080104, "LO", meaning)
+    return _explicit(
+        0x00440110,
+        "SQ",
+        _item(
+            _explicit(0x00440103, "SQ", _item(_explicit(0x00401101, "SQ", _item(code))))
+        ),
+    )
+
+
+def _dummy_item(code_value, code_meaning):
+    return (
+        (
+            DummyElement("(0008,0100)", "SH", code_value),
+            DummyElement("(0008,0102)", "SH", "99PYMEDPHYS"),
+            DummyElement("(0008,0104)", "LO", code_meaning),
+        ),
+    )
+
+
+def test_d_replaces_person_identification_code_sequence_with_its_dummy_item():
+    # D-021: one item of constants, the second ones where a source item's
+    # Code Value or Code Meaning equals the first.
+    for value, meaning, expected in [
+        (b"SENTINEL", b"SENTINEL^NAME ", ("DEIDENTIFIED", "DEIDENTIFIED^DEIDENTIFIED")),
+        (
+            b"deidentified",
+            b"SENTINEL^NAME ",
+            ("DE-IDENTIFIED", "DE-IDENTIFIED^DE-IDENTIFIED"),
+        ),
+        (
+            b"SENTINEL",
+            b"DEIDENTIFIED^DEIDENTIFIED^",
+            ("DE-IDENTIFIED", "DE-IDENTIFIED^DE-IDENTIFIED"),
+        ),
+    ]:
+        _, result = _edits(_person_identification_codes(value, meaning))
+        found = {edit.path: edit for edit in result.edits}
+
+        assert not result.sequestrations
+        codes = found[CODES]
+        assert (codes.action, codes.kind) == ("D", EditKind.REPLACE)
+        assert codes.items == _dummy_item(*expected)
+        assert (codes.values, codes.removed_with) == ((), None)
+        # The source items are removed with the sequence that the edit
+        # replaces, and their values are collected.
+        for tag in ("(0008,0100)", "(0008,0102)", "(0008,0104)"):
+            edit = found[walker.ElementPath(CODE_ITEM, tag)]
+            assert (edit.kind, edit.removed_with) == (EditKind.REMOVE, CODES)
+        assert _collected(result)[CODE_VALUE] == ("SH", value.decode().strip())
+
+
+def test_an_undecodable_person_identification_code_sequesters(monkeypatch):
+    # D compares each source Code Value with its constant, so it needs it.
+    _refusing(monkeypatch, CODE_VALUE)
+    _, result = _edits(_person_identification_codes(b"SENTINEL"))
+
+    assert result.sequestrations == (
+        walker.Sequestration(CODE_VALUE, "D", "SH", walker.SequesterReason.UNDECODABLE),
+    )
+    assert not result.edits
+
+
+def test_a_person_identification_code_outside_iso_646_is_compared_as_latin_1():
+    _, result = _edits(_person_identification_codes(b"SENTINEL \xe9"))
+    found = {edit.path: edit for edit in result.edits}
+
+    assert not result.sequestrations
+    assert found[CODES].items == _dummy_item(
+        "DEIDENTIFIED", "DEIDENTIFIED^DEIDENTIFIED"
+    )
+    assert result.read_as_latin_1 == (CODE_VALUE,)
+
+
+def test_each_extent_of_a_plain_x_gives_its_edits():
+    # D-020: an enclosing Type 3 sequence is removed with the attribute,
+    # every attribute of an overlay group with Overlay Data, and otherwise,
+    # where the IOD requires the attribute, the instance is sequestered.
+    _, result = _edits(_patient_setup_photo())
+    found = {edit.path: edit for edit in result.edits}
+    description = walker.ElementPath(PHOTO_ITEM, "(300A,0794)")
+
+    assert not result.sequestrations
+    assert (found[PHOTOS].kind, found[PHOTOS].removed_with) == (EditKind.REMOVE, None)
+    assert (found[description].kind, found[description].removed_with) == (
+        EditKind.REMOVE,
+        PHOTOS,
+    )
+    assert found[_path(("(300A,0180)", 0), "(300A,079F)")].kind is EditKind.KEEP
+    assert _collected(result)[description] == ("LT", "SENTINEL PLAN")
+
+    overlay = _explicit(0x60000010, "US", b"\x00\x02") + _explicit(
+        0x60003000, "OW", bytes(4)
+    )
+    evidence = source.read_source(_file(EXPLICIT, overlay))
+    ct = load_iod_tables().iods["CT Image"]
+    plan = walker.plan_instance(evidence, _rules(), ct)
+    overlay_edits = edits.edit_instance(evidence, plan, KEY).edits
+    assert [edit.kind for edit in overlay_edits] == [EditKind.REMOVE] * 2
+
+    _, sequestered = _edits(_explicit(0x00102297, "PN", b"SENTINEL^NAME "))
+    (reason,) = sequestered.sequestrations
+    assert reason.reason is walker.SequesterReason.REQUIRED_BY_IOD
+    assert not sequestered.edits

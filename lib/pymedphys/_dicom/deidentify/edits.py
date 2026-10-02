@@ -25,7 +25,11 @@ each element of the data set, in file order, an :class:`Edit`:
 - Z empties it (D-021);
 - D replaces it with its VR's dummy value, or the second one where the
   source value equals the first, or, for a UI value, its keyed replacement
-  (:func:`~pymedphys._dicom.deidentify.dummy_values.values_for_d`);
+  (:func:`~pymedphys._dicom.deidentify.dummy_values.values_for_d`); D
+  replaces Person Identification Code Sequence (0040,1101), whose source
+  items are removed with it, with its reviewed dummy item, compared with
+  each source item's Code Value (0008,0100) and Code Meaning (0008,0104)
+  (:func:`~pymedphys._dicom.deidentify.dummy_values.items_for_d`, D-021);
 - U replaces each UID that the pinned tables do not register with its keyed
   replacement, and keeps each that they do
   (:func:`~pymedphys._dicom.deidentify.uids.transform_uid`).
@@ -34,9 +38,7 @@ Patient's Name (0010,0010) and Patient ID (0010,0020) at the top level of
 the data set take the subject's keyed pseudonyms under Z and D (D-005),
 given the subject's identity, which the run resolves across its instances;
 without one, their edits are pending. C cleans the value (D-009), so its
-edit is pending, for a later step to give. So is D on Person
-Identification Code Sequence (0040,1101), whose reviewed dummy item (D-021)
-is written with the engine's other values.
+edit is pending, for a later step to give.
 
 It also collects, for the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`), each value that is removed
@@ -49,8 +51,9 @@ supported (D-010), the instance is sequestered, and has no edits. Text
 outside ISO 646 where no Specific Character Set applies is the exception, as
 the maintainer decided on 1 October 2026: where its rule removes or replaces
 it, it is read as ISO 8859-1, in which every byte is a character, to be
-collected and compared, and the instance is de-identified; where it is to be
-cleaned, the instance is sequestered.
+collected and compared, and the instance is de-identified, with its path in
+:attr:`InstanceEdits.read_as_latin_1`; where it is to be cleaned, the
+instance is sequestered.
 
 A kept sequence's items are read, so that each element in them can be
 written or kept; where they cannot be, the instance is sequestered. Nothing
@@ -67,7 +70,7 @@ import dataclasses
 import enum
 
 from . import elements
-from .dummy_values import NoDummyValueError, values_for_d
+from .dummy_values import DummyElement, NoDummyValueError, items_for_d, values_for_d
 from .elements import ElementValue, OutsideDefaultRepertoire, UndecodableElement
 from .file_layout import ElementPath
 from .keys import DeidKey
@@ -79,7 +82,6 @@ from .uid_roles import load_uid_roles
 from .uids import UIDOutcome, normalise_uid, transform_uid
 from .walker import (
     DESCENDED,
-    REVIEWED_DUMMY_SEQUENCES,
     Consumer,
     ElementPlan,
     InstancePlan,
@@ -103,7 +105,7 @@ class EditKind(enum.Enum):
     REMOVE = "remove"
     EMPTY = "empty"
     REPLACE = "replace"
-    PENDING = "pending"  # a pseudonym, cleaning, or reviewed dummy to come
+    PENDING = "pending"  # a pseudonym or cleaning to come
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -117,14 +119,19 @@ class Edit:
         The plan's action, such as ``"D"``.
     kind : EditKind
     values : tuple of str, int, or float
-        The values that replace the element's, for :attr:`EditKind.REPLACE`;
-        otherwise ``()``.
+        The values that replace the element's, for :attr:`EditKind.REPLACE`
+        of an element other than a sequence; otherwise ``()``.
     uid_outcomes : tuple of UIDOutcome
         For U, what :func:`~pymedphys._dicom.deidentify.uids.transform_uid`
         did with each value; otherwise ``()``.
     removed_with : ElementPath or None
         The outermost sequence that removes the element, whose own edit
         covers it, or ``None``.
+    items : tuple of tuple of DummyElement
+        The items that replace a sequence's, each its elements in the order
+        of their tags, for :attr:`EditKind.REPLACE` of a sequence, such as
+        D's on Person Identification Code Sequence (0040,1101); otherwise
+        ``()``. The source items are removed with the sequence.
     """
 
     path: ElementPath
@@ -133,6 +140,7 @@ class Edit:
     values: tuple[str | int | float, ...] = ()
     uid_outcomes: tuple[UIDOutcome, ...] = ()
     removed_with: ElementPath | None = None
+    items: tuple[tuple[DummyElement, ...], ...] = ()
 
     def __repr__(self) -> str:
         return (
@@ -172,18 +180,25 @@ class InstanceEdits:
     not_collected : tuple of NotCollected
     sequestrations : tuple of Sequestration
         Each reason that the instance must be sequestered.
+    read_as_latin_1 : tuple of ElementPath
+        In file order, the path of each value, removed or replaced, that was
+        read as ISO 8859-1, being text outside ISO 646 where no Specific
+        Character Set applies, so that its writer knows; ``()`` if there is
+        none, or the instance must be sequestered.
     """
 
     edits: tuple[Edit, ...]
     source_values: tuple[SourceValue, ...]
     not_collected: tuple[NotCollected, ...]
     sequestrations: tuple[Sequestration, ...]
+    read_as_latin_1: tuple[ElementPath, ...] = ()
 
     def __repr__(self) -> str:
         return (
             f"InstanceEdits(edits={len(self.edits)}, source_values="
             f"{len(self.source_values)}, not_collected={len(self.not_collected)}, "
-            f"sequestrations={len(self.sequestrations)})"
+            f"sequestrations={len(self.sequestrations)}, "
+            f"read_as_latin_1={len(self.read_as_latin_1)})"
         )
 
 
@@ -263,31 +278,35 @@ class _Reader:
 
 def _read_planned(
     reader: _Reader, element: ElementPlan
-) -> tuple[ElementValue | None, NotCollected | None]:
+) -> tuple[ElementValue | None, NotCollected | None, bool]:
     """Read a planned value, or say why it is not collected.
 
     Text outside ISO 646 where no Specific Character Set applies is read as
     ISO 8859-1 where its rule removes or replaces it, as the maintainer
-    decided on 1 October 2026; text to be cleaned cannot be decoded.
+    decided on 1 October 2026; text to be cleaned cannot be decoded. The
+    flag says whether the value was read as ISO 8859-1.
     """
     try:
         try:
-            return reader.read(element.path), None
+            return reader.read(element.path), None, False
         except OutsideDefaultRepertoire:
             if Consumer.CLEANING in element.consumers:
                 raise
-            return reader.read(element.path, latin_1=True), None
+            return reader.read(element.path, latin_1=True), None, True
     except UndecodableElement as error:
         if element.consumers & _NEEDS_VALUE or _takes_pseudonym(element):
+            # A value that a reviewed dummy item is compared with is needed
+            # by the D of the sequence that removes it.
+            compared = Consumer.DUMMY_COMPARISON in element.consumers
             raise _Sequester(
                 Sequestration(
                     element.path,
-                    element.action,
+                    "D" if compared else element.action,
                     element.vr,
                     SequesterReason.UNDECODABLE,
                 )
             ) from None
-        return None, NotCollected(element.path, error.reason)
+        return None, NotCollected(element.path, error.reason), False
 
 
 def _text(value: ElementValue) -> str | bytes:
@@ -330,16 +349,12 @@ def _kind(element: ElementPlan, container: bool) -> EditKind:
     A sequence under K or U is kept as a container, its items edited
     element by element.
     """
-    path, action = element.path, element.action
+    action = element.action
     if element.removed_with is not None or action == "X":
         kind = EditKind.REMOVE
     elif action == "K" or (container and action in DESCENDED):
         kind = EditKind.KEEP
-    elif (
-        action == "C"
-        or _takes_pseudonym(element)
-        or (action == "D" and path.tag in REVIEWED_DUMMY_SEQUENCES)
-    ):
+    elif action == "C" or _takes_pseudonym(element):
         kind = EditKind.PENDING
     elif action == "Z":
         kind = EditKind.EMPTY
@@ -405,10 +420,83 @@ def _edit(
         return Edit(
             element.path, element.action, kind, removed_with=element.removed_with
         )
+    if container:  # a reviewed dummy sequence, given its items later
+        return Edit(path, element.action, kind)
     assert value is not None  # every U and D leaf has a consumer that reads it
     if element.action == "D":
         return _dummy(element.path, value, key)
     return _uids(element.path, value, key)
+
+
+def _compared_text(element: ElementPlan, value: ElementValue) -> str:
+    """Return a value that a reviewed dummy item is compared with, as text."""
+    if not all(isinstance(each, str) for each in value.values):
+        raise _Sequester(
+            Sequestration(element.path, "D", element.vr, SequesterReason.UNDECODABLE)
+        )
+    return "\\".join(str(each) for each in value.values)
+
+
+def _with_items(edit: Edit, compared: dict[int, dict[str, str]]) -> Edit:
+    """Give a reviewed dummy sequence's edit its items (D-021)."""
+    source_items = [compared[index] for index in sorted(compared)]
+    items = items_for_d(edit.path.tag, source_items)
+    return dataclasses.replace(edit, items=items)
+
+
+class _Gathered:
+    """The values read for an instance's edits, and what reading them found."""
+
+    def __init__(self) -> None:
+        self.collected: list[SourceValue] = []
+        self.missing: list[NotCollected] = []
+        self.latin_1: list[ElementPath] = []
+        # The source values that each reviewed dummy sequence's items are
+        # compared with, by item and tag.
+        self.compared: dict[ElementPath, dict[int, dict[str, str]]] = {}
+
+    def read(self, reader: _Reader, element: ElementPlan) -> ElementValue | None:
+        """Read a planned value, collect it, and keep it for comparing."""
+        value, not_read, as_latin_1 = _read_planned(reader, element)
+        if not_read is not None:
+            self.missing.append(not_read)
+        if as_latin_1:
+            self.latin_1.append(element.path)
+        if value is None:
+            return None
+        if (
+            element.removed_with is not None
+            and Consumer.DUMMY_COMPARISON in element.consumers
+        ):
+            index = element.path.items[-1][1]
+            item = self.compared.setdefault(element.removed_with, {})
+            item.setdefault(index, {})[element.path.tag] = _compared_text(
+                element, value
+            )
+        if Consumer.RESIDUAL_COLLECTION in element.consumers:
+            try:
+                self.collected.append(
+                    SourceValue(element.path, value.vr, _text(value), value.codecs)
+                )
+            except ValueError:
+                self.missing.append(
+                    NotCollected(element.path, "could not be collected")
+                )
+        return value
+
+    def result(
+        self, found: list[Edit], reviewed: dict[ElementPath, int]
+    ) -> InstanceEdits:
+        """Return the edits, each reviewed dummy sequence's with its items."""
+        for path, position in reviewed.items():
+            found[position] = _with_items(found[position], self.compared.get(path, {}))
+        return InstanceEdits(
+            tuple(found),
+            tuple(self.collected),
+            tuple(self.missing),
+            (),
+            tuple(self.latin_1),
+        )
 
 
 def edit_instance(
@@ -441,27 +529,20 @@ def edit_instance(
     if plan.sequestrations:
         return InstanceEdits((), (), (), plan.sequestrations)
     found: list[Edit] = []
-    collected: list[SourceValue] = []
-    missing: list[NotCollected] = []
+    gathered = _Gathered()
+    # Each reviewed dummy sequence's edit, by its position in ``found``.
+    reviewed: dict[ElementPath, int] = {}
     try:
         reader = _Reader(source, plan)
         for element in plan.elements:
-            value = None
             container = source.element(element.path).items is not None
             if _kept_container(element, container):
                 _check_items(reader, element)
-            if element.consumers:
-                value, not_read = _read_planned(reader, element)
-                if not_read is not None:
-                    missing.append(not_read)
-            if value is not None and Consumer.RESIDUAL_COLLECTION in element.consumers:
-                try:
-                    collected.append(
-                        SourceValue(element.path, value.vr, _text(value), value.codecs)
-                    )
-                except ValueError:
-                    missing.append(NotCollected(element.path, "could not be collected"))
-            found.append(_edit(element, container, value, key, identity))
+            value = gathered.read(reader, element) if element.consumers else None
+            edit = _edit(element, container, value, key, identity)
+            if container and edit.kind is EditKind.REPLACE:
+                reviewed[edit.path] = len(found)
+            found.append(edit)
     except _Sequester as raised:
         return InstanceEdits((), (), (), (raised.sequestration,))
-    return InstanceEdits(tuple(found), tuple(collected), tuple(missing), ())
+    return gathered.result(found, reviewed)

@@ -249,9 +249,10 @@ def test_cleaning_is_a_consumer_under_clean_descriptors():
 class _Overridden(ElementRules):
     """The Basic Profile's rules, with some actions replaced by tag."""
 
-    def __init__(self, actions):
+    def __init__(self, actions, source=None):
         super().__init__(compose_policy("basic"))
         self._actions = actions
+        self._source = source
 
     def rule(self, tag, path=(), *, iod=None):
         found = super().rule(tag, path, iod=iod)
@@ -259,7 +260,7 @@ class _Overridden(ElementRules):
         return (
             found
             if action is None
-            else ElementRule(tag, found.source, action, found.entry)
+            else ElementRule(tag, self._source or found.source, action, found.entry)
         )
 
 
@@ -383,6 +384,113 @@ def test_a_plain_z_on_a_type_1_attribute_writes_and_compares_a_dummy_value():
     )
     # Patient's Name is Type 2, so Z empties it.
     assert elements[_path("(0010,0010)")].consumers == COLLECTION
+
+
+PATIENT_SETUPS = _path("(300A,0180)")
+PREPARATIONS = _path(("(300A,0180)", 0), "(300A,079F)")
+PHOTOS = _path(("(300A,0180)", 0), ("(300A,079F)", 0), "(300A,078C)")
+PHOTO_ITEM = (*PHOTOS.items, (PHOTOS.tag, 0))
+
+
+def _patient_setup_photo():
+    """A Patient Setup Sequence whose photo has a description.
+
+    Patient Setup Photo Description (300A,0794), which Table E.1-1 gives X,
+    is Type 2 in Referenced Patient Setup Photo Sequence (300A,078C), which
+    is Type 3 in Patient Treatment Preparation Sequence (300A,079F), itself
+    Type 3 in Patient Setup Sequence (300A,0180) of an RT Plan.
+    """
+    photo = _explicit(0x00081155, "UI", INSTANCE_UID)
+    photo += _explicit(0x300A0794, "LT", LABEL)
+    preparation = _explicit(0x300A078C, "SQ", _item(photo))
+    setup = _explicit(0x300A0182, "IS", b"1 ")
+    setup += _explicit(0x300A079F, "SQ", _item(preparation))
+    return _explicit(0x300A0180, "SQ", _item(setup))
+
+
+def test_a_plain_x_where_the_iod_requires_the_attribute_removes_a_type_3_sequence():
+    # D-020: the attribute is removed, and with it the innermost enclosing
+    # sequence that is Type 3 at its own place, with everything in it, the
+    # elements before the attribute included.
+    plan = _plan(_patient_setup_photo())
+    elements = _by_path(plan)
+    description = ElementPath(PHOTO_ITEM, "(300A,0794)")
+
+    assert not plan.sequestrations
+    assert (elements[PATIENT_SETUPS].action, elements[PREPARATIONS].action) == (
+        "K",
+        "K",
+    )
+    photos = elements[PHOTOS]
+    assert photos.rule.action == "K"
+    assert (photos.action, photos.removed_with) == ("X", None)
+    assert photos.removed_for == description
+    assert photos.consumers == frozenset()
+    for path in (ElementPath(PHOTO_ITEM, "(0008,1155)"), description):
+        assert elements[path].rule is None
+        assert (elements[path].action, elements[path].removed_with) == ("X", PHOTOS)
+        assert elements[path].removed_for is None
+        assert elements[path].consumers == COLLECTION
+    assert elements[_path(("(300A,0180)", 0), "(300A,0182)")].action == "K"
+
+
+def test_a_plain_x_where_the_iod_requires_the_attribute_and_no_sequence_sequesters():
+    # Responsible Person (0010,2297) is Type 2C in the Patient Module, and no
+    # sequence encloses it (D-020).
+    plan = _plan(_explicit(0x00100010, "PN", NAME) + _explicit(0x00102297, "PN", NAME))
+    name, person = plan.elements
+
+    assert (person.action, person.removed_for) == ("X", None)
+    assert plan.sequestrations == (
+        walker.Sequestration(
+            person.path, "X", "PN", walker.SequesterReason.REQUIRED_BY_IOD
+        ),
+    )
+    assert str(plan.sequestrations[0]) == (
+        "X on (0010,2297) removes an attribute that the IOD requires there, "
+        "and no enclosing sequence that the IOD makes Type 3 can be removed "
+        "with it, so the instance must be sequestered"
+    )
+    assert name.action == "Z"
+
+
+def test_removing_overlay_data_removes_every_attribute_of_its_group():
+    # The CT Image IOD includes the Overlay Plane Module as user-optional, so
+    # removing Overlay Data (6000,3000) removes its group, but not another
+    # overlay's (D-020).
+    data_set = (
+        _explicit(0x60000010, "US", b"\x00\x02")
+        + _explicit(0x60003000, "OW", bytes(4))
+        + _explicit(0x60004000, "LT", LABEL)
+        + _explicit(0x60020010, "US", b"\x00\x02")
+    )
+    evidence = source.read_source(_file(EXPLICIT, data_set))
+    ct = load_iod_tables().iods["CT Image"]
+    plan = walker.plan_instance(evidence, _rules(), ct)
+    rows, data, comments, other = plan.elements
+
+    assert not plan.sequestrations
+    assert rows.rule.action == "K"
+    assert (rows.action, rows.removed_for) == ("X", data.path)
+    assert rows.consumers == COLLECTION
+    assert (data.action, data.removed_for) == ("X", None)
+    # Overlay Comments is removed by its own rule.
+    assert (comments.action, comments.removed_for) == ("X", None)
+    assert (other.action, other.removed_for) == ("K", None)
+
+
+def test_the_engine_removes_its_attributes_alone_whatever_their_type():
+    # Encrypted Attributes Sequence (0400,0500) is Type 1C in the SOP Common
+    # Module; the engine removes it alone, as its condition never holds in
+    # the output. A plain X from another rule would sequester.
+    data_set = _explicit(0x00102297, "PN", NAME)
+    engine = _plan(data_set, _Overridden({"(0010,2297)": "X"}, RuleSource.ENGINE))
+    table = _plan(data_set, _Overridden({"(0010,2297)": "X"}))
+
+    assert not engine.sequestrations
+    assert engine.elements[0].action == "X"
+    assert table.sequestrations
+    assert _by_path(_plan())[ENCRYPTED_ATTRIBUTES].removed_for is None
 
 
 def test_a_value_in_a_form_that_the_dictionary_does_not_allow_sequesters():
