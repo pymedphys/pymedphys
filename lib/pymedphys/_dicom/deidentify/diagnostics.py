@@ -74,6 +74,8 @@ WARNING_SUMMARY = (
 # checked against a closed set.
 _INVALID_VALUE = re.compile(r"Invalid value for VR (?P<vr>[A-Z]{2})\b")
 _LOGGER = "pydicom"
+# Set on each record and warning once it has been redacted and counted.
+_REDACTED_MARK = "_pymedphys_redacted"
 
 
 @functools.cache
@@ -153,8 +155,13 @@ def _wrapped_factory(
             except Exception:  # pylint: disable = broad-exception-caught
                 message = ""
             record.msg = safe_summary(message)
-            for counts in _SCOPE.active:
-                counts.log_records += 1
+            # A factory that other code installs over this one, delegating
+            # to it, is wrapped in turn, so a record can pass through two
+            # wrappers; it is counted by the first.
+            if not getattr(record, _REDACTED_MARK, False):
+                setattr(record, _REDACTED_MARK, True)
+                for counts in _SCOPE.active:
+                    counts.log_records += 1
             record.args = ()
             record.exc_info = None
             record.exc_text = None
@@ -165,23 +172,65 @@ def _wrapped_factory(
     return make_record
 
 
+def _summary_warning(category: type[Warning], summary: str) -> Warning:
+    """Return a warning of ``category`` whose only content is ``summary``.
+
+    Code that records warnings, such as :meth:`unittest.TestCase.assertWarns`,
+    can rely on each being an instance of its category. A category whose
+    constructor needs other arguments, or that shows other content, is
+    replaced by a subclass of it with the constructor and text of
+    :class:`Warning`.
+    """
+    try:
+        warning = category(summary)
+        if str(warning) == summary and warning.args == (summary,):
+            return warning
+    except Exception:  # pylint: disable = broad-exception-caught
+        pass
+    return _summary_category(category)(summary)
+
+
+_SUMMARY_CATEGORIES: dict[type[Warning], type[Warning]] = {}
+
+
+def _summary_category(category: type[Warning]) -> type[Warning]:
+    if category not in _SUMMARY_CATEGORIES:
+        subclass = type(
+            category.__name__,
+            (category,),
+            {
+                "__init__": Warning.__init__,
+                "__str__": Warning.__str__,
+                "__repr__": Warning.__repr__,
+                "__module__": category.__module__,
+                "__qualname__": category.__qualname__,
+            },
+        )
+        _SUMMARY_CATEGORIES.setdefault(category, subclass)
+    return _SUMMARY_CATEGORIES[category]
+
+
 def _wrapped_showwarnmsg(
     show: Callable[[warnings.WarningMessage], None],
 ) -> Callable[[warnings.WarningMessage], None]:
     """Wrap ``warnings._showwarnmsg`` to summarise warnings within the context."""
 
     def showwarnmsg(message: warnings.WarningMessage) -> None:
-        if _redacting():
+        if _redacting() and not getattr(message, _REDACTED_MARK, False):
             # The location can be the source file's path when pydicom warns
             # from code that a caller passed in, so it is not shown either.
+            summary = safe_summary(str(message.message), WARNING_SUMMARY)
             message = warnings.WarningMessage(
-                safe_summary(str(message.message), WARNING_SUMMARY),
+                _summary_warning(message.category, summary),
                 message.category,
                 "<pydicom>",
                 0,
                 message.file,
                 "",
             )
+            # As for records, a warning passes through every wrapper of
+            # chained hooks, and is redacted and counted by the first.
+            setattr(message, _REDACTED_MARK, True)
             for counts in _SCOPE.active:
                 counts.warnings += 1
         show(message)

@@ -18,6 +18,7 @@ import io
 import logging
 import threading
 import time
+import unittest
 import warnings
 
 import pytest
@@ -395,3 +396,67 @@ def test_a_warning_that_filters_ignore_is_not_counted():
         with redacted_diagnostics() as counts:
             _warn_from_pydicom(SENTINEL)
     assert counts.warnings == 0
+
+
+class _Unusual(UserWarning):
+    """A warning whose constructor takes other arguments and quotes them."""
+
+    def __init__(self, path, line):
+        super().__init__(path, line)
+        self.path = path
+
+    def __str__(self):
+        return f"in {self.path}"
+
+
+@pytest.mark.parametrize("category", [UserWarning, DeprecationWarning, _Unusual])
+def test_a_recorded_warning_is_a_warning_of_its_category(category):
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with redacted_diagnostics():
+            message = (
+                _Unusual(f"/data/{SENTINEL}", 1) if category is _Unusual else SENTINEL
+            )
+            warnings.warn(message, category, stacklevel=1)
+    (recorded,) = caught
+    assert isinstance(recorded.message, category)
+    assert recorded.category is category
+    assert str(recorded.message) == WARNING_SUMMARY
+    assert SENTINEL not in repr(recorded.message.args)
+    assert SENTINEL not in repr(vars(recorded.message))
+
+
+def test_assert_warns_sees_a_redacted_warning():
+    with unittest.TestCase().assertWarns(UserWarning) as context:
+        with redacted_diagnostics():
+            _warn_from_pydicom(SENTINEL)
+    assert str(context.warning) == WARNING_SUMMARY
+
+
+def test_chained_hooks_count_each_diagnostic_once(caplog):
+    caplog.set_level(logging.DEBUG, logger="pydicom")
+    with redacted_diagnostics():
+        pass
+    factory = logging.getLogRecordFactory()
+    show = warnings._showwarnmsg  # pylint: disable = protected-access
+
+    def chained_factory(*args, **kwargs):
+        return factory(*args, **kwargs)
+
+    def chained_show(message):
+        show(message)
+
+    logging.setLogRecordFactory(chained_factory)
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            warnings._showwarnmsg = chained_show  # pylint: disable = protected-access
+            with redacted_diagnostics() as outer:
+                with redacted_diagnostics() as inner:
+                    _warn_from_pydicom(SENTINEL)
+        assert (outer.warnings, outer.log_records) == (1, 1)
+        assert (inner.warnings, inner.log_records) == (1, 1)
+        assert [str(each.message) for each in caught] == [WARNING_SUMMARY]
+    finally:
+        logging.setLogRecordFactory(factory)
+        warnings._showwarnmsg = show  # pylint: disable = protected-access
