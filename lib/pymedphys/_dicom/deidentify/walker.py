@@ -26,9 +26,10 @@ each element of the data set, in file order:
    resolved from the element's Type at that place
    (:func:`~pymedphys._dicom.deidentify.compound_actions.resolve_in_iod`),
    so that X/Z on a Type 1 or 1C attribute gives D, as the maintainer
-   decided on 1 October 2026; and a plain D on an attribute that the IOD
-   does not define at that place gives X, following Note 13 after Table
-   E.1-1a (D-020);
+   decided on 1 October 2026; a plain D on an attribute that the IOD does
+   not define at that place gives X, following Note 13 after Table E.1-1a;
+   and a plain Z on an attribute that is Type 1 or 1C there gives D, the
+   dummy value that Table E.1-1a allows Z (D-020);
 3. its consumers: what must read its value to apply the action, or to
    collect the value for the residual search.
 
@@ -51,9 +52,8 @@ data dictionary gives; where neither gives one, as for a private element in
 implicit VR, it records none, for the collection to say whether the value
 can be collected.
 
-A dummy value is written by D, and by a plain Z on an attribute that is
-Type 1 or 1C at its place (D-020, D-021); it must differ from the source
-value, so the source value is read to compare. Only the VRs of
+D writes a dummy value, which must differ from the source value, so the
+source value is read to compare (D-021). Only the VRs of
 :data:`~pymedphys._dicom.deidentify.dummy_values.DUMMY_VRS` have a generic
 dummy value, and only Person Identification Code Sequence (0040,1101) has a
 reviewed one besides, whose items' Code Value (0008,0100) and Code Meaning
@@ -254,24 +254,29 @@ def _consumers(action: str, container: bool, dummy: bool) -> frozenset[Consumer]
     return frozenset(found)
 
 
-def _resolved(iod: IOD, tag: str, sequences: tuple[str, ...], action: str) -> str:
-    """Return the action by the attribute's Type, as far as it is planned."""
-    if action == "D" and not iod.lookup(tag, sequences):
-        return "X"  # Note 13 after Table E.1-1a (D-020)
-    if action not in COMPOUND_ACTIONS:
-        return action
-    # X/Z on Type 1 or 1C gives D, as decided on 1 October 2026. Until #2198,
-    # which makes resolve_in_iod do so, reaches this branch, this gives it.
-    if action == "X/Z" and strictest_type(iod, tag, sequences) == "1":
+# The two resolvers below mirror, with the same signatures, the functions
+# of compound_actions that #2198 and #2211 bring, so that the walker
+# switches to those functions once they merge and the rules have one
+# implementation.
+
+
+def _resolve_in_iod(iod: IOD, tag: str, path: tuple[str, ...], action: str) -> str:
+    """Resolve a compound action, as ``compound_actions.resolve_in_iod`` (#2198)."""
+    # X/Z on Type 1 or 1C gives D, as decided on 1 October 2026.
+    if action == "X/Z" and strictest_type(iod, tag, path) == "1":
         return "D"
-    return resolve_in_iod(iod, tag, sequences, action)
+    return resolve_in_iod(iod, tag, path, action)
 
 
-def _writes_dummy(iod: IOD, tag: str, sequences: tuple[str, ...], action: str) -> bool:
-    """Whether the action writes a dummy value (D-020, D-021)."""
-    return action == "D" or (
-        action == "Z" and strictest_type(iod, tag, sequences) == "1"
-    )
+def _resolve_plain_in_iod(
+    iod: IOD, tag: str, path: tuple[str, ...], action: str
+) -> str:
+    """Resolve D and Z, as ``compound_actions.resolve_plain_in_iod`` (#2211)."""
+    if action == "D" and not iod.lookup(tag, path):
+        return "X"  # Note 13 after Table E.1-1a
+    if action == "Z" and strictest_type(iod, tag, path) == "1":
+        return "D"
+    return action
 
 
 def _vr_contradicts_dictionary(tag: str, written: str | None) -> bool:
@@ -353,15 +358,19 @@ def plan_instance(
             continue
         sequences = tuple(tag for tag, _ in path.items)
         rule = rules.rule(path.tag, sequences, iod=iod)
-        action = _resolved(iod, path.tag, sequences, rule.action)
-        dummy = _writes_dummy(iod, path.tag, sequences, action)
+        resolve = (
+            _resolve_in_iod
+            if rule.action in COMPOUND_ACTIONS
+            else _resolve_plain_in_iod
+        )
+        action = resolve(iod, path.tag, sequences, rule.action)
         if action != _REMOVED and _vr_contradicts_dictionary(path.tag, extent.vr):
             sequestrations.append(
                 Sequestration(
                     path, action, extent.vr, SequesterReason.VR_NOT_IN_DICTIONARY
                 )
             )
-        elif dummy and not _has_dummy(path.tag, vr, container, action):
+        elif action == "D" and not _has_dummy(path.tag, vr, container, action):
             sequestrations.append(
                 Sequestration(path, action, vr, SequesterReason.NO_DUMMY_VALUE)
             )
@@ -369,7 +378,7 @@ def plan_instance(
             removing[path] = action
         elements.append(
             ElementPlan(
-                path, vr, rule, action, None, _consumers(action, container, dummy)
+                path, vr, rule, action, None, _consumers(action, container, False)
             )
         )
     return InstancePlan(tuple(elements), tuple(sequestrations))

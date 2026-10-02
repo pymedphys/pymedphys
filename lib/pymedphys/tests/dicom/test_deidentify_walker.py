@@ -276,7 +276,7 @@ def test_a_sequence_is_descended_under_k_or_u_and_removed_under_any_other_action
     ]:
         elements = _by_path(_plan(data_set, _Overridden({"(300A,00B0)": action})))
 
-        assert elements[BEAM_SEQUENCE].action == action
+        assert elements[BEAM_SEQUENCE].rule.action == action
         assert elements[BEAM_SEQUENCE].consumers == frozenset()
         if removed:
             assert elements[beam_number].removed_with == BEAM_SEQUENCE
@@ -376,7 +376,8 @@ def test_person_identification_code_sequence_has_a_reviewed_dummy_value():
 def test_a_plain_z_on_a_type_1_attribute_writes_and_compares_a_dummy_value():
     elements = _by_path(_plan(rules=_Overridden({"(300A,0002)": "Z"})))
 
-    assert elements[_path("(300A,0002)")].action == "Z"
+    assert elements[_path("(300A,0002)")].rule.action == "Z"
+    assert elements[_path("(300A,0002)")].action == "D"
     assert elements[_path("(300A,0002)")].consumers == (
         COLLECTION | {Consumer.DUMMY_COMPARISON}
     )
