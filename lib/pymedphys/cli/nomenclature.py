@@ -14,6 +14,13 @@
 
 """Convert structure-name nomenclatures, such as TG-263's, to JSON.
 
+``pymedphys nomenclature roi-list CSV OUTPUT --list-version VERSION`` converts
+an institutional list of ROI names, exported as UTF-8 CSV with a ``Name``
+column and an optional ``Description`` column, to JSON that records it as an
+institutional list, with the file's name, SHA-256, and the version given.
+Structure-name cleaning sends every match against such a list to human
+review, since it can hold names that identify a site or a person.
+
 ``pymedphys nomenclature tg263 SPREADSHEET OUTPUT`` converts a copy of AAPM's
 TG-263 Structure Spreadsheet, which PyMedPhys does not include, to JSON that
 records the spreadsheet's file name, worksheet version, SHA-256, and AAPM's
@@ -27,7 +34,7 @@ import pathlib
 import sys
 from typing import NoReturn
 
-from pymedphys._nomenclature import tg263
+from pymedphys._nomenclature import roi_list, tg263
 
 
 def nomenclature_cli(subparsers):
@@ -53,6 +60,28 @@ def nomenclature_cli(subparsers):
     )
     tg263_parser.set_defaults(func=convert_tg263_cli)
 
+    roi_list_parser = nomenclature_subparsers.add_parser(
+        "roi-list",
+        help="Convert an institutional list of ROI names from CSV to JSON.",
+        description=(
+            "Convert an institutional list of ROI names, exported as UTF-8 CSV "
+            "with a Name column and an optional Description column, to JSON "
+            "that records its source, SHA-256, and version."
+        ),
+    )
+    roi_list_parser.add_argument(
+        "csv", type=pathlib.Path, help="The UTF-8 CSV file to convert."
+    )
+    roi_list_parser.add_argument(
+        "output", type=pathlib.Path, help="The JSON file to create; must not exist."
+    )
+    roi_list_parser.add_argument(
+        "--list-version",
+        required=True,
+        help="The list's version, such as the date it was approved.",
+    )
+    roi_list_parser.set_defaults(func=convert_roi_list_cli)
+
 
 def convert_tg263_cli(args: argparse.Namespace) -> None:
     """Convert ``args.spreadsheet`` to ``args.output``, exiting 1 on failure."""
@@ -64,15 +93,37 @@ def convert_tg263_cli(args: argparse.Namespace) -> None:
         _fail(f"cannot read {spreadsheet.name}: {error.strerror or 'unreadable'}")
     except tg263.TG263Error as error:
         _fail(str(error))
-    try:
-        with output.open("xb") as file:
-            file.write(tg263.to_json(nomenclature).encode("utf-8"))
-    except FileExistsError:
-        _fail(f"{output.name} already exists; choose a new output file")
+    _create(output, tg263.to_json(nomenclature))
     print(
         f"Wrote {len(nomenclature.structures)} structures from "
         f"{nomenclature.source.file} ({nomenclature.source.sheet}) to {output.name}"
     )
+
+
+def convert_roi_list_cli(args: argparse.Namespace) -> None:
+    """Convert ``args.csv`` to ``args.output``, exiting 1 on failure."""
+    source: pathlib.Path = args.csv
+    output: pathlib.Path = args.output
+    try:
+        names = roi_list.read_csv(source, version=args.list_version)
+    except OSError as error:
+        _fail(f"cannot read {source.name}: {error.strerror or 'unreadable'}")
+    except roi_list.RoiListError as error:
+        _fail(str(error))
+    _create(output, roi_list.to_json(names))
+    print(
+        f"Wrote {len(names.entries)} names from {names.source.file} "
+        f"(version {names.source.version}) to {output.name}"
+    )
+
+
+def _create(output: pathlib.Path, text: str) -> None:
+    """Write text to a new file as UTF-8, failing if the file exists."""
+    try:
+        with output.open("xb") as file:
+            file.write(text.encode("utf-8"))
+    except FileExistsError:
+        _fail(f"{output.name} already exists; choose a new output file")
 
 
 def _fail(message: str) -> NoReturn:
