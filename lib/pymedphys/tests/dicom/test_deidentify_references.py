@@ -21,6 +21,7 @@ import struct
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import iods, references, uid_roles
+from pymedphys._dicom.deidentify.file_layout import ElementPath
 
 from . import _synthetic_references as synthetic
 
@@ -817,3 +818,45 @@ def test_an_unknown_value_of_zero_length_has_no_items(monkeypatch):
     assert record.references == plain.references
     # The empty element is still part of the source bytes.
     assert record.digest != plain.digest
+
+
+UNREADABLE_ITEMS = {
+    # An item whose defined length runs past the value.
+    "item-past-value": struct.pack("<HHI", 0xFFFE, 0xE000, 64)
+    + _encoded(0x00081155, b"SENTINEL"),
+    # An element where an item belongs.
+    "element-where-an-item-belongs": _encoded(0x00081155, b"SENTINEL"),
+}
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "value", UNREADABLE_ITEMS.values(), ids=UNREADABLE_ITEMS.keys()
+)
+@pytest.mark.parametrize("nested", [False, True], ids=["top-level", "nested"])
+def test_an_unknown_value_whose_items_cannot_be_read_is_refused(
+    monkeypatch, value, nested
+):
+    # pydicom decodes each value without an error, leaving out what it holds.
+    pydicom.values.convert_SQ(value, True, True)
+    # Dose Calculation Model Sequence (3004,0080) > Dose Calculation Model
+    # Parameter Sequence (3004,0083), neither of which pydicom 3.0.2 knows.
+    dataset = synthetic.rt_dose()
+    if nested:
+        model = synthetic.item()
+        model[0x30040083] = _unknown(monkeypatch, 0x30040083, value)
+        dataset.add(synthetic.sequence(0x30040080, [model]))
+        path = ElementPath((("(3004,0080)", 0),), "(3004,0083)")
+    else:
+        dataset[0x30040080] = _unknown(monkeypatch, 0x30040080, value)
+        path = ElementPath((), "(3004,0080)")
+    data = synthetic.written(dataset)
+
+    with pytest.raises(references.UnreadableSequence) as raised:
+        InstanceRecord.from_file(data)
+
+    assert raised.value.path == path
+    assert str(raised.value) == f"{path} has items that cannot be read"
+    assert raised.value.__cause__ is None
+    assert "SENTINEL" not in repr(raised.value)

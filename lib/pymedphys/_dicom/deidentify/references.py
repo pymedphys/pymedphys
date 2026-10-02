@@ -34,7 +34,9 @@ the value at each reference site with the Referenced SOP Class UID
 not reach logs. An attribute without a value at a Type 3 site is left out,
 since it means the same as an absent one (PS3.5 Section 7.4.5). A sequence
 that pydicom does not know, which it reads as UN from Implicit VR Little
-Endian, is decoded with its VR in the pinned data dictionary.
+Endian, is decoded with its VR in the pinned data dictionary by
+:func:`~pymedphys._dicom.deidentify.sequences.decode_items`, and one whose
+value does not hold only items raises :class:`UnreadableSequence`.
 
 Two inputs are identical copies only when their source bytes are the same:
 they have the same Transfer Syntax UID (0002,0010), and the same bytes from
@@ -78,17 +80,19 @@ import io
 import re
 import struct
 import types
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 
 from pymedphys._imports import pydicom
 
 from .file_layout import (
     BIG_ENDIAN_TRANSFER_SYNTAXES,
+    ElementPath,
     Region,
     read_file_layout,
 )
 from .iods import IOD
 from .pseudonyms import SubjectIdentity
+from .sequences import UnreadableItems, decode_items
 from .sop_classes import iod_for_sop_class
 from .standard import load_data_dictionary
 from .uids import normalise_uid
@@ -101,6 +105,23 @@ ISSUER_OF_PATIENT_ID_TAG = "(0010,0021)"
 _TRAILING_PADDING_TAG = "(FFFC,FFFC)"
 # Data Set Trailing Padding is in its own region, at the top level or in an item.
 _DATA_SET_REGIONS = (Region.DATA_SET, Region.TRAILING_PADDING)
+_Within = tuple[tuple[str, int], ...]
+
+
+class UnreadableSequence(Exception):
+    """A sequence of VR UN whose value does not hold only items.
+
+    Not a :class:`ValueError`, which code that rejects invalid input could
+    catch by accident. The message names the sequence by its path and never
+    quotes a value.
+    """
+
+    def __init__(self, path: ElementPath) -> None:
+        super().__init__(path)
+        self.path = path
+
+    def __str__(self) -> str:
+        return f"{self.path} has items that cannot be read"
 
 
 class Level(enum.Enum):
@@ -322,6 +343,10 @@ class InstanceRecord:
 
         Raises
         ------
+        UnreadableSequence
+            If a sequence on the path to a reference site is held as UN, as
+            pydicom reads one that it does not know, and its value does not
+            hold only items.
         Exception
             Whatever pydicom raises for a file that it cannot read, such as
             :class:`pydicom.errors.InvalidDicomError`. Its message may hold
@@ -386,34 +411,49 @@ def _is_empty(element: pydicom.DataElement) -> bool:
 
 
 def _items(
-    dataset: pydicom.Dataset, path: tuple[str, ...]
+    dataset: pydicom.Dataset, path: tuple[str, ...], within: _Within = ()
 ) -> Iterator[pydicom.Dataset]:
-    """Yield every item of the innermost sequence of ``path``."""
+    """Yield every item of the innermost sequence of ``path``.
+
+    ``within`` is the path of the items that hold ``dataset``, as in
+    :class:`~pymedphys._dicom.deidentify.file_layout.ElementPath`.
+    """
     if not path:
         yield dataset
         return
     element = _element(dataset, path[0])
     if element is not None:
-        for item in _sequence(element, path[0]):
-            yield from _items(item, path[1:])
+        sequence = _sequence(element, ElementPath(within, path[0]))
+        for index, item in enumerate(sequence):
+            yield from _items(item, path[1:], (*within, (path[0], index)))
 
 
-def _sequence(element: pydicom.DataElement, tag: str) -> Iterator[pydicom.Dataset]:
-    """Yield the items of a sequence, decoding a UN value with its dictionary VR.
+def _sequence(
+    element: pydicom.DataElement, path: ElementPath
+) -> Sequence[pydicom.Dataset]:
+    """Return the items of a sequence, decoding a UN value with its dictionary VR.
 
     PS3.5 Section 6.2.2 lets a reader that knows the VR of a UN value decode
     it as Implicit VR Little Endian, whatever the transfer syntax. pydicom
     reads a sequence it does not know as UN in Implicit VR Little Endian,
-    unless its length is undefined.
+    unless its length is undefined. The value is decoded only if it holds
+    only items, and otherwise raises :class:`UnreadableSequence`. Its items
+    are decoded in the Default Character Repertoire, whatever the Specific
+    Character Set (0008,0005) of the data set that holds it, since only UIDs
+    are read from them.
     """
     if element.VR == "SQ":
-        yield from element.value
-    elif (
+        return element.value
+    if (
         element.VR == "UN"
         and isinstance(element.value, bytes)
-        and _dictionary_vrs().get(tag) == "SQ"
+        and _dictionary_vrs().get(path.tag) == "SQ"
     ):
-        yield from pydicom.values.convert_SQ(element.value, True, True)
+        try:
+            return decode_items(element.value, explicit=False)
+        except UnreadableItems:
+            raise UnreadableSequence(path) from None
+    return ()
 
 
 @functools.lru_cache(maxsize=None)

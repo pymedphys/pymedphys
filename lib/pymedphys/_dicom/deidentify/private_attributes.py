@@ -45,7 +45,8 @@ VR UN, or one read without a VR from Implicit VR Little Endian, that pydicom
 has not yet decoded is decoded here, with the character set of the data set
 that holds it, even where pydicom's dictionary gives the attribute VR SQ.
 pydicom decodes some malformed values without an error, as items that leave
-out part of the value, so a value decoded here is accepted only if its items
+out part of the value, so a value decoded here is accepted only if
+:func:`.sequences.decode_items` finds that it holds only items, and its items
 encode to the same bytes. pydicom writes the elements of
 those items as it read them, except a sequence of undefined length, which it
 decodes with the value, so that check does not see into a sequence of defined
@@ -103,6 +104,7 @@ from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
 
 from .file_layout import ElementPath
 from .policy import Policy, PolicyError
+from .sequences import UnreadableItems, decode_items
 from .standard import PRIVATE_ATTRIBUTES_TAG, sequence_tags
 
 RETAIN_SAFE_PRIVATE = "retain_safe_private"
@@ -397,11 +399,15 @@ def _is_sequence(tag: pydicom.tag.BaseTag, path: ElementPath) -> bool:
 def _decoded(
     value: bytes | None, path: ElementPath, encodings: list[str]
 ) -> pydicom.Sequence:
-    """Decode a value as Implicit VR Little Endian items, if they encode it."""
+    """Decode a value as Implicit VR Little Endian items that fill and encode it."""
     if not value:  # pydicom reads a value of zero length as None
         return pydicom.Sequence()
     try:
-        sequence = pydicom.values.convert_SQ(value, True, True, encodings)
+        # Each sequence of defined length in the items is decoded here in turn.
+        sequence = decode_items(value, explicit=False, codecs=encodings, nested=False)
+    except UnreadableItems:
+        raise PrivateAttributeError(path) from None
+    try:
         encoded = pydicom.filebase.DicomBytesIO()
         encoded.is_little_endian = True
         encoded.is_implicit_VR = True

@@ -26,7 +26,8 @@ policy and everything the engine could apply with it, the markers that record
 in each de-identified instance how it was de-identified, the admission of a
 source file whose whole structure is read from its own bytes, kept as
 immutable evidence, the decoding of each element with the VR of the pinned
-data dictionary, the checks of values against their VR and VM and of the
+data dictionary, and of a sequence's items only once they are shown to fill
+its value, the checks of values against their VR and VM and of the
 elements built to be written, the zero-length and dummy values that the Z and
 D actions write, the supplementary actions for attributes that Table E.1-1
 omits, including every date and time that it omits and every text attribute
