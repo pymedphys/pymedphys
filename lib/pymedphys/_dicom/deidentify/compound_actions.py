@@ -63,7 +63,7 @@ IOD makes Type 3 at its own place is removed with it, with everything in
 that sequence, so that the output stays valid; where no such sequence
 encloses it, the instance is sequestered. Two attributes need neither:
 removing Overlay Data (60xx,3000) removes every attribute of its repeating
-group, and ROI Interpreter Sequence (3006,004E), whose condition lapses once
+group where the IOD's Overlay Plane Module is user-optional, and ROI Interpreter Sequence (3006,004E), whose condition lapses once
 ROI Creator Sequence (3006,004D) is removed, is removed alone.
 
 For example, the RT Structure Set IOD makes Series Description (0008,103E),
@@ -380,6 +380,21 @@ def resolve_plain_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -
     return action
 
 
+def _overlay_plane_is_user_optional(iod: IOD) -> bool:
+    """Return whether every module of ``iod`` that defines Overlay Data is U.
+
+    Removing an overlay's whole group keeps the output valid only where its
+    module is user-optional; where the IOD does not define Overlay Data at
+    all, removing the group removes nothing the IOD requires.
+    """
+    usage = {module.module: module.usage for module in iod.modules}
+    return all(
+        usage[definition.module] == "U"
+        for definition in iod.definitions
+        if definition.tag == "(60xx,3000)"
+    )
+
+
 def resolve_plain_x_in_iod(iod: IOD, tag: str, path: Sequence[str]) -> PlainRemoval:
     """Return what a plain X on an attribute in an IOD removes with it.
 
@@ -391,9 +406,11 @@ def resolve_plain_x_in_iod(iod: IOD, tag: str, path: Sequence[str]) -> PlainRemo
     output stays valid, and where no such sequence encloses it, the instance
     is sequestered. Two attributes are exceptions. Removing Overlay Data
     (60xx,3000) of an overlay group, one of the even groups 6000 to 601E,
-    removes every attribute of the group, whatever their Types: of the first
-    supported release's IODs, only CT Image includes the Overlay Plane
-    Module, and as user-optional, so the instance stays valid without it.
+    removes every attribute of the group, whatever their Types, where every
+    module of the IOD that defines Overlay Data is user-optional, so the
+    instance stays valid without it; of the first supported release's IODs,
+    only CT Image includes the Overlay Plane Module, and as user-optional.
+    Where the module is conditional, the general rule applies.
     ROI Interpreter Sequence (3006,004E) is removed alone, since its Type 1C
     condition needs ROI Creator Sequence (3006,004D), which Table E.1-1
     removes too.
@@ -438,7 +455,7 @@ def resolve_plain_x_in_iod(iod: IOD, tag: str, path: Sequence[str]) -> PlainRemo
     <RemovalExtent.OVERLAY_GROUP: 'overlay group'>
     """
     checked = _checked_path(tag, path)
-    if _OVERLAY_DATA.fullmatch(tag):
+    if _OVERLAY_DATA.fullmatch(tag) and _overlay_plane_is_user_optional(iod):
         return PlainRemoval(RemovalExtent.OVERLAY_GROUP)
     if tag == _ROI_INTERPRETER_SEQUENCE:
         return PlainRemoval(RemovalExtent.ATTRIBUTE)
