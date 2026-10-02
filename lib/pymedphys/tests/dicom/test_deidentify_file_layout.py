@@ -993,6 +993,10 @@ def test_a_repeating_group_in_implicit_vr_has_its_dictionary_vr():
         ("(0020,3105)", ("CS",)),  # Source Image IDs (0020,31xx)
         ("(1000,0013)", ("US",)),  # Huffman Table Triplet (1000,xxx3)
         ("(6002,3000)", ("OB", "OW")),  # Overlay Data (60xx,3000)
+        # Beyond the repeating groups 5000-501E and 6000-601E (PS3.5 Section
+        # 7.6), as elements.dictionary_attribute finds too.
+        ("(6020,3000)", ()),
+        ("(5020,3000)", ()),
         ("(7F02,0010)", ("OB", "OW")),  # Variable Pixel Data (7Fxx,0010)
         # Transform Label (0028,0400) is LO, although it also matches Rows For
         # Nth Order Coefficients (0028,04x0), which is US.
