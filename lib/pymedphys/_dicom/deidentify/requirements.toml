@@ -309,10 +309,11 @@ The Conformance Statement of an application that claims conformance to the Basic
 '''
 status = "partial"
 milestone = "M6"
-decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-016", "D-020", "D-021", "D-022", "D-025", "D-026"]
+decisions = ["D-003", "D-004", "D-005", "D-006", "D-007", "D-012", "D-013", "D-016", "D-020", "D-021", "D-022", "D-023", "D-025", "D-026", "D-027"]
 implementation = [
   "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/conformance_markdown.py",
+  "_dicom/deidentify/conformance_values.py",
 ]
 tests = [
   "tests/dicom/test_deidentify_conformance.py::test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_action",
@@ -348,9 +349,20 @@ tests = [
   "tests/dicom/test_deidentify_conformance.py::test_a_plain_d_that_no_supported_iod_defines_is_removed",
   "tests/dicom/test_deidentify_conformance.py::test_a_plain_z_on_a_type_1_attribute_gives_d",
   "tests/dicom/test_deidentify_conformance.py::test_plain_actions_by_type_are_no_longer_pending",
+  "tests/dicom/test_deidentify_conformance_values.py::test_the_reviewed_dummy_item_is_described",
+  "tests/dicom/test_deidentify_conformance_values.py::test_only_the_reviewed_items_coding_scheme_names_pymedphys",
+  "tests/dicom/test_deidentify_conformance_values.py::test_pseudonyms_are_described_where_the_engine_writes_them",
+  "tests/dicom/test_deidentify_conformance_values.py::test_the_longest_replacement_uid_is_described",
+  "tests/dicom/test_deidentify_conformance_values.py::test_dates_take_their_listed_actions_without_a_temporal_option",
+  "tests/dicom/test_deidentify_conformance_values.py::test_dates_under_modified_dates_are_cleaned_and_their_manner_is_pending",
+  "tests/dicom/test_deidentify_conformance_values.py::test_the_temporal_attributes_are_counted_by_their_listed_action",
+  "tests/dicom/test_deidentify_conformance_values.py::test_the_residual_search_coverage_is_described",
+  "tests/dicom/test_deidentify_conformance_values.py::test_every_reason_a_value_is_not_searched_is_described",
+  "tests/dicom/test_deidentify_conformance_values.py::test_each_vr_described_as_not_searched_is_not_searched",
+  "tests/dicom/test_deidentify_conformance_values.py::test_the_release_reports_account_of_instances_is_pending",
 ]
 note = '''
-The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters. It lists the action that the engine applies to each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020), and why where the engine's own removals, the File Meta Information that it writes in place of the source's (D-025), or a sequence given C supersede the policy's action; the rules that give every other element its action (D-022); the values that Z, D, and U write, including the keyed pseudonyms and replacement UIDs (D-003, D-005, D-021); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); the attributes and values that the markers insert, as the engine computes them for the policy (D-012); the removal of private attributes at every level of nesting; and the options applied, those that can be composed, and those that are not supported. A statement lists what it cannot yet describe and then claims nothing. Plain X, Z, and D are resolved by Type at every place too (D-020): a plain X that would leave the instance invalid names the enclosing sequence it removes, or that the instance is sequestered. Remaining: the manner of cleaning, for a policy that gives C, and writing the statement with each run (M6).
+The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters. It lists the action that the engine applies to each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020), and why where the engine's own removals, the File Meta Information that it writes in place of the source's (D-025), or a sequence given C supersede the policy's action; the rules that give every other element its action (D-022); the values that Z, D, and U write, including the reviewed item of Person Identification Code Sequence, the keyed pseudonyms at the top level of the data set, and replacement UIDs of at most 44 characters (D-003, D-005, D-021); how dates and times are handled: without a Retain Longitudinal Temporal Information Option, by the listed actions of the attributes that have a temporal role, unshifted (D-006, D-007, D-023); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); the attributes and values that the markers insert, as the engine computes them for the policy (D-012); the removal of private attributes at every level of nesting; what the residual search covers, and each reason it lists a value as not searched (D-027); and the options applied, those that can be composed, and those that are not supported. A statement lists what it cannot yet describe and then claims nothing. Plain X, Z, and D are resolved by Type at every place too (D-020): a plain X that would leave the instance invalid names the enclosing sequence it removes, or that the instance is sequestered. Remaining: the manner of cleaning, for a policy that gives C, including how Modified Dates modifies dates and times; the release report's account of a run's instances, how it names sequestered instances and records the values that the residual search drops or does not search (D-026, D-027); and writing the statement with each run (M6).
 '''
 
 [[requirement]]
