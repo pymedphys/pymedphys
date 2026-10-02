@@ -14,8 +14,9 @@
 
 """Downloading the published TG-263 spreadsheet, pinned by its SHA-256.
 
-No test here reaches the network: each downloads the invented spreadsheet in
-``data/`` through a stand-in for the downloader, against an invented edition.
+Only the slow test reaches the network, to check the pins against AAPM's
+file. Every other test downloads the invented spreadsheet in ``data/``
+through a stand-in for the downloader, against an invented edition.
 """
 
 import dataclasses
@@ -59,6 +60,15 @@ class _Downloader:
         pathlib.Path(filepath).write_bytes(self.content)
 
 
+def _cached_files(data_dir):
+    """Every file in the cache directory but the download lock."""
+    return [
+        path
+        for path in (data_dir / "tg263").iterdir()
+        if not path.name.endswith(".pymedphys-download-lock")
+    ]
+
+
 @pytest.fixture(name="data_dir")
 def _data_dir(tmp_path, monkeypatch):
     monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(tmp_path))
@@ -82,6 +92,16 @@ def test_the_published_edition_is_pinned():
     assert tg263_published.PAGE_URL == (
         "https://www.aapm.org/pubs/reports/RPT_263_Supplemental/"
     )
+
+
+@pytest.mark.slow
+def test_the_published_edition_matches_its_pins():
+    # Downloads AAPM's file, so that a change to the converter that would
+    # change the entries digest, and so stop every download being accepted,
+    # fails here.
+    nomenclature = tg263_published.load()
+    assert nomenclature.source.sheet == "TG263 v20170815"
+    assert len(nomenclature.structures) == 717
 
 
 @pytest.mark.parametrize("field", ["sha256", "content_sha256"])
@@ -119,6 +139,17 @@ def test_a_cached_copy_that_does_not_match_the_pin_is_downloaded_again(data_dir)
     assert download.urls == [URL]
 
 
+def test_a_failed_download_leaves_no_file_behind(data_dir):
+    def broken(_url, filepath):
+        pathlib.Path(filepath).write_bytes(b"partial")
+        raise OSError("connection reset")
+
+    with pytest.raises(OSError, match="connection reset"):
+        tg263_published.spreadsheet_path(EDITION, download=broken)
+
+    assert not _cached_files(data_dir)
+
+
 def test_a_download_that_does_not_match_the_pin_is_refused_and_removed(data_dir):
     download = _Downloader(content=b"not the published file")
     expected = re.escape(f"does not have the pinned SHA-256 {EDITION.sha256}")
@@ -127,7 +158,7 @@ def test_a_download_that_does_not_match_the_pin_is_refused_and_removed(data_dir)
         tg263_published.spreadsheet_path(EDITION, download=download)
 
     assert URL in str(error.value)
-    assert not (data_dir / "tg263" / "TG263_Invented_20260101.xls").exists()
+    assert not _cached_files(data_dir)
 
 
 def test_load_returns_the_pinned_edition(data_dir):
@@ -183,3 +214,18 @@ def test_a_local_copy_that_is_not_the_pinned_edition_is_refused(tmp_path):
     local.write_bytes(b"edited")
     with pytest.raises(tg263.TG263Error, match="pinned SHA-256"):
         tg263_published.load(EDITION, spreadsheet=local, download=_Downloader())
+
+
+@pytest.mark.usefixtures("data_dir")
+def test_the_bytes_that_were_read_are_the_ones_checked(monkeypatch):
+    # The file is replaced between the SHA-256 check and the read.
+    real_read = tg263.read_spreadsheet
+
+    def read_replaced(path):
+        nomenclature = real_read(path)
+        source = dataclasses.replace(nomenclature.source, sha256="1" * 64)
+        return dataclasses.replace(nomenclature, source=source)
+
+    monkeypatch.setattr(tg263, "read_spreadsheet", read_replaced)
+    with pytest.raises(tg263.TG263Error, match="changed while it was read"):
+        tg263_published.load(EDITION, download=_Downloader())

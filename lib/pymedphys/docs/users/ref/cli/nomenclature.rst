@@ -12,7 +12,8 @@ spreadsheet:
     pymedphys nomenclature tg263 tg263.json
 
 On a computer without internet access, convert a copy you downloaded
-elsewhere:
+elsewhere. A copy of the pinned edition is checked against the pin; any other
+workbook is converted with a note that it was not:
 
 .. code:: bash
 
