@@ -235,3 +235,41 @@ def test_results_hold_no_value_in_their_reprs():
     assert "SENTINEL" not in shown
     assert "DEIDENTIFIED" not in shown
     assert INSTANCE_UID not in shown
+
+
+def test_a_kept_sequence_whose_items_cannot_be_read_sequesters(monkeypatch):
+    original = elements.read_element
+
+    def refusing(dataset, path, *args, **kwargs):
+        if path == BEAM_SEQUENCE:
+            raise elements.UndecodableElement(path, "has items that cannot be read")
+        return original(dataset, path, *args, **kwargs)
+
+    monkeypatch.setattr(elements, "read_element", refusing)
+    _, result = _edits()
+
+    (sequestration,) = result.sequestrations
+    assert (sequestration.path, sequestration.action) == (BEAM_SEQUENCE, "K")
+    assert sequestration.reason is walker.SequesterReason.UNDECODABLE
+    assert not result.edits
+
+
+def test_a_removed_sequence_whose_items_cannot_be_read_is_not_collected(
+    monkeypatch,
+):
+    original = elements.read_element
+
+    def refusing(dataset, path, *args, **kwargs):
+        if path == OTHER_IDS:
+            raise elements.UndecodableElement(path, "has items that cannot be read")
+        return original(dataset, path, *args, **kwargs)
+
+    monkeypatch.setattr(elements, "read_element", refusing)
+    _, result = _edits()
+
+    assert not result.sequestrations
+    missing = {each.path for each in result.not_collected}
+    assert missing == {
+        _path(("(0010,1002)", 0), "(0010,0020)"),
+        _path(("(0010,1002)", 0), ("(0010,1002)", 0), "(0010,0020)"),
+    }

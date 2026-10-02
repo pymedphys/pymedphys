@@ -20,7 +20,8 @@ evidence, decodes only the values that the plan's consumers need, and gives
 each element of the data set, in file order, an :class:`Edit`:
 
 - K keeps the element, which is to be written from its source bytes;
-- X removes it, as it does each descendant of a removed sequence;
+- X removes it, as it does each descendant of a removed sequence, whose
+  values are still decoded and collected where they can be;
 - Z empties it (D-021);
 - D replaces it with its VR's dummy value, or the second one where the
   source value equals the first, or, for a UI value, its keyed replacement
@@ -44,7 +45,9 @@ instance may be released is for the release gate to decide. Where a value
 that the action needs cannot be decoded, or a Specific Character Set is not
 supported (D-010), the instance is sequestered, and has no edits.
 
-Nothing is written to a data set here. Values are read from one fresh
+A kept sequence's items are read, so that each element in them can be
+written or kept; where they cannot be, the instance is sequestered. Nothing
+is written to a data set here. Values are read from one fresh
 data set of the source (:meth:`.SourceEvidence.dataset`), each against the
 source's own bytes (:func:`~pymedphys._dicom.deidentify.elements.read_element`),
 so a read never replaces the source evidence. The edits, their ``repr``, and
@@ -67,6 +70,7 @@ from .standard import dictionary_attribute
 from .uid_roles import load_uid_roles
 from .uids import UIDOutcome, normalise_uid, transform_uid
 from .walker import (
+    DESCENDED,
     REVIEWED_DUMMY_SEQUENCES,
     Consumer,
     ElementPlan,
@@ -234,6 +238,26 @@ def _text(value: ElementValue) -> str | bytes:
     return "\\".join(str(each) for each in value.values)
 
 
+def _kept_container(source: SourceEvidence, element: ElementPlan) -> bool:
+    return (
+        element.removed_with is None
+        and element.action in DESCENDED
+        and source.element(element.path).items is not None
+    )
+
+
+def _check_items(reader: _Reader, element: ElementPlan) -> None:
+    """Sequester the instance unless a kept sequence's items can be read."""
+    try:
+        reader.read(element.path)
+    except UndecodableElement:
+        raise _Sequester(
+            Sequestration(
+                element.path, element.action, element.vr, SequesterReason.UNDECODABLE
+            )
+        ) from None
+
+
 def _kind(element: ElementPlan) -> EditKind:
     """Return what an element becomes, before any value is worked out."""
     path, action = element.path, element.action
@@ -325,6 +349,8 @@ def edit_instance(
         reader = _Reader(source)
         for element in plan.elements:
             value = None
+            if _kept_container(source, element):
+                _check_items(reader, element)
             if element.consumers:
                 try:
                     value = reader.read(element.path)
