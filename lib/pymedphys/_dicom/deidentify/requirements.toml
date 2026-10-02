@@ -209,6 +209,7 @@ implementation = [
   "_dicom/deidentify/elements.py",
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/private_attributes.py",
+  "_dicom/deidentify/sequences.py",
   "_dicom/deidentify/standard.py",
 ]
 tests = [
@@ -238,6 +239,10 @@ tests = [
   "tests/dicom/test_deidentify_elements.py::test_un_in_explicit_vr_is_decoded_as_implicit_vr_with_the_pinned_vr",
   "tests/dicom/test_deidentify_elements.py::test_a_vr_that_conflicts_with_the_pinned_dictionary_is_refused",
   "tests/dicom/test_deidentify_elements.py::test_a_sequence_whose_items_cannot_be_read_is_refused",
+  "tests/dicom/test_deidentify_sequences.py::test_items_are_decoded",
+  "tests/dicom/test_deidentify_sequences.py::test_a_sequence_nested_in_an_item_is_decoded",
+  "tests/dicom/test_deidentify_sequences.py::test_an_item_is_decoded_in_its_own_character_set_or_the_one_it_inherits",
+  "tests/dicom/test_deidentify_sequences.py::test_a_value_that_is_not_only_items_is_refused",
   "tests/dicom/test_deidentify_element_rules.py::test_each_level_decides_its_elements",
   "tests/dicom/test_deidentify_element_rules.py::test_every_dictionary_attribute_has_the_rule_of_the_first_level_covering_it",
   "tests/dicom/test_deidentify_element_rules.py::test_the_overlay_masks_match_every_repeating_group",
@@ -445,11 +450,23 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information that is embedded in text or string Attributes corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
 decisions = ["D-009", "D-022"]
+implementation = ["_dicom/deidentify/roi_names.py"]
+tests = [
+  "tests/dicom/test_deidentify_roi_names.py::test_a_name_that_matches_once_case_whitespace_and_separators_are_disregarded_is_written_in_the_vocabularys_spelling",
+  "tests/dicom/test_deidentify_roi_names.py::test_a_near_match_goes_to_review",
+  "tests/dicom/test_deidentify_roi_names.py::test_a_name_that_matches_more_than_one_vocabulary_name_goes_to_review",
+  "tests/dicom/test_deidentify_roi_names.py::test_a_name_that_echoes_a_known_identifier_goes_to_review",
+  "tests/dicom/test_deidentify_roi_names.py::test_different_names_that_would_be_written_as_one_vocabulary_name_go_to_review",
+  "tests/dicom/test_deidentify_roi_names.py::test_a_nomenclature_without_the_tg263_attribution_is_rejected",
+  "tests/dicom/test_deidentify_roi_names.py::test_an_unpublished_vocabulary_is_refused",
+  "tests/dicom/test_deidentify_roi_names.py::test_a_vocabulary_name_with_a_hyphen_is_not_matched_without_it",
+  "tests/dicom/test_deidentify_roi_names.py::test_a_name_with_a_leading_underscore_or_hyphen_goes_to_review",
+]
 note = '''
-The first supported release includes the Option for ROI names: a name that matches a name of a vocabulary made from the AAPM TG-263 spreadsheet once case, whitespace, and separators are disregarded is written in the vocabulary's spelling, unless D-009 sends it to review, as it does every match against a vocabulary made from an institutional list, and any other is kept, mapped, or emptied by a reviewer, or its instance is held for review unless the user chooses explicitly to empty such names. The Option is claimed only for output whose retained descriptors have passed pooled human review (D-009), which needs the QC pack (M4); a name written in the vocabulary's spelling is cleaned, not retained, so it needs no review before the claim.
+The first supported release includes the Option for ROI names (D-009). The automatic tier decides, for the ROI names of one structure set, which are written in the spelling of the TG-263 spreadsheet's published edition, whose entries' digest the module records, because they match one of its names once case, spaces, and the separators `_` and `-` are disregarded (a hyphen in a vocabulary name, which TG-263 writes for a subtraction, must be matched by one, and a name starting with `_`, which TG-263 gives a structure not used for dose evaluation, or `-` goes to review), and which go to review, because they match none or several, echo a known patient or other person identifier, or would duplicate a differently spelt name of the same structure set. A name so written is cleaned, not retained, so it needs no review before the claim. Remaining: applying these decisions to each data set (M3); review of the other names, each kept, mapped, or emptied by a reviewer, with a reviewed-names list reused on later runs, and holding an instance whose names nobody has reviewed unless the user chooses explicitly to empty such names, and recording each rename in the QC material (M4); vocabularies converted from an institutional list, every match against which goes to review; and claiming the Option only for output whose retained descriptors have passed pooled human review, which needs the QC pack (M4).
 '''
 
 [[requirement]]
@@ -604,7 +621,10 @@ When this Option is not specified, all Private Attributes shall be removed, as d
 status = "partial"
 milestone = "M3"
 decisions = ["D-028"]
-implementation = ["_dicom/deidentify/private_attributes.py"]
+implementation = [
+  "_dicom/deidentify/private_attributes.py",
+  "_dicom/deidentify/sequences.py",
+]
 tests = [
   "tests/dicom/test_deidentify_private_attributes.py::test_the_basic_profile_removes_every_private_attribute",
   "tests/dicom/test_deidentify_private_attributes.py::test_a_private_sequence_is_removed_with_everything_in_it",
@@ -619,6 +639,8 @@ tests = [
   "tests/dicom/test_deidentify_private_attributes.py::test_a_character_set_that_pydicom_does_not_map_as_given_is_refused",
   "tests/dicom/test_deidentify_private_attributes.py::test_a_character_set_stored_with_another_vr_is_refused",
   "tests/dicom/test_deidentify_private_attributes.py::test_a_sequence_stored_with_another_vr_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_malformed_sequence_read_from_explicit_vr_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_items_nested_deeper_than_can_be_read_are_refused",
 ]
 note = '''
 Every element of an odd group, including private creators and the elements that PS3.5 does not allow, is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN, and a private sequence is removed with everything in it. A standard sequence that cannot be decoded exactly, that is stored with a VR other than SQ or UN, or whose items have a Specific Character Set that pydicom does not map as given or that is stored with another VR, is refused by its path; it is removed where a rule removes it or a sequence that holds it, and otherwise its instance is sequestered (D-028). Remaining: removing them from each instance the engine de-identifies (M3).
@@ -713,6 +735,7 @@ implementation = [
   "_dicom/deidentify/iods.py",
   "_dicom/deidentify/reference_graph.py",
   "_dicom/deidentify/references.py",
+  "_dicom/deidentify/sequences.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/values.py",
 ]
@@ -743,6 +766,8 @@ tests = [
   "tests/dicom/test_deidentify_plain_actions.py::test_the_overlay_plane_module_is_conditional_only_in_the_known_iods",
   "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_x_on_roi_interpreter_sequence_removes_it_alone",
   "tests/dicom/test_deidentify_references.py::test_reference_sites_include_the_rt_references",
+  "tests/dicom/test_deidentify_references.py::test_an_unknown_value_whose_items_cannot_be_read_is_refused",
+  "tests/dicom/test_deidentify_references.py::test_a_sequence_whose_items_cannot_be_read_is_refused",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_consistent_collection_has_no_findings",
   "tests/dicom/test_deidentify_reference_graph.py::test_each_reference_resolves_to_its_instance",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_input_of_a_class_outside_table_b5_1_resolves",
@@ -751,6 +776,7 @@ tests = [
   "tests/dicom/test_deidentify_record_content.py::test_copies_in_implicit_and_explicit_vr_have_different_digests",
   "tests/dicom/test_deidentify_record_content.py::test_any_change_to_the_data_set_changes_the_digest",
   "tests/dicom/test_deidentify_record_content.py::test_a_file_whose_bytes_cannot_be_shown_sound_has_no_digest",
+  "tests/dicom/test_deidentify_record_content.py::test_a_file_whose_sequence_cannot_be_read_as_items_has_no_record",
   "tests/dicom/test_deidentify_record_content.py::test_the_digest_is_of_the_transfer_syntax_and_the_data_set_bytes",
   "tests/dicom/test_deidentify_record_content.py::test_a_left_out_element_that_holds_items_gives_no_digest",
   "tests/dicom/test_deidentify_record_content.py::test_padding_in_an_item_changes_the_digest",
@@ -929,13 +955,17 @@ Remove or replace all unstructured text, whether in data elements, pixel data, o
 status = "partial"
 milestone = "M4"
 decisions = ["D-009", "D-017", "D-022", "D-027"]
-implementation = ["_dicom/deidentify/supplementary_actions.py"]
+implementation = [
+  "_dicom/deidentify/roi_names.py",
+  "_dicom/deidentify/supplementary_actions.py",
+]
 tests = [
+  "tests/dicom/test_deidentify_roi_names.py::test_a_name_that_echoes_a_known_identifier_goes_to_review",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text",
 ]
 note = '''
-Under the Basic Profile, every text attribute that a supported IOD uses is removed or replaced, by Table E.1-1 or a reviewed supplementary rule, except coded and technical values and De-identification Method, which the engine adds to (D-022). Remaining: applying the actions to each data set (M3); and cleaning descriptors with pooled human review, the residual search, and reporting indicators of burned-in text, since the engine does not change pixel data (M4).
+Under the Basic Profile, every text attribute that a supported IOD uses is removed or replaced, by Table E.1-1 or a reviewed supplementary rule, except coded and technical values and De-identification Method, which the engine adds to (D-022). Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocabulary only where it matches one of its names and echoes no known patient or other person identifier, and goes to review otherwise (D-009). Remaining: applying the actions to each data set (M3); and the review of descriptors with pooled human review, the residual search, and reporting indicators of burned-in text, since the engine does not change pixel data (M4).
 '''
 
 [[requirement]]

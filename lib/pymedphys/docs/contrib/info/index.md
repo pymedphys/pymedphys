@@ -11,6 +11,7 @@ workflows
 dependency-update-prs
 lazy-imports
 deidentification-design
+deidentification-requirements
 dicom-coordinate-validation
 dicom-coordinates-illustrated
 gamma-performance
