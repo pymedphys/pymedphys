@@ -114,6 +114,7 @@ def test_invalid_lists_fail(tmp_path, text, message):
         'Name,Description\nHeart,"Or"gan\n',
         "Name\n" + "x" * 200_000 + "\n",
     ],
+    ids=["unclosed-quote", "stray-quote", "oversized-field"],
 )
 def test_malformed_csv_fails_rather_than_losing_rows(tmp_path, text):
     # An unclosed or stray quote would otherwise join later rows into a cell.
@@ -174,6 +175,27 @@ def test_json_round_trip(tmp_path):
     path = tmp_path / "roi-list.json"
     path.write_text(roi_list.to_json(names), encoding="utf-8")
     assert roi_list.load_json(path) == names
+
+
+@pytest.mark.parametrize("name", [" site.csv", "site.csv\u00a0", "site\u202e.csv"])
+def test_csv_rejects_a_source_file_name_the_json_loader_would_reject(tmp_path, name):
+    path = _write(tmp_path, CSV, name=name)
+
+    with pytest.raises(roi_list.RoiListError, match="source file name"):
+        roi_list.read_csv(path, version="1")
+
+
+def test_a_printable_unicode_file_name_round_trips_without_changing_provenance(
+    tmp_path,
+):
+    path = _write(tmp_path, CSV, name="site \u00e9.csv")
+    names = roi_list.read_csv(path, version="1")
+    output = tmp_path / "roi-list.json"
+    output.write_text(roi_list.to_json(names), encoding="utf-8")
+
+    assert names.source.file == "site \u00e9.csv"
+    assert names.source.sha256 == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert roi_list.load_json(output) == names
 
 
 def test_json_is_deterministic_and_carries_its_provenance(tmp_path):

@@ -26,6 +26,10 @@ spreadsheet as "CSV UTF-8" with a ``Name`` column:
 
     pymedphys experimental nomenclature roi-list site-roi-names.csv site-roi-names.json --list-version 2026-10
 
+The CSV file's name is recorded unchanged in the JSON. It must contain only
+printable characters, with no surrounding whitespace or directory separators.
+Rename a file that does not meet these requirements before converting it.
+
 Command line options
 --------------------
 
