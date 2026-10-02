@@ -105,11 +105,10 @@ from pymedphys._imports import pydicom
 from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
 
 from .file_layout import ElementPath
-from .policy import Policy, PolicyError
+from .policy import Policy, PolicyError, refuse_retain_safe_private
 from .sequences import UnreadableItems, decode_items
 from .standard import PRIVATE_ATTRIBUTES_TAG, sequence_tags
 
-RETAIN_SAFE_PRIVATE = "retain_safe_private"
 # The action that removes an attribute, and a sequence with all its items.
 REMOVE = "X"
 _SPECIFIC_CHARACTER_SET = 0x00080005
@@ -249,12 +248,7 @@ def without_private_attributes(
 
 def _check(policy: Policy) -> None:
     """Refuse a policy that does not remove every private attribute."""
-    if RETAIN_SAFE_PRIVATE in policy.options:
-        raise PolicyError(
-            "the Retain Safe Private Option keeps the private attributes that "
-            "are known to be safe, and no reviewed rules yet say which are, so "
-            "a policy that selects it cannot yet be applied"
-        )
+    refuse_retain_safe_private(policy)
     action = policy.actions.get(PRIVATE_ATTRIBUTES_TAG)
     if action != REMOVE:
         raise PolicyError(

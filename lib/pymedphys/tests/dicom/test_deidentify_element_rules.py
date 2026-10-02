@@ -26,13 +26,14 @@ import itertools
 import pathlib
 import re
 
-from pymedphys._imports import hypothesis, pytest
+from pymedphys._imports import hypothesis, pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     compound_actions,
     element_rules,
     iods,
     policy,
+    private_attributes,
     standard,
     supplementary_actions,
     uid_roles,
@@ -54,7 +55,7 @@ UNCOVERED_TEXT = RuleSource.UNCOVERED_TEXT
 DEFAULT = RuleSource.DEFAULT
 NOT_IN_DICTIONARY = RuleSource.NOT_IN_DICTIONARY
 
-PRIVATE_ROW = "(gggg,eeee) where gggg is odd"
+PRIVATE_ROW = standard.PRIVATE_ATTRIBUTES_TAG
 RETAIN_SAFE_PRIVATE = "retain_safe_private"
 CLEAN_DESCRIPTORS = "clean_descriptors"
 SUPPORTED_IODS = ("CT Image", "RT Dose", "RT Plan", "RT Structure Set")
@@ -341,6 +342,25 @@ def test_retain_safe_private_is_refused_until_reviewed_rules_exist():
     for composed in refused:
         with pytest.raises(policy.PolicyError, match="Retain Safe Private"):
             ElementRules(composed)
+
+
+def test_retain_safe_private_is_refused_as_private_attribute_removal_refuses_it():
+    # One refusal, so the rules and the removal cannot disagree about why.
+    composed = policy.compose_policy("public-release")
+    with pytest.raises(policy.PolicyError) as by_rules:
+        ElementRules(composed)
+    with pytest.raises(policy.PolicyError) as by_removal:
+        private_attributes.private_attribute_paths(pydicom.Dataset(), composed)
+    with pytest.raises(policy.PolicyError) as by_policy:
+        policy.refuse_retain_safe_private(composed)
+
+    assert str(by_rules.value) == str(by_removal.value) == str(by_policy.value)
+
+
+def test_private_attributes_take_the_tables_row_for_them():
+    rules = ElementRules(policy.compose_policy("basic"))
+
+    assert rules.rule("(0009,1001)").entry == standard.PRIVATE_ATTRIBUTES_TAG
 
 
 def test_a_policy_composed_from_another_table_is_refused():
