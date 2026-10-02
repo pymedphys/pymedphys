@@ -20,14 +20,13 @@ accepted only while its digest is added to the published editions.
 """
 
 import dataclasses
-import re
 from unittest import mock
 
 from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import roi_names
 from pymedphys._dicom.deidentify.roi_names import Reason
-from pymedphys._nomenclature import tg263
+from pymedphys._nomenclature import tg263, tg263_published
 
 
 def _structure(primary, reverse):
@@ -449,12 +448,7 @@ def test_an_unpublished_vocabulary_is_refused():
         roi_names.RoiNameVocabulary(extended)
 
 
-def test_the_published_editions_are_recorded_by_worksheet_and_digest():
-    assert roi_names.PUBLISHED_TG263 == {
-        "TG263 v20170815": (
-            "0a0eaeacf147bdf654e0090b3e12b005d76985e6adc95441d7563365ac6e7ffc"
-        )
-    }
-    for sheet, digest in roi_names.PUBLISHED_TG263.items():
-        assert re.fullmatch(r"TG263 v\d{8}", sheet)
-        assert re.fullmatch(r"[0-9a-f]{64}", digest)
+def test_the_published_edition_is_the_one_pymedphys_downloads():
+    pinned = tg263_published.PUBLISHED
+
+    assert roi_names.PUBLISHED_TG263 == {pinned.sheet: pinned.content_sha256}

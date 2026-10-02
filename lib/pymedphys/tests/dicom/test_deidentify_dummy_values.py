@@ -336,3 +336,144 @@ def test_a_source_value_of_another_type_than_values_problem_takes_is_refused(vr,
 def test_a_single_source_value_is_not_taken_as_a_sequence(single):
     with pytest.raises(TypeError, match="sequence of values"):
         dummy_values.values_for_d("LO", "1", single, KEY)
+
+
+PERSON_IDENTIFICATION_CODE_SEQUENCE = "(0040,1101)"
+CODE_VALUE = "(0008,0100)"
+CODING_SCHEME_DESIGNATOR = "(0008,0102)"
+CODE_MEANING = "(0008,0104)"
+# The item that D writes in Person Identification Code Sequence, as the
+# design document gives it, and the item it writes where a source item's
+# Code Value or Code Meaning equals the first.
+PERSON_IDENTIFICATION_ITEM = (
+    (CODE_VALUE, "SH", "DEIDENTIFIED"),
+    (CODING_SCHEME_DESIGNATOR, "SH", "99PYMEDPHYS"),
+    (CODE_MEANING, "LO", "DEIDENTIFIED^DEIDENTIFIED"),
+)
+SECOND_PERSON_IDENTIFICATION_ITEM = (
+    (CODE_VALUE, "SH", "DE-IDENTIFIED"),
+    (CODING_SCHEME_DESIGNATOR, "SH", "99PYMEDPHYS"),
+    (CODE_MEANING, "LO", "DE-IDENTIFIED^DE-IDENTIFIED"),
+)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        [],
+        [{}],
+        [{CODE_VALUE: "Fixture123", CODE_MEANING: "Fixture^Person"}],
+        [{CODE_VALUE: "DEIDENTIFIED-1", CODE_MEANING: "DEIDENTIFIED"}],
+        [{CODE_VALUE: "A1"}, {CODE_MEANING: "B^C"}],
+    ],
+)
+def test_d_on_person_identification_code_sequence_writes_one_item(source):
+    assert dummy_values.items_for_d(PERSON_IDENTIFICATION_CODE_SEQUENCE, source) == (
+        PERSON_IDENTIFICATION_ITEM,
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        [{CODE_VALUE: "DEIDENTIFIED"}],
+        [{CODE_VALUE: " deidentified "}],
+        [{CODE_MEANING: "DEIDENTIFIED^DEIDENTIFIED"}],
+        [{CODE_MEANING: "deidentified^Deidentified^^"}],
+        [{CODE_VALUE: "Fixture123"}, {CODE_VALUE: "DEIDENTIFIED\x00"}],
+    ],
+)
+def test_d_on_person_identification_code_sequence_takes_the_second_constants(source):
+    assert dummy_values.items_for_d(PERSON_IDENTIFICATION_CODE_SEQUENCE, source) == (
+        SECOND_PERSON_IDENTIFICATION_ITEM,
+    )
+    # A source item equal to the second constants takes the first.
+    second = {CODE_VALUE: "DE-IDENTIFIED", CODE_MEANING: "DE-IDENTIFIED^DE-IDENTIFIED"}
+    assert dummy_values.items_for_d(PERSON_IDENTIFICATION_CODE_SEQUENCE, [second]) == (
+        PERSON_IDENTIFICATION_ITEM,
+    )
+
+
+@pytest.mark.parametrize(
+    "item", [PERSON_IDENTIFICATION_ITEM, SECOND_PERSON_IDENTIFICATION_ITEM]
+)
+def test_the_person_identification_item_is_valid_for_each_vr_and_vm(item):
+    dictionary = {row.tag: row for row in standard.load_data_dictionary().attributes}
+
+    for tag, vr, value in item:
+        assert dictionary[tag].vrs == (vr,)
+        assert values.values_problem(vr, dictionary[tag].vm, (value,)) is None
+    meaning = item[-1][-1]
+    # The Person Identification Macro (PS3.3 Table 10-1) lets Code Meaning
+    # follow the rules of PN, but not as a single component.
+    assert values.value_problem("PN", meaning) is None
+    assert meaning.count("^") == 1
+    # The designator names who defines the code; the other values never name
+    # PyMedPhys.
+    assert item[1][-1].startswith("99")
+    assert "pymedphys" not in f"{item[0][-1]}{item[2][-1]}".casefold()
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_the_person_identification_item_is_written_as_dicom():
+    (item,) = dummy_values.items_for_d(PERSON_IDENTIFICATION_CODE_SEQUENCE, [])
+    dataset = pydicom.Dataset()
+    code = pydicom.Dataset()
+    for tag, vr, value in item:
+        code.add_new(int(tag[1:5] + tag[6:10], 16), vr, value)
+    dataset.PersonIdentificationCodeSequence = [code]
+    buffer = io.BytesIO()
+    pydicom.dcmwrite(buffer, dataset, implicit_vr=False, little_endian=True)
+    buffer.seek(0)
+    read = pydicom.dcmread(buffer, force=True).PersonIdentificationCodeSequence
+
+    assert len(read) == 1
+    assert read[0].CodeValue == "DEIDENTIFIED"
+    assert read[0].CodingSchemeDesignator == "99PYMEDPHYS"
+    assert read[0].CodeMeaning == "DEIDENTIFIED^DEIDENTIFIED"
+
+
+def test_d_on_any_other_sequence_is_refused():
+    sequences = [
+        attribute
+        for attribute in _attributes_that_can_take_d()
+        if attribute.vr == "SQ" and attribute.tag != PERSON_IDENTIFICATION_CODE_SEQUENCE
+    ]
+
+    assert {attribute.keyword for attribute in sequences} >= {
+        "ContentSequence",
+        "VerifyingObserverSequence",
+        "OperatorIdentificationSequence",
+    }
+    for attribute in sequences:
+        with pytest.raises(dummy_values.NoDummyValueError) as raised:
+            dummy_values.items_for_d(attribute.tag, [{CODE_VALUE: "SECRET"}])
+        assert raised.value.vr == "SQ"
+        assert "SECRET" not in str(raised.value)
+    # D's generic dummy values still refuse SQ, Person Identification Code
+    # Sequence among them.
+    with pytest.raises(dummy_values.NoDummyValueError):
+        dummy_values.values_for_d("SQ", "1", [], KEY)
+
+
+@pytest.mark.parametrize(
+    "tag", ["(0040,1101", "(0040,a073)", "", None, 0x00401101, ("(0040,1101)",)]
+)
+def test_a_malformed_sequence_tag_is_rejected(tag):
+    with pytest.raises(ValueError, match="tag"):
+        dummy_values.items_for_d(tag, [])
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        {CODE_VALUE: "A1"},
+        "DEIDENTIFIED",
+        [{CODE_VALUE: b"DEIDENTIFIED"}],
+        [{CODE_MEANING: pydicom.valuerep.PersonName("DEIDENTIFIED^DEIDENTIFIED")}],
+        ["DEIDENTIFIED"],
+    ],
+)
+def test_a_source_item_of_another_form_is_refused(source):
+    with pytest.raises(TypeError, match="source"):
+        dummy_values.items_for_d(PERSON_IDENTIFICATION_CODE_SEQUENCE, source)
