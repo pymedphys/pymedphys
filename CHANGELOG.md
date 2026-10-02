@@ -180,12 +180,18 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   warning and logs it through the `pydicom` logger, and these messages can
   quote values (for example a malformed time during pseudonymisation) or name
   the file being read. While the commands and the app run, each such log
-  record is replaced by a fixed summary; a report of an invalid value keeps
-  only its VR, as in `Invalid value for VR TM: <value not shown>.`. pydicom's
-  duplicate warnings are suppressed for the rest of the process. The library
+  record, including those of loggers below `pydicom` such as its pixel
+  decoders, is replaced by a fixed summary; a report of an invalid value keeps
+  only its VR, as in `Invalid value for VR TM: <value not shown>.`. Each
+  warning is shown as Python's warning filters decide, with a fixed summary in
+  place of its message and `<pydicom>:0` in place of its location, so a run
+  can print such a line on standard error besides the log record. The
+  redaction applies only in the thread running the command or the app's
+  pseudonymisation, and only while it runs, so other apps in the same process
+  see pydicom's warnings unchanged. The library
   functions still raise exceptions unchanged and pass pydicom's messages
   through unchanged.
-  [PR #2062](https://github.com/pymedphys/pymedphys/pull/2062), [PR #2082](https://github.com/pymedphys/pymedphys/pull/2082)
+  [PR #2062](https://github.com/pymedphys/pymedphys/pull/2062), [PR #2082](https://github.com/pymedphys/pymedphys/pull/2082), [PR #2221](https://github.com/pymedphys/pymedphys/pull/2221)
 - `pymedphys gui --port` now takes effect. Previously the port was ignored and
   the GUI always used Streamlit's default port. A port that is not an integer
   is now rejected.
