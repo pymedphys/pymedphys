@@ -53,7 +53,8 @@ from collections.abc import Iterable, Iterator, Mapping
 from pymedphys import _version
 from pymedphys._nomenclature import tg263
 
-from . import compound_actions, dummy_values, keys, pseudonyms, uids
+from . import compound_actions, dummy_values, keys, markers, pseudonyms, uids
+from .markers import PROFILE_CODE
 from .codes import load_context_group
 from .iods import load_iod_tables
 from .method_digest import digest_inputs, method_digest
@@ -64,18 +65,15 @@ from .standard import OPTIONS, load_data_dictionary, load_table_e1_1, load_table
 from .uid_registry import load_uid_values
 from .uid_roles import UIDRole, load_uid_roles
 
-# The CID 7050 code of the Basic Profile, and of each option of Table E.1-1.
-PROFILE_CODE = "113100"
+# The CID 7050 code of each option of Table E.1-1: those of the supported
+# options from the markers, and those of the others, which the statement
+# names as not supported.
 OPTION_CODES: Mapping[str, str] = types.MappingProxyType(
     {
-        "retain_safe_private": "113111",
+        **markers.OPTION_CODES,
         "retain_uids": "113110",
-        "retain_device_identity": "113109",
         "retain_institution_identity": "113112",
-        "retain_patient_characteristics": "113108",
         "retain_longitudinal_full_dates": "113106",
-        "retain_longitudinal_modified_dates": "113107",
-        "clean_descriptors": "113105",
         "clean_structured_content": "113104",
         "clean_graphics": "113103",
     }
