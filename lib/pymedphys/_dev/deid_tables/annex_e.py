@@ -25,6 +25,7 @@ import types
 
 from pymedphys._dicom.deidentify.standard import (
     ACTION_CODES,
+    PRIVATE_ATTRIBUTES_TAG,
     ActionCode,
     ProfileAttribute,
     SafePrivateAttribute,
@@ -64,8 +65,6 @@ COLUMNS = (_NAME, _TAG, _RETIRED, _IN_STANDARD_IOD, _BASIC_PROFILE, *OPTION_COLU
 
 # A tag, where an "x" stands for any hexadecimal digit, as in (60xx,3000).
 _TAG_PATTERN = re.compile(r"\([0-9A-Fx]{4},[0-9A-Fx]{4}\)")
-# The row that covers every private attribute.
-PRIVATE_ATTRIBUTES_TAG = "(gggg,eeee) where gggg is odd"
 
 
 def _flag(value: str, column: str, row: int) -> bool:
