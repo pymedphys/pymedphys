@@ -19,44 +19,48 @@ A run has five steps:
 1. :func:`discover` lists every entry below a source directory, in an order
    that depends only on their relative paths, and numbers them from 0. The
    number is the input's **run position**, the only name by which anything
-   the run reports refers to it. A symbolic link is not followed, a file
-   that is not a regular file is not opened, and a DICOMDIR is never passed
-   through (PS3.15 E.1.1): each is refused.
+   the run reports refers to it. A symbolic link or other link is not
+   followed, a file that is not a regular file is not opened, and a
+   DICOMDIR is never passed through (PS3.15 E.1.1): each is refused.
 2. The first pass reads each file once, builds its
    :class:`~pymedphys._dicom.deidentify.references.InstanceRecord`, and
    builds the :class:`~pymedphys._dicom.deidentify.reference_graph.ReferenceGraph`
    of the inputs, before anything is written. Its findings take their
    graded consequences: a study whose instances name several patients
    stops the run with :class:`RunStopped` before any directory is created;
-   every copy of a conflicting instance, and every instance of a series in
-   several studies, is sequestered; an identical duplicate is processed
-   once, at its first position; a dangling reference is reported only.
-3. The second pass reads each remaining file again, sequesters it if its
-   bytes differ from the first pass's, and gives it to the run's
-   :class:`Transform`, which returns the output file and the source values
-   that it removed or replaced, or sequesters the instance. Each output file
-   is written to the staging area, as a temporary file renamed into place
-   once its bytes are on disk.
+   every copy of a conflicting instance, every instance of a series in
+   several studies, and every instance without its SOP Instance, Series
+   Instance, or Study Instance UID is sequestered; identical copies are
+   processed once, from the first copy that reads unchanged; and a dangling
+   reference is reported only.
+3. The second pass reads each file again, sequesters it if it is no longer
+   the file that discovery found or its bytes differ from the first pass's,
+   and gives it to the run's :class:`Transform`. A transform returns the
+   output file with its **evidence**, an object of its own that the run
+   passes to the gate unread, such as the source values that it removed or
+   replaced; or it sequesters the instance, with evidence too. Each output
+   file is written to the staging area under a temporary name, and renamed
+   into place once its bytes are on disk. An instance that a finding
+   sequesters is still transformed, so that its evidence reaches the gate
+   of every other file of its subject; its output is never written.
 4. Each staged file is read back from disk and given to the run's
-   :class:`Gate` with the source values of its subject, pooled from every
-   instance of the run, as the residual search needs. The gate decides
-   whether it may be released. A sequestered instance's staged file is
-   deleted at once.
+   :class:`Gate` with its own evidence and that of every instance of its
+   subject that the transform returned evidence for, its own first. The
+   gate releases it, holds it for review, or sequesters it. A file that is
+   not released is deleted at once.
 5. The release directory is published by renaming the staging area's
    release tree to it, so it appears whole, holding only files that their
-   gate passed, or not at all.
+   gate released, or not at all.
 
 The run decides nothing about an instance's content: the transform and the
-gate do. The run fails closed: an exception that either raises sequesters
-that instance with :attr:`RunReason.INTERNAL_ERROR`, without its message,
-which could quote a value; and any other failure deletes the staging area
-and publishes nothing.
+gate do. The run fails closed. An exception that either raises, or a result
+of the wrong type, sequesters that instance with
+:attr:`RunReason.INTERNAL_ERROR`, without its message, which could quote a
+value; only :class:`Release` releases a file; and any other failure deletes
+the staging area and publishes nothing.
 
 Where the design leaves a detail open, the run takes these defaults:
 
-- an instance without its SOP Instance UID, Series Instance UID, or Study
-  Instance UID is sequestered, since it cannot be named or checked against
-  its series and study;
 - an instance whose first pass cannot follow a sequence on the path to a
   reference has no record, and is sequestered;
 - the release directory must not exist, so that a run never mixes its
@@ -65,21 +69,25 @@ Where the design leaves a detail open, the run takes these defaults:
   it, created for the run with permissions for its owner alone where the
   platform has them, and removed when the run ends; one left by a run that
   was interrupted holds output that may still identify people, so a run
-  refuses to start until someone has reviewed and deleted it.
+  refuses to start until someone has reviewed and deleted it;
+- the published tree keeps the staging area's permissions, for its owner
+  alone, until whoever releases it decides otherwise;
+- a file held for review is not published, and its staged bytes are
+  deleted.
 
 Nothing here logs, warns, or raises with a source path or value. Outcomes
-and findings name inputs by run position and attributes by tag. The source
+and findings name inputs by run position, and attributes by tag. The source
 paths are held only by the :class:`Discovery`, for the confidential QC
 material, and are left out of its ``repr``.
 """
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import enum
 import hashlib
 import os
-import re
 import shutil
 import stat
 from collections.abc import Callable, Iterator
@@ -90,20 +98,20 @@ from . import output_names
 from .file_layout import Region, read_file_layout
 from .reference_graph import Finding, FindingKind, build_reference_graph
 from .references import InstanceRecord, UnreadableSequence
-from .residuals import SourceValue
 
 # Media Storage SOP Class UID of a DICOMDIR: the Media Storage Directory
 # Storage SOP Class (PS3.4 Annex F, PS3.6 Table A-1).
 MEDIA_STORAGE_DIRECTORY_STORAGE = "1.2.840.10008.1.3.10"
 _MEDIA_STORAGE_SOP_CLASS = "(0002,0002)"
+_DIRECTORY_RECORD_SEQUENCE = "(0004,1220)"
 _DICOMDIR_NAME = "DICOMDIR"
 STAGING_SUFFIX = ".staging"
 # The staging area's tree that becomes the release directory.
 _STAGED_RELEASE = "release"
 _PARTIAL_SUFFIX = ".partial"
-# A reason that a transform or gate gives: a short code, never a value.
-_REASON = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
-_MAX_REASON = 64
+# Without long path support, Windows limits a file's path to 259 characters.
+_WINDOWS_MAX_PATH = 259
+_FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 
 
 class RunError(Exception):
@@ -139,38 +147,38 @@ class Status(enum.Enum):
     """What happened to an input."""
 
     RELEASED = "released"  # written to the release directory
-    DUPLICATE = "duplicate"  # an identical copy of an earlier input
+    DUPLICATE = "duplicate"  # an identical copy of a released input
+    HELD_FOR_REVIEW = "held-for-review"  # withheld until it is reviewed
     SEQUESTERED = "sequestered"  # withheld from the release
-    REFUSED = "refused"  # not an instance the run can read
+    REFUSED = "refused"  # not an instance that the run can read
 
 
 class RunReason(enum.Enum):
-    """Why the run itself refused or sequestered an input, as a stable code."""
+    """Why the run itself refused or sequestered an input."""
 
     # discovery
-    SYMBOLIC_LINK = "symbolic-link"
+    SYMBOLIC_LINK = "symbolic-link"  # or another link, such as a junction
     NOT_A_REGULAR_FILE = "not-a-regular-file"
     DICOMDIR = "dicomdir"
     # the first pass
     UNREADABLE_FILE = "unreadable-file"  # the operating system cannot read it
     NOT_READABLE_AS_DICOM = "not-readable-as-dicom"
     UNREADABLE_SEQUENCE = "unreadable-sequence"
-    MISSING_IDENTIFIER = "missing-identifier"
-    CONFLICTING_INSTANCE = "conflicting-instance"
-    SERIES_IN_SEVERAL_STUDIES = "series-in-several-studies"
     # the second pass and after
     CHANGED_DURING_RUN = "changed-during-run"
     INVALID_OUTPUT_NAME = "invalid-output-name"
     SHARED_OUTPUT_NAME = "shared-output-name"
+    STAGED_FILE_CHANGED = "staged-file-changed"
     INVALID_REASON = "invalid-reason"
     INTERNAL_ERROR = "internal-error"
 
 
-_SEQUESTERING_FINDINGS = {
-    FindingKind.MISSING_IDENTIFIER: RunReason.MISSING_IDENTIFIER,
-    FindingKind.CONFLICTING_INSTANCE: RunReason.CONFLICTING_INSTANCE,
-    FindingKind.SERIES_IN_SEVERAL_STUDIES: RunReason.SERIES_IN_SEVERAL_STUDIES,
-}
+# The first pass's findings that sequester the inputs that they name.
+_SEQUESTERING_FINDINGS = (
+    FindingKind.MISSING_IDENTIFIER,
+    FindingKind.CONFLICTING_INSTANCE,
+    FindingKind.SERIES_IN_SEVERAL_STUDIES,
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -179,19 +187,45 @@ class Sequestered:
 
     Attributes
     ----------
-    reason : str
-        A code of lower-case ASCII letters and digits in words joined by
-        hyphens, at most 64 characters, such as ``"residual-person-name"``.
-        A reason in any other form is replaced by
-        :attr:`RunReason.INVALID_REASON`, since it could hold a value.
+    reasons : tuple
+        Why, as value-free objects of the engine: each an enum member, such
+        as a :class:`~pymedphys._dicom.deidentify.source.SourceReason`, or a
+        frozen dataclass instance, such as a walker's
+        :class:`~pymedphys._dicom.deidentify.walker.Sequestration`. None may
+        be text, which could hold a value: reasons that are not all such
+        objects are replaced by :attr:`RunReason.INVALID_REASON`.
+    evidence : object, optional
+        From a transform, its evidence of the instance, for the gates of
+        the other files of its subject. A gate's is ignored.
     """
 
-    reason: str
+    reasons: tuple[object, ...]
+    evidence: object = dataclasses.field(default=None, repr=False)
+
+
+@dataclasses.dataclass(frozen=True)
+class HoldForReview:
+    """A gate's decision to withhold a file until it is reviewed.
+
+    Attributes
+    ----------
+    reasons : tuple
+        Why, as for :class:`Sequestered`.
+    """
+
+    reasons: tuple[object, ...]
+
+
+@dataclasses.dataclass(frozen=True)
+class Release:
+    """A gate's decision to release a file: the only one that releases it."""
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
 class Transformed:
-    """An instance's output file, and the source values it removed or replaced.
+    """An instance's output file, and the transform's evidence of it.
+
+    Its ``repr`` shows only the file's size.
 
     Attributes
     ----------
@@ -201,24 +235,21 @@ class Transformed:
         it from the instance's replacement values.
     data : bytes
         The whole output file.
-    source_values : tuple of SourceValue
-        The values that had to be removed or replaced, for the residual
-        search of every file of the instance's subject.
+    evidence : object, optional
+        What the gate needs of the instance, such as the source values that
+        were removed or replaced, which the run passes on unread.
     """
 
     path: PurePosixPath
     data: bytes
-    source_values: tuple[SourceValue, ...] = ()
+    evidence: object = None
 
     def __repr__(self) -> str:
-        return (
-            f"Transformed(bytes={len(self.data)}, "
-            f"source_values={len(self.source_values)})"
-        )
+        return f"Transformed(bytes={len(self.data)})"
 
 
 class Transform(Protocol):
-    """De-identify one instance: the walker, writer, and verification."""
+    """De-identify one instance: the walker, the writer, and verification."""
 
     def __call__(
         self, data: bytes, record: InstanceRecord
@@ -228,22 +259,33 @@ class Transform(Protocol):
 class Gate(Protocol):
     """Decide whether a staged file may be released.
 
-    ``written`` is the file as read back from the staging area, and
-    ``subject_values`` the source values of every instance of its subject in
-    the run, its own first. ``None`` releases it.
+    ``written`` is the file as read back from the staging area; ``evidence``
+    its transform's evidence; and ``subject`` the evidence of every instance
+    of its subject in the run that the transform returned evidence for,
+    ``evidence`` first and then in run order, sequestered instances
+    included.
     """
 
     def __call__(
-        self,
-        written: bytes,
-        transformed: Transformed,
-        subject_values: tuple[SourceValue, ...],
-    ) -> Sequestered | None: ...
+        self, written: bytes, evidence: object, subject: tuple[object, ...]
+    ) -> Release | HoldForReview | Sequestered: ...
+
+
+@dataclasses.dataclass(frozen=True)
+class _Entry:
+    """An entry as discovery found it."""
+
+    path: Path
+    refusal: RunReason | None
+    device: int
+    inode: int
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
 class Discovery:
     """The entries below a source directory, by run position.
+
+    Its ``repr`` shows only how many there are.
 
     Attributes
     ----------
@@ -251,19 +293,26 @@ class Discovery:
         The source directory, resolved.
     paths : tuple of Path
         Each entry's path, at its run position. Confidential: they are for
-        the QC material alone, and are left out of the ``repr``.
+        the QC material alone.
     refusals : tuple of RunReason or None
         For each position, why discovery refused the entry, or ``None`` for
         a regular file.
     """
 
     source: Path
-    paths: tuple[Path, ...]
-    refusals: tuple[RunReason | None, ...]
+    entries: tuple[_Entry, ...]
+
+    @property
+    def paths(self) -> tuple[Path, ...]:
+        return tuple(entry.path for entry in self.entries)
+
+    @property
+    def refusals(self) -> tuple[RunReason | None, ...]:
+        return tuple(entry.refusal for entry in self.entries)
 
     def __repr__(self) -> str:
-        refused = sum(reason is not None for reason in self.refusals)
-        return f"Discovery(entries={len(self.paths)}, refused={refused})"
+        refused = sum(entry.refusal is not None for entry in self.entries)
+        return f"Discovery(entries={len(self.entries)}, refused={refused})"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -274,18 +323,23 @@ class Outcome:
     ----------
     position : int
     status : Status
-    reason : str or None
-        Why it was refused or sequestered: a :class:`RunReason` value, or the
-        code that its transform or gate gave.
+    reasons : tuple
+        Why it was refused, sequestered, or held: :class:`RunReason`
+        members, the first pass's
+        :class:`~pymedphys._dicom.deidentify.reference_graph.FindingKind`, or
+        the value-free objects that its transform or gate gave.
     output : PurePosixPath or None
-        For a released input, its file below the release directory.
+        For a released input, or a duplicate of one, its file below the
+        release directory.
     duplicate_of : int or None
-        For a duplicate, the position of the copy that was processed.
+        For an identical copy of another input, the position of the copy
+        that was processed. A copy takes that copy's status and reasons,
+        except that a copy of a released input is a duplicate.
     """
 
     position: int
     status: Status
-    reason: str | None = None
+    reasons: tuple[object, ...] = ()
     output: PurePosixPath | None = None
     duplicate_of: int | None = None
 
@@ -302,11 +356,15 @@ class RunResult:
         One for each run position, in order.
     findings : tuple of Finding
         The first pass's findings, by run position.
+    staging_removed : bool
+        Whether the staging area was deleted. If it was not, it may hold
+        output that still identifies people, and needs deleting by hand.
     """
 
     release: Path
     outcomes: tuple[Outcome, ...]
     findings: tuple[Finding, ...]
+    staging_removed: bool = True
 
 
 def discover(source: str | os.PathLike[str]) -> Discovery:
@@ -315,11 +373,12 @@ def discover(source: str | os.PathLike[str]) -> Discovery:
     Entries are ordered by their paths relative to ``source``, compared
     component by component as the bytes that the file system holds, so the
     order is the same on every run. A directory is descended and is not an
-    entry itself; a symbolic link, to a directory or a file, is an entry that
-    is refused and not followed; any other entry that is not a regular file,
-    such as a named pipe, is refused without being opened; and a regular
-    file named ``DICOMDIR``, in any case, is refused, as is a file whose
-    Media Storage SOP Class UID is a DICOMDIR's, found by the first pass.
+    entry itself. A symbolic link, to a directory or a file, or another
+    link, such as a Windows junction, is an entry that is refused and not
+    followed; any other entry that is not a regular file, such as a named
+    pipe, is refused without being opened; and a regular file named
+    ``DICOMDIR``, in any case, is refused, as is one that the first pass
+    finds to be a DICOMDIR.
 
     Parameters
     ----------
@@ -333,38 +392,63 @@ def discover(source: str | os.PathLike[str]) -> Discovery:
     Raises
     ------
     RunError
-        If ``source`` is not a directory.
+        If ``source`` is not a directory, or a directory below it cannot be
+        listed. The message names no path.
     """
-    root = Path(source).resolve()
-    if not root.is_dir():
-        raise RunError("the source is not a directory")
-    found: list[tuple[tuple[bytes, ...], Path, RunReason | None]] = []
-    for path, reason in _walk(root):
-        key = tuple(os.fsencode(part) for part in path.relative_to(root).parts)
-        found.append((key, path, reason))
-    found.sort(key=lambda entry: entry[0])
-    return Discovery(
-        root,
-        tuple(path for _, path, _ in found),
-        tuple(reason for _, _, reason in found),
+    root = Path(source)
+    try:
+        root = root.resolve()
+        is_directory = root.is_dir()
+    except OSError:
+        is_directory = False
+    if not is_directory:
+        raise RunError("the source is not a directory that can be read")
+    try:
+        found = list(_walk(root))
+    except OSError:
+        raise RunError("a directory below the source cannot be listed") from None
+    found.sort(
+        key=lambda entry: tuple(
+            os.fsencode(part) for part in entry.path.relative_to(root).parts
+        )
     )
+    return Discovery(root, tuple(found))
 
 
-def _walk(directory: Path) -> Iterator[tuple[Path, RunReason | None]]:
-    with os.scandir(directory) as entries:
-        listed = list(entries)
-    for entry in listed:
-        path = Path(entry.path)
-        if entry.is_symlink():
-            yield path, RunReason.SYMBOLIC_LINK
-        elif entry.is_dir(follow_symlinks=False):
-            yield from _walk(path)
-        elif not entry.is_file(follow_symlinks=False):
-            yield path, RunReason.NOT_A_REGULAR_FILE
-        elif entry.name.upper() == _DICOMDIR_NAME:
-            yield path, RunReason.DICOMDIR
-        else:
-            yield path, None
+def _walk(root: Path) -> Iterator[_Entry]:
+    """Yield every entry below ``root``, without recursion or following links."""
+    pending = [root]
+    while pending:
+        with os.scandir(pending.pop()) as listing:
+            entries = list(listing)
+        for entry in entries:
+            path = Path(entry.path)
+            details = entry.stat(follow_symlinks=False)
+            refusal = None
+            if _is_link(entry, details):
+                refusal = RunReason.SYMBOLIC_LINK
+            elif stat.S_ISDIR(details.st_mode):
+                pending.append(path)
+                continue
+            elif not stat.S_ISREG(details.st_mode):
+                refusal = RunReason.NOT_A_REGULAR_FILE
+            elif entry.name.upper() == _DICOMDIR_NAME:
+                refusal = RunReason.DICOMDIR
+            else:
+                # On Windows, a directory entry's own stat has no device or
+                # inode, which reading the file compares.
+                details = os.lstat(path)
+            yield _Entry(path, refusal, details.st_dev, details.st_ino)
+
+
+def _is_link(entry: os.DirEntry, details: os.stat_result) -> bool:
+    if entry.is_symlink():
+        return True
+    is_junction = getattr(entry, "is_junction", None)  # Python 3.12 and later
+    if is_junction is not None and is_junction():
+        return True
+    attributes = getattr(details, "st_file_attributes", 0)  # Windows
+    return bool(attributes & _FILE_ATTRIBUTE_REPARSE_POINT)
 
 
 def staging_path(release: str | os.PathLike[str]) -> Path:
@@ -392,7 +476,8 @@ def run(
     release : str or os.PathLike
         The release directory, which must not exist. Its parent must.
     transform : Transform
-        Called once for each instance to process, in run order.
+        Called once for each instance with a record, in run order, other
+        than identical copies and inputs that changed during the run.
     gate : Gate
         Called once for each staged file, in run order, after every
         instance has been transformed.
@@ -404,10 +489,18 @@ def run(
     Raises
     ------
     RunError
-        If the release directory or its staging area exists, or the release
-        directory would be inside the source directory.
+        If the release directory or its staging area exists, the release
+        directory would be inside the source directory, or, on Windows, its
+        files' paths could be too long.
     RunStopped
         If a study's instances name several patients. Nothing is created.
+
+    Notes
+    -----
+    Between the check that the release directory does not exist and the
+    rename that publishes it, another process could create it. On POSIX,
+    the rename then replaces it if it is empty, and fails otherwise; on
+    Windows, it fails.
     """
     release_path = Path(release).absolute()
     staging = staging_path(release_path)
@@ -426,18 +519,18 @@ def run(
         staging.mkdir(mode=0o700)
     except FileExistsError:
         raise RunError(_STAGING_EXISTS.format(staging=staging)) from None
+    removed = False
     try:
         outcomes = _stage_and_gate(discovery, first, staging, transform, gate)
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
-        # The release directory must not have appeared since the check.
         if os.path.lexists(release_path):
             raise RunError(_RELEASE_EXISTS.format(release=release_path))
         os.rename(staged_release, release_path)
         _sync_directory(release_path.parent)
     finally:
-        shutil.rmtree(staging, ignore_errors=True)
-    return RunResult(release_path, outcomes, first.findings)
+        removed = _remove(staging)
+    return RunResult(release_path, outcomes, first.findings, removed)
 
 
 _RELEASE_EXISTS = "the release directory {release} already exists"
@@ -457,11 +550,26 @@ def _check_directories(source: Path, release: Path, staging: Path) -> None:
         raise RunError(
             f"the parent of the release directory {release} is not a directory"
         )
-    resolved = release.parent.resolve() / release.name
     # The release directory does not exist, so it cannot hold the source.
-    if resolved.is_relative_to(source):
+    # Comparing directories rather than names also covers file systems that
+    # ignore case.
+    parent = release.parent.resolve()
+    for directory in (parent, *parent.parents):
+        if os.path.samefile(directory, source):
+            raise RunError(
+                f"the release directory {release} must not be inside the "
+                "source directory"
+            )
+    longest = (
+        len(str(staging / _STAGED_RELEASE))
+        + 1
+        + output_names.MAX_RELATIVE_PATH_LENGTH
+        + len(_PARTIAL_SUFFIX)
+    )
+    if os.name == "nt" and longest > _WINDOWS_MAX_PATH:
         raise RunError(
-            f"the release directory {release} must not be inside the source directory"
+            f"the release directory {release} is too deep for the paths of "
+            f"its files to fit within {_WINDOWS_MAX_PATH} characters"
         )
 
 
@@ -470,37 +578,45 @@ class _FirstPass:
     records: dict[int, InstanceRecord]
     digests: dict[int, bytes]
     findings: tuple[Finding, ...]
-    # Why the run refuses or sequesters each position that it does not process.
+    # The outcome of each position that the second pass does not process.
     settled: dict[int, Outcome]
+    # Each group of identical copies, by its first position.
+    copies: dict[int, tuple[int, ...]]
+    # The positions that a finding sequesters, which are transformed only
+    # for their evidence.
+    sequestered: frozenset[int]
 
 
 def _first_pass(discovery: Discovery) -> _FirstPass:
     records: dict[int, InstanceRecord] = {}
     digests: dict[int, bytes] = {}
     settled: dict[int, Outcome] = {}
-    for position, (path, refusal) in enumerate(
-        zip(discovery.paths, discovery.refusals)
-    ):
-        if refusal is not None:
-            settled[position] = Outcome(position, Status.REFUSED, refusal.value)
+    for position, entry in enumerate(discovery.entries):
+        if entry.refusal is not None:
+            settled[position] = _outcome(position, Status.REFUSED, entry.refusal)
             continue
-        try:
-            data = path.read_bytes()
-        except OSError:
-            settled[position] = _refused(position, RunReason.UNREADABLE_FILE)
+        data = _read(entry)
+        if data is None:
+            settled[position] = _outcome(
+                position, Status.REFUSED, RunReason.UNREADABLE_FILE
+            )
             continue
         digests[position] = hashlib.sha256(data).digest()
         if _is_dicomdir(data):
-            settled[position] = _refused(position, RunReason.DICOMDIR)
+            settled[position] = _outcome(position, Status.REFUSED, RunReason.DICOMDIR)
             continue
         try:
             records[position] = InstanceRecord.from_file(data)
         except UnreadableSequence:
-            settled[position] = _sequestered(position, RunReason.UNREADABLE_SEQUENCE)
+            settled[position] = _outcome(
+                position, Status.SEQUESTERED, RunReason.UNREADABLE_SEQUENCE
+            )
         # pydicom raises many types for a file that it cannot read, and its
         # message can quote a value, so none is kept.
         except Exception:  # pylint: disable = broad-exception-caught
-            settled[position] = _refused(position, RunReason.NOT_READABLE_AS_DICOM)
+            settled[position] = _outcome(
+                position, Status.REFUSED, RunReason.NOT_READABLE_AS_DICOM
+            )
 
     positions = tuple(records)
     graph = build_reference_graph([records[position] for position in positions])
@@ -514,58 +630,85 @@ def _first_pass(discovery: Discovery) -> _FirstPass:
         )
         for finding in graph.findings
     )
+    kinds: dict[int, list[FindingKind]] = collections.defaultdict(list)
+    copies = {}
     for finding in findings:
-        reason = _SEQUESTERING_FINDINGS.get(finding.kind)
-        if reason is not None:
+        if finding.kind in _SEQUESTERING_FINDINGS:
             for group in finding.instances:
                 for position in group:
-                    settled.setdefault(position, _sequestered(position, reason))
+                    if finding.kind not in kinds[position]:
+                        kinds[position].append(finding.kind)
         elif finding.kind is FindingKind.DUPLICATE_INSTANCE:
             (group,) = finding.instances
-            first, *copies = group
-            for position in copies:
-                settled.setdefault(
-                    position,
-                    Outcome(position, Status.DUPLICATE, duplicate_of=first),
-                )
-    return _FirstPass(records, digests, findings, settled)
+            copies[group[0]] = group
+    for position, found in kinds.items():
+        settled[position] = _outcome(position, Status.SEQUESTERED, *found)
+    return _FirstPass(records, digests, findings, settled, copies, frozenset(kinds))
+
+
+def _read(entry: _Entry) -> bytes | None:
+    """Return the bytes of the regular file that discovery found, or ``None``.
+
+    The file is opened without following a symbolic link, or blocking on a
+    named pipe, and must still be the file that discovery found.
+    """
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_BINARY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    try:
+        descriptor = os.open(entry.path, flags)
+    except OSError:
+        return None
+    try:
+        details = os.fstat(descriptor)
+        found = (details.st_dev, details.st_ino)
+        if not stat.S_ISREG(details.st_mode) or found != (entry.device, entry.inode):
+            return None
+        with os.fdopen(descriptor, "rb", closefd=False) as handle:
+            return handle.read()
+    except OSError:
+        return None
+    finally:
+        os.close(descriptor)
 
 
 def _is_dicomdir(data: bytes) -> bool:
-    """Whether a file's Media Storage SOP Class UID is a DICOMDIR's."""
-    if data[128:132] != b"DICM":
-        return False
+    """Whether a file is a DICOMDIR, by its SOP Class or its directory records."""
     try:
         layout = read_file_layout(data)
-    # A file whose layout cannot be read is left to the record to refuse.
+    # A file whose layout cannot be read is left to its record to refuse.
     except Exception:  # pylint: disable = broad-exception-caught
         return False
     for extent in layout.elements:
-        location = extent.location
+        element = extent.location.element
+        if element is None:
+            continue
         if (
-            location.region is Region.FILE_META
-            and location.element is not None
-            and location.element.tag == _MEDIA_STORAGE_SOP_CLASS
+            extent.location.region is Region.FILE_META
+            and element.tag == _MEDIA_STORAGE_SOP_CLASS
+            and data[extent.value_start : extent.end].rstrip(b"\x00 ")
+            == MEDIA_STORAGE_DIRECTORY_STORAGE.encode()
         ):
-            value = data[extent.value_start : extent.end]
-            return value.rstrip(b"\x00 ") == MEDIA_STORAGE_DIRECTORY_STORAGE.encode()
+            return True
+        if not element.items and element.tag == _DIRECTORY_RECORD_SEQUENCE:
+            return True
     return False
 
 
-def _refused(position: int, reason: RunReason) -> Outcome:
-    return Outcome(position, Status.REFUSED, reason.value)
+def _outcome(position: int, status: Status, *reasons: object) -> Outcome:
+    return Outcome(position, status, tuple(reasons))
 
 
-def _sequestered(position: int, reason: RunReason | str) -> Outcome:
-    code = reason.value if isinstance(reason, RunReason) else reason
-    return Outcome(position, Status.SEQUESTERED, code)
-
-
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class _Staged:
     position: int
+    path: PurePosixPath
     file: Path
-    transformed: Transformed
+    digest: bytes
+    evidence: object
     subject: object
 
 
@@ -574,7 +717,7 @@ class _Staged:
 _WITHOUT_PATIENT_ID = object()
 
 
-def _stage_and_gate(
+def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches
     discovery: Discovery,
     first: _FirstPass,
     staging: Path,
@@ -582,63 +725,118 @@ def _stage_and_gate(
     gate: Gate,
 ) -> tuple[Outcome, ...]:
     outcomes: dict[int, Outcome] = dict(first.settled)
-    staged: dict[PurePosixPath, _Staged] = {}
-    # Names that several instances gave: none of them is written.
-    shared: set[PurePosixPath] = set()
-    values: dict[object, dict[SourceValue, None]] = {}
+    staged: dict[str, _Staged] = {}
+    # File names that several instances gave: none of them is written.
+    shared: set[str] = set()
+    evidence: dict[object, list[object]] = collections.defaultdict(list)
     release = staging / _STAGED_RELEASE
+    later = {position for group in first.copies.values() for position in group[1:]}
+    # Each copy that follows another, and the copy it follows.
+    following: dict[int, int] = {}
 
-    for position, record in first.records.items():
-        if position in outcomes:
+    for start, record in first.records.items():
+        if start in later or (start in outcomes and start not in first.sequestered):
             continue
-        try:
-            data = discovery.paths[position].read_bytes()
-        except OSError:
-            outcomes[position] = _sequestered(position, RunReason.UNREADABLE_FILE)
+        # The first copy of a group that reads unchanged is processed.
+        group = first.copies.get(start, (start,))
+        position, data = start, None
+        for candidate in group:
+            data = _second_read(discovery, first, candidate)
+            if data is not None:
+                position = candidate
+                break
+            if candidate not in first.sequestered:
+                outcomes[candidate] = _outcome(
+                    candidate, Status.SEQUESTERED, RunReason.CHANGED_DURING_RUN
+                )
+        if data is None:
             continue
-        if hashlib.sha256(data).digest() != first.digests[position]:
-            outcomes[position] = _sequestered(position, RunReason.CHANGED_DURING_RUN)
-            continue
+        following.update((copy, position) for copy in group if copy > position)
+
         result = _guarded(transform, data, record)
+        subject = _WITHOUT_PATIENT_ID if record.patient is None else record.patient
+        if isinstance(result, (Transformed, Sequestered)) and (
+            result.evidence is not None
+        ):
+            evidence[subject].append(result.evidence)
+        if position in first.sequestered:
+            continue  # transformed only for its evidence
         if not _is_transformed(result):
-            outcomes[position] = _sequestered(position, _reason(result))
+            outcomes[position] = _withheld(position, Status.SEQUESTERED, result)
             continue
         if not _is_output_name(result.path):
-            outcomes[position] = _sequestered(position, RunReason.INVALID_OUTPUT_NAME)
+            outcomes[position] = _outcome(
+                position, Status.SEQUESTERED, RunReason.INVALID_OUTPUT_NAME
+            )
             continue
-        if result.path in staged or result.path in shared:
-            # Instances that share a name are never renamed: all are withheld.
-            shared.add(result.path)
-            other = staged.pop(result.path, None)
+        # A file's name is its replacement SOP Instance UID, so instances
+        # that share one are never renamed: all are withheld.
+        name = result.path.name
+        if name in staged or name in shared:
+            shared.add(name)
+            other = staged.pop(name, None)
             if other is not None:
                 other.file.unlink()
-                outcomes[other.position] = _sequestered(
-                    other.position, RunReason.SHARED_OUTPUT_NAME
+                outcomes[other.position] = _outcome(
+                    other.position, Status.SEQUESTERED, RunReason.SHARED_OUTPUT_NAME
                 )
-            outcomes[position] = _sequestered(position, RunReason.SHARED_OUTPUT_NAME)
+            outcomes[position] = _outcome(
+                position, Status.SEQUESTERED, RunReason.SHARED_OUTPUT_NAME
+            )
             continue
         file = release.joinpath(*result.path.parts)
         _write_atomically(file, result.data)
-        subject = _WITHOUT_PATIENT_ID if record.patient is None else record.patient
-        staged[result.path] = _Staged(position, file, result, subject)
-        pooled = values.setdefault(subject, {})
-        pooled.update(dict.fromkeys(result.source_values))
+        staged[name] = _Staged(
+            position,
+            result.path,
+            file,
+            hashlib.sha256(result.data).digest(),
+            result.evidence,
+            subject,
+        )
 
-    for path, entry in sorted(staged.items(), key=lambda item: item[1].position):
-        own = entry.transformed.source_values
-        subject_values = tuple(dict.fromkeys((*own, *values[entry.subject])))
-        written = entry.file.read_bytes()
-        verdict = _guarded(gate, written, entry.transformed, subject_values)
-        if verdict is None:
-            outcomes[entry.position] = Outcome(
-                entry.position, Status.RELEASED, output=path
-            )
-        else:
-            entry.file.unlink()
-            outcomes[entry.position] = _sequestered(entry.position, _reason(verdict))
+    for entry in sorted(staged.values(), key=lambda entry: entry.position):
+        outcomes[entry.position] = _gate(entry, evidence[entry.subject], gate)
 
-    # A duplicate follows the copy that was processed.
-    return tuple(outcomes[position] for position in range(len(discovery.paths)))
+    for copy, processed in following.items():
+        outcome = outcomes[processed]
+        if outcome.status is Status.RELEASED:
+            outcome = dataclasses.replace(outcome, status=Status.DUPLICATE)
+        outcomes[copy] = dataclasses.replace(
+            outcome, position=copy, duplicate_of=processed
+        )
+    return tuple(outcomes[position] for position in range(len(discovery.entries)))
+
+
+def _second_read(discovery: Discovery, first: _FirstPass, position: int):
+    """Return the file again if it is unchanged since the first pass."""
+    data = _read(discovery.entries[position])
+    if data is None or hashlib.sha256(data).digest() != first.digests[position]:
+        return None
+    return data
+
+
+def _gate(entry: _Staged, pooled: list[object], gate: Gate) -> Outcome:
+    """Gate a staged file, deleting it unless it is released."""
+    written = entry.file.read_bytes()
+    if hashlib.sha256(written).digest() != entry.digest:
+        entry.file.unlink()
+        return _outcome(
+            entry.position, Status.SEQUESTERED, RunReason.STAGED_FILE_CHANGED
+        )
+    own = entry.evidence
+    others = tuple(item for item in pooled if item is not own)
+    subject = others if own is None else (own, *others)
+    verdict = _guarded(gate, written, own, subject)
+    if isinstance(verdict, Release):
+        return Outcome(entry.position, Status.RELEASED, output=entry.path)
+    entry.file.unlink()
+    status = (
+        Status.HELD_FOR_REVIEW
+        if isinstance(verdict, HoldForReview)
+        else Status.SEQUESTERED
+    )
+    return _withheld(entry.position, status, verdict)
 
 
 def _guarded(call: Callable[..., object], *args: object) -> object:
@@ -648,30 +846,32 @@ def _guarded(call: Callable[..., object], *args: object) -> object:
     # Whatever the transform or gate raises, its message could quote a value,
     # so it is not kept, and the instance is not released.
     except Exception:  # pylint: disable = broad-exception-caught
-        return Sequestered(RunReason.INTERNAL_ERROR.value)
+        return Sequestered((RunReason.INTERNAL_ERROR,))
 
 
 def _is_transformed(result: object) -> TypeGuard[Transformed]:
-    return (
-        isinstance(result, Transformed)
-        and isinstance(result.data, bytes)
-        and isinstance(result.source_values, tuple)
-        and all(isinstance(value, SourceValue) for value in result.source_values)
-    )
+    return isinstance(result, Transformed) and isinstance(result.data, bytes)
 
 
-def _reason(result: object) -> str:
+def _withheld(position: int, status: Status, result: object) -> Outcome:
+    """Return the outcome of a transform's or gate's decision to withhold."""
+    if not isinstance(result, (Sequestered, HoldForReview)):
+        return _outcome(position, Status.SEQUESTERED, RunReason.INTERNAL_ERROR)
+    reasons = result.reasons
     if (
-        isinstance(result, Sequestered)
-        and isinstance(result.reason, str)
-        and len(result.reason) <= _MAX_REASON
-        and _REASON.fullmatch(result.reason)
+        not isinstance(reasons, tuple)
+        or not reasons
+        or not all(_is_value_free(reason) for reason in reasons)
     ):
-        return result.reason
-    if isinstance(result, Sequestered):
-        return RunReason.INVALID_REASON.value
-    # Neither Sequestered nor a well-formed Transformed.
-    return RunReason.INTERNAL_ERROR.value
+        return _outcome(position, Status.SEQUESTERED, RunReason.INVALID_REASON)
+    return Outcome(position, status, reasons)
+
+
+def _is_value_free(reason: object) -> bool:
+    """Whether a reason is an engine object, which by contract holds no value."""
+    if isinstance(reason, enum.Enum):
+        return True
+    return dataclasses.is_dataclass(reason) and not isinstance(reason, type)
 
 
 def _is_output_name(path: object) -> bool:
@@ -711,11 +911,27 @@ def _write_atomically(file: Path, data: bytes) -> None:
 
 
 def _sync_directory(directory: Path) -> None:
-    """Flush a directory's entries to disk, where the platform allows it."""
+    """Flush a directory's entries to disk, where the platform allows it.
+
+    Some file systems, such as some network and FUSE file systems, refuse to
+    flush a directory; its entries then reach the disk as they would have
+    without the flush.
+    """
     if os.name != "posix":
         return
-    descriptor = os.open(directory, os.O_RDONLY)
+    try:
+        descriptor = os.open(directory, os.O_RDONLY)
+    except OSError:
+        return
     try:
         os.fsync(descriptor)
+    except OSError:
+        pass
     finally:
         os.close(descriptor)
+
+
+def _remove(staging: Path) -> bool:
+    """Delete the staging area, and return whether it is gone."""
+    shutil.rmtree(staging, ignore_errors=True)
+    return not os.path.lexists(staging)
