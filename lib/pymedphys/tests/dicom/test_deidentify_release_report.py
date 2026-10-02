@@ -503,14 +503,12 @@ def test_values_not_searched_are_counted_by_attribute_and_reason(basic):
                 residuals.Form.VALUE,
                 residuals.Omission.TOO_SHORT,
             ),
-            release_report.Unsearched(
-                nested, release_report.UnsearchedReason.UNDECODABLE
-            ),
-            release_report.Unsearched(name, release_report.UnsearchedReason.RETAINED),
+            residuals.Unsearched(nested, residuals.UnsearchedReason.UNDECODABLE),
+            residuals.Unsearched(name, residuals.UnsearchedReason.RETAINED),
         ]
     )
     report = release_report.release_report(
-        basic, vocabulary=None, search_coverage=coverage
+        basic, vocabulary=None, coverage=coverage
     )
 
     assert release_report.report_document(report)["search_coverage"] == [

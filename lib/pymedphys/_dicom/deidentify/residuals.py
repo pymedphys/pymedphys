@@ -326,6 +326,31 @@ class NotSearched:
         )
 
 
+class UnsearchedReason(enum.Enum):
+    """Why a value was not searched, besides the search's own omissions."""
+
+    RETAINED = "retained"  # the policy retains it (D-027)
+    WRITTEN_CONSTANT = "written-constant"  # equals a constant always written
+    UNDECODABLE = "undecodable"  # it could not be decoded to collect
+
+
+@dataclasses.dataclass(frozen=True)
+class Unsearched:
+    """A source value that the residual search was not given, and why.
+
+    The release report counts these by attribute and reason (D-027), and
+    the QC pack lists each by instance and place.
+
+    Attributes
+    ----------
+    source : ElementPath
+    reason : UnsearchedReason
+    """
+
+    source: ElementPath
+    reason: UnsearchedReason
+
+
 @dataclasses.dataclass(frozen=True)
 class ResidualSearch:
     """What a search of a written file found.

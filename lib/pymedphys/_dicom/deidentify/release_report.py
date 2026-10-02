@@ -57,7 +57,6 @@ from __future__ import annotations
 
 import collections
 import dataclasses
-import enum
 import json
 import random
 import re
@@ -71,7 +70,7 @@ from .method_digest import MethodDigestComponents
 from .file_layout import TAG_PATTERN, ElementPath
 from .policy import PRESETS, Policy
 from .reference_graph import FindingKind
-from .residuals import NotSearched, Omission
+from .residuals import NotSearched, Omission, Unsearched, UnsearchedReason
 from .runtime import RuntimeEnvironment, runtime_environment
 from .scope import Disposition
 from .source import SourceReason
@@ -90,7 +89,8 @@ _VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+!_-]{0,63}")
 # ".." or a cache), and a table, which is a JSON file of the tables' folder.
 _NAME = re.compile(r"[0-9A-Za-z_][0-9A-Za-z_.-]*")
 _TABLE = re.compile(r"[0-9A-Za-z_][0-9A-Za-z_.-]*\.json")
-_LABEL = re.compile(r"S-[0-9]{4,}")
+# The form of a sequestered instance's label, which the QC pack maps.
+LABEL_PATTERN = re.compile(r"S-[0-9]{4,}")
 _ATTRIBUTE = re.compile(rf"{TAG_PATTERN.pattern}( > {TAG_PATTERN.pattern})*")
 _ACTIONS = frozenset({"K", "X", "Z", "D", "U", "C"})
 
@@ -181,28 +181,6 @@ class SequesteredInstance:
     reasons: tuple[SequestrationReason, ...]
 
 
-class UnsearchedReason(enum.Enum):
-    """Why a value was not searched, besides the search's own omissions."""
-
-    RETAINED = "retained"  # the policy retains it (D-027)
-    WRITTEN_CONSTANT = "written-constant"  # equals a constant always written
-    UNDECODABLE = "undecodable"  # it could not be decoded to collect
-
-
-@dataclasses.dataclass(frozen=True)
-class Unsearched:
-    """A source value that the residual search was not given, and why.
-
-    Attributes
-    ----------
-    source : ElementPath
-    reason : UnsearchedReason
-    """
-
-    source: ElementPath
-    reason: UnsearchedReason
-
-
 @dataclasses.dataclass(frozen=True)
 class SearchCoverage:
     """How many forms or values of an attribute were not searched, and why.
@@ -213,7 +191,8 @@ class SearchCoverage:
         The attribute's tags from the outermost sequence, without items.
     reason : str
         An :class:`~pymedphys._dicom.deidentify.residuals.Omission` or an
-        :class:`UnsearchedReason`, as its value, such as ``"too-short"``.
+        :class:`~pymedphys._dicom.deidentify.residuals.UnsearchedReason`, as
+        its value, such as ``"too-short"``.
     count : int
     """
 
@@ -310,7 +289,9 @@ def search_coverage(
     """Count the forms and values not searched by attribute and reason (D-027).
 
     Each :class:`~pymedphys._dicom.deidentify.residuals.NotSearched` counts
-    once, as a form, and each :class:`Unsearched` once, as a value. The
+    once, as a form, and each
+    :class:`~pymedphys._dicom.deidentify.residuals.Unsearched` once, as a
+    value. The
     counts are in the order of their attributes and reasons.
     """
     counts: collections.Counter[tuple[str, str]] = collections.Counter()
@@ -329,7 +310,7 @@ def release_report(
     *,
     vocabulary: tg263.Nomenclature | None,
     sequestered: Iterable[SequesteredInstance] = (),
-    search_coverage: Iterable[SearchCoverage] = (),
+    coverage: Iterable[SearchCoverage] = (),
 ) -> ReleaseReport:
     """Return the release report of a policy, its method, the runtime, and a run.
 
@@ -345,7 +326,7 @@ def release_report(
         report records only its content digest.
     sequestered : iterable of SequesteredInstance, optional
         The run's sequestered instances.
-    search_coverage : iterable of SearchCoverage, optional
+    coverage : iterable of SearchCoverage, optional
         What the run's residual search did not search, from
         :func:`search_coverage`.
 
@@ -381,7 +362,7 @@ def release_report(
         method=method_digest.method_digest_components(policy, vocabulary=vocabulary),
         runtime=runtime_environment(),
         sequestered=tuple(sequestered),
-        search_coverage=tuple(search_coverage),
+        search_coverage=tuple(coverage),
     )
 
 
@@ -502,7 +483,7 @@ def _reason_entry(reason: SequestrationReason) -> dict:
 
 def _sequestered_section(instances: tuple[SequesteredInstance, ...]) -> list:
     labels = [instance.label for instance in instances]
-    if not all(_matches(_LABEL, label) for label in labels):
+    if not all(_matches(LABEL_PATTERN, label) for label in labels):
         raise _refuse("sequestered label", "is not a label such as S-0001")
     if len(set(labels)) != len(labels):
         raise _refuse("sequestered label", "is repeated")
