@@ -16,7 +16,8 @@
 
 AAPM publishes the TG-263 structure names as an Excel 97-2003 workbook on its
 Radiation Oncology Nomenclature Resource Page. PyMedPhys does not include the
-workbook: :func:`read_spreadsheet` reads a copy the user has downloaded, and
+workbook: :mod:`~pymedphys._nomenclature.tg263_published` downloads the pinned
+edition, :func:`read_spreadsheet` reads it or any other copy, and
 :func:`to_json` writes it as JSON that records its source, the source file's
 SHA-256, and AAPM's attribution. :func:`load_json` reads that JSON back and
 rejects a file edited without updating its content digest.
