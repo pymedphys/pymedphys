@@ -852,6 +852,26 @@ def test_a_deferred_sequence_that_cannot_be_read_again_is_refused(basic, tmp_pat
 
 
 @pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize("source", ["file", "buffer"])
+@pytest.mark.parametrize("kept", [0, 4], ids=["absent-header", "partial-header"])
+def test_a_deferred_sequence_whose_source_was_truncated_is_refused(
+    basic, source, kept, tmp_path
+):
+    # The source of a deferred value can be cut short, at or within the
+    # element's header, by the time it is searched.
+    read = _deferred(_written(_plan(), IMPLICIT_VR), source, tmp_path)
+    header = read.get_item(BEAM_SEQUENCE, keep_deferred=True).value_tell - 8
+    if source == "file":
+        with open(tmp_path / "deferred.dcm", "r+b") as truncated:
+            truncated.truncate(header + kept)
+    else:
+        read.buffer.truncate(header + kept)
+
+    _assert_refused(read, basic, ElementPath((), "(300A,00B0)"), "PRIVATE")
+
+
+@pytest.mark.pydicom
 def test_a_malformed_nested_sequence_is_refused_beside_private_attributes(
     monkeypatch, basic
 ):
