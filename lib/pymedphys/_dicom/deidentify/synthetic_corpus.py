@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""A synthetic collection with a conspicuous marker in every attribute to protect.
+"""A synthetic collection with a conspicuous marker in each attribute to protect.
 
 :func:`build_corpus` builds, in memory and the same way every time, one
 linked collection of the first supported release's IODs: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, and an RT Dose that
 references the plan, all of one fictitious patient and study, with one Frame
-of Reference. It is the input for validating each preset end to end, and for
-benchmarks of the engine alongside the published collections (D-018): once
+of Reference. It is the input for validating each preset end to end: once
 the engine has written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
 markers that had to be removed or replaced.
@@ -30,13 +29,16 @@ defines, at each place in the data set where the IOD's modules define it,
 holds a marker: a value that is valid for the attribute's VR and VM in the
 pinned PS3.6 data dictionary, and that no other placement in the collection
 holds. Text is ``SYNMK-00042``, a code string ``SYNMK_00042``, a person name
-``SYNMK00042^MARKER00042``, a UID ``2.25.9999900042``, a date a day from
-1800 to 1899, a datetime that date with the marker's time, a time
-``HHMMSS`` that counts seconds from midnight, a URI
-``https://synmk.invalid/SYNMK-00042``, a binary value the text marker in
-ASCII, and a number the marker's number in a range of its own. Each
-sequence that holds a placement has one item, created along the path where
-needed, so every place is reached through items numbered 0.
+``SYNMK00042^MARKER00042``, a UID ``2.25.9999900042``, a URI
+``https://synmk.invalid/SYNMK-00042``, a date a day from 1800 to 1899, a
+datetime that date at noon, a time ``HHMMSS.424242`` whose seconds from
+midnight are the marker's number, and a binary value of VR OB, OW, or UN the
+text marker in ASCII, padded to an even length. No text marker occurs inside
+another value of its file. A number of a binary VR, such as US or SS, and an
+age (AS) cannot be made conspicuous: each is distinct, but it is found by
+its place in the manifest, not by searching bytes. Each sequence that holds
+a placement has one item, created along the path where needed, so every
+place is reached through items numbered 0.
 
 Some attributes must stay linked, so the collection's references resolve and
 the reference graph (:mod:`~pymedphys._dicom.deidentify.reference_graph`)
@@ -46,12 +48,23 @@ wherever they are, each UID at a reference site
 (:func:`~pymedphys._dicom.deidentify.references.reference_sites`), and the
 Patient ID and Issuer of Patient ID at the top level. These hold the
 collection's own UIDs, under ``2.25.88888``, and one patient's identifiers,
-and are recorded as markers of a kind of their own. A sequence that Table
-E.1-1 lists is present with its item. Where nothing below it is planted, a
-marker is put in the first attribute that the IOD defines in its item, text
-first, so that the sequence cannot be kept unnoticed; the item of Modified
-Attributes Sequence (0400,0550), for which the IOD defines no attribute,
-stays empty.
+and are recorded as linked. A reference names an instance of the collection
+with its SOP Class, except that Referenced Patient Sequence (0008,1120)
+names a synthetic patient with Detached Patient Management SOP Class, and
+Referenced Performed Procedure Step Sequence (0008,1111) a synthetic
+procedure step with Modality Performed Procedure Step SOP Class, which the
+reference graph does not resolve or report, since neither is a storage
+class.
+
+A sequence that Table E.1-1 lists is present with its item. Where no marker
+is planted below it, a marker is put in the first attribute that the IOD
+defines in its item, text first. A linked value does not count, since a
+preset that keeps the sequence and replaces its UIDs would leave no marker.
+Where the IOD defines no attribute in the item that can carry a marker, as
+in Modified Attributes Sequence (0400,0550), or Referenced Patient Sequence,
+whose item holds only UIDs, the sequence is recorded with
+:attr:`NotPlantedReason.NO_MARKER_CARRIER`: its removal is checked by its
+absence at its path in the manifest, not by the residual search.
 
 **Caps.** An attribute is planted only where it lies in at most
 :data:`MAX_DEPTH` nested items, and a sequence only where its item does. The
@@ -59,29 +72,35 @@ deepest references of an RT Structure Set, its Contour Image Sequence in the
 RT Referenced Series Sequence, lie at that depth; the deeper places, such as
 the Code Sequence Macros nested in the Request Attributes Sequence, repeat
 macros already planted at shallower places. A repeating group is planted in
-its first group only, such as Overlay Data in group 6000, with VR OW, which
-PS3.5 Section A.1 gives it in Implicit VR. An attribute that the
-pinned dictionary gives no single VR, and a tag whose element number is
-masked, are not planted. Each placement not planted is recorded with a
+its first group only: Overlay Data (60xx,3000), which only the CT Image IOD
+defines, is planted in group 6000 with VR OW, of the OB or OW that PS3.6
+allows, so it is written in Explicit VR only. An attribute that the pinned
+dictionary gives no single VR, and a tag whose element number is masked,
+are not planted. Each placement not planted is recorded with a
 :class:`NotPlantedReason`. Pixel Data is not an attribute of Table E.1-1 and
 holds only a few synthetic samples.
 
-**Edge cases.** Each file except the RT Dose is written in Explicit VR Little
-Endian, and the RT Dose in Implicit VR Little Endian. The first CT slice
-holds Patient Comments (0010,4000) encoded with VR UN. The RT Structure Set
-declares Specific Character Set ``ISO_IR 100`` and its Patient's Name holds
-a Latin-1 letter. Every file has a private block of a synthetic private
-creator at the top level and another in the item of its first top-level
-sequence, with no VR in the file in Implicit VR. Every file is admitted by the engine's strict source reader
+**Edge cases.** Each file except the RT Dose is written in Explicit VR
+Little Endian, and the RT Dose in Implicit VR Little Endian. pydicom 3.0.2
+does not know some newer attributes, such as (0008,001D), and reads them
+from the RT Dose as UN; the engine reads them with the pinned dictionary.
+The first CT slice holds Patient Comments (0010,4000) encoded with VR UN.
+The RT Structure Set declares Specific Character Set ``ISO_IR 100`` and its
+Patient's Name holds a Latin-1 letter. Every file has a private block of a
+synthetic private creator at the top level, and another in the item of
+Procedure Code Sequence (0008,1032), which pydicom knows; in the Implicit VR
+file neither has a VR in the file. Every file is admitted by the engine's
+strict source reader
 (:func:`~pymedphys._dicom.deidentify.source.read_source`); none is
 deliberately outside admission.
 
-**Manifest.** :class:`CorpusManifest` records, for each file, each placement:
-its element path, VR, values, kind, the Table E.1-1 row it covers, and why it
-was not planted where it was not. :meth:`CorpusManifest.to_json` serialises
-it the same way every time. Building neither reads nor writes a file, takes
-no time or randomness, and logs nothing; :func:`write_corpus` writes the files
-and the manifest only to a directory its caller names.
+**Manifest.** :class:`CorpusManifest` records, for each file, each
+placement: its element path, VR, values, kind, the Table E.1-1 row it
+covers, and why it was not planted where it was not.
+:meth:`CorpusManifest.to_json` serialises it the same way every time.
+Building neither reads nor writes a file, takes no time or randomness, and
+logs nothing; :func:`write_corpus` writes the files and the manifest only to
+a directory its caller names.
 """
 
 from __future__ import annotations
@@ -131,9 +150,9 @@ DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
 # The most items an attribute is planted in, nested one in another.
 MAX_DEPTH = 4
 # Every marker's number is below this, so markers have a fixed width of five
-# digits and none is the start of another, every date is before 1900, and
-# every time is distinct.
-MAX_MARKERS = 36_500
+# digits and none is the start of another, every date is before 1900, every
+# time is distinct, and the negated number fits VR SS.
+MAX_MARKERS = 2**15
 MARKER_PREFIX = "SYNMK"
 MARKER_UID_ROOT = "2.25.99999"
 LINKED_UID_ROOT = "2.25.88888"
@@ -148,10 +167,18 @@ PLAN_SERIES = f"{LINKED_UID_ROOT}00300"
 PLAN = f"{LINKED_UID_ROOT}00301"
 DOSE_SERIES = f"{LINKED_UID_ROOT}00400"
 DOSE = f"{LINKED_UID_ROOT}00401"
+# A patient and a procedure step that the collection names but does not hold.
+PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
+PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
+DETACHED_PATIENT_MANAGEMENT = "1.2.840.10008.3.1.2.1.1"
+MODALITY_PERFORMED_PROCEDURE_STEP = "1.2.840.10008.3.1.2.3.3"
 IMPLEMENTATION_CLASS = f"{LINKED_UID_ROOT}99999"
 PATIENT_ID = f"{MARKER_PREFIX}-LINKED-PATIENT"
 ISSUER_OF_PATIENT_ID = f"{MARKER_PREFIX}-LINKED-ISSUER"
 PRIVATE_GROUP = 0x0009
+# The sequence whose item holds the second private block: Procedure Code
+# Sequence, which every IOD of the corpus defines and pydicom 3.0 knows.
+PRIVATE_ITEM_SEQUENCE = "(0008,1032)"
 
 _SOP_INSTANCE_TAG = "(0008,0018)"
 _SERIES_TAG = "(0020,000E)"
@@ -170,6 +197,8 @@ _TARGETS = types.MappingProxyType(
         "(300C,0060)": STRUCTURE_SET,  # Referenced Structure Set Sequence
         "(300C,0080)": DOSE,  # Referenced Dose Sequence
         _CONTOUR_IMAGE_SEQUENCE: CT_SLICES[0],
+        "(0008,1120)": PATIENT_REFERENCE,  # Referenced Patient Sequence
+        "(0008,1111)": PROCEDURE_STEP,  # Referenced Performed Procedure Step
     }
 )
 _SOP_CLASSES = types.MappingProxyType(
@@ -178,6 +207,8 @@ _SOP_CLASSES = types.MappingProxyType(
         STRUCTURE_SET: RT_STRUCTURE_SET_STORAGE,
         PLAN: RT_PLAN_STORAGE,
         DOSE: RT_DOSE_STORAGE,
+        PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
+        PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
 )
 # The VR given to an attribute with alternatives, as Implicit VR gives it
@@ -186,6 +217,12 @@ _DECIDED_VRS = types.MappingProxyType({"(60xx,3000)": "OW"})
 # The text VRs, which a sequence's content marker has where it can.
 _CONTENT_VRS = frozenset({"LO", "LT", "PN", "SH", "ST", "UC", "UT"})
 _WORD_BYTES = {"OB": 1, "UN": 1, "OW": 2, "OF": 4, "OL": 4, "OD": 8, "OV": 8}
+# Every value has an even length (PS3.5 Section 7.1.1).
+_EVEN = 2
+# The fractional seconds of every TM marker, so that times are conspicuous.
+_TIME_SIGNATURE = ".424242"
+# The time of every DT marker, which no TM marker matches.
+_NOON = "120000"
 _FIRST_DATE = datetime.date(1800, 1, 1)
 _SECONDS_IN_A_DAY = 86_400
 
@@ -233,10 +270,17 @@ class PlacementKind(enum.Enum):
     NOT_PLANTED = "not-planted"
 
 
+# The kinds of placement that leave a marker below a sequence.
+_MARKER_KINDS = frozenset({PlacementKind.PLANTED, PlacementKind.CONTENT})
+
+
 class NotPlantedReason(enum.Enum):
     """Why an attribute of Table E.1-1 that the IOD defines is not planted."""
 
     DEPTH_CAP = "depth-cap"  # deeper than MAX_DEPTH items
+    # A sequence whose item the IOD gives no attribute that can carry a
+    # marker; the sequence itself is present.
+    NO_MARKER_CARRIER = "no-marker-carrier"
     NO_SINGLE_VR = "no-single-vr"  # the pinned dictionary gives no single VR
     MASKED_ELEMENT = "masked-element"  # its element number is masked
 
@@ -258,7 +302,8 @@ class Placement:
     values : tuple of str
         The values as text: numbers in decimal, a tag as eight hexadecimal
         digits, and a binary value as the ASCII text it holds, which is
-        padded to a whole number of words with NUL, or with a space for UN.
+        padded to an even whole number of words with NUL, or with a space
+        for UN.
         ``()`` for a sequence and for an attribute not planted.
     kind : PlacementKind
     profile_tag : str
@@ -266,7 +311,10 @@ class Placement:
         ``"(60xx,3000)"``, or its row for private attributes; ``""`` for
         :attr:`PlacementKind.CONTENT`.
     reason : NotPlantedReason or None
-        Why it is not planted, for :attr:`PlacementKind.NOT_PLANTED` only.
+        Why it is not planted, for :attr:`PlacementKind.NOT_PLANTED`; or
+        :attr:`NotPlantedReason.NO_MARKER_CARRIER` for a
+        :attr:`PlacementKind.SEQUENCE` with no marker below it; otherwise
+        ``None``.
     """
 
     path: ElementPath
@@ -481,15 +529,18 @@ def write_corpus(
     Raises
     ------
     FileExistsError
-        If a file to be written already exists.
+        If a file to be written already exists, before anything is written.
     """
-    written = []
-    for file in corpus.files:
-        path = directory / file.name
-        with open(path, "xb") as stream:
-            stream.write(file.data)
-        written.append(path)
+    paths = [directory / file.name for file in corpus.files]
     path = directory / "manifest.json"
+    for each in (*paths, path):
+        if each.exists():
+            raise FileExistsError(f"{each.name} already exists in the directory")
+    written = []
+    for each, file in zip(paths, corpus.files):
+        with open(each, "xb") as stream:
+            stream.write(file.data)
+        written.append(each)
     with open(path, "x", encoding="utf-8", newline="\n") as stream:
         stream.write(corpus.manifest.to_json())
     written.append(path)
@@ -531,13 +582,14 @@ def _marker(vr: str, number: int, latin_1: bool) -> object:
     day = _FIRST_DATE + datetime.timedelta(days=number)
     seconds = number % _SECONDS_IN_A_DAY
     time = f"{seconds // 3600:02d}{seconds // 60 % 60:02d}{seconds % 60:02d}"
+    time += _TIME_SIGNATURE
     given = "MÄRKER" if latin_1 else "MARKER"
     formats: dict[str, object] = {
         "AE": text,
         "CS": f"{MARKER_PREFIX}_{number:05d}",
         "DA": day.strftime("%Y%m%d"),
         "DS": f"8{number:05d}.5",
-        "DT": day.strftime("%Y%m%d") + time,
+        "DT": day.strftime("%Y%m%d") + _NOON,
         "IS": f"7{number:05d}",
         "PN": f"{MARKER_PREFIX}{number:05d}^{given}{number:05d}",
         "TM": time,
@@ -559,7 +611,7 @@ def _marker(vr: str, number: int, latin_1: bool) -> object:
 def _padded(text: str, vr: str) -> bytes:
     """Return ``text`` in ASCII, padded to a whole number of the VR's words."""
     data = text.encode("ascii")
-    width = _WORD_BYTES[vr]
+    width = max(_WORD_BYTES[vr], _EVEN)
     pad = b" " if vr == "UN" else b"\x00"
     return data + pad * (-len(data) % width)
 
@@ -773,18 +825,26 @@ class _Instance:
             item[number] = new_element(element_path, "UI", [sop_class], self.codecs)
 
     def _fill_sequences(self) -> None:
-        """Give each sequence of Table E.1-1 without a marker below it one."""
-        sequences = [
-            placement
-            for placement in self.placements
-            if placement.kind is PlacementKind.SEQUENCE
-        ]
+        """Give each sequence of Table E.1-1 without a marker below it one.
+
+        The deepest sequences go first, so a marker put in one counts for
+        the sequences that hold it. Only a marker counts: a linked value
+        stays with a sequence that a preset keeps.
+        """
+        sequences = sorted(
+            (
+                (position, placement)
+                for position, placement in enumerate(self.placements)
+                if placement.kind is PlacementKind.SEQUENCE
+            ),
+            key=lambda each: (-len(each[1].path.items), each[0]),
+        )
         profile = {(path, tag) for path, tag, _ in _profile_places(self.iod)}
-        for sequence in sequences:
+        for position, sequence in sequences:
             inside = (*sequence.path.items, (sequence.path.tag, 0))
             if any(
                 placement.path.items[: len(inside)] == inside
-                and placement.kind is not PlacementKind.NOT_PLANTED
+                and placement.kind in _MARKER_KINDS
                 for placement in self.placements
             ):
                 continue
@@ -802,6 +862,9 @@ class _Instance:
             # Text first, which the residual search looks for.
             candidates.sort(key=lambda attribute: attribute.vr not in _CONTENT_VRS)
             if not candidates:
+                self.placements[position] = dataclasses.replace(
+                    sequence, reason=NotPlantedReason.NO_MARKER_CARRIER
+                )
                 continue
             attribute = candidates[0]
             values, text = self.markers.values(attribute.vr, _least_count(attribute.vm))
@@ -827,14 +890,11 @@ class _Instance:
             self._record(element_path, "UI", (target,), PlacementKind.LINKED_UID, tag)
 
     def _add_private_blocks(self) -> None:
-        """Add a private block at the top level, and in the first sequence's item."""
-        first = min(
-            (element.tag for element in self.dataset if element.VR == "SQ"),
-            default=None,
-        )
-        places: list[tuple[tuple[str, int], ...]] = [()]
-        if first is not None:
-            places.append(((f"({first.group:04X},{first.element:04X})", 0),))
+        """Add a private block at the top level, and in an item."""
+        places: list[tuple[tuple[str, int], ...]] = [
+            (),
+            ((PRIVATE_ITEM_SEQUENCE, 0),),
+        ]
         for items in places:
             item = _item(self.dataset, items)
             creator = f"({PRIVATE_GROUP:04X},0010)"

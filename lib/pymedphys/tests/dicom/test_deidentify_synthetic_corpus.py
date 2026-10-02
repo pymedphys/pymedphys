@@ -18,11 +18,15 @@ import collections
 import json
 import re
 
-from pymedphys._imports import pytest
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import elements, standard
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
-from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._dicom.deidentify.file_layout import (
+    ElementPath,
+    Region,
+    read_file_layout,
+)
 from pymedphys._dicom.deidentify.reference_graph import build_reference_graph
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.sop_classes import iod_for_sop_class
@@ -48,11 +52,17 @@ MARKER_PATTERNS = {
     "DT": r"18\d\d(0[1-9]|1[0-2])\d{8}",
     "IS": r"7\d{5}",
     "PN": r"SYNMK(\d{5})\^M[AÄ]RKER\1",
-    "TM": r"\d{6}",
+    "TM": r"([01]\d|2[0-3])[0-5]\d[0-5]\d\.424242",
     "UI": r"2\.25\.99999\d{5}",
     "UR": r"https://synmk\.invalid/SYNMK-\d{5}",
-    "US": r"\d{1,5}",
+    "US": r"[1-9]\d{0,4}",
 }
+# The text VRs, whose markers are searched for as bytes.
+TEXT_VRS = frozenset(MARKER_PATTERNS) - {"OB", "OW", "UN", "US"}
+REFERENCED_SOP_CLASS = "(0008,1150)"
+REFERENCED_SOP_INSTANCE = "(0008,1155)"
+# The kinds that leave a value that the residual search can find.
+MARKERS = frozenset({Kind.PLANTED, Kind.CONTENT})
 LINKED_PATTERNS = {
     Kind.LINKED_UID: r"2\.25\.88888\d{5}",
     Kind.LINKED_PATIENT: r"SYNMK-LINKED-(PATIENT|ISSUER)",
@@ -189,9 +199,12 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
             if (tuple(each for each, _ in path.items), tag) not in expected:
                 tag = path.tag
             found[tuple(each for each, _ in path.items), tag] += 1
-            assert (placement.reason is None) == (
-                placement.kind is not Kind.NOT_PLANTED
-            )
+            if placement.kind is Kind.NOT_PLANTED:
+                assert placement.reason is not None
+            elif placement.kind is Kind.SEQUENCE:
+                assert placement.reason in (None, Reason.NO_MARKER_CARRIER)
+            else:
+                assert placement.reason is None
 
         assert set(found) == expected, file.name
         assert max(found.values()) == 1, file.name
@@ -363,8 +376,8 @@ def test_the_structure_set_has_a_second_character_set(corpus):
     assert all(not file.manifest.specific_character_set for file in others)
 
 
-def test_sequences_hold_a_marker_unless_the_iod_defines_nothing_in_them(corpus):
-    empty = []
+def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
+    without = set()
     for file in corpus.files:
         iod = iod_for_sop_class(file.manifest.sop_class)
         placed = file.manifest.placements
@@ -372,16 +385,23 @@ def test_sequences_hold_a_marker_unless_the_iod_defines_nothing_in_them(corpus):
             if sequence.kind is not Kind.SEQUENCE:
                 continue
             inside = (*sequence.path.items, (sequence.path.tag, 0))
+            # Linked UIDs survive a preset that keeps the sequence and
+            # remaps its UIDs, so only a marker counts.
             below = [
                 p
                 for p in placed
-                if p.path.items[: len(inside)] == inside
-                and p.kind is not Kind.NOT_PLANTED
+                if p.path.items[: len(inside)] == inside and p.kind in MARKERS
             ]
-            if not below:
-                path = tuple(tag for tag, _ in inside)
-                assert not [d for d in iod.definitions if d.path == path], path
-                empty.append(sequence.path.tag)
+            if below:
+                assert sequence.reason is None, sequence.path
+                continue
+            assert sequence.reason is Reason.NO_MARKER_CARRIER, sequence.path
+            path = tuple(tag for tag, _ in inside)
+            for definition in iod.definitions:
+                if definition.path == path and "x" not in definition.tag:
+                    attribute = standard.dictionary_attribute(definition.tag)
+                    assert attribute.vr in ("SQ", "UI") or len(attribute.vrs) > 1
+            without.add(sequence.path.tag)
         for content in (p for p in placed if p.kind is Kind.CONTENT):
             assert any(
                 p.kind is Kind.SEQUENCE
@@ -389,11 +409,18 @@ def test_sequences_hold_a_marker_unless_the_iod_defines_nothing_in_them(corpus):
                 for p in placed
             ), content.path
 
-    # Modified Attributes Sequence, whose item holds any attribute modified.
-    assert set(empty) == {"(0400,0550)"}
+    # Modified Attributes Sequence, whose item holds any attribute modified,
+    # and the reference sequences whose items hold only UIDs.
+    assert {
+        "(0400,0550)",
+        "(0008,1110)",
+        "(0008,1111)",
+        "(0008,1120)",
+        "(0008,1140)",
+    } <= without
 
 
-def test_the_manifest_json_is_deterministic_and_has_every_placement(corpus):
+def test_the_manifest_json_is_deterministic_and_matches_the_files(corpus):
     text = corpus.manifest.to_json()
     document = json.loads(text)
 
@@ -404,20 +431,24 @@ def test_the_manifest_json_is_deterministic_and_has_every_placement(corpus):
         file.name for file in corpus.files
     ]
     for each, file in zip(document["files"], corpus.files):
-        assert each["placements"] == [
-            placement.to_dict() for placement in file.manifest.placements
-        ]
+        reader = _Reader(file.data)
+        assert each["transfer_syntax"] == reader.evidence.transfer_syntax
         assert len(each["placements"]) == len(file.manifest.placements)
         for record in each["placements"]:
-            assert set(record) == {
-                "items",
-                "tag",
-                "vr",
-                "values",
-                "kind",
-                "profile_tag",
-                "reason",
-            }
+            path = ElementPath(
+                tuple((tag, index) for tag, index in record["items"]), record["tag"]
+            )
+            if record["kind"] == "not-planted":
+                assert path not in reader.evidence
+                assert record["reason"] and not record["values"]
+                continue
+            if record["kind"] in ("private", "un-encoded"):
+                field = reader.evidence.value_field(path)
+                assert field.rstrip(b"\x00 ").decode("ascii") == record["values"][0]
+                continue
+            element = reader.read(path)
+            assert element.vr == record["vr"]
+            assert [_as_text(value) for value in element.values] == record["values"]
 
 
 def test_the_corpus_is_written_only_to_a_new_place(corpus, tmp_path):
@@ -437,3 +468,105 @@ def test_the_corpus_is_written_only_to_a_new_place(corpus, tmp_path):
 
 def test_the_repr_shows_no_file_bytes(corpus):
     assert "data=" not in repr(corpus.files[0])
+
+
+def test_every_defined_length_is_even(corpus):
+    for file in corpus.files:
+        layout = read_file_layout(file.data)
+        checked = 0
+        for extent in layout.elements:
+            if extent.undefined_length:
+                continue
+            assert (extent.end - extent.value_start) % 2 == 0, (
+                file.name,
+                str(extent.location),
+            )
+            checked += 1
+        # Nested elements are among those checked.
+        assert any(
+            extent.location.element.items
+            for extent in layout.elements
+            if extent.location.region is Region.DATA_SET
+        )
+        assert checked > 100
+
+
+def test_each_text_marker_occurs_once_in_its_file(corpus):
+    for file in corpus.files:
+        codec = "latin-1" if file.manifest.specific_character_set else "ascii"
+        for placement in file.manifest.placements:
+            if placement.kind not in UNIQUE_KINDS or placement.vr not in TEXT_VRS:
+                continue
+            for value in placement.values:
+                assert file.data.count(value.encode(codec)) == 1, (
+                    file.name,
+                    placement.path,
+                )
+
+
+def test_every_marker_number_fits_a_signed_short():
+    # SS markers are the negated number.
+    assert corpus_module.MAX_MARKERS <= 2**15
+
+
+def test_every_planted_placement_covers_a_row_of_table_e1_1(corpus):
+    rows = set(_profile_rows())
+    for _, placement in _placements(corpus, Kind.PLANTED, Kind.SEQUENCE):
+        assert placement.profile_tag in rows, placement.path
+
+
+def test_every_reference_item_has_its_referenced_sop_class(corpus):
+    for file in corpus.files:
+        evidence = read_source(file.data)
+        references = [
+            p
+            for p in file.manifest.placements
+            if p.kind is Kind.LINKED_UID
+            and p.path.items
+            and p.path.tag == REFERENCED_SOP_INSTANCE
+        ]
+        assert references
+        for placement in references:
+            path = ElementPath(placement.path.items, REFERENCED_SOP_CLASS)
+            assert path in evidence, (file.name, placement.path)
+
+
+def test_patient_and_procedure_step_references_have_their_own_classes(corpus):
+    reader = _Reader(corpus.files[0].data)
+    expected = {
+        "(0008,1120)": "1.2.840.10008.3.1.2.1.1",  # Detached Patient Management
+        "(0008,1111)": "1.2.840.10008.3.1.2.3.3",  # Modality Performed Proc. Step
+    }
+    for sequence, sop_class in expected.items():
+        items = ((sequence, 0),)
+        target = reader.read(ElementPath(items, REFERENCED_SOP_INSTANCE)).values
+        found = reader.read(ElementPath(items, REFERENCED_SOP_CLASS)).values
+
+        assert found == (sop_class,)
+        assert target[0] not in corpus_module.CT_SLICES
+
+
+def test_the_items_private_block_is_in_a_sequence_pydicom_knows(corpus):
+    for file in corpus.files:
+        (creator,) = [
+            p
+            for p in file.manifest.placements
+            if p.kind is Kind.PRIVATE and p.path.items and p.path.tag.endswith(",0010)")
+        ]
+        ((tag, _),) = creator.path.items
+        number = int(tag[1:5] + tag[6:10], 16)
+        dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(file.data))
+
+        assert pydicom.datadict.dictionary_has_tag(number)
+        assert dataset[number].VR == "SQ"
+
+
+def test_the_corpus_is_not_written_over_an_existing_file(corpus, tmp_path):
+    existing = tmp_path / corpus.files[2].name
+    existing.write_bytes(b"kept")
+
+    with pytest.raises(FileExistsError):
+        corpus_module.write_corpus(corpus, tmp_path)
+
+    assert existing.read_bytes() == b"kept"
+    assert [path.name for path in tmp_path.iterdir()] == [existing.name]
