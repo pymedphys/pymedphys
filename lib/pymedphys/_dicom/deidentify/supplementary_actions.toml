@@ -691,7 +691,7 @@ note = "A Defined Term for the purpose of an overlay (PS3.3 C.9.2.1.3). It is a 
 tag = "(0012,0063)"
 keyword = "DeidentificationMethod"
 action = "K"
-note = "A description of each de-identification already applied. PS3.15 E.1.1 has a de-identifier add its own description to this attribute, so the engine keeps the values already present and adds two of its own: a readable value naming PyMedPhys, its version, the PS3.15 edition, and the preset, and the method digest."
+note = "A description of each de-identification already applied. PS3.15 E.1.1 has a de-identifier add its own description to this attribute, so the engine keeps the values already present and adds two of its own: the method digest, and then a readable value naming PyMedPhys, its version, the preset, and the PS3.15 edition it claims, or that it claims none."
 
 # URLs that name coding concepts and schemes: kept under every option, like
 # the codes they qualify.
