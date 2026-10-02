@@ -311,6 +311,15 @@ Publishes to PyPI behind quality gates.
   release offers exactly those files. The assets do not wait for the published
   tests, whose dependencies and datasets change outside the repository; a
   failure there turns the Release Summary red
+- **Requirements evidence**: `deid-matrix` runs after the unit tests, whatever
+  their result, and renders the de-identification requirements-to-tests matrix
+  with `pymedphys dev deid-matrix --check` from the JUnit report of every
+  environment in the unit-test matrix. It fails when a traced test failed, was
+  skipped, or did not run in every environment, or when an environment's
+  report is missing, and still writes the matrix. Once the build has passed,
+  `upload-deid-matrix`, which runs no repository code, attaches the matrix to
+  the GitHub release as `deidentification-requirements-matrix.md` and reads it
+  back. Neither holds back publishing; a failure turns the Release Summary red
 - **Concurrency**: Attempts for the same tag are serialised; publishing is
   never cancelled automatically by a newer attempt
 - **Recovery**: The original `dist` artefact is retained for 30 days. Retry
