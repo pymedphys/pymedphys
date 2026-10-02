@@ -42,7 +42,13 @@ For each written instance, it checks that:
    reference that resolved before writing still resolves after it.
 
 Across the run, it checks that the replacement is one-to-one: no two input
-UIDs have the same written value.
+UIDs have the same written value; and that no two written instances have the
+same SOP Instance UID, as copies of one input instance are written once.
+
+Values are compared site by site, not item by item: a written value at a
+site passes the checks above if it replaces any value at that site in its
+input. So a value that is missing from a site that holds others, or values
+that have moved between the items of one sequence, are not reported.
 
 A UID that the pinned tables register
 (:func:`~pymedphys._dicom.deidentify.uids.well_known_uids`) is its own
@@ -54,9 +60,10 @@ whose input named only inputs that were not written, such as sequestered
 ones, names nothing in the written collection, and is reported, as how the
 pipeline treats it is not yet decided. Where an input lacks one of its
 identifiers, which the graph reports, that identifier is not checked, as
-what the pipeline does with such an input is not yet decided (D-026). A
-reference site that is in an input and not in what was written is not
-reported, since a rule may remove the sequence that holds it.
+what the pipeline does with such an input is not yet decided (D-026),
+though a written value there that is one of the inputs' UIDs is still
+reported. A reference site that is in an input and not in what was written
+is not reported, since a rule may remove the sequence that holds it.
 
 A :class:`WrittenFinding` names instances only by their inputs' positions in
 the graph, and attributes only by their tags, so it holds no UID, no name,
@@ -114,6 +121,10 @@ class WrittenFindingKind(enum.Enum):
         for each input UID, the positions of the written instances where
         its replacement was found, and its ``attribute`` is empty, since
         the values may be at several attributes.
+    DUPLICATE_INSTANCE
+        Several written instances have the same SOP Instance UID. Its one
+        group holds their positions, its ``attribute`` is SOP Instance UID
+        (0008,0018), and its ``count`` is 1.
     """
 
     ORIGINAL_UID = "original-uid"
@@ -122,6 +133,7 @@ class WrittenFindingKind(enum.Enum):
     UNWRITTEN_TARGET = "unwritten-target"
     UNRESOLVED_REFERENCE = "unresolved-reference"
     SHARED_REPLACEMENT = "shared-replacement"
+    DUPLICATE_INSTANCE = "duplicate-instance"
 
 
 _RANK = {kind: rank for rank, kind in enumerate(WrittenFindingKind)}
@@ -136,8 +148,9 @@ class WrittenFinding:
     kind : WrittenFindingKind
     instances : tuple of tuple of int
         The positions in the graph of the inputs whose written instances are
-        concerned: ``((position,),)``, except for a shared replacement, whose
-        groups :class:`WrittenFindingKind` gives, each in ascending order.
+        concerned: ``((position,),)``, except for a shared replacement or a
+        duplicate instance, whose groups :class:`WrittenFindingKind` gives,
+        each in ascending order.
     attribute : tuple of str
         The tags from the outermost sequence to the attribute concerned,
         such as ``("(300C,0060)", "(0008,1155)")``, or ``()`` for a shared
@@ -184,8 +197,14 @@ def verify_written_references(
     """
     records = graph.records
     for position in written:
-        if not 0 <= position < len(records):
-            raise ValueError(f"position {position} is not one of the graph's inputs")
+        if (
+            isinstance(position, bool)
+            or not isinstance(position, int)
+            or not 0 <= position < len(records)
+        ):
+            raise ValueError(
+                "a key of written is not one of the graph's inputs' positions"
+            )
     registered = well_known_uids()
     replacements: dict[str, str] = {}
 
@@ -231,9 +250,15 @@ def verify_written_references(
         source = records[position]
         for level, tag in IDENTITY_TAGS.items():
             value = source.identifier(level)
-            if value is None:
-                continue
             identifier = record.identifier(level)
+            if value is None:
+                if identifier in originals:
+                    findings.append(
+                        WrittenFinding(
+                            WrittenFindingKind.ORIGINAL_UID, ((position,),), (tag,), 1
+                        )
+                    )
+                continue
             if identifier == replace(value):
                 replaced[identifier][value].add(position)
                 continue
@@ -284,6 +309,21 @@ def verify_written_references(
             findings.append(
                 WrittenFinding(WrittenFindingKind.SHARED_REPLACEMENT, tuple(groups), ())
             )
+    copies: dict[str, list[int]] = collections.defaultdict(list)
+    for position, record in sorted(written.items()):
+        identifier = record.identifier(Level.INSTANCE)
+        if identifier:
+            copies[identifier].append(position)
+    findings.extend(
+        WrittenFinding(
+            WrittenFindingKind.DUPLICATE_INSTANCE,
+            (tuple(positions),),
+            (IDENTITY_TAGS[Level.INSTANCE],),
+            1,
+        )
+        for positions in copies.values()
+        if len(positions) > 1
+    )
     findings.sort(
         key=lambda finding: (_RANK[finding.kind], finding.instances, finding.attribute)
     )

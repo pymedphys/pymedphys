@@ -38,6 +38,7 @@ REFERENCE = written_references.WrittenFindingKind.MISMATCHED_REFERENCE
 UNWRITTEN = written_references.WrittenFindingKind.UNWRITTEN_TARGET
 UNRESOLVED = written_references.WrittenFindingKind.UNRESOLVED_REFERENCE
 SHARED = written_references.WrittenFindingKind.SHARED_REPLACEMENT
+DUPLICATE = written_references.WrittenFindingKind.DUPLICATE_INSTANCE
 SOP_INSTANCE_UID, SERIES_INSTANCE_UID, STUDY_INSTANCE_UID = (
     "(0008,0018)",
     "(0020,000E)",
@@ -165,7 +166,7 @@ def test_an_identifier_replaced_under_another_key_is_mismatched(tag):
 
 
 @pytest.mark.pydicom
-def test_a_slice_whose_series_differs_from_its_series_is_mismatched():
+def test_a_slice_written_in_another_series_than_its_input_series_is_mismatched():
     # Each slice of one input series must be written in one series.
     inputs = synthetic.collection()
     written = _all_replaced(inputs)
@@ -308,6 +309,16 @@ def test_a_reference_added_at_a_site_without_one_is_mismatched():
 
 
 @pytest.mark.pydicom
+def test_a_source_uid_in_an_identifier_the_input_lacked_is_an_original_uid():
+    inputs = synthetic.collection()
+    del inputs[PLAN].SeriesInstanceUID
+    written = _all_replaced(inputs)
+    written[PLAN].SeriesInstanceUID = synthetic.CT_SERIES
+
+    assert _finding(ORIGINAL, PLAN, (SERIES_INSTANCE_UID,)) in _verify(inputs, written)
+
+
+@pytest.mark.pydicom
 def test_a_reference_to_an_instance_that_was_not_written_is_reported():
     inputs = synthetic.collection()
     written = _all_replaced(inputs)
@@ -328,6 +339,48 @@ def test_references_to_slices_that_were_not_written_are_counted_once():
     assert _verify(inputs, written) == (
         _finding(UNWRITTEN, STRUCTURE_SET, synthetic.CONTOUR_IMAGES, 2),
         _finding(UNWRITTEN, STRUCTURE_SET, synthetic.ROI_CONTOUR_IMAGES, 2),
+    )
+
+
+@pytest.mark.pydicom
+def test_a_reference_to_a_series_none_of_which_was_written_is_reported():
+    inputs = synthetic.collection()
+    written = _all_replaced(inputs)
+    del written[0], written[1], written[2]
+
+    assert _finding(UNWRITTEN, STRUCTURE_SET, synthetic.RT_REFERENCED_SERIES) in (
+        _verify(inputs, written)
+    )
+
+
+@pytest.mark.pydicom
+def test_a_reference_to_a_series_written_under_another_uid_is_unresolved():
+    inputs = synthetic.collection()
+    written = _all_replaced(inputs)
+    for position in (0, 1, 2):
+        written[position].SeriesInstanceUID = "2.25.9999"
+
+    assert _verify(inputs, written) == (
+        *(
+            _finding(IDENTIFIER, position, (SERIES_INSTANCE_UID,))
+            for position in (0, 1, 2)
+        ),
+        _finding(UNRESOLVED, STRUCTURE_SET, synthetic.RT_REFERENCED_SERIES),
+    )
+
+
+@pytest.mark.pydicom
+def test_a_series_reference_resolves_only_to_a_series():
+    # The series' replacement is written, but as an instance's UID.
+    inputs = synthetic.collection()
+    written = _all_replaced(inputs)
+    series = written[0].SeriesInstanceUID
+    for position in (0, 1, 2):
+        written[position].SeriesInstanceUID = "2.25.9999"
+    written[0].SOPInstanceUID = series
+
+    assert _finding(UNRESOLVED, STRUCTURE_SET, synthetic.RT_REFERENCED_SERIES) in (
+        _verify(inputs, written)
     )
 
 
@@ -394,6 +447,17 @@ def test_a_duplicate_written_once_resolves_for_each_copy():
 
 
 @pytest.mark.pydicom
+def test_conflicting_copies_written_with_one_uid_are_reported():
+    copy = synthetic.ct_slice(0)
+    copy.SliceLocation = "999"
+    inputs = synthetic.collection() + [copy]
+
+    assert _verify(inputs, _all_replaced(inputs)) == (
+        WrittenFinding(DUPLICATE, ((0, 6),), (SOP_INSTANCE_UID,), 1),
+    )
+
+
+@pytest.mark.pydicom
 def test_a_shared_replacement_is_reported(monkeypatch):
     # Two input UIDs whose replacements collide, as SHA-1 names almost never
     # do, are written with the same value.
@@ -409,8 +473,10 @@ def test_a_shared_replacement_is_reported(monkeypatch):
     monkeypatch.setattr(written_references, "transform_uid", colliding)
     inputs = synthetic.collection()
 
+    # The two slices are then also written with one SOP Instance UID.
     assert _verify(inputs, _all_replaced(inputs)) == (
         WrittenFinding(SHARED, ((0, STRUCTURE_SET), (1, STRUCTURE_SET)), ()),
+        WrittenFinding(DUPLICATE, ((0, 1),), (SOP_INSTANCE_UID,), 1),
     )
 
 
@@ -420,7 +486,7 @@ def test_a_position_outside_the_graph_is_refused():
     graph = build_reference_graph([synthetic.record(each) for each in inputs])
     record = synthetic.record(_replaced(inputs[0]))
 
-    for position in (-1, len(inputs)):
+    for position in (-1, len(inputs), True, "0"):
         with pytest.raises(ValueError, match="not one of the graph's inputs"):
             written_references.verify_written_references(KEY, graph, {position: record})
 
