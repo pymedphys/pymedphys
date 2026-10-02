@@ -129,7 +129,7 @@ The engine will live in `lib/pymedphys/_dicom/deidentify/`, with its public API 
     - Each run also writes a conformance statement generated from the rule tables and the effective policy. It covers everything E.1.3 requires, the descriptions that E.3.5, E.3.6, E.3.7, and E.3.10 require for selected options, and each interpretation recorded in this document.
       - It is generated as CommonMark from the policy, the pinned tables, and the engine's parameters, so it is regenerated whenever they change and never edited by hand, and the same inputs always give the same text. It names tags, actions, and parameters, never a value from an instance. It lists each attribute's action, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020), and gives the policy's method digest (D-024).
       - Where the engine does not yet decide something that the statement must describe, such as the markers it inserts, the statement lists it under "Not yet described" and makes no conformance claim. A preset is enabled only once its statement lists nothing there.
-    - Each release publishes a traceability matrix from requirements to tests (D-018).
+    - Each release publishes a traceability matrix from requirements to tests (D-018). The documentation shows the register's part of it, without test results, as the [requirements matrix](deidentification-requirements.md), which every documentation build generates.
 
 ## Presets
 

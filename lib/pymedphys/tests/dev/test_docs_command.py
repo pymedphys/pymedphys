@@ -21,6 +21,7 @@ import types
 import pytest
 
 from pymedphys._dev import docs
+from pymedphys._dicom.deidentify import requirements, traceability
 from pymedphys.cli.dev import dev_cli
 
 
@@ -103,3 +104,56 @@ def test_prep_and_linkcheck_are_exclusive(capsys):
         _parse("--prep", "--linkcheck")
 
     assert "not allowed with argument" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("args", [(), ("--prep",), ("--linkcheck",)])
+def test_every_build_writes_the_requirements_matrix_page(
+    calls, monkeypatch, tmp_path, args
+):
+    page = tmp_path / "deidentification-requirements.md"
+    monkeypatch.setattr(docs, "DEID_MATRIX_PAGE", page)
+
+    docs.build_docs(_parse(*args))
+
+    register = requirements.load_requirements()
+    assert page.read_text(encoding="utf-8") == traceability.render_markdown(
+        traceability.build_matrix(register)
+    )
+    # The page is written before Sphinx reads the sources.
+    assert calls["commands"][0] == [
+        "jupyter-book",
+        "config",
+        "sphinx",
+        str(docs.DOCS_PATH),
+    ]
+
+
+def test_the_requirements_matrix_page_has_no_test_results(monkeypatch, tmp_path):
+    page = tmp_path / "deidentification-requirements.md"
+    monkeypatch.setattr(docs, "DEID_MATRIX_PAGE", page)
+
+    docs.write_deid_matrix_page()
+
+    text = page.read_text(encoding="utf-8")
+    assert text.startswith("# DICOM de-identification requirements-to-tests matrix\n")
+    assert "Test results are from" not in text
+    assert "Traced tests" not in text
+
+
+@pytest.mark.usefixtures("calls")
+def test_clean_writes_no_requirements_matrix_page(monkeypatch, tmp_path):
+    page = tmp_path / "deidentification-requirements.md"
+    monkeypatch.setattr(docs, "DEID_MATRIX_PAGE", page)
+
+    docs.build_docs(_parse("--clean"))
+
+    assert not page.exists()
+
+
+def test_the_requirements_matrix_page_is_listed_and_not_committed():
+    page = docs.DEID_MATRIX_PAGE
+    assert page.parent == docs.DOCS_PATH / "contrib" / "info"
+    toctree = (page.parent / "index.md").read_text(encoding="utf-8")
+    assert f"\ndeidentification-design\n{page.stem}\n" in toctree
+    ignored = (docs.DOCS_PATH / ".gitignore").read_text(encoding="utf-8")
+    assert page.relative_to(docs.DOCS_PATH).as_posix() in ignored.splitlines()
