@@ -54,22 +54,27 @@ class TestResult:
     counts : tuple of int
         The number of the test's cases, across every report, that passed,
         failed (including errors), and were skipped (including expected
-        failures).
+        failures), and the number missing: for each report, the cases that
+        another report ran and it did not. A case that no report ran cannot
+        be counted, since the reports hold no evidence of it.
     """
 
-    counts: tuple[int, int, int]
+    counts: tuple[int, int, int, int]
 
     @property
     def outcome(self) -> str:
         """``"failed"`` if any case failed, ``"not run"`` if none ran,
-        ``"skipped"`` if any was skipped, and ``"passed"`` otherwise."""
-        passed, failed, skipped = self.counts
+        ``"skipped"`` if any was skipped, ``"partly run"`` if any report
+        lacks a case, and ``"passed"`` otherwise."""
+        passed, failed, skipped, missing = self.counts
         if failed:
             return "failed"
         if not passed + skipped:
             return "not run"
         if skipped:
             return "skipped"
+        if missing:
+            return "partly run"
         return "passed"
 
 
@@ -191,12 +196,24 @@ def _matches(node_id: str, classname: str, name: str) -> bool:
     )
 
 
-def _result(node_id: str, cases: Mapping[tuple[str, str, str], int]) -> TestResult:
+def _result(
+    node_id: str, reports: Iterable[Mapping[tuple[str, str, str], int]]
+) -> TestResult:
+    """Count a traced test's cases in each report, and those a report lacks."""
     counts = dict.fromkeys(("passed", "failed", "skipped"), 0)
-    for (classname, name, outcome), count in cases.items():
-        if _matches(node_id, classname, name):
-            counts[outcome] += count
-    return TestResult(counts=(counts["passed"], counts["failed"], counts["skipped"]))
+    ran: list[set[str]] = []
+    for cases in reports:
+        names = set()
+        for (classname, name, outcome), count in cases.items():
+            if _matches(node_id, classname, name):
+                counts[outcome] += count
+                names.add(name)
+        ran.append(names)
+    every = set().union(*ran)
+    missing = sum(len(every - names) for names in ran)
+    return TestResult(
+        counts=(counts["passed"], counts["failed"], counts["skipped"], missing)
+    )
 
 
 def build_matrix(
@@ -213,7 +230,8 @@ def build_matrix(
     reports : iterable of pathlib.Path, optional
         pytest JUnit XML reports (``pytest --junitxml``), such as one for each
         environment that continuous integration tests. A traced test fails if
-        any of its cases failed in any report.
+        any of its cases failed in any report, and is partly run if a report
+        lacks it or any case that another report ran.
     source : str, optional
         The register's path, for the matrix to name. Defaults to the
         register shipped with PyMedPhys.
@@ -228,9 +246,7 @@ def build_matrix(
         If a report cannot be read or is not a JUnit XML report.
     """
     reports = tuple(reports)
-    cases: collections.Counter[tuple[str, str, str]] = collections.Counter()
-    for path in reports:
-        cases.update(_read_report(path))
+    cases = [_read_report(path) for path in reports]
     rows = tuple(
         MatrixRow(
             requirement=entry,
@@ -283,7 +299,9 @@ def _fenced(text: str) -> list[str]:
 def _outcome(result: TestResult) -> str:
     parts = [
         f"{count} {label}"
-        for count, label in zip(result.counts, ("passed", "failed", "skipped"))
+        for count, label in zip(
+            result.counts, ("passed", "failed", "skipped", "missing")
+        )
         if count
     ]
     return result.outcome + (f" ({', '.join(parts)})" if parts else "")

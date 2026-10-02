@@ -157,7 +157,8 @@ def add_deid_matrix_parser(dev_subparsers):
         help=(
             "A pytest JUnit XML report (pytest --junitxml) whose outcomes the "
             "matrix gives. Repeat for each environment's report: a traced test "
-            "fails if any of its cases failed in any report."
+            "fails if any of its cases failed in any report, and is partly run "
+            "if a report lacks it or a case that another report ran."
         ),
     )
     parser.add_argument(

@@ -167,10 +167,10 @@ def test_each_test_case_is_matched_to_its_node_id(register, tmp_path):
     matrix = traceability.build_matrix(register, [report])
     assert matrix.reports == ("junit.xml",)
     assert _outcomes(matrix) == {
-        PLAIN: ("passed", (1, 0, 0)),
-        CASES: ("skipped", (1, 0, 1)),
-        METHOD: ("failed", (0, 1, 0)),
-        UNRUN: ("not run", (0, 0, 0)),
+        PLAIN: ("passed", (1, 0, 0, 0)),
+        CASES: ("skipped", (1, 0, 1, 0)),
+        METHOD: ("failed", (0, 1, 0, 0)),
+        UNRUN: ("not run", (0, 0, 0, 0)),
     }
 
 
@@ -185,7 +185,7 @@ def test_each_test_case_is_matched_to_its_node_id(register, tmp_path):
 def test_a_module_matches_whatever_the_rootdir(register, tmp_path, classname):
     report = _junit(tmp_path / "junit.xml", (classname, "test_plain", ""))
     matrix = traceability.build_matrix(register, [report])
-    assert _outcomes(matrix)[PLAIN] == ("passed", (1, 0, 0))
+    assert _outcomes(matrix)[PLAIN] == ("passed", (1, 0, 0, 0))
 
 
 @pytest.mark.parametrize(
@@ -203,7 +203,7 @@ def test_a_module_matches_whatever_the_rootdir(register, tmp_path, classname):
 def test_only_the_whole_node_id_matches(register, tmp_path, classname, name):
     report = _junit(tmp_path / "junit.xml", (classname, name, ""))
     matrix = traceability.build_matrix(register, [report])
-    assert _outcomes(matrix)[PLAIN] == ("not run", (0, 0, 0))
+    assert _outcomes(matrix)[PLAIN] == ("not run", (0, 0, 0, 0))
 
 
 def test_reports_are_combined(register, tmp_path):
@@ -216,8 +216,45 @@ def test_reports_are_combined(register, tmp_path):
     matrix = traceability.build_matrix(register, [first, second])
     assert matrix.reports == ("linux.xml", "windows.xml")
     outcomes = _outcomes(matrix)
-    assert outcomes[PLAIN] == ("failed", (1, 1, 0))
-    assert outcomes[CASES] == ("passed", (3, 0, 0))
+    assert outcomes[PLAIN] == ("failed", (1, 1, 0, 0))
+    # The Windows report lacks a case that the Linux report ran.
+    assert outcomes[CASES] == ("partly run", (3, 0, 0, 1))
+
+
+def test_a_test_missing_from_one_report_is_partly_run(register, tmp_path):
+    linux = _passing(tmp_path / "linux.xml")
+    windows = _junit(tmp_path / "windows.xml", (MODULE_A, "test_other", ""))
+    matrix = traceability.build_matrix(register, [linux, windows])
+    outcomes = _outcomes(matrix)
+    assert outcomes[PLAIN] == ("partly run", (1, 0, 0, 1))
+    assert outcomes[CASES] == ("partly run", (2, 0, 0, 2))
+    assert matrix.rows[0].verdict == "incomplete"
+    assert matrix.problems()[:2] == (
+        f"PS3.15-E.1.1-01: {PLAIN} partly run",
+        f"PS3.15-E.1.1-01: {CASES} partly run",
+    )
+    markdown = traceability.render_markdown(matrix)
+    assert f"- `{CASES}`: partly run (2 passed, 2 missing)\n" in markdown
+
+
+def test_a_case_missing_from_one_report_is_partly_run(register, tmp_path):
+    linux = _passing(tmp_path / "linux.xml")
+    windows = _passing(tmp_path / "windows.xml")
+    text = windows.read_text(encoding="utf-8")
+    windows.write_text(
+        re.sub(r'<testcase[^>]*name="test_cases\[2\]"[^>]*></testcase>', "", text),
+        encoding="utf-8",
+    )
+    matrix = traceability.build_matrix(register, [linux, windows])
+    assert _outcomes(matrix)[CASES] == ("partly run", (3, 0, 0, 1))
+    assert matrix.rows[0].verdict == "incomplete"
+
+
+def test_the_same_cases_in_every_report_pass(register, tmp_path):
+    reports = [_passing(tmp_path / "linux.xml"), _passing(tmp_path / "windows.xml")]
+    matrix = traceability.build_matrix(register, reports)
+    assert _outcomes(matrix)[CASES] == ("passed", (4, 0, 0, 0))
+    assert not matrix.problems()
 
 
 def test_reports_with_the_same_name_are_named_by_their_paths(register, tmp_path):
