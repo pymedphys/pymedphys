@@ -538,6 +538,9 @@ def test_the_runtime_versions_are_described_not_quoted():
     assert f"pydicom {pydicom.__version__}" not in text
     assert f"tomlkit {tomlkit.__version__}" not in text
     assert f"{platform.python_implementation()} {platform.python_version()}" not in text
+    # No example quotes a version, which could match the runtime's.
+    assert not re.search(r"(CPython|PyPy|pydicom|tomlkit) \d", text)
+    assert "`CPython <version>`" in text
 
 
 def test_private_attribute_removal_is_described(preset):
