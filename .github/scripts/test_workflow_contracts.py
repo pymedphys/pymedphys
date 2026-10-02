@@ -119,7 +119,7 @@ class WorkflowContractTests(unittest.TestCase):
         report = workflow["report-main-failure"]
         # It must never run for pull requests, and needs only to write issues.
         self.assertIn(
-            "    if: failure() && github.event_name == 'push' && "
+            "    if: failure() && !cancelled() && github.event_name == 'push' && "
             "github.ref == 'refs/heads/main'",
             report,
         )
@@ -207,6 +207,55 @@ class WorkflowContractTests(unittest.TestCase):
             "check_distributions.py dist --expected-version", workflow["build"]
         )
         self.assertIn("uvx twine==7.0.0 check dist/*", workflow["build"])
+
+    def test_integration_components_skip_only_on_explicit_false(self):
+        workflow = jobs("ci.yml")
+        integration = (WORKFLOWS / "integration-tests.yml").read_text(encoding="utf-8")
+        for job, input_name, output in (
+            ("doctests", "run-doctests", "run-doctests"),
+            ("slow-tests", "run-slow", "run-slow"),
+            ("script-tests", "run-scripts", "run-integration-scripts"),
+            ("packaging", "run-packaging", "run-packaging"),
+        ):
+            with self.subTest(job=job):
+                self.assertIn(
+                    f"      {input_name}: ${{{{ needs.changes.outputs.{output} != 'false' }}}}",
+                    workflow["integration-tests"],
+                )
+                self.assertIn(
+                    f"{output}: ${{{{ steps.select.outputs.{output} }}}}",
+                    workflow["changes"],
+                )
+                self.assertIn(
+                    f"    if: ${{{{ inputs.{input_name} }}}}",
+                    jobs("integration-tests.yml")[job],
+                )
+                if input_name != "run-slow":
+                    self.assertEqual(
+                        len(
+                            re.findall(
+                                rf"      {input_name}:\n        type: boolean\n        default: true\n        required: false",
+                                integration,
+                            )
+                        ),
+                        2,
+                    )
+                    self.assertNotIn(
+                        f"      {input_name}: false",
+                        jobs("release.yml")["integration-tests"],
+                    )
+
+    def test_new_main_commits_cancel_obsolete_ci_but_label_changes_queue(self):
+        text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
+        condition = text.split("  cancel-in-progress: >-\n", 1)[1].split("\njobs:", 1)[
+            0
+        ]
+        self.assertEqual(
+            " ".join(condition.split()),
+            "${{ (github.event_name == 'pull_request' && github.event.action != 'labeled' && "
+            "github.event.action != 'unlabeled') || (github.event_name == 'push' && "
+            "github.ref == 'refs/heads/main') }}",
+        )
 
     def test_release_assets_require_published_verification(self):
         workflow = jobs("release.yml")
