@@ -22,7 +22,7 @@ import pickle
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import edits, elements, source, walker
+from pymedphys._dicom.deidentify import edits, elements, residuals, source, walker
 from pymedphys._dicom.deidentify.edits import EditKind
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
@@ -249,6 +249,26 @@ def test_replaced_text_outside_iso_646_without_a_character_set_is_replaced():
     (label,) = result.edits
     assert (label.kind, label.values) == (EditKind.REPLACE, ("DEIDENTIFIED",))
     assert _collected(result) == {_path("(300A,0002)"): ("SH", "SENTINEL \xe9")}
+
+
+@pytest.mark.parametrize(
+    "tag, vr", [(0x00081030, "LO"), (0x300A0002, "SH")], ids=["removed", "replaced"]
+)
+def test_text_with_an_escape_and_no_character_set_is_collected_byte_for_byte(tag, vr):
+    # pydicom would read ESC ( B as a switch to ISO 646 and drop it, so the
+    # value is read from its bytes, before any escape sequence is
+    # interpreted, and a copy of those bytes left in a file is still found.
+    original = b"SENTINEL\x1b(B\xe9XYZ"
+    _, result = _edits(_explicit(tag, vr, original + b" "))
+
+    assert not result.sequestrations
+    (collected,) = result.source_values
+    assert collected.value == original.decode("latin-1")
+    search = residuals.find_residuals(b"\x00" * 16 + original, [collected])
+    assert search.findings
+
+    (edit,) = result.edits
+    assert edit.kind is (EditKind.REMOVE if vr == "LO" else EditKind.REPLACE)
 
 
 def test_cleaned_text_outside_iso_646_without_a_character_set_sequesters():
