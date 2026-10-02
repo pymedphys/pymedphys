@@ -14,7 +14,10 @@
 
 """Convert structure-name nomenclatures, such as TG-263's, to JSON.
 
-``pymedphys nomenclature tg263 OUTPUT`` downloads the edition of AAPM's TG-263
+These commands are experimental: they belong to the DICOM de-identification
+tool, which is still in development, and may change without notice.
+
+``pymedphys experimental nomenclature tg263 OUTPUT`` downloads the edition of AAPM's TG-263
 Structure Spreadsheet that PyMedPhys pins, checks it against the pinned
 SHA-256, and converts it to JSON that records the spreadsheet's file name,
 worksheet version, SHA-256, and AAPM's attribution. PyMedPhys does not include
@@ -39,7 +42,8 @@ from pymedphys._nomenclature import tg263, tg263_published
 
 def nomenclature_cli(subparsers):
     parser = subparsers.add_parser(
-        "nomenclature", help="Convert structure-name nomenclatures to JSON."
+        "nomenclature",
+        help="Convert structure-name nomenclatures to JSON (experimental).",
     )
     nomenclature_subparsers = parser.add_subparsers(dest="nomenclature")
 

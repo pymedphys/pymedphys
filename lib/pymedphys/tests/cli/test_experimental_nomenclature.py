@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""``pymedphys nomenclature tg263`` converts a TG-263 spreadsheet to JSON.
+"""``pymedphys experimental nomenclature tg263`` converts a TG-263 spreadsheet to JSON.
 
 No test here reaches the network: the published edition is stood in for by
 the invented spreadsheet in ``tests/nomenclature/data``.
@@ -46,7 +46,9 @@ def _offline(tmp_path, monkeypatch):
 
 
 def _run(*cli_args):
-    args = define_parser().parse_args(["nomenclature", "tg263", *cli_args])
+    args = define_parser().parse_args(
+        ["experimental", "nomenclature", "tg263", *cli_args]
+    )
     return args.func(args)
 
 
