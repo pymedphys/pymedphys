@@ -714,6 +714,7 @@ decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027"]
 implementation = [
   "_dicom/deidentify/file_layout.py",
   "_dicom/deidentify/residuals.py",
+  "_dicom/deidentify/synthetic_corpus.py",
 ]
 tests = [
   "tests/dicom/test_deidentify_residuals.py::test_a_value_hidden_in_the_preamble_is_found",
@@ -726,9 +727,13 @@ tests = [
   "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_nested_sequence_item_is_found",
   "tests/dicom/test_deidentify_residuals.py::test_encapsulated_fragments_are_searched_for_every_form",
   "tests/dicom/test_deidentify_residuals.py::test_a_clean_file_has_no_findings",
+  "tests/dicom/test_deidentify_synthetic_corpus.py::test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed",
+  "tests/dicom/test_deidentify_synthetic_corpus.py::test_markers_are_unique_and_conspicuous",
+  "tests/dicom/test_deidentify_synthetic_corpus.py::test_values_read_back_and_are_valid_for_their_vr_and_vm",
+  "tests/dicom/test_deidentify_synthetic_corpus.py::test_the_manifest_json_is_deterministic_and_has_every_placement",
 ]
 note = '''
-The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. The pipeline is to fail any output file that still holds a source person name, UID, date, or direct identifier, or a source value outside its data set, and to send other text findings to confidential review (D-027). `public-release` retains indirect identifiers only after its statistical assessment. Remaining: removing and replacing identifiers in each data set (M3), and acting on what the search finds, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
+The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. The pipeline is to fail any output file that still holds a source person name, UID, date, or direct identifier, or a source value outside its data set, and to send other text findings to confidential review (D-027). `public-release` retains indirect identifiers only after its statistical assessment. A deterministic synthetic collection plants a conspicuous marker in every attribute of Table E.1-1 that its IODs define, and in private attributes, and records each in a manifest, for validating each preset end to end. Remaining: removing and replacing identifiers in each data set (M3), and acting on what the search finds, validating each preset end to end against that collection, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
 '''
 
 [[requirement]]
