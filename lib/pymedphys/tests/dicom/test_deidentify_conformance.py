@@ -183,8 +183,6 @@ def test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_th
     tables = iods.load_iod_tables()
     for entry in statement.attributes:
         if entry.action not in compound_actions.COMPOUND_ACTIONS:
-            assert entry.places == ()
-            assert entry.elsewhere == ""
             continue
         assert entry.elsewhere == compound_actions.resolve(entry.action, "3")
         expected = []
@@ -353,8 +351,10 @@ def test_a_preset_that_is_not_enabled_makes_no_claim(preset):
 
 
 def test_a_statement_with_sections_still_to_describe_makes_no_claim(monkeypatch):
-    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
-    statement = _statement("basic")
+    # Clean Descriptors leaves the manner of cleaning to describe.
+    preset = "basic-clean-descriptors"
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({preset}))
+    statement = _statement(preset)
     assert statement.enabled
     assert statement.pending
     assert not statement.claims_conformance
@@ -850,3 +850,125 @@ def test_cleaning_is_pending_only_where_the_engine_cleans():
     assert "C" in only_sequences.actions.values()
     assert not any(e.action == "C" for e in statement.attributes)
     assert conformance.PENDING_CLEANING not in statement.pending
+
+
+# Series Description, X in the Basic Profile, is Type 1 in Source Series
+# Information Sequence, which is Type 3 in the RT Structure Set IOD.
+SERIES_DESCRIPTION = "(0008,103E)"
+SOURCE_SERIES_INFORMATION = ("(3006,004C)",)
+RESPONSIBLE_PERSON = "(0010,2297)"  # X; Type 2C at the top level
+OVERLAY_DATA = "(60xx,3000)"  # X; its Overlay Plane Module is U in CT Image
+VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"  # D; only Structured Report IODs
+
+
+def test_plain_actions_are_resolved_by_type_at_every_place(preset):
+    statement = _statement(preset)
+    tables = iods.load_iod_tables()
+    extents = compound_actions.RemovalExtent
+    for entry in statement.attributes:
+        if entry.action in compound_actions.COMPOUND_ACTIONS:
+            continue
+        tag = entry.tag.replace("60xx", "6000")
+        if entry.action not in ("X", "Z", "D") or not re.fullmatch(
+            r"\([0-9A-F]{4},[0-9A-F]{4}\)", tag
+        ):
+            assert (entry.places, entry.elsewhere) == ((), ""), entry.tag
+            continue
+        assert entry.elsewhere == {"X": "X", "Z": "Z", "D": "X"}[entry.action]
+        expected = []
+        for name in sorted(scope.SUPPORTED_IODS):
+            iod = tables.iods[name]
+            paths = dict.fromkeys(d.path for d in iod.definitions if d.tag == entry.tag)
+            for path in paths:
+                if entry.action != "X":
+                    action = compound_actions.resolve_plain_in_iod(
+                        iod, tag, path, entry.action
+                    )
+                    expected.append(conformance.Place(name, path, action))
+                    continue
+                removal = compound_actions.resolve_plain_x_in_iod(iod, tag, path)
+                place = {
+                    extents.ATTRIBUTE: conformance.Place(name, path, "X"),
+                    extents.SEQUESTER: conformance.Place(
+                        name, path, conformance.SEQUESTER
+                    ),
+                    extents.OVERLAY_GROUP: conformance.Place(
+                        name, path, "X", conformance.OVERLAY_GROUP
+                    ),
+                }.get(removal.extent)
+                if removal.extent is extents.SEQUENCE:
+                    place = conformance.Place(name, path, "X", path[removal.sequence])
+                expected.append(place)
+        assert entry.places == tuple(expected), entry.tag
+
+
+def _row(text, tag):
+    return next(line for line in text.splitlines() if f"| {tag} |" in line)
+
+
+def test_a_plain_x_on_a_required_attribute_removes_its_sequence():
+    statement = _statement("basic")
+    place = conformance.Place(
+        "RT Structure Set", SOURCE_SERIES_INFORMATION, "X", SOURCE_SERIES_INFORMATION[0]
+    )
+    assert place in _entry(statement, SERIES_DESCRIPTION).places
+    row = _row(conformance_markdown.render_markdown(statement), SERIES_DESCRIPTION)
+    assert (
+        "X with the enclosing Source Series Information Sequence (3006,004C) "
+        "within Source "
+        "Series Information Sequence (3006,004C) in RT Structure Set" in row
+    )
+    assert row.endswith("X elsewhere |")
+
+
+def test_a_plain_x_that_no_removal_keeps_valid_sequesters():
+    statement = _statement("basic")
+    assert conformance.Place("CT Image", (), conformance.SEQUESTER) in (
+        _entry(statement, RESPONSIBLE_PERSON).places
+    )
+    row = _row(conformance_markdown.render_markdown(statement), RESPONSIBLE_PERSON)
+    assert "instance sequestered at the top level" in row
+
+
+def test_a_plain_x_on_overlay_data_removes_its_overlay_group():
+    statement = _statement("basic")
+    assert conformance.Place("CT Image", (), "X", conformance.OVERLAY_GROUP) in (
+        _entry(statement, OVERLAY_DATA).places
+    )
+    row = _row(conformance_markdown.render_markdown(statement), OVERLAY_DATA)
+    assert "X with its overlay group at the top level in CT Image" in row
+
+
+def test_a_plain_d_that_no_supported_iod_defines_is_removed():
+    entry = _entry(_statement("basic"), VERIFYING_OBSERVER_SEQUENCE)
+    assert (entry.action, entry.places, entry.elsewhere) == ("D", (), "X")
+    row = _row(
+        conformance_markdown.render_markdown(_statement("basic")),
+        VERIFYING_OBSERVER_SEQUENCE,
+    )
+    assert row.endswith("| X elsewhere |")
+
+
+def test_a_plain_z_on_a_type_1_attribute_gives_d(preset):
+    statement = _statement(preset)
+    tables = iods.load_iod_tables()
+    zeroed = [e for e in statement.attributes if e.action == "Z" and e.places]
+    assert zeroed
+    for entry in zeroed:
+        for place in entry.places:
+            iod = tables.iods[place.iod]
+            required = compound_actions.strictest_type(iod, entry.tag, place.path) in (
+                "1",
+                "1C",
+            )
+            assert place.action == ("D" if required else "Z"), entry.tag
+
+
+def test_plain_actions_by_type_are_no_longer_pending(preset):
+    assert not conformance.PENDING
+    assert not any("D-020" in item for item in _statement(preset).pending)
+    section = _section(
+        conformance_markdown.render_markdown(_statement(preset)), "Actions"
+    )
+    assert "Note 13 after Table E.1-1a" in section
+    assert "innermost enclosing sequence" in section

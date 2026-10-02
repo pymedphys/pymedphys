@@ -67,7 +67,7 @@ from .element_rules import (
     ElementRules,
     RuleSource,
 )
-from .iods import load_iod_tables
+from .iods import IOD, load_iod_tables
 from .method_digest import digest_inputs, method_digest
 from .policy import Policy, PolicyError, ResolvedConflict
 from .scope import SUPPORTED_IODS, SUPPORTED_TRANSFER_SYNTAXES, classify
@@ -112,6 +112,12 @@ UID_DEFINITION = "UID role: definition"
 
 # The action at a place where the instance is sequestered rather than written.
 SEQUESTER = "sequester"
+# What a plain X on Overlay Data removes with it: every attribute of its
+# overlay group.
+OVERLAY_GROUP = "overlay group"
+# The plain actions that the Type decides at each place (D-020), and their
+# actions where the IOD does not define the attribute.
+_PLAIN_ELSEWHERE = types.MappingProxyType({"X": "X", "Z": "Z", "D": "X"})
 
 # Why the engine applies another action than the policy gives an attribute.
 ENGINE_REMOVAL = "engine removal"
@@ -121,10 +127,7 @@ SEQUENCE_NOT_CLEANED = "sequence not cleaned"
 
 # What the statement cannot yet describe from the engine. Each is to be
 # generated once the engine decides it.
-PENDING = (
-    "The action where an IOD requires an attribute to which the policy gives "
-    "a plain X or Z (D-020).",
-)
+PENDING: tuple[str, ...] = ()
 # Pending only for a policy whose element rules the engine refuses.
 PENDING_REFUSED = (
     "The actions that the engine applies under this policy, which it refuses "
@@ -155,7 +158,7 @@ _CLEAN_DESCRIPTORS = "clean_descriptors"
 
 @dataclasses.dataclass(frozen=True)
 class Place:
-    """The action of a compound action at one place in a supported IOD.
+    """The action resolved by Type at one place in a supported IOD.
 
     Attributes
     ----------
@@ -166,11 +169,16 @@ class Place:
         first, or ``()`` at the top level of the data set.
     action : str
         ``"X"``, ``"Z"``, ``"D"``, or ``"U"``, or :data:`SEQUESTER`.
+    removes : str
+        For a plain X that removes more than the attribute, the tag of the
+        enclosing sequence that it removes with the attribute, or
+        :data:`OVERLAY_GROUP`; otherwise ``""``.
     """
 
     iod: str
     path: tuple[str, ...]
     action: str
+    removes: str = ""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -360,20 +368,49 @@ class ConformanceStatement:
         return self.enabled and not self.resolved and not self.pending
 
 
+def _place(iod: IOD, name: str, tag: str, path: tuple[str, ...], action: str) -> Place:
+    """Return the action that the Type gives ``action`` at one place."""
+    if action in compound_actions.COMPOUND_ACTIONS:
+        return Place(
+            name, path, compound_actions.resolve_in_iod(iod, tag, path, action)
+        )
+    if action != "X":
+        return Place(
+            name, path, compound_actions.resolve_plain_in_iod(iod, tag, path, action)
+        )
+    removal = compound_actions.resolve_plain_x_in_iod(iod, tag, path)
+    extent = removal.extent
+    if extent is compound_actions.RemovalExtent.SEQUESTER:
+        return Place(name, path, SEQUESTER)
+    if extent is compound_actions.RemovalExtent.OVERLAY_GROUP:
+        return Place(name, path, "X", OVERLAY_GROUP)
+    if extent is compound_actions.RemovalExtent.SEQUENCE:
+        assert removal.sequence is not None
+        return Place(name, path, "X", path[removal.sequence])
+    return Place(name, path, "X")
+
+
 def _places(tag: str, action: str) -> tuple[tuple[Place, ...], str]:
-    if action not in compound_actions.COMPOUND_ACTIONS:
+    if action in compound_actions.COMPOUND_ACTIONS:
+        elsewhere = compound_actions.resolve(action, "3")
+    elif action in _PLAIN_ELSEWHERE:
+        elsewhere = _PLAIN_ELSEWHERE[action]
+    else:
+        return (), ""
+    # A tag of a repeating group, such as (60xx,0022), is looked up as that of
+    # its first group, which every group's definition matches. A row that
+    # stays masked, such as the Private Attributes row or (50xx,xxxx), has no
+    # place in an IOD.
+    concrete = _REPEATING.sub(r"(\g<1>00,", tag)
+    if not _CONCRETE_TAG.fullmatch(concrete):
         return (), ""
     tables = load_iod_tables()
-    # A tag of a repeating group, such as (60xx,0022), is looked up as that of
-    # its first group, which every group's definition matches.
-    concrete = _REPEATING.sub(r"(\g<1>00,", tag)
     places = []
     for name in sorted(SUPPORTED_IODS):
         iod = tables.iods[name]
         for path in dict.fromkeys(d.path for d in iod.definitions if d.tag == tag):
-            resolved = compound_actions.resolve_in_iod(iod, concrete, path, action)
-            places.append(Place(name, path, resolved))
-    return tuple(places), compound_actions.resolve(action, "3")
+            places.append(_place(iod, name, concrete, path, action))
+    return tuple(places), elsewhere
 
 
 def _attribute(

@@ -34,6 +34,7 @@ from .conformance import (
     ENGINE_REMOVAL,
     FILE_META_WRITTEN,
     OPTION_CODES,
+    OVERLAY_GROUP,
     PIXEL_OPTION_CODES,
     SEQUESTER,
     AttributeAction,
@@ -86,19 +87,30 @@ def _cell(text: str) -> str:
 def _resolution(
     entry: AttributeAction, iods: tuple[str, ...], names: Mapping[str, str]
 ) -> str:
-    """Describe where a compound action resolves to an action other than its
-    action elsewhere, naming each enclosing sequence, and naming the IODs only
-    where not every supported IOD defines the attribute there."""
+    """Describe where an action resolves by Type to another than its action
+    elsewhere, or a plain X removes more than the attribute, naming each
+    enclosing sequence, and naming the IODs only where not every supported
+    IOD defines the attribute there."""
     if not entry.elsewhere:
         return ""
     found: dict[str, dict[tuple[str, ...], list[str]]] = {}
     for place in entry.places:
-        if place.action != entry.elsewhere:
-            found.setdefault(place.action, {}).setdefault(place.path, []).append(
-                place.iod
+        if place.action == SEQUESTER:
+            label = "instance sequestered"
+        elif place.removes == OVERLAY_GROUP:
+            label = f"{place.action} with its overlay group"
+        elif place.removes:
+            label = (
+                f"{place.action} with the enclosing {names[place.removes]} "
+                f"{place.removes}"
             )
+        elif place.action != entry.elsewhere:
+            label = place.action
+        else:
+            continue
+        found.setdefault(label, {}).setdefault(place.path, []).append(place.iod)
     parts = []
-    for action, paths in found.items():
+    for label, paths in found.items():
         where = [
             (
                 "within " + " > ".join(f"{names[t]} {t}" for t in path)
@@ -108,7 +120,6 @@ def _resolution(
             + ("" if tuple(iods_here) == iods else " in " + _join(iods_here))
             for path, iods_here in paths.items()
         ]
-        label = "instance sequestered" if action == SEQUESTER else action
         parts.append(f"{label} " + "; ".join(where) + ". ")
     return "".join(parts) + f"{entry.elsewhere} elsewhere"
 
@@ -441,8 +452,26 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "X, Z, and D that the action offers, and in X/Z/U*, U takes the place "
         "of D. X/Z on a Type 1 or 1C attribute gives D, the dummy value that "
         "Z may write. An attribute that the IOD does not define at that place "
-        "counts as Type 3 (D-020). The last column gives the resolved action at "
-        "each place where a supported IOD defines the attribute, and elsewhere.",
+        "counts as Type 3 (D-020).",
+        "",
+        "The Type also decides what three plain actions do (D-020). A plain D "
+        "gives X where the IOD does not define the attribute at that place, "
+        "as Note 13 after Table E.1-1a says, and a plain Z on a Type 1 or 1C "
+        "attribute gives D. A plain X always removes the attribute. Where the "
+        "IOD requires it at that place, by its strictest Type, the innermost "
+        "enclosing sequence that the IOD makes Type 3 at its own place is "
+        "removed with it, with everything in it, and where no such sequence "
+        "encloses it, the instance is sequestered. Two attributes are "
+        "exceptions: removing Overlay Data (60xx,3000) removes every attribute "
+        "of its overlay group where the IOD's Overlay Plane Module is "
+        "user-optional, and ROI Interpreter Sequence (3006,004E) is removed "
+        "alone, since its condition lapses once ROI Creator Sequence "
+        "(3006,004D) is removed.",
+        "",
+        "For each compound action, and each plain X, Z, or D, the last column "
+        "gives the action at each place where a supported IOD defines the "
+        "attribute and the action differs from that elsewhere, and then the "
+        "action elsewhere.",
         "",
         *_table(
             ("Tag", "Attribute", "Rule", "Action", "In the supported IODs"),
