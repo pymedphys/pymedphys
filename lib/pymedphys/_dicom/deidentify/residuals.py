@@ -332,6 +332,8 @@ class UnsearchedReason(enum.Enum):
     RETAINED = "retained"  # the policy retains it (D-027)
     WRITTEN_CONSTANT = "written-constant"  # equals a constant always written
     UNDECODABLE = "undecodable"  # it could not be decoded to collect
+    # a UID that the pinned tables register, which names no one
+    REGISTERED_UID = "registered-uid"
 
 
 @dataclasses.dataclass(frozen=True)
