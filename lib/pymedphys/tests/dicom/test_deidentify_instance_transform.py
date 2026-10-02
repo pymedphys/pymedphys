@@ -32,23 +32,36 @@ from pymedphys._dicom.deidentify import (
 )
 from pymedphys._dicom.deidentify.edits import EditKind, edit_instance
 from pymedphys._dicom.deidentify.instance_transform import (
-    InstanceEvidence,
     InstanceTransform,
     PendingEdit,
+    ReleaseGate,
     TransformReason,
+    coverage_of,
     writer_plan,
 )
+from pymedphys._dicom.deidentify.element_rules import ElementRules
 from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.policy import compose_policy
 from pymedphys._dicom.deidentify.preservation import PreservationReason
 from pymedphys._dicom.deidentify.preserving_writer import WriteReason
 from pymedphys._dicom.deidentify.pseudonyms import SubjectIdentity, patient_pseudonym
 from pymedphys._dicom.deidentify.references import InstanceRecord
+from pymedphys._dicom.deidentify.release_gate import (
+    Coverage,
+    Decision,
+    ReasonCode,
+    ReleaseReason,
+)
 from pymedphys._dicom.deidentify.scope import Disposition
 from pymedphys._dicom.deidentify.source import SourceReason, read_source
-from pymedphys._dicom.deidentify.uids import replacement_uid
-from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
+from pymedphys._dicom.deidentify.uids import UIDOutcome, replacement_uid
+from pymedphys._dicom.deidentify.walker import (
+    SequesterReason,
+    Sequestration,
+    plan_instance,
+)
 
 from . import _synthetic_references as synthetic
 from .test_deidentify_file_layout import EXPLICIT, _file
@@ -138,8 +151,8 @@ def test_the_evidence_holds_the_removed_values_and_shows_only_counts():
 
     assert isinstance(result, run.Transformed)
     evidence = result.evidence
-    assert isinstance(evidence, InstanceEvidence)
-    values = evidence.edits.source_values  # pylint: disable=no-member
+    assert isinstance(evidence, Coverage)
+    values = evidence.collected  # pylint: disable=no-member
     collected = {str(value.value) for value in values}
     assert SENTINEL_NAME in collected
     assert SENTINEL_LABEL in collected
@@ -180,7 +193,7 @@ def test_without_the_subjects_identity_the_pseudonyms_are_pending():
     assert isinstance(result, run.Sequestered)
     assert PendingEdit(_top("(0010,0010)"), "Z") in result.reasons
     assert all(isinstance(reason, PendingEdit) for reason in result.reasons)
-    assert isinstance(result.evidence, InstanceEvidence)
+    assert isinstance(result.evidence, Coverage)
 
 
 def test_the_walkers_sequestrations_are_its_reasons_and_keep_the_evidence():
@@ -192,7 +205,7 @@ def test_the_walkers_sequestrations_are_its_reasons_and_keep_the_evidence():
     (reason,) = result.reasons
     assert isinstance(reason, Sequestration)
     assert reason.reason is SequesterReason.VR_NOT_IN_DICTIONARY
-    assert isinstance(result.evidence, InstanceEvidence)
+    assert isinstance(result.evidence, Coverage)
     assert "SENTINEL" not in repr(result)
 
 
@@ -205,7 +218,7 @@ def test_a_write_the_writer_refuses_is_sequestered_by_its_reason(monkeypatch):
 
     assert isinstance(result, run.Sequestered)
     assert result.reasons == (WriteReason.ENCODING,)
-    assert isinstance(result.evidence, InstanceEvidence)
+    assert isinstance(result.evidence, Coverage)
 
 
 def test_output_that_does_not_preserve_its_source_is_sequestered(monkeypatch):
@@ -289,7 +302,7 @@ def test_a_run_with_the_transform_releases_the_collection(tmp_path):
     subjects = []
 
     def gate(_written, evidence, subject):
-        assert isinstance(evidence, InstanceEvidence)
+        assert isinstance(evidence, Coverage)
         subjects.append(len(subject))
         return run.Release()
 
@@ -302,6 +315,126 @@ def test_a_run_with_the_transform_releases_the_collection(tmp_path):
         data = (release / outcome.output).read_bytes()
         assert synthetic.PATIENT_ID.encode() not in data
         pydicom.dcmread(io.BytesIO(data))
+
+
+def _source(tmp_path, datasets):
+    source = tmp_path / "source"
+    source.mkdir()
+    for position, dataset in enumerate(datasets):
+        (source / f"{position}.dcm").write_bytes(synthetic.written(dataset))
+    return run.discover(source)
+
+
+def test_retained_registered_uids_are_neither_planned_nor_collected():
+    data = synthetic.written(synthetic.rt_dose())
+    source = read_source(data)
+    plan = _plan_of(data)
+    edits = edit_instance(source, plan, KEY, InstanceRecord.from_file(data).patient)
+    retained = [
+        edit.path
+        for edit in edits.edits
+        if edit.uid_outcomes and set(edit.uid_outcomes) == {UIDOutcome.RETAINED}
+    ]
+    assert _top("(0008,0016)") in retained
+    assert any(path.tag == "(0008,1150)" for path in retained)
+
+    coverage = coverage_of(plan, edits)
+
+    assert not set(retained) & coverage.planned
+    assert not set(retained) & {value.source for value in coverage.collected}
+    assert _top("(0008,0018)") in coverage.planned
+    assert _top("(0008,0018)") in {value.source for value in coverage.collected}
+
+
+def test_a_run_with_the_transform_and_gate_releases_the_collection(tmp_path):
+    release = tmp_path / "release"
+    result = run.run(
+        _source(tmp_path, synthetic.collection()), release, _transform(), ReleaseGate()
+    )
+
+    assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
+    for outcome in result.outcomes:
+        data = (release / outcome.output).read_bytes()
+        assert synthetic.PATIENT_ID.encode() not in data
+        assert synthetic.PATIENTS_NAME.encode() not in data
+
+
+def test_a_value_removed_from_one_instance_withholds_its_siblings_that_keep_it(
+    tmp_path,
+):
+    # The plan's RT Plan Label is replaced, and the dose's Dose Units, which
+    # the Basic Profile keeps, holds the same text.
+    plan = synthetic.rt_plan()
+    plan.RTPlanLabel = "SENTINELPLAN7"
+    dose = synthetic.rt_dose()
+    dose.DoseUnits = "SENTINELPLAN7"
+    release = tmp_path / "release"
+
+    result = run.run(
+        _source(tmp_path, [plan, dose]), release, _transform(), ReleaseGate()
+    )
+
+    statuses = [outcome.status for outcome in result.outcomes]
+    assert statuses[0] is run.Status.RELEASED
+    assert statuses[1] is not run.Status.RELEASED
+    assert all(
+        isinstance(reason, ReleaseReason) for reason in result.outcomes[1].reasons
+    )
+    assert len(list(release.rglob("*.dcm"))) == 1
+    assert "SENTINEL" not in repr(result)
+
+
+@pytest.mark.parametrize(
+    "decision, expected",
+    [
+        (Decision.RELEASE, run.Release),
+        (Decision.QC_REVIEW, run.HoldForReview),
+        (Decision.WITHHOLD, run.Sequestered),
+    ],
+)
+def test_the_gate_maps_each_decision_with_its_reasons(decision, expected):
+    reason = ReleaseReason(decision, ReasonCode.RESIDUAL_TEXT, _top("(300A,0002)"))
+    seen = []
+
+    def condition(coverage, written):
+        seen.append((coverage, written))
+        return _Condition(
+            decision, (reason,) if decision is not Decision.RELEASE else ()
+        )
+
+    own = Coverage(planned=frozenset({_top("(0010,0010)")}), collected=())
+    other = Coverage(planned=frozenset({_top("(300A,0002)")}), collected=())
+
+    result = ReleaseGate(condition)(b"written", own, (own, other))
+
+    assert isinstance(result, expected)
+    if expected is not run.Release:
+        assert result.reasons == (reason,)
+    ((pooled, written),) = seen
+    assert written == b"written"
+    assert pooled.planned == own.planned | other.planned
+
+
+def test_the_gate_refuses_evidence_that_is_not_coverage():
+    own = Coverage(planned=frozenset(), collected=())
+    with pytest.raises(TypeError):
+        ReleaseGate()(b"", own, (own, "SENTINEL"))
+    assert repr(ReleaseGate()) == "ReleaseGate()"
+
+
+class _Condition:
+    def __init__(self, decision, reasons):
+        self.decision = decision
+        self.reasons = reasons
+
+
+def _plan_of(data):
+    source = read_source(data)
+    return plan_instance(source, ElementRules(compose_policy("basic")), _iod("RT Dose"))
+
+
+def _iod(name):
+    return load_iod_tables().iods[name]
 
 
 def _top(tag):

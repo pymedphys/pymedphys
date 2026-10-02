@@ -47,16 +47,24 @@ No exception message is kept, since some come from pydicom and can quote a
 value.
 
 Whatever the outcome, once the instance has been planned and edited, its
-:class:`InstanceEvidence` goes with it, so that the release gate searches
-every instance of the subject for the values that any of them removed,
-sequestered instances included (D-027).
+:class:`~.release_gate.Coverage` goes with it as the transform's evidence:
+every value that had to be collected for the residual search, those
+collected, and those that could not be. :class:`ReleaseGate` is the run's
+:class:`~pymedphys._dicom.deidentify.run.Gate`: it pools the coverage of the
+file's subject, sequestered instances included, and asks
+:func:`~.release_gate.release_condition` about the written file (D-027).
+
+A UID that the pinned tables register, and that U therefore retains, such
+as a SOP Class UID, is meant to stay in the output, so it is neither planned
+nor collected: the written file is searched only for values that must not
+appear in it.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import enum
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import PurePosixPath
 
 from pymedphys._imports import pydicom
@@ -78,10 +86,18 @@ from .policy import Policy
 from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .references import InstanceRecord
-from .run import Sequestered, Transformed
+from .release_gate import (
+    Coverage,
+    Decision,
+    ReleaseCondition,
+    Uncollected,
+    release_condition,
+)
+from .run import HoldForReview, Release, Sequestered, Transformed
 from .scope import classify
 from .source import SourceEvidence, SourceRefused, read_source
-from .walker import InstancePlan, plan_instance
+from .uids import UIDOutcome
+from .walker import Consumer, InstancePlan, plan_instance
 
 _SOP_CLASS = ElementPath((), "(0008,0016)")
 _SOP_INSTANCE = ElementPath((), "(0008,0018)")
@@ -93,9 +109,6 @@ _PATIENT_ID = ElementPath((), "(0010,0020)")
 class TransformReason(enum.Enum):
     """Why the transform sequesters an instance, where no step's own reason does."""
 
-    # an element whose edit is still to come: a pseudonym without the
-    # subject's identity, cleaning (C), or a reviewed dummy item
-    PENDING_EDIT = "pending-edit"
     # an emptied or replaced element without a VR to write it with, or whose
     # new value does not fit it
     UNWRITABLE_ELEMENT = "unwritable-element"
@@ -108,34 +121,14 @@ class TransformReason(enum.Enum):
 
 @dataclasses.dataclass(frozen=True)
 class PendingEdit:
-    """An element whose edit is still to come, by path and action."""
+    """An element whose edit is still to come, by path and action.
+
+    Such as a pseudonym without the subject's identity, cleaning (C), or a
+    reviewed dummy item.
+    """
 
     path: ElementPath
     action: str
-
-
-@dataclasses.dataclass(frozen=True, repr=False)
-class InstanceEvidence:
-    """What the release gate needs of one instance. Its ``repr`` shows counts.
-
-    Attributes
-    ----------
-    plan : InstancePlan
-        Each element's action and consumers.
-    edits : InstanceEdits
-        What each element became, the values collected for the residual
-        search, and those that could not be collected.
-    """
-
-    plan: InstancePlan
-    edits: InstanceEdits
-
-    def __repr__(self) -> str:
-        return (
-            f"InstanceEvidence(elements={len(self.plan.elements)}, "
-            f"source_values={len(self.edits.source_values)}, "
-            f"not_collected={len(self.edits.not_collected)})"
-        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -162,6 +155,37 @@ class WriterPlan:
             changed=frozenset(self.replacements),
             removed=self.removed,
         )
+
+
+def coverage_of(plan: InstancePlan, edits: InstanceEdits) -> Coverage:
+    """Return the residual search's coverage of an instance's plan and edits.
+
+    Every element that the plan has residual collection read is planned,
+    and each value collected or not collected is carried over, but for an
+    element whose every UID U retains.
+    """
+    retained = {
+        edit.path
+        for edit in edits.edits
+        if edit.uid_outcomes
+        and all(outcome is UIDOutcome.RETAINED for outcome in edit.uid_outcomes)
+    }
+    return Coverage(
+        planned=frozenset(
+            element.path
+            for element in plan.elements
+            if Consumer.RESIDUAL_COLLECTION in element.consumers
+            and element.path not in retained
+        ),
+        collected=tuple(
+            value for value in edits.source_values if value.source not in retained
+        ),
+        uncollected=tuple(
+            Uncollected(path=missing.path, reason=missing.reason)
+            for missing in edits.not_collected
+            if missing.path not in retained
+        ),
+    )
 
 
 class _Refused(Exception):
@@ -283,7 +307,7 @@ class InstanceTransform:
             return Sequestered((classification.disposition,))
         plan = plan_instance(source, self._rules, self._iods.iods[classification.iod])
         edits = edit_instance(source, plan, self._key, record.patient)
-        evidence = InstanceEvidence(plan, edits)
+        evidence = coverage_of(plan, edits)
         if edits.sequestrations:
             return Sequestered(edits.sequestrations, evidence)
         try:
@@ -373,3 +397,45 @@ def _text(
     except UndecodableElement:
         return None
     return values[0] if len(values) == 1 else None
+
+
+_Condition = Callable[[Coverage, bytes], ReleaseCondition]
+
+
+class ReleaseGate:
+    """The run's gate: the release condition of the subject's pooled coverage.
+
+    Parameters
+    ----------
+    condition : callable, optional
+        ``(coverage, written) -> ReleaseCondition``. Defaults to
+        :func:`~pymedphys._dicom.deidentify.release_gate.release_condition`.
+
+    Notes
+    -----
+    A release decision releases the file; QC review holds it for review and
+    withholding sequesters it, each with the condition's reasons, which are
+    :class:`~.release_gate.ReleaseReason` objects naming codes and paths,
+    never values. Evidence that is not a :class:`~.release_gate.Coverage`
+    raises :class:`TypeError`, which the run takes as an internal error and
+    sequesters the file for.
+    """
+
+    def __init__(self, condition: _Condition = release_condition) -> None:
+        self._condition = condition
+
+    def __repr__(self) -> str:
+        return "ReleaseGate()"
+
+    def __call__(
+        self, written: bytes, evidence: object, subject: tuple[object, ...]
+    ) -> Release | HoldForReview | Sequestered:
+        coverages = tuple(each for each in subject if isinstance(each, Coverage))
+        if not isinstance(evidence, Coverage) or len(coverages) != len(subject):
+            raise TypeError("the release gate needs the Coverage of each instance")
+        condition = self._condition(Coverage.merge(*coverages), written)
+        if condition.decision is Decision.RELEASE:
+            return Release()
+        if condition.decision is Decision.QC_REVIEW:
+            return HoldForReview(condition.reasons)
+        return Sequestered(condition.reasons)
