@@ -41,7 +41,9 @@ writes it as CommonMark:
   Temporal Information Option, or without one (D-006, D-007, and D-023);
 - the scope of referential integrity under a run-scoped key (D-004);
 - that no attribute is encrypted for later re-identification (D-013);
-- what the residual search of each written file covers (D-027).
+- what the residual search of each written file covers (D-027);
+- how the release report names sequestered instances and counts the
+  values that the residual search does not search (D-026 and D-027).
 
 What the statement cannot yet describe from the engine is listed in it, under
 "Not yet described" (:data:`PENDING`, and the items that apply only to
@@ -137,11 +139,15 @@ SEQUENCE_NOT_CLEANED = "sequence not cleaned"
 # What the statement cannot yet describe from the engine. Each is to be
 # generated once the engine decides it.
 PENDING: tuple[str, ...] = (
-    "The release report's account of each run's instances, which the engine "
-    "does not yet write: how it names a sequestered instance, which has no "
-    "output name (D-026); and the gate that acts on the residual search's "
-    "findings, and where the values that the search does not search, or "
-    "drops because the policy retains them, are recorded (D-027).",
+    "What the engine does not yet do for each run's release report and "
+    "residual search: write the release report with each run; record the "
+    "values that it does not give the residual search, for the reasons "
+    "listed under Release report (D-027); act on the search's findings, by "
+    "sequestering an instance whose written file fails the search and "
+    "moving output from a staging area to the release directory only after "
+    "a clean search (D-027); and write the confidential QC pack, which maps "
+    "each label to its source instance and lists each value not searched by "
+    "instance and place (D-016, D-026, and D-027).",
 )
 PENDING_RELEASE_REPORT = PENDING[0]
 # Pending only for a policy whose element rules the engine refuses.

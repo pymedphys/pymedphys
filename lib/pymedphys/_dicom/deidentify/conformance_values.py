@@ -15,7 +15,7 @@
 """Write the sections of the conformance statement on what the engine writes.
 
 :func:`~pymedphys._dicom.deidentify.conformance_markdown.render_markdown`
-takes three sections of the statement from here, each generated from the
+takes four sections of the statement from here, each generated from the
 engine's own constants and functions, so that it changes when they do:
 
 - :func:`values_written`: the values that Z, D, and U write, from
@@ -27,7 +27,11 @@ engine's own constants and functions, so that it changes when they do:
   D-007, and D-023);
 - :func:`residual_search`: what the search of each written file for the
   source values that were removed or replaced covers, and what it does not
-  search, from :mod:`~pymedphys._dicom.deidentify.residuals` (D-027).
+  search, from :mod:`~pymedphys._dicom.deidentify.residuals` (D-027);
+- :func:`release_report`: how the release report names sequestered
+  instances and counts the values that the residual search does not
+  search, from :mod:`~pymedphys._dicom.deidentify.release_report` (D-026
+  and D-027).
 
 Each names tags, VRs, actions, and the engine's constants, never a value
 from an instance or a key.
@@ -40,8 +44,10 @@ import types
 from collections.abc import Callable, Iterable, Mapping
 
 from . import dummy_values, pseudonyms, residuals, uids
+from . import release_report as report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
+from .release_report import _SEQUESTERING
 from .residuals import _BINARY as _BINARY_VRS
 from .residuals import _KINDS
 from .residuals import _NUMBERS as _NUMBER_VRS
@@ -109,6 +115,35 @@ OMISSIONS: Mapping[residuals.Omission, str] = types.MappingProxyType(
             "2022 escape sequences than its codec writes, such as a writer "
             "puts before each component"
         ),
+    }
+)
+
+
+# Why a value is not given to the residual search at all.
+UNSEARCHED_REASONS: Mapping[residuals.UnsearchedReason, str] = types.MappingProxyType(
+    {
+        residuals.UnsearchedReason.RETAINED: (
+            "the policy retains the value, so it is dropped from the search"
+        ),
+        residuals.UnsearchedReason.WRITTEN_CONSTANT: (
+            "the value exactly equals a constant that the engine always writes"
+        ),
+        residuals.UnsearchedReason.UNDECODABLE: (
+            "the value could not be decoded to collect it, and is removed or replaced"
+        ),
+        residuals.UnsearchedReason.REGISTERED_UID: (
+            "the value is a UID that the pinned tables register, which names no one"
+        ),
+    }
+)
+
+# What each stage that sequesters an instance does.
+STAGES: Mapping[str, str] = types.MappingProxyType(
+    {
+        "scope": "the instance is outside the supported scope",
+        "admission": "its source file was refused and set aside",
+        "references": "the first pass's reference graph sequestered it",
+        "walker": "an element's action could not be applied at its place",
     }
 )
 
@@ -301,4 +336,53 @@ def residual_search(named: Callable[[str], str]) -> list[str]:
         "",
         "Each finding names the value's kind, its source attribute, the form "
         "and encoding found, and its place in the file, never the value.",
+    ]
+
+
+def release_report() -> list[str]:
+    """Return the lines of the section on what the release report records."""
+    (first,) = report.sequestration_labels(1)
+    stages = [
+        f"- {code(stage)}: {STAGES[stage]}, by "
+        + join((code(c) for c in sorted(codes)), "or")
+        + "."
+        for stage, codes in _SEQUESTERING.items()
+    ]
+    omissions = join((code(o.value) for o in residuals.Omission), "or")
+    return [
+        "## Release report",
+        "",
+        "The release report of a run, a JSON document in the format "
+        f"`{report.FORMAT}`, names a sequestered instance, which has no "
+        f"output name, by a label for the run, from `{first}` to `S-n` for `n` "
+        "sequestered instances, assigned in an order drawn at random, so that "
+        "a label says nothing of the instance or its place in the run "
+        "(D-026). With each label, the report gives each reason that the "
+        "instance was sequestered, as the stage that sequestered it and the "
+        "stage's reason code:",
+        "",
+        *stages,
+        "",
+        "A reason from the walker also gives the attribute's tags from the "
+        "outermost sequence, without items, the action, and the VR.",
+        "",
+        "The report counts the source values that the residual search did "
+        "not search, in full or in part, by attribute, as tags from the "
+        "outermost sequence without items, and by reason, each value once for "
+        "each reason however many of its forms that reason left out (D-027). "
+        f"A reason is one of those listed under Residual search, as {omissions}, "
+        "or one by which the value is not given to the search at all:",
+        "",
+        *(
+            f"- {code(reason.value)}: {UNSEARCHED_REASONS[reason]}."
+            for reason in residuals.UnsearchedReason
+        ),
+        "",
+        "The report holds no source value or original path: each field is a "
+        "digest, a version, a known edition, preset, or option, a file name "
+        "or path within the engine's package, one of the run's labels, a path "
+        "of tags, a code that the engine defines, or a positive count, and "
+        "the report refuses any other. Only the confidential QC pack maps "
+        "labels to source instances and lists each value not searched by "
+        "instance and place (D-016).",
     ]

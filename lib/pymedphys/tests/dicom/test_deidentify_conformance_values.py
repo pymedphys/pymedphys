@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The values, dates, and residual search that the conformance statement describes."""
+"""The values, dates, residual search, and release report that the statement describes."""
 
 import collections
 
@@ -26,6 +26,7 @@ from pymedphys._dicom.deidentify import (
     edits,
     policy,
     pseudonyms,
+    release_report,
     residuals,
     standard,
     temporal_roles,
@@ -213,9 +214,69 @@ def test_each_vr_described_as_not_searched_is_not_searched():
     assert searched | unsearched == set(standard.VRS) - {"SQ"}
 
 
-def test_the_release_reports_account_of_instances_is_pending(preset):
+def test_the_release_report_names_sequestered_instances_by_label(preset):
+    section = _section(preset, "Release report")
+    assert f"`{release_report.FORMAT}`" in section
+    (first,) = release_report.sequestration_labels(1)
+    assert release_report.LABEL_PATTERN.fullmatch(first)
+    assert f"from `{first}` to `S-n`" in section
+    assert "order drawn at random" in section
+    assert "(D-026)" in section
+    stages = release_report._SEQUESTERING  # pylint: disable = protected-access
+    assert set(conformance_values.STAGES) == set(stages)
+    for stage, codes in stages.items():
+        line = section.split(f"- `{stage}`: ", 1)[1].split(" - ", 1)[0]
+        assert line.startswith(conformance_values.STAGES[stage])
+        for reason in codes:
+            assert f"`{reason}`" in line, (stage, reason)
+
+
+def test_every_reason_that_the_release_report_counts_is_described(preset):
+    reasons = [*residuals.Omission, *residuals.UnsearchedReason]
+    assert set(conformance_values.UNSEARCHED_REASONS) == set(residuals.UnsearchedReason)
+    section = _section(preset, "Release report")
+    assert "by attribute" in section
+    assert "(D-027)" in section
+    for reason in residuals.UnsearchedReason:
+        assert (
+            f"- `{reason.value}`: {conformance_values.UNSEARCHED_REASONS[reason]}."
+            in section
+        )
+    # Each reason described is one that the release report accepts.
+    coverage = release_report.search_coverage(
+        [
+            [residuals.Unsearched(ElementPath((), "(0010,0020)"), r)]
+            for r in residuals.UnsearchedReason
+        ]
+    )
+    counted = release_report.release_report(
+        policy.compose_policy(preset), vocabulary=None, coverage=coverage
+    )
+    document = release_report.report_document(counted)
+    assert {e["reason"] for e in document["search_coverage"]} == {
+        r.value for r in residuals.UnsearchedReason
+    }
+    for reason in reasons:
+        assert f"`{reason.value}`" in section
+
+
+def test_per_instance_detail_is_only_in_the_qc_pack(preset):
+    section = _section(preset, "Release report")
+    assert "no source value or original path" in section
+    assert (
+        "Only the confidential QC pack maps labels to source instances and lists "
+        "each value not searched by instance and place (D-016)." in section
+    )
+
+
+def test_what_remains_of_the_release_report_is_pending(preset):
     statement = _statement(preset)
-    assert conformance.PENDING_RELEASE_REPORT in statement.pending
-    assert "D-026" in conformance.PENDING_RELEASE_REPORT
-    assert "D-027" in conformance.PENDING_RELEASE_REPORT
+    pending = conformance.PENDING_RELEASE_REPORT
+    assert pending in statement.pending
+    for decision in ("D-016", "D-026", "D-027"):
+        assert decision in pending
+    assert "QC pack" in pending
+    assert "staging area" in pending
+    # How the report names a sequestered instance is now described.
+    assert "how it names" not in pending
     assert not statement.claims_conformance

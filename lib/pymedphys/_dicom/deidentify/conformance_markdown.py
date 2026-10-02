@@ -541,6 +541,8 @@ def render_markdown(statement: ConformanceStatement) -> str:
         f"public keys; its only key is the run's {bits}-bit key.",
         "",
         *conformance_values.residual_search(named),
+        "",
+        *conformance_values.release_report(),
     ]
     if statement.pending:
         lines += ["", "## Not yet described", ""]
