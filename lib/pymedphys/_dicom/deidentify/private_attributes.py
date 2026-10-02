@@ -310,7 +310,8 @@ def _items(
     UN or of none, and a raw element in an item that :func:`_decoded` checked
     (``exact``), whose bytes pydicom would write as they are, are decoded and
     checked here, since pydicom can decode a malformed value without an
-    error. A sequence that pydicom decoded as it read it is used as it is.
+    error; one that pydicom deferred is read first. A sequence that pydicom
+    decoded as it read it is used as it is.
     """
     element: pydicom.DataElement | pydicom.dataelem.RawDataElement = dataset.get_item(
         tag, keep_deferred=True
@@ -325,7 +326,7 @@ def _items(
     if isinstance(element, pydicom.dataelem.RawDataElement) and (
         exact or element.VR in (None, "UN")
     ):
-        return _decoded(element.value, path, encodings), True
+        return _decoded(_raw_value(dataset, element, path), path, encodings), True
     try:
         element = dataset[tag]
     except _DECODING_ERRORS:
@@ -335,6 +336,43 @@ def _items(
     if element.VR == "UN":
         return _decoded(element.value, path, encodings), True
     return (), False
+
+
+def _raw_value(
+    dataset: pydicom.Dataset,
+    element: pydicom.dataelem.RawDataElement,
+    path: ElementPath,
+) -> bytes | None:
+    """Return a raw element's value, reading it now if pydicom deferred it.
+
+    pydicom leaves a value longer than ``defer_size`` unread, as ``None``
+    with its length, until it is accessed, so read as it is, a deferred
+    sequence would pass for an empty one. Its bytes are read from the file or
+    buffer the data set was read from, as pydicom reads a deferred value,
+    without converting them, and the value is refused by ``path`` if they
+    cannot be read or are not of the length the element was stored with.
+    """
+    if element.value is not None or element.length == 0:
+        return element.value
+    filename = getattr(dataset, "filename", None)
+    buffer = getattr(dataset, "buffer", None)
+    source = filename or buffer
+    if filename and buffer and not getattr(buffer, "closed", False):
+        source = buffer
+    if source is None:
+        raise PrivateAttributeError(path)
+    try:
+        read = pydicom.filereader.read_deferred_data_element(
+            getattr(dataset, "fileobj_type", None),
+            source,
+            getattr(dataset, "timestamp", None),
+            element,
+        )
+    except (*_DECODING_ERRORS, TypeError):
+        raise PrivateAttributeError(path) from None
+    if not isinstance(read.value, bytes) or len(read.value) != element.length:
+        raise PrivateAttributeError(path)
+    return read.value
 
 
 def _is_sequence(tag: pydicom.tag.BaseTag, path: ElementPath) -> bool:

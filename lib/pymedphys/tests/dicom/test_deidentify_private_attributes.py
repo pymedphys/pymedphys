@@ -803,9 +803,7 @@ def _deferred(written, source, tmp_path):
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize("source", ["file", "buffer"])
-def test_private_attributes_in_a_deferred_sequence_are_removed(
-    basic, source, tmp_path
-):
+def test_private_attributes_in_a_deferred_sequence_are_removed(basic, source, tmp_path):
     # From Implicit VR Little Endian, pydicom leaves a value longer than
     # defer_size unread, as None with its length, until it is accessed; read
     # as it is, Beam Sequence would pass for an empty sequence.
@@ -825,12 +823,20 @@ def test_private_attributes_in_a_deferred_sequence_are_removed(
 
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "transfer_syntax, vr",
+    [(EXPLICIT_VR, "UN"), (IMPLICIT_VR, None)],
+    ids=["explicit-vr-unknown", "implicit-vr"],
+)
 @pytest.mark.parametrize("value", list(MALFORMED.values()), ids=list(MALFORMED))
-def test_a_malformed_deferred_sequence_is_refused(monkeypatch, basic, value, tmp_path):
+def test_a_malformed_deferred_sequence_is_refused(
+    monkeypatch, basic, value, transfer_syntax, vr, tmp_path
+):
     source = _plan()
     source[BEAM_SEQUENCE] = _unknown(monkeypatch, BEAM_SEQUENCE, value)
-    read = _deferred(_written(source, IMPLICIT_VR), "file", tmp_path)
-    assert read.get_item(BEAM_SEQUENCE, keep_deferred=True).value is None
+    read = _deferred(_written(source, transfer_syntax), "file", tmp_path)
+    deferred = read.get_item(BEAM_SEQUENCE, keep_deferred=True)
+    assert (deferred.VR, deferred.value) == (vr, None)
 
     _assert_refused(read, basic, ElementPath((), "(300A,00B0)"), "PRIVATE")
 
