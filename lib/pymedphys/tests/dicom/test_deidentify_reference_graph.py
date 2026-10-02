@@ -45,9 +45,15 @@ STRUCTURE_SET, PLAN, DOSE = 3, 4, 5
 TAG = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
 
 
-def _graph(datasets):
+def _graph(inputs):
+    """Return the graph of the inputs: data sets to write, or written files."""
     return reference_graph.build_reference_graph(
-        [InstanceRecord.from_dataset(dataset) for dataset in datasets]
+        [
+            InstanceRecord.from_file(each)
+            if isinstance(each, bytes)
+            else synthetic.record(each)
+            for each in inputs
+        ]
     )
 
 
@@ -57,9 +63,7 @@ def _dangling(position, attribute, count=1):
 
 @pytest.mark.pydicom
 def test_a_consistent_collection_has_no_findings():
-    records = [
-        InstanceRecord.from_dataset(dataset) for dataset in synthetic.collection()
-    ]
+    records = [synthetic.record(dataset) for dataset in synthetic.collection()]
 
     graph = reference_graph.build_reference_graph(records)
 
@@ -592,9 +596,9 @@ def _private_text(dataset, value):
 
 
 def _plans_in_implicit_and_explicit_vr(change=None):
-    """Return the collection, its plan read from Implicit VR, and a copy.
+    """Return the collection, its plan written in Implicit VR, and a copy.
 
-    The copy, at position 6, is read from Explicit VR. ``change``, if given,
+    The copy, at position 6, is written in Explicit VR. ``change``, if given,
     changes both plans before they are written.
     """
 
@@ -605,20 +609,20 @@ def _plans_in_implicit_and_explicit_vr(change=None):
         return dataset
 
     datasets = synthetic.collection()
-    datasets[PLAN] = synthetic.written_and_read(plan(), "1.2.840.10008.1.2")
-    datasets.append(synthetic.written_and_read(plan(), "1.2.840.10008.1.2.1"))
+    datasets[PLAN] = synthetic.written(plan(), synthetic.IMPLICIT_VR_LITTLE_ENDIAN)
+    datasets.append(synthetic.written(plan(), synthetic.EXPLICIT_VR_LITTLE_ENDIAN))
     return datasets
 
 
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
-def test_copies_in_implicit_and_explicit_vr_are_duplicates():
+def test_copies_in_implicit_and_explicit_vr_conflict():
     # Every element of the plan has a VR in pydicom's data dictionary, so
-    # the Implicit VR copy decodes to the same elements, VRs, and values.
+    # the copies decode to the same elements, but their source bytes differ.
     datasets = _plans_in_implicit_and_explicit_vr()
 
     assert _graph(datasets).findings == (
-        Finding(DUPLICATE, ((PLAN, 6),), (SOP_INSTANCE_UID,)),
+        Finding(CONFLICTING, ((PLAN,), (6,)), (SOP_INSTANCE_UID,)),
     )
 
 
@@ -626,12 +630,11 @@ def test_copies_in_implicit_and_explicit_vr_are_duplicates():
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_copies_in_implicit_and_explicit_vr_with_a_private_element_conflict():
     # pydicom reads the private element from the Implicit VR copy as UN,
-    # without the VR that the Explicit VR copy holds, so the copies cannot be
-    # shown to be equal.
+    # without the VR that the Explicit VR copy holds.
     datasets = _plans_in_implicit_and_explicit_vr(
         lambda dataset: _private_text(dataset, "SYNTHETIC PRIVATE TEXT")
     )
-    assert datasets[PLAN][0x00091001].VR == "UN"
+    assert synthetic.read(datasets[PLAN])[0x00091001].VR == "UN"
 
     assert _graph(datasets).findings == (
         Finding(CONFLICTING, ((PLAN,), (6,)), (SOP_INSTANCE_UID,)),
@@ -883,7 +886,7 @@ def test_a_study_whose_instances_all_lack_a_patient_id_has_one_patient():
     for position, dataset in enumerate(datasets):
         _set_patient(dataset, *forms[position % len(forms)])
 
-    assert InstanceRecord.from_dataset(datasets[2]).patient is None
+    assert synthetic.record(datasets[2]).patient is None
     assert not _graph(datasets).findings
 
 

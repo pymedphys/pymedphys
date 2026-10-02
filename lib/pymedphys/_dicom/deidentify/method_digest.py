@@ -75,6 +75,14 @@ provenance of each run. Runtime software can affect execution, so equal
 digests show that these inputs are equal, not that two runs executed
 identically or wrote the same output; reproducing or auditing a run also
 needs its recorded runtime environment.
+
+:func:`method_digest_components` gives the digest with the components it is
+computed from, which a release report records so that two digests can be
+compared component by component: the format, PyMedPhys's version, each
+table's content digest, the SHA-256 of the canonical bytes of the
+``l2_rules``, ``l3_rules`` (None while there are none), and
+``generated_values`` members, the vocabulary's content digest, and each
+source and rule file's digest.
 """
 
 from __future__ import annotations
@@ -88,7 +96,7 @@ import pathlib
 import types
 import uuid
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import Any, cast
 
 from pymedphys import _version
 from pymedphys._nomenclature import tg263
@@ -174,6 +182,59 @@ class MethodDigestInputs:
     files: Mapping[str, str] = dataclasses.field(hash=False)
 
 
+@dataclasses.dataclass(frozen=True)
+class MethodDigestComponents:
+    """The method digest with the components it is computed from.
+
+    A release report records these as structured fields, so that two digests
+    can be compared component by component to show which input differs.
+    :func:`method_digest_components` gives them for a policy, and
+    :func:`digest_components` for given inputs. Like the digest, they hold
+    no key, source identifier, source value, or patient data: only digests,
+    PyMedPhys's version, the format label, and file names and paths within
+    the package.
+
+    Attributes
+    ----------
+    method_digest : str
+        The method digest, as 64 lowercase hexadecimal digits.
+    method_digest_format : str
+        The format of its canonical form, :data:`FORMAT`.
+    engine_version : str
+        PyMedPhys's version, such as ``"0.42.0"``.
+    table_digests : Mapping of str to str
+        The content digest of each generated table, by file name, such as
+        ``"e1_1.json"``. Read-only.
+    l2_rules_digest : str
+        The SHA-256 of the canonical bytes of the ``l2_rules`` member of the
+        canonical form.
+    l3_rules : str or None
+        The SHA-256 of the canonical bytes of the ``l3_rules`` member, or
+        None while there are no user rules, which is always so for now.
+    vocabulary_digest : str or None
+        The content digest of the vocabulary's entries, or None without a
+        vocabulary.
+    generated_values_digest : str
+        The SHA-256 of the canonical bytes of the ``generated_values``
+        member, in which each parameter is a ``[type, value]`` pair.
+    engine_files : Mapping of str to str
+        The SHA-256 of each source and rule file, with CRLF line endings read
+        as LF, by its path within the package, such as ``"policy.py"`` or
+        ``"_standard/e1_1.json"``. Read-only.
+    """
+
+    method_digest: str
+    method_digest_format: str
+    engine_version: str
+    # Mappings are not hashable, so they are left out of the hash.
+    table_digests: Mapping[str, str] = dataclasses.field(hash=False)
+    l2_rules_digest: str
+    l3_rules: str | None
+    vocabulary_digest: str | None
+    generated_values_digest: str
+    engine_files: Mapping[str, str] = dataclasses.field(hash=False)
+
+
 def _encode(value: object) -> bytes:
     """Return ``value`` as canonical JSON, without quoting text it cannot encode."""
     text = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
@@ -241,6 +302,25 @@ def _check_policy(policy: object) -> None:
         raise TypeError("policy must be a Policy")
 
 
+def _document(policy: Policy, inputs: MethodDigestInputs) -> dict:
+    """Return the canonical form of a policy and its inputs as JSON values."""
+    _check_policy(policy)
+    generated = {_key(n): _typed(v) for n, v in inputs.generated_values.items()}
+    document = {
+        "format": FORMAT,
+        "engine_version": inputs.engine_version,
+        "policy": policy,
+        "tables": inputs.tables,
+        "l2_rules": inputs.l2_rules,
+        "l3_rules": None,
+        "vocabulary": inputs.vocabulary,
+        # Already JSON values, which _plain keeps as they are.
+        "generated_values": generated,
+        "files": inputs.files,
+    }
+    return cast(dict, _plain(document))
+
+
 def canonical_bytes(policy: Policy, inputs: MethodDigestInputs) -> bytes:
     """Return the canonical form of a policy and the inputs of its digest.
 
@@ -290,21 +370,55 @@ def canonical_bytes(policy: Policy, inputs: MethodDigestInputs) -> bytes:
         If an input has text that cannot be encoded as UTF-8, such as a lone
         surrogate. The message does not quote it.
     """
-    _check_policy(policy)
-    generated = {_key(n): _typed(v) for n, v in inputs.generated_values.items()}
-    document = {
-        "format": FORMAT,
-        "engine_version": inputs.engine_version,
-        "policy": policy,
-        "tables": inputs.tables,
-        "l2_rules": inputs.l2_rules,
-        "l3_rules": None,
-        "vocabulary": inputs.vocabulary,
-        # Already JSON values, which _plain keeps as they are.
-        "generated_values": generated,
-        "files": inputs.files,
-    }
-    return _encode(_plain(document))
+    return _encode(_document(policy, inputs))
+
+
+def _sha256(value: object) -> str:
+    return hashlib.sha256(_encode(value)).hexdigest()
+
+
+def _read_only(mapping: Mapping[str, str]) -> Mapping[str, str]:
+    return types.MappingProxyType(dict(mapping))
+
+
+def digest_components(
+    policy: Policy, inputs: MethodDigestInputs
+) -> MethodDigestComponents:
+    """Return the method digest of a policy and its inputs, with its components.
+
+    The digest is the SHA-256 of :func:`canonical_bytes`, and each member
+    digest is the SHA-256 of that member of the canonical form, encoded in
+    the same way.
+
+    Parameters
+    ----------
+    policy : Policy
+        A validated policy, such as one from
+        :func:`~pymedphys._dicom.deidentify.policy.compose_policy`.
+    inputs : MethodDigestInputs
+
+    Returns
+    -------
+    MethodDigestComponents
+
+    Raises
+    ------
+    TypeError, ValueError
+        For any reason :func:`canonical_bytes` gives.
+    """
+    document = _document(policy, inputs)
+    l3_rules = document["l3_rules"]
+    return MethodDigestComponents(
+        method_digest=_sha256(document),
+        method_digest_format=FORMAT,
+        engine_version=inputs.engine_version,
+        table_digests=_read_only(inputs.tables),
+        l2_rules_digest=_sha256(document["l2_rules"]),
+        l3_rules=None if l3_rules is None else _sha256(l3_rules),
+        vocabulary_digest=inputs.vocabulary,
+        generated_values_digest=_sha256(document["generated_values"]),
+        engine_files=_read_only(inputs.files),
+    )
 
 
 @functools.lru_cache(maxsize=None)
@@ -466,3 +580,51 @@ def method_digest(policy: Policy, *, vocabulary: tg263.Nomenclature | None) -> s
     return hashlib.sha256(
         canonical_bytes(policy, digest_inputs(vocabulary=vocabulary))
     ).hexdigest()
+
+
+def method_digest_components(
+    policy: Policy, *, vocabulary: tg263.Nomenclature | None
+) -> MethodDigestComponents:
+    """Return the method digest of a policy with the components it is computed from.
+
+    The components are those a release report records: the digest and its
+    format, PyMedPhys's version, the content digest of each generated table,
+    the digests of the supplementary and user rules, the vocabulary's
+    content digest, the digest of the parameters of generated values, and
+    the digest of each source and rule file. They come from one call of
+    :func:`digest_inputs`, so the digest is the one :func:`method_digest`
+    gives for the same policy and vocabulary in the same process.
+
+    Parameters
+    ----------
+    policy : Policy
+        A validated policy, such as one from
+        :func:`~pymedphys._dicom.deidentify.policy.compose_policy`.
+    vocabulary : ~pymedphys._nomenclature.tg263.Nomenclature or None
+        The TG-263 vocabulary that descriptor cleaning matches ROI Names
+        against, or None without one. It must be given by name, and has no
+        default, so that every caller states whether there is one.
+
+    Returns
+    -------
+    MethodDigestComponents
+
+    Raises
+    ------
+    TypeError, ValueError
+        For any reason :func:`digest_inputs` or :func:`canonical_bytes` gives.
+    ~pymedphys._dicom.deidentify.standard.StandardTableError, MethodDigestError
+        For any reason :func:`digest_inputs` gives.
+
+    Examples
+    --------
+    >>> from pymedphys._dicom.deidentify.policy import compose_policy
+    >>> basic = compose_policy("basic")
+    >>> components = method_digest_components(basic, vocabulary=None)
+    >>> components.method_digest == method_digest(basic, vocabulary=None)
+    True
+    >>> components.method_digest_format, components.l3_rules
+    ('pymedphys-deid-method-digest/1', None)
+    """
+    _check_policy(policy)
+    return digest_components(policy, digest_inputs(vocabulary=vocabulary))

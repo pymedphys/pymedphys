@@ -130,9 +130,11 @@ def read_csv(path: pathlib.Path, *, version: str) -> RoiList:
     Raises
     ------
     RoiListError
-        If the version is empty, has surrounding whitespace, or is not
-        printable text on one line; if the file is not UTF-8, is not valid
-        CSV, or is empty; if a header is not one of :data:`COLUMNS` or
+        If the source file name contains surrounding whitespace, directory
+        separators, or characters that are not printable; if the version is
+        empty, has surrounding whitespace, or is not printable text on one
+        line; if the file is not UTF-8, is not valid CSV, or is empty; if a
+        header is not one of :data:`COLUMNS` or
         repeats, or ``Name`` is missing; if a row has more non-empty cells
         than the header; if a name is empty, is not a valid LO value in the
         default repertoire, or repeats; if a description is not printable
@@ -140,6 +142,11 @@ def read_csv(path: pathlib.Path, *, version: str) -> RoiList:
         counting from 1, blank rows included.
     """
     path = pathlib.Path(path)
+    if not _is_file_name(path.name):
+        raise RoiListError(
+            "the source file name must be printable text without surrounding "
+            "whitespace or directory separators; rename the CSV file"
+        )
     if not _is_version(version):
         raise RoiListError("the version must be non-empty text on one line")
     data = path.read_bytes()

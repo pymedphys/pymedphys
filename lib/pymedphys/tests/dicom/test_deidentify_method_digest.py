@@ -23,6 +23,10 @@ process, so each test starts with them unread, and a test that edits a
 synthetic engine or tables reads them again, as a new process would.
 """
 
+# The tests share the synthetic inputs and engine below, so they stay in one
+# module.
+# pylint: disable = too-many-lines
+
 import dataclasses
 import hashlib
 import importlib
@@ -850,3 +854,223 @@ def test_only_a_policy_and_a_tg263_vocabulary_are_accepted(basic):
         method_digest.canonical_bytes({"preset": "basic"}, SYNTHETIC_INPUTS)
     with pytest.raises(TypeError, match="vocabulary must be"):
         method_digest.method_digest(basic, vocabulary=["Heart"])
+
+
+# The members of the synthetic canonical form whose digests a release report
+# records, cut from the bytes above, and their SHA-256, computed with
+# `printf '%s' '<bytes>' | sha256sum`, independently of the code under test.
+SYNTHETIC_L2_RULES_BYTES = (
+    '{"uid_roles.toml":{'
+    '"acknowledgement":"DICOM PS3.6 2026d, © NEMA",'
+    '"note":"Kept \\"as is\\".\\t\\u0001",'
+    '"rules":{"(0008,0018)":"instance"}}}'
+).encode("utf-8")
+SYNTHETIC_L2_RULES_SHA256 = (
+    "35707b0a77e39141f75ab156f70c350ed4259372d79855eb667c520b29426368"
+)
+SYNTHETIC_GENERATED_VALUES_BYTES = (
+    '{"dates.MIN_OFFSET_WEEKS":["int",52],'
+    '"dummy_values.CONSTANTS":["map",{"FL":["list",'
+    '[["float","0x0.0p+0"],["float","0x1.0000000000000p+0"]]]}],'
+    '"keys.DERIVATION_VERSION":["bytes","70796d6564706879732d646569642f31"],'
+    '"keys.DOMAINS":["set",[["str","patient"],["str","uid"]]],'
+    '"uids.UID_NAMESPACE":["uuid","6f71d76c-0573-58b6-bfda-7c5b4ee304f1"],'
+    '"uids.UID_ROOT":["str","2.25."]}'
+).encode("utf-8")
+SYNTHETIC_GENERATED_VALUES_SHA256 = (
+    "28163a075991f6ffd19f67d57699367356fa66935578b4e10ec4d52f26b5e947"
+)
+
+# The structured fields of the method digest that a release report records.
+COMPONENT_FIELDS = (
+    "method_digest",
+    "method_digest_format",
+    "engine_version",
+    "table_digests",
+    "l2_rules_digest",
+    "l3_rules",
+    "vocabulary_digest",
+    "generated_values_digest",
+    "engine_files",
+)
+
+
+def test_the_components_hold_the_fields_a_release_report_records_in_order():
+    fields = dataclasses.fields(method_digest.MethodDigestComponents)
+
+    assert tuple(field.name for field in fields) == COMPONENT_FIELDS
+
+
+def test_the_components_of_a_small_synthetic_input_are_digests_of_its_members():
+    components = method_digest.digest_components(SYNTHETIC_POLICY, SYNTHETIC_INPUTS)
+
+    assert b'"l2_rules":' + SYNTHETIC_L2_RULES_BYTES in SYNTHETIC_CANONICAL_BYTES
+    assert (
+        b'"generated_values":' + SYNTHETIC_GENERATED_VALUES_BYTES
+        in SYNTHETIC_CANONICAL_BYTES
+    )
+    assert components == method_digest.MethodDigestComponents(
+        method_digest=SYNTHETIC_SHA256,
+        method_digest_format="pymedphys-deid-method-digest/1",
+        engine_version="0.42.0.dev1",
+        table_digests={"e1_1.json": "0" * 64},
+        l2_rules_digest=SYNTHETIC_L2_RULES_SHA256,
+        l3_rules=None,
+        vocabulary_digest=None,
+        generated_values_digest=SYNTHETIC_GENERATED_VALUES_SHA256,
+        engine_files={"policy.py": "f" * 64},
+    )
+
+
+def test_the_components_give_the_method_digest_and_record_its_inputs(basic):
+    inputs = method_digest.digest_inputs(vocabulary=VOCABULARY)
+
+    components = method_digest.method_digest_components(basic, vocabulary=VOCABULARY)
+
+    assert components.method_digest == method_digest.method_digest(
+        basic, vocabulary=VOCABULARY
+    )
+    assert components.method_digest_format == method_digest.FORMAT
+    assert components.engine_version == inputs.engine_version == _version.__version__
+    assert dict(components.table_digests) == dict(inputs.tables)
+    assert components.l3_rules is None
+    assert components.vocabulary_digest == inputs.vocabulary
+    assert dict(components.engine_files) == dict(inputs.files)
+
+
+def test_the_member_digests_are_the_sha256_of_those_members_of_the_canonical_form(
+    basic,
+):
+    document = json.loads(
+        method_digest.canonical_bytes(
+            basic, method_digest.digest_inputs(vocabulary=None)
+        )
+    )
+
+    def sha256(member):
+        text = json.dumps(
+            document[member], sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    components = method_digest.method_digest_components(basic, vocabulary=None)
+
+    assert components.l2_rules_digest == sha256("l2_rules")
+    assert components.generated_values_digest == sha256("generated_values")
+
+
+def _components_after(basic, monkeypatch, change):
+    """Return which components differ after ``change``, besides the digest."""
+    before = method_digest.method_digest_components(basic, vocabulary=None)
+    vocabulary = change(monkeypatch)
+    _forget_reads()
+    after = method_digest.method_digest_components(basic, vocabulary=vocabulary)
+    assert after.method_digest != before.method_digest
+    return {
+        name
+        for name in COMPONENT_FIELDS
+        if name != "method_digest" and getattr(after, name) != getattr(before, name)
+    }
+
+
+def _change_engine_version(monkeypatch):
+    monkeypatch.setattr(_version, "__version__", _version.__version__ + "+local")
+
+
+def _change_l2_rule(monkeypatch):
+    monkeypatch.setattr(supplementary_actions, "UNCOVERED_TEXT_ACTION", "X")
+
+
+def _change_generated_value(monkeypatch):
+    monkeypatch.setattr(dates, "MIN_OFFSET_WEEKS", dates.MIN_OFFSET_WEEKS + 1)
+
+
+def _add_vocabulary(_monkeypatch):
+    return VOCABULARY
+
+
+@pytest.mark.parametrize(
+    "change, differs",
+    [
+        (_change_engine_version, {"engine_version"}),
+        (_change_l2_rule, {"l2_rules_digest"}),
+        (_change_generated_value, {"generated_values_digest"}),
+        (_add_vocabulary, {"vocabulary_digest"}),
+    ],
+    ids=["engine-version", "l2-rule", "generated-value", "vocabulary"],
+)
+def test_the_components_show_which_input_changed_the_digest(
+    basic, monkeypatch, change, differs
+):
+    assert _components_after(basic, monkeypatch, change) == differs
+
+
+def test_a_changed_table_shows_in_its_table_digest_and_its_file_digest(
+    basic, tmp_path, monkeypatch
+):
+    modules = {n: c for n, c in ENGINE_FILES.items() if not n.startswith("_standard/")}
+    engine = _engine(tmp_path / "engine", modules)
+    tables = _copied_tables(engine)
+    monkeypatch.setattr(method_digest, "PACKAGE_DIR", engine)
+    monkeypatch.setattr(standard, "STANDARD_DIR", tables)
+
+    def reverse_rows(_monkeypatch):
+        path = tables / "e1_1.json"
+        _rewrite(path, json.loads(path.read_text(encoding="utf-8"))["rows"][::-1])
+
+    assert _components_after(basic, monkeypatch, reverse_rows) == {
+        "table_digests",
+        "engine_files",
+    }
+
+
+def test_a_changed_engine_file_shows_only_in_the_engine_files(
+    basic, tmp_path, monkeypatch
+):
+    engine = _engine(tmp_path / "engine", ENGINE_FILES)
+    monkeypatch.setattr(method_digest, "PACKAGE_DIR", engine)
+    before = method_digest.method_digest_components(basic, vocabulary=None)
+
+    def edit_policy(_monkeypatch):
+        (engine / "policy.py").write_bytes(b"ACTION = 'Z'\n")
+
+    assert _components_after(basic, monkeypatch, edit_policy) == {"engine_files"}
+    after = method_digest.method_digest_components(basic, vocabulary=None)
+    assert {
+        path
+        for path in after.engine_files
+        if after.engine_files[path] != before.engine_files[path]
+    } == {"policy.py"}
+
+
+def test_the_policy_shows_only_in_the_method_digest(basic):
+    custom = policy.compose_custom_policy(("clean_descriptors",))
+    before = method_digest.method_digest_components(basic, vocabulary=None)
+    after = method_digest.method_digest_components(custom, vocabulary=None)
+
+    assert after.method_digest != before.method_digest
+    assert dataclasses.replace(after, method_digest=before.method_digest) == before
+
+
+def test_the_components_are_read_only(basic):
+    components = method_digest.method_digest_components(basic, vocabulary=None)
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        components.method_digest = "0" * 64  # type: ignore[misc]
+    with pytest.raises(TypeError):
+        components.table_digests["e1_1.json"] = "0" * 64  # type: ignore[index]
+    with pytest.raises(TypeError):
+        components.engine_files["policy.py"] = "0" * 64  # type: ignore[index]
+
+
+@pytest.mark.parametrize("vocabulary", [(), (None,)], ids=["left-out", "by-position"])
+def test_the_components_take_the_vocabulary_by_name(basic, vocabulary):
+    with pytest.raises(TypeError, match="vocabulary|positional"):
+        method_digest.method_digest_components(basic, *vocabulary)
+
+
+def test_the_components_take_only_a_policy():
+    with pytest.raises(TypeError, match="policy must be"):
+        method_digest.method_digest_components({"preset": "basic"}, vocabulary=None)
+    with pytest.raises(TypeError, match="policy must be"):
+        method_digest.digest_components({"preset": "basic"}, SYNTHETIC_INPUTS)

@@ -100,14 +100,13 @@ from __future__ import annotations
 import copy
 import dataclasses
 import functools
-import platform
 import re
 import types
 from collections.abc import Iterable, Iterator, MutableSequence, Sequence
 
-from pymedphys import _version
-from pymedphys._imports import pydicom, tomlkit
+from pymedphys._imports import pydicom
 
+from . import runtime
 from .codes import CodedConcept, load_context_group
 from .policy import MODIFIED_DATES, Policy
 from .standard import DictionaryAttribute, StandardTableError, load_data_dictionary
@@ -232,18 +231,11 @@ def _code(cid: int, value: str) -> CodedConcept:
 def _software_versions() -> tuple[str, str, str, str]:
     """Return Software Versions as the running process gives them.
 
-    PyMedPhys's full version; the Python implementation and version as one
-    value, such as ``"CPython 3.14.0"``; ``"pydicom <version>"``; and
-    ``"tomlkit <version>"``. They are read at each call rather than once at
-    import, so that they are the versions that compute the markers, and
-    importing this module loads neither pydicom nor tomlkit.
+    They are the runtime environment that the release report records
+    (:func:`.runtime.runtime_environment`), read at each call, so that the
+    two cannot disagree.
     """
-    return (
-        _version.__version__,
-        f"{platform.python_implementation()} {platform.python_version()}",
-        f"pydicom {pydicom.__version__}",
-        f"tomlkit {tomlkit.__version__}",
-    )
+    return runtime.runtime_environment().software_versions
 
 
 def _satisfied(policy: Policy, satisfied: Iterable[str]) -> tuple[str, ...]:
