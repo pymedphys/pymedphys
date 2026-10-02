@@ -16,10 +16,11 @@
 
 An element's rule comes from the first of these that covers it:
 
-1. the engine's own removals (X): elements of group 0000, the DIMSE
-   command set (PS3.7), of group 0002, whose File Meta Information the
-   engine builds itself, or of group 0004, inside a data set (PS3.15
-   E.1.1); group lengths, (gggg,0000), which PS3.5
+1. the engine's own removals (X), inside a data set: elements of group
+   0000, the DIMSE command set (PS3.7); of group 0002, the File Meta
+   Information (PS3.10 Section 7.1), which the engine builds itself; and of
+   group 0004, which belongs only in a DICOMDIR (PS3.3 Annex F); group
+   lengths, (gggg,0000), which PS3.5
    Section 7.2 retires; Data Set Trailing Padding (FFFC,FFFC); and
    Encrypted Attributes Sequence (0400,0500), which can hold the original
    values that de-identification removes;
@@ -38,11 +39,12 @@ An element's rule comes from the first of these that covers it:
 6. removal by Type of a text attribute (VR LO, SH, LT, ST, UC, or UT),
    :data:`~pymedphys._dicom.deidentify.supplementary_actions.UNCOVERED_TEXT_ACTION`;
 7. the default for any other attribute of the pinned data dictionary: K
-   for a code string, an attribute tag, a sequence, whose items are
-   handled by the same rules, or a number (VR CS, AT, SQ, DS, IS, FL, FD,
-   SL, SS, SV, UL, US, or UV); for a binary value (OB, OD, OF, OL, OV, OW,
-   or UN), K where the instance's IOD defines the attribute at the
-   element's place and X elsewhere; and X for any other VR;
+   for a code string, an attribute tag, or a number (VR CS, AT, DS, IS,
+   FL, FD, SL, SS, SV, UL, US, or UV); for a binary value (OB, OD, OF, OL,
+   OV, OW, or UN) or a sequence (SQ), K where the instance's IOD defines
+   the attribute at the element's place and X elsewhere, since a kept
+   sequence's items keep their codes and numbers by this same default;
+   and X for any other VR;
 8. X for an element that the pinned data dictionary does not list.
 
 No rules for cleaning the contents of a sequence are designed yet, so a
@@ -86,11 +88,12 @@ _ENGINE_TAGS = frozenset({"(FFFC,FFFC)", "(0400,0500)"})
 # The groups that the engine removes from a data set.
 _ENGINE_GROUPS = (0x0000, 0x0002, 0x0004)
 # The VRs whose values the default keeps wherever they are, and the binary
-# VRs whose values it keeps only where the IOD defines the attribute.
+# and sequence VRs whose values it keeps only where the IOD defines the
+# attribute.
 KEPT_VRS = frozenset(
-    {"CS", "AT", "SQ", "DS", "IS", "FL", "FD", "SL", "SS", "SV", "UL", "US", "UV"}
+    {"CS", "AT", "DS", "IS", "FL", "FD", "SL", "SS", "SV", "UL", "US", "UV"}
 )
-BINARY_VRS = frozenset({"OB", "OD", "OF", "OL", "OV", "OW", "UN"})
+IOD_DEFINED_VRS = frozenset({"OB", "OD", "OF", "OL", "OV", "OW", "UN", "SQ"})
 
 
 class RuleSource(enum.Enum):
@@ -285,6 +288,6 @@ class ElementRules:
             return RuleSource.UNCOVERED_TEXT, UNCOVERED_TEXT_ACTION
         if vrs and vrs <= KEPT_VRS:
             return RuleSource.DEFAULT, KEEP
-        if vrs and vrs <= KEPT_VRS | BINARY_VRS and iod and iod.lookup(tag, path):
+        if vrs and vrs <= KEPT_VRS | IOD_DEFINED_VRS and iod and iod.lookup(tag, path):
             return RuleSource.DEFAULT, KEEP
         return RuleSource.DEFAULT, REMOVE

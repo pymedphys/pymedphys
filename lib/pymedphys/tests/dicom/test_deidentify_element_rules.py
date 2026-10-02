@@ -141,7 +141,7 @@ BASIC_RULES = [
     # The rule for attributes that no rule covers.
     ("(0008,0060)", DEFAULT, "K", "(0008,0060)"),  # Modality, CS
     ("(0028,0009)", DEFAULT, "K", "(0028,0009)"),  # Frame Increment Pointer, AT
-    ("(300A,00B0)", DEFAULT, "K", "(300A,00B0)"),  # Beam Sequence, SQ
+    ("(300A,00B0)", DEFAULT, "X", "(300A,00B0)"),  # Beam Sequence, without an IOD
     ("(0028,0030)", DEFAULT, "K", "(0028,0030)"),  # Pixel Spacing, DS
     ("(0028,0010)", DEFAULT, "K", "(0028,0010)"),  # Rows, US
     ("(0028,0106)", DEFAULT, "K", "(0028,0106)"),  # US or SS
@@ -220,7 +220,14 @@ OTHER_REMOVED = {
     "(0028,2000)": "ICCProfile",
     "(4FFE,0001)": "MACParametersSequence",
 }
-NEW_RULES = {**URIS, **SEQUENCES, **OTHER_REMOVED}
+# Measures of the patient's body that say something about the patient as
+# Patient's Size (0010,1020) and Patient's Weight (0010,1030) do.
+PATIENT_MEASURES = {
+    "(0010,1022)": "PatientBodyMassIndex",
+    "(0010,1023)": "MeasuredAPDimension",
+    "(0010,1024)": "MeasuredLateralDimension",
+}
+NEW_RULES = {**URIS, **SEQUENCES, **OTHER_REMOVED, **PATIENT_MEASURES}
 # The UR attributes that the first supported release's IODs require at a
 # place that no removed sequence encloses, so that X/Z/D resolves to D there.
 REQUIRED_URIS = {"(0008,010E)", "(0008,0120)", "(0028,7FE0)"}
@@ -357,14 +364,23 @@ def test_a_policy_composed_from_another_table_is_refused():
         ("(0018,1638)", "RT Plan", ("(300A,00B0)", "(3008,00A1)", "(300A,0646)"), "K"),
         ("(0018,1638)", "RT Plan", ("(300A,00B0)",), "X"),
         ("(0400,0520)", "CT Image", (), "X"),  # Encrypted Content, out of place
-        # Codes, numbers, tags, and sequences are kept wherever they are.
+        # Codes, numbers, and tags are kept wherever they are.
         ("(0028,0010)", None, (), "K"),
         ("(0028,0010)", "RT Plan", (), "K"),
-        ("(300A,00B0)", "CT Image", (), "K"),
         ("(0008,0060)", "RT Dose", ("(300A,00B0)",), "K"),
+        # A sequence is kept only where the IOD defines it, since its items'
+        # codes are kept: Beam Sequence in an RT Plan, but not in a CT, and
+        # not Discharge Diagnosis Code Sequence, which no IOD of the first
+        # supported release defines.
+        ("(300A,00B0)", "RT Plan", (), "K"),
+        ("(300A,00B0)", "CT Image", (), "X"),
+        ("(300A,00B0)", None, (), "X"),
+        ("(0038,0044)", "CT Image", (), "X"),
+        ("(0038,0044)", "RT Plan", ("(300A,00B0)",), "X"),
+        ("(3010,005D)", "RT Plan", (), "X"),  # RT Diagnosis Code Sequence
     ],
 )
-def test_the_default_keeps_a_binary_value_only_where_the_iod_defines_it(
+def test_the_default_keeps_a_binary_value_or_sequence_only_where_the_iod_defines_it(
     tag, iod, path, action
 ):
     found = None if iod is None else iods.load_iod_tables().iods[iod]
@@ -373,7 +389,7 @@ def test_the_default_keeps_a_binary_value_only_where_the_iod_defines_it(
     assert (rule.source, rule.action) == (DEFAULT, action)
 
 
-def test_the_iod_decides_only_the_default_for_binary_values():
+def test_the_iod_decides_only_the_default_for_binary_values_and_sequences():
     tables = iods.load_iod_tables()
     rules = _rules()
     for attribute in _dictionary().values():
@@ -384,7 +400,9 @@ def test_the_iod_decides_only_the_default_for_binary_values():
             if within != without:
                 assert without.source is DEFAULT and without.action == "X"
                 assert within == dataclasses.replace(without, action="K")
-                assert {"OB", "OD", "OF", "OL", "OV", "OW", "UN"} & set(attribute.vrs)
+                assert {"OB", "OD", "OF", "OL", "OV", "OW", "UN", "SQ"} & set(
+                    attribute.vrs
+                )
 
 
 def test_every_dictionary_attribute_has_the_rule_of_the_first_level_covering_it():
@@ -443,9 +461,10 @@ def test_only_codes_numbers_tags_sequences_and_binary_values_reach_the_default()
 
     # Checked by hand against the 2026d PS3.6: each VR, and each set of
     # alternatives, that an attribute without another rule has. Without an
-    # IOD, a binary value is removed, and so is an element without a VR.
-    kept = ("CS", "AT", "SQ", "DS", "IS", "FD", "FL", "SL", "SS", "SV", "UL")
-    binary = ("OB", "OB or OW", "OD", "OF", "OL", "OV", "OW")
+    # IOD, a binary value or sequence is removed, and so is an element
+    # without a VR.
+    kept = ("CS", "AT", "DS", "IS", "FD", "FL", "SL", "SS", "SV", "UL")
+    binary = ("OB", "OB or OW", "OD", "OF", "OL", "OV", "OW", "SQ")
     assert reaching == {
         **dict.fromkeys((*kept, "US", "UV", "US or SS"), {"K"}),
         **dict.fromkeys((*binary, "US or OW", "US or SS or OW"), {"X"}),
@@ -455,13 +474,15 @@ def test_only_codes_numbers_tags_sequences_and_binary_values_reach_the_default()
 
 
 def test_the_default_keeps_the_vrs_that_the_design_names():
-    # From the design document: codes, tags, sequences, and the numeric VRs
-    # are kept, and binary values only where the IOD defines the attribute.
+    # From the design document: codes, tags, and the numeric VRs are kept,
+    # and binary values and sequences only where the IOD defines the
+    # attribute.
     numeric = {"DS", "IS", "FL", "FD", "SL", "SS", "SV", "UL", "US", "UV"}
+    binary = {"OB", "OD", "OF", "OL", "OV", "OW", "UN"}
 
-    assert element_rules.KEPT_VRS == {"CS", "AT", "SQ"} | numeric
-    assert element_rules.BINARY_VRS == {"OB", "OD", "OF", "OL", "OV", "OW", "UN"}
-    assert not (element_rules.KEPT_VRS | element_rules.BINARY_VRS) & (
+    assert element_rules.KEPT_VRS == {"CS", "AT"} | numeric
+    assert element_rules.IOD_DEFINED_VRS == binary | {"SQ"}
+    assert not (element_rules.KEPT_VRS | element_rules.IOD_DEFINED_VRS) & (
         TEXT_VRS | NAME_DATE_TIME_AND_UID_VRS | {"AE", "AS", "UR"}
     )
 
@@ -491,8 +512,8 @@ def test_the_new_rules_cover_every_uri_that_table_e1_1_omits():
 
 
 def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
-    # The sequences, ICC Profile, and MAC Parameters Sequence are Type 3
-    # wherever the first supported release's IODs define them, so they are
+    # The sequences, ICC Profile, MAC Parameters Sequence, and the three
+    # measures of the patient are Type 3 wherever the first supported release's IODs define them, so they are
     # removed. Retrieve URL and Retrieve URI are required only in sequences
     # that the table removes, and three UR attributes are required at places
     # where removal by Type needs a dummy value.
@@ -510,7 +531,10 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
             if definition.tag not in URIS:
                 assert resolved == "X", (name, definition)
             elif resolved != "X":
-                removed = any(basic.rule(tag).action == "X" for tag in definition.path)
+                removed = any(
+                    basic.rule(tag, definition.path[:depth], iod=iod).action == "X"
+                    for depth, tag in enumerate(definition.path)
+                )
                 if not removed:
                     required.add(definition.tag)
                     assert resolved == "D", (name, definition)
@@ -528,7 +552,7 @@ def test_patient_size_code_sequence_is_removed_under_retain_patient_characterist
 
 
 @hypothesis.given(st.integers(0, 0xFFFF), st.integers(0, 0xFFFF))
-def test_every_tag_has_one_rule_that_depends_only_on_the_tag_and_policy(group, element):
+def test_every_tag_has_one_rule_that_is_the_same_for_the_same_policy(group, element):
     tag = _tag(group, element)
     rule = _rules().rule(tag)
 

@@ -1028,6 +1028,24 @@ action = "X/Z/D"
 note = "The patient's size as a code, such as a size category, which says something about the patient as Patient's Size (0010,1020) does, which Table E.1-1 removes (X). It is removed by Type under every option, including Retain Patient Characteristics: that option keeps the characteristics that Table E.1-1 lists, and a rule for an attribute that the table omits may give an action under an option only to text, dates, and times. It is Type 3 in the Patient Study Module."
 
 [[attribute]]
+tag = "(0010,1022)"
+keyword = "PatientBodyMassIndex"
+action = "X/Z/D"
+note = "The patient's body mass index, a number derived from Patient's Size (0010,1020) and Patient's Weight (0010,1030), which Table E.1-1 removes (X), and which says as much about the patient as they do. It is removed by Type under every option, including Retain Patient Characteristics: that option keeps the characteristics that Table E.1-1 lists, and a rule for an attribute that the table omits may give an action under an option only to text, dates, and times. It is Type 3 in the Patient Study Module."
+
+[[attribute]]
+tag = "(0010,1023)"
+keyword = "MeasuredAPDimension"
+action = "X/Z/D"
+note = "The patient's measured anterior-posterior thickness, a measure of the body that says something about the patient as Patient's Size (0010,1020) and Patient's Weight (0010,1030) do, which Table E.1-1 removes (X). It is removed by Type under every option, including Retain Patient Characteristics: that option keeps the characteristics that Table E.1-1 lists, and a rule for an attribute that the table omits may give an action under an option only to text, dates, and times. It is Type 3 in the Patient Study Module."
+
+[[attribute]]
+tag = "(0010,1024)"
+keyword = "MeasuredLateralDimension"
+action = "X/Z/D"
+note = "The patient's measured lateral width, a measure of the body that says something about the patient as Patient's Size (0010,1020) and Patient's Weight (0010,1030) do, which Table E.1-1 removes (X). It is removed by Type under every option, including Retain Patient Characteristics: that option keeps the characteristics that Table E.1-1 lists, and a rule for an attribute that the table omits may give an action under an option only to text, dates, and times. It is Type 3 in the Patient Study Module."
+
+[[attribute]]
 tag = "(0032,1034)"
 keyword = "RequestingServiceCodeSequence"
 action = "X/Z/D"
