@@ -1,8 +1,14 @@
-# Reviewed list: the anatomic regions of PS3.16 Annex L (Table L-1) that
-# lie in the head or neck, or contain it, curated by hand. A CT series
-# whose Body Part Examined (0018,0015) is one of these terms, or whose
-# Anatomic Region Sequence (0008,2218) gives one of these codes, declares
-# that it shows the head or neck, which raises its indicator of a
+# Reviewed list: the anatomic regions of PS3.16 Annex L that lie in the
+# head or neck, or contain it, curated by hand. 94 come from Table L-1.
+# Seven come from Table L-2, the codes and terms for large animals, and are
+# included deliberately, since a human series can give them too: Atlantal-
+# axial joint, Atlanto-occipital joint, Frontal sinus, Mandibular dental
+# arch, Mandibular incisor teeth, Maxillary dental arch, and Maxillary
+# incisor teeth.
+#
+# A CT series whose Body Part Examined (0018,0015) is one of these terms, or
+# whose Anatomic Region Sequence (0008,2218) gives one of these codes,
+# declares that it shows the head or neck, which raises its indicator of a
 # reconstructable face (MIDI report Section 1.18.3).
 #
 # The list takes every region that lies wholly or partly in the head or
@@ -17,8 +23,8 @@
 # lies.
 #
 # Each region has its SNOMED CT code (SCT), its SNOMED RT identifier (SRT)
-# where Table L-1 gives one, which older instances give instead, and its
-# Body Part Examined term where Table L-1 gives one.
+# where its table gives one, which older instances give instead, and its
+# Body Part Examined term where its table gives one.
 
 schema = "pymedphys-deid-head-and-neck-regions/1"
 edition = "2026d"

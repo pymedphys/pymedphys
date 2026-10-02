@@ -712,6 +712,137 @@ def test_one_multi_frame_ct_image_can_be_a_volume(transfer_syntax, sop_class):
     }
 
 
+def _frame_anatomy(*regions) -> "pydicom.Dataset":
+    """A functional group item whose Frame Anatomy codes the given regions."""
+    anatomy = pydicom.Dataset()
+    anatomy.FrameLaterality = "U"
+    anatomy.AnatomicRegionSequence = list(regions)
+    group = pydicom.Dataset()
+    group.FrameAnatomySequence = [anatomy]
+    return group
+
+
+SHARED_HEAD = "(5200,9229)[0] > (0020,9071)[0] > (0008,2218)[0] > (0008,0100)"
+
+
+@TRANSFER_SYNTAXES
+@pytest.mark.parametrize("sop_class", MULTI_FRAME_CT)
+def test_shared_frame_anatomy_can_name_the_head(transfer_syntax, sop_class):
+    # Enhanced CT codes its anatomy in the Frame Anatomy functional group,
+    # with no copy at the top level required (PS3.3 Section C.7.6.16.2.8).
+    series = [_multi_frame(0, sop_class, NumberOfFrames=3)]
+    series[0].SharedFunctionalGroupsSequence = [
+        _frame_anatomy(_region("69536005", "SCT"))
+    ]
+    if transfer_syntax is not None:
+        series = [_read_back(each, transfer_syntax) for each in series]
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0,), None),
+        (Indicator.HEAD_OR_NECK, (0,), SHARED_HEAD),
+    }
+
+
+@TRANSFER_SYNTAXES
+def test_per_frame_anatomy_can_name_the_head(transfer_syntax):
+    series = [_multi_frame(0, MULTI_FRAME_CT[0], NumberOfFrames=3)]
+    series[0].PerFrameFunctionalGroupsSequence = [
+        _frame_anatomy(_region("51185008", "SCT")),
+        _frame_anatomy(_region("51185008", "SCT"), _region("t-d1600", "srt")),
+        _frame_anatomy(_region("45048000", "SCT")),
+    ]
+    if transfer_syntax is not None:
+        series = [_read_back(each, transfer_syntax) for each in series]
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0,), None),
+        (
+            Indicator.HEAD_OR_NECK,
+            (0,),
+            "(5200,9230)[1] > (0020,9071)[0] > (0008,2218)[1] > (0008,0100)",
+        ),
+        (
+            Indicator.HEAD_OR_NECK,
+            (0,),
+            "(5200,9230)[2] > (0020,9071)[0] > (0008,2218)[0] > (0008,0100)",
+        ),
+    }
+
+
+def test_frame_anatomy_elsewhere_is_only_a_volume():
+    series = [_multi_frame(0, MULTI_FRAME_CT[0], NumberOfFrames=3)]
+    series[0].SharedFunctionalGroupsSequence = [
+        _frame_anatomy(_region("51185008", "SCT"))
+    ]
+    series[0].PerFrameFunctionalGroupsSequence = [pydicom.Dataset()] * 3
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0,), None)
+    }
+
+
+@pytest.mark.parametrize(
+    "where, tag, vr, value, path",
+    [
+        ("image", 0x52009229, "LO", SENTINEL.encode(), "(5200,9229)"),
+        ("image", 0x52009230, "LO", SENTINEL.encode(), "(5200,9230)"),
+        ("group", 0x00209071, "LO", SENTINEL.encode(), "(5200,9229)[0] > (0020,9071)"),
+        (
+            "anatomy",
+            0x00082218,
+            "LO",
+            SENTINEL.encode(),
+            "(5200,9229)[0] > (0020,9071)[0] > (0008,2218)",
+        ),
+        (
+            "region",
+            0x00080100,
+            "SH",
+            b"69536005\\" + SENTINEL.encode(),
+            "(5200,9229)[0] > (0020,9071)[0] > (0008,2218)[0] > (0008,0100)",
+        ),
+        (
+            "region",
+            0x00080102,
+            "US",
+            b"\x01\x00",
+            "(5200,9229)[0] > (0020,9071)[0] > (0008,2218)[0] > (0008,0102)",
+        ),
+    ],
+)
+def test_unreadable_frame_anatomy_is_unreadable_evidence(where, tag, vr, value, path):
+    image = _multi_frame(0, MULTI_FRAME_CT[0], NumberOfFrames=3)
+    group = _frame_anatomy(_region("69536005", "SCT"))
+    image.SharedFunctionalGroupsSequence = [group]
+    image.PerFrameFunctionalGroupsSequence = [pydicom.Dataset()] * 3
+    anatomy = group.FrameAnatomySequence[0]
+    held = {
+        "image": image,
+        "group": group,
+        "anatomy": anatomy,
+        "region": anatomy.AnatomicRegionSequence[0],
+    }[where]
+    _with_raw(held, tag, vr, value)
+    findings = pixel_risk.assess_ct_series([image])
+    found = _series_found(findings)
+    assert (Indicator.UNREADABLE, (0,), path) in found
+    assert (Indicator.CT_VOLUME, (0,), None) in found
+    # Only unreadable shared anatomy hides the head that it codes.
+    named = (Indicator.HEAD_OR_NECK, (0,), SHARED_HEAD) in found
+    assert named is not path.startswith("(5200,9229)")
+    assert SENTINEL not in repr(findings)
+
+
+def test_assessing_frame_anatomy_leaves_the_instance_as_it_was_read():
+    image = _multi_frame(0, MULTI_FRAME_CT[0], NumberOfFrames=3)
+    image.SharedFunctionalGroupsSequence = [_frame_anatomy(_region("69536005", "SCT"))]
+    image = _read_back(image, EXPLICIT_LE)
+    before = {tag: image.get_item(tag, keep_deferred=True) for tag in image.keys()}
+    assert _series_found(pixel_risk.assess_ct_series([image])) == {
+        (Indicator.CT_VOLUME, (0,), None),
+        (Indicator.HEAD_OR_NECK, (0,), SHARED_HEAD),
+    }
+    for tag, element in before.items():
+        assert image.get_item(tag, keep_deferred=True) is element
+
+
 @pytest.mark.parametrize("sop_class", MULTI_FRAME_CT)
 def test_single_frames_of_multi_frame_ct_images_add_up_to_a_volume(sop_class):
     one = _multi_frame(0, sop_class, NumberOfFrames=1)

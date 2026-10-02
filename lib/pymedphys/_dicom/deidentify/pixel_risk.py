@@ -209,6 +209,9 @@ _CODE_VALUE = "(0008,0100)"
 _CODING_SCHEME_DESIGNATOR = "(0008,0102)"
 _ANATOMIC_REGION_SEQUENCE = "(0008,2218)"
 _BODY_PART_EXAMINED = "(0018,0015)"
+_FRAME_ANATOMY_SEQUENCE = "(0020,9071)"
+_SHARED_FUNCTIONAL_GROUPS_SEQUENCE = "(5200,9229)"
+_PER_FRAME_FUNCTIONAL_GROUPS_SEQUENCE = "(5200,9230)"
 _NUMBER_OF_FRAMES = "(0028,0008)"
 _STRUCTURE_SET_ROI_SEQUENCE = "(3006,0020)"
 _ROI_NUMBER = "(3006,0022)"
@@ -233,6 +236,9 @@ READ_VRS = {
     _CODING_SCHEME_DESIGNATOR: "SH",
     _ANATOMIC_REGION_SEQUENCE: "SQ",
     _BODY_PART_EXAMINED: "CS",
+    _FRAME_ANATOMY_SEQUENCE: "SQ",
+    _SHARED_FUNCTIONAL_GROUPS_SEQUENCE: "SQ",
+    _PER_FRAME_FUNCTIONAL_GROUPS_SEQUENCE: "SQ",
     _NUMBER_OF_FRAMES: "IS",
     _STRUCTURE_SET_ROI_SEQUENCE: "SQ",
     _ROI_NUMBER: "IS",
@@ -700,9 +706,11 @@ def assess_ct_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFindin
     holds its Number of Frames (0028,0008), one if it is absent, and is a
     volume by itself if that cannot be read. An instance whose SOP Class
     UID (0008,0016) cannot be read counts as a frame. A volume whose Body
-    Part Examined (0018,0015) or Anatomic Region Sequence (0008,2218) names
-    a region in :func:`load_head_and_neck_regions` is also reported as
-    showing the head or neck. How finely a series samples the face changes
+    Part Examined (0018,0015) or Anatomic Region Sequence (0008,2218),
+    at the top level or in a Frame Anatomy Sequence (0020,9071) of the
+    shared or a per-frame functional group, names a region in
+    :func:`load_head_and_neck_regions` is also reported as showing the head
+    or neck. How finely a series samples the face changes
     how readily it can be recognised (MIDI report Section 1.18.3.2), but no
     spacing makes it safe, so spacing decides nothing here.
 
@@ -806,16 +814,52 @@ def _head_or_neck(
     assert isinstance(body_parts, list)
     if regions.body_parts.intersection(body_parts):
         yield path
+    yield from _coded_head_or_neck(dataset, (), regions, index, unreadable)
+    # An Enhanced or Legacy Converted Enhanced CT image codes its anatomy in
+    # the Frame Anatomy functional group, shared or per frame, whose General
+    # Anatomy macro holds an Anatomic Region Sequence (PS3.3 Sections A.38
+    # and C.7.6.16.2.8), with no copy at the top level required.
+    for group in (
+        _SHARED_FUNCTIONAL_GROUPS_SEQUENCE,
+        _PER_FRAME_FUNCTIONAL_GROUPS_SEQUENCE,
+    ):
+        for item, within in _items(dataset, (), group, index, unreadable):
+            for anatomy, nested in _items(
+                item, within, _FRAME_ANATOMY_SEQUENCE, index, unreadable
+            ):
+                yield from _coded_head_or_neck(
+                    anatomy, nested, regions, index, unreadable
+                )
+
+
+def _items(
+    dataset: pydicom.Dataset,
+    within: tuple[tuple[str, int], ...],
+    tag: str,
+    index: int,
+    unreadable: list[SeriesFinding],
+) -> list[tuple[pydicom.Dataset, tuple[tuple[str, int], ...]]]:
+    """Return a sequence's items with their paths, reporting it if unreadable."""
     try:
-        items = _read(dataset, _ANATOMIC_REGION_SEQUENCE) or []
+        items = _read(dataset, tag) or []
     except _Unreadable:
-        unreadable.append(
-            _unreadable_in(index, ElementPath((), _ANATOMIC_REGION_SEQUENCE))
-        )
-        return
+        unreadable.append(_unreadable_in(index, ElementPath(within, tag)))
+        return []
     assert isinstance(items, list)
-    for number, item in enumerate(items):
-        within = ((_ANATOMIC_REGION_SEQUENCE, number),)
+    return [(item, (*within, (tag, number))) for number, item in enumerate(items)]
+
+
+def _coded_head_or_neck(
+    dataset: pydicom.Dataset,
+    within: tuple[tuple[str, int], ...],
+    regions: HeadAndNeckRegions,
+    index: int,
+    unreadable: list[SeriesFinding],
+) -> Iterator[ElementPath]:
+    """Yield the paths at which an Anatomic Region Sequence names the head or neck."""
+    for item, nested in _items(
+        dataset, within, _ANATOMIC_REGION_SEQUENCE, index, unreadable
+    ):
         # Code Value is Type 1C, absent where Long Code Value or URN Code
         # Value holds a code too long for it, which no code of the list is
         # (PS3.3 Section 8.8).
@@ -827,7 +871,7 @@ def _head_or_neck(
                 if len(value) > 1:
                     raise _Unreadable
             except _Unreadable:
-                unreadable.append(_unreadable_in(index, ElementPath(within, tag)))
+                unreadable.append(_unreadable_in(index, ElementPath(nested, tag)))
                 break
             values.append(value)
         else:
@@ -839,4 +883,4 @@ def _head_or_neck(
                 and code
                 and (scheme[0].upper(), code[0].upper()) in regions.codes
             ):
-                yield ElementPath(within, _CODE_VALUE)
+                yield ElementPath(nested, _CODE_VALUE)

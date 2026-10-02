@@ -931,6 +931,8 @@ tests = [
   "tests/dicom/test_deidentify_pixel_risk.py::test_a_volume_that_names_the_head_or_neck_says_so",
   "tests/dicom/test_deidentify_pixel_risk.py::test_an_anatomic_region_code_can_name_the_head",
   "tests/dicom/test_deidentify_pixel_risk.py::test_one_multi_frame_ct_image_can_be_a_volume",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_shared_frame_anatomy_can_name_the_head",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_per_frame_anatomy_can_name_the_head",
   "tests/dicom/test_deidentify_pixel_risk.py::test_unreadable_evidence_is_reported_without_a_volume",
   "tests/dicom/test_deidentify_pixel_risk.py::test_an_roi_named_external_body_or_skin_is_a_patient_surface",
 ]
