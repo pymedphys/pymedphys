@@ -193,12 +193,13 @@ The Attributes listed in Table E.1-1 for each Profile or Option are contained in
 '''
 status = "partial"
 milestone = "M3"
-decisions = ["D-001", "D-007", "D-011", "D-020", "D-021"]
+decisions = ["D-001", "D-007", "D-011", "D-020", "D-021", "D-028"]
 implementation = [
   "_dicom/deidentify/actions.py",
   "_dicom/deidentify/compound_actions.py",
   "_dicom/deidentify/elements.py",
   "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/private_attributes.py",
   "_dicom/deidentify/standard.py",
 ]
 tests = [
@@ -207,6 +208,8 @@ tests = [
   "tests/dicom/test_deidentify_actions.py::test_each_attribute_has_one_action_or_a_conflict",
   "tests/dicom/test_deidentify_policy.py::test_the_basic_policy_gives_each_attribute_its_basic_profile_action",
   "tests/dicom/test_deidentify_policy.py::test_each_preset_gives_each_attribute_one_action",
+  "tests/dicom/test_deidentify_private_attributes.py::test_the_basic_profile_removes_every_private_attribute",
+  "tests/dicom/test_deidentify_private_attributes.py::test_private_attributes_in_a_sequence_read_as_unknown_are_removed",
   "tests/dicom/test_deidentify_compound_actions.py::test_each_compound_action_resolves_by_type",
   "tests/dicom/test_deidentify_compound_actions.py::test_the_type_depends_on_the_enclosing_sequence",
   "tests/dicom/test_deidentify_compound_actions.py::test_x_z_on_a_type_1_attribute_sequesters_the_instance",
@@ -218,7 +221,7 @@ tests = [
   "tests/dicom/test_deidentify_elements.py::test_text_that_could_not_be_written_back_is_refused",
 ]
 note = '''
-Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute sequesters the instance (D-020). Each element, at the top level or in an item, is read with the VR that the pinned data dictionary gives its attribute, so that the attributes inside a sequence that pydicom does not know and reads as UN, such as an RT Plan's RT Assertions Sequence, can be found; an element whose VR conflicts with the dictionary, or whose value or items do not decode exactly, is reported as undecodable rather than read as pydicom guesses it. Remaining: protecting or retaining every instance of each attribute, at the top level and in sequences (M3).
+Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute sequesters the instance (D-020). Each element, at the top level or in an item, is read with the VR that the pinned data dictionary gives its attribute, so that the attributes inside a sequence that pydicom does not know and reads as UN, such as an RT Plan's RT Assertions Sequence, can be found; an element whose VR conflicts with the dictionary, or whose value or items do not decode exactly, is reported as undecodable rather than read as pydicom guesses it. Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028). Remaining: protecting or retaining every instance of each other attribute, at the top level and in sequences, and removing private attributes from each instance the engine de-identifies (M3).
 '''
 
 [[requirement]]
@@ -521,7 +524,10 @@ When this Option is specified in addition to the Basic Application Level Confide
 '''
 status = "planned"
 milestone = "M3"
-decisions = ["D-001"]
+decisions = ["D-001", "D-028"]
+note = '''
+Until reviewed rules say which private attributes are safe, a policy that selects the Option is refused (D-028).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.10-02"
@@ -529,8 +535,28 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is not specified, all Private Attributes shall be removed, as described in Table E.1-1.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
+decisions = ["D-028"]
+implementation = ["_dicom/deidentify/private_attributes.py"]
+tests = [
+  "tests/dicom/test_deidentify_private_attributes.py::test_the_basic_profile_removes_every_private_attribute",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_private_sequence_is_removed_with_everything_in_it",
+  "tests/dicom/test_deidentify_private_attributes.py::test_every_odd_group_element_is_removed",
+  "tests/dicom/test_deidentify_private_attributes.py::test_each_preset_without_retain_safe_private_removes_private_attributes",
+  "tests/dicom/test_deidentify_private_attributes.py::test_private_attributes_read_from_a_file_are_removed",
+  "tests/dicom/test_deidentify_private_attributes.py::test_private_attributes_in_a_sequence_read_as_unknown_are_removed",
+  "tests/dicom/test_deidentify_private_attributes.py::test_an_unknown_value_that_cannot_be_read_as_items_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_sequence_that_pydicom_cannot_decode_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_an_unknown_character_set_in_an_item_read_from_a_file_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_an_unknown_character_set_in_an_item_of_an_unknown_value_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_character_set_that_pydicom_does_not_map_as_given_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_character_set_stored_with_another_vr_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_sequence_stored_with_another_vr_is_refused",
+]
+note = '''
+Every element of an odd group, including private creators and the elements that PS3.5 does not allow, is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN, and a private sequence is removed with everything in it. A standard sequence that cannot be decoded exactly, that is stored with a VR other than SQ or UN, or whose items have a Specific Character Set that pydicom does not map as given or that is stored with another VR, is refused by its path; it is removed where a rule removes it or a sequence that holds it, and otherwise its instance is sequestered (D-028). Remaining: removing them from each instance the engine de-identifies (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.10-03"
@@ -540,6 +566,10 @@ When an entire Sequence (SQ VR) Private Attribute is not known to always only co
 '''
 status = "planned"
 milestone = "M3"
+decisions = ["D-028"]
+note = '''
+Without the Option, a private sequence is removed with everything in it, and a policy that selects the Option is refused until reviewed rules say which private attributes are safe (D-028).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.10-04"
@@ -713,6 +743,7 @@ implementation = [
   "_dev/deid_tables/ps3_6.py",
   "_dicom/deidentify/actions.py",
   "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/private_attributes.py",
   "_dicom/deidentify/scope.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/standard.py",
@@ -735,12 +766,13 @@ tests = [
   "tests/dicom/test_deidentify_supplementary_actions.py::test_only_the_text_of_the_supported_iods_needs_rules",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_the_rules_for_omitted_text_fall_in_the_reviewed_groups",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_each_group_takes_the_action_of_its_option",
+  "tests/dicom/test_deidentify_private_attributes.py::test_every_odd_group_element_is_removed",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_date_and_time_that_table_e1_1_omits_has_a_rule",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_a_new_attribute_that_table_e1_1_omits_needs_a_rule_by_its_vr",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_only_the_date_options_override_the_action_of_an_omitted_date",
 ]
 note = '''
-The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names, dates, and times that Table E.1-1 omits and every text attribute that it omits and a supported IOD uses. Each such attribute that an option retains or cleans is categorised by that option, as Table E.1-1 does: operator-typed text is cleaned under Clean Descriptors, and accessory and equipment identifiers are kept under Retain Device Identity (D-022); the dates and times are kept under Retain Longitudinal Temporal Information with Full Dates and cleaned under Modified Dates (D-023). `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and `.github/workflows/deid-edition-check.yml` runs it monthly. Remaining: a decision on the UR attributes that the tables omit (D-022) (M2); private attributes (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names, dates, and times that Table E.1-1 omits and every text attribute that it omits and a supported IOD uses. Each such attribute that an option retains or cleans is categorised by that option, as Table E.1-1 does: operator-typed text is cleaned under Clean Descriptors, and accessory and equipment identifiers are kept under Retain Device Identity (D-022); the dates and times are kept under Retain Longitudinal Temporal Information with Full Dates and cleaned under Modified Dates (D-023). Without Retain Safe Private, every private attribute is removed from a data set, at every level (D-028). `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and `.github/workflows/deid-edition-check.yml` runs it monthly. Remaining: a decision on the UR attributes that the tables omit (D-022) (M2); removing private attributes from each instance the engine de-identifies (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]
@@ -831,9 +863,19 @@ id = "MIDI-BP-13"
 text = '''
 Retain private data elements only after evaluating their risk against a reliable source of elements known to be safe, such as PS3.15 E.3.10 or manufacturers' documentation; otherwise remove them selectively or entirely.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
-decisions = ["D-001"]
+decisions = ["D-001", "D-028"]
+implementation = ["_dicom/deidentify/private_attributes.py"]
+tests = [
+  "tests/dicom/test_deidentify_private_attributes.py::test_the_basic_profile_removes_every_private_attribute",
+  "tests/dicom/test_deidentify_private_attributes.py::test_every_odd_group_element_is_removed",
+  "tests/dicom/test_deidentify_private_attributes.py::test_retain_safe_private_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_policy_that_does_not_remove_private_attributes_is_refused",
+]
+note = '''
+Without Retain Safe Private, every private data element and private creator is removed from a data set, at every level, and a policy that selects the Option, which retains those known to be safe, is refused until reviewed rules say which are (D-028). Remaining: removing them from each instance the engine de-identifies, and the reviewed rules that `public-release` needs (M3).
+'''
 
 [[requirement]]
 id = "MIDI-BP-14"
