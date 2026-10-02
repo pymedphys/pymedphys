@@ -34,9 +34,10 @@ that do not depend on the instances of a run:
 as text; each first checks that every field has the form of a digest, a
 version, a known edition, preset, or option, or a file name or path within
 the engine's package. Every field is built from the policy, the engine's own
-files, and the versions that run it, never from DICOM data, and the check is
-a backstop: a field of another form, which could be a source value or a path
-outside the package, is refused. A field that fails is named, never quoted.
+files, the versions that run it, and the keyed digest of the reviewed-names
+list, never from DICOM data directly, and the check is a backstop: a field
+of another form, which could be a source value or a path outside the
+package, is refused. A field that fails is named, never quoted.
 
 The sections that describe a run's instances, such as residual search
 findings and sequestered instances, are to follow.
@@ -58,7 +59,7 @@ from .runtime import RuntimeEnvironment, runtime_environment
 from .standard import OPTIONS
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/1"
+FORMAT = "pymedphys-deid-release-report/2"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -119,7 +120,10 @@ class ReleaseReport:
 
 
 def release_report(
-    policy: Policy, *, vocabulary: tg263.Nomenclature | None
+    policy: Policy,
+    *,
+    vocabulary: tg263.Nomenclature | None,
+    reviewed_roi_names: str | None,
 ) -> ReleaseReport:
     """Return the release report's record of a policy, its method, and the runtime.
 
@@ -133,6 +137,11 @@ def release_report(
         against, or None without one. It must be given by name, and has no
         default, so that every caller states whether there is one. The
         report records only its content digest.
+    reviewed_roi_names : str or None
+        The keyed digest of the reviewed-names list whose decisions
+        descriptor cleaning applies to ROI Names, or None without a list. It
+        must be given by name, and has no default, so that every caller
+        states whether there is one. The report records only this digest.
 
     Returns
     -------
@@ -148,7 +157,9 @@ def release_report(
     Examples
     --------
     >>> from pymedphys._dicom.deidentify.policy import compose_policy
-    >>> report = release_report(compose_policy("basic"), vocabulary=None)
+    >>> report = release_report(
+    ...     compose_policy("basic"), vocabulary=None, reviewed_roi_names=None
+    ... )
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
@@ -163,7 +174,9 @@ def release_report(
             options=tuple(policy.options),
             claims_conformance=policy.claims_conformance,
         ),
-        method=method_digest.method_digest_components(policy, vocabulary=vocabulary),
+        method=method_digest.method_digest_components(
+            policy, vocabulary=vocabulary, reviewed_roi_names=reviewed_roi_names
+        ),
         runtime=runtime_environment(),
     )
 
@@ -241,6 +254,9 @@ def _method_section(method: MethodDigestComponents) -> dict:
         "l3_rules": _optional_digest("l3_rules", method.l3_rules),
         "vocabulary_digest": _optional_digest(
             "vocabulary_digest", method.vocabulary_digest
+        ),
+        "reviewed_roi_names": _optional_digest(
+            "reviewed_roi_names", method.reviewed_roi_names
         ),
         "generated_values_digest": _digest(
             "generated_values_digest", method.generated_values_digest

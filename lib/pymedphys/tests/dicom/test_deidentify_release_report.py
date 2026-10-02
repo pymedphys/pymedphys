@@ -47,6 +47,7 @@ METHOD_FIELDS = [
     "l2_rules_digest",
     "l3_rules",
     "vocabulary_digest",
+    "reviewed_roi_names",
     "generated_values_digest",
     "engine_files",
 ]
@@ -109,13 +110,15 @@ def _vocabulary(*names):
 
 
 def test_the_report_records_the_policy_the_method_and_the_runtime(basic):
-    report = release_report.release_report(basic, vocabulary=None)
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
 
     assert report.policy == release_report.PolicyRecord(
         preset="basic", edition=basic.edition, options=(), claims_conformance=True
     )
     assert report.method == method_digest.method_digest_components(
-        basic, vocabulary=None
+        basic, vocabulary=None, reviewed_roi_names=None
     )
     assert report.runtime == runtime.runtime_environment()
 
@@ -125,7 +128,9 @@ def test_the_policy_section_names_the_edition_preset_and_options(preset):
     composed = policy.compose_policy(preset)
 
     document = release_report.report_document(
-        release_report.release_report(composed, vocabulary=None)
+        release_report.release_report(
+            composed, vocabulary=None, reviewed_roi_names=None
+        )
     )
 
     assert document["policy"] == {
@@ -139,7 +144,9 @@ def test_the_policy_section_names_the_edition_preset_and_options(preset):
 def test_a_custom_option_set_has_no_preset():
     custom = policy.compose_custom_policy(("clean_descriptors",))
 
-    report = release_report.release_report(custom, vocabulary=None)
+    report = release_report.release_report(
+        custom, vocabulary=None, reviewed_roi_names=None
+    )
 
     assert report.policy.preset is None
     assert report.policy.options == ("clean_descriptors",)
@@ -147,11 +154,11 @@ def test_a_custom_option_set_has_no_preset():
 
 def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
     document = release_report.report_document(
-        release_report.release_report(basic, vocabulary=None)
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
     )
 
     assert list(document) == ["format", "policy", "method", "runtime"]
-    assert document["format"] == "pymedphys-deid-release-report/1"
+    assert document["format"] == "pymedphys-deid-release-report/2"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
@@ -159,10 +166,14 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
 
 def test_the_method_section_holds_the_digest_and_its_components(basic):
     vocabulary = _vocabulary("Heart", "Lung_L")
-    components = method_digest.method_digest_components(basic, vocabulary=vocabulary)
+    components = method_digest.method_digest_components(
+        basic, vocabulary=vocabulary, reviewed_roi_names=None
+    )
 
     document = release_report.report_document(
-        release_report.release_report(basic, vocabulary=vocabulary)
+        release_report.release_report(
+            basic, vocabulary=vocabulary, reviewed_roi_names=None
+        )
     )
 
     assert document["method"] == {
@@ -174,7 +185,7 @@ def test_the_method_section_holds_the_digest_and_its_components(basic):
         for name in METHOD_FIELDS
     }
     assert document["method"]["method_digest"] == method_digest.method_digest(
-        basic, vocabulary=vocabulary
+        basic, vocabulary=vocabulary, reviewed_roi_names=None
     )
     assert document["method"]["l3_rules"] is None
 
@@ -183,7 +194,7 @@ def test_the_runtime_section_holds_the_values_of_software_versions(basic):
     environment = runtime.runtime_environment()
 
     section = release_report.report_document(
-        release_report.release_report(basic, vocabulary=None)
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
     )["runtime"]
 
     assert section == dataclasses.asdict(environment)
@@ -196,7 +207,9 @@ def test_the_runtime_section_holds_the_values_of_software_versions(basic):
 
 
 def test_the_json_is_the_document_and_the_same_report_gives_the_same_text(basic):
-    report = release_report.release_report(basic, vocabulary=None)
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
 
     text = release_report.to_json(report)
 
@@ -222,7 +235,9 @@ def _installed_engine(tmp_path, monkeypatch):
 def test_the_report_holds_no_path_of_the_installed_engine(basic, tmp_path, monkeypatch):
     engine = _installed_engine(tmp_path, monkeypatch)
 
-    text = release_report.to_json(release_report.release_report(basic, vocabulary=None))
+    text = release_report.to_json(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
+    )
 
     assert SENTINEL not in text and "SENTINEL" not in text
     assert str(tmp_path) not in text and tmp_path.as_posix() not in text
@@ -233,7 +248,9 @@ def test_the_report_holds_no_path_of_the_installed_engine(basic, tmp_path, monke
 
 
 def test_the_report_holds_no_path_of_the_running_engine_or_home(basic):
-    text = release_report.to_json(release_report.release_report(basic, vocabulary=None))
+    text = release_report.to_json(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
+    )
 
     for directory in (method_digest.PACKAGE_DIR, pathlib.Path.home()):
         assert str(directory) not in text and directory.as_posix() not in text
@@ -243,13 +260,47 @@ def test_the_report_holds_the_vocabulary_digest_not_its_entries(basic):
     vocabulary = _vocabulary("Heart", SENTINEL_ROI)
 
     text = release_report.to_json(
-        release_report.release_report(basic, vocabulary=vocabulary)
+        release_report.release_report(
+            basic, vocabulary=vocabulary, reviewed_roi_names=None
+        )
     )
 
     assert SENTINEL_ROI not in text and "Sentinel" not in text
     assert json.loads(text)["method"]["vocabulary_digest"] == (
-        method_digest.digest_inputs(vocabulary=vocabulary).vocabulary
+        method_digest.digest_inputs(
+            vocabulary=vocabulary, reviewed_roi_names=None
+        ).vocabulary
     )
+
+
+# A keyed digest of a reviewed-names list, as ReviewedNames.keyed_digest gives.
+REVIEWED_ROI_NAMES = "4247e696d65fef56fae5a25e8b7e2ffc5f81727a0a44395ca29acdc48df4d667"
+
+
+def test_the_report_holds_the_reviewed_names_digest_it_was_given(basic):
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=REVIEWED_ROI_NAMES
+    )
+
+    method = release_report.report_document(report)["method"]
+
+    assert method["reviewed_roi_names"] == REVIEWED_ROI_NAMES
+    assert method["method_digest"] == method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=REVIEWED_ROI_NAMES
+    )
+    assert (
+        release_report.report_document(
+            release_report.release_report(
+                basic, vocabulary=None, reviewed_roi_names=None
+            )
+        )["method"]["reviewed_roi_names"]
+        is None
+    )
+
+
+def test_every_report_states_the_reviewed_names_digest_by_name(basic):
+    with pytest.raises(TypeError, match="reviewed_roi_names"):
+        release_report.release_report(basic, vocabulary=None)  # type: ignore[call-arg]
 
 
 def _with_method(report, **changes):
@@ -286,6 +337,14 @@ def _engine_files(report, path):
         (lambda r: _with_method(r, method_digest=SENTINEL), "method_digest"),
         (lambda r: _with_method(r, vocabulary_digest=SENTINEL), "vocabulary_digest"),
         (lambda r: _with_method(r, l3_rules=SENTINEL), "l3_rules"),
+        (
+            lambda r: _with_method(r, reviewed_roi_names=SENTINEL),
+            "reviewed_roi_names",
+        ),
+        (
+            lambda r: _with_method(r, reviewed_roi_names="A" * 64),
+            "reviewed_roi_names",
+        ),
         (
             lambda r: _with_method(r, l2_rules_digest="A" * 64),
             "l2_rules_digest",
@@ -336,6 +395,8 @@ def _engine_files(report, path):
         "digest",
         "vocabulary-digest",
         "l3-rules",
+        "reviewed-names-digest",
+        "uppercase-reviewed-names-digest",
         "uppercase-digest",
         "format",
         "engine-version",
@@ -349,7 +410,9 @@ def _engine_files(report, path):
 def test_a_report_with_a_field_that_could_hold_a_value_or_path_is_refused(
     basic, change, field
 ):
-    report = change(release_report.release_report(basic, vocabulary=None))
+    report = change(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
+    )
 
     for write in (release_report.report_document, release_report.to_json):
         with pytest.raises(release_report.ReleaseReportError, match=field) as raised:
@@ -366,4 +429,6 @@ def test_every_report_states_the_vocabulary_by_name(basic, vocabulary):
 
 def test_only_a_policy_is_accepted():
     with pytest.raises(TypeError, match="policy must be"):
-        release_report.release_report({"preset": "basic"}, vocabulary=None)
+        release_report.release_report(
+            {"preset": "basic"}, vocabulary=None, reviewed_roi_names=None
+        )

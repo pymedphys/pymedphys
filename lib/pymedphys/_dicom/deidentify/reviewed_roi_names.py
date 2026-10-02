@@ -47,6 +47,9 @@ held names of a run for the confidential QC material.
 The list holds source ROI Names verbatim, so it is confidential state: the
 custodian keeps it with the key and subject profiles, outside output and QC
 directories. Its ``repr``, the results, and every error message hold no name.
+It changes what the engine writes, so the method digest covers it through
+its keyed digest (:meth:`ReviewedNames.keyed_digest`), which reveals neither
+a name nor whether a list holds one to anyone without the key.
 """
 
 from __future__ import annotations
@@ -59,17 +62,21 @@ import os
 import pathlib
 import re
 import tempfile
+import types
 import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
 
 from . import roi_names
 from .keys import (
+    DeidKey,
     custodian_location_problem,
     warn_where_owner_only_modes_are_not_enforced,
 )
 from .roi_names import Reason
 
 FORMAT = "pymedphys-deid-reviewed-roi-names/1"
+# The domain of the list's keyed digest, which no other derivation uses.
+DIGEST_DOMAIN = "reviewed-roi-names"
 # A name written to ROI Name (3006,0026), which is LO, in the default
 # repertoire: at most 64 printable ASCII characters other than backslash
 # (PS3.5 Section 6.2), with no padding.
@@ -221,6 +228,54 @@ class ReviewedNames:
     def __len__(self) -> int:
         return len(self._names)
 
+    def _document(self) -> dict:
+        names = {
+            name: {"review": d.review.value, "to": d.to}
+            if d.review is Review.MAP
+            else {"review": d.review.value}
+            for name, d in sorted(self._names.items())
+        }
+        return {"format": FORMAT, "names": names}
+
+    def canonical_bytes(self) -> bytes:
+        """Return the list's canonical form, which its keyed digest is computed from.
+
+        The form is the list's file without whitespace outside text: one JSON
+        object with the members ``format`` (:data:`FORMAT`) and ``names``,
+        encoded as UTF-8, with every object's members sorted by key, compared
+        by code point, and every character other than ``"``, ``\\``, and the
+        control characters written as itself. The same decisions therefore
+        give the same bytes whatever order they were recorded in.
+
+        The bytes hold the list's names, so they are as confidential as the
+        list.
+        """
+        text = json.dumps(
+            self._document(), sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
+        return text.encode("utf-8")
+
+    def keyed_digest(self, key: DeidKey) -> str:
+        """Return the list's keyed digest, as 64 lowercase hexadecimal digits.
+
+        It is the HMAC-SHA-256 of :meth:`canonical_bytes` under ``key`` in the
+        :data:`DIGEST_DOMAIN` domain (:meth:`~.keys.DeidKey.derive`), which
+        the method digest records in place of the list. The same list under
+        the same key always gives the same digest, and any change to a
+        decision or a name changes it. Under a key kept for one run only,
+        each run's digest differs even for the same list. Without the key,
+        the digest cannot be checked against a guessed list, so it reveals no
+        name.
+
+        Raises
+        ------
+        TypeError
+            If ``key`` is not a :class:`~.keys.DeidKey`.
+        """
+        if not isinstance(key, DeidKey):
+            raise TypeError("the list's keyed digest needs a DeidKey")
+        return key.derive(DIGEST_DOMAIN, self.canonical_bytes()).hex()
+
     def __repr__(self) -> str:
         return f"ReviewedNames(names={len(self)})"
 
@@ -238,15 +293,7 @@ class ReviewedNames:
         """
         if self._path is None:
             raise ReviewedNamesError("a list made by empty() has no file to save to")
-        names = {
-            name: {"review": d.review.value, "to": d.to}
-            if d.review is Review.MAP
-            else {"review": d.review.value}
-            for name, d in sorted(self._names.items())
-        }
-        text = json.dumps(
-            {"format": FORMAT, "names": names}, indent=1, ensure_ascii=False
-        )
+        text = json.dumps(self._document(), indent=1, ensure_ascii=False)
         # mkstemp creates the file readable and writable only by its owner.
         descriptor, temporary = tempfile.mkstemp(
             dir=self._path.parent, prefix=f".{self._path.name}.", suffix=".part"
@@ -478,20 +525,49 @@ class PendingName:
     structure_sets: int
 
 
-class ReviewQueue:
-    """The distinct ROI Names a run held for review.
+@dataclasses.dataclass(frozen=True)
+class RoiNameCounts:
+    """What a run wrote for ROI Names, as counts without names, for the release report.
 
-    :meth:`entries` lists them, with the names, for the confidential QC
-    material; :meth:`summary` counts them by reason, without names, for the
-    release report.
+    Only positive counts are present.
+
+    Attributes
+    ----------
+    held : Mapping of Reason to int
+        How many distinct ROI Names were held for each reason, whether they
+        were then held or emptied unreviewed, as :meth:`ReviewQueue.summary`
+        gives. A name held for two reasons counts once for each. Read-only.
+    outcomes : Mapping of Outcome to int
+        How many ROI Names had each outcome, counting every name of every
+        structure set added. Read-only.
+    """
+
+    # Mappings are not hashable, so they are left out of the hash.
+    held: Mapping[Reason, int] = dataclasses.field(hash=False)
+    outcomes: Mapping[Outcome, int] = dataclasses.field(hash=False)
+
+    def __post_init__(self) -> None:
+        for field in ("held", "outcomes"):
+            counts = {k: v for k, v in dict(getattr(self, field)).items() if v > 0}
+            object.__setattr__(self, field, types.MappingProxyType(counts))
+
+
+class ReviewQueue:
+    """The ROI Names of a run's structure sets, and the distinct names it held.
+
+    :meth:`entries` lists the held names, with the names, for the
+    confidential QC material; :meth:`summary` counts them by reason, and
+    :meth:`report_counts` also counts every name by outcome, without names,
+    for the release report.
     """
 
     def __init__(self) -> None:
         self._reasons: dict[str, set[Reason]] = collections.defaultdict(set)
         self._counts: collections.Counter[str] = collections.Counter()
+        self._outcomes: collections.Counter[Outcome] = collections.Counter()
 
     def add(self, names: Sequence[str], results: Sequence[CleanedRoiName]) -> None:
-        """Add the held names of one structure set.
+        """Add the ROI Names of one structure set, with what is written for each.
 
         Raises
         ------
@@ -507,6 +583,7 @@ class ReviewQueue:
         for name, reasons in held.items():
             self._reasons[name] |= reasons
             self._counts[name] += 1
+        self._outcomes.update(result.outcome for result in results)
 
     def entries(self) -> tuple[PendingName, ...]:
         """Return each distinct held name, sorted by name."""
@@ -521,6 +598,10 @@ class ReviewQueue:
         for reasons in self._reasons.values():
             counts.update(reasons)
         return dict(counts)
+
+    def report_counts(self) -> RoiNameCounts:
+        """Return the held names by reason and every name by outcome, without names."""
+        return RoiNameCounts(held=self.summary(), outcomes=dict(self._outcomes))
 
     def __repr__(self) -> str:
         return f"ReviewQueue(names={len(self._reasons)})"

@@ -23,7 +23,8 @@ change and the same inputs always give the same text.
 - the PS3.15 edition, the preset, and its options, with their CID 7050
   codes, and the options that are not supported;
 - whether the policy can claim conformance, and why not where it cannot;
-- the method digest of the policy (D-024) and the vocabulary it covers;
+- the method digest of the policy (D-024), the vocabulary it covers, and
+  the absence of a reviewed-names list;
 - the supported IODs, their Storage SOP Classes, and the transfer
   syntaxes they are read in (D-010);
 - the action of each attribute of Table E.1-1, of each supplementary rule,
@@ -215,7 +216,8 @@ class ConformanceStatement:
     resolved : tuple of ResolvedConflict
         The conflicts between options that the preset resolves.
     method_digest : str
-        The policy's method digest under the vocabulary given (D-024).
+        The policy's method digest under the vocabulary given, without a
+        reviewed-names list (D-024).
     vocabulary_digest : str or None
         The content digest of the vocabulary's entries, or None without one.
     iods, sop_classes, transfer_syntaxes : tuple
@@ -306,6 +308,8 @@ def conformance_statement(
         the published baseline digest of a preset (D-024). It must be given
         by name, as for
         :func:`~pymedphys._dicom.deidentify.method_digest.method_digest`.
+        The digest is always computed without a reviewed-names list, which
+        is a site's confidential resource, and the statement says so.
 
     Returns
     -------
@@ -372,8 +376,13 @@ def conformance_statement(
         options=policy.options,
         enabled=policy.enabled,
         resolved=policy.resolved,
-        method_digest=method_digest(policy, vocabulary=vocabulary),
-        vocabulary_digest=digest_inputs(vocabulary=vocabulary).vocabulary,
+        # A statement describes a policy, never a site's reviewed-names list.
+        method_digest=method_digest(
+            policy, vocabulary=vocabulary, reviewed_roi_names=None
+        ),
+        vocabulary_digest=digest_inputs(
+            vocabulary=vocabulary, reviewed_roi_names=None
+        ).vocabulary,
         iods=tuple(sorted(SUPPORTED_IODS)),
         sop_classes=supported,
         transfer_syntaxes=syntaxes,
@@ -533,7 +542,8 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "",
         "## Method digest",
         "",
-        f"The method digest of {preset}, {vocabulary}, is "
+        f"The method digest of {preset}, {vocabulary} and without a "
+        f"reviewed-names list, is "
         f"`{statement.method_digest}` (D-024). It identifies the policy and "
         "the PyMedPhys implementation and resources that apply it.",
         "",
