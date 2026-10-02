@@ -59,6 +59,8 @@ MUTUALLY_EXCLUSIVE = (
     frozenset({"retain_longitudinal_full_dates", "retain_longitudinal_modified_dates"}),
 )
 
+# The tag of the row of Table E.1-1 that covers every private attribute.
+PRIVATE_ATTRIBUTES_TAG = "(gggg,eeee) where gggg is odd"
 # A private Data Element as Table E.3.10-1 gives it, such as "(0019,xx0C)":
 # the group, "xx" for the private block, and the element within the block.
 # The published table writes some hexadecimal digits in lower case.
@@ -111,7 +113,7 @@ class ProfileAttribute:
         The attribute name, as the table gives it.
     tag : str
         The tag in the form ``(gggg,eeee)``, where ``x`` may stand for any
-        hexadecimal digit, or ``"(gggg,eeee) where gggg is odd"`` for the row
+        hexadecimal digit, or :data:`PRIVATE_ATTRIBUTES_TAG` for the row
         covering every private attribute.
     retired : bool
         Whether PS3.6 lists the attribute as retired.
@@ -756,6 +758,21 @@ def load_data_dictionary(path: pathlib.Path | None = None) -> DataDictionary:
         without a keyword is not retired; or if a tag or keyword repeats.
     """
     return _load_data_dictionary(_default(path, "data_dictionary.json"))
+
+
+@functools.lru_cache(maxsize=None)
+def sequence_tags() -> frozenset[str]:
+    """Return the tags whose VR is SQ in the pinned data dictionary.
+
+    A reader that knows an attribute's VR may decode a value of VR UN with
+    it, as Implicit VR Little Endian (PS3.5 Section 6.2.2), so these are the
+    UN values that hold items.
+    """
+    return frozenset(
+        attribute.tag
+        for attribute in load_data_dictionary().attributes
+        if attribute.vr == "SQ"
+    )
 
 
 @functools.lru_cache(maxsize=None)
