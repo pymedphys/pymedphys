@@ -144,12 +144,16 @@ _ACTION_CONSUMERS = {
 
 
 class SequesterReason(enum.Enum):
-    """Why a plan's instance must be sequestered."""
+    """Why an instance must be sequestered."""
 
     # a dummy value on an element whose VR has none, such as SQ
     NO_DUMMY_VALUE = "no-dummy-value"
     # written with a VR other than UN that the dictionary does not give
     VR_NOT_IN_DICTIONARY = "vr-not-in-dictionary"
+    # a value that the action needs, and that cannot be decoded
+    UNDECODABLE = "undecodable"
+    # a Specific Character Set that is not supported (D-010)
+    UNSUPPORTED_CHARACTER_SET = "unsupported-character-set"
 
 
 _EXPLANATIONS = {
@@ -159,6 +163,12 @@ _EXPLANATIONS = {
     ),
     SequesterReason.VR_NOT_IN_DICTIONARY: (
         "{path} is written with {vr}, which the pinned data dictionary does not give it"
+    ),
+    SequesterReason.UNDECODABLE: (
+        "{action} on {path} needs its value, which cannot be decoded"
+    ),
+    SequesterReason.UNSUPPORTED_CHARACTER_SET: (
+        "{path} is not a supported Specific Character Set"
     ),
 }
 
