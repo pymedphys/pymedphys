@@ -30,7 +30,7 @@ from unittest import mock
 from pymedphys._imports import hypothesis, pydicom, pytest
 from pymedphys._imports import numpy as np
 
-from pymedphys._dicom.deidentify import dates, pseudonyms, residuals, uids
+from pymedphys._dicom.deidentify import dates, dummy_values, pseudonyms, residuals, uids
 from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.residuals import (
@@ -39,6 +39,8 @@ from pymedphys._dicom.deidentify.residuals import (
     NotSearched,
     Omission,
     SourceValue,
+    Unsearched,
+    UnsearchedReason,
     ValueKind,
     find_residuals,
 )
@@ -1389,6 +1391,157 @@ def test_invalid_source_values_are_rejected(args, kwargs):
 def test_anything_but_source_values_is_rejected():
     with pytest.raises(TypeError, match="SourceValue"):
         find_residuals(_file(), [NAME])
+
+
+# Constants that the engine writes whatever the source held.
+
+
+def _written_constants():
+    """A file holding each constant that the engine writes, in a private LT."""
+    return _texts(*(value for _, value in residuals.written_constants()))
+
+
+@pytest.mark.parametrize(
+    "vr, value",
+    [
+        ("PN", "DEIDENTIFIED"),
+        ("PN", "Deidentified^^"),
+        ("PN", "DEIDENTIFIED^DEIDENTIFIED"),
+        ("PN", "DE-IDENTIFIED^DE-IDENTIFIED"),
+        ("LO", "DEIDENTIFIED"),
+        ("LO", " deidentified\x00"),
+        ("SH", "DE-IDENTIFIED"),
+        ("LT", "DEIDENTIFIED"),
+        ("UT", "DE-IDENTIFIED "),
+        ("DA", "19000101"),
+        ("DA", "1900.01.02"),
+        ("DT", "19000101000000"),
+        ("DT", "19000101000001+1000"),
+        ("DT", "1900"),
+        ("LO", "19000101"),
+        ("SH", "99PYMEDPHYS"),
+        ("LO", "PyMedPhys"),
+        ("SH", "113100"),
+        ("SH", "109104"),
+        ("LO", "Basic Application Confidentiality Profile"),
+        ("LO", "De-identifying Equipment"),
+    ],
+)
+def test_a_source_value_equal_to_a_written_constant_is_skipped_and_recorded(vr, value):
+    source = _source("(0010,1001)", vr, value)
+
+    result = find_residuals(_written_constants(), [source])
+
+    assert result.unsearched == (
+        Unsearched(_path("(0010,1001)"), UnsearchedReason.WRITTEN_CONSTANT),
+    )
+    assert not result.findings
+    assert not result.not_searched
+
+
+@pytest.mark.parametrize(
+    "vr, value",
+    [
+        ("PN", "DEIDENTIFIED^ZEBEDEE"),
+        ("LO", "DEIDENTIFIED 2"),
+        ("LO", "PyMedPhys DEIDENTIFIED"),
+        ("DA", "19000103"),
+        ("DT", "19000101000002"),
+        ("SH", "1131000"),
+    ],
+)
+def test_a_source_value_that_differs_from_every_constant_is_searched(vr, value):
+    data = _texts(value, *(text for _, text in residuals.written_constants()))
+
+    result = find_residuals(data, [_source("(0010,1001)", vr, value)])
+
+    assert result.findings
+    assert not result.unsearched
+
+
+def test_a_constant_among_several_values_is_skipped_alone():
+    values = [
+        _source("(0010,1001)", "PN", "DEIDENTIFIED\\ZEBEDEE^QUILLON"),
+        _source("(0010,1002)", "LO", "QUILLON\\DE-IDENTIFIED"),
+    ]
+    data = _texts("Mr Zebedee", "QUILLON", "DEIDENTIFIED", "DE-IDENTIFIED")
+
+    result = find_residuals(data, values)
+
+    # Only the elements of the name, (0019,1000), and of QUILLON, (0019,1001).
+    assert {(str(f.source), f.location.element.tag) for f in result.findings} == {
+        ("(0010,1001)", "(0019,1000)"),
+        ("(0010,1001)", "(0019,1001)"),
+        ("(0010,1002)", "(0019,1001)"),
+    }
+    assert [str(skip) for skip in result.unsearched] == [
+        "(0010,1001): not searched: written constant",
+        "(0010,1002): not searched: written constant",
+    ]
+
+
+def test_a_single_valued_text_is_not_split_into_constants():
+    value = _source("(0008,4000)", "LT", "DEIDENTIFIED\\ZEBEDEE")
+
+    result = find_residuals(_texts("DEIDENTIFIED\\ZEBEDEE"), [value])
+
+    assert len(result.findings) == 1
+    assert not result.unsearched
+
+
+def test_a_value_of_constants_alone_is_dropped_and_recorded_once():
+    values = [
+        _source("(0010,1001)", "PN", "DEIDENTIFIED\\DE-IDENTIFIED"),
+        _source("(0010,1001)", "PN", "DEIDENTIFIED"),
+        NAME_SOURCE,
+    ]
+
+    result = find_residuals(_written_constants(), values)
+
+    assert result.unsearched == (
+        Unsearched(_path("(0010,1001)"), UnsearchedReason.WRITTEN_CONSTANT),
+    )
+    assert not result.findings
+
+
+def test_values_that_are_not_searched_are_listed_even_when_equal_to_a_constant():
+    values = [
+        _source("(0012,0062)", "CS", "YES"),
+        _source("(0010,1030)", "DS", "0"),
+        _source("(0008,0030)", "TM", "000000"),
+    ]
+
+    result = find_residuals(_file(), values)
+
+    assert [omission.reason for omission in result.not_searched] == [
+        Omission.NOT_DISTINCTIVE
+    ] * 3
+    assert not result.unsearched
+
+
+@pytest.mark.parametrize("vr", ["DA", "DT", "LO", "LT", "PN", "SH", "ST", "UC", "UT"])
+def test_every_constant_that_d_writes_is_skipped(vr):
+    key = DeidKey(bytes(32))
+    vm = "1"
+    for source in ([], [str(dummy_values.CONSTANTS[vr][0])]):
+        (written,) = dummy_values.values_for_d(vr, vm, source, key)
+        value = _source("(0010,1001)", vr, str(written))
+
+        result = find_residuals(_file(), [value])
+
+        assert [skip.reason for skip in result.unsearched] == [
+            UnsearchedReason.WRITTEN_CONSTANT
+        ]
+
+
+def test_every_value_of_the_dummy_code_item_is_skipped():
+    for source in ([], [{"(0008,0100)": "DEIDENTIFIED"}]):
+        (item,) = dummy_values.items_for_d("(0040,1101)", source)
+        values = [_source(element.tag, element.vr, element.value) for element in item]
+
+        result = find_residuals(_file(), values)
+
+        assert len(result.unsearched) == len(item)
 
 
 # Privacy.
