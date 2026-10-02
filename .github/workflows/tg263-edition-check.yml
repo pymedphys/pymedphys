@@ -1,9 +1,10 @@
 name: TG-263 Edition Check
 
-# Each month, list the spreadsheets that AAPM's TG-263 resource page links to and
-# compare the pinned spreadsheet's SHA-256 with the pin. When the page links to
-# another spreadsheet, no longer links to the pinned one, or the pinned file has
-# changed, or the page or file cannot be fetched, open or update one issue.
+# Each month, list the downloads that AAPM's TG-263 resource page links to and
+# compare the pinned spreadsheet's SHA-256 with the pin. When the page links to a
+# download not yet reviewed, no longer links to the pinned spreadsheet, or the
+# pinned file has changed or gone, or the check cannot tell, open or update one
+# issue.
 on:
   schedule:
     - cron: '41 4 4 * *'  # The 4th of each month; staggered to avoid top-of-hour congestion
@@ -39,7 +40,7 @@ jobs:
 
       # The command exits with 0 when nothing has changed, 1 when something has,
       # and 3 when the page or the pinned file could not be fetched, or the page
-      # links to no spreadsheet. Its JSON report says which; a run that stops
+      # links to no download. Its JSON report says which; a run that stops
       # before writing it has failed.
       - name: Compare the published spreadsheets with the pin
         id: check
@@ -84,9 +85,9 @@ jobs:
         run: |
           title="TG-263 edition check: the pinned spreadsheet needs attention"
           if [[ "${STATUS}" == "changed" ]]; then
-            summary="AAPM's TG-263 resource page links to a spreadsheet other than the edition pinned on \`${REF_NAME}\`, no longer links to the pinned one, or the pinned file has changed."
+            summary="AAPM's TG-263 resource page links to a download that has not been reviewed on \`${REF_NAME}\`, no longer links to the pinned spreadsheet, or the pinned file has changed or is gone."
           else
-            summary="The TG-263 edition check on \`${REF_NAME}\` could not fetch AAPM's TG-263 resource page or the pinned spreadsheet, found no spreadsheet linked from the page, or did not finish."
+            summary="The TG-263 edition check on \`${REF_NAME}\` could not fetch AAPM's TG-263 resource page or the pinned spreadsheet, found no download linked from the page, or did not finish."
           fi
           body="${RUNNER_TEMP}/body.md"
           {
@@ -98,7 +99,7 @@ jobs:
             echo
             echo "Run: ${RUN_URL}"
             echo
-            echo "To move to a new edition, review its changes, add it to \`lib/pymedphys/_nomenclature/tg263_published.py\` with its URL, SHA-256, worksheet, and entries digest, and add its entries digest to the editions that ROI name cleaning accepts, as decision D-009 of the de-identification design describes."
+            echo "Review each new download. To move to a new edition, update \`PUBLISHED\` in \`lib/pymedphys/_nomenclature/tg263_published.py\` with its URL, SHA-256, worksheet, and entries digest, and the editions that ROI name cleaning accepts. Add every reviewed download that is not the pinned edition, including the edition the pin moves away from, to \`REVIEWED\` in \`lib/pymedphys/_dev/tg263_edition_check.py\`, so that it is not reported again."
           } > "${body}"
           number=$(gh issue list --state open --search "\"${title}\" in:title" \
             --json number,title --jq "map(select(.title == \"${title}\")) | first | .number // empty")

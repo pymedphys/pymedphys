@@ -390,18 +390,21 @@ cleaning ROI names.
 
 - **Schedule**: Monthly (the 4th), or manually
 - **Steps**: installs the project with the `user` extra and runs
-  `pymedphys dev tg263-check`, which lists the spreadsheets that AAPM's
-  Radiation Oncology Nomenclature Resource Page links to and downloads the
-  pinned spreadsheet to compare its SHA-256 with the pin. Its check job can
-  only read the repository
-- **Failures**: when the page links to another spreadsheet, no longer links to
-  the pinned one, or the pinned file has changed, or the page or the file cannot
-  be fetched, the page links to no spreadsheet, or the check stops without a
-  result, a separate job, the only one that can write issues and which runs no
-  repository code, opens or comments on the issue titled "TG-263 edition
-  check: the pinned spreadsheet needs attention" with the check's report and a
-  link to the run. Close the issue once the pin has moved; a later finding
-  opens a new one
+  `pymedphys dev tg263-check`, which lists the downloads (spreadsheets and
+  archives) that AAPM's Radiation Oncology Nomenclature Resource Page links to,
+  compares them with the pinned edition and the reviewed downloads in
+  `REVIEWED`, and downloads the pinned spreadsheet to compare its SHA-256 with
+  the pin. An edition published only on another page is not seen. Its check
+  job can only read the repository
+- **Failures**: when the page links to a download not yet reviewed, no longer
+  links to the pinned spreadsheet, or the pinned file has changed or is gone,
+  or the page or the file cannot be fetched, the page links to no download, or
+  the check stops without a result, a separate job, the only one that can write
+  issues and which runs no repository code, opens or comments on the issue
+  titled "TG-263 edition check: the pinned spreadsheet needs attention" with
+  the check's report and a link to the run. Once each new download is
+  reviewed, the pin moved or the download added to `REVIEWED`, close the issue;
+  a later finding opens a new one
 
 ### AI Assistance
 

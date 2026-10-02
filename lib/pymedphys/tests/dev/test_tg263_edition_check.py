@@ -76,20 +76,20 @@ def test_the_pinned_edition_alone_is_unchanged():
     assert result.current_sha256 == EDITION.sha256
     assert check.report_lines(result) == [
         f"Pinned edition: {EDITION.sheet}, {EDITION.url}",
-        f"Spreadsheets linked from {PAGE_URL}:",
+        f"Downloads linked from {PAGE_URL}:",
         f"  {EDITION.url}",
         "Result: unchanged",
     ]
 
 
-def test_a_spreadsheet_other_than_the_pinned_one_is_a_change():
+def test_a_download_that_has_not_been_reviewed_is_a_change():
     page = _page("TG263_Invented_20260101.xls", "TG263_Invented_20270101.xlsx")
 
     result = _check(page=page)
 
     assert result.status == "changed"
     assert check.report_lines(result)[-3:] == [
-        "Spreadsheets other than the pinned one:",
+        "Downloads not yet reviewed:",
         f"  {PAGE_URL}TG263_Invented_20270101.xlsx",
         "Result: changed",
     ]
@@ -132,9 +132,18 @@ def test_links_are_resolved_against_the_page(href):
 
 
 @pytest.mark.parametrize(
-    "href", ["Worksheet.XLS", "Worksheet.xlsx", "Worksheet.xls?download=1"]
+    "href",
+    [
+        "Worksheet.XLS",
+        "Worksheet.xlsx",
+        "Worksheet.xlsm",
+        "Worksheet.ods",
+        "Worksheet.csv",
+        "Worksheet.zip",
+        "Worksheet.xls?download=1",
+    ],
 )
-def test_spreadsheet_links_are_recognised_by_their_extension(href):
+def test_download_links_are_recognised_by_their_extension(href):
     result = _check(page=_page("TG263_Invented_20260101.xls", href))
     assert len(result.linked) == 2
 
@@ -158,7 +167,7 @@ def test_a_page_without_spreadsheet_links_fails():
     result = _check(page=_page())
 
     assert result.status == "failed"
-    assert "The page links to no spreadsheet." in check.report_lines(result)
+    assert "The page links to no download." in check.report_lines(result)
 
 
 @pytest.mark.parametrize(
@@ -257,3 +266,99 @@ def test_the_command_exits_with_the_status(monkeypatch):
         args.func(args)
 
     assert exit_info.value.code == 1
+
+
+def test_links_to_pages_and_documents_are_not_downloads():
+    page = _page("TG263_Invented_20260101.xls", "Report.pdf", "default.asp", "Next/")
+    assert _check(page=page).linked == (EDITION.url,)
+
+
+def test_a_reviewed_download_is_not_a_change():
+    # After the pin moves, the earlier edition stays linked and reviewed.
+    page = _page("TG263_Invented_20250101.xls", "TG263_Invented_20260101.xls")
+    result = check.check_current(
+        EDITION,
+        PAGE_URL,
+        _fetcher(page=page),
+        reviewed=["HTTP://Example.Invalid/reports/TG263/TG263_Invented_20250101.xls"],
+    )
+    assert result.status == "unchanged"
+    assert result.reviewed == (PAGE_URL + "TG263_Invented_20250101.xls",)
+
+
+def test_the_pinned_spreadsheet_alone_unlinked_is_a_change():
+    # The only linked download is a reviewed one, so nothing is unreviewed.
+    page = _page("Templates.zip")
+    result = check.check_current(
+        EDITION, PAGE_URL, _fetcher(page=page), reviewed=[PAGE_URL + "Templates.zip"]
+    )
+    assert not result.unreviewed
+    assert result.status == "changed"
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        "http://example.invalid/reports/TG263/TG263_Invented_20260101.xls",
+        "HTTPS://EXAMPLE.INVALID/reports/TG263/TG263_Invented_20260101.xls",
+    ],
+)
+def test_the_pinned_link_matches_whatever_its_scheme_or_host_case(href):
+    result = _check(page=_page(href))
+    assert result.linked == (EDITION.url,)
+    assert result.status == "unchanged"
+
+
+def test_an_href_that_is_not_a_url_is_ignored():
+    page = PAGE.replace(b"</body>", b'<a href="https://[bad/x.xls">Bad</a></body>')
+    assert _check(page=page).linked == (EDITION.url,)
+
+
+@pytest.mark.parametrize("code", [404, 410])
+def test_a_pinned_file_that_is_gone_is_a_change(code):
+    error = urllib.error.HTTPError(EDITION.url, code, "Gone", None, None)
+
+    result = _check(errors={EDITION.url: error})
+
+    assert result.status == "changed"
+    assert f"The pinned spreadsheet is gone (HTTP {code})." in (
+        check.report_lines(result)
+    )
+
+
+def test_a_page_that_cannot_be_fetched_fails_even_when_the_pinned_file_changed():
+    result = _check(errors={PAGE_URL: TimeoutError()}, spreadsheet=b"changed")
+    assert result.status == "failed"
+
+
+def test_report_urls_carry_no_control_characters():
+    page = _page("TG263_Invented\x1b[31m_20270101.xls")
+    report = "\n".join(check.report_lines(_check(page=page)))
+    assert "\x1b" not in report
+    assert "TG263_Invented[31m_20270101.xls" in report
+
+
+def test_a_long_list_of_links_is_cut_short():
+    page = _page(*(f"Extra_{number:03}.xls" for number in range(60)))
+    lines = check.report_lines(_check(page=page))
+    assert "  and 10 more" in lines
+    assert sum(line.startswith("  https://") for line in lines) == 100
+
+
+def test_the_command_treats_reviewed_downloads_as_known(monkeypatch):
+    templates = PAGE_URL + "EclipseStructureTemplates.zip"
+    page = _page("TG263_Invented_20260101.xls", "EclipseStructureTemplates.zip")
+    monkeypatch.setattr(check, "download", _fetcher(page=page))
+    monkeypatch.setattr(tg263_published, "PUBLISHED", EDITION)
+    monkeypatch.setattr(tg263_published, "PAGE_URL", PAGE_URL)
+    monkeypatch.setattr(check, "REVIEWED", frozenset({templates}))
+
+    args = define_parser().parse_args(["dev", "tg263-check"])
+    args.func(args)
+
+
+def test_the_reviewed_downloads_are_the_ones_on_aapms_page():
+    assert check.REVIEWED == {
+        "https://www.aapm.org/pubs/reports/RPT_263_Supplemental/"
+        "EclipseStructureTemplates.zip"
+    }

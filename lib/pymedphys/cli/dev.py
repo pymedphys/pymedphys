@@ -211,11 +211,11 @@ def add_tg263_check_parser(dev_subparsers):
     parser = dev_subparsers.add_parser(
         "tg263-check",
         help=(
-            "Check whether AAPM's TG-263 resource page links to a spreadsheet "
-            "other than the pinned edition, or the pinned file has changed. "
-            "Exits with status 0 if nothing has changed, 1 if something has, "
-            "and 3 if the page or the pinned file could not be fetched, or the "
-            "page links to no spreadsheet."
+            "Check whether AAPM's TG-263 resource page links to a download "
+            "not yet reviewed, no longer links to the pinned edition, or the "
+            "pinned file has changed or gone. Exits with status 0 if nothing "
+            "has changed, 1 if something has, and 3 if the page or the pinned "
+            "file could not be fetched, or the page links to no download."
         ),
     )
     parser.add_argument(
