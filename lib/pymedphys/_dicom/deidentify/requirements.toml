@@ -1053,11 +1053,28 @@ id = "MIDI-BP-17"
 text = '''
 Use human quality control to confirm that de-identification both removed what it should and preserved utility. Guide the proportion and type of records inspected by a documented risk assessment that sets the threshold of residual risk before and after quality control, taking account of what is removed or replaced and how reliably. Cover structured and unstructured text, pixel data, overlays, and metadata embedded in compressed bitstreams.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
-decisions = ["D-016", "D-017", "D-027"]
+decisions = ["D-016", "D-017", "D-026", "D-027"]
+implementation = [
+  "_dicom/deidentify/qc_attestation.py",
+  "_dicom/deidentify/qc_pack.py",
+  "_dicom/deidentify/qc_store.py",
+]
+tests = [
+  "tests/dicom/test_deidentify_qc_pack.py::test_the_document_holds_every_section",
+  "tests/dicom/test_deidentify_qc_pack.py::test_retained_strings_are_grouped_by_value",
+  "tests/dicom/test_deidentify_qc_pack.py::test_an_excerpt_shows_the_bytes_around_a_residual",
+  "tests/dicom/test_deidentify_qc_pack.py::test_a_search_gives_entries_with_excerpts_and_omissions",
+  "tests/dicom/test_deidentify_qc_pack.py::test_the_destination_is_neither_in_nor_around_releases",
+  "tests/dicom/test_deidentify_qc_pack.py::test_a_written_pack_is_readable_only_by_its_owner",
+  "tests/dicom/test_deidentify_qc_pack.py::test_qc_material_is_recognised_wherever_it_is",
+  "tests/dicom/test_deidentify_qc_attestation.py::test_attested_needs_every_review_that_d_017_requires",
+  "tests/dicom/test_deidentify_qc_attestation.py::test_the_record_holds_only_the_reference_and_outcome",
+  "tests/dicom/test_deidentify_qc_attestation.py::test_a_pack_changed_after_attestation_is_detected",
+]
 note = '''
-D-016 provides the confidential QC pack, to which the residual search sends its text findings (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. This practice is not implemented until M4 covers both, or the design assigns them to whoever releases the data.
+D-016 provides the confidential QC pack, to which the residual search sends its text findings (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. The QC pack is built and written: each instance by run position and source path, with its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); and what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009). It is written only to a designated, owner-only location outside the release and staging directories, and is marked so that no release includes it (D-016). A reviewer attests to a pack once, stating whether they reviewed every distinct retained string, every series, and every instance in high-risk categories, and an outcome of attested needs all three; the attestation is bound to the pack by its digest, and gives the release report only the pack's opaque reference and the outcome (D-016, D-017). Remaining: image previews of each series and the instances in high-risk categories, the attestation's record in the release report, and writing the pack in each run (M4). This practice is not implemented until M4 also covers both open points, or the design assigns them to whoever releases the data.
 '''
 
 [[requirement]]
