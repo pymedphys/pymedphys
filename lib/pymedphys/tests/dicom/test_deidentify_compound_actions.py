@@ -56,6 +56,18 @@ REFERENCED_STUDY_SEQUENCE = "(0008,1110)"
 VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"
 PERSON_IDENTIFICATION_CODE_SEQUENCE = "(0040,1101)"
 RT_ACCESSORY_HOLDER_SLOT_ID = "(300A,0611)"
+SERIES_DESCRIPTION = "(0008,103E)"
+RESPONSIBLE_PERSON = "(0010,2297)"
+RESPONSIBLE_ORGANIZATION = "(0010,2299)"
+SOURCE_SERIES_INFORMATION = "(3006,004C)"
+ROI_INTERPRETER_SEQUENCE = "(3006,004E)"
+RT_ROI_OBSERVATIONS = "(3006,0080)"
+PATIENT_SETUP = "(300A,0180)"
+REFERENCED_PATIENT_SETUP_PHOTO = "(300A,078C)"
+PROCEDURE_PARAMETER_DESCRIPTION = "(300A,078E)"
+PATIENT_TREATMENT_PREPARATION_PROCEDURE = "(300A,0790)"
+PATIENT_SETUP_PHOTO_DESCRIPTION = "(300A,0794)"
+PATIENT_TREATMENT_PREPARATION = "(300A,079F)"
 
 
 @pytest.fixture(name="tables", scope="module")
@@ -73,25 +85,31 @@ def _row(depth, name, tag, attribute_type):
     }
 
 
-def _synthetic_iod(tmp_path, *definitions, path=()):
+def _synthetic_iod(tmp_path, *definitions, path=(), sequence_types=None):
     """Return an IOD with one module of each usage, M, C, and U.
 
     Each definition is ``(usage, type)`` for Institution Name, in the module
     of that usage, within the sequences whose tags ``path`` gives, outermost
-    first. A module without a definition holds only Manufacturer (0008,0070).
+    first, each of the Type that ``sequence_types`` gives in the same order,
+    or Type 3 by default. A module without a definition holds only
+    Manufacturer (0008,0070).
 
     The IOD is written as synthetic generated tables and read back with
     :func:`~pymedphys._dicom.deidentify.iods.load_iod_tables`, so it does not
     depend on how the loader builds an IOD.
     """
     types = dict(definitions)
+    if sequence_types is None:
+        sequence_types = ("3",) * len(path)
     modules, tables = [], []
     for number, usage in enumerate(("M", "C", "U"), start=1):
         label = f"Table C.0-{number}"
         if usage in types:
             sequences = [
-                _row(depth, f"Sequence {depth}", tag, "3")
-                for depth, tag in enumerate(path)
+                _row(depth, f"Sequence {depth}", tag, sequence_type)
+                for depth, (tag, sequence_type) in enumerate(
+                    zip(path, sequence_types, strict=True)
+                )
             ]
             rows = [
                 *sequences,
@@ -575,11 +593,291 @@ def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated
     ],
 )
 def test_the_other_plain_actions_are_unchanged(tables, action, iod, tag, path):
-    # A plain X on an attribute that the IOD requires is to write an empty
-    # or dummy value instead of removing it (D-020), which is pending review
-    # and not implemented yet, so X is unchanged even where the attribute is
-    # Type 1 or 2C.
+    # A plain X stays X even where the attribute is Type 1 or 2C: it always
+    # removes the attribute, and resolve_plain_x_in_iod says what else goes
+    # with it.
     assert resolve_plain_in_iod(tables.iods[iod], tag, path, action) == action
+
+
+def resolve_plain_x_in_iod(iod, tag, path):
+    return compound_actions.resolve_plain_x_in_iod(iod, tag, path)
+
+
+def _removal(extent, sequence=None):
+    """Return the removal of this extent, by the name of its member."""
+    return compound_actions.PlainRemoval(
+        compound_actions.RemovalExtent[extent], sequence
+    )
+
+
+# Expected removals as the arguments of _removal, so that they are built when
+# a test runs.
+ALONE = ("ATTRIBUTE",)
+SEQUESTER = ("SEQUESTER",)
+OVERLAY_GROUP = ("OVERLAY_GROUP",)
+
+
+@pytest.mark.parametrize(
+    "iod, tag, path",
+    [
+        # Consulting Physician's Name is Type 3 at the top level of a CT
+        # image, and Institution Name Type 3 at the top level of an RT
+        # Structure Set.
+        ("CT Image", "(0008,009C)", ()),
+        ("RT Structure Set", INSTITUTION_NAME, ()),
+        # Verifying Observer Sequence is not defined in a CT image, nor Patient
+        # ID within Referenced Image Sequence, so they count as Type 3.
+        ("CT Image", VERIFYING_OBSERVER_SEQUENCE, ()),
+        ("CT Image", PATIENT_ID, ("(0008,1140)",)),
+    ],
+)
+def test_a_plain_x_on_an_optional_attribute_removes_it_alone(tables, iod, tag, path):
+    assert strictest_type(tables.iods[iod], tag, path) == "3"
+    assert resolve_plain_x_in_iod(tables.iods[iod], tag, path) == _removal(*ALONE)
+
+
+@pytest.mark.parametrize(
+    "iod, tag, path, sequence",
+    [
+        # Series Description is Type 1 in Source Series Information Sequence,
+        # which is Type 3.
+        ("RT Structure Set", SERIES_DESCRIPTION, (SOURCE_SERIES_INFORMATION,), 0),
+        # Patient Setup Photo Description is Type 2 in Referenced Patient
+        # Setup Photo Sequence, Type 3 within Patient Treatment Preparation
+        # Sequence, so the innermost of the two Type 3 sequences goes.
+        (
+            "CT Image",
+            PATIENT_SETUP_PHOTO_DESCRIPTION,
+            (PATIENT_TREATMENT_PREPARATION, REFERENCED_PATIENT_SETUP_PHOTO),
+            1,
+        ),
+        (
+            "RT Plan",
+            PATIENT_SETUP_PHOTO_DESCRIPTION,
+            (
+                PATIENT_SETUP,
+                PATIENT_TREATMENT_PREPARATION,
+                REFERENCED_PATIENT_SETUP_PHOTO,
+            ),
+            2,
+        ),
+        # Patient Treatment Preparation Procedure Parameter Description is
+        # Type 2 in Patient Treatment Preparation Procedure Sequence, itself
+        # Type 2, so Patient Treatment Preparation Sequence, Type 3 at the top
+        # level of a CT image and within Patient Setup Sequence of an RT
+        # Plan, goes; Patient Setup Sequence is Type 1.
+        (
+            "CT Image",
+            PROCEDURE_PARAMETER_DESCRIPTION,
+            (PATIENT_TREATMENT_PREPARATION, PATIENT_TREATMENT_PREPARATION_PROCEDURE),
+            0,
+        ),
+        (
+            "RT Plan",
+            PROCEDURE_PARAMETER_DESCRIPTION,
+            (
+                PATIENT_SETUP,
+                PATIENT_TREATMENT_PREPARATION,
+                PATIENT_TREATMENT_PREPARATION_PROCEDURE,
+            ),
+            1,
+        ),
+    ],
+)
+def test_a_plain_x_on_a_required_attribute_removes_the_innermost_type_3_sequence(
+    tables, iod, tag, path, sequence
+):
+    iod = tables.iods[iod]
+
+    assert strictest_type(iod, tag, path) in {"1", "2"}
+    assert strictest_type(iod, path[sequence], path[:sequence]) == "3"
+    assert all(
+        strictest_type(iod, path[inner], path[:inner]) != "3"
+        for inner in range(sequence + 1, len(path))
+    )
+    assert resolve_plain_x_in_iod(iod, tag, path) == _removal("SEQUENCE", sequence)
+
+
+@pytest.mark.parametrize(
+    "sequence_types, attribute_type, expected",
+    [
+        # The sequences outermost first, then the attribute within them.
+        (("3", "3", "3"), "1", ("SEQUENCE", 2)),
+        (("3", "3", "1"), "1C", ("SEQUENCE", 1)),
+        (("3", "2", "1C"), "2", ("SEQUENCE", 0)),
+        (("1", "3", "2C"), "2C", ("SEQUENCE", 1)),
+        (("1", "2", "1C"), "1", SEQUESTER),
+        (("2C", "1", "2"), "2C", SEQUESTER),
+        (("1", "1", "1"), "3", ALONE),
+    ],
+)
+def test_a_plain_x_skips_each_enclosing_sequence_that_is_required(
+    tmp_path, sequence_types, attribute_type, expected
+):
+    path = ("(0008,1111)", "(0008,1115)", "(0008,1140)")
+    iod = _synthetic_iod(
+        tmp_path, ("U", attribute_type), path=path, sequence_types=sequence_types
+    )
+
+    assert resolve_plain_x_in_iod(iod, INSTITUTION_NAME, path) == _removal(*expected)
+
+
+@pytest.mark.parametrize("iod", FIRST_RELEASE_IODS)
+@pytest.mark.parametrize("tag", [RESPONSIBLE_PERSON, RESPONSIBLE_ORGANIZATION])
+def test_a_plain_x_on_a_required_attribute_outside_a_type_3_sequence_sequesters(
+    tables, iod, tag
+):
+    # Responsible Person and Responsible Organization are Type 2C in the
+    # Patient Module, "Required if the Patient is a non-human organism. May
+    # be present otherwise.", and no sequence encloses them.
+    assert strictest_type(tables.iods[iod], tag) == "2"
+    assert resolve_plain_x_in_iod(tables.iods[iod], tag, ()) == _removal(*SEQUESTER)
+
+
+@pytest.mark.parametrize("iod", FIRST_RELEASE_IODS)
+@pytest.mark.parametrize("tag", ["(6000,3000)", "(6002,3000)", "(601E,3000)"])
+def test_a_plain_x_on_overlay_data_removes_its_repeating_group(tables, iod, tag):
+    # Overlay Data is Type 1 in the Overlay Plane Module, which the CT Image
+    # IOD includes as user-optional, so removing the whole group leaves a
+    # valid instance. The other IODs do not define it.
+    expected_type = "1" if iod == "CT Image" else "3"
+
+    assert strictest_type(tables.iods[iod], tag) == expected_type
+    assert resolve_plain_x_in_iod(tables.iods[iod], tag, ()) == _removal(*OVERLAY_GROUP)
+
+
+def test_overlay_data_is_type_1_only_at_the_top_level_of_a_user_optional_module(
+    tables,
+):
+    ct = tables.iods["CT Image"]
+    usage = {module.module: module.usage for module in ct.modules}
+
+    assert {
+        (d.path, d.type, d.module) for d in ct.definitions if d.tag == "(60xx,3000)"
+    } == {((), "1", "Overlay Plane")}
+    assert usage["Overlay Plane"] == "U"
+
+
+@pytest.mark.parametrize("tag", ["(6001,3000)", "(6020,3000)", "(5000,3000)"])
+def test_a_plain_x_on_an_attribute_outside_an_overlay_group_removes_it_alone(
+    tables, tag
+):
+    # Group 6001 is private, and groups 6020 and 5000 hold no overlay.
+    assert resolve_plain_x_in_iod(tables.iods["CT Image"], tag, ()) == _removal(*ALONE)
+
+
+def test_a_plain_x_on_roi_interpreter_sequence_removes_it_alone(tables):
+    # ROI Interpreter Sequence is Type 1C in RT ROI Observations Sequence,
+    # required only if ROI Creator Sequence is present, which Table E.1-1
+    # also removes, so the condition never holds in the output.
+    structure_set = tables.iods["RT Structure Set"]
+    path = (RT_ROI_OBSERVATIONS,)
+
+    assert {d.type for d in structure_set.lookup(ROI_INTERPRETER_SEQUENCE, path)} == {
+        "1C"
+    }
+    assert resolve_plain_x_in_iod(
+        structure_set, ROI_INTERPRETER_SEQUENCE, path
+    ) == _removal(*ALONE)
+
+
+def _basic_profile_removes(iod, tag, path, basic):
+    """Return whether the Basic Profile removes an attribute at a place."""
+    action = basic.get(tag)
+    if action in compound_actions.COMPOUND_ACTIONS:
+        return resolve_in_iod(iod, tag, path, action) == "X"
+    if action in compound_actions.PLAIN_ACTIONS:
+        return resolve_plain_in_iod(iod, tag, path, action) == "X"
+    return False
+
+
+def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
+    # Each place in the first supported release's IODs where Table E.1-1
+    # gives a plain X to an attribute that the IOD requires, and no sequence
+    # that the Basic Profile removes encloses it, with what the plain X
+    # removes there. A new edition that changes these places fails here.
+    attributes = standard.load_table_e1_1().attributes
+    basic = {attribute.tag: attribute.basic_profile for attribute in attributes}
+    plain_x = {
+        attribute.tag
+        for attribute in attributes
+        if "X" in (attribute.basic_profile, *attribute.options.values())
+    }
+    found = {}
+    for name in FIRST_RELEASE_IODS:
+        iod = tables.iods[name]
+        for definition in iod.definitions:
+            # The IOD tables give a repeating group as 60xx; take its first.
+            tag = definition.tag.replace("xx", "00")
+            path = definition.path
+            if (
+                definition.tag in plain_x
+                and strictest_type(iod, tag, path) != "3"
+                and not any(
+                    _basic_profile_removes(iod, path[depth], path[:depth], basic)
+                    for depth in range(len(path))
+                )
+            ):
+                found[name, path, definition.tag] = resolve_plain_x_in_iod(
+                    iod, tag, path
+                )
+
+    patient = {
+        (name, (), tag): _removal(*SEQUESTER)
+        for name in FIRST_RELEASE_IODS
+        for tag in (RESPONSIBLE_PERSON, RESPONSIBLE_ORGANIZATION)
+    }
+    preparation = {
+        (name, (*outer, PATIENT_TREATMENT_PREPARATION, inner), tag): _removal(
+            "SEQUENCE", len(outer) + (inner == REFERENCED_PATIENT_SETUP_PHOTO)
+        )
+        for name, outer in (("CT Image", ()), ("RT Plan", (PATIENT_SETUP,)))
+        for inner, tag in (
+            (REFERENCED_PATIENT_SETUP_PHOTO, PATIENT_SETUP_PHOTO_DESCRIPTION),
+            (PATIENT_TREATMENT_PREPARATION_PROCEDURE, PROCEDURE_PARAMETER_DESCRIPTION),
+        )
+    }
+    assert found == {
+        **patient,
+        **preparation,
+        (
+            "RT Structure Set",
+            (SOURCE_SERIES_INFORMATION,),
+            SERIES_DESCRIPTION,
+        ): _removal("SEQUENCE", 0),
+        (
+            "RT Structure Set",
+            (RT_ROI_OBSERVATIONS,),
+            ROI_INTERPRETER_SEQUENCE,
+        ): _removal(*ALONE),
+        ("CT Image", (), "(60xx,3000)"): _removal(*OVERLAY_GROUP),
+    }
+    # Seven attributes in all.
+    assert len({tag for _, _, tag in found}) == 7
+
+
+@pytest.mark.parametrize(
+    "extent, sequence",
+    [
+        ("SEQUENCE", None),
+        ("SEQUENCE", -1),
+        ("SEQUENCE", True),
+        ("SEQUENCE", 1.0),
+        ("SEQUENCE", "0"),
+        ("ATTRIBUTE", 0),
+        ("OVERLAY_GROUP", 0),
+        ("SEQUESTER", 0),
+    ],
+)
+def test_a_removal_names_a_sequence_only_when_it_removes_one(extent, sequence):
+    with pytest.raises(ValueError, match="sequence"):
+        _removal(extent, sequence)
+
+
+@pytest.mark.parametrize("extent", ["attribute", None, 0])
+def test_a_removal_needs_an_extent(extent):
+    with pytest.raises(ValueError, match="extent"):
+        compound_actions.PlainRemoval(extent)
 
 
 @pytest.mark.parametrize("action", sorted(compound_actions.COMPOUND_ACTIONS))
@@ -633,6 +931,8 @@ def test_a_malformed_tag_is_rejected(tables, tag):
         resolve_in_iod(ct, tag, (), "X/Z/D")
     with pytest.raises(ValueError, match="tag"):
         resolve_plain_in_iod(ct, tag, (), "D")
+    with pytest.raises(ValueError, match="tag"):
+        resolve_plain_x_in_iod(ct, tag, ())
 
 
 @pytest.mark.parametrize(
@@ -656,6 +956,8 @@ def test_a_malformed_path_is_rejected(tables, path):
         resolve_in_iod(ct, PATIENT_ID, path, "Z/D")
     with pytest.raises(ValueError, match="path"):
         resolve_plain_in_iod(ct, PATIENT_ID, path, "Z")
+    with pytest.raises(ValueError, match="path"):
+        resolve_plain_x_in_iod(ct, PATIENT_ID, path)
 
 
 def test_a_path_may_be_any_sequence_of_tags(tables):
@@ -680,6 +982,9 @@ def test_a_path_may_be_any_sequence_of_tags(tables):
         lambda iod: resolve_plain_in_iod(iod, SECRET, (), "D"),
         lambda iod: resolve_plain_in_iod(iod, PATIENT_ID, (SECRET,), "Z"),
         lambda iod: resolve_plain_in_iod(iod, PATIENT_ID, (), SECRET),
+        lambda iod: resolve_plain_x_in_iod(iod, SECRET, ()),
+        lambda iod: resolve_plain_x_in_iod(iod, PATIENT_ID, (SECRET,)),
+        lambda iod: resolve_plain_x_in_iod(iod, PATIENT_ID, SECRET),
     ],
 )
 def test_messages_repeat_no_value(tables, call):
