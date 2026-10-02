@@ -54,8 +54,10 @@ syntax, such as Implicit VR rather than Explicit VR Little Endian, another
 length form of a sequence or item, other padding of a value, or compressed
 rather than native Pixel Data. A copy whose bytes cannot be shown to be
 sound conflicts with every other copy: one whose structure cannot be read
-to its end, one without a Transfer Syntax UID, and one in a transfer syntax
-whose data set is deflated or big endian.
+to its end, one without a Transfer Syntax UID, one in a transfer syntax
+whose data set is deflated or big endian, and one with a top-level group
+length or Data Set Trailing Padding that holds items, whose elements would
+otherwise be compared as if they were at the top level.
 
 A record keeps a digest of the source bytes rather than the bytes, so
 records stay small. Building one reads the file's bytes into a data set of
@@ -74,6 +76,7 @@ import functools
 import hashlib
 import io
 import re
+import struct
 import types
 from collections.abc import Iterator, Mapping
 
@@ -81,7 +84,6 @@ from pymedphys._imports import pydicom
 
 from .file_layout import (
     BIG_ENDIAN_TRANSFER_SYNTAXES,
-    Location,
     Region,
     read_file_layout,
 )
@@ -96,6 +98,9 @@ REFERENCED_SOP_CLASS_TAG = "(0008,1150)"
 REFERENCED_SOP_INSTANCE_TAG = "(0008,1155)"
 PATIENT_ID_TAG = "(0010,0020)"
 ISSUER_OF_PATIENT_ID_TAG = "(0010,0021)"
+_TRAILING_PADDING_TAG = "(FFFC,FFFC)"
+# Data Set Trailing Padding is in its own region, at the top level or in an item.
+_DATA_SET_REGIONS = (Region.DATA_SET, Region.TRAILING_PADDING)
 
 
 class Level(enum.Enum):
@@ -281,13 +286,15 @@ class InstanceRecord:
         padding is removed: such an instance names no patient.
     digest : bytes or None
         The SHA-256 digest of the file's source bytes, as the module
-        describes them: the Transfer Syntax UID without padding, then a NUL,
-        then each byte of the data set in file order, except those of the
-        top-level group lengths and Data Set Trailing Padding. Two files have
-        the same digest exactly when their source bytes are the same.
-        ``None`` if they cannot be shown to be sound: the file's structure
-        cannot be read to its end, or it has no Transfer Syntax UID, or one
-        whose data set is deflated or big endian. It only compares the
+        describes them: the length of the Transfer Syntax UID without
+        padding as a 32-bit little endian number, the UID, then each byte of
+        the data set in file order, except those of the top-level group
+        lengths and Data Set Trailing Padding. Two files have the same digest
+        exactly when their source bytes are the same. ``None`` if they cannot
+        be shown to be sound: the file's structure cannot be read to its end,
+        it has no Transfer Syntax UID, or one whose data set is deflated or
+        big endian, or a top-level group length or Data Set Trailing Padding
+        holds items. It only compares the
         inputs of a run, and is never stored or reported.
     """
 
@@ -452,15 +459,23 @@ def _source_digest(data: bytes) -> bytes | None:
     syntax = layout.transfer_syntax
     if not layout.readable or not syntax or syntax in BIG_ENDIAN_TRANSFER_SYNTAXES:
         return None
-    digest = hashlib.sha256(syntax.encode() + b"\0")
+    # The UID's length first, so that its bytes cannot run into the data set's.
+    encoded = syntax.encode()
+    digest = hashlib.sha256(struct.pack("<I", len(encoded)) + encoded)
     for span in layout.spans:
         location = span.location
-        if location.region is Region.DATA_SET and not _is_group_length(location):
+        if location.region not in _DATA_SET_REGIONS or location.element is None:
+            continue
+        items, tag = location.element.items, location.element.tag
+        if not _is_left_out(items[0][0] if items else tag):
             digest.update(data[span.start : span.end])
+        elif items:
+            # An element left out holds items, whose elements would
+            # otherwise be compared as if at the top level.
+            return None
     return digest.digest()
 
 
-def _is_group_length(location: Location) -> bool:
-    """Return whether the location is in a group length at the top level."""
-    element = location.element
-    return element is not None and not element.items and element.tag[6:10] == "0000"
+def _is_left_out(tag: str) -> bool:
+    """Return whether a top-level element with ``tag`` is left out of the digest."""
+    return tag[6:10] == "0000" or tag == _TRAILING_PADDING_TAG

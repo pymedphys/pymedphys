@@ -481,11 +481,82 @@ def test_the_digest_is_of_the_transfer_syntax_and_the_data_set_bytes():
     data += TRAILING_PADDING
     assert len(data) == len(plain) + 12 + len(TRAILING_PADDING)
 
+    syntax = EXPLICIT_VR.encode()
     expected = hashlib.sha256(
-        EXPLICIT_VR.encode() + b"\x00" + plain[_data_set_start(plain) :]
+        struct.pack("<I", len(syntax)) + syntax + plain[_data_set_start(plain) :]
     ).digest()
 
     assert _digest(data) == _digest(plain) == expected
+
+
+def _identity():
+    """Return a data set that has only elements of group 0008."""
+    dataset = pydicom.Dataset()
+    dataset.SOPClassUID = synthetic.CT_IMAGE_STORAGE
+    dataset.SOPInstanceUID = "2.25.71"
+    return dataset
+
+
+def _long_element(tag, vr, value, length=None):
+    """Return an element in Explicit VR Little Endian with a 32-bit length."""
+    length = len(value) if length is None else length
+    header = struct.pack("<HH2s2xI", tag >> 16, tag & 0xFFFF, vr.encode(), length)
+    return header + value
+
+
+def _implicit_element(tag, value):
+    """Return an element in Implicit VR Little Endian (PS3.5 Section 7.1.3)."""
+    return struct.pack("<HHI", tag >> 16, tag & 0xFFFF, len(value)) + value
+
+
+def _item(value):
+    """Return an item of defined length (PS3.5 Section 7.5)."""
+    return _implicit_element(0xFFFEE000, value)
+
+
+PATIENT_ID = _element(0x00100020, "LO", b"SYNTHETIC ")
+IMPLICIT_PATIENT_ID = _implicit_element(0x00100020, b"SYNTHETIC ")
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "transfer_syntax, appended",
+    [
+        (EXPLICIT_VR, _long_element(0xFFFCFFFC, "SQ", _item(PATIENT_ID))),
+        (EXPLICIT_VR, _long_element(0x00090000, "SQ", _item(PATIENT_ID))),
+        (IMPLICIT_VR, _implicit_element(0x00090000, _item(IMPLICIT_PATIENT_ID))),
+    ],
+    ids=["padding", "group-length", "implicit-group-length"],
+)
+def test_a_left_out_element_that_holds_items_gives_no_digest(transfer_syntax, appended):
+    # Left out, a group length or Data Set Trailing Padding that holds items
+    # would leave the elements of its items, such as a Patient ID, to be
+    # compared as if they were at the top level of the data set.
+    data = synthetic.written(_identity(), transfer_syntax) + appended
+    assert read_file_layout(data).readable
+
+    assert _digest(data) is None
+
+
+@pytest.mark.pydicom
+def test_padding_in_an_item_changes_the_digest():
+    # Data Set Trailing Padding can end an item (PS3.10 Section 7.2), and is
+    # compared as it is there.
+    undefined = 0xFFFFFFFF
+    reference = _element(0x00081155, "UI", b"2.25.9\x00")
+    item_end = _implicit_element(0xFFFEE00D, b"")
+    sequence_end = _implicit_element(0xFFFEE0DD, b"")
+
+    def with_item(content):
+        item = struct.pack("<HHI", 0xFFFE, 0xE000, undefined) + content + item_end
+        sequence = _long_element(0x00081140, "SQ", item + sequence_end, undefined)
+        return synthetic.written(_identity()) + sequence
+
+    plain = with_item(reference)
+    padded = with_item(reference + _long_element(0xFFFCFFFC, "OB", b"\x01\x02"))
+    assert 0xFFFCFFFC in synthetic.read(padded).ReferencedImageSequence[0]
+
+    assert _digest(padded) not in (None, _digest(plain))
 
 
 def _findings(*files):
