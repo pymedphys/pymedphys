@@ -181,3 +181,65 @@ jobs:
           path: test-results/*.xml
           if-no-files-found: error
           retention-days: 30
+
+  # The de-identification tests also run with the declared minimum version of
+  # pydicom and with its latest release, which a new installation resolves.
+  # pydicom reads and writes every file the engine handles, and its data
+  # dictionary decides how an attribute of an Implicit VR file is read.
+  pydicom-versions:
+    name: De-identification with ${{ matrix.pydicom }} pydicom
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        pydicom: [minimum, latest]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The de-identification tests read no downloaded data.
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'tests'
+
+      - name: Run the de-identification tests with ${{ matrix.pydicom }} pydicom
+        id: tests
+        shell: bash
+        env:
+          PYDICOM: ${{ matrix.pydicom }}
+          # The lowest release that pydicom>=3.0.2 in pyproject.toml allows.
+          PYDICOM_MINIMUM: '3.0.2'
+        run: |
+          set -euxo pipefail
+          mkdir -p test-results
+          if [[ "${PYDICOM}" == minimum ]]; then
+            version="${PYDICOM_MINIMUM}"
+          else
+            # uv run --with keeps the locked pydicom whenever it satisfies the
+            # requirement, even with --upgrade-package, so resolve the latest
+            # release from the package index and pin it.
+            pinned=$(uv pip compile --no-deps --no-header --no-annotate --quiet - <<< "pydicom>=${PYDICOM_MINIMUM}")
+            version="${pinned#pydicom==}"
+          fi
+          export PYDICOM_VERSION="${version}"
+          # Reuse the locked environment and overlay only pydicom. Invoke
+          # Python so it imports pydicom from uv's overlay environment, print
+          # the version tested, and fail if the overlay did not take effect.
+          overlay=(uv run --no-sync --with "pydicom==${PYDICOM_VERSION}" --)
+          "${overlay[@]}" python -c 'import os, pydicom; print("pydicom", pydicom.__version__); assert pydicom.__version__ == os.environ["PYDICOM_VERSION"], pydicom.__version__'
+          "${overlay[@]}" python -m pymedphys dev tests -m "not slow" \
+            lib/pymedphys/tests/dicom/test_deidentify_*.py \
+            lib/pymedphys/tests/dev/test_deid_tables.py \
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-pydicom-${PYDICOM}.xml"
+
+      - name: Upload test results
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: junit-pydicom-${{ matrix.pydicom }}
+          path: test-results/*.xml
+          if-no-files-found: error
+          retention-days: 30
