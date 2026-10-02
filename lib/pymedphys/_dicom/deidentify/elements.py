@@ -56,8 +56,7 @@ back unchanged.
 once :func:`written_value_problem` has checked its values.
 
 pydicom's warnings and log records are redacted by
-:func:`pymedphys._dicom.anonymise.diagnostics.redacted_pydicom_diagnostics`,
-which ignores its warnings for the rest of the process, and its exceptions,
+:func:`.diagnostics.redacted_diagnostics`, and its exceptions,
 whose messages can quote values, are replaced, not chained. This module
 neither walks a data set nor applies an action.
 """
@@ -72,8 +71,8 @@ from typing import cast
 
 from pymedphys._imports import pydicom
 
-from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
 
+from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath, reads_as_items
 from .source import SourceEvidence
 from .sop_classes import load_storage_sop_classes
@@ -264,7 +263,7 @@ def read_element(
     :func:`dataset_codecs` given the same source. The elements of
     ``ancestors`` that decide a VR are read without the source.
     """
-    with redacted_pydicom_diagnostics():
+    with redacted_diagnostics():
         element = dataset.get_item(_number(path.tag), keep_deferred=True)
         if element is None:
             raise KeyError(str(path))
@@ -700,7 +699,7 @@ def _written_back(vr: str, text: str, codecs: Sequence[str]) -> bool:
     written = pydicom.filebase.DicomBytesIO()
     written.is_little_endian, written.is_implicit_VR = True, True
     try:
-        with redacted_pydicom_diagnostics():
+        with redacted_diagnostics():
             pydicom.filewriter.write_data_element(written, element, list(codecs))
             encoded = written.getvalue()[8:]
             raw = pydicom.dataelem.RawDataElement(
@@ -794,7 +793,7 @@ def new_element(
             ]
         empty = pydicom.dataelem.empty_value_for_VR(vr)
         value = list(values) if len(values) > 1 else values[0] if values else empty
-    with redacted_pydicom_diagnostics():
+    with redacted_diagnostics():
         return pydicom.DataElement(
             _number(path.tag), vr, value, validation_mode=pydicom.config.IGNORE
         )

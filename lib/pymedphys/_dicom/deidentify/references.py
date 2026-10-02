@@ -63,9 +63,8 @@ A record keeps a digest of the source bytes rather than the bytes, so
 records stay small. Building one reads the file's bytes into a data set of
 its own, so the caller's objects are left unchanged. It neither logs nor
 warns; pydicom's own warnings and errors while it reads and decodes values
-are the entry point's to redact, as
-:func:`pymedphys._dicom.anonymise.diagnostics.redacted_pydicom_diagnostics`
-does for the legacy tools.
+are the entry point's to redact, with
+:func:`.diagnostics.redacted_diagnostics`.
 """
 
 from __future__ import annotations

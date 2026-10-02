@@ -43,8 +43,7 @@ from collections.abc import Iterator, Mapping
 
 from pymedphys._imports import pydicom
 
-from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
-
+from .diagnostics import redacted_diagnostics
 from .file_layout import (
     ElementPath,
     Extent,
@@ -155,7 +154,7 @@ class SourceEvidence:
             If pydicom cannot read the file.
         """
         try:
-            with redacted_pydicom_diagnostics():
+            with redacted_diagnostics():
                 return pydicom.dcmread(io.BytesIO(self._data), defer_size=None)
         # pydicom raises many types for a file it cannot read, and its
         # message can quote a value.
