@@ -36,6 +36,10 @@ OUTPUTS = (
     "run-python",
     "run-docs",
     "run-integration",
+    "run-doctests",
+    "run-slow",
+    "run-integration-scripts",
+    "run-packaging",
     "run-database",
     "run-scripts",
     "run-full-matrix",
@@ -49,7 +53,18 @@ PATH_SELECTABLE = tuple(output for output in OUTPUTS if output != "run-full-matr
 # Integration and database tests are too costly for every PR. On PRs they run
 # for labels, their inputs, links and unverified diffs; merge groups and other
 # non-PR events always include them.
-COST_GATED = ("run-integration", "run-database", "run-full-matrix")
+INTEGRATION_COMPONENTS = (
+    "run-doctests",
+    "run-slow",
+    "run-integration-scripts",
+    "run-packaging",
+)
+COST_GATED = (
+    "run-integration",
+    "run-database",
+    "run-full-matrix",
+    *INTEGRATION_COMPONENTS,
+)
 STANDARD = tuple(output for output in OUTPUTS if output not in COST_GATED)
 # Labels compare case-insensitively, as GitHub's contains() does.
 FULL_TEST_LABEL = "full-test"
@@ -114,7 +129,21 @@ CI_CONFIGURATION_ROOTS = (".github/actions/",)
 # Only integration tests run the CI tooling tests on Windows and macOS and run
 # the example scripts.
 INTEGRATION_FILES = frozenset({".github/workflows/integration-tests.yml"})
-INTEGRATION_ROOTS = (".github/scripts/", "examples/")
+# These scripts have reviewed consumers: tooling tests, workflow gates and the
+# documentation cache. Unknown tooling still selects every integration job.
+INTEGRATION_SCRIPT_FILES = frozenset(
+    {
+        ".github/scripts/check_distributions.py",
+        ".github/scripts/check_workflow_status.py",
+        ".github/scripts/notebook_cache_key.py",
+        ".github/scripts/select_checks.py",
+        ".github/scripts/test_check_distributions.py",
+        ".github/scripts/test_check_workflow_status.py",
+        ".github/scripts/test_notebook_cache_key.py",
+        ".github/scripts/test_select_checks.py",
+        ".github/scripts/test_workflow_contracts.py",
+    }
+)
 # VCS filters affect built archives even when editable imports still work.
 PACKAGING_FILTER_NAMES = frozenset({".gitignore", ".gitattributes", ".hgignore"})
 # Unit runs skip slow tests and never run doctests, so only integration tests
@@ -224,20 +253,35 @@ def _is_shared_test_input(name: str) -> bool:
     )
 
 
-def _is_integration_input(name: str) -> bool:
+def _integration_components(name: str) -> tuple[str, ...]:
+    """Select the integration consumers of a path; shared inputs keep all."""
     path = PurePosixPath(name)
-    return (
+    if (
         name in DEPENDENCY_INPUTS
         or _configures_ci(name)
         or name in INTEGRATION_FILES
-        or name.startswith(INTEGRATION_ROOTS)
-        or path.name in PACKAGING_FILTER_NAMES
-        or name in SLOW_TEST_FILES
-        or name in DOCTEST_FILES
         or _is_shared_test_input(name)
-        # A non-Python fixture may be consumed only by a slow test.
         or (name.startswith(TESTS_ROOT) and path.suffix != ".py")
-    )
+        or (
+            name.startswith(".github/scripts/") and name not in INTEGRATION_SCRIPT_FILES
+        )
+    ):
+        return INTEGRATION_COMPONENTS
+    selected = []
+    if name in DOCTEST_FILES or name.startswith("examples/"):
+        selected.append("run-doctests")
+    # Production modules with doctests can also implement slow regressions
+    # (for example MetersetMap); keep those tests when their code changes.
+    if name in SLOW_TEST_FILES or name in DOCTEST_FILES:
+        selected.append("run-slow")
+    if name in INTEGRATION_SCRIPT_FILES:
+        selected.append("run-integration-scripts")
+    if (
+        path.name in PACKAGING_FILTER_NAMES
+        or name == ".github/scripts/check_distributions.py"
+    ):
+        selected.append("run-packaging")
+    return tuple(selected)
 
 
 def _is_database_input(name: str) -> bool:
@@ -311,8 +355,12 @@ def explain_checks(
             select(PATH_SELECTABLE, Reason("symlink or submodule", change.name))
         # The costly checks run for inputs that no standard check validates.
         if kind in {"python", "unclassified"}:
-            if _is_integration_input(change.name):
-                select(["run-integration"], Reason("integration input", change.name))
+            components = _integration_components(change.name)
+            if components:
+                select(
+                    ("run-integration", *components),
+                    Reason("integration input", change.name),
+                )
             if _is_database_input(change.name):
                 select(["run-database"], Reason("database input", change.name))
     return reasons

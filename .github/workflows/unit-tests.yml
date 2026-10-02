@@ -19,6 +19,15 @@ on:
 permissions:
   contents: read
 
+# Two pytest workers share the runner. Keep Numba's parallel kernels exercised
+# with two threads each, and keep other numerical thread pools to one thread.
+env:
+  NUMBA_NUM_THREADS: '2'
+  OPENBLAS_NUM_THREADS: '1'
+  OMP_NUM_THREADS: '1'
+  MKL_NUM_THREADS: '1'
+  VECLIB_MAXIMUM_THREADS: '1'
+
 jobs:
   test:
     name: ${{ matrix.os }} - py${{ matrix.python-version }}
@@ -61,6 +70,7 @@ jobs:
           # invoking pytest, so the JUnit path must be absolute for the
           # upload step (which looks in the workspace root) to find it.
           uv run -- pymedphys dev tests -m "not slow" \
+            -n 2 --dist worksteal --durations=15 \
             --junitxml="${GITHUB_WORKSPACE}/test-results/junit-${MATRIX_OS}-${MATRIX_PYTHON}.xml"
 
       - name: Upload test results
@@ -120,12 +130,16 @@ jobs:
           EXTRA: ${{ matrix.extra }}
           MARKS: ${{ matrix.marks }}
           TEST_PATHS: ${{ matrix.paths }}
+          # DICOM has thousands of cases; the smaller feature suites cost
+          # less to run directly than to start and collect two workers.
+          TEST_WORKERS: ${{ matrix.extra == 'dicom' && '2' || '0' }}
         run: |
           set -euxo pipefail
           mkdir -p test-results
           read -ra paths <<< "${TEST_PATHS}"
           # --no-sync keeps uv from installing anything beyond the extra.
           uv run --no-sync -- pymedphys dev tests -m "${MARKS}" "${paths[@]}" \
+            -n "${TEST_WORKERS}" --dist worksteal --durations=15 \
             --junitxml="${GITHUB_WORKSPACE}/test-results/junit-extra-${EXTRA}.xml"
 
       - name: Upload test results
@@ -172,6 +186,7 @@ jobs:
           overlay=(uv run --no-sync --with "numpy==${NUMPY_FLOOR}" --with "pandas==${PANDAS_FLOOR}" --)
           "${overlay[@]}" python -c 'import os, numpy, pandas; assert (numpy.__version__, pandas.__version__) == (os.environ["NUMPY_FLOOR"], os.environ["PANDAS_FLOOR"]), (numpy.__version__, pandas.__version__)'
           "${overlay[@]}" python -m pymedphys dev tests -m "not slow" \
+            -n 2 --dist worksteal --durations=15 \
             --junitxml="${GITHUB_WORKSPACE}/test-results/junit-dependency-floors.xml"
 
       - name: Upload test results
@@ -234,6 +249,7 @@ jobs:
           "${overlay[@]}" python -m pymedphys dev tests -m "not slow" \
             lib/pymedphys/tests/dicom/test_deidentify_*.py \
             lib/pymedphys/tests/dev/test_deid_tables.py \
+            -n 2 --dist worksteal --durations=15 \
             --junitxml="${GITHUB_WORKSPACE}/test-results/junit-pydicom-${PYDICOM}.xml"
 
       - name: Upload test results
