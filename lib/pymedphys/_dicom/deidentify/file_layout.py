@@ -298,7 +298,9 @@ def read_file_layout(data: bytes | bytearray | memoryview | mmap.mmap) -> FileLa
         return _Reader(octets).read()
 
 
-def reads_as_items(value: bytes | bytearray | memoryview, *, explicit: bool) -> bool:
+def reads_as_items(
+    value: bytes | bytearray | memoryview, *, explicit: bool, nested: bool = True
+) -> bool:
     """Return whether the encoded value of a sequence holds only items.
 
     The value is read as :func:`read_file_layout` reads a sequence, with the
@@ -314,9 +316,13 @@ def reads_as_items(value: bytes | bytearray | memoryview, *, explicit: bool) -> 
     explicit : bool
         Whether the items are in explicit VR. Those in a value of VR UN are
         not (PS3.5 Section 6.2.2).
+    nested : bool
+        Whether to read the items nested in a value of defined length in the
+        items too. If not, such a value is only required to fit in its item;
+        one of undefined length is read to its delimiter either way.
     """
     with memoryview(value) as view, view.cast("B") as octets:
-        return _Reader(octets).holds_items(explicit)
+        return _Reader(octets, nested).holds_items(explicit)
 
 
 class _Unreadable(Exception):
@@ -333,8 +339,9 @@ def _dictionary_vrs(tag: str) -> tuple[str, ...]:
 class _Reader:
     """Read the spans of a file in order, and stop where it cannot be read."""
 
-    def __init__(self, data: memoryview) -> None:
+    def __init__(self, data: memoryview, nested: bool = True) -> None:
         self.data = data
+        self.nested = nested  # whether values of defined length are read as items
         self.spans: list[Span] = []
         self.extents: list[Extent | None] = []
         self.region = Region.FILE_META
@@ -474,6 +481,8 @@ class _Reader:
         stop = start + length
         if stop > end:
             raise _Unreadable
+        if not self.nested:
+            return self._add(position, stop, start, where), None
         peek = self.data[start : min(start + 4, stop)] == b"\xfe\xff\x00\xe0"
         if holds_items or (holds_items is None and peek):
             mark, extents = len(self.spans), len(self.extents)
