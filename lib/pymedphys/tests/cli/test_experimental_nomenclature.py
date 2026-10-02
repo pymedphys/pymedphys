@@ -367,6 +367,27 @@ def test_an_institutional_list_needs_a_version(tmp_path):
     assert exit_info.value.code == 2
 
 
+@pytest.mark.parametrize("name", [" site.csv", "site.csv\u00a0", "site\u202e.csv"])
+def test_an_invalid_institutional_source_file_name_fails_without_output(
+    tmp_path, capsys, name
+):
+    source = tmp_path / name
+    source.write_text("Name\nLung_L\n", encoding="utf-8")
+    output = tmp_path / "site.json"
+
+    with pytest.raises(SystemExit) as exit_info:
+        _run_roi_list(str(source), str(output), "--list-version", "1")
+
+    assert exit_info.value.code == 1
+    assert not output.exists()
+    captured = capsys.readouterr()
+    assert not captured.out
+    assert captured.err == (
+        "error: the source file name must be printable text without surrounding "
+        "whitespace or directory separators; rename the CSV file\n"
+    )
+
+
 def test_an_invalid_institutional_list_fails_without_output(tmp_path, capsys):
     source = tmp_path / "site.csv"
     source.write_text("Name,Site\nLung_L,A\n", encoding="utf-8")
