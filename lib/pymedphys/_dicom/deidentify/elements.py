@@ -107,7 +107,8 @@ _FIRST_GROUP = (
     (0x20, 0x1FFF), (0x3001, 0x3002), (0x300C, 0x300D), (0x3099, 0x309C),
     (0x30A0, 0x30FF),
 )  # fmt: skip
-_CHARACTER_SET_VRS = frozenset({"LO", "LT", "PN", "SH", "ST", "UC", "UT"})
+# The VRs whose text is in the Specific Character Set (PS3.5 Table 6.2-1).
+CHARACTER_SET_VRS = frozenset({"LO", "LT", "PN", "SH", "ST", "UC", "UT"})
 _SOP_CLASS_UID = "(0008,0016)"
 _BITS_STORED = "(0028,0101)"
 _PIXEL_REPRESENTATION = "(0028,0103)"
@@ -299,7 +300,7 @@ def read_element(
         # pydicom reads the Default Character Repertoire as ISO 8859-1, but it
         # is ISO 646 (PS3.5 Section 6.1.2.1).
         if (
-            vr in _CHARACTER_SET_VRS
+            vr in CHARACTER_SET_VRS
             and tuple(codecs) == DEFAULT_CODECS
             and not all(str(each).isascii() for each in plain)
         ):
@@ -670,7 +671,7 @@ def _character_set_problem(
     vr: str, values: Sequence[object], codecs: Sequence[str]
 ) -> str | None:
     """Return why text values could not be written in the codecs, or None."""
-    if vr not in _CHARACTER_SET_VRS:
+    if vr not in CHARACTER_SET_VRS:
         return None
     for number, value in enumerate(values, start=1):
         if not (
