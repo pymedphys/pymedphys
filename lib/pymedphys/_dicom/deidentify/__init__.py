@@ -29,13 +29,16 @@ immutable evidence, the decoding of each element with the VR of the pinned
 data dictionary, the checks of values against their VR and VM and of the
 elements built to be written, the zero-length and dummy values that the Z and
 D actions write, the supplementary actions for attributes that Table E.1-1
-omits, including every date and time that it omits and every text attribute
-that it omits and the supported IODs use, with their actions under options,
-the classification of instances as de-identified or sequestered, the names of
-the files and directories that output is written to, the File Meta
-Information and zeroed preamble that replace the source file's, the first
-pass's graph of the references between instances, a reader that maps each
-byte of a written file to where it belongs, a search of written files for the
-source values that had to be removed or replaced, the removal of private
-attributes, and the conformance statement generated from a policy.
+omits, including every date, time, and URI that it omits and every text
+attribute that it omits and the supported IODs use, with their actions under
+options, the rule that gives each element its action under a policy, from the
+engine's own removals through Table E.1-1 and the supplementary rules to the
+default for attributes that no rule covers, the classification of instances as
+de-identified or sequestered, the names of the files and directories that
+output is written to, the File Meta Information and zeroed preamble that
+replace the source file's, the first pass's graph of the references between
+instances, a reader that maps each byte of a written file to where it belongs,
+a search of written files for the source values that had to be removed or
+replaced, the removal of private attributes, and the conformance statement
+generated from a policy.
 """

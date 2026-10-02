@@ -928,3 +928,148 @@ keyword = "OOIOwnerCreationTime"
 action = "X/Z/D"
 options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
 note = "A time about the owner of an object of inspection that DICOS defines outside PS3.3, whose relationship to the inspection PS3.3 does not document. PS3.6 marks it DICOS, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
+
+# Attributes of other VRs that Table E.1-1 omits and whose content can
+# identify the institution, the patient, or other patients: removed by Type
+# under every option.
+#
+# URIs and URLs, which can carry host names and file paths, other than the
+# two above that name coding concepts and schemes.
+
+[[attribute]]
+tag = "(0008,0407)"
+keyword = "StoredInstanceBaseURI"
+action = "X/Z/D"
+note = "The base URI of the storage system that holds an inventory's studies, series, or instances. It names a host, which identifies the institution, and can carry a path, so it is removed by Type under every option, as the Basic Profile removes or replaces the URI attributes that Table E.1-1 lists, such as Display URI (0040,E012). Only the Inventory Module defines it, and no IOD of the first supported release uses it."
+
+[[attribute]]
+tag = "(0008,0408)"
+keyword = "FolderAccessURI"
+action = "X/Z/D"
+note = "The URI of a folder that holds an inventory's studies or series. It can carry a host name and a file path, which can hold a patient's name or identifier, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Inventory Module defines it, and no IOD of the first supported release uses it."
+
+[[attribute]]
+tag = "(0008,0409)"
+keyword = "FileAccessURI"
+action = "X/Z/D"
+note = "The URI of a file that holds an inventoried instance. It can carry a host name and a file path, which can hold a patient's name or identifier, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Inventory Module defines it, and no IOD of the first supported release uses it."
+
+[[attribute]]
+tag = "(0008,040B)"
+keyword = "FilenameInContainer"
+action = "X/Z/D"
+note = "The name of an inventoried instance's file within a container file, such as an archive. A file name can hold a patient's name or identifier, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Inventory Module defines it, and no IOD of the first supported release uses it."
+
+[[attribute]]
+tag = "(0008,1190)"
+keyword = "RetrieveURL"
+action = "X/Z/D"
+note = "The URL from which a referenced study, series, or instance can be retrieved. It names a host, which identifies the institution, and can carry identifiers in its path, so it is removed by Type under every option, as the Basic Profile removes or replaces the URI attributes that Table E.1-1 lists, such as Display URI (0040,E012). The IODs of the first supported release require it only in Referenced Patient Photo Sequence (0010,1100), which Table E.1-1 removes."
+
+[[attribute]]
+tag = "(0028,7FE0)"
+keyword = "PixelDataProviderURL"
+action = "X/Z/D"
+note = "The URL of a JPIP server that provides an image's pixel data. It names a host, which identifies the institution, and can carry identifiers in its path, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. The Image Pixel Module makes it Type 1C, required only with the JPIP Referenced transfer syntaxes, which the first supported release does not read; where it is required, removal by Type needs a dummy value, which the UR VR does not have, so the instance is sequestered."
+
+[[attribute]]
+tag = "(0040,4073)"
+keyword = "StorageURL"
+action = "X/Z/D"
+note = "The URL of the service to which a performed procedure stored its output. It names a host, which identifies the institution, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Performed Storage Module defines it, and no IOD of the first supported release uses it."
+
+[[attribute]]
+tag = "(0040,E010)"
+keyword = "RetrieveURI"
+action = "X/Z/D"
+note = "The URI from which a referenced document or instance can be retrieved. It names a host, which identifies the institution, and can carry identifiers in its path, so it is removed by Type under every option, like Retrieve URL. The IODs of the first supported release require it only in Referenced Patient Photo Sequence (0010,1100), which Table E.1-1 removes, and make it Type 3 elsewhere."
+
+[[attribute]]
+tag = "(0068,7005)"
+keyword = "RelativeURIReferenceWithinEncapsulatedDocument"
+action = "X/Z/D"
+note = "A URI reference, relative to an encapsulated document, to an instance that the document refers to. It can carry file paths and identifiers, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Encapsulated Document Module defines it, and no IOD of the first supported release uses it."
+
+[[attribute]]
+tag = "(0074,100A)"
+keyword = "ContactURI"
+action = "X/Z/D"
+note = "A URI by which to communicate about a procedure step, such as a telephone number or email address. It can identify a person or the institution, so it is removed by Type under every option, as Table E.1-1 removes Person's Telephone Numbers (0040,1103), and none of the IODs whose Types are generated uses it."
+
+# Sequences whose codes or identifiers can identify the institution or other
+# patients, or say something about the patient, as attributes that Table
+# E.1-1 removes or empties do.
+
+[[attribute]]
+tag = "(0008,0051)"
+keyword = "IssuerOfAccessionNumberSequence"
+action = "X/Z/D"
+note = "Identifies the system or organisation that issued the Accession Number, which Table E.1-1 empties (Z), so it names the institution or one of its departments. It is removed by Type under every option, as Table E.1-1 removes Issuer of Patient ID (0010,0021). It is Type 3 wherever the IODs of the first supported release define it."
+
+[[attribute]]
+tag = "(0010,0024)"
+keyword = "IssuerOfPatientIDQualifiersSequence"
+action = "X/Z/D"
+note = "Qualifies the issuer of the Patient ID, with the facility, jurisdiction, and agency or department that assigned it, so it names the institution or its region. It is removed by Type under every option, as Table E.1-1 removes Issuer of Patient ID (0010,0021). It is Type 3 wherever the IODs of the first supported release define it."
+
+[[attribute]]
+tag = "(0010,0026)"
+keyword = "SourcePatientGroupIdentificationSequence"
+action = "X/Z/D"
+note = "The Patient ID, and its issuer, of the group of subjects from whose instance this one was extracted, so it identifies patients other than the instance's own subject. It is removed by Type under every option, as Table E.1-1 removes Other Patient IDs Sequence (0010,1002), rather than giving pseudonyms to patients outside the export. It is Type 3 in the Patient Module."
+
+[[attribute]]
+tag = "(0010,0027)"
+keyword = "GroupOfPatientsIdentificationSequence"
+action = "X/Z/D"
+note = "The Patient IDs, and their issuers, of the subjects in an instance that holds a group of subjects acquired together, so it identifies patients other than the instance's own subject. It is removed by Type under every option, as Table E.1-1 removes Other Patient IDs Sequence (0010,1002), rather than giving pseudonyms to patients outside the export. It is Type 3 in the Patient Module."
+
+[[attribute]]
+tag = "(0010,1021)"
+keyword = "PatientSizeCodeSequence"
+action = "X/Z/D"
+note = "The patient's size as a code, such as a size category, which says something about the patient as Patient's Size (0010,1020) does, which Table E.1-1 removes (X). It is removed by Type under every option, including Retain Patient Characteristics: that option keeps the characteristics that Table E.1-1 lists, and a rule for an attribute that the table omits may give an action under an option only to text, dates, and times. It is Type 3 in the Patient Study Module."
+
+[[attribute]]
+tag = "(0010,1022)"
+keyword = "PatientBodyMassIndex"
+action = "X/Z/D"
+note = "The patient's body mass index, a number derived from Patient's Size (0010,1020) and Patient's Weight (0010,1030), which Table E.1-1 removes (X), and which says as much about the patient as they do. It is removed by Type under every option, including Retain Patient Characteristics: that option keeps the characteristics that Table E.1-1 lists, and a rule for an attribute that the table omits may give an action under an option only to text, dates, and times. It is Type 3 in the Patient Study Module."
+
+[[attribute]]
+tag = "(0010,1023)"
+keyword = "MeasuredAPDimension"
+action = "X/Z/D"
+note = "The patient's measured anterior-posterior thickness, a measure of the body that says something about the patient as Patient's Size (0010,1020) and Patient's Weight (0010,1030) do, which Table E.1-1 removes (X). It is removed by Type under every option, including Retain Patient Characteristics: that option keeps the characteristics that Table E.1-1 lists, and a rule for an attribute that the table omits may give an action under an option only to text, dates, and times. It is Type 3 in the Patient Study Module."
+
+[[attribute]]
+tag = "(0010,1024)"
+keyword = "MeasuredLateralDimension"
+action = "X/Z/D"
+note = "The patient's measured lateral width, a measure of the body that says something about the patient as Patient's Size (0010,1020) and Patient's Weight (0010,1030) do, which Table E.1-1 removes (X). It is removed by Type under every option, including Retain Patient Characteristics: that option keeps the characteristics that Table E.1-1 lists, and a rule for an attribute that the table omits may give an action under an option only to text, dates, and times. It is Type 3 in the Patient Study Module."
+
+[[attribute]]
+tag = "(0032,1034)"
+keyword = "RequestingServiceCodeSequence"
+action = "X/Z/D"
+note = "The institutional department, unit, or service where the request initiated, as a code, which identifies the institution as Requesting Service (0032,1033) does, which Table E.1-1 removes (X). It is removed by Type under every option, since cleaning a sequence's contents is not designed. It is Type 3 in the General Study Module."
+
+[[attribute]]
+tag = "(0040,1012)"
+keyword = "ReasonForPerformedProcedureCodeSequence"
+action = "X/Z/D"
+note = "Codes for why the procedure was performed, which can record a diagnosis or symptom, as do Reason for Visit Code Sequence (0032,1067) and the other reason and diagnosis code sequences, which Table E.1-1 removes (X). It is removed by Type under every option. It is Type 3 in the General Study Module."
+
+# Other attributes whose content the engine cannot check.
+
+[[attribute]]
+tag = "(0028,2000)"
+keyword = "ICCProfile"
+action = "X/Z/D"
+note = "An ICC colour profile, a file in another format embedded in the instance, which can carry text, such as a description or copyright naming the device or institution, that the engine does not parse. It is removed by Type under every option. It is Type 3 wherever the IODs of the first supported release define it."
+
+[[attribute]]
+tag = "(4FFE,0001)"
+keyword = "MACParametersSequence"
+action = "X/Z/D"
+note = "Describes how the Message Authentication Codes of digital signatures were computed. It belongs to the digital signatures that Table E.1-1 removes with Digital Signatures Sequence (FFFA,FFFA), which de-identification would invalidate, so it is removed by Type under every option. It is Type 3 in the SOP Common Module."
