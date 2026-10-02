@@ -14,27 +14,34 @@
 
 """Convert structure-name nomenclatures, such as TG-263's, to JSON.
 
-``pymedphys nomenclature roi-list CSV OUTPUT --list-version VERSION`` converts
-an institutional list of ROI names, exported as UTF-8 CSV with a ``Name``
-column and an optional ``Description`` column, to JSON that records it as an
+These commands are experimental: they belong to the DICOM de-identification
+tool, which is still in development, and may change without notice.
+
+``pymedphys experimental nomenclature roi-list CSV OUTPUT --list-version
+VERSION`` converts an institutional list of ROI names, exported as UTF-8 CSV
+with a ``Name`` column and an optional ``Description`` column, to JSON that records it as an
 institutional list, with the file's name, SHA-256, and the version given.
 Structure-name cleaning sends every match against such a list to human
 review, since it can hold names that identify a site or a person.
 
-``pymedphys nomenclature tg263 OUTPUT`` downloads the edition of AAPM's TG-263
+``pymedphys experimental nomenclature tg263 OUTPUT`` downloads the edition of AAPM's TG-263
 Structure Spreadsheet that PyMedPhys pins, checks it against the pinned
 SHA-256, and converts it to JSON that records the spreadsheet's file name,
 worksheet version, SHA-256, and AAPM's attribution. PyMedPhys does not include
 the spreadsheet; the download is cached in the PyMedPhys data directory. With
-``--spreadsheet FILE`` it converts that workbook instead, without downloading
-or checking it against the pin. It never overwrites an existing file.
+``--spreadsheet FILE`` it converts that workbook instead, without downloading:
+a copy of the pinned edition is checked against the pin, and any other
+workbook is converted with a note that it was not. It never overwrites an
+existing file.
 Converted files are not to be edited by hand: their loader rejects a file
 whose entries no longer match its recorded digest.
 """
 
 import argparse
+import http.client
 import pathlib
 import sys
+import urllib.error
 from typing import NoReturn
 
 from pymedphys._nomenclature import roi_list, tg263, tg263_published
@@ -42,7 +49,8 @@ from pymedphys._nomenclature import roi_list, tg263, tg263_published
 
 def nomenclature_cli(subparsers):
     parser = subparsers.add_parser(
-        "nomenclature", help="Convert structure-name nomenclatures to JSON."
+        "nomenclature",
+        help="Convert structure-name nomenclatures to JSON (experimental).",
     )
     nomenclature_subparsers = parser.add_subparsers(dest="nomenclature")
 
@@ -64,8 +72,9 @@ def nomenclature_cli(subparsers):
         type=pathlib.Path,
         metavar="FILE",
         help=(
-            "Convert this .xls workbook instead of the pinned edition. It is "
-            "not downloaded or checked against the pin."
+            "Convert this .xls workbook instead of downloading the pinned "
+            "edition. A copy of the pinned edition is checked against the pin; "
+            "any other workbook is converted with a note that it was not."
         ),
     )
     tg263_parser.set_defaults(func=convert_tg263_cli)
@@ -100,21 +109,13 @@ def convert_tg263_cli(args: argparse.Namespace) -> None:
     """
     spreadsheet: pathlib.Path | None = args.spreadsheet
     output: pathlib.Path = args.output
-    try:
-        if spreadsheet is None:
-            nomenclature = tg263_published.load()
-        else:
-            nomenclature = tg263.read_spreadsheet(spreadsheet)
-    except tg263.TG263Error as error:
-        _fail(str(error))
-    except OSError as error:
-        reason = error.strerror or str(error) or "unknown error"
-        if spreadsheet is None:
-            _fail(
-                f"cannot download {tg263_published.PUBLISHED.file}: {reason}; "
-                "to convert a copy you already have, pass --spreadsheet FILE"
-            )
-        _fail(f"cannot read {spreadsheet.name}: {reason}")
+    if output.exists():
+        _fail(f"{output.name} already exists; choose a new output file")
+    published = tg263_published.PUBLISHED
+    if spreadsheet is None:
+        nomenclature = _published(published)
+    else:
+        nomenclature = _local(spreadsheet, published)
     _create(output, tg263.to_json(nomenclature))
     print(
         f"Wrote {len(nomenclature.structures)} structures from "
@@ -139,13 +140,78 @@ def convert_roi_list_cli(args: argparse.Namespace) -> None:
     )
 
 
-def _create(output: pathlib.Path, text: str) -> None:
-    """Write text to a new file as UTF-8, failing if the file exists."""
+def _published(edition: tg263_published.Edition) -> tg263.Nomenclature:
+    """Download, or read from the cache, and check the pinned edition."""
     try:
-        with output.open("xb") as file:
-            file.write(text.encode("utf-8"))
+        return tg263_published.load(edition)
+    except tg263.TG263Error as error:
+        _fail(
+            f"{error}; AAPM may have changed the file, so please report it to "
+            "PyMedPhys, or pass --spreadsheet FILE to convert a copy you trust"
+        )
+    except (
+        urllib.error.URLError,
+        http.client.HTTPException,
+        ConnectionError,
+        TimeoutError,
+    ) as error:
+        _fail(
+            f"cannot download {edition.file}: {_reason(error)}; to convert a "
+            "copy you already have, pass --spreadsheet FILE"
+        )
+    except OSError as error:
+        _fail(_reason(error))
+
+
+def _local(
+    spreadsheet: pathlib.Path, edition: tg263_published.Edition
+) -> tg263.Nomenclature:
+    """Read a local workbook, checking it against the pin if it is a copy."""
+    try:
+        if tg263_published.sha256(spreadsheet) == edition.sha256:
+            return tg263_published.load(edition, spreadsheet=spreadsheet)
+        nomenclature = tg263.read_spreadsheet(spreadsheet)
+    except OSError as error:
+        _fail(f"cannot read {spreadsheet.name}: {_reason(error)}")
+    except tg263.TG263Error as error:
+        _fail(str(error))
+    sys.stderr.write(
+        f"note: {spreadsheet.name} is not the pinned edition ({edition.sheet}), "
+        "so it was converted but not checked against the pin\n"
+    )
+    return nomenclature
+
+
+def _reason(error: BaseException) -> str:
+    """Describe an error by its reason and file name, never its directory."""
+    if isinstance(error, urllib.error.HTTPError):
+        return f"HTTP {error.code}"
+    if isinstance(error, urllib.error.URLError):
+        return str(error.reason)
+    if isinstance(error, OSError) and error.strerror:
+        if error.filename:
+            return f"{error.strerror}: {pathlib.Path(error.filename).name}"
+        return error.strerror
+    return str(error) or type(error).__name__
+
+
+def _create(output: pathlib.Path, text: str) -> None:
+    """Write text to a new file as UTF-8, removing it if the write fails."""
+    data = text.encode("utf-8")
+    try:
+        file = output.open("xb")
     except FileExistsError:
         _fail(f"{output.name} already exists; choose a new output file")
+    except OSError as error:
+        _fail(f"cannot write {output.name}: {error.strerror or error}")
+    try:
+        with file:
+            file.write(data)
+    except BaseException as error:
+        output.unlink(missing_ok=True)
+        if isinstance(error, OSError):
+            _fail(f"cannot write {output.name}: {error.strerror or error}")
+        raise
 
 
 def _fail(message: str) -> NoReturn:

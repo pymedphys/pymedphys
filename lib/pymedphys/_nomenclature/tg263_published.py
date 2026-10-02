@@ -22,15 +22,15 @@ content digest, or nothing is returned; a copy that does not match is never
 used. The cache is ``tg263/`` in ``~/.pymedphys/data``, or in the directory
 that ``PYMEDPHYS_DATA_DIR`` names.
 
-AAPM publishes a new edition as a new file. ``pymedphys dev tg263-check``
-reports when the page links to a spreadsheet other than the pinned one, or
-the pinned file changes; moving to a new edition is a change to the pin.
+AAPM publishes a new edition as a new file, so moving to a new edition is a
+reviewed change to the pin.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import hashlib
+import os
 import pathlib
 import posixpath
 import re
@@ -132,15 +132,24 @@ def spreadsheet_path(
     path: pathlib.Path = get_data_dir() / CACHE_DIRECTORY / edition.file
     path.parent.mkdir(parents=True, exist_ok=True)
     with download_lock(path):
-        if path.exists() and _sha256(path) == edition.sha256:
+        if path.exists() and sha256(path) == edition.sha256:
             return path
-        (download_with_progress if download is None else download)(edition.url, path)
-        if _sha256(path) != edition.sha256:
-            path.unlink()
-            raise tg263.TG263Error(
-                f"the file downloaded from {edition.url} does not have the "
-                f"pinned SHA-256 {edition.sha256}"
+        # Download beside the cache, and move the file into place only once
+        # it has the pinned SHA-256, so the cache never holds a file that
+        # does not match.
+        partial = path.with_name(f".{path.name}.download")
+        try:
+            (download_with_progress if download is None else download)(
+                edition.url, partial
             )
+            if sha256(partial) != edition.sha256:
+                raise tg263.TG263Error(
+                    f"the file downloaded from {edition.url} does not have the "
+                    f"pinned SHA-256 {edition.sha256}"
+                )
+            os.replace(partial, path)
+        finally:
+            partial.unlink(missing_ok=True)
     return path
 
 
@@ -178,12 +187,19 @@ def load(
     edition = PUBLISHED if edition is None else edition
     if spreadsheet is None:
         spreadsheet = spreadsheet_path(edition, download=download)
-    elif _sha256(spreadsheet) != edition.sha256:
+    elif sha256(spreadsheet) != edition.sha256:
         raise tg263.TG263Error(
             f"{spreadsheet.name} does not have the pinned SHA-256 {edition.sha256} "
             f"of {edition.file}"
         )
     nomenclature = tg263.read_spreadsheet(spreadsheet)
+    # The digest recorded in the nomenclature is of the bytes it was read
+    # from, so this checks those bytes, not an earlier read of the file.
+    if nomenclature.source.sha256 != edition.sha256:
+        raise tg263.TG263Error(
+            f"{spreadsheet.name} changed while it was read: it no longer has "
+            f"the pinned SHA-256 {edition.sha256}"
+        )
     if nomenclature.source.sheet != edition.sheet:
         raise tg263.TG263Error(
             f"{edition.file} holds the worksheet {nomenclature.source.sheet!r}, "
@@ -198,5 +214,6 @@ def load(
     return nomenclature
 
 
-def _sha256(path: pathlib.Path) -> str:
+def sha256(path: pathlib.Path) -> str:
+    """Return the SHA-256 of a file's bytes."""
     return hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()

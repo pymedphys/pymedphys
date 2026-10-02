@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""``pymedphys nomenclature tg263`` converts a TG-263 spreadsheet to JSON.
+"""``pymedphys experimental nomenclature tg263`` converts a TG-263 spreadsheet to JSON.
 
 No test here reaches the network: the published edition is stood in for by
 the invented spreadsheet in ``tests/nomenclature/data``.
@@ -22,6 +22,7 @@ import dataclasses
 import hashlib
 import pathlib
 import shutil
+import urllib.error
 
 from pymedphys._imports import pytest
 
@@ -33,8 +34,21 @@ SPREADSHEET = (
 )
 
 
+@pytest.fixture(autouse=True)
+def _offline(tmp_path, monkeypatch):
+    """Keep every test away from the network and the user's data directory."""
+
+    def no_download(url, filepath):
+        raise AssertionError(f"unexpected download of {url}")
+
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr(tg263_published, "download_with_progress", no_download)
+
+
 def _run(*cli_args):
-    args = define_parser().parse_args(["nomenclature", "tg263", *cli_args])
+    args = define_parser().parse_args(
+        ["experimental", "nomenclature", "tg263", *cli_args]
+    )
     return args.func(args)
 
 
@@ -111,8 +125,11 @@ def test_the_output_names_the_spreadsheet_by_its_file_name_only(tmp_path):
     assert tg263.load_json(output).source.file == SPREADSHEET.name
 
 
-def _stand_in_published(monkeypatch, tmp_path, content=None):
-    """Make the invented spreadsheet the published edition, served offline."""
+def _stand_in_published(monkeypatch, content=None, **changes):
+    """Make the invented spreadsheet the published edition, served offline.
+
+    Returns the list of URLs downloaded.
+    """
     nomenclature = tg263.read_spreadsheet(SPREADSHEET)
     edition = tg263_published.Edition(
         sheet=nomenclature.source.sheet,
@@ -129,16 +146,25 @@ def _stand_in_published(monkeypatch, tmp_path, content=None):
         data = SPREADSHEET.read_bytes() if content is None else content
         pathlib.Path(filepath).write_bytes(data)
 
-    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(tg263_published, "PUBLISHED", edition)
+    monkeypatch.setattr(
+        tg263_published, "PUBLISHED", dataclasses.replace(edition, **changes)
+    )
     monkeypatch.setattr(tg263_published, "download_with_progress", download)
     return urls
+
+
+def _fails(capsys, *cli_args):
+    """Run the command, expecting status 1, and return its standard error."""
+    with pytest.raises(SystemExit) as exit_info:
+        _run(*cli_args)
+    assert exit_info.value.code == 1
+    return capsys.readouterr().err
 
 
 def test_without_a_spreadsheet_the_published_edition_is_downloaded(
     tmp_path, monkeypatch, capsys
 ):
-    urls = _stand_in_published(monkeypatch, tmp_path)
+    urls = _stand_in_published(monkeypatch)
     output = tmp_path / "tg263.json"
 
     _run(str(output))
@@ -150,43 +176,173 @@ def test_without_a_spreadsheet_the_published_edition_is_downloaded(
     assert "TG263_Invented_20260101.xls" in capsys.readouterr().out
 
 
+def test_a_cached_copy_is_converted_without_downloading_again(tmp_path, monkeypatch):
+    urls = _stand_in_published(monkeypatch)
+    _run(str(tmp_path / "first.json"))
+    _run(str(tmp_path / "second.json"))
+
+    assert len(urls) == 1
+    assert (tmp_path / "first.json").read_bytes() == (
+        tmp_path / "second.json"
+    ).read_bytes()
+
+
 def test_a_download_that_does_not_match_the_pin_fails_without_output(
     tmp_path, monkeypatch, capsys
 ):
-    _stand_in_published(monkeypatch, tmp_path, content=b"not the published file")
+    _stand_in_published(monkeypatch, content=b"not the published file")
     output = tmp_path / "tg263.json"
 
-    with pytest.raises(SystemExit) as exit_info:
-        _run(str(output))
+    err = _fails(capsys, str(output))
 
-    assert exit_info.value.code == 1
     assert not output.exists()
-    assert "pinned SHA-256" in capsys.readouterr().err
+    assert "pinned SHA-256" in err
+    assert "report it to PyMedPhys" in err
 
 
-def test_a_download_that_fails_is_reported_without_output(
+def test_entries_that_do_not_match_the_pin_fail_without_output(
     tmp_path, monkeypatch, capsys
 ):
-    _stand_in_published(monkeypatch, tmp_path)
+    _stand_in_published(monkeypatch, content_sha256="0" * 64)
+    output = tmp_path / "tg263.json"
+
+    err = _fails(capsys, str(output))
+
+    assert not output.exists()
+    assert "content digest" in err
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        urllib.error.URLError("no route to host"),
+        urllib.error.HTTPError("https://example.invalid", 404, "Not Found", None, None),
+        TimeoutError(),
+    ],
+)
+def test_a_download_that_fails_is_reported_without_output(
+    tmp_path, monkeypatch, capsys, error
+):
+    _stand_in_published(monkeypatch)
 
     def unreachable(url, filepath):
-        raise OSError("network is unreachable")
+        raise error
 
     monkeypatch.setattr(tg263_published, "download_with_progress", unreachable)
     output = tmp_path / "tg263.json"
 
-    with pytest.raises(SystemExit) as exit_info:
-        _run(str(output))
+    err = _fails(capsys, str(output))
 
-    assert exit_info.value.code == 1
     assert not output.exists()
-    err = capsys.readouterr().err
-    assert err.startswith("error: cannot download")
+    assert err.startswith("error: cannot download TG263_Invented_20260101.xls")
     assert "--spreadsheet" in err
 
 
+def test_a_data_directory_that_cannot_be_used_is_not_called_a_download_failure(
+    tmp_path, monkeypatch, capsys
+):
+    _stand_in_published(monkeypatch)
+    blocker = tmp_path / "not-a-directory"
+    blocker.write_text("", encoding="utf-8")
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(blocker))
+
+    err = _fails(capsys, str(tmp_path / "tg263.json"))
+
+    assert "cannot download" not in err
+    assert "not-a-directory" in err
+    assert str(tmp_path) not in err
+
+
+def test_an_existing_output_is_refused_before_downloading(
+    tmp_path, monkeypatch, capsys
+):
+    urls = _stand_in_published(monkeypatch)
+    output = tmp_path / "tg263.json"
+    output.write_text("keep me", encoding="utf-8")
+
+    err = _fails(capsys, str(output))
+
+    assert not urls
+    assert output.read_text(encoding="utf-8") == "keep me"
+    assert "already exists" in err
+
+
+def test_an_output_that_cannot_be_written_is_reported(tmp_path, capsys):
+    output = tmp_path / "missing-directory" / "tg263.json"
+
+    err = _fails(capsys, str(output), "--spreadsheet", str(SPREADSHEET))
+
+    assert err.endswith("error: cannot write tg263.json: No such file or directory\n")
+    assert "missing-directory" not in err
+
+
+def test_a_write_that_fails_part_way_leaves_no_output(tmp_path, monkeypatch, capsys):
+    output = tmp_path / "tg263.json"
+    real_open = pathlib.Path.open
+
+    class _FullDisk:
+        def __init__(self, file):
+            self.file = file
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc_info):
+            self.file.close()
+
+        def write(self, data):
+            self.file.write(data[:10])
+            raise OSError(28, "No space left on device")
+
+    def open_full_disk(path, *args, **kwargs):
+        mode = args[0] if args else kwargs.get("mode", "r")
+        file = real_open(path, *args, **kwargs)
+        return _FullDisk(file) if mode == "xb" else file
+
+    monkeypatch.setattr(pathlib.Path, "open", open_full_disk)
+
+    err = _fails(capsys, str(output), "--spreadsheet", str(SPREADSHEET))
+
+    assert not output.exists()
+    assert "No space left on device" in err
+
+
+def test_a_local_copy_of_the_pinned_edition_is_checked_against_the_pin(
+    tmp_path, monkeypatch, capsys
+):
+    # The file's SHA-256 matches, so its entries are checked as well.
+    urls = _stand_in_published(monkeypatch, content_sha256="0" * 64)
+    output = tmp_path / "tg263.json"
+
+    err = _fails(capsys, str(output), "--spreadsheet", str(SPREADSHEET))
+
+    assert not urls
+    assert not output.exists()
+    assert "content digest" in err
+
+
+def test_a_local_copy_of_the_pinned_edition_is_converted_without_a_note(
+    tmp_path, monkeypatch, capsys
+):
+    _stand_in_published(monkeypatch)
+
+    _run(str(tmp_path / "tg263.json"), "--spreadsheet", str(SPREADSHEET))
+
+    assert capsys.readouterr().err == ""
+
+
+def test_another_workbook_is_converted_with_a_note(tmp_path, capsys):
+    _run(str(tmp_path / "tg263.json"), "--spreadsheet", str(SPREADSHEET))
+
+    err = capsys.readouterr().err
+    assert err.startswith("note: tg263_invented.xls is not the pinned edition")
+    assert "not checked against the pin" in err
+
+
 def _run_roi_list(*cli_args):
-    args = define_parser().parse_args(["nomenclature", "roi-list", *cli_args])
+    args = define_parser().parse_args(
+        ["experimental", "nomenclature", "roi-list", *cli_args]
+    )
     return args.func(args)
 
 
