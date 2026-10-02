@@ -108,7 +108,10 @@ The Attribute Patient Identity Removed (0012,0062) shall be replaced or added to
 status = "partial"
 milestone = "M3"
 decisions = ["D-012", "D-024"]
-implementation = ["_dicom/deidentify/method_digest.py"]
+implementation = [
+  "_dicom/deidentify/markers.py",
+  "_dicom/deidentify/method_digest.py",
+]
 tests = [
   "tests/dicom/test_deidentify_method_digest.py::test_the_digest_is_only_64_lowercase_hexadecimal_digits_and_fits_one_lo_value",
   "tests/dicom/test_deidentify_method_digest.py::test_the_same_inputs_always_give_the_same_digest",
@@ -116,9 +119,24 @@ tests = [
   "tests/dicom/test_deidentify_method_digest.py::test_any_part_of_the_policy_changes_the_digest",
   "tests/dicom/test_deidentify_method_digest.py::test_changing_adding_or_removing_an_engine_file_changes_the_digest",
   "tests/dicom/test_deidentify_method_digest.py::test_python_and_library_versions_leave_the_digest_unchanged",
+  "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
+  "tests/dicom/test_deidentify_markers.py::test_basic_clean_descriptors_claims_clean_descriptors_only_where_satisfied",
+  "tests/dicom/test_deidentify_markers.py::test_a_custom_option_set_is_named_as_one_and_claims_its_satisfied_options",
+  "tests/dicom/test_deidentify_markers.py::test_a_satisfied_list_that_leaves_out_a_selected_option_is_refused",
+  "tests/dicom/test_deidentify_markers.py::test_clean_descriptors_is_the_one_selected_option_that_can_go_unsatisfied",
+  "tests/dicom/test_deidentify_markers.py::test_tps_import_claims_no_ps3_15_conformance_and_adds_no_codes",
+  "tests/dicom/test_deidentify_markers.py::test_patient_identity_removed_is_never_no",
+  "tests/dicom/test_deidentify_markers.py::test_the_first_method_value_is_exactly_the_method_digest",
+  "tests/dicom/test_deidentify_markers.py::test_every_code_is_a_row_of_the_pinned_context_groups",
+  "tests/dicom/test_deidentify_markers.py::test_every_marker_value_is_valid_for_its_vr_and_vm",
+  "tests/dicom/test_deidentify_markers.py::test_markers_changed_after_markers_for_are_refused_before_they_are_written",
+  "tests/dicom/test_deidentify_markers.py::test_existing_markers_and_contributing_equipment_items_are_kept",
+  "tests/dicom/test_deidentify_markers.py::test_the_same_release_and_policy_applied_twice_gives_the_markers_of_one_run",
+  "tests/dicom/test_deidentify_markers.py::test_a_code_already_present_is_not_added_again_and_new_codes_follow",
+  "tests/dicom/test_deidentify_markers.py::test_marked_output_reads_back_strictly_and_gains_nothing_when_marked_again",
 ]
 note = '''
-The de-identification method digest, the second value that every preset adds to De-identification Method, is computed as 64 lowercase hexadecimal digits, which fit one LO value, from the policy and everything the engine could apply, including its own source and rule files, whether or not the policy's options use them. It identifies the policy and the PyMedPhys implementation and resources that apply it, not the runtime environment, which Software Versions records instead, so upgrading Python, pydicom, or tomlkit leaves it unchanged (D-012, D-024). The digest is PyMedPhys's own provenance, added beside the readable description that this paragraph allows; PS3.15 does not require it. Remaining: adding Patient Identity Removed, the CID 7050 codes, and both De-identification Method values to each data set (M3).
+The markers of an instance are computed from its policy, the de-identification method digest, and the options it satisfies, and added to a copy of its data set (D-012). Patient Identity Removed is set to YES. De-identification Method keeps its values and, unless they already include the pair as two consecutive values, gains two: the method digest, 64 lowercase hexadecimal digits, which fit one LO value, computed from the policy and everything the engine could apply, including its own source and rule files, whether or not the policy's options use them, and then a readable value naming PyMedPhys, its version, the PS3.15 edition, and the preset. The digest identifies the policy and the PyMedPhys implementation and resources that apply it, not the runtime environment, which Software Versions records instead, so upgrading Python, pydicom, or tomlkit leaves it unchanged (D-012, D-024). The digest is PyMedPhys's own provenance, added beside the readable description that this paragraph allows; PS3.15 does not require it. De-identification Method Code Sequence keeps its items and gains the CID 7050 codes of the Basic Profile and of each satisfied option that it does not already hold. Under a policy that claims conformance, every selected option must be satisfied except Clean Descriptors, so that the codes name each option whose actions the instance carries. `tps-import`, which claims no conformance, adds no code and says so in its readable value. Remaining: adding the markers to each instance the engine de-identifies, from its validated result (M3).
 '''
 
 [[requirement]]
@@ -175,11 +193,12 @@ The Attributes listed in Table E.1-1 for each Profile or Option are contained in
 '''
 status = "partial"
 milestone = "M3"
-decisions = ["D-001", "D-007", "D-011", "D-020", "D-021"]
+decisions = ["D-001", "D-007", "D-011", "D-020", "D-021", "D-028"]
 implementation = [
   "_dicom/deidentify/actions.py",
   "_dicom/deidentify/compound_actions.py",
   "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/private_attributes.py",
   "_dicom/deidentify/standard.py",
 ]
 tests = [
@@ -188,12 +207,14 @@ tests = [
   "tests/dicom/test_deidentify_actions.py::test_each_attribute_has_one_action_or_a_conflict",
   "tests/dicom/test_deidentify_policy.py::test_the_basic_policy_gives_each_attribute_its_basic_profile_action",
   "tests/dicom/test_deidentify_policy.py::test_each_preset_gives_each_attribute_one_action",
+  "tests/dicom/test_deidentify_private_attributes.py::test_the_basic_profile_removes_every_private_attribute",
+  "tests/dicom/test_deidentify_private_attributes.py::test_private_attributes_in_a_sequence_read_as_unknown_are_removed",
   "tests/dicom/test_deidentify_compound_actions.py::test_each_compound_action_resolves_by_type",
   "tests/dicom/test_deidentify_compound_actions.py::test_the_type_depends_on_the_enclosing_sequence",
   "tests/dicom/test_deidentify_compound_actions.py::test_x_z_on_a_type_1_attribute_sequesters_the_instance",
 ]
 note = '''
-Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute sequesters the instance (D-020). Remaining: protecting or retaining every instance of each attribute, at the top level and in sequences (M3).
+Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute sequesters the instance (D-020). Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028). Remaining: protecting or retaining every instance of each other attribute, at the top level and in sequences, and removing private attributes from each instance the engine de-identifies (M3).
 '''
 
 [[requirement]]
@@ -260,9 +281,19 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.2
 text = '''
 The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "REMOVED" if none of the Retain Longitudinal Temporal Information Options is applied.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-012"]
+implementation = ["_dicom/deidentify/markers.py"]
+tests = [
+  "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
+  "tests/dicom/test_deidentify_markers.py::test_existing_markers_and_contributing_equipment_items_are_kept",
+  "tests/dicom/test_deidentify_markers.py::test_temporal_information_modified_keeps_the_stricter_value",
+  "tests/dicom/test_deidentify_markers.py::test_an_unknown_temporal_information_modified_is_refused_without_quoting_it",
+]
+note = '''
+Every policy that does not apply Modified Dates, the only Retain Longitudinal Temporal Information Option in scope, sets Longitudinal Temporal Information Modified to REMOVED in its markers, replacing any value already present, since REMOVED is the strictest, and refusing a present value that is not UNMODIFIED, MODIFIED, or REMOVED (D-012). Remaining: adding it to each instance the engine de-identifies (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.1-01"
@@ -412,9 +443,18 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "MODIFIED".
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-012"]
+implementation = ["_dicom/deidentify/markers.py"]
+tests = [
+  "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
+  "tests/dicom/test_deidentify_markers.py::test_a_custom_option_set_with_modified_dates_marks_dates_as_modified",
+  "tests/dicom/test_deidentify_markers.py::test_temporal_information_modified_keeps_the_stricter_value",
+]
+note = '''
+Every policy that applies Modified Dates, including `tps-import`, sets Longitudinal Temporal Information Modified to MODIFIED in its markers, unless REMOVED is already present from an earlier run, which is kept because the dates that run removed are not restored (D-012). Remaining: adding it to each instance the engine de-identifies (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.6-04"
@@ -477,7 +517,10 @@ When this Option is specified in addition to the Basic Application Level Confide
 '''
 status = "planned"
 milestone = "M3"
-decisions = ["D-001"]
+decisions = ["D-001", "D-028"]
+note = '''
+Until reviewed rules say which private attributes are safe, a policy that selects the Option is refused (D-028).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.10-02"
@@ -485,8 +528,28 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is not specified, all Private Attributes shall be removed, as described in Table E.1-1.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
+decisions = ["D-028"]
+implementation = ["_dicom/deidentify/private_attributes.py"]
+tests = [
+  "tests/dicom/test_deidentify_private_attributes.py::test_the_basic_profile_removes_every_private_attribute",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_private_sequence_is_removed_with_everything_in_it",
+  "tests/dicom/test_deidentify_private_attributes.py::test_every_odd_group_element_is_removed",
+  "tests/dicom/test_deidentify_private_attributes.py::test_each_preset_without_retain_safe_private_removes_private_attributes",
+  "tests/dicom/test_deidentify_private_attributes.py::test_private_attributes_read_from_a_file_are_removed",
+  "tests/dicom/test_deidentify_private_attributes.py::test_private_attributes_in_a_sequence_read_as_unknown_are_removed",
+  "tests/dicom/test_deidentify_private_attributes.py::test_an_unknown_value_that_cannot_be_read_as_items_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_sequence_that_pydicom_cannot_decode_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_an_unknown_character_set_in_an_item_read_from_a_file_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_an_unknown_character_set_in_an_item_of_an_unknown_value_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_character_set_that_pydicom_does_not_map_as_given_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_character_set_stored_with_another_vr_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_sequence_stored_with_another_vr_is_refused",
+]
+note = '''
+Every element of an odd group, including private creators and the elements that PS3.5 does not allow, is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN, and a private sequence is removed with everything in it. A standard sequence that cannot be decoded exactly, that is stored with a VR other than SQ or UN, or whose items have a Specific Character Set that pydicom does not map as given or that is stored with another VR, is refused by its path; it is removed where a rule removes it or a sequence that holds it, and otherwise its instance is sequestered (D-028). Remaining: removing them from each instance the engine de-identifies (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.10-03"
@@ -496,6 +559,10 @@ When an entire Sequence (SQ VR) Private Attribute is not known to always only co
 '''
 status = "planned"
 milestone = "M3"
+decisions = ["D-028"]
+note = '''
+Without the Option, a private sequence is removed with everything in it, and a policy that selects the Option is refused until reviewed rules say which private attributes are safe (D-028).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.10-04"
@@ -663,6 +730,7 @@ implementation = [
   "_dev/deid_tables/ps3_6.py",
   "_dicom/deidentify/actions.py",
   "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/private_attributes.py",
   "_dicom/deidentify/scope.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/standard.py",
@@ -685,12 +753,13 @@ tests = [
   "tests/dicom/test_deidentify_supplementary_actions.py::test_only_the_text_of_the_supported_iods_needs_rules",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_the_rules_for_omitted_text_fall_in_the_reviewed_groups",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_each_group_takes_the_action_of_its_option",
+  "tests/dicom/test_deidentify_private_attributes.py::test_every_odd_group_element_is_removed",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_date_and_time_that_table_e1_1_omits_has_a_rule",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_a_new_attribute_that_table_e1_1_omits_needs_a_rule_by_its_vr",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_only_the_date_options_override_the_action_of_an_omitted_date",
 ]
 note = '''
-The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names, dates, and times that Table E.1-1 omits and every text attribute that it omits and a supported IOD uses. Each such attribute that an option retains or cleans is categorised by that option, as Table E.1-1 does: operator-typed text is cleaned under Clean Descriptors, and accessory and equipment identifiers are kept under Retain Device Identity (D-022); the dates and times are kept under Retain Longitudinal Temporal Information with Full Dates and cleaned under Modified Dates (D-023). `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and `.github/workflows/deid-edition-check.yml` runs it monthly. Remaining: a decision on the UR attributes that the tables omit (D-022) (M2); private attributes (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names, dates, and times that Table E.1-1 omits and every text attribute that it omits and a supported IOD uses. Each such attribute that an option retains or cleans is categorised by that option, as Table E.1-1 does: operator-typed text is cleaned under Clean Descriptors, and accessory and equipment identifiers are kept under Retain Device Identity (D-022); the dates and times are kept under Retain Longitudinal Temporal Information with Full Dates and cleaned under Modified Dates (D-023). Without Retain Safe Private, every private attribute is removed from a data set, at every level (D-028). `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and `.github/workflows/deid-edition-check.yml` runs it monthly. Remaining: a decision on the UR attributes that the tables omit (D-022) (M2); removing private attributes from each instance the engine de-identifies (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]
@@ -793,9 +862,19 @@ id = "MIDI-BP-13"
 text = '''
 Retain private data elements only after evaluating their risk against a reliable source of elements known to be safe, such as PS3.15 E.3.10 or manufacturers' documentation; otherwise remove them selectively or entirely.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
-decisions = ["D-001"]
+decisions = ["D-001", "D-028"]
+implementation = ["_dicom/deidentify/private_attributes.py"]
+tests = [
+  "tests/dicom/test_deidentify_private_attributes.py::test_the_basic_profile_removes_every_private_attribute",
+  "tests/dicom/test_deidentify_private_attributes.py::test_every_odd_group_element_is_removed",
+  "tests/dicom/test_deidentify_private_attributes.py::test_retain_safe_private_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_policy_that_does_not_remove_private_attributes_is_refused",
+]
+note = '''
+Without Retain Safe Private, every private data element and private creator is removed from a data set, at every level, and a policy that selects the Option, which retains those known to be safe, is refused until reviewed rules say which are (D-028). Remaining: removing them from each instance the engine de-identifies, and the reviewed rules that `public-release` needs (M3).
+'''
 
 [[requirement]]
 id = "MIDI-BP-14"
@@ -854,9 +933,23 @@ id = "MIDI-BP-18"
 text = '''
 Document the de-identification process in detail, including the release of PS3.15 and the Options used, and publish the documentation, or a reference to it, with the collection.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
 decisions = ["D-011", "D-012", "D-024", "D-029"]
+implementation = [
+  "_dicom/deidentify/markers.py",
+  "_dicom/deidentify/method_digest.py",
+]
+tests = [
+  "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
+  "tests/dicom/test_deidentify_markers.py::test_tps_import_claims_no_ps3_15_conformance_and_adds_no_codes",
+  "tests/dicom/test_deidentify_markers.py::test_the_first_method_value_is_exactly_the_method_digest",
+  "tests/dicom/test_deidentify_markers.py::test_the_markers_are_defined_by_the_iod_and_the_equipment_item_is_complete",
+  "tests/dicom/test_deidentify_markers.py::test_software_versions_give_pymedphys_then_python_pydicom_and_tomlkit",
+  "tests/dicom/test_deidentify_markers.py::test_software_versions_give_the_running_python_pydicom_and_tomlkit",
+  "tests/dicom/test_deidentify_markers.py::test_each_source_of_software_versions_changes_its_own_value",
+  "tests/dicom/test_deidentify_markers.py::test_python_and_library_versions_change_software_versions_not_the_digest",
+]
 note = '''
-Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name, and each instance's De-identification Method names PyMedPhys and the preset and gives the method digest (D-012, D-024). The release report also records the runtime environment that ran (D-029).
+Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the method digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives in Software Versions its version and the runtime environment that ran, which the method digest does not cover (D-012, D-024). The validated policy records the edition, preset, and options. Remaining: the release report and conformance statement that each run writes, naming the edition and Options and describing the process in detail, and the runtime environment that the release report records (D-029) (M4).
 '''
