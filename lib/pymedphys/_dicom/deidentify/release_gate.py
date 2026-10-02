@@ -205,7 +205,10 @@ class Coverage:
         The source paths of every value that had to be collected, such as
         each element that de-identification removes or replaces.
     collected : tuple of SourceValue
-        The values collected, including those read only as bytes.
+        The values collected, including those read only as bytes. Each is a
+        value the written file must not hold, so a value meant to stay,
+        such as a registered UID that is retained, is neither planned nor
+        collected.
     uncollected : tuple of Uncollected, optional
         The values that could not be collected.
     decoded_as_bytes : frozenset of ElementPath, optional
