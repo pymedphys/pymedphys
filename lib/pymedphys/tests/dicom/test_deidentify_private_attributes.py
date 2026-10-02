@@ -22,6 +22,7 @@ import copy
 import dataclasses
 import gc
 import io
+import os
 import struct
 import traceback
 import warnings
@@ -878,6 +879,30 @@ def test_a_deferred_sequence_whose_source_was_truncated_is_refused(
         gc.collect()
 
     assert not [w for w in caught if issubclass(w.category, ResourceWarning)]
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_a_deferred_sequence_read_from_a_closed_descriptor_is_refused(
+    basic, tmp_path
+):
+    # A reader built on a file descriptor gives the data set an integer
+    # filename. Once the reader is closed, that number names no file to read
+    # again, and opening it would take over, then close, the caller's
+    # descriptor.
+    filename = tmp_path / "deferred.dcm"
+    filename.write_bytes(_written(_plan(), IMPLICIT_VR))
+    descriptor = os.open(filename, os.O_RDONLY)
+    try:
+        with open(descriptor, "rb", closefd=False) as reader:
+            read = pydicom.dcmread(reader, defer_size=1)
+        assert isinstance(read.filename, int)
+
+        _assert_refused(read, basic, ElementPath((), "(300A,00B0)"), "PRIVATE")
+
+        os.fstat(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 @pytest.mark.pydicom
