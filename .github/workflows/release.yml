@@ -252,6 +252,113 @@ jobs:
           path: reports/
           retention-days: 30
 
+  # The de-identification requirements-to-tests matrix (D-018) for the
+  # released commit, with each traced test's outcome in every environment of
+  # the unit-test matrix. The narrow extras' and the dependency floors' reports
+  # run only some tests, so they are left out. It runs after failed tests too,
+  # so the matrix shows the failures. It never holds back publishing: a traced
+  # test that failed, was skipped, or did not run in every environment fails
+  # this job, and the Release Summary reports it.
+  deid-matrix:
+    name: De-identification requirements matrix
+    needs: [unit-tests]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      written: ${{ steps.matrix.outputs.written }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The base package holds the register and the command.
+      - uses: ./.github/actions/setup-project
+
+      - name: Download the unit-test reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: junit-*-latest-*
+          path: junit/
+          merge-multiple: true
+
+      # Write the matrix even when the check fails, so its record shows the
+      # failures, then fail the job after uploading it.
+      - name: Generate and check the matrix
+        id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          reports=(junit/*.xml)
+          args=()
+          for report in "${reports[@]}"; do args+=(--junit "$report"); done
+          status=0
+          uv run --no-sync -- pymedphys dev deid-matrix "${args[@]}" --check \
+            --output deidentification-requirements-matrix.md 2> problems.txt \
+            || status=$?
+          {
+            echo "## De-identification requirements matrix"
+            echo
+            echo "${#reports[@]} reports: ${reports[*]##*/}"
+            echo
+            if [ "$status" -eq 0 ]; then
+              echo "Every traced test passed in every report."
+            else
+              echo "Traced tests that did not pass, or the error:"
+              echo
+              echo '~~~text'
+              cat problems.txt
+              echo '~~~'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          if [ -f deidentification-requirements-matrix.md ]; then
+            echo "written=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload the matrix
+        if: ${{ !cancelled() && steps.matrix.outputs.written == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: deid-matrix
+          path: deidentification-requirements-matrix.md
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Fail if a traced test did not pass
+        if: ${{ steps.matrix.outputs.status != '0' }}
+        run: exit 1
+
+  # Attaches the matrix to the GitHub release and reads it back. It runs no
+  # repository code, so it alone may write to the release.
+  upload-deid-matrix:
+    name: Attach the requirements matrix
+    needs: [deid-matrix]
+    if: ${{ !cancelled() && needs.deid-matrix.outputs.written == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download the matrix
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: deid-matrix
+          path: matrix/
+
+      - name: Attach and check the matrix
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "$TAG" matrix/deidentification-requirements-matrix.md --clobber
+          gh release download "$TAG" --pattern deidentification-requirements-matrix.md --dir attached
+          cmp matrix/deidentification-requirements-matrix.md attached/deidentification-requirements-matrix.md
+
   # Fails unless every job succeeded, so a green summary means the release is
   # complete. It is not a pull request check.
   summary:
@@ -266,6 +373,8 @@ jobs:
       - upload-release-assets
       - verify-published
       - test-published
+      - deid-matrix
+      - upload-deid-matrix
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10

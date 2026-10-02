@@ -19,6 +19,7 @@ runtime dependency to CI's bootstrap checks. Actionlint validates YAML and
 GitHub expressions separately through pre-commit.
 """
 
+import fnmatch
 import re
 import unittest
 from pathlib import Path
@@ -228,6 +229,57 @@ class WorkflowContractTests(unittest.TestCase):
                 # Fresh environments, as a user's installation would be.
                 self.assertNotIn("setup-project", body)
                 self.assertNotIn("actions/cache", body)
+
+    def test_the_deid_matrix_reads_every_full_unit_test_report(self):
+        workflow = jobs("release.yml")
+        render = workflow["deid-matrix"]
+        self.assertIn("unit-tests", needs(render))
+        self.assertIn("    if: ${{ !cancelled() }}", render)
+        pattern = re.search(r"(?m)^          pattern: (\S+)$", render)[1]
+        # Each environment of the OS and Python matrix, but not the narrow
+        # extras' or the dependency floors' reports, which run only some
+        # tests and would make the others partly run.
+        names = re.findall(
+            r"(?m)^          name: (junit-.+)$",
+            (WORKFLOWS / "unit-tests.yml").read_text(encoding="utf-8"),
+        )
+        self.assertEqual(
+            names,
+            [
+                "junit-${{ matrix.os }}-${{ matrix.python-version }}",
+                "junit-extra-${{ matrix.extra }}",
+                "junit-dependency-floors",
+            ],
+        )
+        for os_name in ("ubuntu-latest", "windows-latest", "macos-latest"):
+            with self.subTest(os=os_name):
+                self.assertTrue(fnmatch.fnmatchcase(f"junit-{os_name}-3.11", pattern))
+        for name in ("junit-extra-dicom", "junit-dependency-floors"):
+            with self.subTest(name=name):
+                self.assertFalse(fnmatch.fnmatchcase(name, pattern))
+        self.assertIn("merge-multiple: true", render)
+        self.assertIn("pymedphys dev deid-matrix", render)
+        self.assertIn("--check", render)
+        # The job that runs the package reads only; a separate job attaches
+        # the matrix to the release.
+        self.assertIn("    permissions:\n      contents: read\n", render)
+        self.assertNotIn(": write", render)
+        upload = workflow["upload-deid-matrix"]
+        self.assertEqual(needs(upload), {"deid-matrix"})
+        # Whenever a matrix was written, including when the check failed.
+        self.assertIn(
+            "    if: ${{ !cancelled() && needs.deid-matrix.outputs.written == 'true' }}",
+            upload,
+        )
+        self.assertIn("    permissions:\n      contents: write\n", upload)
+        self.assertNotIn("setup-project", upload)
+        self.assertNotIn("uv run", upload)
+        self.assertIn("gh release upload", upload)
+        # Requirements evidence never holds back publishing.
+        for job in ("deid-matrix", "upload-deid-matrix"):
+            with self.subTest(job=job):
+                self.assertNotIn(job, needs(workflow["publish-pypi"]))
+                self.assertNotIn(job, needs(workflow["upload-release-assets"]))
 
 
 if __name__ == "__main__":
