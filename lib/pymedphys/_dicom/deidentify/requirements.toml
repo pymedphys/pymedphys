@@ -1101,7 +1101,7 @@ Document the de-identification process in detail, including the release of PS3.1
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-011", "D-012", "D-016", "D-024", "D-029"]
+decisions = ["D-011", "D-012", "D-016", "D-024", "D-026", "D-027", "D-029"]
 implementation = [
   "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/markers.py",
@@ -1126,6 +1126,10 @@ tests = [
   "tests/dicom/test_deidentify_release_report.py::test_the_report_holds_no_path_of_the_installed_engine",
   "tests/dicom/test_deidentify_release_report.py::test_the_report_holds_the_vocabulary_digest_not_its_entries",
   "tests/dicom/test_deidentify_release_report.py::test_a_report_with_a_field_that_could_hold_a_value_or_path_is_refused",
+  "tests/dicom/test_deidentify_release_report.py::test_sequestered_instances_are_listed_by_label_with_their_reasons",
+  "tests/dicom/test_deidentify_release_report.py::test_labels_are_random_and_carry_nothing_from_the_run",
+  "tests/dicom/test_deidentify_release_report.py::test_values_not_searched_are_counted_by_attribute_and_reason",
+  "tests/dicom/test_deidentify_release_report.py::test_a_run_section_with_a_field_that_could_hold_a_value_is_refused",
   "tests/dicom/test_deidentify_method_digest.py::test_the_components_of_a_small_synthetic_input_are_digests_of_its_members",
   "tests/dicom/test_deidentify_method_digest.py::test_the_components_show_which_input_changed_the_digest",
   "tests/dicom/test_deidentify_runtime.py::test_each_value_is_read_from_its_source_at_each_call",
@@ -1136,5 +1140,5 @@ tests = [
   "tests/dicom/test_deidentify_conformance.py::test_the_runtime_versions_are_described_not_quoted",
 ]
 note = '''
-Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the method digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives in Software Versions its version and the runtime environment that ran, which the method digest does not cover (D-012, D-024). The validated policy records the edition, preset, and options. The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers, and the markers that each instance gains, and the same policy and engine always give the same text. The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016). Remaining: writing the release report for each run, with its sections on the run's instances and a human-readable form, and publishing it with the collection (M4); and writing the conformance statement with each run and publishing it with each release (M4, M6).
+Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the method digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives in Software Versions its version and the runtime environment that ran, which the method digest does not cover (D-012, D-024). The validated policy records the edition, preset, and options. The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers, and the markers that each instance gains, and the same policy and engine always give the same text. The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016). Its sections on a run name each sequestered instance by a random label for the run, with each reason's stage and code, and the attribute, action, and VR where the walker sequestered it (D-026), and count the source values that the residual search did not search, in full or in part, by attribute and reason (D-027). Remaining: writing the release report for each run, with its residual search findings and a human-readable form, and publishing it with the collection (M4); and writing the conformance statement with each run and publishing it with each release (M4, M6).
 '''
