@@ -71,6 +71,8 @@ def test_each_element_has_one_edit_in_file_order():
     assert found[_path("(0009,1001)")].kind is EditKind.REMOVE
     assert found[OTHER_IDS].kind is EditKind.REMOVE
     assert found[_path(("(0010,1002)", 0), "(0010,0020)")].kind is EditKind.REMOVE
+    assert found[_path(("(0010,1002)", 0), "(0010,0020)")].removed_with == OTHER_IDS
+    assert found[OTHER_IDS].removed_with is None
     assert found[_path(("(300A,00B0)", 0), "(300A,00C2)")].kind is EditKind.REMOVE
 
 

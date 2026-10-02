@@ -114,6 +114,9 @@ class Edit:
     uid_outcomes : tuple of UIDOutcome
         For U, what :func:`~pymedphys._dicom.deidentify.uids.transform_uid`
         did with each value; otherwise ``()``.
+    removed_with : ElementPath or None
+        The outermost sequence that removes the element, whose own edit
+        covers it, or ``None``.
     """
 
     path: ElementPath
@@ -121,6 +124,7 @@ class Edit:
     kind: EditKind
     values: tuple[str | int | float, ...] = ()
     uid_outcomes: tuple[UIDOutcome, ...] = ()
+    removed_with: ElementPath | None = None
 
     def __repr__(self) -> str:
         return (
@@ -313,7 +317,9 @@ def _edit(element: ElementPlan, value: ElementValue | None, key: DeidKey) -> Edi
     """Return the edit of an element whose needed value, if any, is read."""
     kind = _kind(element)
     if kind is not EditKind.REPLACE:
-        return Edit(element.path, element.action, kind)
+        return Edit(
+            element.path, element.action, kind, removed_with=element.removed_with
+        )
     assert value is not None  # every U and D leaf has a consumer that reads it
     if element.action == "D":
         return _dummy(element.path, value, key)
