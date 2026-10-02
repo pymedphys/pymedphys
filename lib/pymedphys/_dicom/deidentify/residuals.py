@@ -348,16 +348,21 @@ class NotSearched:
 
 
 class UnsearchedReason(enum.Enum):
-    """Why a source value was left out of the search."""
+    """Why a value was not searched, besides the search's own omissions."""
 
-    RETAINED = "retained"  # the policy retains it
-    WRITTEN_CONSTANT = "written-constant"  # it equals a constant the engine writes
-    UNDECODABLE = "undecodable"  # it could not be decoded
+    RETAINED = "retained"  # the policy retains it (D-027)
+    WRITTEN_CONSTANT = "written-constant"  # equals a constant always written
+    UNDECODABLE = "undecodable"  # it could not be decoded to collect
+    # a UID that the pinned tables register, which names no one
+    REGISTERED_UID = "registered-uid"
 
 
 @dataclasses.dataclass(frozen=True)
 class Unsearched:
-    """A source attribute whose value, or one of its values, was not searched.
+    """A source value that the residual search was not given, and why.
+
+    The release report counts these by attribute and reason (D-027), and
+    the QC pack lists each by instance and place.
 
     Attributes
     ----------
@@ -367,10 +372,6 @@ class Unsearched:
 
     source: ElementPath
     reason: UnsearchedReason
-
-    def __str__(self) -> str:
-        """Describe the omission by its source and reason."""
-        return f"{self.source}: not searched: {_words(self.reason)}"
 
 
 @dataclasses.dataclass(frozen=True)

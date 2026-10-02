@@ -1474,10 +1474,10 @@ def test_a_constant_among_several_values_is_skipped_alone():
         ("(0010,1001)", "(0019,1001)"),
         ("(0010,1002)", "(0019,1001)"),
     }
-    assert [str(skip) for skip in result.unsearched] == [
-        "(0010,1001): not searched: written constant",
-        "(0010,1002): not searched: written constant",
-    ]
+    assert result.unsearched == tuple(
+        Unsearched(_path(tag), UnsearchedReason.WRITTEN_CONSTANT)
+        for tag in ("(0010,1001)", "(0010,1002)")
+    )
 
 
 def test_a_single_valued_text_is_not_split_into_constants():
