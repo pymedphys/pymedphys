@@ -104,6 +104,27 @@ def test_options_outside_the_supported_scope_are_listed_as_not_supported():
         assert meanings[conformance.OPTION_CODES[option]] in unsupported
 
 
+def test_the_pixel_options_outside_table_e1_1_are_listed_as_not_supported(preset):
+    # PS3.15 E.1.1 Note 11 leaves Clean Pixel Data and Clean Recognizable
+    # Visual Features out of Table E.1-1; CID 7050 still codes them.
+    text = conformance.render_markdown(_statement(preset))
+    meanings = {
+        c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
+    }
+    assert meanings["113101"] == "Clean Pixel Data Option"
+    assert meanings["113102"] == "Clean Recognizable Visual Features Option"
+    (line,) = [
+        line
+        for line in text.splitlines()
+        if line.startswith("- Options that are not supported: ")
+    ]
+    for code in conformance.PIXEL_OPTION_CODES:
+        assert f"{meanings[code]} (DCM {code})" in line
+    assert set(conformance.PIXEL_OPTION_CODES).isdisjoint(
+        conformance.OPTION_CODES.values()
+    )
+
+
 def test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_action(
     preset,
 ):

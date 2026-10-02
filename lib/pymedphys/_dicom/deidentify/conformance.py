@@ -79,6 +79,11 @@ OPTION_CODES: Mapping[str, str] = types.MappingProxyType(
     }
 )
 
+# The CID 7050 codes of Clean Pixel Data and Clean Recognizable Visual
+# Features, which PS3.15 E.1.1 Note 11 leaves out of Table E.1-1. Neither is
+# supported, and the statement names both as not supported.
+PIXEL_OPTION_CODES: tuple[str, ...] = ("113101", "113102")
+
 _REPEATING = re.compile(r"^\((50|60)xx,")
 
 # Where an attribute's action comes from.
@@ -487,8 +492,11 @@ def render_markdown(statement: ConformanceStatement) -> str:
     meanings = {c.code_value: c.code_meaning for c in load_context_group(7050).rows}
     sequences = {a.tag: a.name for a in load_data_dictionary().attributes}
 
+    def coded(code: str) -> str:
+        return f"{meanings[code]} (DCM {code})"
+
     def option(name: str) -> str:
-        return f"{meanings[OPTION_CODES[name]]} (DCM {OPTION_CODES[name]})"
+        return coded(OPTION_CODES[name])
 
     preset = f"`{statement.preset}`" if statement.preset else "a custom option set"
     options = _join(option(o) for o in statement.options) or "no options"
@@ -517,7 +525,10 @@ def render_markdown(statement: ConformanceStatement) -> str:
         + _join(option(o) for o in TARGET_OPTIONS)
         + ".",
         "- Options that are not supported: "
-        + _join(option(o) for o in OPTIONS if o not in TARGET_OPTIONS)
+        + _join(
+            [option(o) for o in OPTIONS if o not in TARGET_OPTIONS]
+            + [coded(c) for c in PIXEL_OPTION_CODES]
+        )
         + ".",
         "",
         "## Conformance claim",
