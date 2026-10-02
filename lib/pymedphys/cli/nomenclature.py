@@ -14,12 +14,15 @@
 
 """Convert structure-name nomenclatures, such as TG-263's, to JSON.
 
-``pymedphys nomenclature tg263 SPREADSHEET OUTPUT`` converts a copy of AAPM's
-TG-263 Structure Spreadsheet, which PyMedPhys does not include, to JSON that
-records the spreadsheet's file name, worksheet version, SHA-256, and AAPM's
-attribution. It never overwrites an existing file. Converted files are not to
-be edited by hand: their loader rejects a file whose entries no longer match
-its recorded digest.
+``pymedphys nomenclature tg263 OUTPUT`` downloads the edition of AAPM's TG-263
+Structure Spreadsheet that PyMedPhys pins, checks it against the pinned
+SHA-256, and converts it to JSON that records the spreadsheet's file name,
+worksheet version, SHA-256, and AAPM's attribution. PyMedPhys does not include
+the spreadsheet; the download is cached in the PyMedPhys data directory. With
+``--spreadsheet FILE`` it converts that workbook instead, without downloading
+or checking it against the pin. It never overwrites an existing file.
+Converted files are not to be edited by hand: their loader rejects a file
+whose entries no longer match its recorded digest.
 """
 
 import argparse
@@ -27,7 +30,7 @@ import pathlib
 import sys
 from typing import NoReturn
 
-from pymedphys._nomenclature import tg263
+from pymedphys._nomenclature import tg263, tg263_published
 
 
 def nomenclature_cli(subparsers):
@@ -38,32 +41,51 @@ def nomenclature_cli(subparsers):
 
     tg263_parser = nomenclature_subparsers.add_parser(
         "tg263",
-        help="Convert a copy of AAPM's TG-263 Structure Spreadsheet to JSON.",
+        help="Convert AAPM's TG-263 Structure Spreadsheet to JSON.",
         description=(
-            "Convert a copy of AAPM's TG-263 Structure Spreadsheet (.xls) to "
-            "JSON that records its file name, worksheet version, SHA-256, and "
+            "Download the pinned edition of AAPM's TG-263 Structure "
+            "Spreadsheet (.xls), check its SHA-256, and convert it to JSON "
+            "that records its file name, worksheet version, SHA-256, and "
             "AAPM's attribution. PyMedPhys does not include the spreadsheet."
         ),
     )
     tg263_parser.add_argument(
-        "spreadsheet", type=pathlib.Path, help="The .xls workbook to convert."
+        "output", type=pathlib.Path, help="The JSON file to create; must not exist."
     )
     tg263_parser.add_argument(
-        "output", type=pathlib.Path, help="The JSON file to create; must not exist."
+        "--spreadsheet",
+        type=pathlib.Path,
+        metavar="FILE",
+        help=(
+            "Convert this .xls workbook instead of the pinned edition. It is "
+            "not downloaded or checked against the pin."
+        ),
     )
     tg263_parser.set_defaults(func=convert_tg263_cli)
 
 
 def convert_tg263_cli(args: argparse.Namespace) -> None:
-    """Convert ``args.spreadsheet`` to ``args.output``, exiting 1 on failure."""
-    spreadsheet: pathlib.Path = args.spreadsheet
+    """Convert the pinned edition, or ``args.spreadsheet``, to ``args.output``.
+
+    Exits with status 1, writing nothing, on any failure.
+    """
+    spreadsheet: pathlib.Path | None = args.spreadsheet
     output: pathlib.Path = args.output
     try:
-        nomenclature = tg263.read_spreadsheet(spreadsheet)
-    except OSError as error:
-        _fail(f"cannot read {spreadsheet.name}: {error.strerror or 'unreadable'}")
+        if spreadsheet is None:
+            nomenclature = tg263_published.load()
+        else:
+            nomenclature = tg263.read_spreadsheet(spreadsheet)
     except tg263.TG263Error as error:
         _fail(str(error))
+    except OSError as error:
+        reason = error.strerror or str(error) or "unknown error"
+        if spreadsheet is None:
+            _fail(
+                f"cannot download {tg263_published.PUBLISHED.file}: {reason}; "
+                "to convert a copy you already have, pass --spreadsheet FILE"
+            )
+        _fail(f"cannot read {spreadsheet.name}: {reason}")
     try:
         with output.open("xb") as file:
             file.write(tg263.to_json(nomenclature).encode("utf-8"))
