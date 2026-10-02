@@ -26,7 +26,7 @@ import urllib.error
 
 from pymedphys._imports import pytest
 
-from pymedphys._nomenclature import roi_list, tg263, tg263_published
+from pymedphys._nomenclature import tg263, tg263_published
 from pymedphys.cli import define_parser
 
 SPREADSHEET = (
@@ -337,82 +337,3 @@ def test_another_workbook_is_converted_with_a_note(tmp_path, capsys):
     err = capsys.readouterr().err
     assert err.startswith("note: tg263_invented.xls is not the pinned edition")
     assert "not checked against the pin" in err
-
-
-def _run_roi_list(*cli_args):
-    args = define_parser().parse_args(
-        ["experimental", "nomenclature", "roi-list", *cli_args]
-    )
-    return args.func(args)
-
-
-def test_an_institutional_list_is_converted_to_json(tmp_path, capsys):
-    source = tmp_path / "site.csv"
-    source.write_text("Name,Description\nLung_L,Left lung\n", encoding="utf-8")
-    output = tmp_path / "site.json"
-
-    _run_roi_list(str(source), str(output), "--list-version", "2026-10")
-
-    expected = roi_list.read_csv(source, version="2026-10")
-    assert output.read_bytes() == roi_list.to_json(expected).encode("utf-8")
-    assert roi_list.load_json(output) == expected
-    assert "Wrote 1 name from" in capsys.readouterr().out
-
-
-def test_an_institutional_list_needs_a_version(tmp_path):
-    source = tmp_path / "site.csv"
-    source.write_text("Name\nLung_L\n", encoding="utf-8")
-    with pytest.raises(SystemExit) as exit_info:
-        _run_roi_list(str(source), str(tmp_path / "site.json"))
-    assert exit_info.value.code == 2
-
-
-def test_an_invalid_institutional_list_fails_without_output(tmp_path, capsys):
-    source = tmp_path / "site.csv"
-    source.write_text("Name,Site\nLung_L,A\n", encoding="utf-8")
-    output = tmp_path / "site.json"
-
-    with pytest.raises(SystemExit) as exit_info:
-        _run_roi_list(str(source), str(output), "--list-version", "1")
-
-    assert exit_info.value.code == 1
-    assert not output.exists()
-    assert capsys.readouterr().err == "error: unknown column 'Site'\n"
-
-
-def test_an_institutional_list_never_overwrites(tmp_path):
-    source = tmp_path / "site.csv"
-    source.write_text("Name\nLung_L\n", encoding="utf-8")
-    output = tmp_path / "site.json"
-    output.write_text("keep me", encoding="utf-8")
-
-    with pytest.raises(SystemExit):
-        _run_roi_list(str(source), str(output), "--list-version", "1")
-    assert output.read_text(encoding="utf-8") == "keep me"
-
-
-def test_malformed_csv_fails_without_a_traceback(tmp_path, capsys):
-    source = tmp_path / "site.csv"
-    source.write_text('Name,Description\nLung_L,"Left lung\nHeart,\n', encoding="utf-8")
-    output = tmp_path / "site.json"
-
-    with pytest.raises(SystemExit) as exit_info:
-        _run_roi_list(str(source), str(output), "--list-version", "1")
-
-    assert exit_info.value.code == 1
-    assert not output.exists()
-    assert capsys.readouterr().err.startswith("error: site.csv is not valid CSV")
-
-
-@pytest.mark.parametrize("make", [lambda path: None, lambda path: path.mkdir()])
-def test_an_unreadable_list_names_only_the_file(tmp_path, capsys, make):
-    source = tmp_path / "site.csv"
-    make(source)
-
-    with pytest.raises(SystemExit) as exit_info:
-        _run_roi_list(str(source), str(tmp_path / "site.json"), "--list-version", "1")
-
-    assert exit_info.value.code == 1
-    err = capsys.readouterr().err
-    assert err.startswith("error: cannot read site.csv: ")
-    assert str(tmp_path) not in err
