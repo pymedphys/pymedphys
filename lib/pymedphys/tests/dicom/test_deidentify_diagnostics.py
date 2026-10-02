@@ -250,3 +250,33 @@ def test_exceptions_pass_through_unchanged():
     with pytest.raises(ValueError, match=SENTINEL), redacted_diagnostics():
         raise ValueError(SENTINEL)
     assert not diagnostics._redacting()  # pylint: disable = protected-access
+
+
+def test_the_context_counts_what_it_redacted(caplog):
+    caplog.set_level(logging.DEBUG, logger="pydicom")
+    with warnings.catch_warnings(record=True):
+        warnings.simplefilter("always")
+        with redacted_diagnostics() as counts:
+            _warn_from_pydicom(SENTINEL)
+            logging.getLogger("pydicom.pixels.utils").debug(SENTINEL)
+            logging.getLogger("pymedphys").warning(SENTINEL)
+    assert (counts.warnings, counts.log_records) == (1, 2)
+    assert SENTINEL not in repr(counts)
+
+
+def test_nested_contexts_each_count_what_they_saw():
+    with warnings.catch_warnings(record=True):
+        warnings.simplefilter("always")
+        with redacted_diagnostics() as outer:
+            warnings.warn(SENTINEL, stacklevel=1)
+            with redacted_diagnostics() as inner:
+                warnings.warn(SENTINEL, stacklevel=1)
+    assert (outer.warnings, inner.warnings) == (2, 1)
+
+
+def test_a_warning_that_filters_ignore_is_not_counted():
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        with redacted_diagnostics() as counts:
+            _warn_from_pydicom(SENTINEL)
+    assert counts.warnings == 0

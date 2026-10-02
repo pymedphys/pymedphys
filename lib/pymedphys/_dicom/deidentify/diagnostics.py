@@ -43,6 +43,7 @@ that recorded it.
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import functools
 import logging
 import re
@@ -91,10 +92,33 @@ def safe_summary(message: str, default: str = SUMMARY) -> str:
     return default
 
 
-class _Scope(threading.local):
-    """How deeply the current thread is within :func:`redacted_diagnostics`."""
+@dataclasses.dataclass
+class RedactionCounts:
+    """How many diagnostics a :func:`redacted_diagnostics` context redacted.
 
-    depth = 0
+    It holds counts only, never a message, so it can be reported.
+
+    Attributes
+    ----------
+    warnings : int
+        Warnings shown or recorded within the context; a warning that the
+        caller's filters ignore, or turn into an exception, is not counted.
+    log_records : int
+        Records of the ``pydicom`` logger and the loggers below it created
+        within the context, which are those at or above the logger's
+        effective level.
+    """
+
+    warnings: int = 0
+    log_records: int = 0
+
+
+class _Scope(threading.local):
+    """The :func:`redacted_diagnostics` contexts the current thread is within."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.active: list[RedactionCounts] = []
 
 
 _SCOPE = _Scope()
@@ -102,7 +126,7 @@ _LOCK = threading.Lock()
 
 
 def _redacting() -> bool:
-    return _SCOPE.depth > 0
+    return bool(_SCOPE.active)
 
 
 def _wrapped_factory(
@@ -122,6 +146,8 @@ def _wrapped_factory(
             except Exception:  # pylint: disable = broad-exception-caught
                 message = ""
             record.msg = safe_summary(message)
+            for counts in _SCOPE.active:
+                counts.log_records += 1
             record.args = ()
             record.exc_info = None
             record.exc_text = None
@@ -141,6 +167,8 @@ def _wrapped_showwarning(show: Callable[..., None]) -> Callable[..., None]:
             # from code that a caller passed in, so it is not shown either.
             message = safe_summary(str(message), WARNING_SUMMARY)
             filename, lineno, line = "<pydicom>", 0, ""
+            for counts in _SCOPE.active:
+                counts.warnings += 1
         show(message, category, filename, lineno, file, line)
 
     showwarning.redacts = True  # type: ignore[attr-defined]
@@ -157,7 +185,7 @@ def _install() -> None:
 
 
 @contextlib.contextmanager
-def redacted_diagnostics() -> Iterator[None]:
+def redacted_diagnostics() -> Iterator[RedactionCounts]:
     """Keep file paths and DICOM values out of pydicom's warnings and log records.
 
     Within the context, in the thread that entered it, each record of the
@@ -167,18 +195,25 @@ def redacted_diagnostics() -> Iterator[None]:
     message replaced and its location hidden. Contexts can be nested and
     entered by several threads at once. Exceptions pass through unchanged.
 
+    The context yields the :class:`RedactionCounts` of what it redacted,
+    which are complete once it exits.
+
     >>> import logging
-    >>> with redacted_diagnostics():
+    >>> with redacted_diagnostics() as counts:
     ...     record = logging.getLogger("pydicom").makeRecord(
     ...         "pydicom", logging.DEBUG, "", 0, "read %s", ("Doe^Jane",), None
     ...     )
     >>> record.getMessage() == SUMMARY
     True
+    >>> counts
+    RedactionCounts(warnings=0, log_records=1)
     """
     with _LOCK:
         _install()
-    _SCOPE.depth += 1
+    counts = RedactionCounts()
+    _SCOPE.active.append(counts)
     try:
-        yield
+        yield counts
     finally:
-        _SCOPE.depth -= 1
+        # By identity: counts that are equal belong to different contexts.
+        _SCOPE.active[:] = [each for each in _SCOPE.active if each is not counts]
