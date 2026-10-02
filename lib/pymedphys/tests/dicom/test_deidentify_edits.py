@@ -24,15 +24,17 @@ from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import edits, elements, source, walker
 from pymedphys._dicom.deidentify.edits import EditKind
+from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.pseudonyms import SubjectIdentity, patient_pseudonym
 from pymedphys._dicom.deidentify.uids import UIDOutcome, replacement_uid
 
-from .test_deidentify_file_layout import EXPLICIT, _explicit, _file
+from .test_deidentify_file_layout import EXPLICIT, _explicit, _file, _item
 from .test_deidentify_walker import (
     BEAM_SEQUENCE,
     OTHER_IDS,
     _by_path,
+    _Overridden,
     _path,
     _rt_plan,
     _rt_plan_data_set,
@@ -300,3 +302,103 @@ def test_patients_name_and_id_take_the_pseudonyms_of_a_given_identity():
     assert {value.source for value in result.source_values} == {
         edit.path for edit in result.edits
     }
+
+
+def test_a_sequence_kept_under_u_is_kept_and_its_items_are_edited():
+    data_set = _explicit(
+        0x300A00B0, "SQ", _item(_explicit(0x300A00C2, "LO", b"SENTINEL BEAM "))
+    )
+    _, result = _edits(data_set, _Overridden({"(300A,00B0)": "U"}))
+    sequence, name = result.edits
+
+    assert (sequence.path, sequence.action) == (BEAM_SEQUENCE, "U")
+    assert (sequence.kind, sequence.values) == (EditKind.KEEP, ())
+    assert name.kind is EditKind.REMOVE
+    assert BEAM_SEQUENCE not in _collected(result)
+
+
+def test_a_sequence_kept_under_u_by_its_iod_is_kept_and_its_uids_replaced():
+    # X/Z/U* on Referenced Image Sequence (0008,1140), Type 1 in an
+    # X-Ray Angiographic Image, resolves to U.
+    data_set = _explicit(
+        0x00081140,
+        "SQ",
+        _item(
+            _explicit(0x00081150, "UI", RT_PLAN_CLASS.encode() + b"\x00")
+            + _explicit(0x00081155, "UI", INSTANCE_UID.encode())
+        ),
+    )
+    evidence = source.read_source(_file(EXPLICIT, data_set))
+    iod = load_iod_tables().iods["X-Ray Angiographic Image"]
+    plan = walker.plan_instance(evidence, _rules(), iod)
+    sequence, class_uid, instance_uid = edits.edit_instance(evidence, plan, KEY).edits
+
+    assert (sequence.action, sequence.kind) == ("U", EditKind.KEEP)
+    assert class_uid.values == (RT_PLAN_CLASS,)
+    assert instance_uid.values == (replacement_uid(KEY, INSTANCE_UID),)
+
+
+def test_each_sequence_is_read_once_however_many_items_it_has(monkeypatch):
+    read = []
+    original = elements.read_element
+
+    def recording(dataset, path, *args, **kwargs):
+        read.append(path)
+        return original(dataset, path, *args, **kwargs)
+
+    monkeypatch.setattr(elements, "read_element", recording)
+    beam = _item(_explicit(0x300A00C2, "LO", b"SENTINEL BEAM "))
+    _, result = _edits(_explicit(0x300A00B0, "SQ", beam * 50))
+
+    assert len(result.source_values) == 50
+    assert read.count(BEAM_SEQUENCE) == 1
+
+
+def test_an_items_character_set_is_inherited_or_its_own():
+    data_set = _explicit(0x00080005, "CS", b"ISO_IR 100") + _explicit(
+        0x00101002,
+        "SQ",
+        _item(
+            _explicit(0x00080005, "CS", b"ISO_IR 192")
+            + _explicit(0x00100020, "LO", b"SENTINEL ID ")
+        )
+        + _item(_explicit(0x00100020, "LO", b"SENTINEL ID ")),
+    )
+    _, result = _edits(data_set)
+    codecs = {value.source: value.codecs for value in result.source_values}
+
+    own = codecs[_path(("(0010,1002)", 0), "(0010,0020)")]
+    assert own != ("latin_1",)
+    assert codecs[_path(("(0010,1002)", 1), "(0010,0020)")] == ("latin_1",)
+
+
+@pytest.mark.parametrize("action", ["K", "X"])
+def test_an_unsupported_character_set_in_an_item_sequesters_the_instance(action):
+    # D-010, whether the item is kept, with nothing in it read, or removed.
+    data_set = _explicit(
+        0x300A00B0,
+        "SQ",
+        _item(
+            _explicit(0x00080005, "CS", b"ISO_IR 999")
+            + _explicit(0x300A00C0, "IS", b"1 ")
+        ),
+    )
+    _, result = _edits(data_set, _Overridden({"(300A,00B0)": action}))
+
+    (sequestration,) = result.sequestrations
+    assert sequestration.path == _path(("(300A,00B0)", 0), "(0008,0005)")
+    assert sequestration.reason is walker.SequesterReason.UNSUPPORTED_CHARACTER_SET
+    assert sequestration.action == ("K" if action == "K" else "X")
+    assert not result.edits
+
+
+def test_an_undecodable_patient_id_that_is_removed_is_not_collected():
+    _, result = _edits(
+        _explicit(0x00100020, "LO", b"SENTINEL \xe9"),
+        _Overridden({"(0010,0020)": "X"}),
+    )
+
+    (patient_id,) = result.edits
+    assert patient_id.kind is EditKind.REMOVE
+    assert not result.sequestrations
+    assert [missing.path for missing in result.not_collected] == [_path("(0010,0020)")]

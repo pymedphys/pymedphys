@@ -152,7 +152,7 @@ class SequesterReason(enum.Enum):
     VR_NOT_IN_DICTIONARY = "vr-not-in-dictionary"
     # a value that the action needs, and that cannot be decoded
     UNDECODABLE = "undecodable"
-    # a Specific Character Set that is not supported (D-010)
+    # a Specific Character Set that is not supported, or cannot be read (D-010)
     UNSUPPORTED_CHARACTER_SET = "unsupported-character-set"
 
 
@@ -168,7 +168,7 @@ _EXPLANATIONS = {
         "{action} on {path} needs its value, which cannot be decoded"
     ),
     SequesterReason.UNSUPPORTED_CHARACTER_SET: (
-        "{path} is not a supported Specific Character Set"
+        "{path} is not, or cannot be read as, a supported Specific Character Set"
     ),
 }
 

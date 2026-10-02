@@ -34,8 +34,9 @@ Patient's Name (0010,0010) and Patient ID (0010,0020) at the top level of
 the data set take the subject's keyed pseudonyms under Z and D (D-005),
 given the subject's identity, which the run resolves across its instances;
 without one, their edits are pending. C cleans the value (D-009), so its
-edit is pending, for a later step to give. So is D on Person Identification Code Sequence (0040,1101), whose
-reviewed dummy item (D-021) is written with the engine's other values.
+edit is pending, for a later step to give. So is D on Person
+Identification Code Sequence (0040,1101), whose reviewed dummy item (D-021)
+is written with the engine's other values.
 
 It also collects, for the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`), each value that is removed
@@ -188,10 +189,15 @@ class _Sequester(Exception):
 
 
 class _Reader:
-    """Read planned values against the source, through the items that hold them."""
+    """Read planned values against the source, through the items that hold them.
 
-    def __init__(self, source: SourceEvidence) -> None:
+    Each sequence is read once, however many of its items are reached.
+    """
+
+    def __init__(self, source: SourceEvidence, plan: InstancePlan) -> None:
         self._source = source
+        self._planned = {element.path: element for element in plan.elements}
+        self._sequences: dict[ElementPath, ElementValue] = {}
         root = source.dataset()
         self._holders: dict[tuple, tuple] = {(): (root, (), self._codecs(root, ()))}
 
@@ -201,34 +207,42 @@ class _Reader:
                 dataset, inherited, items, source=self._source
             )
         except UndecodableElement as error:
+            planned = self._planned.get(error.path)
             raise _Sequester(
                 Sequestration(
                     error.path,
-                    "K",
+                    planned.action if planned is not None else "K",
                     "CS",
                     SequesterReason.UNSUPPORTED_CHARACTER_SET,
                 )
             ) from None
+
+    def sequence(self, path: ElementPath) -> ElementValue:
+        """Return a sequence, read once, with its items."""
+        if path not in self._sequences:
+            dataset, ancestors, codecs = self._holder(path.items)
+            self._sequences[path] = elements.read_element(
+                dataset, path, codecs, ancestors, source=self._source
+            )
+        return self._sequences[path]
 
     def _holder(self, items: tuple) -> tuple:
         """Return the data set at ``items``, its ancestors, and its codecs."""
         if items not in self._holders:
             dataset, ancestors, codecs = self._holder(items[:-1])
             tag, index = items[-1]
-            sequence = elements.read_element(
-                dataset,
-                ElementPath(items[:-1], tag),
-                codecs,
-                ancestors,
-                source=self._source,
-            )
-            item = sequence.items[index]
+            item = self.sequence(ElementPath(items[:-1], tag)).items[index]
             self._holders[items] = (
                 item,
                 (dataset, *ancestors),
                 self._codecs(item, items, codecs),
             )
         return self._holders[items]
+
+    def check_items(self, path: ElementPath) -> None:
+        """Read a sequence's items and resolve each one's character set."""
+        for index, _ in enumerate(self.sequence(path).items):
+            self._holder((*path.items, (path.tag, index)))
 
     def read(self, path: ElementPath) -> ElementValue:
         dataset, ancestors, codecs = self._holder(path.items)
@@ -244,18 +258,14 @@ def _text(value: ElementValue) -> str | bytes:
     return "\\".join(str(each) for each in value.values)
 
 
-def _kept_container(source: SourceEvidence, element: ElementPlan) -> bool:
-    return (
-        element.removed_with is None
-        and element.action in DESCENDED
-        and source.element(element.path).items is not None
-    )
+def _kept_container(element: ElementPlan, container: bool) -> bool:
+    return container and element.removed_with is None and element.action in DESCENDED
 
 
 def _check_items(reader: _Reader, element: ElementPlan) -> None:
     """Sequester the instance unless a kept sequence's items can be read."""
     try:
-        reader.read(element.path)
+        reader.check_items(element.path)
     except UndecodableElement:
         raise _Sequester(
             Sequestration(
@@ -264,17 +274,31 @@ def _check_items(reader: _Reader, element: ElementPlan) -> None:
         ) from None
 
 
-def _kind(element: ElementPlan) -> EditKind:
-    """Return what an element becomes, before any value is worked out."""
+def _takes_pseudonym(element: ElementPlan) -> bool:
+    """Return whether an element takes one of the subject's pseudonyms."""
+    path = element.path
+    return (
+        element.removed_with is None
+        and element.action in ("Z", "D")
+        and not path.items
+        and path.tag in PSEUDONYM_TAGS
+    )
+
+
+def _kind(element: ElementPlan, container: bool) -> EditKind:
+    """Return what an element becomes, before any value is worked out.
+
+    A sequence under K or U is kept as a container, its items edited
+    element by element.
+    """
     path, action = element.path, element.action
-    pseudonym = not path.items and path.tag in PSEUDONYM_TAGS
     if element.removed_with is not None or action == "X":
         kind = EditKind.REMOVE
-    elif action == "K":
+    elif action == "K" or (container and action in DESCENDED):
         kind = EditKind.KEEP
     elif (
         action == "C"
-        or (action in ("Z", "D") and pseudonym)
+        or _takes_pseudonym(element)
         or (action == "D" and path.tag in REVIEWED_DUMMY_SEQUENCES)
     ):
         kind = EditKind.PENDING
@@ -328,19 +352,15 @@ def _pseudonym(
 
 def _edit(
     element: ElementPlan,
+    container: bool,
     value: ElementValue | None,
     key: DeidKey,
     identity: SubjectIdentity | None,
 ) -> Edit:
     """Return the edit of an element whose needed value, if any, is read."""
-    kind = _kind(element)
+    kind = _kind(element, container)
     path = element.path
-    if (
-        kind is EditKind.PENDING
-        and identity is not None
-        and not path.items
-        and path.tag in PSEUDONYM_TAGS
-    ):
+    if identity is not None and _takes_pseudonym(element):
         return _pseudonym(path, element.action, key, identity)
     if kind is not EditKind.REPLACE:
         return Edit(
@@ -385,18 +405,17 @@ def edit_instance(
     collected: list[SourceValue] = []
     missing: list[NotCollected] = []
     try:
-        reader = _Reader(source)
+        reader = _Reader(source, plan)
         for element in plan.elements:
             value = None
-            if _kept_container(source, element):
+            container = source.element(element.path).items is not None
+            if _kept_container(element, container):
                 _check_items(reader, element)
             if element.consumers:
                 try:
                     value = reader.read(element.path)
                 except UndecodableElement as error:
-                    if element.consumers & _NEEDS_VALUE or (
-                        not element.path.items and element.path.tag in PSEUDONYM_TAGS
-                    ):
+                    if element.consumers & _NEEDS_VALUE or _takes_pseudonym(element):
                         raise _Sequester(
                             Sequestration(
                                 element.path,
@@ -413,7 +432,7 @@ def edit_instance(
                     )
                 except ValueError:
                     missing.append(NotCollected(element.path, "could not be collected"))
-            found.append(_edit(element, value, key, identity))
+            found.append(_edit(element, container, value, key, identity))
     except _Sequester as raised:
         return InstanceEdits((), (), (), (raised.sequestration,))
     return InstanceEdits(tuple(found), tuple(collected), tuple(missing), ())
