@@ -65,9 +65,9 @@ otherwise be compared as if they were at the top level.
 A record keeps a digest of the source bytes rather than the bytes, so
 records stay small. Building one reads the file's bytes into a data set of
 its own, so the caller's objects are left unchanged. It neither logs nor
-warns; pydicom's own warnings and errors while it reads and decodes values
-are the entry point's to redact, with
-:func:`.diagnostics.redacted_diagnostics`.
+warns; pydicom's warnings and log records while it reads the file and
+decodes sequences are redacted by :func:`.diagnostics.redacted_diagnostics`,
+and pydicom's errors are the entry point's to redact.
 """
 
 from __future__ import annotations
@@ -84,6 +84,7 @@ from collections.abc import Iterator, Mapping, Sequence
 
 from pymedphys._imports import pydicom
 
+from .diagnostics import redacted_diagnostics
 from .file_layout import (
     BIG_ENDIAN_TRANSFER_SYNTAXES,
     ElementPath,
@@ -353,7 +354,8 @@ class InstanceRecord:
             values from the file, so the entry point redacts it.
         """
         data = bytes(data)
-        dataset = pydicom.dcmread(io.BytesIO(data), defer_size=None)
+        with redacted_diagnostics():
+            dataset = pydicom.dcmread(io.BytesIO(data), defer_size=None)
         sop_class = _uid(dataset, SOP_CLASS_TAG)
         iod, sites = _iod_and_sites(sop_class) if sop_class else (None, ())
         found = []
