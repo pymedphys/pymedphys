@@ -960,11 +960,13 @@ Document the de-identification process in detail, including the release of PS3.1
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-011", "D-012", "D-024", "D-029"]
+decisions = ["D-011", "D-012", "D-016", "D-024", "D-029"]
 implementation = [
   "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/markers.py",
   "_dicom/deidentify/method_digest.py",
+  "_dicom/deidentify/release_report.py",
+  "_dicom/deidentify/runtime.py",
 ]
 tests = [
   "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
@@ -975,10 +977,20 @@ tests = [
   "tests/dicom/test_deidentify_markers.py::test_software_versions_give_the_running_python_pydicom_and_tomlkit",
   "tests/dicom/test_deidentify_markers.py::test_each_source_of_software_versions_changes_its_own_value",
   "tests/dicom/test_deidentify_markers.py::test_python_and_library_versions_change_software_versions_not_the_digest",
+  "tests/dicom/test_deidentify_release_report.py::test_the_policy_section_names_the_edition_preset_and_options",
+  "tests/dicom/test_deidentify_release_report.py::test_the_document_has_the_sections_and_fields_the_design_lists",
+  "tests/dicom/test_deidentify_release_report.py::test_the_method_section_holds_the_digest_and_its_components",
+  "tests/dicom/test_deidentify_release_report.py::test_the_runtime_section_holds_the_values_of_software_versions",
+  "tests/dicom/test_deidentify_release_report.py::test_the_report_holds_no_path_of_the_installed_engine",
+  "tests/dicom/test_deidentify_release_report.py::test_the_report_holds_the_vocabulary_digest_not_its_entries",
+  "tests/dicom/test_deidentify_release_report.py::test_a_report_with_a_field_that_could_hold_a_value_or_path_is_refused",
+  "tests/dicom/test_deidentify_method_digest.py::test_the_components_of_a_small_synthetic_input_are_digests_of_its_members",
+  "tests/dicom/test_deidentify_method_digest.py::test_the_components_show_which_input_changed_the_digest",
+  "tests/dicom/test_deidentify_runtime.py::test_each_value_is_read_from_its_source_at_each_call",
   "tests/dicom/test_deidentify_conformance.py::test_the_statement_names_the_edition_preset_and_options",
   "tests/dicom/test_deidentify_conformance.py::test_the_method_digest_is_the_policys_with_the_same_vocabulary",
   "tests/dicom/test_deidentify_conformance.py::test_the_statement_is_the_same_every_time_it_is_generated",
 ]
 note = '''
-Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the method digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives in Software Versions its version and the runtime environment that ran, which the method digest does not cover (D-012, D-024). The validated policy records the edition, preset, and options. The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers, and the same policy and engine always give the same text. Remaining: writing the release report and the conformance statement with each run, the runtime environment that the release report records (D-029), and publishing the statement with each release (M4, M6).
+Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the method digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives in Software Versions its version and the runtime environment that ran, which the method digest does not cover (D-012, D-024). The validated policy records the edition, preset, and options. The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers, and the same policy and engine always give the same text. The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016). Remaining: writing the release report for each run, with its sections on the run's instances and a human-readable form, and publishing it with the collection (M4); and writing the conformance statement with each run and publishing it with each release (M4, M6).
 '''
