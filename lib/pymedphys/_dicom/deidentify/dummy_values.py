@@ -29,7 +29,10 @@ Every other VR, such as CS, SQ, AE, AS, AT, OB, OW, UN, and UR, has no
 generic dummy value. D on an attribute of such a VR raises
 :class:`NoDummyValueError`: the attribute needs a reviewed rule of its own,
 and without one its instance is sequestered rather than given an invalid
-value.
+value. One sequence has such a rule (:func:`items_for_d`): D writes one item
+in Person Identification Code Sequence (0040,1101), with Code Value
+``DEIDENTIFIED``, Coding Scheme Designator ``99PYMEDPHYS``, and Code Meaning
+``DEIDENTIFIED^DEIDENTIFIED``.
 
 Where an attribute is Type 1 or 1C at its place in the data set, Z writes
 D's dummy value, from :func:`values_for_d`, since a zero-length value would
@@ -43,7 +46,9 @@ Under ``tps-import``, Patient's Birth Date (0010,0030) is to take a synthetic
 birth date kept in the subject's profile
 (:mod:`~pymedphys._dicom.deidentify.profiles`), which does not yet record one.
 
-Dummy values never name PyMedPhys; the de-identification markers do.
+Dummy values never name PyMedPhys; the de-identification markers do. The one
+exception is the Coding Scheme Designator above, which names who defines the
+code, as a private coding scheme's designator conventionally does.
 """
 
 from __future__ import annotations
@@ -51,6 +56,7 @@ from __future__ import annotations
 import re
 import types
 from collections.abc import Mapping, Sequence
+from typing import NamedTuple
 
 from .keys import DeidKey
 from .standard import VRS
@@ -89,6 +95,25 @@ _UTC_OFFSET = re.compile(r"[+-][0-9]{4}$")
 _LEAST = {"DT": "00000101000000", "TM": "000000"}
 # More values than any VM of PS3.6 requires: its largest least count is 16.
 _MAX_COUNT = 64
+_TAG_PATTERN = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
+
+PERSON_IDENTIFICATION_CODE_SEQUENCE = "(0040,1101)"
+_CODE_VALUE = "(0008,0100)"
+_CODING_SCHEME_DESIGNATOR = "(0008,0102)"
+_CODE_MEANING = "(0008,0104)"
+# The private coding scheme of PS3.16 Chapter 8 that defines the dummy code.
+_DESIGNATOR = "99PYMEDPHYS"
+# Code Meaning follows the rules of PN there, but not as a single component
+# (PS3.3 Table 10-1), so each constant has two.
+_MEANINGS = tuple(f"{text}^{text}" for text in _TEXT)
+
+
+class DummyElement(NamedTuple):
+    """One element of an item that D writes in a sequence."""
+
+    tag: str
+    vr: str
+    value: str
 
 
 class NoDummyValueError(Exception):
@@ -96,7 +121,8 @@ class NoDummyValueError(Exception):
 
     D on an attribute of a VR without a generic dummy value, or on a UI
     attribute without a source UID to replace, needs a reviewed rule for that
-    attribute; without one, the instance is sequestered. This is not a
+    attribute, such as :func:`items_for_d` gives one sequence; without one,
+    the instance is sequestered. This is not a
     :class:`ValueError`, so a handler for invalid arguments cannot catch it
     by accident. The message names the VR and never quotes a value.
 
@@ -263,3 +289,87 @@ def values_for_d(
     first, second = CONSTANTS[vr]
     equal = any(_comparable(vr, value) == _comparable(vr, first) for value in source)
     return (second if equal else first,) * count
+
+
+def items_for_d(
+    tag: str, source: Sequence[Mapping[str, str]]
+) -> tuple[tuple[DummyElement, ...], ...]:
+    """Return the items that D writes in a sequence with a reviewed rule.
+
+    Only Person Identification Code Sequence (0040,1101) has one. D writes
+    one item, with Code Value (0008,0100) ``DEIDENTIFIED``, Coding Scheme
+    Designator (0008,0102) ``99PYMEDPHYS``, and Code Meaning (0008,0104)
+    ``DEIDENTIFIED^DEIDENTIFIED``. Where any source item's Code Value equals
+    ``DEIDENTIFIED`` as SH text, or its Code Meaning equals
+    ``DEIDENTIFIED^DEIDENTIFIED`` as a PN, as :func:`values_for_d` compares
+    them, the item takes ``DE-IDENTIFIED`` and
+    ``DE-IDENTIFIED^DE-IDENTIFIED`` instead, with the same designator.
+
+    Parameters
+    ----------
+    tag : str
+        The sequence's tag, such as ``"(0040,1101)"``, with upper-case
+        hexadecimal digits.
+    source : sequence of mapping
+        The source items, each mapping a tag, such as ``"(0008,0100)"``, to
+        that element's value as text. Only Code Value and Code Meaning are
+        read.
+
+    Returns
+    -------
+    tuple of tuple of DummyElement
+        The items, each its elements in the order of their tags.
+
+    Raises
+    ------
+    NoDummyValueError
+        If no reviewed rule gives the sequence items.
+    TypeError
+        If ``source`` is not a sequence of mappings, or a Code Value or Code
+        Meaning in it is not text.
+    ValueError
+        If ``tag`` is not of the form ``(gggg,eeee)`` with upper-case
+        hexadecimal digits.
+
+    Examples
+    --------
+    >>> (item,) = items_for_d("(0040,1101)", [])
+    >>> [element.value for element in item]
+    ['DEIDENTIFIED', '99PYMEDPHYS', 'DEIDENTIFIED^DEIDENTIFIED']
+    """
+    if not isinstance(tag, str) or not _TAG_PATTERN.fullmatch(tag):
+        raise ValueError(
+            "tag is not of the form (gggg,eeee) with upper-case hexadecimal digits"
+        )
+    if (
+        isinstance(source, (str, bytes, bytearray, Mapping))
+        or not isinstance(source, Sequence)
+        or not all(isinstance(item, Mapping) for item in source)
+    ):
+        raise TypeError("source must be a sequence of items, each a mapping")
+    if tag != PERSON_IDENTIFICATION_CODE_SEQUENCE:
+        raise NoDummyValueError("SQ", "no reviewed rule gives this sequence items")
+    # Each source value with the VR as which it is compared, and its constant.
+    compared = [
+        (vr, item[t], constant)
+        for item in source
+        for t, vr, constant in (
+            (_CODE_VALUE, "SH", _TEXT[0]),
+            (_CODE_MEANING, "PN", _MEANINGS[0]),
+        )
+        if t in item
+    ]
+    if not all(isinstance(value, str) for _, value, _ in compared):
+        raise TypeError("each source Code Value and Code Meaning must be text")
+    equal = any(
+        _comparable(vr, value) == _comparable(vr, constant)
+        for vr, value, constant in compared
+    )
+    index = 1 if equal else 0
+    return (
+        (
+            DummyElement(_CODE_VALUE, "SH", _TEXT[index]),
+            DummyElement(_CODING_SCHEME_DESIGNATOR, "SH", _DESIGNATOR),
+            DummyElement(_CODE_MEANING, "LO", _MEANINGS[index]),
+        ),
+    )
