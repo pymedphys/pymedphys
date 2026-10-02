@@ -374,6 +374,25 @@ def test_a_finding_of_a_required_kind_is_withheld(path, vr, value, code):
     assert condition.reasons[0].location.region is Region.DATA_SET
 
 
+def test_a_retained_registered_uid_is_released_only_when_not_collected():
+    # Collected values are those the output must not hold. A registered
+    # UID that de-identification retains, such as SOP Class UID, is meant
+    # to stay, so the walker neither plans nor collects it.
+    ct_image_storage = "1.2.840.10008.5.1.4.1.1.2"
+    sop_class = ElementPath((), "(0008,0016)")
+    meta = _element(0x00020010, "UI", "1.2.840.10008.1.2.1\x00")
+    data_set = _element(0x00080016, "UI", ct_image_storage + "\x00")
+    written = bytes(128) + b"DICM" + meta + data_set + _element(0x00081030, "LO", b"")
+
+    released = release_condition(_coverage(), written)
+    assert released.decision is Decision.RELEASE
+
+    collected = _coverage(SourceValue(sop_class, "UI", ct_image_storage))
+    withheld = release_condition(collected, written)
+    assert withheld.decision is Decision.WITHHOLD
+    assert _codes(withheld) == [ReasonCode.RESIDUAL_UID]
+
+
 @pytest.mark.parametrize(
     "region",
     [Region.PREAMBLE, Region.FILE_META, Region.TRAILING_PADDING, Region.TRAILING],
