@@ -52,17 +52,35 @@ ROI Creator Sequence (3006,004D) within Structure Set ROI Sequence
 >>> resolve_in_iod(structure_set, "(0008,0080)", ("(0008,0096)",), "X/Z/D")
 'D'
 
-The Type also decides what two plain actions do
-(:func:`resolve_plain_in_iod`). A plain D on an attribute that the IOD does
-not define at that place gives X, following Note 13 after Table E.1-1a, and a
-plain Z on a Type 1 or 1C attribute gives D, as X/Z does there.
+The Type also decides what three plain actions do. A plain D on an
+attribute that the IOD does not define at that place gives X, following Note
+13 after Table E.1-1a, and a plain Z on a Type 1 or 1C attribute gives D, as
+X/Z does there (:func:`resolve_plain_in_iod`). A plain X always removes the
+attribute, as Table E.1-1a defines X, whatever its Type
+(:func:`resolve_plain_x_in_iod`). Where the IOD requires the attribute at
+that place, by its strictest Type, the innermost enclosing sequence that the
+IOD makes Type 3 at its own place is removed with it, with everything in
+that sequence, so that the output stays valid; where no such sequence
+encloses it, the instance is sequestered. Two attributes need neither:
+removing Overlay Data (60xx,3000) removes every attribute of its repeating
+group, and ROI Interpreter Sequence (3006,004E), whose condition lapses once
+ROI Creator Sequence (3006,004D) is removed, is removed alone.
 
-This module chooses the action; it writes no value. Its errors never repeat
-a value.
+For example, the RT Structure Set IOD makes Series Description (0008,103E),
+which Table E.1-1 gives X, Type 1 in Source Series Information Sequence
+(3006,004C), which is Type 3, so the sequence goes too:
+
+>>> resolve_plain_x_in_iod(structure_set, "(0008,103E)", ("(3006,004C)",))
+PlainRemoval(extent=<RemovalExtent.SEQUENCE: 'sequence'>, sequence=0)
+
+This module chooses the action; it writes no value and changes no data set.
+Its errors never repeat a value.
 """
 
 from __future__ import annotations
 
+import dataclasses
+import enum
 import re
 from collections.abc import Mapping, Sequence
 
@@ -93,6 +111,69 @@ _TARGET = {"1": "D", "2": "Z", "3": "X"}
 
 # A tag as the IOD tables give it, with upper-case hexadecimal digits.
 _TAG_PATTERN = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
+# Overlay Data (60xx,3000) in each overlay group, the even groups 6000 to
+# 601E (PS3.5 Section 7.6). Odd groups, such as 6001, are private.
+_OVERLAY_DATA = re.compile(r"\(60[01][02468ACE],3000\)")
+# ROI Interpreter Sequence, Type 1C only while ROI Creator Sequence, which
+# Table E.1-1 also removes, is present.
+_ROI_INTERPRETER_SEQUENCE = "(3006,004E)"
+
+
+class RemovalExtent(enum.Enum):
+    """What a plain X removes with an attribute, or else sequesters."""
+
+    ATTRIBUTE = "attribute"  # the attribute alone
+    SEQUENCE = "sequence"  # an enclosing sequence, with everything in it
+    OVERLAY_GROUP = "overlay group"  # every attribute of the overlay group
+    SEQUESTER = "sequester"  # nothing: the instance is sequestered
+
+
+@dataclasses.dataclass(frozen=True)
+class PlainRemoval:
+    """What a plain X on an attribute at a place requires.
+
+    Attributes
+    ----------
+    extent : RemovalExtent
+        :attr:`~RemovalExtent.ATTRIBUTE` to remove the attribute alone;
+        :attr:`~RemovalExtent.SEQUENCE` to remove the enclosing sequence that
+        ``sequence`` names, with every item, and so the attribute;
+        :attr:`~RemovalExtent.OVERLAY_GROUP` to remove every attribute of
+        the attribute's overlay group, in the same data set or item; or
+        :attr:`~RemovalExtent.SEQUESTER` where no removal keeps the instance
+        valid, so the instance is sequestered.
+    sequence : int or None
+        For :attr:`~RemovalExtent.SEQUENCE`, the position in the attribute's
+        path of the sequence to remove, counting from 0 at the outermost:
+        ``path[sequence]`` is its tag, and ``path[:sequence]`` the sequences
+        whose items contain it. Otherwise ``None``.
+
+    Raises
+    ------
+    ValueError
+        If ``extent`` is not a :class:`RemovalExtent`, or if ``sequence`` is
+        not an integer from 0 for :attr:`~RemovalExtent.SEQUENCE`, or not
+        ``None`` for any other extent.
+    """
+
+    extent: RemovalExtent
+    sequence: int | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.extent, RemovalExtent):
+            raise ValueError("extent is not a RemovalExtent")
+        if self.extent is RemovalExtent.SEQUENCE:
+            if (
+                not isinstance(self.sequence, int)
+                or isinstance(self.sequence, bool)
+                or self.sequence < 0
+            ):
+                raise ValueError(
+                    "sequence is not an integer from 0, the position of the "
+                    "sequence to remove"
+                )
+        elif self.sequence is not None:
+            raise ValueError("sequence is given for an extent other than SEQUENCE")
 
 
 def _checked_path(tag: object, path: object) -> tuple[str, ...]:
@@ -297,3 +378,73 @@ def resolve_plain_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -
     if action == "Z" and _strictest(definitions) == "1":
         return "D"
     return action
+
+
+def resolve_plain_x_in_iod(iod: IOD, tag: str, path: Sequence[str]) -> PlainRemoval:
+    """Return what a plain X on an attribute in an IOD removes with it.
+
+    A plain X removes the attribute, as Table E.1-1a defines X, whatever its
+    Type. Where the attribute is Type 3 at that place, by
+    :func:`strictest_type`, or the IOD does not define it there, it is
+    removed alone. Where the IOD requires it there, the innermost enclosing
+    sequence that is Type 3 at its own place is removed with it, so that the
+    output stays valid, and where no such sequence encloses it, the instance
+    is sequestered. Two attributes are exceptions. Removing Overlay Data
+    (60xx,3000) of an overlay group, one of the even groups 6000 to 601E,
+    removes every attribute of the group, whatever their Types: of the first
+    supported release's IODs, only CT Image includes the Overlay Plane
+    Module, and as user-optional, so the instance stays valid without it.
+    ROI Interpreter Sequence (3006,004E) is removed alone, since its Type 1C
+    condition needs ROI Creator Sequence (3006,004D), which Table E.1-1
+    removes too.
+
+    This decides from the IOD's Types alone; it changes no data set.
+
+    Parameters
+    ----------
+    iod : IOD
+        The instance's IOD.
+    tag : str
+        The attribute's tag, such as ``"(0010,2297)"``, with upper-case
+        hexadecimal digits; for Overlay Data, the tag in its group, such as
+        ``"(6000,3000)"``.
+    path : sequence of str
+        The tags of the sequences whose items contain the attribute,
+        outermost first, or ``()`` at the top level of the data set.
+
+    Returns
+    -------
+    PlainRemoval
+        What to remove with the attribute, or that the instance is
+        sequestered.
+
+    Raises
+    ------
+    ValueError
+        If ``tag`` or ``path`` is malformed, as for :func:`strictest_type`.
+
+    Examples
+    --------
+    Responsible Person (0010,2297) is Type 2C at the top level of the
+    Patient Module, so no sequence encloses it:
+
+    >>> from pymedphys._dicom.deidentify.iods import load_iod_tables
+    >>> ct = load_iod_tables().iods["CT Image"]
+    >>> resolve_plain_x_in_iod(ct, "(0010,2297)", ()).extent
+    <RemovalExtent.SEQUESTER: 'sequester'>
+    >>> resolve_plain_x_in_iod(ct, "(0008,009C)", ()).extent
+    <RemovalExtent.ATTRIBUTE: 'attribute'>
+    >>> resolve_plain_x_in_iod(ct, "(6000,3000)", ()).extent
+    <RemovalExtent.OVERLAY_GROUP: 'overlay group'>
+    """
+    checked = _checked_path(tag, path)
+    if _OVERLAY_DATA.fullmatch(tag):
+        return PlainRemoval(RemovalExtent.OVERLAY_GROUP)
+    if tag == _ROI_INTERPRETER_SEQUENCE:
+        return PlainRemoval(RemovalExtent.ATTRIBUTE)
+    if _strictest(iod.lookup(tag, checked)) == "3":
+        return PlainRemoval(RemovalExtent.ATTRIBUTE)
+    for depth in reversed(range(len(checked))):
+        if _strictest(iod.lookup(checked[depth], checked[:depth])) == "3":
+            return PlainRemoval(RemovalExtent.SEQUENCE, depth)
+    return PlainRemoval(RemovalExtent.SEQUESTER)
