@@ -176,6 +176,19 @@ KEPT_TEXT = {
     "(3010,001D)",  # Device Alternate Identifier Format
     "(60xx,0045)",  # Overlay Subtype
 }
+# The UR attributes that Table E.1-1 omits and the supported IODs use,
+# checked by hand against the 2026d PS3.3, PS3.6, and PS3.15. Two name coding
+# concepts and schemes and are kept, like Code Value and Coding Scheme
+# Designator; the others are removed by Type.
+KEPT_URLS = {
+    "(0008,010E)": "CodingSchemeURL",
+    "(0008,0120)": "URNCodeValue",
+}
+OTHER_URLS = {
+    "(0008,1190)",  # Retrieve URL
+    "(0028,7FE0)",  # Pixel Data Provider URL
+    "(0040,E010)",  # Retrieve URI
+}
 
 
 def _dictionary():
@@ -415,6 +428,27 @@ def test_deidentification_method_keeps_earlier_values_for_the_engine_to_add_to()
     assert "the engine keeps the values already present and adds" in rule.note
     for composed in _every_policy():
         assert composed.supplementary_actions[DEIDENTIFICATION_METHOD] == "K"
+
+
+def test_the_urls_that_name_coding_concepts_and_schemes_are_kept():
+    rules = _rules()
+    listed = _table_e1_1()
+    omitted = {
+        tag
+        for tag, attribute in _dictionary().items()
+        if "UR" in attribute.vrs and tag not in listed
+    }
+
+    assert len(omitted) == 12
+    assert set(_definitions_of(omitted, SUPPORTED_IODS)) == (
+        set(KEPT_URLS) | OTHER_URLS
+    )
+    for tag, keyword in KEPT_URLS.items():
+        rule = rules[tag]
+        assert (rule.keyword, rule.action, dict(rule.options)) == (keyword, "K", {})
+        assert rule.note.strip()
+        for composed in _every_policy():
+            assert composed.supplementary_actions[tag] == "K", composed.options
 
 
 def test_the_declared_default_for_text_without_a_rule_removes_by_type():
