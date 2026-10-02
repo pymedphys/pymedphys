@@ -18,7 +18,9 @@ Verification must say where in a written file it finds something: in the
 preamble, a File Meta Information element, a data set element, Data Set
 Trailing Padding, or the bytes after the last element that could be read.
 :func:`read_file_layout` reads a DICOM PS3.10 file's structure from its bytes
-alone, independently of the library that wrote it.
+alone, independently of the library that wrote it. :func:`reads_as_items`
+reads the value of a sequence in the same way, so that a decoder can check
+its items before it trusts them.
 """
 
 from __future__ import annotations
@@ -31,7 +33,7 @@ import mmap
 import re
 import struct
 
-from .standard import VRS, load_data_dictionary
+from .standard import VRS, dictionary_attribute
 from .uids import normalise_uid
 
 # The VRs whose explicit VR header is 8 bytes, with a 16-bit length (PS3.5
@@ -179,6 +181,34 @@ class Span:
 
 
 @dataclasses.dataclass(frozen=True)
+class Extent:
+    """Where one element is, from its header to the end of its value.
+
+    Attributes
+    ----------
+    start, value_start, end : int
+        Where the element's header starts, where its value starts, and where
+        its value ends, after any items and their delimiters.
+    location : Location
+    vr : str, optional
+        The VR as written, or ``None`` in implicit VR.
+    undefined_length : bool
+    items : int, optional
+        How many data sets the value holds in items, if it holds any;
+        ``None`` for any other value, including numbered items such as
+        fragments.
+    """
+
+    start: int
+    value_start: int
+    end: int
+    location: Location
+    vr: str | None
+    undefined_length: bool
+    items: int | None = None
+
+
+@dataclasses.dataclass(frozen=True)
 class FileLayout:
     """Where each byte of a file belongs.
 
@@ -194,12 +224,16 @@ class FileLayout:
         the file ends inside a sequence or item.
     spans : tuple of Span
         Each starting where the one before ends, from 0 to ``size``.
+    elements : tuple of Extent
+        Each element that was read in full, in the order of the file, a
+        sequence before the elements of its items.
     """
 
     size: int
     transfer_syntax: str | None = dataclasses.field(repr=False)
     readable: bool
     spans: tuple[Span, ...] = dataclasses.field(repr=False)
+    elements: tuple[Extent, ...] = dataclasses.field(default=(), repr=False)
 
     def locate(self, offset: int) -> Location:
         """Return the location of the byte at ``offset``.
@@ -240,7 +274,8 @@ def read_file_layout(data: bytes | bytearray | memoryview | mmap.mmap) -> FileLa
     one before it in the File Meta Information, the data set, or the same
     item (PS3.5 Section 7.1), an element after Data Set Trailing Padding,
     which can only be the last element (PS3.10 Section 7.2), a length past
-    the end of what holds it, or nesting deeper than :data:`MAX_NESTING`; the
+    the end of what holds it, a delimiter whose length is not zero (PS3.5
+    Section 7.5), or nesting deeper than :data:`MAX_NESTING`; the
     rest of the file is trailing. Only headers, the transfer syntax, and the
     first four bytes of some values are read, so the time taken grows with
     the number of elements and items, not with the size of their values.
@@ -263,34 +298,36 @@ def read_file_layout(data: bytes | bytearray | memoryview | mmap.mmap) -> FileLa
         return _Reader(octets).read()
 
 
+def reads_as_items(value: bytes | bytearray | memoryview, *, explicit: bool) -> bool:
+    """Return whether the encoded value of a sequence holds only items.
+
+    The value is read as :func:`read_file_layout` reads a sequence, with the
+    items nested in its items: each item of defined length must fit in what
+    holds it, and each of undefined length must end with its delimiter; each
+    item's data set must be readable, with each tag higher than the one
+    before it; and nothing may follow the last item.
+
+    Parameters
+    ----------
+    value : bytes, bytearray, or memoryview
+        The value of an element of VR SQ, without its header.
+    explicit : bool
+        Whether the items are in explicit VR. Those in a value of VR UN are
+        not (PS3.5 Section 6.2.2).
+    """
+    with memoryview(value) as view, view.cast("B") as octets:
+        return _Reader(octets).holds_items(explicit)
+
+
 class _Unreadable(Exception):
     """A structure that cannot be read, where reading stops."""
-
-
-@functools.cache
-def _dictionary() -> dict[str, tuple[str, ...]]:
-    return {entry.tag: entry.vrs for entry in load_data_dictionary().attributes}
-
-
-@functools.cache
-def _masked() -> tuple[tuple[str, tuple[str, ...]], ...]:
-    """Return the entries whose tag has an "x" for any digit, in order.
-
-    PS3.6 writes "x" for a digit of a repeating group or masked element.
-    """
-    return tuple((tag, vrs) for tag, vrs in _dictionary().items() if "x" in tag)
 
 
 @functools.lru_cache(maxsize=4096)
 def _dictionary_vrs(tag: str) -> tuple[str, ...]:
     """Return the VRs PS3.6 gives a standard attribute, or ``()``."""
-    dictionary = _dictionary()
-    if tag in dictionary or int(tag[4], 16) % 2:  # an odd group is private
-        return dictionary.get(tag, ())
-    for listed, vrs in _masked():
-        if all(a in ("x", b) for a, b in zip(listed, tag)):
-            return vrs
-    return ()
+    attribute = dictionary_attribute(tag)
+    return attribute.vrs if attribute else ()
 
 
 class _Reader:
@@ -299,6 +336,7 @@ class _Reader:
     def __init__(self, data: memoryview) -> None:
         self.data = data
         self.spans: list[Span] = []
+        self.extents: list[Extent | None] = []
         self.region = Region.FILE_META
 
     def read(self) -> FileLayout:
@@ -335,7 +373,21 @@ class _Reader:
         end = self.spans[-1].end
         if end < size:
             self._add(end, size, None, Location(Region.TRAILING))
-        return FileLayout(size, syntax, readable and end == size, tuple(self.spans))
+        extents = tuple(each for each in self.extents if each is not None)
+        return FileLayout(
+            size, syntax, readable and end == size, tuple(self.spans), extents
+        )
+
+    def holds_items(self, explicit: bool) -> bool:
+        """Return whether the data, from start to end, are a sequence's items."""
+        # The sequence's own tag does not change how its items are read.
+        sequence = ElementPath((), "(0000,0000)")
+        where = Location(Region.DATA_SET)
+        try:
+            self._items(0, len(self.data), False, explicit, sequence, where)
+        except _Unreadable:
+            return False
+        return True
 
     def _unpack(self, form: str, position: int, end: int) -> tuple[int, ...]:
         if position + struct.calcsize(form) > end:
@@ -383,6 +435,33 @@ class _Reader:
         # when it reads as items to its end.
         holds_items = None if vr in (None, "UN") and not known else "SQ" in (vr, *known)
         start = position + header
+        undefined = length == _UNDEFINED
+        # Each element's extent is recorded before those in its items.
+        index = len(self.extents)
+        self.extents.append(None)
+        end_of_value, count = self._value(
+            position, start, end, length, holds_items, (vr, tag, path, where)
+        )
+        self.extents[index] = Extent(
+            position, start, end_of_value, where, vr, undefined, count
+        )
+        return end_of_value
+
+    def _value(
+        self,
+        position: int,
+        start: int,
+        end: int,
+        length: int,
+        holds_items: bool | None,
+        element: tuple,
+    ) -> tuple[int, int | None]:
+        """Read an element's value from ``start``.
+
+        Return where it ends, and how many items it holds, if it holds data
+        sets in items.
+        """
+        vr, tag, path, where = element
         if length == _UNDEFINED:
             # Numbered items, such as fragments (PS3.5 Sections 7.1.2 and A.4).
             numbered = tag == _PIXEL_DATA or vr == "OB"
@@ -390,14 +469,14 @@ class _Reader:
                 raise _Unreadable
             self._add(position, start, None, where)
             if numbered:
-                return self._fragments(start, end, where)
+                return self._fragments(start, end, where), None
             return self._items(start, end, True, vr == "SQ", path, where)
         stop = start + length
         if stop > end:
             raise _Unreadable
         peek = self.data[start : min(start + 4, stop)] == b"\xfe\xff\x00\xe0"
         if holds_items or (holds_items is None and peek):
-            mark = len(self.spans)
+            mark, extents = len(self.spans), len(self.extents)
             self._add(position, start, None, where)
             try:
                 return self._items(start, stop, False, vr == "SQ", path, where)
@@ -405,7 +484,8 @@ class _Reader:
                 if holds_items:
                     raise
                 del self.spans[mark:]
-        return self._add(position, stop, start, where)
+                del self.extents[extents:]
+        return self._add(position, stop, start, where), None
 
     def _items(
         self,
@@ -415,15 +495,21 @@ class _Reader:
         explicit: bool,
         path: ElementPath,
         where: Location,
-    ) -> int:
-        """Read a sequence's items, up to ``end`` or its delimiter."""
+    ) -> tuple[int, int]:
+        """Read a sequence's items, up to ``end`` or its delimiter.
+
+        Return where they end, and how many there are. A delimiter must have
+        a length of zero (PS3.5 Section 7.5).
+        """
         if len(path.items) >= MAX_NESTING:
             raise _Unreadable
         index = 0
         while delimited or position < end:
             group, number, length = self._unpack("<HHI", position, end)
             if delimited and (group, number) == _SEQUENCE_END:
-                return self._add(position, position + 8, None, where)
+                if length:
+                    raise _Unreadable
+                return self._add(position, position + 8, None, where), index
             undefined = length == _UNDEFINED
             stop = end if undefined else position + 8 + length
             if (group, number) != _ITEM or stop > end:
@@ -433,12 +519,14 @@ class _Reader:
             last: tuple[int, ...] = ()  # each item holds a data set of its own
             while undefined or position < stop:
                 if undefined and self._unpack("<HHI", position, stop)[:2] == _ITEM_END:
+                    if self._unpack("<I", position + 4, stop)[0]:
+                        raise _Unreadable
                     position = self._add(position, position + 8, None, where)
                     break
                 last = self._tag_after(last, position, stop)
                 position = self._element(position, stop, explicit, items)
             index += 1
-        return position
+        return position, index
 
     def _fragments(self, position: int, end: int, where: Location) -> int:
         """Read a value's numbered items, up to its delimiter."""
@@ -446,6 +534,8 @@ class _Reader:
         while True:
             group, number, length = self._unpack("<HHI", position, end)
             if (group, number) == _SEQUENCE_END:
+                if length:
+                    raise _Unreadable
                 return self._add(position, position + 8, None, where)
             stop = position + 8 + length
             if (group, number) != _ITEM or length == _UNDEFINED or stop > end:
