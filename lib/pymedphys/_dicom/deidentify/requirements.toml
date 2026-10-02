@@ -688,9 +688,12 @@ tests = [
   "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_nested_sequence_item_is_found",
   "tests/dicom/test_deidentify_residuals.py::test_encapsulated_fragments_are_searched_for_every_form",
   "tests/dicom/test_deidentify_residuals.py::test_a_clean_file_has_no_findings",
+  "tests/dicom/test_deidentify_residuals.py::test_a_source_value_equal_to_a_written_constant_is_skipped_and_recorded",
+  "tests/dicom/test_deidentify_residuals.py::test_a_source_value_that_differs_from_every_constant_is_searched",
+  "tests/dicom/test_deidentify_residuals.py::test_a_constant_among_several_values_is_skipped_alone",
 ]
 note = '''
-The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. The pipeline is to fail any output file that still holds a source person name, UID, date, or direct identifier, or a source value outside its data set, and to send other text findings to confidential review (D-027). `public-release` retains indirect identifiers only after its statistical assessment. Remaining: removing and replacing identifiers in each data set (M3), and acting on what the search finds, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
+The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. A source value equal to a constant that the engine writes is not searched, and is recorded by its source attribute (D-027). The pipeline is to fail any output file that still holds a source person name, UID, date, or direct identifier, or a source value outside its data set, and to send other text findings to confidential review (D-027). `public-release` retains indirect identifiers only after its statistical assessment. Remaining: removing and replacing identifiers in each data set (M3), and acting on what the search finds, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
 '''
 
 [[requirement]]

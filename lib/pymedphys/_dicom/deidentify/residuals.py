@@ -82,6 +82,19 @@ UTF-16LE, Shift_JIS, or GBK, is folded too, and some text outside ASCII
 matches a form by chance: in UTF-16LE, "屑" (U+5C51) folds as "山" (U+5C71)
 does. This errs towards a finding.
 
+**Constants.** A value that equals a constant the engine writes whatever
+its source held, as listed by :func:`written_constants`, is not searched,
+since finding it would reveal nothing about the source. A value of several
+values is compared value by value, and only those equal to a constant are
+left out. Values are compared as D compares a source value with its
+constant (:func:`~.dummy_values.same_value`), as text of the source value's
+VR: ignoring case and padding, a person name's trailing delimiters, and
+the full stops of a date written as YYYY.MM.DD, and taking a date and time
+as the time they give. Each source attribute left out in whole or in part
+is recorded once as :class:`Unsearched`, by its attribute, never by its
+value. A value of a VR that is never searched, such as CS, is listed as not
+searched for that reason instead.
+
 **Reporting.** Each source attribute is reported once for each place it is
 found, by the widest form there, in the order of :class:`Form`, with the
 encoding and offset of that form's first match there. Places are named as
@@ -104,6 +117,14 @@ import string
 import unicodedata
 from collections.abc import Iterable, Iterator
 
+from . import markers
+from .codes import load_context_group
+from .dummy_values import (
+    CONSTANTS,
+    PERSON_IDENTIFICATION_CODE_SEQUENCE,
+    items_for_d,
+    same_value,
+)
 from .file_layout import ElementPath, Location, Region, Span, read_file_layout
 from .values import CHECKED_VRS
 
@@ -326,6 +347,33 @@ class NotSearched:
         )
 
 
+class UnsearchedReason(enum.Enum):
+    """Why a value was not searched, besides the search's own omissions."""
+
+    RETAINED = "retained"  # the policy retains it (D-027)
+    WRITTEN_CONSTANT = "written-constant"  # equals a constant always written
+    UNDECODABLE = "undecodable"  # it could not be decoded to collect
+    # a UID that the pinned tables register, which names no one
+    REGISTERED_UID = "registered-uid"
+
+
+@dataclasses.dataclass(frozen=True)
+class Unsearched:
+    """A source value that the residual search was not given, and why.
+
+    The release report counts these by attribute and reason (D-027), and
+    the QC pack lists each by instance and place.
+
+    Attributes
+    ----------
+    source : ElementPath
+    reason : UnsearchedReason
+    """
+
+    source: ElementPath
+    reason: UnsearchedReason
+
+
 @dataclasses.dataclass(frozen=True)
 class ResidualSearch:
     """What a search of a written file found.
@@ -339,11 +387,15 @@ class ResidualSearch:
     readable : bool
         Whether the file's structure was read to its end. Bytes that could
         not be read were searched as bytes after the last readable element.
+    unsearched : tuple of Unsearched
+        Each source attribute with a value left out of the search, once, in
+        the order of the values.
     """
 
     findings: tuple[Finding, ...]
     not_searched: tuple[NotSearched, ...]
     readable: bool
+    unsearched: tuple[Unsearched, ...] = ()
 
 
 def find_residuals(
@@ -358,7 +410,8 @@ def find_residuals(
     values : iterable of SourceValue
         The values that had to be removed or replaced, such as the
         instance's own and its subject's from the run's other instances.
-        Repeated values are searched once.
+        Repeated values are searched once, and values equal to a constant
+        that the engine writes are not searched.
 
     Returns
     -------
@@ -380,7 +433,17 @@ def find_residuals(
     after the last readable element at byte 3
     """
     layout = read_file_layout(data)
-    derived = [item for value in dict.fromkeys(values) for item in _derive(value)]
+    kept: list[SourceValue] = []
+    unsearched: list[Unsearched] = []
+    for value in dict.fromkeys(values):
+        rest = _without_constants(value)
+        if rest is not value:
+            unsearched.append(
+                Unsearched(value.source, UnsearchedReason.WRITTEN_CONSTANT)
+            )
+        if rest is not None:
+            kept.append(rest)
+    derived = [item for value in kept for item in _derive(value)]
     needles = [item for item in derived if isinstance(item, _Needle)]
     omitted = [item for item in derived if isinstance(item, NotSearched)]
     with memoryview(data) as view, view.cast("B") as octets:
@@ -388,7 +451,78 @@ def find_residuals(
     order = sorted(
         found.values(), key=lambda f: (f.offset, str(f.source), f.kind.value)
     )
-    return ResidualSearch(tuple(order), tuple(dict.fromkeys(omitted)), layout.readable)
+    return ResidualSearch(
+        tuple(order),
+        tuple(dict.fromkeys(omitted)),
+        layout.readable,
+        tuple(dict.fromkeys(unsearched)),
+    )
+
+
+@functools.cache
+def written_constants() -> tuple[tuple[str, str], ...]:
+    """Return each constant that the engine writes, with the VR it is written in.
+
+    These are the values that depend on nothing: not the source, the key,
+    the policy, or the runtime. They are D's constants and second constants
+    of each VR that is searched (:data:`~.dummy_values.CONSTANTS`), the
+    values of the item that D writes in Person Identification Code Sequence
+    (0040,1101), and the fixed values of the markers: Patient Identity
+    Removed, Longitudinal Temporal Information Modified, and Manufacturer,
+    and the Code Value, Coding Scheme Designator, and Code Meaning of each
+    code that they can write. Keyed values, such as replacement UIDs and
+    pseudonyms, and the markers' versions and method digest are not.
+
+    Examples
+    --------
+    >>> ("DA", "19000101") in written_constants()
+    True
+    """
+    found = [
+        (vr, str(constant))
+        for vr, pair in CONSTANTS.items()
+        if vr in _KINDS
+        for constant in pair
+    ]
+    for source in ([], [{"(0008,0100)": str(CONSTANTS["LO"][0])}]):
+        for item in items_for_d(PERSON_IDENTIFICATION_CODE_SEQUENCE, source):
+            found += [(element.vr, element.value) for element in item]
+    found += [("CS", "YES"), ("LO", markers.MANUFACTURER)]
+    # The markers write MODIFIED or REMOVED, never the least strict value.
+    found += [("CS", value) for value in markers.TEMPORAL_VALUES[1:]]
+    codes = {
+        7050: {markers.PROFILE_CODE, *markers.OPTION_CODES.values()},
+        7005: {markers.DEIDENTIFYING_EQUIPMENT},
+    }
+    for cid, values in codes.items():
+        for row in load_context_group(cid).rows:
+            if row.scheme_designator == markers.DCM and row.code_value in values:
+                found += [("SH", row.code_value), ("SH", row.scheme_designator)]
+                found += [("LO", row.code_meaning)]
+    return tuple(dict.fromkeys(found))
+
+
+def _without_constants(value: SourceValue) -> SourceValue | None:
+    """Return ``value`` without its values equal to a written constant.
+
+    Return ``value`` itself where none is, and None where all are.
+    """
+    if not isinstance(value, SourceValue):
+        raise TypeError("each value to search for must be a SourceValue")
+    if value.vr not in _KINDS:  # listed as not searched instead
+        return value
+    text = str(value.value)  # a VR that is searched has text
+    parts = [text] if value.vr in _SINGLE_VALUED else text.split("\\")
+    kept = [
+        part
+        for part in parts
+        if not any(same_value(value.vr, part, c) for _, c in written_constants())
+    ]
+    if len(kept) == len(parts):
+        return value
+    if not kept:
+        return None
+    return dataclasses.replace(value, value="\\".join(kept))
 
 
 @dataclasses.dataclass(frozen=True, repr=False)

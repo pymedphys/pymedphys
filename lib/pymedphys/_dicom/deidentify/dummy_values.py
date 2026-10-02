@@ -188,6 +188,16 @@ def _comparable(vr: str, value: object) -> object:
     return text.casefold()
 
 
+def same_value(vr: str, value: object, other: object) -> bool:
+    """Return whether two values are the same as D compares them for ``vr``.
+
+    :func:`values_for_d` describes the comparison. For example, ``"0.0"``
+    and ``"0"`` are the same DS value, and ``"Deidentified "`` and
+    ``"DEIDENTIFIED"`` the same LO value.
+    """
+    return _comparable(vr, value) == _comparable(vr, other)
+
+
 def values_for_z(vr: str) -> tuple[()]:
     """Return the values that Z writes: none, a zero-length value.
 
@@ -287,7 +297,7 @@ def values_for_d(
         raise NoDummyValueError(vr, f"VR {vr} has no generic dummy value")
     _check_types(vr, source)
     first, second = CONSTANTS[vr]
-    equal = any(_comparable(vr, value) == _comparable(vr, first) for value in source)
+    equal = any(same_value(vr, value, first) for value in source)
     return (second if equal else first,) * count
 
 
@@ -361,10 +371,7 @@ def items_for_d(
     ]
     if not all(isinstance(value, str) for _, value, _ in compared):
         raise TypeError("each source Code Value and Code Meaning must be text")
-    equal = any(
-        _comparable(vr, value) == _comparable(vr, constant)
-        for vr, value, constant in compared
-    )
+    equal = any(same_value(vr, value, constant) for vr, value, constant in compared)
     index = 1 if equal else 0
     return (
         (
