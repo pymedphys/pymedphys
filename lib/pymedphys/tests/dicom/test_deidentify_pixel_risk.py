@@ -77,14 +77,23 @@ def _contour(number: int, contours: int) -> "pydicom.Dataset":
     return item
 
 
-def _structure_set(rois, contours) -> "pydicom.Dataset":
+def _structure_set(rois, contours, names=()) -> "pydicom.Dataset":
     dataset = pydicom.Dataset()
     dataset.SOPClassUID = RT_STRUCTURE_SET
     dataset.SOPInstanceUID = "1.2.3.5"
     dataset.PatientName = SENTINEL
+    if names:
+        dataset.StructureSetROISequence = [_named(*each) for each in names]
     dataset.RTROIObservationsSequence = list(rois)
     dataset.ROIContourSequence = list(contours)
     return dataset
+
+
+def _named(number: int, name: str) -> "pydicom.Dataset":
+    item = pydicom.Dataset()
+    item.ROINumber = number
+    item.ROIName = name
+    return item
 
 
 def _read_back(dataset: "pydicom.Dataset", transfer_syntax: str) -> "pydicom.Dataset":
@@ -249,10 +258,85 @@ def test_each_external_roi_is_reported_once_whatever_its_observations():
     }
 
 
-@pytest.mark.parametrize("interpreted_type", ["ORGAN", "", "BODY"])
-def test_only_external_marks_a_patient_surface(interpreted_type):
+@pytest.mark.parametrize("interpreted_type", ["ORGAN", "", "AVOIDANCE"])
+def test_other_interpreted_types_mark_no_patient_surface(interpreted_type):
     dataset = _structure_set([_roi(1, interpreted_type)], [_contour(1, 2)])
     assert not pixel_risk.assess_pixel_risk(dataset).findings
+
+
+@TRANSFER_SYNTAXES
+@pytest.mark.filterwarnings("ignore:Invalid value for VR CS")
+@pytest.mark.parametrize("interpreted_type", ["BODY", "SKIN", "body", "Skin"])
+def test_body_and_skin_interpreted_types_mark_a_patient_surface(
+    transfer_syntax, interpreted_type
+):
+    dataset = _structure_set([_roi(7, interpreted_type)], [_contour(7, 1)])
+    assert _found(_assess(dataset, transfer_syntax)) == {
+        (Indicator.PATIENT_SURFACE_CONTOUR, "(3006,0039)[0] > (3006,0040)")
+    }
+
+
+@TRANSFER_SYNTAXES
+@pytest.mark.parametrize(
+    "name", ["EXTERNAL", "External", "BODY", "Body", "body", "SKIN", "sKiN", " Skin "]
+)
+def test_an_roi_named_external_body_or_skin_is_a_patient_surface(transfer_syntax, name):
+    # Many planning systems leave RT ROI Interpreted Type empty for the
+    # outline, whose name says what it is.
+    dataset = _structure_set(
+        [_roi(1, ""), _roi(7, "")],
+        [_contour(1, 1), _contour(7, 1)],
+        names=[(1, SENTINEL), (7, name)],
+    )
+    assessment = _assess(dataset, transfer_syntax)
+    assert _found(assessment) == {
+        (Indicator.PATIENT_SURFACE_CONTOUR, "(3006,0039)[1] > (3006,0040)")
+    }
+    assert SENTINEL not in repr(assessment)
+
+
+@pytest.mark.parametrize(
+    "name", ["BODY_1", "Skin 5mm", "Outer body", "EXTERNAL2", "Bodies", ""]
+)
+def test_only_the_whole_name_marks_a_patient_surface(name):
+    dataset = _structure_set([_roi(7, "")], [_contour(7, 1)], names=[(7, name)])
+    assert not pixel_risk.assess_pixel_risk(dataset).findings
+
+
+def test_an_roi_named_body_without_contours_is_no_surface():
+    dataset = _structure_set([], [_contour(7, 0)], names=[(7, "BODY")])
+    assert not pixel_risk.assess_pixel_risk(dataset).findings
+
+
+def test_a_name_outside_ascii_is_no_surface_and_not_unreadable():
+    dataset = _structure_set([], [_contour(7, 1)], names=[(7, "")])
+    item = dataset.StructureSetROISequence[0]
+    _with_raw(item, 0x30060026, "LO", "Körper".encode("latin-1"))
+    assert not pixel_risk.assess_pixel_risk(dataset).findings
+
+
+@pytest.mark.parametrize(
+    "tag, vr, value, path",
+    [
+        (0x30060026, "US", b"\x01\x00", "(3006,0020)[0] > (3006,0026)"),
+        (0x30060026, "LO", b"BODY\\SKIN", "(3006,0020)[0] > (3006,0026)"),
+        (0x30060022, "IS", b"1.0 ", "(3006,0020)[0] > (3006,0022)"),
+    ],
+)
+def test_an_unreadable_roi_name_or_number_is_unreadable_evidence(tag, vr, value, path):
+    dataset = _structure_set([], [_contour(7, 1)], names=[(7, "BODY")])
+    _with_raw(dataset.StructureSetROISequence[0], tag, vr, value)
+    assessment = pixel_risk.assess_pixel_risk(dataset)
+    assert _found(assessment) == {(Indicator.UNREADABLE, path)}
+    assert {f.risk for f in assessment.findings} == {Risk.RECONSTRUCTABLE_FACE}
+
+
+def test_an_unreadable_structure_set_roi_sequence_is_unreadable_evidence():
+    dataset = _structure_set([], [_contour(7, 1)])
+    _with_raw(dataset, 0x30060020, "LO", SENTINEL.encode())
+    assessment = pixel_risk.assess_pixel_risk(dataset)
+    assert _found(assessment) == {(Indicator.UNREADABLE, "(3006,0020)")}
+    assert SENTINEL not in repr(assessment)
 
 
 def _with_raw(dataset, tag: int, vr, value: bytes | None, length=None):
