@@ -659,6 +659,7 @@ implementation = [
   "_dicom/deidentify/compound_actions.py",
   "_dicom/deidentify/dummy_values.py",
   "_dicom/deidentify/elements.py",
+  "_dicom/deidentify/file_layout.py",
   "_dicom/deidentify/iods.py",
   "_dicom/deidentify/reference_graph.py",
   "_dicom/deidentify/references.py",
@@ -688,15 +689,21 @@ tests = [
   "tests/dicom/test_deidentify_reference_graph.py::test_each_reference_resolves_to_its_instance",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_input_of_a_class_outside_table_b5_1_resolves",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_instance_not_in_the_collection_is_dangling",
-  "tests/dicom/test_deidentify_record_content.py::test_a_copy_in_another_encoding_has_the_same_content",
-  "tests/dicom/test_deidentify_record_content.py::test_any_change_to_the_data_set_changes_the_content",
+  "tests/dicom/test_deidentify_record_content.py::test_copies_with_the_same_source_bytes_have_the_same_digest",
+  "tests/dicom/test_deidentify_record_content.py::test_copies_in_implicit_and_explicit_vr_have_different_digests",
+  "tests/dicom/test_deidentify_record_content.py::test_any_change_to_the_data_set_changes_the_digest",
+  "tests/dicom/test_deidentify_record_content.py::test_a_file_whose_bytes_cannot_be_shown_sound_has_no_digest",
+  "tests/dicom/test_deidentify_record_content.py::test_the_digest_is_of_the_transfer_syntax_and_the_data_set_bytes",
+  "tests/dicom/test_deidentify_record_content.py::test_a_left_out_element_that_holds_items_gives_no_digest",
+  "tests/dicom/test_deidentify_record_content.py::test_padding_in_an_item_changes_the_digest",
+  "tests/dicom/test_deidentify_record_content.py::test_copies_whose_bytes_cannot_be_shown_sound_conflict_each_alone",
   "tests/dicom/test_deidentify_record_content.py::test_a_copy_whose_pixel_data_is_encoded_otherwise_conflicts",
   "tests/dicom/test_deidentify_record_content.py::test_the_same_bytes_in_another_byte_order_conflict",
   "tests/dicom/test_deidentify_record_content.py::test_a_private_number_in_another_vr_with_the_same_bytes_conflicts",
   "tests/dicom/test_deidentify_record_content.py::test_an_element_read_as_unknown_conflicts_with_a_copy_that_has_its_vr",
-  "tests/dicom/test_deidentify_record_content.py::test_a_record_needs_a_data_set_read_in_full",
   "tests/dicom/test_deidentify_reference_graph.py::test_copies_of_one_instance_are_duplicates",
   "tests/dicom/test_deidentify_reference_graph.py::test_one_sop_instance_uid_with_different_content_conflicts",
+  "tests/dicom/test_deidentify_reference_graph.py::test_copies_in_implicit_and_explicit_vr_conflict",
   "tests/dicom/test_deidentify_reference_graph.py::test_copies_in_implicit_and_explicit_vr_with_a_private_element_conflict",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_series_in_two_studies_is_inconsistent",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_study_with_two_patients_is_inconsistent",
@@ -709,7 +716,7 @@ tests = [
   "tests/dicom/test_deidentify_elements.py::test_a_written_value_problem_is_described_without_quoting_it",
 ]
 note = '''
-The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. It also reports instances that share a SOP Instance UID, as identical copies only where their decoded content, with each element's VR, is shown to be the same, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, each a Patient ID with its issuer, with the instances without a Patient ID as one more. An element to be written is built with a VR that the pinned dictionary gives it, of alternatives the one that applies in its data set, only once its values have been checked against that VR and the attribute's VM, against the data set's character set, and, for a person name, against the repertoire of its first component group, and it reads back unchanged from Implicit and Explicit VR Little Endian. Remaining: writing the dummy values that the resolved compound actions call for (M3); and checking frames of reference in the first pass, acting on its findings, validating output against its IOD, and checking after writing that references are intact (M4).
+The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. It also reports instances that share a SOP Instance UID, as identical copies only where their source bytes, the transfer syntax and the data set as the file encodes it, are shown to be the same, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, each a Patient ID with its issuer, with the instances without a Patient ID as one more. An element to be written is built with a VR that the pinned dictionary gives it, of alternatives the one that applies in its data set, only once its values have been checked against that VR and the attribute's VM, against the data set's character set, and, for a person name, against the repertoire of its first component group, and it reads back unchanged from Implicit and Explicit VR Little Endian. Remaining: writing the dummy values that the resolved compound actions call for (M3); and checking frames of reference in the first pass, acting on its findings, validating output against its IOD, and checking after writing that references are intact (M4).
 '''
 
 [[requirement]]
@@ -979,6 +986,7 @@ tests = [
   "tests/dicom/test_deidentify_markers.py::test_the_markers_are_defined_by_the_iod_and_the_equipment_item_is_complete",
   "tests/dicom/test_deidentify_markers.py::test_software_versions_give_pymedphys_then_python_pydicom_and_tomlkit",
   "tests/dicom/test_deidentify_markers.py::test_software_versions_give_the_running_python_pydicom_and_tomlkit",
+  "tests/dicom/test_deidentify_markers.py::test_software_versions_are_the_runtime_environment_of_the_release_report",
   "tests/dicom/test_deidentify_markers.py::test_each_source_of_software_versions_changes_its_own_value",
   "tests/dicom/test_deidentify_markers.py::test_python_and_library_versions_change_software_versions_not_the_digest",
   "tests/dicom/test_deidentify_release_report.py::test_the_policy_section_names_the_edition_preset_and_options",
