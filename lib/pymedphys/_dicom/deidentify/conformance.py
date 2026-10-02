@@ -63,6 +63,7 @@ from .element_rules import (
     _ENGINE_TAGS,
     IOD_DEFINED_VRS,
     KEPT_VRS,
+    ElementRule,
     ElementRules,
     RuleSource,
 )
@@ -72,6 +73,7 @@ from .policy import Policy, PolicyError, ResolvedConflict
 from .scope import SUPPORTED_IODS, SUPPORTED_TRANSFER_SYNTAXES, classify
 from .sop_classes import load_storage_sop_classes
 from .standard import (
+    dictionary_attribute,
     load_data_dictionary,
     load_table_e1_1,
     load_table_e1_1a,
@@ -113,6 +115,7 @@ SEQUESTER = "sequester"
 
 # Why the engine applies another action than the policy gives an attribute.
 ENGINE_REMOVAL = "engine removal"
+FILE_META_WRITTEN = "file meta written"
 SEQUENCE_NOT_CLEANED = "sequence not cleaned"
 
 
@@ -198,7 +201,8 @@ class AttributeAction:
         one as ``action``; otherwise ``""``.
     superseded_by : str
         Why the engine applies ``action`` in place of ``policy_action``:
-        :data:`ENGINE_REMOVAL` or :data:`SEQUENCE_NOT_CLEANED`; otherwise
+        :data:`ENGINE_REMOVAL`, :data:`FILE_META_WRITTEN`, or
+        :data:`SEQUENCE_NOT_CLEANED`; otherwise
         ``""``.
     """
 
@@ -385,13 +389,32 @@ def _attribute(
     applied = rules.rule(concrete)
     if applied.action == given:
         return AttributeAction(tag, name, rule, given, *_places(tag, given))
-    # The engine's own removals come first; otherwise the element rules give
-    # a sequence to which the policy gives C its Basic Profile action.
-    reason = (
-        ENGINE_REMOVAL if applied.source is RuleSource.ENGINE else SEQUENCE_NOT_CLEANED
-    )
     places = _places(tag, applied.action)
-    return AttributeAction(tag, name, rule, applied.action, *places, given, reason)
+    return AttributeAction(
+        tag, name, rule, applied.action, *places, given, _reason(applied, given)
+    )
+
+
+def _reason(applied: ElementRule, given: str) -> str:
+    """Return why the engine applies another action than the policy gives."""
+    # The engine's own removals come first, and it writes its own File Meta
+    # Information in place of the source's (D-025).
+    if applied.source is RuleSource.ENGINE:
+        return FILE_META_WRITTEN if applied.tag.startswith("(0002,") else ENGINE_REMOVAL
+    # The element rules give a sequence to which the policy gives C its Basic
+    # Profile action.
+    attribute = dictionary_attribute(applied.tag)
+    if (
+        given == "C"
+        and applied.source is RuleSource.TABLE
+        and attribute is not None
+        and "SQ" in attribute.vrs
+    ):
+        return SEQUENCE_NOT_CLEANED
+    raise RuntimeError(
+        f"the engine gives {applied.tag} {applied.action} rather than the "
+        f"policy's {given} for a reason that the statement does not describe"
+    )
 
 
 def _attributes(

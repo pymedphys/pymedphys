@@ -28,10 +28,18 @@ import base64
 import types
 from collections.abc import Callable, Iterable, Mapping
 
-
 from . import compound_actions, dummy_values, keys, markers, pseudonyms, uids
-from .markers import PROFILE_CODE
 from .codes import load_context_group
+from .conformance import (
+    ENGINE_REMOVAL,
+    FILE_META_WRITTEN,
+    OPTION_CODES,
+    PIXEL_OPTION_CODES,
+    SEQUESTER,
+    AttributeAction,
+    ConformanceStatement,
+)
+from .markers import PROFILE_CODE
 from .policy import TARGET_OPTIONS
 from .standard import (
     _RESERVED_ODD_GROUPS,
@@ -39,15 +47,6 @@ from .standard import (
     PRIVATE_ATTRIBUTES_TAG,
     load_data_dictionary,
     load_table_e1_1a,
-)
-
-from .conformance import (
-    ENGINE_REMOVAL,
-    OPTION_CODES,
-    PIXEL_OPTION_CODES,
-    SEQUESTER,
-    AttributeAction,
-    ConformanceStatement,
 )
 
 # What each group that the engine removes from a data set holds.
@@ -184,9 +183,11 @@ def _superseded(statement: ConformanceStatement) -> list[str]:
         if e.superseded_by:
             key = (e.superseded_by, e.policy_action)
             found.setdefault(key, []).append(f"{e.name} {e.tag}")
+    order = (ENGINE_REMOVAL, FILE_META_WRITTEN)
     lines = []
     for (reason, given), names in sorted(
-        found.items(), key=lambda item: item[0][0] != ENGINE_REMOVAL
+        found.items(),
+        key=lambda item: order.index(item[0][0]) if item[0][0] in order else 2,
     ):
         listed = f"to which the policy gives {_code(given)}: {_join(names)}."
         if reason == ENGINE_REMOVAL:
@@ -194,11 +195,26 @@ def _superseded(statement: ConformanceStatement) -> list[str]:
                 "The engine's own removals, under Other elements, come before "
                 f"the policy's actions, so it removes these attributes, {listed}"
             )
+        elif reason == FILE_META_WRITTEN:
+            text = (
+                "The engine writes its own File Meta Information in place of "
+                "the source's, as PS3.15 E.1.1 requires, so it removes the "
+                f"source's File Meta Information, including these attributes, "
+                f"{listed} The File Meta Information it writes holds only "
+                "File Meta Information Group Length (0002,0000), File Meta "
+                "Information Version (0002,0001), Media Storage SOP Class UID "
+                "(0002,0002), which is the instance's SOP Class UID, Media "
+                "Storage SOP Instance UID (0002,0003), which is the instance's "
+                "replacement SOP Instance UID, Transfer Syntax UID (0002,0010), "
+                "and PyMedPhys's Implementation Class UID (0002,0012) and "
+                "Implementation Version Name (0002,0013) (D-025)."
+            )
         else:
             text = (
                 "No rules for cleaning the contents of a sequence are designed "
-                "yet, so these sequences take their Basic Profile actions, as "
-                f"the table shows, although they are those {listed}"
+                f"yet, so each sequence to which the policy gives {_code(given)} "
+                "takes its Basic Profile action, as the table shows: "
+                f"{_join(names)}."
             )
         lines += ["", text]
     return lines
@@ -223,11 +239,14 @@ def _other(statement: ConformanceStatement, named: Callable[[str], str]) -> list
         "## Other elements",
         "",
         "Each element takes its action from the first of these that applies: "
-        "the engine's own removals; the Private Attributes row, for an "
-        f"element of an odd group other than {reserved}, which PS3.5 Section "
-        "7.8.1 does not allow for private use; the other rows above; and then "
-        "the rules below, by the attribute's VRs in the pinned data "
-        "dictionary (D-022).",
+        "the engine's own removals (D-013, D-016, and D-025); the Private "
+        f"Attributes row, for an element of an odd group other than {reserved}, "
+        "which PS3.5 Section 7.8.1 does not allow for private use; the other "
+        "rows of Table E.1-1, by exact tag and then by masked tag, where "
+        "(50xx,eeee) and (60xx,eeee) match only the repeating groups 5000 to "
+        "501E and 6000 to 601E (PS3.5 Section 7.6); the supplementary rules; "
+        "U by the role of a UI attribute; and then the rules below, by the "
+        "attribute's VRs in the pinned data dictionary (D-022).",
         "",
         "- The engine removes from every data set each element of groups "
         f"{_join(f'{group:04X}' for group in other.engine_groups)}, and each "
@@ -242,7 +261,7 @@ def _other(statement: ConformanceStatement, named: Callable[[str], str]) -> list
         f"{_join(other.iod_defined_vrs)} are kept where the instance's IOD "
         "defines the attribute at the element's place, and removed "
         f"({_code('X')}) elsewhere. The elements in the items of a kept "
-        "sequence take their actions by these same rules, as Table E.1-1a "
+        "sequence take their actions by the rules of this statement, as Table E.1-1a "
         "requires of a retained sequence.",
         f"- Any other attribute is removed ({_code('X')}), as is an element "
         "that the pinned data dictionary does not list.",

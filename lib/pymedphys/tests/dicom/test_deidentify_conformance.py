@@ -27,6 +27,7 @@ from pymedphys._dicom.deidentify import (
     conformance_markdown,
     dummy_values,
     element_rules,
+    file_meta,
     iods,
     markers,
     method_digest,
@@ -590,9 +591,9 @@ CONCRETE = {
 }
 ENGINE_REMOVED = {
     "(0000,1001)": "U",  # Requested SOP Instance UID
-    "(0002,0003)": "U",  # Media Storage SOP Instance UID
     "(0004,1511)": "U",  # Referenced SOP Instance UID in File
 }
+MEDIA_STORAGE_SOP_INSTANCE_UID = "(0002,0003)"
 # The sequences that Table E.1-1 gives C under Clean Descriptors, with their
 # Basic Profile actions.
 CLEANED_SEQUENCES = {
@@ -614,16 +615,25 @@ def test_every_listed_action_is_the_one_the_engine_applies(name):
     statement = conformance.conformance_statement(composed, vocabulary=None)
     given = {**composed.actions, **composed.supplementary_actions}
     for entry in statement.attributes:
-        applied = rules.rule(_concrete(entry.tag)).action
-        assert entry.action == applied, entry.tag
-        if entry.tag in given and given[entry.tag] != applied:
-            assert entry.policy_action == given[entry.tag], entry.tag
-            assert entry.superseded_by in (
-                conformance.ENGINE_REMOVAL,
-                conformance.SEQUENCE_NOT_CLEANED,
+        rule = rules.rule(_concrete(entry.tag))
+        assert entry.action == rule.action, entry.tag
+        policy_action = given.get(entry.tag, "U")
+        if policy_action == rule.action:
+            assert (entry.policy_action, entry.superseded_by) == ("", ""), entry.tag
+            continue
+        assert entry.policy_action == policy_action, entry.tag
+        if rule.source is element_rules.RuleSource.ENGINE:
+            expected = (
+                conformance.FILE_META_WRITTEN
+                if entry.tag.startswith("(0002,")
+                else conformance.ENGINE_REMOVAL
             )
         else:
-            assert (entry.policy_action, entry.superseded_by) == ("", ""), entry.tag
+            attribute = standard.dictionary_attribute(entry.tag)
+            assert policy_action == "C" and "SQ" in attribute.vrs, entry.tag
+            assert rule.source is element_rules.RuleSource.TABLE, entry.tag
+            expected = conformance.SEQUENCE_NOT_CLEANED
+        assert entry.superseded_by == expected, entry.tag
 
 
 def test_the_engines_own_removals_supersede_the_table():
@@ -633,7 +643,7 @@ def test_the_engines_own_removals_supersede_the_table():
         assert (entry.action, entry.policy_action) == ("X", given)
         assert entry.superseded_by == conformance.ENGINE_REMOVAL
     text = conformance_markdown.render_markdown(statement)
-    row = next(line for line in text.splitlines() if "| (0002,0003) |" in line)
+    row = next(line for line in text.splitlines() if "| (0000,1001) |" in line)
     assert "| `X`, in place of `U` |" in row
     section = _section(text, "Actions")
     paragraph = next(
@@ -641,6 +651,31 @@ def test_the_engines_own_removals_supersede_the_table():
     )
     for tag in ENGINE_REMOVED:
         assert tag in paragraph
+    assert MEDIA_STORAGE_SOP_INSTANCE_UID not in paragraph
+
+
+def test_the_file_meta_information_the_engine_writes_is_described():
+    statement = _statement("basic")
+    entry = _entry(statement, MEDIA_STORAGE_SOP_INSTANCE_UID)
+    assert (entry.action, entry.policy_action) == ("X", "U")
+    assert entry.superseded_by == conformance.FILE_META_WRITTEN
+    section = _section(conformance_markdown.render_markdown(statement), "Actions")
+    paragraph = next(
+        line
+        for line in section.splitlines()
+        if line.startswith("The engine writes its own File Meta Information")
+    )
+    written = file_meta.file_meta_information(
+        sop_class_uid=CT_FOR_PROCESSING,
+        sop_instance_uid="2.25.1",
+        transfer_syntax_uid=next(iter(scope.SUPPORTED_TRANSFER_SYNTAXES)),
+    )
+    names = {a.tag: a.name for a in standard.load_data_dictionary().attributes}
+    for element in written:
+        tag = f"({element.tag.group:04X},{element.tag.element:04X})"
+        assert f"{names.get(tag, element.name)} {tag}" in paragraph, tag
+    assert "holds only" in paragraph
+    assert "replacement SOP Instance UID" in paragraph
 
 
 def test_a_sequence_that_the_policy_cleans_takes_its_basic_profile_action():
@@ -663,7 +698,6 @@ def test_a_sequence_that_the_policy_cleans_takes_its_basic_profile_action():
 
 def test_elements_that_no_row_covers_are_no_longer_pending(preset):
     statement = _statement(preset)
-    assert not any("no rule covers" in item for item in conformance.PENDING)
     assert not any("data dictionary does not list" in i for i in statement.pending)
 
 
@@ -723,3 +757,93 @@ def test_a_policy_that_the_engine_refuses_lists_the_policys_actions():
     assert conformance.PENDING_REFUSED in text
     for name in SUPPORTED_BY_THE_ENGINE:
         assert conformance.PENDING_REFUSED not in _statement(name).pending
+
+
+def _described_action(other, attribute, defined):
+    """Return the action that the Other elements section gives an attribute."""
+    vrs = set(attribute.vrs)
+    if vrs & set(other.text_vrs):
+        return other.text_action
+    if vrs and vrs <= set(other.kept_vrs):
+        return "K"
+    if vrs and vrs <= set(other.kept_vrs) | set(other.iod_defined_vrs):
+        return "K" if defined else "X"
+    return "X"
+
+
+def test_every_attribute_that_no_row_covers_takes_the_action_described():
+    composed = policy.compose_policy("basic")
+    rules = element_rules.ElementRules(composed)
+    other = _statement("basic").other_elements
+    ct = iods.load_iod_tables().iods["CT Image"]
+    covered = 0
+    for attribute in standard.load_data_dictionary().attributes:
+        tag = attribute.tag.replace("xx", "00")
+        if not re.fullmatch(r"\([0-9A-F]{4},[0-9A-F]{4}\)", tag):
+            continue
+        rule = rules.rule(tag)
+        if rule.source not in (
+            element_rules.RuleSource.UNCOVERED_TEXT,
+            element_rules.RuleSource.DEFAULT,
+        ):
+            continue
+        covered += 1
+        assert rule.action == _described_action(other, attribute, False), tag
+        defined = bool(ct.lookup(tag, ()))
+        assert rules.rule(tag, iod=ct).action == _described_action(
+            other, attribute, defined
+        ), tag
+    assert covered > 1000
+
+
+@pytest.mark.parametrize(
+    ("tag", "action"),
+    [
+        ("(0001,0010)", "X"),  # an odd group that is not private, not listed
+        ("(6020,3000)", "X"),  # outside the repeating groups, not listed
+        ("(1234,5678)", "X"),  # not in the data dictionary
+        ("(0009,0010)", "X"),  # a private creator, under the Basic Profile
+    ],
+)
+def test_elements_outside_the_dictionary_and_rows_are_removed(tag, action):
+    rules = element_rules.ElementRules(policy.compose_policy("basic"))
+    assert rules.rule(tag).action == action
+    section = _section(
+        conformance_markdown.render_markdown(_statement("basic")), "Other elements"
+    )
+    assert "an element that the pinned data dictionary does not list" in section
+    assert "0001, 0003, 0005, 0007, and FFFF" in section
+    assert "6000 to 601E" in section
+
+
+def test_cleaning_is_pending_only_where_the_engine_cleans():
+    # A policy whose only C is on sequences cleans nothing, since a sequence
+    # to which the policy gives C takes its Basic Profile action.
+    composed = policy.compose_policy("basic-clean-descriptors")
+    basic = {
+        row.tag: row.basic_profile for row in standard.load_table_e1_1().attributes
+    }
+    sequences = {
+        tag
+        for tag, action in composed.actions.items()
+        if action == "C"
+        and (a := standard.dictionary_attribute(tag)) is not None
+        and "SQ" in a.vrs
+    }
+    assert sequences
+    only_sequences = dataclasses.replace(
+        composed,
+        actions={
+            tag: action if action != "C" or tag in sequences else basic[tag]
+            for tag, action in composed.actions.items()
+        },
+        supplementary_actions={
+            tag: action
+            for tag, action in composed.supplementary_actions.items()
+            if action != "C"
+        },
+    )
+    statement = conformance.conformance_statement(only_sequences, vocabulary=None)
+    assert "C" in only_sequences.actions.values()
+    assert not any(e.action == "C" for e in statement.attributes)
+    assert conformance.PENDING_CLEANING not in statement.pending
