@@ -82,11 +82,12 @@ _PRINTABLE_ASCII = re.compile(r"[\x20-\x7e]*")
 _NOT_ALPHANUMERIC = re.compile(r"[\W_]+")
 
 
-# The content digest (tg263.content_sha256) of the entries of each edition of
-# the TG-263 Structure Spreadsheet that AAPM publishes, by worksheet name. The
-# 2017-08-15 edition is TG263_Nomenclature_Worksheet_20170815.xls on AAPM's
-# Radiation Oncology Nomenclature Resource Page, whose SHA-256 is
-# 5ff0b9e2ebf578793f6fa8f59c2357b3feb61fdc0f87171e9103a0495d93d150.
+# The content digest (tg263.content_sha256) of the entries of the published
+# edition of the TG-263 Structure Spreadsheet, by worksheet name: the edition
+# that pymedphys._nomenclature.tg263_published.PUBLISHED pins, and which
+# PyMedPhys downloads, as a test checks. The digest is written here rather
+# than imported, so that the method digest, which covers this package's
+# source, changes when the editions that rename automatically change.
 PUBLISHED_TG263: dict[str, str] = {
     "TG263 v20170815": (
         "0a0eaeacf147bdf654e0090b3e12b005d76985e6adc95441d7563365ac6e7ffc"
