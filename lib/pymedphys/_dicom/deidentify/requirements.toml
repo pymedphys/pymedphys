@@ -178,11 +178,16 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 All Data Elements with a Group Number of 0004 shall be removed from any SOP Instance or DICOM File other than a DICOMDIR File. If a DICOMDIR File is required, it shall either be created from the de-identified DICOM Files it references, or an existing DICOMDIR File shall be de-identifed according to this Profile. Any existing non-de-identified DICOMDIR File shall be removed from the File-set.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
 decisions = ["D-016"]
+implementation = ["_dicom/deidentify/element_rules.py"]
+tests = [
+  "tests/dicom/test_deidentify_element_rules.py::test_every_element_of_groups_0002_and_0004_in_a_data_set_is_removed",
+  "tests/dicom/test_deidentify_element_rules.py::test_each_level_decides_its_elements",
+]
 note = '''
-Group 0004 is removed with the rest of the file container. A source DICOMDIR is never passed through, and none is written, since the output is a plain directory tree rather than a File-set (D-016).
+Every element of group 0004 in a data set, at the top level or in an item, has a rule that removes it, under every policy, before any other rule applies. A source DICOMDIR is never passed through, and none is written, since the output is a plain directory tree rather than a File-set (D-016). Remaining: removing group 0004 from each instance the engine writes, with the rest of the file container (M4).
 '''
 
 [[requirement]]
@@ -193,10 +198,11 @@ The Attributes listed in Table E.1-1 for each Profile or Option are contained in
 '''
 status = "partial"
 milestone = "M3"
-decisions = ["D-001", "D-007", "D-011", "D-020", "D-021", "D-028"]
+decisions = ["D-001", "D-007", "D-009", "D-011", "D-020", "D-021", "D-022", "D-028"]
 implementation = [
   "_dicom/deidentify/actions.py",
   "_dicom/deidentify/compound_actions.py",
+  "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/elements.py",
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/private_attributes.py",
@@ -217,11 +223,17 @@ tests = [
   "tests/dicom/test_deidentify_elements.py::test_un_in_explicit_vr_is_decoded_as_implicit_vr_with_the_pinned_vr",
   "tests/dicom/test_deidentify_elements.py::test_a_vr_that_conflicts_with_the_pinned_dictionary_is_refused",
   "tests/dicom/test_deidentify_elements.py::test_a_sequence_whose_items_cannot_be_read_is_refused",
+  "tests/dicom/test_deidentify_element_rules.py::test_each_level_decides_its_elements",
+  "tests/dicom/test_deidentify_element_rules.py::test_every_dictionary_attribute_has_the_rule_of_the_first_level_covering_it",
+  "tests/dicom/test_deidentify_element_rules.py::test_the_overlay_masks_match_every_repeating_group",
+  "tests/dicom/test_deidentify_element_rules.py::test_no_mask_matches_outside_the_repeating_groups",
+  "tests/dicom/test_deidentify_element_rules.py::test_a_sequence_given_c_takes_its_basic_profile_action",
+  "tests/dicom/test_deidentify_element_rules.py::test_every_element_of_group_0000_in_a_data_set_is_removed",
   "tests/dicom/test_deidentify_elements.py::test_a_un_sequence_that_pydicom_has_decoded_is_refused",
   "tests/dicom/test_deidentify_elements.py::test_text_that_could_not_be_written_back_is_refused",
 ]
 note = '''
-Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute sequesters the instance (D-020). Each element, at the top level or in an item, is read with the VR that the pinned data dictionary gives its attribute, so that the attributes inside a sequence that pydicom does not know and reads as UN, such as an RT Plan's RT Assertions Sequence, can be found; an element whose VR conflicts with the dictionary, or whose value or items do not decode exactly, is reported as undecodable rather than read as pydicom guesses it. Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028). Remaining: protecting or retaining every instance of each other attribute, at the top level and in sequences, and removing private attributes from each instance the engine de-identifies (M3).
+Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute sequesters the instance (D-020). Each element, at the top level or in an item, is read with the VR that the pinned data dictionary gives its attribute, so that the attributes inside a sequence that pydicom does not know and reads as UN, such as an RT Plan's RT Assertions Sequence, can be found; an element whose VR conflicts with the dictionary, or whose value or items do not decode exactly, is reported as undecodable rather than read as pydicom guesses it. Each element, at the top level or in an item, takes the rule of the first source that covers it: the engine's own removals, Table E.1-1's Private Attributes row, the table's other rows, whose masked tags match only the repeating groups, the supplementary rules and UID roles, removal by Type of other text, and the rule for attributes that no rule covers (D-022); a sequence to which an option gives C takes its Basic Profile action (D-009). Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028). Remaining: protecting or retaining every instance of each other attribute, at the top level and in sequences, and removing private attributes from each instance the engine de-identifies (M3).
 '''
 
 [[requirement]]
@@ -728,15 +740,20 @@ Remove or replace the identities of other persons, departments, institutions, an
 status = "partial"
 milestone = "M3"
 decisions = ["D-001", "D-022"]
-implementation = ["_dicom/deidentify/supplementary_actions.py"]
+implementation = [
+  "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/supplementary_actions.py",
+]
 tests = [
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_person_name_that_table_e1_1_omits_has_an_action",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_the_basic_profile_keeps_no_person_name",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_no_option_keeps_more_than_the_coded_text_and_device_identity",
+  "tests/dicom/test_deidentify_element_rules.py::test_each_new_supplementary_rule_removes_by_type_with_a_note",
+  "tests/dicom/test_deidentify_element_rules.py::test_the_new_rules_cover_every_uri_that_table_e1_1_omits",
 ]
 note = '''
-Every person name in the pinned dictionary has an action that removes or replaces it under the Basic Profile, from Table E.1-1 or from a reviewed supplementary action. Every text attribute that a supported IOD uses is removed or replaced too, other than coded and technical values and De-identification Method, which the engine adds to; the names and identifiers of people, organisations, records, and networks, and identifiers that a device reads, among those that Table E.1-1 omits are removed under every option, and accessory and equipment identifiers are kept only under Retain Device Identity (D-022). Remaining (D-022): reviewed rules for the UR attributes that Table E.1-1 omits, and for sequences that it omits whose content can identify an institution or other patients or say something about the patient, such as Requesting Service Code Sequence (0032,1034), Patient's Size Code Sequence (0010,1021), Issuer of Patient ID Qualifiers Sequence (0010,0024), Issuer of Accession Number Sequence (0008,0051), Reason For Performed Procedure Code Sequence (0040,1012), Source Patient Group Identification Sequence (0010,0026), and Group of Patients Identification Sequence (0010,0027); and a decision on whether the kept codes of local coding schemes, and in-house private creators, which can carry an institution's name or abbreviation, need a reviewed rule. Also remaining: applying the actions to each data set (M3). The Retain Institution Identity Option is not supported.
+Every person name in the pinned dictionary has an action that removes or replaces it under the Basic Profile, from Table E.1-1 or from a reviewed supplementary action. Every text attribute that a supported IOD uses is removed or replaced too, other than coded and technical values and De-identification Method, which the engine adds to; the names and identifiers of people, organisations, records, and networks, and identifiers that a device reads, among those that Table E.1-1 omits are removed under every option, and accessory and equipment identifiers are kept only under Retain Device Identity (D-022). URN Code Value and Coding Scheme URL, which name coding concepts and schemes, are kept. Every other URI and URL attribute that Table E.1-1 omits is removed by Type under every option, as are seven sequences that it omits whose content can identify an institution or other patients or say something about the patient, such as Requesting Service Code Sequence (0032,1034), Issuer of Patient ID Qualifiers Sequence (0010,0024), and Group of Patients Identification Sequence (0010,0027), and three measures of the patient's body, Patient's Body Mass Index (0010,1022), Measured AP Dimension (0010,1023), and Measured Lateral Dimension (0010,1024) (D-022). Remaining, and undecided (D-022): whether the kept codes of local coding schemes, and in-house private creators, which can carry an institution's name or abbreviation, need a reviewed rule. Also remaining: applying the actions to each data set (M3). The Retain Institution Identity Option is not supported.
 '''
 
 [[requirement]]
@@ -754,6 +771,7 @@ implementation = [
   "_dev/deid_tables/ps3_4.py",
   "_dev/deid_tables/ps3_6.py",
   "_dicom/deidentify/actions.py",
+  "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/private_attributes.py",
   "_dicom/deidentify/scope.py",
@@ -782,9 +800,13 @@ tests = [
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_date_and_time_that_table_e1_1_omits_has_a_rule",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_a_new_attribute_that_table_e1_1_omits_needs_a_rule_by_its_vr",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_only_the_date_options_override_the_action_of_an_omitted_date",
+  "tests/dicom/test_deidentify_element_rules.py::test_every_dictionary_attribute_has_the_rule_of_the_first_level_covering_it",
+  "tests/dicom/test_deidentify_element_rules.py::test_no_name_date_time_or_uid_reaches_the_rule_for_uncovered_attributes",
+  "tests/dicom/test_deidentify_element_rules.py::test_the_new_rules_cover_every_uri_that_table_e1_1_omits",
+  "tests/dicom/test_deidentify_element_rules.py::test_every_tag_has_one_rule_that_is_the_same_for_the_same_policy",
 ]
 note = '''
-The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names, dates, and times that Table E.1-1 omits and every text attribute that it omits and a supported IOD uses. Each such attribute that an option retains or cleans is categorised by that option, as Table E.1-1 does: operator-typed text is cleaned under Clean Descriptors, and accessory and equipment identifiers are kept under Retain Device Identity (D-022); the dates and times are kept under Retain Longitudinal Temporal Information with Full Dates and cleaned under Modified Dates (D-023). Without Retain Safe Private, every private attribute is removed from a data set, at every level (D-028). `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and `.github/workflows/deid-edition-check.yml` runs it monthly. Remaining: reviewed rules for the UR attributes that the tables omit (D-022) (M2); removing private attributes from each instance the engine de-identifies (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+The rule tables and the PS3.6 data dictionary are generated from the pinned edition, PS3.4 Table B.5-1 tells an instance of a supported IOD from one of any other SOP Class, so that each instance is classified as de-identified or sequestered with the reason, and reviewed supplementary actions cover the person names, dates, and times that Table E.1-1 omits and every text attribute that it omits and a supported IOD uses. Each such attribute that an option retains or cleans is categorised by that option, as Table E.1-1 does: operator-typed text is cleaned under Clean Descriptors, and accessory and equipment identifiers are kept under Retain Device Identity (D-022); the dates and times are kept under Retain Longitudinal Temporal Information with Full Dates and cleaned under Modified Dates (D-023). Without Retain Safe Private, every private attribute is removed from a data set, at every level (D-028). Every element, whether or not the pinned dictionary lists its attribute, has one rule, and every URI and URL attribute that the table omits has a reviewed one; no person name, date, time, datetime, or UID is left to the default for attributes that no rule covers, which keeps codes, tags, and numbers, keeps a sequence or a binary value only where the IOD defines it, and removes anything else (D-022). `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and `.github/workflows/deid-edition-check.yml` runs it monthly. Remaining: removing private attributes from, and applying each element's rule to, each instance the engine de-identifies (M3); and sequestering the instances so classified, and reporting them (M4). Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
 [[requirement]]
@@ -906,10 +928,19 @@ id = "MIDI-BP-14"
 text = '''
 Consider identifying information embedded in compressed bitstreams, such as JPEG APP1 (EXIF) and APP11 (JUMBF) segments or ICC profiles. Either decompress losslessly compressed data and discard the embedded elements or, where the bitstream is kept, scan it and remove or replace the elements at risk.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
+decisions = ["D-022"]
+implementation = [
+  "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/supplementary_actions.py",
+]
+tests = [
+  "tests/dicom/test_deidentify_element_rules.py::test_each_new_supplementary_rule_removes_by_type_with_a_note",
+  "tests/dicom/test_deidentify_element_rules.py::test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it",
+]
 note = '''
-Metadata in compressed pixel data is removed without recompression.
+ICC Profile (0028,2000), an embedded file whose contents the engine does not parse, is removed by Type under every option, which removes it wherever the first supported release's IODs define it (D-022). Remaining: removing metadata in compressed pixel data without recompression (M3).
 '''
 
 [[requirement]]
