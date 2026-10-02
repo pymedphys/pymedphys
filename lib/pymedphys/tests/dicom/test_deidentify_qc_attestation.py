@@ -23,7 +23,7 @@ from pathlib import PurePosixPath
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import qc_attestation, qc_pack
+from pymedphys._dicom.deidentify import qc_attestation, qc_store
 from pymedphys._dicom.deidentify.qc_attestation import (
     Attestation,
     AttestationRecord,
@@ -58,7 +58,7 @@ def fixture_pack(tmp_path):
             ),
         ),
     )
-    return qc_pack.write_qc_pack(
+    return qc_store.write_qc_pack(
         pack, tmp_path / "qc", release_directory=release
     ).parent
 
@@ -93,7 +93,7 @@ def test_the_record_holds_only_the_reference_and_outcome(pack, outcome):
 def test_the_attestation_is_written_beside_the_pack(pack):
     attestation = _attest(pack)
     written = pack / qc_attestation.ATTESTATION_FILE
-    digest = hashlib.sha256((pack / qc_pack.PACK_FILE).read_bytes()).hexdigest()
+    digest = hashlib.sha256((pack / qc_store.PACK_FILE).read_bytes()).hexdigest()
     assert json.loads(written.read_text("ascii")) == {
         "format": "pymedphys-deid-qc-attestation/1",
         "reference": REFERENCE,
@@ -139,7 +139,7 @@ def test_a_pack_is_attested_once(pack):
 
 def test_a_pack_changed_after_attestation_is_detected(pack):
     _attest(pack)
-    path = pack / qc_pack.PACK_FILE
+    path = pack / qc_store.PACK_FILE
     path.chmod(0o600)
     path.write_bytes(path.read_bytes().replace(b"a.dcm", b"b.dcm"))
     with pytest.raises(QcPackError, match="changed after it was attested"):
@@ -187,13 +187,13 @@ def test_a_directory_without_a_pack_is_refused(tmp_path, pack):
         qc_attestation.attestation_record(tmp_path)
     with pytest.raises(QcPackError, match="holds no QC pack"):
         _attest(tmp_path)
-    (pack / qc_pack.PACK_FILE).unlink()
+    (pack / qc_store.PACK_FILE).unlink()
     with pytest.raises(QcPackError, match="holds no QC pack"):
         qc_attestation.attestation_record(pack)
 
 
 def test_a_pack_of_another_format_is_refused(pack):
-    path = pack / qc_pack.PACK_FILE
+    path = pack / qc_store.PACK_FILE
     path.chmod(0o600)
     path.write_text('{"format": "other", "reference": "%s"}' % REFERENCE, "ascii")
     with pytest.raises(QcPackError, match="not of its format"):

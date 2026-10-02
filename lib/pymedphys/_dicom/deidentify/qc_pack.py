@@ -37,68 +37,43 @@ A pack holds, for one run:
 - ``retained_strings``: each distinct string that the policy retains, with
   every place it was retained, for the review of every distinct retained
   string (D-017);
-- ``roi_names``: each ROI Name that automatic cleaning renamed, for audit,
-  or that awaits review (D-009).
+- ``roi_names``: what descriptor cleaning wrote for each ROI Name, for the
+  audit of every name renamed, kept, or mapped, and each name held for
+  review, with why (D-009).
 
 Its ``reference`` is an opaque random token that the release report records
 with the attestation's outcome, in place of the review material (D-016). It
 is not derived from the pack's content.
 
-:func:`write_qc_pack` writes a pack as ``qc-pack.json``, labelled with its
-format, :data:`FORMAT`, beside a handling notice and the marker
-:data:`MARKER_FILE`, by which :func:`is_qc_material` recognises QC material
-so that no release can include it. Errors name the field or check that
-failed, never a value or a path.
+:func:`to_json` gives a pack as a JSON document labelled with its format,
+:data:`FORMAT`, which :func:`~.qc_store.write_qc_pack` writes to a designated
+directory. Errors name the field that failed, never a value or a path, and
+the ``repr`` of each entry leaves out its values and paths.
 """
 
 from __future__ import annotations
 
+import codecs
 import dataclasses
 import enum
 import json
-import os
 import re
 import secrets
-import stat
-import sys
 from collections.abc import Iterable
-from pathlib import Path, PurePosixPath
+from pathlib import PurePosixPath
 
-from . import residuals
+from . import residuals, roi_names
 from .file_layout import ElementPath, Location
 
 # The format of the pack document. A change to its fields takes a new label.
 FORMAT = "pymedphys-deid-qc-pack/1"
-PACK_FILE = "qc-pack.json"
-NOTICE_FILE = "README.txt"
-# Marks a directory as QC material. It is written first, so that a pack
-# whose writing stopped part way is still recognised.
-MARKER_FILE = ".pymedphys-deid-qc-pack"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 
 _REFERENCE = re.compile(r"A-[0-9a-f]{32}")
-# An opaque per-run label, such as the release report's "S-0001" (D-026).
-_LABEL = re.compile(r"[A-Z]-[0-9]{4,9}")
-_DIRECTORY_MODE = 0o700
-_FILE_MODE = 0o600
-
-NOTICE = """\
-CONFIDENTIAL: DE-IDENTIFICATION QC PACK
-
-This directory is a QC pack from a PyMedPhys de-identification run. It holds
-source file paths, text found in de-identified files, and retained strings,
-which may identify people. Treat it as you would the source data.
-
-- Only reviewers whom the data custodian authorises may read it.
-- Never copy it, or anything from it, into a release directory or archive,
-  and never distribute it with the de-identified output.
-- Keep it only as long as the review, the attestation, and the custodian's
-  documented retention period require; then delete the whole directory.
-
-The release report refers to this pack only by its opaque reference, which
-is in qc-pack.json.
-"""
+# The release report's opaque per-run label of a sequestered instance, such as
+# "S-0001", with more digits beyond S-9999 (D-026).
+_LABEL = re.compile(r"S-[0-9]{4,}")
 
 
 class QcPackError(ValueError):
@@ -115,20 +90,41 @@ class Disposition(enum.Enum):
 
 
 class DropReason(enum.Enum):
-    """Why a value was dropped from the residual search (D-027)."""
+    """Why a source value was left out of the residual search (D-027)."""
 
     # a value that the policy legitimately retains
     RETAINED = "retained"
     # a value that exactly equals a constant that the engine always writes
-    ENGINE_CONSTANT = "engine-constant"
+    WRITTEN_CONSTANT = "written-constant"
+    # content that cannot be decoded, inside a sequence that is removed
+    UNDECODABLE = "undecodable"
 
 
-class RoiNameStatus(enum.Enum):
-    """What happened to a ROI Name under descriptor cleaning (D-009)."""
+class RoiNameOutcome(enum.Enum):
+    """What was written for a ROI Name under descriptor cleaning (D-009)."""
 
-    # written in the vocabulary's spelling, recorded for audit
-    RENAMED = "renamed"
-    AWAITING_REVIEW = "awaiting-review"
+    RENAMED = "renamed"  # the automatic tier's vocabulary spelling
+    EMPTY = "empty"  # the source name was empty
+    KEPT = "kept"  # by a reviewer's decision
+    MAPPED = "mapped"  # to another name, by a reviewer's decision
+    EMPTIED = "emptied"  # by a reviewer's decision
+    HELD = "held"  # held for review; nothing is written
+    # held, but the user chose to empty such names so that the run proceeds
+    EMPTIED_UNREVIEWED = "emptied unreviewed"
+
+
+_HELD = frozenset({RoiNameOutcome.HELD, RoiNameOutcome.EMPTIED_UNREVIEWED})
+_EMPTIED = frozenset(
+    {RoiNameOutcome.EMPTY, RoiNameOutcome.EMPTIED, RoiNameOutcome.EMPTIED_UNREVIEWED}
+)
+_HELD_BECAUSE = frozenset(
+    {
+        roi_names.Reason.UNMATCHED,
+        roi_names.Reason.AMBIGUOUS,
+        roi_names.Reason.ECHOES_IDENTIFIER,
+        roi_names.Reason.WOULD_DUPLICATE,
+    }
+)
 
 
 def new_reference() -> str:
@@ -217,7 +213,7 @@ class InstanceEntry:
         )
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, repr=False)
 class Excerpt:
     """The bytes around a residual in a written file, decoded for a reviewer.
 
@@ -229,13 +225,23 @@ class Excerpt:
         Up to twice :data:`EXCERPT_BYTES` bytes from the offset, which hold
         the residual and what follows it.
     encoding : str
-        The codec that both were decoded with, the residual's own. Bytes that
-        it cannot decode are written as backslash escapes.
+        The codec that both were decoded with: the residual's own, or
+        ``latin-1`` where Python cannot decode with that. Bytes that it
+        cannot decode are written as backslash escapes, as is each
+        backslash in the file, so that the two cannot be confused.
+
+    Its ``repr`` leaves out the text.
     """
 
     before: str
     after: str
     encoding: str
+
+    def __repr__(self) -> str:
+        return (
+            f"Excerpt(before={len(self.before)} characters, "
+            f"after={len(self.after)} characters, encoding={self.encoding!r})"
+        )
 
 
 def excerpt(
@@ -265,8 +271,9 @@ def excerpt(
     >>> name = SourceValue(ElementPath((), "(0010,0010)"), "PN", "ZEBEDEE^QUILLON")
     >>> data = b"Seen by Dr Zebedee today"
     >>> found = find_residuals(data, [name]).findings[0]
-    >>> excerpt(data, found)
-    Excerpt(before='Seen by Dr ', after='Zebedee today', encoding='utf-8')
+    >>> cut = excerpt(data, found)
+    >>> cut.before, cut.after
+    ('Seen by Dr ', 'Zebedee today')
     """
     with memoryview(data) as view, view.cast("B") as octets:
         offset = finding.offset
@@ -276,22 +283,50 @@ def excerpt(
         # A character of UTF-16LE is two bytes, so keep to the match's parity.
         start = max(offset - width, offset % 2 if _is_wide(finding) else 0)
         end = min(offset + 2 * width, len(octets))
-        return Excerpt(
-            before=_decode(bytes(octets[start:offset]), finding.encoding),
-            after=_decode(bytes(octets[offset:end]), finding.encoding),
-            encoding=finding.encoding,
-        )
+        try:
+            decoder = codecs.getincrementaldecoder(finding.encoding)(errors=_UNDECODED)
+            # An ISO 2022 codec keeps a state between escape sequences, so
+            # decode from the last one before the excerpt, discarding the text.
+            escape = bytes(octets[:start]).rfind(b"\x1b")
+            if escape >= 0 and "2022" in codecs.lookup(finding.encoding).name:
+                decoder.decode(bytes(octets[escape:start]))
+            before = decoder.decode(bytes(octets[start:offset]))
+            after = decoder.decode(bytes(octets[offset:end]), final=True)
+            encoding = finding.encoding
+        except (LookupError, UnicodeError):  # a codec Python lacks, or refuses
+            before = bytes(octets[start:offset]).decode("latin-1")
+            after = bytes(octets[offset:end]).decode("latin-1")
+            encoding = "latin-1"
+        return Excerpt(_escape(before), _escape(after), encoding)
 
 
 def _is_wide(finding: residuals.Finding) -> bool:
     return finding.encoding.replace("_", "-").lower() in {"utf-16-le", "utf-16le"}
 
 
-def _decode(octets: bytes, encoding: str) -> str:
-    try:
-        return octets.decode(encoding, errors="backslashreplace")
-    except LookupError:  # a codec that a caller named but Python lacks
-        return octets.decode("latin-1")
+def _escape(text: str) -> str:
+    """Write each undecoded byte, and each backslash, as a backslash escape."""
+    return _SENTINELS.sub(
+        lambda match: f"\\x{ord(match.group()) - 0xDC00:02x}",
+        text.replace("\\", "\\x5c"),
+    )
+
+
+def _mark_undecoded(error: UnicodeError) -> tuple[str, int]:
+    """Stand in for each byte that cannot be decoded with a lone surrogate.
+
+    No codec decodes bytes as a lone surrogate, so these are told apart from
+    the file's own text and replaced by :func:`_escape`.
+    """
+    if not isinstance(error, UnicodeDecodeError):
+        raise error
+    undecoded = error.object[error.start : error.end]
+    return "".join(chr(0xDC00 + byte) for byte in undecoded), error.end
+
+
+_UNDECODED = "pymedphys-deid-qc-undecoded"
+_SENTINELS = re.compile("[\udc00-\udcff]")
+codecs.register_error(_UNDECODED, _mark_undecoded)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -412,9 +447,11 @@ class RetainedString:
 
 @dataclasses.dataclass(frozen=True, repr=False)
 class RoiNameEntry:
-    """A ROI Name that descriptor cleaning renamed or set aside for review (D-009).
+    """What descriptor cleaning wrote for one ROI Name, or why it held it (D-009).
 
-    Its ``repr`` leaves out the names.
+    The renamed, kept, and mapped names are the audit of what was retained
+    or changed; the held and emptied unreviewed names are the reviewer's
+    list. Its ``repr`` leaves out the names.
 
     Attributes
     ----------
@@ -422,40 +459,59 @@ class RoiNameEntry:
         The instance's run position.
     path : ElementPath
         The ROI Name (3006,0026) in its Structure Set ROI Sequence item.
-    name : str
+    source : str
         The source ROI Name.
-    status : RoiNameStatus
-    vocabulary_name : str, optional
-        The name written in the vocabulary's spelling, for a rename only.
+    outcome : RoiNameOutcome
+    held_because : ~pymedphys._dicom.deidentify.roi_names.Reason, optional
+        Why a held or emptied unreviewed name went to review: unmatched,
+        ambiguous, echoes an identifier, or would duplicate another name;
+        None for every other outcome.
+    written : str, optional
+        What was written: the vocabulary's spelling, the source name if
+        kept, the reviewer's name if mapped, and ``""`` if emptied or empty;
+        None if held.
     """
 
     position: int
     path: ElementPath
-    name: str
-    status: RoiNameStatus
-    vocabulary_name: str | None = None
+    source: str
+    outcome: RoiNameOutcome
+    held_because: roi_names.Reason | None = None
+    written: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("a ROI name", self.position)
-        if not isinstance(self.path, ElementPath) or not isinstance(self.name, str):
+        if not isinstance(self.path, ElementPath) or not isinstance(self.source, str):
             raise QcPackError(
                 f"a ROI name of instance {self.position} needs an ElementPath and text"
             )
-        if not isinstance(self.status, RoiNameStatus):
-            raise QcPackError(f"a ROI name of instance {self.position} needs a status")
-        renamed = self.status is RoiNameStatus.RENAMED
-        if renamed != (
-            isinstance(self.vocabulary_name, str) and bool(self.vocabulary_name)
-        ):
+        if not isinstance(self.outcome, RoiNameOutcome):
             raise QcPackError(
-                f"a ROI name of instance {self.position} has a vocabulary name "
-                "only when it was renamed"
+                f"a ROI name of instance {self.position} needs a RoiNameOutcome"
             )
+        problem = self._problem()
+        if problem:
+            raise QcPackError(
+                f"a {self.outcome.value} ROI name of instance {self.position} {problem}"
+            )
+
+    def _problem(self) -> str | None:
+        if (self.outcome in _HELD) != (self.held_because in _HELD_BECAUSE):
+            return "has a reason for review only when it was held"
+        if self.outcome is RoiNameOutcome.HELD:
+            return None if self.written is None else "has nothing written"
+        if not isinstance(self.written, str):
+            return "needs what was written"
+        if (self.outcome in _EMPTIED) != (self.written == ""):
+            return "is written empty only when it was emptied or empty"
+        if self.outcome is RoiNameOutcome.KEPT and self.written != self.source:
+            return "is written as its source name"
+        return None
 
     def __repr__(self) -> str:
         return (
             f"RoiNameEntry(position={self.position}, path={str(self.path)!r}, "
-            f"status={self.status.value!r})"
+            f"outcome={self.outcome.value!r})"
         )
 
 
@@ -590,7 +646,10 @@ def _is_output_path(path: object) -> bool:
         isinstance(path, PurePosixPath)
         and bool(path.parts)
         and not path.is_absolute()
-        and all(part not in ("", ".", "..") for part in path.parts)
+        and all(
+            part not in ("", ".", "..") and "\\" not in part and ":" not in part
+            for part in path.parts
+        )
     )
 
 
@@ -649,9 +708,12 @@ def pack_document(pack: QcPack) -> dict:
             {
                 "position": entry.position,
                 "element": str(entry.path),
-                "name": entry.name,
-                "status": entry.status.value,
-                "vocabulary_name": entry.vocabulary_name,
+                "source": entry.source,
+                "outcome": entry.outcome.value,
+                "held_because": (
+                    None if entry.held_because is None else entry.held_because.value
+                ),
+                "written": entry.written,
             }
             for entry in pack.roi_names
         ],
@@ -716,176 +778,6 @@ def to_json(pack: QcPack) -> str:
     Python holds as lone surrogates (PEP 383).
     """
     return json.dumps(pack_document(pack), indent=2, ensure_ascii=True) + "\n"
-
-
-def check_confidential_destination(
-    destination: os.PathLike | str,
-    *,
-    release_directory: os.PathLike | str,
-    staging_directory: os.PathLike | str | None = None,
-) -> Path:
-    """Check that a directory may receive confidential material, and return it.
-
-    The destination must be given explicitly: there is no default. It must
-    be neither inside the release directory or the staging directory nor
-    contain either, once each path is made absolute and its symbolic links
-    are resolved, so that no release or archive of either can include it. It
-    must not exist yet, or be an empty directory; on POSIX, an existing one
-    must also grant no access to its group or to others. On Windows, access
-    rests on the location's access control lists, which this does not check.
-
-    Parameters
-    ----------
-    destination : path-like
-    release_directory : path-like
-        Where released output goes.
-    staging_directory : path-like, optional
-        Where output waits for its residual search (D-027).
-
-    Returns
-    -------
-    pathlib.Path
-        The destination, absolute, with its symbolic links resolved.
-
-    Raises
-    ------
-    QcPackError
-        For each reason above, naming the check, never the path.
-    """
-    target = _resolved(destination, "the QC destination")
-    others = {
-        "release directory": _resolved(release_directory, "the release directory")
-    }
-    if staging_directory is not None:
-        others["staging directory"] = _resolved(
-            staging_directory, "the staging directory"
-        )
-    for name, other in others.items():
-        if _within(target, other) or _within(other, target):
-            raise QcPackError(
-                f"the QC destination must be neither inside the {name} nor contain it"
-            )
-    if target.exists() or target.is_symlink():
-        if not target.is_dir():
-            raise QcPackError("the QC destination exists and is not a directory")
-        if any(target.iterdir()):
-            raise QcPackError("the QC destination must be new or an empty directory")
-        if os.name == "posix" and stat.S_IMODE(target.stat().st_mode) & 0o077:
-            raise QcPackError(
-                "the QC destination grants access to its group or others; "
-                "restrict it to its owner (chmod 700)"
-            )
-    return target
-
-
-def _resolved(path: object, what: str) -> Path:
-    if not isinstance(path, (str, os.PathLike)) or not os.fspath(path):
-        raise QcPackError(f"{what} must be given as a path")
-    return Path(path).expanduser().resolve(strict=False)
-
-
-def _within(path: Path, directory: Path) -> bool:
-    """Return whether ``path`` is ``directory`` or below it.
-
-    Windows paths compare without case already. macOS volumes are
-    case-insensitive by default, so there case is disregarded too, which
-    errs towards refusing a destination.
-    """
-    if sys.platform == "darwin":
-        path, directory = Path(str(path).casefold()), Path(str(directory).casefold())
-    return path.is_relative_to(directory)
-
-
-def write_qc_pack(
-    pack: QcPack,
-    destination: os.PathLike | str,
-    *,
-    release_directory: os.PathLike | str,
-    staging_directory: os.PathLike | str | None = None,
-) -> Path:
-    """Write a QC pack to a designated, restricted directory.
-
-    The destination is checked by :func:`check_confidential_destination`,
-    and created, with any missing parents, if it does not exist. It is given
-    mode 0o700, and each file mode 0o600, on POSIX. It receives, in this
-    order, the marker :data:`MARKER_FILE`, :data:`PACK_FILE` from
-    :func:`to_json`, and :data:`NOTICE_FILE`, the handling notice
-    :data:`NOTICE`. A file is never overwritten.
-
-    Parameters
-    ----------
-    pack : QcPack
-    destination : path-like
-    release_directory, staging_directory : path-like
-        As for :func:`check_confidential_destination`.
-
-    Returns
-    -------
-    pathlib.Path
-        The path of the written :data:`PACK_FILE`.
-
-    Raises
-    ------
-    QcPackError
-        If the destination is refused.
-    TypeError
-        If ``pack`` is not a :class:`QcPack`.
-    """
-    document = to_json(pack)  # checks the pack before anything is written
-    target = check_confidential_destination(
-        destination,
-        release_directory=release_directory,
-        staging_directory=staging_directory,
-    )
-    target.mkdir(mode=_DIRECTORY_MODE, parents=True, exist_ok=True)
-    if os.name == "posix":
-        target.chmod(_DIRECTORY_MODE)  # mkdir's mode is masked by the umask
-    write_new(target / MARKER_FILE, FORMAT + "\n")
-    write_new(target / PACK_FILE, document)
-    write_new(target / NOTICE_FILE, NOTICE)
-    return target / PACK_FILE
-
-
-def write_new(path: Path, text: str) -> None:
-    """Write ASCII text to a new file, mode 0o600 on POSIX, never overwriting.
-
-    Raises
-    ------
-    FileExistsError
-        If the file exists.
-    """
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
-    descriptor = os.open(path, flags, _FILE_MODE)
-    with os.fdopen(descriptor, "wb") as file:
-        file.write(text.encode("ascii"))
-
-
-def is_qc_material(path: os.PathLike | str) -> bool:
-    """Return whether a path is QC material, or a directory that holds some.
-
-    A path is QC material if it is a QC pack directory, one of its files, or
-    anything below one, or if it is a directory with a QC pack anywhere
-    below it, recognised by :data:`MARKER_FILE`. A release step refuses such
-    a path, so that no release or archive includes QC material (D-016).
-    Symbolic links below a directory are not followed.
-
-    Parameters
-    ----------
-    path : path-like
-
-    Returns
-    -------
-    bool
-    """
-    resolved = Path(path).resolve(strict=False)
-    if any(
-        (directory / MARKER_FILE).is_file()
-        for directory in (resolved, *resolved.parents)
-    ):
-        return True
-    if not resolved.is_dir():
-        return False
-    return any(MARKER_FILE in files for _, _, files in os.walk(resolved))
 
 
 def entries_for_search(

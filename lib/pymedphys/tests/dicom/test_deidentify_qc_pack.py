@@ -23,7 +23,8 @@ from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import qc_pack
+from pymedphys._dicom.deidentify import qc_pack, qc_store
+from pymedphys._dicom.deidentify.roi_names import Reason
 from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
 from pymedphys._dicom.deidentify.qc_pack import (
     Disposition,
@@ -36,7 +37,7 @@ from pymedphys._dicom.deidentify.qc_pack import (
     ResidualEntry,
     RetainedString,
     RoiNameEntry,
-    RoiNameStatus,
+    RoiNameOutcome,
 )
 from pymedphys._dicom.deidentify.residuals import (
     Finding,
@@ -110,8 +111,8 @@ def _full_pack():
                 0,
                 _path("(3006,0026)", ("(3006,0020)", 2)),
                 "lung l",
-                RoiNameStatus.RENAMED,
-                "Lung_L",
+                RoiNameOutcome.RENAMED,
+                written="Lung_L",
             ),
         ),
     )
@@ -129,6 +130,10 @@ def test_a_pack_needs_a_reference_of_its_form(reference):
         QcPack(reference, (_written(),))
 
 
+def test_labels_grow_beyond_four_digits():
+    assert _sequestered(label="S-12345").label == "S-12345"
+
+
 def test_a_written_instance_has_an_output_path_and_no_label():
     entry = _written()
     assert entry.output == OUTPUT and entry.label is None and not entry.reasons
@@ -142,6 +147,8 @@ def test_a_written_instance_has_an_output_path_and_no_label():
         ({"output": None}, "needs a relative output path"),
         ({"output": PurePosixPath("/abs/x.dcm")}, "needs a relative output path"),
         ({"output": PurePosixPath("../x.dcm")}, "needs a relative output path"),
+        ({"output": PurePosixPath("a\\b.dcm")}, "needs a relative output path"),
+        ({"output": PurePosixPath("C:/x.dcm")}, "needs a relative output path"),
         ({"output": "ZQ0001/x.dcm"}, "needs a relative output path"),
         ({"label": "S-0001"}, "has no label or reasons"),
         ({"reasons": ("conflicting instance",)}, "has no label or reasons"),
@@ -160,6 +167,7 @@ def test_a_written_instance_is_checked(fields, match):
         ({"label": None}, "needs a label"),
         ({"label": "s-0001"}, "needs a label"),
         ({"label": "S-01"}, "needs a label"),
+        ({"label": "T-0001"}, "needs a label"),
         ({"reasons": ()}, "needs the reasons"),
         ({"reasons": ("",)}, "needs reasons as text"),
     ],
@@ -207,8 +215,11 @@ def test_a_duplicate_names_a_written_instance_output():
     "section, entry",
     [
         ("residual_findings", ResidualEntry(1, _finding())),
-        ("drops", DropEntry(1, NAME_PATH, DropReason.ENGINE_CONSTANT)),
-        ("roi_names", RoiNameEntry(1, NAME_PATH, "x", RoiNameStatus.AWAITING_REVIEW)),
+        ("drops", DropEntry(1, NAME_PATH, DropReason.WRITTEN_CONSTANT)),
+        (
+            "roi_names",
+            RoiNameEntry(1, NAME_PATH, "x", RoiNameOutcome.HELD, Reason.UNMATCHED),
+        ),
         ("retained_strings", RetainedString(RETAINED, ((1, NAME_PATH),))),
     ],
 )
@@ -262,11 +273,55 @@ def test_a_retained_string_keeps_its_places_distinct_and_in_order():
         qc_pack.retained_strings([(RETAINED, 0, "(0008,1090)")])
 
 
-def test_a_roi_name_has_a_vocabulary_name_only_when_renamed():
-    with pytest.raises(QcPackError, match="only when it was renamed"):
-        RoiNameEntry(0, NAME_PATH, "lung l", RoiNameStatus.RENAMED)
-    with pytest.raises(QcPackError, match="only when it was renamed"):
-        RoiNameEntry(0, NAME_PATH, "x", RoiNameStatus.AWAITING_REVIEW, "Lung_L")
+@pytest.mark.parametrize(
+    "outcome, held_because, written",
+    [
+        (RoiNameOutcome.RENAMED, None, "Lung_L"),
+        (RoiNameOutcome.EMPTY, None, ""),
+        (RoiNameOutcome.KEPT, None, "lung l"),
+        (RoiNameOutcome.MAPPED, None, "Lung_Left"),
+        (RoiNameOutcome.EMPTIED, None, ""),
+        (RoiNameOutcome.HELD, Reason.UNMATCHED, None),
+        (RoiNameOutcome.HELD, Reason.WOULD_DUPLICATE, None),
+        (RoiNameOutcome.EMPTIED_UNREVIEWED, Reason.ECHOES_IDENTIFIER, ""),
+        (RoiNameOutcome.EMPTIED_UNREVIEWED, Reason.AMBIGUOUS, ""),
+    ],
+)
+def test_each_roi_name_outcome_is_accepted(outcome, held_because, written):
+    entry = RoiNameEntry(0, NAME_PATH, "lung l", outcome, held_because, written)
+    assert entry.written == written
+
+
+@pytest.mark.parametrize(
+    "outcome, held_because, written, match",
+    [
+        (RoiNameOutcome.HELD, None, None, "reason for review"),
+        (RoiNameOutcome.HELD, Reason.MATCHED, None, "reason for review"),
+        (RoiNameOutcome.RENAMED, Reason.UNMATCHED, "Lung_L", "reason for review"),
+        (RoiNameOutcome.HELD, Reason.UNMATCHED, "", "has nothing written"),
+        (RoiNameOutcome.RENAMED, None, None, "needs what was written"),
+        (RoiNameOutcome.RENAMED, None, "", "written empty only"),
+        (RoiNameOutcome.MAPPED, None, "", "written empty only"),
+        (RoiNameOutcome.EMPTIED, None, "x", "written empty only"),
+        (RoiNameOutcome.EMPTIED_UNREVIEWED, Reason.UNMATCHED, "x", "written empty"),
+        (RoiNameOutcome.KEPT, None, "Lung_L", "written as its source name"),
+    ],
+)
+def test_a_roi_name_entry_is_consistent(outcome, held_because, written, match):
+    with pytest.raises(QcPackError, match=match):
+        RoiNameEntry(0, NAME_PATH, "lung l", outcome, held_because, written)
+
+
+def test_roi_name_outcomes_are_named_as_descriptor_cleaning_names_them():
+    assert [outcome.value for outcome in RoiNameOutcome] == [
+        "renamed",
+        "empty",
+        "kept",
+        "mapped",
+        "emptied",
+        "held",
+        "emptied unreviewed",
+    ]
 
 
 def test_an_excerpt_shows_the_bytes_around_a_residual():
@@ -380,9 +435,10 @@ def test_the_document_holds_every_section():
         {
             "position": 0,
             "element": "(3006,0020)[2] > (3006,0026)",
-            "name": "lung l",
-            "status": "renamed",
-            "vocabulary_name": "Lung_L",
+            "source": "lung l",
+            "outcome": "renamed",
+            "held_because": None,
+            "written": "Lung_L",
         }
     ]
     assert list(document) == [
@@ -424,7 +480,7 @@ def test_errors_hold_no_paths_or_values(tmp_path):
     for attempt in (
         lambda: InstanceEntry(0, SOURCE_PATH, Disposition.WRITTEN),
         lambda: RetainedString(RETAINED, ()),
-        lambda: qc_pack.check_confidential_destination(
+        lambda: qc_store.check_confidential_destination(
             release / "qc", release_directory=release
         ),
     ):
@@ -450,7 +506,7 @@ def fixture_places(tmp_path):
 def test_the_destination_is_neither_in_nor_around_releases(places, where):
     root, release, staging = places
     with pytest.raises(QcPackError, match="neither inside the"):
-        qc_pack.check_confidential_destination(
+        qc_store.check_confidential_destination(
             root / where, release_directory=release, staging_directory=staging
         )
 
@@ -459,9 +515,9 @@ def test_the_destination_is_compared_once_resolved(places, monkeypatch):
     root, release, _ = places
     monkeypatch.chdir(release)
     with pytest.raises(QcPackError, match="inside the release directory"):
-        qc_pack.check_confidential_destination("qc", release_directory=release)
+        qc_store.check_confidential_destination("qc", release_directory=release)
     with pytest.raises(QcPackError, match="inside the release directory"):
-        qc_pack.check_confidential_destination(
+        qc_store.check_confidential_destination(
             root / "elsewhere" / ".." / "release" / "qc", release_directory=release
         )
 
@@ -471,7 +527,7 @@ def test_a_link_into_the_release_directory_is_refused(places):
     root, release, _ = places
     (root / "link").symlink_to(release, target_is_directory=True)
     with pytest.raises(QcPackError, match="inside the release directory"):
-        qc_pack.check_confidential_destination(
+        qc_store.check_confidential_destination(
             root / "link" / "qc", release_directory=release
         )
 
@@ -479,25 +535,27 @@ def test_a_link_into_the_release_directory_is_refused(places):
 def test_the_destination_has_no_default(places):
     root, release, _ = places
     with pytest.raises(TypeError):
-        qc_pack.check_confidential_destination(root / "qc")  # pylint: disable = missing-kwoa
+        qc_store.check_confidential_destination(root / "qc")  # pylint: disable = missing-kwoa
     with pytest.raises(QcPackError, match="must be given as a path"):
-        qc_pack.check_confidential_destination("", release_directory=release)
+        qc_store.check_confidential_destination("", release_directory=release)
     with pytest.raises(QcPackError, match="must be given as a path"):
-        qc_pack.check_confidential_destination(None, release_directory=release)
+        qc_store.check_confidential_destination(None, release_directory=release)
 
 
 def test_the_destination_is_new_or_empty(places):
     root, release, _ = places
     (root / "file").write_text("x")
     with pytest.raises(QcPackError, match="not a directory"):
-        qc_pack.check_confidential_destination(root / "file", release_directory=release)
+        qc_store.check_confidential_destination(
+            root / "file", release_directory=release
+        )
     full = root / "full"
     full.mkdir(mode=0o700)
     (full / "x").write_text("x")
     with pytest.raises(QcPackError, match="new or an empty directory"):
-        qc_pack.check_confidential_destination(full, release_directory=release)
+        qc_store.check_confidential_destination(full, release_directory=release)
     new = root / "new" / "qc"
-    assert qc_pack.check_confidential_destination(new, release_directory=release) == (
+    assert qc_store.check_confidential_destination(new, release_directory=release) == (
         new.resolve()
     )
 
@@ -509,28 +567,28 @@ def test_an_existing_destination_is_restricted_to_its_owner(places):
     shared.mkdir()
     shared.chmod(0o750)
     with pytest.raises(QcPackError, match="chmod 700"):
-        qc_pack.check_confidential_destination(shared, release_directory=release)
+        qc_store.check_confidential_destination(shared, release_directory=release)
     shared.chmod(0o700)
-    assert qc_pack.check_confidential_destination(shared, release_directory=release)
+    assert qc_store.check_confidential_destination(shared, release_directory=release)
 
 
 def test_a_pack_is_written_with_its_marker_and_notice(places):
     root, release, staging = places
-    written = qc_pack.write_qc_pack(
+    written = qc_store.write_qc_pack(
         _full_pack(),
         root / "qc" / "run-1",
         release_directory=release,
         staging_directory=staging,
     )
     directory = written.parent
-    assert written == (root / "qc" / "run-1" / qc_pack.PACK_FILE).resolve()
+    assert written == (root / "qc" / "run-1" / qc_store.PACK_FILE).resolve()
     assert sorted(path.name for path in directory.iterdir()) == sorted(
-        [qc_pack.MARKER_FILE, qc_pack.PACK_FILE, qc_pack.NOTICE_FILE]
+        [qc_store.MARKER_FILE, qc_store.PACK_FILE, qc_store.NOTICE_FILE]
     )
     assert json.loads(written.read_text("ascii")) == qc_pack.pack_document(_full_pack())
-    assert (directory / qc_pack.MARKER_FILE).read_text() == qc_pack.FORMAT + "\n"
-    notice = (directory / qc_pack.NOTICE_FILE).read_text()
-    assert notice == qc_pack.NOTICE and "CONFIDENTIAL" in notice
+    assert (directory / qc_store.MARKER_FILE).read_text() == qc_pack.FORMAT + "\n"
+    notice = (directory / qc_store.NOTICE_FILE).read_text()
+    assert notice == qc_store.NOTICE and "CONFIDENTIAL" in notice
     assert "delete the whole directory" in notice
 
 
@@ -539,7 +597,9 @@ def test_a_written_pack_is_readable_only_by_its_owner(places):
     root, release, _ = places
     old = os.umask(0)
     try:
-        written = qc_pack.write_qc_pack(_pack(), root / "qc", release_directory=release)
+        written = qc_store.write_qc_pack(
+            _pack(), root / "qc", release_directory=release
+        )
     finally:
         os.umask(old)
     assert stat.S_IMODE(written.parent.stat().st_mode) == 0o700
@@ -549,52 +609,157 @@ def test_a_written_pack_is_readable_only_by_its_owner(places):
 
 def test_a_pack_never_overwrites(places):
     root, release, _ = places
-    qc_pack.write_qc_pack(_pack(), root / "qc", release_directory=release)
+    qc_store.write_qc_pack(_pack(), root / "qc", release_directory=release)
     with pytest.raises(QcPackError, match="new or an empty directory"):
-        qc_pack.write_qc_pack(_pack(), root / "qc", release_directory=release)
+        qc_store.write_qc_pack(_pack(), root / "qc", release_directory=release)
 
 
 def test_nothing_is_written_for_a_bad_pack_or_destination(places):
     root, release, _ = places
     with pytest.raises(TypeError, match="QcPack"):
-        qc_pack.write_qc_pack("pack", root / "qc", release_directory=release)
+        qc_store.write_qc_pack("pack", root / "qc", release_directory=release)
     with pytest.raises(QcPackError):
-        qc_pack.write_qc_pack(_pack(), release / "qc", release_directory=release)
+        qc_store.write_qc_pack(_pack(), release / "qc", release_directory=release)
     assert not (root / "qc").exists() and not any(release.iterdir())
 
 
 def test_qc_material_is_recognised_wherever_it_is(places):
     root, release, _ = places
-    written = qc_pack.write_qc_pack(
+    written = qc_store.write_qc_pack(
         _pack(), root / "store" / "qc", release_directory=release
     )
-    assert qc_pack.is_qc_material(written.parent)
-    assert qc_pack.is_qc_material(written)
-    assert qc_pack.is_qc_material(written.parent / "later" / "file.png")
-    assert qc_pack.is_qc_material(root / "store")
-    assert qc_pack.is_qc_material(root)
-    assert not qc_pack.is_qc_material(release)
-    assert not qc_pack.is_qc_material(root / "missing")
+    assert qc_store.is_qc_material(written.parent)
+    assert qc_store.is_qc_material(written)
+    assert qc_store.is_qc_material(written.parent / "later" / "file.png")
+    assert qc_store.is_qc_material(root / "store")
+    assert qc_store.is_qc_material(root)
+    assert not qc_store.is_qc_material(release)
+    assert not qc_store.is_qc_material(root / "missing")
 
 
 def test_a_release_that_gained_qc_material_is_recognised(places):
     _, release, _ = places
     (release / "ZQ0001").mkdir()
-    assert not qc_pack.is_qc_material(release)
-    (release / "ZQ0001" / qc_pack.MARKER_FILE).write_text(qc_pack.FORMAT)
-    assert qc_pack.is_qc_material(release)
+    assert not qc_store.is_qc_material(release)
+    (release / "ZQ0001" / qc_store.MARKER_FILE).write_text(qc_pack.FORMAT)
+    assert qc_store.is_qc_material(release)
 
 
 def test_nothing_is_logged(places, caplog):
     root, release, _ = places
     with caplog.at_level(logging.DEBUG):
-        qc_pack.write_qc_pack(_full_pack(), root / "qc", release_directory=release)
+        qc_store.write_qc_pack(_full_pack(), root / "qc", release_directory=release)
     assert not caplog.records
 
 
 def test_the_destination_may_be_given_as_text(places):
     root, release, _ = places
-    written = qc_pack.write_qc_pack(
+    written = qc_store.write_qc_pack(
         _pack(), str(root / "qc"), release_directory=str(release)
     )
     assert isinstance(written, Path) and written.is_file()
+
+
+def test_residual_reprs_hold_no_text():
+    shown = repr(_full_pack().residual_findings)
+    assert "Zebedee" not in shown and "Seen by" not in shown
+    assert "Excerpt(before=11 characters, after=13 characters" in shown
+
+
+def test_an_excerpt_in_iso_2022_keeps_its_shift_state():
+    data = ("前" * 30 + "山田太郎").encode("iso2022_jp") + b"tail"
+    offset = 3 + 60  # after the escape sequence and thirty characters
+    cut = qc_pack.excerpt(data, _finding(offset, "iso2022_jp"))
+    assert cut.before == "前" * (qc_pack.EXCERPT_BYTES // 2)
+    assert cut.after.startswith("山田太郎") and cut.after.endswith("tail")
+
+
+def test_an_excerpt_tells_backslashes_from_undecoded_bytes():
+    data = b"a\\x41 Zebedee\xff"
+    (finding,) = find_residuals(data, [SourceValue(NAME_PATH, "PN", NAME)]).findings
+    cut = qc_pack.excerpt(data, finding)
+    assert (cut.before, cut.after) == ("a\\x5cx41 ", "Zebedee\\xff")
+
+
+def test_an_excerpt_falls_back_to_latin_1_and_says_so():
+    cut = qc_pack.excerpt(b"Dr Zebedee\xe9", _finding(3, "no-such-codec"))
+    assert cut == Excerpt("Dr ", "Zebedeeé", "latin-1")
+
+
+def test_os_errors_name_no_path(places):
+    root, release, _ = places
+    (root / "ZEBEDEE").write_text("x")
+    with pytest.raises(QcPackError, match="could not be created") as raised:
+        qc_store.write_qc_pack(
+            _pack(), root / "ZEBEDEE" / "qc", release_directory=release
+        )
+    assert "ZEBEDEE" not in str(raised.value) and str(root) not in str(raised.value)
+
+
+def test_a_directory_that_cannot_be_read_leaves_the_answer_unknown(places, monkeypatch):
+    root, _, _ = places
+
+    def walk(top, onerror):
+        onerror(PermissionError(13, "Permission denied", str(top / "ZEBEDEE")))
+        yield from ()
+
+    monkeypatch.setattr(qc_store.os, "walk", walk)
+    with pytest.raises(QcPackError, match="could not be read") as raised:
+        qc_store.is_qc_material(root)
+    assert "ZEBEDEE" not in str(raised.value)
+
+
+@POSIX_ONLY
+def test_links_to_qc_material_are_qc_material(places):
+    root, release, _ = places
+    written = qc_store.write_qc_pack(
+        _pack(), root / "secure" / "qc", release_directory=release
+    )
+    (release / "ZQ0001").mkdir()
+    assert not qc_store.is_qc_material(release)
+    (release / "ZQ0001" / "notes.json").symlink_to(written)
+    assert qc_store.is_qc_material(release)
+    (release / "ZQ0001" / "notes.json").unlink()
+    (release / "ZQ0001" / "more").symlink_to(root / "secure", target_is_directory=True)
+    assert qc_store.is_qc_material(release)
+
+
+@POSIX_ONLY
+def test_a_link_loop_is_not_qc_material(places):
+    _, release, _ = places
+    (release / "loop").symlink_to(release, target_is_directory=True)
+    assert not qc_store.is_qc_material(release)
+
+
+@POSIX_ONLY
+def test_the_same_directory_by_another_path_is_found_by_its_inode(places):
+    root, release, _ = places
+    (root / "alias").symlink_to(release, target_is_directory=True)
+    # Unresolved, the alias is not below the release directory by its name.
+    assert qc_store._within(root / "alias" / "qc", release)  # pylint: disable = protected-access
+    assert not qc_store._within(root / "qc", release)  # pylint: disable = protected-access
+
+
+@POSIX_ONLY
+def test_a_destination_replaced_while_it_is_checked_is_refused(places, monkeypatch):
+    root, release, _ = places
+    check = qc_store.check_confidential_destination
+    calls = []
+
+    def racing(destination, **kwargs):
+        checked = check(destination, **kwargs)
+        if not calls:
+            Path(destination).symlink_to(release, target_is_directory=True)
+        calls.append(destination)
+        return checked
+
+    monkeypatch.setattr(qc_store, "check_confidential_destination", racing)
+    with pytest.raises(QcPackError):
+        qc_store.write_qc_pack(_pack(), root / "qc", release_directory=release)
+    assert not any(release.iterdir())
+
+
+def test_a_new_file_is_not_created_for_text_that_is_not_ascii(tmp_path):
+    with pytest.raises(UnicodeEncodeError):
+        qc_store.write_new(tmp_path / "x.json", "é")
+    assert not (tmp_path / "x.json").exists()

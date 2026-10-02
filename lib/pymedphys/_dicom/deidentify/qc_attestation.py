@@ -46,7 +46,7 @@ import os
 import re
 from pathlib import Path
 
-from . import qc_pack
+from . import qc_pack, qc_store
 from .qc_pack import QcPackError
 
 # The format of the attestation document. A change to its fields takes a new label.
@@ -202,7 +202,7 @@ def attest(
     Parameters
     ----------
     pack_directory : path-like
-        The directory that :func:`~.qc_pack.write_qc_pack` wrote.
+        The directory that :func:`~.qc_store.write_qc_pack` wrote.
     reviewer : str
         Who attests, as they name themselves.
     outcome : Outcome
@@ -239,7 +239,7 @@ def attest(
     )
     text = json.dumps(attestation_document(attestation), indent=2, ensure_ascii=True)
     try:
-        qc_pack.write_new(directory / ATTESTATION_FILE, text + "\n")
+        qc_store.write_new(directory / ATTESTATION_FILE, text + "\n")
     except FileExistsError:
         raise QcPackError("the QC pack has already been attested") from None
     return attestation
@@ -251,7 +251,7 @@ def attestation_record(pack_directory: os.PathLike | str) -> AttestationRecord:
     Parameters
     ----------
     pack_directory : path-like
-        The directory that :func:`~.qc_pack.write_qc_pack` wrote.
+        The directory that :func:`~.qc_store.write_qc_pack` wrote.
 
     Returns
     -------
@@ -293,10 +293,10 @@ def _read_attestation(path: Path) -> tuple[dict, Outcome]:
 
 
 def _pack_bytes(directory: Path) -> bytes:
-    if not (directory / qc_pack.MARKER_FILE).is_file():
+    if not (directory / qc_store.MARKER_FILE).is_file():
         raise QcPackError("the directory holds no QC pack")
     try:
-        return (directory / qc_pack.PACK_FILE).read_bytes()
+        return (directory / qc_store.PACK_FILE).read_bytes()
     except FileNotFoundError:
         raise QcPackError("the directory holds no QC pack") from None
 
