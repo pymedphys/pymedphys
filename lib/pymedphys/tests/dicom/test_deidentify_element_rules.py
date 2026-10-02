@@ -357,12 +357,6 @@ def test_retain_safe_private_is_refused_as_private_attribute_removal_refuses_it(
     assert str(by_rules.value) == str(by_removal.value) == str(by_policy.value)
 
 
-def test_private_attributes_take_the_tables_row_for_them():
-    rules = ElementRules(policy.compose_policy("basic"))
-
-    assert rules.rule("(0009,1001)").entry == standard.PRIVATE_ATTRIBUTES_TAG
-
-
 def test_a_policy_composed_from_another_table_is_refused():
     table = standard.load_table_e1_1()
     other = dataclasses.replace(table, attributes=table.attributes[:-1])

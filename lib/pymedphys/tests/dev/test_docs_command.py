@@ -111,11 +111,8 @@ def test_prep_and_linkcheck_are_exclusive(capsys):
 
 
 @pytest.mark.parametrize("args", [(), ("--prep",), ("--linkcheck",)])
-def test_every_build_writes_the_requirements_matrix_page(
-    calls, monkeypatch, tmp_path, args
-):
-    page = tmp_path / "deidentification-requirements.md"
-    monkeypatch.setattr(docs, "DEID_MATRIX_PAGE", page)
+def test_every_build_writes_the_requirements_matrix_page(calls, args):
+    page = docs.DEID_MATRIX_PAGE  # In tmp_path, by the calls fixture.
 
     docs.build_docs(_parse(*args))
 
@@ -145,13 +142,10 @@ def test_the_requirements_matrix_page_has_no_test_results(monkeypatch, tmp_path)
 
 
 @pytest.mark.usefixtures("calls")
-def test_clean_writes_no_requirements_matrix_page(monkeypatch, tmp_path):
-    page = tmp_path / "deidentification-requirements.md"
-    monkeypatch.setattr(docs, "DEID_MATRIX_PAGE", page)
-
+def test_clean_writes_no_requirements_matrix_page():
     docs.build_docs(_parse("--clean"))
 
-    assert not page.exists()
+    assert not docs.DEID_MATRIX_PAGE.exists()
 
 
 def test_the_requirements_matrix_page_is_listed_and_not_committed():
