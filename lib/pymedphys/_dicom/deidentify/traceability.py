@@ -57,8 +57,6 @@ class TestResult:
         failures).
     """
 
-    __test__ = False  # Not a pytest test class, despite its name.
-
     counts: tuple[int, int, int]
 
     @property
@@ -78,8 +76,6 @@ class TestResult:
 @dataclasses.dataclass(frozen=True)
 class TracedTest:
     """A test that a requirement cites, and its result if reports were given."""
-
-    __test__ = False  # Not a pytest test class, despite its name.
 
     node_id: str
     result: TestResult | None
