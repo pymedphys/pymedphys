@@ -47,6 +47,7 @@ METHOD_FIELDS = [
     "l2_rules_digest",
     "l3_rules",
     "vocabulary_digest",
+    "reviewed_roi_names",
     "generated_values_digest",
     "engine_files",
 ]
@@ -151,7 +152,7 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
     )
 
     assert list(document) == ["format", "policy", "method", "runtime"]
-    assert document["format"] == "pymedphys-deid-release-report/1"
+    assert document["format"] == "pymedphys-deid-release-report/2"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
@@ -252,6 +253,29 @@ def test_the_report_holds_the_vocabulary_digest_not_its_entries(basic):
     )
 
 
+# A keyed digest of a reviewed-names list, as ReviewedNames.keyed_digest gives.
+REVIEWED_ROI_NAMES = "4247e696d65fef56fae5a25e8b7e2ffc5f81727a0a44395ca29acdc48df4d667"
+
+
+def test_the_report_holds_the_reviewed_names_digest_it_was_given(basic):
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=REVIEWED_ROI_NAMES
+    )
+
+    method = release_report.report_document(report)["method"]
+
+    assert method["reviewed_roi_names"] == REVIEWED_ROI_NAMES
+    assert method["method_digest"] == method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=REVIEWED_ROI_NAMES
+    )
+    assert (
+        release_report.report_document(
+            release_report.release_report(basic, vocabulary=None)
+        )["method"]["reviewed_roi_names"]
+        is None
+    )
+
+
 def _with_method(report, **changes):
     return dataclasses.replace(
         report, method=dataclasses.replace(report.method, **changes)
@@ -286,6 +310,14 @@ def _engine_files(report, path):
         (lambda r: _with_method(r, method_digest=SENTINEL), "method_digest"),
         (lambda r: _with_method(r, vocabulary_digest=SENTINEL), "vocabulary_digest"),
         (lambda r: _with_method(r, l3_rules=SENTINEL), "l3_rules"),
+        (
+            lambda r: _with_method(r, reviewed_roi_names=SENTINEL),
+            "reviewed_roi_names",
+        ),
+        (
+            lambda r: _with_method(r, reviewed_roi_names="A" * 64),
+            "reviewed_roi_names",
+        ),
         (
             lambda r: _with_method(r, l2_rules_digest="A" * 64),
             "l2_rules_digest",
@@ -336,6 +368,8 @@ def _engine_files(report, path):
         "digest",
         "vocabulary-digest",
         "l3-rules",
+        "reviewed-names-digest",
+        "uppercase-reviewed-names-digest",
         "uppercase-digest",
         "format",
         "engine-version",

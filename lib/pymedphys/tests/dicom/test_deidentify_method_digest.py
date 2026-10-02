@@ -89,6 +89,7 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
         }
     },
     vocabulary=None,
+    reviewed_roi_names=None,
     generated_values={
         "uids.UID_ROOT": "2.25.",
         "uids.UID_NAMESPACE": uuid.UUID("6f71d76c-0573-58b6-bfda-7c5b4ee304f1"),
@@ -102,7 +103,7 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
 SYNTHETIC_CANONICAL_BYTES = (
     '{"engine_version":"0.42.0.dev1",'
     '"files":{"policy.py":"' + "f" * 64 + '"},'
-    '"format":"pymedphys-deid-method-digest/1",'
+    '"format":"pymedphys-deid-method-digest/2",'
     '"generated_values":{'
     '"dates.MIN_OFFSET_WEEKS":["int",52],'
     '"dummy_values.CONSTANTS":["map",{"FL":["list",'
@@ -119,10 +120,11 @@ SYNTHETIC_CANONICAL_BYTES = (
     '"policy":{"actions":{"(0010,0010)":"Z"},"edition":"2026d","enabled":false,'
     '"options":[],"preset":"basic","resolved":[],'
     '"supplementary_actions":{"(300A,00C2)":"X/Z/D"}},'
+    '"reviewed_roi_names":null,'
     '"tables":{"e1_1.json":"' + "0" * 64 + '"},'
     '"vocabulary":null}'
 ).encode("utf-8")
-SYNTHETIC_SHA256 = "0d049c74cb9b9a9c850327fe413725e9ceae827aafd8f9c8f6f1353dc9f94fa2"
+SYNTHETIC_SHA256 = "1df94ac28b2f41430e85c3e1115196e88bdcfbeb2ab27b9cc17c4e36208a33fa"
 
 # Each parameter of generated values, and another value for it.
 GENERATED_VALUE_CHANGES = {
@@ -153,6 +155,7 @@ CANONICAL_MEMBERS = {
     "l2_rules",
     "l3_rules",
     "vocabulary",
+    "reviewed_roi_names",
     "generated_values",
     "files",
 }
@@ -890,6 +893,7 @@ COMPONENT_FIELDS = (
     "l2_rules_digest",
     "l3_rules",
     "vocabulary_digest",
+    "reviewed_roi_names",
     "generated_values_digest",
     "engine_files",
 )
@@ -911,12 +915,13 @@ def test_the_components_of_a_small_synthetic_input_are_digests_of_its_members():
     )
     assert components == method_digest.MethodDigestComponents(
         method_digest=SYNTHETIC_SHA256,
-        method_digest_format="pymedphys-deid-method-digest/1",
+        method_digest_format="pymedphys-deid-method-digest/2",
         engine_version="0.42.0.dev1",
         table_digests={"e1_1.json": "0" * 64},
         l2_rules_digest=SYNTHETIC_L2_RULES_SHA256,
         l3_rules=None,
         vocabulary_digest=None,
+        reviewed_roi_names=None,
         generated_values_digest=SYNTHETIC_GENERATED_VALUES_SHA256,
         engine_files={"policy.py": "f" * 64},
     )
@@ -935,6 +940,7 @@ def test_the_components_give_the_method_digest_and_record_its_inputs(basic):
     assert dict(components.table_digests) == dict(inputs.tables)
     assert components.l3_rules is None
     assert components.vocabulary_digest == inputs.vocabulary
+    assert components.reviewed_roi_names is inputs.reviewed_roi_names is None
     assert dict(components.engine_files) == dict(inputs.files)
 
 
@@ -1074,3 +1080,85 @@ def test_the_components_take_only_a_policy():
         method_digest.method_digest_components({"preset": "basic"}, vocabulary=None)
     with pytest.raises(TypeError, match="policy must be"):
         method_digest.digest_components({"preset": "basic"}, SYNTHETIC_INPUTS)
+
+
+# A keyed digest of a reviewed-names list, as ReviewedNames.keyed_digest gives.
+REVIEWED_ROI_NAMES = "4247e696d65fef56fae5a25e8b7e2ffc5f81727a0a44395ca29acdc48df4d667"
+
+
+def test_the_reviewed_names_digest_is_an_input_that_shows_only_in_its_component(
+    basic,
+):
+    before = method_digest.method_digest_components(basic, vocabulary=None)
+
+    after = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=REVIEWED_ROI_NAMES
+    )
+
+    assert after.reviewed_roi_names == REVIEWED_ROI_NAMES
+    assert after.method_digest != before.method_digest
+    assert after.method_digest == method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=REVIEWED_ROI_NAMES
+    )
+    assert (
+        dataclasses.replace(
+            after, method_digest=before.method_digest, reviewed_roi_names=None
+        )
+        == before
+    )
+    assert before.reviewed_roi_names is None
+
+
+def test_a_different_reviewed_names_digest_gives_a_different_method_digest(basic):
+    digests = {
+        method_digest.method_digest(
+            basic, vocabulary=None, reviewed_roi_names=reviewed_roi_names
+        )
+        for reviewed_roi_names in (None, REVIEWED_ROI_NAMES, "0" * 64, "f" * 64)
+    }
+
+    assert len(digests) == 4
+
+
+def test_the_canonical_form_holds_the_reviewed_names_digest_as_given(basic):
+    inputs = method_digest.digest_inputs(
+        vocabulary=None, reviewed_roi_names=REVIEWED_ROI_NAMES
+    )
+
+    document = json.loads(method_digest.canonical_bytes(basic, inputs))
+
+    assert document["reviewed_roi_names"] == REVIEWED_ROI_NAMES
+    assert (
+        json.loads(
+            method_digest.canonical_bytes(
+                basic, method_digest.digest_inputs(vocabulary=None)
+            )
+        )["reviewed_roi_names"]
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    "reviewed_roi_names",
+    ["A" * 64, "0" * 63, "0" * 65, " " + "0" * 63, "SENTINEL" * 8, b"0" * 64, 0],
+)
+def test_the_reviewed_names_digest_must_be_64_lowercase_hexadecimal_digits(
+    basic, reviewed_roi_names
+):
+    with pytest.raises((TypeError, ValueError), match="reviewed_roi_names") as raised:
+        method_digest.digest_inputs(
+            vocabulary=None, reviewed_roi_names=reviewed_roi_names
+        )
+    with pytest.raises((TypeError, ValueError), match="reviewed_roi_names"):
+        method_digest.method_digest(
+            basic, vocabulary=None, reviewed_roi_names=reviewed_roi_names
+        )
+
+    assert "SENTINEL" not in str(raised.value) and "AAAA" not in str(raised.value)
+
+
+def test_the_reviewed_names_digest_is_given_by_name(basic):
+    with pytest.raises(TypeError, match="positional"):
+        method_digest.digest_inputs(None, REVIEWED_ROI_NAMES)  # type: ignore[misc]
+    with pytest.raises(TypeError, match="positional"):
+        method_digest.method_digest(basic, None, REVIEWED_ROI_NAMES)  # type: ignore[misc]
