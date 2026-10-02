@@ -407,7 +407,10 @@ When this Option is specified in addition to the Basic Application Level Confide
 status = "partial"
 milestone = "M4"
 decisions = ["D-009", "D-022"]
-implementation = ["_dicom/deidentify/roi_names.py"]
+implementation = [
+  "_dicom/deidentify/roi_names.py",
+  "_dicom/deidentify/reviewed_roi_names.py",
+]
 tests = [
   "tests/dicom/test_deidentify_roi_names.py::test_a_name_that_matches_once_case_whitespace_and_separators_are_disregarded_is_written_in_the_vocabularys_spelling",
   "tests/dicom/test_deidentify_roi_names.py::test_a_near_match_goes_to_review",
@@ -418,9 +421,12 @@ tests = [
   "tests/dicom/test_deidentify_roi_names.py::test_an_unpublished_vocabulary_is_refused",
   "tests/dicom/test_deidentify_roi_names.py::test_a_vocabulary_name_with_a_hyphen_is_not_matched_without_it",
   "tests/dicom/test_deidentify_roi_names.py::test_a_name_with_a_leading_underscore_or_hyphen_goes_to_review",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_reviewed_decisions_are_reused_on_later_runs",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_the_list_is_refused_inside_a_protected_directory",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_the_list_never_shows_a_name",
 ]
 note = '''
-The first supported release includes the Option for ROI names (D-009). The automatic tier decides, for the ROI names of one structure set, which are written in the spelling of the TG-263 spreadsheet's published edition, whose entries' digest the module records, because they match one of its names once case, spaces, and the separators `_` and `-` are disregarded (a hyphen in a vocabulary name, which TG-263 writes for a subtraction, must be matched by one, and a name starting with `_`, which TG-263 gives a structure not used for dose evaluation, or `-` goes to review), and which go to review, because they match none or several, echo a known patient or other person identifier, or would duplicate a differently spelt name of the same structure set. A name so written is cleaned, not retained, so it needs no review before the claim. Remaining: applying these decisions to each data set (M3); review of the other names, each kept, mapped, or emptied by a reviewer, with a reviewed-names list reused on later runs, and holding an instance whose names nobody has reviewed unless the user chooses explicitly to empty such names, and recording each rename in the QC material (M4); vocabularies converted from an institutional list, every match against which goes to review; and claiming the Option only for output whose retained descriptors have passed pooled human review, which needs the QC pack (M4).
+The first supported release includes the Option for ROI names (D-009). The automatic tier decides, for the ROI names of one structure set, which are written in the spelling of the TG-263 spreadsheet's published edition, whose entries' digest the module records, because they match one of its names once case, spaces, and the separators `_` and `-` are disregarded (a hyphen in a vocabulary name, which TG-263 writes for a subtraction, must be matched by one, and a name starting with `_`, which TG-263 gives a structure not used for dose evaluation, or `-` goes to review), and which go to review, because they match none or several, echo a known patient or other person identifier, or would duplicate a differently spelt name of the same structure set. A name so written is cleaned, not retained, so it needs no review before the claim. The reviewed-names list, which the custodian keeps outside output and QC directories and which names no value in its errors or `repr`, records a reviewer's decision to keep, map, or empty each other name, for reuse on later runs. Remaining: applying these decisions to each data set (M3); applying the list's decisions to the names the automatic tier does not rename, and holding an instance whose names nobody has reviewed unless the user chooses explicitly to empty such names, and recording each rename in the QC material (M4); vocabularies converted from an institutional list, every match against which goes to review; and claiming the Option only for output whose retained descriptors have passed pooled human review, which needs the QC pack (M4).
 '''
 
 [[requirement]]
