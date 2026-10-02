@@ -20,49 +20,61 @@ search. What it cannot report is a value that was never given to it. A
 value that de-identification removed or replaced without decoding it was
 transformed safely, but its copies in other attributes or encodings were not
 searched for, so a search that finds nothing is not on its own a reason to
-release the file. :func:`release_condition` therefore takes the
-:class:`Coverage` of the collection as well as the search.
+release the file. :func:`release_condition` therefore runs the search
+itself, for exactly the values that the :class:`Coverage` collected, and
+decides from both.
 
 **Coverage.** Collection is :attr:`~CollectionOutcome.COMPLETE` only when
-every value to collect was collected from its decoded form. A value that
-could not be collected, or was read only as bytes, as text outside ISO 646
-with no Specific Character Set is read as ISO 8859-1, makes it
-:attr:`~CollectionOutcome.INCOMPLETE`: searching those bytes may still find
-a copy, but it does not stand in for the decoded text. The forms that the
-search itself leaves out, such as those shorter than four characters, are
-its exclusions; they are listed, and never count as incomplete. The values
-searched for in a file, and so its coverage, are pooled across its subject:
-the instance's own and those of the subject's other instances in the run,
-since a sibling's value that was not collected was not searched for in this
-file either. :meth:`Coverage.merge` pools them.
+each value planned for collection was collected from its decoded form,
+under a VR that the pinned dictionary gives its attribute. It is
+:attr:`~CollectionOutcome.INCOMPLETE` where a planned value was neither
+collected nor reported as not collected; where a value could not be
+collected; where text outside ISO 646 with no Specific Character Set was
+read only as bytes, as ISO 8859-1, since searching those bytes may still
+find a copy but does not stand in for the decoded text; and where a value
+was collected under another VR, so that the search derived the wrong forms
+from it or left it out. The forms that the search itself leaves out by its
+rules, such as those shorter than four characters, or binary and private
+values, are its exclusions; they are listed, and never count as incomplete.
+The values searched for in a file, and so its coverage, are pooled across
+its subject: the instance's own and those of the subject's other instances
+in the run, since a sibling's value that was not collected was not searched
+for in this file either. :meth:`Coverage.merge` pools them.
 
 **Decision.** Each reason has a decision, and the file takes the most severe
-of them. It is withheld (:attr:`~Decision.WITHHOLD`) when a value of a
-required kind was not collected completely: a person name (PN), UID (UI),
-date (DA), or datetime (DT), a direct identifier
-(:func:`direct_identifiers`), a sequence whose items were not read, or an
-attribute to which the pinned dictionary gives no VR; when the file's
-structure was not read to its end; and when the search finds a person name,
-UID, date, datetime, or direct identifier anywhere, or anything outside the
-data set, which includes Data Set Trailing Padding. It goes to QC review
-(:attr:`~Decision.QC_REVIEW`) when any other value was not collected
-completely, or the search finds other text inside the data set. Otherwise
-it may be released (:attr:`~Decision.RELEASE`). There is no setting that
-changes this.
+of them. It is withheld (:attr:`~Decision.WITHHOLD`) when collection is
+incomplete for a person name (PN), UID (UI), date (DA), datetime (DT), or
+direct identifier (:func:`direct_identifiers`), or for a sequence, whose
+items' content is unknown; when the file's structure was not read to its
+end; and when the search finds a person name, UID, date, datetime, or
+direct identifier anywhere, or anything outside the data set, which
+includes Data Set Trailing Padding. Kinds are taken from the VR that the
+pinned dictionary gives the source attribute, whatever VR the value was
+collected under, and from the search only for an attribute to which the
+dictionary gives none. The file goes to QC review (:attr:`~Decision.QC_REVIEW`)
+when collection is incomplete for any other value, including a private
+value or one to which the dictionary gives no VR, or the search finds other
+text inside the data set. Otherwise it may be released
+(:attr:`~Decision.RELEASE`). There is no setting that changes this.
 
 Reasons name an attribute path, a code, and for a finding its place, never a
 value, and nothing is logged or warned.
 
 Examples
 --------
->>> from pymedphys._dicom.deidentify.residuals import ResidualSearch
 >>> name = ElementPath((), "(0010,0010)")
->>> coverage = Coverage((), (Uncollected(name, "could not be decoded"),))
->>> condition = release_condition(coverage, ResidualSearch((), (), True))
+>>> coverage = Coverage(
+...     planned=frozenset({name}),
+...     collected=(),
+...     uncollected=(Uncollected(name, "could not be decoded"),),
+... )
+>>> condition = release_condition(coverage, b"")  # not even a preamble
 >>> condition
-ReleaseCondition(decision='withhold', outcome='incomplete', reasons=1, exclusions=0)
->>> print(condition.reasons[0])
+ReleaseCondition(decision='withhold', outcome='incomplete', reasons=2, exclusions=0)
+>>> print(condition)
+withhold
 withhold: (0010,0010): uncollected
+withhold: the file: unreadable-file
 """
 
 from __future__ import annotations
@@ -73,15 +85,30 @@ import functools
 import re
 
 from .file_layout import ElementPath, Location, Region
-from .residuals import Finding, NotSearched, ResidualSearch, SourceValue, ValueKind
+from .residuals import (
+    Finding,
+    NotSearched,
+    ResidualSearch,
+    SourceValue,
+    ValueKind,
+    find_residuals,
+)
 from .standard import ProfileTable, dictionary_attribute, load_table_e1_1
 
 # The PS3.6 groups of the patient, a visit, the study, and a procedure or
 # order, in which direct identifiers are selected.
 IDENTIFIER_GROUPS = frozenset({"0008", "0010", "0020", "0032", "0038", "0040"})
 IDENTIFIER_WORDS = frozenset({"ID", "IDs", "Number", "Numbers", "Locator"})
-# The VRs whose values must be collected completely for release.
-REQUIRED_VRS = frozenset({"PN", "UI", "DA", "DT"})
+# The kinds of value, by VR, that must be collected completely for release.
+REQUIRED_KINDS = {
+    "PN": ValueKind.PERSON_NAME,
+    "UI": ValueKind.UID,
+    "DA": ValueKind.DATE,
+    "DT": ValueKind.DATETIME,
+}
+# The reason that Coverage.merge gives a planned value that an instance
+# neither collected nor reported as not collected.
+NOT_REPORTED = "was planned, but neither collected nor reported as not collected"
 # A keyword's words: "IDs", a run of capitals before another capital or the
 # end, a capitalised word, or digits.
 _WORD = re.compile(r"IDs(?![a-z])|[A-Z]+(?![a-z])|[A-Z][a-z]*|[a-z]+|[0-9]+")
@@ -89,7 +116,7 @@ _RETAINS_OR_CLEANS = frozenset({"K", "C"})
 
 
 class CollectionOutcome(enum.Enum):
-    """Whether every value to search for was collected from its decoded form."""
+    """Whether every planned value was collected from its decoded form."""
 
     COMPLETE = "complete"
     INCOMPLETE = "incomplete"
@@ -110,7 +137,9 @@ class ReasonCode(enum.Enum):
     """Why a file is not released as it is."""
 
     UNCOLLECTED = "uncollected"  # a value that could not be collected
+    NOT_REPORTED = "not-reported"  # planned, but neither collected nor uncollected
     READ_AS_LATIN_1 = "read-as-latin-1"  # text read only as ISO 8859-1 bytes
+    COLLECTED_AS_OTHER_VR = "collected-as-other-vr"  # not the dictionary's VR
     UNREADABLE_FILE = "unreadable-file"  # the structure was not read to its end
     RESIDUAL_PERSON_NAME = "residual-person-name"
     RESIDUAL_UID = "residual-uid"
@@ -129,9 +158,11 @@ _RESIDUAL_KINDS = {
 }
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, repr=False)
 class Uncollected:
     """A value to search for that could not be collected.
+
+    Its ``repr`` shows only the path.
 
     Attributes
     ----------
@@ -158,15 +189,21 @@ class Uncollected:
         if not isinstance(self.reason, str) or not self.reason:
             raise ValueError(f"the uncollected value at {self.path} needs a reason")
 
+    def __repr__(self) -> str:
+        return f"Uncollected(path={str(self.path)!r})"
 
-@dataclasses.dataclass(frozen=True, repr=False)
+
+@dataclasses.dataclass(frozen=True, repr=False, kw_only=True)
 class Coverage:
-    """What was collected to search for, and what was not.
+    """What was planned for collection, what was collected, and what was not.
 
-    Its ``repr`` shows only counts.
+    Its ``repr`` shows only counts, and its fields are keyword-only.
 
     Attributes
     ----------
+    planned : frozenset of ElementPath
+        The source paths of every value that had to be collected, such as
+        each element that de-identification removes or replaces.
     collected : tuple of SourceValue
         The values collected, including those read only as bytes.
     uncollected : tuple of Uncollected, optional
@@ -178,15 +215,17 @@ class Coverage:
     Raises
     ------
     TypeError
-        If an attribute is not of these types.
+        If an attribute is missing, or not of these types.
     """
 
+    planned: frozenset[ElementPath]
     collected: tuple[SourceValue, ...]
     uncollected: tuple[Uncollected, ...] = ()
     decoded_as_bytes: frozenset[ElementPath] = frozenset()
 
     def __post_init__(self) -> None:
         for name, container, kind in (
+            ("planned", frozenset, ElementPath),
             ("collected", tuple, SourceValue),
             ("uncollected", tuple, Uncollected),
             ("decoded_as_bytes", frozenset, ElementPath),
@@ -202,6 +241,10 @@ class Coverage:
     @classmethod
     def merge(cls, *coverages: Coverage) -> Coverage:
         """Pool the coverage of a subject's instances, in order, once each.
+
+        A value that one instance planned but did not report stays a gap,
+        as an :class:`Uncollected` with the reason :data:`NOT_REPORTED`,
+        even where another instance collected a value at the same path.
 
         Parameters
         ----------
@@ -220,24 +263,82 @@ class Coverage:
         """
         if not all(isinstance(each, Coverage) for each in coverages):
             raise TypeError("only coverages can be merged")
+        uncollected = [
+            gap
+            for each in coverages
+            for gap in (
+                *each.uncollected,
+                *(Uncollected(path, NOT_REPORTED) for path in each.not_reported()),
+            )
+        ]
         return cls(
-            tuple(dict.fromkeys(v for c in coverages for v in c.collected)),
-            tuple(dict.fromkeys(u for c in coverages for u in c.uncollected)),
-            frozenset().union(*(c.decoded_as_bytes for c in coverages)),
+            planned=frozenset().union(*(each.planned for each in coverages)),
+            collected=tuple(dict.fromkeys(v for c in coverages for v in c.collected)),
+            uncollected=tuple(dict.fromkeys(uncollected)),
+            decoded_as_bytes=frozenset().union(
+                *(each.decoded_as_bytes for each in coverages)
+            ),
         )
+
+    def not_reported(self) -> tuple[ElementPath, ...]:
+        """Return the planned paths neither collected nor uncollected."""
+        reported = {value.source for value in self.collected}
+        reported |= {gap.path for gap in self.uncollected}
+        return tuple(sorted(self.planned - reported, key=str))
+
+    def gaps(self) -> tuple[tuple[ElementPath, ReasonCode], ...]:
+        """Return each path whose collection is incomplete, once, and why.
+
+        A path takes the first of these that applies: not collected, not
+        reported, read only as bytes, or collected under another VR.
+        """
+        found = [(gap.path, _gap_code(gap.reason)) for gap in self.uncollected]
+        found += [(path, ReasonCode.NOT_REPORTED) for path in self.not_reported()]
+        found += [
+            (path, ReasonCode.READ_AS_LATIN_1)
+            for path in sorted(self.decoded_as_bytes, key=str)
+        ]
+        found += [
+            (value.source, ReasonCode.COLLECTED_AS_OTHER_VR)
+            for value in self.collected
+            if _other_vr(value)
+        ]
+        first: dict[ElementPath, ReasonCode] = {}
+        for path, code in found:
+            first.setdefault(path, code)
+        return tuple(first.items())
 
     @property
     def outcome(self) -> CollectionOutcome:
-        """Whether every value was collected from its decoded form."""
-        if self.uncollected or self.decoded_as_bytes:
+        """Whether every planned value was collected from its decoded form."""
+        if self.gaps():
             return CollectionOutcome.INCOMPLETE
         return CollectionOutcome.COMPLETE
 
     def __repr__(self) -> str:
         return (
-            f"Coverage(collected={len(self.collected)}, uncollected="
-            f"{len(self.uncollected)}, decoded_as_bytes={len(self.decoded_as_bytes)})"
+            f"Coverage(planned={len(self.planned)}, collected={len(self.collected)}, "
+            f"uncollected={len(self.uncollected)}, "
+            f"decoded_as_bytes={len(self.decoded_as_bytes)})"
         )
+
+
+def _gap_code(reason: str) -> ReasonCode:
+    if reason == NOT_REPORTED:
+        return ReasonCode.NOT_REPORTED
+    return ReasonCode.UNCOLLECTED
+
+
+def _vrs(tag: str) -> tuple[str, ...]:
+    """Return the VRs that the pinned dictionary gives a tag, if any."""
+    attribute = dictionary_attribute(tag)
+    return () if attribute is None else attribute.vrs
+
+
+def _other_vr(value: SourceValue) -> bool:
+    """Return whether a value was collected under a VR its attribute lacks."""
+    vrs = _vrs(value.source.tag)
+    return bool(vrs) and value.vr not in vrs
 
 
 @dataclasses.dataclass(frozen=True)
@@ -279,16 +380,20 @@ class ReleaseCondition:
         The most severe of the reasons' decisions, or release if none.
     outcome : CollectionOutcome
     reasons : tuple of ReleaseReason
-        Those of the coverage, in its order, then the file's, then those of
-        the findings, in the search's order.
+        Those of the coverage's gaps, in their order, then the file's, then
+        those of the findings, in the search's order.
     exclusions : tuple of NotSearched
         The forms that the search did not search, as it lists them.
+    search : ResidualSearch
+        The search of the written file for the collected values, for the
+        confidential QC material.
     """
 
     decision: Decision
     outcome: CollectionOutcome
     reasons: tuple[ReleaseReason, ...]
     exclusions: tuple[NotSearched, ...]
+    search: ResidualSearch
 
     def __repr__(self) -> str:
         return (
@@ -302,16 +407,19 @@ class ReleaseCondition:
         return "\n".join([self.decision.value, *map(str, self.reasons)])
 
 
-def release_condition(coverage: Coverage, search: ResidualSearch) -> ReleaseCondition:
+def release_condition(
+    coverage: Coverage, written: bytes | bytearray | memoryview
+) -> ReleaseCondition:
     """Decide whether a written file may be released, as the module describes.
 
     Parameters
     ----------
     coverage : Coverage
-        The values collected to search for, pooled across the file's subject
-        (:meth:`Coverage.merge`).
-    search : ResidualSearch
-        The search of the written file for those values.
+        The values planned and collected for the search, pooled across the
+        file's subject (:meth:`Coverage.merge`).
+    written : bytes, bytearray, or memoryview
+        The whole written file, which is searched for exactly the values
+        that ``coverage`` collected.
 
     Returns
     -------
@@ -320,21 +428,20 @@ def release_condition(coverage: Coverage, search: ResidualSearch) -> ReleaseCond
     Raises
     ------
     TypeError
-        If ``coverage`` is not a :class:`Coverage` or ``search`` not a
-        :class:`~.residuals.ResidualSearch`.
+        If ``coverage`` is not a :class:`Coverage` or ``written`` not bytes.
+    ValueError
+        If the transfer syntax deflates the data set, which the search
+        cannot read.
     """
-    if not isinstance(coverage, Coverage) or not isinstance(search, ResidualSearch):
-        raise TypeError("the release condition needs a Coverage and a ResidualSearch")
+    if not isinstance(coverage, Coverage) or not isinstance(
+        written, (bytes, bytearray, memoryview)
+    ):
+        raise TypeError("the release condition needs a Coverage and the written bytes")
+    search = find_residuals(written, coverage.collected)
     identifiers = direct_identifiers()
-    gaps = [(item.path, ReasonCode.UNCOLLECTED) for item in coverage.uncollected]
-    paths = {path for path, _ in gaps}
-    gaps += [
-        (path, ReasonCode.READ_AS_LATIN_1)
-        for path in sorted(coverage.decoded_as_bytes - paths, key=str)
-    ]
     reasons = [
-        ReleaseReason(_coverage_decision(path, identifiers), code, path)
-        for path, code in dict.fromkeys(gaps)
+        ReleaseReason(_gap_decision(path, identifiers), code, path)
+        for path, code in coverage.gaps()
     ]
     if not search.readable:
         reasons.append(ReleaseReason(Decision.WITHHOLD, ReasonCode.UNREADABLE_FILE))
@@ -345,18 +452,16 @@ def release_condition(coverage: Coverage, search: ResidualSearch) -> ReleaseCond
         default=Decision.RELEASE,
     )
     return ReleaseCondition(
-        decision, coverage.outcome, tuple(reasons), search.not_searched
+        decision, coverage.outcome, tuple(reasons), search.not_searched, search
     )
 
 
-def _coverage_decision(path: ElementPath, identifiers: frozenset[str]) -> Decision:
-    """Withhold for a gap in a required kind, and review any other gap."""
-    attribute = dictionary_attribute(path.tag)
+def _gap_decision(path: ElementPath, identifiers: frozenset[str]) -> Decision:
+    """Withhold for a gap in a required kind or a sequence; review any other."""
+    vrs = _vrs(path.tag)
     required = (
-        attribute is None
-        or not attribute.vrs
-        or not REQUIRED_VRS.isdisjoint(attribute.vrs)
-        or "SQ" in attribute.vrs  # its items, and what they hold, are unknown
+        any(vr in REQUIRED_KINDS for vr in vrs)
+        or "SQ" in vrs  # its items, and what they hold, are unknown
         or path.tag in identifiers
     )
     return Decision.WITHHOLD if required else Decision.QC_REVIEW
@@ -364,7 +469,10 @@ def _coverage_decision(path: ElementPath, identifiers: frozenset[str]) -> Decisi
 
 def _finding_reason(finding: Finding, identifiers: frozenset[str]) -> ReleaseReason:
     """Give a finding its reason, by its kind, its source, then its place."""
-    code = _RESIDUAL_KINDS.get(finding.kind)
+    vrs = _vrs(finding.source.tag)
+    kinds = [REQUIRED_KINDS[vr] for vr in vrs if vr in REQUIRED_KINDS]
+    kind = (kinds or [ValueKind.TEXT])[0] if vrs else finding.kind
+    code = _RESIDUAL_KINDS.get(kind)
     if code is None and finding.source.tag in identifiers:
         code = ReasonCode.RESIDUAL_DIRECT_IDENTIFIER
     if code is None and finding.location.region is not Region.DATA_SET:
@@ -387,7 +495,12 @@ def direct_identifiers(table: ProfileTable | None = None) -> frozenset[str]:
     makes neither a sequence (SQ) nor a UID (UI), that no option retains (K)
     or cleans (C), and whose keyword has ``ID``, ``IDs``, ``Number``,
     ``Numbers``, or ``Locator`` as a word, such as ``PatientID`` or
-    ``PlacerOrderNumberImagingServiceRequest``.
+    ``PlacerOrderNumberImagingServiceRequest``. A keyword is split into
+    words at each capital that starts a word, and a run of capitals is one
+    word up to the capital that starts the next, so an acronym directly
+    before ``ID``, as in a keyword such as ``MRNID``, would be one word and
+    not selected; no keyword of the pinned edition that the other rules
+    select is written so.
 
     Parameters
     ----------

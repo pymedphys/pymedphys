@@ -18,8 +18,7 @@ import struct
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import release_gate
-from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
+from pymedphys._dicom.deidentify.file_layout import ElementPath, Region
 from pymedphys._dicom.deidentify.release_gate import (
     CollectionOutcome,
     Coverage,
@@ -29,28 +28,24 @@ from pymedphys._dicom.deidentify.release_gate import (
     direct_identifiers,
     release_condition,
 )
-from pymedphys._dicom.deidentify.residuals import (
-    Finding,
-    Form,
-    NotSearched,
-    Omission,
-    ResidualSearch,
-    SourceValue,
-    ValueKind,
-    find_residuals,
-)
+from pymedphys._dicom.deidentify.residuals import Omission, SourceValue
 
 # Invented values, distinctive enough that nothing else in a file matches them.
-NAME = "MÜLLERSOHN^ZEBEDEE"
-DESCRIPTION = "QUILLON ÄRZTE STUDIE"
+PERSON = "ZEBEDEE^QUILLON"
+LATIN_NAME = "MÜLLERSOHN^ZEBEDEE"
+DESCRIPTION = "ZARQUON STUDY"
+LATIN_DESCRIPTION = "ZARQUON ÄRZTE STUDIE"
 PATIENT_ID = "ZQ7741093"
+UID = "1.2.999.4417.1.20240517.1"
+BIRTH_DATE = "19710203"
+DATETIME = "20240517093000"
 UNDECODABLE = "could not be decoded as VR PN"
 
 NAME_PATH = ElementPath((), "(0010,0010)")
 DESCRIPTION_PATH = ElementPath((), "(0008,1030)")
 ID_PATH = ElementPath((), "(0010,0020)")
-BEAM_NAME_PATH = ElementPath((("(300A,00B0)", 0),), "(300A,00C2)")
-CLEAN = ResidualSearch((), (), True)
+OTHER_ID_PATH = ElementPath((("(0010,1002)", 0),), "(0010,0020)")
+PRIVATE_PATH = ElementPath((), "(0019,1001)")
 
 # The direct identifiers that the design document lists for 2026d.
 LISTED = {
@@ -80,28 +75,58 @@ LISTED = {
 
 
 def _element(tag, vr, value):
-    """An explicit VR element with a short header (PS3.5 Table 7.1-2)."""
+    """An explicit VR element with the header of PS3.5 Table 7.1-1 or 7.1-2."""
     group, element = divmod(tag, 0x10000)
+    value = value.encode() if isinstance(value, str) else value
+    value += b" " * (len(value) % 2)
+    if vr in ("OB", "UT"):
+        return (
+            struct.pack("<HH2sHI", group, element, vr.encode(), 0, len(value)) + value
+        )
     return struct.pack("<HH2sH", group, element, vr.encode(), len(value)) + value
 
 
-def _written():
-    """A file as de-identification writes it: Study Description emptied."""
-    syntax = _element(0x00020010, "UI", b"1.2.840.10008.1.2.1\x00")
-    return bytes(128) + b"DICM" + syntax + _element(0x00081030, "LO", b"")
+def _written(carried="", where=Region.DATA_SET):
+    """A file as de-identification writes it, with Study Description emptied.
+
+    ``carried`` is left in a private element, the preamble, the File Meta
+    Information, Data Set Trailing Padding, or bytes after the data set.
+    """
+    preamble = (
+        carried.encode().ljust(128, b"\x00") if where is Region.PREAMBLE else bytes(128)
+    )
+    meta = _element(0x00020010, "UI", "1.2.840.10008.1.2.1\x00")
+    if where is Region.FILE_META:
+        meta += _element(0x00020016, "AE", carried)
+    data_set = _element(0x00081030, "LO", b"")
+    if where is Region.DATA_SET and carried:
+        data_set += _element(0x00190010, "LO", "PRIVATE")
+        data_set += _element(0x00191000, "UT", carried)
+    if where is Region.TRAILING_PADDING:
+        data_set += _element(0xFFFCFFFC, "OB", carried)
+    if where is Region.TRAILING:
+        data_set += b"\xff\xff\xff\xff" + carried.encode()
+    return preamble + b"DICM" + meta + data_set
 
 
-def _finding(source, kind, region=Region.DATA_SET, element=DESCRIPTION_PATH):
-    location = Location(region, element if region is Region.DATA_SET else None)
-    return Finding(source, kind, Form.VALUE, "utf-8", location, 0)
-
-
-def _search(*findings, readable=True):
-    return ResidualSearch(tuple(findings), (), readable)
+def _coverage(*collected, uncollected=(), latin_1=(), planned=()):
+    """A coverage that planned every path it names, and ``planned`` besides."""
+    paths = {value.source for value in collected}
+    paths |= {each.path for each in uncollected} | set(latin_1) | set(planned)
+    return Coverage(
+        planned=frozenset(paths),
+        collected=tuple(collected),
+        uncollected=tuple(uncollected),
+        decoded_as_bytes=frozenset(latin_1),
+    )
 
 
 def _uncollected(tag, *items):
-    return Coverage((), (Uncollected(ElementPath(items, tag), UNDECODABLE),))
+    return _coverage(uncollected=[Uncollected(ElementPath(items, tag), UNDECODABLE)])
+
+
+def _codes(condition):
+    return [reason.code for reason in condition.reasons]
 
 
 # The direct identifiers.
@@ -115,21 +140,29 @@ def test_the_rule_selects_exactly_the_direct_identifiers_the_design_lists():
 
 
 def test_a_complete_collection_with_a_clean_search_is_released():
-    coverage = Coverage((SourceValue(NAME_PATH, "PN", NAME),))
-    condition = release_condition(coverage, CLEAN)
+    coverage = _coverage(SourceValue(NAME_PATH, "PN", PERSON))
+    condition = release_condition(coverage, _written())
     assert coverage.outcome is CollectionOutcome.COMPLETE
     assert condition.decision is Decision.RELEASE
     assert not condition.reasons
 
 
 def test_nothing_collected_with_values_to_collect_is_withheld():
-    coverage = _uncollected("(0010,0010)")
-    condition = release_condition(coverage, CLEAN)
-    assert not coverage.collected
-    assert condition.outcome is CollectionOutcome.INCOMPLETE
+    # The walker planned to collect Patient's Name, but reported neither the
+    # value nor why it could not be collected.
+    coverage = Coverage(planned=frozenset({NAME_PATH}), collected=())
+    condition = release_condition(coverage, _written())
+    assert coverage.outcome is CollectionOutcome.INCOMPLETE
     assert condition.decision is Decision.WITHHOLD
     (reason,) = condition.reasons
-    assert (reason.path, reason.code) == (NAME_PATH, ReasonCode.UNCOLLECTED)
+    assert (reason.path, reason.code) == (NAME_PATH, ReasonCode.NOT_REPORTED)
+
+
+def test_a_planned_text_value_not_reported_goes_to_qc_review():
+    coverage = _coverage(planned=[DESCRIPTION_PATH])
+    condition = release_condition(coverage, _written())
+    assert condition.decision is Decision.QC_REVIEW
+    assert _codes(condition) == [ReasonCode.NOT_REPORTED]
 
 
 @pytest.mark.parametrize(
@@ -141,27 +174,36 @@ def test_nothing_collected_with_values_to_collect_is_withheld():
         ("(0008,002A)", ()),  # DT
         ("(0010,0020)", (("(0010,1002)", 0),)),  # a direct identifier in an item
         ("(0040,A354)", ()),  # a retired direct identifier
-        ("(0019,1001)", ()),  # private, so the dictionary gives no VR
+        ("(0032,0012)", ()),  # a retired direct identifier of group 0032
         ("(0010,1002)", ()),  # a sequence whose items could not be read
     ],
 )
 def test_an_uncollected_value_of_a_required_kind_is_withheld(tag, items):
-    condition = release_condition(_uncollected(tag, *items), CLEAN)
+    condition = release_condition(_uncollected(tag, *items), _written())
     assert condition.decision is Decision.WITHHOLD
 
 
-@pytest.mark.parametrize("tag", ["(0008,1030)", "(300A,00C2)", "(0018,1020)"])
-def test_other_uncollected_text_goes_to_qc_review(tag):
-    condition = release_condition(_uncollected(tag), CLEAN)
+@pytest.mark.parametrize(
+    "tag",
+    [
+        "(0008,1030)",  # LO
+        "(300A,00C2)",  # LO, a retained RT label under some options
+        "(0018,1020)",  # LO, a device identifier that an option retains
+        "(0010,1020)",  # DS, which the search never searches
+        "(0019,1001)",  # private, so the dictionary gives no VR
+        "(0008,0202)",  # a retired placeholder without a VR
+    ],
+)
+def test_other_uncollected_values_go_to_qc_review(tag):
+    condition = release_condition(_uncollected(tag), _written())
     assert condition.outcome is CollectionOutcome.INCOMPLETE
     assert condition.decision is Decision.QC_REVIEW
 
 
-def test_an_uncollected_value_that_the_search_never_searches_goes_to_qc_review():
-    # Patient's Size (0010,1020) is DS: its value would have been listed as
-    # not searched, but an undecoded value is still a gap in coverage.
-    condition = release_condition(_uncollected("(0010,1020)"), CLEAN)
-    assert condition.decision is Decision.QC_REVIEW
+def test_duplicate_gaps_at_one_path_give_one_reason():
+    gaps = [Uncollected(NAME_PATH, UNDECODABLE), Uncollected(NAME_PATH, "other")]
+    coverage = _coverage(uncollected=gaps, latin_1=[NAME_PATH])
+    assert _codes(release_condition(coverage, _written())) == [ReasonCode.UNCOLLECTED]
 
 
 # The decision of 1 October 2026, clarified on 2 October 2026: removed text
@@ -170,11 +212,9 @@ def test_an_uncollected_value_that_the_search_never_searches_goes_to_qc_review()
 
 
 def test_a_removed_name_read_only_as_latin_1_is_withheld_after_a_clean_search():
-    value = SourceValue(NAME_PATH, "PN", NAME)
-    search = find_residuals(_written(), [value])
-    assert not search.findings and search.readable
-    coverage = Coverage((value,), (), frozenset({NAME_PATH}))
-    condition = release_condition(coverage, search)
+    coverage = _coverage(SourceValue(NAME_PATH, "PN", LATIN_NAME), latin_1=[NAME_PATH])
+    condition = release_condition(coverage, _written())
+    assert not condition.search.findings and condition.search.readable
     assert condition.outcome is CollectionOutcome.INCOMPLETE
     assert condition.decision is Decision.WITHHOLD
     (reason,) = condition.reasons
@@ -182,95 +222,156 @@ def test_a_removed_name_read_only_as_latin_1_is_withheld_after_a_clean_search():
 
 
 def test_a_removed_description_read_only_as_latin_1_goes_to_qc_review():
-    value = SourceValue(DESCRIPTION_PATH, "LO", DESCRIPTION)
-    search = find_residuals(_written(), [value])
-    assert not search.findings
-    coverage = Coverage((value,), (), frozenset({DESCRIPTION_PATH}))
-    assert release_condition(coverage, search).decision is Decision.QC_REVIEW
+    value = SourceValue(DESCRIPTION_PATH, "LO", LATIN_DESCRIPTION)
+    coverage = _coverage(value, latin_1=[DESCRIPTION_PATH])
+    condition = release_condition(coverage, _written())
+    assert not condition.search.findings
+    assert condition.decision is Decision.QC_REVIEW
 
 
-def test_a_path_both_uncollected_and_read_as_latin_1_gives_one_reason():
-    coverage = Coverage(
-        (), (Uncollected(NAME_PATH, UNDECODABLE),), frozenset({NAME_PATH})
-    )
-    (reason,) = release_condition(coverage, CLEAN).reasons
-    assert reason.code is ReasonCode.UNCOLLECTED
+# Values collected under a VR that the pinned dictionary does not give.
+
+
+def test_a_name_collected_as_lo_and_found_is_withheld_as_a_name():
+    coverage = _coverage(SourceValue(NAME_PATH, "LO", PERSON))
+    condition = release_condition(coverage, _written(PERSON))
+    assert condition.decision is Decision.WITHHOLD
+    assert ReasonCode.RESIDUAL_PERSON_NAME in _codes(condition)
+    assert ReasonCode.COLLECTED_AS_OTHER_VR in _codes(condition)
+
+
+@pytest.mark.parametrize(
+    "vr, value, omission",
+    [
+        ("CS", PERSON, Omission.NOT_DISTINCTIVE),
+        ("OB", PERSON.encode(), Omission.BINARY),
+    ],
+)
+def test_a_name_collected_under_a_vr_the_search_excludes_is_withheld(
+    vr, value, omission
+):
+    coverage = _coverage(SourceValue(NAME_PATH, vr, value))
+    condition = release_condition(coverage, _written())
+    assert [each.reason for each in condition.exclusions] == [omission]
+    assert condition.outcome is CollectionOutcome.INCOMPLETE
+    assert condition.decision is Decision.WITHHOLD
+    assert _codes(condition) == [ReasonCode.COLLECTED_AS_OTHER_VR]
 
 
 # Pooling a subject's coverage across the run's instances.
 
 
 def test_coverages_merge_in_order_without_repeats():
-    name = SourceValue(NAME_PATH, "PN", NAME)
+    name = SourceValue(NAME_PATH, "PN", PERSON)
     gap = Uncollected(DESCRIPTION_PATH, UNDECODABLE)
-    first = Coverage((name,), (gap,), frozenset({NAME_PATH}))
-    second = Coverage((SourceValue(ID_PATH, "LO", PATIENT_ID), name), (gap,))
+    first = _coverage(name, uncollected=[gap], latin_1=[NAME_PATH])
+    second = _coverage(SourceValue(ID_PATH, "LO", PATIENT_ID), name, uncollected=[gap])
     merged = Coverage.merge(first, second)
+    assert merged.planned == {NAME_PATH, DESCRIPTION_PATH, ID_PATH}
     assert merged.collected == (name, second.collected[0])
     assert merged.uncollected == (gap,)
     assert merged.decoded_as_bytes == frozenset({NAME_PATH})
-    assert Coverage.merge() == Coverage(())
+    assert Coverage.merge() == Coverage(planned=frozenset(), collected=())
 
 
 def test_a_siblings_uncollected_name_withholds_this_file():
     # This instance's own values were all collected, and its search is clean,
     # but a sibling's Patient's Name could not be collected, so its copies in
     # this file cannot have been searched for.
-    own = Coverage((SourceValue(DESCRIPTION_PATH, "LO", "PHANTOM STUDY"),))
+    own = _coverage(SourceValue(DESCRIPTION_PATH, "LO", DESCRIPTION))
     sibling = _uncollected("(0010,0010)")
-    assert release_condition(own, CLEAN).decision is Decision.RELEASE
+    assert release_condition(own, _written()).decision is Decision.RELEASE
     pooled = Coverage.merge(own, sibling)
-    assert release_condition(pooled, CLEAN).decision is Decision.WITHHOLD
+    assert release_condition(pooled, _written()).decision is Decision.WITHHOLD
+
+
+def test_a_siblings_name_read_only_as_latin_1_withholds_this_file():
+    own = _coverage(SourceValue(DESCRIPTION_PATH, "LO", DESCRIPTION))
+    value = SourceValue(NAME_PATH, "PN", LATIN_NAME)
+    sibling = _coverage(value, latin_1=[NAME_PATH])
+    pooled = Coverage.merge(own, sibling)
+    assert release_condition(pooled, _written()).decision is Decision.WITHHOLD
+
+
+def test_only_the_middle_of_three_coverages_has_the_gap():
+    own = _coverage(SourceValue(DESCRIPTION_PATH, "LO", DESCRIPTION))
+    last = _coverage(SourceValue(ID_PATH, "LO", PATIENT_ID))
+    middle = _uncollected("(0010,0010)")
+    pooled = Coverage.merge(own, middle, last)
+    assert pooled.uncollected == middle.uncollected  # its reason is kept
+    condition = release_condition(pooled, _written())
+    assert condition.decision is Decision.WITHHOLD
+    assert _codes(condition) == [ReasonCode.UNCOLLECTED]
+
+
+def test_a_siblings_unreported_name_is_not_hidden_by_this_instances_copy():
+    # Both instances planned Patient's Name at the same path; this one
+    # collected it, and the sibling reported nothing for it.
+    own = _coverage(SourceValue(NAME_PATH, "PN", PERSON))
+    sibling = Coverage(planned=frozenset({NAME_PATH}), collected=())
+    pooled = Coverage.merge(own, sibling)
+    condition = release_condition(pooled, _written())
+    assert condition.decision is Decision.WITHHOLD
+    assert _codes(condition) == [ReasonCode.NOT_REPORTED]
+
+
+def test_the_search_covers_the_pooled_values():
+    sibling = _coverage(SourceValue(ID_PATH, "LO", PATIENT_ID))
+    pooled = Coverage.merge(_coverage(), sibling)
+    condition = release_condition(pooled, _written(PATIENT_ID))
+    assert condition.decision is Decision.WITHHOLD
+    assert _codes(condition) == [ReasonCode.RESIDUAL_DIRECT_IDENTIFIER]
 
 
 def test_merge_takes_only_coverages():
     with pytest.raises(TypeError):
-        Coverage.merge(Coverage(()), ())
+        Coverage.merge(_coverage(), ())
 
 
 # Exclusions and the search.
 
 
 def test_exclusions_are_listed_and_never_count_as_incomplete():
-    short = NotSearched(NAME_PATH, "PN", Form.NAME_COMPONENT, Omission.TOO_SHORT)
-    binary = NotSearched(DESCRIPTION_PATH, "OB", Form.VALUE, Omission.BINARY)
-    search = ResidualSearch((), (short, binary), True)
-    condition = release_condition(Coverage(()), search)
+    short = SourceValue(NAME_PATH, "PN", "ZEBEDEE^LI")
+    binary = SourceValue(PRIVATE_PATH, "OB", b"\x01\x02\x03\x04\x05")
+    condition = release_condition(_coverage(short, binary), _written())
     assert condition.outcome is CollectionOutcome.COMPLETE
     assert condition.decision is Decision.RELEASE
-    assert condition.exclusions == (short, binary)
+    assert [(each.source, each.reason) for each in condition.exclusions] == [
+        (NAME_PATH, Omission.TOO_SHORT),
+        (PRIVATE_PATH, Omission.BINARY),
+    ]
 
 
 def test_an_unreadable_file_is_withheld():
-    condition = release_condition(Coverage(()), _search(readable=False))
+    condition = release_condition(_coverage(), _written(DESCRIPTION, Region.TRAILING))
     assert condition.decision is Decision.WITHHOLD
-    (reason,) = condition.reasons
-    assert (reason.path, reason.code) == (None, ReasonCode.UNREADABLE_FILE)
+    assert ReasonCode.UNREADABLE_FILE in _codes(condition)
+    (reason,) = [r for r in condition.reasons if r.path is None]
+    assert reason.code is ReasonCode.UNREADABLE_FILE
 
 
 @pytest.mark.parametrize(
-    "kind, code",
+    "path, vr, value, code",
     [
-        (ValueKind.PERSON_NAME, ReasonCode.RESIDUAL_PERSON_NAME),
-        (ValueKind.UID, ReasonCode.RESIDUAL_UID),
-        (ValueKind.DATE, ReasonCode.RESIDUAL_DATE),
-        (ValueKind.DATETIME, ReasonCode.RESIDUAL_DATETIME),
+        (NAME_PATH, "PN", PERSON, ReasonCode.RESIDUAL_PERSON_NAME),
+        (ElementPath((), "(0020,000D)"), "UI", UID, ReasonCode.RESIDUAL_UID),
+        (ElementPath((), "(0010,0030)"), "DA", BIRTH_DATE, ReasonCode.RESIDUAL_DATE),
+        (
+            ElementPath((), "(0008,002A)"),
+            "DT",
+            DATETIME,
+            ReasonCode.RESIDUAL_DATETIME,
+        ),
+        (OTHER_ID_PATH, "LO", PATIENT_ID, ReasonCode.RESIDUAL_DIRECT_IDENTIFIER),
     ],
 )
-def test_a_finding_of_a_required_kind_is_withheld(kind, code):
-    condition = release_condition(Coverage(()), _search(_finding(NAME_PATH, kind)))
+def test_a_finding_of_a_required_kind_is_withheld(path, vr, value, code):
+    coverage = _coverage(SourceValue(path, vr, value))
+    condition = release_condition(coverage, _written(value))
     assert condition.decision is Decision.WITHHOLD
-    assert [reason.code for reason in condition.reasons] == [code]
-
-
-def test_a_text_finding_of_a_direct_identifier_is_withheld():
-    source = ElementPath((("(0010,1002)", 0),), "(0010,0020)")
-    finding = _finding(source, ValueKind.TEXT)
-    condition = release_condition(Coverage(()), _search(finding))
-    assert condition.decision is Decision.WITHHOLD
-    (reason,) = condition.reasons
-    assert reason.code is ReasonCode.RESIDUAL_DIRECT_IDENTIFIER
-    assert reason.location == finding.location
+    assert _codes(condition) == [code]
+    assert condition.reasons[0].location.region is Region.DATA_SET
 
 
 @pytest.mark.parametrize(
@@ -278,81 +379,100 @@ def test_a_text_finding_of_a_direct_identifier_is_withheld():
     [Region.PREAMBLE, Region.FILE_META, Region.TRAILING_PADDING, Region.TRAILING],
 )
 def test_a_text_finding_outside_the_data_set_is_withheld(region):
-    finding = _finding(DESCRIPTION_PATH, ValueKind.TEXT, region)
-    condition = release_condition(Coverage(()), _search(finding))
+    coverage = _coverage(SourceValue(DESCRIPTION_PATH, "LO", DESCRIPTION))
+    condition = release_condition(coverage, _written(DESCRIPTION, region))
     assert condition.decision is Decision.WITHHOLD
-    assert condition.reasons[0].code is ReasonCode.RESIDUAL_OUTSIDE_DATA_SET
+    found = [r for r in condition.reasons if r.location is not None]
+    assert [r.code for r in found] == [ReasonCode.RESIDUAL_OUTSIDE_DATA_SET]
+    assert found[0].location.region is region
 
 
 def test_a_text_finding_inside_the_data_set_goes_to_qc_review():
-    finding = _finding(DESCRIPTION_PATH, ValueKind.TEXT)
-    condition = release_condition(Coverage(()), _search(finding))
+    coverage = _coverage(SourceValue(DESCRIPTION_PATH, "LO", DESCRIPTION))
+    condition = release_condition(coverage, _written(DESCRIPTION))
     assert condition.decision is Decision.QC_REVIEW
-    assert condition.reasons[0].code is ReasonCode.RESIDUAL_TEXT
+    assert _codes(condition) == [ReasonCode.RESIDUAL_TEXT]
 
 
 def test_a_person_name_found_in_a_retained_rt_label_is_withheld():
-    # The design leaves open whether such findings go to QC review instead; until
-    # it is decided, they fail the file.
-    finding = _finding(NAME_PATH, ValueKind.PERSON_NAME, element=BEAM_NAME_PATH)
-    condition = release_condition(Coverage(()), _search(finding))
+    # The design leaves open whether such findings go to QC review instead;
+    # until it is decided, they fail the file. Beam Name is retained here.
+    beam_name = struct.pack("<HH2sH", 0x300A, 0x00C2, b"LO", 8) + b"QUILLON "
+    coverage = _coverage(SourceValue(NAME_PATH, "PN", PERSON))
+    written = _written() + beam_name
+    condition = release_condition(coverage, written)
+    assert condition.decision is Decision.WITHHOLD
+    assert condition.reasons[0].location.element.tag == "(300A,00C2)"
+
+
+def test_a_withholding_reason_then_a_lesser_one_withholds():
+    coverage = _coverage(
+        SourceValue(DESCRIPTION_PATH, "LO", DESCRIPTION),
+        uncollected=[Uncollected(NAME_PATH, UNDECODABLE)],
+    )
+    condition = release_condition(coverage, _written(DESCRIPTION))
+    assert [r.decision for r in condition.reasons] == [
+        Decision.WITHHOLD,
+        Decision.QC_REVIEW,
+    ]
     assert condition.decision is Decision.WITHHOLD
 
 
-def test_the_most_severe_decision_wins():
-    text = _finding(DESCRIPTION_PATH, ValueKind.TEXT)
-    coverage = _uncollected("(0008,1030)")
-    assert release_condition(coverage, _search(text)).decision is Decision.QC_REVIEW
-    name = _finding(NAME_PATH, ValueKind.PERSON_NAME)
-    condition = release_condition(coverage, _search(text, name))
+def test_a_lesser_reason_then_a_withholding_one_withholds():
+    coverage = _coverage(
+        SourceValue(NAME_PATH, "PN", PERSON),
+        uncollected=[Uncollected(DESCRIPTION_PATH, UNDECODABLE)],
+    )
+    condition = release_condition(coverage, _written(PERSON))
+    assert [r.decision for r in condition.reasons] == [
+        Decision.QC_REVIEW,
+        Decision.WITHHOLD,
+    ]
     assert condition.decision is Decision.WITHHOLD
-    assert len(condition.reasons) == 3
 
 
 # Hygiene and validation.
 
 
 def test_reasons_and_reprs_hold_no_values():
-    values = (
-        SourceValue(NAME_PATH, "PN", NAME),
+    sentinel = "SENTINELVALUE"
+    coverage = _coverage(
+        SourceValue(NAME_PATH, "PN", PERSON),
         SourceValue(ID_PATH, "LO", PATIENT_ID),
+        uncollected=[Uncollected(DESCRIPTION_PATH, sentinel)],
+        latin_1=[NAME_PATH],
     )
-    coverage = Coverage(
-        values,
-        (Uncollected(DESCRIPTION_PATH, UNDECODABLE),),
-        frozenset({NAME_PATH}),
-    )
-    condition = release_condition(
-        coverage, _search(_finding(ID_PATH, ValueKind.TEXT), readable=False)
-    )
+    condition = release_condition(coverage, _written(PATIENT_ID, Region.TRAILING))
     shown = [repr(coverage), repr(condition), str(condition)]
-    shown += [
-        text for reason in condition.reasons for text in (repr(reason), str(reason))
-    ]
+    shown += [repr(each) for each in coverage.uncollected]
+    shown += [repr(condition.search), *map(str, condition.exclusions)]
+    shown += [text for r in condition.reasons for text in (repr(r), str(r))]
     for text in shown:
-        for secret in (NAME, PATIENT_ID, "MÜLLERSOHN", "ZEBEDEE"):
+        for secret in (PERSON, PATIENT_ID, "ZEBEDEE", "QUILLON", sentinel):
             assert secret not in text
     assert repr(condition) == (
         "ReleaseCondition(decision='withhold', outcome='incomplete', reasons=4, "
         "exclusions=0)"
     )
-    assert str(condition.reasons[0]) == ("qc-review: (0008,1030): uncollected")
+    assert str(condition.reasons[0]) == "qc-review: (0008,1030): uncollected"
+    assert repr(coverage.uncollected[0]) == "Uncollected(path='(0008,1030)')"
 
 
 @pytest.mark.parametrize(
     "arguments",
     [
-        ([SourceValue(NAME_PATH, "PN", NAME)],),
-        (("not a source value",),),
-        ((), [Uncollected(NAME_PATH, UNDECODABLE)]),
-        ((), (NAME_PATH,)),
-        ((), (), {NAME_PATH}),
-        ((), (), frozenset({"(0010,0010)"})),
+        {"collected": ()},  # planned is required
+        {"planned": frozenset(), "collected": [SourceValue(NAME_PATH, "PN", PERSON)]},
+        {"planned": frozenset(), "collected": ("not a source value",)},
+        {"planned": {NAME_PATH}, "collected": ()},
+        {"planned": frozenset({"(0010,0010)"}), "collected": ()},
+        {"planned": frozenset(), "collected": (), "uncollected": (NAME_PATH,)},
+        {"planned": frozenset(), "collected": (), "decoded_as_bytes": {NAME_PATH}},
     ],
 )
 def test_coverage_rejects_malformed_input(arguments):
     with pytest.raises(TypeError):
-        Coverage(*arguments)
+        Coverage(**arguments)
 
 
 @pytest.mark.parametrize("reason", ["", None])
@@ -363,16 +483,8 @@ def test_an_uncollected_value_needs_a_path_and_a_reason(reason):
         Uncollected("(0010,0010)", UNDECODABLE)
 
 
-def test_the_gate_takes_only_a_coverage_and_a_search():
+def test_the_gate_takes_only_a_coverage_and_written_bytes():
     with pytest.raises(TypeError):
-        release_condition((), CLEAN)
+        release_condition((), _written())
     with pytest.raises(TypeError):
-        release_condition(Coverage(()), ((), (), True))
-
-
-def test_the_module_offers_no_configuration():
-    assert set(release_gate.release_condition.__code__.co_varnames[:2]) == {
-        "coverage",
-        "search",
-    }
-    assert release_gate.release_condition.__code__.co_argcount == 2
+        release_condition(_coverage(), "not bytes")
