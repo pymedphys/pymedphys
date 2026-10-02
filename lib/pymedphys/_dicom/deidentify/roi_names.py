@@ -28,7 +28,10 @@ A name goes to review, rather than being renamed, where:
 
 - it matches no vocabulary name, including where it holds a character
   outside printable ASCII, since TG-263 names are ASCII and Unicode case
-  folding and compatibility forms would match look-alike characters;
+  folding and compatibility forms would match look-alike characters, and
+  where, once its padding is removed, it starts with ``_`` or ``-``, since
+  TG-263 marks a structure not used for dose evaluation, such as an
+  optimisation contour, with a leading ``_``, so ``_Heart`` is not ``Heart``;
 - its normalised form matches more than one vocabulary name, such as
   ``Bowel_Small`` and a ``Bowel-Small`` beside it, so renaming would need a
   choice;
@@ -70,6 +73,10 @@ from pymedphys._nomenclature import tg263
 # with NUL instead.
 _PADDING = " \x00"
 _DISREGARDED = re.compile(r"[ _-]")
+# TG-263 gives a leading "_" to a structure not used for dose evaluation,
+# such as an optimisation contour, so a name that starts with a separator is
+# not the vocabulary name without it.
+_PREFIXES = ("_", "-")
 _DISREGARDED_BESIDE_HYPHENS = re.compile(r"[ _]")
 _PRINTABLE_ASCII = re.compile(r"[\x20-\x7e]*")
 _NOT_ALPHANUMERIC = re.compile(r"[\W_]+")
@@ -216,7 +223,10 @@ def clean_roi_names(
     names = _texts(names, "ROI Names")
     words, wholes = _identifier_words(_texts(identifiers, "identifiers"))
     stripped = [name.strip(_PADDING) for name in names]
-    matches = [vocabulary.spellings(name) for name in stripped]
+    matches = [
+        frozenset() if name.startswith(_PREFIXES) else vocabulary.spellings(name)
+        for name in stripped
+    ]
     sources: dict[str, set[str]] = collections.defaultdict(set)
     for name, spellings in zip(stripped, matches):
         if len(spellings) == 1:

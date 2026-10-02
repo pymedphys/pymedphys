@@ -159,6 +159,23 @@ def test_a_name_of_separators_alone_goes_to_review(name):
     assert _clean([name]) == (roi_names.RoiNameDecision(Reason.UNMATCHED, None),)
 
 
+@pytest.mark.parametrize(
+    "name",
+    ["_Heart", "_Lung_L", "  _Heart", "_Heart\x00", "__heart", "-Heart", " - Lung L"],
+)
+def test_a_name_with_a_leading_underscore_or_hyphen_goes_to_review(name):
+    # TG-263 marks a structure not used for dose evaluation, such as an
+    # optimisation contour, with a leading "_", so "_Heart" is not "Heart".
+    assert _clean([name]) == (roi_names.RoiNameDecision(Reason.UNMATCHED, None),)
+
+
+def test_a_prefixed_name_does_not_stop_the_plain_name_being_renamed():
+    assert _clean(["_Heart", "Heart"]) == (
+        roi_names.RoiNameDecision(Reason.UNMATCHED, None),
+        roi_names.RoiNameDecision(Reason.MATCHED, "Heart"),
+    )
+
+
 def test_a_name_that_matches_more_than_one_vocabulary_name_goes_to_review():
     # VB_S and VBs normalise alike, as in the 2017-08-15 edition.
     assert _clean(["vb s"]) == (roi_names.RoiNameDecision(Reason.AMBIGUOUS, None),)
