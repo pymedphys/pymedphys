@@ -26,10 +26,13 @@ change and the same inputs always give the same text.
 - the method digest of the policy (D-024) and the vocabulary it covers;
 - the supported IODs, their Storage SOP Classes, and the transfer
   syntaxes they are read in (D-010);
-- the action of each attribute of Table E.1-1, of each supplementary rule,
-  and of each UI attribute that the table omits, by its UID role (D-003),
-  with each compound action resolved at every place where a supported IOD
-  defines the attribute (D-020);
+- the action that the engine applies to each attribute of Table E.1-1, of
+  each supplementary rule, and of each UI attribute that the table omits, by
+  its UID role (D-003), with each compound action resolved at every place
+  where a supported IOD defines the attribute (D-020), and where the engine
+  applies another action than the policy gives, the reason;
+- the rules that give every other element its action
+  (:mod:`~pymedphys._dicom.deidentify.element_rules`, D-022);
 - the values that Z, D, and U write (D-003, D-005, and D-021);
 - the scope of referential integrity under a run-scoped key (D-004);
 - that no attribute is encrypted for later re-identification (D-013).
@@ -56,18 +59,28 @@ from pymedphys._nomenclature import tg263
 from . import compound_actions, dummy_values, keys, markers, pseudonyms, uids
 from .markers import PROFILE_CODE
 from .codes import load_context_group
+from .element_rules import (
+    _ENGINE_GROUPS,
+    _ENGINE_TAGS,
+    IOD_DEFINED_VRS,
+    KEPT_VRS,
+    ElementRules,
+    RuleSource,
+)
 from .iods import load_iod_tables
 from .method_digest import digest_inputs, method_digest
-from .policy import TARGET_OPTIONS, Policy, ResolvedConflict
+from .policy import TARGET_OPTIONS, Policy, PolicyError, ResolvedConflict
 from .scope import SUPPORTED_IODS, SUPPORTED_TRANSFER_SYNTAXES, classify
 from .sop_classes import load_storage_sop_classes
 from .standard import (
+    _RESERVED_ODD_GROUPS,
     OPTIONS,
     PRIVATE_ATTRIBUTES_TAG,
     load_data_dictionary,
     load_table_e1_1,
     load_table_e1_1a,
 )
+from .supplementary_actions import TEXT_VRS, UNCOVERED_TEXT_ACTION
 from .uid_registry import load_uid_values
 from .uid_roles import UIDRole, load_uid_roles
 
@@ -91,6 +104,7 @@ OPTION_CODES: Mapping[str, str] = types.MappingProxyType(
 PIXEL_OPTION_CODES: tuple[str, ...] = ("113101", "113102")
 
 _REPEATING = re.compile(r"^\((50|60)xx,")
+_CONCRETE_TAG = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
 
 # Where an attribute's action comes from.
 TABLE_E1_1 = "Table E.1-1"
@@ -102,14 +116,33 @@ UID_DEFINITION = "UID role: definition"
 # the instance valid, so the instance is sequestered.
 SEQUESTER = "sequester"
 
+# Why the engine applies another action than the policy gives an attribute.
+ENGINE_REMOVAL = "engine removal"
+SEQUENCE_NOT_CLEANED = "sequence not cleaned"
+
+# What each group that the engine removes from a data set holds.
+ENGINE_GROUP_REASONS: Mapping[int, str] = types.MappingProxyType(
+    {
+        0x0000: "the command set of a DIMSE message (PS3.7)",
+        0x0002: "the File Meta Information, which the engine writes itself "
+        "(PS3.10 Section 7.1)",
+        0x0004: "the directory information that belongs only in a DICOMDIR "
+        "(PS3.3 Annex F)",
+    }
+)
+
 # What the statement cannot yet describe from the engine. Each is to be
 # generated once the engine decides it.
 PENDING = (
-    "The action for each element that neither Table E.1-1, a supplementary "
-    "rule, nor a UID role covers, such as an element that the data "
-    "dictionary does not list.",
     "The action where an IOD requires an attribute to which the policy gives "
     "a plain X or Z (D-020).",
+)
+# Pending only for a policy whose element rules the engine refuses.
+PENDING_REFUSED = (
+    "The actions that the engine applies under this policy, which it refuses "
+    "until reviewed rules say which private attributes are safe to retain: "
+    "the actions above are those that the policy gives, and the rules for "
+    "elements that no row covers are not listed."
 )
 # Pending only for a policy that gives an attribute C.
 PENDING_CLEANING = (
@@ -185,6 +218,13 @@ class AttributeAction:
     elsewhere : str
         For a compound action, its action where the IOD does not define the
         attribute, which counts as Type 3; otherwise ``""``.
+    policy_action : str
+        The action that the policy gives, where the engine applies another
+        one as ``action``; otherwise ``""``.
+    superseded_by : str
+        Why the engine applies ``action`` in place of ``policy_action``:
+        :data:`ENGINE_REMOVAL` or :data:`SEQUENCE_NOT_CLEANED`; otherwise
+        ``""``.
     """
 
     tag: str
@@ -193,6 +233,39 @@ class AttributeAction:
     action: str
     places: tuple[Place, ...] = ()
     elsewhere: str = ""
+    policy_action: str = ""
+    superseded_by: str = ""
+
+
+@dataclasses.dataclass(frozen=True)
+class OtherElements:
+    """The rules that give an action to each element that no row covers.
+
+    From :mod:`~pymedphys._dicom.deidentify.element_rules` (D-022).
+
+    Attributes
+    ----------
+    engine_groups : tuple of int
+        The groups whose elements the engine removes from a data set.
+    engine_attributes : tuple of str
+        The tags of the attributes that the engine removes wherever they are.
+    text_vrs : tuple of str
+        The VRs of a text attribute, which gets ``text_action``.
+    text_action : str
+        The action of a text attribute that no rule covers.
+    kept_vrs : tuple of str
+        The VRs whose values are kept wherever they are.
+    iod_defined_vrs : tuple of str
+        The VRs whose values are kept only where the instance's IOD defines
+        the attribute at the element's place.
+    """
+
+    engine_groups: tuple[int, ...]
+    engine_attributes: tuple[str, ...]
+    text_vrs: tuple[str, ...]
+    text_action: str
+    kept_vrs: tuple[str, ...]
+    iod_defined_vrs: tuple[str, ...]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -269,6 +342,9 @@ class ConformanceStatement:
     attributes : tuple of AttributeAction
         The rows of Table E.1-1, then the supplementary rules, then the UI
         attributes that the table omits, each in its table's order.
+    other_elements : OtherElements or None
+        The rules for every other element, or None for a policy whose
+        element rules the engine refuses.
     markers : InsertedMarkers
         The parts of the markers that the policy decides.
     pending : tuple of str
@@ -289,6 +365,7 @@ class ConformanceStatement:
     sop_classes: tuple[SOPClass, ...]
     transfer_syntaxes: tuple[TransferSyntax, ...]
     attributes: tuple[AttributeAction, ...]
+    other_elements: OtherElements | None
     markers: InsertedMarkers
     pending: tuple[str, ...]
     acknowledgements: tuple[str, ...]
@@ -323,23 +400,51 @@ def _places(tag: str, action: str) -> tuple[tuple[Place, ...], str]:
     return tuple(places), compound_actions.resolve(action, "3")
 
 
-def _attributes(policy: Policy) -> Iterator[AttributeAction]:
+def _attribute(
+    tag: str, name: str, rule: str, given: str, rules: ElementRules | None
+) -> AttributeAction:
+    """Return the action that the engine applies to one listed attribute."""
+    # A masked tag is looked up as one of the tags it covers, as for its
+    # places; one that stays masked, such as (50xx,xxxx), keeps the policy's
+    # action, which its row gives every tag it covers.
+    concrete = _REPEATING.sub(r"(\g<1>00,", tag)
+    if rules is None or not _CONCRETE_TAG.fullmatch(concrete):
+        return AttributeAction(tag, name, rule, given, *_places(tag, given))
+    applied = rules.rule(concrete)
+    if applied.action == given:
+        return AttributeAction(tag, name, rule, given, *_places(tag, given))
+    # The engine's own removals come first; otherwise the element rules give
+    # a sequence to which the policy gives C its Basic Profile action.
+    reason = (
+        ENGINE_REMOVAL if applied.source is RuleSource.ENGINE else SEQUENCE_NOT_CLEANED
+    )
+    places = _places(tag, applied.action)
+    return AttributeAction(tag, name, rule, applied.action, *places, given, reason)
+
+
+def _attributes(policy: Policy, rules: ElementRules | None) -> Iterator[AttributeAction]:
     names = {a.tag: a.name for a in load_data_dictionary().attributes}
     table = load_table_e1_1().attributes
     for row in table:
-        action = policy.actions[row.tag]
-        yield AttributeAction(
-            row.tag, row.name, TABLE_E1_1, action, *_places(row.tag, action)
-        )
+        yield _attribute(row.tag, row.name, TABLE_E1_1, policy.actions[row.tag], rules)
     for tag, action in policy.supplementary_actions.items():
-        yield AttributeAction(
-            tag, names[tag], SUPPLEMENTARY, action, *_places(tag, action)
-        )
+        yield _attribute(tag, names[tag], SUPPLEMENTARY, action, rules)
     listed = {row.tag for row in table}
     for tag, rule in load_uid_roles().rules.items():
         if tag not in listed:
             role = UID_INSTANCE if rule.role is UIDRole.INSTANCE else UID_DEFINITION
-            yield AttributeAction(tag, names[tag], role, "U")
+            yield _attribute(tag, names[tag], role, "U", rules)
+
+
+def _other_elements() -> OtherElements:
+    return OtherElements(
+        engine_groups=tuple(sorted(_ENGINE_GROUPS)),
+        engine_attributes=tuple(sorted(_ENGINE_TAGS)),
+        text_vrs=tuple(sorted(TEXT_VRS)),
+        text_action=UNCOVERED_TEXT_ACTION,
+        kept_vrs=tuple(sorted(KEPT_VRS)),
+        iod_defined_vrs=tuple(sorted(IOD_DEFINED_VRS)),
+    )
 
 
 def _markers(policy: Policy, digest: str) -> InsertedMarkers:
@@ -425,10 +530,16 @@ def conformance_statement(
         for row in registered.rows
         if row.uid in SUPPORTED_TRANSFER_SYNTAXES
     )
-    actions = {*policy.actions.values(), *policy.supplementary_actions.values()}
+    try:
+        rules: ElementRules | None = ElementRules(policy)
+    except PolicyError:
+        rules = None
+    attributes = tuple(_attributes(policy, rules))
+    actions = {entry.action for entry in attributes}
     pending = PENDING + tuple(
         item
         for item, applies in (
+            (PENDING_REFUSED, rules is None),
             (PENDING_CLEANING, "C" in actions),
             (PENDING_SAFE_PRIVATE, "retain_safe_private" in policy.options),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
@@ -458,19 +569,20 @@ def conformance_statement(
         iods=tuple(sorted(SUPPORTED_IODS)),
         sop_classes=supported,
         transfer_syntaxes=syntaxes,
-        attributes=tuple(_attributes(policy)),
+        attributes=attributes,
+        other_elements=None if rules is None else _other_elements(),
         markers=_markers(policy, digest),
         pending=pending,
         acknowledgements=tuple(dict.fromkeys(t.acknowledgement for t in tables)),
     )
 
 
-def _join(values: Iterable[str]) -> str:
+def _join(values: Iterable[str], conjunction: str = "and") -> str:
     """Join ``values`` as prose: ``"a"``, ``"a and b"``, or ``"a, b, and c"``."""
     values = list(values)
     if len(values) <= 2:
-        return " and ".join(values)
-    return ", ".join(values[:-1]) + ", and " + values[-1]
+        return f" {conjunction} ".join(values)
+    return ", ".join(values[:-1]) + f", {conjunction} " + values[-1]
 
 
 def _cell(text: str) -> str:
@@ -567,6 +679,79 @@ def _private(statement: ConformanceStatement) -> list[str]:
         "creator; and each element in an odd group that PS3.5 Section 7.8.1 "
         "does not allow. A private sequence is removed whole, with its items "
         "(PS3.15 E.1.1 and E.3.10).",
+    ]
+
+
+def _superseded(statement: ConformanceStatement) -> list[str]:
+    """Explain each action that the engine applies in place of the policy's."""
+    found: dict[tuple[str, str], list[str]] = {}
+    for e in statement.attributes:
+        if e.superseded_by:
+            key = (e.superseded_by, e.policy_action)
+            found.setdefault(key, []).append(f"{e.name} {e.tag}")
+    lines = []
+    for (reason, given), names in sorted(
+        found.items(), key=lambda item: item[0][0] != ENGINE_REMOVAL
+    ):
+        listed = f"to which the policy gives {_code(given)}: {_join(names)}."
+        if reason == ENGINE_REMOVAL:
+            text = (
+                "The engine's own removals, under Other elements, come before "
+                f"the policy's actions, so it removes these attributes, {listed}"
+            )
+        else:
+            text = (
+                "No rules for cleaning the contents of a sequence are designed "
+                "yet, so these sequences take their Basic Profile actions, as "
+                f"the table shows, although they are those {listed}"
+            )
+        lines += ["", text]
+    return lines
+
+
+def _other(statement: ConformanceStatement, named: Callable[[str], str]) -> list[str]:
+    """Describe the rules for the elements that no listed rule covers."""
+    other = statement.other_elements
+    if other is None:
+        return []
+    groups = "; ".join(
+        f"group {group:04X} holds {ENGINE_GROUP_REASONS[group]}"
+        for group in other.engine_groups
+    )
+    reserved = _join(f"{group:04X}" for group in sorted(_RESERVED_ODD_GROUPS))
+    resolved = (
+        ", resolved by Type at their place as for the rows above"
+        if other.text_action in compound_actions.COMPOUND_ACTIONS
+        else ""
+    )
+    return [
+        "## Other elements",
+        "",
+        "Each element takes its action from the first of these that applies: "
+        "the engine's own removals; the Private Attributes row, for an "
+        f"element of an odd group other than {reserved}, which PS3.5 Section "
+        "7.8.1 does not allow for private use; the other rows above; and then "
+        "the rules below, by the attribute's VRs in the pinned data "
+        "dictionary (D-022).",
+        "",
+        "- The engine removes from every data set each element of groups "
+        f"{_join(f'{group:04X}' for group in other.engine_groups)}, and each "
+        "group length, (gggg,0000), which PS3.5 Section 7.2 retires, and "
+        f"removes {_join(named(tag) for tag in other.engine_attributes)} "
+        f"wherever they are. In a data set, {groups}.",
+        f"- Text attributes, of any of the VRs {_join(other.text_vrs, 'or')}, get "
+        f"{_code(other.text_action)}{resolved}.",
+        f"- Attributes whose VRs are all among {_join(other.kept_vrs)} are kept "
+        f"({_code('K')}).",
+        "- Attributes whose VRs are all among those and "
+        f"{_join(other.iod_defined_vrs)} are kept where the instance's IOD "
+        "defines the attribute at the element's place, and removed "
+        f"({_code('X')}) elsewhere. The elements in the items of a kept "
+        "sequence take their actions by these same rules, as Table E.1-1a "
+        "requires of a retained sequence.",
+        f"- Any other attribute is removed ({_code('X')}), as is an element "
+        "that the pinned data dictionary does not list.",
+        "",
     ]
 
 
@@ -750,14 +935,17 @@ def render_markdown(statement: ConformanceStatement) -> str:
                     e.tag,
                     e.name,
                     e.rule,
-                    _code(e.action),
+                    _code(e.action)
+                    + (f", in place of {_code(e.policy_action)}" * bool(e.policy_action)),
                     _resolution(e, statement.iods, sequences),
                 )
                 for e in statement.attributes
             ),
         ),
         *_private(statement),
+        *_superseded(statement),
         "",
+        *_other(statement, named),
         "## Values written",
         "",
         "Z writes a zero-length value, except where this statement says "

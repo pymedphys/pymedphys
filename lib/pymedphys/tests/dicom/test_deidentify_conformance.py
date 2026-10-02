@@ -25,6 +25,7 @@ from pymedphys._dicom.deidentify import (
     compound_actions,
     conformance,
     dummy_values,
+    element_rules,
     iods,
     markers,
     method_digest,
@@ -136,11 +137,13 @@ def test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_actio
     supplementary = [
         e for e in statement.attributes if e.rule == conformance.SUPPLEMENTARY
     ]
-    assert [(e.tag, e.action) for e in table] == list(composed.actions.items())
+    assert [(e.tag, e.policy_action or e.action) for e in table] == list(
+        composed.actions.items()
+    )
     assert [e.name for e in table] == [
         row.name for row in standard.load_table_e1_1().attributes
     ]
-    assert {e.tag: e.action for e in supplementary} == dict(
+    assert {e.tag: e.policy_action or e.action for e in supplementary} == dict(
         composed.supplementary_actions
     )
     names = {a.tag: a.name for a in standard.load_data_dictionary().attributes}
@@ -406,6 +409,7 @@ def test_cleaning_is_pending_only_for_a_policy_that_cleans(preset):
         *composed.actions.values(),
         *composed.supplementary_actions.values(),
     }
+    assert cleans == (preset != "basic")
     assert (conformance.PENDING_CLEANING in statement.pending) == cleans
     assert set(conformance.PENDING) <= set(statement.pending)
 
@@ -561,3 +565,138 @@ def test_the_markers_are_said_to_depend_on_the_satisfied_options():
     )
     assert "the options that the instance satisfies" in section
     assert "never on the instance's values" not in section
+
+
+# A tag of each masked row of Table E.1-1 that the row covers.
+CONCRETE = {"(50xx,xxxx)": "(5000,0010)", standard.PRIVATE_ATTRIBUTES_TAG: "(0009,0010)"}
+ENGINE_REMOVED = {
+    "(0000,1001)": "U",  # Requested SOP Instance UID
+    "(0002,0003)": "U",  # Media Storage SOP Instance UID
+    "(0004,1511)": "U",  # Referenced SOP Instance UID in File
+}
+# The sequences that Table E.1-1 gives C under Clean Descriptors, with their
+# Basic Profile actions.
+CLEANED_SEQUENCES = {
+    "(0008,1084)": "X",  # Admitting Diagnoses Code Sequence
+    "(0032,1067)": "X",  # Reason for Visit Code Sequence
+    "(3010,0081)": "Z",  # Prescription Notes Sequence
+}
+SUPPORTED_BY_THE_ENGINE = [p for p in policy.PRESETS if p != "public-release"]
+
+
+def _concrete(tag):
+    return CONCRETE.get(tag, tag.replace("60xx", "6000"))
+
+
+@pytest.mark.parametrize("name", SUPPORTED_BY_THE_ENGINE)
+def test_every_listed_action_is_the_one_the_engine_applies(name):
+    composed = policy.compose_policy(name)
+    rules = element_rules.ElementRules(composed)
+    statement = conformance.conformance_statement(composed, vocabulary=None)
+    given = {**composed.actions, **composed.supplementary_actions}
+    for entry in statement.attributes:
+        applied = rules.rule(_concrete(entry.tag)).action
+        assert entry.action == applied, entry.tag
+        if entry.tag in given and given[entry.tag] != applied:
+            assert entry.policy_action == given[entry.tag], entry.tag
+            assert entry.superseded_by in (
+                conformance.ENGINE_REMOVAL,
+                conformance.SEQUENCE_NOT_CLEANED,
+            )
+        else:
+            assert (entry.policy_action, entry.superseded_by) == ("", ""), entry.tag
+
+
+def test_the_engines_own_removals_supersede_the_table():
+    statement = _statement("basic")
+    for tag, given in ENGINE_REMOVED.items():
+        entry = _entry(statement, tag)
+        assert (entry.action, entry.policy_action) == ("X", given)
+        assert entry.superseded_by == conformance.ENGINE_REMOVAL
+    text = conformance.render_markdown(statement)
+    row = next(line for line in text.splitlines() if "| (0002,0003) |" in line)
+    assert "| `X`, in place of `U` |" in row
+    section = _section(text, "Actions")
+    paragraph = next(
+        line for line in section.splitlines() if line.startswith("The engine's own")
+    )
+    for tag in ENGINE_REMOVED:
+        assert tag in paragraph
+
+
+def test_a_sequence_that_the_policy_cleans_takes_its_basic_profile_action():
+    statement = _statement("basic-clean-descriptors")
+    for tag, basic in CLEANED_SEQUENCES.items():
+        entry = _entry(statement, tag)
+        assert (entry.action, entry.policy_action) == (basic, "C"), tag
+        assert entry.superseded_by == conformance.SEQUENCE_NOT_CLEANED
+    section = _section(conformance.render_markdown(statement), "Actions")
+    paragraph = next(
+        line for line in section.splitlines() if line.startswith("No rules for")
+    )
+    for tag in CLEANED_SEQUENCES:
+        assert tag in paragraph
+    basic = _section(conformance.render_markdown(_statement("basic")), "Actions")
+    assert "No rules for cleaning" not in basic
+
+
+def test_elements_that_no_row_covers_are_no_longer_pending(preset):
+    statement = _statement(preset)
+    assert not any("no rule covers" in item for item in conformance.PENDING)
+    assert not any("data dictionary does not list" in i for i in statement.pending)
+
+
+@pytest.mark.parametrize("name", SUPPORTED_BY_THE_ENGINE)
+def test_the_rules_for_other_elements_are_the_engines(name):
+    other = _statement(name).other_elements
+    assert other == conformance.OtherElements(
+        engine_groups=tuple(sorted(element_rules._ENGINE_GROUPS)),
+        engine_attributes=tuple(sorted(element_rules._ENGINE_TAGS)),
+        text_vrs=tuple(sorted(element_rules.TEXT_VRS)),
+        text_action=element_rules.UNCOVERED_TEXT_ACTION,
+        kept_vrs=tuple(sorted(element_rules.KEPT_VRS)),
+        iod_defined_vrs=tuple(sorted(element_rules.IOD_DEFINED_VRS)),
+    )
+
+
+def test_the_rules_for_other_elements_are_described():
+    statement = _statement("basic")
+    other = statement.other_elements
+    section = _section(conformance.render_markdown(statement), "Other elements")
+    for group in other.engine_groups:
+        assert f"{group:04X}" in section
+    assert "(gggg,0000)" in section
+    assert "Data Set Trailing Padding (FFFC,FFFC)" in section
+    assert "Encrypted Attributes Sequence (0400,0500)" in section
+    for vrs, conjunction in (
+        (other.text_vrs, "or"),
+        (other.kept_vrs, "and"),
+        (other.iod_defined_vrs, "and"),
+    ):
+        assert ", ".join(vrs[:-1]) + f", {conjunction} {vrs[-1]}" in section
+    assert f"get `{other.text_action}`, resolved by Type" in section
+    assert "items" in section
+    assert "does not list" in section
+    # Group 0002 is the File Meta Information, which the engine writes.
+    assert "File Meta Information" in section
+
+
+def test_every_engine_group_has_its_reason():
+    assert set(conformance.ENGINE_GROUP_REASONS) == set(element_rules._ENGINE_GROUPS)
+
+
+def test_a_policy_that_the_engine_refuses_lists_the_policys_actions():
+    composed = policy.compose_policy("public-release")
+    with pytest.raises(policy.PolicyError):
+        element_rules.ElementRules(composed)
+    statement = conformance.conformance_statement(composed, vocabulary=None)
+    assert statement.other_elements is None
+    assert conformance.PENDING_REFUSED in statement.pending
+    table = [e for e in statement.attributes if e.rule == conformance.TABLE_E1_1]
+    assert [(e.tag, e.action) for e in table] == list(composed.actions.items())
+    assert not any(e.policy_action for e in statement.attributes)
+    text = conformance.render_markdown(statement)
+    assert "## Other elements" not in text
+    assert conformance.PENDING_REFUSED in text
+    for name in SUPPORTED_BY_THE_ENGINE:
+        assert conformance.PENDING_REFUSED not in _statement(name).pending
