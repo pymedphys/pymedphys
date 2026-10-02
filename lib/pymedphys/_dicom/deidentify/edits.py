@@ -45,7 +45,12 @@ only collected and cannot be decoded is listed as not collected, with a
 reason that holds no value: the transformation may proceed, but whether the
 instance may be released is for the release gate to decide. Where a value
 that the action needs cannot be decoded, or a Specific Character Set is not
-supported (D-010), the instance is sequestered, and has no edits.
+supported (D-010), the instance is sequestered, and has no edits. Text
+outside ISO 646 where no Specific Character Set applies is the exception, as
+the maintainer decided on 1 October 2026: where its rule removes or replaces
+it, it is read as ISO 8859-1, in which every byte is a character, to be
+collected and compared, and the instance is de-identified; where it is to be
+cleaned, the instance is sequestered.
 
 A kept sequence's items are read, so that each element in them can be
 written or kept; where they cannot be, the instance is sequestered. Nothing
@@ -63,7 +68,7 @@ import enum
 
 from . import elements
 from .dummy_values import NoDummyValueError, values_for_d
-from .elements import ElementValue, UndecodableElement
+from .elements import ElementValue, OutsideDefaultRepertoire, UndecodableElement
 from .file_layout import ElementPath
 from .keys import DeidKey
 from .pseudonyms import SubjectIdentity, patient_pseudonym
@@ -244,11 +249,45 @@ class _Reader:
         for index, _ in enumerate(self.sequence(path).items):
             self._holder((*path.items, (path.tag, index)))
 
-    def read(self, path: ElementPath) -> ElementValue:
+    def read(self, path: ElementPath, latin_1: bool = False) -> ElementValue:
         dataset, ancestors, codecs = self._holder(path.items)
         return elements.read_element(
-            dataset, path, codecs, ancestors, source=self._source
+            dataset,
+            path,
+            codecs,
+            ancestors,
+            source=self._source,
+            outside_repertoire_as_latin_1=latin_1,
         )
+
+
+def _read_planned(
+    reader: _Reader, element: ElementPlan
+) -> tuple[ElementValue | None, NotCollected | None]:
+    """Read a planned value, or say why it is not collected.
+
+    Text outside ISO 646 where no Specific Character Set applies is read as
+    ISO 8859-1 where its rule removes or replaces it, as the maintainer
+    decided on 1 October 2026; text to be cleaned cannot be decoded.
+    """
+    try:
+        try:
+            return reader.read(element.path), None
+        except OutsideDefaultRepertoire:
+            if Consumer.CLEANING in element.consumers:
+                raise
+            return reader.read(element.path, latin_1=True), None
+    except UndecodableElement as error:
+        if element.consumers & _NEEDS_VALUE or _takes_pseudonym(element):
+            raise _Sequester(
+                Sequestration(
+                    element.path,
+                    element.action,
+                    element.vr,
+                    SequesterReason.UNDECODABLE,
+                )
+            ) from None
+        return None, NotCollected(element.path, error.reason)
 
 
 def _text(value: ElementValue) -> str | bytes:
@@ -412,19 +451,9 @@ def edit_instance(
             if _kept_container(element, container):
                 _check_items(reader, element)
             if element.consumers:
-                try:
-                    value = reader.read(element.path)
-                except UndecodableElement as error:
-                    if element.consumers & _NEEDS_VALUE or _takes_pseudonym(element):
-                        raise _Sequester(
-                            Sequestration(
-                                element.path,
-                                element.action,
-                                element.vr,
-                                SequesterReason.UNDECODABLE,
-                            )
-                        ) from None
-                    missing.append(NotCollected(element.path, error.reason))
+                value, not_read = _read_planned(reader, element)
+                if not_read is not None:
+                    missing.append(not_read)
             if value is not None and Consumer.RESIDUAL_COLLECTION in element.consumers:
                 try:
                     collected.append(

@@ -826,7 +826,7 @@ def test_a_byte_outside_the_default_character_repertoire_is_refused(value, in_me
         dataset[0x00100010] = pydicom.DataElement(0x00100010, "PN", "SENTINEL^RENÉ")
     codecs = elements.dataset_codecs(dataset)
 
-    with pytest.raises(elements.UndecodableElement) as raised:
+    with pytest.raises(elements.OutsideDefaultRepertoire) as raised:
         _read(dataset, _path("(0010,0010)"), codecs)
 
     assert codecs == elements.DEFAULT_CODECS
@@ -834,6 +834,13 @@ def test_a_byte_outside_the_default_character_repertoire_is_refused(value, in_me
     assert "Default Character Repertoire" in str(raised.value)
     assert SENTINEL not in str(raised.value) and SENTINEL not in repr(raised.value)
     assert raised.value.__cause__ is None
+
+    # Where its rule removes or replaces it, it is read as ISO 8859-1, as
+    # decided on 1 October 2026.
+    read = elements.read_element(
+        dataset, _path("(0010,0010)"), codecs, outside_repertoire_as_latin_1=True
+    )
+    assert read.values == ("SENTINEL^RENÉ",)
 
 
 @pytest.mark.usefixtures("pydicom_behaviour")

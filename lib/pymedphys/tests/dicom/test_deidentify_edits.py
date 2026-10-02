@@ -55,6 +55,18 @@ def _edits(data_set=None, rules=None):
     return plan, edits.edit_instance(evidence, plan, KEY)
 
 
+def _refusing(monkeypatch, *paths):
+    """Make each of ``paths`` a value that cannot be decoded."""
+    original = elements.read_element
+
+    def refusing(dataset, path, *args, **kwargs):
+        if path in paths:
+            raise elements.UndecodableElement(path, "could not be decoded")
+        return original(dataset, path, *args, **kwargs)
+
+    monkeypatch.setattr(elements, "read_element", refusing)
+
+
 def _collected(result):
     return {value.source: (value.vr, value.value) for value in result.source_values}
 
@@ -177,10 +189,12 @@ def test_only_the_planned_values_and_the_sequences_that_hold_them_are_read(
     assert not elements_by_path[_path("(0028,0010)")].consumers
 
 
-def test_a_value_that_is_only_collected_and_cannot_be_decoded_is_listed():
-    # Study Description (0008,1030), removed, with a byte outside the
-    # Default Character Repertoire.
-    _, result = _edits(_explicit(0x00081030, "LO", b"SENTINEL \xe9"))
+def test_a_value_that_is_only_collected_and_cannot_be_decoded_is_listed(
+    monkeypatch,
+):
+    # Study Description (0008,1030), removed.
+    _refusing(monkeypatch, _path("(0008,1030)"))
+    _, result = _edits(_explicit(0x00081030, "LO", b"SENTINEL DESC "))
 
     (description,) = result.edits
     assert description.kind is EditKind.REMOVE
@@ -191,8 +205,11 @@ def test_a_value_that_is_only_collected_and_cannot_be_decoded_is_listed():
     assert "SENTINEL" not in missing.reason
 
 
-def test_a_value_that_its_action_needs_and_cannot_be_decoded_sequesters():
-    _, result = _edits(_explicit(0x300A0002, "SH", b"SENTINEL \xe9"))
+def test_a_value_that_its_action_needs_and_cannot_be_decoded_sequesters(
+    monkeypatch,
+):
+    _refusing(monkeypatch, _path("(300A,0002)"))
+    _, result = _edits(_explicit(0x300A0002, "SH", b"SENTINEL"))
 
     (sequestration,) = result.sequestrations
     assert sequestration == walker.Sequestration(
@@ -201,6 +218,48 @@ def test_a_value_that_its_action_needs_and_cannot_be_decoded_sequesters():
     assert str(sequestration) == (
         "D on (300A,0002) needs its value, which cannot be decoded, so the "
         "instance must be sequestered"
+    )
+    assert not result.edits
+
+
+def test_removed_text_outside_iso_646_without_a_character_set_is_collected():
+    # As decided on 1 October 2026, text with bytes outside the Default
+    # Character Repertoire where no Specific Character Set applies is read
+    # as ISO 8859-1 where it is removed, nested or not, so that every byte
+    # can be searched for.
+    _, result = _edits(
+        _explicit(0x00081030, "LO", b"SENTINEL \xe9")
+        + _explicit(
+            0x00101002, "SQ", _item(_explicit(0x00100020, "LO", b"SENTINEL \xe9 "))
+        )
+    )
+
+    assert not result.sequestrations
+    assert not result.not_collected
+    assert _collected(result) == {
+        _path("(0008,1030)"): ("LO", "SENTINEL \xe9"),
+        _path(("(0010,1002)", 0), "(0010,0020)"): ("LO", "SENTINEL \xe9"),
+    }
+
+
+def test_replaced_text_outside_iso_646_without_a_character_set_is_replaced():
+    _, result = _edits(_explicit(0x300A0002, "SH", b"SENTINEL \xe9"))
+
+    assert not result.sequestrations
+    (label,) = result.edits
+    assert (label.kind, label.values) == (EditKind.REPLACE, ("DEIDENTIFIED",))
+    assert _collected(result) == {_path("(300A,0002)"): ("SH", "SENTINEL \xe9")}
+
+
+def test_cleaned_text_outside_iso_646_without_a_character_set_sequesters():
+    _, result = _edits(
+        _explicit(0x300A0003, "LO", b"SENTINEL \xe9 "),
+        _rules("basic-clean-descriptors"),
+    )
+
+    (sequestration,) = result.sequestrations
+    assert sequestration == walker.Sequestration(
+        _path("(300A,0003)"), "C", "LO", walker.SequesterReason.UNDECODABLE
     )
     assert not result.edits
 
@@ -226,9 +285,11 @@ def test_a_sequestered_plan_is_not_edited():
     assert not result.source_values
 
 
-def test_results_hold_no_value_in_their_reprs():
+def test_results_hold_no_value_in_their_reprs(monkeypatch):
     _, result = _edits()
-    _, failed = _edits(_explicit(0x00081030, "LO", b"SENTINEL \xe9"))
+    _refusing(monkeypatch, _path("(0008,1030)"))
+    _, failed = _edits(_explicit(0x00081030, "LO", b"SENTINEL DESC "))
+    assert failed.not_collected
     shown = (
         repr(result)
         + repr(failed)
@@ -392,9 +453,10 @@ def test_an_unsupported_character_set_in_an_item_sequesters_the_instance(action)
     assert not result.edits
 
 
-def test_an_undecodable_patient_id_that_is_removed_is_not_collected():
+def test_an_undecodable_patient_id_that_is_removed_is_not_collected(monkeypatch):
+    _refusing(monkeypatch, _path("(0010,0020)"))
     _, result = _edits(
-        _explicit(0x00100020, "LO", b"SENTINEL \xe9"),
+        _explicit(0x00100020, "LO", b"SENTINEL ID "),
         _Overridden({"(0010,0020)": "X"}),
     )
 
