@@ -275,11 +275,23 @@ The Conformance Statement of an application that claims conformance to the Basic
 - which Options are supported;
 - any additional restrictions (e. g. key sizes for public keys).
 '''
-status = "planned"
+status = "partial"
 milestone = "M6"
-decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-021", "D-026"]
+decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-020", "D-021", "D-026"]
+implementation = ["_dicom/deidentify/conformance.py"]
+tests = [
+  "tests/dicom/test_deidentify_conformance.py::test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_action",
+  "tests/dicom/test_deidentify_conformance.py::test_every_ui_attribute_that_the_table_omits_is_listed_by_its_role",
+  "tests/dicom/test_deidentify_conformance.py::test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_them",
+  "tests/dicom/test_deidentify_conformance.py::test_the_dummy_values_are_those_that_d_writes",
+  "tests/dicom/test_deidentify_conformance.py::test_the_key_and_the_scope_of_referential_integrity_are_described",
+  "tests/dicom/test_deidentify_conformance.py::test_no_attribute_is_encrypted_for_later_reidentification",
+  "tests/dicom/test_deidentify_conformance.py::test_options_outside_the_supported_scope_are_listed_as_not_supported",
+  "tests/dicom/test_deidentify_conformance.py::test_a_statement_with_sections_still_to_describe_makes_no_claim",
+  "tests/dicom/test_deidentify_conformance.py::test_no_enabled_preset_has_an_incomplete_statement",
+]
 note = '''
-The generated conformance statement covers each item, including the key scope within which replacements stay consistent.
+The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters. It lists the action of each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020); the values that Z, D, and U write, including the keyed pseudonyms and replacement UIDs (D-003, D-005, D-021); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); and the options applied, those that can be composed, and those that are not supported. A statement lists what it cannot yet describe and then claims nothing. Remaining: the attributes and values that the markers insert (D-012), the action for every other element, the action where an IOD requires an attribute that a plain X or Z would leave invalid (D-020), and writing the statement with each run (M6).
 '''
 
 [[requirement]]
@@ -820,9 +832,21 @@ id = "MIDI-BP-10"
 text = '''
 Assess, for every image type, the risk from burned-in text, objects bearing text, and other identifying features in the pixel data. Where the risk exceeds the threshold, scan and redact, with human review, or discard the image. Do not limit checks to a subset of image types chosen from other data elements.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
 decisions = ["D-015", "D-017"]
+implementation = ["_dicom/deidentify/pixel_risk.py"]
+tests = [
+  "tests/dicom/test_deidentify_pixel_risk.py::test_a_declared_burned_in_annotation_is_an_indicator",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_a_received_no_is_no_evidence_of_safety",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_a_secondary_image_is_an_indicator",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_a_converted_image_is_an_indicator",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_an_overlay_without_overlay_data_may_be_in_the_pixel_data",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_an_attribute_held_with_another_vr_is_unreadable_evidence",
+]
+note = '''
+Every instance's attributes are read for indicators of burned-in text, whatever its IOD: Burned In Annotation of YES, a secondary or converted image, and an overlay without Overlay Data, which may lie in the pixel data; an attribute that cannot be read is itself reported, and a received NO counts for nothing. The pixel data are never inspected or changed (D-015). Remaining: reporting the indicators, the QC pack, and pixel review before `public-release` (M4).
+'''
 
 [[requirement]]
 id = "MIDI-BP-11"
@@ -900,9 +924,18 @@ id = "MIDI-BP-15"
 text = '''
 Quantify the re-identification risk from potentially reconstructable facial information in head and neck cross-sectional images with a collection-specific expert statistical analysis. Above the threshold, remove or modify the facial features, or do not share the images publicly.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
 decisions = ["D-015", "D-017"]
+implementation = ["_dicom/deidentify/pixel_risk.py"]
+tests = [
+  "tests/dicom/test_deidentify_pixel_risk.py::test_declared_recognizable_visual_features_are_an_indicator",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_an_external_roi_with_contours_is_a_patient_surface",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_an_roi_named_external_body_or_skin_is_a_patient_surface",
+]
+note = '''
+Recognizable Visual Features of YES, and an RT Structure Set's contours of an ROI whose interpreted type or name is EXTERNAL, BODY, or SKIN, the patient's outline, are reported as indicators of a reconstructable face. Remaining: indicators from a CT series' coverage and slice spacing, reporting them, and the `public-release` assessment and face review (M4).
+'''
 
 [[requirement]]
 id = "MIDI-BP-16"
@@ -936,6 +969,7 @@ status = "partial"
 milestone = "M4"
 decisions = ["D-011", "D-012", "D-024", "D-029"]
 implementation = [
+  "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/markers.py",
   "_dicom/deidentify/method_digest.py",
 ]
@@ -948,7 +982,10 @@ tests = [
   "tests/dicom/test_deidentify_markers.py::test_software_versions_give_the_running_python_pydicom_and_tomlkit",
   "tests/dicom/test_deidentify_markers.py::test_each_source_of_software_versions_changes_its_own_value",
   "tests/dicom/test_deidentify_markers.py::test_python_and_library_versions_change_software_versions_not_the_digest",
+  "tests/dicom/test_deidentify_conformance.py::test_the_statement_names_the_edition_preset_and_options",
+  "tests/dicom/test_deidentify_conformance.py::test_the_method_digest_is_the_policys_with_the_same_vocabulary",
+  "tests/dicom/test_deidentify_conformance.py::test_the_statement_is_the_same_every_time_it_is_generated",
 ]
 note = '''
-Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the method digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives in Software Versions its version and the runtime environment that ran, which the method digest does not cover (D-012, D-024). The validated policy records the edition, preset, and options. Remaining: the release report and conformance statement that each run writes, naming the edition and Options and describing the process in detail, and the runtime environment that the release report records (D-029) (M4).
+Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the method digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives in Software Versions its version and the runtime environment that ran, which the method digest does not cover (D-012, D-024). The validated policy records the edition, preset, and options. The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers, and the same policy and engine always give the same text. Remaining: writing the release report and the conformance statement with each run, the runtime environment that the release report records (D-029), and publishing the statement with each release (M4, M6).
 '''
