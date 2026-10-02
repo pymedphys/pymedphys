@@ -197,6 +197,7 @@ decisions = ["D-001", "D-007", "D-011", "D-020", "D-021", "D-028"]
 implementation = [
   "_dicom/deidentify/actions.py",
   "_dicom/deidentify/compound_actions.py",
+  "_dicom/deidentify/elements.py",
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/private_attributes.py",
   "_dicom/deidentify/standard.py",
@@ -212,9 +213,15 @@ tests = [
   "tests/dicom/test_deidentify_compound_actions.py::test_each_compound_action_resolves_by_type",
   "tests/dicom/test_deidentify_compound_actions.py::test_the_type_depends_on_the_enclosing_sequence",
   "tests/dicom/test_deidentify_compound_actions.py::test_x_z_on_a_type_1_attribute_sequesters_the_instance",
+  "tests/dicom/test_deidentify_elements.py::test_an_implicit_vr_rt_plan_decodes_rt_assertions_with_the_pinned_vr",
+  "tests/dicom/test_deidentify_elements.py::test_un_in_explicit_vr_is_decoded_as_implicit_vr_with_the_pinned_vr",
+  "tests/dicom/test_deidentify_elements.py::test_a_vr_that_conflicts_with_the_pinned_dictionary_is_refused",
+  "tests/dicom/test_deidentify_elements.py::test_a_sequence_whose_items_cannot_be_read_is_refused",
+  "tests/dicom/test_deidentify_elements.py::test_a_un_sequence_that_pydicom_has_decoded_is_refused",
+  "tests/dicom/test_deidentify_elements.py::test_text_that_could_not_be_written_back_is_refused",
 ]
 note = '''
-Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute sequesters the instance (D-020). Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028). Remaining: protecting or retaining every instance of each other attribute, at the top level and in sequences, and removing private attributes from each instance the engine de-identifies (M3).
+Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute sequesters the instance (D-020). Each element, at the top level or in an item, is read with the VR that the pinned data dictionary gives its attribute, so that the attributes inside a sequence that pydicom does not know and reads as UN, such as an RT Plan's RT Assertions Sequence, can be found; an element whose VR conflicts with the dictionary, or whose value or items do not decode exactly, is reported as undecodable rather than read as pydicom guesses it. Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028). Remaining: protecting or retaining every instance of each other attribute, at the top level and in sequences, and removing private attributes from each instance the engine de-identifies (M3).
 '''
 
 [[requirement]]
@@ -635,6 +642,7 @@ decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-0
 implementation = [
   "_dicom/deidentify/compound_actions.py",
   "_dicom/deidentify/dummy_values.py",
+  "_dicom/deidentify/elements.py",
   "_dicom/deidentify/iods.py",
   "_dicom/deidentify/reference_graph.py",
   "_dicom/deidentify/references.py",
@@ -678,9 +686,14 @@ tests = [
   "tests/dicom/test_deidentify_reference_graph.py::test_a_study_with_two_patients_is_inconsistent",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_study_whose_instances_all_lack_a_patient_id_has_one_patient",
   "tests/dicom/test_deidentify_reference_graph.py::test_the_instances_without_a_patient_id_are_grouped_as_one_patient",
+  "tests/dicom/test_deidentify_elements.py::test_us_or_ss_is_resolved_from_pixel_representation",
+  "tests/dicom/test_deidentify_elements.py::test_the_voi_lut_descriptor_of_a_ct_in_hounsfield_units_is_ss",
+  "tests/dicom/test_deidentify_elements.py::test_without_a_vr_in_the_file_the_voi_lut_input_decides_its_descriptor",
+  "tests/dicom/test_deidentify_elements.py::test_written_elements_carry_the_pinned_vr_and_round_trip",
+  "tests/dicom/test_deidentify_elements.py::test_a_written_value_problem_is_described_without_quoting_it",
 ]
 note = '''
-The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. It also reports instances that share a SOP Instance UID, as identical copies only where their decoded content, with each element's VR, is shown to be the same, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, each a Patient ID with its issuer, with the instances without a Patient ID as one more. Remaining: writing the dummy values that the resolved compound actions call for, and checking each written value against the VR that applies in its data set and against the data set's character set (M3); and checking frames of reference in the first pass, acting on its findings, validating output against its IOD, and checking after writing that references are intact (M4).
+The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. It also reports instances that share a SOP Instance UID, as identical copies only where their decoded content, with each element's VR, is shown to be the same, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, each a Patient ID with its issuer, with the instances without a Patient ID as one more. An element to be written is built with a VR that the pinned dictionary gives it, of alternatives the one that applies in its data set, only once its values have been checked against that VR and the attribute's VM, against the data set's character set, and, for a person name, against the repertoire of its first component group, and it reads back unchanged from Implicit and Explicit VR Little Endian. Remaining: writing the dummy values that the resolved compound actions call for (M3); and checking frames of reference in the first pass, acting on its findings, validating output against its IOD, and checking after writing that references are intact (M4).
 '''
 
 [[requirement]]
