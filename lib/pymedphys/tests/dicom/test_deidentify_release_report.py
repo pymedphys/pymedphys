@@ -417,13 +417,8 @@ def test_sequestered_instances_are_listed_by_label_with_their_reasons(basic):
         "S-0002",
     ]
     assert document["sequestered"][0]["reasons"] == [
-        {
-            "stage": "references",
-            "code": "conflicting-instance",
-            "attribute": None,
-            "action": None,
-            "vr": None,
-        },
+        # Only the walker names a place.
+        {"stage": "references", "code": "conflicting-instance"},
         {
             # The attribute's tags, without the item that held it.
             "stage": "walker",
@@ -435,22 +430,67 @@ def test_sequestered_instances_are_listed_by_label_with_their_reasons(basic):
     ]
 
 
+def test_a_reason_given_twice_is_listed_once(basic):
+    instance = _sequestered()
+    twice = dataclasses.replace(instance, reasons=instance.reasons * 2)
+    report = release_report.release_report(basic, vocabulary=None, sequestered=(twice,))
+
+    (entry,) = release_report.report_document(report)["sequestered"]
+    assert len(entry["reasons"]) == 2
+
+
+_SEQUESTERING = [
+    *(
+        (each, "scope")
+        for each in scope.Disposition
+        if each is not scope.Disposition.SUPPORTED
+    ),
+    *((each, "admission") for each in source.SourceReason),
+    (reference_graph.FindingKind.CONFLICTING_INSTANCE, "references"),
+    (reference_graph.FindingKind.SERIES_IN_SEVERAL_STUDIES, "references"),
+]
+
+
 @pytest.mark.parametrize(
-    "cause, stage, code",
-    [
-        (scope.Disposition.UNSUPPORTED_IOD, "scope", "unsupported-iod"),
-        (source.SourceReason.STRUCTURE, "admission", "structure"),
-        (
-            reference_graph.FindingKind.SERIES_IN_SEVERAL_STUDIES,
-            "references",
-            "series-in-several-studies",
-        ),
-    ],
+    "cause, stage", _SEQUESTERING, ids=[str(each) for each, _ in _SEQUESTERING]
 )
-def test_each_stage_that_sequesters_gives_its_reason_code(cause, stage, code):
+def test_each_stage_that_sequesters_gives_its_reason_code(basic, cause, stage):
     reason = release_report.sequestration_reason(cause)
 
-    assert (reason.stage, reason.code, reason.attribute) == (stage, code, None)
+    assert (reason.stage, reason.code) == (stage, cause.value)
+    assert (reason.attribute, reason.action, reason.vr) == (None, None, None)
+    report = release_report.release_report(
+        basic,
+        vocabulary=None,
+        sequestered=(release_report.SequesteredInstance("S-0001", (reason,)),),
+    )
+    assert release_report.report_document(report)["sequestered"][0]["reasons"] == [
+        {"stage": stage, "code": cause.value}
+    ]
+
+
+@pytest.mark.parametrize("reason", list(walker.SequesterReason))
+def test_each_walker_reason_is_written(basic, reason):
+    cause = walker.Sequestration(ElementPath((), "(0010,0020)"), "X", None, reason)
+    report = release_report.release_report(
+        basic,
+        vocabulary=None,
+        sequestered=(
+            release_report.SequesteredInstance(
+                "S-0001", (release_report.sequestration_reason(cause),)
+            ),
+        ),
+    )
+
+    assert release_report.report_document(report)["sequestered"][0]["reasons"] == [
+        {
+            "stage": "walker",
+            "code": reason.value,
+            "attribute": "(0010,0020)",
+            "action": "X",
+            "vr": None,
+        }
+    ]
 
 
 @pytest.mark.parametrize(
@@ -459,12 +499,14 @@ def test_each_stage_that_sequesters_gives_its_reason_code(cause, stage, code):
         scope.Disposition.SUPPORTED,
         reference_graph.FindingKind.DANGLING_REFERENCE,
         reference_graph.FindingKind.DUPLICATE_INSTANCE,
+        reference_graph.FindingKind.MISSING_IDENTIFIER,
         reference_graph.FindingKind.STUDY_WITH_SEVERAL_PATIENTS,
         "SENTINEL",
     ],
 )
 def test_what_does_not_sequester_an_instance_is_not_a_reason(cause):
-    # A study with several patients stops the run instead (D-026).
+    # A study with several patients stops the run instead, and what happens
+    # to an instance missing an identifier is not yet decided.
     with pytest.raises((TypeError, ValueError)) as raised:
         release_report.sequestration_reason(cause)
 
@@ -483,33 +525,54 @@ def test_labels_are_random_and_carry_nothing_from_the_run():
     assert {len(label) for label in release_report.sequestration_labels(12345)} == {7}
 
 
+def test_labels_are_drawn_from_the_operating_system_by_default(monkeypatch):
+    drawn = []
+
+    class Recording(random.Random):
+        def shuffle(self, x):  # pylint: disable=arguments-differ
+            drawn.append(list(x))
+            x.reverse()
+
+    monkeypatch.setattr(release_report.secrets, "SystemRandom", Recording)
+
+    assert release_report.sequestration_labels(3) == ("S-0003", "S-0002", "S-0001")
+    assert drawn == [["S-0001", "S-0002", "S-0003"]]
+
+
 # D-027, as the maintainer decided on 2 October 2026: the report counts what
 # the residual search did not search, by attribute and reason, and the QC
 # pack lists each by instance and place.
 def test_values_not_searched_are_counted_by_attribute_and_reason(basic):
     name = ElementPath((), "(0010,0010)")
     nested = ElementPath((("(0010,1002)", 0),), "(0010,0020)")
+    short_word = residuals.NotSearched(
+        name, "PN", residuals.Form.NAME_WORD, residuals.Omission.TOO_SHORT
+    )
     coverage = release_report.search_coverage(
         [
-            residuals.NotSearched(
-                name, "PN", residuals.Form.NAME_WORD, residuals.Omission.TOO_SHORT
-            ),
-            residuals.NotSearched(
-                name, "PN", residuals.Form.NAME_COMPONENT, residuals.Omission.TOO_SHORT
-            ),
-            residuals.NotSearched(
-                ElementPath((("(0010,1002)", 1),), "(0010,0020)"),
-                "LO",
-                residuals.Form.VALUE,
-                residuals.Omission.TOO_SHORT,
-            ),
-            residuals.Unsearched(nested, residuals.UnsearchedReason.UNDECODABLE),
-            residuals.Unsearched(name, residuals.UnsearchedReason.RETAINED),
+            [
+                # Two forms of one value count as one value.
+                short_word,
+                residuals.NotSearched(
+                    name,
+                    "PN",
+                    residuals.Form.NAME_COMPONENT,
+                    residuals.Omission.TOO_SHORT,
+                ),
+                residuals.NotSearched(
+                    ElementPath((("(0010,1002)", 1),), "(0010,0020)"),
+                    "LO",
+                    residuals.Form.VALUE,
+                    residuals.Omission.TOO_SHORT,
+                ),
+                residuals.Unsearched(nested, residuals.UnsearchedReason.UNDECODABLE),
+                residuals.Unsearched(name, residuals.UnsearchedReason.RETAINED),
+            ],
+            # The same place in another instance is another value.
+            [short_word],
         ]
     )
-    report = release_report.release_report(
-        basic, vocabulary=None, coverage=coverage
-    )
+    report = release_report.release_report(basic, vocabulary=None, coverage=coverage)
 
     assert release_report.report_document(report)["search_coverage"] == [
         {"attribute": "(0010,0010)", "reason": "retained", "count": 1},
@@ -519,15 +582,37 @@ def test_values_not_searched_are_counted_by_attribute_and_reason(basic):
     ]
 
 
+@pytest.mark.parametrize(
+    "records",
+    [
+        residuals.Unsearched(
+            ElementPath((), "(0010,0010)"), residuals.UnsearchedReason.RETAINED
+        ),
+        ["SENTINEL"],
+    ],
+    ids=["not-by-instance", "not-a-record"],
+)
+def test_coverage_needs_records_by_instance(records):
+    with pytest.raises(TypeError) as raised:
+        release_report.search_coverage([records])
+
+    assert "SENTINEL" not in str(raised.value)
+
+
+class _Text(str):
+    pass
+
+
 def _with(report, **changes):
     return dataclasses.replace(report, **changes)
 
 
 def _reason(**changes):
-    return dataclasses.replace(
-        release_report.sequestration_reason(scope.Disposition.UNSUPPORTED_IOD),
-        **changes,
-    )
+    return dataclasses.replace(_sequestered().reasons[1], **changes)
+
+
+def _instance(*reasons, label="S-0001"):
+    return release_report.SequesteredInstance(label, reasons)
 
 
 @pytest.mark.parametrize(
@@ -602,6 +687,38 @@ def _reason(**changes):
             ),
             "reasons",
         ),
+        (lambda r: _with(r, sequestered=(_instance("SENTINEL"),)), "reasons"),
+        (lambda r: _with(r, sequestered=("SENTINEL",)), "sequestered"),
+        (lambda r: _with(r, sequestered=(_sequestered("S-0002"),)), "label"),
+        (lambda r: _with(r, sequestered=(_sequestered("S-001"),)), "label"),
+        (lambda r: _with(r, sequestered=(_sequestered(_Text("S-0001")),)), "label"),
+        (
+            lambda r: _with(
+                r, sequestered=(_instance(_reason(code=_Text("no-dummy-value"))),)
+            ),
+            "code",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    _instance(
+                        dataclasses.replace(
+                            release_report.sequestration_reason(
+                                scope.Disposition.UNSUPPORTED_IOD
+                            ),
+                            attribute="(0010,0010)",
+                        )
+                    ),
+                ),
+            ),
+            "attribute",
+        ),
+        (
+            lambda r: _with(r, sequestered=(_instance(_reason(attribute=None)),)),
+            "attribute",
+        ),
+        (lambda r: _with(r, search_coverage=("SENTINEL",)), "search_coverage"),
         (
             lambda r: _with(
                 r,
@@ -648,6 +765,15 @@ def _reason(**changes):
         "action",
         "vr",
         "no-reason",
+        "not-a-reason",
+        "not-an-instance",
+        "label-gap",
+        "label-width",
+        "label-subclass",
+        "code-subclass",
+        "place-for-another-stage",
+        "walker-without-place",
+        "not-coverage",
         "coverage-attribute",
         "coverage-reason",
         "zero-count",

@@ -46,11 +46,13 @@ that the engine defines, never by a value or a path:
   reason (D-026). A sequestered instance has no output name, and the label
   holds nothing of the instance or its place in the run; only the
   confidential QC pack maps labels to sources (D-016).
-- ``search_coverage``: how many forms or values of each attribute the
-  residual search did not search, by reason (D-027), from
-  :func:`search_coverage`. The QC pack lists each by instance and place.
+- ``search_coverage``: how many source values of each attribute the
+  residual search did not search, in full or in part, by reason (D-027),
+  from :func:`search_coverage`. The QC pack lists each by instance and
+  place.
 
-The residual search's findings are to follow.
+The residual search's findings, and the stage that sequesters an instance
+for them, are to follow.
 """
 
 from __future__ import annotations
@@ -146,17 +148,22 @@ class SequestrationReason:
     Attributes
     ----------
     stage : str
-        What sequestered it: ``"scope"``, ``"admission"``, ``"references"``
-        (the first pass's reference graph), or ``"walker"``.
+        What sequestered it: ``"scope"``, ``"admission"`` (a source file
+        refused, which is set aside like any sequestered instance),
+        ``"references"`` (the first pass's reference graph), or
+        ``"walker"``.
     code : str
         The stage's reason code, such as ``"conflicting-instance"``.
     attribute : str or None
-        For the walker, the attribute's tags from the outermost sequence,
-        without items, such as ``"(0010,1002) > (0010,0020)"``.
+        For the walker, and only for it, the attribute's tags from the
+        outermost sequence, without items, such as
+        ``"(0010,1002) > (0010,0020)"``.
     action : str or None
-        For the walker, the action at that place, such as ``"D"``.
+        For the walker, and only for it, the action at that place, such as
+        ``"D"``.
     vr : str or None
-        For the walker, the VR that the action met.
+        For the walker, the VR that the action met, if known; None for every
+        other stage.
     """
 
     stage: str
@@ -183,7 +190,7 @@ class SequesteredInstance:
 
 @dataclasses.dataclass(frozen=True)
 class SearchCoverage:
-    """How many forms or values of an attribute were not searched, and why.
+    """How many source values of an attribute were not searched, and why.
 
     Attributes
     ----------
@@ -239,9 +246,10 @@ def sequestration_reason(
     ------
     ValueError
         For a disposition or finding that does not sequester an instance:
-        :attr:`~.scope.Disposition.SUPPORTED`, a dangling reference, an
-        identical duplicate, a missing identifier, or a study with several
-        patients, which stops the run instead (D-026).
+        :attr:`~.scope.Disposition.SUPPORTED`; a dangling reference or an
+        identical duplicate, which are reported only; a missing identifier,
+        whose handling is not yet decided; or a study with several patients,
+        which stops the run instead.
     TypeError
         For anything else.
     """
@@ -271,34 +279,54 @@ def sequestration_labels(
 ) -> tuple[str, ...]:
     """Return a label for each of ``count`` sequestered instances, at random.
 
-    The labels are ``S-0001`` onwards, with more digits where there are more
-    than 9999, given in an order drawn from ``rng``, by default the
+    The labels are ``S-0001`` to ``S-n``, all with the same number of
+    digits, at least four, given in an order drawn from ``rng``, by default the
     operating system's source of randomness, so that a label says nothing
     of an instance or of its place in the run (D-026). Only the QC pack maps
     labels to sources.
     """
-    width = max(4, len(str(count)))
-    labels = [f"S-{number:0{width}d}" for number in range(1, count + 1)]
+    labels = _labels(count)
     (rng or secrets.SystemRandom()).shuffle(labels)
     return tuple(labels)
 
 
-def search_coverage(
-    records: Iterable[NotSearched | Unsearched],
-) -> tuple[SearchCoverage, ...]:
-    """Count the forms and values not searched by attribute and reason (D-027).
+def _labels(count: int) -> list[str]:
+    width = max(4, len(str(count)))
+    return [f"S-{number:0{width}d}" for number in range(1, count + 1)]
 
-    Each :class:`~pymedphys._dicom.deidentify.residuals.NotSearched` counts
-    once, as a form, and each
-    :class:`~pymedphys._dicom.deidentify.residuals.Unsearched` once, as a
-    value. The
-    counts are in the order of their attributes and reasons.
+
+def search_coverage(
+    instances: Iterable[Iterable[NotSearched | Unsearched]],
+) -> tuple[SearchCoverage, ...]:
+    """Count the values not searched by attribute and reason (D-027).
+
+    ``instances`` holds, for each instance, its records of what the
+    residual search did not search. A source value counts once for each
+    reason, however many of its forms or spellings that reason left out,
+    since a :class:`~pymedphys._dicom.deidentify.residuals.NotSearched`
+    names one form of a value at its place, and an
+    :class:`~pymedphys._dicom.deidentify.residuals.Unsearched` a whole
+    value. Values at the same place in different instances count apart.
+    The counts are in the order of their attributes and reasons.
+
+    >>> from pymedphys._dicom.deidentify.residuals import (
+    ...     Unsearched, UnsearchedReason)
+    >>> place = ElementPath((), "(0010,0020)")
+    >>> retained = Unsearched(place, UnsearchedReason.RETAINED)
+    >>> search_coverage([[retained, retained], [retained]])
+    (SearchCoverage(attribute='(0010,0020)', reason='retained', count=2),)
     """
     counts: collections.Counter[tuple[str, str]] = collections.Counter()
-    for record in records:
-        if not isinstance(record, (NotSearched, Unsearched)):
-            raise TypeError("a record must be NotSearched or Unsearched")
-        counts[attribute_tags(record.source), record.reason.value] += 1
+    for records in instances:
+        if isinstance(records, (NotSearched, Unsearched)):
+            raise TypeError("records must be given for each instance")
+        places = set()
+        for record in records:
+            if not isinstance(record, (NotSearched, Unsearched)):
+                raise TypeError("a record must be NotSearched or Unsearched")
+            places.add((record.source, record.reason.value))
+        for source, reason in places:
+            counts[attribute_tags(source), reason] += 1
     return tuple(
         SearchCoverage(attribute, reason, count)
         for (attribute, reason), count in sorted(counts.items())
@@ -327,7 +355,7 @@ def release_report(
     sequestered : iterable of SequesteredInstance, optional
         The run's sequestered instances.
     coverage : iterable of SearchCoverage, optional
-        What the run's residual search did not search, from
+        How many values the run's residual search did not search, from
         :func:`search_coverage`.
 
     Returns
@@ -454,49 +482,60 @@ def _runtime_section(environment: RuntimeEnvironment) -> dict:
     }
 
 
+def _string(value: object) -> str | None:
+    # A str subclass could carry anything in its methods or attributes, so
+    # only a str itself is written, as the value that was checked.
+    return value if type(value) is str else None  # pylint: disable=unidiomatic-typecheck
+
+
 def _code(field: str, value: object, codes: Iterable[str]) -> str:
-    if not (isinstance(value, str) and value in frozenset(codes)):
+    text = _string(value)
+    if text is None or text not in frozenset(codes):
         raise _refuse(field, "is not a code that the engine defines")
-    return value
+    return text
 
 
 def _attribute(field: str, value: object) -> str:
-    if not _matches(_ATTRIBUTE, value):
+    text = _string(value)
+    if text is None or _ATTRIBUTE.fullmatch(text) is None:
         raise _refuse(field, "is not a path of tags")
-    return str(value)
+    return text
 
 
-def _reason_entry(reason: SequestrationReason) -> dict:
+def _reason_entry(reason: object) -> dict:
+    if not isinstance(reason, SequestrationReason):
+        raise _refuse("sequestered reasons", "are not a tuple of reasons")
     stage = _code("sequestered stage", reason.stage, _SEQUESTERING)
+    code = _code("sequestered code", reason.code, _SEQUESTERING[stage])
+    if stage != "walker":
+        if (reason.attribute, reason.action, reason.vr) != (None, None, None):
+            raise _refuse("sequestered attribute", "is given for another stage")
+        return {"stage": stage, "code": code}
     return {
         "stage": stage,
-        "code": _code("sequestered code", reason.code, _SEQUESTERING[stage]),
-        "attribute": None
-        if reason.attribute is None
-        else _attribute("sequestered attribute", reason.attribute),
-        "action": None
-        if reason.action is None
-        else _code("sequestered action", reason.action, _ACTIONS),
+        "code": code,
+        "attribute": _attribute("sequestered attribute", reason.attribute),
+        "action": _code("sequestered action", reason.action, _ACTIONS),
         "vr": None if reason.vr is None else _code("sequestered vr", reason.vr, VRS),
     }
 
 
 def _sequestered_section(instances: tuple[SequesteredInstance, ...]) -> list:
-    labels = [instance.label for instance in instances]
-    if not all(_matches(LABEL_PATTERN, label) for label in labels):
-        raise _refuse("sequestered label", "is not a label such as S-0001")
-    if len(set(labels)) != len(labels):
-        raise _refuse("sequestered label", "is repeated")
+    if not all(isinstance(each, SequesteredInstance) for each in instances):
+        raise _refuse("sequestered", "is not a tuple of sequestered instances")
+    labels = {_string(instance.label) for instance in instances}
+    if labels != set(_labels(len(instances))):
+        raise _refuse("sequestered label", "are not the labels S-0001 to S-n")
     entries = []
-    for instance in sorted(instances, key=lambda each: (len(each.label), each.label)):
+    for instance in sorted(instances, key=lambda each: each.label):
         if not (isinstance(instance.reasons, tuple) and instance.reasons):
             raise _refuse("sequestered reasons", "are not a tuple of reasons")
-        entries.append(
-            {
-                "label": instance.label,
-                "reasons": [_reason_entry(reason) for reason in instance.reasons],
-            }
-        )
+        reasons: list[dict] = []
+        for reason in instance.reasons:
+            entry = _reason_entry(reason)
+            if entry not in reasons:
+                reasons.append(entry)
+        entries.append({"label": instance.label, "reasons": reasons})
     return entries
 
 
@@ -508,6 +547,8 @@ _UNSEARCHED = frozenset(
 def _coverage_section(coverage: tuple[SearchCoverage, ...]) -> list:
     entries = []
     for each in coverage:
+        if not isinstance(each, SearchCoverage):
+            raise _refuse("search_coverage", "is not a tuple of coverage counts")
         if not (isinstance(each.count, int) and not isinstance(each.count, bool)):
             raise _refuse("search_coverage count", "is not a whole number")
         if each.count < 1:
@@ -529,8 +570,9 @@ def report_document(report: ReleaseReport) -> dict:
     ``policy``, ``method``, ``runtime``, ``sequestered``, and
     ``search_coverage``, in that order, each section's fields in the order
     of its class, the digests of tables and files sorted by name, the
-    sequestered instances by label, and the coverage by attribute and
-    reason.
+    sequestered instances by label, each with its reasons once, in the
+    order given, and the coverage by attribute and reason. A reason from a
+    stage other than the walker has only its stage and code.
 
     Parameters
     ----------
@@ -545,8 +587,9 @@ def report_document(report: ReleaseReport) -> dict:
     ReleaseReportError
         If a field does not have the form of a digest, a version, a known
         edition, preset, or option, a file name or path within the engine's
-        package, a label, a path of tags, a code that the engine defines,
-        or a positive count. The message names the field, never its value.
+        package, one of the labels ``S-0001`` to ``S-n`` for ``n``
+        sequestered instances, a path of tags, a code that the engine
+        defines, or a positive count, or is not of its class. The message names the field, never its value.
     """
     return {
         "format": FORMAT,
