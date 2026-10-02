@@ -92,6 +92,7 @@ refused.
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import struct
 from collections.abc import Sequence
@@ -360,15 +361,20 @@ def _raw_value(
     source = filename or buffer
     if filename and buffer and not getattr(buffer, "closed", False):
         source = buffer
-    if source is None:
+    if source is None or (source is filename and not isinstance(filename, str)):
+        # A filename that is not a path, such as the descriptor of a closed
+        # reader, names nothing that can be opened again safely.
         raise PrivateAttributeError(path)
+    fileobj_type = getattr(dataset, "fileobj_type", None) or open
     try:
-        read = pydicom.filereader.read_deferred_data_element(
-            getattr(dataset, "fileobj_type", None),
-            source,
-            getattr(dataset, "timestamp", None),
-            element,
-        )
+        # pydicom closes a file that it opens itself only when the read
+        # succeeds, so the file is opened, and always closed, here.
+        with contextlib.ExitStack() as stack:
+            if source is filename:
+                source = stack.enter_context(fileobj_type(filename, "rb"))
+            read = pydicom.filereader.read_deferred_data_element(
+                fileobj_type, source, None, element
+            )
     except (*_DECODING_ERRORS, TypeError, StopIteration):
         # pydicom raises StopIteration when the source ends at or within the
         # element's header.

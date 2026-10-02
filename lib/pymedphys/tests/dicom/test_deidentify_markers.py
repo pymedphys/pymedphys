@@ -42,6 +42,7 @@ from pymedphys._dicom.deidentify import (
     markers,
     method_digest,
     policy,
+    runtime,
     standard,
     values,
 )
@@ -460,14 +461,14 @@ ODD_SOFTWARE_VERSIONS = (
 )
 
 
-def _with_runtime(monkeypatch, runtime):
+def _with_runtime(monkeypatch, versions):
     """Make the interpreter and the libraries give other versions.
 
     Each name is a module and one of its attributes, such as
     ``"platform.python_version"``, and the function or value it names is
     replaced by one that gives the value, as an upgrade would change it.
     """
-    for name, value in runtime.items():
+    for name, value in versions.items():
         module_name, attribute = name.rsplit(".", 1)
         module = importlib.import_module(module_name)
         if callable(getattr(module, attribute)):
@@ -508,6 +509,25 @@ def test_software_versions_give_the_running_python_pydicom_and_tomlkit():
         platform.python_implementation(),
         platform.python_version(),
     ]
+
+
+def test_software_versions_are_the_runtime_environment_of_the_release_report(
+    monkeypatch,
+):
+    # Software Versions and the release report's runtime section come from
+    # one source, so the two cannot disagree.
+    environment = runtime.RuntimeEnvironment(
+        pymedphys_version="0.42.0",
+        python_implementation="SyntheticPython",
+        python_version="3.99.0",
+        pydicom_version="9.9.9.dev9",
+        tomlkit_version="9.9.9.dev8",
+    )
+    monkeypatch.setattr(runtime, "runtime_environment", lambda: environment)
+
+    found = markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
+
+    assert found.software_versions == environment.software_versions
 
 
 @pytest.mark.parametrize(
