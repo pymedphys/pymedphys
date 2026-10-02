@@ -75,7 +75,7 @@ from .source import SourceEvidence
 
 _CHARACTER_SET = "(0008,0005)"
 # Without a VR as written or in the dictionary, text cannot be ruled out.
-_TEXT_VRS = CHARACTER_SET_VRS | {None, "UN"}
+TEXT_VRS = CHARACTER_SET_VRS | {None, "UN"}
 
 
 class PreservationReason(enum.Enum):
@@ -228,7 +228,7 @@ def _check_kept(
     creator = _private_creator(path)
     if creator and _field(source, creator, path) != _field(output, creator, path):
         raise PreservationFailed(PreservationReason.PRIVATE_CREATOR, path)
-    if before.location.vr in _TEXT_VRS and _character_set(
+    if before.location.vr in TEXT_VRS and _character_set(
         source, path
     ) != _character_set(output, path):
         raise PreservationFailed(PreservationReason.CHARACTER_SET, path)
