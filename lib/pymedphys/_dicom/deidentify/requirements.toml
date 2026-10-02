@@ -290,7 +290,10 @@ The Conformance Statement of an application that claims conformance to the Basic
 status = "partial"
 milestone = "M6"
 decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-020", "D-021", "D-022", "D-026"]
-implementation = ["_dicom/deidentify/conformance.py"]
+implementation = [
+  "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/conformance_markdown.py",
+]
 tests = [
   "tests/dicom/test_deidentify_conformance.py::test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_action",
   "tests/dicom/test_deidentify_conformance.py::test_every_ui_attribute_that_the_table_omits_is_listed_by_its_role",
