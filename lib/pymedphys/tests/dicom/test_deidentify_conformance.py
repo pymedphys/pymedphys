@@ -18,7 +18,7 @@ import dataclasses
 import platform
 import re
 
-from pymedphys._imports import pydicom, pytest
+from pymedphys._imports import pydicom, pytest, tomlkit
 
 from pymedphys._dicom.deidentify import (
     codes,
@@ -517,6 +517,7 @@ def test_the_inserted_codes_are_listed_with_their_meanings(preset):
 def test_the_runtime_versions_are_described_not_quoted():
     text = conformance.render_markdown(_statement("basic"))
     assert f"pydicom {pydicom.__version__}" not in text
+    assert f"tomlkit {tomlkit.__version__}" not in text
     assert f"{platform.python_implementation()} {platform.python_version()}" not in text
 
 
@@ -524,7 +525,39 @@ def test_private_attribute_removal_is_described(preset):
     statement = _statement(preset)
     section = _section(conformance.render_markdown(statement), "Actions")
     row = _entry(statement, standard.PRIVATE_ATTRIBUTES_TAG)
-    if row.action == "X":
-        assert "Private Attributes" in section
+    described = "X on Private Attributes removes every element" in section
+    assert described == (row.action == "X")
+    if described:
         assert "every level of nesting" in section
         assert "private creator" in section
+
+
+@pytest.mark.parametrize(
+    ("name", "expected_codes", "review_codes", "temporal"),
+    [
+        ("basic", ("113100",), (), "REMOVED"),
+        ("basic-clean-descriptors", ("113100",), ("113105",), "REMOVED"),
+        ("tps-import", (), (), "MODIFIED"),
+        ("public-release", ("113100", "113111", "113107"), ("113105",), "MODIFIED"),
+    ],
+)
+def test_each_presets_inserted_codes_and_temporal_value(
+    name, expected_codes, review_codes, temporal
+):
+    statement = _statement(name)
+    assert statement.markers.codes == expected_codes
+    assert statement.markers.review_codes == review_codes
+    assert statement.markers.temporal == temporal
+    section = _section(conformance.render_markdown(statement), "Attributes inserted")
+    shown = [f"(DCM {code})" for code in expected_codes + review_codes]
+    positions = [section.index(code) for code in shown]
+    assert positions == sorted(positions)
+
+
+def test_the_markers_are_said_to_depend_on_the_satisfied_options():
+    section = _section(
+        conformance.render_markdown(_statement("basic-clean-descriptors")),
+        "Attributes inserted",
+    )
+    assert "the options that the instance satisfies" in section
+    assert "never on the instance's values" not in section

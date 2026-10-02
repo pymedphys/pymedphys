@@ -394,6 +394,11 @@ def conformance_statement(
     ValueError
         If the policy was not composed from the pinned Table E.1-1, such as
         one composed from an altered table.
+    MarkerError
+        If the markers cannot be written as valid values, as
+        :func:`~pymedphys._dicom.deidentify.markers.markers_for` refuses
+        them, such as for a PyMedPhys version too long for the readable
+        De-identification Method value. The engine would refuse them too.
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -598,10 +603,11 @@ def _inserted(
         )
     order = _join(f"`{value}`" for value in markers.TEMPORAL_VALUES)
     return [
-        "Every de-identified instance gains these attributes, which record "
-        "what was done (PS3.15 E.1.1, E.2, and E.3.6; D-012). They depend only "
-        "on the policy, the method digest, and the versions of the runtime, "
-        "never on the instance's values, and any value already present is kept "
+        "Every de-identified instance gains or updates these attributes, which "
+        "record what was done (PS3.15 E.1.1, E.2, and E.3.6; D-012). The values "
+        "added depend only on the policy, the method digest, the options that "
+        "the instance satisfies, and the versions of the runtime, and never "
+        "quote a value from the instance. Any value already present is kept "
         "unless this list says otherwise.",
         "",
         f"- {named(_PATIENT_IDENTITY_REMOVED)}: `YES`, in place of any value "
@@ -615,11 +621,11 @@ def _inserted(
         f"- {named(_CONTRIBUTING_EQUIPMENT)} gains an item, unless an item "
         "already present has the same Manufacturer, Software Versions in the "
         "same order, and purpose of reference. The item's "
-        f"{named(_MANUFACTURER)} is `{markers.MANUFACTURER}`; its "
-        f"{named(_SOFTWARE_VERSIONS)} gives PyMedPhys's full version, the "
-        "Python implementation and version as one value, such as `CPython "
-        "3.14.0`, `pydicom <version>`, and `tomlkit <version>`, as the "
-        "runtime that ran gives them; and its "
+        f"{named(_MANUFACTURER)} is `{markers.MANUFACTURER}`. Its "
+        f"{named(_SOFTWARE_VERSIONS)} has four values, as the runtime that "
+        "ran gives them: PyMedPhys's full version; the Python implementation "
+        "and version as one value, such as `CPython 3.14.0`; `pydicom "
+        "<version>`; and `tomlkit <version>`. Its "
         f"{named(_PURPOSE_OF_REFERENCE)} has "
         f"{coded(markers.DEIDENTIFYING_EQUIPMENT)}. The method digest does not "
         "cover the runtime, so this item is how an instance records it.",

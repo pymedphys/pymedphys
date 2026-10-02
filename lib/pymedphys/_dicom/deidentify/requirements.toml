@@ -292,6 +292,7 @@ tests = [
   "tests/dicom/test_deidentify_conformance.py::test_the_markers_match_those_the_engine_writes",
   "tests/dicom/test_deidentify_conformance.py::test_every_attribute_the_markers_write_is_described",
   "tests/dicom/test_deidentify_conformance.py::test_private_attribute_removal_is_described",
+  "tests/dicom/test_deidentify_conformance.py::test_each_presets_inserted_codes_and_temporal_value",
 ]
 note = '''
 The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters. It lists the action of each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020); the values that Z, D, and U write, including the keyed pseudonyms and replacement UIDs (D-003, D-005, D-021); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); the attributes and values that the markers insert, as the engine computes them for the policy (D-012); the removal of private attributes at every level of nesting; and the options applied, those that can be composed, and those that are not supported. A statement lists what it cannot yet describe and then claims nothing. Remaining: the action for every other element, the action where an IOD requires an attribute that a plain X or Z would leave invalid (D-020), and writing the statement with each run (M6).
@@ -982,6 +983,7 @@ tests = [
   "tests/dicom/test_deidentify_conformance.py::test_the_method_digest_is_the_policys_with_the_same_vocabulary",
   "tests/dicom/test_deidentify_conformance.py::test_the_statement_is_the_same_every_time_it_is_generated",
   "tests/dicom/test_deidentify_conformance.py::test_the_inserted_codes_are_listed_with_their_meanings",
+  "tests/dicom/test_deidentify_conformance.py::test_the_runtime_versions_are_described_not_quoted",
 ]
 note = '''
 Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the method digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives in Software Versions its version and the runtime environment that ran, which the method digest does not cover (D-012, D-024). The validated policy records the edition, preset, and options. The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers, and the markers that each instance gains, and the same policy and engine always give the same text. Remaining: writing the release report and the conformance statement with each run, the runtime environment that the release report records (D-029), and publishing the statement with each release (M4, M6).
