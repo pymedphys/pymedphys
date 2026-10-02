@@ -38,13 +38,19 @@ from pymedphys._dicom.deidentify import (
     standard,
     uid_roles,
     uids,
+    walker,
 )
 from pymedphys._dicom.deidentify.element_rules import _ENGINE_GROUPS, _ENGINE_TAGS
 from pymedphys.tests.dicom.test_deidentify_method_digest import VOCABULARY
 
 INSTITUTION_NAME = "(0008,0080)"  # X/Z/D in the Basic Profile
+# ROI Creator Sequence and Referring Physician Identification Sequence, which
+# the Basic Profile removes with their contents.
 ROI_CREATOR = ("(3006,0020)", "(3006,004D)")
 REFERRING_PHYSICIAN_IDENTIFICATION = ("(0008,0096)",)
+# Asserter Identification Sequence, which the Basic Profile keeps, within RT
+# Assertions Sequence.
+ASSERTER_IDENTIFICATION = ("(0044,0110)", "(0044,0103)")
 CT_FOR_PROCESSING = "1.2.840.10008.5.1.4.1.1.2.3"
 UNESCAPED_PIPE = re.compile(r"(?<!\\)\|")
 
@@ -62,6 +68,42 @@ def _statement(preset, vocabulary=None):
 
 def _entry(statement, tag):
     return next(e for e in statement.attributes if e.tag == tag)
+
+
+def _sequence_action(composed):
+    """Return the action of a sequence under a policy at a place in an IOD.
+
+    Without element rules, which the engine refuses for some policies, the
+    policy's own action applies, U for a UID, and K otherwise.
+    """
+    try:
+        rules = element_rules.ElementRules(composed)
+    except policy.PolicyError:
+        rules = None
+    given = {**composed.actions, **composed.supplementary_actions}
+    roles = uid_roles.load_uid_roles().rules
+
+    def action(iod, tag, path):
+        if rules is not None:
+            return rules.rule(tag, path, iod=iod).action
+        return given.get(tag, "U" if tag in roles else "K")
+
+    return action
+
+
+def _removed_with_a_sequence(sequence_action, iod, path):
+    """Whether the walker removes ``path`` with a sequence that encloses it."""
+    for depth, tag in enumerate(path):
+        action = sequence_action(iod, tag, path[:depth])
+        if action in compound_actions.COMPOUND_ACTIONS:
+            action = compound_actions.resolve_in_iod(iod, tag, path[:depth], action)
+        else:
+            action = compound_actions.resolve_plain_in_iod(
+                iod, tag, path[:depth], action
+            )
+        if action not in walker.DESCENDED:
+            return True
+    return False
 
 
 def test_the_statement_names_the_edition_preset_and_options(preset):
@@ -180,6 +222,7 @@ def test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_th
     preset,
 ):
     statement = _statement(preset)
+    sequence_action = _sequence_action(policy.compose_policy(preset))
     tables = iods.load_iod_tables()
     for entry in statement.attributes:
         if entry.action not in compound_actions.COMPOUND_ACTIONS:
@@ -190,6 +233,8 @@ def test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_th
             iod = tables.iods[name]
             paths = dict.fromkeys(d.path for d in iod.definitions if d.tag == entry.tag)
             for path in paths:
+                if _removed_with_a_sequence(sequence_action, iod, path):
+                    continue
                 action = compound_actions.resolve_in_iod(
                     iod, entry.tag.replace("60xx", "6000"), path, entry.action
                 )
@@ -197,21 +242,21 @@ def test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_th
         assert entry.places == tuple(expected), entry.tag
 
 
-def test_institution_name_in_a_structure_set_is_resolved_by_its_type_at_each_place():
+def test_institution_name_is_resolved_by_its_type_at_each_place():
     places = _entry(_statement("basic"), INSTITUTION_NAME).places
-    structure_set = {p.path: p.action for p in places if p.iod == "RT Structure Set"}
-    assert structure_set[ROI_CREATOR] == "Z"
-    assert structure_set[REFERRING_PHYSICIAN_IDENTIFICATION] == "D"
+    found = {(p.iod, p.path): p.action for p in places}
+    assert found[("RT Plan", ASSERTER_IDENTIFICATION)] == "Z"
+    assert found[("RT Structure Set", ())] == "X"
+    # Places within a sequence that the Basic Profile removes are not listed.
+    assert ("RT Structure Set", ROI_CREATOR) not in found
+    assert ("RT Structure Set", REFERRING_PHYSICIAN_IDENTIFICATION) not in found
 
     text = conformance_markdown.render_markdown(_statement("basic"))
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
-    zeroed = row.split(". Z within ")[1]
-    assert (
-        "Structure Set ROI Sequence (3006,0020) > ROI Creator Sequence (3006,004D) "
-        "in RT Structure Set" in zeroed
+    assert row.endswith(
+        "| Z within RT Assertions Sequence (0044,0110) > Asserter Identification "
+        "Sequence (0044,0103) in RT Plan. X elsewhere. |"
     )
-    assert "D within Referring Physician Identification Sequence (0008,0096);" in row
-    assert row.endswith("X elsewhere |")
 
 
 def test_x_z_on_a_type_1_attribute_is_described_as_the_dummy_value():
@@ -226,7 +271,7 @@ def test_a_place_that_sequesters_the_instance_is_listed_as_such(monkeypatch):
     resolve_in_iod = compound_actions.resolve_in_iod
 
     def sequestering(iod, tag, path, action):
-        if tag == INSTITUTION_NAME and tuple(path) == ROI_CREATOR:
+        if tag == INSTITUTION_NAME and tuple(path) == ASSERTER_IDENTIFICATION:
             return conformance.SEQUESTER
         return resolve_in_iod(iod, tag, path, action)
 
@@ -234,13 +279,13 @@ def test_a_place_that_sequesters_the_instance_is_listed_as_such(monkeypatch):
     statement = _statement("basic")
     places = _entry(statement, INSTITUTION_NAME).places
     assert conformance.Place(
-        "RT Structure Set", ROI_CREATOR, conformance.SEQUESTER
+        "RT Plan", ASSERTER_IDENTIFICATION, conformance.SEQUESTER
     ) in (places)
     text = conformance_markdown.render_markdown(statement)
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert (
-        "instance sequestered within Structure Set ROI Sequence (3006,0020) > "
-        "ROI Creator Sequence (3006,004D) in RT Structure Set" in row
+        "instance sequestered within RT Assertions Sequence (0044,0110) > "
+        "Asserter Identification Sequence (0044,0103) in RT Plan." in row
     )
 
 
@@ -368,6 +413,14 @@ def test_a_statement_with_sections_still_to_describe_makes_no_claim(monkeypatch)
 def test_a_complete_statement_of_an_enabled_preset_claims_conformance(monkeypatch):
     monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
     monkeypatch.setattr(conformance, "PENDING", ())
+    # As once the walker applies the removals that D-020 decides.
+    monkeypatch.setattr(
+        compound_actions,
+        "resolve_plain_x_in_iod",
+        lambda iod, tag, path: compound_actions.PlainRemoval(
+            compound_actions.RemovalExtent.ATTRIBUTE
+        ),
+    )
     statement = _statement("basic")
     assert not statement.pending
     assert statement.claims_conformance
@@ -390,14 +443,17 @@ def test_a_compound_action_that_no_supported_iod_defines_resolves_elsewhere():
     assert undefined
     for entry in undefined:
         row = next(line for line in text.splitlines() if f"| {entry.tag} |" in line)
-        assert row.endswith(f"| {entry.elsewhere} elsewhere |"), row
+        assert row.endswith(f"| {entry.elsewhere} elsewhere. |"), row
 
 
 def test_places_name_their_enclosing_sequences():
     text = conformance_markdown.render_markdown(_statement("basic"))
-    row = next(line for line in text.splitlines() if "| (0010,0020) |" in line)
-    assert "D within Other Patient IDs Sequence (0010,1002);" in row
-    assert row.endswith(". Z elsewhere |")
+    row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
+    assert (
+        "Z within RT Assertions Sequence (0044,0110) > Asserter Identification "
+        "Sequence (0044,0103) in RT Plan." in row
+    )
+    assert row.endswith(". X elsewhere. |")
 
 
 def test_retained_safe_private_attributes_are_pending_where_selected(preset):
@@ -850,125 +906,3 @@ def test_cleaning_is_pending_only_where_the_engine_cleans():
     assert "C" in only_sequences.actions.values()
     assert not any(e.action == "C" for e in statement.attributes)
     assert conformance.PENDING_CLEANING not in statement.pending
-
-
-# Series Description, X in the Basic Profile, is Type 1 in Source Series
-# Information Sequence, which is Type 3 in the RT Structure Set IOD.
-SERIES_DESCRIPTION = "(0008,103E)"
-SOURCE_SERIES_INFORMATION = ("(3006,004C)",)
-RESPONSIBLE_PERSON = "(0010,2297)"  # X; Type 2C at the top level
-OVERLAY_DATA = "(60xx,3000)"  # X; its Overlay Plane Module is U in CT Image
-VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"  # D; only Structured Report IODs
-
-
-def test_plain_actions_are_resolved_by_type_at_every_place(preset):
-    statement = _statement(preset)
-    tables = iods.load_iod_tables()
-    extents = compound_actions.RemovalExtent
-    for entry in statement.attributes:
-        if entry.action in compound_actions.COMPOUND_ACTIONS:
-            continue
-        tag = entry.tag.replace("60xx", "6000")
-        if entry.action not in ("X", "Z", "D") or not re.fullmatch(
-            r"\([0-9A-F]{4},[0-9A-F]{4}\)", tag
-        ):
-            assert (entry.places, entry.elsewhere) == ((), ""), entry.tag
-            continue
-        assert entry.elsewhere == {"X": "X", "Z": "Z", "D": "X"}[entry.action]
-        expected = []
-        for name in sorted(scope.SUPPORTED_IODS):
-            iod = tables.iods[name]
-            paths = dict.fromkeys(d.path for d in iod.definitions if d.tag == entry.tag)
-            for path in paths:
-                if entry.action != "X":
-                    action = compound_actions.resolve_plain_in_iod(
-                        iod, tag, path, entry.action
-                    )
-                    expected.append(conformance.Place(name, path, action))
-                    continue
-                removal = compound_actions.resolve_plain_x_in_iod(iod, tag, path)
-                place = {
-                    extents.ATTRIBUTE: conformance.Place(name, path, "X"),
-                    extents.SEQUESTER: conformance.Place(
-                        name, path, conformance.SEQUESTER
-                    ),
-                    extents.OVERLAY_GROUP: conformance.Place(
-                        name, path, "X", conformance.OVERLAY_GROUP
-                    ),
-                }.get(removal.extent)
-                if removal.extent is extents.SEQUENCE:
-                    place = conformance.Place(name, path, "X", path[removal.sequence])
-                expected.append(place)
-        assert entry.places == tuple(expected), entry.tag
-
-
-def _row(text, tag):
-    return next(line for line in text.splitlines() if f"| {tag} |" in line)
-
-
-def test_a_plain_x_on_a_required_attribute_removes_its_sequence():
-    statement = _statement("basic")
-    place = conformance.Place(
-        "RT Structure Set", SOURCE_SERIES_INFORMATION, "X", SOURCE_SERIES_INFORMATION[0]
-    )
-    assert place in _entry(statement, SERIES_DESCRIPTION).places
-    row = _row(conformance_markdown.render_markdown(statement), SERIES_DESCRIPTION)
-    assert (
-        "X with the enclosing Source Series Information Sequence (3006,004C) "
-        "within Source "
-        "Series Information Sequence (3006,004C) in RT Structure Set" in row
-    )
-    assert row.endswith("X elsewhere |")
-
-
-def test_a_plain_x_that_no_removal_keeps_valid_sequesters():
-    statement = _statement("basic")
-    assert conformance.Place("CT Image", (), conformance.SEQUESTER) in (
-        _entry(statement, RESPONSIBLE_PERSON).places
-    )
-    row = _row(conformance_markdown.render_markdown(statement), RESPONSIBLE_PERSON)
-    assert "instance sequestered at the top level" in row
-
-
-def test_a_plain_x_on_overlay_data_removes_its_overlay_group():
-    statement = _statement("basic")
-    assert conformance.Place("CT Image", (), "X", conformance.OVERLAY_GROUP) in (
-        _entry(statement, OVERLAY_DATA).places
-    )
-    row = _row(conformance_markdown.render_markdown(statement), OVERLAY_DATA)
-    assert "X with its overlay group at the top level in CT Image" in row
-
-
-def test_a_plain_d_that_no_supported_iod_defines_is_removed():
-    entry = _entry(_statement("basic"), VERIFYING_OBSERVER_SEQUENCE)
-    assert (entry.action, entry.places, entry.elsewhere) == ("D", (), "X")
-    row = _row(
-        conformance_markdown.render_markdown(_statement("basic")),
-        VERIFYING_OBSERVER_SEQUENCE,
-    )
-    assert row.endswith("| X elsewhere |")
-
-
-def test_a_plain_z_on_a_type_1_attribute_gives_d(preset):
-    statement = _statement(preset)
-    tables = iods.load_iod_tables()
-    zeroed = [e for e in statement.attributes if e.action == "Z" and e.places]
-    assert zeroed
-    for entry in zeroed:
-        for place in entry.places:
-            iod = tables.iods[place.iod]
-            required = compound_actions.strictest_type(iod, entry.tag, place.path) in (
-                "1",
-                "1C",
-            )
-            assert place.action == ("D" if required else "Z"), entry.tag
-
-
-def test_plain_actions_by_type_are_no_longer_pending(preset):
-    assert not conformance.PENDING
-    assert not any("D-020" in item for item in _statement(preset).pending)
-    section = _section(
-        conformance_markdown.render_markdown(_statement(preset)), "Actions"
-    )
-    assert "Note 13 after Table E.1-1a" in section
-    assert "innermost enclosing sequence" in section

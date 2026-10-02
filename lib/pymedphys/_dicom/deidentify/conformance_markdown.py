@@ -35,6 +35,7 @@ from .conformance import (
     FILE_META_WRITTEN,
     OPTION_CODES,
     OVERLAY_GROUP,
+    PENDING_REMOVAL_EXTENT,
     PIXEL_OPTION_CODES,
     SEQUESTER,
     AttributeAction,
@@ -84,6 +85,26 @@ def _cell(text: str) -> str:
     return text.replace("|", "\\|")
 
 
+def _where(
+    path: tuple[str, ...],
+    named: bool,
+    iods_here: list[str],
+    iods: tuple[str, ...],
+    names: Mapping[str, str],
+) -> str:
+    """Describe the places at ``path``, naming the IODs unless all define it.
+
+    Where the label already names the place's own enclosing sequence, the
+    rest of the path is named, or nothing at the top level.
+    """
+    if path:
+        within = "within " + " > ".join(f"{names[t]} {t}" for t in path)
+    else:
+        within = "" if named else "at the top level"
+    where = "" if tuple(iods_here) == iods else "in " + _join(iods_here)
+    return " ".join(text for text in (within, where) if text)
+
+
 def _resolution(
     entry: AttributeAction, iods: tuple[str, ...], names: Mapping[str, str]
 ) -> str:
@@ -93,8 +114,11 @@ def _resolution(
     IOD defines the attribute there."""
     if not entry.elsewhere:
         return ""
-    found: dict[str, dict[tuple[str, ...], list[str]]] = {}
+    # Each label's places, by the sequences named as where it applies, and
+    # whether the place's own enclosing sequence is named by the label.
+    found: dict[str, dict[tuple[tuple[str, ...], bool], list[str]]] = {}
     for place in entry.places:
+        path, named = place.path, False
         if place.action == SEQUESTER:
             label = "instance sequestered"
         elif place.removes == OVERLAY_GROUP:
@@ -104,24 +128,21 @@ def _resolution(
                 f"{place.action} with the enclosing {names[place.removes]} "
                 f"{place.removes}"
             )
+            named = place.removes == path[-1]
+            path = path[:-1] if named else path
         elif place.action != entry.elsewhere:
             label = place.action
         else:
             continue
-        found.setdefault(label, {}).setdefault(place.path, []).append(place.iod)
+        found.setdefault(label, {}).setdefault((path, named), []).append(place.iod)
     parts = []
     for label, paths in found.items():
         where = [
-            (
-                "within " + " > ".join(f"{names[t]} {t}" for t in path)
-                if path
-                else "at the top level"
-            )
-            + ("" if tuple(iods_here) == iods else " in " + _join(iods_here))
-            for path, iods_here in paths.items()
+            _where(path, named, iods_here, iods, names)
+            for (path, named), iods_here in paths.items()
         ]
-        parts.append(f"{label} " + "; ".join(where) + ". ")
-    return "".join(parts) + f"{entry.elsewhere} elsewhere"
+        parts.append(" ".join((label, "; ".join(where))).strip() + ". ")
+    return "".join(parts) + f"{entry.elsewhere} elsewhere."
 
 
 def _table(header: Iterable[str], rows: Iterable[Iterable[str]]) -> list[str]:
@@ -466,12 +487,19 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "of its overlay group where the IOD's Overlay Plane Module is "
         "user-optional, and ROI Interpreter Sequence (3006,004E) is removed "
         "alone, since its condition lapses once ROI Creator Sequence "
-        "(3006,004D) is removed.",
+        "(3006,004D) is removed."
+        + (
+            " These are the removals that D-020 decides, which the engine does "
+            'not yet apply (see "Not yet described").'
+        )
+        * (PENDING_REMOVAL_EXTENT in statement.pending),
         "",
         "For each compound action, and each plain X, Z, or D, the last column "
         "gives the action at each place where a supported IOD defines the "
-        "attribute and the action differs from that elsewhere, and then the "
-        "action elsewhere.",
+        "attribute and the action differs from that elsewhere or removes more "
+        "than the attribute, and then the action elsewhere. A place within a "
+        "sequence that the engine removes, or replaces, with everything in it "
+        "is not listed, since the attribute goes with that sequence.",
         "",
         *_table(
             ("Tag", "Attribute", "Rule", "Action", "In the supported IODs"),
