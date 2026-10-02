@@ -810,3 +810,12 @@ def test_a_kept_roi_name_is_written_without_its_padding():
         RoiNameEntry(
             0, NAME_PATH, " lung l\x00", RoiNameOutcome.KEPT, written=" lung l"
         )
+
+
+def test_drop_reasons_are_named_as_the_residual_search_names_them():
+    assert [reason.value for reason in DropReason] == [
+        "retained",
+        "written-constant",
+        "undecodable",
+        "registered-uid",
+    ]

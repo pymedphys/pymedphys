@@ -105,6 +105,8 @@ class DropReason(enum.Enum):
     WRITTEN_CONSTANT = "written-constant"
     # content that cannot be decoded, inside a sequence that is removed
     UNDECODABLE = "undecodable"
+    # a UID that the pinned tables register, which names no one
+    REGISTERED_UID = "registered-uid"
 
 
 class RoiNameOutcome(enum.Enum):
