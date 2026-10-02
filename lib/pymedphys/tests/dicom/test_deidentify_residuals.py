@@ -1448,6 +1448,7 @@ def test_a_source_value_equal_to_a_written_constant_is_skipped_and_recorded(vr, 
         ("DA", "19000103"),
         ("DT", "19000101000002"),
         ("SH", "1131000"),
+        ("LO", "UNMODIFIED"),  # which the markers never write
     ],
 )
 def test_a_source_value_that_differs_from_every_constant_is_searched(vr, value):

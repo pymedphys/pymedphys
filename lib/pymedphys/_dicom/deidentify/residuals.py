@@ -488,7 +488,8 @@ def written_constants() -> tuple[tuple[str, str], ...]:
         for item in items_for_d(PERSON_IDENTIFICATION_CODE_SEQUENCE, source):
             found += [(element.vr, element.value) for element in item]
     found += [("CS", "YES"), ("LO", markers.MANUFACTURER)]
-    found += [("CS", value) for value in markers.TEMPORAL_VALUES]
+    # The markers write MODIFIED or REMOVED, never the least strict value.
+    found += [("CS", value) for value in markers.TEMPORAL_VALUES[1:]]
     codes = {
         7050: {markers.PROFILE_CODE, *markers.OPTION_CODES.values()},
         7005: {markers.DEIDENTIFYING_EQUIPMENT},
