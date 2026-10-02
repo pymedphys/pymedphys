@@ -83,10 +83,17 @@ class QcPackError(ValueError):
 class Disposition(enum.Enum):
     """What the run did with an input."""
 
-    WRITTEN = "written"
-    # an identical duplicate of a written input, not written again (D-026)
+    RELEASED = "released"
+    # an identical duplicate of a released input, not written again (D-026)
     DUPLICATE = "duplicate"
     SEQUESTERED = "sequestered"
+    # staged, and held until a reviewer decides, such as for a ROI Name (D-009)
+    HELD_FOR_REVIEW = "held-for-review"
+    # not processed, as when the run stops before anything is written (D-026)
+    REFUSED = "refused"
+
+
+_WITH_OUTPUT = frozenset({Disposition.RELEASED, Disposition.DUPLICATE})
 
 
 class DropReason(enum.Enum):
@@ -113,6 +120,7 @@ class RoiNameOutcome(enum.Enum):
     EMPTIED_UNREVIEWED = "emptied unreviewed"
 
 
+_LO_PADDING = " \x00"
 _HELD = frozenset({RoiNameOutcome.HELD, RoiNameOutcome.EMPTIED_UNREVIEWED})
 _EMPTIED = frozenset(
     {RoiNameOutcome.EMPTY, RoiNameOutcome.EMPTIED, RoiNameOutcome.EMPTIED_UNREVIEWED}
@@ -156,13 +164,13 @@ class InstanceEntry:
     disposition : Disposition
     output : pathlib.PurePosixPath, optional
         The output path below the output directory, for an input that was
-        written or is a duplicate of one that was.
+        released or is a duplicate of one that was.
     label : str, optional
         The opaque per-run label, such as ``S-0001``, by which the release
         report refers to a sequestered input (D-026).
     reasons : tuple of str
-        Why a sequestered input was sequestered, as the engine words its
-        findings, which hold no values; empty otherwise.
+        Why an input was sequestered, held for review, or refused, as the
+        engine words its findings, which hold no values; empty otherwise.
     """
 
     position: int
@@ -189,19 +197,24 @@ class InstanceEntry:
             )
 
     def _problem(self) -> str | None:
-        if self.disposition is not Disposition.SEQUESTERED:
+        if self.disposition in _WITH_OUTPUT:
             if self.label is not None or self.reasons:
                 return "has no label or reasons"
             return (
                 None if _is_output_path(self.output) else "needs a relative output path"
             )
+        sequestered = self.disposition is Disposition.SEQUESTERED
         problems = (
             (self.output is not None, "has no output path"),
             (
-                not isinstance(self.label, str) or not _LABEL.fullmatch(self.label),
+                sequestered
+                and (
+                    not isinstance(self.label, str) or not _LABEL.fullmatch(self.label)
+                ),
                 "needs a label such as S-0001",
             ),
-            (not self.reasons, "needs the reasons it was sequestered"),
+            (not sequestered and self.label is not None, "has no label"),
+            (not self.reasons, "needs the reasons for it"),
         )
         return next((problem for failed, problem in problems if failed), None)
 
@@ -467,8 +480,8 @@ class RoiNameEntry:
         ambiguous, echoes an identifier, or would duplicate another name;
         None for every other outcome.
     written : str, optional
-        What was written: the vocabulary's spelling, the source name if
-        kept, the reviewer's name if mapped, and ``""`` if emptied or empty;
+        What was written: the vocabulary's spelling, the source name
+        without its leading and trailing spaces and NULs if kept, the reviewer's name if mapped, and ``""`` if emptied or empty;
         None if held.
     """
 
@@ -504,8 +517,10 @@ class RoiNameEntry:
             return "needs what was written"
         if (self.outcome in _EMPTIED) != (self.written == ""):
             return "is written empty only when it was emptied or empty"
-        if self.outcome is RoiNameOutcome.KEPT and self.written != self.source:
-            return "is written as its source name"
+        if self.outcome is RoiNameOutcome.KEPT and self.written != self.source.strip(
+            _LO_PADDING
+        ):
+            return "is written as its source name, without padding"
         return None
 
     def __repr__(self) -> str:
@@ -538,9 +553,10 @@ class QcPack:
     ------
     QcPackError
         If an attribute is not of its type; if the instances are not one for
-        each run position from 0; if two sequestered instances share a label
-        or two written instances an output path; if a duplicate's output path
-        is not a written instance's; if an entry names a run position without
+        each run position from 0; if the sequestered instances' labels are not
+        S-0001 to S-n, each once, at the width of n or 4 digits, as the
+        release report gives them; if two released instances share an output
+        path; if a duplicate's output path is not a released instance's; if an entry names a run position without
         an instance; or if two retained strings are the same.
     """
 
@@ -594,21 +610,25 @@ class QcPack:
 
     def _check_names(self) -> None:
         labels = [entry.label for entry in self.instances if entry.label is not None]
-        if len(set(labels)) != len(labels):
-            raise QcPackError("two sequestered instances share a label")
+        width = max(4, len(str(len(labels))))
+        if sorted(labels) != [f"S-{n:0{width}d}" for n in range(1, len(labels) + 1)]:
+            raise QcPackError(
+                "the sequestered instances' labels must be S-0001 onwards, "
+                "each once, at one width"
+            )
         written = [
             entry.output
             for entry in self.instances
-            if entry.disposition is Disposition.WRITTEN
+            if entry.disposition is Disposition.RELEASED
         ]
         if len(set(written)) != len(written):
-            raise QcPackError("two written instances share an output path")
+            raise QcPackError("two released instances share an output path")
         if any(
             entry.output not in written
             for entry in self.instances
             if entry.disposition is Disposition.DUPLICATE
         ):
-            raise QcPackError("a duplicate's output path is not a written instance's")
+            raise QcPackError("a duplicate's output path is not a released instance's")
 
     def __repr__(self) -> str:
         return (

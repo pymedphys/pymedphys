@@ -65,7 +65,7 @@ NAME_PATH = _path("(0010,0010)")
 
 
 def _written(position=0, output=OUTPUT, source=SOURCE_PATH):
-    return InstanceEntry(position, source, Disposition.WRITTEN, output=output)
+    return InstanceEntry(position, source, Disposition.RELEASED, output=output)
 
 
 def _sequestered(position=0, label="S-0001"):
@@ -134,6 +134,42 @@ def test_labels_grow_beyond_four_digits():
     assert _sequestered(label="S-12345").label == "S-12345"
 
 
+@pytest.mark.parametrize(
+    "labels",
+    [("S-0001", "S-0001"), ("S-0002",), ("S-0001", "S-00002"), ("S-00001",)],
+)
+def test_a_runs_labels_are_s_0001_onwards_at_one_width(labels):
+    instances = tuple(
+        _sequestered(position, label) for position, label in enumerate(labels)
+    )
+    with pytest.raises(QcPackError, match="S-0001 onwards"):
+        _pack(instances=instances)
+
+
+def test_labels_widen_with_the_number_of_sequestered_instances():
+    labels = [f"S-{n:05d}" for n in range(1, 10001)]
+    instances = tuple(
+        _sequestered(position, label) for position, label in enumerate(reversed(labels))
+    )
+    assert len(_pack(instances=instances).instances) == 10000
+    shuffled = (_sequestered(0, "S-0002"), _sequestered(1, "S-0001"))
+    assert _pack(instances=shuffled).instances == shuffled
+
+
+@pytest.mark.parametrize(
+    "disposition", [Disposition.HELD_FOR_REVIEW, Disposition.REFUSED]
+)
+def test_held_and_refused_instances_have_reasons_and_no_label_or_output(disposition):
+    entry = InstanceEntry(0, SOURCE_PATH, disposition, reasons=("roi name held",))
+    assert entry.output is None and entry.label is None
+    with pytest.raises(QcPackError, match="needs the reasons"):
+        InstanceEntry(0, SOURCE_PATH, disposition)
+    with pytest.raises(QcPackError, match="has no label"):
+        InstanceEntry(0, SOURCE_PATH, disposition, label="S-0001", reasons=("x",))
+    with pytest.raises(QcPackError, match="has no output path"):
+        InstanceEntry(0, SOURCE_PATH, disposition, output=OUTPUT, reasons=("x",))
+
+
 def test_a_written_instance_has_an_output_path_and_no_label():
     entry = _written()
     assert entry.output == OUTPUT and entry.label is None and not entry.reasons
@@ -157,7 +193,7 @@ def test_a_written_instance_has_an_output_path_and_no_label():
 def test_a_written_instance_is_checked(fields, match):
     fields = {"output": OUTPUT, **fields}
     with pytest.raises(QcPackError, match=match):
-        InstanceEntry(0, SOURCE_PATH, Disposition.WRITTEN, **fields)
+        InstanceEntry(0, SOURCE_PATH, Disposition.RELEASED, **fields)
 
 
 @pytest.mark.parametrize(
@@ -181,7 +217,7 @@ def test_a_sequestered_instance_is_checked(fields, match):
 @pytest.mark.parametrize("position", [-1, True, 1.0, None])
 def test_entries_need_a_run_position(position):
     with pytest.raises(QcPackError, match="run position"):
-        InstanceEntry(position, SOURCE_PATH, Disposition.WRITTEN, output=OUTPUT)
+        InstanceEntry(position, SOURCE_PATH, Disposition.RELEASED, output=OUTPUT)
     with pytest.raises(QcPackError, match="run position"):
         DropEntry(position, NAME_PATH, DropReason.RETAINED)
 
@@ -195,7 +231,7 @@ def test_instances_are_one_for_each_run_position_from_0():
 
 
 def test_labels_and_output_paths_are_not_shared():
-    with pytest.raises(QcPackError, match="share a label"):
+    with pytest.raises(QcPackError, match="S-0001 onwards"):
         _pack(instances=(_sequestered(0), _sequestered(1)))
     with pytest.raises(QcPackError, match="share an output path"):
         _pack(instances=(_written(0), _written(1)))
@@ -384,7 +420,7 @@ def test_the_document_holds_every_section():
         {
             "position": 0,
             "source": SOURCE_PATH,
-            "disposition": "written",
+            "disposition": "released",
             "output": OUTPUT.as_posix(),
             "label": None,
             "reasons": [],
@@ -478,7 +514,7 @@ def test_errors_hold_no_paths_or_values(tmp_path):
     release = tmp_path / "ZEBEDEE release"
     messages = []
     for attempt in (
-        lambda: InstanceEntry(0, SOURCE_PATH, Disposition.WRITTEN),
+        lambda: InstanceEntry(0, SOURCE_PATH, Disposition.RELEASED),
         lambda: RetainedString(RETAINED, ()),
         lambda: qc_store.check_confidential_destination(
             release / "qc", release_directory=release
@@ -763,3 +799,14 @@ def test_a_new_file_is_not_created_for_text_that_is_not_ascii(tmp_path):
     with pytest.raises(UnicodeEncodeError):
         qc_store.write_new(tmp_path / "x.json", "é")
     assert not (tmp_path / "x.json").exists()
+
+
+def test_a_kept_roi_name_is_written_without_its_padding():
+    entry = RoiNameEntry(
+        0, NAME_PATH, " lung l\x00", RoiNameOutcome.KEPT, written="lung l"
+    )
+    assert entry.written == "lung l"
+    with pytest.raises(QcPackError, match="without padding"):
+        RoiNameEntry(
+            0, NAME_PATH, " lung l\x00", RoiNameOutcome.KEPT, written=" lung l"
+        )

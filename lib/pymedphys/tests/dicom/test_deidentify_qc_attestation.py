@@ -53,7 +53,7 @@ def fixture_pack(tmp_path):
             InstanceEntry(
                 0,
                 "/imports/a.dcm",
-                Disposition.WRITTEN,
+                Disposition.RELEASED,
                 output=PurePosixPath("ZQ0001/2.25.1/2.25.2/2.25.3.dcm"),
             ),
         ),
