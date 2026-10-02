@@ -11,25 +11,47 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""The reviewed-names list for ROI Name cleaning.
 
-Under the Clean Descriptors Option, ROI Name (3006,0026) is cleaned in two
-tiers (D-009). The automatic tier (:mod:`.roi_names`) writes a ROI Name that
-matches the published TG-263 vocabulary in the vocabulary's spelling. Every
-other name is for human review: a reviewer keeps it, maps it to another name,
-or has it emptied. This module holds those decisions, in a
-:class:`ReviewedNames` list for the site or project that is reused on later
-runs. A decision applies to every ROI Name with exactly its spelling, once
-the name's padding is removed, so a mapping is a bulk rename across a
-collection. Applying the decisions to a structure set comes separately.
+"""Clean ROI Names in both tiers: automatic renaming, then reviewed decisions.
+
+The automatic tier (:mod:`.roi_names`) writes a ROI Name that matches the
+published TG-263 vocabulary in the vocabulary's spelling. Every other name is
+for human review. A reviewer keeps it, maps it to another name, or has it
+emptied, and the decisions are kept in a :class:`ReviewedNames` list for the
+site or project and reused on later runs. A decision applies to every ROI
+Name with exactly that spelling, once its padding is removed, so a mapping is
+a bulk rename across a collection.
+
+A name the automatic tier renames is renamed whatever the list says. For
+every other name, the list's decision is applied, including for a name the
+automatic tier sends to review only because another name of the structure set
+would be written the same, so a reviewer can map one of them elsewhere. Then
+what would be written is checked again, as the automatic tier checks its own:
+
+- a kept or mapped name that echoes a known patient or other person
+  identifier of the instance is held, since a reviewer may have decided on it
+  for another patient;
+- different names of one structure set that would be written as the same
+  name, ignoring case, whether by the automatic tier or the list, are all
+  held, since duplicate ROI Names can make a planning system reject the
+  import. Several empty names are not duplicates: the Basic Profile itself
+  empties every ROI Name.
+
+A name that the list does not cover is held too, with the automatic tier's
+reason. The caller holds an instance with a held name in the staging area for
+review, unless the user chooses explicitly to empty held names so that the
+run proceeds (``empty_held``), which empties a name held by these checks as
+well as one the list does not cover. :class:`ReviewQueue` collects the distinct
+held names of a run for the confidential QC material.
 
 The list holds source ROI Names verbatim, so it is confidential state: the
 custodian keeps it with the key and subject profiles, outside output and QC
-directories (D-016). Its ``repr`` and every error message hold no name.
+directories. Its ``repr``, the results, and every error message hold no name.
 """
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import enum
 import json
@@ -38,12 +60,14 @@ import pathlib
 import re
 import tempfile
 import unicodedata
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 
+from . import roi_names
 from .keys import (
     custodian_location_problem,
     warn_where_owner_only_modes_are_not_enforced,
 )
+from .roi_names import Reason
 
 FORMAT = "pymedphys-deid-reviewed-roi-names/1"
 # A name written to ROI Name (3006,0026), which is LO, in the default
@@ -284,3 +308,219 @@ def _read(path: pathlib.Path) -> dict[str, ReviewedName]:
         except ReviewedNamesError as error:
             raise ReviewedNamesError(f"name {number}: {error}") from None
     return names
+
+
+class Outcome(enum.Enum):
+    """What is written for a ROI Name."""
+
+    RENAMED = "renamed"  # the automatic tier's vocabulary spelling
+    EMPTY = "empty"  # the name was empty
+    KEPT = "kept"
+    MAPPED = "mapped"
+    EMPTIED = "emptied"  # by a reviewer's decision
+    HELD = "held"  # for review; nothing is written
+    EMPTIED_UNREVIEWED = "emptied unreviewed"  # held, but the user chose to empty
+
+
+@dataclasses.dataclass(frozen=True)
+class CleanedRoiName:
+    """What is written for one ROI Name, and why.
+
+    Attributes
+    ----------
+    outcome : Outcome
+    held_because : Reason or None
+        Why the name is ``HELD`` or ``EMPTIED_UNREVIEWED``: the automatic
+        tier's reason where the list does not cover the name,
+        ``ECHOES_IDENTIFIER`` or ``WOULD_DUPLICATE`` where what would be
+        written echoes an identifier or duplicates another name. None
+        otherwise.
+    value : str or None
+        The value written, which is None where the name is held. It is left
+        out of the ``repr``, since a kept name is a source value.
+    """
+
+    outcome: Outcome
+    held_because: Reason | None
+    value: str | None = dataclasses.field(repr=False)
+
+
+def clean_roi_names(
+    names: Sequence[str],
+    vocabulary: roi_names.RoiNameVocabulary | None,
+    reviewed: ReviewedNames,
+    *,
+    identifiers: Iterable[str],
+    empty_held: bool = False,
+) -> tuple[CleanedRoiName, ...]:
+    """Decide what is written for each ROI Name of one structure set.
+
+    Parameters
+    ----------
+    names : sequence of str
+        The decoded ROI Names of one structure set, in order, with or without
+        their padding.
+    vocabulary : RoiNameVocabulary or None
+        The published TG-263 vocabulary, or None, in which case every name
+        needs a reviewed decision.
+    reviewed : ReviewedNames
+    identifiers : iterable of str
+        The decoded values of the instance's patient and other person
+        identifiers, as for :func:`.roi_names.clean_roi_names`.
+    empty_held : bool, optional
+        Whether to empty a held name rather than hold it, as the user may
+        choose explicitly so that the run proceeds.
+
+    Returns
+    -------
+    tuple of CleanedRoiName
+        One for each name, in the same order.
+
+    Raises
+    ------
+    TypeError
+        If ``names`` or ``identifiers`` is a single string, or holds anything
+        but strings. The message holds no value.
+    """
+    if isinstance(names, (str, bytes)) or isinstance(identifiers, (str, bytes)):
+        raise TypeError("ROI Names and identifiers must be sequences of strings")
+    names, identifiers = tuple(names), tuple(identifiers)
+    if not all(isinstance(value, str) for value in names + identifiers):
+        raise TypeError("ROI Names and identifiers must all be strings")
+    stripped = [name.strip(_PADDING) for name in names]
+    if vocabulary is None:
+        automatic = tuple(
+            roi_names.RoiNameDecision(
+                Reason.EMPTY if not name else Reason.UNMATCHED, "" if not name else None
+            )
+            for name in stripped
+        )
+    else:
+        automatic = roi_names.clean_roi_names(
+            stripped, vocabulary, identifiers=identifiers
+        )
+    results = [
+        _decide(name, decision, vocabulary, reviewed, identifiers)
+        for name, decision in zip(stripped, automatic)
+    ]
+    # Names written the same but for case are duplicates too, since some
+    # planning systems compare structure names without case.
+    sources: dict[str, set[str]] = collections.defaultdict(set)
+    for name, result in zip(stripped, results):
+        if result.value:
+            sources[result.value.casefold()].add(name)
+    for index, result in enumerate(results):
+        if result.value and len(sources[result.value.casefold()]) > 1:
+            results[index] = CleanedRoiName(Outcome.HELD, Reason.WOULD_DUPLICATE, None)
+    if empty_held:
+        results = [
+            CleanedRoiName(Outcome.EMPTIED_UNREVIEWED, r.held_because, "")
+            if r.outcome is Outcome.HELD
+            else r
+            for r in results
+        ]
+    return tuple(results)
+
+
+_OUTCOMES = {
+    Review.KEEP: Outcome.KEPT,
+    Review.MAP: Outcome.MAPPED,
+    Review.EMPTY: Outcome.EMPTIED,
+}
+
+
+def _decide(
+    name: str,
+    automatic: roi_names.RoiNameDecision,
+    vocabulary: roi_names.RoiNameVocabulary | None,
+    reviewed: ReviewedNames,
+    identifiers: Sequence[str],
+) -> CleanedRoiName:
+    """Decide on one stripped name, before duplicates among all are considered."""
+    if automatic.reason is Reason.MATCHED:
+        return CleanedRoiName(Outcome.RENAMED, None, automatic.value)
+    if automatic.reason is Reason.EMPTY:
+        return CleanedRoiName(Outcome.EMPTY, None, "")
+    decision = reviewed.get(name)
+    if decision is None:
+        if automatic.reason is Reason.WOULD_DUPLICATE and vocabulary is not None:
+            # Renamed on its own, it may no longer duplicate a name that the
+            # list maps elsewhere; duplicates among all are judged after.
+            (alone,) = roi_names.clean_roi_names(
+                [name], vocabulary, identifiers=identifiers
+            )
+            return CleanedRoiName(Outcome.RENAMED, None, alone.value)
+        return CleanedRoiName(Outcome.HELD, automatic.reason, None)
+    value = {Review.KEEP: name, Review.MAP: decision.to, Review.EMPTY: ""}[
+        decision.review
+    ]
+    if value and roi_names.echoes_identifier(value, identifiers):
+        return CleanedRoiName(Outcome.HELD, Reason.ECHOES_IDENTIFIER, None)
+    return CleanedRoiName(_OUTCOMES[decision.review], None, value)
+
+
+@dataclasses.dataclass(frozen=True)
+class PendingName:
+    """A distinct ROI Name held for review.
+
+    Attributes
+    ----------
+    name : str
+        The ROI Name, without its padding. It is left out of the ``repr``.
+    reasons : frozenset of Reason
+        Every reason it was held for.
+    structure_sets : int
+        How many structure sets held it.
+    """
+
+    name: str = dataclasses.field(repr=False)
+    reasons: frozenset[Reason]
+    structure_sets: int
+
+
+class ReviewQueue:
+    """The distinct ROI Names a run held for review.
+
+    :meth:`entries` lists them, with the names, for the confidential QC
+    material; :meth:`summary` counts them by reason, without names, for the
+    release report.
+    """
+
+    def __init__(self) -> None:
+        self._reasons: dict[str, set[Reason]] = collections.defaultdict(set)
+        self._counts: collections.Counter[str] = collections.Counter()
+
+    def add(self, names: Sequence[str], results: Sequence[CleanedRoiName]) -> None:
+        """Add the held names of one structure set.
+
+        Raises
+        ------
+        ValueError
+            If there is not one result for each name.
+        """
+        if len(names) != len(results):
+            raise ValueError("there must be one result for each name")
+        held: dict[str, set[Reason]] = {}
+        for name, result in zip(names, results):
+            if result.held_because is not None:
+                held.setdefault(name.strip(_PADDING), set()).add(result.held_because)
+        for name, reasons in held.items():
+            self._reasons[name] |= reasons
+            self._counts[name] += 1
+
+    def entries(self) -> tuple[PendingName, ...]:
+        """Return each distinct held name, sorted by name."""
+        return tuple(
+            PendingName(name, frozenset(self._reasons[name]), self._counts[name])
+            for name in sorted(self._reasons)
+        )
+
+    def summary(self) -> Mapping[Reason, int]:
+        """Return how many distinct held names have each reason."""
+        counts: collections.Counter[Reason] = collections.Counter()
+        for reasons in self._reasons.values():
+            counts.update(reasons)
+        return dict(counts)
+
+    def __repr__(self) -> str:
+        return f"ReviewQueue(names={len(self._reasons)})"
