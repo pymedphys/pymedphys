@@ -18,10 +18,11 @@
 data dictionary gives its attribute, and raises :class:`UndecodableElement`
 for anything it cannot decode exactly. UN is decoded as Implicit VR Little
 Endian (PS3.5 Section 6.2.2), including a sequence that pydicom does not
-know, such as RT Assertions Sequence (0044,0110), once
-:func:`.file_layout.reads_as_items` finds that items fill it: pydicom reads
-malformed items silently. A VR in the file must be one the dictionary gives,
-and not contradict the one that the standard decides of alternatives. US or
+know, such as RT Assertions Sequence (0044,0110), by
+:func:`.sequences.decode_items` once :func:`.file_layout.reads_as_items`
+finds that items fill it: pydicom reads malformed items silently. A VR in
+the file must be one the dictionary gives, and not contradict the one that
+the standard decides of alternatives. US or
 SS follows Pixel Representation (0028,0103) in the nearest data set that has
 it (PS3.3 Sections C.7.5.1, C.7.6.3, and C.11.1.1.1), but for LUT Descriptor
 (0028,3002) in VOI LUT Sequence (0028,3010), the input to the VOI LUT
@@ -71,9 +72,9 @@ from typing import cast
 
 from pymedphys._imports import pydicom
 
-
 from .diagnostics import redacted_diagnostics
-from .file_layout import ElementPath, reads_as_items
+from .file_layout import ElementPath
+from .sequences import UnreadableItems, decode_items
 from .source import SourceEvidence
 from .sop_classes import load_storage_sop_classes
 from .standard import VRS, dictionary_attribute
@@ -573,9 +574,17 @@ def _decoded(element, vr: str, codecs: list[str], path: ElementPath) -> object:
     if raw.VR == "UN":  # in Implicit VR Little Endian (PS3.5 Section 6.2.2)
         raw = raw._replace(is_implicit_VR=True, is_little_endian=True)
     raw = raw._replace(VR=vr)
-    explicit = not raw.is_implicit_VR
-    if vr == "SQ" and raw.value and not reads_as_items(raw.value, explicit=explicit):
-        raise UndecodableElement(path, "has items that cannot be read")
+    if vr == "SQ":
+        try:
+            return decode_items(
+                raw.value or b"",
+                explicit=not raw.is_implicit_VR,
+                codecs=codecs,
+                little_endian=raw.is_little_endian,
+                offset=raw.value_tell or 0,
+            )
+        except UnreadableItems:
+            raise UndecodableElement(path, "has items that cannot be read") from None
     try:
         return pydicom.values.convert_value(vr, raw, codecs)
     # pydicom raises many types for a malformed value; any means that the
