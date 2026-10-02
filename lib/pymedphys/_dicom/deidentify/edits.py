@@ -79,7 +79,7 @@ from .residuals import SourceValue
 from .source import SourceEvidence
 from .standard import dictionary_attribute
 from .uid_roles import load_uid_roles
-from .uids import UIDOutcome, normalise_uid, transform_uid
+from .uids import UIDOutcome, normalise_uid, transform_uid, well_known_uids
 from .walker import (
     DESCENDED,
     Consumer,
@@ -185,6 +185,11 @@ class InstanceEdits:
         read as ISO 8859-1, being text outside ISO 646 where no Specific
         Character Set applies, so that its writer knows; ``()`` if there is
         none, or the instance must be sequestered.
+    registered_uids : tuple of ElementPath
+        In file order, the path of each UI value with a UID that the pinned
+        tables register, which is left out of ``source_values``, since it
+        names no one and stays wherever it is kept; ``()`` if there is none,
+        or the instance must be sequestered.
     """
 
     edits: tuple[Edit, ...]
@@ -192,13 +197,15 @@ class InstanceEdits:
     not_collected: tuple[NotCollected, ...]
     sequestrations: tuple[Sequestration, ...]
     read_as_latin_1: tuple[ElementPath, ...] = ()
+    registered_uids: tuple[ElementPath, ...] = ()
 
     def __repr__(self) -> str:
         return (
             f"InstanceEdits(edits={len(self.edits)}, source_values="
             f"{len(self.source_values)}, not_collected={len(self.not_collected)}, "
             f"sequestrations={len(self.sequestrations)}, "
-            f"read_as_latin_1={len(self.read_as_latin_1)})"
+            f"read_as_latin_1={len(self.read_as_latin_1)}, "
+            f"registered_uids={len(self.registered_uids)})"
         )
 
 
@@ -451,6 +458,7 @@ class _Gathered:
         self.collected: list[SourceValue] = []
         self.missing: list[NotCollected] = []
         self.latin_1: list[ElementPath] = []
+        self.registered: list[ElementPath] = []
         # The source values that each reviewed dummy sequence's items are
         # compared with, by item and tag.
         self.compared: dict[ElementPath, dict[int, dict[str, str]]] = {}
@@ -474,15 +482,41 @@ class _Gathered:
                 element, value
             )
         if Consumer.RESIDUAL_COLLECTION in element.consumers:
+            searched = self._unregistered(element.path, value)
             try:
-                self.collected.append(
-                    SourceValue(element.path, value.vr, _text(value), value.codecs)
-                )
+                if searched is not None:
+                    self.collected.append(
+                        SourceValue(
+                            element.path, searched.vr, _text(searched), searched.codecs
+                        )
+                    )
             except ValueError:
                 self.missing.append(
                     NotCollected(element.path, "could not be collected")
                 )
         return value
+
+    def _unregistered(
+        self, path: ElementPath, value: ElementValue
+    ) -> ElementValue | None:
+        """Leave out of a UI value each UID that the pinned tables register.
+
+        Such a UID names no one, and stays wherever it is kept, so searching
+        for it would find it in every instance. The path is recorded, and
+        None returned where no other UID is left to collect.
+        """
+        if value.vr != "UI":
+            return value
+        registered = well_known_uids()
+        left = tuple(
+            uid for uid in value.values if normalise_uid(str(uid)) not in registered
+        )
+        if len(left) == len(value.values):
+            return value
+        self.registered.append(path)
+        if not any(normalise_uid(str(uid)) for uid in left):
+            return None
+        return dataclasses.replace(value, values=left)
 
     def result(
         self, found: list[Edit], reviewed: dict[ElementPath, int]
@@ -496,6 +530,7 @@ class _Gathered:
             tuple(self.missing),
             (),
             tuple(self.latin_1),
+            tuple(self.registered),
         )
 
 

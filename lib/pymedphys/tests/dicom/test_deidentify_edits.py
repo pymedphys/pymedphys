@@ -114,6 +114,18 @@ def test_uids_are_replaced_by_their_keyed_replacement_unless_registered():
     assert sop_class.uid_outcomes == (UIDOutcome.RETAINED,)
 
 
+def test_registered_uids_are_left_out_of_the_residual_search():
+    # A UID that the pinned tables register names no one, and stays in the
+    # output wherever it is kept, so searching for it would find it in every
+    # instance.
+    _, result = _edits()
+    collected = {value.source for value in result.source_values}
+
+    assert _path("(0008,0018)") in collected
+    assert _path("(0008,0016)") not in collected
+    assert result.registered_uids == (_path("(0008,0016)"),)
+
+
 def test_d_writes_the_dummy_value_and_the_second_where_the_source_equals_it():
     _, result = _edits()
     label = {edit.path: edit for edit in result.edits}[_path("(300A,0002)")]
