@@ -23,6 +23,7 @@ per process, so each test starts and ends with them unread.
 import dataclasses
 import json
 import pathlib
+import random
 import shutil
 import types
 
@@ -31,10 +32,16 @@ from pymedphys._imports import pytest
 from pymedphys._dicom.deidentify import (
     method_digest,
     policy,
+    reference_graph,
     release_report,
+    residuals,
     runtime,
+    scope,
+    source,
     standard,
+    walker,
 )
+from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._nomenclature import tg263
 
 # The method section's fields, as the design's method digest decision lists
@@ -150,8 +157,15 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         release_report.release_report(basic, vocabulary=None)
     )
 
-    assert list(document) == ["format", "policy", "method", "runtime"]
-    assert document["format"] == "pymedphys-deid-release-report/1"
+    assert list(document) == [
+        "format",
+        "policy",
+        "method",
+        "runtime",
+        "sequestered",
+        "search_coverage",
+    ]
+    assert document["format"] == "pymedphys-deid-release-report/2"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
@@ -367,3 +381,288 @@ def test_every_report_states_the_vocabulary_by_name(basic, vocabulary):
 def test_only_a_policy_is_accepted():
     with pytest.raises(TypeError, match="policy must be"):
         release_report.release_report({"preset": "basic"}, vocabulary=None)
+
+
+# D-026, as the maintainer decided on 2 October 2026: a sequestered instance
+# is named by a random per-run label, which only the QC pack maps to its
+# source.
+def _sequestered(label="S-0001"):
+    rule = walker.Sequestration(
+        ElementPath((("(0010,1002)", 3),), "(0010,0020)"),
+        "D",
+        "SQ",
+        walker.SequesterReason.NO_DUMMY_VALUE,
+    )
+    return release_report.SequesteredInstance(
+        label,
+        (
+            release_report.sequestration_reason(
+                reference_graph.FindingKind.CONFLICTING_INSTANCE
+            ),
+            release_report.sequestration_reason(rule),
+        ),
+    )
+
+
+def test_sequestered_instances_are_listed_by_label_with_their_reasons(basic):
+    report = release_report.release_report(
+        basic,
+        vocabulary=None,
+        sequestered=(_sequestered("S-0002"), _sequestered("S-0001")),
+    )
+    document = release_report.report_document(report)
+
+    assert [entry["label"] for entry in document["sequestered"]] == [
+        "S-0001",
+        "S-0002",
+    ]
+    assert document["sequestered"][0]["reasons"] == [
+        {
+            "stage": "references",
+            "code": "conflicting-instance",
+            "attribute": None,
+            "action": None,
+            "vr": None,
+        },
+        {
+            # The attribute's tags, without the item that held it.
+            "stage": "walker",
+            "code": "no-dummy-value",
+            "attribute": "(0010,1002) > (0010,0020)",
+            "action": "D",
+            "vr": "SQ",
+        },
+    ]
+
+
+@pytest.mark.parametrize(
+    "cause, stage, code",
+    [
+        (scope.Disposition.UNSUPPORTED_IOD, "scope", "unsupported-iod"),
+        (source.SourceReason.STRUCTURE, "admission", "structure"),
+        (
+            reference_graph.FindingKind.SERIES_IN_SEVERAL_STUDIES,
+            "references",
+            "series-in-several-studies",
+        ),
+    ],
+)
+def test_each_stage_that_sequesters_gives_its_reason_code(cause, stage, code):
+    reason = release_report.sequestration_reason(cause)
+
+    assert (reason.stage, reason.code, reason.attribute) == (stage, code, None)
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        scope.Disposition.SUPPORTED,
+        reference_graph.FindingKind.DANGLING_REFERENCE,
+        reference_graph.FindingKind.DUPLICATE_INSTANCE,
+        reference_graph.FindingKind.STUDY_WITH_SEVERAL_PATIENTS,
+        "SENTINEL",
+    ],
+)
+def test_what_does_not_sequester_an_instance_is_not_a_reason(cause):
+    # A study with several patients stops the run instead (D-026).
+    with pytest.raises((TypeError, ValueError)) as raised:
+        release_report.sequestration_reason(cause)
+
+    assert "SENTINEL" not in str(raised.value)
+
+
+def test_labels_are_random_and_carry_nothing_from_the_run():
+    first = release_report.sequestration_labels(12, rng=random.Random(1))
+    second = release_report.sequestration_labels(12, rng=random.Random(2))
+
+    assert sorted(first) == sorted(second) == [f"S-{n:04d}" for n in range(1, 13)]
+    assert first != second
+    assert first != tuple(sorted(first))
+    assert not release_report.sequestration_labels(0)
+    assert release_report.sequestration_labels(12345)[0].startswith("S-")
+    assert {len(label) for label in release_report.sequestration_labels(12345)} == {7}
+
+
+# D-027, as the maintainer decided on 2 October 2026: the report counts what
+# the residual search did not search, by attribute and reason, and the QC
+# pack lists each by instance and place.
+def test_values_not_searched_are_counted_by_attribute_and_reason(basic):
+    name = ElementPath((), "(0010,0010)")
+    nested = ElementPath((("(0010,1002)", 0),), "(0010,0020)")
+    coverage = release_report.search_coverage(
+        [
+            residuals.NotSearched(
+                name, "PN", residuals.Form.NAME_WORD, residuals.Omission.TOO_SHORT
+            ),
+            residuals.NotSearched(
+                name, "PN", residuals.Form.NAME_COMPONENT, residuals.Omission.TOO_SHORT
+            ),
+            residuals.NotSearched(
+                ElementPath((("(0010,1002)", 1),), "(0010,0020)"),
+                "LO",
+                residuals.Form.VALUE,
+                residuals.Omission.TOO_SHORT,
+            ),
+            release_report.Unsearched(
+                nested, release_report.UnsearchedReason.UNDECODABLE
+            ),
+            release_report.Unsearched(name, release_report.UnsearchedReason.RETAINED),
+        ]
+    )
+    report = release_report.release_report(
+        basic, vocabulary=None, search_coverage=coverage
+    )
+
+    assert release_report.report_document(report)["search_coverage"] == [
+        {"attribute": "(0010,0010)", "reason": "retained", "count": 1},
+        {"attribute": "(0010,0010)", "reason": "too-short", "count": 2},
+        {"attribute": "(0010,1002) > (0010,0020)", "reason": "too-short", "count": 1},
+        {"attribute": "(0010,1002) > (0010,0020)", "reason": "undecodable", "count": 1},
+    ]
+
+
+def _with(report, **changes):
+    return dataclasses.replace(report, **changes)
+
+
+def _reason(**changes):
+    return dataclasses.replace(
+        release_report.sequestration_reason(scope.Disposition.UNSUPPORTED_IOD),
+        **changes,
+    )
+
+
+@pytest.mark.parametrize(
+    "change, field",
+    [
+        (
+            lambda r: _with(r, sequestered=(_sequestered("SENTINEL"),)),
+            "label",
+        ),
+        (
+            lambda r: _with(r, sequestered=(_sequestered(), _sequestered())),
+            "label",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(code="SENTINEL"),)
+                    ),
+                ),
+            ),
+            "code",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(stage="SENTINEL"),)
+                    ),
+                ),
+            ),
+            "stage",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(attribute="/SENTINEL/path"),)
+                    ),
+                ),
+            ),
+            "attribute",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(action="SENTINEL"),)
+                    ),
+                ),
+            ),
+            "action",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(vr="SENTINEL"),)
+                    ),
+                ),
+            ),
+            "vr",
+        ),
+        (
+            lambda r: _with(
+                r, sequestered=(release_report.SequesteredInstance("S-0001", ()),)
+            ),
+            "reasons",
+        ),
+        (
+            lambda r: _with(
+                r,
+                search_coverage=(
+                    release_report.SearchCoverage("SENTINEL^Margaret", "too-short", 1),
+                ),
+            ),
+            "attribute",
+        ),
+        (
+            lambda r: _with(
+                r,
+                search_coverage=(
+                    release_report.SearchCoverage("(0010,0010)", "SENTINEL", 1),
+                ),
+            ),
+            "reason",
+        ),
+        (
+            lambda r: _with(
+                r,
+                search_coverage=(
+                    release_report.SearchCoverage("(0010,0010)", "too-short", 0),
+                ),
+            ),
+            "count",
+        ),
+        (
+            lambda r: _with(
+                r,
+                search_coverage=(
+                    release_report.SearchCoverage("(0010,0010)", "too-short", True),
+                ),
+            ),
+            "count",
+        ),
+    ],
+    ids=[
+        "label",
+        "repeated-label",
+        "code",
+        "stage",
+        "attribute",
+        "action",
+        "vr",
+        "no-reason",
+        "coverage-attribute",
+        "coverage-reason",
+        "zero-count",
+        "boolean-count",
+    ],
+)
+def test_a_run_section_with_a_field_that_could_hold_a_value_is_refused(
+    basic, change, field
+):
+    report = change(release_report.release_report(basic, vocabulary=None))
+
+    for write in (release_report.report_document, release_report.to_json):
+        with pytest.raises(release_report.ReleaseReportError, match=field) as raised:
+            write(report)
+        assert "SENTINEL" not in str(raised.value)
+        assert raised.value.__cause__ is None
