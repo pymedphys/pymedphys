@@ -127,6 +127,7 @@ SLOW_TEST_FILES = frozenset(
         "lib/pymedphys/tests/experimental/pseudonymisation/test_pseudonymisation.py",
         "lib/pymedphys/tests/gamma/test_agnew_mcgarry.py",
         "lib/pymedphys/tests/metersetmap/test_metersetmap_regression.py",
+        "lib/pymedphys/tests/nomenclature/test_tg263_published.py",
         "lib/pymedphys/tests/pinnacle/test_pinnacle.py",
         "lib/pymedphys/tests/pinnacle/test_pinnacle_cli.py",
         "lib/pymedphys/tests/trf/test_decode.py",
