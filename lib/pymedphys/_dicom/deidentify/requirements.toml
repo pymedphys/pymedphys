@@ -108,7 +108,10 @@ The Attribute Patient Identity Removed (0012,0062) shall be replaced or added to
 status = "partial"
 milestone = "M3"
 decisions = ["D-012", "D-024"]
-implementation = ["_dicom/deidentify/method_digest.py"]
+implementation = [
+  "_dicom/deidentify/markers.py",
+  "_dicom/deidentify/method_digest.py",
+]
 tests = [
   "tests/dicom/test_deidentify_method_digest.py::test_the_digest_is_only_64_lowercase_hexadecimal_digits_and_fits_one_lo_value",
   "tests/dicom/test_deidentify_method_digest.py::test_the_same_inputs_always_give_the_same_digest",
@@ -116,9 +119,24 @@ tests = [
   "tests/dicom/test_deidentify_method_digest.py::test_any_part_of_the_policy_changes_the_digest",
   "tests/dicom/test_deidentify_method_digest.py::test_changing_adding_or_removing_an_engine_file_changes_the_digest",
   "tests/dicom/test_deidentify_method_digest.py::test_python_and_library_versions_leave_the_digest_unchanged",
+  "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
+  "tests/dicom/test_deidentify_markers.py::test_basic_clean_descriptors_claims_clean_descriptors_only_where_satisfied",
+  "tests/dicom/test_deidentify_markers.py::test_a_custom_option_set_is_named_as_one_and_claims_its_satisfied_options",
+  "tests/dicom/test_deidentify_markers.py::test_a_satisfied_list_that_leaves_out_a_selected_option_is_refused",
+  "tests/dicom/test_deidentify_markers.py::test_clean_descriptors_is_the_one_selected_option_that_can_go_unsatisfied",
+  "tests/dicom/test_deidentify_markers.py::test_tps_import_claims_no_ps3_15_conformance_and_adds_no_codes",
+  "tests/dicom/test_deidentify_markers.py::test_patient_identity_removed_is_never_no",
+  "tests/dicom/test_deidentify_markers.py::test_the_first_method_value_is_exactly_the_method_digest",
+  "tests/dicom/test_deidentify_markers.py::test_every_code_is_a_row_of_the_pinned_context_groups",
+  "tests/dicom/test_deidentify_markers.py::test_every_marker_value_is_valid_for_its_vr_and_vm",
+  "tests/dicom/test_deidentify_markers.py::test_markers_changed_after_markers_for_are_refused_before_they_are_written",
+  "tests/dicom/test_deidentify_markers.py::test_existing_markers_and_contributing_equipment_items_are_kept",
+  "tests/dicom/test_deidentify_markers.py::test_the_same_release_and_policy_applied_twice_gives_the_markers_of_one_run",
+  "tests/dicom/test_deidentify_markers.py::test_a_code_already_present_is_not_added_again_and_new_codes_follow",
+  "tests/dicom/test_deidentify_markers.py::test_marked_output_reads_back_strictly_and_gains_nothing_when_marked_again",
 ]
 note = '''
-The de-identification method digest, the second value that every preset adds to De-identification Method, is computed as 64 lowercase hexadecimal digits, which fit one LO value, from the policy and everything the engine could apply, including its own source and rule files, whether or not the policy's options use them. It identifies the policy and the PyMedPhys implementation and resources that apply it, not the runtime environment, which Software Versions records instead, so upgrading Python, pydicom, or tomlkit leaves it unchanged (D-012, D-024). The digest is PyMedPhys's own provenance, added beside the readable description that this paragraph allows; PS3.15 does not require it. Remaining: adding Patient Identity Removed, the CID 7050 codes, and both De-identification Method values to each data set (M3).
+The markers of an instance are computed from its policy, the de-identification method digest, and the options it satisfies, and added to a copy of its data set (D-012). Patient Identity Removed is set to YES. De-identification Method keeps its values and, unless they already include the pair as two consecutive values, gains two: the method digest, 64 lowercase hexadecimal digits, which fit one LO value, computed from the policy and everything the engine could apply, including its own source and rule files, whether or not the policy's options use them, and then a readable value naming PyMedPhys, its version, the PS3.15 edition, and the preset. The digest identifies the policy and the PyMedPhys implementation and resources that apply it, not the runtime environment, which Software Versions records instead, so upgrading Python, pydicom, or tomlkit leaves it unchanged (D-012, D-024). The digest is PyMedPhys's own provenance, added beside the readable description that this paragraph allows; PS3.15 does not require it. De-identification Method Code Sequence keeps its items and gains the CID 7050 codes of the Basic Profile and of each satisfied option that it does not already hold. Under a policy that claims conformance, every selected option must be satisfied except Clean Descriptors, so that the codes name each option whose actions the instance carries. `tps-import`, which claims no conformance, adds no code and says so in its readable value. Remaining: adding the markers to each instance the engine de-identifies, from its validated result (M3).
 '''
 
 [[requirement]]
@@ -260,9 +278,19 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.2
 text = '''
 The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "REMOVED" if none of the Retain Longitudinal Temporal Information Options is applied.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-012"]
+implementation = ["_dicom/deidentify/markers.py"]
+tests = [
+  "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
+  "tests/dicom/test_deidentify_markers.py::test_existing_markers_and_contributing_equipment_items_are_kept",
+  "tests/dicom/test_deidentify_markers.py::test_temporal_information_modified_keeps_the_stricter_value",
+  "tests/dicom/test_deidentify_markers.py::test_an_unknown_temporal_information_modified_is_refused_without_quoting_it",
+]
+note = '''
+Every policy that does not apply Modified Dates, the only Retain Longitudinal Temporal Information Option in scope, sets Longitudinal Temporal Information Modified to REMOVED in its markers, replacing any value already present, since REMOVED is the strictest, and refusing a present value that is not UNMODIFIED, MODIFIED, or REMOVED (D-012). Remaining: adding it to each instance the engine de-identifies (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.1-01"
@@ -412,9 +440,18 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "MODIFIED".
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
 decisions = ["D-012"]
+implementation = ["_dicom/deidentify/markers.py"]
+tests = [
+  "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
+  "tests/dicom/test_deidentify_markers.py::test_a_custom_option_set_with_modified_dates_marks_dates_as_modified",
+  "tests/dicom/test_deidentify_markers.py::test_temporal_information_modified_keeps_the_stricter_value",
+]
+note = '''
+Every policy that applies Modified Dates, including `tps-import`, sets Longitudinal Temporal Information Modified to MODIFIED in its markers, unless REMOVED is already present from an earlier run, which is kept because the dates that run removed are not restored (D-012). Remaining: adding it to each instance the engine de-identifies (M3).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.6-04"
@@ -837,11 +874,20 @@ status = "partial"
 milestone = "M4"
 decisions = ["D-011", "D-012", "D-016", "D-024", "D-029"]
 implementation = [
+  "_dicom/deidentify/markers.py",
   "_dicom/deidentify/method_digest.py",
   "_dicom/deidentify/release_report.py",
   "_dicom/deidentify/runtime.py",
 ]
 tests = [
+  "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
+  "tests/dicom/test_deidentify_markers.py::test_tps_import_claims_no_ps3_15_conformance_and_adds_no_codes",
+  "tests/dicom/test_deidentify_markers.py::test_the_first_method_value_is_exactly_the_method_digest",
+  "tests/dicom/test_deidentify_markers.py::test_the_markers_are_defined_by_the_iod_and_the_equipment_item_is_complete",
+  "tests/dicom/test_deidentify_markers.py::test_software_versions_give_pymedphys_then_python_pydicom_and_tomlkit",
+  "tests/dicom/test_deidentify_markers.py::test_software_versions_give_the_running_python_pydicom_and_tomlkit",
+  "tests/dicom/test_deidentify_markers.py::test_each_source_of_software_versions_changes_its_own_value",
+  "tests/dicom/test_deidentify_markers.py::test_python_and_library_versions_change_software_versions_not_the_digest",
   "tests/dicom/test_deidentify_release_report.py::test_the_policy_section_names_the_edition_preset_and_options",
   "tests/dicom/test_deidentify_release_report.py::test_the_document_has_the_sections_and_fields_the_design_lists",
   "tests/dicom/test_deidentify_release_report.py::test_the_method_section_holds_the_digest_and_its_components",
@@ -854,5 +900,5 @@ tests = [
   "tests/dicom/test_deidentify_runtime.py::test_each_value_is_read_from_its_source_at_each_call",
 ]
 note = '''
-Each run writes a release report and a conformance statement that name the edition and Options. The validated policy records the edition, preset, and options they will name, and each instance's De-identification Method names PyMedPhys and the preset and gives the method digest (D-012, D-024). The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016). Remaining: writing the report for each run, with its sections on the run's instances and a human-readable form, and publishing it with the collection (M4); and the conformance statement (M6).
+Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the method digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives in Software Versions its version and the runtime environment that ran, which the method digest does not cover (D-012, D-024). The validated policy records the edition, preset, and options. The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016). Remaining: writing the report for each run, with its sections on the run's instances and a human-readable form, and publishing it with the collection (M4); and the conformance statement (M6).
 '''
