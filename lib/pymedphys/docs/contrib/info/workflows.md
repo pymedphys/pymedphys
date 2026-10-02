@@ -184,6 +184,25 @@ and fails first if the overlay did not take effect. It uploads its JUnit
 report as `junit-dependency-floors`. A failure fails the unit-test workflow and
 therefore the required CI or release summary.
 
+The `pydicom-versions` job runs the de-identification tests (the
+`test_deidentify_*` modules in `tests/dicom` and `tests/dev/test_deid_tables.py`,
+without the slow tests) with two versions of pydicom, alongside both the quick
+and full matrices: `minimum`, 3.0.2, the lowest release that `pydicom>=3.0.2` in
+`pyproject.toml` allows, and `latest`, the newest release, which it resolves
+from the package index with `uv pip compile` each time it runs. Raise the
+minimum in the job when the declared one is raised. Each runs on Ubuntu with
+Python 3.14, installs the same locked environment as the unit tests, and
+overlays pydicom alone with `uv run --no-sync --with pydicom==<version>`. The
+job pins the latest release by its number because `uv run --with` keeps the
+locked version whenever that satisfies the requirement, even with
+`--upgrade-package`. It prints the version that Python imports and fails first
+if that is not the one requested. It uploads its JUnit reports as
+`junit-pydicom-minimum` and `junit-pydicom-latest`. A failure fails the
+unit-test workflow and therefore the required CI or release summary, so a
+pydicom release that breaks the de-identification tests fails every unit-test
+run, on pull requests and releases alike, until PyMedPhys is fixed or its
+declared range excludes that release.
+
 The `narrow-extras` job checks that each narrow feature extra (`gamma`,
 `dicom`, `mosaiq`, `icom`, and `trf`) holds every package its feature needs.
 For each, on Ubuntu with Python 3.14, it installs only that extra and the
