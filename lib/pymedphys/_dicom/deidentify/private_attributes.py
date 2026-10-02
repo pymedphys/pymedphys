@@ -361,7 +361,9 @@ def _raw_value(
     source = filename or buffer
     if filename and buffer and not getattr(buffer, "closed", False):
         source = buffer
-    if source is None:
+    if source is None or (source is filename and not isinstance(filename, str)):
+        # A filename that is not a path, such as the descriptor of a closed
+        # reader, names nothing that can be opened again safely.
         raise PrivateAttributeError(path)
     fileobj_type = getattr(dataset, "fileobj_type", None) or open
     try:

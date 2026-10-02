@@ -883,9 +883,7 @@ def test_a_deferred_sequence_whose_source_was_truncated_is_refused(
 
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
-def test_a_deferred_sequence_read_from_a_closed_descriptor_is_refused(
-    basic, tmp_path
-):
+def test_a_deferred_sequence_read_from_a_closed_descriptor_is_refused(basic, tmp_path):
     # A reader built on a file descriptor gives the data set an integer
     # filename. Once the reader is closed, that number names no file to read
     # again, and opening it would take over, then close, the caller's
