@@ -102,6 +102,7 @@ _SEQUESTERING = {
     "admission": frozenset(r.value for r in SourceReason),
     "references": frozenset(
         {
+            FindingKind.MISSING_IDENTIFIER.value,
             FindingKind.CONFLICTING_INSTANCE.value,
             FindingKind.SERIES_IN_SEVERAL_STUDIES.value,
         }
@@ -247,9 +248,9 @@ def sequestration_reason(
     ValueError
         For a disposition or finding that does not sequester an instance:
         :attr:`~.scope.Disposition.SUPPORTED`; a dangling reference or an
-        identical duplicate, which are reported only; a missing identifier,
-        whose handling is not yet decided; or a study with several patients,
-        which stops the run instead.
+        identical duplicate, which are reported only; or a study with
+        several patients, which stops the run instead. An instance missing
+        an identifier is sequestered, as the run pipeline does by default.
     TypeError
         For anything else.
     """

@@ -446,6 +446,7 @@ _SEQUESTERING = [
         if each is not scope.Disposition.SUPPORTED
     ),
     *((each, "admission") for each in source.SourceReason),
+    (reference_graph.FindingKind.MISSING_IDENTIFIER, "references"),
     (reference_graph.FindingKind.CONFLICTING_INSTANCE, "references"),
     (reference_graph.FindingKind.SERIES_IN_SEVERAL_STUDIES, "references"),
 ]
@@ -499,14 +500,12 @@ def test_each_walker_reason_is_written(basic, reason):
         scope.Disposition.SUPPORTED,
         reference_graph.FindingKind.DANGLING_REFERENCE,
         reference_graph.FindingKind.DUPLICATE_INSTANCE,
-        reference_graph.FindingKind.MISSING_IDENTIFIER,
         reference_graph.FindingKind.STUDY_WITH_SEVERAL_PATIENTS,
         "SENTINEL",
     ],
 )
 def test_what_does_not_sequester_an_instance_is_not_a_reason(cause):
-    # A study with several patients stops the run instead, and what happens
-    # to an instance missing an identifier is not yet decided.
+    # A study with several patients stops the run instead.
     with pytest.raises((TypeError, ValueError)) as raised:
         release_report.sequestration_reason(cause)
 
