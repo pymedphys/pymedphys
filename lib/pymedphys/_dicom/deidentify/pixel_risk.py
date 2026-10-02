@@ -38,12 +38,16 @@ The indicators are:
   (60xx,3000). PS3.3 before 2004 let an overlay lie in unused bits of Pixel
   Data (Section C.9.2), so its graphics and text stay in the pixel data when
   the Basic Profile removes the overlay's attributes.
-- In an RT Structure Set, an ROI whose RT ROI Interpreted Type (3006,00A4)
-  is EXTERNAL, the patient's outline, and that has contours: the outline of
-  the head can be reconstructed into a face (MIDI report Section 1.20.4).
+- In an RT Structure Set, an ROI that has contours and whose RT ROI
+  Interpreted Type (3006,00A4) or ROI Name (3006,0026) is EXTERNAL, BODY,
+  or SKIN, the patient's outline: the outline of the head can be
+  reconstructed into a face (MIDI report Section 1.20.4). The whole name is
+  compared, whatever its case, so a name such as "Skin 5mm" is not one.
 
 Values are compared whatever their case, though CS is upper case, so that a
-writer's lower-case "yes" does not hide an indicator. An attribute that
+writer's lower-case "yes" does not hide an indicator. An ROI Name is
+compared only as ASCII: a name with other characters is none of the
+outline's names, not unreadable. An attribute that
 cannot be read as its VR in the pinned data dictionary, such as an ROI
 number that is not an integer, is itself reported, as unreadable evidence
 of the risk that it bears on, since reading it could otherwise hide an
@@ -181,6 +185,11 @@ _CONTOUR_SEQUENCE = "(3006,0040)"
 _RT_ROI_OBSERVATIONS_SEQUENCE = "(3006,0080)"
 _REFERENCED_ROI_NUMBER = "(3006,0084)"
 _RT_ROI_INTERPRETED_TYPE = "(3006,00A4)"
+_STRUCTURE_SET_ROI_SEQUENCE = "(3006,0020)"
+_ROI_NUMBER = "(3006,0022)"
+_ROI_NAME = "(3006,0026)"
+# The interpreted types and ROI names of the patient's outline.
+_SURFACE_TERMS = frozenset({"EXTERNAL", "BODY", "SKIN"})
 
 # The VR in the pinned data dictionary of each attribute read, which a test
 # checks against it.
@@ -194,6 +203,9 @@ READ_VRS = {
     _RT_ROI_OBSERVATIONS_SEQUENCE: "SQ",
     _REFERENCED_ROI_NUMBER: "IS",
     _RT_ROI_INTERPRETED_TYPE: "CS",
+    _STRUCTURE_SET_ROI_SEQUENCE: "SQ",
+    _ROI_NUMBER: "IS",
+    _ROI_NAME: "LO",
 }
 
 _PIXEL_DATA_TAGS = (0x7FE00008, 0x7FE00009, 0x7FE00010)
@@ -254,11 +266,19 @@ def _decoded(vr: str, value: bytes, stored) -> object:
         if not all(_whole(item) for item in items):
             raise _Unreadable
         return list(items)
-    try:
-        text = value.decode("ascii")
-    except UnicodeDecodeError:
-        raise _Unreadable from None
+    if vr == "LO":
+        # Only an ASCII name is compared, and any other is no outline's name.
+        text = value.decode("ascii", errors="replace")
+    else:
+        try:
+            text = value.decode("ascii")
+        except UnicodeDecodeError:
+            raise _Unreadable from None
     values = [part.strip(" \x00") for part in text.split("\\")] if text else []
+    if vr == "LO":
+        if len(values) > 1:
+            raise _Unreadable
+        return [each.upper() for each in values]
     if vr == "CS":
         # CS is upper case, but a lower-case value must not hide an indicator.
         return [value.upper() for value in values]
@@ -302,13 +322,11 @@ def _converted(vr: str, value: object) -> object:
             raise _Unreadable
         return list(value)
     if vr == "IS":
-        if value is None or value == "":
-            return None
-        if isinstance(value, int):
-            return int(value)
-        raise _Unreadable
+        return _converted_integer(value)
     if value is None or value == "":
         return []
+    if vr == "LO":
+        return _converted_name(value)
     if isinstance(value, str):
         return [value.strip(" ").upper()]
     if not isinstance(value, MutableSequence) or not all(
@@ -316,6 +334,22 @@ def _converted(vr: str, value: object) -> object:
     ):
         raise _Unreadable
     return [each.strip(" ").upper() for each in value]
+
+
+def _converted_integer(value: object) -> int | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, int):
+        return int(value)
+    raise _Unreadable
+
+
+def _converted_name(value: object) -> list[str]:
+    if not isinstance(value, str) or "\\" in value:
+        raise _Unreadable
+    name = value.strip(" ")
+    # Only an ASCII name is compared, and any other is no outline's name.
+    return [name.upper() if name.isascii() else ""]
 
 
 def assess_pixel_risk(dataset: pydicom.Dataset) -> PixelRiskAssessment:
@@ -393,9 +427,33 @@ def _overlay_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
 
 
 def _surface_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
-    """Find the contours of the ROIs that RT ROI Observations call EXTERNAL."""
+    """Find the contours of the ROIs that are the patient's outline.
+
+    An ROI is the outline if an RT ROI Observations Sequence item gives it an
+    RT ROI Interpreted Type, or its Structure Set ROI Sequence item gives it
+    an ROI Name, of EXTERNAL, BODY, or SKIN.
+    """
     risk = Risk.RECONSTRUCTABLE_FACE
     external: set[int] = set()
+    try:
+        named = _read(dataset, _STRUCTURE_SET_ROI_SEQUENCE) or []
+    except _Unreadable:
+        yield Finding(
+            Indicator.UNREADABLE, ElementPath((), _STRUCTURE_SET_ROI_SEQUENCE), risk
+        )
+        named = []
+    assert isinstance(named, list)
+    for index, item in enumerate(named):
+        within = ((_STRUCTURE_SET_ROI_SEQUENCE, index),)
+        try:
+            number = _read(item, _ROI_NUMBER)
+            name = _read(item, _ROI_NAME)
+        except _Unreadable:
+            yield Finding(Indicator.UNREADABLE, _failing(item, within), risk)
+            continue
+        assert name is None or isinstance(name, list)
+        if isinstance(number, int) and name and _SURFACE_TERMS.intersection(name):
+            external.add(number)
     try:
         observations = _read(dataset, _RT_ROI_OBSERVATIONS_SEQUENCE) or []
     except _Unreadable:
@@ -413,8 +471,10 @@ def _surface_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
             # Which element failed is found again to say where it is.
             yield Finding(Indicator.UNREADABLE, _failing(item, within), risk)
             continue
-        if kind == ["EXTERNAL"] and isinstance(number, int):
-            external.add(number)
+        assert kind is None or isinstance(kind, list)
+        if isinstance(number, int) and kind and len(kind) == 1:
+            if kind[0] in _SURFACE_TERMS:
+                external.add(number)
     try:
         contours = _read(dataset, _ROI_CONTOUR_SEQUENCE) or []
     except _Unreadable:
@@ -442,7 +502,13 @@ def _surface_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
 
 def _failing(item: pydicom.Dataset, within) -> ElementPath:
     """Return the path of the first element of ``item`` that cannot be read."""
-    for tag in (_RT_ROI_INTERPRETED_TYPE, _REFERENCED_ROI_NUMBER, _CONTOUR_SEQUENCE):
+    for tag in (
+        _ROI_NUMBER,
+        _ROI_NAME,
+        _RT_ROI_INTERPRETED_TYPE,
+        _REFERENCED_ROI_NUMBER,
+        _CONTOUR_SEQUENCE,
+    ):
         try:
             _read(item, tag)
         except _Unreadable:

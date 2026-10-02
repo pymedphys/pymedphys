@@ -820,9 +820,10 @@ implementation = ["_dicom/deidentify/pixel_risk.py"]
 tests = [
   "tests/dicom/test_deidentify_pixel_risk.py::test_declared_recognizable_visual_features_are_an_indicator",
   "tests/dicom/test_deidentify_pixel_risk.py::test_an_external_roi_with_contours_is_a_patient_surface",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_an_roi_named_external_body_or_skin_is_a_patient_surface",
 ]
 note = '''
-Recognizable Visual Features of YES, and an RT Structure Set's contours of an ROI that it calls EXTERNAL, the patient's outline, are reported as indicators of a reconstructable face. Remaining: indicators from a CT series' coverage and slice spacing, reporting them, and the `public-release` assessment and face review (M4).
+Recognizable Visual Features of YES, and an RT Structure Set's contours of an ROI whose interpreted type or name is EXTERNAL, BODY, or SKIN, the patient's outline, are reported as indicators of a reconstructable face. Remaining: indicators from a CT series' coverage and slice spacing, reporting them, and the `public-release` assessment and face review (M4).
 '''
 
 [[requirement]]
