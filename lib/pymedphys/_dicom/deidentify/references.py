@@ -65,9 +65,10 @@ otherwise be compared as if they were at the top level.
 A record keeps a digest of the source bytes rather than the bytes, so
 records stay small. Building one reads the file's bytes into a data set of
 its own, so the caller's objects are left unchanged. It neither logs nor
-warns; pydicom's warnings and log records while it reads the file and
-decodes sequences are redacted by :func:`.diagnostics.redacted_diagnostics`,
-and pydicom's errors are the entry point's to redact.
+warns; pydicom's warnings and log records, from reading the file until
+the record is built, including those from decoding values and sequences,
+are redacted by :func:`.diagnostics.redacted_diagnostics`, and pydicom's
+errors are the entry point's to redact.
 """
 
 from __future__ import annotations
@@ -354,28 +355,30 @@ class InstanceRecord:
             values from the file, so the entry point redacts it.
         """
         data = bytes(data)
+        # pydicom converts each value when it is first read, not in
+        # dcmread, so the redaction lasts until the record is built.
         with redacted_diagnostics():
             dataset = pydicom.dcmread(io.BytesIO(data), defer_size=None)
-        sop_class = _uid(dataset, SOP_CLASS_TAG)
-        iod, sites = _iod_and_sites(sop_class) if sop_class else (None, ())
-        found = []
-        for site in sites:
-            for item in _items(dataset, site.path):
-                element = _element(item, site.tag)
-                if element is None or (site.type == "3" and _is_empty(element)):
-                    continue
-                target = _uid(item, site.tag) or ""
-                target_class = _uid(item, REFERENCED_SOP_CLASS_TAG)
-                found.append(Reference(site, target, target_class))
-        return cls(
-            iod,
-            _uid(dataset, IDENTITY_TAGS[Level.INSTANCE]),
-            _uid(dataset, IDENTITY_TAGS[Level.SERIES]),
-            _uid(dataset, IDENTITY_TAGS[Level.STUDY]),
-            tuple(found),
-            _patient(dataset),
-            _source_digest(data),
-        )
+            sop_class = _uid(dataset, SOP_CLASS_TAG)
+            iod, sites = _iod_and_sites(sop_class) if sop_class else (None, ())
+            found = []
+            for site in sites:
+                for item in _items(dataset, site.path):
+                    element = _element(item, site.tag)
+                    if element is None or (site.type == "3" and _is_empty(element)):
+                        continue
+                    target = _uid(item, site.tag) or ""
+                    target_class = _uid(item, REFERENCED_SOP_CLASS_TAG)
+                    found.append(Reference(site, target, target_class))
+            return cls(
+                iod,
+                _uid(dataset, IDENTITY_TAGS[Level.INSTANCE]),
+                _uid(dataset, IDENTITY_TAGS[Level.SERIES]),
+                _uid(dataset, IDENTITY_TAGS[Level.STUDY]),
+                tuple(found),
+                _patient(dataset),
+                _source_digest(data),
+            )
 
     def identifier(self, level: Level) -> str | None:
         """Return the UID that identifies the instance's entity at ``level``."""

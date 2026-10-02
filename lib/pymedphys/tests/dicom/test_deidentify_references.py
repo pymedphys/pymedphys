@@ -935,3 +935,22 @@ def test_pydicom_diagnostics_while_reading_a_record_are_redacted(monkeypatch, ca
     assert caught and caplog.records
     assert sentinel not in " ".join(str(each.message) for each in caught)
     assert sentinel not in caplog.text
+
+
+@pytest.mark.pydicom
+def test_pydicom_diagnostics_while_decoding_a_record_are_redacted(caplog):
+    # pydicom converts each value when it is first accessed, after dcmread
+    # has returned, and warns there of a value that is not valid for its VR.
+    sentinel = "ZZSENTINELZZ"
+    dataset = synthetic.structure_set()
+    dataset.SeriesInstanceUID = f"2.25.{sentinel}"
+    data = synthetic.written(dataset)  # which warns, unredacted
+    caplog.clear()
+    caplog.set_level(logging.DEBUG, logger="pydicom")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        record = InstanceRecord.from_file(data)
+    assert record.iod == "RT Structure Set"
+    assert caught and caplog.records
+    assert sentinel not in " ".join(str(each.message) for each in caught)
+    assert sentinel not in caplog.text

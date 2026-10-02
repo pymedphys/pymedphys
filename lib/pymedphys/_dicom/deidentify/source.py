@@ -146,7 +146,10 @@ class SourceEvidence:
 
         Each call reads the bytes again, in full and without deferring any
         value, so changing one data set changes neither the evidence nor
-        another. pydicom's warnings and log records are redacted.
+        another. pydicom's warnings and log records while it reads are
+        redacted. pydicom converts each value when it is first accessed,
+        later, so a caller that accesses values redacts them itself, as
+        :func:`~pymedphys._dicom.deidentify.elements.read_element` does.
 
         Raises
         ------
