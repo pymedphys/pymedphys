@@ -33,9 +33,13 @@ def _parse(*args):
 
 
 @pytest.fixture(name="calls")
-def fixture_calls(monkeypatch):
+def fixture_calls(monkeypatch, tmp_path):
     """Record the command's side effects instead of performing them."""
     calls = {"copies": [], "commands": [], "downloads": [], "sphinx": []}
+    # The matrix page is generated, not copied, so keep it out of the docs tree.
+    monkeypatch.setattr(
+        docs, "DEID_MATRIX_PAGE", tmp_path / "deidentification-requirements.md"
+    )
     monkeypatch.setattr(
         docs.shutil, "copy", lambda *paths: calls["copies"].append(paths)
     )
