@@ -134,8 +134,9 @@ def convert_roi_list_cli(args: argparse.Namespace) -> None:
     except roi_list.RoiListError as error:
         _fail(str(error))
     _create(output, roi_list.to_json(names))
+    count = len(names.entries)
     print(
-        f"Wrote {len(names.entries)} names from {names.source.file} "
+        f"Wrote {count} {'name' if count == 1 else 'names'} from {names.source.file} "
         f"(version {names.source.version}) to {output.name}"
     )
 

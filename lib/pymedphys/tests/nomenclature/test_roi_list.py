@@ -81,7 +81,7 @@ def test_quoted_values_may_hold_commas(tmp_path):
         ("", "empty"),
         ("Description\nLeft lung\n", "missing column 'Name'"),
         ("Name,Site\nLung_L,A\n", "unknown column 'Site'"),
-        ("Name,\nLung_L,\n", "unknown column ''"),
+        ("Name,,Description\nLung_L,,A\n", "unknown column ''"),
         ("Name,Name\nLung_L,Lung_R\n", "column 'Name' appears 2 times"),
         ("Name\n", "no names"),
         ("Name\nLung_L,extra\n", "row 2 has more cells than the header"),
@@ -91,11 +91,57 @@ def test_quoted_values_may_hold_commas(tmp_path):
         ("Name\nLung\tL\n", "row 2: 'Name' is not a valid LO value"),
         ("Name\n" + "x" * 65 + "\n", "row 2: 'Name' is not a valid LO value"),
         ('Name\n"Lung\nL"\n', "row 2: 'Name' is not a valid LO value"),
+        ("Name\nPoumon_\u00e9\n", "row 2: 'Name' is not a valid LO value"),
+        ("Name\nLung\u202eL\n", "row 2: 'Name' is not a valid LO value"),
+        ("Name\nLung\u200bL\n", "row 2: 'Name' is not a valid LO value"),
+        ("Name\nLung\x7fL\n", "row 2: 'Name' is not a valid LO value"),
+        ("Name,Description\nLung_L,Left\x07lung\n", "row 2: 'Description' has"),
+        ("Name,Description\nLung_L,Left\u202elung\n", "row 2: 'Description' has"),
+        ("Name;Description\nLung_L;Left lung\n", "separated by commas"),
+        ("name\nLung_L\n", "unknown column 'name'"),
+        ("Name\nLung_L,Heart\n", "row 2 has more cells than the header"),
     ],
 )
 def test_invalid_lists_fail(tmp_path, text, message):
     with pytest.raises(roi_list.RoiListError, match=re.escape(message)):
         roi_list.read_csv(_write(tmp_path, text), version="1")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        'Name,Description\nLung_L,"Left lung\nHeart,Organ\nLiver,Organ\n',
+        'Name,Description\nHeart,"Or"gan\n',
+        "Name\n" + "x" * 200_000 + "\n",
+    ],
+)
+def test_malformed_csv_fails_rather_than_losing_rows(tmp_path, text):
+    # An unclosed or stray quote would otherwise join later rows into a cell.
+    with pytest.raises(roi_list.RoiListError, match="is not valid CSV"):
+        roi_list.read_csv(_write(tmp_path, text), version="1")
+
+
+def test_empty_trailing_cells_and_leading_blank_lines_are_ignored(tmp_path):
+    text = "\n,\nName,Description,\nLung_L,Left lung,,\nHeart,,\n"
+    names = roi_list.read_csv(_write(tmp_path, text), version="1")
+    assert names.entries == (
+        roi_list.Entry("Lung_L", "Left lung"),
+        roi_list.Entry("Heart", ""),
+    )
+
+
+def test_every_printable_ascii_character_but_backslash_is_valid(tmp_path):
+    printable = "".join(chr(code) for code in range(0x21, 0x7F) if chr(code) != "\\")
+    name = "A " + printable[:60]
+    text = 'Name\n"' + name.replace('"', '""') + '"\n'
+    names = roi_list.read_csv(_write(tmp_path, text), version="1")
+    assert names.entries == (roi_list.Entry(name, ""),)
+
+
+def test_a_description_may_hold_any_printable_text(tmp_path):
+    text = "Name,Description\nLung_L,Poumon gauche \u00e9\n"
+    names = roi_list.read_csv(_write(tmp_path, text), version="1")
+    assert names.entries == (roi_list.Entry("Lung_L", "Poumon gauche \u00e9"),)
 
 
 def test_a_64_character_name_is_valid(tmp_path):
@@ -114,7 +160,10 @@ def test_a_file_that_is_not_utf8_fails(tmp_path):
         roi_list.read_csv(path, version="1")
 
 
-@pytest.mark.parametrize("version", ["", " ", " 1", "a\nb"])
+@pytest.mark.parametrize(
+    "version",
+    ["", " ", " 1", "a\nb", "a\tb", "a\x00b", "a\x85b", "a\u2028b", "\x1b[31m"],
+)
 def test_the_version_must_be_given(tmp_path, version):
     with pytest.raises(roi_list.RoiListError, match="version"):
         roi_list.read_csv(_write(tmp_path, CSV), version=version)
@@ -159,6 +208,18 @@ def _set(document, keys, value):
         (("source", "kind"), "aapm-tg263", "malformed source"),
         (("source", "sha256"), "ABC", "malformed source"),
         (("source", "version"), "", "malformed source"),
+        (("source", "version"), "a\tb", "malformed source"),
+        (("source", "file"), "", "malformed source"),
+        (("source", "file"), "secret/site.csv", "malformed source"),
+        (("source", "file"), "secret\\site.csv", "malformed source"),
+        (("source", "file"), " site.csv", "malformed source"),
+        (("source", "file"), "site\n.csv", "malformed source"),
+        (
+            ("entries", 0, "name"),
+            "Lung\ud800",
+            "entry 1: 'name' is not a valid LO value",
+        ),
+        (("entries", 0, "description"), "Left\x07", "entry 1: 'description' has"),
         (("entries",), {}, "no list of entries"),
         (("entries",), [], "no names"),
         (("entries", 0, "name"), "", "entry 1: 'name' is empty"),
@@ -191,6 +252,15 @@ def test_json_edited_without_its_digest_is_rejected(tmp_path):
     path = tmp_path / "roi-list.json"
     path.write_text(json.dumps(document), encoding="utf-8")
     with pytest.raises(roi_list.RoiListError, match="content_sha256"):
+        roi_list.load_json(path)
+
+
+def test_json_with_a_repeated_key_is_rejected(tmp_path):
+    text = roi_list.to_json(roi_list.read_csv(_write(tmp_path, CSV), version="1"))
+    text = text.replace('"name": "Lung_L"', '"name": "Heart", "name": "Lung_L"', 1)
+    path = tmp_path / "roi-list.json"
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(roi_list.RoiListError, match="repeats the key 'name'"):
         roi_list.load_json(path)
 
 

@@ -356,7 +356,7 @@ def test_an_institutional_list_is_converted_to_json(tmp_path, capsys):
     expected = roi_list.read_csv(source, version="2026-10")
     assert output.read_bytes() == roi_list.to_json(expected).encode("utf-8")
     assert roi_list.load_json(output) == expected
-    assert "1 names" in capsys.readouterr().out
+    assert "Wrote 1 name from" in capsys.readouterr().out
 
 
 def test_an_institutional_list_needs_a_version(tmp_path):
@@ -389,3 +389,30 @@ def test_an_institutional_list_never_overwrites(tmp_path):
     with pytest.raises(SystemExit):
         _run_roi_list(str(source), str(output), "--list-version", "1")
     assert output.read_text(encoding="utf-8") == "keep me"
+
+
+def test_malformed_csv_fails_without_a_traceback(tmp_path, capsys):
+    source = tmp_path / "site.csv"
+    source.write_text('Name,Description\nLung_L,"Left lung\nHeart,\n', encoding="utf-8")
+    output = tmp_path / "site.json"
+
+    with pytest.raises(SystemExit) as exit_info:
+        _run_roi_list(str(source), str(output), "--list-version", "1")
+
+    assert exit_info.value.code == 1
+    assert not output.exists()
+    assert capsys.readouterr().err.startswith("error: site.csv is not valid CSV")
+
+
+@pytest.mark.parametrize("make", [lambda path: None, lambda path: path.mkdir()])
+def test_an_unreadable_list_names_only_the_file(tmp_path, capsys, make):
+    source = tmp_path / "site.csv"
+    make(source)
+
+    with pytest.raises(SystemExit) as exit_info:
+        _run_roi_list(str(source), str(tmp_path / "site.json"), "--list-version", "1")
+
+    assert exit_info.value.code == 1
+    err = capsys.readouterr().err
+    assert err.startswith("error: cannot read site.csv: ")
+    assert str(tmp_path) not in err
