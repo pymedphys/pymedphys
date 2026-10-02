@@ -218,7 +218,7 @@ tests = [
   "tests/dicom/test_deidentify_private_attributes.py::test_private_attributes_in_a_sequence_read_as_unknown_are_removed",
   "tests/dicom/test_deidentify_compound_actions.py::test_each_compound_action_resolves_by_type",
   "tests/dicom/test_deidentify_compound_actions.py::test_the_type_depends_on_the_enclosing_sequence",
-  "tests/dicom/test_deidentify_compound_actions.py::test_x_z_on_a_type_1_attribute_sequesters_the_instance",
+  "tests/dicom/test_deidentify_compound_actions.py::test_x_z_on_a_type_1_attribute_writes_the_dummy_value",
   "tests/dicom/test_deidentify_elements.py::test_an_implicit_vr_rt_plan_decodes_rt_assertions_with_the_pinned_vr",
   "tests/dicom/test_deidentify_elements.py::test_un_in_explicit_vr_is_decoded_as_implicit_vr_with_the_pinned_vr",
   "tests/dicom/test_deidentify_elements.py::test_a_vr_that_conflicts_with_the_pinned_dictionary_is_refused",
@@ -233,7 +233,7 @@ tests = [
   "tests/dicom/test_deidentify_elements.py::test_text_that_could_not_be_written_back_is_refused",
 ]
 note = '''
-Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute sequesters the instance (D-020). Each element, at the top level or in an item, is read with the VR that the pinned data dictionary gives its attribute, so that the attributes inside a sequence that pydicom does not know and reads as UN, such as an RT Plan's RT Assertions Sequence, can be found; an element whose VR conflicts with the dictionary, or whose value or items do not decode exactly, is reported as undecodable rather than read as pydicom guesses it. Each element, at the top level or in an item, takes the rule of the first source that covers it: the engine's own removals, Table E.1-1's Private Attributes row, the table's other rows, whose masked tags match only the repeating groups, the supplementary rules and UID roles, removal by Type of other text, and the rule for attributes that no rule covers (D-022); a sequence to which an option gives C takes its Basic Profile action (D-009). Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028). Remaining: protecting or retaining every instance of each other attribute, at the top level and in sequences, and removing private attributes from each instance the engine de-identifies (M3).
+Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute gives D, the non-zero-length dummy value that Table E.1-1a allows Z (D-020). Each element, at the top level or in an item, is read with the VR that the pinned data dictionary gives its attribute, so that the attributes inside a sequence that pydicom does not know and reads as UN, such as an RT Plan's RT Assertions Sequence, can be found; an element whose VR conflicts with the dictionary, or whose value or items do not decode exactly, is reported as undecodable rather than read as pydicom guesses it. Each element, at the top level or in an item, takes the rule of the first source that covers it: the engine's own removals, Table E.1-1's Private Attributes row, the table's other rows, whose masked tags match only the repeating groups, the supplementary rules and UID roles, removal by Type of other text, and the rule for attributes that no rule covers (D-022); a sequence to which an option gives C takes its Basic Profile action (D-009). Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028). Remaining: protecting or retaining every instance of each other attribute, at the top level and in sequences, and removing private attributes from each instance the engine de-identifies (M3).
 '''
 
 [[requirement]]
@@ -295,6 +295,7 @@ tests = [
   "tests/dicom/test_deidentify_conformance.py::test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_action",
   "tests/dicom/test_deidentify_conformance.py::test_every_ui_attribute_that_the_table_omits_is_listed_by_its_role",
   "tests/dicom/test_deidentify_conformance.py::test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_them",
+  "tests/dicom/test_deidentify_conformance.py::test_x_z_on_a_type_1_attribute_is_described_as_the_dummy_value",
   "tests/dicom/test_deidentify_conformance.py::test_the_dummy_values_are_those_that_d_writes",
   "tests/dicom/test_deidentify_conformance.py::test_the_key_and_the_scope_of_referential_integrity_are_described",
   "tests/dicom/test_deidentify_conformance.py::test_no_attribute_is_encrypted_for_later_reidentification",
@@ -695,7 +696,7 @@ tests = [
   "tests/dicom/test_deidentify_compound_actions.py::test_no_required_attribute_with_a_compound_action_is_removed",
   "tests/dicom/test_deidentify_compound_actions.py::test_no_attribute_with_x_z_is_type_1_in_the_first_release_iods",
   "tests/dicom/test_deidentify_compound_actions.py::test_no_required_attribute_with_a_compound_action_is_removed_in_any_generated_iod",
-  "tests/dicom/test_deidentify_compound_actions.py::test_x_z_sequesters_only_referenced_study_sequence_in_two_generated_iods",
+  "tests/dicom/test_deidentify_compound_actions.py::test_x_z_gives_d_only_to_referenced_study_sequence_in_two_generated_iods",
   "tests/dicom/test_deidentify_references.py::test_reference_sites_include_the_rt_references",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_consistent_collection_has_no_findings",
   "tests/dicom/test_deidentify_reference_graph.py::test_each_reference_resolves_to_its_instance",
@@ -760,6 +761,7 @@ tests = [
   "tests/dicom/test_deidentify_supplementary_actions.py::test_the_basic_profile_keeps_no_person_name",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_no_option_keeps_more_than_the_coded_text_and_device_identity",
+  "tests/dicom/test_deidentify_supplementary_actions.py::test_the_urls_that_name_coding_concepts_and_schemes_are_kept",
   "tests/dicom/test_deidentify_element_rules.py::test_each_new_supplementary_rule_removes_by_type_with_a_note",
   "tests/dicom/test_deidentify_element_rules.py::test_the_new_rules_cover_every_uri_that_table_e1_1_omits",
 ]

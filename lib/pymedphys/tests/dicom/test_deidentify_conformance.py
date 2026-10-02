@@ -213,12 +213,20 @@ def test_institution_name_in_a_structure_set_is_resolved_by_its_type_at_each_pla
     assert row.endswith("X elsewhere |")
 
 
+def test_x_z_on_a_type_1_attribute_is_described_as_the_dummy_value():
+    text = conformance.render_markdown(_statement("basic"))
+    assert (
+        "X/Z on a Type 1 or 1C attribute gives D, the dummy value that Z may write."
+        in (" ".join(text.split()))
+    )
+
+
 def test_a_place_that_sequesters_the_instance_is_listed_as_such(monkeypatch):
     resolve_in_iod = compound_actions.resolve_in_iod
 
     def sequestering(iod, tag, path, action):
         if tag == INSTITUTION_NAME and tuple(path) == ROI_CREATOR:
-            raise compound_actions.SequesterInstance(action, "1", tag, tuple(path))
+            return conformance.SEQUESTER
         return resolve_in_iod(iod, tag, path, action)
 
     monkeypatch.setattr(compound_actions, "resolve_in_iod", sequestering)
