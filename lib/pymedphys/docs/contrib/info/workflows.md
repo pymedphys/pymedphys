@@ -23,6 +23,7 @@ security.yml <- schedule, manual run, main push, PR, merge_group
   `-- Security Summary
 Schedule / manual run -> deps.yml
 Schedule / manual run -> deid-edition-check.yml
+Schedule / manual run -> tg263-edition-check.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 
@@ -380,6 +381,27 @@ de-identification tables generated from the pinned edition, as the
   issue titled "DICOM edition check: the de-identification tables need
   attention" with the check's report and a link to the run. Close the issue
   once the pin has moved; a later finding opens a new one
+
+#### `tg263-edition-check.yml`
+
+Checks whether AAPM has published a TG-263 Structure Spreadsheet other than
+the edition that PyMedPhys pins and downloads as the default vocabulary for
+cleaning ROI names.
+
+- **Schedule**: Monthly (the 4th), or manually
+- **Steps**: installs the project with the `user` extra and runs
+  `pymedphys dev tg263-check`, which lists the spreadsheets that AAPM's
+  Radiation Oncology Nomenclature Resource Page links to and downloads the
+  pinned spreadsheet to compare its SHA-256 with the pin. Its check job can
+  only read the repository
+- **Failures**: when the page links to another spreadsheet, no longer links to
+  the pinned one, or the pinned file has changed, or the page or the file cannot
+  be fetched, the page links to no spreadsheet, or the check stops without a
+  result, a separate job, the only one that can write issues and which runs no
+  repository code, opens or comments on the issue titled "TG-263 edition
+  check: the pinned spreadsheet needs attention" with the check's report and a
+  link to the run. Close the issue once the pin has moved; a later finding
+  opens a new one
 
 ### AI Assistance
 

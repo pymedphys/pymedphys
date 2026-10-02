@@ -1,4 +1,4 @@
-from pymedphys._dev import docs, propagate, tests
+from pymedphys._dev import docs, propagate, tests, tg263_edition_check
 from pymedphys._dev.deid_tables import edition_check
 from pymedphys._dev.deid_tables import generate as deid_tables
 
@@ -11,6 +11,7 @@ def dev_cli(subparsers):
     add_lint_parser(dev_subparsers)
     add_propagate_parser(dev_subparsers)
     add_deid_tables_parser(dev_subparsers)
+    add_tg263_check_parser(dev_subparsers)
     add_doctests_parser(dev_subparsers)
     add_clean_imports_parser(dev_subparsers)
     add_mosaiq_mssql_parser(dev_subparsers)
@@ -130,6 +131,25 @@ def run_deid_tables(args):
         raise SystemExit("--json is only written with --check-current")
     else:
         deid_tables.deid_tables_cli(args)
+
+
+def add_tg263_check_parser(dev_subparsers):
+    parser = dev_subparsers.add_parser(
+        "tg263-check",
+        help=(
+            "Check whether AAPM's TG-263 resource page links to a spreadsheet "
+            "other than the pinned edition, or the pinned file has changed. "
+            "Exits with status 0 if nothing has changed, 1 if something has, "
+            "and 3 if the page or the pinned file could not be fetched, or the "
+            "page links to no spreadsheet."
+        ),
+    )
+    parser.add_argument(
+        "--json",
+        metavar="FILE",
+        help="Also write the result to FILE as JSON.",
+    )
+    parser.set_defaults(func=tg263_edition_check.tg263_check_cli)
 
 
 def add_clean_imports_parser(dev_subparsers):

@@ -1,0 +1,109 @@
+name: TG-263 Edition Check
+
+# Each month, list the spreadsheets that AAPM's TG-263 resource page links to and
+# compare the pinned spreadsheet's SHA-256 with the pin. When the page links to
+# another spreadsheet, no longer links to the pinned one, or the pinned file has
+# changed, or the page or file cannot be fetched, open or update one issue.
+on:
+  schedule:
+    - cron: '41 4 4 * *'  # The 4th of each month; staggered to avoid top-of-hour congestion
+  workflow_dispatch:
+
+# Read-only. Only the job that opens the issue can write, and it runs no
+# repository code.
+permissions:
+  contents: read
+
+concurrency:
+  group: tg263-edition-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Edition Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      status: ${{ steps.check.outputs.status }}
+      report: ${{ steps.check.outputs.report }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user'
+
+      # The command exits with 0 when nothing has changed, 1 when something has,
+      # and 3 when the page or the pinned file could not be fetched, or the page
+      # links to no spreadsheet. Its JSON report says which; a run that stops
+      # before writing it has failed.
+      - name: Compare the published spreadsheets with the pin
+        id: check
+        run: |
+          set +e
+          uv run --no-sync pymedphys dev tg263-check \
+            --json "${RUNNER_TEMP}/edition-check.json" \
+            | tee "${RUNNER_TEMP}/edition-check.txt"
+          code="${PIPESTATUS[0]}"
+          set -e
+          status="$(jq -r '.status' "${RUNNER_TEMP}/edition-check.json" 2> /dev/null || true)"
+          case "${status}" in
+            unchanged | changed | failed) ;;
+            *) status=failed ;;
+          esac
+          delimiter="report-$(openssl rand -hex 16)"
+          {
+            echo "status=${status}"
+            echo "report<<${delimiter}"
+            cat "${RUNNER_TEMP}/edition-check.txt"
+            echo "${delimiter}"
+          } >> "${GITHUB_OUTPUT}"
+          exit "${code}"
+
+  report:
+    name: Report
+    needs: [check]
+    if: ${{ !cancelled() && needs.check.outputs.status != 'unchanged' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the edition-check issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          STATUS: ${{ needs.check.outputs.status }}
+          REPORT: ${{ needs.check.outputs.report }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="TG-263 edition check: the pinned spreadsheet needs attention"
+          if [[ "${STATUS}" == "changed" ]]; then
+            summary="AAPM's TG-263 resource page links to a spreadsheet other than the edition pinned on \`${REF_NAME}\`, no longer links to the pinned one, or the pinned file has changed."
+          else
+            summary="The TG-263 edition check on \`${REF_NAME}\` could not fetch AAPM's TG-263 resource page or the pinned spreadsheet, found no spreadsheet linked from the page, or did not finish."
+          fi
+          body="${RUNNER_TEMP}/body.md"
+          {
+            echo "${summary}"
+            echo
+            echo '```text'
+            echo "${REPORT:-The check wrote no report; see the run log.}"
+            echo '```'
+            echo
+            echo "Run: ${RUN_URL}"
+            echo
+            echo "To move to a new edition, review its changes, add it to \`lib/pymedphys/_nomenclature/tg263_published.py\` with its URL, SHA-256, worksheet, and entries digest, and add its entries digest to the editions that ROI name cleaning accepts, as decision D-009 of the de-identification design describes."
+          } > "${body}"
+          number=$(gh issue list --state open --search "\"${title}\" in:title" \
+            --json number,title --jq "map(select(.title == \"${title}\")) | first | .number // empty")
+          if [[ -n "${number}" ]]; then
+            gh issue comment "${number}" --body-file "${body}"
+          else
+            gh issue create --title "${title}" --body-file "${body}"
+          fi
