@@ -758,6 +758,44 @@ def test_overlay_data_is_type_1_only_at_the_top_level_of_a_user_optional_module(
     assert usage["Overlay Plane"] == "U"
 
 
+CONDITIONAL_OVERLAY_IODS = {
+    "Color Softcopy Presentation State",
+    "Digital Intra-Oral X-Ray Image",
+    "Digital Mammography X-Ray Image",
+    "Digital X-Ray Image",
+    "Grayscale Softcopy Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+}
+
+
+def test_the_overlay_plane_module_is_conditional_only_in_the_known_iods(tables):
+    # Removing an overlay's group keeps the output valid only where the
+    # Overlay Plane Module is user-optional. A new edition that makes it
+    # conditional or mandatory elsewhere needs a reviewed decision.
+    conditional = set()
+    for name, iod in tables.iods.items():
+        usage = {module.module: module.usage for module in iod.modules}
+        modules = {d.module for d in iod.definitions if d.tag == "(60xx,3000)"}
+        if any(usage[module] != "U" for module in modules):
+            conditional.add(name)
+
+    assert conditional == CONDITIONAL_OVERLAY_IODS
+
+
+@pytest.mark.parametrize("name", sorted(CONDITIONAL_OVERLAY_IODS))
+def test_a_plain_x_on_overlay_data_in_a_conditional_overlay_module_sequesters(
+    tables, name
+):
+    # Overlay Data is Type 1 at the top level of these IODs' conditional
+    # Overlay Plane Module, so removing its group could leave the output
+    # invalid, and no sequence encloses it.
+    assert resolve_plain_x_in_iod(tables.iods[name], "(6000,3000)", ()) == _removal(
+        "SEQUESTER"
+    )
+
+
 @pytest.mark.parametrize("tag", ["(6001,3000)", "(6020,3000)", "(5000,3000)"])
 def test_a_plain_x_on_an_attribute_outside_an_overlay_group_removes_it_alone(
     tables, tag
