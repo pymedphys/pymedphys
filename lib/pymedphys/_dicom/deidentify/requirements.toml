@@ -825,9 +825,21 @@ id = "MIDI-BP-10"
 text = '''
 Assess, for every image type, the risk from burned-in text, objects bearing text, and other identifying features in the pixel data. Where the risk exceeds the threshold, scan and redact, with human review, or discard the image. Do not limit checks to a subset of image types chosen from other data elements.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
 decisions = ["D-015", "D-017"]
+implementation = ["_dicom/deidentify/pixel_risk.py"]
+tests = [
+  "tests/dicom/test_deidentify_pixel_risk.py::test_a_declared_burned_in_annotation_is_an_indicator",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_a_received_no_is_no_evidence_of_safety",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_a_secondary_image_is_an_indicator",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_a_converted_image_is_an_indicator",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_an_overlay_without_overlay_data_may_be_in_the_pixel_data",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_an_attribute_held_with_another_vr_is_unreadable_evidence",
+]
+note = '''
+Every instance's attributes are read for indicators of burned-in text, whatever its IOD: Burned In Annotation of YES, a secondary or converted image, and an overlay without Overlay Data, which may lie in the pixel data; an attribute that cannot be read is itself reported, and a received NO counts for nothing. The pixel data are never inspected or changed (D-015). Remaining: reporting the indicators, the QC pack, and pixel review before `public-release` (M4).
+'''
 
 [[requirement]]
 id = "MIDI-BP-11"
@@ -905,9 +917,18 @@ id = "MIDI-BP-15"
 text = '''
 Quantify the re-identification risk from potentially reconstructable facial information in head and neck cross-sectional images with a collection-specific expert statistical analysis. Above the threshold, remove or modify the facial features, or do not share the images publicly.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
 decisions = ["D-015", "D-017"]
+implementation = ["_dicom/deidentify/pixel_risk.py"]
+tests = [
+  "tests/dicom/test_deidentify_pixel_risk.py::test_declared_recognizable_visual_features_are_an_indicator",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_an_external_roi_with_contours_is_a_patient_surface",
+  "tests/dicom/test_deidentify_pixel_risk.py::test_an_roi_named_external_body_or_skin_is_a_patient_surface",
+]
+note = '''
+Recognizable Visual Features of YES, and an RT Structure Set's contours of an ROI whose interpreted type or name is EXTERNAL, BODY, or SKIN, the patient's outline, are reported as indicators of a reconstructable face. Remaining: indicators from a CT series' coverage and slice spacing, reporting them, and the `public-release` assessment and face review (M4).
+'''
 
 [[requirement]]
 id = "MIDI-BP-16"
