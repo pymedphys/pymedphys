@@ -975,6 +975,7 @@ tests = [
   "tests/dicom/test_deidentify_markers.py::test_the_markers_are_defined_by_the_iod_and_the_equipment_item_is_complete",
   "tests/dicom/test_deidentify_markers.py::test_software_versions_give_pymedphys_then_python_pydicom_and_tomlkit",
   "tests/dicom/test_deidentify_markers.py::test_software_versions_give_the_running_python_pydicom_and_tomlkit",
+  "tests/dicom/test_deidentify_markers.py::test_software_versions_are_the_runtime_environment_of_the_release_report",
   "tests/dicom/test_deidentify_markers.py::test_each_source_of_software_versions_changes_its_own_value",
   "tests/dicom/test_deidentify_markers.py::test_python_and_library_versions_change_software_versions_not_the_digest",
   "tests/dicom/test_deidentify_release_report.py::test_the_policy_section_names_the_edition_preset_and_options",
