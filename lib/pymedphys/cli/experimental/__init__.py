@@ -14,6 +14,7 @@
 
 
 from .dicom import dicom_cli
+from .nomenclature import nomenclature_cli
 from .pinnacle import pinnacle_cli
 
 
@@ -25,5 +26,6 @@ def experimental_cli(subparsers):
 
     dicom_cli(experimental_subparsers)
     pinnacle_cli(experimental_subparsers)
+    nomenclature_cli(experimental_subparsers)
 
     return experimental_parser

@@ -554,3 +554,436 @@ def test_lower_case_values_still_give_their_indicators(transfer_syntax):
         Indicator.RECOGNIZABLE_VISUAL_FEATURES,
         Indicator.SECONDARY_IMAGE,
     }
+
+
+CT_FOR_PROCESSING = "1.2.840.10008.5.1.4.1.1.2.3"
+# Enhanced CT Image and Legacy Converted Enhanced CT Image, and their For
+# Processing classes.
+MULTI_FRAME_CT = [
+    "1.2.840.10008.5.1.4.1.1.2.1",
+    "1.2.840.10008.5.1.4.1.1.2.4",
+    "1.2.840.10008.5.1.4.1.1.2.2",
+    "1.2.840.10008.5.1.4.1.1.2.5",
+]
+RT_DOSE = "1.2.840.10008.5.1.4.1.1.481.2"
+
+
+def _slice(number: int, **attributes) -> "pydicom.Dataset":
+    dataset = _ct(**attributes)
+    dataset.SOPInstanceUID = f"1.2.3.4.{number}"
+    return dataset
+
+
+def _series_found(findings) -> set[tuple[Indicator, tuple[int, ...], str | None]]:
+    return {
+        (f.indicator, f.instances, None if f.path is None else str(f.path))
+        for f in findings
+    }
+
+
+@TRANSFER_SYNTAXES
+def test_every_ct_volume_may_hold_a_reconstructable_face(transfer_syntax):
+    series = [_slice(n) for n in range(3)]
+    if transfer_syntax is not None:
+        series = [_read_back(each, transfer_syntax) for each in series]
+    findings = pixel_risk.assess_ct_series(series)
+    assert _series_found(findings) == {(Indicator.CT_VOLUME, (0, 1, 2), None)}
+    assert {f.risk for f in findings} == {Risk.RECONSTRUCTABLE_FACE}
+
+
+def test_one_ct_image_is_no_volume():
+    assert not pixel_risk.assess_ct_series([_slice(0)])
+    assert not pixel_risk.assess_ct_series([])
+
+
+def test_localizers_and_other_iods_are_not_part_of_a_volume():
+    localizer = ["ORIGINAL", "PRIMARY", "LOCALIZER"]
+    dose = _slice(2)
+    dose.SOPClassUID = RT_DOSE
+    series = [_slice(0), _slice(1, ImageType=localizer), dose]
+    assert not pixel_risk.assess_ct_series(series)
+    for_processing = _slice(3)
+    for_processing.SOPClassUID = CT_FOR_PROCESSING
+    findings = pixel_risk.assess_ct_series([*series, for_processing])
+    assert _series_found(findings) == {(Indicator.CT_VOLUME, (0, 3), None)}
+
+
+def test_a_ct_image_without_image_type_counts_towards_a_volume():
+    series = [_slice(0), _slice(1)]
+    del series[1].ImageType
+    findings = pixel_risk.assess_ct_series(series)
+    assert _series_found(findings) == {(Indicator.CT_VOLUME, (0, 1), None)}
+
+
+@TRANSFER_SYNTAXES
+@pytest.mark.parametrize("body_part", ["HEAD", "HEADNECK", "NECKCHEST", "WHOLEBODY"])
+def test_a_volume_that_names_the_head_or_neck_says_so(transfer_syntax, body_part):
+    series = [_slice(0), _slice(1, BodyPartExamined=body_part), _slice(2)]
+    series[2].BodyPartExamined = body_part
+    if transfer_syntax is not None:
+        series = [_read_back(each, transfer_syntax) for each in series]
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0, 1, 2), None),
+        (Indicator.HEAD_OR_NECK, (1, 2), "(0018,0015)"),
+    }
+
+
+@pytest.mark.parametrize("body_part", ["CHEST", "PELVIS", "ABDOMEN", ""])
+def test_a_volume_elsewhere_is_only_a_volume(body_part):
+    series = [_slice(n, BodyPartExamined=body_part) for n in range(2)]
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0, 1), None)
+    }
+
+
+def _region(code: str, scheme: str) -> "pydicom.Dataset":
+    item = pydicom.Dataset()
+    item.CodeValue = code
+    item.CodingSchemeDesignator = scheme
+    item.CodeMeaning = SENTINEL
+    return item
+
+
+@TRANSFER_SYNTAXES
+@pytest.mark.parametrize("code, scheme", [("69536005", "SCT"), ("T-D1100", "SRT")])
+def test_an_anatomic_region_code_can_name_the_head(transfer_syntax, code, scheme):
+    series = [_slice(0), _slice(1)]
+    series[0].AnatomicRegionSequence = [
+        _region("51185008", "SCT"),
+        _region(code, scheme),
+    ]
+    if transfer_syntax is not None:
+        series = [_read_back(each, transfer_syntax) for each in series]
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0, 1), None),
+        (Indicator.HEAD_OR_NECK, (0,), "(0008,2218)[1] > (0008,0100)"),
+    }
+
+
+def test_a_code_of_another_scheme_names_nothing():
+    series = [_slice(0), _slice(1)]
+    series[0].AnatomicRegionSequence = [_region("69536005", "SRT")]
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0, 1), None)
+    }
+
+
+def test_one_ct_image_of_the_head_is_no_volume():
+    assert not pixel_risk.assess_ct_series([_slice(0, BodyPartExamined="HEAD")])
+
+
+@pytest.mark.parametrize(
+    "tag, vr, value, path",
+    [
+        (0x00180015, "US", b"\x01\x00", "(0018,0015)"),
+        (0x00080016, "CS", b"CT\\IMAGE", "(0008,0016)"),
+        (0x00080016, "UI", b"1.2.\xff", "(0008,0016)"),
+        (0x00082218, "LO", SENTINEL.encode(), "(0008,2218)"),
+    ],
+)
+def test_an_unreadable_attribute_of_a_ct_series_is_unreadable_evidence(
+    tag, vr, value, path
+):
+    series = [_slice(0), _slice(1)]
+    _with_raw(series[1], tag, vr, value)
+    findings = pixel_risk.assess_ct_series(series)
+    assert (Indicator.UNREADABLE, (1,), path) in _series_found(findings)
+    # An instance whose SOP Class cannot be read may still be a CT image.
+    assert (Indicator.CT_VOLUME, (0, 1), None) in _series_found(findings)
+    assert all(f.risk is Risk.RECONSTRUCTABLE_FACE for f in findings)
+    assert SENTINEL not in repr(findings)
+
+
+def _multi_frame(number: int, sop_class: str, **attributes) -> "pydicom.Dataset":
+    dataset = _slice(number, **attributes)
+    dataset.SOPClassUID = sop_class
+    return dataset
+
+
+@TRANSFER_SYNTAXES
+@pytest.mark.parametrize("sop_class", MULTI_FRAME_CT)
+def test_one_multi_frame_ct_image_can_be_a_volume(transfer_syntax, sop_class):
+    series = [_multi_frame(0, sop_class, NumberOfFrames=3, BodyPartExamined="HEAD")]
+    if transfer_syntax is not None:
+        series = [_read_back(each, transfer_syntax) for each in series]
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0,), None),
+        (Indicator.HEAD_OR_NECK, (0,), "(0018,0015)"),
+    }
+
+
+def _frame_anatomy(*regions) -> "pydicom.Dataset":
+    """A functional group item whose Frame Anatomy codes the given regions."""
+    anatomy = pydicom.Dataset()
+    anatomy.FrameLaterality = "U"
+    anatomy.AnatomicRegionSequence = list(regions)
+    group = pydicom.Dataset()
+    group.FrameAnatomySequence = [anatomy]
+    return group
+
+
+SHARED_HEAD = "(5200,9229)[0] > (0020,9071)[0] > (0008,2218)[0] > (0008,0100)"
+
+
+@TRANSFER_SYNTAXES
+@pytest.mark.parametrize("sop_class", MULTI_FRAME_CT)
+def test_shared_frame_anatomy_can_name_the_head(transfer_syntax, sop_class):
+    # Enhanced CT codes its anatomy in the Frame Anatomy functional group,
+    # with no copy at the top level required (PS3.3 Section C.7.6.16.2.8).
+    series = [_multi_frame(0, sop_class, NumberOfFrames=3)]
+    series[0].SharedFunctionalGroupsSequence = [
+        _frame_anatomy(_region("69536005", "SCT"))
+    ]
+    if transfer_syntax is not None:
+        series = [_read_back(each, transfer_syntax) for each in series]
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0,), None),
+        (Indicator.HEAD_OR_NECK, (0,), SHARED_HEAD),
+    }
+
+
+@TRANSFER_SYNTAXES
+def test_per_frame_anatomy_can_name_the_head(transfer_syntax):
+    series = [_multi_frame(0, MULTI_FRAME_CT[0], NumberOfFrames=3)]
+    series[0].PerFrameFunctionalGroupsSequence = [
+        _frame_anatomy(_region("51185008", "SCT")),
+        _frame_anatomy(_region("51185008", "SCT"), _region("t-d1600", "srt")),
+        _frame_anatomy(_region("45048000", "SCT")),
+    ]
+    if transfer_syntax is not None:
+        series = [_read_back(each, transfer_syntax) for each in series]
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0,), None),
+        (
+            Indicator.HEAD_OR_NECK,
+            (0,),
+            "(5200,9230)[1] > (0020,9071)[0] > (0008,2218)[1] > (0008,0100)",
+        ),
+        (
+            Indicator.HEAD_OR_NECK,
+            (0,),
+            "(5200,9230)[2] > (0020,9071)[0] > (0008,2218)[0] > (0008,0100)",
+        ),
+    }
+
+
+def test_frame_anatomy_elsewhere_is_only_a_volume():
+    series = [_multi_frame(0, MULTI_FRAME_CT[0], NumberOfFrames=3)]
+    series[0].SharedFunctionalGroupsSequence = [
+        _frame_anatomy(_region("51185008", "SCT"))
+    ]
+    series[0].PerFrameFunctionalGroupsSequence = [pydicom.Dataset()] * 3
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0,), None)
+    }
+
+
+@pytest.mark.parametrize(
+    "where, tag, vr, value, path",
+    [
+        ("image", 0x52009229, "LO", SENTINEL.encode(), "(5200,9229)"),
+        ("image", 0x52009230, "LO", SENTINEL.encode(), "(5200,9230)"),
+        ("group", 0x00209071, "LO", SENTINEL.encode(), "(5200,9229)[0] > (0020,9071)"),
+        (
+            "anatomy",
+            0x00082218,
+            "LO",
+            SENTINEL.encode(),
+            "(5200,9229)[0] > (0020,9071)[0] > (0008,2218)",
+        ),
+        (
+            "region",
+            0x00080100,
+            "SH",
+            b"69536005\\" + SENTINEL.encode(),
+            "(5200,9229)[0] > (0020,9071)[0] > (0008,2218)[0] > (0008,0100)",
+        ),
+        (
+            "region",
+            0x00080102,
+            "US",
+            b"\x01\x00",
+            "(5200,9229)[0] > (0020,9071)[0] > (0008,2218)[0] > (0008,0102)",
+        ),
+    ],
+)
+def test_unreadable_frame_anatomy_is_unreadable_evidence(where, tag, vr, value, path):
+    image = _multi_frame(0, MULTI_FRAME_CT[0], NumberOfFrames=3)
+    group = _frame_anatomy(_region("69536005", "SCT"))
+    image.SharedFunctionalGroupsSequence = [group]
+    image.PerFrameFunctionalGroupsSequence = [pydicom.Dataset()] * 3
+    anatomy = group.FrameAnatomySequence[0]
+    held = {
+        "image": image,
+        "group": group,
+        "anatomy": anatomy,
+        "region": anatomy.AnatomicRegionSequence[0],
+    }[where]
+    _with_raw(held, tag, vr, value)
+    findings = pixel_risk.assess_ct_series([image])
+    found = _series_found(findings)
+    assert (Indicator.UNREADABLE, (0,), path) in found
+    assert (Indicator.CT_VOLUME, (0,), None) in found
+    # Only unreadable shared anatomy hides the head that it codes.
+    named = (Indicator.HEAD_OR_NECK, (0,), SHARED_HEAD) in found
+    assert named is not path.startswith("(5200,9229)")
+    assert SENTINEL not in repr(findings)
+
+
+def test_assessing_frame_anatomy_leaves_the_instance_as_it_was_read():
+    image = _multi_frame(0, MULTI_FRAME_CT[0], NumberOfFrames=3)
+    image.SharedFunctionalGroupsSequence = [_frame_anatomy(_region("69536005", "SCT"))]
+    image = _read_back(image, EXPLICIT_LE)
+    before = {tag: image.get_item(tag, keep_deferred=True) for tag in image.keys()}
+    assert _series_found(pixel_risk.assess_ct_series([image])) == {
+        (Indicator.CT_VOLUME, (0,), None),
+        (Indicator.HEAD_OR_NECK, (0,), SHARED_HEAD),
+    }
+    for tag, element in before.items():
+        assert image.get_item(tag, keep_deferred=True) is element
+
+
+@pytest.mark.parametrize("sop_class", MULTI_FRAME_CT)
+def test_single_frames_of_multi_frame_ct_images_add_up_to_a_volume(sop_class):
+    one = _multi_frame(0, sop_class, NumberOfFrames=1)
+    assert not pixel_risk.assess_ct_series([one])
+    # Number of Frames is Type 1, but one missing must not hide a volume.
+    other = _multi_frame(1, sop_class)
+    assert _series_found(pixel_risk.assess_ct_series([one, other])) == {
+        (Indicator.CT_VOLUME, (0, 1), None)
+    }
+    localizer = _multi_frame(
+        2, sop_class, NumberOfFrames=5, ImageType=["ORIGINAL", "PRIMARY", "LOCALIZER"]
+    )
+    assert not pixel_risk.assess_ct_series([one, localizer])
+
+
+@pytest.mark.parametrize("value", [b"0 ", b"-3", b"2\\3", b"many"])
+def test_an_unreadable_number_of_frames_may_hide_a_volume(value):
+    series = [_multi_frame(0, MULTI_FRAME_CT[0])]
+    _with_raw(series[0], 0x00280008, "IS", value)
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0,), None),
+        (Indicator.UNREADABLE, (0,), "(0028,0008)"),
+    }
+
+
+def test_unreadable_evidence_is_reported_without_a_volume():
+    lone = _slice(0)
+    _with_raw(lone, 0x00080016, "UI", b"1.2.\xff")
+    assert _series_found(pixel_risk.assess_ct_series([lone])) == {
+        (Indicator.UNREADABLE, (0,), "(0008,0016)")
+    }
+    lone = _slice(0)
+    _with_raw(lone, 0x00180015, "US", b"\x01\x00")
+    assert _series_found(pixel_risk.assess_ct_series([lone])) == {
+        (Indicator.UNREADABLE, (0,), "(0018,0015)")
+    }
+
+
+def test_more_than_one_sop_class_is_unreadable():
+    series = [_slice(0), _slice(1)]
+    _with_raw(series[1], 0x00080016, "UI", b"1.2.840.10008.5.1.4.1.1.2\\1.2.3")
+    assert (Indicator.UNREADABLE, (1,), "(0008,0016)") in _series_found(
+        pixel_risk.assess_ct_series(series)
+    )
+
+
+@pytest.mark.parametrize(
+    "code, scheme", [("T-D1100", "SNM3"), ("69536005", "sct"), ("t-d1100", "SRT")]
+)
+def test_a_legacy_or_lower_case_code_names_the_head(code, scheme):
+    series = [_slice(0), _slice(1)]
+    series[0].AnatomicRegionSequence = [_region(code, scheme)]
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0, 1), None),
+        (Indicator.HEAD_OR_NECK, (0,), "(0008,2218)[0] > (0008,0100)"),
+    }
+
+
+@pytest.mark.parametrize(
+    "tag, vr, value, path",
+    [
+        (0x00080102, "SH", b"SCT\xff", "(0008,2218)[0] > (0008,0102)"),
+        (0x00080102, "SH", b"SCT\\SRT", "(0008,2218)[0] > (0008,0102)"),
+        (0x00080100, "SH", b"69536005\\1", "(0008,2218)[0] > (0008,0100)"),
+    ],
+)
+def test_an_unreadable_code_is_located_by_its_element(tag, vr, value, path):
+    item = pydicom.Dataset()
+    item.CodeValue = "69536005"
+    item.CodingSchemeDesignator = "SCT"
+    _with_raw(item, tag, vr, value)
+    series = [_slice(0), _slice(1)]
+    series[0].AnatomicRegionSequence = [item]
+    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+        (Indicator.CT_VOLUME, (0, 1), None),
+        (Indicator.UNREADABLE, (0,), path),
+    }
+
+
+def test_assessing_a_series_leaves_its_instances_as_they_were_read():
+    series = [
+        _read_back(_slice(n, BodyPartExamined="HEAD"), EXPLICIT_LE) for n in range(2)
+    ]
+    series[0] = _read_back(series[0], EXPLICIT_LE)
+    before = [
+        {tag: each.get_item(tag, keep_deferred=True) for tag in each.keys()}
+        for each in series
+    ]
+    pixel_risk.assess_ct_series(series)
+    for each, elements in zip(series, before):
+        for tag, element in elements.items():
+            assert each.get_item(tag, keep_deferred=True) is element
+
+
+def test_the_head_and_neck_regions_are_a_reviewed_list_of_the_pinned_edition():
+    regions = pixel_risk.load_head_and_neck_regions()
+    assert regions.edition == standard.load_data_dictionary().edition
+    assert {
+        "HEAD",
+        "FACE",
+        "NECK",
+        "HEADNECK",
+        "BRAIN",
+        "WHOLEBODY",
+    } <= regions.body_parts
+    assert not {"CHEST", "ABDOMEN", "PELVIS", "KNEE"} & regions.body_parts
+    assert ("SCT", "69536005") in regions.codes
+    assert ("SRT", "T-D1100") in regions.codes
+    assert ("SNM3", "T-D1100") in regions.codes
+    # Cervico-thoracic spine, which has no SNOMED RT identifier in Table L-1.
+    assert ("SCT", "1217257000") in regions.codes
+    assert all(code.isdigit() for scheme, code in regions.codes if scheme == "SCT")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        'schema = "other/1"\nedition = "2026d"\nacknowledgement = "DICOM PS3.16 2026d, © NEMA"\n',
+        'schema = "pymedphys-deid-head-and-neck-regions/1"\nedition = "2026d"\n'
+        'acknowledgement = "DICOM PS3.16 2026d, © NEMA"\n'
+        '[[region]]\nmeaning = "Head"\nsrt = "T-D1100"\n',
+        'schema = "pymedphys-deid-head-and-neck-regions/1"\nedition = "2026d"\n'
+        'acknowledgement = "DICOM PS3.16 2026d, © NEMA"\n'
+        '[[region]]\nmeaning = "Head"\nsct = "69536005"\nsrt = "T-D1100"\nbody_part = "head"\n',
+        "not toml [",
+    ],
+    ids=["schema", "missing-field", "lower-case-term", "unreadable"],
+)
+def test_a_malformed_regions_file_is_refused(tmp_path, text):
+    path = tmp_path / "regions.toml"
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(ValueError):
+        pixel_risk.load_head_and_neck_regions(path)
+
+
+def test_a_regions_file_of_another_edition_is_refused(tmp_path):
+    path = tmp_path / "regions.toml"
+    path.write_text(
+        'schema = "pymedphys-deid-head-and-neck-regions/1"\nedition = "2025a"\n'
+        'acknowledgement = "DICOM PS3.16 2025a, © NEMA"\nregion = []\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError):
+        pixel_risk.load_head_and_neck_regions(path)

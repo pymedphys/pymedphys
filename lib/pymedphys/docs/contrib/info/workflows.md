@@ -23,6 +23,7 @@ security.yml <- schedule, manual run, main push, PR, merge_group
   `-- Security Summary
 Schedule / manual run -> deps.yml
 Schedule / manual run -> deid-edition-check.yml
+Schedule / manual run -> tg263-edition-check.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 
@@ -311,6 +312,15 @@ Publishes to PyPI behind quality gates.
   release offers exactly those files. The assets do not wait for the published
   tests, whose dependencies and datasets change outside the repository; a
   failure there turns the Release Summary red
+- **Requirements evidence**: `deid-matrix` runs after the unit tests, whatever
+  their result, and renders the de-identification requirements-to-tests matrix
+  with `pymedphys dev deid-matrix --check` from the JUnit report of every
+  environment in the unit-test matrix. It fails when a traced test failed, was
+  skipped, or did not run in every environment, or when an environment's
+  report is missing, and still writes the matrix. Once the build has passed,
+  `upload-deid-matrix`, which runs no repository code, attaches the matrix to
+  the GitHub release as `deidentification-requirements-matrix.md` and reads it
+  back. Neither holds back publishing; a failure turns the Release Summary red
 - **Concurrency**: Attempts for the same tag are serialised; publishing is
   never cancelled automatically by a newer attempt
 - **Recovery**: The original `dist` artefact is retained for 30 days. Retry
@@ -399,6 +409,30 @@ de-identification tables generated from the pinned edition, as the
   issue titled "DICOM edition check: the de-identification tables need
   attention" with the check's report and a link to the run. Close the issue
   once the pin has moved; a later finding opens a new one
+
+#### `tg263-edition-check.yml`
+
+Checks whether AAPM has published a TG-263 Structure Spreadsheet other than
+the edition that PyMedPhys pins and downloads as the default vocabulary for
+cleaning ROI names.
+
+- **Schedule**: Monthly (the 4th), or manually
+- **Steps**: installs the project with the `user` extra and runs
+  `pymedphys dev tg263-check`, which lists the downloads (spreadsheets and
+  archives) that AAPM's Radiation Oncology Nomenclature Resource Page links to,
+  compares them with the pinned edition and the reviewed downloads in
+  `REVIEWED`, and downloads the pinned spreadsheet to compare its SHA-256 with
+  the pin. An edition published only on another page is not seen. Its check
+  job can only read the repository
+- **Failures**: when the page links to a download not yet reviewed, no longer
+  links to the pinned spreadsheet, or the pinned file has changed or is gone,
+  or the page or the file cannot be fetched, the page links to no download, or
+  the check stops without a result, a separate job, the only one that can write
+  issues and which runs no repository code, opens or comments on the issue
+  titled "TG-263 edition check: the pinned spreadsheet needs attention" with
+  the check's report and a link to the run. Once each new download is
+  reviewed, the pin moved or the download added to `REVIEWED`, close the issue;
+  a later finding opens a new one
 
 ### AI Assistance
 

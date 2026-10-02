@@ -98,8 +98,7 @@ SUPPLEMENTARY = "supplementary rule"
 UID_INSTANCE = "UID role: instance"
 UID_DEFINITION = "UID role: definition"
 
-# The action at a place where no action that the compound action offers keeps
-# the instance valid, so the instance is sequestered.
+# The action at a place where the instance is sequestered rather than written.
 SEQUESTER = "sequester"
 
 # What the statement cannot yet describe from the engine. Each is to be
@@ -315,10 +314,7 @@ def _places(tag: str, action: str) -> tuple[tuple[Place, ...], str]:
     for name in sorted(SUPPORTED_IODS):
         iod = tables.iods[name]
         for path in dict.fromkeys(d.path for d in iod.definitions if d.tag == tag):
-            try:
-                resolved = compound_actions.resolve_in_iod(iod, concrete, path, action)
-            except compound_actions.SequesterInstance:
-                resolved = SEQUESTER
+            resolved = compound_actions.resolve_in_iod(iod, concrete, path, action)
             places.append(Place(name, path, resolved))
     return tuple(places), compound_actions.resolve(action, "3")
 
@@ -740,9 +736,10 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "instance's IOD gives the attribute at its place in the data set: Type "
         "1 or 1C gives D, 2 or 2C gives Z, and 3 gives X, or else the next of "
         "X, Z, and D that the action offers, and in X/Z/U*, U takes the place "
-        "of D. An attribute that the IOD does not define at that place counts "
-        "as Type 3 (D-020). The last column gives the resolved action at each "
-        "place where a supported IOD defines the attribute, and elsewhere.",
+        "of D. X/Z on a Type 1 or 1C attribute gives D, the dummy value that "
+        "Z may write. An attribute that the IOD does not define at that place "
+        "counts as Type 3 (D-020). The last column gives the resolved action at "
+        "each place where a supported IOD defines the attribute, and elsewhere.",
         "",
         *_table(
             ("Tag", "Attribute", "Rule", "Action", "In the supported IODs"),
