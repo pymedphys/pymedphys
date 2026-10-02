@@ -404,11 +404,23 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information that is embedded in text or string Attributes corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
 decisions = ["D-009", "D-022"]
+implementation = ["_dicom/deidentify/roi_names.py"]
+tests = [
+  "tests/dicom/test_deidentify_roi_names.py::test_a_name_that_matches_once_case_whitespace_and_separators_are_disregarded_is_written_in_the_vocabularys_spelling",
+  "tests/dicom/test_deidentify_roi_names.py::test_a_near_match_goes_to_review",
+  "tests/dicom/test_deidentify_roi_names.py::test_a_name_that_matches_more_than_one_vocabulary_name_goes_to_review",
+  "tests/dicom/test_deidentify_roi_names.py::test_a_name_that_echoes_a_known_identifier_goes_to_review",
+  "tests/dicom/test_deidentify_roi_names.py::test_different_names_that_would_be_written_as_one_vocabulary_name_go_to_review",
+  "tests/dicom/test_deidentify_roi_names.py::test_a_nomenclature_without_the_tg263_attribution_is_rejected",
+  "tests/dicom/test_deidentify_roi_names.py::test_an_unpublished_vocabulary_is_refused",
+  "tests/dicom/test_deidentify_roi_names.py::test_a_vocabulary_name_with_a_hyphen_is_not_matched_without_it",
+  "tests/dicom/test_deidentify_roi_names.py::test_a_name_with_a_leading_underscore_or_hyphen_goes_to_review",
+]
 note = '''
-The first supported release includes the Option for ROI names: a name that matches a name of a vocabulary made from the AAPM TG-263 spreadsheet once case, whitespace, and separators are disregarded is written in the vocabulary's spelling, unless D-009 sends it to review, as it does every match against a vocabulary made from an institutional list, and any other is kept, mapped, or emptied by a reviewer, or its instance is held for review unless the user chooses explicitly to empty such names. The Option is claimed only for output whose retained descriptors have passed pooled human review (D-009), which needs the QC pack (M4); a name written in the vocabulary's spelling is cleaned, not retained, so it needs no review before the claim.
+The first supported release includes the Option for ROI names (D-009). The automatic tier decides, for the ROI names of one structure set, which are written in the spelling of the TG-263 spreadsheet's published edition, whose entries' digest the module records, because they match one of its names once case, spaces, and the separators `_` and `-` are disregarded (a hyphen in a vocabulary name, which TG-263 writes for a subtraction, must be matched by one, and a name starting with `_`, which TG-263 gives a structure not used for dose evaluation, or `-` goes to review), and which go to review, because they match none or several, echo a known patient or other person identifier, or would duplicate a differently spelt name of the same structure set. A name so written is cleaned, not retained, so it needs no review before the claim. Remaining: applying these decisions to each data set (M3); review of the other names, each kept, mapped, or emptied by a reviewer, with a reviewed-names list reused on later runs, and holding an instance whose names nobody has reviewed unless the user chooses explicitly to empty such names, and recording each rename in the QC material (M4); vocabularies converted from an institutional list, every match against which goes to review; and claiming the Option only for output whose retained descriptors have passed pooled human review, which needs the QC pack (M4).
 '''
 
 [[requirement]]
@@ -880,13 +892,17 @@ Remove or replace all unstructured text, whether in data elements, pixel data, o
 status = "partial"
 milestone = "M4"
 decisions = ["D-009", "D-017", "D-022", "D-027"]
-implementation = ["_dicom/deidentify/supplementary_actions.py"]
+implementation = [
+  "_dicom/deidentify/roi_names.py",
+  "_dicom/deidentify/supplementary_actions.py",
+]
 tests = [
+  "tests/dicom/test_deidentify_roi_names.py::test_a_name_that_echoes_a_known_identifier_goes_to_review",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text",
 ]
 note = '''
-Under the Basic Profile, every text attribute that a supported IOD uses is removed or replaced, by Table E.1-1 or a reviewed supplementary rule, except coded and technical values and De-identification Method, which the engine adds to (D-022). Remaining: applying the actions to each data set (M3); and cleaning descriptors with pooled human review, the residual search, and reporting indicators of burned-in text, since the engine does not change pixel data (M4).
+Under the Basic Profile, every text attribute that a supported IOD uses is removed or replaced, by Table E.1-1 or a reviewed supplementary rule, except coded and technical values and De-identification Method, which the engine adds to (D-022). Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocabulary only where it matches one of its names and echoes no known patient or other person identifier, and goes to review otherwise (D-009). Remaining: applying the actions to each data set (M3); and the review of descriptors with pooled human review, the residual search, and reporting indicators of burned-in text, since the engine does not change pixel data (M4).
 '''
 
 [[requirement]]
