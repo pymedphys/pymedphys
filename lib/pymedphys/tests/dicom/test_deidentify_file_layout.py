@@ -826,6 +826,32 @@ MALFORMED = {
         + _explicit(0x7FE00010, "OB", bytes(8)),
         186,
     ),
+    # A delimiter's length is zero (PS3.5 Section 7.5).
+    "an item delimiter with a length": (
+        _explicit(0x300A00B0, "SQ", length=UNDEFINED)
+        + _item(_explicit(0x300A00C2, "LO", b"ARC1"), length=UNDEFINED)
+        + ITEM_END[:4]
+        + struct.pack("<I", 4)
+        + bytes(4)
+        + SEQUENCE_END,
+        206,
+    ),
+    "a sequence delimiter with a length": (
+        _explicit(0x300A00B0, "SQ", length=UNDEFINED)
+        + _item(_explicit(0x300A00C2, "LO", b"ARC1"))
+        + SEQUENCE_END[:4]
+        + struct.pack("<I", 4)
+        + bytes(4),
+        206,
+    ),
+    "a sequence delimiter with a length after fragments": (
+        _explicit(0x7FE00010, "OB", length=UNDEFINED)
+        + _item()
+        + SEQUENCE_END[:4]
+        + struct.pack("<I", 4)
+        + bytes(4),
+        194,
+    ),
     "a fragment of undefined length": (
         _explicit(0x7FE00010, "OB", length=UNDEFINED) + _item(length=UNDEFINED),
         186,
