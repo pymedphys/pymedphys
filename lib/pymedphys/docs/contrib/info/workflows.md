@@ -296,7 +296,8 @@ Publishes to PyPI behind quality gates.
   their result, and renders the de-identification requirements-to-tests matrix
   with `pymedphys dev deid-matrix --check` from the JUnit report of every
   environment in the unit-test matrix. It fails when a traced test failed, was
-  skipped, or did not run in every environment, and still writes the matrix.
+  skipped, or did not run in every environment, or when an environment's
+  report is missing, and still writes the matrix. Once the build has passed,
   `upload-deid-matrix`, which runs no repository code, attaches the matrix to
   the GitHub release as `deidentification-requirements-matrix.md` and reads it
   back. Neither holds back publishing; a failure turns the Release Summary red

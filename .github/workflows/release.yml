@@ -285,10 +285,15 @@ jobs:
           merge-multiple: true
 
       # Write the matrix even when the check fails, so its record shows the
-      # failures, then fail the job after uploading it.
+      # failures, then fail the job after uploading it. A report that never
+      # arrived, such as from a unit-test job that timed out, fails the check.
+      # OSES and PYTHONS list unit-tests.yml's full matrix.
       - name: Generate and check the matrix
         id: matrix
         shell: bash
+        env:
+          OSES: ubuntu-latest windows-latest macos-latest
+          PYTHONS: 3.11 3.12 3.13 3.14
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -296,9 +301,17 @@ jobs:
           args=()
           for report in "${reports[@]}"; do args+=(--junit "$report"); done
           status=0
-          uv run --no-sync -- pymedphys dev deid-matrix "${args[@]}" --check \
+          uv run --no-sync --quiet -- pymedphys dev deid-matrix "${args[@]}" --check \
             --output deidentification-requirements-matrix.md 2> problems.txt \
             || status=$?
+          for os in $OSES; do
+            for python in $PYTHONS; do
+              if ! [ -f "junit/junit-${os}-${python}.xml" ]; then
+                echo "No report from ${os} with Python ${python}" >> problems.txt
+                status=1
+              fi
+            done
+          done
           {
             echo "## De-identification requirements matrix"
             echo
@@ -307,7 +320,7 @@ jobs:
             if [ "$status" -eq 0 ]; then
               echo "Every traced test passed in every report."
             else
-              echo "Traced tests that did not pass, or the error:"
+              echo "Traced tests that did not pass, missing reports, or the error:"
               echo
               echo '~~~text'
               cat problems.txt
@@ -332,12 +345,15 @@ jobs:
         if: ${{ steps.matrix.outputs.status != '0' }}
         run: exit 1
 
-  # Attaches the matrix to the GitHub release and reads it back. It runs no
-  # repository code, so it alone may write to the release.
+  # Attaches the matrix to the GitHub release, once the tag and build checks
+  # have passed, and reads it back. It runs no repository code, so it alone
+  # may write to the release.
   upload-deid-matrix:
     name: Attach the requirements matrix
-    needs: [deid-matrix]
-    if: ${{ !cancelled() && needs.deid-matrix.outputs.written == 'true' }}
+    needs: [build, deid-matrix]
+    if: >-
+      !cancelled() && needs.build.result == 'success' &&
+      needs.deid-matrix.outputs.written == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

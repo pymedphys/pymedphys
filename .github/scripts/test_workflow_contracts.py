@@ -20,6 +20,7 @@ GitHub expressions separately through pre-commit.
 """
 
 import fnmatch
+import json
 import re
 import unittest
 from pathlib import Path
@@ -258,22 +259,45 @@ class WorkflowContractTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertFalse(fnmatch.fnmatchcase(name, pattern))
         self.assertIn("merge-multiple: true", render)
+        # A report that never arrived fails the check: the expected reports
+        # are the unit-test matrix's operating systems and Python versions.
+        unit_tests = (WORKFLOWS / "unit-tests.yml").read_text(encoding="utf-8")
+        oses = re.search(
+            r"\|\| fromJSON\('(\[[^\]]*\])'\) \}\}\n *python-version:", unit_tests
+        )[1]
+        pythons = re.search(r"default: '(\[[^\]]*\])'", unit_tests)[1]
+        for key, value in (("OSES", oses), ("PYTHONS", pythons)):
+            with self.subTest(key=key):
+                listed = " ".join(json.loads(value))
+                self.assertIn(f"          {key}: {listed}\n", render)
+        self.assertIn('[ -f "junit/junit-${os}-${python}.xml" ]', render)
         self.assertIn("pymedphys dev deid-matrix", render)
         self.assertIn("--check", render)
+        # A failed check fails the job once the matrix is uploaded.
+        self.assertIn("|| status=$?", render)
+        self.assertIn(
+            "      - name: Fail if a traced test did not pass\n"
+            "        if: ${{ steps.matrix.outputs.status != '0' }}\n"
+            "        run: exit 1\n",
+            render,
+        )
         # The job that runs the package reads only; a separate job attaches
         # the matrix to the release.
         self.assertIn("    permissions:\n      contents: read\n", render)
         self.assertNotIn(": write", render)
         upload = workflow["upload-deid-matrix"]
-        self.assertEqual(needs(upload), {"deid-matrix"})
-        # Whenever a matrix was written, including when the check failed.
+        self.assertEqual(needs(upload), {"build", "deid-matrix"})
+        # Whenever a matrix was written, including when the check failed, for
+        # a release whose tag and build passed.
         self.assertIn(
-            "    if: ${{ !cancelled() && needs.deid-matrix.outputs.written == 'true' }}",
+            "    if: >-\n      !cancelled() && needs.build.result == 'success' &&\n"
+            "      needs.deid-matrix.outputs.written == 'true'\n",
             upload,
         )
         self.assertIn("    permissions:\n      contents: write\n", upload)
-        self.assertNotIn("setup-project", upload)
-        self.assertNotIn("uv run", upload)
+        for code in ("actions/checkout", "setup-project", "uv run"):
+            with self.subTest(code=code):
+                self.assertNotIn(code, upload)
         self.assertIn("gh release upload", upload)
         # Requirements evidence never holds back publishing.
         for job in ("deid-matrix", "upload-deid-matrix"):
