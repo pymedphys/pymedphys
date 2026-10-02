@@ -35,8 +35,9 @@ as text; each first checks that every field has the form of a digest, a
 version, a known edition, preset, or option, or a file name or path within
 the engine's package. Every field is built from the policy, the engine's own
 files, the versions that run it, and the keyed digest of the reviewed-names
-list, never from DICOM data directly, and the check is a backstop: a field of another form, which could be a source value or a path
-outside the package, is refused. A field that fails is named, never quoted.
+list, never from DICOM data directly, and the check is a backstop: a field
+of another form, which could be a source value or a path outside the
+package, is refused. A field that fails is named, never quoted.
 
 The sections that describe a run's instances, such as residual search
 findings and sequestered instances, are to follow.
@@ -122,7 +123,7 @@ def release_report(
     policy: Policy,
     *,
     vocabulary: tg263.Nomenclature | None,
-    reviewed_roi_names: str | None = None,
+    reviewed_roi_names: str | None,
 ) -> ReleaseReport:
     """Return the release report's record of a policy, its method, and the runtime.
 
@@ -136,11 +137,11 @@ def release_report(
         against, or None without one. It must be given by name, and has no
         default, so that every caller states whether there is one. The
         report records only its content digest.
-    reviewed_roi_names : str or None, optional
+    reviewed_roi_names : str or None
         The keyed digest of the reviewed-names list whose decisions
-        descriptor cleaning applies to ROI Names, or None, the default,
-        without a list. It must be given by name. The report records only
-        this digest.
+        descriptor cleaning applies to ROI Names, or None without a list. It
+        must be given by name, and has no default, so that every caller
+        states whether there is one. The report records only this digest.
 
     Returns
     -------
@@ -156,7 +157,9 @@ def release_report(
     Examples
     --------
     >>> from pymedphys._dicom.deidentify.policy import compose_policy
-    >>> report = release_report(compose_policy("basic"), vocabulary=None)
+    >>> report = release_report(
+    ...     compose_policy("basic"), vocabulary=None, reviewed_roi_names=None
+    ... )
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))

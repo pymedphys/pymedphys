@@ -345,8 +345,9 @@ def canonical_bytes(policy: Policy, inputs: MethodDigestInputs) -> bytes:
     ``l2_rules``, ``l3_rules``, ``vocabulary``, ``reviewed_roi_names``,
     ``generated_values``, and ``files``. ``l3_rules`` is ``null``, since
     there are no user rules yet, and so are ``vocabulary`` and
-    ``reviewed_roi_names`` without a vocabulary or a reviewed-names list. It is encoded so that the same
-    inputs give the same bytes on every platform and Python version:
+    ``reviewed_roi_names`` without a vocabulary or a reviewed-names list. It
+    is encoded so that the same inputs give the same bytes on every platform
+    and Python version:
 
     - as UTF-8, with every character other than ``"``, ``\\``, and the
       control characters U+0000 to U+001F written as itself; those are
@@ -491,7 +492,7 @@ def _file_digests(directory: pathlib.Path) -> Mapping[str, str]:
 
 
 def digest_inputs(
-    *, vocabulary: tg263.Nomenclature | None, reviewed_roi_names: str | None = None
+    *, vocabulary: tg263.Nomenclature | None, reviewed_roi_names: str | None
 ) -> MethodDigestInputs:
     """Gather everything the method digest covers apart from the policy.
 
@@ -505,12 +506,12 @@ def digest_inputs(
         The TG-263 vocabulary that descriptor cleaning matches ROI Names
         against, or None without one. It must be given by name, and has no
         default, so that every caller states whether there is one.
-    reviewed_roi_names : str or None, optional
+    reviewed_roi_names : str or None
         The keyed digest of the reviewed-names list whose decisions
         descriptor cleaning applies to ROI Names, as
         :meth:`~pymedphys._dicom.deidentify.reviewed_roi_names.ReviewedNames.keyed_digest`
-        gives it, or None, the default, without a list. It must be given by
-        name.
+        gives it, or None without a list. It must be given by name, and has
+        no default, so that every caller states whether there is one.
 
     Returns
     -------
@@ -578,7 +579,7 @@ def method_digest(
     policy: Policy,
     *,
     vocabulary: tg263.Nomenclature | None,
-    reviewed_roi_names: str | None = None,
+    reviewed_roi_names: str | None,
 ) -> str:
     """Return the method digest of a policy, as 64 lowercase hexadecimal digits.
 
@@ -598,12 +599,12 @@ def method_digest(
         The TG-263 vocabulary that descriptor cleaning matches ROI Names
         against, or None without one. It must be given by name, and has no
         default, so that every caller states whether there is one.
-    reviewed_roi_names : str or None, optional
+    reviewed_roi_names : str or None
         The keyed digest of the reviewed-names list whose decisions
         descriptor cleaning applies to ROI Names, as
         :meth:`~pymedphys._dicom.deidentify.reviewed_roi_names.ReviewedNames.keyed_digest`
-        gives it, or None, the default, without a list. It must be given by
-        name.
+        gives it, or None without a list. It must be given by name, and has
+        no default, so that every caller states whether there is one.
 
     Returns
     -------
@@ -619,7 +620,9 @@ def method_digest(
     Examples
     --------
     >>> from pymedphys._dicom.deidentify.policy import compose_policy
-    >>> digest = method_digest(compose_policy("basic"), vocabulary=None)
+    >>> digest = method_digest(
+    ...     compose_policy("basic"), vocabulary=None, reviewed_roi_names=None
+    ... )
     >>> len(digest), digest == digest.lower(), int(digest, 16) >= 0
     (64, True, True)
     """
@@ -636,15 +639,16 @@ def method_digest_components(
     policy: Policy,
     *,
     vocabulary: tg263.Nomenclature | None,
-    reviewed_roi_names: str | None = None,
+    reviewed_roi_names: str | None,
 ) -> MethodDigestComponents:
     """Return the method digest of a policy with the components it is computed from.
 
     The components are those a release report records: the digest and its
     format, PyMedPhys's version, the content digest of each generated table,
     the digests of the supplementary and user rules, the vocabulary's
-    content digest, the reviewed-names list's keyed digest, the digest of the parameters of generated values, and
-    the digest of each source and rule file. They come from one call of
+    content digest, the reviewed-names list's keyed digest, the digest of
+    the parameters of generated values, and the digest of each source and
+    rule file. They come from one call of
     :func:`digest_inputs`, so the digest is the one :func:`method_digest`
     gives for the same policy, vocabulary, and reviewed-names list in the
     same process.
@@ -658,12 +662,12 @@ def method_digest_components(
         The TG-263 vocabulary that descriptor cleaning matches ROI Names
         against, or None without one. It must be given by name, and has no
         default, so that every caller states whether there is one.
-    reviewed_roi_names : str or None, optional
+    reviewed_roi_names : str or None
         The keyed digest of the reviewed-names list whose decisions
         descriptor cleaning applies to ROI Names, as
         :meth:`~pymedphys._dicom.deidentify.reviewed_roi_names.ReviewedNames.keyed_digest`
-        gives it, or None, the default, without a list. It must be given by
-        name.
+        gives it, or None without a list. It must be given by name, and has
+        no default, so that every caller states whether there is one.
 
     Returns
     -------
@@ -680,8 +684,12 @@ def method_digest_components(
     --------
     >>> from pymedphys._dicom.deidentify.policy import compose_policy
     >>> basic = compose_policy("basic")
-    >>> components = method_digest_components(basic, vocabulary=None)
-    >>> components.method_digest == method_digest(basic, vocabulary=None)
+    >>> components = method_digest_components(
+    ...     basic, vocabulary=None, reviewed_roi_names=None
+    ... )
+    >>> components.method_digest == method_digest(
+    ...     basic, vocabulary=None, reviewed_roi_names=None
+    ... )
     True
     >>> components.method_digest_format, components.l3_rules
     ('pymedphys-deid-method-digest/2', None)

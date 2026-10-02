@@ -424,7 +424,7 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
     >>> from pymedphys._dicom.deidentify.policy import compose_policy
     >>> from pymedphys._dicom.deidentify.method_digest import method_digest
     >>> policy = compose_policy("basic-clean-descriptors")
-    >>> digest = method_digest(policy, vocabulary=None)
+    >>> digest = method_digest(policy, vocabulary=None, reviewed_roi_names=None)
     >>> found = markers_for(policy, digest, satisfied=["clean_descriptors"])
     >>> found.method[0] == digest
     True

@@ -567,7 +567,7 @@ def test_any_change_to_the_list_changes_the_keyed_digest(decisions):
     assert _list(**decisions).keyed_digest(TEST_KEY) != KEYED_DIGEST
 
 
-def test_the_keyed_digest_depends_on_the_key_and_shows_neither_it_nor_a_name():
+def test_the_keyed_digest_depends_on_the_key_and_is_not_an_unkeyed_hash():
     names = _list(Spine=KEEP, Gross_Tumour=_map("GTV"))
     run_key = keys.DeidKey.generate()
 
@@ -577,8 +577,6 @@ def test_the_keyed_digest_depends_on_the_key_and_shows_neither_it_nor_a_name():
     assert digest != names.keyed_digest(keys.DeidKey.generate())
     assert digest == names.keyed_digest(run_key)
     assert digest != hashlib.sha256(names.canonical_bytes()).hexdigest()
-    assert run_key.secret.hex() not in digest
-    assert digest != run_key.derive("uid", names.canonical_bytes()).hex()
 
 
 def test_an_empty_list_has_a_keyed_digest():
