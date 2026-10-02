@@ -35,8 +35,11 @@ writes it as CommonMark:
 - the rules that give every other element its action
   (:mod:`~pymedphys._dicom.deidentify.element_rules`, D-022);
 - the values that Z, D, and U write (D-003, D-005, and D-021);
+- how dates and times are handled, by the policy's Retain Longitudinal
+  Temporal Information Option, or without one (D-006, D-007, and D-023);
 - the scope of referential integrity under a run-scoped key (D-004);
-- that no attribute is encrypted for later re-identification (D-013).
+- that no attribute is encrypted for later re-identification (D-013);
+- what the residual search of each written file covers (D-027).
 
 What the statement cannot yet describe from the engine is listed in it, under
 "Not yet described" (:data:`PENDING`, and the items that apply only to
@@ -73,12 +76,14 @@ from .policy import Policy, PolicyError, ResolvedConflict
 from .scope import SUPPORTED_IODS, SUPPORTED_TRANSFER_SYNTAXES, classify
 from .sop_classes import load_storage_sop_classes
 from .standard import (
+    MUTUALLY_EXCLUSIVE,
     dictionary_attribute,
     load_data_dictionary,
     load_table_e1_1,
     load_table_e1_1a,
 )
 from .supplementary_actions import TEXT_VRS, UNCOVERED_TEXT_ACTION
+from .temporal_roles import load_temporal_roles
 from .uid_registry import load_uid_values
 from .uid_roles import UIDRole, load_uid_roles
 
@@ -127,7 +132,14 @@ SEQUENCE_NOT_CLEANED = "sequence not cleaned"
 
 # What the statement cannot yet describe from the engine. Each is to be
 # generated once the engine decides it.
-PENDING: tuple[str, ...] = ()
+PENDING: tuple[str, ...] = (
+    "The release report's account of each run's instances, which the engine "
+    "does not yet write: how it names a sequestered instance, which has no "
+    "output name (D-026); and the gate that acts on the residual search's "
+    "findings, and where the values that the search does not search, or "
+    "drops because the policy retains them, are recorded (D-027).",
+)
+PENDING_RELEASE_REPORT = PENDING[0]
 # Pending only for a policy whose element rules the engine refuses.
 PENDING_REFUSED = (
     "The actions that the engine applies under this policy, which it refuses "
@@ -153,7 +165,12 @@ PENDING_BIRTH_DATES = (
     "(0010,0030) in place of a zero-length value (D-008, D-021)."
 )
 _TPS_IMPORT = "tps-import"
+_FULL_DATES = "retain_longitudinal_full_dates"
 _CLEAN_DESCRIPTORS = "clean_descriptors"
+# The Retain Longitudinal Temporal Information Options, and the VRs of a date,
+# time, or datetime.
+_TEMPORAL_OPTIONS = next(o for o in MUTUALLY_EXCLUSIVE if _FULL_DATES in o)
+_TEMPORAL_VRS = frozenset({"DA", "DT", "TM"})
 
 
 @dataclasses.dataclass(frozen=True)
@@ -256,6 +273,32 @@ class OtherElements:
 
 
 @dataclasses.dataclass(frozen=True)
+class TemporalHandling:
+    """How the policy handles dates and times (D-006, D-007, and D-023).
+
+    Attributes
+    ----------
+    option : str
+        The selected Retain Longitudinal Temporal Information Option, or
+        ``""`` for none.
+    attributes : int
+        How many attributes the temporal roles cover: every DA, DT, and TM
+        attribute of the pinned data dictionary, and each attribute of
+        another VR that Table E.1-1 cleans under Modified Dates.
+    other_attributes : tuple of str
+        The tags of the attributes of another VR among them, in order.
+    actions : tuple of tuple of str and int
+        Each action listed for those attributes, with how many have it, most
+        first and then in the order of the actions.
+    """
+
+    option: str
+    attributes: int
+    other_attributes: tuple[str, ...]
+    actions: tuple[tuple[str, int], ...]
+
+
+@dataclasses.dataclass(frozen=True)
 class SOPClass:
     """A Storage SOP Class that is de-identified rather than sequestered."""
 
@@ -334,6 +377,8 @@ class ConformanceStatement:
         element rules the engine refuses.
     markers : InsertedMarkers
         The parts of the markers that the policy decides.
+    temporal : TemporalHandling
+        How the policy handles dates and times.
     pending : tuple of str
         What the statement cannot yet describe.
     acknowledgements : tuple of str
@@ -354,6 +399,7 @@ class ConformanceStatement:
     attributes: tuple[AttributeAction, ...]
     other_elements: OtherElements | None
     markers: InsertedMarkers
+    temporal: TemporalHandling
     pending: tuple[str, ...]
     acknowledgements: tuple[str, ...]
 
@@ -478,6 +524,28 @@ def _other_elements() -> OtherElements:
         text_action=UNCOVERED_TEXT_ACTION,
         kept_vrs=tuple(sorted(KEPT_VRS)),
         iod_defined_vrs=tuple(sorted(IOD_DEFINED_VRS)),
+    )
+
+
+def _temporal(
+    policy: Policy, attributes: tuple[AttributeAction, ...]
+) -> TemporalHandling:
+    """Return how the policy handles the attributes that have a temporal role."""
+    roles = load_temporal_roles().rules
+    actions = {e.tag: e.action for e in attributes}
+    counts: dict[str, int] = {}
+    for tag in roles:
+        counts[actions[tag]] = counts.get(actions[tag], 0) + 1
+    others = []
+    for tag in roles:
+        attribute = dictionary_attribute(tag)
+        if attribute is None or not set(attribute.vrs) <= _TEMPORAL_VRS:
+            others.append(tag)
+    return TemporalHandling(
+        option=next((o for o in policy.options if o in _TEMPORAL_OPTIONS), ""),
+        attributes=len(roles),
+        other_attributes=tuple(sorted(others)),
+        actions=tuple(sorted(counts.items(), key=lambda item: (-item[1], item[0]))),
     )
 
 
@@ -606,6 +674,7 @@ def conformance_statement(
         attributes=attributes,
         other_elements=None if rules is None else _other_elements(),
         markers=_markers(policy, digest),
+        temporal=_temporal(policy, attributes),
         pending=pending,
         acknowledgements=tuple(dict.fromkeys(t.acknowledgement for t in tables)),
     )

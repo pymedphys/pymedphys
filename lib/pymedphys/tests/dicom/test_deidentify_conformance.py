@@ -965,7 +965,7 @@ def test_a_plain_z_on_a_type_1_attribute_gives_d(preset):
 
 
 def test_plain_actions_by_type_are_no_longer_pending(preset):
-    assert not conformance.PENDING
+    assert not any("D-020" in item for item in conformance.PENDING)
     assert not any("D-020" in item for item in _statement(preset).pending)
     section = _section(
         conformance_markdown.render_markdown(_statement(preset)), "Actions"
