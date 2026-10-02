@@ -1,3 +1,6 @@
+import pathlib
+import sys
+
 from pymedphys._dev import docs, propagate, tests
 from pymedphys._dev.deid_tables import edition_check
 from pymedphys._dev.deid_tables import generate as deid_tables
@@ -11,6 +14,7 @@ def dev_cli(subparsers):
     add_lint_parser(dev_subparsers)
     add_propagate_parser(dev_subparsers)
     add_deid_tables_parser(dev_subparsers)
+    add_deid_matrix_parser(dev_subparsers)
     add_doctests_parser(dev_subparsers)
     add_clean_imports_parser(dev_subparsers)
     add_mosaiq_mssql_parser(dev_subparsers)
@@ -130,6 +134,76 @@ def run_deid_tables(args):
         raise SystemExit("--json is only written with --check-current")
     else:
         deid_tables.deid_tables_cli(args)
+
+
+def add_deid_matrix_parser(dev_subparsers):
+    parser = dev_subparsers.add_parser(
+        "deid-matrix",
+        help=(
+            "Generate the de-identification requirements-to-tests matrix from "
+            "the requirements register, as Markdown, optionally with the "
+            "outcomes in pytest JUnit XML reports."
+        ),
+    )
+    parser.add_argument(
+        "--register",
+        help="The requirements register. Defaults to the one shipped with PyMedPhys.",
+    )
+    parser.add_argument(
+        "--junit",
+        metavar="FILE",
+        action="append",
+        default=[],
+        help=(
+            "A pytest JUnit XML report (pytest --junitxml) whose outcomes the "
+            "matrix gives. Repeat for each environment's report: a traced test "
+            "fails if any of its cases failed in any report, and is partly run "
+            "if a report lacks it or a case that another report ran."
+        ),
+    )
+    parser.add_argument(
+        "--output",
+        metavar="FILE",
+        help="Write the matrix to FILE instead of standard output.",
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help=(
+            "After writing the matrix, list on standard error each traced test "
+            "that failed, was skipped, or did not run in the reports, and exit "
+            "with status 1 if there is any."
+        ),
+    )
+    parser.set_defaults(func=run_deid_matrix)
+
+
+def run_deid_matrix(args):
+    # Imported here so that other commands do not load the de-identification
+    # package.
+    from pymedphys._dicom.deidentify import requirements, traceability
+
+    if args.check and not args.junit:
+        raise SystemExit("--check needs at least one --junit report")
+    try:
+        register = requirements.load_requirements(
+            pathlib.Path(args.register) if args.register else None
+        )
+        matrix = traceability.build_matrix(
+            register, [pathlib.Path(path) for path in args.junit], args.register
+        )
+    except (requirements.RequirementsError, traceability.TraceabilityError) as error:
+        raise SystemExit(str(error)) from None
+    markdown = traceability.render_markdown(matrix)
+    if args.output:
+        pathlib.Path(args.output).write_text(markdown, encoding="utf-8", newline="\n")
+    else:
+        sys.stdout.write(markdown)
+    problems = matrix.problems() if args.check else ()
+    for problem in problems:
+        print(problem, file=sys.stderr)
+    if problems:
+        raise SystemExit(1)
 
 
 def add_clean_imports_parser(dev_subparsers):
