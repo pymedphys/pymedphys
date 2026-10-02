@@ -254,8 +254,8 @@ jobs:
 
   # The de-identification requirements-to-tests matrix (D-018) for the
   # released commit, with each traced test's outcome in every environment of
-  # the unit-test matrix. The narrow extras' and the dependency floors' reports
-  # run only some tests, so they are left out. It runs after failed tests too,
+  # the unit-test matrix. The narrow extras', the dependency floors', and the
+  # pydicom versions' reports run only some tests, so they are left out. It runs after failed tests too,
   # so the matrix shows the failures. It never holds back publishing: a traced
   # test that failed, was skipped, or did not run in every environment fails
   # this job, and the Release Summary reports it.

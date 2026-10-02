@@ -238,8 +238,8 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("    if: ${{ !cancelled() }}", render)
         pattern = re.search(r"(?m)^          pattern: (\S+)$", render)[1]
         # Each environment of the OS and Python matrix, but not the narrow
-        # extras' or the dependency floors' reports, which run only some
-        # tests and would make the others partly run.
+        # extras', the dependency floors', or the pydicom versions' reports,
+        # which run only some tests or would make the others partly run.
         names = re.findall(
             r"(?m)^          name: (junit-.+)$",
             (WORKFLOWS / "unit-tests.yml").read_text(encoding="utf-8"),
@@ -250,12 +250,18 @@ class WorkflowContractTests(unittest.TestCase):
                 "junit-${{ matrix.os }}-${{ matrix.python-version }}",
                 "junit-extra-${{ matrix.extra }}",
                 "junit-dependency-floors",
+                "junit-pydicom-${{ matrix.pydicom }}",
             ],
         )
         for os_name in ("ubuntu-latest", "windows-latest", "macos-latest"):
             with self.subTest(os=os_name):
                 self.assertTrue(fnmatch.fnmatchcase(f"junit-{os_name}-3.11", pattern))
-        for name in ("junit-extra-dicom", "junit-dependency-floors"):
+        for name in (
+            "junit-extra-dicom",
+            "junit-dependency-floors",
+            "junit-pydicom-minimum",
+            "junit-pydicom-latest",
+        ):
             with self.subTest(name=name):
                 self.assertFalse(fnmatch.fnmatchcase(name, pattern))
         self.assertIn("merge-multiple: true", render)
