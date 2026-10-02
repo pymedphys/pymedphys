@@ -807,3 +807,39 @@ def _load_data_dictionary(path: pathlib.Path) -> DataDictionary:
             for row in rows
         ),
     )
+
+
+def dictionary_attribute(tag: str) -> DictionaryAttribute | None:
+    """Return the pinned data dictionary's attribute for a tag.
+
+    ``tag`` is in the form ``(gggg,eeee)``, with upper-case hexadecimal
+    digits, such as ``"(6002,3000)"``. An "x" in the dictionary's tags stands
+    for any hexadecimal digit, but in (50xx,eeee) and (60xx,eeee) only for
+    the groups that repeat, 5000 to 501E and 6000 to 601E (PS3.5 Section
+    7.6). A tag that the dictionary lists is not matched to a mask, and an
+    odd group is private, so it has none. The element decoder and the reader
+    of a written file's layout both look attributes up here, so that they
+    agree on what a tag is.
+    """
+    exact, masked = _dictionary_index()
+    if tag in exact or int(tag[4], 16) % 2:
+        return exact.get(tag)
+    return next(
+        (
+            each
+            for each in masked
+            if all(digit in ("x", found) for digit, found in zip(each.tag, tag))
+            and (each.tag[1:3] not in ("50", "60") or tag[3] in "01")
+        ),
+        None,
+    )
+
+
+@functools.cache
+def _dictionary_index() -> tuple[
+    dict[str, DictionaryAttribute], tuple[DictionaryAttribute, ...]
+]:
+    """Return the pinned dictionary's attributes by tag, and those masked."""
+    attributes = load_data_dictionary().attributes
+    exact = {each.tag: each for each in attributes if "x" not in each.tag}
+    return exact, tuple(each for each in attributes if "x" in each.tag)
