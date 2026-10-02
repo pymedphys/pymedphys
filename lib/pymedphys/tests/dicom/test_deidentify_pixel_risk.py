@@ -411,7 +411,18 @@ def test_the_attributes_read_have_their_pinned_vrs():
         assert dictionary[tag] == vr, tag
 
 
-@pytest.mark.parametrize("value", [b"+-1 ", b"--5 ", b"1.0 ", b"  ", b"1\\2 "])
+@pytest.mark.parametrize(
+    "value",
+    [
+        b"+-1 ",
+        b"--5 ",
+        b"1.0 ",
+        b"  ",
+        b"1\\2 ",
+        # Beyond Python's limit on converting digits to an int.
+        pytest.param(b"9" * 5000, id="5000-digits"),
+    ],
+)
 @pytest.mark.parametrize("where", [0x30060080, 0x30060039])
 def test_a_malformed_roi_number_is_unreadable_evidence(value, where):
     dataset = _structure_set([_roi(7, "EXTERNAL")], [_contour(7, 1)])
@@ -422,6 +433,17 @@ def test_a_malformed_roi_number_is_unreadable_evidence(value, where):
         (Indicator.UNREADABLE, Risk.RECONSTRUCTABLE_FACE)
     ]
     assert SENTINEL not in repr(assessment)
+
+
+def test_findings_are_in_tag_order_whatever_their_depth():
+    dataset = _structure_set([_roi(7, "EXTERNAL")], [_contour(7, 1)])
+    dataset.add_new(0x60000010, "US", 2)
+    dataset.BurnedInAnnotation = "YES"
+    assert [str(f.path) for f in pixel_risk.assess_pixel_risk(dataset).findings] == [
+        "(0028,0301)",
+        "(3006,0039)[0] > (3006,0040)",
+        "(6000,0010)",
+    ]
 
 
 @pytest.mark.parametrize("value", [b"+7", b"7 ", b" 7"])

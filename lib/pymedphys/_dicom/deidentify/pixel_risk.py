@@ -266,7 +266,11 @@ def _decoded(vr: str, value: bytes, stored) -> object:
         return None
     if len(values) > 1 or not _INTEGER.fullmatch(values[0]):
         raise _Unreadable
-    return int(values[0])
+    try:
+        return int(values[0])
+    except ValueError:
+        # Too many digits to convert (Python's integer string conversion limit).
+        raise _Unreadable from None
 
 
 def _whole(item: pydicom.Dataset) -> bool:
@@ -342,11 +346,11 @@ def assess_pixel_risk(dataset: pydicom.Dataset) -> PixelRiskAssessment:
     )
 
 
-def _order(finding: Finding) -> tuple:
-    return (
-        [(_int_tag(tag), item) for tag, item in finding.path.items],
-        _int_tag(finding.path.tag),
-    )
+def _order(finding: Finding) -> list[tuple[int, int]]:
+    """Order a finding by its whole path, so that one in a sequence sorts with it."""
+    return [(_int_tag(tag), item) for tag, item in finding.path.items] + [
+        (_int_tag(finding.path.tag), -1)
+    ]
 
 
 _IMAGE_ATTRIBUTES = (
