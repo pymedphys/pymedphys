@@ -74,8 +74,13 @@ BASIC_RULES = [
     ("(0002,0003)", ENGINE, "X", "(0002,eeee)"),  # which Table E.1-1 gives U
     ("(0004,1511)", ENGINE, "X", "(0004,eeee)"),  # which Table E.1-1 gives U
     ("(0004,1220)", ENGINE, "X", "(0004,eeee)"),  # Directory Record Sequence
+    # Command elements, even those that Table E.1-1 lists, and its group
+    # length.
+    ("(0000,0000)", ENGINE, "X", "(0000,eeee)"),
+    ("(0000,1000)", ENGINE, "X", "(0000,eeee)"),  # Table E.1-1 gives X
+    ("(0000,1001)", ENGINE, "X", "(0000,eeee)"),  # Table E.1-1 gives U
+    ("(0000,0700)", ENGINE, "X", "(0000,eeee)"),  # Priority, not in PS3.6
     ("(0008,0000)", ENGINE, "X", "(gggg,0000)"),
-    ("(0000,0000)", ENGINE, "X", "(gggg,0000)"),
     ("(0009,0000)", ENGINE, "X", "(gggg,0000)"),  # in a private group
     ("(FFFC,FFFC)", ENGINE, "X", "(FFFC,FFFC)"),  # which Table E.1-1 removes too
     ("(0400,0500)", ENGINE, "X", "(0400,0500)"),  # Encrypted Attributes Sequence
@@ -100,10 +105,6 @@ BASIC_RULES = [
     ("(006A,0003)", TABLE, "D", "(006A,0003)"),  # a UI attribute given D
     ("(FFFA,FFFA)", TABLE, "X", "(FFFA,FFFA)"),  # Digital Signatures Sequence
     ("(0072,006D)", TABLE, "D", "(0072,006D)"),  # Selector UN Value
-    # Command elements, which Table E.1-1 lists but PS3.6 Table 6-1 does not.
-    ("(0000,1000)", TABLE, "X", "(0000,1000)"),  # Affected SOP Instance UID
-    ("(0000,1001)", TABLE, "U", "(0000,1001)"),  # Requested SOP Instance UID
-    ("(0000,0700)", NOT_IN_DICTIONARY, "X", ""),  # Priority
     # Table E.1-1 by masked tag, only in the repeating groups.
     ("(6000,3000)", TABLE, "X", "(60xx,3000)"),  # Overlay Data
     ("(601E,3000)", TABLE, "X", "(60xx,3000)"),
@@ -546,6 +547,22 @@ def test_every_element_of_groups_0002_and_0004_in_a_data_set_is_removed(group, e
         rule = _rules(preset).rule(_tag(group, element), ("(300A,00B0)",))
 
         assert (rule.source, rule.action) == (ENGINE, "X")
+
+
+@hypothesis.given(st.integers(0, 0xFFFF))
+def test_every_element_of_group_0000_in_a_data_set_is_removed(element):
+    # Group 0000 is the DIMSE command set (PS3.7), which has no place in a
+    # stored data set; Requested SOP Instance UID (0000,1001) would
+    # otherwise carry a source UID through (maintainer, 1 October 2026).
+    for preset in ("basic", "basic-clean-descriptors", "tps-import"):
+        for ancestors in ((), ("(300A,00B0)",)):
+            rule = _rules(preset).rule(_tag(0x0000, element), ancestors)
+
+            assert (rule.source, rule.action, rule.entry) == (
+                ENGINE,
+                "X",
+                "(0000,eeee)",
+            )
 
 
 @hypothesis.given(

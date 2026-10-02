@@ -16,9 +16,10 @@
 
 An element's rule comes from the first of these that covers it:
 
-1. the engine's own removals (X): elements of group 0002, whose File
-   Meta Information the engine builds itself, or of group 0004, inside a
-   data set (PS3.15 E.1.1); group lengths, (gggg,0000), which PS3.5
+1. the engine's own removals (X): elements of group 0000, the DIMSE
+   command set (PS3.7), of group 0002, whose File Meta Information the
+   engine builds itself, or of group 0004, inside a data set (PS3.15
+   E.1.1); group lengths, (gggg,0000), which PS3.5
    Section 7.2 retires; Data Set Trailing Padding (FFFC,FFFC); and
    Encrypted Attributes Sequence (0400,0500), which can hold the original
    values that de-identification removes;
@@ -83,7 +84,7 @@ KEEP = "K"
 # The attributes that the engine removes by tag, wherever they are.
 _ENGINE_TAGS = frozenset({"(FFFC,FFFC)", "(0400,0500)"})
 # The groups that the engine removes from a data set.
-_ENGINE_GROUPS = (0x0002, 0x0004)
+_ENGINE_GROUPS = (0x0000, 0x0002, 0x0004)
 # The VRs whose values the default keeps wherever they are, and the binary
 # VRs whose values it keeps only where the IOD defines the attribute.
 KEPT_VRS = frozenset(
@@ -121,9 +122,9 @@ class ElementRule:
         The tag by which the source names the rule: a row of Table E.1-1,
         such as ``"(60xx,3000)"`` or the Private Attributes row; the
         attribute of the pinned data dictionary, such as ``"(60xx,0022)"``;
-        ``"(0002,eeee)"``, ``"(0004,eeee)"``, ``"(gggg,0000)"``, or the tag
-        that the engine removes; or ``""`` for an element that the
-        dictionary does not list.
+        ``"(0000,eeee)"``, ``"(0002,eeee)"``, ``"(0004,eeee)"``,
+        ``"(gggg,0000)"``, or the tag that the engine removes; or ``""``
+        for an element that the dictionary does not list.
     """
 
     tag: str
