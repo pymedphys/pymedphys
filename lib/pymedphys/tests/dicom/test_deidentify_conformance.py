@@ -15,9 +15,10 @@
 """The conformance statement generated from a policy and the pinned tables."""
 
 import dataclasses
+import platform
 import re
 
-from pymedphys._imports import pytest
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     codes,
@@ -25,6 +26,7 @@ from pymedphys._dicom.deidentify import (
     conformance,
     dummy_values,
     iods,
+    markers,
     method_digest,
     policy,
     pseudonyms,
@@ -438,3 +440,91 @@ def test_the_markdown_acknowledges_every_part_of_the_standard_it_quotes():
     text = conformance.render_markdown(_statement("basic"))
     for part in ("PS3.3", "PS3.4", "PS3.6", "PS3.15", "PS3.16"):
         assert f"DICOM {part} 2026d, © NEMA" in text
+
+
+def _section(text, heading):
+    """Return the lines of one second-level section of a rendered statement."""
+    lines = text.splitlines()
+    start = lines.index(f"## {heading}") + 1
+    end = next(
+        (i for i in range(start, len(lines)) if lines[i].startswith("## ")),
+        len(lines),
+    )
+    return "\n".join(lines[start:end])
+
+
+def _satisfied(composed):
+    unmet = {option for r in composed.resolved for option in r.unmet}
+    return tuple(
+        o for o in composed.options if o != "clean_descriptors" and o not in unmet
+    )
+
+
+def test_the_markers_are_no_longer_pending(preset):
+    assert not any("markers" in item for item in _statement(preset).pending)
+
+
+def test_the_markers_match_those_the_engine_writes(preset):
+    composed = policy.compose_policy(preset)
+    statement = conformance.conformance_statement(composed, vocabulary=None)
+    written = markers.markers_for(
+        composed, statement.method_digest, satisfied=_satisfied(composed)
+    )
+    assert statement.markers.method == written.method[1]
+    assert statement.markers.codes == tuple(c.code_value for c in written.method_codes)
+    assert statement.markers.temporal == written.temporal_information_modified
+    assert statement.markers.review_codes == (
+        (conformance.OPTION_CODES["clean_descriptors"],)
+        if composed.claims_conformance and "clean_descriptors" in composed.options
+        else ()
+    )
+
+
+def test_every_attribute_the_markers_write_is_described(preset):
+    composed = policy.compose_policy(preset)
+    statement = conformance.conformance_statement(composed, vocabulary=None)
+    written = markers.apply_markers(
+        pydicom.Dataset(),
+        markers.markers_for(
+            composed, statement.method_digest, satisfied=_satisfied(composed)
+        ),
+    )
+    section = _section(conformance.render_markdown(statement), "Attributes inserted")
+    for element in written:
+        assert (
+            f"{element.name} ({element.tag.group:04X},{element.tag.element:04X})"
+            in (section)
+        ), element.name
+    assert f"`{statement.markers.method}`" in section
+    assert f"`{statement.method_digest}`" not in section  # named, not repeated
+    assert f"`{markers.MANUFACTURER}`" in section
+    assert f"DCM {markers.DEIDENTIFYING_EQUIPMENT}" in section
+    assert f"`{statement.markers.temporal}`" in section
+
+
+def test_the_inserted_codes_are_listed_with_their_meanings(preset):
+    statement = _statement(preset)
+    section = _section(conformance.render_markdown(statement), "Attributes inserted")
+    meanings = {
+        c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
+    }
+    for code in statement.markers.codes + statement.markers.review_codes:
+        assert f"{meanings[code]} (DCM {code})" in section
+    if not statement.markers.codes:
+        assert "no item" in section
+
+
+def test_the_runtime_versions_are_described_not_quoted():
+    text = conformance.render_markdown(_statement("basic"))
+    assert f"pydicom {pydicom.__version__}" not in text
+    assert f"{platform.python_implementation()} {platform.python_version()}" not in text
+
+
+def test_private_attribute_removal_is_described(preset):
+    statement = _statement(preset)
+    section = _section(conformance.render_markdown(statement), "Actions")
+    row = _entry(statement, standard.PRIVATE_ATTRIBUTES_TAG)
+    if row.action == "X":
+        assert "Private Attributes" in section
+        assert "every level of nesting" in section
+        assert "private creator" in section
