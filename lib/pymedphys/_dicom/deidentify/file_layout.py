@@ -18,7 +18,9 @@ Verification must say where in a written file it finds something: in the
 preamble, a File Meta Information element, a data set element, Data Set
 Trailing Padding, or the bytes after the last element that could be read.
 :func:`read_file_layout` reads a DICOM PS3.10 file's structure from its bytes
-alone, independently of the library that wrote it.
+alone, independently of the library that wrote it. :func:`reads_as_items`
+reads the value of a sequence in the same way, so that a decoder can check
+its items before it trusts them.
 """
 
 from __future__ import annotations
@@ -31,7 +33,7 @@ import mmap
 import re
 import struct
 
-from .standard import VRS, load_data_dictionary
+from .standard import VRS, dictionary_attribute
 from .uids import normalise_uid
 
 # The VRs whose explicit VR header is 8 bytes, with a 16-bit length (PS3.5
@@ -263,34 +265,36 @@ def read_file_layout(data: bytes | bytearray | memoryview | mmap.mmap) -> FileLa
         return _Reader(octets).read()
 
 
+def reads_as_items(value: bytes | bytearray | memoryview, *, explicit: bool) -> bool:
+    """Return whether the encoded value of a sequence holds only items.
+
+    The value is read as :func:`read_file_layout` reads a sequence, with the
+    items nested in its items: each item of defined length must fit in what
+    holds it, and each of undefined length must end with its delimiter; each
+    item's data set must be readable, with each tag higher than the one
+    before it; and nothing may follow the last item.
+
+    Parameters
+    ----------
+    value : bytes, bytearray, or memoryview
+        The value of an element of VR SQ, without its header.
+    explicit : bool
+        Whether the items are in explicit VR. Those in a value of VR UN are
+        not (PS3.5 Section 6.2.2).
+    """
+    with memoryview(value) as view, view.cast("B") as octets:
+        return _Reader(octets).holds_items(explicit)
+
+
 class _Unreadable(Exception):
     """A structure that cannot be read, where reading stops."""
-
-
-@functools.cache
-def _dictionary() -> dict[str, tuple[str, ...]]:
-    return {entry.tag: entry.vrs for entry in load_data_dictionary().attributes}
-
-
-@functools.cache
-def _masked() -> tuple[tuple[str, tuple[str, ...]], ...]:
-    """Return the entries whose tag has an "x" for any digit, in order.
-
-    PS3.6 writes "x" for a digit of a repeating group or masked element.
-    """
-    return tuple((tag, vrs) for tag, vrs in _dictionary().items() if "x" in tag)
 
 
 @functools.lru_cache(maxsize=4096)
 def _dictionary_vrs(tag: str) -> tuple[str, ...]:
     """Return the VRs PS3.6 gives a standard attribute, or ``()``."""
-    dictionary = _dictionary()
-    if tag in dictionary or int(tag[4], 16) % 2:  # an odd group is private
-        return dictionary.get(tag, ())
-    for listed, vrs in _masked():
-        if all(a in ("x", b) for a, b in zip(listed, tag)):
-            return vrs
-    return ()
+    attribute = dictionary_attribute(tag)
+    return attribute.vrs if attribute else ()
 
 
 class _Reader:
@@ -336,6 +340,17 @@ class _Reader:
         if end < size:
             self._add(end, size, None, Location(Region.TRAILING))
         return FileLayout(size, syntax, readable and end == size, tuple(self.spans))
+
+    def holds_items(self, explicit: bool) -> bool:
+        """Return whether the data, from start to end, are a sequence's items."""
+        # The sequence's own tag does not change how its items are read.
+        sequence = ElementPath((), "(0000,0000)")
+        where = Location(Region.DATA_SET)
+        try:
+            self._items(0, len(self.data), False, explicit, sequence, where)
+        except _Unreadable:
+            return False
+        return True
 
     def _unpack(self, form: str, position: int, end: int) -> tuple[int, ...]:
         if position + struct.calcsize(form) > end:
