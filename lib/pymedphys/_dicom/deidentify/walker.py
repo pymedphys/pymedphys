@@ -1,0 +1,384 @@
+# Copyright (C) 2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Plan each element's action, and what must read its value, before any is read.
+
+The walker applies each element's effective action to one data set. Its first
+step, here, is the plan: from a source file's
+:class:`~pymedphys._dicom.deidentify.source.SourceEvidence`, the instance's
+IOD, and the rule of every element
+(:class:`~pymedphys._dicom.deidentify.element_rules.ElementRules`), it gives
+each element of the data set, in file order:
+
+1. its rule, at its place in the data set;
+2. its action: the rule's action, with a compound action, such as X/Z/D,
+   resolved from the element's Type at that place
+   (:func:`~pymedphys._dicom.deidentify.compound_actions.resolve_in_iod`),
+   so that X/Z on a Type 1 or 1C attribute gives D, as the maintainer
+   decided on 1 October 2026; a plain D on an attribute that the IOD does
+   not define at that place gives X, following Note 13 after Table E.1-1a;
+   and a plain Z on an attribute that is Type 1 or 1C there gives D, the
+   dummy value that Table E.1-1a allows Z (D-020);
+3. its consumers: what must read its value to apply the action, or to
+   collect the value for the residual search.
+
+A sequence whose action is K or U is kept as a container, and its items'
+elements take their own rules: K does not keep a sequence's contents
+wholesale. Under any other action, the sequence's descendants go with it:
+they take no rule of their own, and each is planned as removed with the
+outermost sequence that removes it. Removing a sequence does not waive
+collecting its descendants' values.
+
+Every element whose value is removed or replaced, a descendant of a removed
+sequence included, is collected for the residual search
+(:mod:`~pymedphys._dicom.deidentify.residuals`), whatever its VR: what
+is searched, and what is listed as not searched, is for that search's own
+contract to decide. A sequence holds no value of its own to collect. The plan
+records the VR that the element is read by, as
+:attr:`~pymedphys._dicom.deidentify.file_layout.Location.vr` gives it: as
+written, or, in implicit VR and in place of UN, the one VR that the pinned
+data dictionary gives; where neither gives one, as for a private element in
+implicit VR, it records none, for the collection to say whether the value
+can be collected.
+
+D writes a dummy value, which must differ from the source value, so the
+source value is read to compare (D-021). Only the VRs of
+:data:`~pymedphys._dicom.deidentify.dummy_values.DUMMY_VRS` have a generic
+dummy value, and only Person Identification Code Sequence (0040,1101) has a
+reviewed one besides, whose items' Code Value (0008,0100) and Code Meaning
+(0008,0104) are compared (D-021). A dummy value on any other element, such
+as another sequence, adds a :class:`Sequestration` to the plan, as
+:func:`~pymedphys._dicom.deidentify.dummy_values.values_for_d` would refuse
+it. So does an attribute of the pinned data dictionary that is not removed
+but whose value the source evidence holds in a form that the dictionary does
+not allow: written with a VR other than UN that the dictionary does not give
+it, since the value could not be read or kept as the attribute. Admission
+reads a value written as UN or in implicit VR as items only where the
+dictionary gives SQ, and refuses one there that does not read as items
+(:func:`~pymedphys._dicom.deidentify.source.read_source`). A plan with a
+sequestration is not to be applied; every element is still planned, so that
+every reason is known.
+
+Not yet planned: removing, with the attribute, the innermost enclosing
+sequence that is Type 3, where a plain X applies to an attribute that the
+IOD requires at its place, or sequestering the instance where no such
+sequence encloses it (D-020). Until it is, such an attribute is planned X,
+its enclosing sequences keep their own actions, and the plan records no
+sequestration for it. The consumers here are those of the actions; the
+inputs of options that keep or modify values, such as patient pseudonyms
+and modified dates, are added with those options.
+
+Making the plan reads no value: only the structure that the source evidence
+has already validated. The plan, its ``repr``, and its sequestrations name
+tags, item numbers, actions, and VRs, never a value.
+
+Examples
+--------
+>>> from pymedphys._dicom.deidentify.file_layout import ElementPath
+>>> from pymedphys._dicom.deidentify.iods import load_iod_tables
+>>> from pymedphys._dicom.deidentify.policy import compose_policy
+>>> from pymedphys._dicom.deidentify.source import read_source
+>>> name = b"\\x10\\x00\\x10\\x00PN\\x0e\\x00ZEBEDEE^QUILL "
+>>> meta = b"\\x02\\x00\\x10\\x00UI\\x14\\x001.2.840.10008.1.2.1\\x00"
+>>> evidence = read_source(bytes(128) + b"DICM" + meta + name)
+>>> rules = ElementRules(compose_policy("basic"))
+>>> plan = plan_instance(evidence, rules, load_iod_tables().iods["RT Plan"])
+>>> (element,) = plan.elements
+>>> str(element.path), element.action, element.vr
+('(0010,0010)', 'Z', 'PN')
+>>> sorted(consumer.value for consumer in element.consumers)
+['residual-collection']
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import enum
+
+from .compound_actions import COMPOUND_ACTIONS, resolve_in_iod, strictest_type
+from .dummy_values import DUMMY_VRS
+from .element_rules import ElementRule, ElementRules
+from .file_layout import ElementPath
+from .iods import IOD
+from .source import SourceEvidence
+from .standard import dictionary_attribute
+
+# The actions under which a sequence is kept as a container, so that its
+# items' elements take their own rules.
+DESCENDED = frozenset({"K", "U"})
+_REMOVED = "X"
+# The sequences whose dummy value a reviewed rule gives, and the attributes
+# of their items that are compared with it (D-021).
+REVIEWED_DUMMY_SEQUENCES = {
+    "(0040,1101)": frozenset({"(0008,0100)", "(0008,0104)"}),
+}
+
+
+class Consumer(enum.Enum):
+    """What must read an element's value."""
+
+    UID_REPLACEMENT = "uid-replacement"  # U
+    # a dummy value, which must differ from the source's (D-021)
+    DUMMY_COMPARISON = "dummy-comparison"
+    CLEANING = "cleaning"  # C
+    # a value removed or replaced, to search the output for
+    RESIDUAL_COLLECTION = "residual-collection"
+
+
+_ACTION_CONSUMERS = {
+    "U": Consumer.UID_REPLACEMENT,
+    "D": Consumer.DUMMY_COMPARISON,
+    "C": Consumer.CLEANING,
+}
+
+
+class SequesterReason(enum.Enum):
+    """Why a plan's instance must be sequestered."""
+
+    # a dummy value on an element whose VR has none, such as SQ
+    NO_DUMMY_VALUE = "no-dummy-value"
+    # written with a VR other than UN that the dictionary does not give
+    VR_NOT_IN_DICTIONARY = "vr-not-in-dictionary"
+
+
+_EXPLANATIONS = {
+    SequesterReason.NO_DUMMY_VALUE: (
+        "{action} on {path} needs a dummy value, which {vr} does not have "
+        "and no reviewed rule gives"
+    ),
+    SequesterReason.VR_NOT_IN_DICTIONARY: (
+        "{path} is written with {vr}, which the pinned data dictionary does not give it"
+    ),
+}
+
+
+@dataclasses.dataclass(frozen=True)
+class Sequestration:
+    """Why the instance must be sequestered, at one element.
+
+    Attributes
+    ----------
+    path : ElementPath
+        The element.
+    action : str
+        Its action, such as ``"D"``.
+    vr : str or None
+        Its VR as written for :attr:`SequesterReason.VR_NOT_IN_DICTIONARY`,
+        and otherwise as :attr:`ElementPlan.vr` gives it.
+    reason : SequesterReason
+    """
+
+    path: ElementPath
+    action: str
+    vr: str | None
+    reason: SequesterReason
+
+    def __str__(self) -> str:
+        vr = "an unknown VR" if self.vr is None else f"VR {self.vr}"
+        explanation = _EXPLANATIONS[self.reason].format(
+            action=self.action, path=self.path, vr=vr
+        )
+        return f"{explanation}, so the instance must be sequestered"
+
+
+@dataclasses.dataclass(frozen=True)
+class ElementPlan:
+    """One element's action, and what must read its value.
+
+    Attributes
+    ----------
+    path : ElementPath
+    vr : str or None
+        The VR that the value is read by: as written, or, in implicit VR or
+        in place of UN, the one VR that the pinned data dictionary gives;
+        ``None`` where neither gives one.
+    rule : ElementRule or None
+        The element's rule, or ``None`` if it is removed with a sequence.
+    action : str
+        ``"K"``, ``"X"``, ``"Z"``, ``"D"``, ``"U"``, or ``"C"``; ``"X"`` if
+        it is removed with a sequence.
+    removed_with : ElementPath or None
+        The outermost sequence that removes it, or ``None``.
+    consumers : frozenset of Consumer
+    """
+
+    path: ElementPath
+    vr: str | None
+    rule: ElementRule | None
+    action: str
+    removed_with: ElementPath | None
+    consumers: frozenset[Consumer]
+
+
+@dataclasses.dataclass(frozen=True)
+class InstancePlan:
+    """The plan of every element of one data set.
+
+    Attributes
+    ----------
+    elements : tuple of ElementPlan
+        In file order, nested elements included.
+    sequestrations : tuple of Sequestration
+        Each reason found that the instance must be sequestered, in file
+        order; ``()`` if there is none. The reasons that plain X gives are
+        not yet planned.
+    """
+
+    elements: tuple[ElementPlan, ...]
+    sequestrations: tuple[Sequestration, ...]
+
+    def to_decode(self) -> tuple[ElementPath, ...]:
+        """Return the paths of the elements that a consumer must read, in file order."""
+        return tuple(element.path for element in self.elements if element.consumers)
+
+
+def _consumers(action: str, container: bool, dummy: bool) -> frozenset[Consumer]:
+    if container:
+        return frozenset()
+    found = {_ACTION_CONSUMERS[action]} if action in _ACTION_CONSUMERS else set()
+    if dummy:
+        found.add(Consumer.DUMMY_COMPARISON)
+    if action != "K":
+        found.add(Consumer.RESIDUAL_COLLECTION)
+    return frozenset(found)
+
+
+# The two resolvers below mirror, with the same signatures, the functions
+# of compound_actions that #2198 and #2211 bring, so that the walker
+# switches to those functions once they merge and the rules have one
+# implementation.
+
+
+def _resolve_in_iod(iod: IOD, tag: str, path: tuple[str, ...], action: str) -> str:
+    """Resolve a compound action, as ``compound_actions.resolve_in_iod`` (#2198)."""
+    # X/Z on Type 1 or 1C gives D, as decided on 1 October 2026.
+    if action == "X/Z" and strictest_type(iod, tag, path) == "1":
+        return "D"
+    return resolve_in_iod(iod, tag, path, action)
+
+
+def _resolve_plain_in_iod(
+    iod: IOD, tag: str, path: tuple[str, ...], action: str
+) -> str:
+    """Resolve D and Z, as ``compound_actions.resolve_plain_in_iod`` (#2211)."""
+    if action == "D" and not iod.lookup(tag, path):
+        return "X"  # Note 13 after Table E.1-1a
+    if action == "Z" and strictest_type(iod, tag, path) == "1":
+        return "D"
+    return action
+
+
+def _vr_contradicts_dictionary(tag: str, written: str | None) -> bool:
+    """Whether a dictionary attribute is written with a VR it is not given."""
+    attribute = dictionary_attribute(tag)
+    return (
+        attribute is not None
+        and written not in (None, "UN")
+        and written not in attribute.vrs
+    )
+
+
+def _has_dummy(tag: str, vr: str | None, container: bool, action: str) -> bool:
+    """Whether a generic or reviewed dummy value exists for the element."""
+    if container:
+        return action == "D" and tag in REVIEWED_DUMMY_SEQUENCES
+    return vr in DUMMY_VRS
+
+
+def _removing_ancestor(
+    path: ElementPath, removing: dict[ElementPath, str]
+) -> ElementPath | None:
+    """Return the outermost sequence in ``removing`` that holds ``path``."""
+    for depth, (tag, _) in enumerate(path.items):
+        container = ElementPath(path.items[:depth], tag)
+        if container in removing:
+            return container
+    return None
+
+
+def _compared_in_reviewed_dummy(
+    path: ElementPath, removed_with: ElementPath, action: str
+) -> bool:
+    """Whether a reviewed dummy sequence's rule compares this element."""
+    compared = REVIEWED_DUMMY_SEQUENCES.get(removed_with.tag, frozenset())
+    return (
+        action == "D"
+        and len(path.items) == len(removed_with.items) + 1
+        and path.tag in compared
+    )
+
+
+def plan_instance(
+    source: SourceEvidence, rules: ElementRules, iod: IOD
+) -> InstancePlan:
+    """Return the plan of every element of a source file's data set.
+
+    Parameters
+    ----------
+    source : SourceEvidence
+        The source file, from
+        :func:`~pymedphys._dicom.deidentify.source.read_source`.
+    rules : ElementRules
+        The rule of every element under the run's policy.
+    iod : IOD
+        The instance's IOD, from its SOP Class UID
+        (:func:`~pymedphys._dicom.deidentify.scope.classify`).
+
+    Returns
+    -------
+    InstancePlan
+    """
+    elements: list[ElementPlan] = []
+    sequestrations: list[Sequestration] = []
+    removing: dict[ElementPath, str] = {}  # each removing sequence's action
+    for path in source.paths():
+        extent = source.element(path)
+        vr = extent.location.vr
+        container = extent.items is not None
+        removed_with = _removing_ancestor(path, removing)
+        if removed_with is not None:
+            dummy = _compared_in_reviewed_dummy(
+                path, removed_with, removing[removed_with]
+            )
+            consumers = _consumers(_REMOVED, container, dummy)
+            elements.append(
+                ElementPlan(path, vr, None, _REMOVED, removed_with, consumers)
+            )
+            continue
+        sequences = tuple(tag for tag, _ in path.items)
+        rule = rules.rule(path.tag, sequences, iod=iod)
+        resolve = (
+            _resolve_in_iod
+            if rule.action in COMPOUND_ACTIONS
+            else _resolve_plain_in_iod
+        )
+        action = resolve(iod, path.tag, sequences, rule.action)
+        if action != _REMOVED and _vr_contradicts_dictionary(path.tag, extent.vr):
+            sequestrations.append(
+                Sequestration(
+                    path, action, extent.vr, SequesterReason.VR_NOT_IN_DICTIONARY
+                )
+            )
+        elif action == "D" and not _has_dummy(path.tag, vr, container, action):
+            sequestrations.append(
+                Sequestration(path, action, vr, SequesterReason.NO_DUMMY_VALUE)
+            )
+        if container and action not in DESCENDED:
+            removing[path] = action
+        elements.append(
+            ElementPlan(
+                path, vr, rule, action, None, _consumers(action, container, False)
+            )
+        )
+    return InstancePlan(tuple(elements), tuple(sequestrations))
