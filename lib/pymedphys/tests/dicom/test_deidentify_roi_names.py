@@ -15,10 +15,13 @@
 """Automatic cleaning of ROI Names against a TG-263 vocabulary.
 
 Every vocabulary here is invented, in the shape of the TG-263 spreadsheet's
-entries, and every identifier is synthetic.
+entries, and every identifier is synthetic. An invented vocabulary is
+accepted only while its digest is added to the published editions.
 """
 
 import dataclasses
+import re
+from unittest import mock
 
 from pymedphys._imports import pytest
 
@@ -48,7 +51,20 @@ def _nomenclature(*names):
     )
 
 
-VOCABULARY = roi_names.RoiNameVocabulary(
+def _digest(nomenclature):
+    return tg263.content_sha256(
+        [dataclasses.asdict(s) for s in nomenclature.structures]
+    )
+
+
+def _published(nomenclature):
+    """Return the vocabulary of an invented nomenclature taken as published."""
+    published = {"TG263 vInvented": _digest(nomenclature)}
+    with mock.patch.dict(roi_names.PUBLISHED_TG263, published):
+        return roi_names.RoiNameVocabulary(nomenclature)
+
+
+VOCABULARY = _published(
     _nomenclature(
         ("Lung_L", "L_Lung"),
         ("Lung_R", "R_Lung"),
@@ -56,7 +72,10 @@ VOCABULARY = roi_names.RoiNameVocabulary(
         ("SpinalCord", "SpinalCord"),
         ("Hand_L", "L_Hand"),
         ("Bowel_Small", "Small_Bowel"),
-        ("Bowel-Small", "Small-Bowel"),
+        ("VB_S", "S_VB"),
+        ("VBs", "VBs"),
+        ("Lungs-PTV", "Lungs-PTV"),
+        ("Kidney_R-GTV", "R_Kidney-GTV"),
     )
 )
 
@@ -141,16 +160,12 @@ def test_a_name_of_separators_alone_goes_to_review(name):
 
 
 def test_a_name_that_matches_more_than_one_vocabulary_name_goes_to_review():
-    # Bowel_Small and Bowel-Small normalise alike.
-    assert _clean(["bowel small"]) == (
-        roi_names.RoiNameDecision(Reason.AMBIGUOUS, None),
-    )
+    # VB_S and VBs normalise alike, as in the 2017-08-15 edition.
+    assert _clean(["vb s"]) == (roi_names.RoiNameDecision(Reason.AMBIGUOUS, None),)
 
 
 def test_a_vocabulary_name_that_is_ambiguous_is_not_written_even_when_spelt_exactly():
-    assert _clean(["Bowel_Small"]) == (
-        roi_names.RoiNameDecision(Reason.AMBIGUOUS, None),
-    )
+    assert _clean(["VB_S"]) == (roi_names.RoiNameDecision(Reason.AMBIGUOUS, None),)
 
 
 def test_different_names_that_would_be_written_as_one_vocabulary_name_go_to_review():
@@ -214,7 +229,7 @@ def test_a_name_that_echoes_a_known_identifier_goes_to_review(identifier):
 def test_an_identifier_echoed_by_a_whole_name_once_separators_are_disregarded_goes_to_review(
     identifier,
 ):
-    vocabulary = roi_names.RoiNameVocabulary(_nomenclature(("Heart1", "Heart1")))
+    vocabulary = _published(_nomenclature(("Heart1", "Heart1")))
     decisions = roi_names.clean_roi_names(
         ["heart1"], vocabulary, identifiers=[identifier]
     )
@@ -335,16 +350,18 @@ def test_the_vocabulary_lists_the_names_it_can_write():
             "L_Hand",
             "Bowel_Small",
             "Small_Bowel",
-            "Bowel-Small",
-            "Small-Bowel",
+            "VB_S",
+            "S_VB",
+            "VBs",
+            "Lungs-PTV",
+            "Kidney_R-GTV",
+            "R_Kidney-GTV",
         }
     )
 
 
 def test_a_vocabulary_entry_outside_printable_ascii_is_never_written():
-    vocabulary = roi_names.RoiNameVocabulary(
-        _nomenclature(("Lungé_L", "L_Lungé"), ("Heart", "Heart"))
-    )
+    vocabulary = _published(_nomenclature(("Lungé_L", "L_Lungé"), ("Heart", "Heart")))
     assert vocabulary.names == frozenset({"Heart"})
     decisions = roi_names.clean_roi_names(
         ["Lungé_L", "lunge l"], vocabulary, identifiers=()
@@ -353,13 +370,74 @@ def test_a_vocabulary_entry_outside_printable_ascii_is_never_written():
 
 
 def test_the_vocabulary_repr_is_short():
-    assert repr(VOCABULARY) == "RoiNameVocabulary(names=12)"
+    assert repr(VOCABULARY) == "RoiNameVocabulary(names=16)"
 
 
 def test_a_loaded_vocabulary_file_cleans_names(tmp_path):
     path = tmp_path / "tg263.json"
     path.write_text(tg263.to_json(_nomenclature(("Lung_L", "L_Lung"))), "utf-8")
-    vocabulary = roi_names.RoiNameVocabulary(tg263.load_json(path))
+    vocabulary = _published(tg263.load_json(path))
     assert roi_names.clean_roi_names(["LUNG L"], vocabulary, identifiers=()) == (
         roi_names.RoiNameDecision(Reason.MATCHED, "Lung_L"),
     )
+
+
+@pytest.mark.parametrize(
+    "name, spelling",
+    [
+        ("Lungs-PTV", "Lungs-PTV"),
+        ("lungs - ptv", "Lungs-PTV"),
+        ("LUNGS-PTV", "Lungs-PTV"),
+        ("kidney r-gtv", "Kidney_R-GTV"),
+        ("Kidney_R - GTV", "Kidney_R-GTV"),
+        ("r kidney-gtv", "R_Kidney-GTV"),
+    ],
+)
+def test_a_vocabulary_name_with_a_hyphen_matches_a_hyphen_in_the_same_place(
+    name, spelling
+):
+    assert _clean([name]) == (roi_names.RoiNameDecision(Reason.MATCHED, spelling),)
+
+
+@pytest.mark.parametrize(
+    "name", ["Lungs PTV", "Lungs_PTV", "LungsPTV", "Lung-s PTV", "Kidney-R GTV"]
+)
+def test_a_vocabulary_name_with_a_hyphen_is_not_matched_without_it(name):
+    # TG-263 writes "-" for a subtraction: Lungs-PTV is the lungs minus the
+    # PTV, so "Lungs PTV" could be another structure.
+    assert _clean([name]) == (roi_names.RoiNameDecision(Reason.UNMATCHED, None),)
+
+
+def test_a_hyphen_still_separates_where_the_vocabulary_name_has_none():
+    assert _clean(["LUNG-L", "Bowel-Small"]) == (
+        roi_names.RoiNameDecision(Reason.MATCHED, "Lung_L"),
+        roi_names.RoiNameDecision(Reason.MATCHED, "Bowel_Small"),
+    )
+
+
+def test_a_name_matching_with_and_without_its_hyphen_is_ambiguous():
+    vocabulary = _published(
+        _nomenclature(("Lungs-PTV", "Lungs-PTV"), ("LungsPTV", "LungsPTV"))
+    )
+    decisions = roi_names.clean_roi_names(["lungs-ptv"], vocabulary, identifiers=())
+    assert decisions == (roi_names.RoiNameDecision(Reason.AMBIGUOUS, None),)
+
+
+def test_an_unpublished_vocabulary_is_refused():
+    # A converted workbook extended with a local name carries AAPM's
+    # attribution, as the converter writes it for every TG-263 workbook.
+    extended = _nomenclature(("Lung_L", "L_Lung"), ("ClinicX_Lung", "Lung_ClinicX"))
+    assert extended.attribution == tg263.ATTRIBUTION
+    with pytest.raises(ValueError, match="published edition"):
+        roi_names.RoiNameVocabulary(extended)
+
+
+def test_the_published_editions_are_recorded_by_worksheet_and_digest():
+    assert roi_names.PUBLISHED_TG263 == {
+        "TG263 v20170815": (
+            "0a0eaeacf147bdf654e0090b3e12b005d76985e6adc95441d7563365ac6e7ffc"
+        )
+    }
+    for sheet, digest in roi_names.PUBLISHED_TG263.items():
+        assert re.fullmatch(r"TG263 v\d{8}", sheet)
+        assert re.fullmatch(r"[0-9a-f]{64}", digest)

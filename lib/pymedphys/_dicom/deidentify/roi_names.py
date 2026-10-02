@@ -18,8 +18,11 @@ Under the Clean Descriptors Option, ROI Name (3006,0026) is cleaned in two
 tiers. This module is the automatic tier: a ROI Name that matches a name of
 the vocabulary once case, spaces, and the separators ``_`` and ``-`` are
 disregarded is written in the vocabulary's own spelling, so ``lung l``,
-``LUNG-L``, and ``Lung L`` all become ``Lung_L``. Every other name goes to
-the second tier, human review, which is not part of this module.
+``LUNG-L``, and ``Lung L`` all become ``Lung_L``. TG-263 writes ``-`` for a
+subtraction, as in ``Lungs-PTV``, so a vocabulary name that contains ``-``
+matches only a name with ``-`` in the same place: ``lungs - ptv`` becomes
+``Lungs-PTV``, but ``Lungs PTV`` and ``Lungs_PTV`` do not. Every other name
+goes to the second tier, human review, which is not part of this module.
 
 A name goes to review, rather than being renamed, where:
 
@@ -43,14 +46,14 @@ the vocabulary's spelling and a reason, never the source name, so they can be
 logged; recording each rename for audit in the confidential QC material is
 the caller's responsibility.
 
-Automatic renaming is meant only for the published AAPM TG-263 list, whose
-entries are generic names. :class:`RoiNameVocabulary` accepts a
-:class:`~pymedphys._nomenclature.tg263.Nomenclature` that carries AAPM's
-attribution, which :func:`~pymedphys._nomenclature.tg263.load_json` requires.
-That shows only that the TG-263 converter made the vocabulary: the converter
-writes the attribution for any workbook with the TG-263 columns, including a
-list extended with local names, so it does not yet show that the entries are
-AAPM's.
+Automatic renaming is only for the list that AAPM publishes, whose entries
+are generic names. The converter writes AAPM's attribution for any workbook
+with the TG-263 columns, including one extended with local names, such as
+``ClinicX_Lung``, so :class:`RoiNameVocabulary` accepts only a
+:class:`~pymedphys._nomenclature.tg263.Nomenclature` whose entries have the
+content digest of a published edition, as :data:`PUBLISHED_TG263` records.
+Any other list, however converted, is refused, so the caller sends its names
+to review.
 """
 
 from __future__ import annotations
@@ -67,8 +70,21 @@ from pymedphys._nomenclature import tg263
 # with NUL instead.
 _PADDING = " \x00"
 _DISREGARDED = re.compile(r"[ _-]")
+_DISREGARDED_BESIDE_HYPHENS = re.compile(r"[ _]")
 _PRINTABLE_ASCII = re.compile(r"[\x20-\x7e]*")
 _NOT_ALPHANUMERIC = re.compile(r"[\W_]+")
+
+
+# The content digest (tg263.content_sha256) of the entries of each edition of
+# the TG-263 Structure Spreadsheet that AAPM publishes, by worksheet name. The
+# 2017-08-15 edition is TG263_Nomenclature_Worksheet_20170815.xls on AAPM's
+# Radiation Oncology Nomenclature Resource Page, whose SHA-256 is
+# 5ff0b9e2ebf578793f6fa8f59c2357b3feb61fdc0f87171e9103a0495d93d150.
+PUBLISHED_TG263: dict[str, str] = {
+    "TG263 v20170815": (
+        "0a0eaeacf147bdf654e0090b3e12b005d76985e6adc95441d7563365ac6e7ffc"
+    ),
+}
 
 
 class Reason(enum.Enum):
@@ -113,14 +129,15 @@ class RoiNameVocabulary:
     Parameters
     ----------
     nomenclature : ~pymedphys._nomenclature.tg263.Nomenclature
-        Made by the TG-263 converter, as its attribution states.
+        A published edition of the TG-263 Structure Spreadsheet.
 
     Raises
     ------
     TypeError
         If ``nomenclature`` is not a TG-263 Nomenclature.
     ValueError
-        If it does not carry AAPM's TG-263 attribution.
+        If it does not carry AAPM's TG-263 attribution, or its entries are
+        not those of an edition in :data:`PUBLISHED_TG263`.
     """
 
     def __init__(self, nomenclature: tg263.Nomenclature):
@@ -131,12 +148,19 @@ class RoiNameVocabulary:
                 "the vocabulary does not carry the TG-263 attribution, so it was "
                 "not converted from the AAPM TG-263 spreadsheet"
             )
+        entries = [dataclasses.asdict(s) for s in nomenclature.structures]
+        if tg263.content_sha256(entries) not in PUBLISHED_TG263.values():
+            raise ValueError(
+                "the vocabulary's entries are not those of a published edition of "
+                "the TG-263 spreadsheet, so its names cannot be written without "
+                "review"
+            )
         spellings: dict[str, set[str]] = collections.defaultdict(set)
         for structure in nomenclature.structures:
             for name in (structure.primary_name, structure.reverse_order_name):
-                normalised = _normalised(name)
-                if normalised:
-                    spellings[normalised].add(name)
+                key = _normalised(name, keep_hyphens="-" in name)
+                if key:
+                    spellings[key].add(name)
         self._spellings: Mapping[str, frozenset[str]] = {
             normalised: frozenset(names) for normalised, names in spellings.items()
         }
@@ -149,9 +173,9 @@ class RoiNameVocabulary:
 
     def spellings(self, name: str) -> frozenset[str]:
         """Return the vocabulary names that a ROI Name, without padding, matches."""
-        normalised = _normalised(name)
-        return (
-            self._spellings.get(normalised, frozenset()) if normalised else frozenset()
+        keys = {_normalised(name), _normalised(name, keep_hyphens=True)} - {""}
+        return frozenset().union(
+            *(self._spellings.get(key, frozenset()) for key in keys)
         )
 
     def __repr__(self) -> str:
@@ -215,11 +239,17 @@ def _texts(values: Iterable[str], what: str) -> tuple[str, ...]:
     return values
 
 
-def _normalised(name: str) -> str:
-    """Return the matching form of a name, or ``""`` if it cannot match."""
+def _normalised(name: str, *, keep_hyphens: bool = False) -> str:
+    """Return the matching form of a name, or ``""`` if it cannot match.
+
+    A vocabulary name with ``-`` is indexed with its hyphens kept, and a ROI
+    Name is looked up in both forms, so a hyphen in a vocabulary name is
+    matched only by a hyphen in the same place.
+    """
     if not _PRINTABLE_ASCII.fullmatch(name):
         return ""
-    return _DISREGARDED.sub("", name).lower()
+    pattern = _DISREGARDED_BESIDE_HYPHENS if keep_hyphens else _DISREGARDED
+    return pattern.sub("", name).lower()
 
 
 def _words(text: str) -> set[str]:
