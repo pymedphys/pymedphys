@@ -860,3 +860,54 @@ def test_an_unknown_value_whose_items_cannot_be_read_is_refused(
     assert str(raised.value) == f"{path} has items that cannot be read"
     assert raised.value.__cause__ is None
     assert "SENTINEL" not in repr(raised.value)
+
+
+def _item_past_its_sequence(data, tag, explicit):
+    """Return the file with the first item of ``tag`` running past its value.
+
+    The sequence is of defined length, with VR SQ in Explicit VR or without
+    a VR in Implicit VR (PS3.5 Tables 7.1-2 and 7.1-3).
+    """
+    data = bytearray(data)
+    header = struct.pack("<HH", tag >> 16, tag & 0xFFFF)
+    at = data.index(header + b"SQ\x00\x00" if explicit else header)
+    length_at = at + (8 if explicit else 4)
+    (length,) = struct.unpack_from("<I", data, length_at)
+    assert data[length_at + 4 : length_at + 8] == b"\xfe\xff\x00\xe0"
+    struct.pack_into("<I", data, length_at + 8, length + 40)
+    return bytes(data)
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")
+@pytest.mark.parametrize(
+    "transfer_syntax",
+    [synthetic.EXPLICIT_VR_LITTLE_ENDIAN, synthetic.IMPLICIT_VR_LITTLE_ENDIAN],
+    ids=["explicit-vr", "implicit-vr"],
+)
+@pytest.mark.parametrize(
+    "tag, path",
+    [
+        (0x300C0002, ElementPath((), "(300C,0002)")),  # Referenced RT Plan Sequence
+        (
+            0x00081199,  # Referenced SOP Sequence, in Dose Calculation Model
+            ElementPath((("(3004,0080)", 0), ("(3004,0083)", 0)), "(0008,1199)"),
+        ),
+    ],
+    ids=["top-level", "nested"],
+)
+def test_a_sequence_whose_items_cannot_be_read_is_refused(transfer_syntax, tag, path):
+    # pydicom decodes each, when it is accessed, without an error, as items
+    # that leave out what follows.
+    dataset, *_ = _with_dose_calculation_model()
+    written = synthetic.written(dataset, transfer_syntax)
+    data = _item_past_its_sequence(
+        written, tag, transfer_syntax == synthetic.EXPLICIT_VR_LITTLE_ENDIAN
+    )
+
+    with pytest.raises(references.UnreadableSequence) as raised:
+        InstanceRecord.from_file(data)
+
+    assert raised.value.path == path
+    assert raised.value.__cause__ is None and raised.value.__context__ is None

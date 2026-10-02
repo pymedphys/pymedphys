@@ -20,9 +20,10 @@ belongs, and leaves out what they hold. :func:`decode_items` has pydicom
 decode a value only once :func:`.file_layout.reads_as_items` finds that it
 holds only items. The element decoder (:mod:`.elements`), the first pass's
 reference records (:mod:`.references`), and the removal of private
-attributes (:mod:`.private_attributes`) decode a sequence's encoded value
-through it, and each reports :class:`UnreadableItems` with its own exception,
-by the path of the sequence.
+attributes (:mod:`.private_attributes`) pass each sequence value that
+pydicom holds undecoded through it before they read its items, and each
+reports :class:`UnreadableItems` with its own exception, by the path of the
+sequence.
 """
 
 from __future__ import annotations
@@ -68,8 +69,9 @@ def decode_items(
     codecs : sequence of str
         The codecs, as pydicom names them, of the data set that holds the
         sequence, which apply to each item without its own Specific
-        Character Set (0008,0005) (PS3.5 Section 7.5.3). Empty gives the
-        Default Character Repertoire.
+        Character Set (0008,0005) (PS3.5 Section 7.5.3). Empty gives
+        pydicom's default, ISO 8859-1, which reads the Default Character
+        Repertoire as it is but does not refuse other bytes.
     little_endian : bool
         Whether the value is little endian. Only a little endian value can
         be read as items, so a big endian one is refused.
@@ -82,14 +84,17 @@ def decode_items(
         accessed, so a caller that decodes each through this function as it
         reaches it can leave it, and refuse it by its own path. A sequence of
         undefined length, which pydicom decodes with the value, is read
-        either way.
+        either way. Items nested more than :data:`.file_layout.MAX_NESTING`
+        deep in what is read are refused, counting from this value, not from
+        the top level of its data set.
 
     Raises
     ------
     UnreadableItems
         If the value does not hold only items, as
         :func:`.file_layout.reads_as_items` reads them, or pydicom cannot
-        decode them.
+        decode them. Both give the same message, and neither its cause nor
+        its context holds pydicom's exception.
 
     Examples
     --------
@@ -108,13 +113,16 @@ def decode_items(
     """
     if not value:
         return pydicom.Sequence()
-    if not little_endian or not reads_as_items(value, explicit=explicit, nested=nested):
+    decoded = None
+    if little_endian and reads_as_items(value, explicit=explicit, nested=nested):
+        try:
+            decoded = pydicom.values.convert_SQ(
+                value, not explicit, True, list(codecs) or None, offset
+            )
+        # pydicom raises many types for a value it cannot decode, and its
+        # message can quote the value, so it is raised from neither here.
+        except Exception:  # pylint: disable = broad-exception-caught
+            pass
+    if decoded is None:
         raise UnreadableItems()
-    try:
-        return pydicom.values.convert_SQ(
-            value, not explicit, True, list(codecs) or None, offset
-        )
-    # pydicom raises many types for a value it cannot decode, and its message
-    # can quote the value.
-    except Exception:  # pylint: disable = broad-exception-caught
-        raise UnreadableItems() from None
+    return decoded

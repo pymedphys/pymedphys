@@ -139,8 +139,23 @@ def test_a_value_that_is_not_only_items_is_refused(value):
         sequences.decode_items(value, explicit=False)
 
     assert str(raised.value) == "the value is not a sequence's items"
-    assert raised.value.__cause__ is None
+    assert raised.value.__cause__ is None and raised.value.__context__ is None
     assert "SENTINEL" not in repr(raised.value)
+
+
+def test_a_value_that_pydicom_cannot_decode_is_refused_without_its_error(
+    monkeypatch,
+):
+    def refuse(*_):
+        raise ValueError("SENTINEL")
+
+    monkeypatch.setattr(pydicom.values, "convert_SQ", refuse)
+
+    with pytest.raises(sequences.UnreadableItems) as raised:
+        sequences.decode_items(_implicit(ITEM, b""), explicit=False)
+
+    assert str(raised.value) == "the value is not a sequence's items"
+    assert raised.value.__cause__ is None and raised.value.__context__ is None
 
 
 def test_a_nested_sequence_of_defined_length_can_be_left_for_its_own_decoding():

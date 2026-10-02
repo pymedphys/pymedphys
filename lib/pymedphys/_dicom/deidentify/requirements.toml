@@ -555,7 +555,10 @@ When this Option is not specified, all Private Attributes shall be removed, as d
 status = "partial"
 milestone = "M3"
 decisions = ["D-028"]
-implementation = ["_dicom/deidentify/private_attributes.py"]
+implementation = [
+  "_dicom/deidentify/private_attributes.py",
+  "_dicom/deidentify/sequences.py",
+]
 tests = [
   "tests/dicom/test_deidentify_private_attributes.py::test_the_basic_profile_removes_every_private_attribute",
   "tests/dicom/test_deidentify_private_attributes.py::test_a_private_sequence_is_removed_with_everything_in_it",
@@ -570,6 +573,8 @@ tests = [
   "tests/dicom/test_deidentify_private_attributes.py::test_a_character_set_that_pydicom_does_not_map_as_given_is_refused",
   "tests/dicom/test_deidentify_private_attributes.py::test_a_character_set_stored_with_another_vr_is_refused",
   "tests/dicom/test_deidentify_private_attributes.py::test_a_sequence_stored_with_another_vr_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_a_malformed_sequence_read_from_explicit_vr_is_refused",
+  "tests/dicom/test_deidentify_private_attributes.py::test_items_nested_deeper_than_can_be_read_are_refused",
 ]
 note = '''
 Every element of an odd group, including private creators and the elements that PS3.5 does not allow, is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN, and a private sequence is removed with everything in it. A standard sequence that cannot be decoded exactly, that is stored with a VR other than SQ or UN, or whose items have a Specific Character Set that pydicom does not map as given or that is stored with another VR, is refused by its path; it is removed where a rule removes it or a sequence that holds it, and otherwise its instance is sequestered (D-028). Remaining: removing them from each instance the engine de-identifies (M3).
@@ -688,6 +693,7 @@ tests = [
   "tests/dicom/test_deidentify_compound_actions.py::test_x_z_sequesters_only_referenced_study_sequence_in_two_generated_iods",
   "tests/dicom/test_deidentify_references.py::test_reference_sites_include_the_rt_references",
   "tests/dicom/test_deidentify_references.py::test_an_unknown_value_whose_items_cannot_be_read_is_refused",
+  "tests/dicom/test_deidentify_references.py::test_a_sequence_whose_items_cannot_be_read_is_refused",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_consistent_collection_has_no_findings",
   "tests/dicom/test_deidentify_reference_graph.py::test_each_reference_resolves_to_its_instance",
   "tests/dicom/test_deidentify_reference_graph.py::test_a_reference_to_an_input_of_a_class_outside_table_b5_1_resolves",
@@ -696,6 +702,7 @@ tests = [
   "tests/dicom/test_deidentify_record_content.py::test_copies_in_implicit_and_explicit_vr_have_different_digests",
   "tests/dicom/test_deidentify_record_content.py::test_any_change_to_the_data_set_changes_the_digest",
   "tests/dicom/test_deidentify_record_content.py::test_a_file_whose_bytes_cannot_be_shown_sound_has_no_digest",
+  "tests/dicom/test_deidentify_record_content.py::test_a_file_whose_sequence_cannot_be_read_as_items_has_no_record",
   "tests/dicom/test_deidentify_record_content.py::test_the_digest_is_of_the_transfer_syntax_and_the_data_set_bytes",
   "tests/dicom/test_deidentify_record_content.py::test_a_left_out_element_that_holds_items_gives_no_digest",
   "tests/dicom/test_deidentify_record_content.py::test_padding_in_an_item_changes_the_digest",

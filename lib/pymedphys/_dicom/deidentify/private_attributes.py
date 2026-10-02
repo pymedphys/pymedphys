@@ -47,10 +47,12 @@ that holds it, even where pydicom's dictionary gives the attribute VR SQ.
 pydicom decodes some malformed values without an error, as items that leave
 out part of the value, so a value decoded here is accepted only if
 :func:`.sequences.decode_items` finds that it holds only items, and its items
-encode to the same bytes. pydicom writes the elements of
-those items as it read them, except a sequence of undefined length, which it
-decodes with the value, so that check does not see into a sequence of defined
-length nested in them. Each, at every depth, is decoded here and checked in
+encode to the same bytes. A raw value of VR SQ, from Explicit VR, is decoded
+by pydicom in place, and so written from its items, once
+:func:`.sequences.decode_items` finds that items fill it. pydicom writes the
+elements of those items as it read them, except a sequence of undefined
+length, which it decodes with the value, so that check does not see into a
+sequence of defined length nested in them. Each, at every depth, is decoded here and checked in
 the same way, with the character set of the item that holds it.
 
 An item's text is in the Specific Character Set (0008,0005) of the item, or
@@ -313,8 +315,10 @@ def _items(
     UN or of none, and a raw element in an item that :func:`_decoded` checked
     (``exact``), whose bytes pydicom would write as they are, are decoded and
     checked here, since pydicom can decode a malformed value without an
-    error; one that pydicom deferred is read first. A sequence that pydicom
-    decoded as it read it is used as it is.
+    error; one that pydicom deferred is read first. Any other raw value, of
+    VR SQ from Explicit VR, is decoded by pydicom in place, and written from
+    its items, once :func:`.sequences.decode_items` finds that items fill it.
+    A sequence that pydicom decoded as it read it is used as it is.
     """
     element: pydicom.DataElement | pydicom.dataelem.RawDataElement = dataset.get_item(
         tag, keep_deferred=True
@@ -330,6 +334,19 @@ def _items(
         exact or element.VR in (None, "UN")
     ):
         return _decoded(_raw_value(dataset, element, path), path, encodings), True
+    if isinstance(element, pydicom.dataelem.RawDataElement):
+        # Of VR SQ, from Explicit VR. pydicom decodes it in place, and it is
+        # then written from its items, but it reads malformed items silently.
+        try:
+            decode_items(
+                _raw_value(dataset, element, path) or b"",
+                explicit=True,
+                codecs=encodings,
+                little_endian=element.is_little_endian,
+                nested=False,
+            )
+        except UnreadableItems:
+            raise PrivateAttributeError(path) from None
     try:
         element = dataset[tag]
     except _DECODING_ERRORS:
