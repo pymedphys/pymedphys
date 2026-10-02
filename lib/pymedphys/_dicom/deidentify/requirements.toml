@@ -283,6 +283,7 @@ tests = [
   "tests/dicom/test_deidentify_conformance.py::test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_action",
   "tests/dicom/test_deidentify_conformance.py::test_every_ui_attribute_that_the_table_omits_is_listed_by_its_role",
   "tests/dicom/test_deidentify_conformance.py::test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_them",
+  "tests/dicom/test_deidentify_conformance.py::test_x_z_on_a_type_1_attribute_is_described_as_the_dummy_value",
   "tests/dicom/test_deidentify_conformance.py::test_the_dummy_values_are_those_that_d_writes",
   "tests/dicom/test_deidentify_conformance.py::test_the_key_and_the_scope_of_referential_integrity_are_described",
   "tests/dicom/test_deidentify_conformance.py::test_no_attribute_is_encrypted_for_later_reidentification",
