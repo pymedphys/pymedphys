@@ -39,8 +39,10 @@ de-identified or sequestered, the names of the files and directories that
 output is written to, the File Meta Information and zeroed preamble that
 replace the source file's, the first pass's graph of the references between
 instances, a reader that maps each byte of a written file to where it belongs,
-the verification that a written file keeps each kept element as its source
-encodes it, a search of written files for the source values that had to be
-removed or replaced, the removal of private attributes, and the conformance
+a writer that copies each kept element from its source's bytes and encodes
+only what changes, the verification that a written file keeps each kept
+element as its source encodes it, a search of written files for the source
+values that had to be removed or replaced, the removal of private
+attributes, and the conformance
 statement generated from a policy.
 """

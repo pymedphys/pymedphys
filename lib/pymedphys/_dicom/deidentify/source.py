@@ -126,6 +126,28 @@ class SourceEvidence:
         """Return where the element at ``path`` is; :class:`KeyError` if absent."""
         return self._elements[path]
 
+    def encoded(self, path: ElementPath) -> bytes:
+        """Return the element at ``path`` as in the file, header and value.
+
+        Raises
+        ------
+        KeyError
+            If the data set has no element at ``path``.
+        """
+        extent = self._elements[path]
+        return self._data[extent.start : extent.end]
+
+    def header(self, path: ElementPath) -> bytes:
+        """Return the header of the element at ``path``, as in the file.
+
+        Raises
+        ------
+        KeyError
+            If the data set has no element at ``path``.
+        """
+        extent = self._elements[path]
+        return self._data[extent.start : extent.value_start]
+
     def value_field(self, path: ElementPath) -> bytes:
         """Return the Value Field of the element at ``path``, as in the file.
 

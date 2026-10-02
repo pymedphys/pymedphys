@@ -310,7 +310,7 @@ def read_element(
                 "Repertoire, ISO 646",
             )
         # Reading is no more lenient than writing.
-        if problem := _character_set_problem(vr, plain, codecs):
+        if problem := character_set_problem(vr, plain, codecs):
             raise UndecodableElement(
                 path, f"could not be written back as VR {vr}, since {problem}"
             )
@@ -664,10 +664,10 @@ def written_value_problem(
     >>> written_value_problem("PN", "1", ["ΩΜΕΓΑ^ΑΛΦΑ"], ("UTF8",)) is None
     True
     """
-    return values_problem(vr, vm, values) or _character_set_problem(vr, values, codecs)
+    return values_problem(vr, vm, values) or character_set_problem(vr, values, codecs)
 
 
-def _character_set_problem(
+def character_set_problem(
     vr: str, values: Sequence[object], codecs: Sequence[str]
 ) -> str | None:
     """Return why text values could not be written in the codecs, or None."""
