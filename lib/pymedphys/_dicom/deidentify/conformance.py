@@ -418,7 +418,9 @@ def _attribute(
     return AttributeAction(tag, name, rule, applied.action, *places, given, reason)
 
 
-def _attributes(policy: Policy, rules: ElementRules | None) -> Iterator[AttributeAction]:
+def _attributes(
+    policy: Policy, rules: ElementRules | None
+) -> Iterator[AttributeAction]:
     names = {a.tag: a.name for a in load_data_dictionary().attributes}
     table = load_table_e1_1().attributes
     for row in table:
@@ -933,7 +935,10 @@ def render_markdown(statement: ConformanceStatement) -> str:
                     e.name,
                     e.rule,
                     _code(e.action)
-                    + (f", in place of {_code(e.policy_action)}" * bool(e.policy_action)),
+                    + (
+                        f", in place of {_code(e.policy_action)}"
+                        * bool(e.policy_action)
+                    ),
                     _resolution(e, statement.iods, sequences),
                 )
                 for e in statement.attributes

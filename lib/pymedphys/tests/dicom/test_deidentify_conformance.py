@@ -37,6 +37,7 @@ from pymedphys._dicom.deidentify import (
     uid_roles,
     uids,
 )
+from pymedphys._dicom.deidentify.element_rules import _ENGINE_GROUPS, _ENGINE_TAGS
 from pymedphys.tests.dicom.test_deidentify_method_digest import VOCABULARY
 
 INSTITUTION_NAME = "(0008,0080)"  # X/Z/D in the Basic Profile
@@ -576,7 +577,10 @@ def test_the_markers_are_said_to_depend_on_the_satisfied_options():
 
 
 # A tag of each masked row of Table E.1-1 that the row covers.
-CONCRETE = {"(50xx,xxxx)": "(5000,0010)", standard.PRIVATE_ATTRIBUTES_TAG: "(0009,0010)"}
+CONCRETE = {
+    "(50xx,xxxx)": "(5000,0010)",
+    standard.PRIVATE_ATTRIBUTES_TAG: "(0009,0010)",
+}
 ENGINE_REMOVED = {
     "(0000,1001)": "U",  # Requested SOP Instance UID
     "(0002,0003)": "U",  # Media Storage SOP Instance UID
@@ -658,8 +662,8 @@ def test_elements_that_no_row_covers_are_no_longer_pending(preset):
 def test_the_rules_for_other_elements_are_the_engines(name):
     other = _statement(name).other_elements
     assert other == conformance.OtherElements(
-        engine_groups=tuple(sorted(element_rules._ENGINE_GROUPS)),
-        engine_attributes=tuple(sorted(element_rules._ENGINE_TAGS)),
+        engine_groups=tuple(sorted(_ENGINE_GROUPS)),
+        engine_attributes=tuple(sorted(_ENGINE_TAGS)),
         text_vrs=tuple(sorted(element_rules.TEXT_VRS)),
         text_action=element_rules.UNCOVERED_TEXT_ACTION,
         kept_vrs=tuple(sorted(element_rules.KEPT_VRS)),
@@ -690,7 +694,7 @@ def test_the_rules_for_other_elements_are_described():
 
 
 def test_every_engine_group_has_its_reason():
-    assert set(conformance.ENGINE_GROUP_REASONS) == set(element_rules._ENGINE_GROUPS)
+    assert set(conformance.ENGINE_GROUP_REASONS) == set(_ENGINE_GROUPS)
 
 
 def test_a_policy_that_the_engine_refuses_lists_the_policys_actions():
