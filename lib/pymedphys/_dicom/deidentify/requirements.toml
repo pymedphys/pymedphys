@@ -424,9 +424,16 @@ tests = [
   "tests/dicom/test_deidentify_reviewed_roi_names.py::test_reviewed_decisions_are_reused_on_later_runs",
   "tests/dicom/test_deidentify_reviewed_roi_names.py::test_the_list_is_refused_inside_a_protected_directory",
   "tests/dicom/test_deidentify_reviewed_roi_names.py::test_the_list_never_shows_a_name",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_reviewers_decision_to_keep_map_or_empty_a_name_is_applied",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_bulk_rename_applies_to_every_structure_set_with_the_name",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_name_neither_renamed_nor_reviewed_is_held_with_the_automatic_reason",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_held_name_is_emptied_only_when_the_user_chooses_so",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_reviewed_name_that_echoes_an_identifier_is_held",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_different_names_that_would_be_written_as_one_name_are_held",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_the_review_queue_lists_each_distinct_held_name_once",
 ]
 note = '''
-The first supported release includes the Option for ROI names (D-009). The automatic tier decides, for the ROI names of one structure set, which are written in the spelling of the TG-263 spreadsheet's published edition, whose entries' digest the module records, because they match one of its names once case, spaces, and the separators `_` and `-` are disregarded (a hyphen in a vocabulary name, which TG-263 writes for a subtraction, must be matched by one, and a name starting with `_`, which TG-263 gives a structure not used for dose evaluation, or `-` goes to review), and which go to review, because they match none or several, echo a known patient or other person identifier, or would duplicate a differently spelt name of the same structure set. A name so written is cleaned, not retained, so it needs no review before the claim. The reviewed-names list, which the custodian keeps outside output and QC directories and which names no value in its errors or `repr`, records a reviewer's decision to keep, map, or empty each other name, for reuse on later runs. Remaining: applying these decisions to each data set (M3); applying the list's decisions to the names the automatic tier does not rename, and holding an instance whose names nobody has reviewed unless the user chooses explicitly to empty such names, and recording each rename in the QC material (M4); vocabularies converted from an institutional list, every match against which goes to review; and claiming the Option only for output whose retained descriptors have passed pooled human review, which needs the QC pack (M4).
+The first supported release includes the Option for ROI names (D-009). The automatic tier decides, for the ROI names of one structure set, which are written in the spelling of the TG-263 spreadsheet's published edition, whose entries' digest the module records, because they match one of its names once case, spaces, and the separators `_` and `-` are disregarded (a hyphen in a vocabulary name, which TG-263 writes for a subtraction, must be matched by one, and a name starting with `_`, which TG-263 gives a structure not used for dose evaluation, or `-` goes to review), and which go to review, because they match none or several, echo a known patient or other person identifier, or would duplicate a differently spelt name of the same structure set. A name so written is cleaned, not retained, so it needs no review before the claim. The reviewed-names list, which the custodian keeps outside output and QC directories and which names no value in its errors or `repr`, records a reviewer's decision to keep, map, or empty each other name, for reuse on later runs. The reviewed tier applies the list's decisions to the names the automatic tier does not rename; checks what a kept or mapped name would write for echoes and for duplicates, ignoring case, as the automatic tier does; holds every other name, or empties it where the user chooses so explicitly; and collects the distinct held names for review, with counts by reason that carry no name. Remaining: applying these decisions to each data set and holding instances in the staging area (M3); writing the held names and each rename to the QC material, and the reviewer's workflow for recording decisions (M4); the list's keyed digest in the method digest (D-024); vocabularies converted from an institutional list, every match against which goes to review; and claiming the Option only for output whose retained descriptors have passed pooled human review, which needs the QC pack (M4).
 '''
 
 [[requirement]]
@@ -899,16 +906,18 @@ status = "partial"
 milestone = "M4"
 decisions = ["D-009", "D-017", "D-022", "D-027"]
 implementation = [
+  "_dicom/deidentify/reviewed_roi_names.py",
   "_dicom/deidentify/roi_names.py",
   "_dicom/deidentify/supplementary_actions.py",
 ]
 tests = [
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_reviewed_name_that_echoes_an_identifier_is_held",
   "tests/dicom/test_deidentify_roi_names.py::test_a_name_that_echoes_a_known_identifier_goes_to_review",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text",
 ]
 note = '''
-Under the Basic Profile, every text attribute that a supported IOD uses is removed or replaced, by Table E.1-1 or a reviewed supplementary rule, except coded and technical values and De-identification Method, which the engine adds to (D-022). Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocabulary only where it matches one of its names and echoes no known patient or other person identifier, and goes to review otherwise (D-009). Remaining: applying the actions to each data set (M3); and the review of descriptors with pooled human review, the residual search, and reporting indicators of burned-in text, since the engine does not change pixel data (M4).
+Under the Basic Profile, every text attribute that a supported IOD uses is removed or replaced, by Table E.1-1 or a reviewed supplementary rule, except coded and technical values and De-identification Method, which the engine adds to (D-022). Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocabulary only where it matches one of its names and echoes no known patient or other person identifier, and goes to review otherwise; a reviewer's decision to keep or map a name is applied only where what it would write echoes no such identifier (D-009). Remaining: applying the actions to each data set (M3); and the review of descriptors with pooled human review, the residual search, and reporting indicators of burned-in text, since the engine does not change pixel data (M4).
 '''
 
 [[requirement]]
