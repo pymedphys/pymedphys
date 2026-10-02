@@ -43,12 +43,49 @@ from .conformance_values import code as _code
 from .conformance_values import join as _join
 from .markers import PROFILE_CODE
 from .policy import TARGET_OPTIONS
+from .reviewed_roi_names import Outcome, Review
+from .roi_names import Reason
 from .standard import (
     _RESERVED_ODD_GROUPS,
     OPTIONS,
     PRIVATE_ATTRIBUTES_TAG,
     load_data_dictionary,
     load_table_e1_1a,
+)
+
+_ROI_NAME_NAMED = "ROI Name (3006,0026)"
+# Why the automatic tier sends a ROI Name to review rather than renaming it.
+ROI_REVIEW_REASONS: Mapping[Reason, str] = types.MappingProxyType(
+    {
+        Reason.UNMATCHED: "it matches no vocabulary name, including where it "
+        "holds a character outside printable ASCII, or starts with `_` or `-` "
+        "once its padding is removed, since TG-263 marks a structure not used "
+        "for dose evaluation with a leading `_`, so `_Heart` is not `Heart`",
+        Reason.AMBIGUOUS: "it matches more than one vocabulary name",
+        Reason.ECHOES_IDENTIFIER: "it, or the vocabulary name it would take, "
+        "echoes a known patient or other person identifier of the instance: a "
+        "word of more than one character is a word of the identifier, or the "
+        "whole name equals the whole identifier, once case and characters "
+        "that are not letters or digits are disregarded",
+        Reason.WOULD_DUPLICATE: "another, differently spelt ROI Name of the "
+        "same structure set would be written as the same name",
+    }
+)
+# What is written for a ROI Name after both tiers.
+ROI_OUTCOMES: Mapping[Outcome, str] = types.MappingProxyType(
+    {
+        Outcome.RENAMED: "the vocabulary's spelling, where the automatic tier "
+        "renames the name",
+        Outcome.EMPTY: "an empty value, where the name is empty once its "
+        "padding is removed",
+        Outcome.KEPT: "the name as it is, where a reviewer kept it",
+        Outcome.MAPPED: "the reviewer's name, where a reviewer mapped it",
+        Outcome.EMPTIED: "an empty value, where a reviewer had it emptied",
+        Outcome.HELD: "nothing, where the name is held: its instance waits in "
+        "the staging area for review",
+        Outcome.EMPTIED_UNREVIEWED: "an empty value, where the name is held "
+        "and the run was told to empty held names rather than wait for review",
+    }
 )
 
 # What each group that the engine removes from a data set holds.
@@ -289,6 +326,72 @@ def _other(statement: ConformanceStatement, named: Callable[[str], str]) -> list
     ]
 
 
+def _roi_names(statement: ConformanceStatement) -> list[str]:
+    """Describe how ROI Names are cleaned, where the policy gives ROI Name C."""
+    cleaning = statement.roi_names
+    if cleaning is None:
+        return []
+    if cleaning.edition is not None:
+        automatic = (
+            "The run's vocabulary is the published edition of the TG-263 "
+            f"Structure Spreadsheet `{cleaning.edition}`, whose entries have "
+            f"the digest `{statement.vocabulary_digest}`. A ROI Name that "
+            "matches one of its names, primary or reverse-order, once case, "
+            "spaces, and the separators `_` and `-` are disregarded, is "
+            "written in the vocabulary's spelling, so `lung l` and `LUNG-L` "
+            "both become `Lung_L`. TG-263 writes `-` for a subtraction, as in "
+            "`Lungs-PTV`, so a vocabulary name that contains `-` matches only "
+            "a name with `-` in the same place."
+        )
+    elif statement.vocabulary_digest is None:
+        automatic = (
+            "This statement is for a run without a vocabulary, so no ROI Name "
+            "is renamed automatically. With a published edition of the TG-263 "
+            "Structure Spreadsheet, a ROI Name that matches one of its names "
+            "once case, spaces, and the separators `_` and `-` are disregarded "
+            "is written in the vocabulary's spelling, so `lung l` and `LUNG-L` "
+            "both become `Lung_L`."
+        )
+    else:
+        automatic = (
+            "The run's vocabulary is not a published edition of the TG-263 "
+            "Structure Spreadsheet, so no ROI Name is renamed automatically: "
+            "only the generic names that AAPM publishes, such as `lung l` "
+            "and `LUNG-L` written as `Lung_L`, are written without review."
+        )
+    reviews = _join((f"`{review.value}`" for review in Review), "or")
+    return [
+        "## Cleaning ROI names",
+        "",
+        f"The policy gives {_ROI_NAME_NAMED} C, which is done in two tiers "
+        "(D-009). The first renames a name automatically against the TG-263 "
+        "vocabulary; every other name takes a reviewer's decision.",
+        "",
+        automatic,
+        "",
+        "The automatic tier sends a name to review, rather than renaming it, where:",
+        "",
+        *(f"- {text};" for text in list(ROI_REVIEW_REASONS.values())[:-1]),
+        f"- or {list(ROI_REVIEW_REASONS.values())[-1]}.",
+        "",
+        f"Every other name takes the reviewer's decision, {reviews}, that the "
+        "site's or project's reviewed list holds for exactly its spelling, once "
+        "its padding is removed; `empty` writes an empty value. The custodian "
+        "keeps the list with the key, since it holds source names verbatim, "
+        "and it is never written to the output. What would then be written "
+        "is checked again: a kept or mapped name that echoes an identifier "
+        "of the instance, and different names of one structure set that "
+        "would be written as the same name, ignoring case, are held, as is "
+        "a name the list does not cover.",
+        "",
+        "For each ROI Name, the engine writes:",
+        "",
+        *(f"- {text};" for text in list(ROI_OUTCOMES.values())[:-1]),
+        f"- or {list(ROI_OUTCOMES.values())[-1]}.",
+        "",
+    ]
+
+
 def _inserted(
     statement: ConformanceStatement,
     named: Callable[[str], str],
@@ -504,6 +607,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         *_superseded(statement),
         "",
         *_other(statement, named),
+        *_roi_names(statement),
         *conformance_values.values_written(named),
         "",
         *conformance_values.dates_and_times(statement, named, option),
