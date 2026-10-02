@@ -190,12 +190,10 @@ CLEANED_SEQUENCES = {
 }
 
 # The reviewed rules for attributes of other VRs that Table E.1-1 omits:
-# the 12 URI and URL attributes, seven sequences whose content can identify
+# ten of the 12 URI and URL attributes, seven sequences whose content can identify
 # an institution or other patients or say something about the patient, ICC
 # Profile, and MAC Parameters Sequence.
 URIS = {
-    "(0008,010E)": "CodingSchemeURL",
-    "(0008,0120)": "URNCodeValue",
     "(0008,0407)": "StoredInstanceBaseURI",
     "(0008,0408)": "FolderAccessURI",
     "(0008,0409)": "FileAccessURI",
@@ -228,9 +226,12 @@ PATIENT_MEASURES = {
     "(0010,1024)": "MeasuredLateralDimension",
 }
 NEW_RULES = {**URIS, **SEQUENCES, **OTHER_REMOVED, **PATIENT_MEASURES}
-# The UR attributes that the first supported release's IODs require at a
+# The two UR attributes that name coding concepts and schemes, which the
+# maintainer decided on 1 October 2026 to keep.
+KEPT_URIS = {"(0008,010E)": "CodingSchemeURL", "(0008,0120)": "URNCodeValue"}
+# The UR attribute that the first supported release's IODs require at a
 # place that no removed sequence encloses, so that X/Z/D resolves to D there.
-REQUIRED_URIS = {"(0008,010E)", "(0008,0120)", "(0028,7FE0)"}
+REQUIRED_URIS = {"(0028,7FE0)"}
 
 
 @functools.cache
@@ -508,7 +509,18 @@ def test_the_new_rules_cover_every_uri_that_table_e1_1_omits():
         if "UR" in attribute.vrs and tag not in listed
     }
 
-    assert omitted == set(URIS)
+    assert omitted == set(URIS) | set(KEPT_URIS)
+
+
+@pytest.mark.parametrize("tag, keyword", KEPT_URIS.items())
+def test_the_urls_that_name_coding_concepts_and_schemes_are_kept(tag, keyword):
+    rule = supplementary_actions.load_supplementary_actions().rules[tag]
+
+    assert (rule.keyword, rule.action, dict(rule.options)) == (keyword, "K", {})
+    for composed in _usable_policies():
+        assert ElementRules(composed).rule(tag) == ElementRule(
+            tag, SUPPLEMENTARY, "K", tag
+        )
 
 
 def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
