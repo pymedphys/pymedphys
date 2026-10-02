@@ -14,6 +14,7 @@
 
 """Where an instance refers to others, from PS3.3, and what an instance record holds."""
 
+import dataclasses
 import pickle
 import struct
 
@@ -354,7 +355,7 @@ def test_a_record_holds_the_identity_without_padding():
     synthetic.uid(dataset, "SeriesInstanceUID", synthetic.PLAN_SERIES + " \x00")
     synthetic.uid(dataset, "StudyInstanceUID", synthetic.STUDY + "\x00")
 
-    record = InstanceRecord.from_dataset(dataset)
+    record = synthetic.record(dataset)
 
     assert record.iod == "RT Plan"
     assert (record.sop_instance, record.series, record.study) == (
@@ -371,7 +372,7 @@ def test_a_record_holds_the_identity_without_padding():
 
 @pytest.mark.pydicom
 def test_a_record_finds_references_in_nested_items():
-    record = InstanceRecord.from_dataset(synthetic.structure_set())
+    record = synthetic.record(synthetic.structure_set())
 
     found = sorted(
         (reference.site.attribute, reference.site.level.value, reference.target)
@@ -406,7 +407,7 @@ def test_a_record_keeps_the_referenced_sop_class():
         synthetic.reference(None, synthetic.CT_SLICES[0])
     ]
 
-    record = InstanceRecord.from_dataset(dataset)
+    record = synthetic.record(dataset)
 
     assert {
         reference.site.attribute: reference.target_class
@@ -440,7 +441,7 @@ def test_an_empty_value_is_absent_only_where_the_site_is_type_3(
         for value in ["", "\x00", " \x00", [synthetic.PLAN, synthetic.PLAN]]
     ]
 
-    record = InstanceRecord.from_dataset(dataset)
+    record = synthetic.record(dataset)
 
     # Two values are not empty, whatever the Type.
     assert len(record.references) == (4 if kept else 1)
@@ -463,7 +464,7 @@ def test_an_instance_without_generated_iod_tables_has_no_references(sop_class):
     if sop_class is not None:
         synthetic.uid(dataset, "SOPClassUID", sop_class)
 
-    record = InstanceRecord.from_dataset(dataset)
+    record = synthetic.record(dataset)
 
     assert record.iod is None
     assert record.references == ()
@@ -481,7 +482,7 @@ def test_a_record_finds_references_of_a_generated_iod_beyond_the_first_release()
         ],
     )
 
-    record = InstanceRecord.from_dataset(dataset)
+    record = synthetic.record(dataset)
 
     assert record.iod == "MR Image"
     (reference,) = record.references
@@ -541,7 +542,7 @@ def test_a_record_finds_references_in_functional_groups():
         PerFrameFunctionalGroupsSequence=[frame(), frame(synthetic.CT_SLICES[1])],
     )
 
-    record = InstanceRecord.from_dataset(dataset)
+    record = synthetic.record(dataset)
 
     assert record.iod == "Segmentation"
     assert [
@@ -555,7 +556,7 @@ def test_a_record_finds_references_in_functional_groups():
 
 @pytest.mark.pydicom
 def test_a_record_shows_no_values():
-    record = InstanceRecord.from_dataset(synthetic.structure_set())
+    record = synthetic.record(synthetic.structure_set())
 
     assert repr(record) == "InstanceRecord(iod='RT Structure Set')"
     assert record.references
@@ -567,45 +568,43 @@ def test_a_record_shows_no_values():
 @pytest.mark.pydicom
 def test_a_record_can_be_pickled():
     # Discovery can then build records in worker processes.
-    record = InstanceRecord.from_dataset(synthetic.structure_set())
+    record = synthetic.record(synthetic.structure_set())
 
     assert pickle.loads(pickle.dumps(record)) == record
 
 
 @pytest.mark.pydicom
-def test_recording_leaves_the_data_set_unchanged():
-    def padded_structure_set():
-        dataset = synthetic.structure_set()
-        synthetic.uid(dataset, "SOPInstanceUID", synthetic.STRUCTURE_SET + "\x00")
-        return dataset
+@pytest.mark.parametrize("kind", [bytearray, memoryview])
+def test_a_record_is_built_from_a_copy_of_the_file(kind):
+    data = synthetic.written(synthetic.structure_set())
+    given = kind(bytearray(data))
 
-    dataset = padded_structure_set()
+    record = InstanceRecord.from_file(given)
 
-    InstanceRecord.from_dataset(dataset)
+    assert record == InstanceRecord.from_file(data)
+    assert bytes(given) == data
 
-    assert dataset == padded_structure_set()
-    assert dataset.SOPInstanceUID == synthetic.STRUCTURE_SET + "\x00"
+
+def _without_digest(record):
+    return dataclasses.replace(record, digest=None)
 
 
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
-@pytest.mark.parametrize(
-    "transfer_syntax",
-    ["1.2.840.10008.1.2", "1.2.840.10008.1.2.1"],
-    ids=["implicit-vr", "explicit-vr"],
-)
-def test_a_record_read_from_a_file_matches_the_data_set(transfer_syntax):
+def test_a_record_has_the_same_references_in_either_little_endian_syntax():
+    # Only the digest, which compares source bytes, differs.
     dataset = synthetic.structure_set()
     # A UID of odd length is written with a trailing NUL (PS3.5 Section 9.1).
     dataset.PredecessorStructureSetSequence = [
         synthetic.reference(synthetic.RT_STRUCTURE_SET_STORAGE, "2.25.3011")
     ]
-    expected = InstanceRecord.from_dataset(dataset)
 
-    read = synthetic.written_and_read(dataset, transfer_syntax)
+    implicit = synthetic.record(dataset, synthetic.IMPLICIT_VR_LITTLE_ENDIAN)
+    explicit = synthetic.record(dataset, synthetic.EXPLICIT_VR_LITTLE_ENDIAN)
 
-    assert InstanceRecord.from_dataset(read) == expected
-    assert len(expected.references) == 9
+    assert _without_digest(implicit) == _without_digest(explicit)
+    assert implicit.digest != explicit.digest
+    assert len(explicit.references) == 9
 
 
 ITEM_TAG = 0xFFFEE000
@@ -693,19 +692,19 @@ def test_a_sequence_held_as_unknown_is_decoded_with_its_dictionary_vr(
     monkeypatch, build
 ):
     # PS3.5 Section 6.2.2 lets a reader that knows the VR of a UN value decode
-    # it as Implicit VR Little Endian. The value is encoded here, so the test
-    # does not depend on which attributes pydicom knows.
+    # it as Implicit VR Little Endian. The value is encoded here, and written
+    # as UN in Explicit VR, so the test does not depend on which attributes
+    # pydicom knows.
     dataset, tag, attribute, value = build()
-    expected = InstanceRecord.from_dataset(dataset)
+    expected = synthetic.record(dataset)
     dataset[tag] = _unknown(monkeypatch, tag, value)
+    data = synthetic.written(dataset)
+    assert synthetic.read(data)[tag].VR == "UN"
 
-    record = InstanceRecord.from_dataset(dataset)
+    record = InstanceRecord.from_file(data)
 
-    assert record == expected
+    assert _without_digest(record) == _without_digest(expected)
     assert attribute in {reference.site.attribute for reference in record.references}
-    # The data set is unchanged.
-    assert dataset[tag].VR == "UN"
-    assert dataset[tag].value == value
 
 
 @pytest.mark.pydicom
@@ -721,14 +720,13 @@ def test_a_record_read_from_implicit_vr_has_the_references_in_unknown_sequences(
 ):
     # pydicom 3.0.2 reads each of these sequences as UN from Implicit VR
     # Little Endian, since it does not know them; a pydicom that knows them
-    # reads them as SQ. Either way, the record is the same.
+    # reads them as SQ. Either way, the record has the same references.
     dataset, _, attribute, _ = build()
-    expected = InstanceRecord.from_dataset(dataset)
+    expected = synthetic.record(dataset)
 
-    read = synthetic.written_and_read(dataset, "1.2.840.10008.1.2")
-    record = InstanceRecord.from_dataset(read)
+    record = synthetic.record(dataset, synthetic.IMPLICIT_VR_LITTLE_ENDIAN)
 
-    assert record == expected
+    assert _without_digest(record) == _without_digest(expected)
     assert attribute in {reference.site.attribute for reference in record.references}
 
 
@@ -753,9 +751,10 @@ def test_an_unknown_value_is_decoded_only_where_the_dictionary_gives_sq(
     dataset = synthetic.rt_plan()
     number = int(tag[1:5] + tag[6:10], 16)
     dataset[number] = _unknown(monkeypatch, number, value)
-    assert dataset[number].VR == "UN"
+    data = synthetic.written(dataset)
+    assert synthetic.read(data)[number].VR == "UN"
 
-    record = InstanceRecord.from_dataset(dataset)
+    record = InstanceRecord.from_file(data)
 
     assert [reference.target for reference in record.references] == (
         ["2.25.9030"] if found else []
@@ -781,7 +780,7 @@ def test_an_unknown_value_is_decoded_as_implicit_vr_whatever_its_lengths(
             )
         )
     )
-    expected = InstanceRecord.from_dataset(dataset)
+    expected = synthetic.record(dataset)
     documents = _encoded_items(
         *(_encoded_reference(synthetic.ENCAPSULATED_PDF_STORAGE, uid) for uid in uids)
     )
@@ -790,10 +789,12 @@ def test_an_unknown_value_is_decoded_as_implicit_vr_whatever_its_lengths(
     dataset[tag] = _unknown(
         monkeypatch, tag, _encoded_items([_encoded(0x00380100, documents)])
     )
+    data = synthetic.written(dataset)
+    assert synthetic.read(data)[tag].VR == "UN"
 
-    record = InstanceRecord.from_dataset(dataset)
+    record = InstanceRecord.from_file(data)
 
-    assert record == expected
+    assert _without_digest(record) == _without_digest(expected)
     assert [
         reference.target
         for reference in record.references
@@ -807,10 +808,12 @@ def test_an_unknown_value_of_zero_length_has_no_items(monkeypatch):
     dataset = synthetic.rt_plan()
     tag = synthetic.RT_ASSERTIONS_SEQUENCE
     dataset[tag] = _unknown(monkeypatch, tag, None)
+    data = synthetic.written(dataset)
+    assert synthetic.read(data)[tag].VR == "UN"
 
-    record = InstanceRecord.from_dataset(dataset)
+    record = InstanceRecord.from_file(data)
 
-    plain = InstanceRecord.from_dataset(synthetic.rt_plan())
+    plain = synthetic.record(synthetic.rt_plan())
     assert record.references == plain.references
-    # The empty element is still part of the data set's content.
+    # The empty element is still part of the source bytes.
     assert record.digest != plain.digest

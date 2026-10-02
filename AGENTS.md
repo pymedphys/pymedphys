@@ -521,10 +521,12 @@ Do not add tests that restate a declared dependency constraint or the locked
 version. The lockfile checks and CI's locked environment already cover them.
 
 The `dependency-floors` job in `.github/workflows/unit-tests.yml` runs the unit
-tests with NumPy and pandas at their declared minimum versions. When a change
-needs a newer NumPy or pandas, raise the minimum in `pyproject.toml` and the
-versions pinned in that job together, rather than working around a failure
-there.
+tests with NumPy and pandas at their declared minimum versions, and the
+`pydicom-versions` job runs the de-identification tests with pydicom at its
+declared minimum. When a change needs a newer NumPy, pandas, or pydicom, or a
+minimum is raised for another reason such as a security fix, raise the minimum
+in `pyproject.toml` and the version pinned in that job together, rather than
+working around a failure there.
 
 ### GitHub Actions Pins and Dependabot
 
