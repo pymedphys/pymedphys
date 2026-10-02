@@ -81,9 +81,8 @@ Elements are named by their paths, never by their values. Finding them decodes
 no value but those of sequences and of Specific Character Set (0008,0005), so
 no private value is decoded. pydicom's warnings and log records can quote the
 values that it decodes, so the search runs within
-:func:`pymedphys._dicom.anonymise.diagnostics.redacted_pydicom_diagnostics`,
-which ignores pydicom's warnings for the rest of the process and summarises
-its log records while the search runs. pydicom's errors, whose messages can
+:func:`.diagnostics.redacted_diagnostics`, which summarises pydicom's
+warnings and log records while the search runs. pydicom's errors, whose messages can
 also quote a value, are replaced by :class:`PrivateAttributeError`, not
 chained to it. The File Meta Information is not part of the data set; the
 design has the engine replace it whole.
@@ -102,8 +101,8 @@ from collections.abc import Sequence
 
 from pymedphys._imports import pydicom
 
-from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
 
+from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
 from .policy import Policy, PolicyError, refuse_retain_safe_private
 from .sequences import UnreadableItems, decode_items
@@ -119,8 +118,17 @@ _TOP_LEVEL_CHARACTER_SET = ElementPath((), "(0008,0005)")
 # What pydicom raises when it cannot decode a value as items. Raising its
 # validation errors, it raises LookupError for a character set that it does
 # not know, and KeyError, a LookupError, for an element without a VR whose
-# attribute its dictionary does not list.
-_DECODING_ERRORS = (EOFError, LookupError, OSError, ValueError, struct.error)
+# attribute its dictionary does not list. Where the caller's warning filters
+# turn pydicom's warnings into errors, it raises the warning, whose message
+# can quote a value.
+_DECODING_ERRORS = (
+    EOFError,
+    LookupError,
+    OSError,
+    ValueError,
+    struct.error,
+    Warning,
+)
 _Items = tuple[tuple[str, int], ...]
 
 
@@ -201,7 +209,7 @@ def private_attribute_paths(
     ['(0009,0010)', '(0009,1001)', '(300A,00B0)[1] > (300B,0010)']
     """
     _check(policy)
-    with redacted_pydicom_diagnostics():
+    with redacted_diagnostics():
         encodings = _encodings(dataset, None, _TOP_LEVEL_CHARACTER_SET)
         return tuple(_visit(dataset, (), encodings, remove=False))
 
@@ -239,7 +247,7 @@ def without_private_attributes(
         As :func:`private_attribute_paths` raises it.
     """
     _check(policy)
-    with redacted_pydicom_diagnostics():
+    with redacted_diagnostics():
         result = copy.deepcopy(dataset)
         encodings = _encodings(result, None, _TOP_LEVEL_CHARACTER_SET)
         _visit(result, (), encodings, remove=True)
