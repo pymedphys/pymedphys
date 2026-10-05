@@ -39,24 +39,46 @@ list, never from DICOM data directly, and the check is a backstop: a field
 of another form, which could be a source value or a path outside the
 package, is refused. A field that fails is named, never quoted.
 
-The sections that describe a run's instances, such as residual search
-findings and sequestered instances, are to follow.
+Two sections describe a run's instances, by attribute tags and reason codes
+that the engine defines, never by a value or a path:
+
+- ``sequestered``: each instance that was sequestered, by a label that
+  :func:`sequestration_labels` gives at random for the run, with each
+  reason (D-026). A sequestered instance has no output name, and the label
+  holds nothing of the instance or its place in the run; only the
+  confidential QC pack maps labels to sources (D-016).
+- ``search_coverage``: how many source values of each attribute the
+  residual search did not search, in full or in part, by reason (D-027),
+  from :func:`search_coverage`. The QC pack lists each by instance and
+  place.
+
+The residual search's findings, and the stage that sequesters an instance
+for them, are to follow.
 """
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import json
+import random
 import re
-from collections.abc import Mapping
+import secrets
+from collections.abc import Iterable, Mapping
 
 from pymedphys._nomenclature import tg263
 
 from . import method_digest
 from .method_digest import MethodDigestComponents
+from .file_layout import TAG_PATTERN, ElementPath
 from .policy import PRESETS, Policy
+from .reference_graph import FindingKind
+from .residuals import NotSearched, Omission, Unsearched, UnsearchedReason
 from .runtime import RuntimeEnvironment, runtime_environment
-from .standard import OPTIONS
+from .scope import Disposition
+from .source import SourceReason
+from .standard import OPTIONS, VRS
+from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
 FORMAT = "pymedphys-deid-release-report/2"
@@ -70,6 +92,24 @@ _VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+!_-]{0,63}")
 # ".." or a cache), and a table, which is a JSON file of the tables' folder.
 _NAME = re.compile(r"[0-9A-Za-z_][0-9A-Za-z_.-]*")
 _TABLE = re.compile(r"[0-9A-Za-z_][0-9A-Za-z_.-]*\.json")
+# The form of a sequestered instance's label, which the QC pack maps.
+LABEL_PATTERN = re.compile(r"S-[0-9]{4,}")
+_ATTRIBUTE = re.compile(rf"{TAG_PATTERN.pattern}( > {TAG_PATTERN.pattern})*")
+_ACTIONS = frozenset({"K", "X", "Z", "D", "U", "C"})
+
+# The reason codes of each stage that sequesters an instance.
+_SEQUESTERING = {
+    "scope": frozenset(d.value for d in Disposition) - {Disposition.SUPPORTED.value},
+    "admission": frozenset(r.value for r in SourceReason),
+    "references": frozenset(
+        {
+            FindingKind.MISSING_IDENTIFIER.value,
+            FindingKind.CONFLICTING_INSTANCE.value,
+            FindingKind.SERIES_IN_SEVERAL_STUDIES.value,
+        }
+    ),
+    "walker": frozenset(r.value for r in SequesterReason),
+}
 
 
 class ReleaseReportError(ValueError):
@@ -104,19 +144,195 @@ class PolicyRecord:
 
 
 @dataclasses.dataclass(frozen=True)
+class SequestrationReason:
+    """Why an instance was sequestered, by codes that the engine defines.
+
+    Attributes
+    ----------
+    stage : str
+        What sequestered it: ``"scope"``, ``"admission"`` (a source file
+        refused, which is set aside like any sequestered instance),
+        ``"references"`` (the first pass's reference graph), or
+        ``"walker"``.
+    code : str
+        The stage's reason code, such as ``"conflicting-instance"``.
+    attribute : str or None
+        For the walker, and only for it, the attribute's tags from the
+        outermost sequence, without items, such as
+        ``"(0010,1002) > (0010,0020)"``.
+    action : str or None
+        For the walker, and only for it, the action at that place, such as
+        ``"D"``.
+    vr : str or None
+        For the walker, the VR that the action met, if known; None for every
+        other stage.
+    """
+
+    stage: str
+    code: str
+    attribute: str | None = None
+    action: str | None = None
+    vr: str | None = None
+
+
+@dataclasses.dataclass(frozen=True)
+class SequesteredInstance:
+    """An instance that was sequestered, as a release report names it (D-026).
+
+    Attributes
+    ----------
+    label : str
+        Its label for the run, from :func:`sequestration_labels`.
+    reasons : tuple of SequestrationReason
+    """
+
+    label: str
+    reasons: tuple[SequestrationReason, ...]
+
+
+@dataclasses.dataclass(frozen=True)
+class SearchCoverage:
+    """How many source values of an attribute were not searched, and why.
+
+    Attributes
+    ----------
+    attribute : str
+        The attribute's tags from the outermost sequence, without items.
+    reason : str
+        An :class:`~pymedphys._dicom.deidentify.residuals.Omission` or an
+        :class:`~pymedphys._dicom.deidentify.residuals.UnsearchedReason`, as
+        its value, such as ``"too-short"``.
+    count : int
+    """
+
+    attribute: str
+    reason: str
+    count: int
+
+
+@dataclasses.dataclass(frozen=True)
 class ReleaseReport:
-    """The parts of a release report that do not depend on a run's instances.
+    """A release report's record of the method, the runtime, and the run.
 
     Attributes
     ----------
     policy : PolicyRecord
     method : ~pymedphys._dicom.deidentify.method_digest.MethodDigestComponents
     runtime : ~pymedphys._dicom.deidentify.runtime.RuntimeEnvironment
+    sequestered : tuple of SequesteredInstance
+    search_coverage : tuple of SearchCoverage
     """
 
     policy: PolicyRecord
     method: MethodDigestComponents
     runtime: RuntimeEnvironment
+    sequestered: tuple[SequesteredInstance, ...] = ()
+    search_coverage: tuple[SearchCoverage, ...] = ()
+
+
+def attribute_tags(path: ElementPath) -> str:
+    """Return an element's tags from the outermost sequence, without items.
+
+    >>> attribute_tags(ElementPath((("(0010,1002)", 3),), "(0010,0020)"))
+    '(0010,1002) > (0010,0020)'
+    """
+    return " > ".join([*(tag for tag, _ in path.items), path.tag])
+
+
+def sequestration_reason(
+    cause: Disposition | SourceReason | FindingKind | Sequestration,
+) -> SequestrationReason:
+    """Return the reason that a stage gives for sequestering an instance.
+
+    Raises
+    ------
+    ValueError
+        For a disposition or finding that does not sequester an instance:
+        :attr:`~.scope.Disposition.SUPPORTED`; a dangling reference or an
+        identical duplicate, which are reported only; or a study with
+        several patients, which stops the run instead. An instance missing
+        an identifier is sequestered, as the run pipeline does by default.
+    TypeError
+        For anything else.
+    """
+    if isinstance(cause, Sequestration):
+        return SequestrationReason(
+            "walker",
+            cause.reason.value,
+            attribute_tags(cause.path),
+            cause.action,
+            cause.vr,
+        )
+    stages = {
+        Disposition: "scope",
+        SourceReason: "admission",
+        FindingKind: "references",
+    }
+    stage = stages.get(type(cause))  # type: ignore[arg-type]
+    if stage is None:
+        raise TypeError("a reason must come from a stage that sequesters instances")
+    if cause.value not in _SEQUESTERING[stage]:
+        raise ValueError(f"{type(cause).__name__}.{cause.name} does not sequester")
+    return SequestrationReason(stage, cause.value)
+
+
+def sequestration_labels(
+    count: int, *, rng: random.Random | None = None
+) -> tuple[str, ...]:
+    """Return a label for each of ``count`` sequestered instances, at random.
+
+    The labels are ``S-0001`` to ``S-n``, all with the same number of
+    digits, at least four, given in an order drawn from ``rng``, by default the
+    operating system's source of randomness, so that a label says nothing
+    of an instance or of its place in the run (D-026). Only the QC pack maps
+    labels to sources.
+    """
+    labels = _labels(count)
+    (rng or secrets.SystemRandom()).shuffle(labels)
+    return tuple(labels)
+
+
+def _labels(count: int) -> list[str]:
+    width = max(4, len(str(count)))
+    return [f"S-{number:0{width}d}" for number in range(1, count + 1)]
+
+
+def search_coverage(
+    instances: Iterable[Iterable[NotSearched | Unsearched]],
+) -> tuple[SearchCoverage, ...]:
+    """Count the values not searched by attribute and reason (D-027).
+
+    ``instances`` holds, for each instance, its records of what the
+    residual search did not search. A source value counts once for each
+    reason, however many of its forms or spellings that reason left out,
+    since a :class:`~pymedphys._dicom.deidentify.residuals.NotSearched`
+    names one form of a value at its place, and an
+    :class:`~pymedphys._dicom.deidentify.residuals.Unsearched` a whole
+    value. Values at the same place in different instances count apart.
+    The counts are in the order of their attributes and reasons.
+
+    >>> from pymedphys._dicom.deidentify.residuals import (
+    ...     Unsearched, UnsearchedReason)
+    >>> place = ElementPath((), "(0010,0020)")
+    >>> retained = Unsearched(place, UnsearchedReason.RETAINED)
+    >>> search_coverage([[retained, retained], [retained]])
+    (SearchCoverage(attribute='(0010,0020)', reason='retained', count=2),)
+    """
+    counts: collections.Counter[tuple[str, str]] = collections.Counter()
+    for records in instances:
+        if isinstance(records, (NotSearched, Unsearched)):
+            raise TypeError("records must be given for each instance")
+        places = set()
+        for record in records:
+            if not isinstance(record, (NotSearched, Unsearched)):
+                raise TypeError("a record must be NotSearched or Unsearched")
+            places.add((record.source, record.reason.value))
+        for source, reason in places:
+            counts[attribute_tags(source), reason] += 1
+    return tuple(
+        SearchCoverage(attribute, reason, count)
+        for (attribute, reason), count in sorted(counts.items())
+    )
 
 
 def release_report(
@@ -124,8 +340,10 @@ def release_report(
     *,
     vocabulary: tg263.Nomenclature | None,
     reviewed_roi_names: str | None,
+    sequestered: Iterable[SequesteredInstance] = (),
+    coverage: Iterable[SearchCoverage] = (),
 ) -> ReleaseReport:
-    """Return the release report's record of a policy, its method, and the runtime.
+    """Return the release report of a policy, its method, the runtime, and a run.
 
     Parameters
     ----------
@@ -142,6 +360,11 @@ def release_report(
         descriptor cleaning applies to ROI Names, or None without a list. It
         must be given by name, and has no default, so that every caller
         states whether there is one. The report records only this digest.
+    sequestered : iterable of SequesteredInstance, optional
+        The run's sequestered instances.
+    coverage : iterable of SearchCoverage, optional
+        How many values the run's residual search did not search, from
+        :func:`search_coverage`.
 
     Returns
     -------
@@ -163,7 +386,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime']
+    ['format', 'policy', 'method', 'runtime', 'sequestered', 'search_coverage']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -178,6 +401,8 @@ def release_report(
             policy, vocabulary=vocabulary, reviewed_roi_names=reviewed_roi_names
         ),
         runtime=runtime_environment(),
+        sequestered=tuple(sequestered),
+        search_coverage=tuple(coverage),
     )
 
 
@@ -272,13 +497,97 @@ def _runtime_section(environment: RuntimeEnvironment) -> dict:
     }
 
 
+def _string(value: object) -> str | None:
+    # A str subclass could carry anything in its methods or attributes, so
+    # only a str itself is written, as the value that was checked.
+    return value if type(value) is str else None  # pylint: disable=unidiomatic-typecheck
+
+
+def _code(field: str, value: object, codes: Iterable[str]) -> str:
+    text = _string(value)
+    if text is None or text not in frozenset(codes):
+        raise _refuse(field, "is not a code that the engine defines")
+    return text
+
+
+def _attribute(field: str, value: object) -> str:
+    text = _string(value)
+    if text is None or _ATTRIBUTE.fullmatch(text) is None:
+        raise _refuse(field, "is not a path of tags")
+    return text
+
+
+def _reason_entry(reason: object) -> dict:
+    if not isinstance(reason, SequestrationReason):
+        raise _refuse("sequestered reasons", "are not a tuple of reasons")
+    stage = _code("sequestered stage", reason.stage, _SEQUESTERING)
+    code = _code("sequestered code", reason.code, _SEQUESTERING[stage])
+    if stage != "walker":
+        if (reason.attribute, reason.action, reason.vr) != (None, None, None):
+            raise _refuse("sequestered attribute", "is given for another stage")
+        return {"stage": stage, "code": code}
+    return {
+        "stage": stage,
+        "code": code,
+        "attribute": _attribute("sequestered attribute", reason.attribute),
+        "action": _code("sequestered action", reason.action, _ACTIONS),
+        "vr": None if reason.vr is None else _code("sequestered vr", reason.vr, VRS),
+    }
+
+
+def _sequestered_section(instances: tuple[SequesteredInstance, ...]) -> list:
+    if not all(isinstance(each, SequesteredInstance) for each in instances):
+        raise _refuse("sequestered", "is not a tuple of sequestered instances")
+    labels = {_string(instance.label) for instance in instances}
+    if labels != set(_labels(len(instances))):
+        raise _refuse("sequestered label", "are not the labels S-0001 to S-n")
+    entries = []
+    for instance in sorted(instances, key=lambda each: each.label):
+        if not (isinstance(instance.reasons, tuple) and instance.reasons):
+            raise _refuse("sequestered reasons", "are not a tuple of reasons")
+        reasons: list[dict] = []
+        for reason in instance.reasons:
+            entry = _reason_entry(reason)
+            if entry not in reasons:
+                reasons.append(entry)
+        entries.append({"label": instance.label, "reasons": reasons})
+    return entries
+
+
+_UNSEARCHED = frozenset(
+    {*(o.value for o in Omission), *(r.value for r in UnsearchedReason)}
+)
+
+
+def _coverage_section(coverage: tuple[SearchCoverage, ...]) -> list:
+    entries = []
+    for each in coverage:
+        if not isinstance(each, SearchCoverage):
+            raise _refuse("search_coverage", "is not a tuple of coverage counts")
+        if not (isinstance(each.count, int) and not isinstance(each.count, bool)):
+            raise _refuse("search_coverage count", "is not a whole number")
+        if each.count < 1:
+            raise _refuse("search_coverage count", "is not positive")
+        entries.append(
+            {
+                "attribute": _attribute("search_coverage attribute", each.attribute),
+                "reason": _code("search_coverage reason", each.reason, _UNSEARCHED),
+                "count": each.count,
+            }
+        )
+    return sorted(entries, key=lambda entry: (entry["attribute"], entry["reason"]))
+
+
 def report_document(report: ReleaseReport) -> dict:
     """Return a release report as JSON values, after checking every field.
 
     The document is an object with the members ``format`` (:data:`FORMAT`),
-    ``policy``, ``method``, and ``runtime``, in that order, each section's
-    fields in the order of its class, and the digests of tables and files
-    sorted by name.
+    ``policy``, ``method``, ``runtime``, ``sequestered``, and
+    ``search_coverage``, in that order, each section's fields in the order
+    of its class, the digests of tables and files sorted by name, the
+    sequestered instances by label, each with its reasons once, in the
+    order given, and the coverage by attribute and reason. A reason from a
+    stage other than the walker has only its stage and code.
 
     Parameters
     ----------
@@ -292,14 +601,18 @@ def report_document(report: ReleaseReport) -> dict:
     ------
     ReleaseReportError
         If a field does not have the form of a digest, a version, a known
-        edition, preset, or option, or a file name or path within the
-        engine's package. The message names the field, never its value.
+        edition, preset, or option, a file name or path within the engine's
+        package, one of the labels ``S-0001`` to ``S-n`` for ``n``
+        sequestered instances, a path of tags, a code that the engine
+        defines, or a positive count, or is not of its class. The message names the field, never its value.
     """
     return {
         "format": FORMAT,
         "policy": _policy_section(report.policy),
         "method": _method_section(report.method),
         "runtime": _runtime_section(report.runtime),
+        "sequestered": _sequestered_section(report.sequestered),
+        "search_coverage": _coverage_section(report.search_coverage),
     }
 
 
