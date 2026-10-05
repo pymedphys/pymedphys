@@ -1268,6 +1268,8 @@ def test_the_reviewed_names_digest_must_be_64_lowercase_hexadecimal_digits(
 
 
 def test_every_call_states_the_reviewed_names_digest_by_name(basic):
+    # These calls omit the argument, or pass it positionally, on purpose.
+    # pylint: disable = missing-kwoa, too-many-function-args
     with pytest.raises(TypeError, match="reviewed_roi_names"):
         method_digest.digest_inputs(vocabulary=None)  # type: ignore[call-arg]
     with pytest.raises(TypeError, match="reviewed_roi_names"):

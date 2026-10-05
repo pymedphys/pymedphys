@@ -299,6 +299,8 @@ def test_the_report_holds_the_reviewed_names_digest_it_was_given(basic):
 
 
 def test_every_report_states_the_reviewed_names_digest_by_name(basic):
+    # This call omits the argument on purpose.
+    # pylint: disable = missing-kwoa
     with pytest.raises(TypeError, match="reviewed_roi_names"):
         release_report.release_report(basic, vocabulary=None)  # type: ignore[call-arg]
 
