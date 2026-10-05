@@ -43,8 +43,7 @@ from collections.abc import Iterator, Mapping
 
 from pymedphys._imports import pydicom
 
-from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
-
+from .diagnostics import redacted_diagnostics
 from .file_layout import (
     ElementPath,
     Extent,
@@ -126,6 +125,28 @@ class SourceEvidence:
         """Return where the element at ``path`` is; :class:`KeyError` if absent."""
         return self._elements[path]
 
+    def encoded(self, path: ElementPath) -> bytes:
+        """Return the element at ``path`` as in the file, header and value.
+
+        Raises
+        ------
+        KeyError
+            If the data set has no element at ``path``.
+        """
+        extent = self._elements[path]
+        return self._data[extent.start : extent.end]
+
+    def header(self, path: ElementPath) -> bytes:
+        """Return the header of the element at ``path``, as in the file.
+
+        Raises
+        ------
+        KeyError
+            If the data set has no element at ``path``.
+        """
+        extent = self._elements[path]
+        return self._data[extent.start : extent.value_start]
+
     def value_field(self, path: ElementPath) -> bytes:
         """Return the Value Field of the element at ``path``, as in the file.
 
@@ -147,7 +168,10 @@ class SourceEvidence:
 
         Each call reads the bytes again, in full and without deferring any
         value, so changing one data set changes neither the evidence nor
-        another. pydicom's warnings and log records are redacted.
+        another. pydicom's warnings and log records while it reads are
+        redacted. pydicom converts each value when it is first accessed,
+        later, so a caller that accesses values redacts them itself, as
+        :func:`~pymedphys._dicom.deidentify.elements.read_element` does.
 
         Raises
         ------
@@ -155,7 +179,7 @@ class SourceEvidence:
             If pydicom cannot read the file.
         """
         try:
-            with redacted_pydicom_diagnostics():
+            with redacted_diagnostics():
                 return pydicom.dcmread(io.BytesIO(self._data), defer_size=None)
         # pydicom raises many types for a file it cannot read, and its
         # message can quote a value.

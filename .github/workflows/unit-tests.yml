@@ -22,7 +22,8 @@ permissions:
 jobs:
   test:
     name: ${{ matrix.os }} - py${{ matrix.python-version }}
-    timeout-minutes: 30
+    # Allow for setup and the full suite on slower Windows runners.
+    timeout-minutes: ${{ matrix.os == 'windows-latest' && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:

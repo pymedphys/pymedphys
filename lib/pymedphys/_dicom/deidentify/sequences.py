@@ -23,7 +23,9 @@ reference records (:mod:`.references`), and the removal of private
 attributes (:mod:`.private_attributes`) pass each sequence value that
 pydicom holds undecoded through it before they read its items, and each
 reports :class:`UnreadableItems` with its own exception, by the path of the
-sequence.
+sequence. pydicom's warnings and log records while it decodes are redacted
+by :func:`.diagnostics.redacted_diagnostics`, whether or not the caller
+redacts them too.
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ from collections.abc import Sequence
 
 from pymedphys._imports import pydicom
 
+from .diagnostics import redacted_diagnostics
 from .file_layout import reads_as_items
 
 
@@ -116,9 +119,10 @@ def decode_items(
     decoded = None
     if little_endian and reads_as_items(value, explicit=explicit, nested=nested):
         try:
-            decoded = pydicom.values.convert_SQ(
-                value, not explicit, True, list(codecs) or None, offset
-            )
+            with redacted_diagnostics():
+                decoded = pydicom.values.convert_SQ(
+                    value, not explicit, True, list(codecs) or None, offset
+                )
         # pydicom raises many types for a value it cannot decode, and its
         # message can quote the value, so it is raised from neither here.
         except Exception:  # pylint: disable = broad-exception-caught
