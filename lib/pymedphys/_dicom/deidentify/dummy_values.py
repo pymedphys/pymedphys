@@ -188,6 +188,15 @@ def _comparable(vr: str, value: object) -> object:
     return text.casefold()
 
 
+def comparison_key(vr: str, value: object) -> object:
+    """Return ``value`` in the hashable form in which D compares it for ``vr``.
+
+    Two values are the same as D compares them where their keys are equal,
+    as :func:`same_value` gives.
+    """
+    return _comparable(vr, value)
+
+
 def same_value(vr: str, value: object, other: object) -> bool:
     """Return whether two values are the same as D compares them for ``vr``.
 
@@ -195,7 +204,7 @@ def same_value(vr: str, value: object, other: object) -> bool:
     and ``"0"`` are the same DS value, and ``"Deidentified "`` and
     ``"DEIDENTIFIED"`` the same LO value.
     """
-    return _comparable(vr, value) == _comparable(vr, other)
+    return comparison_key(vr, value) == comparison_key(vr, other)
 
 
 def values_for_z(vr: str) -> tuple[()]:
