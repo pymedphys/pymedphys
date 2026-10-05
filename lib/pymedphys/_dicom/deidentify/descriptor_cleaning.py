@@ -35,8 +35,11 @@ them for one instance:
 
 An instance satisfies Clean Descriptors only where every attribute given C
 was a ROI Name, and none was held or emptied without review. A ROI Name
-written with a value is retained, so its source value is left out of the
-residual search, as D-027 has retained values dropped from it.
+kept as it is, or renamed in the vocabulary's spelling, which the search,
+ignoring case, could otherwise find in what is written, is retained, so its
+source value is left out of the residual search, as D-027 has retained
+values dropped from it. A mapped name's source is still searched, since a
+reviewer's replacement need not resemble it.
 """
 
 from __future__ import annotations
@@ -71,6 +74,9 @@ _IDENTIFIER_TAGS = frozenset({"(0010,0020)", "(0010,0021)", "(0010,1000)"})
 _REVIEWED = frozenset(
     {Outcome.RENAMED, Outcome.EMPTY, Outcome.KEPT, Outcome.MAPPED, Outcome.EMPTIED}
 )
+# The outcomes whose written name the residual search, which ignores case,
+# could find for its source value.
+_WRITES_ITS_SOURCE = frozenset({Outcome.RENAMED, Outcome.KEPT})
 
 
 class DescriptorReason(enum.Enum):
@@ -236,15 +242,16 @@ def clean_descriptors(
     qc: list[RoiNameMaterial | RetainedText] = []
     satisfied = not others
     if names:
-        texts, results = _cleaned_names(edits, names, cleaning, vocabulary, queue)
+        texts, results = _cleaned_names(edits, names, cleaning, vocabulary)
         for edit, text, result in zip(names, texts, results):
             qc.extend(_material(edit.path, text, result))
             if result.outcome is Outcome.HELD:
                 assert result.held_because is not None
                 held.append(HeldRoiName(edit.path, result.held_because))
             satisfied = satisfied and result.outcome in _REVIEWED
-            if result.value:
+            if result.value and result.outcome in _WRITES_ITS_SOURCE:
                 retained.add(edit.path)
+            if result.value:
                 settled[edit.path] = dataclasses.replace(
                     edit, kind=EditKind.REPLACE, values=(result.value,)
                 )
@@ -254,6 +261,10 @@ def clean_descriptors(
                 )
     if others:
         settled.update(_fallen_back(others, fallback()))
+    if names:
+        # Only once the instance is settled, so that a refused instance adds
+        # nothing to the review.
+        queue.add(texts, results)
     return CleanedDescriptors(
         dataclasses.replace(
             edits, edits=tuple(settled.get(edit.path, edit) for edit in edits.edits)
@@ -294,7 +305,6 @@ def _cleaned_names(
     names: Sequence[Edit],
     cleaning: DescriptorCleaning,
     vocabulary: RoiNameVocabulary | None,
-    queue: ReviewQueue,
 ) -> tuple[list[str], tuple[CleanedRoiName, ...]]:
     undecoded = {missing.path for missing in edits.not_collected}
     if any(edit.path in undecoded for edit in names):
@@ -302,10 +312,15 @@ def _cleaned_names(
     values = {value.source: value.value for value in edits.source_values}
     texts = []
     for edit in names:
-        value = values.get(edit.path, "")
+        # A name that was not collected is not taken as empty, which would
+        # write it empty and count it as reviewed.
+        value = values.get(edit.path)
         if not isinstance(value, str):
             raise DescriptorsRefused(DescriptorReason.UNDECODABLE_ROI_NAME)
         texts.append(value)
+    # Only the values that the edits collected: under every preset, each
+    # person name and patient identifier is removed or replaced, so all are
+    # collected. An option that keeps one would need to collect it here too.
     identifiers = [
         value.value
         for value in edits.source_values
@@ -319,7 +334,6 @@ def _cleaned_names(
         identifiers=identifiers,
         empty_held=cleaning.empty_held,
     )
-    queue.add(texts, results)
     return texts, results
 
 

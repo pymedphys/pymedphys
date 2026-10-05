@@ -26,9 +26,17 @@ from pymedphys._imports import pydicom, pytest
 
 from pymedphys._nomenclature import tg263
 
-from pymedphys._dicom.deidentify import roi_names, run
+from pymedphys._dicom.deidentify import (
+    descriptor_cleaning,
+    instance_transform,
+    roi_names,
+    run,
+    run_qc,
+)
 from pymedphys._dicom.deidentify.descriptor_cleaning import (
     DescriptorCleaning,
+    DescriptorReason,
+    DescriptorsRefused,
     HeldRoiName,
 )
 from pymedphys._dicom.deidentify.file_layout import ElementPath
@@ -293,6 +301,67 @@ def test_other_descriptors_take_their_basic_profile_action_and_lose_the_claim():
     assert written.StructureSetROISequence[0].ROIName == "Lung_L"
     assert CLEAN_DESCRIPTORS_CODE not in _codes(written)
     assert ("113100", "DCM") in _codes(written)
+
+
+def test_a_roi_name_that_was_not_collected_sequesters_its_instance(monkeypatch):
+    path = ElementPath((("(3006,0020)", 0),), "(3006,0026)")
+    collect = instance_transform.edit_instance
+
+    def without_the_name(*args):
+        edits = collect(*args)
+        return dataclasses.replace(
+            edits,
+            source_values=tuple(
+                value for value in edits.source_values if value.source != path
+            ),
+        )
+
+    monkeypatch.setattr(instance_transform, "edit_instance", without_the_name)
+    transform = _transform()
+
+    result = _transformed(transform, _structure_set("lung_l"))
+
+    assert isinstance(result, run.Sequestered)
+    assert result.reasons == (DescriptorReason.UNDECODABLE_ROI_NAME,)
+    assert not transform.review_queue.entries()
+
+
+def test_a_refused_instance_adds_nothing_to_the_review(monkeypatch):
+    def refuse(*_):
+        raise DescriptorsRefused(DescriptorReason.UNSETTLED_DESCRIPTOR)
+
+    monkeypatch.setattr(descriptor_cleaning, "_fallen_back", refuse)
+    transform = _transform()
+
+    result = _transformed(
+        transform,
+        _structure_set("SURGEONS ROI", StudyDescription="SENTINEL STUDY"),
+    )
+
+    assert isinstance(result, run.Sequestered)
+    assert result.reasons == (DescriptorReason.UNSETTLED_DESCRIPTOR,)
+    assert not transform.review_queue.entries()
+
+
+def test_only_kept_and_renamed_names_are_left_out_of_the_search():
+    transform = _transform(
+        _reviewed(
+            PTV_CUSTOM=ReviewedName(Review.KEEP),
+            GTV1=ReviewedName(Review.MAP, "GTVp"),
+        )
+    )
+
+    result = _transformed(transform, _structure_set("lung_l", "PTV_CUSTOM", "GTV1"))
+
+    assert isinstance(result, run.Transformed)
+    dropped = {
+        str(item.source)
+        for item in result.qc
+        if isinstance(item, run_qc.Dropped) and item.reason.value == "retained"
+    }
+    names = [str(ElementPath((("(3006,0020)", i),), "(3006,0026)")) for i in range(3)]
+    # A mapped name's source is still searched for.
+    assert dropped & set(names) == set(names[:2])
 
 
 def test_cleaning_is_given_exactly_when_the_policy_selects_clean_descriptors():
