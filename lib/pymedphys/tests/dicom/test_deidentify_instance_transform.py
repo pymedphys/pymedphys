@@ -26,6 +26,8 @@ import shutil
 import tempfile
 from pathlib import Path
 
+from pymedphys._imports import pydicom, pytest
+
 from pymedphys._dicom.deidentify import (
     instance_transform,
     output_names,
@@ -78,7 +80,6 @@ from pymedphys._dicom.deidentify.walker import (
     Sequestration,
     plan_instance,
 )
-from pymedphys._imports import pydicom, pytest
 
 from . import _synthetic_references as synthetic
 from .test_deidentify_file_layout import EXPLICIT, _file

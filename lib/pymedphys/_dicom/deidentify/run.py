@@ -403,11 +403,9 @@ def run(
         :func:`~pymedphys._dicom.deidentify.qc_store.check_confidential_destination`
         checks before anything is created. There is no default (D-016).
     reporter : Reporter, optional
-        Given the outcomes, each with its label, and each input's QC
-        material, returns the release report's text, which the run publishes
-        as :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT` at
-        the root of the release, such as a
-        :class:`~pymedphys._dicom.deidentify.run_report.ReleaseReporter`.
+        Given the labelled outcomes and each input's QC material, returns
+        the release report's text, published at the release's root as
+        :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT`.
         Without one, no report is written. A withheld input whose reasons
         the reporter does not admit is sequestered for
         :attr:`RunReason.INVALID_REASON` instead.
@@ -494,8 +492,7 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
             outcomes = _admitted(outcomes, reporter)
         outcomes = _labelled(outcomes)
         pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
-        # Built before the pack is written, so that a report that cannot be
-        # built leaves no QC material behind.
+        # Built before the pack is written, so a failure leaves no QC material.
         report = None if reporter is None else reporter(outcomes, material)
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
@@ -518,34 +515,13 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
             os.rename(staged_release, release_path)
         except OSError:
             # Nor does a pack outlive a release that was not published.
-            if not _withdrawn(qc_pack):
+            if not qc_store.withdraw_qc_pack(qc_pack.parent):
                 raise RunError(_PACK_LEFT.format(destination=qc_pack.parent)) from None
             raise
         _sync_directory(release_path.parent)
     finally:
         removed = _remove(staging)
     return RunResult(release_path, outcomes, first.findings, removed, qc_pack)
-
-
-def _withdrawn(pack: Path) -> bool:
-    """Remove the files that a run wrote for a pack it did not publish.
-
-    Return whether they are all gone. The destination directory is kept,
-    empty, so that a run may write to it again.
-    """
-    withdrawn = True
-    for name in (qc_store.PACK_FILE, qc_store.NOTICE_FILE):
-        try:
-            (pack.parent / name).unlink(missing_ok=True)
-        except OSError:
-            withdrawn = False
-    # The marker goes last, so whatever remains is still QC material (D-016).
-    if withdrawn:
-        try:
-            (pack.parent / qc_store.MARKER_FILE).unlink(missing_ok=True)
-        except OSError:
-            withdrawn = False
-    return withdrawn
 
 
 def _remove_empty_directories(root: Path) -> None:
@@ -563,10 +539,7 @@ def _remove_empty_directories(root: Path) -> None:
 def _admitted(
     outcomes: tuple[Outcome, ...], reporter: run_report.Reporter
 ) -> tuple[Outcome, ...]:
-    """Sequester each withheld outcome whose reasons the reporter cannot give.
-
-    So one input's reasons set aside that input, never the release.
-    """
+    """Sequester each withheld input whose reasons the reporter cannot give."""
     return tuple(
         _outcome(outcome.position, Status.SEQUESTERED, RunReason.INVALID_REASON)
         if outcome.status in (Status.SEQUESTERED, Status.HELD_FOR_REVIEW)
