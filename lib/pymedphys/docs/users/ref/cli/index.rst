@@ -22,3 +22,4 @@ This presents what to write into the command prompt to use that CLI command.
     icom
     pinnacle
     pseudonymisation
+    zenodo

@@ -12,6 +12,15 @@ This project adheres to
 
 ## Unreleased
 
+### User workflows and documentation migration
+
+Task guides now cover first results for the library, CLI and apps; Delivery and
+MetersetMap; DICOM, TRF, iCOM and Mosaiq; interpolation, electron factors and
+research-focused Pinnacle export. Configuration and public references link to
+verified examples and documented limits. A page inventory and automated HTML
+migration checks retain existing URLs, fragments and local artefact links.
+([#2251](https://github.com/pymedphys/pymedphys/pull/2251))
+
 ### Documentation design and evidence catalogues
 
 The DICOM de-identification design now has separate overview, specification,
@@ -292,7 +301,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   suite, apart from the slow tests, with the cached test data, instead of a
   hand-picked list of synthetic tests, so code that only data-backed tests
   reach is also checked at the minimum versions. Python 3.11 is the only
-  supported version with wheels for both. AGENTS.md asks for a declared minimum
+  supported version with wheels for both. `AGENTS.md` asks for a declared minimum
   to be raised, rather than this job worked around, when a change needs a
   newer version. [PR #2114](https://github.com/pymedphys/pymedphys/pull/2114)
 - **[Contributor facing only]** Tests now fail on pydicom's "will be removed in v4" deprecation warnings, and the new `pydicom_behaviour` fixture in `tests/dicom/conftest.py` runs a test with pydicom's current behaviour and with its future behaviour, which imitates pydicom 4. The implicit versus explicit VR example notebook now sets the Transfer Syntax UID; with pydicom 3 its explicit VR example was written as implicit VR. [PR #2106](https://github.com/pymedphys/pymedphys/pull/2106)

@@ -2,6 +2,9 @@
 Gamma
 #####
 
+See :doc:`../../tasks/compare` for coordinate/dose preparation, analysis
+settings, excluded points, and pass-rate interpretation.
+
 ***
 API
 ***

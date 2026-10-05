@@ -9,6 +9,9 @@ Summary
 .. automodule:: pymedphys.interpolate
     :no-members:
 
+See :doc:`../../tasks/interpolation` for axis requirements, an analytic
+example, output shape, and boundary behaviour.
+
 .. _Performance Comparison Between Implementations:
 
 Performance Comparison Between Implementations

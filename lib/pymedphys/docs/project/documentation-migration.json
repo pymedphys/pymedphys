@@ -1,0 +1,1519 @@
+{
+  "schema_version": 1,
+  "baseline": "7276c309741ada6087a8845604b42f5b823d54b2",
+  "pages": [
+    {
+      "source": "contrib/dive/create-streamlit-exe.md",
+      "title": "Creating a Streamlit Executable #",
+      "old_url": "contrib/dive/create-streamlit-exe.html",
+      "fragments": [
+        "approach-overview",
+        "booting-the-streamlit-app-and-syncing-the-port-with-electron",
+        "building-for-all-oss-within-github-actions",
+        "creating-a-self-contained-pymedphys-python-bundle",
+        "creating-a-streamlit-executable",
+        "document-overview",
+        "file-system-relative-resources-with-site-packages-name",
+        "files-mode",
+        "getting-help",
+        "id1",
+        "justification",
+        "quick-version",
+        "running-the-build",
+        "setting-up-electron",
+        "the-key-components-of-the-electron-code-base",
+        "the-main-ts-file",
+        "the-package-json-file",
+        "the-pyoxidizer-bzl-configuration-file",
+        "the-use-and-setting-up-of-electron",
+        "use-standard-importer"
+      ],
+      "destination": "contrib/dive/create-streamlit-exe.html"
+    },
+    {
+      "source": "contrib/dive/index.md",
+      "title": "Deep Dive #",
+      "old_url": "contrib/dive/index.html",
+      "fragments": [
+        "deep-dive"
+      ],
+      "destination": "contrib/guide.html"
+    },
+    {
+      "source": "contrib/dive/why-open-source.rst",
+      "title": "Why Open Source? #",
+      "old_url": "contrib/dive/why-open-source.html",
+      "fragments": [
+        "improvements-will-by-default-be-in-a-compatible-format",
+        "improving-our-work-as-physicists",
+        "improving-the-programming-skill-of-employees-through-community-feedback",
+        "safer-and-higher-quality-software",
+        "software-is-less-dependent-on-a-single-software-developer",
+        "software-that-has-more-applications-and-more-features",
+        "software-that-is-more-compatible-with-a-wide-range-of-systems",
+        "why-open-source"
+      ],
+      "destination": "contrib/dive/why-open-source.html"
+    },
+    {
+      "source": "contrib/index.md",
+      "title": "Contributing to PyMedPhys #",
+      "old_url": "contrib/index.html",
+      "fragments": [
+        "check-your-changes",
+        "contributing-to-pymedphys",
+        "keep-patient-data-out-of-public-posts",
+        "language",
+        "open-and-review-a-pull-request",
+        "set-up-a-development-environment"
+      ],
+      "destination": "contrib/index.html"
+    },
+    {
+      "source": "contrib/info/deidentification-design.md",
+      "title": "DICOM de-identification design #",
+      "old_url": "contrib/info/deidentification-design.html",
+      "fragments": [
+        "architecture",
+        "d-001-tables-generated-from-a-pinned-edition",
+        "d-002-pydicom-3-0-2-minimum",
+        "d-003-uid-replacement",
+        "d-004-keys-and-subject-profiles",
+        "d-005-keyed-patient-pseudonyms",
+        "d-006-date-shifting",
+        "d-007-temporal-attributes-by-role",
+        "d-008-synthetic-birth-dates-for-tps-import",
+        "d-009-descriptor-cleaning",
+        "d-010-unsupported-object-types",
+        "d-011-validated-overrides-and-derived-claims",
+        "d-012-de-identification-markers",
+        "d-013-no-encrypted-attributes-sequence",
+        "d-014-no-preset-named-after-a-regulation",
+        "d-015-pixel-data-detect-and-warn",
+        "d-016-confidential-qc-separate-from-release-reports",
+        "d-017-public-release-risk-assessment",
+        "d-018-published-benchmark-results",
+        "d-019-no-deprecation-before-a-released-replacement",
+        "d-020-compound-actions-from-the-strictest-type",
+        "d-021-dummy-values",
+        "d-022-text-and-other-attributes-that-table-e-1-1-omits",
+        "d-023-dates-and-times-that-table-e-1-1-omits",
+        "d-024-de-identification-method-digest",
+        "d-025-file-meta-information",
+        "d-026-reference-graph-findings",
+        "d-027-residual-search",
+        "d-028-private-attributes-without-retain-safe-private",
+        "d-029-runtime-environments",
+        "decisions",
+        "dicom-de-identification-design",
+        "presets",
+        "requirements-register",
+        "roadmap",
+        "scope",
+        "standards-basis",
+        "terminology-and-claims"
+      ],
+      "destination": "contrib/design/deidentification/index.html"
+    },
+    {
+      "source": "contrib/info/deidentification-requirements.md",
+      "title": "DICOM de-identification requirements-to-tests matrix #",
+      "old_url": "contrib/info/deidentification-requirements.html",
+      "fragments": [
+        "details",
+        "dicom-de-identification-requirements-to-tests-matrix",
+        "exclusions",
+        "midi-bp-01",
+        "midi-bp-02",
+        "midi-bp-03",
+        "midi-bp-04",
+        "midi-bp-05",
+        "midi-bp-06",
+        "midi-bp-07",
+        "midi-bp-08",
+        "midi-bp-09",
+        "midi-bp-10",
+        "midi-bp-11",
+        "midi-bp-12",
+        "midi-bp-13",
+        "midi-bp-14",
+        "midi-bp-15",
+        "midi-bp-16",
+        "midi-bp-17",
+        "midi-bp-18",
+        "ps3-15-e-1-1-01",
+        "ps3-15-e-1-1-02",
+        "ps3-15-e-1-1-03",
+        "ps3-15-e-1-1-04",
+        "ps3-15-e-1-1-05",
+        "ps3-15-e-1-1-06",
+        "ps3-15-e-1-1-07",
+        "ps3-15-e-1-1-08",
+        "ps3-15-e-1-1-09",
+        "ps3-15-e-1-2-01",
+        "ps3-15-e-1-2-02",
+        "ps3-15-e-1-2-03",
+        "ps3-15-e-1-3-01",
+        "ps3-15-e-2-01",
+        "ps3-15-e-3-1-01",
+        "ps3-15-e-3-1-02",
+        "ps3-15-e-3-10-01",
+        "ps3-15-e-3-10-02",
+        "ps3-15-e-3-10-03",
+        "ps3-15-e-3-10-04",
+        "ps3-15-e-3-11-01",
+        "ps3-15-e-3-2-01",
+        "ps3-15-e-3-2-02",
+        "ps3-15-e-3-3-01",
+        "ps3-15-e-3-4-01",
+        "ps3-15-e-3-5-01",
+        "ps3-15-e-3-5-02",
+        "ps3-15-e-3-6-01",
+        "ps3-15-e-3-6-02",
+        "ps3-15-e-3-6-03",
+        "ps3-15-e-3-6-04",
+        "ps3-15-e-3-7-01",
+        "ps3-15-e-3-7-02",
+        "ps3-15-e-3-8-01",
+        "ps3-15-e-3-9-01",
+        "remaining-work",
+        "requirements",
+        "summary"
+      ],
+      "destination": "contrib/info/deidentification-requirements.html"
+    },
+    {
+      "source": "contrib/info/dependency-update-prs.md",
+      "title": "Reviewing automated dependency update PRs #",
+      "old_url": "contrib/info/dependency-update-prs.html",
+      "fragments": [
+        "fast-review-path",
+        "important-note-about-the-pr-body",
+        "linux-macos-bash",
+        "manual-commands-for-a-cautious-reviewer",
+        "merge-checklist",
+        "reviewing-automated-dependency-update-prs",
+        "what-creates-these-prs",
+        "what-if-no-dependency-update-pr-appeared",
+        "what-the-reviewer-should-do",
+        "what-validation-should-run-before-the-pr-opens",
+        "when-to-slow-down",
+        "windows-powershell"
+      ],
+      "destination": "contrib/info/dependency-update-prs.html"
+    },
+    {
+      "source": "contrib/info/dicom-coordinate-validation.md",
+      "title": "DICOM coordinate validation #",
+      "old_url": "contrib/info/dicom-coordinate-validation.html",
+      "fragments": [
+        "dicom-coordinate-validation",
+        "evidence-and-its-limits",
+        "independence-of-the-checks",
+        "remaining-limitations",
+        "reproducing-the-committed-checks",
+        "retirement-of-downloaded-test-fixtures"
+      ],
+      "destination": "contrib/info/dicom-coordinate-validation.html"
+    },
+    {
+      "source": "contrib/info/dicom-coordinates-illustrated.ipynb",
+      "title": "DICOM coordinates and gamma, illustrated #",
+      "old_url": "contrib/info/dicom-coordinates-illustrated.html",
+      "fragments": [
+        "absolute-slice-offsets",
+        "appendix-a-why-descending-evaluation-axes-failed-before",
+        "checking-an-earlier-calculation",
+        "cropping-and-shifting-a-grid",
+        "crops-of-every-axis-in-every-orientation",
+        "decreasing-slice-offsets",
+        "dicom-coordinates-and-gamma-illustrated",
+        "edge-cases",
+        "every-voxel-against-the-dicom-definition",
+        "from-stored-pixels-to-patient-coordinates",
+        "further-reading-gamma-performance",
+        "how-gamma-treats-axis-order",
+        "how-pymedphys-applies-the-definition",
+        "keep-coordinates-with-their-dose",
+        "one-dose-distribution-eight-storage-orders",
+        "patient-directions-and-file-terminology",
+        "plotting-gamma-after-the-reordering",
+        "randomised-grids",
+        "remaining-limitations",
+        "single-slice-rt-dose",
+        "start-with-a-coordinatedose-pair",
+        "storage-order-does-not-change-gamma",
+        "summing-doses-needs-the-same-pixel-mapping",
+        "supported-orientations-and-rounding",
+        "the-current-conversion-places-every-voxel-correctly",
+        "the-search-is-bounded-by-the-two-grids",
+        "uneven-slices-need-a-different-error-model",
+        "where-the-previous-conversion-placed-the-same-dose"
+      ],
+      "destination": "contrib/info/dicom-coordinates-illustrated.html"
+    },
+    {
+      "source": "contrib/info/docs-guide.rst",
+      "title": "Documentation Guide #",
+      "old_url": "contrib/info/docs-guide.html",
+      "fragments": [
+        "building-the-documentation-on-your-workstation",
+        "checking-a-pull-request-s-documentation",
+        "docstring-extraction",
+        "documentation-guide",
+        "keeping-documentation-current",
+        "previewing-and-checking-the-site",
+        "source-files-and-publishing",
+        "writing-portable-links"
+      ],
+      "destination": "contrib/info/docs-guide.html"
+    },
+    {
+      "source": "contrib/info/file-structure.rst",
+      "title": "Repository File Structure #",
+      "old_url": "contrib/info/file-structure.html",
+      "fragments": [
+        "repository-file-structure"
+      ],
+      "destination": "contrib/info/file-structure.html"
+    },
+    {
+      "source": "contrib/info/gamma-benchmark.md",
+      "title": "Compare gamma performance across PyMedPhys versions #",
+      "old_url": "contrib/info/gamma-benchmark.html",
+      "fragments": [
+        "choose-and-freeze-the-workload",
+        "compare-gamma-performance-across-pymedphys-versions",
+        "environment-setup",
+        "execute-and-resume",
+        "gamma-semantics-and-verification",
+        "interpret-and-retain-the-report",
+        "measurement-protocol",
+        "prepare-a-comparison",
+        "revisit-the-scipy-and-pymedphys-interpolators",
+        "timing-and-resource-measurements"
+      ],
+      "destination": "contrib/info/gamma-benchmark.html"
+    },
+    {
+      "source": "contrib/info/gamma-performance-study.md",
+      "title": "Gamma performance: a two-hour workstation audit #",
+      "old_url": "contrib/info/gamma-performance-study.html",
+      "fragments": [
+        "a-fixed-scope-that-fits-the-budget",
+        "coverage-across-criteria-the-default-design",
+        "gamma-performance-a-two-hour-workstation-audit",
+        "progress-stopping-resuming-and-upload",
+        "runtime-model-uncertainty-recommended-for-testing-the-fitted-speed-ratios",
+        "start",
+        "the-workloads-and-their-interpretation",
+        "timing-numerical-checks-and-ratios",
+        "two-volume-examples-motivated-by-clinical-workflows"
+      ],
+      "destination": "contrib/info/gamma-performance-study.html"
+    },
+    {
+      "source": "contrib/info/gamma-performance.ipynb",
+      "title": "Faster gamma calculations: a reproducible benchmark #",
+      "old_url": "contrib/info/gamma-performance.html",
+      "fragments": [
+        "does-the-improvement-recur-across-rounds",
+        "faster-gamma-calculations-a-reproducible-benchmark",
+        "is-the-numerical-answer-unchanged",
+        "one-command-with-a-chart-ready-to-share",
+        "repeat-the-benchmark-on-your-computer",
+        "reproducible-inputs-and-measurements",
+        "results-complete-gamma-call-runtime",
+        "run-or-customise-this-notebook",
+        "the-synthetic-dose-model",
+        "what-is-held-constant",
+        "what-these-results-support",
+        "why-can-the-same-calculation-take-less-time"
+      ],
+      "destination": "contrib/info/gamma-performance.html"
+    },
+    {
+      "source": "contrib/info/gamma-scaling-workstation/index.md",
+      "title": "Gamma scaling: recorded workstation evidence #",
+      "old_url": "contrib/info/gamma-scaling-workstation/index.html",
+      "fragments": [
+        "coverage-and-numerical-checks",
+        "gamma-scaling-recorded-workstation-evidence",
+        "pymedphys-versus-scipy",
+        "scaling-curves",
+        "source-and-reproducibility",
+        "what-the-completed-measurements-show"
+      ],
+      "destination": "contrib/info/gamma-scaling-workstation/index.html"
+    },
+    {
+      "source": "contrib/info/gamma-uncertainty-workstation/index.md",
+      "title": "Gamma performance: a completed workstation audit #",
+      "old_url": "contrib/info/gamma-uncertainty-workstation/index.html",
+      "fragments": [
+        "a-useful-linear-model-within-a-specified-workload",
+        "absolute-waiting-times-for-the-larger-volumes",
+        "coverage-numerical-checks-and-provenance",
+        "does-the-model-predict-the-separate-volumes",
+        "gamma-performance-a-completed-workstation-audit",
+        "how-much-improvement-comes-from-this-pr",
+        "inspect-or-reproduce-the-evidence",
+        "why-voxel-count-alone-cannot-determine-runtime"
+      ],
+      "destination": "contrib/info/gamma-uncertainty-workstation/index.html"
+    },
+    {
+      "source": "contrib/info/index.md",
+      "title": "Repository Information #",
+      "old_url": "contrib/info/index.html",
+      "fragments": [
+        "repository-information"
+      ],
+      "destination": "contrib/guide.html"
+    },
+    {
+      "source": "contrib/info/lazy-imports.md",
+      "title": "Lazy imports and optional dependencies #",
+      "old_url": "contrib/info/lazy-imports.html",
+      "fragments": [
+        "add-a-new-optional-dependency",
+        "base-install-and-extras",
+        "do-not-use-an-optional-package-while-a-module-is-being-imported",
+        "how-it-is-checked",
+        "how-lazy-imports-work",
+        "introspection",
+        "known-gap",
+        "lazy-imports-and-optional-dependencies",
+        "modules-that-may-need-an-extra-to-be-imported",
+        "register-the-submodules-you-use",
+        "rules-for-contributors",
+        "what-a-user-sees-when-a-package-is-missing"
+      ],
+      "destination": "contrib/info/lazy-imports.html"
+    },
+    {
+      "source": "contrib/info/release-guide.md",
+      "title": "pymedphys Release Procedure #",
+      "old_url": "contrib/info/release-guide.html",
+      "fragments": [
+        "appendix-publishing-setup-and-access",
+        "check-the-published-files-yourself",
+        "check-the-publishing-settings",
+        "checklist",
+        "choose-the-versions",
+        "confirm-the-result",
+        "create-a-branch",
+        "if-checks-fail",
+        "open-the-pull-request",
+        "prepare-the-release-pull-request",
+        "publish-the-github-release",
+        "publish-the-release",
+        "pymedphys-release-procedure",
+        "record-the-result",
+        "recover-from-failures",
+        "review-the-changelog",
+        "set-the-version",
+        "start-the-next-development-version",
+        "tag-the-release-commit",
+        "update-the-changelog",
+        "who-can-release"
+      ],
+      "destination": "contrib/info/release-guide.html"
+    },
+    {
+      "source": "contrib/info/workflows.md",
+      "title": "PyMedPhys CI/CD Workflows #",
+      "old_url": "contrib/info/workflows.html",
+      "fragments": [
+        "actions-cache-data-action-yml",
+        "actions-setup-project-action-yml",
+        "ai-assistance",
+        "ci-yml-main-orchestrator",
+        "claude-yml",
+        "composite-actions",
+        "dashboard-configuration",
+        "deid-edition-check-yml",
+        "deps-yml",
+        "docs-yml",
+        "environments",
+        "extended-workflows-conditional",
+        "integration-tests-yml",
+        "labels-for-manual-triggers",
+        "lint-yml",
+        "local-development-commands",
+        "main-branch-workflow",
+        "maintaining-the-gates",
+        "merge-queue-workflow",
+        "mosaiq-db-tests-yml",
+        "overview",
+        "pr-workflow",
+        "pre-commit-yml",
+        "pull-request-checks",
+        "pymedphys-ci-cd-workflows",
+        "read-the-docs",
+        "release-maintenance",
+        "release-yml",
+        "requesting-a-hosted-preview",
+        "required-checks-and-pull-request-reviews",
+        "required-secrets",
+        "security-considerations",
+        "security-yml",
+        "seeing-every-constituent-check",
+        "testing-workflows-locally",
+        "tg263-edition-check-yml",
+        "the-two-main-branch-rulesets",
+        "type-check-yml",
+        "unit-tests-yml",
+        "version-compatibility",
+        "what-a-successful-summary-means",
+        "why-the-summaries-are-required",
+        "workflow-architecture",
+        "workflow-structure"
+      ],
+      "destination": "contrib/maintainers/index.html"
+    },
+    {
+      "source": "contrib/setups/index.rst",
+      "title": "Workstation Setup Guides #",
+      "old_url": "contrib/setups/index.html",
+      "fragments": [
+        "workstation-setup-guides"
+      ],
+      "destination": "contrib/setups/index.html"
+    },
+    {
+      "source": "contrib/setups/setup-linux.rst",
+      "title": "Linux Setup #",
+      "old_url": "contrib/setups/setup-linux.html",
+      "fragments": [
+        "create-the-development-environment",
+        "install-prerequisites",
+        "linux-setup",
+        "next-steps"
+      ],
+      "destination": "contrib/setups/setup-linux.html"
+    },
+    {
+      "source": "contrib/setups/setup-mac.rst",
+      "title": "macOS Setup #",
+      "old_url": "contrib/setups/setup-mac.html",
+      "fragments": [
+        "create-the-development-environment",
+        "install-prerequisites",
+        "macos-setup",
+        "next-steps"
+      ],
+      "destination": "contrib/setups/setup-mac.html"
+    },
+    {
+      "source": "contrib/setups/setup-win.rst",
+      "title": "Windows Setup #",
+      "old_url": "contrib/setups/setup-win.html",
+      "fragments": [
+        "create-the-development-environment",
+        "install-prerequisites",
+        "next-steps",
+        "windows-setup"
+      ],
+      "destination": "contrib/setups/setup-win.html"
+    },
+    {
+      "source": "contrib/tips/add-jupyter-kernel.rst",
+      "title": "Use the development environment in Jupyter #",
+      "old_url": "contrib/tips/add-jupyter-kernel.html",
+      "fragments": [
+        "use-the-development-environment-in-jupyter"
+      ],
+      "destination": "contrib/tips/add-jupyter-kernel.html"
+    },
+    {
+      "source": "contrib/tips/index.rst",
+      "title": "Tips & Tricks #",
+      "old_url": "contrib/tips/index.html",
+      "fragments": [
+        "tips-tricks"
+      ],
+      "destination": "contrib/guide.html"
+    },
+    {
+      "source": "contrib/tips/win-open-ssh.rst",
+      "title": "Git with SSH on Windows #",
+      "old_url": "contrib/tips/win-open-ssh.html",
+      "fragments": [
+        "git-with-ssh-on-windows"
+      ],
+      "destination": "contrib/tips/win-open-ssh.html"
+    },
+    {
+      "source": "index.rst",
+      "title": "What is PyMedPhys? #",
+      "old_url": "index.html",
+      "fragments": [
+        "beta-level-of-development",
+        "choose-the-right-interface",
+        "common-task-areas",
+        "community",
+        "documentation",
+        "install-pymedphys",
+        "start-here",
+        "what-is-pymedphys"
+      ],
+      "destination": "index.html"
+    },
+    {
+      "source": "messages/warning-pinnacle.rst",
+      "title": "messages/warning-pinnacle",
+      "old_url": "messages/warning-pinnacle.html",
+      "fragments": [],
+      "destination": "messages/warning-pinnacle.html"
+    },
+    {
+      "source": "overview.rst",
+      "title": "Overview #",
+      "old_url": "overview.html",
+      "fragments": [
+        "overview"
+      ],
+      "destination": "overview.html"
+    },
+    {
+      "source": "README.rst",
+      "title": "What is PyMedPhys? #",
+      "old_url": "README.html",
+      "fragments": [
+        "active-contributors",
+        "beta-level-of-development",
+        "choose-the-right-interface",
+        "citing-pymedphys",
+        "common-task-areas",
+        "community",
+        "development",
+        "documentation",
+        "install-pymedphys",
+        "maintainers",
+        "our-team",
+        "past-contributors",
+        "start-here",
+        "what-is-pymedphys"
+      ],
+      "destination": "README.html"
+    },
+    {
+      "source": "release-notes.md",
+      "title": "Release Notes #",
+      "old_url": "release-notes.html",
+      "fragments": [
+        "aesthetic-changes",
+        "algorithm-adjustments",
+        "beta-api-changes",
+        "breaking-changes",
+        "bug-fix",
+        "bug-fixes",
+        "code-refactoring",
+        "configuration-changes",
+        "contributor-facing-changes",
+        "corrected-dicom-rt-dose-coordinates",
+        "critical-bug-fixes",
+        "data-file-changes",
+        "dependency-changes",
+        "deprecations",
+        "developer-facing-api-changes",
+        "development-changes",
+        "documentation-updates",
+        "experimental-api-changes",
+        "experimental-applications",
+        "faster-gamma-calculations",
+        "gamma-no-longer-drops-points-it-cannot-reach",
+        "gamma-with-single-slice-evaluation-doses",
+        "gui-changes",
+        "id1",
+        "id10",
+        "id100",
+        "id101",
+        "id102",
+        "id103",
+        "id104",
+        "id105",
+        "id106",
+        "id107",
+        "id108",
+        "id109",
+        "id11",
+        "id110",
+        "id111",
+        "id112",
+        "id113",
+        "id114",
+        "id115",
+        "id116",
+        "id117",
+        "id118",
+        "id119",
+        "id12",
+        "id120",
+        "id121",
+        "id122",
+        "id123",
+        "id124",
+        "id125",
+        "id126",
+        "id127",
+        "id128",
+        "id129",
+        "id13",
+        "id130",
+        "id131",
+        "id132",
+        "id133",
+        "id134",
+        "id135",
+        "id136",
+        "id137",
+        "id138",
+        "id139",
+        "id14",
+        "id140",
+        "id141",
+        "id142",
+        "id143",
+        "id144",
+        "id145",
+        "id146",
+        "id147",
+        "id148",
+        "id149",
+        "id15",
+        "id150",
+        "id151",
+        "id152",
+        "id153",
+        "id154",
+        "id155",
+        "id156",
+        "id157",
+        "id158",
+        "id159",
+        "id16",
+        "id160",
+        "id161",
+        "id162",
+        "id163",
+        "id164",
+        "id165",
+        "id166",
+        "id167",
+        "id168",
+        "id169",
+        "id17",
+        "id170",
+        "id171",
+        "id172",
+        "id173",
+        "id174",
+        "id175",
+        "id176",
+        "id177",
+        "id178",
+        "id179",
+        "id18",
+        "id19",
+        "id2",
+        "id20",
+        "id21",
+        "id22",
+        "id23",
+        "id24",
+        "id25",
+        "id26",
+        "id27",
+        "id28",
+        "id29",
+        "id3",
+        "id30",
+        "id31",
+        "id32",
+        "id33",
+        "id34",
+        "id35",
+        "id36",
+        "id37",
+        "id38",
+        "id39",
+        "id4",
+        "id40",
+        "id41",
+        "id42",
+        "id43",
+        "id44",
+        "id45",
+        "id46",
+        "id47",
+        "id48",
+        "id49",
+        "id5",
+        "id50",
+        "id51",
+        "id52",
+        "id53",
+        "id54",
+        "id55",
+        "id56",
+        "id57",
+        "id58",
+        "id59",
+        "id6",
+        "id60",
+        "id61",
+        "id62",
+        "id63",
+        "id64",
+        "id65",
+        "id66",
+        "id67",
+        "id68",
+        "id69",
+        "id7",
+        "id70",
+        "id71",
+        "id72",
+        "id73",
+        "id74",
+        "id75",
+        "id76",
+        "id77",
+        "id78",
+        "id79",
+        "id8",
+        "id80",
+        "id81",
+        "id82",
+        "id83",
+        "id84",
+        "id85",
+        "id86",
+        "id87",
+        "id88",
+        "id89",
+        "id9",
+        "id90",
+        "id91",
+        "id92",
+        "id93",
+        "id94",
+        "id95",
+        "id96",
+        "id97",
+        "id98",
+        "id99",
+        "improvements",
+        "installation-changes",
+        "internal-changes",
+        "library-structure-changes",
+        "logistics-changes",
+        "metersetmap",
+        "misc-changes",
+        "new-feature",
+        "new-features",
+        "new-features-and-enhancements",
+        "new-keys",
+        "news-around-this-release",
+        "non-api-changing-enhancements",
+        "overview",
+        "package-changes",
+        "performance-improvements",
+        "potentially-breaking-changes",
+        "pseudonymise",
+        "quality-of-life-improvements",
+        "release-notes",
+        "stable-api-changes",
+        "unreleased"
+      ],
+      "destination": "release-notes.html"
+    },
+    {
+      "source": "statement-of-need.rst",
+      "title": "Statement of Need #",
+      "old_url": "statement-of-need.html",
+      "fragments": [
+        "statement-of-need"
+      ],
+      "destination": "statement-of-need.html"
+    },
+    {
+      "source": "users/background/autocontouring.rst",
+      "title": "Automatic Contouring Project #",
+      "old_url": "users/background/autocontouring.html",
+      "fragments": [
+        "automatic-contouring-project",
+        "details",
+        "project-aim",
+        "references",
+        "video-demonstrating-usage"
+      ],
+      "destination": "users/background/autocontouring.html"
+    },
+    {
+      "source": "users/background/dicom-deidentification.md",
+      "title": "DICOM de-identification #",
+      "old_url": "users/background/dicom-deidentification.html",
+      "fragments": [
+        "anonymisation-and-pseudonymisation-use-the-same-process",
+        "anonymise",
+        "both-tools",
+        "dicom-de-identification",
+        "experimental-pseudonymisation",
+        "further-reading",
+        "limitations-of-the-current-tools",
+        "planned-replacement",
+        "terms",
+        "what-a-conformance-claim-means"
+      ],
+      "destination": "users/background/dicom-deidentification.html"
+    },
+    {
+      "source": "users/background/elekta-logfiles.rst",
+      "title": "Elekta Logfile Decoding and Indexing #",
+      "old_url": "users/background/elekta-logfiles.html",
+      "fragments": [
+        "details",
+        "elekta-logfile-decoding-and-indexing",
+        "presentations-related-to-this-project",
+        "project-aim",
+        "references"
+      ],
+      "destination": "users/background/elekta-logfiles.html"
+    },
+    {
+      "source": "users/background/index.rst",
+      "title": "Background #",
+      "old_url": "users/background/index.html",
+      "fragments": [
+        "background"
+      ],
+      "destination": "users/background/index.html"
+    },
+    {
+      "source": "users/get-started/choose-your-path.md",
+      "title": "Choose your path #",
+      "old_url": "users/get-started/choose-your-path.html",
+      "fragments": [
+        "choose-your-path",
+        "common-scenarios",
+        "fast-decision",
+        "i-just-want-to-run-something-that-already-exists",
+        "i-know-a-little-python-but-i-do-not-want-to-build-a-full-application",
+        "i-need-a-task-to-run-every-day-or-every-night",
+        "i-need-to-inspect-arrays-tables-plots-or-intermediate-results",
+        "my-colleagues-are-less-comfortable-with-code",
+        "practical-recommendations",
+        "side-by-side-comparison",
+        "where-to-go-next"
+      ],
+      "destination": "users/get-started/choose-your-path.html"
+    },
+    {
+      "source": "users/get-started/cli.rst",
+      "title": "Using the CLI #",
+      "old_url": "users/get-started/cli.html",
+      "fragments": [
+        "using-the-cli"
+      ],
+      "destination": "users/get-started/cli.html"
+    },
+    {
+      "source": "users/get-started/index.md",
+      "title": "Getting Started #",
+      "old_url": "users/get-started/index.html",
+      "fragments": [
+        "getting-started"
+      ],
+      "destination": "users/get-started/index.html"
+    },
+    {
+      "source": "users/get-started/installation-options.md",
+      "title": "Installation options #",
+      "old_url": "users/get-started/installation-options.html",
+      "fragments": [
+        "extras",
+        "important-note-about-the-commands-on-this-page",
+        "installation-options",
+        "macos-with-python-3-14",
+        "next-step",
+        "recommended-approach",
+        "smaller-installs-for-one-feature",
+        "what-happens-when-a-package-is-missing",
+        "what-most-people-should-choose",
+        "why-there-is-more-than-one-install"
+      ],
+      "destination": "users/get-started/installation-options.html"
+    },
+    {
+      "source": "users/get-started/quick-start.rst",
+      "title": "Quick Start Guide #",
+      "old_url": "users/get-started/quick-start.html",
+      "fragments": [
+        "create-a-python-environment",
+        "fallback-if-you-cannot-use-uv",
+        "id1",
+        "id2",
+        "id3",
+        "id4",
+        "id5",
+        "id6",
+        "id7",
+        "id8",
+        "install-pymedphys",
+        "install-uv",
+        "linux-or-macos",
+        "next-steps",
+        "other-installs",
+        "proxy-issues",
+        "quick-start-guide",
+        "recommended-default",
+        "tls-or-certificate-issues",
+        "troubleshooting-installation",
+        "use-the-environment",
+        "windows"
+      ],
+      "destination": "users/get-started/quick-start.html"
+    },
+    {
+      "source": "users/get-started/what-pymedphys-can-do.md",
+      "title": "What PyMedPhys can do #",
+      "old_url": "users/get-started/what-pymedphys-can-do.html",
+      "fragments": [
+        "if-you-want-electron-cutout-factor-tools",
+        "if-you-want-point-and-click-tools",
+        "if-you-want-to-compare-dose-or-fluence-like-data",
+        "if-you-want-to-query-or-integrate-with-mosaiq",
+        "if-you-want-to-work-with-delivery-or-machine-log-data",
+        "if-you-want-to-work-with-dicom",
+        "there-is-more-than-this",
+        "what-pymedphys-can-do",
+        "where-to-go-next"
+      ],
+      "destination": "users/get-started/what-pymedphys-can-do.html"
+    },
+    {
+      "source": "users/howto/add-a-linac.md",
+      "title": "Adding a Linac #",
+      "old_url": "users/howto/add-a-linac.html",
+      "fragments": [
+        "adding-a-linac",
+        "background",
+        "installing-pymedphys-on-the-icom-listener-server",
+        "iview-database",
+        "prerequisites",
+        "setting-up-the-icom-listener-as-a-windows-service",
+        "the-icom-listener",
+        "the-physics-server-git-repository",
+        "trf-indexing",
+        "updating-the-config-toml-file"
+      ],
+      "destination": "users/howto/add-a-linac.html"
+    },
+    {
+      "source": "users/howto/gamma/1D-from-csv.ipynb",
+      "title": "Gamma from 1D ASCII data #",
+      "old_url": "users/howto/gamma/1D-from-csv.html",
+      "fragments": [
+        "calculate-gamma",
+        "display-gamma-together-with-dose-points",
+        "gamma-from-1d-ascii-data",
+        "getting-the-demo-csv-files",
+        "plot-the-histogram-of-gamma-index"
+      ],
+      "destination": "users/howto/gamma/1D-from-csv.html"
+    },
+    {
+      "source": "users/howto/gamma/effect-of-noise.ipynb",
+      "title": "The Effects of Noise on Gamma #",
+      "old_url": "users/howto/gamma/effect-of-noise.html",
+      "fragments": [
+        "conclusion",
+        "defining-an-example-dose-reference",
+        "defining-an-example-evaluation-dose",
+        "evaluation-gamma",
+        "investigating-the-effect-of-noise",
+        "seeing-a-dose-difference",
+        "the-effects-of-noise-on-gamma"
+      ],
+      "destination": "users/howto/gamma/effect-of-noise.html"
+    },
+    {
+      "source": "users/howto/gamma/from-dicom.ipynb",
+      "title": "Gamma from DICOM #",
+      "old_url": "users/howto/gamma/from-dicom.html",
+      "fragments": [
+        "calculate-and-display-gamma",
+        "gamma-from-dicom",
+        "getting-the-demo-dicom-files",
+        "plotting-the-dose-and-the-gamma"
+      ],
+      "destination": "users/howto/gamma/from-dicom.html"
+    },
+    {
+      "source": "users/howto/gamma/index.rst",
+      "title": "Gamma #",
+      "old_url": "users/howto/gamma/index.html",
+      "fragments": [
+        "gamma"
+      ],
+      "destination": "users/howto/gamma/index.html"
+    },
+    {
+      "source": "users/howto/gamma/speed-up.ipynb",
+      "title": "Speeding up gamma calculations #",
+      "old_url": "users/howto/gamma/speed-up.html",
+      "fragments": [
+        "speeding-up-gamma-calculations"
+      ],
+      "destination": "users/howto/gamma/speed-up.html"
+    },
+    {
+      "source": "users/howto/index.md",
+      "title": "How-to Guides #",
+      "old_url": "users/howto/index.html",
+      "fragments": [
+        "how-to-guides"
+      ],
+      "destination": "users/howto/index.html"
+    },
+    {
+      "source": "users/howto/interp/implementation_comparison.ipynb",
+      "title": "Multilinear Interpolation Comparison #",
+      "old_url": "users/howto/interp/implementation_comparison.html",
+      "fragments": [
+        "imports",
+        "multilinear-interpolation-comparison"
+      ],
+      "destination": "users/howto/interp/implementation_comparison.html"
+    },
+    {
+      "source": "users/howto/interp/index.rst",
+      "title": "Interpolation #",
+      "old_url": "users/howto/interp/index.html",
+      "fragments": [
+        "interpolation"
+      ],
+      "destination": "users/howto/interp/index.html"
+    },
+    {
+      "source": "users/howto/tunnels/index.md",
+      "title": "Tunnels #",
+      "old_url": "users/howto/tunnels/index.html",
+      "fragments": [
+        "background",
+        "index",
+        "overview",
+        "tunnels"
+      ],
+      "destination": "users/howto/tunnels/index.html"
+    },
+    {
+      "source": "users/howto/tunnels/rsync.md",
+      "title": "Backups using rsync #",
+      "old_url": "users/howto/tunnels/rsync.html",
+      "fragments": [
+        "background",
+        "backups-using-rsync",
+        "overview",
+        "permanently-mount-the-samba-shares",
+        "pre-requisites",
+        "setup-rsync-crontab"
+      ],
+      "destination": "users/howto/tunnels/rsync.html"
+    },
+    {
+      "source": "users/howto/tunnels/samba.md",
+      "title": "SAMBA SSH Tunnelling #",
+      "old_url": "users/howto/tunnels/samba.html",
+      "fragments": [
+        "add-ssh-server-to-hosts-file",
+        "background",
+        "initial-set-up-of-the-ssh-connection",
+        "overview",
+        "pre-requisites",
+        "samba-ssh-tunnelling",
+        "setting-the-ip-addresses",
+        "setting-up-the-ssh-port-forward-service-to-run-on-boot",
+        "viewing-the-logs"
+      ],
+      "destination": "users/howto/tunnels/samba.html"
+    },
+    {
+      "source": "users/ref/cli/dicom.rst",
+      "title": "DICOM Files #",
+      "old_url": "users/ref/cli/dicom.html",
+      "fragments": [
+        "-named-arguments",
+        "-named-arguments_repeat1",
+        "-named-arguments_repeat2",
+        "-named-arguments_repeat3",
+        "-named-arguments_repeat4",
+        "-positional-arguments",
+        "-positional-arguments_repeat1",
+        "-positional-arguments_repeat2",
+        "-positional-arguments_repeat3",
+        "-positional-arguments_repeat4",
+        "-positional-arguments_repeat5",
+        "-positional-arguments_repeat6",
+        "Sub-commands",
+        "adjust-RED",
+        "adjust-RED-by-structure-name",
+        "adjust-machine-name",
+        "anonymise",
+        "dicom-files",
+        "listen",
+        "merge-contours",
+        "module-pymedphys.cli.dicom",
+        "pymedphys-dicom-adjust-RED",
+        "pymedphys-dicom-adjust-RED-by-structure-name",
+        "pymedphys-dicom-adjust-RED-by-structure-name-positional-arguments",
+        "pymedphys-dicom-adjust-RED-named-arguments",
+        "pymedphys-dicom-adjust-RED-positional-arguments",
+        "pymedphys-dicom-adjust-machine-name",
+        "pymedphys-dicom-adjust-machine-name-positional-arguments",
+        "pymedphys-dicom-anonymise",
+        "pymedphys-dicom-anonymise-named-arguments",
+        "pymedphys-dicom-anonymise-positional-arguments",
+        "pymedphys-dicom-listen",
+        "pymedphys-dicom-listen-named-arguments",
+        "pymedphys-dicom-listen-positional-arguments",
+        "pymedphys-dicom-merge-contours",
+        "pymedphys-dicom-merge-contours-named-arguments",
+        "pymedphys-dicom-merge-contours-positional-arguments",
+        "pymedphys-dicom-positional-arguments",
+        "pymedphys-dicom-send",
+        "pymedphys-dicom-send-named-arguments",
+        "pymedphys-dicom-send-positional-arguments",
+        "pymedphys.cli-define_parser-positional-arguments",
+        "send"
+      ],
+      "destination": "users/ref/cli/dicom.html"
+    },
+    {
+      "source": "users/ref/cli/gui.rst",
+      "title": "Graphical apps #",
+      "old_url": "users/ref/cli/gui.html",
+      "fragments": [
+        "command-line-options",
+        "graphical-apps",
+        "pymedphys-gui-named-arguments",
+        "pymedphys.cli-define_parser-named-arguments",
+        "serving-the-apps"
+      ],
+      "destination": "users/ref/cli/gui.html"
+    },
+    {
+      "source": "users/ref/cli/icom.rst",
+      "title": "iCom listener #",
+      "old_url": "users/ref/cli/icom.html",
+      "fragments": [
+        "-positional-arguments",
+        "Sub-commands",
+        "icom-listener",
+        "listen",
+        "module-pymedphys.cli.icom",
+        "pymedphys-icom-listen",
+        "pymedphys-icom-listen-positional-arguments",
+        "pymedphys-icom-positional-arguments",
+        "pymedphys.cli-define_parser-positional-arguments"
+      ],
+      "destination": "users/ref/cli/icom.html"
+    },
+    {
+      "source": "users/ref/cli/index.rst",
+      "title": "CLI Reference #",
+      "old_url": "users/ref/cli/index.html",
+      "fragments": [
+        "cli-reference",
+        "pymedphys-named-arguments",
+        "pymedphys.cli-define_parser-named-arguments"
+      ],
+      "destination": "users/ref/cli/index.html"
+    },
+    {
+      "source": "users/ref/cli/pinnacle.rst",
+      "title": "Pinnacle Export Tool #",
+      "old_url": "users/ref/cli/pinnacle.html",
+      "fragments": [
+        "-named-arguments",
+        "-positional-arguments",
+        "Sub-commands",
+        "export",
+        "module-pymedphys.cli.pinnacle",
+        "pinnacle-export-tool",
+        "pymedphys-pinnacle-export",
+        "pymedphys-pinnacle-export-named-arguments",
+        "pymedphys-pinnacle-export-positional-arguments",
+        "pymedphys-pinnacle-positional-arguments",
+        "pymedphys.cli-define_parser-positional-arguments"
+      ],
+      "destination": "users/ref/cli/pinnacle.html"
+    },
+    {
+      "source": "users/ref/cli/pseudonymisation.rst",
+      "title": "Pseudonymisation Tool #",
+      "old_url": "users/ref/cli/pseudonymisation.html",
+      "fragments": [
+        "pseudonymisation-tool",
+        "pymedphys-experimental-dicom-pseudonymise-named-arguments",
+        "pymedphys-experimental-dicom-pseudonymise-positional-arguments",
+        "pymedphys.cli-define_parser-named-arguments",
+        "pymedphys.cli-define_parser-positional-arguments"
+      ],
+      "destination": "users/ref/cli/pseudonymisation.html"
+    },
+    {
+      "source": "users/ref/cli/trf.rst",
+      "title": "Elekta Binary Logfiles #",
+      "old_url": "users/ref/cli/trf.html",
+      "fragments": [
+        "-positional-arguments",
+        "-positional-arguments_repeat1",
+        "Sub-commands",
+        "detect",
+        "elekta-binary-logfiles",
+        "module-pymedphys.cli.trf",
+        "orchestrate",
+        "pymedphys-trf-detect",
+        "pymedphys-trf-detect-positional-arguments",
+        "pymedphys-trf-orchestrate",
+        "pymedphys-trf-positional-arguments",
+        "pymedphys-trf-to-csv",
+        "pymedphys-trf-to-csv-positional-arguments",
+        "pymedphys.cli-define_parser-positional-arguments",
+        "to-csv"
+      ],
+      "destination": "users/ref/cli/trf.html"
+    },
+    {
+      "source": "users/ref/index.md",
+      "title": "Technical Reference #",
+      "old_url": "users/ref/index.html",
+      "fragments": [
+        "technical-reference"
+      ],
+      "destination": "users/ref/index.html"
+    },
+    {
+      "source": "users/ref/lib/dicom.rst",
+      "title": "DICOM #",
+      "old_url": "users/ref/lib/dicom.html",
+      "fragments": [
+        "anonymisation",
+        "api",
+        "dicom",
+        "dose",
+        "module-pymedphys.dicom",
+        "pymedphys.dicom.AnonymisationLimitationWarning",
+        "pymedphys.dicom.anonymise",
+        "pymedphys.dicom.depth_dose",
+        "pymedphys.dicom.dicom_dose_interpolate",
+        "pymedphys.dicom.profile",
+        "pymedphys.dicom.zyx_and_dose_from_dataset",
+        "summary"
+      ],
+      "destination": "users/ref/lib/dicom.html"
+    },
+    {
+      "source": "users/ref/lib/electronfactors.rst",
+      "title": "Electron Cutout Factors #",
+      "old_url": "users/ref/lib/electronfactors.html",
+      "fragments": [
+        "api",
+        "electron-cutout-factors",
+        "module-pymedphys.electronfactors",
+        "pymedphys.electronfactors.calculate_deformability",
+        "pymedphys.electronfactors.calculate_percent_prediction_differences",
+        "pymedphys.electronfactors.parameterise_insert",
+        "pymedphys.electronfactors.spline_model",
+        "pymedphys.electronfactors.spline_model_with_deformability",
+        "pymedphys.electronfactors.visual_alignment_of_equivalent_ellipse",
+        "summary"
+      ],
+      "destination": "users/ref/lib/electronfactors.html"
+    },
+    {
+      "source": "users/ref/lib/experimental/index.rst",
+      "title": "Experimental Modules #",
+      "old_url": "users/ref/lib/experimental/index.html",
+      "fragments": [
+        "experimental-modules"
+      ],
+      "destination": "users/ref/lib/experimental/index.html"
+    },
+    {
+      "source": "users/ref/lib/experimental/pinnacle.rst",
+      "title": "Pinnacle Export Tool #",
+      "old_url": "users/ref/lib/experimental/pinnacle.html",
+      "fragments": [
+        "api",
+        "module-pymedphys.pinnacle",
+        "pinnacle-export-tool",
+        "pymedphys.pinnacle.PinnacleExport",
+        "pymedphys.pinnacle.PinnacleImage",
+        "pymedphys.pinnacle.PinnaclePlan",
+        "summary"
+      ],
+      "destination": "users/ref/lib/experimental/pinnacle.html"
+    },
+    {
+      "source": "users/ref/lib/experimental/pseudonymisation.rst",
+      "title": "Pseudonymisation Tool #",
+      "old_url": "users/ref/lib/experimental/pseudonymisation.html",
+      "fragments": [
+        "api",
+        "example",
+        "pseudonymisation-tool",
+        "pymedphys.experimental.pseudonymisation.PseudonymisationLimitationWarning",
+        "pymedphys.experimental.pseudonymisation.get_default_pseudonymisation_keywords",
+        "pymedphys.experimental.pseudonymisation.is_valid_strategy_for_keywords",
+        "pymedphys.experimental.pseudonymisation.pseudonymisation_dispatch",
+        "pymedphys.experimental.pseudonymisation.pseudonymise",
+        "summary"
+      ],
+      "destination": "users/ref/lib/experimental/pseudonymisation.html"
+    },
+    {
+      "source": "users/ref/lib/gamma.rst",
+      "title": "Gamma #",
+      "old_url": "users/ref/lib/gamma.html",
+      "fragments": [
+        "api",
+        "gamma",
+        "pymedphys.gamma",
+        "pymedphys.gamma_pass_rate"
+      ],
+      "destination": "users/ref/lib/gamma.html"
+    },
+    {
+      "source": "users/ref/lib/index.rst",
+      "title": "Library Reference #",
+      "old_url": "users/ref/lib/index.html",
+      "fragments": [
+        "library-reference"
+      ],
+      "destination": "users/ref/lib/index.html"
+    },
+    {
+      "source": "users/ref/lib/interp.rst",
+      "title": "Interpolation #",
+      "old_url": "users/ref/lib/interp.html",
+      "fragments": [
+        "api",
+        "id1",
+        "interpolation",
+        "interpolation-high-level-interface-recommended",
+        "interpolation-low-level-interfaces",
+        "interpolation-visualisation",
+        "module-pymedphys.interpolate",
+        "performance-comparison-between-implementations",
+        "pymedphys.interpolate.interp",
+        "pymedphys.interpolate.interp_linear_1d",
+        "pymedphys.interpolate.interp_linear_2d",
+        "pymedphys.interpolate.interp_linear_3d",
+        "pymedphys.interpolate.plot_interp_comparison_heatmap",
+        "summary"
+      ],
+      "destination": "users/ref/lib/interp.html"
+    },
+    {
+      "source": "users/ref/lib/metersetmap.rst",
+      "title": "MetersetMap #",
+      "old_url": "users/ref/lib/metersetmap.html",
+      "fragments": [
+        "api",
+        "metersetmap",
+        "module-pymedphys.metersetmap",
+        "pymedphys.metersetmap.calculate",
+        "pymedphys.metersetmap.display",
+        "pymedphys.metersetmap.grid",
+        "summary"
+      ],
+      "destination": "users/ref/lib/metersetmap.html"
+    },
+    {
+      "source": "users/ref/lib/mosaiq.rst",
+      "title": "Mosaiq #",
+      "old_url": "users/ref/lib/mosaiq.html",
+      "fragments": [
+        "api",
+        "connect-and-query-the-mosaiq-database",
+        "module-pymedphys.mosaiq",
+        "mosaiq",
+        "pymedphys.mosaiq.connect",
+        "pymedphys.mosaiq.execute",
+        "summary"
+      ],
+      "destination": "users/ref/lib/mosaiq.html"
+    },
+    {
+      "source": "users/ref/lib/pinnacle.rst",
+      "title": "Pinnacle Export Tool #",
+      "old_url": "users/ref/lib/pinnacle.html",
+      "fragments": [
+        "api",
+        "pinnacle-export-tool",
+        "pymedphys.pinnacle.PinnacleExport",
+        "pymedphys.pinnacle.PinnacleExport.export_dose",
+        "pymedphys.pinnacle.PinnacleExport.export_image",
+        "pymedphys.pinnacle.PinnacleExport.export_plan",
+        "pymedphys.pinnacle.PinnacleExport.export_struct",
+        "pymedphys.pinnacle.PinnacleExport.images",
+        "pymedphys.pinnacle.PinnacleExport.log_images",
+        "pymedphys.pinnacle.PinnacleExport.log_plan_names",
+        "pymedphys.pinnacle.PinnacleExport.log_trial_names",
+        "pymedphys.pinnacle.PinnacleExport.log_trial_names_in_plan",
+        "pymedphys.pinnacle.PinnacleExport.logger",
+        "pymedphys.pinnacle.PinnacleExport.patient_info",
+        "pymedphys.pinnacle.PinnacleExport.plans",
+        "pymedphys.pinnacle.PinnacleImage",
+        "pymedphys.pinnacle.PinnacleImage.image",
+        "pymedphys.pinnacle.PinnacleImage.image_header",
+        "pymedphys.pinnacle.PinnacleImage.image_info",
+        "pymedphys.pinnacle.PinnacleImage.image_set",
+        "pymedphys.pinnacle.PinnacleImage.logger",
+        "pymedphys.pinnacle.PinnacleImage.path",
+        "pymedphys.pinnacle.PinnacleImage.pinnacle",
+        "pymedphys.pinnacle.PinnaclePlan",
+        "pymedphys.pinnacle.PinnaclePlan.active_trial",
+        "pymedphys.pinnacle.PinnaclePlan.convert_point",
+        "pymedphys.pinnacle.PinnaclePlan.dose_inst_uid",
+        "pymedphys.pinnacle.PinnaclePlan.generate_uids",
+        "pymedphys.pinnacle.PinnaclePlan.is_prefix_valid",
+        "pymedphys.pinnacle.PinnaclePlan.iso_center",
+        "pymedphys.pinnacle.PinnaclePlan.logger",
+        "pymedphys.pinnacle.PinnaclePlan.machine_info",
+        "pymedphys.pinnacle.PinnaclePlan.path",
+        "pymedphys.pinnacle.PinnaclePlan.patient_position",
+        "pymedphys.pinnacle.PinnaclePlan.pinnacle",
+        "pymedphys.pinnacle.PinnaclePlan.plan_info",
+        "pymedphys.pinnacle.PinnaclePlan.plan_inst_uid",
+        "pymedphys.pinnacle.PinnaclePlan.points",
+        "pymedphys.pinnacle.PinnaclePlan.primary_image",
+        "pymedphys.pinnacle.PinnaclePlan.struct_inst_uid",
+        "pymedphys.pinnacle.PinnaclePlan.trial_info",
+        "pymedphys.pinnacle.PinnaclePlan.trials",
+        "summary"
+      ],
+      "destination": "users/ref/lib/pinnacle.html"
+    },
+    {
+      "source": "users/ref/lib/trf.rst",
+      "title": "TRF #",
+      "old_url": "users/ref/lib/trf.html",
+      "fragments": [
+        "api",
+        "module-pymedphys.trf",
+        "pymedphys.trf.identify",
+        "pymedphys.trf.read",
+        "summary",
+        "trf",
+        "work-with-elekta-linac-agility-head-trfs"
+      ],
+      "destination": "users/ref/lib/trf.html"
+    }
+  ]
+}

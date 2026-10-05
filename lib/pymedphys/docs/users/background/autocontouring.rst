@@ -2,6 +2,12 @@
 Automatic Contouring Project
 ============================
 
+.. note::
+
+   Historical deployment record. The commands and conditions below describe
+   the original environment. For current operations, use the
+   :doc:`user task guides </users/tasks/index>`.
+
 This page records a research project and its accompanying thesis. It is not a
 current installation guide or a claim that these models are included in the
 PyMedPhys distribution.

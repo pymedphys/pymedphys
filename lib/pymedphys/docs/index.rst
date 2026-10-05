@@ -22,43 +22,19 @@
 .. _`background information`: users/background/index.html
 .. _`Technical Reference`: users/ref/index.html
 .. _`Contributors Guide`: contrib/index.html
-.. _`Developer guide`: contrib/guide.html
-.. _`User guide`: users/get-started/index.html
-.. _`Project information`: project/index.html
 .. _`workstation setup guides`: contrib/setups/index.html
 .. _`repository information`: contrib/info/index.html
 .. _`tips & tricks`: contrib/tips/index.html
 
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-
-    overview
-    statement-of-need
-    release-notes
-
+.. _`Developer guide`: contrib/guide.html
+.. _`User guide`: users/tasks/index.html
+.. _`Project information`: project/index.html
 
 .. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: Users Guide
+   :hidden:
+   :maxdepth: 2
 
-    users/get-started/index
-    users/howto/index
-    users/background/index
-    users/ref/index
-
-
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: Developer guide
-
-    contrib/guide
-
-.. toctree::
-    :hidden:
-    :maxdepth: 2
-    :caption: Project information
-
-    project/index
+   overview
+   users/tasks/index
+   contrib/guide
+   project/index

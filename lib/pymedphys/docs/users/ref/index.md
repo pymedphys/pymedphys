@@ -6,4 +6,5 @@
 
 lib/index
 cli/index
+configuration
 ```
