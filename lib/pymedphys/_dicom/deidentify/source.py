@@ -22,8 +22,15 @@ release (D-010). Reading checks each element's header and length, that its
 value fits what holds it, that tags rise through each data set and item, so
 that none repeats, each item's tag, length, and delimiter, each sequence's
 delimiter, and a bound on nesting; Data Set Trailing Padding is accounted
-for, and nothing may follow the last element. Anything else is refused with
-a :class:`SourceReason` and the offset where reading stopped, never a value.
+for, and nothing may follow the last element. Every Value Length and Item
+Length but the undefined length must then be even (PS3.5 Sections 7.1.1 and
+7.5), in the File Meta Information and in the data set, at every depth.
+Anything else is refused with a :class:`SourceReason` and the offset where
+reading stopped or the odd length starts, never a value.
+
+The layout reader itself reads an odd length, so that a written file can be
+searched for residual values whatever its lengths; only admitting a source
+requires them to be even.
 
 The :class:`SourceEvidence` it returns keeps an immutable copy of the bytes
 and, for each element of the data set, where its header and Value Field
@@ -39,6 +46,7 @@ from __future__ import annotations
 
 import enum
 import io
+import struct
 from collections.abc import Iterator, Mapping
 
 from pymedphys._imports import pydicom
@@ -47,6 +55,7 @@ from .diagnostics import redacted_diagnostics
 from .file_layout import (
     ElementPath,
     Extent,
+    FileLayout,
     Region,
     read_file_layout,
 )
@@ -55,6 +64,8 @@ from .file_layout import (
 # A.1 and A.2), the transfer syntaxes of the first supported release.
 SUPPORTED_TRANSFER_SYNTAXES = frozenset({"1.2.840.10008.1.2", "1.2.840.10008.1.2.1"})
 _DATA_SET_REGIONS = (Region.DATA_SET, Region.TRAILING_PADDING)
+_ITEM_TAG = b"\xfe\xff\x00\xe0"  # (FFFE,E000), little endian
+_UNDEFINED_LENGTH = 0xFFFFFFFF
 
 
 class SourceReason(enum.Enum):
@@ -62,7 +73,7 @@ class SourceReason(enum.Enum):
 
     NOT_PS3_10 = "not-ps3-10"  # no "DICM" prefix after a 128-byte preamble
     TRANSFER_SYNTAX = "transfer-syntax"  # absent, or not supported
-    STRUCTURE = "structure"  # a structure that cannot be read, or bytes after it
+    STRUCTURE = "structure"  # unreadable, an odd length, or bytes after it
     PYDICOM = "pydicom"  # pydicom cannot read what the layout reads
 
 
@@ -76,7 +87,8 @@ class SourceRefused(Exception):
     ----------
     reason : SourceReason
     offset : int, optional
-        Where reading stopped, for :attr:`SourceReason.STRUCTURE`.
+        Where reading stopped, or where the element or item whose length is
+        odd starts, for :attr:`SourceReason.STRUCTURE`.
     """
 
     def __init__(self, reason: SourceReason, offset: int | None = None) -> None:
@@ -204,8 +216,8 @@ def read_source(data: bytes | bytearray | memoryview) -> SourceEvidence:
     ------
     SourceRefused
         If the file is not a DICOM PS3.10 file, its transfer syntax is not
-        Implicit or Explicit VR Little Endian, or its structure cannot be
-        read to its end.
+        Implicit or Explicit VR Little Endian, its structure cannot be read
+        to its end, or an element or item has an odd length.
     """
     data = bytes(data)
     if data[128:132] != b"DICM":
@@ -223,9 +235,49 @@ def read_source(data: bytes | bytearray | memoryview) -> SourceEvidence:
         last = layout.spans[-1]
         stop = last.start if last.location.region is Region.TRAILING else layout.size
         raise SourceRefused(SourceReason.STRUCTURE, stop)
+    odd = _first_odd_length(data, layout)
+    if odd is not None:
+        raise SourceRefused(SourceReason.STRUCTURE, odd)
     elements = tuple(
         extent
         for extent in layout.elements
         if extent.location.region in _DATA_SET_REGIONS
     )
     return SourceEvidence(data, syntax, elements)
+
+
+def _first_odd_length(data: bytes, layout: FileLayout) -> int | None:
+    """Return where the first element or item whose length is odd starts.
+
+    Every Value Length but the undefined length, FFFFFFFFH, is even (PS3.5
+    Section 7.1.1), and so is every Item Length (Section 7.5), including
+    those of fragments (Section A.4). The layout gives each element's extent,
+    and each item header is a span of its own.
+
+    Parameters
+    ----------
+    data : bytes
+        The whole file.
+    layout : FileLayout
+        The file's layout, which has been read to its end.
+
+    Returns
+    -------
+    int or None
+        The offset of the first such element or item, in file order, or
+        ``None`` if every length is even or undefined.
+    """
+    starts = [
+        extent.start
+        for extent in layout.elements
+        if not extent.undefined_length and (extent.end - extent.value_start) % 2
+    ]
+    for span in layout.spans:
+        if (
+            span.location.region is not Region.PREAMBLE
+            and data[span.start : span.start + 4] == _ITEM_TAG
+        ):
+            (length,) = struct.unpack_from("<I", data, span.start + 4)
+            if length != _UNDEFINED_LENGTH and length % 2:
+                starts.append(span.start)
+    return min(starts, default=None)
