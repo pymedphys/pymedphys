@@ -259,7 +259,7 @@ def test_the_walker_removes_the_enclosing_sequence_that_the_statement_names():
             0x3006004C,
             "SQ",
             _item(
-                _explicit(0x0008103E, "LO", b"QUILLON SERIES ")
+                _explicit(0x0008103E, "LO", b"QUILLON SERIES")
                 + _explicit(0x0020000E, "UI", b"1.2.826.0.1.3680043.2.1125.1")
             ),
         ),
@@ -308,7 +308,7 @@ def test_plain_z_and_d_are_resolved_as_the_walker_plans_them():
     # (0012,0083), which the Basic Profile keeps.
     plan = _ct_plan(
         _explicit(0x00100010, "PN", b"ZEBEDEE^QUILLON ")
-        + _explicit(0x00120010, "LO", b"SPONSOR7741")
+        + _explicit(0x00120010, "LO", b"SPONSOR7741 ")
         + _explicit(0x00120083, "SQ", _item(_explicit(0x00120020, "LO", b"PROT77")))
     )
     statement = _statement("basic")
