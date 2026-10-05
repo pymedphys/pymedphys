@@ -20,7 +20,7 @@ import re
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import elements, standard
+from pymedphys._dicom.deidentify import compound_actions, elements, standard
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.file_layout import (
     ElementPath,
@@ -220,13 +220,48 @@ def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
             if placement.kind is Kind.NOT_PLANTED:
                 reasons[placement.reason] += 1
                 assert placement.values == ()
+                if placement.reason is Reason.SEQUESTERS_INSTANCE:
+                    continue
                 assert depth + (placement.vr == "SQ") > corpus_module.MAX_DEPTH
                 # Each attribute capped is planted at a shallower place.
                 assert placement.path.tag in planted_tags
             else:
                 assert depth <= corpus_module.MAX_DEPTH
 
-    assert set(reasons) == {Reason.DEPTH_CAP}
+    assert set(reasons) == {Reason.DEPTH_CAP, Reason.SEQUESTERS_INSTANCE}
+
+
+def _sequesters(iod, placement):
+    """Return whether the Basic Profile's plain X on a placement sequesters."""
+    rows = {row.tag: row for row in standard.load_table_e1_1().attributes}
+    path = tuple(tag for tag, _ in placement.path.items)
+    return rows[placement.profile_tag].basic_profile == "X" and (
+        compound_actions.resolve_plain_x_in_iod(iod, placement.path.tag, path).extent
+        is compound_actions.RemovalExtent.SEQUESTER
+    )
+
+
+def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus):
+    planted = collections.defaultdict(set)
+    withheld = collections.defaultdict(set)
+    for file, placement in _placements(corpus, Kind.PLANTED, Kind.NOT_PLANTED):
+        iod = iod_for_sop_class(file.manifest.sop_class)
+        if placement.reason is Reason.SEQUESTERS_INSTANCE:
+            assert _sequesters(iod, placement), placement
+            withheld[file.name].add(placement.path.tag)
+        elif placement.kind is Kind.PLANTED and _sequesters(iod, placement):
+            planted[file.name].add(placement.path.tag)
+
+    # Responsible Person and Responsible Organization (D-020), only in the
+    # third slice, so that the other five instances can be released.
+    both = {"(0010,2297)", "(0010,2299)"}
+    assert planted == {corpus_module.SEQUESTERED_FILE: both}
+    assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
+    assert withheld == {
+        file.name: both
+        for file in corpus.files
+        if file.name != corpus_module.SEQUESTERED_FILE
+    }
 
 
 def test_markers_are_unique_and_conspicuous(corpus):
@@ -453,15 +488,20 @@ def test_the_manifest_json_is_deterministic_and_matches_the_files(corpus):
 
 def test_the_corpus_is_written_only_to_a_new_place(corpus, tmp_path):
     written = corpus_module.write_corpus(corpus, tmp_path)
+    instances = tmp_path / corpus_module.INSTANCES_DIRECTORY
 
-    assert [path.name for path in written] == [
-        *(file.name for file in corpus.files),
-        "manifest.json",
-    ]
+    assert written == (
+        *(instances / file.name for file in corpus.files),
+        tmp_path / "manifest.json",
+    )
     assert [path.read_bytes() for path in written[:-1]] == [
         file.data for file in corpus.files
     ]
     assert written[-1].read_text(encoding="utf-8") == corpus.manifest.to_json()
+    # The directory of instances, the input of a run, holds no manifest.
+    assert sorted(path.name for path in instances.iterdir()) == [
+        file.name for file in corpus.files
+    ]
     with pytest.raises(FileExistsError):
         corpus_module.write_corpus(corpus, tmp_path)
 
@@ -562,11 +602,25 @@ def test_the_items_private_block_is_in_a_sequence_pydicom_knows(corpus):
 
 
 def test_the_corpus_is_not_written_over_an_existing_file(corpus, tmp_path):
-    existing = tmp_path / corpus.files[2].name
+    instances = tmp_path / corpus_module.INSTANCES_DIRECTORY
+    instances.mkdir()
+    existing = instances / corpus.files[2].name
     existing.write_bytes(b"kept")
 
     with pytest.raises(FileExistsError):
         corpus_module.write_corpus(corpus, tmp_path)
 
     assert existing.read_bytes() == b"kept"
+    assert [path.name for path in instances.iterdir()] == [existing.name]
+    assert [path.name for path in tmp_path.iterdir()] == [instances.name]
+
+
+def test_the_corpus_is_not_written_beside_an_existing_manifest(corpus, tmp_path):
+    existing = tmp_path / "manifest.json"
+    existing.write_text("kept", encoding="utf-8")
+
+    with pytest.raises(FileExistsError):
+        corpus_module.write_corpus(corpus, tmp_path)
+
+    assert existing.read_text(encoding="utf-8") == "kept"
     assert [path.name for path in tmp_path.iterdir()] == [existing.name]

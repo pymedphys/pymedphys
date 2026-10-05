@@ -80,6 +80,19 @@ are not planted. Each placement not planted is recorded with a
 :class:`NotPlantedReason`. Pixel Data is not an attribute of Table E.1-1 and
 holds only a few synthetic samples.
 
+**Sequestering attributes.** An attribute whose Basic Profile action is a
+plain X, and whose removal sequesters the instance because the IOD requires
+it at a place no Type 3 sequence encloses
+(:func:`~pymedphys._dicom.deidentify.compound_actions.resolve_plain_x_in_iod`),
+is planted only in :data:`SEQUESTERED_FILE`, the third CT slice, and
+recorded in the other files with
+:attr:`NotPlantedReason.SEQUESTERS_INSTANCE`. Of the corpus's IODs these
+are Responsible Person (0010,2297) and Responsible Organization (0010,2299)
+at the top level. Planted in every file, they would sequester every
+instance, and no preset could release any of the collection; planted in one,
+that instance checks sequestration and the other five check each preset's
+output.
+
 **Edge cases.** Each file except the RT Dose is written in Explicit VR
 Little Endian, and the RT Dose in Implicit VR Little Endian. pydicom 3.0.2
 does not know some newer attributes, such as (0008,001D), and reads them
@@ -99,9 +112,14 @@ placement: its element path, VR, values, kind, the Table E.1-1 row it
 covers, and why it was not planted where it was not.
 :meth:`CorpusManifest.to_json` serialises it the same way every time.
 Building neither reads nor writes a file, takes no time or randomness, and
-logs nothing; :func:`write_corpus` writes the files and the manifest only to
-a directory its caller names.
+logs nothing; :func:`write_corpus` writes the files to the directory
+:data:`INSTANCES_DIRECTORY` of a directory its caller names, and the manifest
+beside it, so that the directory of instances can be a run's input.
 """
+
+# The builder, its manifest's types, and its description stay together, so
+# the module is long.
+# pylint: disable = too-many-lines
 
 from __future__ import annotations
 
@@ -118,6 +136,7 @@ from collections.abc import Sequence
 
 from pymedphys._imports import pydicom
 
+from .compound_actions import RemovalExtent, resolve_plain_x_in_iod
 from .elements import dataset_codecs, new_element
 from .file_layout import ElementPath
 from .iods import IOD
@@ -156,6 +175,10 @@ MAX_MARKERS = 2**15
 MARKER_PREFIX = "SYNMK"
 MARKER_UID_ROOT = "2.25.99999"
 LINKED_UID_ROOT = "2.25.88888"
+# The one file in which an attribute whose removal sequesters is planted.
+SEQUESTERED_FILE = "03-ct-3.dcm"
+# The directory, within the one that write_corpus is given, of the files.
+INSTANCES_DIRECTORY = "instances"
 
 STUDY = f"{LINKED_UID_ROOT}00001"
 FRAME_OF_REFERENCE = f"{LINKED_UID_ROOT}00002"
@@ -283,6 +306,9 @@ class NotPlantedReason(enum.Enum):
     NO_MARKER_CARRIER = "no-marker-carrier"
     NO_SINGLE_VR = "no-single-vr"  # the pinned dictionary gives no single VR
     MASKED_ELEMENT = "masked-element"  # its element number is masked
+    # Removing it sequesters the instance, so it is planted only in
+    # SEQUESTERED_FILE.
+    SEQUESTERS_INSTANCE = "sequesters-instance"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -515,6 +541,10 @@ def write_corpus(
 ) -> tuple[pathlib.Path, ...]:
     """Write the corpus's files, and its manifest as ``manifest.json``.
 
+    The files go in ``directory / INSTANCES_DIRECTORY``, created if needed,
+    which holds nothing else, so it can be given to a run as its input; the
+    manifest, which holds every marker, goes in ``directory``.
+
     Parameters
     ----------
     corpus : SyntheticCorpus
@@ -531,11 +561,13 @@ def write_corpus(
     FileExistsError
         If a file to be written already exists, before anything is written.
     """
-    paths = [directory / file.name for file in corpus.files]
+    instances = directory / INSTANCES_DIRECTORY
+    paths = [instances / file.name for file in corpus.files]
     path = directory / "manifest.json"
     for each in (*paths, path):
         if each.exists():
             raise FileExistsError(f"{each.name} already exists in the directory")
+    instances.mkdir(exist_ok=True)
     written = []
     for each, file in zip(paths, corpus.files):
         with open(each, "xb") as stream:
@@ -656,6 +688,14 @@ def _item(
 
 
 @functools.lru_cache(maxsize=None)
+def _basic_profile_actions() -> types.MappingProxyType[str, str]:
+    """Return the Basic Profile's action for each row of Table E.1-1."""
+    return types.MappingProxyType(
+        {row.tag: row.basic_profile for row in load_table_e1_1().attributes}
+    )
+
+
+@functools.lru_cache(maxsize=None)
 def _profile_places(iod: IOD) -> tuple[tuple[tuple[str, ...], str, str], ...]:
     """Return each place the IOD defines an attribute of Table E.1-1.
 
@@ -755,6 +795,10 @@ class _Instance:
             reason = NotPlantedReason.NO_SINGLE_VR
         elif len(path) + (vr == "SQ") > MAX_DEPTH:
             reason = NotPlantedReason.DEPTH_CAP
+        elif self.spec.name != SEQUESTERED_FILE and self._sequesters(
+            path, written, row
+        ):
+            reason = NotPlantedReason.SEQUESTERS_INSTANCE
         if reason is not None or attribute is None:
             self._record(element_path, vr, (), PlacementKind.NOT_PLANTED, row, reason)
             return
@@ -785,6 +829,14 @@ class _Instance:
         )
         item[_number(written)] = new_element(element_path, vr, values, self.codecs)
         self._record(element_path, vr, text, PlacementKind.PLANTED, row)
+
+    def _sequesters(self, path: tuple[str, ...], tag: str, row: str) -> bool:
+        """Return whether the Basic Profile's action on a place sequesters."""
+        return (
+            _basic_profile_actions()[row] == "X"
+            and resolve_plain_x_in_iod(self.iod, tag, path).extent
+            is RemovalExtent.SEQUESTER
+        )
 
     def _linked(
         self, path: tuple[str, ...], tag: str
