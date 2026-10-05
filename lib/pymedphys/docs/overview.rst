@@ -30,4 +30,4 @@ The **Users Guide** is organised into four main areas:
     Explanations and context for larger projects and concepts.
 
 If you want to contribute code or documentation, head to the
-:doc:`Contributors Guide <contrib/index>`.
+:doc:`Developer guide <contrib/guide>`.

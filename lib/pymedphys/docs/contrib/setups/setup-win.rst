@@ -1,55 +1,46 @@
-Windows Setup
-=============
+Windows prerequisites
+=====================
+
+This page prepares a Windows workstation for the current source checkout.
+Its commands use PowerShell. When Git and uv are available, continue with
+the shared :doc:`development environment procedure <../start/setup>`.
 
 Install prerequisites
-=====================
+---------------------
 
 Install `Git <https://git-scm.com/downloads>`_ and
 `uv <https://docs.astral.sh/uv/getting-started/installation/>`_.
-The commands on this page use PowerShell. The standalone uv installer is:
+Choose a per-user installation where offered if you do not have administrator
+access, and follow your organisation's software installation policy.
+The standalone uv installer is:
 
 .. code-block:: powershell
 
     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-Choose a per-user installation where offered if you do not have administrator
-access. Follow your organisation's software installation policy.
+Open a new PowerShell window if ``uv`` is not on your ``PATH``. Run
+``git --version`` and ``uv --version``; each should print its installed version.
 
-Open a new terminal if ``uv`` is not yet on your ``PATH``.
+Optional tools
+--------------
 
-Create the development environment
-===================================
+Install `Pandoc <https://pandoc.org/installing.html>`_ when you need notebook
+or document conversion. It is not required for the normal HTML documentation
+build. An editor such as `Visual Studio Code <https://code.visualstudio.com/>`_
+is optional.
 
-Run these commands from the directory where you keep your projects. If you
-will contribute through a fork, substitute your fork's clone URL.
-
-.. code-block:: powershell
-
-    git clone https://github.com/pymedphys/pymedphys.git
-    cd pymedphys
-    uv python install 3.14
-    uv sync --python 3.14 --locked
-    uv run pre-commit install
-
-The current source supports Python 3.11, 3.12, 3.13, and 3.14. Python 3.14 matches
-the quick CI run; Python 3.11 must be 3.11.4 or later. uv can install
-Python for you, so a separate Python or pipx installation is not required.
-
-``uv sync`` creates the repository's ``.venv`` and installs an editable copy of
-PyMedPhys with the contributor dependencies. Run project commands with
-``uv run`` from the repository root.
-
-Install `Pandoc <https://pandoc.org/installing.html>`_ if needed for notebook
-or document conversion. For SSH authentication, see
+HTTPS cloning does not need an SSH key. For SSH authentication, see
 :doc:`Git with SSH on Windows <../tips/win-open-ssh>`.
+The shared setup guide owns the clone, locked environment, hook installation,
+and success checks. Use :doc:`the Jupyter kernel instructions
+<../tips/add-jupyter-kernel>` when working with notebooks.
 
+.. raw:: html
 
-Next steps
-==========
+    <span id="windows-setup"></span>
+    <span id="create-the-development-environment"></span>
+    <span id="next-steps"></span>
 
-* Run ``uv run pymedphys dev tests -m "not slow"``.
-* Follow the :doc:`documentation guide <../info/docs-guide>` to build the site.
-* Read the :doc:`workflow guide <../info/workflows>` before opening a PR.
-* For notebooks, :doc:`register the project kernel <../tips/add-jupyter-kernel>`.
-* An editor such as `Visual Studio Code <https://code.visualstudio.com/>`_ is
-  optional.
+The shared :doc:`checkout setup <../start/setup>` replaces the former
+platform-specific environment instructions. Continue with
+:doc:`your first contribution <../start/first-contribution>`.

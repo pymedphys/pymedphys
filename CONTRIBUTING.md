@@ -24,25 +24,7 @@ Then check while signed out of GitHub: the information must no longer appear in 
 
 ## Set up a development environment
 
-Start with the [workstation setup guides](https://docs.pymedphys.com/en/latest/contrib/setups/index.html)
-for Windows, Linux, or macOS. With Git and
-[uv](https://docs.astral.sh/uv/getting-started/installation/) installed, run:
-
-```bash
-git clone https://github.com/pymedphys/pymedphys.git
-cd pymedphys
-uv python install 3.14
-uv sync --python 3.14 --locked
-uv run pre-commit install
-```
-
-If you do not have permission to push to this repository, fork it first and
-clone your fork instead. Create a working branch before committing.
-
-The development environment uses the dependencies recorded in `uv.lock`.
-The current source supports Python 3.11–3.14; Python 3.14 matches the quick CI
-run. See the [repository guide](https://docs.pymedphys.com/en/latest/contrib/info/file-structure.html)
-for the source layout.
+Follow the [shared checkout setup](https://docs.pymedphys.com/en/latest/contrib/start/setup.html), with OS prerequisites and troubleshooting in the linked supplements. For your first PR, use the [first-contribution walkthrough](https://docs.pymedphys.com/en/latest/contrib/start/first-contribution.html). The [Developer guide](https://docs.pymedphys.com/en/latest/contrib/guide.html) connects setup, implementation, architecture, testing and scientific verification.
 
 ## Check your changes
 
@@ -56,7 +38,7 @@ uv run pymedphys dev docs
 
 The [documentation guide](https://docs.pymedphys.com/en/latest/contrib/info/docs-guide.html)
 explains where to edit pages and how to inspect the built site.
-The [workflow guide](https://docs.pymedphys.com/en/latest/contrib/info/workflows.html)
+The [workflow guide](https://docs.pymedphys.com/en/latest/contrib/maintainers/pr-checks.html)
 describes additional checks, conditional coverage, and troubleshooting.
 
 ## Open and review a pull request

@@ -1,15 +1,14 @@
+---
+orphan: true
+---
 
 # Repository Information
 
-```{toctree}
-:maxdepth: 2
+This former landing page retains its URL for existing links. The reader paths now live in the [Developer guide](../guide.md).
 
-file-structure
-docs-guide
-release-guide
-workflows
-dependency-update-prs
-lazy-imports
-../design/index
-../evidence/index
-```
+- [Architecture and source layout](../architecture/index.md).
+- [Documentation authoring](../guides/authoring.md).
+- [Maintainer handbook](../maintainers/index.md).
+- [Design programmes](../design/index.md) and [scientific evidence](../evidence/index.md).
+
+Choose one of those tasks to continue. The generated [contributor policy](../index.md) remains canonical for rules applying to all contributors.
