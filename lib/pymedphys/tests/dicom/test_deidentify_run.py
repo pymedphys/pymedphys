@@ -975,6 +975,24 @@ def test_a_withheld_files_empty_directories_are_not_published(tmp_path):
     assert result.outcomes[PLAN].status is SEQUESTERED
 
 
+@pytest.mark.pydicom
+def test_a_release_with_every_file_withheld_is_published_empty(tmp_path):
+    datasets = synthetic.collection()
+    _write(tmp_path / "source", datasets)
+    gate = Gate(
+        {
+            _output(each.SOPInstanceUID): run.Sequestered((GateReason.TEXT_FINDING,))
+            for each in datasets
+        }
+    )
+
+    _, result = _run(tmp_path, gate=gate)
+
+    assert result.release.is_dir()
+    assert not os.listdir(result.release)
+    assert {outcome.status for outcome in result.outcomes} == {SEQUESTERED}
+
+
 def _record(position, tmp_path):
     path = sorted((tmp_path / "source").iterdir())[position]
     return InstanceRecord.from_file(path.read_bytes())
