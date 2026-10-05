@@ -20,7 +20,7 @@ catalogue that distinguishes recorded gamma experiments from procedures for
 new measurements. Existing documentation URLs and design decision anchors
 remain available. Installed-package checks require the canonical decision
 record so the requirements tests work from both distributions.
-Pull request link pending.
+([#2247](https://github.com/pymedphys/pymedphys/pull/2247))
 
 ### Corrected DICOM RT Dose coordinates
 
