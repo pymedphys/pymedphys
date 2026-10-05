@@ -957,3 +957,23 @@ def test_errors_name_no_source_path(tmp_path):
 
     assert SENTINEL not in str(stopped.value) + repr(stopped.value.findings)
     assert SENTINEL not in str(refused.value)
+
+
+@pytest.mark.pydicom
+def test_a_withheld_files_empty_directories_are_not_published(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    gate = Gate({_output(synthetic.PLAN): run.Sequestered((GateReason.TEXT_FINDING,))})
+
+    _, result = _run(tmp_path, gate=gate)
+
+    release = tmp_path / "release"
+    plan_series = release.joinpath(*_output_path(_record(PLAN, tmp_path)).parts[:-1])
+    assert not plan_series.exists()
+    assert all(any(path.iterdir()) for path in release.rglob("*") if path.is_dir())
+    assert len(_released_files(release)) == 5
+    assert result.outcomes[PLAN].status is SEQUESTERED
+
+
+def _record(position, tmp_path):
+    path = sorted((tmp_path / "source").iterdir())[position]
+    return InstanceRecord.from_file(path.read_bytes())
