@@ -534,9 +534,15 @@ def _withdrawn(pack: Path) -> bool:
     empty, so that a run may write to it again.
     """
     withdrawn = True
-    for name in (qc_store.NOTICE_FILE, qc_store.PACK_FILE, qc_store.MARKER_FILE):
+    for name in (qc_store.PACK_FILE, qc_store.NOTICE_FILE):
         try:
             (pack.parent / name).unlink(missing_ok=True)
+        except OSError:
+            withdrawn = False
+    # The marker goes last, so whatever remains is still QC material (D-016).
+    if withdrawn:
+        try:
+            (pack.parent / qc_store.MARKER_FILE).unlink(missing_ok=True)
         except OSError:
             withdrawn = False
     return withdrawn
