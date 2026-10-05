@@ -25,8 +25,6 @@ import tempfile
 import warnings
 from pathlib import Path, PurePosixPath
 
-from pymedphys._imports import pydicom, pytest
-
 from pymedphys._dicom.deidentify import (
     diagnostics,
     output_names,
@@ -38,6 +36,7 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.reference_graph import FindingKind
 from pymedphys._dicom.deidentify.references import InstanceRecord, UnreadableSequence
+from pymedphys._imports import pydicom, pytest
 
 from . import _synthetic_references as synthetic
 

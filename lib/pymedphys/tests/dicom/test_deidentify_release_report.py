@@ -31,11 +31,18 @@ import types
 from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import (
+    descriptor_cleaning,
     method_digest,
     policy,
+    preservation,
+    preserving_writer,
+    qc_pack,
+    reasons,
     reference_graph,
+    release_gate,
     release_report,
     residuals,
+    roi_names,
     runtime,
     scope,
     source,
@@ -164,9 +171,10 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "method",
         "runtime",
         "sequestered",
+        "held_for_review",
         "search_coverage",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/2"
+    assert document["format"] == "pymedphys-deid-release-report/3"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
@@ -440,6 +448,15 @@ def test_a_reason_given_twice_is_listed_once(basic):
     assert len(entry["reasons"]) == 2
 
 
+# The run refuses these inputs rather than sequestering them.
+_REFUSING = (
+    reasons.RunReason.SYMBOLIC_LINK,
+    reasons.RunReason.NOT_A_REGULAR_FILE,
+    reasons.RunReason.DICOMDIR,
+    reasons.RunReason.UNREADABLE_FILE,
+    reasons.RunReason.NOT_READABLE_AS_DICOM,
+)
+
 _SEQUESTERING = [
     *(
         (each, "scope")
@@ -450,6 +467,11 @@ _SEQUESTERING = [
     (reference_graph.FindingKind.MISSING_IDENTIFIER, "references"),
     (reference_graph.FindingKind.CONFLICTING_INSTANCE, "references"),
     (reference_graph.FindingKind.SERIES_IN_SEVERAL_STUDIES, "references"),
+    *((each, "run") for each in reasons.RunReason if each not in _REFUSING),
+    *((each, "transform") for each in reasons.TransformReason),
+    *((each, "transform") for each in descriptor_cleaning.DescriptorReason),
+    *((each, "writer") for each in preserving_writer.WriteReason),
+    *((each, "verifier") for each in preservation.PreservationReason),
 ]
 
 
@@ -502,6 +524,10 @@ def test_each_walker_reason_is_written(basic, reason):
         reference_graph.FindingKind.DANGLING_REFERENCE,
         reference_graph.FindingKind.DUPLICATE_INSTANCE,
         reference_graph.FindingKind.STUDY_WITH_SEVERAL_PATIENTS,
+        *_REFUSING,
+        descriptor_cleaning.HeldRoiName(
+            ElementPath((), "(3006,0026)"), roi_names.Reason.UNMATCHED
+        ),
         "SENTINEL",
     ],
 )
@@ -611,8 +637,8 @@ def _reason(**changes):
     return dataclasses.replace(_sequestered().reasons[1], **changes)
 
 
-def _instance(*reasons, label="S-0001"):
-    return release_report.SequesteredInstance(label, reasons)
+def _instance(*causes, label="S-0001"):
+    return release_report.SequesteredInstance(label, causes)
 
 
 @pytest.mark.parametrize(
@@ -787,6 +813,164 @@ def test_a_run_section_with_a_field_that_could_hold_a_value_is_refused(
 
     for write in (release_report.report_document, release_report.to_json):
         with pytest.raises(release_report.ReleaseReportError, match=field) as raised:
+            write(report)
+        assert "SENTINEL" not in str(raised.value)
+        assert raised.value.__cause__ is None
+
+
+def test_the_codes_of_each_stage_are_distinct():
+    # A code names one reason of its stage, so no two enums that give a stage
+    # its codes share a value.
+    sources = {
+        "run": (reasons.RunReason,),
+        "transform": (reasons.TransformReason, descriptor_cleaning.DescriptorReason),
+        "writer": (preserving_writer.WriteReason,),
+        "verifier": (preservation.PreservationReason,),
+        "release": (release_gate.ReasonCode,),
+    }
+    for stage, enums in sources.items():
+        values = [each.value for enum in enums for each in enum]
+        assert len(values) == len(set(values)), stage
+        codes = release_report._SEQUESTERING  # pylint: disable = protected-access
+        # Every member gives a code, except the run's that refuse an input.
+        if stage == "run":
+            assert codes[stage] == set(values) - {each.value for each in _REFUSING}
+        else:
+            assert codes[stage] == set(values), stage
+
+
+def test_each_drop_reason_is_a_reason_that_coverage_counts():
+    assert {each.value for each in qc_pack.DropReason} <= {
+        each.value for each in residuals.UnsearchedReason
+    }
+
+
+@pytest.mark.parametrize(
+    "path, place",
+    [
+        (None, None),
+        (
+            ElementPath((("(300A,00B0)", 0),), "(300A,00C2)"),
+            "(300A,00B0) > (300A,00C2)",
+        ),
+    ],
+)
+def test_a_release_gate_reason_names_its_attribute_at_most(basic, path, place):
+    cause = release_gate.ReleaseReason(
+        release_gate.Decision.WITHHOLD,
+        release_gate.ReasonCode.RESIDUAL_PERSON_NAME,
+        path,
+    )
+    report = release_report.release_report(
+        basic,
+        vocabulary=None,
+        sequestered=(_instance(release_report.sequestration_reason(cause)),),
+    )
+
+    expected = {"stage": "release", "code": "residual-person-name"}
+    if place is not None:
+        expected["attribute"] = place
+    assert release_report.report_document(report)["sequestered"][0]["reasons"] == [
+        expected
+    ]
+
+
+def test_a_release_reason_with_an_action_is_refused(basic):
+    reason = dataclasses.replace(
+        release_report.sequestration_reason(
+            release_gate.ReleaseReason(
+                release_gate.Decision.WITHHOLD, release_gate.ReasonCode.UNCOLLECTED
+            )
+        ),
+        action="X",
+    )
+    report = release_report.release_report(
+        basic, vocabulary=None, sequestered=(_instance(reason),)
+    )
+
+    with pytest.raises(release_report.ReleaseReportError, match="action"):
+        release_report.report_document(report)
+
+
+def _held_name(reason=roi_names.Reason.UNMATCHED, item=0):
+    return descriptor_cleaning.HeldRoiName(
+        ElementPath((("(3006,0020)", item),), "(3006,0026)"), reason
+    )
+
+
+def _qc_review(code=release_gate.ReasonCode.UNCOLLECTED):
+    return release_gate.ReleaseReason(release_gate.Decision.QC_REVIEW, code)
+
+
+def test_held_instances_are_counted_by_stage_and_reason_each_once(basic):
+    held = release_report.held_for_review(
+        [
+            (_held_name(item=0), _held_name(item=1), _qc_review()),
+            (_held_name(roi_names.Reason.AMBIGUOUS),),
+            (_held_name(item=2),),
+        ]
+    )
+    report = release_report.release_report(basic, vocabulary=None, held=held)
+
+    assert release_report.report_document(report)["held_for_review"] == [
+        {"stage": "release", "code": "uncollected", "count": 1},
+        {"stage": "roi-names", "code": "ambiguous", "count": 1},
+        {"stage": "roi-names", "code": "unmatched", "count": 2},
+    ]
+
+
+@pytest.mark.parametrize(
+    "instances",
+    [
+        [_held_name()],
+        [("SENTINEL",)],
+        [
+            (
+                release_gate.ReleaseReason(
+                    release_gate.Decision.WITHHOLD, release_gate.ReasonCode.UNCOLLECTED
+                ),
+            )
+        ],
+    ],
+    ids=["not-by-instance", "unknown", "withheld"],
+)
+def test_held_reasons_must_be_given_by_instance_and_known(instances):
+    with pytest.raises(TypeError) as raised:
+        release_report.held_for_review(instances)
+
+    assert "SENTINEL" not in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    "held",
+    [
+        ("SENTINEL",),
+        (release_report.HeldForReview("SENTINEL", "unmatched", 1),),
+        (release_report.HeldForReview("roi-names", "SENTINEL", 1),),
+        (release_report.HeldForReview("roi-names", "unmatched", 0),),
+        (release_report.HeldForReview("roi-names", "unmatched", True),),
+        (release_report.HeldForReview("roi-names", _Text("unmatched"), 1),),
+        (release_report.HeldForReview("release", "unmatched", 1),),
+    ],
+    ids=[
+        "not-a-count",
+        "stage",
+        "code",
+        "zero-count",
+        "boolean-count",
+        "code-subclass",
+        "code-of-another-stage",
+    ],
+)
+def test_a_held_section_that_could_hold_a_value_is_refused(basic, held):
+    report = _with(
+        release_report.release_report(basic, vocabulary=None), held_for_review=held
+    )
+
+    for write in (release_report.report_document, release_report.to_json):
+        with pytest.raises(
+            release_report.ReleaseReportError, match="held_for_review"
+        ) as raised:
             write(report)
         assert "SENTINEL" not in str(raised.value)
         assert raised.value.__cause__ is None

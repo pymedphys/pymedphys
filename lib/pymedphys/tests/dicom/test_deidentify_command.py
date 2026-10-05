@@ -23,20 +23,12 @@ import tempfile
 import warnings
 from pathlib import Path, PurePosixPath
 
-from pymedphys._imports import pytest
-
 from pymedphys._dicom.deidentify import command, diagnostics, run
 from pymedphys._dicom.deidentify.reference_graph import Finding, FindingKind
+from pymedphys._imports import pytest
 
 from . import _synthetic_references as synthetic
-from .test_deidentify_run import (
-    SENTINEL,
-    Gate,
-    GateReason,
-    Transform,
-    _output,
-    _write,
-)
+from .test_deidentify_run import SENTINEL, Gate, GateReason, Transform, _output, _write
 
 
 @pytest.fixture(name="tmp_path")

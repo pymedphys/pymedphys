@@ -71,7 +71,13 @@ from . import method_digest
 from .method_digest import MethodDigestComponents
 from .file_layout import TAG_PATTERN, ElementPath
 from .policy import PRESETS, Policy
+from .descriptor_cleaning import DescriptorReason, HeldRoiName
+from .preservation import PreservationReason
+from .preserving_writer import WriteReason
+from .reasons import RunReason, TransformReason
 from .reference_graph import FindingKind
+from .release_gate import Decision, ReasonCode, ReleaseReason
+from .roi_names import Reason as RoiNameReason
 from .residuals import NotSearched, Omission, Unsearched, UnsearchedReason
 from .runtime import RuntimeEnvironment, runtime_environment
 from .scope import Disposition
@@ -80,7 +86,7 @@ from .standard import OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/2"
+FORMAT = "pymedphys-deid-release-report/3"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -108,6 +114,41 @@ _SEQUESTERING = {
         }
     ),
     "walker": frozenset(r.value for r in SequesterReason),
+    # the run's own checks after the first pass
+    "run": frozenset(
+        r.value
+        for r in (
+            RunReason.UNREADABLE_SEQUENCE,
+            RunReason.CHANGED_DURING_RUN,
+            RunReason.INVALID_OUTPUT_NAME,
+            RunReason.SHARED_OUTPUT_NAME,
+            RunReason.STAGED_FILE_CHANGED,
+            RunReason.INVALID_REASON,
+            RunReason.INTERNAL_ERROR,
+        )
+    ),
+    "transform": frozenset(
+        {*(r.value for r in TransformReason), *(r.value for r in DescriptorReason)}
+    ),
+    "writer": frozenset(r.value for r in WriteReason),
+    "verifier": frozenset(r.value for r in PreservationReason),
+    "release": frozenset(r.value for r in ReasonCode),
+}
+# The reason codes of each stage that holds an instance for review.
+_HOLDING = {
+    "roi-names": frozenset(r.value for r in RoiNameReason),
+    "release": _SEQUESTERING["release"],
+}
+# Each enum whose members are a stage's codes, by its stage.
+_STAGES = {
+    Disposition: "scope",
+    SourceReason: "admission",
+    FindingKind: "references",
+    RunReason: "run",
+    TransformReason: "transform",
+    DescriptorReason: "transform",
+    WriteReason: "writer",
+    PreservationReason: "verifier",
 }
 
 
@@ -151,14 +192,18 @@ class SequestrationReason:
     stage : str
         What sequestered it: ``"scope"``, ``"admission"`` (a source file
         refused, which is set aside like any sequestered instance),
-        ``"references"`` (the first pass's reference graph), or
-        ``"walker"``.
+        ``"references"`` (the first pass's reference graph), ``"walker"``,
+        ``"run"`` (the run's own checks of each input and of what the
+        transform and gate return), ``"transform"`` (the transform,
+        including descriptor cleaning), ``"writer"``, ``"verifier"`` (the
+        check that the source is preserved), or ``"release"`` (the release
+        gate).
     code : str
         The stage's reason code, such as ``"conflicting-instance"``.
     attribute : str or None
-        For the walker, and only for it, the attribute's tags from the
-        outermost sequence, without items, such as
-        ``"(0010,1002) > (0010,0020)"``.
+        For the walker, and for the release gate where its reason names one,
+        the attribute's tags from the outermost sequence, without items,
+        such as ``"(0010,1002) > (0010,0020)"``; None for every other stage.
     action : str or None
         For the walker, and only for it, the action at that place, such as
         ``"D"``.
@@ -210,6 +255,29 @@ class SearchCoverage:
 
 
 @dataclasses.dataclass(frozen=True)
+class HeldForReview:
+    """How many instances were held for review for one reason.
+
+    The instances have neither an output name nor a label, and the report
+    counts them by reason alone (D-009).
+
+    Attributes
+    ----------
+    stage : str
+        ``"roi-names"`` (descriptor cleaning held a ROI Name) or
+        ``"release"`` (the release gate requires QC review).
+    code : str
+        The stage's reason code, such as ``"unmatched"``.
+    count : int
+        How many held instances have that reason, each once.
+    """
+
+    stage: str
+    code: str
+    count: int
+
+
+@dataclasses.dataclass(frozen=True)
 class ReleaseReport:
     """A release report's record of the method, the runtime, and the run.
 
@@ -220,6 +288,7 @@ class ReleaseReport:
     runtime : ~pymedphys._dicom.deidentify.runtime.RuntimeEnvironment
     sequestered : tuple of SequesteredInstance
     search_coverage : tuple of SearchCoverage
+    held_for_review : tuple of HeldForReview
     """
 
     policy: PolicyRecord
@@ -227,6 +296,7 @@ class ReleaseReport:
     runtime: RuntimeEnvironment
     sequestered: tuple[SequesteredInstance, ...] = ()
     search_coverage: tuple[SearchCoverage, ...] = ()
+    held_for_review: tuple[HeldForReview, ...] = ()
 
 
 def attribute_tags(path: ElementPath) -> str:
@@ -239,7 +309,18 @@ def attribute_tags(path: ElementPath) -> str:
 
 
 def sequestration_reason(
-    cause: Disposition | SourceReason | FindingKind | Sequestration,
+    cause: (
+        Disposition
+        | SourceReason
+        | FindingKind
+        | Sequestration
+        | RunReason
+        | TransformReason
+        | DescriptorReason
+        | WriteReason
+        | PreservationReason
+        | ReleaseReason
+    ),
 ) -> SequestrationReason:
     """Return the reason that a stage gives for sequestering an instance.
 
@@ -250,7 +331,9 @@ def sequestration_reason(
         :attr:`~.scope.Disposition.SUPPORTED`; a dangling reference or an
         identical duplicate, which are reported only; or a study with
         several patients, which stops the run instead. An instance missing
-        an identifier is sequestered, as the run pipeline does by default.
+        an identifier is sequestered, as the run pipeline does by default;
+        or a reason of the run that refuses an input rather than
+        sequestering it, such as a symbolic link.
     TypeError
         For anything else.
     """
@@ -262,12 +345,15 @@ def sequestration_reason(
             cause.action,
             cause.vr,
         )
-    stages = {
-        Disposition: "scope",
-        SourceReason: "admission",
-        FindingKind: "references",
-    }
-    stage = stages.get(type(cause))  # type: ignore[arg-type]
+    if isinstance(cause, ReleaseReason):
+        if not isinstance(cause.code, ReasonCode):
+            raise TypeError("a release reason must have a ReasonCode")
+        return SequestrationReason(
+            "release",
+            cause.code.value,
+            None if cause.path is None else attribute_tags(cause.path),
+        )
+    stage = _STAGES.get(type(cause))  # type: ignore[arg-type]
     if stage is None:
         raise TypeError("a reason must come from a stage that sequesters instances")
     if cause.value not in _SEQUESTERING[stage]:
@@ -334,12 +420,57 @@ def search_coverage(
     )
 
 
+def held_for_review(
+    instances: Iterable[Iterable[HeldRoiName | ReleaseReason]],
+) -> tuple[HeldForReview, ...]:
+    """Count the instances held for review by stage and reason (D-009).
+
+    ``instances`` holds, for each held instance, its reasons: a ROI Name
+    that descriptor cleaning held, or a release gate's reason that requires
+    QC review. An instance
+    counts once for each stage and code, however many of its names or
+    attributes have it. The counts are in the order of their stages and
+    codes.
+
+    Raises
+    ------
+    TypeError
+        For a reason of another type, or a release gate's reason that does
+        not require QC review.
+    """
+    counts: collections.Counter[tuple[str, str]] = collections.Counter()
+    for reasons in instances:
+        if isinstance(reasons, (HeldRoiName, ReleaseReason)):
+            raise TypeError("reasons must be given for each instance")
+        codes = set()
+        for reason in reasons:
+            if isinstance(reason, HeldRoiName):
+                codes.add(("roi-names", reason.reason.value))
+            elif (
+                isinstance(reason, ReleaseReason)
+                and reason.decision is Decision.QC_REVIEW
+                and isinstance(reason.code, ReasonCode)
+            ):
+                codes.add(("release", reason.code.value))
+            else:
+                raise TypeError(
+                    "a held reason must be a HeldRoiName or a release reason "
+                    "that requires QC review"
+                )
+        counts.update(codes)
+    return tuple(
+        HeldForReview(stage, code, count)
+        for (stage, code), count in sorted(counts.items())
+    )
+
+
 def release_report(
     policy: Policy,
     *,
     vocabulary: tg263.Nomenclature | None,
     sequestered: Iterable[SequesteredInstance] = (),
     coverage: Iterable[SearchCoverage] = (),
+    held: Iterable[HeldForReview] = (),
 ) -> ReleaseReport:
     """Return the release report of a policy, its method, the runtime, and a run.
 
@@ -358,6 +489,9 @@ def release_report(
     coverage : iterable of SearchCoverage, optional
         How many values the run's residual search did not search, from
         :func:`search_coverage`.
+    held : iterable of HeldForReview, optional
+        How many of the run's instances were held for review, by reason,
+        from :func:`held_for_review`.
 
     Returns
     -------
@@ -377,7 +511,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'sequestered', 'search_coverage']
+    ['format', 'policy', 'method', 'runtime', 'sequestered', 'held_for_review', 'search_coverage']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -392,6 +526,7 @@ def release_report(
         runtime=runtime_environment(),
         sequestered=tuple(sequestered),
         search_coverage=tuple(coverage),
+        held_for_review=tuple(held),
     )
 
 
@@ -508,6 +643,16 @@ def _reason_entry(reason: object) -> dict:
         raise _refuse("sequestered reasons", "are not a tuple of reasons")
     stage = _code("sequestered stage", reason.stage, _SEQUESTERING)
     code = _code("sequestered code", reason.code, _SEQUESTERING[stage])
+    if stage == "release":
+        if (reason.action, reason.vr) != (None, None):
+            raise _refuse("sequestered action", "is given for another stage")
+        if reason.attribute is None:
+            return {"stage": stage, "code": code}
+        return {
+            "stage": stage,
+            "code": code,
+            "attribute": _attribute("sequestered attribute", reason.attribute),
+        }
     if stage != "walker":
         if (reason.attribute, reason.action, reason.vr) != (None, None, None):
             raise _refuse("sequestered attribute", "is given for another stage")
@@ -564,6 +709,26 @@ def _coverage_section(coverage: tuple[SearchCoverage, ...]) -> list:
     return sorted(entries, key=lambda entry: (entry["attribute"], entry["reason"]))
 
 
+def _held_section(held: tuple[HeldForReview, ...]) -> list:
+    entries = []
+    for each in held:
+        if not isinstance(each, HeldForReview):
+            raise _refuse("held_for_review", "is not a tuple of held counts")
+        if not (isinstance(each.count, int) and not isinstance(each.count, bool)):
+            raise _refuse("held_for_review count", "is not a whole number")
+        if each.count < 1:
+            raise _refuse("held_for_review count", "is not positive")
+        stage = _code("held_for_review stage", each.stage, _HOLDING)
+        entries.append(
+            {
+                "stage": stage,
+                "code": _code("held_for_review code", each.code, _HOLDING[stage]),
+                "count": each.count,
+            }
+        )
+    return sorted(entries, key=lambda entry: (entry["stage"], entry["code"]))
+
+
 def report_document(report: ReleaseReport) -> dict:
     """Return a release report as JSON values, after checking every field.
 
@@ -598,6 +763,7 @@ def report_document(report: ReleaseReport) -> dict:
         "method": _method_section(report.method),
         "runtime": _runtime_section(report.runtime),
         "sequestered": _sequestered_section(report.sequestered),
+        "held_for_review": _held_section(report.held_for_review),
         "search_coverage": _coverage_section(report.search_coverage),
     }
 

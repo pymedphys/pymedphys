@@ -503,6 +503,21 @@ def written_constants() -> tuple[tuple[str, str], ...]:
     return tuple(dict.fromkeys(found))
 
 
+def has_written_constant(value: SourceValue) -> bool:
+    """Return whether any of a value's values equals a constant that the engine writes.
+
+    Such a value, or that part of it, is left out of the search, and
+    recorded as :class:`Unsearched` with the reason
+    :data:`UnsearchedReason.WRITTEN_CONSTANT`.
+
+    Raises
+    ------
+    TypeError
+        If the value is not a :class:`SourceValue`.
+    """
+    return _without_constants(value) is not value
+
+
 def _without_constants(value: SourceValue) -> SourceValue | None:
     """Return ``value`` without its values equal to a written constant.
 

@@ -97,11 +97,12 @@ from collections.abc import Callable, Iterator
 from pathlib import Path, PurePosixPath
 from typing import TypeGuard
 
-from . import output_names, qc_store, release_report, run_qc
+from . import output_names, qc_store, release_report, run_qc, run_report
 from .diagnostics import redacted_diagnostics
 from .file_layout import Region, read_file_layout
 from .reference_graph import Finding, FindingKind, build_reference_graph
 from .references import InstanceRecord, UnreadableSequence
+from .reasons import RunReason
 from .run_results import (
     Gate,
     HoldForReview,
@@ -163,26 +164,6 @@ class Status(enum.Enum):
     HELD_FOR_REVIEW = "held-for-review"  # withheld until it is reviewed
     SEQUESTERED = "sequestered"  # withheld from the release
     REFUSED = "refused"  # not an instance that the run can read
-
-
-class RunReason(enum.Enum):
-    """Why the run itself refused or sequestered an input."""
-
-    # discovery
-    SYMBOLIC_LINK = "symbolic-link"  # or another link, such as a junction
-    NOT_A_REGULAR_FILE = "not-a-regular-file"
-    DICOMDIR = "dicomdir"
-    # the first pass
-    UNREADABLE_FILE = "unreadable-file"  # the operating system cannot read it
-    NOT_READABLE_AS_DICOM = "not-readable-as-dicom"
-    UNREADABLE_SEQUENCE = "unreadable-sequence"
-    # the second pass and after
-    CHANGED_DURING_RUN = "changed-during-run"
-    INVALID_OUTPUT_NAME = "invalid-output-name"
-    SHARED_OUTPUT_NAME = "shared-output-name"
-    STAGED_FILE_CHANGED = "staged-file-changed"
-    INVALID_REASON = "invalid-reason"
-    INTERNAL_ERROR = "internal-error"
 
 
 # The first pass's findings that sequester the inputs that they name.
@@ -399,6 +380,7 @@ def run(
     gate: Gate,
     *,
     qc_destination: str | os.PathLike[str],
+    reporter: run_report.Reporter | None = None,
 ) -> RunResult:
     """De-identify the discovered inputs into a new release directory.
 
@@ -420,6 +402,15 @@ def run(
         staging area, as
         :func:`~pymedphys._dicom.deidentify.qc_store.check_confidential_destination`
         checks before anything is created. There is no default (D-016).
+    reporter : Reporter, optional
+        Given the outcomes, each with its label, and each input's QC
+        material, returns the release report's text, which the run publishes
+        as :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT` at
+        the root of the release, such as a
+        :class:`~pymedphys._dicom.deidentify.run_report.ReleaseReporter`.
+        Without one, no report is written. A withheld input whose reasons
+        the reporter does not admit is sequestered for
+        :attr:`RunReason.INVALID_REASON` instead.
 
     Returns
     -------
@@ -443,6 +434,10 @@ def run(
         If a transform's or gate's QC material is not a tuple of the
         material types of :mod:`~pymedphys._dicom.deidentify.run_qc`.
         Nothing is published.
+    ~pymedphys._dicom.deidentify.release_report.ReleaseReportError
+        If the release report has a field that could hold a value or a path,
+        or a reason that no stage of the report gives; or anything else the
+        reporter raises. Nothing is published, and no QC pack is written.
 
     Notes
     -----
@@ -456,16 +451,22 @@ def run(
     # quote them.
     with redacted_diagnostics():
         return _run(
-            discovery, Path(release).absolute(), transform, gate, qc_destination
+            discovery,
+            Path(release).absolute(),
+            transform,
+            gate,
+            qc_destination,
+            reporter,
         )
 
 
-def _run(
+def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
     discovery: Discovery,
     release_path: Path,
     transform: Transform,
     gate: Gate,
     qc_destination: str | os.PathLike[str],
+    reporter: run_report.Reporter | None,
 ) -> RunResult:
     staging = staging_path(release_path)
     _check_directories(discovery.source, release_path, staging)
@@ -489,11 +490,20 @@ def _run(
     removed = False
     try:
         outcomes, material = _stage_and_gate(discovery, first, staging, transform, gate)
+        if reporter is not None:
+            outcomes = _admitted(outcomes, reporter)
         outcomes = _labelled(outcomes)
         pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
+        # Built before the pack is written, so that a report that cannot be
+        # built leaves no QC material behind.
+        report = None if reporter is None else reporter(outcomes, material)
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
         _remove_empty_directories(staged_release)
+        if report is not None:
+            _write_atomically(
+                staged_release / run_report.RELEASE_REPORT, report.encode("utf-8")
+            )
         if os.path.lexists(release_path):
             raise RunError(_RELEASE_EXISTS.format(release=release_path))
         # The pack is written before the release is published, so that a
@@ -542,6 +552,22 @@ def _remove_empty_directories(root: Path) -> None:
         # Deepest first, so a directory that held only empty ones is empty.
         if Path(directory) != root and not os.listdir(directory):
             os.rmdir(directory)
+
+
+def _admitted(
+    outcomes: tuple[Outcome, ...], reporter: run_report.Reporter
+) -> tuple[Outcome, ...]:
+    """Sequester each withheld outcome whose reasons the reporter cannot give.
+
+    So one input's reasons set aside that input, never the release.
+    """
+    return tuple(
+        _outcome(outcome.position, Status.SEQUESTERED, RunReason.INVALID_REASON)
+        if outcome.status in (Status.SEQUESTERED, Status.HELD_FOR_REVIEW)
+        and not reporter.admits(outcome.status.value, outcome.reasons)
+        else outcome
+        for outcome in outcomes
+    )
 
 
 def _labelled(outcomes: tuple[Outcome, ...]) -> tuple[Outcome, ...]:
