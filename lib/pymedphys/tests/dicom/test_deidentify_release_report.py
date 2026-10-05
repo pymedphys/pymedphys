@@ -23,6 +23,7 @@ per process, so each test starts and ends with them unread.
 import dataclasses
 import json
 import pathlib
+import random
 import shutil
 import types
 
@@ -31,10 +32,16 @@ from pymedphys._imports import pytest
 from pymedphys._dicom.deidentify import (
     method_digest,
     policy,
+    reference_graph,
     release_report,
+    residuals,
     runtime,
+    scope,
+    source,
     standard,
+    walker,
 )
+from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._nomenclature import tg263
 
 # The method section's fields, as the design's method digest decision lists
@@ -150,8 +157,15 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         release_report.release_report(basic, vocabulary=None)
     )
 
-    assert list(document) == ["format", "policy", "method", "runtime"]
-    assert document["format"] == "pymedphys-deid-release-report/1"
+    assert list(document) == [
+        "format",
+        "policy",
+        "method",
+        "runtime",
+        "sequestered",
+        "search_coverage",
+    ]
+    assert document["format"] == "pymedphys-deid-release-report/2"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
@@ -367,3 +381,411 @@ def test_every_report_states_the_vocabulary_by_name(basic, vocabulary):
 def test_only_a_policy_is_accepted():
     with pytest.raises(TypeError, match="policy must be"):
         release_report.release_report({"preset": "basic"}, vocabulary=None)
+
+
+# D-026, as the maintainer decided on 2 October 2026: a sequestered instance
+# is named by a random per-run label, which only the QC pack maps to its
+# source.
+def _sequestered(label="S-0001"):
+    rule = walker.Sequestration(
+        ElementPath((("(0010,1002)", 3),), "(0010,0020)"),
+        "D",
+        "SQ",
+        walker.SequesterReason.NO_DUMMY_VALUE,
+    )
+    return release_report.SequesteredInstance(
+        label,
+        (
+            release_report.sequestration_reason(
+                reference_graph.FindingKind.CONFLICTING_INSTANCE
+            ),
+            release_report.sequestration_reason(rule),
+        ),
+    )
+
+
+def test_sequestered_instances_are_listed_by_label_with_their_reasons(basic):
+    report = release_report.release_report(
+        basic,
+        vocabulary=None,
+        sequestered=(_sequestered("S-0002"), _sequestered("S-0001")),
+    )
+    document = release_report.report_document(report)
+
+    assert [entry["label"] for entry in document["sequestered"]] == [
+        "S-0001",
+        "S-0002",
+    ]
+    assert document["sequestered"][0]["reasons"] == [
+        # Only the walker names a place.
+        {"stage": "references", "code": "conflicting-instance"},
+        {
+            # The attribute's tags, without the item that held it.
+            "stage": "walker",
+            "code": "no-dummy-value",
+            "attribute": "(0010,1002) > (0010,0020)",
+            "action": "D",
+            "vr": "SQ",
+        },
+    ]
+
+
+def test_a_reason_given_twice_is_listed_once(basic):
+    instance = _sequestered()
+    twice = dataclasses.replace(instance, reasons=instance.reasons * 2)
+    report = release_report.release_report(basic, vocabulary=None, sequestered=(twice,))
+
+    (entry,) = release_report.report_document(report)["sequestered"]
+    assert len(entry["reasons"]) == 2
+
+
+_SEQUESTERING = [
+    *(
+        (each, "scope")
+        for each in scope.Disposition
+        if each is not scope.Disposition.SUPPORTED
+    ),
+    *((each, "admission") for each in source.SourceReason),
+    (reference_graph.FindingKind.MISSING_IDENTIFIER, "references"),
+    (reference_graph.FindingKind.CONFLICTING_INSTANCE, "references"),
+    (reference_graph.FindingKind.SERIES_IN_SEVERAL_STUDIES, "references"),
+]
+
+
+@pytest.mark.parametrize(
+    "cause, stage", _SEQUESTERING, ids=[str(each) for each, _ in _SEQUESTERING]
+)
+def test_each_stage_that_sequesters_gives_its_reason_code(basic, cause, stage):
+    reason = release_report.sequestration_reason(cause)
+
+    assert (reason.stage, reason.code) == (stage, cause.value)
+    assert (reason.attribute, reason.action, reason.vr) == (None, None, None)
+    report = release_report.release_report(
+        basic,
+        vocabulary=None,
+        sequestered=(release_report.SequesteredInstance("S-0001", (reason,)),),
+    )
+    assert release_report.report_document(report)["sequestered"][0]["reasons"] == [
+        {"stage": stage, "code": cause.value}
+    ]
+
+
+@pytest.mark.parametrize("reason", list(walker.SequesterReason))
+def test_each_walker_reason_is_written(basic, reason):
+    cause = walker.Sequestration(ElementPath((), "(0010,0020)"), "X", None, reason)
+    report = release_report.release_report(
+        basic,
+        vocabulary=None,
+        sequestered=(
+            release_report.SequesteredInstance(
+                "S-0001", (release_report.sequestration_reason(cause),)
+            ),
+        ),
+    )
+
+    assert release_report.report_document(report)["sequestered"][0]["reasons"] == [
+        {
+            "stage": "walker",
+            "code": reason.value,
+            "attribute": "(0010,0020)",
+            "action": "X",
+            "vr": None,
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        scope.Disposition.SUPPORTED,
+        reference_graph.FindingKind.DANGLING_REFERENCE,
+        reference_graph.FindingKind.DUPLICATE_INSTANCE,
+        reference_graph.FindingKind.STUDY_WITH_SEVERAL_PATIENTS,
+        "SENTINEL",
+    ],
+)
+def test_what_does_not_sequester_an_instance_is_not_a_reason(cause):
+    # A study with several patients stops the run instead.
+    with pytest.raises((TypeError, ValueError)) as raised:
+        release_report.sequestration_reason(cause)
+
+    assert "SENTINEL" not in str(raised.value)
+
+
+def test_labels_are_random_and_carry_nothing_from_the_run():
+    first = release_report.sequestration_labels(12, rng=random.Random(1))
+    second = release_report.sequestration_labels(12, rng=random.Random(2))
+
+    assert sorted(first) == sorted(second) == [f"S-{n:04d}" for n in range(1, 13)]
+    assert first != second
+    assert first != tuple(sorted(first))
+    assert not release_report.sequestration_labels(0)
+    assert release_report.sequestration_labels(12345)[0].startswith("S-")
+    assert {len(label) for label in release_report.sequestration_labels(12345)} == {7}
+
+
+def test_labels_are_drawn_from_the_operating_system_by_default(monkeypatch):
+    drawn = []
+
+    class Recording(random.Random):
+        def shuffle(self, x):  # pylint: disable=arguments-differ
+            drawn.append(list(x))
+            x.reverse()
+
+    monkeypatch.setattr(release_report.secrets, "SystemRandom", Recording)
+
+    assert release_report.sequestration_labels(3) == ("S-0003", "S-0002", "S-0001")
+    assert drawn == [["S-0001", "S-0002", "S-0003"]]
+
+
+# D-027, as the maintainer decided on 2 October 2026: the report counts what
+# the residual search did not search, by attribute and reason, and the QC
+# pack lists each by instance and place.
+def test_values_not_searched_are_counted_by_attribute_and_reason(basic):
+    name = ElementPath((), "(0010,0010)")
+    nested = ElementPath((("(0010,1002)", 0),), "(0010,0020)")
+    short_word = residuals.NotSearched(
+        name, "PN", residuals.Form.NAME_WORD, residuals.Omission.TOO_SHORT
+    )
+    coverage = release_report.search_coverage(
+        [
+            [
+                # Two forms of one value count as one value.
+                short_word,
+                residuals.NotSearched(
+                    name,
+                    "PN",
+                    residuals.Form.NAME_COMPONENT,
+                    residuals.Omission.TOO_SHORT,
+                ),
+                residuals.NotSearched(
+                    ElementPath((("(0010,1002)", 1),), "(0010,0020)"),
+                    "LO",
+                    residuals.Form.VALUE,
+                    residuals.Omission.TOO_SHORT,
+                ),
+                residuals.Unsearched(nested, residuals.UnsearchedReason.UNDECODABLE),
+                residuals.Unsearched(name, residuals.UnsearchedReason.RETAINED),
+            ],
+            # The same place in another instance is another value.
+            [short_word],
+        ]
+    )
+    report = release_report.release_report(basic, vocabulary=None, coverage=coverage)
+
+    assert release_report.report_document(report)["search_coverage"] == [
+        {"attribute": "(0010,0010)", "reason": "retained", "count": 1},
+        {"attribute": "(0010,0010)", "reason": "too-short", "count": 2},
+        {"attribute": "(0010,1002) > (0010,0020)", "reason": "too-short", "count": 1},
+        {"attribute": "(0010,1002) > (0010,0020)", "reason": "undecodable", "count": 1},
+    ]
+
+
+@pytest.mark.parametrize(
+    "records",
+    [
+        residuals.Unsearched(
+            ElementPath((), "(0010,0010)"), residuals.UnsearchedReason.RETAINED
+        ),
+        ["SENTINEL"],
+    ],
+    ids=["not-by-instance", "not-a-record"],
+)
+def test_coverage_needs_records_by_instance(records):
+    with pytest.raises(TypeError) as raised:
+        release_report.search_coverage([records])
+
+    assert "SENTINEL" not in str(raised.value)
+
+
+class _Text(str):
+    pass
+
+
+def _with(report, **changes):
+    return dataclasses.replace(report, **changes)
+
+
+def _reason(**changes):
+    return dataclasses.replace(_sequestered().reasons[1], **changes)
+
+
+def _instance(*reasons, label="S-0001"):
+    return release_report.SequesteredInstance(label, reasons)
+
+
+@pytest.mark.parametrize(
+    "change, field",
+    [
+        (
+            lambda r: _with(r, sequestered=(_sequestered("SENTINEL"),)),
+            "label",
+        ),
+        (
+            lambda r: _with(r, sequestered=(_sequestered(), _sequestered())),
+            "label",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(code="SENTINEL"),)
+                    ),
+                ),
+            ),
+            "code",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(stage="SENTINEL"),)
+                    ),
+                ),
+            ),
+            "stage",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(attribute="/SENTINEL/path"),)
+                    ),
+                ),
+            ),
+            "attribute",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(action="SENTINEL"),)
+                    ),
+                ),
+            ),
+            "action",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(vr="SENTINEL"),)
+                    ),
+                ),
+            ),
+            "vr",
+        ),
+        (
+            lambda r: _with(
+                r, sequestered=(release_report.SequesteredInstance("S-0001", ()),)
+            ),
+            "reasons",
+        ),
+        (lambda r: _with(r, sequestered=(_instance("SENTINEL"),)), "reasons"),
+        (lambda r: _with(r, sequestered=("SENTINEL",)), "sequestered"),
+        (lambda r: _with(r, sequestered=(_sequestered("S-0002"),)), "label"),
+        (lambda r: _with(r, sequestered=(_sequestered("S-001"),)), "label"),
+        (lambda r: _with(r, sequestered=(_sequestered(_Text("S-0001")),)), "label"),
+        (
+            lambda r: _with(
+                r, sequestered=(_instance(_reason(code=_Text("no-dummy-value"))),)
+            ),
+            "code",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    _instance(
+                        dataclasses.replace(
+                            release_report.sequestration_reason(
+                                scope.Disposition.UNSUPPORTED_IOD
+                            ),
+                            attribute="(0010,0010)",
+                        )
+                    ),
+                ),
+            ),
+            "attribute",
+        ),
+        (
+            lambda r: _with(r, sequestered=(_instance(_reason(attribute=None)),)),
+            "attribute",
+        ),
+        (lambda r: _with(r, search_coverage=("SENTINEL",)), "search_coverage"),
+        (
+            lambda r: _with(
+                r,
+                search_coverage=(
+                    release_report.SearchCoverage("SENTINEL^Margaret", "too-short", 1),
+                ),
+            ),
+            "attribute",
+        ),
+        (
+            lambda r: _with(
+                r,
+                search_coverage=(
+                    release_report.SearchCoverage("(0010,0010)", "SENTINEL", 1),
+                ),
+            ),
+            "reason",
+        ),
+        (
+            lambda r: _with(
+                r,
+                search_coverage=(
+                    release_report.SearchCoverage("(0010,0010)", "too-short", 0),
+                ),
+            ),
+            "count",
+        ),
+        (
+            lambda r: _with(
+                r,
+                search_coverage=(
+                    release_report.SearchCoverage("(0010,0010)", "too-short", True),
+                ),
+            ),
+            "count",
+        ),
+    ],
+    ids=[
+        "label",
+        "repeated-label",
+        "code",
+        "stage",
+        "attribute",
+        "action",
+        "vr",
+        "no-reason",
+        "not-a-reason",
+        "not-an-instance",
+        "label-gap",
+        "label-width",
+        "label-subclass",
+        "code-subclass",
+        "place-for-another-stage",
+        "walker-without-place",
+        "not-coverage",
+        "coverage-attribute",
+        "coverage-reason",
+        "zero-count",
+        "boolean-count",
+    ],
+)
+def test_a_run_section_with_a_field_that_could_hold_a_value_is_refused(
+    basic, change, field
+):
+    report = change(release_report.release_report(basic, vocabulary=None))
+
+    for write in (release_report.report_document, release_report.to_json):
+        with pytest.raises(release_report.ReleaseReportError, match=field) as raised:
+            write(report)
+        assert "SENTINEL" not in str(raised.value)
+        assert raised.value.__cause__ is None
