@@ -249,10 +249,10 @@ def test_cleaning_is_a_consumer_under_clean_descriptors():
 class _Overridden(ElementRules):
     """The Basic Profile's rules, with some actions replaced by tag."""
 
-    def __init__(self, actions, source=None):
+    def __init__(self, actions, rule_source=None):
         super().__init__(compose_policy("basic"))
         self._actions = actions
-        self._source = source
+        self._source = rule_source
 
     def rule(self, tag, path=(), *, iod=None):
         found = super().rule(tag, path, iod=iod)

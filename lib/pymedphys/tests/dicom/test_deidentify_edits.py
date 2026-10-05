@@ -85,7 +85,7 @@ def test_each_element_has_one_edit_in_file_order():
     assert not result.not_collected
     # Every value is in the Default Character Repertoire, or read in a
     # Specific Character Set.
-    assert result.read_as_latin_1 == ()
+    assert not result.read_as_latin_1
 
     found = {edit.path: edit for edit in result.edits}
     assert found[_path("(0008,0005)")].kind is EditKind.KEEP
