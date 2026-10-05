@@ -180,12 +180,18 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   warning and logs it through the `pydicom` logger, and these messages can
   quote values (for example a malformed time during pseudonymisation) or name
   the file being read. While the commands and the app run, each such log
-  record is replaced by a fixed summary; a report of an invalid value keeps
-  only its VR, as in `Invalid value for VR TM: <value not shown>.`. pydicom's
-  duplicate warnings are suppressed for the rest of the process. The library
+  record, including those of loggers below `pydicom` such as its pixel
+  decoders, is replaced by a fixed summary; a report of an invalid value keeps
+  only its VR, as in `Invalid value for VR TM: <value not shown>.`. Each
+  warning is shown as Python's warning filters decide, with a fixed summary in
+  place of its message and `<pydicom>:0` in place of its location, so a run
+  can print such a line on standard error besides the log record. The
+  redaction applies only in the thread running the command or the app's
+  pseudonymisation, and only while it runs, so other apps in the same process
+  see pydicom's warnings unchanged. The library
   functions still raise exceptions unchanged and pass pydicom's messages
   through unchanged.
-  [PR #2062](https://github.com/pymedphys/pymedphys/pull/2062), [PR #2082](https://github.com/pymedphys/pymedphys/pull/2082)
+  [PR #2062](https://github.com/pymedphys/pymedphys/pull/2062), [PR #2082](https://github.com/pymedphys/pymedphys/pull/2082), [PR #2221](https://github.com/pymedphys/pymedphys/pull/2221)
 - `pymedphys gui --port` now takes effect. Previously the port was ignored and
   the GUI always used Streamlit's default port. A port that is not an integer
   is now rejected.
@@ -236,6 +242,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - `pydicom` is now required at `>=3.0.2` instead of `>=3.0`, in every extra that installs it and in the `docs` dependency group. pydicom 3.0.0 and 3.0.1 are affected by CVE-2026-32711, a path-traversal flaw in reading DICOMDIR files that 3.0.2 fixes. The locked development environment already uses 3.0.2, and CI runs the de-identification tests with the new minimum. [PR #2195](https://github.com/pymedphys/pymedphys/pull/2195)
 
 ### Contributor facing changes
+
+- Corrected the documentation dependency-group terminology, the weekly dependency update branch name and the current status of the historical coordinate expected failures. [PR #2246](https://github.com/pymedphys/pymedphys/pull/2246)
 
 - **[Contributor facing only]** CI and security workflows now validate
   `merge_group` commits comprehensively while ordinary pull request checks

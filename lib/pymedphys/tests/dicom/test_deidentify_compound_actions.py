@@ -22,6 +22,8 @@ from pymedphys._dicom.deidentify import compound_actions, dummy_values, iods, st
 
 resolve = compound_actions.resolve
 resolve_in_iod = compound_actions.resolve_in_iod
+resolve_plain_in_iod = compound_actions.resolve_plain_in_iod
+resolve_plain_x_in_iod = compound_actions.resolve_plain_x_in_iod
 strictest_type = compound_actions.strictest_type
 
 # The action each compound action resolves to for each Type, worked by hand
@@ -69,25 +71,31 @@ def _row(depth, name, tag, attribute_type):
     }
 
 
-def _synthetic_iod(tmp_path, *definitions, path=()):
+def _synthetic_iod(tmp_path, *definitions, path=(), sequence_types=None):
     """Return an IOD with one module of each usage, M, C, and U.
 
     Each definition is ``(usage, type)`` for Institution Name, in the module
     of that usage, within the sequences whose tags ``path`` gives, outermost
-    first. A module without a definition holds only Manufacturer (0008,0070).
+    first, each of the Type that ``sequence_types`` gives in the same order,
+    or Type 3 by default. A module without a definition holds only
+    Manufacturer (0008,0070).
 
     The IOD is written as synthetic generated tables and read back with
     :func:`~pymedphys._dicom.deidentify.iods.load_iod_tables`, so it does not
     depend on how the loader builds an IOD.
     """
     types = dict(definitions)
+    if sequence_types is None:
+        sequence_types = ("3",) * len(path)
     modules, tables = [], []
     for number, usage in enumerate(("M", "C", "U"), start=1):
         label = f"Table C.0-{number}"
         if usage in types:
             sequences = [
-                _row(depth, f"Sequence {depth}", tag, "3")
-                for depth, tag in enumerate(path)
+                _row(depth, f"Sequence {depth}", tag, sequence_type)
+                for depth, (tag, sequence_type) in enumerate(
+                    zip(path, sequence_types, strict=True)
+                )
             ]
             rows = [
                 *sequences,
@@ -451,6 +459,10 @@ def test_a_malformed_tag_is_rejected(tables, tag):
         strictest_type(ct, tag)
     with pytest.raises(ValueError, match="tag"):
         resolve_in_iod(ct, tag, (), "X/Z/D")
+    with pytest.raises(ValueError, match="tag"):
+        resolve_plain_in_iod(ct, tag, (), "D")
+    with pytest.raises(ValueError, match="tag"):
+        resolve_plain_x_in_iod(ct, tag, ())
 
 
 @pytest.mark.parametrize(
@@ -472,6 +484,10 @@ def test_a_malformed_path_is_rejected(tables, path):
         strictest_type(ct, PATIENT_ID, path)
     with pytest.raises(ValueError, match="path"):
         resolve_in_iod(ct, PATIENT_ID, path, "Z/D")
+    with pytest.raises(ValueError, match="path"):
+        resolve_plain_in_iod(ct, PATIENT_ID, path, "Z")
+    with pytest.raises(ValueError, match="path"):
+        resolve_plain_x_in_iod(ct, PATIENT_ID, path)
 
 
 def test_a_path_may_be_any_sequence_of_tags(tables):
@@ -493,6 +509,12 @@ def test_a_path_may_be_any_sequence_of_tags(tables):
         lambda iod: resolve_in_iod(iod, SECRET, (), "X/Z/D"),
         lambda iod: resolve_in_iod(iod, PATIENT_ID, (SECRET,), "X/Z/D"),
         lambda iod: resolve_in_iod(iod, PATIENT_ID, (), SECRET),
+        lambda iod: resolve_plain_in_iod(iod, SECRET, (), "D"),
+        lambda iod: resolve_plain_in_iod(iod, PATIENT_ID, (SECRET,), "Z"),
+        lambda iod: resolve_plain_in_iod(iod, PATIENT_ID, (), SECRET),
+        lambda iod: resolve_plain_x_in_iod(iod, SECRET, ()),
+        lambda iod: resolve_plain_x_in_iod(iod, PATIENT_ID, (SECRET,)),
+        lambda iod: resolve_plain_x_in_iod(iod, PATIENT_ID, SECRET),
     ],
 )
 def test_messages_repeat_no_value(tables, call):

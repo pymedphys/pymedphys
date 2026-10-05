@@ -29,10 +29,15 @@ import warnings
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import policy, private_attributes
+from pymedphys._dicom.deidentify import (
+    file_layout,
+    policy,
+    private_attributes,
+    standard,
+)
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 
-PRIVATE_ROW = "(gggg,eeee) where gggg is odd"
+PRIVATE_ROW = standard.PRIVATE_ATTRIBUTES_TAG
 IMPLICIT_VR = "1.2.840.10008.1.2"
 EXPLICIT_VR = "1.2.840.10008.1.2.1"
 RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
@@ -1211,3 +1216,49 @@ def test_a_sequence_stored_with_another_vr_is_refused(basic, vr, value, path):
     assert raw.VR == vr
 
     _assert_refused(read, basic, path, "SYNTHETIC")
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "tag, path",
+    [
+        (BEAM_SEQUENCE, ElementPath((), "(300A,00B0)")),
+        (0x300A0111, ElementPath((("(300A,00B0)", 1),), "(300A,0111)")),
+    ],
+    ids=["top-level", "nested"],
+)
+def test_a_malformed_sequence_read_from_explicit_vr_is_refused(basic, tag, path):
+    # Its first item runs past the value, which pydicom, decoding the raw
+    # value of VR SQ when it is first accessed, reads without an error.
+    data = bytearray(_written(_plan(), EXPLICIT_VR))
+    at = data.index(struct.pack("<HH", tag >> 16, tag & 0xFFFF) + b"SQ\x00\x00")
+    (length,) = struct.unpack_from("<I", data, at + 8)
+    assert data[at + 12 : at + 16] == b"\xfe\xff\x00\xe0"
+    struct.pack_into("<I", data, at + 16, length + 40)
+    read = pydicom.dcmread(io.BytesIO(bytes(data)))
+    assert read.get_item(BEAM_SEQUENCE, keep_deferred=True).VR == "SQ"
+
+    _assert_refused(read, basic, path, "PRIVATE")
+
+
+@pytest.mark.pydicom
+def test_items_nested_deeper_than_can_be_read_are_refused(monkeypatch, basic):
+    # Concept Name Code Sequences of undefined length, nested one deeper
+    # than file_layout.MAX_NESTING, in an RT Assertions Sequence. pydicom
+    # decodes them and writes them back to the same bytes, but their
+    # structure cannot be read.
+    value = _item(MEANING + PRIVATE_BLOCK, undefined=True)
+    for _ in range(file_layout.MAX_NESTING):
+        value = _item(_sequence(CONCEPT_NAME_CODE_SEQUENCE, value, True), True)
+    encoded = pydicom.filebase.DicomBytesIO()
+    encoded.is_little_endian, encoded.is_implicit_VR = True, True
+    for item in pydicom.values.convert_SQ(value, True, True):
+        pydicom.filewriter.write_sequence_item(encoded, item, ["iso8859"])
+    assert encoded.getvalue() == value
+    dataset = _plan()
+    dataset[RT_ASSERTIONS_SEQUENCE] = _unknown(
+        monkeypatch, RT_ASSERTIONS_SEQUENCE, value
+    )
+
+    _assert_refused(dataset, basic, ElementPath((), "(0044,0110)"), "PRIVATE")

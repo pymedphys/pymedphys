@@ -32,6 +32,12 @@ DOCS_CHANGELOG = DOCS_PATH.joinpath("release-notes.md")
 ROOT_CONTRIBUTING = REPO_ROOT.joinpath("CONTRIBUTING.md")
 DOCS_CONTRIBUTING = DOCS_PATH.joinpath("contrib", "index.md")
 
+# Generated from the de-identification requirements register on every build,
+# without test results, and never committed.
+DEID_MATRIX_PAGE = DOCS_PATH.joinpath(
+    "contrib", "info", "deidentification-requirements.md"
+)
+
 FILES_TO_PRE_DOWNLOAD = ["original_dose_beam_4.dcm", "logfile_dose_beam_4.dcm"]
 
 
@@ -56,6 +62,7 @@ def build_docs(args):
 
     for original_path, target_path in FILE_COPY_MAPPING:
         shutil.copy(original_path, target_path)
+    write_deid_matrix_page()
 
     # The link check does not execute notebooks, so it needs no data.
     if not args.linkcheck:
@@ -106,3 +113,19 @@ def build_docs(args):
     status = sphinx.cmd.build.build_main(argv)
     if status:
         raise SystemExit(status)
+
+
+def write_deid_matrix_page():
+    """Write the de-identification requirements-to-tests matrix page.
+
+    The page lists the shipped register's requirements, exclusions, and
+    remaining work. Test results come only from a release's own reports.
+    """
+    # Imported here so that other commands do not load the de-identification
+    # package.
+    from pymedphys._dicom.deidentify import requirements, traceability
+
+    matrix = traceability.build_matrix(requirements.load_requirements())
+    DEID_MATRIX_PAGE.write_text(
+        traceability.render_markdown(matrix), encoding="utf-8", newline="\n"
+    )

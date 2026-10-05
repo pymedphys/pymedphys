@@ -17,8 +17,10 @@
 import importlib
 import inspect
 import io
+import logging
 import re
 import struct
+import warnings
 
 from pymedphys._imports import hypothesis, pydicom, pytest
 
@@ -581,3 +583,23 @@ def test_an_unsupported_transfer_syntax_is_not_written():
         )
 
     assert not buffer.getvalue()
+
+
+@pytest.mark.pydicom
+def test_pydicom_diagnostics_while_writing_are_redacted(monkeypatch, caplog):
+    # A kept value can be quoted in a warning about its encoding.
+    sentinel = "ZZSENTINELZZ"
+    write = pydicom.dcmwrite
+
+    def warn_and_write(*args, **kwargs):
+        pydicom.misc.warn_and_log(f"bad value {sentinel}")
+        return write(*args, **kwargs)
+
+    monkeypatch.setattr(pydicom, "dcmwrite", warn_and_write)
+    caplog.set_level(logging.DEBUG, logger="pydicom")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        assert _written(_dataset())
+    assert caught and caplog.records
+    assert sentinel not in " ".join(str(each.message) for each in caught)
+    assert sentinel not in caplog.text

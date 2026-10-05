@@ -20,7 +20,7 @@ import struct
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import pseudonyms, reference_graph
+from pymedphys._dicom.deidentify import pseudonyms, reference_graph, references
 from pymedphys._dicom.deidentify.file_layout import Region, read_file_layout
 from pymedphys._dicom.deidentify.references import InstanceRecord
 
@@ -441,24 +441,14 @@ def _without_transfer_syntax(data):
 
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
-# pydicom reads the last UID of the truncated file without its last bytes.
-@pytest.mark.filterwarnings("ignore:Invalid value for VR UI:UserWarning")
 @pytest.mark.parametrize(
     "unsound",
     [
-        lambda: synthetic.written(synthetic.rt_plan(), EXPLICIT_VR_BIG_ENDIAN),
         lambda: synthetic.written(synthetic.rt_plan(), DEFLATED_EXPLICIT_VR),
         lambda: synthetic.written(synthetic.rt_plan()) + b"\x01\x02\x03",
-        lambda: synthetic.written(synthetic.rt_plan())[:-3],
         lambda: _without_transfer_syntax(synthetic.written(synthetic.rt_plan())),
     ],
-    ids=[
-        "big-endian",
-        "deflated",
-        "trailing-bytes",
-        "truncated",
-        "no-transfer-syntax",
-    ],
+    ids=["deflated", "trailing-bytes", "no-transfer-syntax"],
 )
 def test_a_file_whose_bytes_cannot_be_shown_sound_has_no_digest(unsound):
     # pydicom reads each of these files, so the record has its identity.
@@ -466,6 +456,28 @@ def test_a_file_whose_bytes_cannot_be_shown_sound_has_no_digest(unsound):
 
     assert record.digest is None
     assert record.sop_instance == synthetic.PLAN
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "unsound, tag",
+    [
+        # The first sequence that the record reads, which is big endian.
+        (
+            lambda: synthetic.written(synthetic.rt_plan(), EXPLICIT_VR_BIG_ENDIAN),
+            "(300C,0060)",
+        ),
+        # The last element, cut short with the file.
+        (lambda: synthetic.written(synthetic.rt_plan())[:-3], "(300C,0080)"),
+    ],
+    ids=["big-endian", "truncated"],
+)
+def test_a_file_whose_sequence_cannot_be_read_as_items_has_no_record(unsound, tag):
+    with pytest.raises(references.UnreadableSequence) as raised:
+        InstanceRecord.from_file(unsound())
+
+    assert str(raised.value.path) == tag
 
 
 @pytest.mark.pydicom

@@ -45,12 +45,16 @@ VR UN, or one read without a VR from Implicit VR Little Endian, that pydicom
 has not yet decoded is decoded here, with the character set of the data set
 that holds it, even where pydicom's dictionary gives the attribute VR SQ.
 pydicom decodes some malformed values without an error, as items that leave
-out part of the value, so a value decoded here is accepted only if its items
-encode to the same bytes. pydicom writes the elements of
-those items as it read them, except a sequence of undefined length, which it
-decodes with the value, so that check does not see into a sequence of defined
-length nested in them. Each, at every depth, is decoded here and checked in
-the same way, with the character set of the item that holds it.
+out part of the value, so a value decoded here is accepted only if
+:func:`.sequences.decode_items` finds that it holds only items, and its items
+encode to the same bytes. A raw value of VR SQ, from Explicit VR, is decoded
+by pydicom in place, and so written from its items, once
+:func:`.sequences.decode_items` finds that items fill it. pydicom writes the
+elements of those items as it read them, except a sequence of undefined
+length, which it decodes with the value, so that check does not see into a
+sequence of defined length nested in them. Each nested sequence, at every
+depth, is decoded here and checked in the same way, with the character set
+of the item that holds it.
 
 An item's text is in the Specific Character Set (0008,0005) of the item, or
 else of the data set that holds it (PS3.5 Section 7.5.3). pydicom does not
@@ -78,9 +82,8 @@ Elements are named by their paths, never by their values. Finding them decodes
 no value but those of sequences and of Specific Character Set (0008,0005), so
 no private value is decoded. pydicom's warnings and log records can quote the
 values that it decodes, so the search runs within
-:func:`pymedphys._dicom.anonymise.diagnostics.redacted_pydicom_diagnostics`,
-which ignores pydicom's warnings for the rest of the process and summarises
-its log records while the search runs. pydicom's errors, whose messages can
+:func:`.diagnostics.redacted_diagnostics`, which summarises pydicom's
+warnings and log records while the search runs. pydicom's errors, whose messages can
 also quote a value, are replaced by :class:`PrivateAttributeError`, not
 chained to it. The File Meta Information is not part of the data set; the
 design has the engine replace it whole.
@@ -99,13 +102,13 @@ from collections.abc import Sequence
 
 from pymedphys._imports import pydicom
 
-from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
 
+from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
-from .policy import Policy, PolicyError
+from .policy import Policy, PolicyError, refuse_retain_safe_private
+from .sequences import UnreadableItems, decode_items
 from .standard import PRIVATE_ATTRIBUTES_TAG, sequence_tags
 
-RETAIN_SAFE_PRIVATE = "retain_safe_private"
 # The action that removes an attribute, and a sequence with all its items.
 REMOVE = "X"
 _SPECIFIC_CHARACTER_SET = 0x00080005
@@ -116,8 +119,17 @@ _TOP_LEVEL_CHARACTER_SET = ElementPath((), "(0008,0005)")
 # What pydicom raises when it cannot decode a value as items. Raising its
 # validation errors, it raises LookupError for a character set that it does
 # not know, and KeyError, a LookupError, for an element without a VR whose
-# attribute its dictionary does not list.
-_DECODING_ERRORS = (EOFError, LookupError, OSError, ValueError, struct.error)
+# attribute its dictionary does not list. Where the caller's warning filters
+# turn pydicom's warnings into errors, it raises the warning, whose message
+# can quote a value.
+_DECODING_ERRORS = (
+    EOFError,
+    LookupError,
+    OSError,
+    ValueError,
+    struct.error,
+    Warning,
+)
 _Items = tuple[tuple[str, int], ...]
 
 
@@ -198,7 +210,7 @@ def private_attribute_paths(
     ['(0009,0010)', '(0009,1001)', '(300A,00B0)[1] > (300B,0010)']
     """
     _check(policy)
-    with redacted_pydicom_diagnostics():
+    with redacted_diagnostics():
         encodings = _encodings(dataset, None, _TOP_LEVEL_CHARACTER_SET)
         return tuple(_visit(dataset, (), encodings, remove=False))
 
@@ -236,7 +248,7 @@ def without_private_attributes(
         As :func:`private_attribute_paths` raises it.
     """
     _check(policy)
-    with redacted_pydicom_diagnostics():
+    with redacted_diagnostics():
         result = copy.deepcopy(dataset)
         encodings = _encodings(result, None, _TOP_LEVEL_CHARACTER_SET)
         _visit(result, (), encodings, remove=True)
@@ -245,12 +257,7 @@ def without_private_attributes(
 
 def _check(policy: Policy) -> None:
     """Refuse a policy that does not remove every private attribute."""
-    if RETAIN_SAFE_PRIVATE in policy.options:
-        raise PolicyError(
-            "the Retain Safe Private Option keeps the private attributes that "
-            "are known to be safe, and no reviewed rules yet say which are, so "
-            "a policy that selects it cannot yet be applied"
-        )
+    refuse_retain_safe_private(policy)
     action = policy.actions.get(PRIVATE_ATTRIBUTES_TAG)
     if action != REMOVE:
         raise PolicyError(
@@ -311,8 +318,10 @@ def _items(
     UN or of none, and a raw element in an item that :func:`_decoded` checked
     (``exact``), whose bytes pydicom would write as they are, are decoded and
     checked here, since pydicom can decode a malformed value without an
-    error; one that pydicom deferred is read first. A sequence that pydicom
-    decoded as it read it is used as it is.
+    error; one that pydicom deferred is read first. Any other raw value, of
+    VR SQ from Explicit VR, is decoded by pydicom in place, and written from
+    its items, once :func:`.sequences.decode_items` finds that items fill it.
+    A sequence that pydicom decoded as it read it is used as it is.
     """
     element: pydicom.DataElement | pydicom.dataelem.RawDataElement = dataset.get_item(
         tag, keep_deferred=True
@@ -328,6 +337,19 @@ def _items(
         exact or element.VR in (None, "UN")
     ):
         return _decoded(_raw_value(dataset, element, path), path, encodings), True
+    if isinstance(element, pydicom.dataelem.RawDataElement):
+        # Of VR SQ, from Explicit VR. pydicom decodes it in place, and it is
+        # then written from its items, but it reads malformed items silently.
+        try:
+            decode_items(
+                _raw_value(dataset, element, path) or b"",
+                explicit=True,
+                codecs=encodings,
+                little_endian=element.is_little_endian,
+                nested=False,
+            )
+        except UnreadableItems:
+            raise PrivateAttributeError(path) from None
     try:
         element = dataset[tag]
     except _DECODING_ERRORS:
@@ -397,11 +419,15 @@ def _is_sequence(tag: pydicom.tag.BaseTag, path: ElementPath) -> bool:
 def _decoded(
     value: bytes | None, path: ElementPath, encodings: list[str]
 ) -> pydicom.Sequence:
-    """Decode a value as Implicit VR Little Endian items, if they encode it."""
+    """Decode a value as Implicit VR Little Endian items that fill and encode it."""
     if not value:  # pydicom reads a value of zero length as None
         return pydicom.Sequence()
     try:
-        sequence = pydicom.values.convert_SQ(value, True, True, encodings)
+        # Each sequence of defined length in the items is decoded here in turn.
+        sequence = decode_items(value, explicit=False, codecs=encodings, nested=False)
+    except UnreadableItems:
+        raise PrivateAttributeError(path) from None
+    try:
         encoded = pydicom.filebase.DicomBytesIO()
         encoded.is_little_endian = True
         encoded.is_implicit_VR = True

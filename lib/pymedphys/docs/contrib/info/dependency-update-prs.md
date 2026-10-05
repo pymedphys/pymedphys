@@ -22,8 +22,8 @@ That workflow should:
 The PR should usually have:
 
 - title: `chore: update dependencies`
-- branch: `deps/update-<run_number>`
-- label: `dependencies`
+- branch: `deps/weekly-update`, updated each week while its PR remains open
+- labels: `dependencies` and `full-test`
 
 ## What validation should run before the PR opens?
 

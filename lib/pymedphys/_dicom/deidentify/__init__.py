@@ -26,7 +26,8 @@ policy and everything the engine could apply with it, the markers that record
 in each de-identified instance how it was de-identified, the admission of a
 source file whose whole structure is read from its own bytes, kept as
 immutable evidence, the decoding of each element with the VR of the pinned
-data dictionary, the checks of values against their VR and VM and of the
+data dictionary, and of a sequence's items only once they are shown to fill
+its value, the checks of values against their VR and VM and of the
 elements built to be written, the zero-length and dummy values that the Z and
 D actions write, the supplementary actions for attributes that Table E.1-1
 omits, including every date, time, and URI that it omits and every text
@@ -38,7 +39,10 @@ de-identified or sequestered, the names of the files and directories that
 output is written to, the File Meta Information and zeroed preamble that
 replace the source file's, the first pass's graph of the references between
 instances, a reader that maps each byte of a written file to where it belongs,
-a search of written files for the source values that had to be removed or
-replaced, the removal of private attributes, and the conformance statement
-generated from a policy.
+a writer that copies each kept element from its source's bytes and encodes
+only what changes, the verification that a written file keeps each kept
+element as its source encodes it, a search of written files for the source
+values that had to be removed or replaced, the removal of private
+attributes, and the conformance
+statement generated from a policy.
 """

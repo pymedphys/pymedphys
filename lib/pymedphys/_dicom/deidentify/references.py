@@ -32,9 +32,12 @@ instance: its identifiers, its patient, a digest of its source bytes, and
 the value at each reference site with the Referenced SOP Class UID
 (0008,1150) beside it. Its ``repr`` shows only the IOD, so identifiers do
 not reach logs. An attribute without a value at a Type 3 site is left out,
-since it means the same as an absent one (PS3.5 Section 7.4.5). A sequence
+since it means the same as an absent one (PS3.5 Section 7.4.5). Each
+sequence that pydicom holds undecoded is decoded by
+:func:`~pymedphys._dicom.deidentify.sequences.decode_items`, including one
 that pydicom does not know, which it reads as UN from Implicit VR Little
-Endian, is decoded with its VR in the pinned data dictionary.
+Endian, with its VR in the pinned data dictionary, and one whose value does
+not hold only items raises :class:`UnreadableSequence`.
 
 Two inputs are identical copies only when their source bytes are the same:
 they have the same Transfer Syntax UID (0002,0010), and the same bytes from
@@ -62,10 +65,10 @@ otherwise be compared as if they were at the top level.
 A record keeps a digest of the source bytes rather than the bytes, so
 records stay small. Building one reads the file's bytes into a data set of
 its own, so the caller's objects are left unchanged. It neither logs nor
-warns; pydicom's own warnings and errors while it reads and decodes values
-are the entry point's to redact, as
-:func:`pymedphys._dicom.anonymise.diagnostics.redacted_pydicom_diagnostics`
-does for the legacy tools.
+warns; pydicom's warnings and log records, from reading the file until
+the record is built, including those from decoding values and sequences,
+are redacted by :func:`.diagnostics.redacted_diagnostics`, and pydicom's
+errors are the entry point's to redact.
 """
 
 from __future__ import annotations
@@ -78,17 +81,20 @@ import io
 import re
 import struct
 import types
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 
 from pymedphys._imports import pydicom
 
+from .diagnostics import redacted_diagnostics
 from .file_layout import (
     BIG_ENDIAN_TRANSFER_SYNTAXES,
+    ElementPath,
     Region,
     read_file_layout,
 )
 from .iods import IOD
 from .pseudonyms import SubjectIdentity
+from .sequences import UnreadableItems, decode_items
 from .sop_classes import iod_for_sop_class
 from .standard import load_data_dictionary
 from .uids import normalise_uid
@@ -101,6 +107,23 @@ ISSUER_OF_PATIENT_ID_TAG = "(0010,0021)"
 _TRAILING_PADDING_TAG = "(FFFC,FFFC)"
 # Data Set Trailing Padding is in its own region, at the top level or in an item.
 _DATA_SET_REGIONS = (Region.DATA_SET, Region.TRAILING_PADDING)
+_Within = tuple[tuple[str, int], ...]
+
+
+class UnreadableSequence(Exception):
+    """A sequence whose value does not hold only items.
+
+    Not a :class:`ValueError`, which code that rejects invalid input could
+    catch by accident. The message names the sequence by its path and never
+    quotes a value.
+    """
+
+    def __init__(self, path: ElementPath) -> None:
+        super().__init__(path)
+        self.path = path
+
+    def __str__(self) -> str:
+        return f"{self.path} has items that cannot be read"
 
 
 class Level(enum.Enum):
@@ -322,33 +345,40 @@ class InstanceRecord:
 
         Raises
         ------
+        UnreadableSequence
+            If the value of a sequence on the path to a reference site does
+            not hold only items, as in a file truncated within it, or is big
+            endian, which only pydicom can read.
         Exception
             Whatever pydicom raises for a file that it cannot read, such as
             :class:`pydicom.errors.InvalidDicomError`. Its message may hold
             values from the file, so the entry point redacts it.
         """
         data = bytes(data)
-        dataset = pydicom.dcmread(io.BytesIO(data), defer_size=None)
-        sop_class = _uid(dataset, SOP_CLASS_TAG)
-        iod, sites = _iod_and_sites(sop_class) if sop_class else (None, ())
-        found = []
-        for site in sites:
-            for item in _items(dataset, site.path):
-                element = _element(item, site.tag)
-                if element is None or (site.type == "3" and _is_empty(element)):
-                    continue
-                target = _uid(item, site.tag) or ""
-                target_class = _uid(item, REFERENCED_SOP_CLASS_TAG)
-                found.append(Reference(site, target, target_class))
-        return cls(
-            iod,
-            _uid(dataset, IDENTITY_TAGS[Level.INSTANCE]),
-            _uid(dataset, IDENTITY_TAGS[Level.SERIES]),
-            _uid(dataset, IDENTITY_TAGS[Level.STUDY]),
-            tuple(found),
-            _patient(dataset),
-            _source_digest(data),
-        )
+        # pydicom converts each value when it is first read, not in
+        # dcmread, so the redaction lasts until the record is built.
+        with redacted_diagnostics():
+            dataset = pydicom.dcmread(io.BytesIO(data), defer_size=None)
+            sop_class = _uid(dataset, SOP_CLASS_TAG)
+            iod, sites = _iod_and_sites(sop_class) if sop_class else (None, ())
+            found = []
+            for site in sites:
+                for item in _items(dataset, site.path):
+                    element = _element(item, site.tag)
+                    if element is None or (site.type == "3" and _is_empty(element)):
+                        continue
+                    target = _uid(item, site.tag) or ""
+                    target_class = _uid(item, REFERENCED_SOP_CLASS_TAG)
+                    found.append(Reference(site, target, target_class))
+            return cls(
+                iod,
+                _uid(dataset, IDENTITY_TAGS[Level.INSTANCE]),
+                _uid(dataset, IDENTITY_TAGS[Level.SERIES]),
+                _uid(dataset, IDENTITY_TAGS[Level.STUDY]),
+                tuple(found),
+                _patient(dataset),
+                _source_digest(data),
+            )
 
     def identifier(self, level: Level) -> str | None:
         """Return the UID that identifies the instance's entity at ``level``."""
@@ -386,34 +416,57 @@ def _is_empty(element: pydicom.DataElement) -> bool:
 
 
 def _items(
-    dataset: pydicom.Dataset, path: tuple[str, ...]
+    dataset: pydicom.Dataset, path: tuple[str, ...], within: _Within = ()
 ) -> Iterator[pydicom.Dataset]:
-    """Yield every item of the innermost sequence of ``path``."""
+    """Yield every item of the innermost sequence of ``path``.
+
+    ``within`` is the path of the items that hold ``dataset``, as in
+    :class:`~pymedphys._dicom.deidentify.file_layout.ElementPath`.
+    """
     if not path:
         yield dataset
         return
-    element = _element(dataset, path[0])
-    if element is not None:
-        for item in _sequence(element, path[0]):
-            yield from _items(item, path[1:])
+    sequence = _sequence(dataset, ElementPath(within, path[0]))
+    for index, item in enumerate(sequence):
+        yield from _items(item, path[1:], (*within, (path[0], index)))
 
 
-def _sequence(element: pydicom.DataElement, tag: str) -> Iterator[pydicom.Dataset]:
-    """Yield the items of a sequence, decoding a UN value with its dictionary VR.
+def _sequence(dataset: pydicom.Dataset, path: ElementPath) -> Sequence[pydicom.Dataset]:
+    """Return the items of the sequence at ``path``, or none if it is absent.
 
-    PS3.5 Section 6.2.2 lets a reader that knows the VR of a UN value decode
-    it as Implicit VR Little Endian, whatever the transfer syntax. pydicom
-    reads a sequence it does not know as UN in Implicit VR Little Endian,
-    unless its length is undefined.
+    pydicom decodes a sequence as it reads the file only if its length is
+    undefined, and holds any other raw, to decode when it is first accessed
+    without checking its items. A raw value is decoded here instead, by
+    :func:`~pymedphys._dicom.deidentify.sequences.decode_items`, with VR SQ
+    in Explicit VR, or, where the pinned dictionary gives its attribute VR
+    SQ, without a VR in Implicit VR, or as UN, which PS3.5 Section 6.2.2
+    lets a reader that knows its VR decode as Implicit VR Little Endian,
+    whatever the transfer syntax. A value that does not hold only items
+    raises :class:`UnreadableSequence`. Each sequence of defined length
+    nested in the items is left raw, to be decoded here by its own path.
+    Items are decoded in pydicom's default character set, whatever the
+    Specific Character Set (0008,0005) of the data set that holds them,
+    since only UIDs are read from them.
     """
-    if element.VR == "SQ":
-        yield from element.value
-    elif (
-        element.VR == "UN"
-        and isinstance(element.value, bytes)
-        and _dictionary_vrs().get(tag) == "SQ"
+    element = dataset.get_item(int(path.tag[1:5] + path.tag[6:10], 16))
+    if not isinstance(element, pydicom.dataelem.RawDataElement):
+        return element.value if element is not None and element.VR == "SQ" else ()
+    if element.VR not in ("SQ", None, "UN") or (
+        element.VR != "SQ" and _dictionary_vrs().get(path.tag) != "SQ"
     ):
-        yield from pydicom.values.convert_SQ(element.value, True, True)
+        return ()
+    explicit = element.VR == "SQ"
+    try:
+        return decode_items(
+            element.value or b"",
+            explicit=explicit,
+            little_endian=element.is_little_endian or not explicit,
+            offset=element.value_tell or 0,
+            nested=False,
+        )
+    except UnreadableItems:
+        pass
+    raise UnreadableSequence(path)
 
 
 @functools.lru_cache(maxsize=None)

@@ -21,6 +21,7 @@ import types
 import pytest
 
 from pymedphys._dev import docs
+from pymedphys._dicom.deidentify import requirements, traceability
 from pymedphys.cli.dev import dev_cli
 
 
@@ -32,9 +33,13 @@ def _parse(*args):
 
 
 @pytest.fixture(name="calls")
-def fixture_calls(monkeypatch):
+def fixture_calls(monkeypatch, tmp_path):
     """Record the command's side effects instead of performing them."""
     calls = {"copies": [], "commands": [], "downloads": [], "sphinx": []}
+    # The matrix page is generated, not copied, so keep it out of the docs tree.
+    monkeypatch.setattr(
+        docs, "DEID_MATRIX_PAGE", tmp_path / "deidentification-requirements.md"
+    )
     monkeypatch.setattr(
         docs.shutil, "copy", lambda *paths: calls["copies"].append(paths)
     )
@@ -103,3 +108,50 @@ def test_prep_and_linkcheck_are_exclusive(capsys):
         _parse("--prep", "--linkcheck")
 
     assert "not allowed with argument" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("args", [(), ("--prep",), ("--linkcheck",)])
+def test_every_build_writes_the_requirements_matrix_page(calls, args):
+    page = docs.DEID_MATRIX_PAGE  # In tmp_path, by the calls fixture.
+
+    docs.build_docs(_parse(*args))
+
+    register = requirements.load_requirements()
+    assert page.read_text(encoding="utf-8") == traceability.render_markdown(
+        traceability.build_matrix(register)
+    )
+    # The page is written before Sphinx reads the sources.
+    assert calls["commands"][0] == [
+        "jupyter-book",
+        "config",
+        "sphinx",
+        str(docs.DOCS_PATH),
+    ]
+
+
+def test_the_requirements_matrix_page_has_no_test_results(monkeypatch, tmp_path):
+    page = tmp_path / "deidentification-requirements.md"
+    monkeypatch.setattr(docs, "DEID_MATRIX_PAGE", page)
+
+    docs.write_deid_matrix_page()
+
+    text = page.read_text(encoding="utf-8")
+    assert text.startswith("# DICOM de-identification requirements-to-tests matrix\n")
+    assert "Test results are from" not in text
+    assert "Traced tests" not in text
+
+
+@pytest.mark.usefixtures("calls")
+def test_clean_writes_no_requirements_matrix_page():
+    docs.build_docs(_parse("--clean"))
+
+    assert not docs.DEID_MATRIX_PAGE.exists()
+
+
+def test_the_requirements_matrix_page_is_listed_and_not_committed():
+    page = docs.DEID_MATRIX_PAGE
+    assert page.parent == docs.DOCS_PATH / "contrib" / "info"
+    toctree = (page.parent / "index.md").read_text(encoding="utf-8")
+    assert f"\ndeidentification-design\n{page.stem}\n" in toctree
+    ignored = (docs.DOCS_PATH / ".gitignore").read_text(encoding="utf-8")
+    assert page.relative_to(docs.DOCS_PATH).as_posix() in ignored.splitlines()

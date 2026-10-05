@@ -15,12 +15,15 @@
 """Where an instance refers to others, from PS3.3, and what an instance record holds."""
 
 import dataclasses
+import logging
 import pickle
 import struct
+import warnings
 
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import iods, references, uid_roles
+from pymedphys._dicom.deidentify.file_layout import ElementPath
 
 from . import _synthetic_references as synthetic
 
@@ -817,3 +820,137 @@ def test_an_unknown_value_of_zero_length_has_no_items(monkeypatch):
     assert record.references == plain.references
     # The empty element is still part of the source bytes.
     assert record.digest != plain.digest
+
+
+UNREADABLE_ITEMS = {
+    # An item whose defined length runs past the value.
+    "item-past-value": struct.pack("<HHI", 0xFFFE, 0xE000, 64)
+    + _encoded(0x00081155, b"SENTINEL"),
+    # An element where an item belongs.
+    "element-where-an-item-belongs": _encoded(0x00081155, b"SENTINEL"),
+}
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "value", UNREADABLE_ITEMS.values(), ids=UNREADABLE_ITEMS.keys()
+)
+@pytest.mark.parametrize("nested", [False, True], ids=["top-level", "nested"])
+def test_an_unknown_value_whose_items_cannot_be_read_is_refused(
+    monkeypatch, value, nested
+):
+    # pydicom decodes each value without an error, leaving out what it holds.
+    pydicom.values.convert_SQ(value, True, True)
+    # Dose Calculation Model Sequence (3004,0080) > Dose Calculation Model
+    # Parameter Sequence (3004,0083), neither of which pydicom 3.0.2 knows.
+    dataset = synthetic.rt_dose()
+    if nested:
+        model = synthetic.item()
+        model[0x30040083] = _unknown(monkeypatch, 0x30040083, value)
+        dataset.add(synthetic.sequence(0x30040080, [model]))
+        path = ElementPath((("(3004,0080)", 0),), "(3004,0083)")
+    else:
+        dataset[0x30040080] = _unknown(monkeypatch, 0x30040080, value)
+        path = ElementPath((), "(3004,0080)")
+    data = synthetic.written(dataset)
+
+    with pytest.raises(references.UnreadableSequence) as raised:
+        InstanceRecord.from_file(data)
+
+    assert raised.value.path == path
+    assert str(raised.value) == f"{path} has items that cannot be read"
+    assert raised.value.__cause__ is None
+    assert "SENTINEL" not in repr(raised.value)
+
+
+def _item_past_its_sequence(data, tag, explicit):
+    """Return the file with the first item of ``tag`` running past its value.
+
+    The sequence is of defined length, with VR SQ in Explicit VR or without
+    a VR in Implicit VR (PS3.5 Tables 7.1-2 and 7.1-3).
+    """
+    data = bytearray(data)
+    header = struct.pack("<HH", tag >> 16, tag & 0xFFFF)
+    at = data.index(header + b"SQ\x00\x00" if explicit else header)
+    length_at = at + (8 if explicit else 4)
+    (length,) = struct.unpack_from("<I", data, length_at)
+    assert data[length_at + 4 : length_at + 8] == b"\xfe\xff\x00\xe0"
+    struct.pack_into("<I", data, length_at + 8, length + 40)
+    return bytes(data)
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")
+@pytest.mark.parametrize(
+    "transfer_syntax",
+    [synthetic.EXPLICIT_VR_LITTLE_ENDIAN, synthetic.IMPLICIT_VR_LITTLE_ENDIAN],
+    ids=["explicit-vr", "implicit-vr"],
+)
+@pytest.mark.parametrize(
+    "tag, path",
+    [
+        (0x300C0002, ElementPath((), "(300C,0002)")),  # Referenced RT Plan Sequence
+        (
+            0x00081199,  # Referenced SOP Sequence, in Dose Calculation Model
+            ElementPath((("(3004,0080)", 0), ("(3004,0083)", 0)), "(0008,1199)"),
+        ),
+    ],
+    ids=["top-level", "nested"],
+)
+def test_a_sequence_whose_items_cannot_be_read_is_refused(transfer_syntax, tag, path):
+    # pydicom decodes each, when it is accessed, without an error, as items
+    # that leave out what follows.
+    dataset, *_ = _with_dose_calculation_model()
+    written = synthetic.written(dataset, transfer_syntax)
+    data = _item_past_its_sequence(
+        written, tag, transfer_syntax == synthetic.EXPLICIT_VR_LITTLE_ENDIAN
+    )
+
+    with pytest.raises(references.UnreadableSequence) as raised:
+        InstanceRecord.from_file(data)
+
+    assert raised.value.path == path
+    assert raised.value.__cause__ is None and raised.value.__context__ is None
+
+
+@pytest.mark.pydicom
+def test_pydicom_diagnostics_while_reading_a_record_are_redacted(monkeypatch, caplog):
+    # The first pass's records are read without an entry point's redaction.
+    sentinel = "ZZSENTINELZZ"
+    data = synthetic.written(synthetic.structure_set())
+    read = pydicom.dcmread
+
+    def read_and_warn(*args, **kwargs):
+        pydicom.misc.warn_and_log(f"bad value {sentinel}")
+        return read(*args, **kwargs)
+
+    monkeypatch.setattr(pydicom, "dcmread", read_and_warn)
+    caplog.set_level(logging.DEBUG, logger="pydicom")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        record = InstanceRecord.from_file(data)
+    assert record.iod == "RT Structure Set"
+    assert caught and caplog.records
+    assert sentinel not in " ".join(str(each.message) for each in caught)
+    assert sentinel not in caplog.text
+
+
+@pytest.mark.pydicom
+def test_pydicom_diagnostics_while_decoding_a_record_are_redacted(caplog):
+    # pydicom converts each value when it is first accessed, after dcmread
+    # has returned, and warns there of a value that is not valid for its VR.
+    sentinel = "ZZSENTINELZZ"
+    dataset = synthetic.structure_set()
+    dataset.SeriesInstanceUID = f"2.25.{sentinel}"
+    data = synthetic.written(dataset)  # which warns, unredacted
+    caplog.clear()
+    caplog.set_level(logging.DEBUG, logger="pydicom")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        record = InstanceRecord.from_file(data)
+    assert record.iod == "RT Structure Set"
+    assert caught and caplog.records
+    assert sentinel not in " ".join(str(each.message) for each in caught)
+    assert sentinel not in caplog.text
