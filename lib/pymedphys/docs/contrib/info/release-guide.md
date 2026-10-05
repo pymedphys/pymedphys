@@ -99,7 +99,7 @@ For a stable release, open the pull request from this link, which fills the desc
 https://github.com/pymedphys/pymedphys/compare/main...VERSION-release-prep?expand=1&template=release.md&labels=full-test
 ```
 
-GitHub has no template chooser for pull requests, so the `template` parameter is the only way to select this template. It applies only to a pull request opened in the browser through this link; a tool that opens the pull request itself must be given the template's text as the description, for example `gh pr create --body-file .github/PULL_REQUEST_TEMPLATE/release.md`. The `full-test` label runs the full unit-test matrix, integration checks, and Mosaiq database tests before merging.
+GitHub has no template chooser for pull requests, so the `template` parameter is the only way to select this template. It applies only to a pull request opened in the browser through this link; a tool that opens the pull request itself must be given the template's text as the description, for example `gh pr create --body-file .github/PULL_REQUEST_TEMPLATE/release.md`. The `full-test` label runs the full unit-test matrix, integration checks, and Mosaiq database tests on the pull request before merging.
 
 A development release needs no pull request or template, and does not need the label: the Release workflow runs the full unit-test matrix and integration tests before publishing, and a failure there only delays a pre-release.
 
