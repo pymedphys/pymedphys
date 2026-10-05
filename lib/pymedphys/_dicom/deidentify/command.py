@@ -57,6 +57,7 @@ import enum
 import os
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 from typing import TextIO
 
 from . import run
@@ -107,30 +108,51 @@ def deidentify_directory(
     """
     stdout = sys.stdout if stdout is None else stdout
     stderr = sys.stderr if stderr is None else stderr
+    staging = run.staging_path(Path(release).absolute())
+    # One that is already there is an earlier run's, which run refuses.
+    earlier_staging = os.path.lexists(staging)
     with redacted_diagnostics() as counts:
         try:
             result = run.run(run.discover(source), release, transform, gate)
         except (run.RunError, run.RunStopped) as error:
             # Each names only the caller's directories, or counts.
-            print(f"error: {error}", file=stderr)
-            return EXIT_NOT_RUN
+            _print(f"error: {error}", stderr)
+            return _left_behind(staging, earlier_staging, stderr) or EXIT_NOT_RUN
         except Exception as error:  # pylint: disable = broad-exception-caught
-            print(
+            _print(
                 f"error: the run failed with {type(error).__name__}, and "
                 "nothing was published; its details are not shown because "
                 "they can contain file paths or DICOM values",
-                file=stderr,
+                stderr,
             )
-            return EXIT_INTERNAL_ERROR
-    print("\n".join(summary_lines(result, counts)), file=stdout)
+            return _left_behind(staging, earlier_staging, stderr) or EXIT_INTERNAL_ERROR
+    # The warning comes first, so that nothing printed after it can lose it.
     if not result.staging_removed:
-        print(
-            f"error: the staging area {run.staging_path(result.release)} "
-            "could not be deleted; it may hold output that still identifies "
-            "people, so delete it by hand",
-            file=stderr,
-        )
+        _print(_STAGING_LEFT.format(staging=staging), stderr)
+    _print("\n".join(summary_lines(result, counts)), stdout)
     return exit_status(result)
+
+
+_STAGING_LEFT = (
+    "error: the staging area {staging} could not be deleted; it may hold "
+    "output that still identifies people, so delete it by hand"
+)
+
+
+def _left_behind(staging: Path, earlier: bool, stderr: TextIO) -> int:
+    """Return EXIT_STAGING_LEFT, having said so, if a failed run left its staging area."""
+    if earlier or not os.path.lexists(staging):
+        return 0
+    _print(_STAGING_LEFT.format(staging=staging), stderr)
+    return EXIT_STAGING_LEFT
+
+
+def _print(text: str, stream: TextIO) -> None:
+    # A directory's name can hold characters that the stream cannot
+    # encode, such as on a Windows console, or undecodable bytes from the
+    # command line; they are escaped rather than failing after a release.
+    encoding = getattr(stream, "encoding", None) or "utf-8"
+    print(text.encode(encoding, "backslashreplace").decode(encoding), file=stream)
 
 
 def exit_status(result: run.RunResult) -> int:
@@ -151,10 +173,12 @@ def summary_lines(result: run.RunResult, redacted: RedactionCounts) -> list[str]
     warnings and log records were redacted.
     """
     statuses = collections.Counter(outcome.status for outcome in result.outcomes)
+    # Each input counts once for each type of reason it has, and reasons
+    # need not be hashable.
     reasons = collections.Counter(
-        _reason_name(reason)
+        name
         for outcome in result.outcomes
-        for reason in dict.fromkeys(outcome.reasons)
+        for name in {_reason_name(reason) for reason in outcome.reasons}
     )
     findings = collections.Counter(
         _reason_name(finding.kind) for finding in result.findings

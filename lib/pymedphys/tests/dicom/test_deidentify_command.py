@@ -17,6 +17,9 @@
 import dataclasses
 import io
 import logging
+import os
+import shutil
+import tempfile
 import warnings
 from pathlib import Path, PurePosixPath
 
@@ -34,6 +37,21 @@ from .test_deidentify_run import (
     _output,
     _write,
 )
+
+
+@pytest.fixture(name="tmp_path")
+def _short_tmp_path(tmp_path):
+    """Give a base directory short enough for Windows' path limit.
+
+    On Windows, a run refuses a release directory whose files' paths could
+    exceed 259 characters, which pytest's own temporary directories do.
+    """
+    if os.name != "nt":
+        yield tmp_path
+        return
+    short = Path(tempfile.mkdtemp(prefix="d"))
+    yield short
+    shutil.rmtree(short, ignore_errors=True)
 
 
 def _call(tmp_path, transform=None, gate=None, source=None, release=None):
@@ -298,3 +316,83 @@ def test_build_parser_takes_a_program_name():
     assert parser.prog == "pymedphys dicom deidentify"
     arguments = parser.parse_args(["in", "out"])
     assert (arguments.source, arguments.release) == ("in", "out")
+
+
+def test_a_failed_run_that_leaves_its_staging_area_says_so(tmp_path, monkeypatch):
+    _write(tmp_path / "source", synthetic.collection())
+
+    def failing_write(file, data):
+        raise OSError("no space left")
+
+    monkeypatch.setattr(run, "_write_atomically", failing_write)
+    monkeypatch.setattr(run, "_remove", lambda staging: False)
+
+    status, out, err = _call(tmp_path)
+
+    assert status == command.EXIT_STAGING_LEFT
+    assert out == ""
+    assert "OSError" in err
+    assert str(run.staging_path((tmp_path / "release").absolute())) in err
+    assert "delete it" in err
+
+
+def test_a_staging_area_left_by_an_earlier_run_is_not_this_runs(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    run.staging_path((tmp_path / "release").absolute()).mkdir()
+
+    status, _, err = _call(tmp_path)
+
+    assert status == command.EXIT_NOT_RUN
+    assert "already exists" in err
+    assert "could not be deleted" not in err
+
+
+def test_reasons_are_counted_once_per_input_by_type(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+
+    @dataclasses.dataclass
+    class Place:  # neither frozen nor hashable
+        tags: list
+
+    reasons = (Place(["(0010,0010)"]), Place(["(0010,0020)"]), Place([SENTINEL]))
+    gate = Gate({_output(synthetic.PLAN): run.Sequestered(reasons)})
+
+    status, out, err = _call(tmp_path, gate=gate)
+
+    assert status == command.EXIT_WITHHELD
+    assert "  Place: 1" in out
+    assert SENTINEL not in out + err
+
+
+def test_a_release_name_the_output_cannot_encode_is_escaped(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    raw = io.BytesIO()
+    stdout = io.TextIOWrapper(raw, encoding="ascii", errors="strict")
+    release = tmp_path / "rel\u00e9ase"
+
+    status = command.deidentify_directory(
+        tmp_path / "source",
+        release,
+        transform=Transform(),
+        gate=Gate(),
+        stdout=stdout,
+        stderr=io.StringIO(),
+    )
+
+    stdout.flush()
+    assert status == command.EXIT_RELEASED
+    assert b"rel\\xe9ase" in raw.getvalue()
+    assert release.is_dir()
+
+
+def test_source_paths_never_reach_the_output(tmp_path):
+    source = tmp_path / f"source-{SENTINEL}"
+    names = [f"{index:03d}-{SENTINEL}.dcm" for index in range(6)]
+    _write(source, synthetic.collection(), names)
+    (source / "DICOMDIR").write_bytes(SENTINEL.encode())
+
+    status, out, err = _call(tmp_path, source=source)
+
+    assert status == command.EXIT_WITHHELD
+    assert "released: 6" in out
+    assert SENTINEL not in out + err
