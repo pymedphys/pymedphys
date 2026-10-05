@@ -19,9 +19,11 @@ import enum
 import io
 import logging
 import os
+import shutil
 import stat
+import tempfile
 import warnings
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pydicom, pytest
 
@@ -54,6 +56,21 @@ SEQUESTERED = run.Status.SEQUESTERED
 HELD = run.Status.HELD_FOR_REVIEW
 DUPLICATE = run.Status.DUPLICATE
 Reason = run.RunReason
+
+
+@pytest.fixture(name="tmp_path")
+def _short_tmp_path(tmp_path):
+    """On Windows, a directory whose path leaves room for a run's output names.
+
+    A run refuses a release directory whose files' paths could pass 259
+    characters, which pytest's own directories on a CI runner can.
+    """
+    if os.name != "nt":
+        yield tmp_path
+        return
+    directory = Path(tempfile.mkdtemp(prefix="d"))
+    yield directory
+    shutil.rmtree(directory, ignore_errors=True)
 
 
 class GateReason(enum.Enum):
