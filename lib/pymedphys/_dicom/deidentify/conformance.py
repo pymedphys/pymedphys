@@ -139,14 +139,18 @@ SEQUENCE_NOT_CLEANED = "sequence not cleaned"
 # generated once the engine decides it.
 PENDING: tuple[str, ...] = (
     "What the engine does not yet do for each run's release report and "
-    "residual search: write the release report with each run; record the "
+    "residual search: write the release report with each run; search each "
+    "written file; record the "
     "values that it does not give the residual search, for the reasons "
     "listed under Release report (D-027); act on the search's findings, by "
     "sequestering an instance whose written file fails the search and "
     "moving output from a staging area to the release directory only after "
     "a clean search (D-027); and write the confidential QC pack, which maps "
     "each label to its source instance and lists each value not searched by "
-    "instance and place (D-016, D-026, and D-027).",
+    "instance and place (D-016, D-026, and D-027). The report cannot yet "
+    "record an instance that the run itself sequesters, such as one whose "
+    "file changes during the run, or that a gate sequesters, since neither "
+    "is one of the stages listed under Release report.",
 )
 PENDING_RELEASE_REPORT = PENDING[0]
 # Pending only for a policy whose element rules the engine refuses.
