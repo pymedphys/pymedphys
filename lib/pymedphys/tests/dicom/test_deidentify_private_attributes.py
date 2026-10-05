@@ -29,10 +29,15 @@ import warnings
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import file_layout, policy, private_attributes
+from pymedphys._dicom.deidentify import (
+    file_layout,
+    policy,
+    private_attributes,
+    standard,
+)
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 
-PRIVATE_ROW = "(gggg,eeee) where gggg is odd"
+PRIVATE_ROW = standard.PRIVATE_ATTRIBUTES_TAG
 IMPLICIT_VR = "1.2.840.10008.1.2"
 EXPLICIT_VR = "1.2.840.10008.1.2.1"
 RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"

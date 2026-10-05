@@ -57,8 +57,7 @@ back unchanged.
 once :func:`written_value_problem` has checked its values.
 
 pydicom's warnings and log records are redacted by
-:func:`pymedphys._dicom.anonymise.diagnostics.redacted_pydicom_diagnostics`,
-which ignores its warnings for the rest of the process, and its exceptions,
+:func:`.diagnostics.redacted_diagnostics`, and its exceptions,
 whose messages can quote values, are replaced, not chained. This module
 neither walks a data set nor applies an action.
 """
@@ -73,8 +72,7 @@ from typing import cast
 
 from pymedphys._imports import pydicom
 
-from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
-
+from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
 from .sequences import UnreadableItems, decode_items
 from .source import SourceEvidence
@@ -107,7 +105,8 @@ _FIRST_GROUP = (
     (0x20, 0x1FFF), (0x3001, 0x3002), (0x300C, 0x300D), (0x3099, 0x309C),
     (0x30A0, 0x30FF),
 )  # fmt: skip
-_CHARACTER_SET_VRS = frozenset({"LO", "LT", "PN", "SH", "ST", "UC", "UT"})
+# The VRs whose text is in the Specific Character Set (PS3.5 Table 6.2-1).
+CHARACTER_SET_VRS = frozenset({"LO", "LT", "PN", "SH", "ST", "UC", "UT"})
 _SOP_CLASS_UID = "(0008,0016)"
 _BITS_STORED = "(0028,0101)"
 _PIXEL_REPRESENTATION = "(0028,0103)"
@@ -145,6 +144,16 @@ class UndecodableElement(Exception):
 
     def __str__(self) -> str:
         return f"{self.path} {self.reason}"
+
+
+class OutsideDefaultRepertoire(UndecodableElement):
+    """Text outside ISO 646 where the Default Character Repertoire alone applies.
+
+    No Specific Character Set applies to it, so pydicom reads it as ISO
+    8859-1. Where its rule removes or replaces it, it is read that way, with
+    ``outside_repertoire_as_latin_1``, to be searched for, as the maintainer
+    decided on 1 October 2026.
+    """
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -230,6 +239,7 @@ def read_element(
     ancestors: Sequence[pydicom.Dataset] = (),
     *,
     source: SourceEvidence | None = None,
+    outside_repertoire_as_latin_1: bool = False,
 ) -> ElementValue:
     """Decode the element at ``path`` in ``dataset``, which is not changed.
 
@@ -265,8 +275,16 @@ def read_element(
     against the source in turn. ``codecs`` must then come from
     :func:`dataset_codecs` given the same source. The elements of
     ``ancestors`` that decide a VR are read without the source.
+
+    Text outside ISO 646 where the Default Character Repertoire alone
+    applies, including an escape sequence, raises
+    :class:`OutsideDefaultRepertoire`, unless ``outside_repertoire_as_latin_1``
+    is given. That text is then read from its bytes as ISO 8859-1, before
+    pydicom would interpret any escape sequence, so that every byte is a
+    character. It is split into values and stripped of padding by its VR,
+    and is not checked as written back, since it never is.
     """
-    with redacted_pydicom_diagnostics():
+    with redacted_diagnostics():
         element = dataset.get_item(_number(path.tag), keep_deferred=True)
         if element is None:
             raise KeyError(str(path))
@@ -284,6 +302,10 @@ def read_element(
             undefined = element.is_undefined_length
         stated = str(element.VR) if element.VR in VRS - {"UN"} else None
         vr = _applicable_vr(path, stated, undefined, (dataset, *ancestors))
+        if (literal := _outside_repertoire(element, vr, codecs)) is not None:
+            if not outside_repertoire_as_latin_1:
+                raise OutsideDefaultRepertoire(path, _OUTSIDE.format(vr=vr))
+            return ElementValue(path, vr, literal, (), tuple(codecs))
         value = _decoded(element, vr, list(codecs), path)
         if vr == "SQ":
             items = tuple(cast(Sequence[pydicom.Dataset], value))
@@ -299,21 +321,61 @@ def read_element(
         # pydicom reads the Default Character Repertoire as ISO 8859-1, but it
         # is ISO 646 (PS3.5 Section 6.1.2.1).
         if (
-            vr in _CHARACTER_SET_VRS
+            not outside_repertoire_as_latin_1
+            and vr in CHARACTER_SET_VRS
             and tuple(codecs) == DEFAULT_CODECS
-            and not all(str(each).isascii() for each in plain)
+            and not all(_in_iso_646(str(each)) for each in plain)
         ):
-            raise UndecodableElement(
-                path,
-                f"could not be decoded as VR {vr} in the Default Character "
-                "Repertoire, ISO 646",
-            )
-        # Reading is no more lenient than writing.
-        if problem := _character_set_problem(vr, plain, codecs):
+            raise OutsideDefaultRepertoire(path, _OUTSIDE.format(vr=vr))
+        # Reading is no more lenient than writing, but for text read as ISO
+        # 8859-1 in place of ISO 646, which is never written back.
+        latin_1 = outside_repertoire_as_latin_1 and tuple(codecs) == DEFAULT_CODECS
+        if not latin_1 and (problem := character_set_problem(vr, plain, codecs)):
             raise UndecodableElement(
                 path, f"could not be written back as VR {vr}, since {problem}"
             )
     return ElementValue(path, vr, plain, (), tuple(codecs))
+
+
+_OUTSIDE = (
+    "could not be decoded as VR {vr} in the Default Character Repertoire, ISO 646"
+)
+# VRs whose leading spaces are not significant (PS3.5 Table 6.2-1).
+_LEADING_SPACES_INSIGNIFICANT = frozenset({"LO", "SH"})
+
+
+def _in_iso_646(text: str) -> bool:
+    # ESC begins a code extension, which the Default Character Repertoire
+    # alone does not allow (PS3.5 Section 6.1.2.5.3).
+    return text.isascii() and "\x1b" not in text
+
+
+def _outside_repertoire(
+    element: object, vr: str, codecs: Sequence[str]
+) -> tuple[str, ...] | None:
+    """Return text outside ISO 646 that no character set applies to, literally.
+
+    Where the Default Character Repertoire alone applies, the encoded bytes
+    of a text value with a byte from 0x80 or an escape are read as ISO
+    8859-1, before pydicom interprets any escape sequence, so that every
+    byte is a character; otherwise None.
+    """
+    if not (
+        isinstance(element, pydicom.dataelem.RawDataElement)
+        and isinstance(element.value, bytes)
+        and element.length == len(element.value)
+        and vr in CHARACTER_SET_VRS
+        and tuple(codecs) == DEFAULT_CODECS
+    ):
+        return None
+    text = element.value.decode("latin-1")
+    if _in_iso_646(text):
+        return None
+    values = [text] if vr in ("LT", "ST", "UT") else text.split("\\")
+    stripped = [value.rstrip(" \x00") for value in values]
+    if vr in _LEADING_SPACES_INSIGNIFICANT:
+        stripped = [value.lstrip(" ") for value in stripped]
+    return tuple(stripped) if any(stripped) else ()
 
 
 def _number(tag: str) -> int:
@@ -663,14 +725,14 @@ def written_value_problem(
     >>> written_value_problem("PN", "1", ["ΩΜΕΓΑ^ΑΛΦΑ"], ("UTF8",)) is None
     True
     """
-    return values_problem(vr, vm, values) or _character_set_problem(vr, values, codecs)
+    return values_problem(vr, vm, values) or character_set_problem(vr, values, codecs)
 
 
-def _character_set_problem(
+def character_set_problem(
     vr: str, values: Sequence[object], codecs: Sequence[str]
 ) -> str | None:
     """Return why text values could not be written in the codecs, or None."""
-    if vr not in _CHARACTER_SET_VRS:
+    if vr not in CHARACTER_SET_VRS:
         return None
     for number, value in enumerate(values, start=1):
         if not (
@@ -710,7 +772,7 @@ def _written_back(vr: str, text: str, codecs: Sequence[str]) -> bool:
     written = pydicom.filebase.DicomBytesIO()
     written.is_little_endian, written.is_implicit_VR = True, True
     try:
-        with redacted_pydicom_diagnostics():
+        with redacted_diagnostics():
             pydicom.filewriter.write_data_element(written, element, list(codecs))
             encoded = written.getvalue()[8:]
             raw = pydicom.dataelem.RawDataElement(
@@ -804,7 +866,7 @@ def new_element(
             ]
         empty = pydicom.dataelem.empty_value_for_VR(vr)
         value = list(values) if len(values) > 1 else values[0] if values else empty
-    with redacted_pydicom_diagnostics():
+    with redacted_diagnostics():
         return pydicom.DataElement(
             _number(path.tag), vr, value, validation_mode=pydicom.config.IGNORE
         )
