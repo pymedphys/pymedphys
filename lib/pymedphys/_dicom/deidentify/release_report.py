@@ -649,9 +649,10 @@ def report_document(report: ReleaseReport) -> dict:
     ``sequestered``, and ``search_coverage``, in that order, each section's
     fields in the order of its class, the digests of tables and files sorted
     by name, ``qc_review`` null where the run wrote no QC pack, the released
-    output names sorted, the sequestered instances by label, each with its reasons once, in the
-    order given, and the coverage by attribute and reason. A reason from a
-    stage other than the walker has only its stage and code.
+    output names sorted, the sequestered instances by label, each with its
+    reasons once, in the order given, and the coverage by attribute and
+    reason. A reason from a stage other than the walker has only its stage
+    and code.
 
     Parameters
     ----------
