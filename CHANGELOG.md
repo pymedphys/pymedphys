@@ -243,6 +243,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- Corrected the documentation dependency-group terminology, the weekly dependency update branch name and the current status of the historical coordinate expected failures. [PR #2246](https://github.com/pymedphys/pymedphys/pull/2246)
+
 - **[Contributor facing only]** CI and security workflows now validate
   `merge_group` commits comprehensively while ordinary pull request checks
   remain selective. The dependency audit stays advisory for queued merges;

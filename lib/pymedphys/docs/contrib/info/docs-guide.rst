@@ -19,7 +19,7 @@ build the documentation:
     uv run -- pymedphys dev docs
 
 The build fails on Sphinx warnings and unexpected notebook execution errors.
-Notebook dependencies belong in the project's ``docs`` extra; notebooks should
+Notebook dependencies belong in the project's ``docs`` dependency group; notebooks should
 not install or change dependencies while building the documentation. An
 install cell kept for readers who run a notebook elsewhere (for example on
 Colab) must carry the ``skip-execution`` cell tag so the build never runs it.
