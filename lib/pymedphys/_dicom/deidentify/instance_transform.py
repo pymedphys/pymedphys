@@ -280,8 +280,11 @@ def with_markers(
     """Return the writer's plan with the instance's markers written.
 
     The markers are added, by :func:`~.markers.apply_markers`, to what the
-    plan already writes of each marker attribute: a kept element from the
-    source, or its replacement. Each marker attribute is then written whole
+    plan already writes of each marker attribute: its replacement, or a kept
+    element from the source with the plan's edits inside it applied, so that
+    an element that the plan removes or replaces within a kept sequence,
+    such as Institution Name in an item of Contributing Equipment Sequence,
+    is removed or replaced there too. Each marker attribute is then written whole
     as a replacement, and the elements inside a source sequence it replaces
     are removed; verification expects those the new sequence writes at the
     same path to be changed instead.
@@ -290,7 +293,8 @@ def with_markers(
     ------
     _Refused
         With :attr:`TransformReason.UNMARKABLE` where a kept marker attribute
-        cannot be read, or the markers cannot be added to it.
+        cannot be read, holds an element that the plan does not plan, or the
+        markers cannot be added to it.
     """
     present = pydicom.Dataset()
     for tag in MARKER_TAGS:
@@ -300,7 +304,7 @@ def with_markers(
         elif path in writing.kept:
             if dataset is None or _int_tag(tag) not in dataset:
                 raise _Refused(TransformReason.UNMARKABLE)
-            present.add(copy.deepcopy(dataset[_int_tag(tag)]))
+            present.add(_as_planned(dataset[_int_tag(tag)], (), writing))
     try:
         marked = apply_markers(present, markers)
     except (MarkerError, TypeError, ValueError):
@@ -333,6 +337,44 @@ def with_markers(
     return WriterPlan(
         frozenset(kept), frozenset(removed), replacements, frozenset(introduced)
     )
+
+
+def _as_planned(
+    element: pydicom.DataElement,
+    items: tuple[tuple[str, int], ...],
+    writing: WriterPlan,
+) -> pydicom.DataElement:
+    """Return a copy of a kept source element with the plan's edits within it.
+
+    Inside a kept sequence, each element that the plan removes is left out,
+    each that it replaces is its replacement, and each that it keeps is
+    copied, a kept sequence with the edits within it in turn.
+
+    Raises
+    ------
+    _Refused
+        With :attr:`TransformReason.UNMARKABLE` for an element within that
+        the plan neither keeps, removes, nor replaces.
+    """
+    if element.VR != "SQ":
+        return copy.deepcopy(element)
+    tag = _tag_text(element.tag)
+    edited = pydicom.Sequence()
+    for index, item in enumerate(element.value):
+        held = items + ((tag, index),)
+        written = pydicom.Dataset()
+        for inner in item:
+            path = ElementPath(held, _tag_text(inner.tag))
+            if path in writing.removed:
+                continue
+            if path in writing.replacements:
+                written.add(copy.deepcopy(writing.replacements[path]))
+            elif path in writing.kept:
+                written.add(_as_planned(inner, held, writing))
+            else:
+                raise _Refused(TransformReason.UNMARKABLE)
+        edited.append(written)
+    return pydicom.DataElement(element.tag, element.VR, edited)
 
 
 def _paths_within(
