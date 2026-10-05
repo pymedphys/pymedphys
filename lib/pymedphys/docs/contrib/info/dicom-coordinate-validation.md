@@ -167,9 +167,8 @@ uv run -- python -m pytest -q \
 
 The selection uses only generated local fixtures, needs no network access or
 downloaded data, and writes generated DICOM files only to pytest's temporary
-directories. It includes four strict expected failures: the gamma-search
-cases above. An unexpected pass must be investigated and the corresponding
-limitation updated.
+directories. The four historical gamma-search expected failures above now run
+as ordinary passing regression tests.
 
 `get_dose_grid_structure_mask` and `DicomDose.coords` follow the pixel
 array's `(slice, row, column)` order in every supported orientation. Their

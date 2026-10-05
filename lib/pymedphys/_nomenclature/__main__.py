@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Simon Biggs
+# Copyright (C) 2026 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Run the nomenclature commands as ``python -m pymedphys._nomenclature``."""
 
-from .dicom import dicom_cli
-from .pinnacle import pinnacle_cli
+from pymedphys._nomenclature.cli import main
 
-
-def experimental_cli(subparsers):
-    experimental_parser = subparsers.add_parser(
-        "experimental", help="Experimental tools."
-    )
-    experimental_subparsers = experimental_parser.add_subparsers(dest="experimental")
-
-    dicom_cli(experimental_subparsers)
-    pinnacle_cli(experimental_subparsers)
-
-    return experimental_parser
+if __name__ == "__main__":
+    main()
