@@ -157,8 +157,8 @@ jobs:
           --conditional mosaiq-db-tests=run-database
           --conditional docs-check=run-docs
 
-  # Pull requests run the slow and database tests only for their own inputs or
-  # a label, so a push to main can be the first run to show such a failure.
+  # Merge groups use the quick unit matrix, so a push to main can be the first
+  # run to show a platform failure from the full matrix.
   # Record it in an issue rather than only in the Actions tab.
   report-main-failure:
     needs: [summary]

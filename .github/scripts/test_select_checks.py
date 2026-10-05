@@ -450,7 +450,7 @@ class SelectionTests(unittest.TestCase):
             select_checks(["README.rst"], labels=["DATABASE"])["run-database"]
         )
 
-    def test_only_main_and_full_test_widen_the_unit_test_matrix(self):
+    def test_main_and_full_test_prs_widen_the_unit_test_matrix(self):
         self.assertTrue(select_checks([], event_name="push")["run-full-matrix"])
         self.assertTrue(select_checks([], labels=["full-test"])["run-full-matrix"])
         for paths in (None, [], ["uv.lock"], ["lib/pymedphys/_gamma/core.py"]):
@@ -458,13 +458,32 @@ class SelectionTests(unittest.TestCase):
                 self.assertFalse(select_checks(paths)["run-full-matrix"])
 
     def test_non_pr_and_unverifiable_diffs_keep_full_coverage(self):
-        for event in ("release", "schedule", "workflow_dispatch", "merge_group"):
+        for event in ("release", "schedule", "workflow_dispatch"):
             with self.subTest(event=event):
                 self.assertTrue(all(select_checks([], event_name=event).values()))
         self.assertEqual(selected(select_checks(None)), set(PATH_SELECTABLE))
         pushed = select_checks(["README.rst"], event_name="push")
         self.assertFalse(pushed.pop("run-docs"))
         self.assertTrue(all(pushed.values()))
+
+    def test_merge_groups_keep_every_check_with_the_quick_unit_matrix(self):
+        expected = dict.fromkeys(OUTPUTS, True)
+        expected["run-full-matrix"] = False
+        for paths in (
+            None,
+            [],
+            ["README.rst"],
+            ["uv.lock"],
+            ["lib/pymedphys/tests/dicom/test_deidentify_values.py"],
+            ["unclassified-input"],
+            [ChangedPath("docs", regular=False)],
+        ):
+            for labels in ((), ("full-test",), ("Full-Test", "DATABASE")):
+                with self.subTest(paths=paths, labels=labels):
+                    self.assertEqual(
+                        select_checks(paths, event_name="merge_group", labels=labels),
+                        expected,
+                    )
 
     def test_every_selection_has_explicit_booleans(self):
         for paths in (None, [], ["README.rst"], ["new-file"]):

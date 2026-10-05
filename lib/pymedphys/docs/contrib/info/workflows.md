@@ -7,7 +7,7 @@ PyMedPhys uses GitHub Actions for continuous integration and deployment. The wor
 ## Workflow Architecture
 
 ```text
-ci.yml <- pull request (selective), merge_group (comprehensive), main push
+ci.yml <- pull request (selective), merge_group (all checks, quick units), main push
   |-- pre-commit.yml
   |-- lint.yml
   |-- type-check.yml
@@ -89,7 +89,8 @@ so git reports only the link itself, which selects every check that a changed
 path can select. A symlink or submodule is never exempt, whatever its name,
 because it can stand in for any content. Package modules still select
 documentation because autodoc and notebooks import them. The full OS/Python
-matrix and integration checks run on merge groups and main pushes. Read the Docs
+matrix runs on main pushes, releases and full-test PRs. Merge groups use the
+quick unit matrix and retain every integration check. Read the Docs
 publishes main documentation independently, as "Read the Docs" below
 describes.
 
@@ -175,9 +176,9 @@ Static type checking for type safety.
 Fast unit tests with smart matrix strategy.
 
 - **Features**:
-  - Full OS and Python matrix on merge groups and main pushes (Ubuntu, Windows,
+  - Full OS and Python matrix on main pushes and releases (Ubuntu, Windows,
     macOS; Python 3.11, 3.12, 3.13, 3.14)
-  - Quick mode for other PRs (Ubuntu + Python 3.14). The selector's
+  - Quick mode for merge groups and other PRs (Ubuntu + Python 3.14). The selector's
     `run-full-matrix` output decides, and only an explicit `false` keeps the
     quick matrix
   - Installs the `tests` extra, which includes `user`, so the headless Streamlit GUI tests run
@@ -532,8 +533,12 @@ the branch solely because another PR landed.
 
 GitHub builds a prospective integrated state against the current `main` and
 earlier queued PRs, then starts `ci.yml` and `security.yml` on `merge_group`.
-Unlike ordinary PR runs, the selector enables the full OS/Python matrix,
-integration and database tests, documentation build, and all security scans.
+The selector uses the quick Ubuntu/Python 3.14 unit matrix and enables every
+other check, including integration and database tests, the documentation build,
+and all security scans. Main pushes and releases run the full 12-environment
+unit matrix. Platform failures first discovered on main can be reverted or
+corrected there; the maintainers accept that cost to avoid duplicating the full
+matrix immediately before and after each merge.
 `CI Summary` and `Security Summary` must pass on that state before it merges.
 The queue may test up to three prospective states concurrently and merges PRs
 individually with merge commits.
@@ -702,10 +707,11 @@ request broader coverage and trigger another CI run.
 ### What a successful summary means
 
 - Ordinary PRs use Ubuntu and Python 3.14 when unit tests are selected. The
-  full OS/Python matrix runs on merge groups, main pushes and `full-test` PRs;
-  integration tests also run on PRs that change their inputs. A green ordinary
-  PR therefore does not mean the full matrix or the integration tests ran before
-  entering the queue; merge-group validation runs them before merging.
+  full OS/Python matrix runs on main pushes, releases and `full-test` PRs.
+  Merge groups use the quick unit matrix and run every integration and database
+  check. Integration tests also run on PRs that change their inputs. A green
+  merge-group summary therefore establishes the selected unit suite on
+  Ubuntu/Python 3.14; main supplies the comprehensive platform validation.
 - Pyright is blocking. MyPy remains optional through `continue-on-error`.
 - Dependency vulnerabilities are advisory on PRs, pushes and merge groups.
   Requiring either `Dependency Audit` or `Security Summary` does not turn

@@ -16,12 +16,12 @@
 
 Diff the tested merge tree against its base parent, with rename detection off,
 so deletions and both sides of a rename remain visible. Two checkout generations
-suffice and there is no API file-count limit. Merge groups and other non-PR
-events select every output, except push runs omit documentation, which Read the
-Docs publishes. On pull requests only known inputs skip standard checks, while
-the costly integration and database tests and the full unit-test matrix follow
-their labels and their own inputs. Links and unverifiable diffs select every
-check that a changed path can select.
+suffice and there is no API file-count limit. Non-PR events select every check;
+merge groups use the quick unit-test matrix, and push runs omit documentation,
+which Read the Docs publishes. On pull requests only known inputs skip standard
+checks, while the costly integration and database tests and the full unit-test
+matrix follow their labels and their own inputs. Links and unverifiable diffs
+select every check that a changed path can select.
 """
 
 import json
@@ -47,8 +47,8 @@ OUTPUTS = (
     "run-python-security",
     "run-workflow-audit",
 )
-# Merge groups, other non-PR events and the full-test label widen the unit tests
-# to every OS and Python version; no changed path does.
+# Non-PR events except merge groups, plus the full-test label, widen the unit
+# tests to every OS and Python version; no changed path does.
 PATH_SELECTABLE = tuple(output for output in OUTPUTS if output != "run-full-matrix")
 # Integration and database tests are too costly for every PR. On PRs they run
 # for labels, their inputs, links and unverified diffs; merge groups and other
@@ -308,13 +308,16 @@ def explain_checks(
             if reasons[output] is None:
                 reasons[output] = reason
 
-    folded = {label.casefold() for label in labels}
     if event_name != "pull_request":
         select(OUTPUTS, Reason(f"{event_name} event"))
+        if event_name == "merge_group":
+            # Every check still runs; main validates the full platform matrix.
+            reasons["run-full-matrix"] = None
         # ReadTheDocs publishes main independently; retain the existing policy.
         if event_name == "push":
             reasons["run-docs"] = None
         return reasons
+    folded = {label.casefold() for label in labels}
     if FULL_TEST_LABEL in folded:
         select(OUTPUTS, Reason("full-test label"))
         return reasons
