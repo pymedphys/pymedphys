@@ -122,8 +122,6 @@ def test_a_dataclass_reason_is_named_with_its_enum_fields(tmp_path):
         code: GateReason
         text: str
         missing: GateReason | None = None
-        # A field that nothing sets has no value to show.
-        unset: GateReason = dataclasses.field(init=False)
 
     gate = Gate(
         {
@@ -141,6 +139,19 @@ def test_a_dataclass_reason_is_named_with_its_enum_fields(tmp_path):
     assert status == command.EXIT_WITHHELD
     assert "Withheld(code=GateReason.TEXT_FINDING): 2" in out
     assert SENTINEL not in out + err
+
+
+def test_a_dataclass_field_that_nothing_set_is_left_out():
+    @dataclasses.dataclass(frozen=True)
+    class Withheld:
+        code: GateReason
+        unset: GateReason = dataclasses.field(init=False)
+
+    reason = Withheld(GateReason.TEXT_FINDING)
+
+    assert command._reason_name(reason) == (  # pylint: disable=protected-access
+        "Withheld(code=GateReason.TEXT_FINDING)"
+    )
 
 
 def test_refused_inputs_and_findings_are_counted(tmp_path):
