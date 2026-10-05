@@ -717,9 +717,26 @@ milestone = "M4"
 decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027"]
 implementation = [
   "_dicom/deidentify/file_layout.py",
+  "_dicom/deidentify/release_gate.py",
   "_dicom/deidentify/residuals.py",
 ]
 tests = [
+  "tests/dicom/test_deidentify_release_gate.py::test_the_rule_selects_exactly_the_direct_identifiers_the_design_lists",
+  "tests/dicom/test_deidentify_release_gate.py::test_nothing_collected_with_values_to_collect_is_withheld",
+  "tests/dicom/test_deidentify_release_gate.py::test_an_uncollected_value_of_a_required_kind_is_withheld",
+  "tests/dicom/test_deidentify_release_gate.py::test_other_uncollected_values_go_to_qc_review",
+  "tests/dicom/test_deidentify_release_gate.py::test_a_removed_name_read_only_as_latin_1_is_withheld_after_a_clean_search",
+  "tests/dicom/test_deidentify_release_gate.py::test_a_removed_description_read_only_as_latin_1_goes_to_qc_review",
+  "tests/dicom/test_deidentify_release_gate.py::test_a_name_collected_as_lo_and_found_is_withheld_as_a_name",
+  "tests/dicom/test_deidentify_release_gate.py::test_a_name_collected_under_a_vr_the_search_excludes_is_withheld",
+  "tests/dicom/test_deidentify_release_gate.py::test_a_siblings_uncollected_name_withholds_this_file",
+  "tests/dicom/test_deidentify_release_gate.py::test_a_siblings_unreported_name_is_not_hidden_by_this_instances_copy",
+  "tests/dicom/test_deidentify_release_gate.py::test_the_search_covers_the_pooled_values",
+  "tests/dicom/test_deidentify_release_gate.py::test_a_finding_of_a_required_kind_is_withheld",
+  "tests/dicom/test_deidentify_release_gate.py::test_a_text_finding_outside_the_data_set_is_withheld",
+  "tests/dicom/test_deidentify_release_gate.py::test_a_text_finding_inside_the_data_set_goes_to_qc_review",
+  "tests/dicom/test_deidentify_release_gate.py::test_an_unreadable_file_is_withheld",
+  "tests/dicom/test_deidentify_release_gate.py::test_exclusions_are_listed_and_never_count_as_incomplete",
   "tests/dicom/test_deidentify_residuals.py::test_a_value_hidden_in_the_preamble_is_found",
   "tests/dicom/test_deidentify_residuals.py::test_a_value_in_the_file_meta_information_is_found",
   "tests/dicom/test_deidentify_residuals.py::test_a_value_in_data_set_trailing_padding_is_found",
@@ -732,7 +749,7 @@ tests = [
   "tests/dicom/test_deidentify_residuals.py::test_a_clean_file_has_no_findings",
 ]
 note = '''
-The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. The pipeline is to fail any output file that still holds a source person name, UID, date, or direct identifier, or a source value outside its data set, and to send other text findings to confidential review (D-027). `public-release` retains indirect identifiers only after its statistical assessment. Remaining: removing and replacing identifiers in each data set (M3), and acting on what the search finds, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
+The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. The release gate runs that search itself, for exactly the values collected across the file's subject, and checks the collection against the values the walker planned to collect. It withholds any output file that still holds a source person name, UID, date, datetime, or direct identifier, or a source value outside its data set, or whose collection of person names, UIDs, dates, datetimes, direct identifiers, or sequences was incomplete, and sends other text findings and other incomplete collection, including of private values, to confidential review; a search that finds nothing does not on its own release a file (D-027). `public-release` retains indirect identifiers only after its statistical assessment. Remaining: removing and replacing identifiers in each data set (M3), and acting on the gate's decision in the pipeline, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
 '''
 
 [[requirement]]
@@ -1122,7 +1139,7 @@ status = "planned"
 milestone = "M4"
 decisions = ["D-016", "D-017", "D-027"]
 note = '''
-D-016 provides the confidential QC pack, to which the residual search sends its text findings (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. This practice is not implemented until M4 covers both, or the design assigns them to whoever releases the data.
+D-016 provides the confidential QC pack, to which the release gate sends the residual search's text findings inside the data set, and files whose collection for the search was incomplete for other text or for private values or values to which the pinned dictionary gives no VR (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. This practice is not implemented until M4 covers both, or the design assigns them to whoever releases the data.
 '''
 
 [[requirement]]
