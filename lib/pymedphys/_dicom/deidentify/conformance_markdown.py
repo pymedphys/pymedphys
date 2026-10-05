@@ -34,7 +34,6 @@ from .conformance import (
     FILE_META_WRITTEN,
     OPTION_CODES,
     OVERLAY_GROUP,
-    PENDING_REMOVAL_EXTENT,
     PIXEL_OPTION_CODES,
     SEQUESTER,
     AttributeAction,
@@ -475,12 +474,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "of its overlay group where the IOD's Overlay Plane Module is "
         "user-optional, and ROI Interpreter Sequence (3006,004E) is removed "
         "alone, since its condition lapses once ROI Creator Sequence "
-        "(3006,004D) is removed."
-        + (
-            " These are the removals that D-020 decides, which the engine does "
-            'not yet apply (see "Not yet described").'
-        )
-        * (PENDING_REMOVAL_EXTENT in statement.pending),
+        "(3006,004D) is removed.",
         "",
         "For each compound action, and each plain X, Z, or D, the last column "
         "gives the action at each place where a supported IOD defines the "

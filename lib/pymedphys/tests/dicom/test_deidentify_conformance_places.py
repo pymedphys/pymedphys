@@ -55,7 +55,6 @@ ATTRIBUTE_MODIFICATION_DATETIME = "(0400,0562)"
 ORIGINAL_ATTRIBUTES = "(0400,0561)"
 ROI_INTERPRETER_SEQUENCE = "(3006,004E)"  # X in the Basic Profile
 SOP_CLASS_UID = "(0008,0016)"  # Type 1 at the top level of CT Image
-EXTENTS = conformance.PENDING_REMOVAL_EXTENT
 
 
 @pytest.fixture(name="preset", scope="module", params=list(policy.PRESETS))
@@ -187,12 +186,14 @@ def test_a_plain_z_on_a_type_1_attribute_gives_d(preset):
 def test_plain_actions_by_type_are_no_longer_pending(preset):
     assert not any("D-020" in item for item in conformance.PENDING)
     pending = _statement(preset).pending
-    assert not any("D-020" in item for item in pending if item != EXTENTS)
+    assert not any("D-020" in item for item in pending)
     section = _section(
         conformance_markdown.render_markdown(_statement(preset)), "Actions"
     )
     assert "Note 13 after Table E.1-1a" in section
     assert "innermost enclosing sequence" in section
+    # The walker plans the removals that D-020 decides for a plain X.
+    assert "not yet apply" not in " ".join(section.split())
 
 
 def test_the_last_column_lists_places_that_remove_more_than_the_attribute():
@@ -205,65 +206,98 @@ def test_the_last_column_lists_places_that_remove_more_than_the_attribute():
     )
 
 
-def _extends(statement):
-    return any(
-        place.action == conformance.SEQUESTER or place.removes
-        for entry in statement.attributes
-        for place in entry.places
-    )
-
-
-def test_removal_extents_are_pending_where_a_place_has_one(preset):
-    statement = _statement(preset)
-    assert (EXTENTS in statement.pending) == _extends(statement)
-    section = " ".join(
-        _section(conformance_markdown.render_markdown(statement), "Actions").split()
-    )
-    note = (
-        "These are the removals that D-020 decides, which the engine does not "
-        'yet apply (see "Not yet described").'
-    )
-    assert (note in section) == _extends(statement)
-
-
-def test_removal_extents_are_not_pending_without_one(monkeypatch):
-    def alone(iod, tag, path):
-        del iod, tag, path
-        return compound_actions.PlainRemoval(compound_actions.RemovalExtent.ATTRIBUTE)
-
-    monkeypatch.setattr(compound_actions, "resolve_plain_x_in_iod", alone)
-    statement = _statement("basic")
-    assert not _extends(statement)
-    assert EXTENTS not in statement.pending
-    assert "D-020 decides" not in conformance_markdown.render_markdown(statement)
+def _plan(iod_name, data_set, preset="basic"):
+    """Plan a synthetic data set of an IOD as the walker does."""
+    evidence = source.read_source(_file(EXPLICIT, data_set))
+    rules = element_rules.ElementRules(policy.compose_policy(preset))
+    return walker.plan_instance(evidence, rules, iods.load_iod_tables().iods[iod_name])
 
 
 def _ct_plan(data_set, preset="basic"):
     """Plan a synthetic CT Image data set as the walker does."""
-    evidence = source.read_source(_file(EXPLICIT, data_set))
-    rules = element_rules.ElementRules(policy.compose_policy(preset))
-    return walker.plan_instance(
-        evidence, rules, iods.load_iod_tables().iods["CT Image"]
+    return _plan("CT Image", data_set, preset)
+
+
+def _place(statement, tag, iod_name, path):
+    """Return the one place that the statement lists for a tag there."""
+    (place,) = (
+        place
+        for place in _entry(statement, tag).places
+        if (place.iod, place.path) == (iod_name, path)
     )
+    return place
 
 
 @pytest.mark.pydicom
-def test_the_removal_extents_are_pending_until_the_walker_plans_them():
+def test_the_walker_sequesters_where_the_statement_says():
     # Responsible Person (0010,2297) is Type 2C at the top level of CT Image,
-    # so D-020 sequesters the instance for a plain X on it. Once the walker
-    # plans that sequestration, the pending item is to be removed.
+    # and no sequence encloses it, so D-020 sequesters the instance for a
+    # plain X on it.
     plan = _ct_plan(_explicit(0x00102297, "PN", b"ZEBEDEE^QUILLON "))
     (element,) = plan.elements
     assert (str(element.path), element.action) == (RESPONSIBLE_PERSON, "X")
-    assert not plan.sequestrations
+    assert plan.sequestrations == (
+        walker.Sequestration(
+            element.path, "X", "PN", walker.SequesterReason.REQUIRED_BY_IOD
+        ),
+    )
 
     statement = _statement("basic")
-    assert conformance.Place("CT Image", (), conformance.SEQUESTER) in (
-        _entry(statement, RESPONSIBLE_PERSON).places
+    place = _place(statement, RESPONSIBLE_PERSON, "CT Image", ())
+    assert (place.action, place.removes) == (conformance.SEQUESTER, "")
+
+
+@pytest.mark.pydicom
+def test_the_walker_removes_the_enclosing_sequence_that_the_statement_names():
+    # Series Description (0008,103E) is Type 1 within Source Series
+    # Information Sequence (3006,004C), which is Type 3 in RT Structure Set,
+    # so D-020 removes that sequence with it, and everything in it.
+    sequence_tag = SOURCE_SERIES_INFORMATION[0]
+    plan = _plan(
+        "RT Structure Set",
+        _explicit(
+            0x3006004C,
+            "SQ",
+            _item(
+                _explicit(0x0008103E, "LO", b"QUILLON SERIES")
+                + _explicit(0x0020000E, "UI", b"1.2.826.0.1.3680043.2.1125.1")
+            ),
+        ),
     )
-    assert EXTENTS in statement.pending
-    text = conformance_markdown.render_markdown(statement)
-    assert EXTENTS in _section(text, "Not yet described")
+    sequence, description, series_uid = plan.elements
+    assert not plan.sequestrations
+    assert str(sequence.path) == sequence_tag
+    assert description.path.tag == SERIES_DESCRIPTION
+    assert (sequence.action, sequence.removed_for) == ("X", description.path)
+    for nested in (description, series_uid):
+        assert (nested.action, nested.removed_with) == ("X", sequence.path)
+
+    statement = _statement("basic")
+    place = _place(
+        statement, SERIES_DESCRIPTION, "RT Structure Set", SOURCE_SERIES_INFORMATION
+    )
+    assert (place.action, place.removes) == ("X", sequence.path.tag)
+
+
+@pytest.mark.pydicom
+def test_the_walker_removes_the_overlay_group_that_the_statement_names():
+    # The CT Image IOD includes the Overlay Plane Module as user-optional, so
+    # D-020 removes every attribute of the overlay group with Overlay Data
+    # (6000,3000), and none of another overlay's.
+    plan = _ct_plan(
+        _explicit(0x60000010, "US", b"\x00\x02")
+        + _explicit(0x60003000, "OW", bytes(4))
+        + _explicit(0x60020010, "US", b"\x00\x02")
+    )
+    rows, data, other = plan.elements
+    assert not plan.sequestrations
+    assert (data.action, data.removed_for) == ("X", None)
+    assert (rows.action, rows.removed_for) == ("X", data.path)
+    assert (other.action, other.removed_for) == ("K", None)
+
+    statement = _statement("basic")
+    place = _place(statement, OVERLAY_DATA, "CT Image", ())
+    assert (place.action, place.removes) == ("X", conformance.OVERLAY_GROUP)
 
 
 @pytest.mark.pydicom
@@ -274,7 +308,7 @@ def test_plain_z_and_d_are_resolved_as_the_walker_plans_them():
     # (0012,0083), which the Basic Profile keeps.
     plan = _ct_plan(
         _explicit(0x00100010, "PN", b"ZEBEDEE^QUILLON ")
-        + _explicit(0x00120010, "LO", b"SPONSOR7741")
+        + _explicit(0x00120010, "LO", b"SPONSOR7741 ")
         + _explicit(0x00120083, "SQ", _item(_explicit(0x00120020, "LO", b"PROT77")))
     )
     statement = _statement("basic")
