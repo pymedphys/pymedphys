@@ -128,8 +128,9 @@ UNSEARCHED_REASONS: Mapping[residuals.UnsearchedReason, str] = types.MappingProx
             "the policy retains the value, so it is dropped from the search"
         ),
         residuals.UnsearchedReason.WRITTEN_CONSTANT: (
-            "the value, or one of its values, equals, as D compares values, a "
-            "constant that the engine writes whatever the source held"
+            "the value, one of its values, or a form of a value equals, as D "
+            "compares values, a constant that the engine writes whatever the "
+            "source held; other values and forms are still searched"
         ),
         residuals.UnsearchedReason.UNDECODABLE: (
             "the value could not be decoded to collect it, and is removed or replaced"
