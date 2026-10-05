@@ -196,6 +196,17 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
                 coverage.record_baseline(LOCK, "3.0.2", COMMIT, self.results)
             self.assertFalse((self.results / coverage.BASELINE_METADATA).exists())
 
+    def test_reports_with_a_dtd_cannot_create_metadata(self):
+        for text in (
+            "<!DOCTYPE testsuites><testsuites><testcase /></testsuites>",
+            '<!DOCTYPE t [<!ENTITY a "a">]><testsuites><testcase name="&a;" />'
+            "</testsuites>",
+        ):
+            self.report(text=text)
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                coverage.record_baseline(LOCK, "3.0.2", COMMIT, self.results)
+            self.assertFalse((self.results / coverage.BASELINE_METADATA).exists())
+
     def test_overlay_needs_its_real_report_and_actual_requested_version(self):
         plan = self.plan(role="latest", requested="3.1.0")
         with self.assertRaises(FileNotFoundError):

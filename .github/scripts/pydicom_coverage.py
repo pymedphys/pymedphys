@@ -21,8 +21,13 @@ import re
 import subprocess
 import sys
 import tomllib
-import xml.etree.ElementTree as ET
+
+# The reports come from pytest in this workflow and ElementTree expands no
+# external entities; check_junit also refuses any DTD before parsing. The
+# reuse path runs under the runner's bare Python, which lacks defusedxml.
+import xml.etree.ElementTree as ET  # nosec B405
 from pathlib import Path
+from xml.parsers import expat
 
 BASELINE_ARTIFACT = "junit-ubuntu-latest-3.14"
 BASELINE_METADATA = "pydicom-ubuntu-latest-3.14.json"
@@ -128,9 +133,24 @@ def make_plan(
     }
 
 
+def refuse_dtd(path: Path) -> None:
+    """Reject DTDs, the only route to entity expansion; pytest writes none."""
+
+    def refuse(*_):
+        raise ValueError(f"Unexpected DTD in {path}")
+
+    parser = expat.ParserCreate()
+    parser.StartDoctypeDeclHandler = refuse
+    parser.EntityDeclHandler = refuse
+    with path.open("rb") as file:
+        parser.ParseFile(file)
+
+
 def check_junit(path: Path) -> None:
     """Require readable, nonempty test evidence with no failed or errored cases."""
-    root = ET.parse(path).getroot()
+    refuse_dtd(path)
+    # nosemgrep: python.lang.security.use-defused-xml-parse
+    root = ET.parse(path).getroot()  # nosec B314
     if (
         root.tag not in ("testsuite", "testsuites")
         or not list(root.iter("testcase"))
