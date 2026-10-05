@@ -44,6 +44,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 from pathlib import Path
 
 from . import qc_pack, qc_store
@@ -242,6 +243,8 @@ def attest(
         qc_store.write_new(directory / ATTESTATION_FILE, text + "\n")
     except FileExistsError:
         raise QcPackError("the QC pack has already been attested") from None
+    except OSError as error:
+        raise qc_store.os_error("the attestation could not be written", error) from None
     return attestation
 
 
@@ -269,36 +272,65 @@ def attestation_record(pack_directory: os.PathLike | str) -> AttestationRecord:
     directory = Path(pack_directory)
     data = _pack_bytes(directory)
     reference = _reference_of(data)
-    path = directory / ATTESTATION_FILE
-    if not path.is_file():
+    content = _read(directory / ATTESTATION_FILE, "the attestation")
+    if content is None:
         return AttestationRecord(reference, Outcome.NOT_ATTESTED)
-    document, outcome = _read_attestation(path)
-    if document.get("reference") != reference:
+    attestation = _attestation_from(content)
+    if attestation.reference != reference:
         raise QcPackError("the attestation is for another QC pack")
-    if document.get("pack_digest") != hashlib.sha256(data).hexdigest():
+    if attestation.pack_digest != hashlib.sha256(data).hexdigest():
         raise QcPackError("the QC pack changed after it was attested")
-    return AttestationRecord(reference, outcome)
+    return AttestationRecord(reference, attestation.outcome)
 
 
-def _read_attestation(path: Path) -> tuple[dict, Outcome]:
+def _attestation_from(content: bytes) -> Attestation:
+    """Rebuild a written attestation, so that it meets every check again."""
     try:
-        document = json.loads(path.read_bytes().decode("ascii"))
+        document = json.loads(content.decode("ascii"))
         if isinstance(document, dict) and document.get("format") == FORMAT:
-            outcome = Outcome(document["outcome"])
-            if outcome in (Outcome.ATTESTED, Outcome.REJECTED):
-                return document, outcome
-    except (ValueError, KeyError, TypeError):  # UnicodeError is a ValueError
+            coverage = document["coverage"]
+            if isinstance(coverage, dict):
+                return Attestation(
+                    reference=document["reference"],
+                    pack_digest=document["pack_digest"],
+                    outcome=Outcome(document["outcome"]),
+                    coverage=Coverage(**coverage),
+                    reviewer=document["reviewer"],
+                    attested_at=datetime.datetime.fromisoformat(
+                        document["attested_at"]
+                    ),
+                )
+    # UnicodeError and QcPackError are ValueErrors; TypeError covers wrong
+    # types and Coverage's unknown or missing fields.
+    except (ValueError, KeyError, TypeError):
         pass
     raise QcPackError("the attestation is not of its format")
 
 
 def _pack_bytes(directory: Path) -> bytes:
-    if not (directory / qc_store.MARKER_FILE).is_file():
+    marker = qc_store.path_status(
+        directory / qc_store.MARKER_FILE, "the QC pack could not be read"
+    )
+    if marker is None or not stat.S_ISREG(marker.st_mode):
         raise QcPackError("the directory holds no QC pack")
+    data = _read(directory / qc_store.PACK_FILE, "the QC pack")
+    if data is None:
+        raise QcPackError("the directory holds no QC pack")
+    return data
+
+
+def _read(path: Path, what: str) -> bytes | None:
+    """Return a file's bytes, or None if it does not exist.
+
+    Any other failure raises, naming ``what`` and the operating system's
+    reason, but never the path.
+    """
     try:
-        return (directory / qc_store.PACK_FILE).read_bytes()
-    except FileNotFoundError:
-        raise QcPackError("the directory holds no QC pack") from None
+        return path.read_bytes()
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    except OSError as error:
+        raise qc_store.os_error(f"{what} could not be read", error) from None
 
 
 def _reference_of(data: bytes) -> str:

@@ -69,6 +69,8 @@ from .file_layout import ElementPath, Location
 FORMAT = "pymedphys-deid-qc-pack/1"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
+# The most bytes copied at a time while finding an excerpt's decoding state.
+_CHUNK_BYTES = 4096
 
 _REFERENCE = re.compile(r"A-[0-9a-f]{32}")
 # The release report's opaque per-run label of a sequestered instance, such as
@@ -302,9 +304,8 @@ def excerpt(
             decoder = codecs.getincrementaldecoder(finding.encoding)(errors=_UNDECODED)
             # An ISO 2022 codec keeps a state between escape sequences, so
             # decode from the last one before the excerpt, discarding the text.
-            escape = bytes(octets[:start]).rfind(b"\x1b")
-            if escape >= 0 and "2022" in codecs.lookup(finding.encoding).name:
-                decoder.decode(bytes(octets[escape:start]))
+            if "2022" in codecs.lookup(finding.encoding).name:
+                _prime(decoder, octets, start)
             before = decoder.decode(bytes(octets[start:offset]))
             after = decoder.decode(bytes(octets[offset:end]), final=True)
             encoding = finding.encoding
@@ -313,6 +314,24 @@ def excerpt(
             after = bytes(octets[offset:end]).decode("latin-1")
             encoding = "latin-1"
         return Excerpt(_escape(before), _escape(after), encoding)
+
+
+def _prime(decoder: codecs.IncrementalDecoder, octets: memoryview, start: int) -> None:
+    """Decode from the last escape sequence before ``start``, discarding the text.
+
+    Both the search and the decoding read at most :data:`_CHUNK_BYTES` at a
+    time, so a late residual in a large file needs no copy of what precedes
+    it.
+    """
+    end = start
+    while end > 0:
+        begin = max(0, end - _CHUNK_BYTES)
+        found = bytes(octets[begin:end]).rfind(b"\x1b")
+        if found >= 0:
+            for at in range(begin + found, start, _CHUNK_BYTES):
+                decoder.decode(bytes(octets[at : min(at + _CHUNK_BYTES, start)]))
+            return
+        end = begin
 
 
 def _is_wide(finding: residuals.Finding) -> bool:

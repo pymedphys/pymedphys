@@ -17,8 +17,11 @@
 import json
 import re
 import logging
+import mmap
 import os
 import stat
+import tracemalloc
+import traceback
 from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pytest
@@ -710,6 +713,41 @@ def test_an_excerpt_in_iso_2022_keeps_its_shift_state():
     assert cut.after.startswith("山田太郎") and cut.after.endswith("tail")
 
 
+def _peak_allocation(function):
+    tracemalloc.start()
+    try:
+        function()
+        return tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
+
+
+@pytest.mark.parametrize(
+    "prefix, encoding",
+    [
+        (b"." * (16 * 2**20), "utf-8"),
+        # The escape sequence that sets the state is 4 MiB before the excerpt.
+        (b"\x1b$B" + b"0!" * (2 * 2**20), "iso2022_jp"),
+    ],
+)
+def test_an_excerpt_of_a_late_residual_needs_little_memory(tmp_path, prefix, encoding):
+    path = tmp_path / "large.dcm"
+    path.write_bytes(prefix + b"\x1b(BZebedee today")
+    offset = len(prefix) + 3
+    with (
+        path.open("rb") as file,
+        mmap.mmap(file.fileno(), 0, access=mmap.ACCESS_READ) as mapped,
+    ):
+        cuts = []
+        peak = _peak_allocation(
+            lambda: cuts.append(qc_pack.excerpt(mapped, _finding(offset, encoding)))
+        )
+    assert peak < 2**20
+    assert cuts[0].after == "Zebedee today"
+    if encoding == "iso2022_jp":  # decoded in the state the escape set
+        assert set(cuts[0].before) == {"亜"}
+
+
 def test_an_excerpt_tells_backslashes_from_undecoded_bytes():
     data = b"a\\x41 Zebedee\xff"
     (finding,) = find_residuals(data, [SourceValue(NAME_PATH, "PN", NAME)]).findings
@@ -722,6 +760,21 @@ def test_an_excerpt_falls_back_to_latin_1_and_says_so():
     assert cut == Excerpt("Dr ", "Zebedeeé", "latin-1")
 
 
+def _shows_no_path(error, *paths):
+    """Check that no exception that a traceback of ``error`` shows names a path.
+
+    The traceback's source lines are left out, since a test's own source
+    names the paths it uses.
+    """
+    shown = []
+    while error is not None:
+        shown.extend(traceback.format_exception_only(error))
+        error = error.__cause__ or (
+            None if error.__suppress_context__ else error.__context__
+        )
+    return not any(str(path) in "".join(shown) for path in ("ZEBEDEE", *paths))
+
+
 def test_os_errors_name_no_path(places):
     root, release, _ = places
     (root / "ZEBEDEE").write_text("x")
@@ -729,20 +782,78 @@ def test_os_errors_name_no_path(places):
         qc_store.write_qc_pack(
             _pack(), root / "ZEBEDEE" / "qc", release_directory=release
         )
-    assert "ZEBEDEE" not in str(raised.value) and str(root) not in str(raised.value)
+    assert _shows_no_path(raised.value, root)
 
 
 def test_a_directory_that_cannot_be_read_leaves_the_answer_unknown(places, monkeypatch):
     root, _, _ = places
 
     def walk(top, onerror):
-        onerror(PermissionError(13, "Permission denied", str(top / "ZEBEDEE")))
+        # os.walk reports an error from within its exception handler, so
+        # the error becomes the context of whatever the callback raises.
+        try:
+            raise PermissionError(13, "Permission denied", str(top / "ZEBEDEE"))
+        except PermissionError as error:
+            onerror(error)
         yield from ()
 
     monkeypatch.setattr(qc_store.os, "walk", walk)
     with pytest.raises(QcPackError, match="could not be read") as raised:
         qc_store.is_qc_material(root)
-    assert "ZEBEDEE" not in str(raised.value)
+    assert _shows_no_path(raised.value, root)
+
+
+def _refuse_stat(monkeypatch, refused):
+    """Make ``os.stat`` fail with a permission error for paths ``refused`` picks."""
+    real = os.stat
+
+    def fake(path, *args, **kwargs):
+        if refused(os.fspath(path)):
+            raise PermissionError(13, "Permission denied", os.fspath(path))
+        return real(path, *args, **kwargs)
+
+    monkeypatch.setattr(qc_store.os, "stat", fake)
+
+
+def test_a_marker_that_cannot_be_checked_leaves_the_answer_unknown(places, monkeypatch):
+    root, _, _ = places
+    (root / "ZEBEDEE").mkdir()
+    _refuse_stat(monkeypatch, lambda path: path.endswith(qc_store.MARKER_FILE))
+    with pytest.raises(QcPackError, match="could not be read") as raised:
+        qc_store.is_qc_material(root / "ZEBEDEE")
+    assert _shows_no_path(raised.value, root)
+
+
+def test_a_path_that_cannot_be_checked_leaves_the_answer_unknown(places, monkeypatch):
+    root, _, _ = places
+    (root / "ZEBEDEE").mkdir()
+    _refuse_stat(monkeypatch, lambda path: path == str(root / "ZEBEDEE"))
+    with pytest.raises(QcPackError, match="could not be read") as raised:
+        qc_store.is_qc_material(root / "ZEBEDEE")
+    assert _shows_no_path(raised.value, root)
+
+
+def test_a_destination_that_cannot_be_checked_is_refused(places, monkeypatch):
+    root, release, _ = places
+    _refuse_stat(monkeypatch, lambda path: "ZEBEDEE" in path)
+    with pytest.raises(QcPackError, match="could not be checked") as raised:
+        qc_store.write_qc_pack(
+            _pack(), root / "ZEBEDEE" / "qc", release_directory=release
+        )
+    assert _shows_no_path(raised.value, root)
+    assert not (root / "ZEBEDEE").exists()
+
+
+def test_a_path_that_cannot_be_resolved_shows_no_path(monkeypatch):
+    def resolve(self, strict=False):
+        raise PermissionError(13, "Permission denied", str(self))
+
+    monkeypatch.setattr(qc_store.Path, "resolve", resolve)
+    with pytest.raises(QcPackError, match="could not be resolved") as raised:
+        qc_store.check_confidential_destination(
+            "/srv/ZEBEDEE/qc", release_directory="/srv/release"
+        )
+    assert _shows_no_path(raised.value)
 
 
 @POSIX_ONLY

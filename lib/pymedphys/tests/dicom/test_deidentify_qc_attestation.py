@@ -19,6 +19,7 @@ import hashlib
 import json
 import os
 import stat
+import traceback
 from pathlib import PurePosixPath
 
 from pymedphys._imports import pytest
@@ -260,3 +261,84 @@ def test_the_record_matches_the_release_report_shape():
         AttestationRecord("S-0001", Outcome.ATTESTED)
     with pytest.raises(QcPackError, match="Outcome"):
         AttestationRecord(REFERENCE, "attested")
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"reviewer": "  "},
+        {"coverage": {"retained_strings": True, "series": True}},
+        {"coverage": {"retained_strings": True, "series": True, "extra": True}},
+        {
+            "coverage": {
+                "retained_strings": True,
+                "series": False,
+                "high_risk_instances": True,
+            }
+        },
+        {"attested_at": "2026-10-02T17:30:00"},
+        {"attested_at": "not a time"},
+        {"pack_digest": "0" * 63},
+    ],
+)
+def test_a_written_attestation_meets_every_check_again(pack, fields):
+    _attest(pack)
+    path = pack / qc_attestation.ATTESTATION_FILE
+    path.chmod(0o600)
+    document = json.loads(path.read_text("ascii"))
+    path.write_text(json.dumps({**document, **fields}), "ascii")
+    with pytest.raises(QcPackError, match="not of its format"):
+        qc_attestation.attestation_record(pack)
+
+
+def _shows_no_path(error, directory):
+    """Check that no exception that a traceback of ``error`` shows names a path."""
+    shown = []
+    while error is not None:
+        shown.extend(traceback.format_exception_only(error))
+        error = error.__cause__ or (
+            None if error.__suppress_context__ else error.__context__
+        )
+    return str(directory) not in "".join(shown)
+
+
+@pytest.mark.parametrize("name", [qc_store.PACK_FILE, qc_attestation.ATTESTATION_FILE])
+def test_a_file_that_cannot_be_read_shows_no_path(pack, monkeypatch, name):
+    _attest(pack)
+    read = qc_attestation.Path.read_bytes
+
+    def refuse(self):
+        if self.name == name:
+            raise PermissionError(13, "Permission denied", str(self))
+        return read(self)
+
+    monkeypatch.setattr(qc_attestation.Path, "read_bytes", refuse)
+    with pytest.raises(
+        QcPackError, match="could not be read: Permission denied"
+    ) as raised:
+        qc_attestation.attestation_record(pack)
+    assert _shows_no_path(raised.value, pack)
+
+
+def test_a_marker_that_cannot_be_checked_shows_no_path(pack, monkeypatch):
+    real = os.stat
+
+    def fake(path, *args, **kwargs):
+        if os.fspath(path).endswith(qc_store.MARKER_FILE):
+            raise PermissionError(13, "Permission denied", os.fspath(path))
+        return real(path, *args, **kwargs)
+
+    monkeypatch.setattr(qc_store.os, "stat", fake)
+    with pytest.raises(QcPackError, match="could not be read") as raised:
+        qc_attestation.attestation_record(pack)
+    assert _shows_no_path(raised.value, pack)
+
+
+def test_an_attestation_that_cannot_be_written_shows_no_path(pack, monkeypatch):
+    def write_new(path, text):
+        raise PermissionError(13, "Permission denied", str(path))
+
+    monkeypatch.setattr(qc_store, "write_new", write_new)
+    with pytest.raises(QcPackError, match="could not be written") as raised:
+        _attest(pack)
+    assert _shows_no_path(raised.value, pack)

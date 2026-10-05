@@ -44,6 +44,8 @@ MARKER_FILE = ".pymedphys-deid-qc-pack"
 _DIRECTORY_MODE = 0o700
 _FILE_MODE = 0o600
 _POSIX = os.name == "posix"
+_CHECKING = "the QC destination could not be checked"
+_LOOKING = "a path could not be read to look for QC material"
 
 NOTICE = """\
 CONFIDENTIAL: DE-IDENTIFICATION QC PACK
@@ -109,11 +111,12 @@ def check_confidential_destination(
             staging_directory, "the staging directory"
         )
     _check_apart(target, others)
-    try:
-        if target.exists():
-            _check_existing(target)
-    except OSError as error:
-        raise _os_error("the QC destination could not be checked", error) from None
+    status = path_status(target, _CHECKING)
+    if status is not None:
+        try:
+            _check_existing(target, status)
+        except OSError as error:
+            raise os_error(_CHECKING, error) from None
     return target
 
 
@@ -125,13 +128,12 @@ def _check_apart(target: Path, others: dict[str, Path]) -> None:
             )
 
 
-def _check_existing(target: Path) -> None:
-    if not target.is_dir():
+def _check_existing(target: Path, status: os.stat_result) -> None:
+    if not stat.S_ISDIR(status.st_mode):
         raise QcPackError("the QC destination exists and is not a directory")
     if any(target.iterdir()):
         raise QcPackError("the QC destination must be new or an empty directory")
     if _POSIX:
-        status = target.stat()
         if status.st_uid != os.geteuid():  # pylint: disable = no-member
             raise QcPackError("the QC destination must belong to the current user")
         if stat.S_IMODE(status.st_mode) & 0o077:
@@ -146,8 +148,8 @@ def _resolved(path: object, what: str) -> Path:
         raise QcPackError(f"{what} must be given as a path")
     try:
         return Path(path).expanduser().resolve(strict=False)
-    except (OSError, RuntimeError) as error:  # RuntimeError: a symbolic link loop
-        raise QcPackError(f"{what} could not be resolved") from error
+    except (OSError, RuntimeError):  # RuntimeError: a symbolic link loop
+        raise QcPackError(f"{what} could not be resolved") from None
 
 
 def _within(path: Path, directory: Path) -> bool:
@@ -164,26 +166,38 @@ def _within(path: Path, directory: Path) -> bool:
             return True
     if path.is_relative_to(directory):
         return True
-    try:
-        identity = directory.stat()
-    except OSError:  # a directory that does not exist yet holds nothing
+    identity = path_status(directory, _CHECKING)
+    if identity is None:  # a directory that does not exist yet holds nothing
         return False
-    for ancestor in _existing(path):
-        try:
-            if os.path.samestat(ancestor.stat(), identity):
-                return True
-        except OSError:
-            continue
-    return False
+    return any(
+        os.path.samestat(status, identity) for status in _existing(path, _CHECKING)
+    )
 
 
-def _existing(path: Path) -> Iterator[Path]:
+def _existing(path: Path, what: str) -> Iterator[os.stat_result]:
+    """Yield the status of each existing path from ``path`` up."""
     for candidate in (path, *path.parents):
-        if candidate.exists():
-            yield candidate
+        status = path_status(candidate, what)
+        if status is not None:
+            yield status
 
 
-def _os_error(what: str, error: OSError) -> QcPackError:
+def path_status(path: Path, what: str, *, follow: bool = True) -> os.stat_result | None:
+    """Return the status of a path, or None if it does not exist.
+
+    Unlike :meth:`pathlib.Path.exists` and its kin, which answer no when a
+    path cannot be read, this raises for an inaccessible path, so that a
+    check never passes for want of permission.
+    """
+    try:
+        return os.stat(path, follow_symlinks=follow)
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    except OSError as error:
+        raise os_error(what, error) from None
+
+
+def os_error(what: str, error: OSError) -> QcPackError:
     reason = error.strerror or type(error).__name__
     return QcPackError(f"{what}: {reason}")
 
@@ -236,11 +250,11 @@ def write_qc_pack(
         )
 
     target = check(destination)
-    if not target.exists():
+    if path_status(target, _CHECKING) is None:
         try:
             target.parent.mkdir(mode=_DIRECTORY_MODE, parents=True, exist_ok=True)
         except OSError as error:
-            raise _os_error("the QC destination could not be created", error) from None
+            raise os_error("the QC destination could not be created", error) from None
         try:
             target.mkdir(mode=_DIRECTORY_MODE)
         except FileExistsError:
@@ -248,7 +262,7 @@ def write_qc_pack(
                 "the QC destination appeared while it was checked"
             ) from None
         except OSError as error:
-            raise _os_error("the QC destination could not be created", error) from None
+            raise os_error("the QC destination could not be created", error) from None
     if check(target) != target:
         raise QcPackError("the QC destination changed while it was checked")
     files = ((MARKER_FILE, FORMAT + "\n"), (PACK_FILE, document), (NOTICE_FILE, NOTICE))
@@ -263,7 +277,7 @@ def write_qc_pack(
             "the QC destination gained a file while it was written"
         ) from None
     except OSError as error:
-        raise _os_error("the QC pack could not be written", error) from None
+        raise os_error("the QC pack could not be written", error) from None
     return target / PACK_FILE
 
 
@@ -332,26 +346,36 @@ def is_qc_material(path: os.PathLike | str) -> bool:
 
 
 def _is_qc_material(path: Path, seen: set[Path]) -> bool:
-    resolved = path.resolve(strict=False)
+    try:
+        resolved = path.resolve(strict=False)
+    except OSError as error:
+        raise os_error(_LOOKING, error) from None
+    except RuntimeError:  # a symbolic link loop, before Python 3.13
+        raise QcPackError(f"{_LOOKING}: a symbolic link loop") from None
     if resolved in seen:
         return False
     seen.add(resolved)
-    if any(
-        (directory / MARKER_FILE).is_file()
-        for directory in (resolved, *resolved.parents)
-    ):
-        return True
-    if not resolved.is_dir():
+    for directory in (resolved, *resolved.parents):
+        marker = path_status(directory / MARKER_FILE, _LOOKING)
+        if marker is not None and stat.S_ISREG(marker.st_mode):
+            return True
+    status = path_status(resolved, _LOOKING)
+    if status is None or not stat.S_ISDIR(status.st_mode):
         return False
 
     def refuse(error: OSError) -> None:
-        raise _os_error("a directory could not be read to look for QC material", error)
+        raise os_error(_LOOKING, error) from None
 
     for root, directories, files in os.walk(resolved, onerror=refuse):
         if MARKER_FILE in files:
             return True
         for name in (*directories, *files):
             link = Path(root, name)
-            if link.is_symlink() and _is_qc_material(link, seen):
+            status = path_status(link, _LOOKING, follow=False)
+            if (
+                status is not None
+                and stat.S_ISLNK(status.st_mode)
+                and _is_qc_material(link, seen)
+            ):
                 return True
     return False
