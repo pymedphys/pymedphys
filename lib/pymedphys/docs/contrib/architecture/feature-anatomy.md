@@ -45,7 +45,7 @@ the user how-to still needs a usable input/output example.
 Check default arguments, invalid inputs, output handling, and error messages
 at the command boundary. Test shared scientific transformations separately.
 For DICOM output, preserve the privacy and conformance decisions in the
-[de-identification design](../info/deidentification-design.md) when applicable.
+[de-identification design](../design/deidentification/index.md) when applicable.
 
 ## Trace a delivery reader
 

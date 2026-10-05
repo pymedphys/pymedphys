@@ -5,6 +5,8 @@ myst:
 
 # Contributing to DICOM de-identification
 
+**Prerequisites:** a locked development checkout and familiarity with the programme scope. **Inputs:** the affected decision, requirement, pinned standard sources and focused test cases. **Outputs:** aligned implementation, register, generated tables or evidence, with reproducible check results. **Success:** affected behaviour and traceability checks pass, and evidence identifies its tested revisions and environments.
+
 For a change to the engine:
 
 1. Check the [scope and implementation status](index.md), then identify the
@@ -28,7 +30,7 @@ claim depends on. Keep implementation and test paths relative to
 `lib/pymedphys` so the register also works from an installed package.
 
 Run the register checks from the repository root after the
-[locked development setup](../../setups/index.rst):
+[locked development setup](../../start/setup.md):
 
 ```console
 uv run -- pymedphys dev tests tests/dicom/test_deidentify_requirements.py
@@ -76,7 +78,7 @@ uv run -- pymedphys dev deid-tables --check-current
 Status 0 means no generated table would change, 1 means a table would change,
 and 3 means a page could not be fetched or a table generated. This comparison
 does not check the hand-curated normative paragraphs. The
-[workflow guide](../../info/workflows.md) describes the monthly edition check.
+[workflow guide](../../maintainers/ci.md) describes the monthly edition check.
 
 ## Generate evidence for a release
 
@@ -97,7 +99,7 @@ least one report and returns status 1 when a traced test failed, was skipped,
 or did not run. A requirement's tests must pass in every supplied environment;
 retain the environment identities with the reports. Use the complete release
 matrix required by the [runtime-environment decision](decisions.md#d-029-runtime-environments)
-and [release guide](../../info/release-guide.md) for a release claim, rather
+and [release guide](../../maintainers/release.md) for a release claim, rather
 than promoting a focused local selection to complete evidence.
 
 Publish the conformance statement, matrix, supported coverage and exclusions,

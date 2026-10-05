@@ -48,7 +48,7 @@ For example, de-identification tables are generated from reviewed DICOM sources,
 and the documentation's requirements matrix is generated from
 `_dicom/deidentify/requirements.toml`. A generated matrix without test reports
 describes traceability, rather than claiming those tests passed.
-Use the [design document](../info/deidentification-design.md) before changing
+Use the [design document](../design/deidentification/index.md) before changing
 these sources or outputs.
 
 ## Public interfaces and shared delivery data

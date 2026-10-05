@@ -33,15 +33,15 @@ Choose a task
        and synchronises the environment, so use it only for an intended upgrade.
    * - ``mssql``
      - Start or stop the local mock Mosaiq SQL Server through the repository's
-       Docker Compose recipe; see :doc:`../validation/testing`. It needs Docker
-       and the Compose command used by that recipe.
+       historical Docker Compose recipe; see :doc:`../validation/testing` for
+       the current SQL Server fixture and the helper's retired-image limitation.
    * - ``deid-tables``
      - Generate or compare standard-derived de-identification tables. Follow
-       :doc:`../info/deidentification-design` for the pinned sources and review
+       :doc:`../design/deidentification/contributing` for the pinned sources and review
        procedure before changing tables.
    * - ``deid-matrix``
      - Render the requirements register, optionally with JUnit results. Follow
-       :doc:`../info/deidentification-design` for what traceability establishes.
+       :doc:`../design/deidentification/requirements` for what traceability establishes.
    * - ``tg263-check``
      - Report whether the reviewed TG-263 resource has changed. An available
        new download still needs review; see :doc:`../maintainers/project`.

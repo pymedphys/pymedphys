@@ -181,21 +181,54 @@ of patient identifiers. Live clinical connections are not regression fixtures.
 
 ## Test the mock database
 
-Read `docker/mosaiq/docker-compose.yml` and the nearby database test fixtures
-before running a database case. The current `pymedphys dev mssql` helper invokes
-`docker-compose`, so it needs Docker and that Compose command available:
+**Prerequisites:** a disposable SQL Server 2022 instance on `localhost:1433`,
+with the mock fixture account, and the `mosaiq`, `test-runner` and
+`mosaiq-db-fixtures` dependencies. **Inputs:** the package's mock data and
+fixture connection environment. **Outputs:** a temporary mock database and
+pytest results. **Success:** the selected database tests pass against the
+mock instance; no clinical database is used.
+
+The current [database workflow](https://github.com/pymedphys/pymedphys/blob/main/.github/workflows/mosaiq-db-tests.yml)
+uses `mcr.microsoft.com/mssql/server:2022-latest`, waits for port 1433, and
+supplies the following fixture account. Provision the disposable instance
+under the SQL Server licence terms before running the test procedure.
+
+Install only the packages that the minimal-extra CI case uses:
 
 ```shell
-uv run pymedphys dev mssql --daemon
-uv run pymedphys dev tests tests/mosaiq --mosaiqdb
-uv run pymedphys dev mssql --stop
+uv sync --locked --no-default-groups --extra mosaiq --group test-runner --group mosaiq-db-fixtures
 ```
 
-Use the local mock server and configured fixture connection. Confirm the server
-accepts connections before interpreting a test failure as library behaviour.
-The [CI guide](../maintainers/ci.md) describes the database jobs and their
-minimal-extra environment; a broad checkout run alone cannot prove that extra
-contains all required dependencies.
+In Bash, set the connection for this shell:
+
+```shell
+export MOSAIQ_SQL_SERVER=localhost
+export MOSAIQ_SQL_USER=SA
+export MOSAIQ_SQL_PASSWORD=sqlServerPassw0rd
+uv run --no-sync -- pymedphys dev tests tests/mosaiq --mosaiqdb
+```
+
+The equivalent environment assignments in PowerShell are:
+
+```powershell
+$env:MOSAIQ_SQL_SERVER = 'localhost'
+$env:MOSAIQ_SQL_USER = 'SA'
+$env:MOSAIQ_SQL_PASSWORD = 'sqlServerPassw0rd'
+uv run --no-sync -- pymedphys dev tests tests/mosaiq --mosaiqdb
+```
+
+These credentials belong to the disposable fixture, not a real Mosaiq
+installation. Confirm the server accepts connections before interpreting a
+failure as library behaviour. Stop and remove the disposable instance through
+its provisioning tool after testing. The [CI guide](../maintainers/ci.md)
+explains the two database jobs; a broad checkout run alone cannot prove that
+the `mosaiq` extra contains all required dependencies.
+
+The older `pymedphys dev mssql` helper still invokes `docker-compose` and
+`docker/mosaiq/docker-compose.yml`, which uses the retired Azure SQL Edge
+image. Its repair or retirement is tracked in [#2140](https://github.com/pymedphys/pymedphys/issues/2140).
+Use the workflow's SQL Server fixture for current checks; the helper is not
+an assurance that a fresh database environment can start.
 
 ## Keep tests runnable from an installed wheel
 
