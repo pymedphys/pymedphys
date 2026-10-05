@@ -17,6 +17,7 @@
 # pylint: disable=redefined-outer-name, no-member
 
 import pathlib
+import re
 import shutil
 import socket
 import subprocess
@@ -37,17 +38,6 @@ from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys.cli import define_parser
 
 METHOD_MOCK = Mock()
-
-
-def _unused_port():
-    """Return a TCP port that the operating system reports as free.
-
-    Each listener gets its own port, so tests running in parallel with
-    pytest-xdist cannot bind or connect to one another's listeners.
-    """
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
 
 
 def _build_hierarchical_path_to_plan(
@@ -114,9 +104,10 @@ def listener_process(port, receive_directory, ae_title):
 
     try:
         stream_output = b""
-        for b in iter(lambda: proc.stdout.read(1), b""):
-            stream_output += b
-            if b"Listener Ready" in stream_output:
+        for line in proc.stdout:
+            stream_output += line
+            ready = re.search(rb"Listener Ready on port (\d+)\s*$", line)
+            if ready:
                 break
         else:
             raise RuntimeError(
@@ -124,7 +115,7 @@ def listener_process(port, receive_directory, ae_title):
                 + stream_output.decode(errors="replace")
             )
 
-        yield proc
+        yield proc, int(ready[1])
 
     finally:
         # A listener that failed to start has already exited, and on some
@@ -153,9 +144,7 @@ def listener():
     pymedphys._dicom.connect.listen.DicomListener
         reference to the DICOM SCP object
     """
-    dicom_listener = DicomListener(
-        port=_unused_port(), on_released_callback=METHOD_MOCK.method
-    )
+    dicom_listener = DicomListener(port=0, on_released_callback=METHOD_MOCK.method)
     dicom_listener.start()
 
     yield dicom_listener
@@ -184,6 +173,35 @@ def test_dicom_listener_echo(listener):
 
     # Check we got a valid result
     assert result == 0
+
+
+@pytest.mark.pydicom
+def test_dicom_listeners_reserve_distinct_ports():
+    """Overlapping listeners keep their own operating-system-assigned ports."""
+    listeners = [DicomListener(host="127.0.0.1", port=0) for _ in range(2)]
+    try:
+        for dicom_listener in listeners:
+            dicom_listener.start()
+        ports = {dicom_listener.port for dicom_listener in listeners}
+        assert len(ports) == 2
+        assert all(0 < port < 65536 for port in ports)
+    finally:
+        for dicom_listener in listeners:
+            dicom_listener.stop()
+
+
+@pytest.mark.pydicom
+def test_dicom_listener_rejects_an_occupied_port():
+    """An explicit port conflict fails instead of choosing a different port."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        sock.listen()
+        dicom_listener = DicomListener(host="127.0.0.1", port=sock.getsockname()[1])
+        try:
+            with pytest.raises(OSError):
+                dicom_listener.start()
+        finally:
+            dicom_listener.stop()
 
 
 @pytest.fixture()
@@ -447,12 +465,11 @@ def test_dicom_listener_cli(test_dataset):
     """Test the command line interface to the DicomListener"""
 
     scp_ae_title = "PYMEDPHYSTEST"
-    port = _unused_port()
 
     with tempfile.TemporaryDirectory() as tmp_directory:
         test_directory = pathlib.Path(tmp_directory)
 
-        with listener_process(port, test_directory, scp_ae_title):
+        with listener_process(0, test_directory, scp_ae_title) as (_, port):
             # Send the data to the listener
             ae = pynetdicom.AE()
             ae.add_requested_context(pynetdicom.sop_class.RTPlanStorage)
@@ -496,14 +513,13 @@ def test_dicom_sender(test_dataset):
     """Test sending DICOM objects using the DicomSender"""
 
     scp_ae_title = "PYMEDPHYSTEST"
-    port = _unused_port()
 
     with tempfile.TemporaryDirectory() as tmp_directory:
         test_directory = pathlib.Path(tmp_directory)
         receive_directory = test_directory.joinpath("receive")
         receive_directory.mkdir()
 
-        with listener_process(port, receive_directory, scp_ae_title):
+        with listener_process(0, receive_directory, scp_ae_title) as (_, port):
             dicom_sender = DicomSender(
                 host="127.0.0.1", port=port, ae_title=scp_ae_title
             )
@@ -522,7 +538,6 @@ def test_dicom_sender_cli(test_dataset):
     """Test the command line interface to the DicomSender"""
 
     scp_ae_title = "PYMEDPHYSTEST"
-    port = _unused_port()
 
     with tempfile.TemporaryDirectory() as tmp_directory:
         test_directory = pathlib.Path(tmp_directory)
@@ -534,9 +549,8 @@ def test_dicom_sender_cli(test_dataset):
         receive_directory = test_directory.joinpath("receive")
         receive_directory.mkdir()
 
-        sender_command = prepare_send_command(port, scp_ae_title, send_file)
-
-        with listener_process(port, receive_directory, scp_ae_title) as lp:
+        with listener_process(0, receive_directory, scp_ae_title) as (lp, port):
+            sender_command = prepare_send_command(port, scp_ae_title, send_file)
             subprocess.call(sender_command)
 
             stream_output = b""

@@ -7,7 +7,7 @@ PyMedPhys uses GitHub Actions for continuous integration and deployment. The wor
 ## Workflow Architecture
 
 ```text
-ci.yml <- pull request (selective), merge_group (comprehensive), main push
+ci.yml <- pull request (selective), merge_group (all checks, quick units), main push
   |-- pre-commit.yml
   |-- lint.yml
   |-- type-check.yml
@@ -70,8 +70,12 @@ any fallback.
 | Python tests only | Lint, type checks, unit tests and all security scans |
 | Other CI configuration or any unclassified path | Every standard check: lint, type checks, unit tests, script tests, documentation and all security scans |
 | Dependency or build metadata (`pyproject.toml`, `uv.lock`, the exported requirements, `pyproject.hash`, `dependency-extra.txt`, `_version.py`), `ci.yml` or `.github/actions/` | Standard checks, plus integration and database tests |
-| `.github/scripts/`, `integration-tests.yml`, `examples/`, or packaging filters (`.gitignore`, `.gitattributes`, `.hgignore`, including nested files) | Standard checks, plus integration tests |
-| Slow-test modules, modules with doctests, or non-Python test fixtures | Adds integration tests |
+| Reviewed `.github/scripts/` tooling | Standard checks, plus Windows/macOS tooling tests; `check_distributions.py` also selects packaging |
+| `examples/` | Adds doctests and example tests |
+| Modules with doctests | Adds doctests, example tests and slow regressions |
+| Slow-test modules | Adds slow tests |
+| Packaging filters (`.gitignore`, `.gitattributes`, `.hgignore`, including nested files) | Standard checks, plus packaging |
+| `integration-tests.yml`, unknown `.github/scripts/` tooling, or non-Python test fixtures | Adds every integration component |
 | Any path naming Mosaiq or a database (except documentation) | Adds database tests |
 | `conftest.py`, top-level package modules, or `_imports/`, `_data/`, `_utilities/` and `_base/` | Adds integration and database tests |
 | A symlink, a submodule or an unverifiable merge diff | Every check a changed path can select, including integration and database tests |
@@ -85,7 +89,8 @@ so git reports only the link itself, which selects every check that a changed
 path can select. A symlink or submodule is never exempt, whatever its name,
 because it can stand in for any content. Package modules still select
 documentation because autodoc and notebooks import them. The full OS/Python
-matrix and integration checks run on merge groups and main pushes. Read the Docs
+matrix runs on main pushes, releases and full-test PRs. Merge groups use the
+quick unit matrix and retain every integration check. Read the Docs
 publishes main documentation independently, as "Read the Docs" below
 describes.
 
@@ -97,6 +102,13 @@ Windows and macOS tooling tests, the example scripts, the slow tests, the
 doctests and their shared inputs, or the database code and its locked drivers.
 An unclassified path selects every standard check, but not these. Unit tests
 use the quick matrix unless the PR has the `full-test` label.
+
+The selector chooses the integration components independently and enables the
+`integration-tests` wrapper when any is selected. Shared package and test
+inputs, dependency metadata, shared CI configuration, and unknown tooling keep
+every component. Only an explicit `false` output skips a component; missing
+outputs retain coverage. Merge groups, main pushes, `full-test`, links and
+unverifiable diffs enable every component.
 
 Unit runs skip the slow tests and never run doctests. `SLOW_TEST_FILES` and
 `DOCTEST_FILES` in `select_checks.py` list the package modules that apply the
@@ -164,14 +176,22 @@ Static type checking for type safety.
 Fast unit tests with smart matrix strategy.
 
 - **Features**:
-  - Full OS and Python matrix on merge groups and main pushes (Ubuntu, Windows,
+  - Full OS and Python matrix on main pushes and releases (Ubuntu, Windows,
     macOS; Python 3.11, 3.12, 3.13, 3.14)
-  - Quick mode for other PRs (Ubuntu + Python 3.14). The selector's
+  - Quick mode for merge groups and other PRs (Ubuntu + Python 3.14). The selector's
     `run-full-matrix` output decides, and only an explicit `false` keeps the
     quick matrix
   - Installs the `tests` extra, which includes `user`, so the headless Streamlit GUI tests run
   - Full OS and Python matrix for PRs labelled `full-test`
   - Excludes slow tests for rapid feedback
+  - Runs the full, dependency-floor, pydicom-version and narrow DICOM suites
+    with two pytest workers using `worksteal` scheduling; smaller narrow-extra
+    suites run serially
+  - Keeps Numba's parallel kernels on two threads per worker and other
+    numerical thread pools on one thread, bounding contention on the runner
+  - Reports the 15 slowest tests to help investigate future runtime growth
+  - DICOM test listeners bind port 0 and report the assigned port before
+    clients connect, so workers never release a port reservation during startup
   - JUnit XML report generation
 
 The `dependency-floors` job runs the unit tests (`-m "not slow"`, with the
@@ -191,14 +211,25 @@ without the slow tests) with two versions of pydicom, alongside both the quick
 and full matrices: `minimum`, 3.0.2, the lowest release that `pydicom>=3.0.2` in
 `pyproject.toml` allows, and `latest`, the newest release, which it resolves
 from the package index with `uv pip compile` each time it runs. Raise the
-minimum in the job when the declared one is raised. Each runs on Ubuntu with
-Python 3.14, installs the same locked environment as the unit tests, and
-overlays pydicom alone with `uv run --no-sync --with pydicom==<version>`. The
+minimum in the job when the declared one is raised. Both jobs use Ubuntu and
+Python 3.14. A requested version already covered by the normal Ubuntu/Python
+3.14 cell reuses that evidence when there are no extra pytest arguments and
+the lock has exactly one matching registry entry. Otherwise the job installs
+the frozen test environment and overlays pydicom alone with
+`uv run --no-sync --with pydicom==<version>`. The
 job pins the latest release by its number because `uv run --with` keeps the
 locked version whenever that satisfies the requirement, even with
 `--upgrade-package`. It prints the version that Python imports and fails first
-if that is not the one requested. It uploads its JUnit reports as
-`junit-pydicom-minimum` and `junit-pydicom-latest`. A failure fails the
+if that is not the one requested. Actual executions upload JUnit reports as
+`junit-pydicom-minimum` and `junit-pydicom-latest`; reused evidence has no copied
+or synthetic JUnit. Each role uploads a coverage manifest naming its requested
+version and evidence source. The normal reference cell records its imported
+versions and checkout revision, and explicitly requires both metadata and
+JUnit before upload. Reuse is established only when the whole unit-test
+workflow succeeds, including that reference cell and both compatibility jobs.
+Lookup, planning, metadata and upload failures fail the workflow. The existing
+jobs retain their parallel scheduling, with no new final verification job.
+A failure fails the
 unit-test workflow and therefore the required CI or release summary, so a
 pydicom release that breaks the de-identification tests fails every unit-test
 run, on pull requests and releases alike, until PyMedPhys is fixed or its
@@ -243,6 +274,9 @@ Comprehensive testing beyond unit tests.
 - **Triggers**: Merge groups, main pushes, `full-test`, or a PR that changes
   dependency or build metadata, `ci.yml`, `.github/actions/`, `.github/scripts/`,
   `integration-tests.yml` or `examples/`, or a symlink or submodule
+  select integration checks. On PRs, doctests/examples, slow tests, tooling and
+  packaging follow their own inputs as listed in the selection table above;
+  releases and manual runs retain their default coverage.
 
 #### `mosaiq-db-tests.yml`
 SQL Server integration tests for Mosaiq database functionality.
@@ -458,8 +492,9 @@ Standardised project setup for all workflows.
     consume data
   - Dependency installation with the requested extras and dependency groups,
     always without the default `dev` group, which holds every extra and tool.
-    It sets `UV_NO_DEFAULT_GROUPS=1` for the rest of the job, so later `uv run`
-    steps do not install that group either
+    After successful installation it sets `UV_NO_SYNC=1` and
+    `UV_NO_DEFAULT_GROUPS=1` for the rest of the job. Commands reuse that frozen
+    environment; `uv run --with` still applies dependency-version overlays
   - Tool-only setup for jobs that do not need an installed project
 
 ### `actions/cache-data/action.yml`
@@ -498,8 +533,12 @@ the branch solely because another PR landed.
 
 GitHub builds a prospective integrated state against the current `main` and
 earlier queued PRs, then starts `ci.yml` and `security.yml` on `merge_group`.
-Unlike ordinary PR runs, the selector enables the full OS/Python matrix,
-integration and database tests, documentation build, and all security scans.
+The selector uses the quick Ubuntu/Python 3.14 unit matrix and enables every
+other check, including integration and database tests, the documentation build,
+and all security scans. Main pushes and releases run the full 12-environment
+unit matrix. Platform failures first discovered on main can be reverted or
+corrected there; the maintainers accept that cost to avoid duplicating the full
+matrix immediately before and after each merge.
 `CI Summary` and `Security Summary` must pass on that state before it merges.
 The queue may test up to three prospective states concurrently and merges PRs
 individually with merge commits.
@@ -507,6 +546,10 @@ individually with merge commits.
 ## Main Branch Workflow
 
 On merge to main:
+
+A newer main push cancels an obsolete in-flight CI run, so the newest state
+starts its full checks without waiting for earlier commits. Pull request label
+changes queue behind their current run.
 
 ```
 Every job except docs-check (Read the Docs publishes main), including:
@@ -664,10 +707,11 @@ request broader coverage and trigger another CI run.
 ### What a successful summary means
 
 - Ordinary PRs use Ubuntu and Python 3.14 when unit tests are selected. The
-  full OS/Python matrix runs on merge groups, main pushes and `full-test` PRs;
-  integration tests also run on PRs that change their inputs. A green ordinary
-  PR therefore does not mean the full matrix or the integration tests ran before
-  entering the queue; merge-group validation runs them before merging.
+  full OS/Python matrix runs on main pushes, releases and `full-test` PRs.
+  Merge groups use the quick unit matrix and run every integration and database
+  check. Integration tests also run on PRs that change their inputs. A green
+  merge-group summary therefore establishes the selected unit suite on
+  Ubuntu/Python 3.14; main supplies the comprehensive platform validation.
 - Pyright is blocking. MyPy remains optional through `continue-on-error`.
 - Dependency vulnerabilities are advisory on PRs, pushes and merge groups.
   Requiring either `Dependency Audit` or `Security Summary` does not turn

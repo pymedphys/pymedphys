@@ -246,7 +246,11 @@ def listen(dicom_subparsers):
         "listen", help="Start a DICOM listener on the specified port"
     )
 
-    parser.add_argument("port", type=int, help="The port on which to listen")
+    parser.add_argument(
+        "port",
+        type=int,
+        help="The port on which to listen; 0 assigns a free port reported at startup",
+    )
     parser.add_argument(
         "--host",
         # A DICOM listener binds all interfaces by design.
