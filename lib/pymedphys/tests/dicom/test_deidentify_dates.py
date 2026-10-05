@@ -73,6 +73,7 @@ def test_offsets_are_pinned():
     assert dates.date_offset_weeks(FIXTURE_KEY, FIXTURE_IDENTITY) == 375
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02", "MIDI-BP-12")
 @hypothesis.given(any_key, any_identity)
 def test_an_offset_is_52_to_520_whole_weeks_and_never_zero(key, identity):
     weeks = dates.date_offset_weeks(key, identity)
@@ -100,6 +101,7 @@ def test_a_date_moves_back_by_whole_weeks():
     assert dates.shift_date("20250301", 52) == "20240302"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02", "MIDI-BP-12")
 @hypothesis.given(any_date, any_date, any_weeks)
 def test_shifting_preserves_intervals_and_weekdays(first, second, weeks):
     def shifted(day):
@@ -148,6 +150,7 @@ def test_a_shift_before_year_1_is_rejected():
         dates.shift_date("00010105", 52)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02", "MIDI-BP-12")
 @pytest.mark.parametrize(
     "value, expected",
     [
@@ -330,6 +333,7 @@ def test_a_datetime_that_cannot_convert_exactly_is_rejected(value, offset, messa
         dates.to_local_datetime(value, offset)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02")
 def test_local_times_keep_their_interval_to_values_with_their_own_offset():
     # An instance at +1000: a local time 30 minutes after a value with its own
     # offset, and one 30 minutes before a value recorded in UTC.
@@ -361,6 +365,7 @@ any_minute = st.datetimes(
 ).map(lambda d: d.replace(second=0, microsecond=0))
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02")
 @hypothesis.given(st.lists(st.tuples(any_minute, any_offset), min_size=2, max_size=5))
 def test_converting_to_local_time_keeps_every_interval(values):
     texts = [f"{d:%Y%m%d%H%M}{o}" for d, o in values]
@@ -436,6 +441,7 @@ def test_a_frame_origin_timestamp_moves_back_by_whole_weeks():
     assert shifted == _ptp(1_790_000_000 - 52 * 7 * 24 * 60 * 60, 123)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02")
 @hypothesis.given(
     st.lists(
         st.tuples(

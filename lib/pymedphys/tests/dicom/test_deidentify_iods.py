@@ -49,6 +49,7 @@ FIRST_RELEASE = {
 }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_the_first_supported_release_iods_are_generated(tables):
     assert tables.edition == "2026d"
     assert tables.acknowledgement == "DICOM PS3.3 2026d, © NEMA"
@@ -149,6 +150,7 @@ def test_modules_whose_published_rows_are_corrected(tables, iod, module, expecte
     assert bool(found.condition) == bool(condition)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_an_attribute_can_have_a_different_type_in_each_module(tables):
     # Image Type is Type 3 in the General Image Module and Type 1 in the CT
     # Image Module, which specialises it.
@@ -158,6 +160,7 @@ def test_an_attribute_can_have_a_different_type_in_each_module(tables):
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_types_depend_on_the_enclosing_sequence(tables):
     ct = tables.iods["CT Image"]
 
@@ -271,6 +274,7 @@ def test_spot_types(tables, iod, tag, path, expected):
     assert _types(tables.iods[iod], tag, path) == expected
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_macros_are_expanded_where_they_are_included(tables):
     ct = tables.iods["CT Image"]
 
@@ -400,6 +404,7 @@ def _group_types(iod, tag, path):
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.parametrize("groups", [SHARED, PER_FRAME])
 @pytest.mark.parametrize(
     "iod, tag, path, expected",

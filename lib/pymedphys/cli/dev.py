@@ -151,6 +151,16 @@ def add_deid_matrix_parser(dev_subparsers):
         help="The requirements register. Defaults to the one shipped with PyMedPhys.",
     )
     parser.add_argument(
+        "--tests",
+        metavar="ROOT",
+        help=(
+            "The directory whose tests directory holds the tests that cite "
+            "the register's requirements with the deid_requirement marker, "
+            "and that their node ids are relative to. Defaults to the "
+            "pymedphys package."
+        ),
+    )
+    parser.add_argument(
         "--junit",
         metavar="FILE",
         action="append",
@@ -188,7 +198,8 @@ def run_deid_matrix(args):
         raise SystemExit("--check needs at least one --junit report")
     try:
         register = requirements.load_requirements(
-            pathlib.Path(args.register) if args.register else None
+            pathlib.Path(args.register) if args.register else None,
+            requirements.cited_tests(pathlib.Path(args.tests)) if args.tests else None,
         )
         matrix = traceability.build_matrix(
             register, [pathlib.Path(path) for path in args.junit], args.register

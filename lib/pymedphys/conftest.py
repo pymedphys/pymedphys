@@ -105,6 +105,11 @@ SHARED_DATA_DIR: pathlib.Path | None = None
 _SAVED_ENVIRONMENT = pytest.StashKey[dict[str, str | None]]()
 _TEMPORARY_HOME = pytest.StashKey[pathlib.Path]()
 _COLLECTED_TEST_IDS = pytest.StashKey[set[str]]()
+_COLLECTED_CITATIONS = pytest.StashKey[dict[str, frozenset[str]]]()
+
+# The marker with which a test cites the de-identification requirements it
+# shows are met, which the requirements register reads from the tests' source.
+DEID_REQUIREMENT_MARKER = "deid_requirement"
 
 
 def pytest_itemcollected(item):
@@ -119,6 +124,13 @@ def pytest_itemcollected(item):
     if separator:
         node_id += "::" + name.partition("[")[0]
     item.session.stash.setdefault(_COLLECTED_TEST_IDS, set()).add(node_id)
+    cited = frozenset(
+        identifier
+        for marker in item.iter_markers(DEID_REQUIREMENT_MARKER)
+        for identifier in marker.args
+    )
+    if cited:
+        item.session.stash.setdefault(_COLLECTED_CITATIONS, {})[node_id] = cited
 
 
 @pytest.fixture(scope="session")
@@ -132,6 +144,19 @@ def collected_test_ids(request):
     if any("::" in argument for argument in request.config.args):
         return None
     return frozenset(request.session.stash.get(_COLLECTED_TEST_IDS, set()))
+
+
+@pytest.fixture(scope="session")
+def collected_citations(request):
+    """Return the requirements each collected test cites with its marker.
+
+    By node id relative to the installed library root, as for
+    ``collected_test_ids``, and None when the session selected tests by
+    node id.
+    """
+    if any("::" in argument for argument in request.config.args):
+        return None
+    return dict(request.session.stash.get(_COLLECTED_CITATIONS, {}))
 
 
 def skip_reason(
@@ -203,6 +228,11 @@ def pytest_addoption(parser):
 def pytest_configure(config):
     for key, marker in MARKER_CONFIG.items():
         config.addinivalue_line("markers", f"{key}: {marker.description}")
+    config.addinivalue_line(
+        "markers",
+        f"{DEID_REQUIREMENT_MARKER}(*ids): the de-identification requirements, "
+        "by their ids in the requirements register, that the test shows are met",
+    )
 
     _isolate_home_directory(config)
 

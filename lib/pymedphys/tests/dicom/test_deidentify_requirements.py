@@ -35,7 +35,7 @@ URL = (
 )
 
 VALID = {
-    "schema": "pymedphys-deid-requirements/1",
+    "schema": "pymedphys-deid-requirements/2",
     "edition": "2026d",
     "acknowledgement": "DICOM PS3.15 2026d, © NEMA",
     "midi_report": "Clunie DA et al., MIDI Task Group report",
@@ -70,6 +70,21 @@ VALID = {
 def _write(path, document):
     path.write_text(tomlkit.dumps(document), encoding="utf-8")
     return path
+
+
+def _load(tmp_path, document):
+    """Load ``document``, taking each entry's ``tests`` as the tests that cite it.
+
+    The register holds no tests: they cite its requirements with a marker.
+    """
+    document = copy.deepcopy(document)
+    tests = {}
+    for entry in (
+        document["requirement"] if isinstance(document.get("requirement"), list) else []
+    ):
+        if isinstance(entry, dict) and "tests" in entry:
+            tests[entry.get("id")] = entry.pop("tests")
+    return requirements.load_requirements(_write(tmp_path / "r.toml", document), tests)
 
 
 def _changed(entry, **fields):
@@ -365,7 +380,7 @@ def test_pytest_collects_each_traced_test(register, collected_test_ids):
 
 
 def test_a_valid_register_loads(tmp_path):
-    register = requirements.load_requirements(_write(tmp_path / "r.toml", VALID))
+    register = _load(tmp_path, VALID)
     assert register.edition == "2026d"
     assert register.midi_report == "Clunie DA et al., MIDI Task Group report"
     first, excluded, practice = register.requirements
@@ -394,27 +409,29 @@ def test_a_valid_register_loads(tmp_path):
 
 def test_function_and_class_node_ids_are_accepted(tmp_path):
     tests = ["tests/a/test_b.py::test_c", "tests/a/test_b.py::TestD::test_e"]
-    path = _write(tmp_path / "r.toml", _changed(2, tests=tests))
-    assert requirements.load_requirements(path).requirements[2].tests == tuple(tests)
+    register = _load(tmp_path, _changed(2, tests=tests))
+    assert register.requirements[2].tests == tuple(tests)
 
 
 def test_text_keeps_its_lines_without_surrounding_whitespace(tmp_path):
+    document = copy.deepcopy(VALID)
+    tests = {"MIDI-BP-06": document["requirement"][2].pop("tests")}
     path = tmp_path / "r.toml"
     path.write_text(
-        tomlkit.dumps(VALID).replace(
+        tomlkit.dumps(document).replace(
             '"Each Attribute shall be retained."',
             "'''\nEach Attribute shall be:\n\n- retained\n'''",
         ),
         encoding="utf-8",
     )
-    first = requirements.load_requirements(path).requirements[0]
+    first = requirements.load_requirements(path, tests).requirements[0]
     assert first.text == "Each Attribute shall be:\n\n- retained"
 
 
 @pytest.mark.parametrize(
     "change, message",
     [
-        ({"schema": "other/1"}, "is not a pymedphys-deid-requirements/1 file"),
+        ({"schema": "other/1"}, "is not a pymedphys-deid-requirements/2 file"),
         ({"edition": ""}, "does not name its edition as text"),
         ({"edition": 2026}, "does not name its edition as text"),
         ({"acknowledgement": "© NEMA"}, "lacks the copyright acknowledgement"),
@@ -427,7 +444,7 @@ def test_a_malformed_register_is_rejected(tmp_path, change, message):
     document = copy.deepcopy(VALID)
     document.update(change)
     with pytest.raises(requirements.RequirementsError, match=message):
-        requirements.load_requirements(_write(tmp_path / "r.toml", document))
+        _load(tmp_path, document)
 
 
 @pytest.mark.parametrize(
@@ -472,16 +489,15 @@ def test_a_malformed_register_is_rejected(tmp_path, change, message):
     ],
 )
 def test_a_malformed_requirement_is_rejected(tmp_path, entry, fields, message):
-    path = _write(tmp_path / "r.toml", _changed(entry, **fields))
     with pytest.raises(requirements.RequirementsError, match=re.escape(message)):
-        requirements.load_requirements(path)
+        _load(tmp_path, _changed(entry, **fields))
 
 
 def test_a_requirement_that_is_not_a_table_is_rejected(tmp_path):
     document = copy.deepcopy(VALID)
     document["requirement"] = ["PS3.15-E.1.1-01"]
     with pytest.raises(requirements.RequirementsError, match="#1 is not a table"):
-        requirements.load_requirements(_write(tmp_path / "r.toml", document))
+        _load(tmp_path, document)
 
 
 @pytest.mark.parametrize("text", ["schema = ", "[[requirement]\n", "\udcff"])
@@ -495,3 +511,197 @@ def test_an_unreadable_register_is_rejected(tmp_path, text):
 def test_a_missing_register_is_rejected(tmp_path):
     with pytest.raises(requirements.RequirementsError, match="could not be read"):
         requirements.load_requirements(tmp_path / "missing.toml")
+
+
+def test_a_register_that_lists_tests_is_rejected(tmp_path):
+    # Tests cite requirements with the marker; the register does not list them.
+    path = _write(tmp_path / "r.toml", VALID)
+    with pytest.raises(
+        requirements.RequirementsError, match="MIDI-BP-06 does not have only the fields"
+    ):
+        requirements.load_requirements(path, {})
+
+
+def test_a_test_citing_a_requirement_the_register_lacks_is_rejected(tmp_path):
+    document = _changed(2, tests=None)
+    document["requirement"][2].update(status="planned", implementation=None)
+    del document["requirement"][2]["implementation"]
+    path = _write(tmp_path / "r.toml", document)
+    with pytest.raises(
+        requirements.RequirementsError,
+        match="a test cites MIDI-BP-07, which r.toml does not record",
+    ):
+        requirements.load_requirements(
+            path, {"MIDI-BP-07": ["tests/a/test_b.py::test_c"]}
+        )
+
+
+def test_a_note_written_one_sentence_per_line_is_joined(tmp_path):
+    document = _changed(1, note="\n  First sentence.\nSecond (D-001).\n\n")
+    excluded = _load(tmp_path, document).requirements[1]
+    assert excluded.note == "First sentence. Second (D-001)."
+
+
+def _tests_tree(root, files):
+    for name, source in files.items():
+        path = root / "tests" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(source, encoding="utf-8")
+    return root
+
+
+CITING = """
+import pytest
+
+
+def helper():
+    pass
+
+
+@pytest.mark.deid_requirement("MIDI-BP-02", "MIDI-BP-01")
+def test_first():
+    pass
+
+
+@pytest.mark.parametrize("value", [1, 2])
+@pytest.mark.deid_requirement("MIDI-BP-01")
+async def test_second(value):
+    pass
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+class TestGroup:
+    @pytest.mark.deid_requirement("MIDI-BP-01")
+    def test_method(self):
+        pass
+
+    def test_other(self):
+        pass
+
+    def helper(self):
+        pass
+
+
+def test_uncited():
+    pass
+"""
+
+
+def test_cited_tests_reads_markers_on_test_functions_and_classes(tmp_path):
+    root = _tests_tree(
+        tmp_path,
+        {
+            "b/test_later.py": CITING,
+            "a/test_earlier.py": (
+                "import pytest\n\n\n"
+                "@pytest.mark.deid_requirement('MIDI-BP-01')\n"
+                "def test_only():\n    pass\n"
+            ),
+            # Only test_*.py files are read.
+            "b/helpers.py": "@pytest.mark.deid_requirement(1)\ndef test_x(): pass\n",
+            "b/conftest.py": "@pytest.mark.deid_requirement(1)\ndef test_x(): pass\n",
+        },
+    )
+    later = "tests/b/test_later.py"
+    assert requirements.cited_tests(root) == {
+        # By file, then by line.
+        "MIDI-BP-01": (
+            "tests/a/test_earlier.py::test_only",
+            f"{later}::test_first",
+            f"{later}::test_second",
+            f"{later}::TestGroup::test_method",
+        ),
+        "MIDI-BP-02": (f"{later}::test_first",),
+        "MIDI-BP-03": (
+            f"{later}::TestGroup::test_method",
+            f"{later}::TestGroup::test_other",
+        ),
+    }
+
+
+def test_no_tests_directory_cites_nothing(tmp_path):
+    assert requirements.cited_tests(tmp_path) == {}
+
+
+@pytest.mark.parametrize(
+    "source, message",
+    [
+        ("@pytest.mark.deid_requirement\ndef test_x(): pass\n", "string literals"),
+        ("@pytest.mark.deid_requirement()\ndef test_x(): pass\n", "string literals"),
+        (
+            "ID = 'MIDI-BP-01'\n@pytest.mark.deid_requirement(ID)\ndef test_x(): pass\n",
+            "string literals",
+        ),
+        (
+            "@pytest.mark.deid_requirement('MIDI-BP-01', reason='x')\ndef test_x(): pass\n",
+            "string literals",
+        ),
+        (
+            "@pytest.mark.deid_requirement(b'MIDI-BP-01')\ndef test_x(): pass\n",
+            "string literals",
+        ),
+        (
+            "pytestmark = pytest.mark.deid_requirement('MIDI-BP-01')\n",
+            "other than to decorate",
+        ),
+        (
+            "@pytest.mark.deid_requirement('MIDI-BP-01')\ndef helper(): pass\n",
+            "other than to decorate",
+        ),
+        (
+            "@pytest.mark.deid_requirement('MIDI-BP-01')\nclass Group:\n    def test_x(self): pass\n",
+            "other than to decorate",
+        ),
+        (
+            "class TestGroup:\n    @pytest.mark.deid_requirement('MIDI-BP-01')\n    def helper(self): pass\n",
+            "other than to decorate",
+        ),
+        (
+            "def test_x():\n    @pytest.mark.deid_requirement('MIDI-BP-01')\n    def test_y(): pass\n",
+            "other than to decorate",
+        ),
+        (
+            "@pytest.mark.parametrize('a', [pytest.param(1, marks=pytest.mark.deid_requirement('MIDI-BP-01'))])\ndef test_x(a): pass\n",
+            "other than to decorate",
+        ),
+        (
+            "@pytest.mark.deid_requirement('MIDI-BP-01', 'MIDI-BP-01')\ndef test_x(): pass\n",
+            "cites a requirement more than once",
+        ),
+        (
+            "@pytest.mark.deid_requirement('MIDI-BP-01')\nclass TestGroup:\n    @pytest.mark.deid_requirement('MIDI-BP-01')\n    def test_x(self): pass\n",
+            "TestGroup::test_x cites a requirement more than once",
+        ),
+        ("def test_x(:\n", "could not be read"),
+    ],
+)
+def test_a_citation_that_cannot_be_read_from_the_source_is_rejected(
+    tmp_path, source, message
+):
+    root = _tests_tree(tmp_path, {"test_bad.py": "import pytest\n" + source})
+    with pytest.raises(requirements.RequirementsError, match=re.escape(message)):
+        requirements.cited_tests(root)
+
+
+def test_the_shipped_register_takes_its_tests_from_the_markers(register):
+    cited = requirements.cited_tests()
+    assert {
+        entry.id: entry.tests for entry in register.requirements if entry.tests
+    } == cited
+
+
+def test_pytest_sees_the_citations_read_from_the_source(
+    collected_test_ids, collected_citations
+):
+    """The source reading and pytest's own markers agree on every collected test."""
+    if collected_test_ids is None or collected_citations is None:
+        pytest.skip("needs a session that collects whole modules")
+    from_source = collections.defaultdict(set)
+    for identifier, node_ids in requirements.cited_tests().items():
+        for node_id in node_ids:
+            from_source[node_id].add(identifier)
+    assert collected_citations.keys() <= collected_test_ids
+    for node_id in collected_test_ids:
+        assert collected_citations.get(node_id, frozenset()) == from_source.get(
+            node_id, set()
+        ), node_id

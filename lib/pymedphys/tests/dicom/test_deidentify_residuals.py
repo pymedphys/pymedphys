@@ -145,6 +145,7 @@ def _write(dataset, transfer_syntax=EXPLICIT, **file_meta):
 # Where de-identification can leave a source value behind.
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_a_value_hidden_in_the_preamble_is_found():
@@ -170,6 +171,7 @@ def test_a_value_hidden_in_the_preamble_is_found():
     assert result.readable
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_a_value_in_the_file_meta_information_is_found():
@@ -190,6 +192,7 @@ def test_a_value_in_the_file_meta_information_is_found():
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_a_value_in_data_set_trailing_padding_is_found():
@@ -205,6 +208,7 @@ def test_a_value_in_data_set_trailing_padding_is_found():
     assert result.findings[0].location.region is Region.TRAILING_PADDING
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_bytes_after_the_data_set_are_searched():
@@ -227,6 +231,7 @@ def test_bytes_after_the_data_set_are_searched():
     assert not result.readable
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_a_value_in_an_ob_value_is_found():
@@ -242,6 +247,7 @@ def test_a_value_in_an_ob_value_is_found():
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_a_value_in_a_un_value_is_found_in_utf_16():
@@ -256,6 +262,7 @@ def test_a_value_in_a_un_value_is_found_in_utf_16():
     assert str(result.findings[0].location) == "data set element (0019,1002) (UN)"
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize("transfer_syntax", [EXPLICIT, IMPLICIT])
@@ -282,6 +289,7 @@ ENCODINGS = [
 ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize("transfer_syntax, undefined_lengths", ENCODINGS)
@@ -1212,6 +1220,7 @@ def _element_item(content=b"", length=None):
 SEQUENCE_END = struct.pack("<HHI", 0xFFFE, 0xE0DD, 0)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_encapsulated_fragments_are_searched_for_every_form():
     # A JPEG comment (COM) segment in the first fragment.
     fragment = b"\xff\xd8\xff\xfe\x00\x12MARY\x00\x00" + PATIENT_ID.encode("utf-16-le")
@@ -1425,6 +1434,7 @@ def _written_constants():
     return _texts(*(value for _, value in residuals.written_constants()))
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.parametrize(
     "vr, value",
     [
@@ -1463,6 +1473,7 @@ def test_a_source_value_equal_to_a_written_constant_is_skipped_and_recorded(vr, 
     assert not result.not_searched
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.parametrize(
     "vr, value",
     [
@@ -1484,6 +1495,7 @@ def test_a_source_value_that_differs_from_every_constant_is_searched(vr, value):
     assert not result.unsearched
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_constant_among_several_values_is_skipped_alone():
     values = [
         _source("(0010,1001)", "PN", "DEIDENTIFIED\\ZEBEDEE^QUILLON"),
@@ -1766,6 +1778,7 @@ def _clean_structure_set(rng):
     return dataset
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize("build", [_clean_ct, _clean_structure_set])

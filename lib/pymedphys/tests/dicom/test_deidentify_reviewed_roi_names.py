@@ -60,6 +60,7 @@ def _list(**decisions):
     return names
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_reviewed_decisions_are_reused_on_later_runs(tmp_path):
     path = tmp_path / "custodian" / "reviewed-roi-names.json"
     path.parent.mkdir()
@@ -78,6 +79,7 @@ def test_reviewed_decisions_are_reused_on_later_runs(tmp_path):
     assert later.get("prv cord") is None
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_the_list_never_shows_a_name():
     names = _list(PRV_cord=KEEP, Lung_old=_map("Lung_Old"))
 
@@ -135,6 +137,7 @@ def test_a_different_decision_replaces_the_recorded_one_only_when_asked():
     assert names.get("PRV cord") == EMPTY and len(names) == 1
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 @pytest.mark.parametrize("where", ["config", "protected"])
 def test_the_list_is_refused_inside_a_protected_directory(tmp_path, where):
     if where == "config":
@@ -300,6 +303,7 @@ def _written(results):
 VOCABULARY = _vocabulary(("Lung_L", "L_Lung"), ("Heart", "Heart"), ("Hand_L", "L_Hand"))
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_a_reviewers_decision_to_keep_map_or_empty_a_name_is_applied():
     names = _list(PRV_cord=KEEP, Lung_L_old=_map("Lung_L_Old"), Dr_X_lung=EMPTY)
 
@@ -312,6 +316,7 @@ def test_a_reviewers_decision_to_keep_map_or_empty_a_name_is_applied():
     ]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_a_bulk_rename_applies_to_every_structure_set_with_the_name():
     names = _list(GTV_boost_1=_map("GTV_Boost"))
 
@@ -321,6 +326,7 @@ def test_a_bulk_rename_applies_to_every_structure_set_with_the_name():
     assert _written(first)[0] == _written(second)[1] == (Outcome.MAPPED, "GTV_Boost")
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_a_name_neither_renamed_nor_reviewed_is_held_with_the_automatic_reason():
     results = _clean(["Lung_L1", "Heart"], _list())
 
@@ -330,6 +336,7 @@ def test_a_name_neither_renamed_nor_reviewed_is_held_with_the_automatic_reason()
     ]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_a_held_name_is_emptied_only_when_the_user_chooses_so():
     results = _clean(["Lung_L1", "PRV cord"], _list(PRV_cord=KEEP), empty_held=True)
 
@@ -352,6 +359,7 @@ def test_an_empty_name_stays_empty():
     ]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-11")
 @pytest.mark.parametrize(
     "source, decision",
     [("Lung Smith", KEEP), ("Lung Doe", _map("Smith_Lung"))],
@@ -378,6 +386,7 @@ def test_a_reviewed_mapping_is_checked_for_echoes_in_what_it_writes():
     assert _written(results) == [(Outcome.MAPPED, "Wrist_L")]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 @pytest.mark.parametrize(
     "names, decisions",
     [
@@ -461,6 +470,7 @@ def test_results_and_the_list_never_show_a_name():
         assert value not in shown
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_the_review_queue_lists_each_distinct_held_name_once():
     queue = reviewed.ReviewQueue()
     for names in (["Lung_L1", "Heart", "Dr X"], ["Lung_L1"], ["lung l", "LUNG-L"]):

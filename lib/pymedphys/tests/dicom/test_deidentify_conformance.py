@@ -74,6 +74,7 @@ def _entry(statement, tag):
     return next(e for e in statement.attributes if e.tag == tag)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_statement_names_the_edition_preset_and_options(preset, statement_for):
     composed = policy.compose_policy(preset)
     statement = statement_for(preset)
@@ -108,6 +109,7 @@ def test_each_option_names_its_cid_7050_code():
             assert word in words, (option, meanings[code])
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_options_outside_the_supported_scope_are_listed_as_not_supported(statement_for):
     text = conformance.render_markdown(statement_for("basic"))
     meanings = {
@@ -143,6 +145,7 @@ def test_the_pixel_options_outside_table_e1_1_are_listed_as_not_supported(
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_action(
     preset,
     statement_for,
@@ -164,6 +167,7 @@ def test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_actio
     assert all(e.name == names[e.tag] for e in supplementary)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_every_ui_attribute_that_the_table_omits_is_listed_by_its_role(statement_for):
     statement = statement_for("basic")
     listed = {e.tag: e for e in statement.attributes}
@@ -187,6 +191,7 @@ def test_every_ui_attribute_that_the_table_omits_is_listed_by_its_role(statement
     assert all(listed[tag].action == "U" for tag in omitted)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_them(
     preset,
     statement_for,
@@ -230,6 +235,7 @@ def test_institution_name_in_a_structure_set_is_resolved_by_its_type_at_each_pla
     assert row.endswith("X elsewhere |")
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_x_z_on_a_type_1_attribute_is_described_as_the_dummy_value(statement_for):
     text = conformance.render_markdown(statement_for("basic"))
     assert (
@@ -283,6 +289,7 @@ def test_the_scope_is_what_the_classifier_supports(statement_for):
         assert f"| {syntax.uid} | {syntax.name} |" in text
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_dummy_values_are_those_that_d_writes(statement_for):
     text = conformance.render_markdown(statement_for("basic"))
     for vr, (first, second) in dummy_values.CONSTANTS.items():
@@ -294,6 +301,7 @@ def test_the_dummy_values_are_those_that_d_writes(statement_for):
     assert "PyMedPhys" not in "".join(map(str, dummy_values.CONSTANTS.values()))
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_key_and_the_scope_of_referential_integrity_are_described(statement_for):
     text = conformance.render_markdown(statement_for("basic"))
     assert "256-bit" in text
@@ -301,12 +309,14 @@ def test_the_key_and_the_scope_of_referential_integrity_are_described(statement_
     assert "discarded after the run" in text
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_no_attribute_is_encrypted_for_later_reidentification(statement_for):
     text = conformance.render_markdown(statement_for("basic"))
     assert "Encrypted Attributes Sequence (0400,0500)" in text
     assert "No attribute is placed in an Encrypted Attributes Data Set" in text
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize("vocabulary", [None, VOCABULARY])
 def test_the_method_digest_is_the_policys_with_the_same_vocabulary(
     preset, vocabulary, statement_for
@@ -368,6 +378,7 @@ def test_a_preset_that_is_not_enabled_makes_no_claim(preset, statement_for):
     assert "de-identified in accordance with" not in text
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_statement_with_sections_still_to_describe_makes_no_claim(monkeypatch):
     monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
     statement = _statement("basic")
@@ -444,12 +455,14 @@ def test_cleaning_is_pending_only_for_a_policy_that_cleans(preset, statement_for
     assert set(conformance.PENDING) <= set(statement.pending)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_no_enabled_preset_has_an_incomplete_statement():
     # Enabling a preset needs a complete statement for it.
     for name in policy.ENABLED_PRESETS:
         assert not _statement(name).pending, name
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_statement_is_the_same_every_time_it_is_generated(preset):
     first = conformance.render_markdown(_statement(preset))
     assert conformance.render_markdown(_statement(preset)) == first
@@ -498,6 +511,7 @@ def test_the_markers_are_no_longer_pending(preset, statement_for):
     assert not any("markers" in item for item in statement_for(preset).pending)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_markers_match_those_the_engine_writes(preset, statement_for):
     composed = policy.compose_policy(preset)
     statement = statement_for(preset)
@@ -514,6 +528,7 @@ def test_the_markers_match_those_the_engine_writes(preset, statement_for):
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_every_attribute_the_markers_write_is_described(preset, statement_for):
     composed = policy.compose_policy(preset)
     statement = statement_for(preset)
@@ -536,6 +551,7 @@ def test_every_attribute_the_markers_write_is_described(preset, statement_for):
     assert f"`{statement.markers.temporal}`" in section
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_inserted_codes_are_listed_with_their_meanings(preset, statement_for):
     statement = statement_for(preset)
     section = _section(conformance.render_markdown(statement), "Attributes inserted")
@@ -548,6 +564,7 @@ def test_the_inserted_codes_are_listed_with_their_meanings(preset, statement_for
         assert "no item" in section
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_runtime_versions_are_described_not_quoted(statement_for):
     text = conformance.render_markdown(statement_for("basic"))
     assert f"pydicom {pydicom.__version__}" not in text
@@ -558,6 +575,7 @@ def test_the_runtime_versions_are_described_not_quoted(statement_for):
     assert "`CPython <version>`" in text
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_private_attribute_removal_is_described(preset, statement_for):
     statement = statement_for(preset)
     section = _section(conformance.render_markdown(statement), "Actions")
@@ -569,6 +587,7 @@ def test_private_attribute_removal_is_described(preset, statement_for):
         assert "private creator" in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 @pytest.mark.parametrize(
     ("name", "expected_codes", "review_codes", "temporal"),
     [

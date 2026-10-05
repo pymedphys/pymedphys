@@ -274,6 +274,7 @@ def _tag(group, element):
     return f"({group:04X},{element:04X})"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-08", "PS3.15-E.1.1-09")
 @pytest.mark.parametrize("tag, source, action, entry", BASIC_RULES)
 def test_each_level_decides_its_elements(tag, source, action, entry):
     rule = _rules().rule(tag)
@@ -310,6 +311,7 @@ def test_clean_descriptors_cleans_exactly_what_the_table_and_rules_clean():
     assert set(changed.values()) == {"C"}
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 def test_a_sequence_given_c_takes_its_basic_profile_action():
     dictionary = _dictionary()
     for preset in ("basic-clean-descriptors", "tps-import"):
@@ -420,6 +422,7 @@ def test_the_iod_decides_only_the_default_for_binary_values_and_sequences():
                 )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09", "MIDI-BP-06")
 def test_every_dictionary_attribute_has_the_rule_of_the_first_level_covering_it():
     # Each level is derived here from the tables and rule files: which cover
     # each attribute, and in what order they apply.
@@ -457,6 +460,7 @@ def test_every_dictionary_attribute_has_the_rule_of_the_first_level_covering_it(
             assert attribute.vrs == ("UI",)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 def test_no_name_date_time_or_uid_reaches_the_rule_for_uncovered_attributes():
     for composed in _usable_policies():
         rules = ElementRules(composed)
@@ -502,6 +506,7 @@ def test_the_default_keeps_the_vrs_that_the_design_names():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-14")
 @pytest.mark.parametrize("tag, keyword", NEW_RULES.items())
 def test_each_new_supplementary_rule_removes_by_type_with_a_note(tag, keyword):
     rule = supplementary_actions.load_supplementary_actions().rules[tag]
@@ -515,6 +520,7 @@ def test_each_new_supplementary_rule_removes_by_type_with_a_note(tag, keyword):
         )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06")
 def test_the_new_rules_cover_every_uri_that_table_e1_1_omits():
     listed = {row.tag for row in standard.load_table_e1_1().attributes}
     omitted = {
@@ -537,6 +543,7 @@ def test_the_urls_that_name_coding_concepts_and_schemes_are_kept(tag, keyword):
         )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-14")
 def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
     # The sequences, ICC Profile, MAC Parameters Sequence, and the three
     # measures of the patient are Type 3 wherever the first supported release's IODs define them, so they are
@@ -579,6 +586,7 @@ def test_patient_size_code_sequence_is_removed_under_retain_patient_characterist
 
 # Building the rules the first time in a process takes longer than
 # Hypothesis's default deadline, whichever example does it.
+@pytest.mark.deid_requirement("MIDI-BP-06")
 @hypothesis.settings(deadline=None)
 @hypothesis.given(st.integers(0, 0xFFFF), st.integers(0, 0xFFFF))
 def test_every_tag_has_one_rule_that_is_the_same_for_the_same_policy(group, element):
@@ -592,6 +600,7 @@ def test_every_tag_has_one_rule_that_is_the_same_for_the_same_policy(group, elem
     assert hash(rule) == hash(dataclasses.replace(rule))
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-08")
 @hypothesis.settings(deadline=None)
 @hypothesis.given(st.sampled_from([0x0002, 0x0004]), st.integers(0, 0xFFFF))
 def test_every_element_of_groups_0002_and_0004_in_a_data_set_is_removed(group, element):
@@ -603,6 +612,7 @@ def test_every_element_of_groups_0002_and_0004_in_a_data_set_is_removed(group, e
         assert (rule.source, rule.action) == (ENGINE, "X")
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @hypothesis.settings(deadline=None)
 @hypothesis.given(st.integers(0, 0xFFFF))
 def test_every_element_of_group_0000_in_a_data_set_is_removed(element):
@@ -642,6 +652,7 @@ def test_an_odd_group_that_is_not_private_falls_to_the_later_rules(group, elemen
     assert (rule.source, rule.action, rule.entry) == (NOT_IN_DICTIONARY, "X", "")
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @hypothesis.settings(deadline=None)
 @hypothesis.given(st.integers(0, 15), st.sampled_from(["3000", "4000"]))
 def test_the_overlay_masks_match_every_repeating_group(index, element):
@@ -658,6 +669,7 @@ def test_the_curve_mask_matches_every_element_of_every_repeating_group(element, 
     assert (rule.source, rule.action, rule.entry) == (TABLE, "X", "(50xx,xxxx)")
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @hypothesis.settings(deadline=None)
 @hypothesis.given(
     st.sampled_from([0x50, 0x60]),

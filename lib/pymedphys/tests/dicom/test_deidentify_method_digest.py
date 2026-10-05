@@ -250,6 +250,7 @@ def _vocabulary(*structures, file="invented.xls"):
 VOCABULARY = _vocabulary(_structure("Heart", "Heart"), _structure("Lung_L", "L_Lung"))
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
 @pytest.mark.parametrize("vocabulary", [None, VOCABULARY])
 def test_the_digest_is_only_64_lowercase_hexadecimal_digits_and_fits_one_lo_value(
@@ -273,6 +274,7 @@ def test_the_digest_is_the_sha256_of_the_canonical_form(basic):
     assert digest == hashlib.sha256(canonical).hexdigest()
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 def test_a_small_synthetic_input_has_the_canonical_form_written_by_hand():
     canonical = method_digest.canonical_bytes(SYNTHETIC_POLICY, SYNTHETIC_INPUTS)
 
@@ -280,6 +282,7 @@ def test_a_small_synthetic_input_has_the_canonical_form_written_by_hand():
     assert hashlib.sha256(canonical).hexdigest() == SYNTHETIC_SHA256
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 def test_the_same_inputs_always_give_the_same_digest(basic):
     first = method_digest.method_digest(basic, vocabulary=VOCABULARY)
 
@@ -365,6 +368,7 @@ def _resolved():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 @pytest.mark.parametrize(
     "change",
     [
@@ -622,6 +626,7 @@ def _change_runtime(monkeypatch, name):
     assert (changed() if is_function else changed) == other
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 @pytest.mark.parametrize(
     "names",
     [[name] for name in RUNTIME_CHANGES] + [list(RUNTIME_CHANGES)],
@@ -661,6 +666,7 @@ def test_every_module_rule_file_and_table_of_the_engine_is_covered():
     assert not [name for name in files if "__pycache__" in name]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 @pytest.mark.parametrize(
     "change",
     [
@@ -910,6 +916,7 @@ def test_the_components_hold_the_fields_a_release_report_records_in_order():
     assert tuple(field.name for field in fields) == COMPONENT_FIELDS
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_components_of_a_small_synthetic_input_are_digests_of_its_members():
     components = method_digest.digest_components(SYNTHETIC_POLICY, SYNTHETIC_INPUTS)
 
@@ -1001,6 +1008,7 @@ def _add_vocabulary(_monkeypatch):
     return VOCABULARY
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize(
     "change, differs",
     [

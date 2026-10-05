@@ -156,6 +156,7 @@ def _refused(output, expected=Expectations(kept=ALL), source=SOURCE):
     return raised.value.reason, raised.value.path
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.parametrize(
     "data",
     [_file(EXPLICIT, _explicit_data_set()), _file(IMPLICIT, _implicit_data_set())],
@@ -197,12 +198,14 @@ def test_a_kept_sequence_may_be_written_with_defined_lengths():
     verify_preservation(SOURCE, _output(sequence="defined"), Expectations(kept=ALL))
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_another_transfer_syntax_is_refused():
     output = read_source(_file(IMPLICIT, _implicit_data_set()))
 
     assert _refused(output) == (PreservationReason.TRANSFER_SYNTAX, None)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.parametrize(
     "expected, output, failure",
     [
@@ -250,6 +253,7 @@ def test_each_element_must_correspond_to_its_plan(expected, output, failure):
     assert _refused(output, expected) == failure
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_a_kept_value_that_decodes_the_same_from_other_bytes_is_refused():
     # "01" and "1 " are both the integer 1.
     assert _refused(_output(beam_number=b"01")) == (
@@ -265,6 +269,7 @@ def test_a_kept_name_with_other_bytes_is_refused():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_an_ambiguous_vr_resolved_again_with_the_same_bytes_is_refused():
     # A writer that resolves US or SS again, as pydicom's can, changes only
     # the VR of the LUT Descriptor.
@@ -275,6 +280,7 @@ def test_a_kept_sequence_written_with_another_vr_is_refused():
     assert _refused(_output(sequence="UN")) == (PreservationReason.VR, BEAMS)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_a_kept_sequence_with_another_number_of_items_is_refused():
     assert _refused(_output(sequence="another-item")) == (
         PreservationReason.STRUCTURE,
@@ -282,6 +288,7 @@ def test_a_kept_sequence_with_another_number_of_items_is_refused():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_a_kept_value_written_with_another_length_encoding_is_refused():
     assert _refused(_output(document=FRAGMENTS)) == (
         PreservationReason.LENGTH,
@@ -298,6 +305,7 @@ def test_a_kept_value_of_undefined_length_cannot_be_verified():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.parametrize(
     "changes, path",
     [
@@ -457,6 +465,7 @@ CONTEXT_CASES = {
 }
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.parametrize(
     "source, output, changed, removed, failure",
     CONTEXT_CASES.values(),
@@ -475,6 +484,7 @@ def test_a_kept_element_in_another_context_is_refused(
     assert _refused(read_source(output), expected, source) == failure
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_an_empty_specific_character_set_is_the_default_as_an_absent_one_is():
     # Both give the Default Character Repertoire (PS3.3 C.12.1.1.2).
     source = read_source(
