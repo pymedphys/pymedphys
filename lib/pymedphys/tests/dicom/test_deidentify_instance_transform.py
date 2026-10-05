@@ -20,6 +20,10 @@ text ``SENTINEL``.
 
 import functools
 import io
+import os
+import shutil
+import tempfile
+from pathlib import Path
 
 from pymedphys._imports import pydicom, pytest
 
@@ -43,7 +47,7 @@ from pymedphys._dicom.deidentify.element_rules import ElementRules
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
-from pymedphys._dicom.deidentify.policy import compose_policy
+from pymedphys._dicom.deidentify.policy import PolicyError, compose_policy
 from pymedphys._dicom.deidentify.preservation import PreservationReason
 from pymedphys._dicom.deidentify.preserving_writer import WriteReason
 from pymedphys._dicom.deidentify.pseudonyms import SubjectIdentity, patient_pseudonym
@@ -74,9 +78,20 @@ SENTINEL_NAME = "SENTINEL^NAME"
 SENTINEL_LABEL = "SENTINEL PLAN"
 
 
+@pytest.fixture(name="tmp_path")
+def _short_tmp_path(tmp_path):
+    # A run refuses output paths that could exceed Windows' 259 characters.
+    if os.name != "nt":
+        yield tmp_path
+        return
+    directory = Path(tempfile.mkdtemp(prefix="d"))
+    yield directory
+    shutil.rmtree(directory, ignore_errors=True)
+
+
 @functools.lru_cache(maxsize=None)
 def _transform():
-    return InstanceTransform(compose_policy("basic"), KEY)
+    return InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
 
 
 def _transformed(dataset):
@@ -290,6 +305,11 @@ def test_writer_plan_refuses_pending_edits_by_path_and_action():
     )
 
 
+def test_the_transform_refuses_a_policy_that_is_not_enabled():
+    with pytest.raises(PolicyError, match="not enabled"):
+        InstanceTransform(compose_policy("basic"), KEY)
+
+
 def test_the_transform_shows_nothing_of_its_key():
     assert repr(_transform()) == "InstanceTransform()"
 
@@ -344,6 +364,50 @@ def test_retained_registered_uids_are_neither_planned_nor_collected():
     assert not set(retained) & {value.source for value in coverage.collected}
     assert _top("(0008,0018)") in coverage.planned
     assert _top("(0008,0018)") in {value.source for value in coverage.collected}
+
+
+def _dose_referencing_an_image():
+    # Referenced Image Sequence is removed, and its Referenced SOP Class UID
+    # is registered, so the edits collect nothing from it.
+    dose = synthetic.rt_dose()
+    item = pydicom.Dataset()
+    item.ReferencedSOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
+    item.ReferencedSOPInstanceUID = "2.25.4242"
+    dose.ReferencedImageSequence = pydicom.Sequence([item])
+    return dose
+
+
+def test_registered_uids_the_edits_do_not_collect_are_not_planned():
+    data = synthetic.written(_dose_referencing_an_image())
+    plan = _plan_of(data)
+    edits = edit_instance(
+        read_source(data), plan, KEY, InstanceRecord.from_file(data).patient
+    )
+    path = ElementPath((("(0008,1140)", 0),), "(0008,1150)")
+    assert path in edits.registered_uids
+    assert path not in {value.source for value in edits.source_values}
+
+    coverage = coverage_of(plan, edits)
+
+    assert path not in coverage.planned
+    assert path not in {missing.path for missing in coverage.uncollected}
+    instance = ElementPath((("(0008,1140)", 0),), "(0008,1155)")
+    assert instance in coverage.planned
+    assert instance in {value.source for value in coverage.collected}
+
+
+def test_a_removed_registered_uid_does_not_withhold_the_collection(tmp_path):
+    dose = _dose_referencing_an_image()
+    datasets = [
+        dose if dataset.SOPInstanceUID == dose.SOPInstanceUID else dataset
+        for dataset in synthetic.collection()
+    ]
+    assert dose in datasets
+    result = run.run(
+        _source(tmp_path, datasets), tmp_path / "release", _transform(), ReleaseGate()
+    )
+
+    assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
 
 
 def test_a_run_with_the_transform_and_gate_releases_the_collection(tmp_path):

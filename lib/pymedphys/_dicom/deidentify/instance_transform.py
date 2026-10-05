@@ -82,7 +82,7 @@ from .elements import (
 from .file_layout import ElementPath
 from .iods import IODTables, load_iod_tables
 from .keys import DeidKey
-from .policy import Policy
+from .policy import Policy, PolicyError
 from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .references import InstanceRecord
@@ -162,7 +162,9 @@ def coverage_of(plan: InstancePlan, edits: InstanceEdits) -> Coverage:
 
     Every element that the plan has residual collection read is planned,
     and each value collected or not collected is carried over, but for an
-    element whose every UID U retains.
+    element whose every UID U retains, and for an element whose UIDs the
+    pinned tables all register, which the edits leave out of collection
+    wherever it is, removed sequences included.
     """
     retained = {
         edit.path
@@ -170,6 +172,8 @@ def coverage_of(plan: InstancePlan, edits: InstanceEdits) -> Coverage:
         if edit.uid_outcomes
         and all(outcome is UIDOutcome.RETAINED for outcome in edit.uid_outcomes)
     }
+    collected = {value.source for value in edits.source_values}
+    retained.update(path for path in edits.registered_uids if path not in collected)
     return Coverage(
         planned=frozenset(
             element.path
@@ -268,6 +272,15 @@ class InstanceTransform:
         The run's key, for keyed replacement UIDs and pseudonyms.
     iod_tables : IODTables, optional
         Defaults to :func:`~pymedphys._dicom.deidentify.iods.load_iod_tables`.
+    unvalidated_policy : bool, default False
+        Allow a policy that is not enabled, such as a preset whose behaviour
+        is not yet validated. For tests and validation runs only; nothing
+        that de-identifies data for use sets it.
+
+    Raises
+    ------
+    PolicyError
+        If the policy is not enabled and ``unvalidated_policy`` is not set.
 
     Notes
     -----
@@ -278,8 +291,17 @@ class InstanceTransform:
     """
 
     def __init__(
-        self, policy: Policy, key: DeidKey, iod_tables: IODTables | None = None
+        self,
+        policy: Policy,
+        key: DeidKey,
+        iod_tables: IODTables | None = None,
+        *,
+        unvalidated_policy: bool = False,
     ) -> None:
+        if not (policy.enabled or unvalidated_policy):
+            raise PolicyError(
+                "the policy is not enabled: no preset's behaviour is validated yet"
+            )
         self._rules = ElementRules(policy)
         self._key = key
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
