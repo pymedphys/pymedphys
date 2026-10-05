@@ -365,8 +365,12 @@ class UnsearchedReason(enum.Enum):
 class Unsearched:
     """A source value that the residual search was not given, and why.
 
-    The release report counts these by attribute and reason (D-027), and
-    the QC pack lists each by instance and place.
+    For :attr:`UnsearchedReason.WRITTEN_CONSTANT`, it may be only some of
+    the value: a value among several, or a form such as a family name,
+    whose other values and forms were still searched. Each source attribute
+    is recorded once for each reason. The release report counts these by
+    attribute and reason (D-027), and the QC pack lists each by instance
+    and place.
 
     Attributes
     ----------
