@@ -170,6 +170,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "04-rtstruct.dcm",
         "05-rtplan.dcm",
         "06-rtdose.dcm",
+        "07-rtdose-review.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -177,6 +178,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "CT Image",
         "RT Structure Set",
         "RT Plan",
+        "RT Dose",
         "RT Dose",
     ]
 
@@ -188,7 +190,7 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
         found = collections.Counter()
         for placement in file.manifest.placements:
             path = placement.path
-            if placement.kind is Kind.PRIVATE or placement.kind is Kind.CONTENT:
+            if placement.kind in (Kind.PRIVATE, Kind.CONTENT, Kind.REVIEW_COPY):
                 continue
             if any(index for _, index in path.items):
                 # The structure set's references to the other slices.
@@ -301,7 +303,13 @@ def test_values_read_back_and_are_valid_for_their_vr_and_vm(corpus):
     for file in corpus.files:
         reader = _Reader(file.data)
         for placement in file.manifest.placements:
-            if placement.kind in (Kind.NOT_PLANTED, Kind.PRIVATE, Kind.UN_ENCODED):
+            # The invalid UID marker is checked in its own test.
+            if placement.kind in (
+                Kind.NOT_PLANTED,
+                Kind.PRIVATE,
+                Kind.UN_ENCODED,
+                Kind.INVALID,
+            ):
                 continue
             attribute = standard.dictionary_attribute(placement.path.tag)
             element = reader.read(placement.path)
@@ -344,8 +352,8 @@ def test_the_reference_graph_has_no_findings(corpus):
     assert not graph.findings
     targets = {(edge.source, edge.target) for edge in graph.edges}
     # The structure set references every slice, the plan the structure set
-    # and the dose, and the dose the plan.
-    assert {(3, 0), (3, 1), (3, 2), (4, 3), (4, 5), (5, 4)} <= targets
+    # and the dose, and each dose the plan.
+    assert {(3, 0), (3, 1), (3, 2), (4, 3), (4, 5), (5, 4), (6, 4)} <= targets
 
 
 def test_one_instance_is_in_implicit_vr_and_the_rest_explicit(corpus):
@@ -477,7 +485,7 @@ def test_the_manifest_json_is_deterministic_and_matches_the_files(corpus):
                 assert path not in reader.evidence
                 assert record["reason"] and not record["values"]
                 continue
-            if record["kind"] in ("private", "un-encoded"):
+            if record["kind"] in ("private", "un-encoded", "invalid"):
                 field = reader.evidence.value_field(path)
                 assert field.rstrip(b"\x00 ").decode("ascii") == record["values"][0]
                 continue
@@ -624,3 +632,50 @@ def test_the_corpus_is_not_written_beside_an_existing_manifest(corpus, tmp_path)
 
     assert existing.read_text(encoding="utf-8") == "kept"
     assert [path.name for path in tmp_path.iterdir()] == [existing.name]
+
+
+def test_a_second_dose_keeps_a_copy_of_a_marker_the_profile_removes(corpus):
+    names = [file.name for file in corpus.files]
+    review = corpus.files[names.index(corpus_module.REVIEW_FILE)]
+    plan = corpus.files[names.index("05-rtplan.dcm")]
+    rows = {row.tag: row for row in standard.load_table_e1_1().attributes}
+
+    (copy,) = [p for p in review.manifest.placements if p.kind is Kind.REVIEW_COPY]
+    (label,) = [
+        p
+        for p in plan.manifest.placements
+        if p.path == ElementPath((), "(300A,0002)") and p.kind is Kind.PLANTED
+    ]
+    # Manufacturer's Model Name, which Table E.1-1 does not list, holds the
+    # plan's RT Plan Label, which the Basic Profile replaces.
+    assert copy.path == ElementPath((), "(0008,1090)")
+    assert copy.path.tag not in rows
+    assert rows["(300A,0002)"].basic_profile == "D"
+    assert copy.vr == "LO" and copy.values == label.values
+    assert copy.profile_tag == ""
+    assert [_as_text(v) for v in _Reader(review.data).read(copy.path).values] == list(
+        copy.values
+    )
+    # No other placement copies a marker.
+    assert [p for _, p in _placements(corpus, Kind.REVIEW_COPY)] == [copy]
+
+
+def test_one_uid_marker_is_invalid_for_its_vr(corpus):
+    names = [file.name for file in corpus.files]
+    plan = corpus.files[names.index("05-rtplan.dcm")]
+    rows = {row.tag: row for row in standard.load_table_e1_1().attributes}
+
+    (invalid,) = [p for _, p in _placements(corpus, Kind.INVALID)]
+    assert invalid in plan.manifest.placements
+    # Device UID, which the Basic Profile replaces.
+    assert invalid.path == ElementPath((), "(0018,1002)")
+    assert invalid.profile_tag == "(0018,1002)"
+    assert rows["(0018,1002)"].basic_profile == "U"
+    (value,) = invalid.values
+    assert re.fullmatch(r"2\.25\." + TEXT, value) and len(value) % 2 == 0
+    assert value_problem("UI", value) is not None
+    # The strict reader admits it, and pydicom finds it invalid and quotes it.
+    evidence = read_source(plan.data)
+    assert evidence.value_field(invalid.path).rstrip(b"\x00").decode() == value
+    with pytest.raises(ValueError, match=re.escape(value)):
+        pydicom.valuerep.validate_value("UI", value, pydicom.config.RAISE)
