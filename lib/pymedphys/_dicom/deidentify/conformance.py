@@ -42,9 +42,8 @@ writes it as CommonMark:
 
 What the statement cannot yet describe from the engine is listed in it, under
 "Not yet described" (:data:`PENDING`, and the items that apply only to
-some policies, such as :data:`PENDING_CLEANING` and
-:data:`PENDING_REMOVAL_EXTENT`), and a statement with such a list makes no
-conformance claim. A preset is to be enabled only once its statement is
+some policies, such as :data:`PENDING_CLEANING`), and a statement with such
+a list makes no conformance claim. A preset is to be enabled only once its statement is
 complete. The statement names tags, actions, and the engine's parameters,
 never a value from an instance.
 """
@@ -155,15 +154,6 @@ PENDING_SAFE_PRIVATE = (
 PENDING_BIRTH_DATES = (
     "The synthetic birth date that Z writes to Patient's Birth Date "
     "(0010,0030) in place of a zero-length value (D-008, D-021)."
-)
-# Pending only for a policy whose statement lists a place where D-020 removes
-# more than the attribute, which the walker does not yet plan.
-PENDING_REMOVAL_EXTENT = (
-    "Where an IOD requires an attribute to which the policy gives a plain X, "
-    "the removal with it of its enclosing sequence or its overlay group, or "
-    "the sequestration of the instance, that D-020 decides: the engine does "
-    "not yet apply these, and removes the attribute alone. The places listed "
-    "above show what D-020 decides."
 )
 _TPS_IMPORT = "tps-import"
 _CLEAN_DESCRIPTORS = "clean_descriptors"
@@ -637,11 +627,6 @@ def conformance_statement(
         rules = None
     attributes = tuple(_attributes(policy, rules))
     actions = {entry.action for entry in attributes}
-    extended = any(
-        place.action == SEQUESTER or place.removes
-        for entry in attributes
-        for place in entry.places
-    )
     pending = PENDING + tuple(
         item
         for item, applies in (
@@ -649,7 +634,6 @@ def conformance_statement(
             (PENDING_CLEANING, "C" in actions),
             (PENDING_SAFE_PRIVATE, "retain_safe_private" in policy.options),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
-            (PENDING_REMOVAL_EXTENT, extended),
         )
         if applies
     )
