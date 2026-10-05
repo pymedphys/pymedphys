@@ -43,6 +43,7 @@ a writer that copies each kept element from its source's bytes and encodes
 only what changes, the verification that a written file keeps each kept
 element as its source encodes it, a search of written files for the source
 values that had to be removed or replaced, the removal of private
-attributes, and the conformance
-statement generated from a policy.
+attributes, the conformance statement generated from a policy, and a
+synthetic collection with a marker in every attribute to be protected, for
+validating the presets end to end.
 """

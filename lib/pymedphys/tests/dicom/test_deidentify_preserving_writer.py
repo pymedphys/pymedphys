@@ -93,7 +93,7 @@ def _plan(explicit=True, character_set="ISO_IR 192"):
     control_point = _item(element(0x300A0112, "IS", b"0 "))
     first_beam = (
         element(0x300A00C0, "IS", b"1 ")
-        + element(0x300A00C2, "LO", b"SENTINEL ")
+        + element(0x300A00C2, "LO", b"SENTINEL")
         + element(0x300A0111, "SQ", control_point)  # defined lengths
     )
     beams = (

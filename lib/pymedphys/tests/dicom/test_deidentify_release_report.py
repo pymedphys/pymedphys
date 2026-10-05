@@ -16,8 +16,9 @@
 
 The sentinel tests put recognisable text where a report could leak it, in
 the path of the installed engine and in the vocabulary's entries, and check
-that the report holds none of it. The engine's files and tables are read once
-per process, so each test starts and ends with them unread.
+that the report holds none of it. Ordinary tests share the engine's files
+and tables, which are read once per process. Each synthetic engine uses its
+own directory, and cached reads are cleared at each module boundary.
 """
 
 import dataclasses
@@ -83,9 +84,9 @@ def _basic():
     return policy.compose_policy("basic")
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="module")
 def _read_again():
-    """Start and end each test with the engine's files and tables unread."""
+    """Start and end this module with the engine's files and tables unread."""
     # pylint: disable = protected-access
     method_digest._file_digests.cache_clear()
     method_digest._table_digests.cache_clear()
