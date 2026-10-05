@@ -126,6 +126,31 @@ def test_registered_uids_are_left_out_of_the_residual_search():
     assert result.registered_uids == (_path("(0008,0016)"),)
 
 
+@pytest.mark.parametrize(
+    "encoded, collected",
+    [
+        # Each registered UID of a multi-valued UI is left out, and the rest
+        # still searched for, whatever its padding.
+        (b"1.2.840.10008.5.1.4.1.1.2\\1.2.3.4\x00", "1.2.3.4"),
+        (b"1.2.840.10008.5.1.4.1.1.2\x00", None),
+    ],
+    ids=["mixed", "padded"],
+)
+def test_registered_uids_are_left_out_of_a_removed_value(encoded, collected):
+    path = _path("(0008,001A)")
+    _, result = _edits(_explicit(0x0008001A, "UI", encoded))
+    found = {value.source: value.value for value in result.source_values}
+
+    assert result.registered_uids == (path,)
+    assert found.get(path) == collected
+
+
+def test_an_empty_uid_value_is_not_registered():
+    _, result = _edits(_explicit(0x0008001A, "UI", b""))
+
+    assert not result.registered_uids
+
+
 def test_d_writes_the_dummy_value_and_the_second_where_the_source_equals_it():
     _, result = _edits()
     label = {edit.path: edit for edit in result.edits}[_path("(300A,0002)")]
