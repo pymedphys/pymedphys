@@ -1590,7 +1590,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 ## [0.19.0]
 
-### BreChanges
+### Breaking Changes
 
 - Made shapely an optional dependency once more. No longer depending on
   `shapely-helper`.
