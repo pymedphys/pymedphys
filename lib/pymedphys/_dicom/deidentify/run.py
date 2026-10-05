@@ -97,7 +97,7 @@ from collections.abc import Callable, Iterator
 from pathlib import Path, PurePosixPath
 from typing import TypeGuard
 
-from . import output_names, qc_store, release_report, run_qc
+from . import output_names, qc_store, release_report, run_qc, run_report
 from .diagnostics import redacted_diagnostics
 from .file_layout import Region, read_file_layout
 from .reference_graph import Finding, FindingKind, build_reference_graph
@@ -399,6 +399,7 @@ def run(
     gate: Gate,
     *,
     qc_destination: str | os.PathLike[str],
+    reporter: run_report.Reporter | None = None,
 ) -> RunResult:
     """De-identify the discovered inputs into a new release directory.
 
@@ -420,6 +421,13 @@ def run(
         staging area, as
         :func:`~pymedphys._dicom.deidentify.qc_store.check_confidential_destination`
         checks before anything is created. There is no default (D-016).
+    reporter : Reporter, optional
+        Given the outcomes, each with its label, and each input's QC
+        material, returns the release report's text, which the run publishes
+        as :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT` at
+        the root of the release, such as a
+        :class:`~pymedphys._dicom.deidentify.run_report.ReleaseReporter`.
+        Without one, no report is written.
 
     Returns
     -------
@@ -436,6 +444,10 @@ def run(
     ~pymedphys._dicom.deidentify.qc_pack.QcPackError
         If the QC destination is refused, or the pack cannot be built or
         written. Nothing is published.
+    ~pymedphys._dicom.deidentify.release_report.ReleaseReportError
+        If the release report has a field that could hold a value or a path,
+        or a reason that no stage of the report gives; or anything else the
+        reporter raises. Nothing is published, and no QC pack is written.
 
     Notes
     -----
@@ -449,16 +461,22 @@ def run(
     # quote them.
     with redacted_diagnostics():
         return _run(
-            discovery, Path(release).absolute(), transform, gate, qc_destination
+            discovery,
+            Path(release).absolute(),
+            transform,
+            gate,
+            qc_destination,
+            reporter,
         )
 
 
-def _run(
+def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
     discovery: Discovery,
     release_path: Path,
     transform: Transform,
     gate: Gate,
     qc_destination: str | os.PathLike[str],
+    reporter: run_report.Reporter | None,
 ) -> RunResult:
     staging = staging_path(release_path)
     _check_directories(discovery.source, release_path, staging)
@@ -484,6 +502,9 @@ def _run(
         outcomes, material = _stage_and_gate(discovery, first, staging, transform, gate)
         outcomes = _labelled(outcomes)
         pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
+        # Built before the pack is written, so that a report that cannot be
+        # built leaves no QC material behind.
+        report = None if reporter is None else reporter(outcomes, material)
         # The pack is written before the release is published, so that a
         # release never exists without its QC material.
         qc_pack = qc_store.write_qc_pack(
@@ -495,6 +516,10 @@ def _run(
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
         _remove_empty_directories(staged_release)
+        if report is not None:
+            _write_atomically(
+                staged_release / run_report.RELEASE_REPORT, report.encode("utf-8")
+            )
         if os.path.lexists(release_path):
             raise RunError(_RELEASE_EXISTS.format(release=release_path))
         os.rename(staged_release, release_path)

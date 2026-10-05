@@ -1,0 +1,162 @@
+# Copyright (C) 2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Tests of the release report that a run publishes with its release.
+
+Every input is synthetic.
+"""
+
+import json
+import os
+
+from pymedphys._imports import pytest
+
+from pymedphys._dicom.deidentify import qc_pack, release_report, run, run_qc
+from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._dicom.deidentify.instance_transform import (
+    InstanceTransform,
+    ReleaseGate,
+)
+from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.policy import compose_policy
+from pymedphys._dicom.deidentify.reference_graph import FindingKind
+from pymedphys._dicom.deidentify.residuals import (
+    Form,
+    NotSearched,
+    Omission,
+    ResidualSearch,
+    Unsearched,
+    UnsearchedReason,
+)
+from pymedphys._dicom.deidentify.run_report import (
+    RELEASE_REPORT,
+    ReleaseReporter,
+    coverage_records,
+)
+
+from . import _synthetic_references as synthetic
+from .test_deidentify_run import Gate, GateReason, Transform, _listing, _write
+
+# The run module's fixture, for a base directory short enough for Windows.
+from .test_deidentify_run import (  # noqa: F401  # pylint: disable = unused-import
+    _short_tmp_path,
+)
+
+KEY = DeidKey(bytes(range(32)))
+
+
+def _reporter():
+    return ReleaseReporter(compose_policy("basic"), vocabulary=None)
+
+
+def _run(tmp_path, transform, gate, reporter):
+    return run.run(
+        run.discover(tmp_path / "source"),
+        tmp_path / "release",
+        transform,
+        gate,
+        qc_destination=tmp_path / "qc",
+        reporter=reporter,
+    )
+
+
+@pytest.mark.pydicom
+def test_a_run_publishes_its_release_report_naming_no_value(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    transform = InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
+
+    result = _run(tmp_path, transform, ReleaseGate(), transform.reporter)
+
+    assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
+    text = (tmp_path / "release" / RELEASE_REPORT).read_text(encoding="utf-8")
+    document = json.loads(text)
+    assert document["format"] == release_report.FORMAT
+    assert document["policy"]["preset"] == "basic"
+    assert document["sequestered"] == []
+    reasons = {entry["reason"] for entry in document["search_coverage"]}
+    assert {"retained", "registered-uid"} <= reasons
+    for value in (synthetic.PATIENT_ID, synthetic.PATIENTS_NAME, str(tmp_path)):
+        assert value not in text
+
+
+@pytest.mark.pydicom
+def test_the_report_names_each_sequestered_input_by_its_label(tmp_path):
+    datasets = synthetic.collection()
+    conflicting = synthetic.ct_slice(0)
+    conflicting.SliceThickness = "2.5"
+    _write(tmp_path / "source", [*datasets, conflicting])
+
+    result = _run(tmp_path, Transform(), Gate(), _reporter())
+
+    labels = sorted(o.label for o in result.outcomes if o.label is not None)
+    document = json.loads((tmp_path / "release" / RELEASE_REPORT).read_text())
+    assert [entry["label"] for entry in document["sequestered"]] == labels
+    assert labels == ["S-0001", "S-0002"]
+    assert all(
+        entry["reasons"]
+        == [{"stage": "references", "code": FindingKind.CONFLICTING_INSTANCE.value}]
+        for entry in document["sequestered"]
+    )
+
+
+@pytest.mark.pydicom
+def test_a_report_that_cannot_be_written_publishes_nothing(tmp_path):
+    datasets = synthetic.collection()[:1]
+    _write(tmp_path / "source", datasets)
+    # No stage of the report gives the stand-in gate's reason.
+    gate = Gate(
+        {
+            b"OUTPUT " + datasets[0].SOPInstanceUID.encode(): run.Sequestered(
+                (GateReason.TEXT_FINDING,)
+            )
+        }
+    )
+
+    with pytest.raises((TypeError, ValueError)):
+        _run(tmp_path, Transform(), gate, _reporter())
+
+    assert _listing(tmp_path) == ["source"]
+
+
+@pytest.mark.pydicom
+def test_without_a_reporter_no_report_is_written(tmp_path):
+    _write(tmp_path / "source", synthetic.collection()[:1])
+
+    _run(tmp_path, Transform(), Gate(), None)
+
+    assert not os.path.lexists(tmp_path / "release" / RELEASE_REPORT)
+
+
+def test_coverage_records_follow_the_drops_and_the_search():
+    place = ElementPath((), "(0010,0010)")
+    omission = NotSearched(place, "PN", Form.VALUE, Omission.TOO_SHORT)
+    search = ResidualSearch((), (omission,), True)
+
+    records = coverage_records(
+        (
+            run_qc.Dropped(place, qc_pack.DropReason.WRITTEN_CONSTANT),
+            run_qc.SearchMaterial(search, b""),
+        )
+    )
+
+    assert records == [
+        Unsearched(place, UnsearchedReason.WRITTEN_CONSTANT),
+        omission,
+    ]
+
+
+def test_the_reporter_shows_nothing_and_refuses_a_policy_it_cannot_record():
+    assert repr(_reporter()) == "ReleaseReporter()"
+    with pytest.raises(TypeError):
+        ReleaseReporter("basic", vocabulary=None)

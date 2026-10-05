@@ -109,6 +109,7 @@ from .release_gate import (
 from .residuals import has_written_constant
 from .run import HoldForReview, Release, Sequestered, Transformed
 from .run_qc import Dropped, SearchMaterial
+from .run_report import ReleaseReporter
 from .scope import classify
 from .source import SourceEvidence, SourceRefused, read_source
 from .uids import UIDOutcome
@@ -538,6 +539,9 @@ class InstanceTransform:
     review_queue : ReviewQueue
         The distinct ROI Names that the run's instances held for review,
         for the confidential QC material; empty without ``cleaning``.
+    reporter : ~pymedphys._dicom.deidentify.run_report.ReleaseReporter
+        The release report of a run with this transform, under its policy
+        and vocabulary, for :func:`~pymedphys._dicom.deidentify.run.run`.
 
     Notes
     -----
@@ -592,6 +596,9 @@ class InstanceTransform:
             ),
         }
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
+        self.reporter = ReleaseReporter(
+            policy, vocabulary=None if cleaning is None else cleaning.nomenclature
+        )
 
     def __repr__(self) -> str:
         return "InstanceTransform()"
