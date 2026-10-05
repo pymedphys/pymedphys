@@ -22,7 +22,14 @@ import os
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import qc_pack, release_report, run, run_qc
+from pymedphys._dicom.deidentify import (
+    output_names,
+    qc_pack,
+    release_gate,
+    release_report,
+    run,
+    run_qc,
+)
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
@@ -40,9 +47,11 @@ from pymedphys._dicom.deidentify.residuals import (
     UnsearchedReason,
 )
 from pymedphys._dicom.deidentify.run_report import (
+    HELD_FOR_REVIEW,
     RELEASE_REPORT,
     ReleaseReporter,
     coverage_records,
+    held_instances,
 )
 
 from . import _synthetic_references as synthetic
@@ -160,3 +169,54 @@ def test_the_reporter_shows_nothing_and_refuses_a_policy_it_cannot_record():
     assert repr(_reporter()) == "ReleaseReporter()"
     with pytest.raises(TypeError):
         ReleaseReporter("basic", vocabulary=None)
+
+
+@pytest.mark.pydicom
+def test_the_report_counts_held_inputs_by_reason_without_naming_them(tmp_path):
+    datasets = synthetic.collection()[:2]
+    _write(tmp_path / "source", datasets)
+    review = release_gate.ReleaseReason(
+        release_gate.Decision.QC_REVIEW,
+        release_gate.ReasonCode.READ_AS_LATIN_1,
+        ElementPath((), "(0008,103E)"),
+    )
+    gate = Gate(
+        {
+            b"OUTPUT " + each.SOPInstanceUID.encode(): run.HoldForReview((review,))
+            for each in datasets
+        }
+    )
+
+    result = _run(tmp_path, Transform(), gate, _reporter())
+
+    assert [o.status for o in result.outcomes] == [run.Status.HELD_FOR_REVIEW] * 2
+    document = json.loads((tmp_path / "release" / RELEASE_REPORT).read_text())
+    assert document["sequestered"] == []
+    assert document["held_for_review"] == [
+        {"stage": "release", "code": "read-as-latin-1", "count": 2}
+    ]
+
+
+def test_only_held_outcomes_are_counted():
+    review = release_gate.ReleaseReason(
+        release_gate.Decision.QC_REVIEW, release_gate.ReasonCode.UNCOLLECTED
+    )
+    outcomes = [
+        run.Outcome(0, run.Status.HELD_FOR_REVIEW, (review,)),
+        run.Outcome(1, run.Status.SEQUESTERED, (review,)),
+        run.Outcome(2, run.Status.RELEASED),
+    ]
+
+    assert held_instances(outcomes) == (
+        release_report.HeldForReview("release", "uncollected", 1),
+    )
+    assert run.Status.HELD_FOR_REVIEW.value == HELD_FOR_REVIEW
+
+
+@pytest.mark.parametrize("name", [RELEASE_REPORT, RELEASE_REPORT.upper()])
+def test_no_output_name_is_the_release_report(name):
+    # The first part of every output's path is a pseudonymous Patient ID, so
+    # even a file system that ignores case cannot confuse one with the report.
+    pattern = output_names._PATIENT_ID  # pylint: disable = protected-access
+    assert pattern.fullmatch(name) is None
+    assert pattern.fullmatch(name.casefold()) is None

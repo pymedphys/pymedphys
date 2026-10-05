@@ -102,6 +102,7 @@ from .diagnostics import redacted_diagnostics
 from .file_layout import Region, read_file_layout
 from .reference_graph import Finding, FindingKind, build_reference_graph
 from .references import InstanceRecord, UnreadableSequence
+from .reasons import RunReason
 from .run_results import (
     Gate,
     HoldForReview,
@@ -163,26 +164,6 @@ class Status(enum.Enum):
     HELD_FOR_REVIEW = "held-for-review"  # withheld until it is reviewed
     SEQUESTERED = "sequestered"  # withheld from the release
     REFUSED = "refused"  # not an instance that the run can read
-
-
-class RunReason(enum.Enum):
-    """Why the run itself refused or sequestered an input."""
-
-    # discovery
-    SYMBOLIC_LINK = "symbolic-link"  # or another link, such as a junction
-    NOT_A_REGULAR_FILE = "not-a-regular-file"
-    DICOMDIR = "dicomdir"
-    # the first pass
-    UNREADABLE_FILE = "unreadable-file"  # the operating system cannot read it
-    NOT_READABLE_AS_DICOM = "not-readable-as-dicom"
-    UNREADABLE_SEQUENCE = "unreadable-sequence"
-    # the second pass and after
-    CHANGED_DURING_RUN = "changed-during-run"
-    INVALID_OUTPUT_NAME = "invalid-output-name"
-    SHARED_OUTPUT_NAME = "shared-output-name"
-    STAGED_FILE_CHANGED = "staged-file-changed"
-    INVALID_REASON = "invalid-reason"
-    INTERNAL_ERROR = "internal-error"
 
 
 # The first pass's findings that sequester the inputs that they name.

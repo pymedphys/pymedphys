@@ -64,7 +64,6 @@ from __future__ import annotations
 
 import copy
 import dataclasses
-import enum
 from collections.abc import Callable, Mapping
 from pathlib import PurePosixPath
 
@@ -97,6 +96,7 @@ from .policy import DEFAULT_PRESET, Policy, PolicyError, select_policy
 from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
+from .reasons import TransformReason
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
 from .release_gate import (
@@ -120,22 +120,6 @@ _SOP_INSTANCE = ElementPath((), "(0008,0018)")
 _STUDY = ElementPath((), "(0020,000D)")
 _SERIES = ElementPath((), "(0020,000E)")
 _PATIENT_ID = ElementPath((), "(0010,0020)")
-
-
-class TransformReason(enum.Enum):
-    """Why the transform sequesters an instance, where no step's own reason does."""
-
-    # an emptied or replaced element without a VR to write it with, or whose
-    # new value does not fit it
-    UNWRITABLE_ELEMENT = "unwritable-element"
-    # no replacement Patient ID, Study, Series, or SOP Instance UID to name
-    # the output by (D-016)
-    UNNAMED_OUTPUT = "unnamed-output"
-    # the output file cannot be read back as a source file
-    UNREADABLE_OUTPUT = "unreadable-output"
-    # the de-identification markers cannot be added to what the instance
-    # already holds, such as a marker attribute read as UN (PS3.15 E.1.1)
-    UNMARKABLE = "unmarkable"
 
 
 @dataclasses.dataclass(frozen=True)

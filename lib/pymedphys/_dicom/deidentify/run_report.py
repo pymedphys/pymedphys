@@ -19,9 +19,9 @@ material that the transform and gate gave for it, and writes the text that
 the reporter returns as :data:`RELEASE_REPORT` at the root of the release,
 before it publishes it. :class:`ReleaseReporter` builds the report of
 :mod:`~pymedphys._dicom.deidentify.release_report` from them: each
-sequestered input by its label and reasons (D-026), and how many source
-values each gated file's residual search did not search, by attribute and
-reason (D-027). The report holds no source value or path (D-016), and
+sequestered input by its label and reasons (D-026), how many inputs were
+held for review by reason (D-009), and how many source values each gated
+file's residual search did not search, by attribute and reason (D-027). The report holds no source value or path (D-016), and
 :func:`~pymedphys._dicom.deidentify.release_report.to_json` refuses any
 field that could hold one.
 """
@@ -41,6 +41,9 @@ from .run_qc import Dropped, SearchMaterial
 # The release report's name at the root of a release. Output names are
 # upper case, so it cannot be one.
 RELEASE_REPORT = "release-report.json"
+# The status of an outcome held for review, which this module reads without
+# importing the run.
+HELD_FOR_REVIEW = "held-for-review"
 
 
 class Reporter(Protocol):
@@ -85,6 +88,7 @@ class ReleaseReporter:
             self._policy,
             vocabulary=self._vocabulary,
             sequestered=sequestered_instances(outcomes),
+            held=held_instances(outcomes),
             coverage=release_report.search_coverage(
                 coverage_records(material[position]) for position in sorted(material)
             ),
@@ -114,6 +118,24 @@ def sequestered_instances(
         )
         for outcome in outcomes
         if getattr(outcome, "label") is not None
+    )
+
+
+def held_instances(
+    outcomes: Sequence[object],
+) -> tuple[release_report.HeldForReview, ...]:
+    """Count the outcomes held for review by stage and reason (D-009).
+
+    Raises
+    ------
+    TypeError
+        For a held outcome's reason that is neither a held ROI Name nor a
+        release gate's reason.
+    """
+    return release_report.held_for_review(
+        getattr(outcome, "reasons")
+        for outcome in outcomes
+        if getattr(outcome, "status").value == HELD_FOR_REVIEW
     )
 
 
