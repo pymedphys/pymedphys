@@ -148,10 +148,14 @@ def test_clean_writes_no_requirements_matrix_page():
     assert not docs.DEID_MATRIX_PAGE.exists()
 
 
-def test_the_requirements_matrix_page_is_listed_and_not_committed():
+def test_the_requirements_matrix_page_is_linked_and_not_committed():
     page = docs.DEID_MATRIX_PAGE
     assert page.parent == docs.DOCS_PATH / "contrib" / "info"
-    toctree = (page.parent / "index.md").read_text(encoding="utf-8")
-    assert f"\ndeidentification-design\n{page.stem}\n" in toctree
+    landing = (
+        docs.DOCS_PATH / "contrib" / "design" / "deidentification" / "requirements.md"
+    ).read_text(encoding="utf-8")
+    published_path = page.relative_to(docs.DOCS_PATH).with_suffix(".html").as_posix()
+    assert f"](https://docs.pymedphys.com/en/latest/{published_path})" in landing
+    assert f"\n../../info/{page.stem}\n" in landing
     ignored = (docs.DOCS_PATH / ".gitignore").read_text(encoding="utf-8")
     assert page.relative_to(docs.DOCS_PATH).as_posix() in ignored.splitlines()

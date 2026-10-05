@@ -12,6 +12,16 @@ This project adheres to
 
 ## Unreleased
 
+### Documentation design and evidence catalogues
+
+The DICOM de-identification design now has separate overview, specification,
+decision, requirements, and contributor pages. Scientific evidence has a
+catalogue that distinguishes recorded gamma experiments from procedures for
+new measurements. Existing documentation URLs and design decision anchors
+remain available. Installed-package checks require the canonical decision
+record so the requirements tests work from both distributions.
+([#2247](https://github.com/pymedphys/pymedphys/pull/2247))
+
 ### Corrected DICOM RT Dose coordinates
 
 Corrected patient coordinates and dose ordering for non-HFS orientations and

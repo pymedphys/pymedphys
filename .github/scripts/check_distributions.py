@@ -66,6 +66,8 @@ REQUIRED_PACKAGE_FILES = (
     "_version.py",
     "_data/hashes.json",
     "_data/urls.json",
+    "docs/contrib/info/deidentification-design.md",
+    "docs/contrib/design/deidentification/decisions.md",
 )
 # The docs preparation command copies these three root-level documents.
 REQUIRED_SDIST_FILES = (
