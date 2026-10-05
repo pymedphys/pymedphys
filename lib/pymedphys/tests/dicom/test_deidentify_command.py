@@ -23,12 +23,20 @@ import tempfile
 import warnings
 from pathlib import Path, PurePosixPath
 
-from pymedphys._dicom.deidentify import command, diagnostics, run
-from pymedphys._dicom.deidentify.reference_graph import Finding, FindingKind
 from pymedphys._imports import pytest
 
+from pymedphys._dicom.deidentify import command, diagnostics, run
+from pymedphys._dicom.deidentify.reference_graph import Finding, FindingKind
+
 from . import _synthetic_references as synthetic
-from .test_deidentify_run import SENTINEL, Gate, GateReason, Transform, _output, _write
+from .test_deidentify_run import (
+    SENTINEL,
+    Gate,
+    GateReason,
+    Transform,
+    _output,
+    _write,
+)
 
 
 @pytest.fixture(name="tmp_path")
@@ -149,6 +157,26 @@ def test_an_existing_release_directory_exits_three(tmp_path):
 
     assert status == command.EXIT_NOT_RUN
     assert "already exists" in err
+
+
+def test_a_refused_qc_destination_exits_three_naming_its_check(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    stdout, stderr = io.StringIO(), io.StringIO()
+
+    status = command.deidentify_directory(
+        tmp_path / "source",
+        tmp_path / "release",
+        transform=Transform(),
+        gate=Gate(),
+        qc_destination=tmp_path / "release" / "qc",
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert status == command.EXIT_NOT_RUN
+    assert stderr.getvalue().startswith("error: ")
+    assert "details are not shown" not in stderr.getvalue()
+    assert not (tmp_path / "release").exists()
 
 
 def test_a_stopped_run_exits_three_and_writes_nothing(tmp_path):

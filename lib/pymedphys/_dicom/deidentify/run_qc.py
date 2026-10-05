@@ -125,7 +125,8 @@ def qc_pack_of(
         If an item of material is none of this module's types.
     """
     instances = tuple(
-        _instance(outcome, source) for outcome, source in zip(outcomes, sources)
+        _instance(outcome, source)
+        for outcome, source in zip(outcomes, sources, strict=True)
     )
     findings: list[qc_pack.ResidualEntry] = []
     omissions: list[qc_pack.NotSearchedEntry] = []

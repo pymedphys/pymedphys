@@ -29,7 +29,7 @@ public; nothing registers it yet.
 
 The summary and every message name inputs only by count, reasons only by
 their type and member name, and directories only where the caller chose
-them: the release directory and its staging area. A failure that the run
+them: the release directory, its staging area, and the QC destination. A failure that the run
 does not expect is reported by its exception's type alone, since its
 message could quote a value.
 
@@ -41,8 +41,9 @@ Exit statuses:
   input was refused, sequestered, or held for review;
 - :data:`EXIT_USAGE`, 2: the arguments could not be parsed, as for any
   :mod:`argparse` command, though the message quotes none of them;
-- :data:`EXIT_NOT_RUN`, 3: the run could not start, or the first pass
-  stopped it, and nothing was published;
+- :data:`EXIT_NOT_RUN`, 3: the run could not start, the first pass
+  stopped it, or its QC pack could not be written, and nothing was
+  published;
 - :data:`EXIT_STAGING_LEFT`, 4: the staging area could not be deleted, and
   may hold output that still identifies people, whatever else happened;
 - :data:`EXIT_INTERNAL_ERROR`, 70: anything else failed, and nothing was
@@ -61,6 +62,7 @@ from pathlib import Path
 from typing import NoReturn, TextIO
 
 from . import run
+from .qc_pack import QcPackError
 from .diagnostics import RedactionCounts, redacted_diagnostics
 
 EXIT_RELEASED = 0
@@ -124,8 +126,9 @@ def deidentify_directory(
                 gate,
                 qc_destination=qc_destination,
             )
-        except (run.RunError, run.RunStopped) as error:
-            # Each names only the caller's directories, or counts.
+        except (run.RunError, run.RunStopped, QcPackError) as error:
+            # Each names only the caller's directories, counts, or the
+            # check of the QC destination that failed.
             _print(f"error: {error}", stderr)
             return _left_behind(staging, earlier_staging, stderr) or EXIT_NOT_RUN
         except Exception as error:  # pylint: disable = broad-exception-caught

@@ -430,12 +430,19 @@ def run(
     RunError
         If the release directory or its staging area exists, the release
         directory would be inside the source directory, or, on Windows, its
-        files' paths could be too long.
+        files' paths could be too long; or if the release could not be
+        published and its QC pack could not be removed, naming the QC
+        destination. Otherwise, the error that stopped the publication is
+        raised once the pack is removed.
     RunStopped
         If a study's instances name several patients. Nothing is created.
     ~pymedphys._dicom.deidentify.qc_pack.QcPackError
         If the QC destination is refused, or the pack cannot be built or
         written. Nothing is published.
+    TypeError
+        If a transform's or gate's QC material is not a tuple of the
+        material types of :mod:`~pymedphys._dicom.deidentify.run_qc`.
+        Nothing is published.
 
     Notes
     -----
@@ -484,6 +491,11 @@ def _run(
         outcomes, material = _stage_and_gate(discovery, first, staging, transform, gate)
         outcomes = _labelled(outcomes)
         pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
+        staged_release = staging / _STAGED_RELEASE
+        staged_release.mkdir(exist_ok=True, mode=0o700)
+        _remove_empty_directories(staged_release)
+        if os.path.lexists(release_path):
+            raise RunError(_RELEASE_EXISTS.format(release=release_path))
         # The pack is written before the release is published, so that a
         # release never exists without its QC material.
         qc_pack = qc_store.write_qc_pack(
@@ -492,16 +504,32 @@ def _run(
             release_directory=release_path,
             staging_directory=staging,
         )
-        staged_release = staging / _STAGED_RELEASE
-        staged_release.mkdir(exist_ok=True, mode=0o700)
-        _remove_empty_directories(staged_release)
-        if os.path.lexists(release_path):
-            raise RunError(_RELEASE_EXISTS.format(release=release_path))
-        os.rename(staged_release, release_path)
+        try:
+            os.rename(staged_release, release_path)
+        except OSError:
+            # Nor does a pack outlive a release that was not published.
+            if not _withdrawn(qc_pack):
+                raise RunError(_PACK_LEFT.format(destination=qc_pack.parent)) from None
+            raise
         _sync_directory(release_path.parent)
     finally:
         removed = _remove(staging)
     return RunResult(release_path, outcomes, first.findings, removed, qc_pack)
+
+
+def _withdrawn(pack: Path) -> bool:
+    """Remove the files that a run wrote for a pack it did not publish.
+
+    Return whether they are all gone. The destination directory is kept,
+    empty, so that a run may write to it again.
+    """
+    withdrawn = True
+    for name in (qc_store.NOTICE_FILE, qc_store.PACK_FILE, qc_store.MARKER_FILE):
+        try:
+            (pack.parent / name).unlink(missing_ok=True)
+        except OSError:
+            withdrawn = False
+    return withdrawn
 
 
 def _remove_empty_directories(root: Path) -> None:
@@ -533,6 +561,11 @@ def _labelled(outcomes: tuple[Outcome, ...]) -> tuple[Outcome, ...]:
 
 
 _RELEASE_EXISTS = "the release directory {release} already exists"
+_PACK_LEFT = (
+    "the release could not be published, and the QC pack in {destination} "
+    "could not be removed; it holds source paths and values, so delete it "
+    "before running again"
+)
 _STAGING_EXISTS = (
     "the staging area {staging} already exists, perhaps from a run that was "
     "interrupted; it may hold output that still identifies people, so review "
@@ -818,8 +851,10 @@ def _material(result: object) -> tuple[object, ...]:
     """Return the QC material that a transform's or gate's result carries."""
     if isinstance(result, (Transformed, Sequestered, HoldForReview, Release)):
         qc = result.qc
-        if isinstance(qc, tuple):
-            return qc
+        if not isinstance(qc, tuple):
+            # Material a reviewer needs is never dropped unseen.
+            raise TypeError("QC material must be a tuple")
+        return qc
     return ()
 
 

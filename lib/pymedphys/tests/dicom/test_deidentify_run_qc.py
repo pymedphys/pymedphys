@@ -140,15 +140,16 @@ def test_qc_material_is_kept_for_a_file_withheld_after_staging(tmp_path):
 
 
 @pytest.mark.pydicom
-def test_material_that_is_not_a_tuple_is_ignored(tmp_path):
+def test_material_that_is_not_a_tuple_publishes_nothing(tmp_path):
     _write(tmp_path / "source", synthetic.collection()[:1])
 
     def gate(*_):
         return run.Release(qc=[run_qc.Dropped(ElementPath((), "(0010,0010)"), None)])
 
-    _, result = _run(tmp_path, gate=gate)
+    with pytest.raises(TypeError):
+        _run(tmp_path, gate=gate)
 
-    assert _pack(result)["drops"] == []
+    assert _listing(tmp_path) == ["source"]
 
 
 @pytest.mark.pydicom
@@ -186,7 +187,7 @@ def test_a_qc_destination_in_the_release_or_staging_is_refused_first(
 
 
 @pytest.mark.pydicom
-def test_a_pack_that_cannot_be_written_publishes_nothing(tmp_path):
+def test_a_qc_destination_that_is_not_empty_is_refused(tmp_path):
     _write(tmp_path / "source", synthetic.collection()[:1])
     (tmp_path / "qc").mkdir()
     (tmp_path / "qc" / "earlier").write_text("not empty")
@@ -196,6 +197,81 @@ def test_a_pack_that_cannot_be_written_publishes_nothing(tmp_path):
 
     assert not os.path.lexists(tmp_path / "release")
     assert not os.path.lexists(tmp_path / ".release.staging")
+
+
+@pytest.mark.pydicom
+def test_a_pack_that_cannot_be_written_publishes_nothing(tmp_path, monkeypatch):
+    _write(tmp_path / "source", synthetic.collection()[:1])
+    written = []
+
+    def write_qc_pack(*_args, **_kwargs):
+        # Fails once the run has staged and gated its files.
+        written.append(os.listdir(tmp_path / ".release.staging"))
+        raise qc_pack.QcPackError("the QC pack could not be written")
+
+    monkeypatch.setattr(qc_store, "write_qc_pack", write_qc_pack)
+
+    with pytest.raises(qc_pack.QcPackError):
+        _run(tmp_path)
+
+    assert written and written[0]
+    assert _listing(tmp_path) == ["source"]
+
+
+@pytest.mark.pydicom
+def test_a_release_that_appears_before_the_pack_is_written_gets_no_pack(
+    tmp_path, monkeypatch
+):
+    _write(tmp_path / "source", synthetic.collection()[:1])
+    prune = run._remove_empty_directories  # pylint: disable = protected-access
+
+    def remove_empty_directories(root):
+        prune(root)
+        (tmp_path / "release").mkdir()
+
+    monkeypatch.setattr(run, "_remove_empty_directories", remove_empty_directories)
+
+    with pytest.raises(run.RunError, match="already exists"):
+        _run(tmp_path)
+
+    assert _listing(tmp_path) == ["release", "source"]
+    assert not os.listdir(tmp_path / "release")
+
+
+@pytest.mark.pydicom
+def test_a_pack_is_withdrawn_when_its_release_is_not_published(tmp_path, monkeypatch):
+    _write(tmp_path / "source", synthetic.collection()[:1])
+
+    def rename(*_):
+        raise PermissionError("synthetic refusal")
+
+    monkeypatch.setattr(run.os, "rename", rename)
+
+    with pytest.raises(PermissionError):
+        _run(tmp_path)
+
+    assert _listing(tmp_path) == ["qc", "source"]
+    assert not os.listdir(tmp_path / "qc")
+
+
+@pytest.mark.pydicom
+def test_a_pack_that_cannot_be_withdrawn_is_named(tmp_path, monkeypatch):
+    _write(tmp_path / "source", synthetic.collection()[:1])
+
+    def rename(*_):
+        raise PermissionError("synthetic refusal")
+
+    def unlink(*_args, **_kwargs):
+        raise PermissionError("synthetic refusal")
+
+    monkeypatch.setattr(run.os, "rename", rename)
+    with monkeypatch.context() as patched:
+        with pytest.raises(run.RunError, match="could not be removed") as raised:
+            patched.setattr(run.Path, "unlink", unlink)
+            _run(tmp_path)
+
+    assert str(tmp_path / "qc") in str(raised.value)
+    assert (tmp_path / "qc" / qc_store.PACK_FILE).is_file()
 
 
 def test_reasons_are_written_as_text_naming_no_value():
