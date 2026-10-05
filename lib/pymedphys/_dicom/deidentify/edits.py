@@ -240,31 +240,43 @@ class _Sequester(Exception):
 class _Reader:
     """Read planned values against the source, through the items that hold them.
 
-    Each sequence is read once, however many of its items are reached. The
-    data set's own character set is resolved when it is first needed, by
-    :meth:`check_character_set` or a read, so that a reader can be made, and
-    the values in items with a supported character set read, even where the
-    data set's is not supported.
+    The source is read once, and each sequence once, however many of its
+    items are reached. Each data set's character set is resolved when it is
+    first reached, by :meth:`check_character_set` or a read. Where it is not
+    supported, the data set's structure is still followed, but its text, and
+    that of each item that inherits its character set, cannot be read; an item
+    with a supported character set of its own (PS3.5 Section 7.5.3) is read in
+    it, so that its values can be collected even where the data set's cannot.
     """
 
     def __init__(self, source: SourceEvidence, plan: InstancePlan) -> None:
         self._source = source
         self._planned = {element.path: element for element in plan.elements}
         self._sequences: dict[ElementPath, ElementValue] = {}
+        # Each data set by its items: it, its ancestors, and its codecs, or
+        # why they cannot be resolved.
         self._holders: dict[tuple, tuple] = {}
 
     def check_character_set(self) -> None:
         """Resolve the data set's own character set."""
-        self._holder(())
+        self._codecs_at(())
 
-    def _codecs(self, dataset, items, inherited=elements.DEFAULT_CODECS):
+    def _codecs(self, dataset, items, inherited):
+        """Return a data set's codecs, or why they are not supported."""
+        if isinstance(inherited, _Sequester) and 0x00080005 not in dataset:
+            return inherited
         try:
             return elements.dataset_codecs(
-                dataset, inherited, items, source=self._source
+                dataset,
+                elements.DEFAULT_CODECS
+                if isinstance(inherited, _Sequester)
+                else inherited,
+                items,
+                source=self._source,
             )
         except UndecodableElement as error:
             planned = self._planned.get(error.path)
-            raise _Sequester(
+            return _Sequester(
                 Sequestration(
                     error.path,
                     planned.action if planned is not None else "K",
@@ -272,12 +284,22 @@ class _Reader:
                     SequesterReason.UNSUPPORTED_CHARACTER_SET,
                 ),
                 "is in a data set whose Specific Character Set is not supported",
-            ) from None
+            )
+
+    def _codecs_at(self, items: tuple) -> tuple[str, ...]:
+        """Return the codecs of the data set at ``items``, if supported."""
+        codecs: tuple[str, ...] | _Sequester = self._holder(items)[2]
+        if isinstance(codecs, _Sequester):
+            raise _Sequester(codecs.sequestration, codecs.not_read)
+        return codecs
 
     def sequence(self, path: ElementPath) -> ElementValue:
         """Return a sequence, read once, with its items."""
         if path not in self._sequences:
             dataset, ancestors, codecs = self._holder(path.items)
+            # A sequence's items are found without decoding any text in them.
+            if isinstance(codecs, _Sequester):
+                codecs = elements.DEFAULT_CODECS
             self._sequences[path] = elements.read_element(
                 dataset, path, codecs, ancestors, source=self._source
             )
@@ -285,28 +307,31 @@ class _Reader:
 
     def _holder(self, items: tuple) -> tuple:
         """Return the data set at ``items``, its ancestors, and its codecs."""
-        if not items and items not in self._holders:
-            root = self._source.dataset()
-            self._holders[()] = (root, (), self._codecs(root, ()))
         if items not in self._holders:
-            dataset, ancestors, codecs = self._holder(items[:-1])
-            tag, index = items[-1]
-            item = self.sequence(ElementPath(items[:-1], tag)).items[index]
-            self._holders[items] = (
-                item,
-                (dataset, *ancestors),
-                self._codecs(item, items, codecs),
-            )
+            if not items:
+                root = self._source.dataset()
+                codecs = self._codecs(root, (), elements.DEFAULT_CODECS)
+                self._holders[()] = (root, (), codecs)
+            else:
+                dataset, ancestors, inherited = self._holder(items[:-1])
+                tag, index = items[-1]
+                item = self.sequence(ElementPath(items[:-1], tag)).items[index]
+                self._holders[items] = (
+                    item,
+                    (dataset, *ancestors),
+                    self._codecs(item, items, inherited),
+                )
         return self._holders[items]
 
     def check_items(self, path: ElementPath) -> None:
         """Read a sequence's items and resolve each one's character set."""
         for index, _ in enumerate(self.sequence(path).items):
-            self._holder((*path.items, (path.tag, index)))
+            self._codecs_at((*path.items, (path.tag, index)))
 
     def read(self, path: ElementPath, latin_1: bool = False) -> ElementValue:
         """Read a value against the source, in its data set's character set."""
-        dataset, ancestors, codecs = self._holder(path.items)
+        codecs = self._codecs_at(path.items)
+        dataset, ancestors, _ = self._holder(path.items)
         return elements.read_element(
             dataset,
             path,

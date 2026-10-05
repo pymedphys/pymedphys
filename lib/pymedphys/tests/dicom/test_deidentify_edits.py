@@ -351,6 +351,57 @@ def test_an_unsupported_character_set_sequesters_the_instance():
     assert "SENTINEL" not in "".join(m.reason for m in result.not_collected)
 
 
+def test_an_item_with_its_own_character_set_is_read_under_an_unsupported_one(
+    monkeypatch,
+):
+    # An item's own Specific Character Set replaces the one it would inherit
+    # (PS3.5 Section 7.5.3), so its text can be read where the data set's
+    # cannot.
+    data_set = (
+        _explicit(0x00080005, "CS", b"ISO_IR 999")
+        + _explicit(0x00100010, "PN", b"SENTINEL^NAME ")
+        + _explicit(
+            0x00101002,
+            "SQ",
+            _item(
+                _explicit(0x00080005, "CS", b"ISO_IR 192")
+                + _explicit(0x00100020, "LO", b"SENTINEL ID ")
+            )
+            + _item(_explicit(0x00100020, "LO", b"SENTINEL ID 2 ")),
+        )
+        + _explicit(0x00101040, "LO", b"SENTINEL ADDRESS ")
+    )
+    evidence = source.read_source(_file(EXPLICIT, data_set))
+    plan = walker.plan_instance(evidence, _rules(), _rt_plan())
+    reads = []
+    original = source.SourceEvidence.dataset
+
+    def counted(self):
+        reads.append(self)
+        return original(self)
+
+    monkeypatch.setattr(source.SourceEvidence, "dataset", counted)
+    result = edits.edit_instance(evidence, plan, KEY)
+
+    (sequestration,) = result.sequestrations
+    assert sequestration.path == _path("(0008,0005)")
+    assert sequestration.reason is walker.SequesterReason.UNSUPPORTED_CHARACTER_SET
+    assert not result.edits
+    assert _collected(result) == {
+        _path(("(0010,1002)", 0), "(0008,0005)"): ("CS", "ISO_IR 192"),
+        _path(("(0010,1002)", 0), "(0010,0020)"): ("LO", "SENTINEL ID"),
+    }
+    # Text that inherits the unsupported character set is not read.
+    assert [missing.path for missing in result.not_collected] == [
+        _path("(0010,0010)"),
+        _path(("(0010,1002)", 1), "(0010,0020)"),
+        _path("(0010,1040)"),
+    ]
+    assert "SENTINEL" not in "".join(m.reason for m in result.not_collected)
+    # The source is read once, however many values cannot be.
+    assert len(reads) == 1
+
+
 def test_a_sequestered_plan_is_not_edited():
     plan, result = _edits(_explicit(0x300A00B0, "OB", b"SENTINEL"))
 
