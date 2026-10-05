@@ -16,12 +16,14 @@
 
 import collections
 import copy
+import os
 import re
 import subprocess
 import sys
 
 from pymedphys._imports import pytest, tomlkit
 
+from pymedphys import conftest
 from pymedphys._dicom.deidentify import requirements, standard
 from pymedphys._root import LIBRARY_ROOT
 
@@ -193,16 +195,17 @@ class Helper:
 """
 
 
-def _uncollected(node_ids, root):
+def _uncollected(node_ids, root, *, collected=None):
     """Return the node ids under ``root`` that pytest does not collect as tests.
 
-    pytest stops collecting at the first node id it cannot find, so each cited
-    module is collected whole and the ids are matched against its items. An id
-    for a parametrised function covers each of its cases.
+    Exact matches in the session's collection need no second collection.
+    Missing references collect their modules whole: pytest stops at the first
+    explicit node id it cannot find. An id for a parametrised function covers
+    each of its cases. Collection errors cannot count as successful evidence.
     """
-    paths = {node_id.split("::")[0] for node_id in node_ids}
+    collected = set(collected or ())
+    paths = {node_id.split("::")[0] for node_id in node_ids if node_id not in collected}
     modules = sorted(path for path in paths if (root / path).is_file())
-    collected = set()
     if modules:
         result = subprocess.run(
             [
@@ -217,12 +220,18 @@ def _uncollected(node_ids, root):
                 *modules,
             ],
             cwd=root,
+            env={**os.environ, "PYTEST_ADDOPTS": ""},
             capture_output=True,
             text=True,
             timeout=300,
             check=False,
         )
-        collected = {line.split("[")[0] for line in result.stdout.splitlines()}
+        if result.returncode:
+            raise AssertionError(
+                "pytest could not collect the traced modules "
+                f"(exit {result.returncode}):\n{result.stdout}{result.stderr}"
+            )
+        collected.update(line.split("[")[0] for line in result.stdout.splitlines())
     return [node_id for node_id in node_ids if node_id not in collected]
 
 
@@ -245,10 +254,114 @@ def test_only_node_ids_that_pytest_collects_count_as_tests(tmp_path):
     assert _uncollected(collected + not_tests, tmp_path) == not_tests
 
 
-def test_pytest_collects_each_traced_test(register):
+def test_exact_session_matches_need_no_second_collection(tmp_path, monkeypatch):
+    module = tmp_path / "test_sample.py"
+    module.write_text(SAMPLE_TESTS, encoding="utf-8")
+    node_id = "test_sample.py::test_parametrised"
+
+    def unexpected_collection(*_args, **_kwargs):
+        raise AssertionError("an already collected test was collected again")
+
+    monkeypatch.setattr(subprocess, "run", unexpected_collection)
+
+    assert _uncollected([node_id], tmp_path, collected={node_id}) == []
+
+
+def test_missing_references_collect_whole_modules_without_inherited_selection(
+    tmp_path, monkeypatch
+):
+    for name in ("test_first.py", "test_second.py"):
+        (tmp_path / name).write_text(SAMPLE_TESTS, encoding="utf-8")
+    known = "test_first.py::test_plain"
+    found = "test_second.py::test_parametrised"
+    missing = "test_first.py::test_plain_missing"
+    monkeypatch.setenv("PYTEST_ADDOPTS", "-m pydicom -k absent -n 2")
+    calls = []
+
+    def collect(arguments, **kwargs):
+        calls.append((arguments, kwargs))
+        return subprocess.CompletedProcess(
+            arguments, 0, stdout=f"{found}[1]\n{found}[2]\n", stderr=""
+        )
+
+    monkeypatch.setattr(subprocess, "run", collect)
+
+    assert _uncollected([known, found, missing], tmp_path, collected={known}) == [
+        missing
+    ]
+    ((arguments, kwargs),) = calls
+    assert arguments[-2:] == ["test_first.py", "test_second.py"]
+    assert not any("::" in argument for argument in arguments)
+    assert kwargs["env"]["PYTEST_ADDOPTS"] == ""
+    assert kwargs["cwd"] == tmp_path
+
+
+def test_failed_collection_cannot_validate_names_it_printed(tmp_path, monkeypatch):
+    (tmp_path / "test_sample.py").write_text(SAMPLE_TESTS, encoding="utf-8")
+    node_id = "test_sample.py::test_plain"
+    result = subprocess.CompletedProcess(
+        [], 2, stdout=f"{node_id}\n", stderr="another collector failed"
+    )
+    monkeypatch.setattr(subprocess, "run", lambda *_args, **_kwargs: result)
+
+    with pytest.raises(AssertionError, match="could not collect.*exit 2"):
+        _uncollected([node_id], tmp_path)
+
+
+class _CollectedItem(pytest.Item):
+    """A real pytest Item whose collection never executes a test body."""
+
+    def runtest(self):
+        raise AssertionError("a collection fixture must not be executed")
+
+
+def test_collected_items_use_their_library_relative_path(
+    tmp_path, monkeypatch, request
+):
+    monkeypatch.setattr(conftest, "LIBRARY_ROOT", tmp_path)
+    monkeypatch.setattr(request.session, "stash", pytest.Stash())
+    for name in ("test_value[1]", "test_value[2]", "TestGroup::test_method[other]"):
+        item = _CollectedItem.from_parent(
+            request.session,
+            name=name,
+            path=tmp_path / "tests" / "test_sample.py",
+            nodeid=f"parent/path/tests/test_sample.py::{name}",
+        )
+        conftest.pytest_itemcollected(item)
+    outside = _CollectedItem.from_parent(
+        request.session,
+        name="test_outside",
+        path=tmp_path.parent / "test_outside.py",
+        nodeid="test_outside.py::test_outside",
+    )
+    conftest.pytest_itemcollected(outside)
+
+    # pylint: disable = protected-access
+    assert request.session.stash[conftest._COLLECTED_TEST_IDS] == {
+        "tests/test_sample.py::test_value",
+        "tests/test_sample.py::TestGroup::test_method",
+    }
+
+
+def test_the_session_snapshot_preserves_collected_parameter_ids(
+    request, collected_test_ids
+):
+    if any("::" in argument for argument in request.config.args):
+        assert collected_test_ids is None
+    else:
+        module = "tests/dicom/test_deidentify_requirements.py"
+        assert (
+            f"{module}::test_a_malformed_requirement_is_rejected" in collected_test_ids
+        )
+        assert not any(
+            "[" in node_id or "\\" in node_id for node_id in collected_test_ids
+        )
+
+
+def test_pytest_collects_each_traced_test(register, collected_test_ids):
     tests = sorted({test for entry in register.requirements for test in entry.tests})
     assert tests
-    assert not _uncollected(tests, LIBRARY_ROOT)
+    assert not _uncollected(tests, LIBRARY_ROOT, collected=collected_test_ids)
 
 
 def test_a_valid_register_loads(tmp_path):

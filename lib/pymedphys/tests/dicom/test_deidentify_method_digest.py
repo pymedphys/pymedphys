@@ -18,9 +18,10 @@ Every input of the method is changed by monkeypatching or by injecting
 synthetic inputs, so no test edits the package's own files, and each change
 must change the digest. The runtime environment (Python and the libraries
 that run the engine) is not part of the method, so changing it must leave
-the digest unchanged. The engine's files and tables are read once per
-process, so each test starts with them unread, and a test that edits a
-synthetic engine or tables reads them again, as a new process would.
+the digest unchanged. Ordinary tests share the engine's files and tables,
+which are read once per process. Cold-read tests and changes to an already
+read synthetic engine or its tables explicitly read them again, as a new
+process would. Cached reads are cleared at each module boundary.
 """
 
 # The tests share the synthetic inputs and engine below, so they stay in one
@@ -195,9 +196,17 @@ def _forget_reads():
     method_digest._table_digests.cache_clear()
 
 
-@pytest.fixture(name="read_again", autouse=True)
+@pytest.fixture(autouse=True, scope="module")
+def _isolate_reads():
+    """Keep file reads within this module while ordinary tests share them."""
+    _forget_reads()
+    yield
+    _forget_reads()
+
+
+@pytest.fixture(name="read_again")
 def _read_again():
-    """Start and end each test with the engine's files and tables unread.
+    """Start and end a cold-read test with the engine's files and tables unread.
 
     Gives a function that makes the next digest read them again, as a new
     process would.
@@ -962,15 +971,18 @@ def test_the_member_digests_are_the_sha256_of_those_members_of_the_canonical_for
 def _components_after(basic, monkeypatch, change):
     """Return which components differ after ``change``, besides the digest."""
     before = method_digest.method_digest_components(basic, vocabulary=None)
-    vocabulary = change(monkeypatch)
-    _forget_reads()
-    after = method_digest.method_digest_components(basic, vocabulary=vocabulary)
-    assert after.method_digest != before.method_digest
-    return {
-        name
-        for name in COMPONENT_FIELDS
-        if name != "method_digest" and getattr(after, name) != getattr(before, name)
-    }
+    try:
+        vocabulary = change(monkeypatch)
+        _forget_reads()
+        after = method_digest.method_digest_components(basic, vocabulary=vocabulary)
+        assert after.method_digest != before.method_digest
+        return {
+            name
+            for name in COMPONENT_FIELDS
+            if name != "method_digest" and getattr(after, name) != getattr(before, name)
+        }
+    finally:
+        _forget_reads()
 
 
 def _change_engine_version(monkeypatch):
