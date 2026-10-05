@@ -25,8 +25,6 @@ import tempfile
 import warnings
 from pathlib import Path, PurePosixPath
 
-from pymedphys._imports import pydicom, pytest
-
 from pymedphys._dicom.deidentify import (
     diagnostics,
     output_names,
@@ -38,6 +36,7 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.reference_graph import FindingKind
 from pymedphys._dicom.deidentify.references import InstanceRecord, UnreadableSequence
+from pymedphys._imports import pydicom, pytest
 
 from . import _synthetic_references as synthetic
 
@@ -147,7 +146,11 @@ def _run(tmp_path, transform=None, gate=None, source=None):
     source = source or tmp_path / "source"
     discovery = run.discover(source)
     result = run.run(
-        discovery, tmp_path / "release", transform or Transform(), gate or Gate()
+        discovery,
+        tmp_path / "release",
+        transform or Transform(),
+        gate or Gate(),
+        qc_destination=tmp_path / "qc",
     )
     return discovery, result
 
@@ -186,7 +189,7 @@ def test_a_consistent_collection_is_released_at_its_output_names(tmp_path):
         assert written == _output(record.sop_instance)
     assert len(_released_files(release)) == 6
     # Nothing is left beside the release.
-    assert _listing(tmp_path) == ["release", "source"]
+    assert _listing(tmp_path) == ["qc", "release", "source"]
 
 
 @pytest.mark.pydicom
@@ -253,7 +256,13 @@ def test_a_file_replaced_after_discovery_is_not_read(tmp_path, replacement):
         replaced.write_bytes(target.read_bytes())
     os.replace(replaced, target)
 
-    result = run.run(discovery, tmp_path / "release", Transform(), Gate())
+    result = run.run(
+        discovery,
+        tmp_path / "release",
+        Transform(),
+        Gate(),
+        qc_destination=tmp_path / "qc",
+    )
 
     assert _statuses(result) == [RELEASED, (REFUSED, (Reason.UNREADABLE_FILE,))]
 
@@ -393,7 +402,13 @@ def test_a_later_copy_is_processed_when_the_first_changes(tmp_path, monkeypatch)
 
     monkeypatch.setattr(run, "_first_pass", first_pass_then_change)
 
-    result = run.run(discovery, tmp_path / "release", transform, Gate())
+    result = run.run(
+        discovery,
+        tmp_path / "release",
+        transform,
+        Gate(),
+        qc_destination=tmp_path / "qc",
+    )
 
     assert _statuses(result) == [
         (SEQUESTERED, (Reason.CHANGED_DURING_RUN,)),
@@ -494,7 +509,7 @@ def test_a_transform_can_sequester_an_instance(tmp_path):
     _, result = _run(tmp_path, Transform(sequester={synthetic.PLAN}))
 
     assert result.outcomes[PLAN] == run.Outcome(
-        PLAN, SEQUESTERED, (GateReason.TEXT_FINDING,)
+        PLAN, SEQUESTERED, (GateReason.TEXT_FINDING,), label="S-0001"
     )
     assert len(_released_files(tmp_path / "release")) == 5
 
@@ -661,7 +676,10 @@ def test_a_file_the_gate_withholds_is_deleted_and_never_released(
 
     _, result = _run(tmp_path, gate=Gate({withheld: verdict}))
 
-    assert result.outcomes[PLAN] == run.Outcome(PLAN, status, verdict.reasons)
+    label = "S-0001" if status is SEQUESTERED else None
+    assert result.outcomes[PLAN] == run.Outcome(
+        PLAN, status, verdict.reasons, label=label
+    )
     release = tmp_path / "release"
     assert all(
         path.read_bytes() != withheld for path in release.rglob("*") if path.is_file()
@@ -707,7 +725,7 @@ def test_an_output_name_that_is_not_a_replacement_is_refused(tmp_path, path):
 
     assert _statuses(result) == [(SEQUESTERED, (Reason.INVALID_OUTPUT_NAME,))]
     assert not _released_files(tmp_path / "release")
-    assert _listing(tmp_path) == ["release", "source"]
+    assert _listing(tmp_path) == ["qc", "release", "source"]
 
 
 @pytest.mark.pydicom
@@ -756,7 +774,13 @@ def test_the_release_directory_must_not_be_inside_the_source(tmp_path):
 
     for release in (source / "release", source / "nested" / "release"):
         with pytest.raises(run.RunError, match="inside the source directory"):
-            run.run(run.discover(source), release, transform, Gate())
+            run.run(
+                run.discover(source),
+                release,
+                transform,
+                Gate(),
+                qc_destination=tmp_path / "qc",
+            )
 
     assert not transform.calls
 

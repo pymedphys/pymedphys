@@ -23,20 +23,12 @@ import tempfile
 import warnings
 from pathlib import Path, PurePosixPath
 
-from pymedphys._imports import pytest
-
 from pymedphys._dicom.deidentify import command, diagnostics, run
 from pymedphys._dicom.deidentify.reference_graph import Finding, FindingKind
+from pymedphys._imports import pytest
 
 from . import _synthetic_references as synthetic
-from .test_deidentify_run import (
-    SENTINEL,
-    Gate,
-    GateReason,
-    Transform,
-    _output,
-    _write,
-)
+from .test_deidentify_run import SENTINEL, Gate, GateReason, Transform, _output, _write
 
 
 @pytest.fixture(name="tmp_path")
@@ -61,6 +53,7 @@ def _call(tmp_path, transform=None, gate=None, source=None, release=None):
         release or tmp_path / "release",
         transform=transform or Transform(),
         gate=gate or Gate(),
+        qc_destination=tmp_path / "qc",
         stdout=stdout,
         stderr=stderr,
     )
@@ -291,7 +284,12 @@ def test_main_parses_source_and_release(tmp_path):
     stdout = io.StringIO()
 
     status = command.main(
-        [str(tmp_path / "source"), str(tmp_path / "release")],
+        [
+            str(tmp_path / "source"),
+            str(tmp_path / "release"),
+            "--qc-pack",
+            str(tmp_path / "qc"),
+        ],
         transform=Transform(),
         gate=Gate(),
         stdout=stdout,
@@ -314,8 +312,12 @@ def test_build_parser_takes_a_program_name():
     parser = command.build_parser(prog="pymedphys dicom deidentify")
 
     assert parser.prog == "pymedphys dicom deidentify"
-    arguments = parser.parse_args(["in", "out"])
-    assert (arguments.source, arguments.release) == ("in", "out")
+    arguments = parser.parse_args(["in", "out", "--qc-pack", "qc"])
+    assert (arguments.source, arguments.release, arguments.qc_pack) == (
+        "in",
+        "out",
+        "qc",
+    )
 
 
 def test_a_failed_run_that_leaves_its_staging_area_says_so(tmp_path, monkeypatch):
@@ -375,6 +377,7 @@ def test_a_release_name_the_output_cannot_encode_is_escaped(tmp_path):
         release,
         transform=Transform(),
         gate=Gate(),
+        qc_destination=tmp_path / "qc",
         stdout=stdout,
         stderr=io.StringIO(),
     )

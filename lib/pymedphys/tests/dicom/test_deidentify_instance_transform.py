@@ -20,12 +20,11 @@ text ``SENTINEL``.
 
 import functools
 import io
+import json
 import os
 import shutil
 import tempfile
 from pathlib import Path
-
-from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     instance_transform,
@@ -35,17 +34,19 @@ from pymedphys._dicom.deidentify import (
     run,
 )
 from pymedphys._dicom.deidentify.edits import EditKind, edit_instance
+from pymedphys._dicom.deidentify.element_rules import ElementRules
+from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
     PendingEdit,
     ReleaseGate,
     TransformReason,
     coverage_of,
+    dropped_of,
     satisfied_options,
+    transform_for,
     writer_plan,
 )
-from pymedphys._dicom.deidentify.element_rules import ElementRules
-from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.markers import MarkerError
@@ -54,6 +55,7 @@ from pymedphys._dicom.deidentify.policy import PolicyError, compose_policy
 from pymedphys._dicom.deidentify.preservation import PreservationReason
 from pymedphys._dicom.deidentify.preserving_writer import WriteReason
 from pymedphys._dicom.deidentify.pseudonyms import SubjectIdentity, patient_pseudonym
+from pymedphys._dicom.deidentify.qc_pack import DropReason
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.release_gate import (
     Coverage,
@@ -61,6 +63,13 @@ from pymedphys._dicom.deidentify.release_gate import (
     ReasonCode,
     ReleaseReason,
 )
+from pymedphys._dicom.deidentify.residuals import (
+    ResidualSearch,
+    SourceValue,
+    has_written_constant,
+    written_constants,
+)
+from pymedphys._dicom.deidentify.run_qc import Dropped, SearchMaterial
 from pymedphys._dicom.deidentify.scope import Disposition
 from pymedphys._dicom.deidentify.source import SourceReason, read_source
 from pymedphys._dicom.deidentify.uids import UIDOutcome, replacement_uid
@@ -69,6 +78,7 @@ from pymedphys._dicom.deidentify.walker import (
     Sequestration,
     plan_instance,
 )
+from pymedphys._imports import pydicom, pytest
 
 from . import _synthetic_references as synthetic
 from .test_deidentify_file_layout import EXPLICIT, _file
@@ -384,7 +394,13 @@ def test_a_run_with_the_transform_releases_the_collection(tmp_path):
         return run.Release()
 
     release = tmp_path / "release"
-    result = run.run(run.discover(source), release, _transform(), gate)
+    result = run.run(
+        run.discover(source),
+        release,
+        _transform(),
+        gate,
+        qc_destination=tmp_path / "qc",
+    )
 
     assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
     assert subjects == [6] * 6
@@ -461,7 +477,11 @@ def test_a_removed_registered_uid_does_not_withhold_the_collection(tmp_path):
     ]
     assert dose in datasets
     result = run.run(
-        _source(tmp_path, datasets), tmp_path / "release", _transform(), ReleaseGate()
+        _source(tmp_path, datasets),
+        tmp_path / "release",
+        _transform(),
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
     )
 
     assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
@@ -470,7 +490,11 @@ def test_a_removed_registered_uid_does_not_withhold_the_collection(tmp_path):
 def test_a_run_with_the_transform_and_gate_releases_the_collection(tmp_path):
     release = tmp_path / "release"
     result = run.run(
-        _source(tmp_path, synthetic.collection()), release, _transform(), ReleaseGate()
+        _source(tmp_path, synthetic.collection()),
+        release,
+        _transform(),
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
     )
 
     assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
@@ -492,7 +516,11 @@ def test_a_value_removed_from_one_instance_withholds_its_siblings_that_keep_it(
     release = tmp_path / "release"
 
     result = run.run(
-        _source(tmp_path, [plan, dose]), release, _transform(), ReleaseGate()
+        _source(tmp_path, [plan, dose]),
+        release,
+        _transform(),
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
     )
 
     statuses = [outcome.status for outcome in result.outcomes]
@@ -531,6 +559,9 @@ def test_the_gate_maps_each_decision_with_its_reasons(decision, expected):
     assert isinstance(result, expected)
     if expected is not run.Release:
         assert result.reasons == (reason,)
+    (material,) = result.qc
+    assert isinstance(material.search, ResidualSearch)
+    assert material.written == b"written"
     ((pooled, written),) = seen
     assert written == b"written"
     assert pooled.planned == own.planned | other.planned
@@ -547,6 +578,7 @@ class _Condition:
     def __init__(self, decision, reasons):
         self.decision = decision
         self.reasons = reasons
+        self.search = ResidualSearch((), (), True)
 
 
 def _plan_of(data):
@@ -564,3 +596,93 @@ def _top(tag):
 
 def _rt_plan_file():
     return _file(EXPLICIT, _rt_plan_data_set())
+
+
+def test_values_left_out_of_the_search_are_dropped_with_their_reasons():
+    data = synthetic.written(_dose_referencing_an_image())
+    plan = _plan_of(data)
+    edits = edit_instance(
+        read_source(data), plan, KEY, InstanceRecord.from_file(data).patient
+    )
+
+    drops = {drop.source: drop.reason for drop in dropped_of(edits)}
+
+    assert drops[_top("(0008,0016)")] is DropReason.RETAINED
+    registered = ElementPath((("(0008,1140)", 0),), "(0008,1150)")
+    assert drops[registered] is DropReason.REGISTERED_UID
+    # Nothing that the search is given is dropped.
+    assert not set(drops) & {value.source for value in edits.source_values}
+    result = _transform()(data, InstanceRecord.from_file(data))
+    assert isinstance(result, run.Transformed)
+    assert result.qc == dropped_of(edits)
+
+
+def test_the_gate_drops_the_instances_values_equal_to_a_written_constant():
+    vr, constant = next((vr, value) for vr, value in written_constants() if vr == "LO")
+    path = _top("(0008,1030)")
+    written_constant = SourceValue(path, vr, constant)
+    other = SourceValue(_top("(0010,0010)"), "PN", "SENTINEL^NAME")
+    assert has_written_constant(written_constant)
+    assert has_written_constant(SourceValue(path, vr, f"KEEP\\{constant}"))
+    assert not has_written_constant(other)
+    own = Coverage(
+        planned=frozenset({path, other.source}), collected=(written_constant, other)
+    )
+
+    result = ReleaseGate(lambda coverage, written: _Condition(Decision.RELEASE, ()))(
+        b"written", own, (own,)
+    )
+
+    search, drop = result.qc
+    assert isinstance(search, SearchMaterial)
+    assert drop == Dropped(path, DropReason.WRITTEN_CONSTANT)
+
+
+def test_a_run_writes_the_qc_pack_of_the_transform_and_gate(tmp_path):
+    plan = synthetic.rt_plan()
+    plan.RTPlanLabel = "SENTINELPLAN7"
+    dose = _dose_referencing_an_image()
+    dose.DoseUnits = "SENTINELPLAN7"
+
+    result = run.run(
+        _source(tmp_path, [plan, dose]),
+        tmp_path / "release",
+        _transform(),
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+    )
+
+    pack = json.loads(result.qc_pack.read_text(encoding="utf-8"))
+    assert [entry["disposition"] for entry in pack["instances"]] == [
+        "released",
+        "held-for-review",
+    ]
+    assert pack["instances"][1]["reasons"]
+    assert {entry["position"] for entry in pack["residual_findings"]} == {1}
+    registered = {
+        "position": 1,
+        "source": "(0008,1140)[0] > (0008,1150)",
+        "reason": "registered-uid",
+    }
+    assert registered in pack["drops"]
+
+
+def test_transform_for_selects_an_enabled_preset_only(monkeypatch):
+    with pytest.raises(PolicyError):
+        transform_for("basic", KEY)
+
+    policy = compose_policy("basic")
+    made = []
+    monkeypatch.setattr(instance_transform, "select_policy", lambda preset: policy)
+    monkeypatch.setattr(
+        instance_transform,
+        "InstanceTransform",
+        lambda *args: made.append(args) or args,
+    )
+
+    transform_for(key=KEY)
+    transform_for("basic")
+
+    (given, generated) = made
+    assert given == (policy, KEY, None)
+    assert generated[0] is policy and generated[1] != KEY

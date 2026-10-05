@@ -85,9 +85,10 @@ from .iods import IODTables, load_iod_tables
 from .keys import DeidKey
 from .markers import MarkerError, Markers, apply_markers, markers_for
 from .method_digest import method_digest
-from .policy import Policy, PolicyError
+from .policy import DEFAULT_PRESET, Policy, PolicyError, select_policy
 from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
+from .qc_pack import DropReason
 from .references import InstanceRecord
 from .release_gate import (
     Coverage,
@@ -96,7 +97,9 @@ from .release_gate import (
     Uncollected,
     release_condition,
 )
+from .residuals import has_written_constant
 from .run import HoldForReview, Release, Sequestered, Transformed
+from .run_qc import Dropped, SearchMaterial
 from .scope import classify
 from .source import SourceEvidence, SourceRefused, read_source
 from .uids import UIDOutcome
@@ -169,6 +172,45 @@ class WriterPlan:
         )
 
 
+def _left_out(edits: InstanceEdits) -> dict[ElementPath, DropReason]:
+    """Return each path that the residual search leaves out, and why.
+
+    These are the elements whose every UID U retains, and the elements whose
+    UIDs the pinned tables all register, wherever they are, removed
+    sequences included.
+    """
+    left_out = {
+        edit.path: DropReason.RETAINED
+        for edit in edits.edits
+        if edit.uid_outcomes
+        and all(outcome is UIDOutcome.RETAINED for outcome in edit.uid_outcomes)
+    }
+    collected = {value.source for value in edits.source_values}
+    for path in edits.registered_uids:
+        if path not in collected:
+            left_out.setdefault(path, DropReason.REGISTERED_UID)
+    return left_out
+
+
+def dropped_of(edits: InstanceEdits) -> tuple[Dropped, ...]:
+    """Return the QC pack's drops of an instance's edits (D-027).
+
+    Each element left out of the residual search as :func:`coverage_of`
+    leaves it out, and each value that could not be decoded to collect, by
+    its place in the source. A value equal to a written
+    constant is dropped by the search itself, which the gate records.
+    """
+    left_out = _left_out(edits)
+    undecodable = {
+        missing.path: DropReason.UNDECODABLE
+        for missing in edits.not_collected
+        if missing.path not in left_out
+    }
+    return tuple(
+        Dropped(path, reason) for path, reason in {**left_out, **undecodable}.items()
+    )
+
+
 def coverage_of(plan: InstancePlan, edits: InstanceEdits) -> Coverage:
     """Return the residual search's coverage of an instance's plan and edits.
 
@@ -178,14 +220,7 @@ def coverage_of(plan: InstancePlan, edits: InstanceEdits) -> Coverage:
     pinned tables all register, which the edits leave out of collection
     wherever it is, removed sequences included.
     """
-    retained = {
-        edit.path
-        for edit in edits.edits
-        if edit.uid_outcomes
-        and all(outcome is UIDOutcome.RETAINED for outcome in edit.uid_outcomes)
-    }
-    collected = {value.source for value in edits.source_values}
-    retained.update(path for path in edits.registered_uids if path not in collected)
+    retained = _left_out(edits)
     return Coverage(
         planned=frozenset(
             element.path
@@ -461,15 +496,47 @@ class InstanceTransform:
         plan = plan_instance(source, self._rules, self._iods.iods[classification.iod])
         edits = edit_instance(source, plan, self._key, record.patient)
         evidence = coverage_of(plan, edits)
+        qc = dropped_of(edits)
         if edits.sequestrations:
-            return Sequestered(edits.sequestrations, evidence)
+            return Sequestered(edits.sequestrations, evidence, qc)
         try:
             writing = with_markers(
                 writer_plan(plan, edits, codecs), source, dataset, self._markers
             )
-            return Transformed(*_written(source, writing), evidence)
+            return Transformed(*_written(source, writing), evidence, qc)
         except _Refused as refused:
-            return Sequestered(refused.reasons, evidence)
+            return Sequestered(refused.reasons, evidence, qc)
+
+
+def transform_for(
+    preset: str = DEFAULT_PRESET,
+    key: DeidKey | None = None,
+    *,
+    iod_tables: IODTables | None = None,
+) -> InstanceTransform:
+    """Return the run's transform for an enabled preset.
+
+    Parameters
+    ----------
+    preset : str, optional
+        As :func:`~pymedphys._dicom.deidentify.policy.select_policy` takes
+        it. Defaults to ``"basic"``.
+    key : DeidKey, optional
+        The run's key. By default, a new one, so that the run's replacement
+        UIDs and pseudonyms match no other run's.
+    iod_tables : IODTables, optional
+        As for :class:`InstanceTransform`.
+
+    Raises
+    ------
+    PolicyError
+        As :func:`~pymedphys._dicom.deidentify.policy.select_policy` raises
+        it, for a preset that is unknown or not enabled.
+    """
+    policy = select_policy(preset)
+    return InstanceTransform(
+        policy, DeidKey.generate() if key is None else key, iod_tables
+    )
 
 
 def _written(
@@ -571,6 +638,10 @@ class ReleaseGate:
     never values. Evidence that is not a :class:`~.release_gate.Coverage`
     raises :class:`TypeError`, which the run takes as an internal error and
     sequesters the file for.
+
+    Each verdict carries, as its QC material, the residual search of the
+    file with the file, and a drop for each of the instance's own values
+    that equals a constant the engine writes, which the search leaves out.
     """
 
     def __init__(self, condition: _Condition = release_condition) -> None:
@@ -586,8 +657,19 @@ class ReleaseGate:
         if not isinstance(evidence, Coverage) or len(coverages) != len(subject):
             raise TypeError("the release gate needs the Coverage of each instance")
         condition = self._condition(Coverage.merge(*coverages), written)
+        qc = (SearchMaterial(condition.search, written), *_constants(evidence))
         if condition.decision is Decision.RELEASE:
-            return Release()
+            return Release(qc)
         if condition.decision is Decision.QC_REVIEW:
-            return HoldForReview(condition.reasons)
-        return Sequestered(condition.reasons)
+            return HoldForReview(condition.reasons, qc)
+        return Sequestered(condition.reasons, qc=qc)
+
+
+def _constants(coverage: Coverage) -> tuple[Dropped, ...]:
+    """Return a drop for each of an instance's values equal to a written constant."""
+    paths = (
+        value.source for value in coverage.collected if has_written_constant(value)
+    )
+    return tuple(
+        Dropped(path, DropReason.WRITTEN_CONSTANT) for path in dict.fromkeys(paths)
+    )
