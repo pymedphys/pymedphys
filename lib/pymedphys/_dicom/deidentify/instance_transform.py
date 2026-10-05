@@ -203,7 +203,7 @@ def dropped_of(edits: InstanceEdits) -> tuple[Dropped, ...]:
     itself, which the gate records.
     """
     left_out = _left_out(edits)
-    drops = [
+    drops: list[tuple[ElementPath, DropReason]] = [
         (path, reason)
         for path, reason in left_out.items()
         if reason is DropReason.RETAINED
