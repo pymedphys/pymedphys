@@ -42,7 +42,10 @@ value-free reason: a :class:`~.scope.Disposition`, a
 :class:`~.source.SourceReason`, the walker's
 :class:`~.walker.Sequestration` objects, a
 :class:`~.preserving_writer.WriteReason`, a
-:class:`~.preservation.PreservationReason`, or a :class:`TransformReason`.
+:class:`~.preservation.PreservationReason`, a :class:`TransformReason`, or a
+:class:`PendingEdit` for each edit still to come, which no stage of the
+release report gives, so that a run with a reporter sequesters the instance
+for an invalid reason.
 No exception message is kept, since some come from pydicom and can quote a
 value.
 
@@ -106,7 +109,7 @@ from .release_gate import (
     Uncollected,
     release_condition,
 )
-from .residuals import has_written_constant
+from .residuals import NotSearched, has_written_constant, not_searched_of
 from .run import HoldForReview, Release, Sequestered, Transformed
 from .run_qc import Dropped, SearchMaterial
 from .run_report import ReleaseReporter
@@ -196,8 +199,8 @@ def dropped_of(
     where the element's other UIDs are collected; and each value that could
     not be decoded to collect, by its place in the source and once for each
     reason; then each path in ``retained``, as :func:`coverage_of` takes it.
-    A value equal to a written constant is dropped by the search
-    itself, which the gate records.
+    A value equal to a written constant is dropped by the search itself,
+    and given by :func:`omissions_of`.
     """
     left_out = _left_out(edits)
     drops: list[tuple[ElementPath, DropReason]] = [
@@ -229,6 +232,26 @@ class HeldEvidence:
 
     coverage: Coverage
     held: tuple[HeldRoiName, ...]
+
+
+def omissions_of(
+    evidence: Coverage | HeldEvidence,
+) -> tuple[Dropped | NotSearched, ...]:
+    """Return what every residual search leaves out of an instance's own values.
+
+    A drop for each value equal to a constant that the engine writes, and
+    each form not searched, as any search of the subject lists them (D-027).
+    They are the instance's own QC material, whether or not its file is
+    gated, since its values are searched for in its subject's other files.
+    """
+    coverage = evidence.coverage if isinstance(evidence, HeldEvidence) else evidence
+    paths = (
+        value.source for value in coverage.collected if has_written_constant(value)
+    )
+    constants = tuple(
+        Dropped(path, DropReason.WRITTEN_CONSTANT) for path in dict.fromkeys(paths)
+    )
+    return (*constants, *not_searched_of(coverage.collected))
 
 
 def coverage_of(
@@ -610,7 +633,11 @@ class InstanceTransform:
         edits = edit_instance(source, plan, self._key, record.patient)
         evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
         if edits.sequestrations:
-            return Sequestered(edits.sequestrations, evidence, dropped_of(edits))
+            return Sequestered(
+                edits.sequestrations,
+                evidence,
+                (*dropped_of(edits), *omissions_of(evidence)),
+            )
         satisfied = False
         retained: frozenset[ElementPath] = frozenset()
         names: tuple[object, ...] = ()
@@ -634,14 +661,18 @@ class InstanceTransform:
                     fallen_back,
                 )
             except DescriptorsRefused as refused:
-                return Sequestered((refused.reason,), evidence, dropped_of(edits))
+                return Sequestered(
+                    (refused.reason,),
+                    evidence,
+                    (*dropped_of(edits), *omissions_of(evidence)),
+                )
             edits, satisfied = cleaned.edits, cleaned.satisfied
             retained = frozenset(cleaned.retained)
             names = cleaned.qc
             evidence = coverage_of(plan, edits, retained)
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
-        qc = (*dropped_of(edits, retained), *names)
+        qc = (*dropped_of(edits, retained), *omissions_of(evidence), *names)
         try:
             writing = with_markers(
                 writer_plan(plan, edits, codecs),
@@ -796,9 +827,10 @@ class ReleaseGate:
     :class:`TypeError`, which the run takes as an internal error and
     sequesters the file for.
 
-    Each verdict carries, as its QC material, the residual search of the
-    file with the file, and a drop for each of the instance's own values
-    that equals a constant the engine writes, which the search leaves out.
+    Each verdict carries, as its QC material, the residual search's findings
+    in the file, with the file. What the search leaves out of the instance's
+    own values is the transform's material (:func:`omissions_of`), since the
+    search covers the subject's other instances' values too.
     """
 
     def __init__(self, condition: _Condition = release_condition) -> None:
@@ -813,7 +845,10 @@ class ReleaseGate:
         coverages = tuple(_coverage(each) for each in (evidence, *subject))
         condition = self._condition(Coverage.merge(*coverages[1:]), written)
         held = evidence.held if isinstance(evidence, HeldEvidence) else ()
-        qc = (SearchMaterial(condition.search, written), *_constants(coverages[0]))
+        # Each value's omissions are its own instance's material, from the
+        # transform, so the pooled search's are left out here.
+        search = dataclasses.replace(condition.search, not_searched=(), unsearched=())
+        qc = (SearchMaterial(search, written),)
         if condition.decision is Decision.WITHHOLD:
             return Sequestered(condition.reasons, qc=qc)
         if held or condition.decision is Decision.QC_REVIEW:
@@ -827,13 +862,3 @@ def _coverage(evidence: object) -> Coverage:
     if not isinstance(evidence, Coverage):
         raise TypeError("the release gate needs the Coverage of each instance")
     return evidence
-
-
-def _constants(coverage: Coverage) -> tuple[Dropped, ...]:
-    """Return a drop for each of an instance's values equal to a written constant."""
-    paths = (
-        value.source for value in coverage.collected if has_written_constant(value)
-    )
-    return tuple(
-        Dropped(path, DropReason.WRITTEN_CONSTANT) for path in dict.fromkeys(paths)
-    )

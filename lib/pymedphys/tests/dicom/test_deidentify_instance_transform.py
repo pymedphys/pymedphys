@@ -45,6 +45,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
     TransformReason,
     coverage_of,
     dropped_of,
+    omissions_of,
     satisfied_options,
     transform_for,
     writer_plan,
@@ -69,6 +70,7 @@ from pymedphys._dicom.deidentify.residuals import (
     ResidualSearch,
     SourceValue,
     has_written_constant,
+    not_searched_of,
     written_constants,
 )
 from pymedphys._dicom.deidentify.run_qc import Dropped, SearchMaterial
@@ -689,25 +691,75 @@ def test_a_registered_uid_beside_a_collected_one_is_still_dropped():
     assert dropped_of(edits) == (Dropped(path, DropReason.REGISTERED_UID),)
 
 
-def test_the_gate_drops_the_instances_values_equal_to_a_written_constant():
+def test_an_instances_own_omissions_are_its_material_not_the_gates():
     vr, constant = next((vr, value) for vr, value in written_constants() if vr == "LO")
     path = _top("(0008,1030)")
     written_constant = SourceValue(path, vr, constant)
     other = SourceValue(_top("(0010,0010)"), "PN", "SENTINEL^NAME")
+    short = SourceValue(_top("(0008,1010)"), "SH", "AB")
     assert has_written_constant(written_constant)
     assert has_written_constant(SourceValue(path, vr, f"KEEP\\{constant}"))
     assert not has_written_constant(other)
     own = Coverage(
-        planned=frozenset({path, other.source}), collected=(written_constant, other)
+        planned=frozenset({path, other.source, short.source}),
+        collected=(written_constant, other, short),
+    )
+    sibling = Coverage(
+        planned=frozenset({short.source}),
+        collected=(SourceValue(short.source, "SH", "CD"),),
     )
 
-    result = ReleaseGate(lambda coverage, written: _Condition(Decision.RELEASE, ()))(
-        b"written", own, (own,)
-    )
+    omissions = omissions_of(own)
 
-    search, drop = result.qc
+    assert omissions[0] == Dropped(path, DropReason.WRITTEN_CONSTANT)
+    assert omissions[1:] == not_searched_of([other, short])
+    assert {item.source for item in omissions[1:]} == {short.source}
+
+    result = ReleaseGate()(b"written", own, (own, sibling))
+
+    # The gate's search covers the sibling's value too, so what it leaves
+    # out is listed by each instance's own transform, never by the gate.
+    (search,) = result.qc
     assert isinstance(search, SearchMaterial)
-    assert drop == Dropped(path, DropReason.WRITTEN_CONSTANT)
+    assert search.search.not_searched == ()
+    assert search.search.unsearched == ()
+
+
+def test_each_value_not_searched_is_listed_once_at_its_own_instance(tmp_path):
+    datasets = synthetic.collection()
+    datasets[0].StationName = "AB"
+
+    result = run.run(
+        _source(tmp_path, datasets),
+        tmp_path / "release",
+        _transform(),
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+    )
+
+    pack = json.loads(result.qc_pack.read_text(encoding="utf-8"))
+    positions = {
+        entry["position"]
+        for entry in pack["not_searched"]
+        if entry["source"] == "(0008,1010)"
+    }
+    assert positions == {0}
+
+
+def test_a_sequestered_instance_keeps_its_written_constant_drops(monkeypatch):
+    # Its values are still searched for in its subject's other files.
+    _, constant = next((vr, value) for vr, value in written_constants() if vr == "LO")
+    dataset = synthetic.rt_dose()
+    dataset.StudyDescription = constant
+
+    def refuse(_dataset, _markers):
+        raise MarkerError("refused")
+
+    monkeypatch.setattr(instance_transform, "apply_markers", refuse)
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Sequestered)
+    assert Dropped(_top("(0008,1030)"), DropReason.WRITTEN_CONSTANT) in result.qc
 
 
 def test_a_run_writes_the_qc_pack_of_the_transform_and_gate(tmp_path):

@@ -50,7 +50,7 @@ A run has five steps:
    not released is deleted at once.
 5. The release directory is published by renaming the staging area's
    release tree to it, so it appears whole, holding only files that their
-   gate released, or not at all.
+   gate released and any release report, or not at all.
 
 The run decides nothing about an instance's content: the transform and the
 gate do. The run fails closed. An exception that either raises, or a result
@@ -408,7 +408,7 @@ def run(
         :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT`.
         Without one, no report is written. A withheld input whose reasons
         the reporter does not admit is sequestered for
-        :attr:`RunReason.INVALID_REASON` instead.
+        :attr:`RunReason.INVALID_REASON`, followed by its own reasons.
 
     Returns
     -------
@@ -448,14 +448,8 @@ def run(
     # and in the transform and gate, and its warnings and log records can
     # quote them.
     with redacted_diagnostics():
-        return _run(
-            discovery,
-            Path(release).absolute(),
-            transform,
-            gate,
-            qc_destination,
-            reporter,
-        )
+        release_path = Path(release).absolute()
+        return _run(discovery, release_path, transform, gate, qc_destination, reporter)
 
 
 def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
@@ -540,8 +534,13 @@ def _admitted(
     outcomes: tuple[Outcome, ...], reporter: run_report.Reporter
 ) -> tuple[Outcome, ...]:
     """Sequester each withheld input whose reasons the reporter cannot give."""
+    # Its own reasons follow, for the QC pack; the report gives the first alone.
     return tuple(
-        _outcome(outcome.position, Status.SEQUESTERED, RunReason.INVALID_REASON)
+        dataclasses.replace(
+            outcome,
+            status=Status.SEQUESTERED,
+            reasons=(RunReason.INVALID_REASON, *outcome.reasons),
+        )
         if outcome.status in (Status.SEQUESTERED, Status.HELD_FOR_REVIEW)
         and not reporter.admits(outcome.status.value, outcome.reasons)
         else outcome

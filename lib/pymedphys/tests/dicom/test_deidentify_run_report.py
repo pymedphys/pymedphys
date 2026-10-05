@@ -30,6 +30,7 @@ from pymedphys._dicom.deidentify import (
     run,
     run_qc,
 )
+from pymedphys._dicom.deidentify.descriptor_cleaning import HeldRoiName
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
@@ -55,6 +56,7 @@ from pymedphys._dicom.deidentify.run_report import (
     coverage_records,
     held_instances,
 )
+from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 
 from . import _synthetic_references as synthetic
 from .test_deidentify_run import Gate, GateReason, Transform, _listing, _write
@@ -167,9 +169,13 @@ def test_an_input_whose_reasons_cannot_be_reported_is_sequestered_alone(
     result = _run(tmp_path, Transform(), gate, _reporter())
 
     withheld = [o for o in result.outcomes if o.status is not run.Status.RELEASED]
+    # Its own reasons follow, so that the QC pack keeps them.
     assert [(o.status, o.reasons) for o in withheld] == [
-        (run.Status.SEQUESTERED, (RunReason.INVALID_REASON,))
+        (run.Status.SEQUESTERED, (RunReason.INVALID_REASON, *verdict.reasons))
     ]
+    pack = json.loads(result.qc_pack.read_text(encoding="utf-8"))
+    (entry,) = [each for each in pack["instances"] if each["position"] == 0]
+    assert len(entry["reasons"]) == 2
     document = json.loads((tmp_path / "release" / RELEASE_REPORT).read_text())
     assert document["sequestered"] == [
         {
@@ -194,6 +200,34 @@ def test_the_reporter_admits_only_reasons_it_can_report():
     assert not reporter.admits(SEQUESTERED, [_WITHHOLD])
     assert not reporter.admits("released", (_WITHHOLD,))
     assert run.Status.SEQUESTERED.value == SEQUESTERED
+    # Reasons of a known type whose fields are not as it says, which the
+    # report could not write, are refused here rather than failing the run.
+    walker = Sequestration(
+        ElementPath((), "(0010,0010)"),
+        "Q",
+        "ZZ",
+        SequesterReason.UNSUPPORTED_CHARACTER_SET,
+    )
+    assert not reporter.admits(SEQUESTERED, (walker,))
+    assert not reporter.admits(
+        SEQUESTERED, (Sequestration(None, "X", "PN", "not-a-reason"),)
+    )
+    assert not reporter.admits(HELD_FOR_REVIEW, (HeldRoiName(None, "unmatched"),))
+
+
+def test_an_input_sequestered_for_its_reasons_keeps_whose_copy_it_is():
+    held = run.Outcome(0, run.Status.HELD_FOR_REVIEW, (GateReason.TEXT_FINDING,))
+    copy = run.Outcome(
+        1, run.Status.HELD_FOR_REVIEW, (GateReason.TEXT_FINDING,), duplicate_of=0
+    )
+
+    # pylint: disable = protected-access
+    admitted = run._admitted((held, copy), _reporter())
+
+    assert [(o.status, o.duplicate_of) for o in admitted] == [
+        (run.Status.SEQUESTERED, None),
+        (run.Status.SEQUESTERED, 0),
+    ]
 
 
 @pytest.mark.pydicom
@@ -210,15 +244,19 @@ def test_coverage_records_follow_the_drops_and_the_search():
     omission = NotSearched(place, "PN", Form.VALUE, Omission.TOO_SHORT)
     search = ResidualSearch((), (omission,), True)
 
+    own = NotSearched(place, "PN", Form.VALUE, Omission.BINARY)
+
     records = coverage_records(
         (
             run_qc.Dropped(place, qc_pack.DropReason.WRITTEN_CONSTANT),
+            own,
             run_qc.SearchMaterial(search, b""),
         )
     )
 
     assert records == [
         Unsearched(place, UnsearchedReason.WRITTEN_CONSTANT),
+        own,
         omission,
     ]
 
@@ -263,6 +301,8 @@ def test_only_held_outcomes_are_counted():
         run.Outcome(0, run.Status.HELD_FOR_REVIEW, (review,)),
         run.Outcome(1, run.Status.SEQUESTERED, (review,)),
         run.Outcome(2, run.Status.RELEASED),
+        # An identical copy of a held input is the same instance (D-009).
+        run.Outcome(3, run.Status.HELD_FOR_REVIEW, (review,), duplicate_of=0),
     ]
 
     assert held_instances(outcomes) == (

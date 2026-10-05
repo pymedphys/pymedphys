@@ -19,15 +19,17 @@ material that the transform and gate gave for it, and writes the text that
 the reporter returns as :data:`RELEASE_REPORT` at the root of the release,
 before it publishes it. :class:`ReleaseReporter` builds the report of
 :mod:`~pymedphys._dicom.deidentify.release_report` from them: each
-sequestered input by its label and reasons (D-026), how many inputs were
-held for review by reason (D-009), and how many source values each gated
-file's residual search did not search, by attribute and reason (D-027). The
-report holds no source value or path (D-016), and
+sequestered input by its label and reasons (D-026), how many instances
+were held for review by reason (D-009), and how many source values the
+residual searches did not search, by attribute and reason, each counted at
+the instance that holds it among those that the transform gave material for
+(D-027). The report holds no source value or path (D-016), and
 :func:`~pymedphys._dicom.deidentify.release_report.to_json` refuses any
 field that could hold one. Before the run labels its outcomes, it asks the
 reporter whether it :meth:`~Reporter.admits` each withheld input's reasons,
-and sequesters one whose reasons it cannot report for that alone, so that
-one input's reasons never stop the release.
+and sequesters one whose reasons it cannot report for
+:attr:`~.reasons.RunReason.INVALID_REASON`, which the report gives alone,
+so that one input's reasons never stop the release.
 """
 
 from __future__ import annotations
@@ -39,6 +41,7 @@ from pymedphys._nomenclature import tg263
 
 from . import release_report
 from .policy import Policy
+from .reasons import RunReason
 from .residuals import NotSearched, Unsearched, UnsearchedReason
 from .run_qc import Dropped, SearchMaterial
 
@@ -92,17 +95,37 @@ class ReleaseReporter:
         return "ReleaseReporter()"
 
     def admits(self, status: str, reasons: tuple[object, ...]) -> bool:
-        """Whether the report can give a withheld outcome with these reasons."""
-        return reportable(status, reasons)
+        """Whether the report can give a withheld outcome with these reasons.
+
+        It can if a report that gives them alone can be written.
+        """
+        if not isinstance(reasons, tuple) or not reasons:
+            return False
+        try:
+            if status == SEQUESTERED:
+                given = release_report.SequesteredInstance(
+                    _TRIAL_LABEL, _reasons_given(reasons)
+                )
+                report = self._report(sequestered=(given,))
+            elif status == HELD_FOR_REVIEW:
+                report = self._report(
+                    held=release_report.held_for_review((reasons,))  # type: ignore[arg-type]
+                )
+            else:
+                return False
+            release_report.to_json(report)
+        # A ReleaseReportError is a ValueError; AttributeError is for a
+        # reason whose fields are not as its type says.
+        except (TypeError, ValueError, AttributeError):
+            return False
+        return True
 
     def __call__(
         self,
         outcomes: Sequence[object],
         material: Mapping[int, Sequence[object]],
     ) -> str:
-        report = release_report.release_report(
-            self._policy,
-            vocabulary=self._vocabulary,
+        report = self._report(
             sequestered=sequestered_instances(outcomes),
             held=held_instances(outcomes),
             coverage=release_report.search_coverage(
@@ -110,6 +133,34 @@ class ReleaseReporter:
             ),
         )
         return release_report.to_json(report)
+
+    def _report(self, **run: object) -> release_report.ReleaseReport:
+        return release_report.release_report(
+            self._policy,
+            vocabulary=self._vocabulary,
+            **run,  # type: ignore[arg-type]
+        )
+
+
+# A label for the report that tries whether a reason can be given.
+_TRIAL_LABEL = "S-0001"
+
+
+def _reasons_given(
+    reasons: Sequence[object],
+) -> tuple[release_report.SequestrationReason, ...]:
+    """Return the report's reasons of a sequestered outcome.
+
+    One that the run sequestered for an invalid reason is given by that
+    alone: the reasons after it are those that the report cannot give, which
+    only the QC pack lists.
+    """
+    if reasons and reasons[0] is RunReason.INVALID_REASON:
+        reasons = reasons[:1]
+    return tuple(
+        release_report.sequestration_reason(reason)  # type: ignore[arg-type]
+        for reason in reasons
+    )
 
 
 def sequestered_instances(
@@ -126,43 +177,20 @@ def sequestered_instances(
     """
     return tuple(
         release_report.SequesteredInstance(
-            getattr(outcome, "label"),
-            tuple(
-                release_report.sequestration_reason(reason)
-                for reason in getattr(outcome, "reasons")
-            ),
+            getattr(outcome, "label"), _reasons_given(getattr(outcome, "reasons"))
         )
         for outcome in outcomes
         if getattr(outcome, "label") is not None
     )
 
 
-def reportable(status: str, reasons: tuple[object, ...]) -> bool:
-    """Whether the release report can give a withheld outcome's reasons.
-
-    A sequestered outcome's reasons must each be one that a stage of the
-    report gives; a held outcome's, a ROI Name that descriptor cleaning held
-    or a release gate's reason that requires QC review.
-    """
-    if not isinstance(reasons, tuple) or not reasons:
-        return False
-    try:
-        if status == SEQUESTERED:
-            for reason in reasons:
-                release_report.sequestration_reason(reason)  # type: ignore[arg-type]
-        elif status == HELD_FOR_REVIEW:
-            release_report.held_for_review((reasons,))  # type: ignore[arg-type]
-        else:
-            return False
-    except (TypeError, ValueError):
-        return False
-    return True
-
-
 def held_instances(
     outcomes: Sequence[object],
 ) -> tuple[release_report.HeldForReview, ...]:
-    """Count the outcomes held for review by stage and reason (D-009).
+    """Count the instances held for review by stage and reason (D-009).
+
+    An identical copy of a held input is the same instance, so it is not
+    counted again.
 
     Raises
     ------
@@ -174,20 +202,24 @@ def held_instances(
         getattr(outcome, "reasons")
         for outcome in outcomes
         if getattr(outcome, "status").value == HELD_FOR_REVIEW
+        and getattr(outcome, "duplicate_of") is None
     )
 
 
 def coverage_records(material: Sequence[object]) -> list[NotSearched | Unsearched]:
-    """Return what one input's residual search did not search, from its material.
+    """Return what the residual searches did not search of one input's values.
 
-    Each drop is an :class:`~.residuals.Unsearched` with the same reason,
-    and each form that a search of its file did not search is as the search
-    gives it.
+    Each drop is an :class:`~.residuals.Unsearched` with the same reason;
+    each :class:`~.residuals.NotSearched` of the input's own values is as it
+    is; and so is each form that a search of its file lists, which
+    :class:`~.instance_transform.ReleaseGate` leaves to the transform.
     """
     records: list[NotSearched | Unsearched] = []
     for item in material:
         if isinstance(item, Dropped):
             records.append(Unsearched(item.source, UnsearchedReason(item.reason.value)))
+        elif isinstance(item, NotSearched):
+            records.append(item)
         elif isinstance(item, SearchMaterial):
             records.extend(item.search.not_searched)
     return records

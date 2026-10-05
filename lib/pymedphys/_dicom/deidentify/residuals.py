@@ -518,6 +518,27 @@ def has_written_constant(value: SourceValue) -> bool:
     return _without_constants(value) is not value
 
 
+def not_searched_of(values: Iterable[SourceValue]) -> tuple[NotSearched, ...]:
+    """Return the forms of ``values`` that a search does not search, and why.
+
+    As :func:`find_residuals` lists them in its ``not_searched``, which
+    depends on the values alone, never on the file: a value's own record,
+    whatever other values a search is given with it. Values equal to a
+    written constant have no forms.
+
+    Raises
+    ------
+    TypeError
+        If a value is not a :class:`SourceValue`.
+    """
+    omitted: list[NotSearched] = []
+    for value in dict.fromkeys(values):
+        rest = _without_constants(value)
+        if rest is not None:
+            omitted += [item for item in _derive(rest) if isinstance(item, NotSearched)]
+    return tuple(dict.fromkeys(omitted))
+
+
 def _without_constants(value: SourceValue) -> SourceValue | None:
     """Return ``value`` without its values equal to a written constant.
 
