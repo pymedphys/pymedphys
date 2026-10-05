@@ -189,6 +189,8 @@ Fast unit tests with smart matrix strategy.
   - Keeps Numba's parallel kernels on two threads per worker and other
     numerical thread pools on one thread, bounding contention on the runner
   - Reports the 15 slowest tests to help investigate future runtime growth
+  - DICOM test listeners bind port 0 and report the assigned port before
+    clients connect, so workers never release a port reservation during startup
   - JUnit XML report generation
 
 The `dependency-floors` job runs the unit tests (`-m "not slow"`, with the
