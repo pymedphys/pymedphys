@@ -26,13 +26,14 @@ import itertools
 import pathlib
 import re
 
-from pymedphys._imports import hypothesis, pytest
+from pymedphys._imports import hypothesis, pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     compound_actions,
     element_rules,
     iods,
     policy,
+    private_attributes,
     standard,
     supplementary_actions,
     uid_roles,
@@ -54,7 +55,7 @@ UNCOVERED_TEXT = RuleSource.UNCOVERED_TEXT
 DEFAULT = RuleSource.DEFAULT
 NOT_IN_DICTIONARY = RuleSource.NOT_IN_DICTIONARY
 
-PRIVATE_ROW = "(gggg,eeee) where gggg is odd"
+PRIVATE_ROW = standard.PRIVATE_ATTRIBUTES_TAG
 RETAIN_SAFE_PRIVATE = "retain_safe_private"
 CLEAN_DESCRIPTORS = "clean_descriptors"
 SUPPORTED_IODS = ("CT Image", "RT Dose", "RT Plan", "RT Structure Set")
@@ -343,6 +344,19 @@ def test_retain_safe_private_is_refused_until_reviewed_rules_exist():
             ElementRules(composed)
 
 
+def test_retain_safe_private_is_refused_as_private_attribute_removal_refuses_it():
+    # One refusal, so the rules and the removal cannot disagree about why.
+    composed = policy.compose_policy("public-release")
+    with pytest.raises(policy.PolicyError) as by_rules:
+        ElementRules(composed)
+    with pytest.raises(policy.PolicyError) as by_removal:
+        private_attributes.private_attribute_paths(pydicom.Dataset(), composed)
+    with pytest.raises(policy.PolicyError) as by_policy:
+        policy.refuse_retain_safe_private(composed)
+
+    assert str(by_rules.value) == str(by_removal.value) == str(by_policy.value)
+
+
 def test_a_policy_composed_from_another_table_is_refused():
     table = standard.load_table_e1_1()
     other = dataclasses.replace(table, attributes=table.attributes[:-1])
@@ -563,6 +577,9 @@ def test_patient_size_code_sequence_is_removed_under_retain_patient_characterist
     assert compound_actions.resolve_in_iod(ct_image, "(0010,1021)", (), action) == "X"
 
 
+# Building the rules the first time in a process takes longer than
+# Hypothesis's default deadline, whichever example does it.
+@hypothesis.settings(deadline=None)
 @hypothesis.given(st.integers(0, 0xFFFF), st.integers(0, 0xFFFF))
 def test_every_tag_has_one_rule_that_is_the_same_for_the_same_policy(group, element):
     tag = _tag(group, element)
@@ -575,6 +592,7 @@ def test_every_tag_has_one_rule_that_is_the_same_for_the_same_policy(group, elem
     assert hash(rule) == hash(dataclasses.replace(rule))
 
 
+@hypothesis.settings(deadline=None)
 @hypothesis.given(st.sampled_from([0x0002, 0x0004]), st.integers(0, 0xFFFF))
 def test_every_element_of_groups_0002_and_0004_in_a_data_set_is_removed(group, element):
     # The engine builds the File Meta Information itself, and group 0004
@@ -585,6 +603,7 @@ def test_every_element_of_groups_0002_and_0004_in_a_data_set_is_removed(group, e
         assert (rule.source, rule.action) == (ENGINE, "X")
 
 
+@hypothesis.settings(deadline=None)
 @hypothesis.given(st.integers(0, 0xFFFF))
 def test_every_element_of_group_0000_in_a_data_set_is_removed(element):
     # Group 0000 is the DIMSE command set (PS3.7), which has no place in a
@@ -601,6 +620,7 @@ def test_every_element_of_group_0000_in_a_data_set_is_removed(element):
             )
 
 
+@hypothesis.settings(deadline=None)
 @hypothesis.given(
     st.integers(0, 0x7FFF)
     .map(lambda half: 2 * half + 1)
@@ -614,6 +634,7 @@ def test_every_element_of_a_private_group_is_private(group, element):
         assert (rule.source, rule.action, rule.entry) == (PRIVATE, "X", PRIVATE_ROW)
 
 
+@hypothesis.settings(deadline=None)
 @hypothesis.given(st.sampled_from(RESERVED_ODD_GROUPS), st.integers(1, 0xFFFF))
 def test_an_odd_group_that_is_not_private_falls_to_the_later_rules(group, element):
     rule = _rules().rule(_tag(group, element))
@@ -621,6 +642,7 @@ def test_an_odd_group_that_is_not_private_falls_to_the_later_rules(group, elemen
     assert (rule.source, rule.action, rule.entry) == (NOT_IN_DICTIONARY, "X", "")
 
 
+@hypothesis.settings(deadline=None)
 @hypothesis.given(st.integers(0, 15), st.sampled_from(["3000", "4000"]))
 def test_the_overlay_masks_match_every_repeating_group(index, element):
     tag = f"({0x6000 + 2 * index:04X},{element})"
@@ -628,6 +650,7 @@ def test_the_overlay_masks_match_every_repeating_group(index, element):
     assert _rules().rule(tag).entry == f"(60xx,{element})"
 
 
+@hypothesis.settings(deadline=None)
 @hypothesis.given(st.integers(1, 0xFFFF), st.integers(0, 15))
 def test_the_curve_mask_matches_every_element_of_every_repeating_group(element, index):
     rule = _rules().rule(_tag(0x5000 + 2 * index, element))
@@ -635,6 +658,7 @@ def test_the_curve_mask_matches_every_element_of_every_repeating_group(element, 
     assert (rule.source, rule.action, rule.entry) == (TABLE, "X", "(50xx,xxxx)")
 
 
+@hypothesis.settings(deadline=None)
 @hypothesis.given(
     st.sampled_from([0x50, 0x60]),
     st.integers(0x10, 0x7F).map(lambda half: 2 * half),

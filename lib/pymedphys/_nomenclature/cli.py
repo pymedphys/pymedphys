@@ -14,17 +14,20 @@
 
 """Convert structure-name nomenclatures, such as TG-263's, to JSON.
 
-These commands are experimental: they belong to the DICOM de-identification
-tool, which is still in development, and may change without notice.
+These commands belong to the DICOM de-identification tool, which is still in
+development, so they are kept out of the ``pymedphys`` command line until the
+tool is released, and may change without notice. Until then they run as
+``python -m pymedphys._nomenclature``. Releasing the tool makes them public
+commands with user documentation (milestone M5 of the design).
 
-``pymedphys experimental nomenclature roi-list CSV OUTPUT --list-version
+``python -m pymedphys._nomenclature roi-list CSV OUTPUT --list-version
 VERSION`` converts an institutional list of ROI names, exported as UTF-8 CSV
 with a ``Name`` column and an optional ``Description`` column, to JSON that records it as an
 institutional list, with the file's name, SHA-256, and the version given.
 Structure-name cleaning sends every match against such a list to human
 review, since it can hold names that identify a site or a person.
 
-``pymedphys experimental nomenclature tg263 OUTPUT`` downloads the edition of AAPM's TG-263
+``python -m pymedphys._nomenclature tg263 OUTPUT`` downloads the edition of AAPM's TG-263
 Structure Spreadsheet that PyMedPhys pins, checks it against the pinned
 SHA-256, and converts it to JSON that records the spreadsheet's file name,
 worksheet version, SHA-256, and AAPM's attribution. PyMedPhys does not include
@@ -46,13 +49,34 @@ from typing import NoReturn
 
 from pymedphys._nomenclature import roi_list, tg263, tg263_published
 
+PROG = "python -m pymedphys._nomenclature"
 
-def nomenclature_cli(subparsers):
-    parser = subparsers.add_parser(
-        "nomenclature",
-        help="Convert structure-name nomenclatures to JSON (experimental).",
+
+def define_parser() -> argparse.ArgumentParser:
+    """Return the parser of the commands, which the ``pymedphys`` command lacks."""
+    parser = argparse.ArgumentParser(
+        prog=PROG,
+        description=(
+            "Convert structure-name nomenclatures to JSON for the DICOM "
+            "de-identification tool, which is in development."
+        ),
     )
-    nomenclature_subparsers = parser.add_subparsers(dest="nomenclature")
+    add_commands(parser.add_subparsers(dest="command"))
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Run a command, or print the usage without one."""
+    parser = define_parser()
+    args = parser.parse_args(argv)
+    if not hasattr(args, "func"):
+        parser.print_help()
+        return
+    args.func(args)
+
+
+def add_commands(nomenclature_subparsers) -> None:
+    """Add the ``tg263`` and ``roi-list`` commands to ``nomenclature_subparsers``."""
 
     tg263_parser = nomenclature_subparsers.add_parser(
         "tg263",

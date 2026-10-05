@@ -69,9 +69,10 @@ from collections.abc import Sequence
 
 from .file_layout import TAG_PATTERN
 from .iods import IOD
-from .policy import Policy, PolicyError
+from .policy import Policy, PolicyError, refuse_retain_safe_private
 from .standard import (
     _RESERVED_ODD_GROUPS,
+    PRIVATE_ATTRIBUTES_TAG,
     DictionaryAttribute,
     dictionary_attribute,
     load_table_e1_1,
@@ -79,8 +80,6 @@ from .standard import (
 from .supplementary_actions import TEXT_VRS, UNCOVERED_TEXT_ACTION
 from .uid_roles import load_uid_roles
 
-PRIVATE_ROW = "(gggg,eeee) where gggg is odd"
-RETAIN_SAFE_PRIVATE = "retain_safe_private"
 REMOVE = "X"
 KEEP = "K"
 # The attributes that the engine removes by tag, wherever they are.
@@ -196,23 +195,19 @@ class ElementRules:
     """
 
     def __init__(self, policy: Policy) -> None:
-        if RETAIN_SAFE_PRIVATE in policy.options:
-            raise PolicyError(
-                "the Retain Safe Private Option is not supported until "
-                "reviewed rules say which private attributes are safe"
-            )
+        refuse_retain_safe_private(policy)
         table = load_table_e1_1()
         rows = {row.tag: row for row in table.attributes}
         if table.edition != policy.edition or rows.keys() != policy.actions.keys():
             raise PolicyError("the policy was not composed from the pinned Table E.1-1")
         self.policy = policy
-        self._private = policy.actions[PRIVATE_ROW]
+        self._private = policy.actions[PRIVATE_ATTRIBUTES_TAG]
         self._table = {
             tag: rows[tag].basic_profile
             if action == "C" and _is_sequence(tag)
             else action
             for tag, action in policy.actions.items()
-            if tag != PRIVATE_ROW
+            if tag != PRIVATE_ATTRIBUTES_TAG
         }
         self._masked = tuple(tag for tag in self._table if "x" in tag)
         self._uid_roles = frozenset(load_uid_roles().rules)
@@ -259,7 +254,9 @@ class ElementRules:
             return ElementRule(tag, RuleSource.ENGINE, REMOVE, engine)
         group = int(tag[1:5], 16)
         if group % 2 and group not in _RESERVED_ODD_GROUPS:
-            return ElementRule(tag, RuleSource.PRIVATE, self._private, PRIVATE_ROW)
+            return ElementRule(
+                tag, RuleSource.PRIVATE, self._private, PRIVATE_ATTRIBUTES_TAG
+            )
         entry = tag if tag in self._table else None
         entry = entry or next((p for p in self._masked if _matches(p, tag)), None)
         if entry is not None:
