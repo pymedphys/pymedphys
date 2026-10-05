@@ -74,6 +74,7 @@ import re
 import secrets
 from collections.abc import Iterable, Mapping
 from pathlib import PurePosixPath
+from typing import TYPE_CHECKING
 
 from pymedphys._nomenclature import tg263
 
@@ -81,7 +82,6 @@ from . import method_digest, output_names
 from .method_digest import MethodDigestComponents
 from .file_layout import TAG_PATTERN, ElementPath
 from .policy import PRESETS, Policy
-from .qc_attestation import AttestationRecord, Outcome
 from .reference_graph import FindingKind
 from .residuals import NotSearched, Omission, Unsearched, UnsearchedReason
 from .runtime import RuntimeEnvironment, runtime_environment
@@ -89,6 +89,11 @@ from .scope import Disposition
 from .source import SourceReason
 from .standard import OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
+
+if TYPE_CHECKING:
+    # The QC pack takes its label pattern from this module, so this module
+    # imports the attestation record only where it checks one.
+    from .qc_attestation import AttestationRecord
 
 # The format of the report document. A change to its fields takes a new label.
 FORMAT = "pymedphys-deid-release-report/3"
@@ -554,6 +559,8 @@ def _reason_entry(reason: object) -> dict:
 def _qc_review_section(record: AttestationRecord | None) -> dict | None:
     if record is None:
         return None
+    from .qc_attestation import AttestationRecord, Outcome
+
     if not isinstance(record, AttestationRecord):
         raise _refuse("qc_review", "is not an attestation record")
     if _string(record.reference) is None or not _REFERENCE.fullmatch(record.reference):
