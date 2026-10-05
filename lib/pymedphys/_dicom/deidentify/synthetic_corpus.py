@@ -19,9 +19,9 @@ linked collection of the first supported release's IODs: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, and an RT Dose that
 references the plan, all of one fictitious patient and study, with one Frame
-of Reference, and a second RT Dose of the plan for review (below). It is the
-input for validating each preset end to end: once
-the engine has written the collection, the residual search
+of Reference, and a second RT Dose of the plan for review (below). It is
+the input for validating each preset end to end: once the engine has
+written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
 markers that had to be removed or replaced.
 
@@ -29,7 +29,8 @@ markers that had to be removed or replaced.
 defines, at each place in the data set where the IOD's modules define it,
 holds a marker: a value that is valid for the attribute's VR and VM in the
 pinned PS3.6 data dictionary, and that no other placement in the collection
-holds. Text is ``SYNMK-00042``, a code string ``SYNMK_00042``, a person name
+holds, except for the two placements that **Diagnostics and review**
+describes. Text is ``SYNMK-00042``, a code string ``SYNMK_00042``, a person name
 ``SYNMK00042^MARKER00042``, a UID ``2.25.9999900042``, a URI
 ``https://synmk.invalid/SYNMK-00042``, a date a day from 1800 to 1899, a
 datetime that date at noon, a time ``HHMMSS.424242`` whose seconds from
@@ -91,14 +92,15 @@ recorded in the other files with
 are Responsible Person (0010,2297) and Responsible Organization (0010,2299)
 at the top level. Planted in every file, they would sequester every
 instance, and no preset could release any of the collection; planted in one,
-that instance checks sequestration and the other five check each preset's
-output.
+that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
+the other five check each preset's output.
 
-**Edge cases.** Each file except the RT Dose is written in Explicit VR
-Little Endian, and the RT Dose in Implicit VR Little Endian. pydicom 3.0.2
-does not know some newer attributes, such as (0008,001D), and reads them
-from the RT Dose as UN; the engine reads them with the pinned dictionary.
-The first CT slice holds Patient Comments (0010,4000) encoded with VR UN.
+**Edge cases.** Each file except the first RT Dose, ``06-rtdose.dcm``, is
+written in Explicit VR Little Endian, and that RT Dose in Implicit VR
+Little Endian. pydicom 3.0.2 does not know some newer attributes, such as
+(0008,001D), and reads them from that RT Dose as UN; the engine reads them
+with the pinned dictionary. The first CT slice holds Patient Comments
+(0010,4000) encoded with VR UN.
 The RT Structure Set declares Specific Character Set ``ISO_IR 100`` and its
 Patient's Name holds a Latin-1 letter. Every file has a private block of a
 synthetic private creator at the top level, and another in the item of
@@ -113,8 +115,9 @@ collection never reaches. The RT Plan's Device UID (0018,1002), which the
 Basic Profile replaces, holds ``2.25.`` followed by a text marker, which VR
 UI does not allow (:attr:`PlacementKind.INVALID`): the strict reader admits
 it, and pydicom, by default, warns and quotes it whenever it converts it, so
-a run must keep the warning's text out of what it shows. :data:`REVIEW_FILE`, a second RT Dose that
-references the plan and that the plan does not reference, keeps in
+a run must keep the warning's text out of what it shows.
+:data:`REVIEW_FILE`, a second RT Dose that references the plan and that the
+plan does not reference, keeps in
 Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
@@ -301,13 +304,14 @@ class PlacementKind(enum.Enum):
         An attribute of Table E.1-1 that the IOD defines there but that is
         not planted, for the placement's ``reason``.
     INVALID
-        A UID marker in an attribute of Table E.1-1 whose last component is
-        the text marker, which VR UI does not allow, so that pydicom warns,
+        A value of a UI attribute of Table E.1-1, ``2.25.`` followed by a
+        text marker, which VR UI does not allow, so that pydicom warns,
         quoting it, when it converts it.
     REVIEW_COPY
-        A copy of another file's marker, in an attribute that Table E.1-1
-        does not list and the Basic Profile keeps, so that the residual
-        search finds it and sends the file to review.
+        A copy of another file's marker, whose values equal that
+        placement's, in an attribute that Table E.1-1 does not list and the
+        Basic Profile keeps, so that the residual search finds it and sends
+        the file to review.
     """
 
     PLANTED = "planted"
@@ -323,9 +327,7 @@ class PlacementKind(enum.Enum):
 
 
 # The kinds of placement that leave a marker below a sequence.
-_MARKER_KINDS = frozenset(
-    {PlacementKind.PLANTED, PlacementKind.CONTENT, PlacementKind.INVALID}
-)
+_MARKER_KINDS = frozenset({PlacementKind.PLANTED, PlacementKind.CONTENT})
 
 
 class NotPlantedReason(enum.Enum):
@@ -366,7 +368,7 @@ class Placement:
     profile_tag : str
         The tag of the row of Table E.1-1 that the placement covers, such as
         ``"(60xx,3000)"``, or its row for private attributes; ``""`` for
-        :attr:`PlacementKind.CONTENT`.
+        :attr:`PlacementKind.CONTENT` and :attr:`PlacementKind.REVIEW_COPY`.
     reason : NotPlantedReason or None
         Why it is not planted, for :attr:`PlacementKind.NOT_PLANTED`; or
         :attr:`NotPlantedReason.NO_MARKER_CARRIER` for a
@@ -413,7 +415,7 @@ class FileManifest:
     placements : tuple of Placement
         Those of the IOD's attributes of Table E.1-1 in the order of its
         definitions, then the content markers of sequences, the extra
-        references, and the private block.
+        references, the private block, and any review copy.
     """
 
     name: str
@@ -1054,6 +1056,10 @@ class _Instance:
         attribute = dictionary_attribute(tag)
         if attribute is None or attribute.vrs != ("LO",):
             raise ValueError("the copy goes in an attribute of VR LO")
+        if tag in _basic_profile_actions() or _number(tag) in self.dataset:
+            raise ValueError(
+                "the copy goes in an empty attribute that Table E.1-1 does not list"
+            )
         path = ElementPath((), tag)
         self.dataset[_number(tag)] = new_element(
             path, "LO", list(marker.values), self.codecs

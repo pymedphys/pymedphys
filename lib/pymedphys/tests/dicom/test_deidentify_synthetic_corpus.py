@@ -17,6 +17,7 @@
 import collections
 import json
 import re
+import warnings
 
 from pymedphys._imports import pydicom, pytest
 
@@ -634,7 +635,7 @@ def test_the_corpus_is_not_written_beside_an_existing_manifest(corpus, tmp_path)
     assert [path.name for path in tmp_path.iterdir()] == [existing.name]
 
 
-def test_a_second_dose_keeps_a_copy_of_a_marker_the_profile_removes(corpus):
+def test_a_second_dose_keeps_a_copy_of_a_marker_the_profile_replaces(corpus):
     names = [file.name for file in corpus.files]
     review = corpus.files[names.index(corpus_module.REVIEW_FILE)]
     plan = corpus.files[names.index("05-rtplan.dcm")]
@@ -674,8 +675,24 @@ def test_one_uid_marker_is_invalid_for_its_vr(corpus):
     (value,) = invalid.values
     assert re.fullmatch(r"2\.25\." + TEXT, value) and len(value) % 2 == 0
     assert value_problem("UI", value) is not None
+    # Its marker is in no other placement, and nowhere else in its file.
+    (number,) = re.findall(r"SYNMK-(\d{5})", value)
+    others = {
+        found
+        for _, placement in _placements(corpus, *UNIQUE_KINDS)
+        for text in placement.values
+        for found in re.findall(r"(?:SYNMK|MARKER|99999)[-_]?(\d{5})", text)
+    }
+    assert others and number not in others
+    assert plan.data.count(value.encode()) == 1
     # The strict reader admits it, and pydicom finds it invalid and quotes it.
     evidence = read_source(plan.data)
     assert evidence.value_field(invalid.path).rstrip(b"\x00").decode() == value
     with pytest.raises(ValueError, match=re.escape(value)):
         pydicom.valuerep.validate_value("UI", value, pydicom.config.RAISE)
+
+
+def test_building_emits_no_warning():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        corpus_module.build_corpus()
