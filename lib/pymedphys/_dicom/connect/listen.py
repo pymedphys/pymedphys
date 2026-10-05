@@ -83,7 +83,12 @@ class DicomListener(DicomConnectBase):
         logging.debug("Will store files received in: %s", self.storage_directory)
 
     def start(self):
-        """Start the DICOM listener"""
+        """Start the listener.
+
+        With ``port=0``, the operating system reserves an available port and
+        ``self.port`` exposes it after startup. An unavailable explicit port
+        raises ``OSError``.
+        """
 
         # Initialise the Application Entity
         self.ae = pynetdicom.AE(ae_title=self.ae_title)
@@ -109,7 +114,10 @@ class DicomListener(DicomConnectBase):
         ]
 
         # Start listening for incoming association requests
-        self.ae.start_server((self.host, self.port), evt_handlers=handlers, block=False)
+        server = self.ae.start_server(
+            (self.host, self.port), evt_handlers=handlers, block=False
+        )
+        self.port = server.server_address[1]
 
     def stop(self):
         """Stop the DICOM listener"""
@@ -228,7 +236,7 @@ def listen_cli(args):
     logging.info("Port: %s", args.port)
     logging.info("AE Title: %s", args.aetitle)
     dicom_listener.start()
-    logging.info("Listener Ready")
+    logging.info("Listener Ready on port %s", dicom_listener.port)
 
     # Run until the process is stopped
     def handler_stop_signals(*_):
