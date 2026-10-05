@@ -210,14 +210,25 @@ without the slow tests) with two versions of pydicom, alongside both the quick
 and full matrices: `minimum`, 3.0.2, the lowest release that `pydicom>=3.0.2` in
 `pyproject.toml` allows, and `latest`, the newest release, which it resolves
 from the package index with `uv pip compile` each time it runs. Raise the
-minimum in the job when the declared one is raised. Each runs on Ubuntu with
-Python 3.14, installs the same locked environment as the unit tests, and
-overlays pydicom alone with `uv run --no-sync --with pydicom==<version>`. The
+minimum in the job when the declared one is raised. Both jobs use Ubuntu and
+Python 3.14. A requested version already covered by the normal Ubuntu/Python
+3.14 cell reuses that evidence when there are no extra pytest arguments and
+the lock has exactly one matching registry entry. Otherwise the job installs
+the frozen test environment and overlays pydicom alone with
+`uv run --no-sync --with pydicom==<version>`. The
 job pins the latest release by its number because `uv run --with` keeps the
 locked version whenever that satisfies the requirement, even with
 `--upgrade-package`. It prints the version that Python imports and fails first
-if that is not the one requested. It uploads its JUnit reports as
-`junit-pydicom-minimum` and `junit-pydicom-latest`. A failure fails the
+if that is not the one requested. Actual executions upload JUnit reports as
+`junit-pydicom-minimum` and `junit-pydicom-latest`; reused evidence has no copied
+or synthetic JUnit. Each role uploads a coverage manifest naming its requested
+version and evidence source. The normal reference cell records its imported
+versions and checkout revision, and explicitly requires both metadata and
+JUnit before upload. Reuse is established only when the whole unit-test
+workflow succeeds, including that reference cell and both compatibility jobs.
+Lookup, planning, metadata and upload failures fail the workflow. The existing
+jobs retain their parallel scheduling, with no new final verification job.
+A failure fails the
 unit-test workflow and therefore the required CI or release summary, so a
 pydicom release that breaks the de-identification tests fails every unit-test
 run, on pull requests and releases alike, until PyMedPhys is fixed or its

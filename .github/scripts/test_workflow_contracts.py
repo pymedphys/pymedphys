@@ -360,6 +360,45 @@ class WorkflowContractTests(unittest.TestCase):
                 self.assertNotIn(job, needs(workflow["publish-pypi"]))
                 self.assertNotIn(job, needs(workflow["upload-release-assets"]))
 
+    def test_pydicom_reuse_keeps_its_proof_inside_the_unit_workflow(self):
+        workflow = jobs("unit-tests.yml")
+        # Reuse saves suite executions without adding a serial runner job.
+        self.assertEqual(
+            set(workflow),
+            {"test", "narrow-extras", "dependency-floors", "pydicom-versions"},
+        )
+        baseline = workflow["test"]
+        self.assertIn(
+            "        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'",
+            baseline,
+        )
+        self.assertIn("python .github/scripts/pydicom_coverage.py baseline", baseline)
+        self.assertIn("          CI_COMMIT: ${{ github.sha }}", baseline)
+        self.assertIn("          path: test-results/*\n", baseline)
+        versions = workflow["pydicom-versions"]
+        self.assertEqual(needs(versions), set())
+        self.assertNotIn("\n    if:", versions)
+        self.assertNotIn("continue-on-error", versions)
+        self.assertIn("pydicom: [minimum, latest]", versions)
+        self.assertIn("          install-project: 'false'", versions)
+        self.assertIn("python .github/scripts/pydicom_coverage.py minimum", versions)
+        self.assertIn("uv pip compile --python-version 3.14", versions)
+        # Only explicit reuse skips installation and the complete overlay suite.
+        self.assertEqual(
+            versions.count("if: steps.coverage.outputs.reuse != 'true'"), 2
+        )
+        self.assertIn("python .github/scripts/pydicom_coverage.py plan", versions)
+        self.assertIn("python .github/scripts/pydicom_coverage.py record", versions)
+        self.assertIn("lib/pymedphys/tests/dicom/test_deidentify_*.py", versions)
+        self.assertIn("lib/pymedphys/tests/dev/test_deid_tables.py", versions)
+        self.assertIn("name: pydicom-coverage-${{ matrix.pydicom }}", versions)
+        self.assertIn(
+            "path: test-results/pydicom-coverage-${{ matrix.pydicom }}.json", versions
+        )
+        self.assertIn("if-no-files-found: error", versions)
+        self.assertIn("unit-tests", needs(jobs("ci.yml")["summary"]))
+        self.assertIn("unit-tests", needs(jobs("release.yml")["publish-pypi"]))
+
 
 if __name__ == "__main__":
     unittest.main()

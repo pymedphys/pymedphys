@@ -73,12 +73,18 @@ jobs:
             -n 2 --dist worksteal --durations=15 \
             --junitxml="${GITHUB_WORKSPACE}/test-results/junit-${MATRIX_OS}-${MATRIX_PYTHON}.xml"
 
+      - name: Record the locked pydicom test evidence
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
+        env:
+          CI_COMMIT: ${{ github.sha }}
+        run: uv run -- python .github/scripts/pydicom_coverage.py baseline
+
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: junit-${{ matrix.os }}-${{ matrix.python-version }}
-          path: test-results/*.xml
+          path: test-results/*
           if-no-files-found: error
           retention-days: 30
 
@@ -198,8 +204,10 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # The de-identification tests also run with the declared minimum version of
-  # pydicom and with its latest release, which a new installation resolves.
+  # Cover the declared minimum and the latest release of pydicom. When a role
+  # exactly matches the locked version, the normal Ubuntu/Python 3.14 suite
+  # covers it. Every role records its source, and success of this reusable
+  # workflow requires both the source job and its evidence upload to succeed.
   # pydicom reads and writes every file the engine handles, and its data
   # dictionary decides how an attribute of an Implicit VR file is read.
   pydicom-versions:
@@ -219,28 +227,49 @@ jobs:
       # The de-identification tests read no downloaded data.
       - uses: ./.github/actions/setup-project
         with:
+          python-version: '3.14'
+          install-project: 'false'
+
+      - name: Select evidence for ${{ matrix.pydicom }} pydicom
+        id: coverage
+        shell: bash
+        env:
+          PYDICOM: ${{ matrix.pydicom }}
+          # Keep this minimum in step with pyproject.toml.
+          PYDICOM_MINIMUM: '3.0.2'
+          QUICK: ${{ inputs.quick }}
+          PYTHON_MATRIX: ${{ inputs.python-matrix }}
+          EXTRA_PYTEST_ARGS: ${{ inputs.extra-pytest-args }}
+          CI_COMMIT: ${{ github.sha }}
+        run: |
+          set -euxo pipefail
+          minimum=$(python .github/scripts/pydicom_coverage.py minimum)
+          if [[ "${PYDICOM}" == minimum ]]; then
+            version="${minimum}"
+          else
+            # Resolve afresh: uv run --with retains a satisfying locked version.
+            pinned=$(uv pip compile --python-version 3.14 --no-deps --no-header --no-annotate --quiet - <<< "pydicom>=${minimum}")
+            version="${pinned#pydicom==}"
+          fi
+          PYDICOM_VERSION="${version}" python .github/scripts/pydicom_coverage.py plan
+
+      - uses: ./.github/actions/setup-project
+        # Missing outputs select execution; malformed plans fail their step.
+        if: steps.coverage.outputs.reuse != 'true'
+        with:
+          python-version: '3.14'
           extras: 'tests'
 
       - name: Run the de-identification tests with ${{ matrix.pydicom }} pydicom
         id: tests
+        if: steps.coverage.outputs.reuse != 'true'
         shell: bash
         env:
           PYDICOM: ${{ matrix.pydicom }}
-          # The lowest release that pydicom>=3.0.2 in pyproject.toml allows.
-          PYDICOM_MINIMUM: '3.0.2'
+          PYDICOM_VERSION: ${{ steps.coverage.outputs.version }}
         run: |
           set -euxo pipefail
           mkdir -p test-results
-          if [[ "${PYDICOM}" == minimum ]]; then
-            version="${PYDICOM_MINIMUM}"
-          else
-            # uv run --with keeps the locked pydicom whenever it satisfies the
-            # requirement, even with --upgrade-package, so resolve the latest
-            # release from the package index and pin it.
-            pinned=$(uv pip compile --no-deps --no-header --no-annotate --quiet - <<< "pydicom>=${PYDICOM_MINIMUM}")
-            version="${pinned#pydicom==}"
-          fi
-          export PYDICOM_VERSION="${version}"
           # Reuse the locked environment and overlay only pydicom. Invoke
           # Python so it imports pydicom from uv's overlay environment, print
           # the version tested, and fail if the overlay did not take effect.
@@ -252,11 +281,36 @@ jobs:
             -n 2 --dist worksteal --durations=15 \
             --junitxml="${GITHUB_WORKSPACE}/test-results/junit-pydicom-${PYDICOM}.xml"
 
+      - name: Record pydicom coverage
+        id: evidence
+        shell: bash
+        env:
+          PYDICOM: ${{ matrix.pydicom }}
+          PYDICOM_VERSION: ${{ steps.coverage.outputs.version }}
+          REUSE: ${{ steps.coverage.outputs.reuse }}
+        run: |
+          set -euxo pipefail
+          if [[ "${REUSE}" == true ]]; then
+            python .github/scripts/pydicom_coverage.py record
+          else
+            uv run --no-sync --with "pydicom==${PYDICOM_VERSION}" -- \
+              python .github/scripts/pydicom_coverage.py record
+          fi
+
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: junit-pydicom-${{ matrix.pydicom }}
           path: test-results/*.xml
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload pydicom coverage
+        if: ${{ !cancelled() && steps.evidence.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pydicom-coverage-${{ matrix.pydicom }}
+          path: test-results/pydicom-coverage-${{ matrix.pydicom }}.json
           if-no-files-found: error
           retention-days: 30

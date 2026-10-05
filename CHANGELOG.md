@@ -243,6 +243,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** De-identification tests reuse immutable conformance setup and file/table digest caches for ordinary assertions, while mutation and cold-read tests retain fresh inputs. Requirements traceability reuses actual pytest collection, and minimum/latest pydicom coverage can reuse the matching locked Ubuntu/Python 3.14 run with recorded evidence. All test cases and the existing matrix policy remain in place. PR link pending.
 - **[Contributor facing only]** CI runs its larger unit-test suites on two
   workers with bounded numerical thread pools and reports the slowest tests.
   Pull requests select integration components by their inputs, CI reuses the
@@ -1591,7 +1592,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 ### Breaking Changes
 
-- Made shapely an optional dependency once more. No longer depending on
+- Made shapely an optional decy once more. No longer depending on
   `shapely-helper`.
   - Shapely can be installed by running `pip install pymedphys[difficult]==0.19.0`
   - This fixes an issue where `pip` refuses to install due to the
