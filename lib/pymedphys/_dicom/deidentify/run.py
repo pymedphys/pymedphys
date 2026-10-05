@@ -494,6 +494,7 @@ def _run(
         )
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
+        _remove_empty_directories(staged_release)
         if os.path.lexists(release_path):
             raise RunError(_RELEASE_EXISTS.format(release=release_path))
         os.rename(staged_release, release_path)
@@ -501,6 +502,18 @@ def _run(
     finally:
         removed = _remove(staging)
     return RunResult(release_path, outcomes, first.findings, removed, qc_pack)
+
+
+def _remove_empty_directories(root: Path) -> None:
+    """Remove each directory below ``root`` that holds no file, deepest first.
+
+    A withheld file's patient, study, or series directory is otherwise
+    published empty, which says that something was withheld there.
+    """
+    for directory, _, _ in os.walk(root, topdown=False):
+        # Deepest first, so a directory that held only empty ones is empty.
+        if Path(directory) != root and not os.listdir(directory):
+            os.rmdir(directory)
 
 
 def _labelled(outcomes: tuple[Outcome, ...]) -> tuple[Outcome, ...]:
