@@ -19,7 +19,7 @@ MetersetMap; DICOM, TRF, iCOM and Mosaiq; interpolation, electron factors and
 research-focused Pinnacle export. Configuration and public references link to
 verified examples and documented limits. A page inventory and automated HTML
 migration checks retain existing URLs, fragments and local artefact links.
-Pull request link pending.
+([#2251](https://github.com/pymedphys/pymedphys/pull/2251))
 
 ### Documentation design and evidence catalogues
 
