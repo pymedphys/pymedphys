@@ -53,15 +53,20 @@ def _instance(*elements):
 
 
 def test_the_walker_plan_retains_its_kept_text_in_file_order():
-    # The RT Plan keeps Specific Character Set and both Beam Numbers as they
-    # are. Its replaced UIDs, emptied name, removed private and unlisted
-    # elements, dummy label, and kept sequence and US element are not text
-    # that the plan retains.
-    assert retained_paths(_plan()) == (
-        CHARACTER_SET,
-        FIRST_BEAM_NUMBER,
-        SECOND_BEAM_NUMBER,
+    # The RT Plan keeps both Beam Numbers as they are. Its Specific Character
+    # Set, replaced UIDs, emptied name, removed private and unlisted elements,
+    # dummy label, and kept sequence and US element are not text that the
+    # plan retains for review.
+    assert retained_paths(_plan()) == (FIRST_BEAM_NUMBER, SECOND_BEAM_NUMBER)
+
+
+def test_specific_character_set_is_not_reviewed_at_any_depth():
+    plan = _instance(
+        _element(CHARACTER_SET, vr="CS"),
+        _element(_path(("(0008,1115)", 0), "(0008,0005)"), vr="CS"),
     )
+
+    assert not retained_paths(plan)
 
 
 @pytest.mark.parametrize("action", ["X", "Z", "D", "U", "C"])
@@ -143,13 +148,11 @@ def test_retained_text_gives_numbers_and_names_as_they_were_written():
 
 def test_retained_text_reads_a_walker_plan_with_decoded_values():
     values = {
-        CHARACTER_SET: "ISO_IR 100",
         FIRST_BEAM_NUMBER: pydicom.valuerep.IS("1"),
         SECOND_BEAM_NUMBER: pydicom.valuerep.IS("2"),
     }
 
     assert retained_text(_plan(), values) == (
-        RetainedText("ISO_IR 100", CHARACTER_SET),
         RetainedText("1", FIRST_BEAM_NUMBER),
         RetainedText("2", SECOND_BEAM_NUMBER),
     )
@@ -157,9 +160,9 @@ def test_retained_text_reads_a_walker_plan_with_decoded_values():
 
 def test_a_retained_value_that_was_not_read_is_refused():
     with pytest.raises(QcPackError, match=r"\(300A,00C0\) was not read") as caught:
-        retained_text(_plan(), {CHARACTER_SET: "ISO_IR 100"})
+        retained_text(_plan(), {FIRST_BEAM_NUMBER: "SENTINEL"})
 
-    assert "ISO_IR" not in str(caught.value)
+    assert "SENTINEL" not in str(caught.value)
 
 
 @pytest.mark.parametrize(

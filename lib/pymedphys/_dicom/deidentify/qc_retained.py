@@ -23,7 +23,9 @@ transform reads the values of :func:`retained_paths` for the review only,
 and :func:`retained_text` turns them into the QC pack's material
 (:class:`~pymedphys._dicom.deidentify.run_qc.RetainedText`).
 
-UI is left out: a UID is kept only where the pinned tables register it,
+Specific Character Set (0008,0005) is left out, at any depth: it is a code
+that the engine itself reads to decode text, and names no one. UI is left
+out too: a UID is kept only where the pinned tables register it,
 which names no one, and the residual search already accounts for those
 (D-027). A value that the walker cleans (C) or replaces is not retained; a
 ROI Name that descriptor cleaning writes is the ROI name material's
@@ -65,6 +67,9 @@ RETAINED_TEXT_VRS = frozenset(
     }
 )
 
+# Kept as it is, but a code for decoding the instance's text, not text itself.
+_NOT_REVIEWED_TAGS = frozenset({"(0008,0005)"})
+
 
 def retained_paths(plan: InstancePlan) -> tuple[ElementPath, ...]:
     """Return the paths of the elements whose values a plan retains, in file order.
@@ -77,7 +82,8 @@ def retained_paths(plan: InstancePlan) -> tuple[ElementPath, ...]:
     -------
     tuple of ElementPath
         Each element planned K, neither a sequence nor removed with one,
-        whose VR is in :data:`RETAINED_TEXT_VRS`.
+        whose VR is in :data:`RETAINED_TEXT_VRS`, other than Specific
+        Character Set.
     """
     if not isinstance(plan, InstancePlan):
         raise TypeError("plan must be an InstancePlan")
@@ -88,6 +94,7 @@ def retained_paths(plan: InstancePlan) -> tuple[ElementPath, ...]:
         and element.removed_with is None
         and element.removed_for is None
         and element.vr in RETAINED_TEXT_VRS
+        and element.path.tag not in _NOT_REVIEWED_TAGS
     )
 
 
