@@ -241,6 +241,17 @@ def clean_roi_names(
     return tuple(decisions)
 
 
+def echoes_identifier(value: str, identifiers: Iterable[str]) -> bool:
+    """Return whether a ROI Name echoes a known identifier, as this tier checks.
+
+    A word of ``value`` of more than one character is a word of an
+    identifier, or the whole value equals a whole identifier, once case and
+    characters that are not letters or digits are disregarded.
+    """
+    words, wholes = _identifier_words(_texts(identifiers, "identifiers"))
+    return bool(_words(value) & words) or _whole(value) in wholes
+
+
 def _texts(values: Iterable[str], what: str) -> tuple[str, ...]:
     if isinstance(values, (str, bytes)):
         raise TypeError(f"{what} must be a sequence of strings, not one value")

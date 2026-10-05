@@ -492,3 +492,37 @@ def test_streamlit_pseudonymise_keeps_upload_names_out_of_pydicom_diagnostics(
     assert not [w for w in caught if "ZZCANARY" in str(w.message)]
     _assert_no_canaries(capsys, caplog)
     assert diagnostics.SUMMARY in caplog.text
+
+
+@pytest.mark.pydicom
+def test_records_of_loggers_below_pydicom_are_summarised(caplog):
+    # pydicom's pixel handling logs to loggers such as
+    # pydicom.pixels.decoders.base, whose records a filter on the pydicom
+    # logger itself never sees.
+    caplog.set_level(logging.DEBUG)
+    with diagnostics.redacted_pydicom_diagnostics():
+        logging.getLogger("pydicom.pixels.decoders.base").warning(
+            "failed on %s", CANARY_NAME
+        )
+    assert [record.getMessage() for record in caplog.records] == [diagnostics.SUMMARY]
+
+
+@pytest.mark.pydicom
+def test_pydicom_warnings_attributed_to_the_caller_are_summarised():
+    # pydicom can attribute its warnings to the caller's frame, so they do
+    # not appear to come from pydicom's modules.
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with diagnostics.redacted_pydicom_diagnostics():
+            pydicom.misc.warn_and_log(f"bad value {CANARY_NAME}", stacklevel=1)
+    assert caught
+    assert not [w for w in caught if "ZZCANARY" in str(w.message)]
+
+
+@pytest.mark.pydicom
+def test_redaction_adds_no_process_wide_warning_filter():
+    with warnings.catch_warnings():
+        before = list(warnings.filters)
+        with diagnostics.redacted_pydicom_diagnostics():
+            pass
+        assert warnings.filters == before

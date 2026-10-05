@@ -19,7 +19,9 @@ Every value is encoded here by hand, little endian (PS3.5 Sections 7.1 and
 ``SENTINEL``.
 """
 
+import logging
 import struct
+import warnings
 
 from pymedphys._imports import pydicom, pytest
 
@@ -187,3 +189,26 @@ def test_big_endian_items_are_refused():
 
     with pytest.raises(sequences.UnreadableItems):
         sequences.decode_items(value, explicit=True, little_endian=False)
+
+
+def test_pydicom_diagnostics_while_decoding_are_redacted(monkeypatch, caplog):
+    # A caller that has no redaction of its own, such as the first pass's
+    # reference records, still gets none of pydicom's text.
+    sentinel = "ZZSENTINELZZ"
+    convert = pydicom.values.convert_SQ
+
+    def convert_and_warn(*args, **kwargs):
+        pydicom.misc.warn_and_log(f"bad value {sentinel}")
+        return convert(*args, **kwargs)
+
+    monkeypatch.setattr(pydicom.values, "convert_SQ", convert_and_warn)
+    caplog.set_level(logging.DEBUG, logger="pydicom")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        decoded = sequences.decode_items(
+            _implicit(ITEM, _implicit(REFERENCED_INSTANCE, UID)), explicit=False
+        )
+    assert len(decoded) == 1
+    assert caught and caplog.records
+    assert sentinel not in " ".join(str(each.message) for each in caught)
+    assert sentinel not in caplog.text

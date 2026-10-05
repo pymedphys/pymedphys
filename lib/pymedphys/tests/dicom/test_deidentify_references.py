@@ -15,8 +15,10 @@
 """Where an instance refers to others, from PS3.3, and what an instance record holds."""
 
 import dataclasses
+import logging
 import pickle
 import struct
+import warnings
 
 from pymedphys._imports import pydicom, pytest
 
@@ -911,3 +913,44 @@ def test_a_sequence_whose_items_cannot_be_read_is_refused(transfer_syntax, tag, 
 
     assert raised.value.path == path
     assert raised.value.__cause__ is None and raised.value.__context__ is None
+
+
+@pytest.mark.pydicom
+def test_pydicom_diagnostics_while_reading_a_record_are_redacted(monkeypatch, caplog):
+    # The first pass's records are read without an entry point's redaction.
+    sentinel = "ZZSENTINELZZ"
+    data = synthetic.written(synthetic.structure_set())
+    read = pydicom.dcmread
+
+    def read_and_warn(*args, **kwargs):
+        pydicom.misc.warn_and_log(f"bad value {sentinel}")
+        return read(*args, **kwargs)
+
+    monkeypatch.setattr(pydicom, "dcmread", read_and_warn)
+    caplog.set_level(logging.DEBUG, logger="pydicom")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        record = InstanceRecord.from_file(data)
+    assert record.iod == "RT Structure Set"
+    assert caught and caplog.records
+    assert sentinel not in " ".join(str(each.message) for each in caught)
+    assert sentinel not in caplog.text
+
+
+@pytest.mark.pydicom
+def test_pydicom_diagnostics_while_decoding_a_record_are_redacted(caplog):
+    # pydicom converts each value when it is first accessed, after dcmread
+    # has returned, and warns there of a value that is not valid for its VR.
+    sentinel = "ZZSENTINELZZ"
+    dataset = synthetic.structure_set()
+    dataset.SeriesInstanceUID = f"2.25.{sentinel}"
+    data = synthetic.written(dataset)  # which warns, unredacted
+    caplog.clear()
+    caplog.set_level(logging.DEBUG, logger="pydicom")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        record = InstanceRecord.from_file(data)
+    assert record.iod == "RT Structure Set"
+    assert caught and caplog.records
+    assert sentinel not in " ".join(str(each.message) for each in caught)
+    assert sentinel not in caplog.text

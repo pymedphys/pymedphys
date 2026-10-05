@@ -21,5 +21,4 @@ This presents what to write into the command prompt to use that CLI command.
     trf
     icom
     pinnacle
-    nomenclature
     pseudonymisation

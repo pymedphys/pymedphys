@@ -63,9 +63,8 @@ a file on first access, in place, and under strict reading its errors can
 quote the value. So each element is read as it was stored, with
 ``get_item(..., keep_deferred=True)``, checked against its pinned VR, and
 decoded apart from the data set; any decoding error is replaced, not
-chained. pydicom's own warnings are the entry point's to redact, as
-:func:`pymedphys._dicom.anonymise.diagnostics.redacted_pydicom_diagnostics`
-does for the legacy tools.
+chained, and pydicom's warnings and log records while a sequence is
+decoded are redacted by :func:`.diagnostics.redacted_diagnostics`.
 """
 
 from __future__ import annotations
@@ -80,6 +79,7 @@ from collections.abc import Iterator, MutableSequence, Sequence
 
 from pymedphys._imports import pydicom
 
+from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
 from .standard import VRS, load_data_dictionary
 from .uids import normalise_uid
@@ -299,7 +299,8 @@ def _decoded(vr: str, value: bytes, stored) -> object:
         if stored.VR in (None, "UN"):
             stored = stored._replace(is_implicit_VR=True, is_little_endian=True)
         try:
-            items = pydicom.values.convert_value("SQ", stored._replace(VR="SQ"))
+            with redacted_diagnostics():
+                items = pydicom.values.convert_value("SQ", stored._replace(VR="SQ"))
         # pydicom raises many types for a malformed sequence, and its
         # message can quote what it read.
         except Exception:  # pylint: disable = broad-exception-caught

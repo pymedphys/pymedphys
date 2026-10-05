@@ -48,7 +48,7 @@ import base64
 import dataclasses
 import re
 import types
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 
 from pymedphys import _version
 from pymedphys._nomenclature import tg263
@@ -61,7 +61,13 @@ from .method_digest import digest_inputs, method_digest
 from .policy import TARGET_OPTIONS, Policy, ResolvedConflict
 from .scope import SUPPORTED_IODS, SUPPORTED_TRANSFER_SYNTAXES, classify
 from .sop_classes import load_storage_sop_classes
-from .standard import OPTIONS, load_data_dictionary, load_table_e1_1, load_table_e1_1a
+from .standard import (
+    OPTIONS,
+    PRIVATE_ATTRIBUTES_TAG,
+    load_data_dictionary,
+    load_table_e1_1,
+    load_table_e1_1a,
+)
 from .uid_registry import load_uid_values
 from .uid_roles import UIDRole, load_uid_roles
 
@@ -98,8 +104,6 @@ SEQUESTER = "sequester"
 # What the statement cannot yet describe from the engine. Each is to be
 # generated once the engine decides it.
 PENDING = (
-    "The attributes and values that de-identification inserts: the "
-    "de-identification markers (D-012).",
     "The action for each element that neither Table E.1-1, a supplementary "
     "rule, nor a UID role covers, such as an element that the data "
     "dictionary does not list.",
@@ -124,6 +128,17 @@ PENDING_BIRTH_DATES = (
     "(0010,0030) in place of a zero-length value (D-008, D-021)."
 )
 _TPS_IMPORT = "tps-import"
+_CLEAN_DESCRIPTORS = "clean_descriptors"
+
+# The attributes that the markers write, and those in their items.
+_PATIENT_IDENTITY_REMOVED = "(0012,0062)"
+_DEIDENTIFICATION_METHOD = "(0012,0063)"
+_DEIDENTIFICATION_METHOD_CODES = "(0012,0064)"
+_TEMPORAL_INFORMATION_MODIFIED = "(0028,0303)"
+_CONTRIBUTING_EQUIPMENT = "(0018,A001)"
+_MANUFACTURER = "(0008,0070)"
+_SOFTWARE_VERSIONS = "(0018,1020)"
+_PURPOSE_OF_REFERENCE = "(0040,A170)"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -197,6 +212,35 @@ class TransferSyntax:
 
 
 @dataclasses.dataclass(frozen=True)
+class InsertedMarkers:
+    """The parts of the markers that the policy decides (D-012).
+
+    Attributes
+    ----------
+    method : str
+        The readable value that De-identification Method (0012,0063) gains
+        after the method digest.
+    codes : tuple of str
+        The CID 7050 Code Values of the items that De-identification Method
+        Code Sequence (0012,0064) gains in every instance: the Basic
+        Profile's and each selected option's that the policy applies, or none
+        for a policy that claims no conformance.
+    review_codes : tuple of str
+        The Code Values that it gains only in an instance whose retained
+        descriptors have passed pooled human review: Clean Descriptors',
+        where the policy selects it and can claim conformance.
+    temporal : str
+        Longitudinal Temporal Information Modified (0028,0303), unless the
+        value already present is stricter.
+    """
+
+    method: str
+    codes: tuple[str, ...]
+    review_codes: tuple[str, ...]
+    temporal: str
+
+
+@dataclasses.dataclass(frozen=True)
 class ConformanceStatement:
     """What the conformance statement of a policy describes.
 
@@ -224,6 +268,8 @@ class ConformanceStatement:
     attributes : tuple of AttributeAction
         The rows of Table E.1-1, then the supplementary rules, then the UI
         attributes that the table omits, each in its table's order.
+    markers : InsertedMarkers
+        The parts of the markers that the policy decides.
     pending : tuple of str
         What the statement cannot yet describe.
     acknowledgements : tuple of str
@@ -242,6 +288,7 @@ class ConformanceStatement:
     sop_classes: tuple[SOPClass, ...]
     transfer_syntaxes: tuple[TransferSyntax, ...]
     attributes: tuple[AttributeAction, ...]
+    markers: InsertedMarkers
     pending: tuple[str, ...]
     acknowledgements: tuple[str, ...]
 
@@ -291,6 +338,29 @@ def _attributes(policy: Policy) -> Iterator[AttributeAction]:
             yield AttributeAction(tag, names[tag], role, "U")
 
 
+def _markers(policy: Policy, digest: str) -> InsertedMarkers:
+    """Return the parts of the markers that the policy decides.
+
+    They are those that :func:`markers.markers_for` gives an instance that
+    satisfies every selected option it can without review: all but Clean
+    Descriptors and any option that the policy records as unmet.
+    """
+    unmet = {option for resolution in policy.resolved for option in resolution.unmet}
+    satisfied = [
+        option
+        for option in policy.options
+        if option != _CLEAN_DESCRIPTORS and option not in unmet
+    ]
+    found = markers.markers_for(policy, digest, satisfied=satisfied)
+    review = policy.claims_conformance and _CLEAN_DESCRIPTORS in policy.options
+    return InsertedMarkers(
+        method=found.method[1],
+        codes=tuple(code.code_value for code in found.method_codes),
+        review_codes=(OPTION_CODES[_CLEAN_DESCRIPTORS],) if review else (),
+        temporal=found.temporal_information_modified,
+    )
+
+
 def conformance_statement(
     policy: Policy, *, vocabulary: tg263.Nomenclature | None
 ) -> ConformanceStatement:
@@ -320,6 +390,11 @@ def conformance_statement(
     ValueError
         If the policy was not composed from the pinned Table E.1-1, such as
         one composed from an altered table.
+    MarkerError
+        If the markers cannot be written as valid values, as
+        :func:`~pymedphys._dicom.deidentify.markers.markers_for` refuses
+        them, such as for a PyMedPhys version too long for the readable
+        De-identification Method value. The engine would refuse them too.
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -364,7 +439,9 @@ def conformance_statement(
         load_data_dictionary(),
         registered,
         load_context_group(7050),
+        load_context_group(7005),
     )
+    digest = method_digest(policy, vocabulary=vocabulary)
     return ConformanceStatement(
         engine_version=_version.__version__,
         edition=policy.edition,
@@ -372,12 +449,13 @@ def conformance_statement(
         options=policy.options,
         enabled=policy.enabled,
         resolved=policy.resolved,
-        method_digest=method_digest(policy, vocabulary=vocabulary),
+        method_digest=digest,
         vocabulary_digest=digest_inputs(vocabulary=vocabulary).vocabulary,
         iods=tuple(sorted(SUPPORTED_IODS)),
         sop_classes=supported,
         transfer_syntaxes=syntaxes,
         attributes=tuple(_attributes(policy)),
+        markers=_markers(policy, digest),
         pending=pending,
         acknowledgements=tuple(dict.fromkeys(t.acknowledgement for t in tables)),
     )
@@ -471,6 +549,86 @@ def _claim(
     return lines
 
 
+def _private(statement: ConformanceStatement) -> list[str]:
+    """Describe the removal of private attributes, where the policy removes them."""
+    row = next(e for e in statement.attributes if e.tag == PRIVATE_ATTRIBUTES_TAG)
+    if row.action != "X":
+        return []
+    return [
+        "",
+        "X on Private Attributes removes every element of an odd group at "
+        "every level of nesting, in the items of every standard sequence: "
+        "each private creator, including one that reserves a block with no "
+        "elements; each private data element, whether or not its block has a "
+        "creator; and each element in an odd group that PS3.5 Section 7.8.1 "
+        "does not allow. A private sequence is removed whole, with its items "
+        "(PS3.15 E.1.1 and E.3.10).",
+    ]
+
+
+def _inserted(
+    statement: ConformanceStatement,
+    named: Callable[[str], str],
+    coded: Callable[[str], str],
+) -> list[str]:
+    """Describe the markers that every de-identified instance gains (D-012)."""
+    found = statement.markers
+    if found.codes:
+        codes = (
+            "gains an item for each of these codes, with Coding Scheme "
+            f"Designator `{markers.DCM}` and its Code Meaning, in this order: "
+            f"{_join(coded(c) for c in found.codes)}"
+        )
+        if found.review_codes:
+            codes += (
+                ", then "
+                f"{_join(coded(c) for c in found.review_codes)} only in an "
+                "instance whose retained descriptors have passed pooled human "
+                "review, since otherwise the Basic Profile's actions apply to "
+                "the descriptors"
+            )
+        codes += (
+            ". A code is not added where an item already present has the same "
+            "Code Value and Coding Scheme Designator, and the same Coding "
+            "Scheme Version where either has one."
+        )
+    else:
+        codes = (
+            "gains no item, since the policy claims no conformance; it is left "
+            "out where it would have no item."
+        )
+    order = _join(f"`{value}`" for value in markers.TEMPORAL_VALUES)
+    return [
+        "Every de-identified instance gains or updates these attributes, which "
+        "record what was done (PS3.15 E.1.1, E.2, and E.3.6; D-012). The values "
+        "added depend only on the policy, the method digest, the options that "
+        "the instance satisfies, and the versions of the runtime, and never "
+        "quote a value from the instance. Any value already present is kept "
+        "unless this list says otherwise.",
+        "",
+        f"- {named(_PATIENT_IDENTITY_REMOVED)}: `YES`, in place of any value "
+        "already present.",
+        f"- {named(_DEIDENTIFICATION_METHOD)} gains two values: the method "
+        f"digest above, then `{found.method}`. It gains neither where that "
+        "pair is already present as two consecutive values.",
+        f"- {named(_DEIDENTIFICATION_METHOD_CODES)} {codes}",
+        f"- {named(_TEMPORAL_INFORMATION_MODIFIED)}: `{found.temporal}`, or "
+        f"the value already present where it is stricter, in the order {order}.",
+        f"- {named(_CONTRIBUTING_EQUIPMENT)} gains an item, unless an item "
+        "already present has the same Manufacturer, Software Versions in the "
+        "same order, and purpose of reference. The item's "
+        f"{named(_MANUFACTURER)} is `{markers.MANUFACTURER}`. Its "
+        f"{named(_SOFTWARE_VERSIONS)} has four values, as the runtime that "
+        "ran gives them: PyMedPhys's full version; the Python implementation "
+        "and version as one value, `<implementation> <version>`, such as "
+        "`CPython <version>`; `pydicom "
+        "<version>`; and `tomlkit <version>`. Its "
+        f"{named(_PURPOSE_OF_REFERENCE)} has "
+        f"{coded(markers.DEIDENTIFYING_EQUIPMENT)}. The method digest does not "
+        "cover the runtime, so this item is how an instance records it.",
+    ]
+
+
 def render_markdown(statement: ConformanceStatement) -> str:
     """Write a conformance statement as CommonMark.
 
@@ -485,8 +643,16 @@ def render_markdown(statement: ConformanceStatement) -> str:
         The statement, ending with one newline. The same statement always
         gives the same text.
     """
-    meanings = {c.code_value: c.code_meaning for c in load_context_group(7050).rows}
+    meanings = {
+        c.code_value: c.code_meaning
+        for cid in (7050, 7005)
+        for c in load_context_group(cid).rows
+        if c.scheme_designator == markers.DCM
+    }
     sequences = {a.tag: a.name for a in load_data_dictionary().attributes}
+
+    def named(tag: str) -> str:
+        return f"{sequences[tag]} {tag}"
 
     def coded(code: str) -> str:
         return f"{meanings[code]} (DCM {code})"
@@ -588,6 +754,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
                 for e in statement.attributes
             ),
         ),
+        *_private(statement),
         "",
         "## Values written",
         "",
@@ -631,6 +798,10 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "role is also reported.",
         "",
         "No value that Z, D, or U writes names PyMedPhys.",
+        "",
+        "## Attributes inserted",
+        "",
+        *_inserted(statement, named, coded),
         "",
         "## Referential integrity",
         "",

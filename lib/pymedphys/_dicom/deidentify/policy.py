@@ -66,12 +66,13 @@ from .attribute_roles import AttributeRoles
 from .standard import OPTIONS, ProfileTable, load_data_dictionary, load_table_e1_1
 from .temporal_roles import TemporalRole, load_temporal_roles
 
+SAFE_PRIVATE = "retain_safe_private"
 DEVICE_IDENTITY = "retain_device_identity"
 MODIFIED_DATES = "retain_longitudinal_modified_dates"
 
 # The Options that the design document's Scope targets, in Table E.1-1's order.
 TARGET_OPTIONS = (
-    "retain_safe_private",
+    SAFE_PRIVATE,
     DEVICE_IDENTITY,
     "retain_patient_characteristics",
     MODIFIED_DATES,
@@ -90,7 +91,7 @@ PRESETS: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
             "clean_descriptors",
         ),
         "public-release": (
-            "retain_safe_private",
+            SAFE_PRIVATE,
             MODIFIED_DATES,
             "clean_descriptors",
         ),
@@ -428,3 +429,23 @@ def select_policy(preset: str = DEFAULT_PRESET) -> Policy:
             f"implemented and validated; {status}"
         )
     return policy
+
+
+def refuse_retain_safe_private(policy: Policy) -> None:
+    """Refuse a policy that selects the Retain Safe Private Option.
+
+    The Option keeps the private attributes that are known to be safe, and
+    no reviewed rules yet say which are. The rule of every element and the
+    removal of private attributes both refuse it with this.
+
+    Raises
+    ------
+    PolicyError
+        If ``policy`` selects the Retain Safe Private Option.
+    """
+    if SAFE_PRIVATE in policy.options:
+        raise PolicyError(
+            "the Retain Safe Private Option keeps the private attributes that "
+            "are known to be safe, and no reviewed rules yet say which are, so "
+            "a policy that selects it cannot yet be applied"
+        )
