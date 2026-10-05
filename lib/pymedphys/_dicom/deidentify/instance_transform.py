@@ -71,6 +71,14 @@ from pathlib import PurePosixPath
 from pymedphys._imports import pydicom
 
 from . import output_names
+from .descriptor_cleaning import (
+    CLEAN_DESCRIPTORS,
+    DescriptorCleaning,
+    DescriptorsRefused,
+    HeldRoiName,
+    clean_descriptors,
+    fallback_policy,
+)
 from .edits import Edit, EditKind, InstanceEdits, edit_instance
 from .element_rules import ElementRules
 from .elements import (
@@ -89,6 +97,7 @@ from .policy import Policy, PolicyError
 from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .references import InstanceRecord
+from .reviewed_roi_names import ReviewQueue
 from .release_gate import (
     Coverage,
     Decision,
@@ -169,37 +178,59 @@ class WriterPlan:
         )
 
 
-def coverage_of(plan: InstancePlan, edits: InstanceEdits) -> Coverage:
+@dataclasses.dataclass(frozen=True)
+class HeldEvidence:
+    """The evidence of an instance that descriptor cleaning holds for review.
+
+    Attributes
+    ----------
+    coverage : Coverage
+        Its residual search's coverage, pooled with its subject's as any.
+    held : tuple of HeldRoiName
+        Each ROI Name held, by path and reason.
+    """
+
+    coverage: Coverage
+    held: tuple[HeldRoiName, ...]
+
+
+def coverage_of(
+    plan: InstancePlan,
+    edits: InstanceEdits,
+    retained: frozenset[ElementPath] = frozenset(),
+) -> Coverage:
     """Return the residual search's coverage of an instance's plan and edits.
 
     Every element that the plan has residual collection read is planned,
     and each value collected or not collected is carried over, but for an
     element whose every UID U retains, and for an element whose UIDs the
     pinned tables all register, which the edits leave out of collection
-    wherever it is, removed sequences included.
+    wherever it is, removed sequences included, and for each path in
+    ``retained``, such as a ROI Name that descriptor cleaning writes with a
+    value.
     """
-    retained = {
+    left_out: set[ElementPath] = set(retained) | {
         edit.path
         for edit in edits.edits
         if edit.uid_outcomes
         and all(outcome is UIDOutcome.RETAINED for outcome in edit.uid_outcomes)
     }
     collected = {value.source for value in edits.source_values}
-    retained.update(path for path in edits.registered_uids if path not in collected)
+    left_out.update(path for path in edits.registered_uids if path not in collected)
     return Coverage(
         planned=frozenset(
             element.path
             for element in plan.elements
             if Consumer.RESIDUAL_COLLECTION in element.consumers
-            and element.path not in retained
+            and element.path not in left_out
         ),
         collected=tuple(
-            value for value in edits.source_values if value.source not in retained
+            value for value in edits.source_values if value.source not in left_out
         ),
         uncollected=tuple(
             Uncollected(path=missing.path, reason=missing.reason)
             for missing in edits.not_collected
-            if missing.path not in retained
+            if missing.path not in left_out
         ),
     )
 
@@ -398,6 +429,10 @@ class InstanceTransform:
         The run's key, for keyed replacement UIDs and pseudonyms.
     iod_tables : IODTables, optional
         Defaults to :func:`~pymedphys._dicom.deidentify.iods.load_iod_tables`.
+    cleaning : DescriptorCleaning, optional
+        The vocabulary and reviewed-names list that ROI Names are cleaned
+        with, which a policy selecting Clean Descriptors needs, and no other
+        policy takes.
     unvalidated_policy : bool, default False
         Allow a policy that is not enabled, such as a preset whose behaviour
         is not yet validated. For tests and validation runs only; nothing
@@ -406,7 +441,16 @@ class InstanceTransform:
     Raises
     ------
     PolicyError
-        If the policy is not enabled and ``unvalidated_policy`` is not set.
+        If the policy is not enabled and ``unvalidated_policy`` is not set;
+        if ``cleaning`` is given without Clean Descriptors, or left out with
+        it; or if the policy's other options cannot be composed into the
+        policy whose actions descriptors take where they are not cleaned.
+
+    Attributes
+    ----------
+    review_queue : ReviewQueue
+        The distinct ROI Names that the run's instances held for review,
+        for the confidential QC material; empty without ``cleaning``.
 
     Notes
     -----
@@ -414,6 +458,12 @@ class InstanceTransform:
     as the run's first pass records it (``InstanceRecord.patient``). An
     instance without one has no pseudonyms, so its Patient's Name and
     Patient ID edits stay pending and it is sequestered.
+
+    Under Clean Descriptors, :func:`~.descriptor_cleaning.clean_descriptors`
+    settles the attributes given C. An instance with a ROI Name held for
+    review is written with that name empty, and its evidence is a
+    :class:`HeldEvidence`, which :class:`ReleaseGate` holds for review. The
+    markers claim Clean Descriptors only for an instance that satisfies it.
     """
 
     def __init__(
@@ -422,19 +472,38 @@ class InstanceTransform:
         key: DeidKey,
         iod_tables: IODTables | None = None,
         *,
+        cleaning: DescriptorCleaning | None = None,
         unvalidated_policy: bool = False,
     ) -> None:
         if not (policy.enabled or unvalidated_policy):
             raise PolicyError(
                 "the policy is not enabled: no preset's behaviour is validated yet"
             )
+        if (CLEAN_DESCRIPTORS in policy.options) != (cleaning is not None):
+            raise PolicyError(
+                "descriptor cleaning is given exactly when the policy selects "
+                "Clean Descriptors"
+            )
         self._rules = ElementRules(policy)
         self._key = key
-        self._markers = markers_for(
-            policy,
-            method_digest(policy, vocabulary=None),
-            satisfied=satisfied_options(policy),
+        self._cleaning = cleaning
+        self._fallback = (
+            None if cleaning is None else ElementRules(fallback_policy(policy))
         )
+        self._vocabulary = None if cleaning is None else cleaning.vocabulary
+        self.review_queue = ReviewQueue()
+        digest = method_digest(
+            policy, vocabulary=None if cleaning is None else cleaning.nomenclature
+        )
+        satisfied = satisfied_options(policy)
+        self._markers = {
+            False: markers_for(policy, digest, satisfied=satisfied),
+            True: markers_for(
+                policy,
+                digest,
+                satisfied=satisfied + ((CLEAN_DESCRIPTORS,) if cleaning else ()),
+            ),
+        }
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
 
     def __repr__(self) -> str:
@@ -458,14 +527,44 @@ class InstanceTransform:
         )
         if classification.sequestered or classification.iod is None:
             return Sequestered((classification.disposition,))
-        plan = plan_instance(source, self._rules, self._iods.iods[classification.iod])
+        iod = self._iods.iods[classification.iod]
+        plan = plan_instance(source, self._rules, iod)
         edits = edit_instance(source, plan, self._key, record.patient)
-        evidence = coverage_of(plan, edits)
+        evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
         if edits.sequestrations:
             return Sequestered(edits.sequestrations, evidence)
+        satisfied = False
+        if self._cleaning is not None and self._fallback is not None:
+            fallback = self._fallback
+
+            def fallen_back() -> InstanceEdits:
+                return edit_instance(
+                    source,
+                    plan_instance(source, fallback, iod),
+                    self._key,
+                    record.patient,
+                )
+
+            try:
+                cleaned = clean_descriptors(
+                    edits,
+                    self._cleaning,
+                    self._vocabulary,
+                    self.review_queue,
+                    fallen_back,
+                )
+            except DescriptorsRefused as refused:
+                return Sequestered((refused.reason,), evidence)
+            edits, satisfied = cleaned.edits, cleaned.satisfied
+            evidence = coverage_of(plan, edits, cleaned.retained)
+            if cleaned.held:
+                evidence = HeldEvidence(evidence, cleaned.held)
         try:
             writing = with_markers(
-                writer_plan(plan, edits, codecs), source, dataset, self._markers
+                writer_plan(plan, edits, codecs),
+                source,
+                dataset,
+                self._markers[satisfied],
             )
             return Transformed(*_written(source, writing), evidence)
         except _Refused as refused:
@@ -568,8 +667,11 @@ class ReleaseGate:
     A release decision releases the file; QC review holds it for review and
     withholding sequesters it, each with the condition's reasons, which are
     :class:`~.release_gate.ReleaseReason` objects naming codes and paths,
-    never values. Evidence that is not a :class:`~.release_gate.Coverage`
-    raises :class:`TypeError`, which the run takes as an internal error and
+    never values. An instance whose evidence is a :class:`HeldEvidence` is
+    held for review, with its held ROI Names first among the reasons, unless
+    the condition withholds it. Evidence that is neither a
+    :class:`~.release_gate.Coverage` nor a :class:`HeldEvidence` raises
+    :class:`TypeError`, which the run takes as an internal error and
     sequesters the file for.
     """
 
@@ -582,12 +684,19 @@ class ReleaseGate:
     def __call__(
         self, written: bytes, evidence: object, subject: tuple[object, ...]
     ) -> Release | HoldForReview | Sequestered:
-        coverages = tuple(each for each in subject if isinstance(each, Coverage))
-        if not isinstance(evidence, Coverage) or len(coverages) != len(subject):
-            raise TypeError("the release gate needs the Coverage of each instance")
-        condition = self._condition(Coverage.merge(*coverages), written)
-        if condition.decision is Decision.RELEASE:
-            return Release()
-        if condition.decision is Decision.QC_REVIEW:
-            return HoldForReview(condition.reasons)
-        return Sequestered(condition.reasons)
+        coverages = tuple(_coverage(each) for each in (evidence, *subject))
+        condition = self._condition(Coverage.merge(*coverages[1:]), written)
+        held = evidence.held if isinstance(evidence, HeldEvidence) else ()
+        if condition.decision is Decision.WITHHOLD:
+            return Sequestered(condition.reasons)
+        if held or condition.decision is Decision.QC_REVIEW:
+            return HoldForReview((*held, *condition.reasons))
+        return Release()
+
+
+def _coverage(evidence: object) -> Coverage:
+    if isinstance(evidence, HeldEvidence):
+        evidence = evidence.coverage
+    if not isinstance(evidence, Coverage):
+        raise TypeError("the release gate needs the Coverage of each instance")
+    return evidence
