@@ -322,25 +322,18 @@ def test_no_output_name_is_the_release_report(name):
     assert pattern.fullmatch(name.casefold()) is None
 
 
-def test_the_release_report_imports_nothing_that_imports_the_qc_pack():
-    # The QC pack takes its label pattern from the release report, so the
-    # release report must not import, even indirectly, a module that imports
-    # the QC pack, or neither can be imported first.
-    importers = (
-        "pymedphys._dicom.deidentify.descriptor_cleaning",
-        "pymedphys._dicom.deidentify.qc_pack",
-        "pymedphys._dicom.deidentify.run_qc",
-    )
-    code = (
-        "import sys\n"
-        "import pymedphys._dicom.deidentify.release_report\n"
-        f"print([name for name in {importers!r} if name in sys.modules])\n"
-    )
-    result = subprocess.run(
-        [sys.executable, "-c", code],
+@pytest.mark.parametrize(
+    "module",
+    ["release_report", "qc_pack", "run_qc", "descriptor_cleaning", "run"],
+)
+def test_each_module_of_the_report_and_the_qc_pack_imports_first(module):
+    # The QC pack and the release report import from each other's
+    # neighbours, so each must import cleanly in a fresh interpreter,
+    # whichever is imported first.
+    subprocess.run(
+        [sys.executable, "-c", f"import pymedphys._dicom.deidentify.{module}"],
         capture_output=True,
         text=True,
         check=True,
         env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
     )
-    assert result.stdout.strip() == "[]"
