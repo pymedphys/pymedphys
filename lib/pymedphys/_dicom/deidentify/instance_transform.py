@@ -71,6 +71,14 @@ from pathlib import PurePosixPath
 from pymedphys._imports import pydicom
 
 from . import output_names
+from .descriptor_cleaning import (
+    CLEAN_DESCRIPTORS,
+    DescriptorCleaning,
+    DescriptorsRefused,
+    HeldRoiName,
+    clean_descriptors,
+    fallback_policy,
+)
 from .edits import Edit, EditKind, InstanceEdits, edit_instance
 from .element_rules import ElementRules
 from .elements import (
@@ -90,6 +98,7 @@ from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .references import InstanceRecord
+from .reviewed_roi_names import ReviewQueue
 from .release_gate import (
     Coverage,
     Decision,
@@ -192,18 +201,21 @@ def _left_out(edits: InstanceEdits) -> dict[ElementPath, DropReason]:
     return left_out
 
 
-def dropped_of(edits: InstanceEdits) -> tuple[Dropped, ...]:
+def dropped_of(
+    edits: InstanceEdits, retained: frozenset[ElementPath] = frozenset()
+) -> tuple[Dropped, ...]:
     """Return the QC pack's drops of an instance's edits (D-027).
 
     Each element whose every UID U retains; each element with a UID that the
     pinned tables register, since that UID is left out of the search even
     where the element's other UIDs are collected; and each value that could
     not be decoded to collect, by its place in the source and once for each
-    reason. A value equal to a written constant is dropped by the search
+    reason; then each path in ``retained``, as :func:`coverage_of` takes it.
+    A value equal to a written constant is dropped by the search
     itself, which the gate records.
     """
     left_out = _left_out(edits)
-    drops = [
+    drops: list[tuple[ElementPath, DropReason]] = [
         (path, reason)
         for path, reason in left_out.items()
         if reason is DropReason.RETAINED
@@ -214,33 +226,56 @@ def dropped_of(edits: InstanceEdits) -> tuple[Dropped, ...]:
         for missing in edits.not_collected
         if missing.path not in left_out
     ]
+    drops += [(path, DropReason.RETAINED) for path in sorted(retained, key=str)]
     return tuple(Dropped(path, reason) for path, reason in dict.fromkeys(drops))
 
 
-def coverage_of(plan: InstancePlan, edits: InstanceEdits) -> Coverage:
+@dataclasses.dataclass(frozen=True)
+class HeldEvidence:
+    """The evidence of an instance that descriptor cleaning holds for review.
+
+    Attributes
+    ----------
+    coverage : Coverage
+        Its residual search's coverage, pooled with its subject's as any.
+    held : tuple of HeldRoiName
+        Each ROI Name held, by path and reason.
+    """
+
+    coverage: Coverage
+    held: tuple[HeldRoiName, ...]
+
+
+def coverage_of(
+    plan: InstancePlan,
+    edits: InstanceEdits,
+    retained: frozenset[ElementPath] = frozenset(),
+) -> Coverage:
     """Return the residual search's coverage of an instance's plan and edits.
 
     Every element that the plan has residual collection read is planned,
     and each value collected or not collected is carried over, but for an
     element whose every UID U retains, and for an element whose UIDs the
     pinned tables all register, which the edits leave out of collection
-    wherever it is, removed sequences included.
+    wherever it is, removed sequences included, and for each path in
+    ``retained``, such as a ROI Name that descriptor cleaning writes with a
+    value.
     """
-    retained = _left_out(edits)
+    left_out: set[ElementPath] = set(retained) | set(_left_out(edits))
     return Coverage(
         planned=frozenset(
             element.path
             for element in plan.elements
             if Consumer.RESIDUAL_COLLECTION in element.consumers
-            and element.path not in retained
+            and element.path not in left_out
         ),
         collected=tuple(
-            value for value in edits.source_values if value.source not in retained
+            value for value in edits.source_values if value.source not in left_out
         ),
         uncollected=tuple(
             Uncollected(path=missing.path, reason=missing.reason)
             for missing in edits.not_collected
-            if missing.path not in retained
+            if missing.path not in left_out
         ),
     )
 
@@ -481,6 +516,10 @@ class InstanceTransform:
         The run's key, for keyed replacement UIDs and pseudonyms.
     iod_tables : IODTables, optional
         Defaults to :func:`~pymedphys._dicom.deidentify.iods.load_iod_tables`.
+    cleaning : DescriptorCleaning, optional
+        The vocabulary and reviewed-names list that ROI Names are cleaned
+        with, which a policy selecting Clean Descriptors needs, and no other
+        policy takes.
     unvalidated_policy : bool, default False
         Allow a policy that is not enabled, such as a preset whose behaviour
         is not yet validated. For tests and validation runs only; nothing
@@ -489,7 +528,16 @@ class InstanceTransform:
     Raises
     ------
     PolicyError
-        If the policy is not enabled and ``unvalidated_policy`` is not set.
+        If the policy is not enabled and ``unvalidated_policy`` is not set;
+        if ``cleaning`` is given without Clean Descriptors, or left out with
+        it; or if the policy's other options cannot be composed into the
+        policy whose actions descriptors take where they are not cleaned.
+
+    Attributes
+    ----------
+    review_queue : ReviewQueue
+        The distinct ROI Names that the run's instances held for review,
+        for the confidential QC material; empty without ``cleaning``.
 
     Notes
     -----
@@ -497,6 +545,12 @@ class InstanceTransform:
     as the run's first pass records it (``InstanceRecord.patient``). An
     instance without one has no pseudonyms, so its Patient's Name and
     Patient ID edits stay pending and it is sequestered.
+
+    Under Clean Descriptors, :func:`~.descriptor_cleaning.clean_descriptors`
+    settles the attributes given C. An instance with a ROI Name held for
+    review is written with that name empty, and its evidence is a
+    :class:`HeldEvidence`, which :class:`ReleaseGate` holds for review. The
+    markers claim Clean Descriptors only for an instance that satisfies it.
     """
 
     def __init__(
@@ -505,19 +559,38 @@ class InstanceTransform:
         key: DeidKey,
         iod_tables: IODTables | None = None,
         *,
+        cleaning: DescriptorCleaning | None = None,
         unvalidated_policy: bool = False,
     ) -> None:
         if not (policy.enabled or unvalidated_policy):
             raise PolicyError(
                 "the policy is not enabled: no preset's behaviour is validated yet"
             )
+        if (CLEAN_DESCRIPTORS in policy.options) != (cleaning is not None):
+            raise PolicyError(
+                "descriptor cleaning is given exactly when the policy selects "
+                "Clean Descriptors"
+            )
         self._rules = ElementRules(policy)
         self._key = key
-        self._markers = markers_for(
-            policy,
-            method_digest(policy, vocabulary=None),
-            satisfied=satisfied_options(policy),
+        self._cleaning = cleaning
+        self._fallback = (
+            None if cleaning is None else ElementRules(fallback_policy(policy))
         )
+        self._vocabulary = None if cleaning is None else cleaning.vocabulary
+        self.review_queue = ReviewQueue()
+        digest = method_digest(
+            policy, vocabulary=None if cleaning is None else cleaning.nomenclature
+        )
+        satisfied = satisfied_options(policy)
+        self._markers = {
+            False: markers_for(policy, digest, satisfied=satisfied),
+            True: markers_for(
+                policy,
+                digest,
+                satisfied=satisfied + ((CLEAN_DESCRIPTORS,) if cleaning else ()),
+            ),
+        }
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
 
     def __repr__(self) -> str:
@@ -541,15 +614,47 @@ class InstanceTransform:
         )
         if classification.sequestered or classification.iod is None:
             return Sequestered((classification.disposition,))
-        plan = plan_instance(source, self._rules, self._iods.iods[classification.iod])
+        iod = self._iods.iods[classification.iod]
+        plan = plan_instance(source, self._rules, iod)
         edits = edit_instance(source, plan, self._key, record.patient)
-        evidence = coverage_of(plan, edits)
-        qc = dropped_of(edits)
+        evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
         if edits.sequestrations:
-            return Sequestered(edits.sequestrations, evidence, qc)
+            return Sequestered(edits.sequestrations, evidence, dropped_of(edits))
+        satisfied = False
+        retained: frozenset[ElementPath] = frozenset()
+        if self._cleaning is not None and self._fallback is not None:
+            fallback = self._fallback
+
+            def fallen_back() -> InstanceEdits:
+                return edit_instance(
+                    source,
+                    plan_instance(source, fallback, iod),
+                    self._key,
+                    record.patient,
+                )
+
+            try:
+                cleaned = clean_descriptors(
+                    edits,
+                    self._cleaning,
+                    self._vocabulary,
+                    self.review_queue,
+                    fallen_back,
+                )
+            except DescriptorsRefused as refused:
+                return Sequestered((refused.reason,), evidence, dropped_of(edits))
+            edits, satisfied = cleaned.edits, cleaned.satisfied
+            retained = frozenset(cleaned.retained)
+            evidence = coverage_of(plan, edits, retained)
+            if cleaned.held:
+                evidence = HeldEvidence(evidence, cleaned.held)
+        qc = dropped_of(edits, retained)
         try:
             writing = with_markers(
-                writer_plan(plan, edits, codecs), source, dataset, self._markers
+                writer_plan(plan, edits, codecs),
+                source,
+                dataset,
+                self._markers[satisfied],
             )
             return Transformed(*_written(source, writing), evidence, qc)
         except _Refused as refused:
@@ -560,6 +665,7 @@ def transform_for(
     preset: str = DEFAULT_PRESET,
     key: DeidKey | None = None,
     *,
+    cleaning: DescriptorCleaning | None = None,
     iod_tables: IODTables | None = None,
 ) -> InstanceTransform:
     """Return the run's transform for an enabled preset.
@@ -572,6 +678,9 @@ def transform_for(
     key : DeidKey, optional
         The run's key. By default, a new one, so that the run's replacement
         UIDs and pseudonyms match no other run's.
+    cleaning : DescriptorCleaning, optional
+        As for :class:`InstanceTransform`: needed for a preset with Clean
+        Descriptors, and refused without it.
     iod_tables : IODTables, optional
         As for :class:`InstanceTransform`.
 
@@ -579,11 +688,15 @@ def transform_for(
     ------
     PolicyError
         As :func:`~pymedphys._dicom.deidentify.policy.select_policy` raises
-        it, for a preset that is unknown or not enabled.
+        it, for a preset that is unknown or not enabled, or as
+        :class:`InstanceTransform` raises it for ``cleaning``.
     """
     policy = select_policy(preset)
     return InstanceTransform(
-        policy, DeidKey.generate() if key is None else key, iod_tables
+        policy,
+        DeidKey.generate() if key is None else key,
+        iod_tables,
+        cleaning=cleaning,
     )
 
 
@@ -683,8 +796,11 @@ class ReleaseGate:
     A release decision releases the file; QC review holds it for review and
     withholding sequesters it, each with the condition's reasons, which are
     :class:`~.release_gate.ReleaseReason` objects naming codes and paths,
-    never values. Evidence that is not a :class:`~.release_gate.Coverage`
-    raises :class:`TypeError`, which the run takes as an internal error and
+    never values. An instance whose evidence is a :class:`HeldEvidence` is
+    held for review, with its held ROI Names first among the reasons, unless
+    the condition withholds it. Evidence that is neither a
+    :class:`~.release_gate.Coverage` nor a :class:`HeldEvidence` raises
+    :class:`TypeError`, which the run takes as an internal error and
     sequesters the file for.
 
     Each verdict carries, as its QC material, the residual search of the
@@ -701,16 +817,23 @@ class ReleaseGate:
     def __call__(
         self, written: bytes, evidence: object, subject: tuple[object, ...]
     ) -> Release | HoldForReview | Sequestered:
-        coverages = tuple(each for each in subject if isinstance(each, Coverage))
-        if not isinstance(evidence, Coverage) or len(coverages) != len(subject):
-            raise TypeError("the release gate needs the Coverage of each instance")
-        condition = self._condition(Coverage.merge(*coverages), written)
-        qc = (SearchMaterial(condition.search, written), *_constants(evidence))
-        if condition.decision is Decision.RELEASE:
-            return Release(qc)
-        if condition.decision is Decision.QC_REVIEW:
-            return HoldForReview(condition.reasons, qc)
-        return Sequestered(condition.reasons, qc=qc)
+        coverages = tuple(_coverage(each) for each in (evidence, *subject))
+        condition = self._condition(Coverage.merge(*coverages[1:]), written)
+        held = evidence.held if isinstance(evidence, HeldEvidence) else ()
+        qc = (SearchMaterial(condition.search, written), *_constants(coverages[0]))
+        if condition.decision is Decision.WITHHOLD:
+            return Sequestered(condition.reasons, qc=qc)
+        if held or condition.decision is Decision.QC_REVIEW:
+            return HoldForReview((*held, *condition.reasons), qc)
+        return Release(qc)
+
+
+def _coverage(evidence: object) -> Coverage:
+    if isinstance(evidence, HeldEvidence):
+        evidence = evidence.coverage
+    if not isinstance(evidence, Coverage):
+        raise TypeError("the release gate needs the Coverage of each instance")
+    return evidence
 
 
 def _constants(coverage: Coverage) -> tuple[Dropped, ...]:

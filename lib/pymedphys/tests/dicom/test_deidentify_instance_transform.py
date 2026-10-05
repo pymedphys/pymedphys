@@ -748,12 +748,14 @@ def test_transform_for_selects_an_enabled_preset_only(monkeypatch):
     monkeypatch.setattr(
         instance_transform,
         "InstanceTransform",
-        lambda *args: made.append(args) or args,
+        lambda *args, **kwargs: made.append((*args, kwargs)) or args,
     )
+    cleaning = object()
 
-    transform_for(key=KEY)
+    transform_for(key=KEY, cleaning=cleaning)
     transform_for("basic")
 
     (given, generated) = made
-    assert given == (policy, KEY, None)
+    assert given == (policy, KEY, None, {"cleaning": cleaning})
+    assert generated[3] == {"cleaning": None}
     assert generated[0] is policy and generated[1] != KEY
