@@ -12,22 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""``pymedphys experimental nomenclature tg263`` converts a TG-263 spreadsheet to JSON.
+"""``python -m pymedphys._nomenclature`` converts TG-263 and institutional lists to JSON.
+
+The commands stay out of the ``pymedphys`` command line until the
+de-identification tool is released.
 
 No test here reaches the network: the published edition is stood in for by
 the invented spreadsheet in ``tests/nomenclature/data``.
 """
 
+import argparse
 import dataclasses
 import hashlib
 import pathlib
 import shutil
+import subprocess
+import sys
 import urllib.error
 
 from pymedphys._imports import pytest
 
 from pymedphys._nomenclature import roi_list, tg263, tg263_published
-from pymedphys.cli import define_parser
+from pymedphys._nomenclature import cli
+from pymedphys.cli import define_parser as define_public_parser
 
 SPREADSHEET = (
     pathlib.Path(__file__).parents[1] / "nomenclature" / "data" / "tg263_invented.xls"
@@ -46,9 +53,7 @@ def _offline(tmp_path, monkeypatch):
 
 
 def _run(*cli_args):
-    args = define_parser().parse_args(
-        ["experimental", "nomenclature", "tg263", *cli_args]
-    )
+    args = cli.define_parser().parse_args(["tg263", *cli_args])
     return args.func(args)
 
 
@@ -340,9 +345,7 @@ def test_another_workbook_is_converted_with_a_note(tmp_path, capsys):
 
 
 def _run_roi_list(*cli_args):
-    args = define_parser().parse_args(
-        ["experimental", "nomenclature", "roi-list", *cli_args]
-    )
+    args = cli.define_parser().parse_args(["roi-list", *cli_args])
     return args.func(args)
 
 
@@ -437,3 +440,53 @@ def test_an_unreadable_list_names_only_the_file(tmp_path, capsys, make):
     err = capsys.readouterr().err
     assert err.startswith("error: cannot read site.csv: ")
     assert str(tmp_path) not in err
+
+
+# Words in the name of a command that belongs to the de-identification tool.
+DEIDENTIFICATION_WORDS = ("nomenclature", "tg263", "roi-list", "deid", "deidentif")
+
+
+def _commands(parser, path=()):
+    """Yield the path of every command and subcommand of ``parser``."""
+    for action in parser._actions:  # pylint: disable = protected-access
+        if isinstance(action, argparse._SubParsersAction):  # pylint: disable = protected-access
+            for name, subparser in action.choices.items():
+                yield (*path, name)
+                yield from _commands(subparser, (*path, name))
+
+
+def test_no_public_command_belongs_to_the_deidentification_tool():
+    # The maintainers keep the tool's commands out of the pymedphys command
+    # line until the tool is released; publishing them is part of the
+    # release (M5). The maintainers' own commands under `pymedphys dev`,
+    # which CI runs, are not the tool's.
+    commands = [path for path in _commands(define_public_parser()) if path[0] != "dev"]
+
+    assert commands
+    assert not [
+        path
+        for path in commands
+        if any(word in name for name in path for word in DEIDENTIFICATION_WORDS)
+    ]
+    with pytest.raises(SystemExit):
+        define_public_parser().parse_args(
+            ["experimental", "nomenclature", "tg263", "tg263.json"]
+        )
+
+
+def test_the_commands_run_as_a_module_of_the_private_package():
+    result = subprocess.run(
+        [sys.executable, "-m", "pymedphys._nomenclature", "--help"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert result.stdout.startswith(f"usage: {cli.PROG}")
+    assert "tg263" in result.stdout and "roi-list" in result.stdout
+
+
+def test_without_a_command_the_usage_is_printed(capsys):
+    cli.main([])
+
+    assert capsys.readouterr().out.startswith(f"usage: {cli.PROG}")
