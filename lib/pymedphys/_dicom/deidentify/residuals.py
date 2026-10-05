@@ -145,6 +145,7 @@ _NUMBERS = frozenset({"OD", "OF", "OL", "OV", "OW"})
 _PIXEL_DATA = frozenset({"(7FE0,0008)", "(7FE0,0009)", "(7FE0,0010)"})
 _DIGITS = frozenset(string.digits.encode())
 _LETTERS = frozenset(string.ascii_letters.encode())
+_UUID_ROOT = b"2.25."  # PS3.5 B.2
 _PADDING = "\x00" + string.whitespace
 _ASCII = bytes(range(0x20, 0x7F)).decode("ascii")
 # The marks that names use for an apostrophe besides ASCII's.
@@ -750,6 +751,7 @@ def _judge(
     if (
         _character(octets, offset - width, width) in needle.before
         or _character(octets, offset + len(needle.folded), width) in needle.after
+        or (needle.digits and _inside_uuid_integer(octets, offset, needle, span))
     ):
         return offset + 1
     source, kind, form, _ = needle.origin
@@ -758,6 +760,29 @@ def _judge(
     if best is None or (_ORDER[form], offset) < (_ORDER[best.form], best.offset):
         found[key] = Finding(*needle.origin, span.location, offset)
     return span.end
+
+
+def _inside_uuid_integer(
+    octets: memoryview, offset: int, needle: _Needle, span: Span
+) -> bool:
+    """Return whether digits at ``offset`` are part of a 2.25 UID's integer.
+
+    Under the 2.25 root, a UID's one further component is an integer derived
+    from a UUID (PS3.5 B.2), as in every UID the engine writes, so digits
+    found at its start or in its middle are there by chance. Digits that make
+    up the whole integer are still a finding.
+    """
+    at = offset - (span.value_start or 0)
+    if needle.wide or span.location.vr != "UI" or span.value_start is None or at < 0:
+        return False
+    value = bytes(octets[span.value_start : span.end])
+    head = value[value.rfind(b"\\", 0, at) + 1 : at]
+    digits = head[len(_UUID_ROOT) :]
+    return (
+        head.startswith(_UUID_ROOT)
+        and (not digits or digits.isdigit())
+        and _character(octets, offset + len(needle.folded), 1) in _DIGITS
+    )
 
 
 def _character(octets: memoryview, at: int, width: int) -> int:

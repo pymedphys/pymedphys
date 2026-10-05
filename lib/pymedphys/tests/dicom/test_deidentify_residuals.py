@@ -812,6 +812,30 @@ def test_numbers_in_decimal_strings_are_not_findings():
     ]
 
 
+def test_digits_inside_the_integer_of_a_uuid_derived_uid_are_not_findings():
+    # A UID under the 2.25 root holds an integer derived from a UUID (PS3.5
+    # B.2), as every UID the engine writes does, so a date at the start of
+    # its digits is chance.
+    datetime = _source("(0008,002A)", "DT", "20240517101500")
+    data = _private(
+        ("UI", "2.25.197102034455667788"),
+        ("UI", "2.25.20240517101500998877"),
+        ("UI", f"{ROOT}.19710203.1"),
+        ("UI", "2.25.1\\1.2.19710203"),
+        ("UI", "2.25.19710203"),
+        ("LT", "2.25.197102034455"),
+    )
+
+    result = find_residuals(data, [BIRTH_SOURCE, datetime])
+
+    assert _summary(result) == [
+        ("(0010,0030)", Form.VALUE, "utf-8", "(0019,1002)"),
+        ("(0010,0030)", Form.VALUE, "utf-8", "(0019,1003)"),
+        ("(0010,0030)", Form.VALUE, "utf-8", "(0019,1004)"),
+        ("(0010,0030)", Form.VALUE, "utf-8", "(0019,1005)"),
+    ]
+
+
 def test_a_uid_is_found_but_not_inside_a_longer_component():
     data = _texts(
         STUDY_UID,
