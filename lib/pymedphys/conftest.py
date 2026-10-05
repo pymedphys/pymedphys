@@ -29,6 +29,8 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 
 import pytest  # noqa: E402
 
+from pymedphys._root import LIBRARY_ROOT  # noqa: E402
+
 
 @dataclasses.dataclass(frozen=True)
 class Marker:
@@ -102,6 +104,34 @@ SHARED_DATA_DIR: pathlib.Path | None = None
 
 _SAVED_ENVIRONMENT = pytest.StashKey[dict[str, str | None]]()
 _TEMPORARY_HOME = pytest.StashKey[pathlib.Path]()
+_COLLECTED_TEST_IDS = pytest.StashKey[set[str]]()
+
+
+def pytest_itemcollected(item):
+    """Record actual tests before marker or name selection can remove them."""
+    try:
+        relative_path = item.path.resolve().relative_to(LIBRARY_ROOT)
+    except ValueError:
+        return
+
+    _, separator, name = item.nodeid.partition("::")
+    node_id = relative_path.as_posix()
+    if separator:
+        node_id += "::" + name.partition("[")[0]
+    item.session.stash.setdefault(_COLLECTED_TEST_IDS, set()).add(node_id)
+
+
+@pytest.fixture(scope="session")
+def collected_test_ids(request):
+    """Return collected test ids relative to the installed library root.
+
+    Each worker records its own collection, before deselection. An explicit
+    node selection can collect only some cases of a parametrised test, so it
+    cannot replace collecting the complete modules that requirements cite.
+    """
+    if any("::" in argument for argument in request.config.args):
+        return None
+    return frozenset(request.session.stash.get(_COLLECTED_TEST_IDS, set()))
 
 
 def skip_reason(
