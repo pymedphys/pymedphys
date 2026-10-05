@@ -396,3 +396,41 @@ def test_source_paths_never_reach_the_output(tmp_path):
     assert status == command.EXIT_WITHHELD
     assert "released: 6" in out
     assert SENTINEL not in out + err
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        [f"/data/{SENTINEL}/extra"],
+        [f"--{SENTINEL}=/data/{SENTINEL}"],
+        ["--", f"/data/{SENTINEL}/extra"],
+    ],
+    ids=["operand", "option", "after-double-dash"],
+)
+def test_argument_errors_quote_no_argument(tmp_path, capsys, extra):
+    # argparse would repeat an unexpected argument, which can be a source
+    # path, in its error message.
+    stderr = io.StringIO()
+
+    with pytest.raises(SystemExit) as raised:
+        command.main(
+            [str(tmp_path / "source"), str(tmp_path / "release"), *extra],
+            transform=Transform(),
+            gate=Gate(),
+            stdout=io.StringIO(),
+            stderr=stderr,
+        )
+
+    captured = capsys.readouterr()
+    assert raised.value.code == command.EXIT_USAGE
+    assert stderr.getvalue().startswith("usage: ")
+    assert "error: the arguments could not be parsed" in stderr.getvalue()
+    assert SENTINEL not in stderr.getvalue() + captured.err + captured.out
+
+
+def test_help_is_printed_as_usual(capsys):
+    with pytest.raises(SystemExit) as raised:
+        command.main(["--help"], transform=Transform(), gate=Gate())
+
+    assert raised.value.code == 0
+    assert "the release directory to create" in capsys.readouterr().out

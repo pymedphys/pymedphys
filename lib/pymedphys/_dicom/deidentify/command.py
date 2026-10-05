@@ -40,7 +40,7 @@ Exit statuses:
 - :data:`EXIT_WITHHELD`, 1: the release was published, but at least one
   input was refused, sequestered, or held for review;
 - :data:`EXIT_USAGE`, 2: the arguments could not be parsed, as for any
-  :mod:`argparse` command;
+  :mod:`argparse` command, though the message quotes none of them;
 - :data:`EXIT_NOT_RUN`, 3: the run could not start, or the first pass
   stopped it, and nothing was published;
 - :data:`EXIT_STAGING_LEFT`, 4: the staging area could not be deleted, and
@@ -58,7 +58,7 @@ import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TextIO
+from typing import NoReturn, TextIO
 
 from . import run
 from .diagnostics import RedactionCounts, redacted_diagnostics
@@ -214,10 +214,39 @@ def _reason_name(reason: object) -> str:
     return type(reason).__name__
 
 
-def build_parser(prog: str | None = None) -> argparse.ArgumentParser:
-    """Return the parser of the command line's arguments."""
-    parser = argparse.ArgumentParser(
+class _Parser(argparse.ArgumentParser):
+    """A parser whose errors quote no argument.
+
+    argparse repeats an unexpected argument in its error message, and an
+    argument can be a source path.
+    """
+
+    def __init__(self, *args, stderr: TextIO | None = None, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.stderr = stderr
+
+    def error(self, message: str) -> NoReturn:
+        stream = sys.stderr if self.stderr is None else self.stderr
+        self.print_usage(stream)
+        _print(
+            "error: the arguments could not be parsed; they are not shown "
+            "because they can contain file paths; see --help",
+            stream,
+        )
+        sys.exit(EXIT_USAGE)
+
+
+def build_parser(
+    prog: str | None = None, *, stderr: TextIO | None = None
+) -> argparse.ArgumentParser:
+    """Return the parser of the command line's arguments.
+
+    An argument error prints the usage and a fixed message to ``stderr``,
+    by default :data:`sys.stderr`, and exits with :data:`EXIT_USAGE`.
+    """
+    parser = _Parser(
         prog=prog,
+        stderr=stderr,
         description=(
             "De-identify the DICOM files below SOURCE into the new directory "
             "RELEASE, which is published whole once every file has been "
@@ -256,10 +285,11 @@ def main(
     Raises
     ------
     SystemExit
-        With :data:`EXIT_USAGE` if the arguments cannot be parsed, or 0 for
-        ``--help``, as :mod:`argparse` does.
+        With :data:`EXIT_USAGE` if the arguments cannot be parsed, having
+        printed the usage and a message that quotes no argument to
+        ``stderr``, or 0 for ``--help``, as :mod:`argparse` does.
     """
-    arguments = build_parser().parse_args(argv)
+    arguments = build_parser(stderr=stderr).parse_args(argv)
     return deidentify_directory(
         arguments.source,
         arguments.release,
