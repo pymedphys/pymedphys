@@ -31,6 +31,7 @@ launch_buttons:
 sphinx:
   config:
     language: en
+    myst_heading_anchors: 4
     # Unauthenticated github.com requests are frequently rate limited.
     # Check new or changed GitHub links manually; they are excluded here.
     linkcheck_ignore:

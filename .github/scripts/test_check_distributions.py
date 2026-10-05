@@ -75,6 +75,8 @@ PACKAGE_FILES = {
     "_data/urls.json": "{}\n",
     "dicom.py": "",
     "cli.py": "",
+    "docs/contrib/info/deidentification-design.md": "# Compatibility page\n",
+    "docs/contrib/design/deidentification/decisions.md": "# Decisions\n",
 }
 
 
@@ -312,6 +314,16 @@ class ContentTests(unittest.TestCase):
                 failures = self._failures(sdist, wheel)
 
                 self.assertTrue(any(name in failure for failure in failures), failures)
+
+    def test_missing_canonical_decisions_fail_even_when_archives_agree(self):
+        # Both archives can agree on an omission that breaks installed tests.
+        name = "docs/contrib/design/deidentification/decisions.md"
+        partial = {key: value for key, value in PACKAGE_FILES.items() if key != name}
+        failures = self._failures(
+            _write_sdist(self.directory, package_files=partial),
+            _write_wheel(self.directory, package_files=partial),
+        )
+        self.assertTrue(any(name in failure for failure in failures), failures)
 
     def test_sdist_and_wheel_versions_must_agree(self):
         sdist = _write_sdist(self.directory, version="1.2.0")

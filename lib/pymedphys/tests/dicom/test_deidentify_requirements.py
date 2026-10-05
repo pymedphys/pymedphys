@@ -25,7 +25,9 @@ from pymedphys._imports import pytest, tomlkit
 from pymedphys._dicom.deidentify import requirements, standard
 from pymedphys._root import LIBRARY_ROOT
 
-DESIGN = LIBRARY_ROOT / "docs" / "contrib" / "info" / "deidentification-design.md"
+DECISIONS = (
+    LIBRARY_ROOT / "docs" / "contrib" / "design" / "deidentification" / "decisions.md"
+)
 
 URL = (
     "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/"
@@ -144,9 +146,11 @@ def test_unsupported_options_and_re_identification_are_excluded(register):
 
 
 def test_each_cited_decision_is_in_the_design_document(register):
-    decisions = set(
-        re.findall(r"^### (D-[0-9]{3}):", DESIGN.read_text("utf-8"), re.MULTILINE)
+    decision_ids = re.findall(
+        r"^### (D-[0-9]{3}):", DECISIONS.read_text("utf-8"), re.MULTILINE
     )
+    decisions = set(decision_ids)
+    assert len(decision_ids) == len(decisions), "Design decision identifiers repeat"
     cited = {
         decision for entry in register.requirements for decision in entry.decisions
     }
