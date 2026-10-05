@@ -75,8 +75,11 @@ Where the design leaves a detail open, the run takes these defaults:
 - a file held for review is not published, and its staged bytes are
   deleted.
 
-Nothing here logs, warns, or raises with a source path or value. Outcomes
-and findings name inputs by run position, and attributes by tag. The source
+Nothing here logs, warns, or raises with a source path or value, and
+pydicom's warnings and log records, in the thread that runs it, including
+those of the transform and the gate, are redacted by
+:func:`~pymedphys._dicom.deidentify.diagnostics.redacted_diagnostics`.
+Outcomes and findings name inputs by run position, and attributes by tag. The source
 paths are held only by the :class:`Discovery`, for the confidential QC
 material, and are left out of its ``repr``.
 """
@@ -95,6 +98,7 @@ from pathlib import Path, PurePosixPath
 from typing import Protocol, TypeGuard
 
 from . import output_names
+from .diagnostics import redacted_diagnostics
 from .file_layout import Region, read_file_layout
 from .reference_graph import Finding, FindingKind, build_reference_graph
 from .references import InstanceRecord, UnreadableSequence
@@ -502,7 +506,16 @@ def run(
     the rename then replaces it if it is empty, and fails otherwise; on
     Windows, it fails.
     """
-    release_path = Path(release).absolute()
+    # pydicom converts values when they are first read, in the first pass
+    # and in the transform and gate, and its warnings and log records can
+    # quote them.
+    with redacted_diagnostics():
+        return _run(discovery, Path(release).absolute(), transform, gate)
+
+
+def _run(
+    discovery: Discovery, release_path: Path, transform: Transform, gate: Gate
+) -> RunResult:
     staging = staging_path(release_path)
     _check_directories(discovery.source, release_path, staging)
 

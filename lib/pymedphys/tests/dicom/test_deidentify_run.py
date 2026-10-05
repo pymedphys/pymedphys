@@ -17,13 +17,21 @@
 import dataclasses
 import enum
 import io
+import logging
 import os
 import stat
+import warnings
 from pathlib import PurePosixPath
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import output_names, pseudonyms, run, uids
+from pymedphys._dicom.deidentify import (
+    diagnostics,
+    output_names,
+    pseudonyms,
+    run,
+    uids,
+)
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.reference_graph import FindingKind
@@ -835,6 +843,64 @@ def test_nothing_a_run_reports_holds_a_source_path_or_value(tmp_path, capsys):
     assert all(uid not in shown for uid in STUDY)
     captured = capsys.readouterr()
     assert SENTINEL not in captured.out + captured.err
+
+
+def _with_invalid_uid():
+    """The collection with a dose whose Series Instance UID quotes the sentinel."""
+    datasets = synthetic.collection()
+    synthetic.uid(datasets[DOSE], "SeriesInstanceUID", f"2.25.{SENTINEL}")
+    return datasets
+
+
+def _diagnostics(caplog, call):
+    """Return the text of every warning and pydicom log record that ``call`` gives."""
+    caplog.set_level(logging.DEBUG, logger="pydicom")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        call()
+    return [str(each.message) for each in caught] + [
+        record.getMessage() for record in caplog.records
+    ]
+
+
+@pytest.mark.pydicom
+def test_pydicoms_diagnostics_hold_no_value_in_the_first_pass(tmp_path, caplog):
+    source = _write(tmp_path / "source", _with_invalid_uid())
+    # Without redaction, pydicom quotes the value on both channels.
+    data = (source / f"{DOSE:03d}.dcm").read_bytes()
+    unredacted = _diagnostics(
+        caplog, lambda: pydicom.dcmread(io.BytesIO(data)).SeriesInstanceUID
+    )
+    assert sum(SENTINEL in each for each in unredacted) == 2
+    caplog.clear()
+
+    shown = _diagnostics(caplog, lambda: _run(tmp_path, source=source))
+
+    assert shown
+    assert all(SENTINEL not in each for each in shown)
+
+
+@pytest.mark.pydicom
+def test_pydicoms_diagnostics_hold_no_value_in_the_transform_and_gate(tmp_path, caplog):
+    source = _write(tmp_path / "source", _with_invalid_uid())
+
+    class Reading(Transform):
+        def __call__(self, data, record):
+            pydicom.dcmread(io.BytesIO(data)).SeriesInstanceUID  # pylint: disable = expression-not-assigned
+            return super().__call__(data, record)
+
+    class ReadingGate(Gate):
+        def __call__(self, written, evidence, subject):
+            pydicom.dcmread(io.BytesIO(data)).SeriesInstanceUID  # pylint: disable = expression-not-assigned
+            return super().__call__(written, evidence, subject)
+
+    data = (source / f"{DOSE:03d}.dcm").read_bytes()
+    shown = _diagnostics(
+        caplog, lambda: _run(tmp_path, Reading(), ReadingGate(), source=source)
+    )
+
+    assert sum(diagnostics.REDACTED in each for each in shown) >= 4
+    assert all(SENTINEL not in each for each in shown)
 
 
 @pytest.mark.pydicom
