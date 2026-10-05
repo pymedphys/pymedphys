@@ -47,15 +47,16 @@ runs:
       shell: bash
       env:
         EXTRAS: ${{ inputs.extras }}
-        GROUPS: ${{ inputs.groups }}
+        DEPENDENCY_GROUPS: ${{ inputs.groups }}
       run: |
         set -euxo pipefail
         args=(--frozen --no-default-groups)
         for extra in $EXTRAS; do args+=(--extra "$extra"); done
-        for group in $GROUPS; do args+=(--group "$group"); done
+        for group in $DEPENDENCY_GROUPS; do args+=(--group "$group"); done
         uv sync "${args[@]}"
-        # Later `uv run` calls sync again; keep them from adding the default
-        # dev group, which would install every extra and tool.
+        # Reuse this frozen environment without checking or resolving it again
+        # for each command. `uv run --with` still creates its requested overlay.
+        echo "UV_NO_SYNC=1" >> "$GITHUB_ENV"
         echo "UV_NO_DEFAULT_GROUPS=1" >> "$GITHUB_ENV"
 
     # Jobs that decide later whether they need data use cache-data directly.

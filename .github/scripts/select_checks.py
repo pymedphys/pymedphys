@@ -16,12 +16,12 @@
 
 Diff the tested merge tree against its base parent, with rename detection off,
 so deletions and both sides of a rename remain visible. Two checkout generations
-suffice and there is no API file-count limit. Merge groups and other non-PR
-events select every output, except push runs omit documentation, which Read the
-Docs publishes. On pull requests only known inputs skip standard checks, while
-the costly integration and database tests and the full unit-test matrix follow
-their labels and their own inputs. Links and unverifiable diffs select every
-check that a changed path can select.
+suffice and there is no API file-count limit. Non-PR events select every check;
+merge groups use the quick unit-test matrix, and push runs omit documentation,
+which Read the Docs publishes. On pull requests only known inputs skip standard
+checks, while the costly integration and database tests and the full unit-test
+matrix follow their labels and their own inputs. Links and unverifiable diffs
+select every check that a changed path can select.
 """
 
 import json
@@ -36,6 +36,10 @@ OUTPUTS = (
     "run-python",
     "run-docs",
     "run-integration",
+    "run-doctests",
+    "run-slow",
+    "run-integration-scripts",
+    "run-packaging",
     "run-database",
     "run-scripts",
     "run-full-matrix",
@@ -43,13 +47,24 @@ OUTPUTS = (
     "run-python-security",
     "run-workflow-audit",
 )
-# Merge groups, other non-PR events and the full-test label widen the unit tests
-# to every OS and Python version; no changed path does.
+# Non-PR events except merge groups, plus the full-test label, widen the unit
+# tests to every OS and Python version; no changed path does.
 PATH_SELECTABLE = tuple(output for output in OUTPUTS if output != "run-full-matrix")
 # Integration and database tests are too costly for every PR. On PRs they run
 # for labels, their inputs, links and unverified diffs; merge groups and other
 # non-PR events always include them.
-COST_GATED = ("run-integration", "run-database", "run-full-matrix")
+INTEGRATION_COMPONENTS = (
+    "run-doctests",
+    "run-slow",
+    "run-integration-scripts",
+    "run-packaging",
+)
+COST_GATED = (
+    "run-integration",
+    "run-database",
+    "run-full-matrix",
+    *INTEGRATION_COMPONENTS,
+)
 STANDARD = tuple(output for output in OUTPUTS if output not in COST_GATED)
 # Labels compare case-insensitively, as GitHub's contains() does.
 FULL_TEST_LABEL = "full-test"
@@ -114,7 +129,21 @@ CI_CONFIGURATION_ROOTS = (".github/actions/",)
 # Only integration tests run the CI tooling tests on Windows and macOS and run
 # the example scripts.
 INTEGRATION_FILES = frozenset({".github/workflows/integration-tests.yml"})
-INTEGRATION_ROOTS = (".github/scripts/", "examples/")
+# These scripts have reviewed consumers: tooling tests, workflow gates and the
+# documentation cache. Unknown tooling still selects every integration job.
+INTEGRATION_SCRIPT_FILES = frozenset(
+    {
+        ".github/scripts/check_distributions.py",
+        ".github/scripts/check_workflow_status.py",
+        ".github/scripts/notebook_cache_key.py",
+        ".github/scripts/select_checks.py",
+        ".github/scripts/test_check_distributions.py",
+        ".github/scripts/test_check_workflow_status.py",
+        ".github/scripts/test_notebook_cache_key.py",
+        ".github/scripts/test_select_checks.py",
+        ".github/scripts/test_workflow_contracts.py",
+    }
+)
 # VCS filters affect built archives even when editable imports still work.
 PACKAGING_FILTER_NAMES = frozenset({".gitignore", ".gitattributes", ".hgignore"})
 # Unit runs skip slow tests and never run doctests, so only integration tests
@@ -154,6 +183,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/preserving_writer.py",
         "lib/pymedphys/_dicom/deidentify/private_attributes.py",
         "lib/pymedphys/_dicom/deidentify/pseudonyms.py",
+        "lib/pymedphys/_dicom/deidentify/qc_pack.py",
         "lib/pymedphys/_dicom/deidentify/references.py",
         "lib/pymedphys/_dicom/deidentify/release_report.py",
         "lib/pymedphys/_dicom/deidentify/residuals.py",
@@ -224,20 +254,35 @@ def _is_shared_test_input(name: str) -> bool:
     )
 
 
-def _is_integration_input(name: str) -> bool:
+def _integration_components(name: str) -> tuple[str, ...]:
+    """Select the integration consumers of a path; shared inputs keep all."""
     path = PurePosixPath(name)
-    return (
+    if (
         name in DEPENDENCY_INPUTS
         or _configures_ci(name)
         or name in INTEGRATION_FILES
-        or name.startswith(INTEGRATION_ROOTS)
-        or path.name in PACKAGING_FILTER_NAMES
-        or name in SLOW_TEST_FILES
-        or name in DOCTEST_FILES
         or _is_shared_test_input(name)
-        # A non-Python fixture may be consumed only by a slow test.
         or (name.startswith(TESTS_ROOT) and path.suffix != ".py")
-    )
+        or (
+            name.startswith(".github/scripts/") and name not in INTEGRATION_SCRIPT_FILES
+        )
+    ):
+        return INTEGRATION_COMPONENTS
+    selected = []
+    if name in DOCTEST_FILES or name.startswith("examples/"):
+        selected.append("run-doctests")
+    # Production modules with doctests can also implement slow regressions
+    # (for example MetersetMap); keep those tests when their code changes.
+    if name in SLOW_TEST_FILES or name in DOCTEST_FILES:
+        selected.append("run-slow")
+    if name in INTEGRATION_SCRIPT_FILES:
+        selected.append("run-integration-scripts")
+    if (
+        path.name in PACKAGING_FILTER_NAMES
+        or name == ".github/scripts/check_distributions.py"
+    ):
+        selected.append("run-packaging")
+    return tuple(selected)
 
 
 def _is_database_input(name: str) -> bool:
@@ -264,13 +309,16 @@ def explain_checks(
             if reasons[output] is None:
                 reasons[output] = reason
 
-    folded = {label.casefold() for label in labels}
     if event_name != "pull_request":
         select(OUTPUTS, Reason(f"{event_name} event"))
+        if event_name == "merge_group":
+            # Every check still runs; main validates the full platform matrix.
+            reasons["run-full-matrix"] = None
         # ReadTheDocs publishes main independently; retain the existing policy.
         if event_name == "push":
             reasons["run-docs"] = None
         return reasons
+    folded = {label.casefold() for label in labels}
     if FULL_TEST_LABEL in folded:
         select(OUTPUTS, Reason("full-test label"))
         return reasons
@@ -311,8 +359,12 @@ def explain_checks(
             select(PATH_SELECTABLE, Reason("symlink or submodule", change.name))
         # The costly checks run for inputs that no standard check validates.
         if kind in {"python", "unclassified"}:
-            if _is_integration_input(change.name):
-                select(["run-integration"], Reason("integration input", change.name))
+            components = _integration_components(change.name)
+            if components:
+                select(
+                    ("run-integration", *components),
+                    Reason("integration input", change.name),
+                )
             if _is_database_input(change.name):
                 select(["run-database"], Reason("database input", change.name))
     return reasons

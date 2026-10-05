@@ -28,6 +28,7 @@ from check_workflow_status import check_jobs
 from select_checks import (
     COST_GATED,
     DOCTEST_FILES,
+    INTEGRATION_COMPONENTS,
     OUTPUTS,
     PATH_SELECTABLE,
     SLOW_TEST_FILES,
@@ -274,7 +275,80 @@ class SelectionTests(unittest.TestCase):
         ):
             with self.subTest(path=path):
                 result = selected(select_checks([path]))
-                self.assertEqual(result & set(COST_GATED), expected)
+                self.assertEqual(
+                    result & (set(COST_GATED) - set(INTEGRATION_COMPONENTS)), expected
+                )
+
+    def test_integration_components_follow_their_consumers(self):
+        for path, expected in (
+            (
+                ".github/scripts/test_check_distributions.py",
+                {"run-integration-scripts"},
+            ),
+            (".github/scripts/select_checks.py", {"run-integration-scripts"}),
+            (
+                ".github/scripts/check_distributions.py",
+                {"run-integration-scripts", "run-packaging"},
+            ),
+            ("examples/stackoverflow/gamma.py", {"run-doctests"}),
+            (
+                "lib/pymedphys/_dicom/deidentify/dates.py",
+                {"run-doctests", "run-slow"},
+            ),
+            (
+                "lib/pymedphys/_metersetmap/metersetmap.py",
+                {"run-doctests", "run-slow"},
+            ),
+            ("lib/pymedphys/tests/pinnacle/test_pinnacle_cli.py", {"run-slow"}),
+            ("lib/pymedphys/docs/.gitignore", {"run-packaging"}),
+            ("lib/pymedphys/_gamma/implementation/shell.py", set()),
+            ("README.rst", set()),
+            ("new-directory/input", set()),
+        ):
+            with self.subTest(path=path):
+                result = selected(select_checks([path]))
+                self.assertEqual(result & set(INTEGRATION_COMPONENTS), expected)
+                self.assertEqual("run-integration" in result, bool(expected))
+
+    def test_shared_and_unknown_tooling_keep_every_integration_component(self):
+        for path in (
+            "uv.lock",
+            "pyproject.toml",
+            ".github/workflows/ci.yml",
+            ".github/workflows/integration-tests.yml",
+            ".github/actions/setup-project/action.yml",
+            ".github/scripts/new_consumer.py",
+            "lib/pymedphys/conftest.py",
+            "lib/pymedphys/_data/hashes.json",
+            "lib/pymedphys/_base/delivery.py",
+            "lib/pymedphys/tests/fixture.csv",
+        ):
+            with self.subTest(path=path):
+                result = selected(select_checks([path]))
+                self.assertTrue(set(INTEGRATION_COMPONENTS) <= result)
+                self.assertIn("run-integration", result)
+
+    def test_component_selection_keeps_deletions_renames_and_mixed_changes(self):
+        # --no-renames presents a move as a deletion and an addition. The old
+        # slow-test path and the new tooling path each retain their consumers.
+        changes = parse_raw_diff(
+            raw_record(
+                "lib/pymedphys/tests/pinnacle/test_pinnacle_cli.py",
+                new="000000",
+                status="D",
+            )
+            + raw_record(
+                ".github/scripts/test_check_distributions.py", old="000000", status="A"
+            )
+            + raw_record("README.rst")
+        )
+        result = selected(select_checks(changes))
+        self.assertEqual(
+            result & set(INTEGRATION_COMPONENTS),
+            {"run-slow", "run-integration-scripts"},
+        )
+        self.assertIn("run-integration", result)
+        self.assertIn("run-docs", result)
 
     def test_packaging_filters_select_distribution_checks(self):
         for path in (
@@ -376,7 +450,7 @@ class SelectionTests(unittest.TestCase):
             select_checks(["README.rst"], labels=["DATABASE"])["run-database"]
         )
 
-    def test_only_main_and_full_test_widen_the_unit_test_matrix(self):
+    def test_main_and_full_test_prs_widen_the_unit_test_matrix(self):
         self.assertTrue(select_checks([], event_name="push")["run-full-matrix"])
         self.assertTrue(select_checks([], labels=["full-test"])["run-full-matrix"])
         for paths in (None, [], ["uv.lock"], ["lib/pymedphys/_gamma/core.py"]):
@@ -384,13 +458,32 @@ class SelectionTests(unittest.TestCase):
                 self.assertFalse(select_checks(paths)["run-full-matrix"])
 
     def test_non_pr_and_unverifiable_diffs_keep_full_coverage(self):
-        for event in ("release", "schedule", "workflow_dispatch", "merge_group"):
+        for event in ("release", "schedule", "workflow_dispatch"):
             with self.subTest(event=event):
                 self.assertTrue(all(select_checks([], event_name=event).values()))
         self.assertEqual(selected(select_checks(None)), set(PATH_SELECTABLE))
         pushed = select_checks(["README.rst"], event_name="push")
         self.assertFalse(pushed.pop("run-docs"))
         self.assertTrue(all(pushed.values()))
+
+    def test_merge_groups_keep_every_check_with_the_quick_unit_matrix(self):
+        expected = dict.fromkeys(OUTPUTS, True)
+        expected["run-full-matrix"] = False
+        for paths in (
+            None,
+            [],
+            ["README.rst"],
+            ["uv.lock"],
+            ["lib/pymedphys/tests/dicom/test_deidentify_values.py"],
+            ["unclassified-input"],
+            [ChangedPath("docs", regular=False)],
+        ):
+            for labels in ((), ("full-test",), ("Full-Test", "DATABASE")):
+                with self.subTest(paths=paths, labels=labels):
+                    self.assertEqual(
+                        select_checks(paths, event_name="merge_group", labels=labels),
+                        expected,
+                    )
 
     def test_every_selection_has_explicit_booleans(self):
         for paths in (None, [], ["README.rst"], ["new-file"]):

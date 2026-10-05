@@ -66,6 +66,20 @@ def _statement(preset, vocabulary=None):
     )
 
 
+@pytest.fixture(name="statement_for", scope="module")
+def _statement_for():
+    """Reuse immutable statements for ordinary assertions within this module."""
+    statements = {}
+
+    def get_statement(preset, vocabulary=None):
+        key = (preset, vocabulary)
+        if key not in statements:
+            statements[key] = _statement(preset, vocabulary=vocabulary)
+        return statements[key]
+
+    return get_statement
+
+
 def _entry(statement, tag):
     return next(e for e in statement.attributes if e.tag == tag)
 
@@ -106,9 +120,9 @@ def _removed_with_a_sequence(sequence_action, iod, path):
     return False
 
 
-def test_the_statement_names_the_edition_preset_and_options(preset):
+def test_the_statement_names_the_edition_preset_and_options(preset, statement_for):
     composed = policy.compose_policy(preset)
-    statement = conformance.conformance_statement(composed, vocabulary=None)
+    statement = statement_for(preset)
     assert statement.edition == composed.edition == "2026d"
     assert statement.preset == preset
     assert statement.options == composed.options
@@ -140,8 +154,8 @@ def test_each_option_names_its_cid_7050_code():
             assert word in words, (option, meanings[code])
 
 
-def test_options_outside_the_supported_scope_are_listed_as_not_supported():
-    text = conformance_markdown.render_markdown(_statement("basic"))
+def test_options_outside_the_supported_scope_are_listed_as_not_supported(statement_for):
+    text = conformance_markdown.render_markdown(statement_for("basic"))
     meanings = {
         c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
     }
@@ -152,10 +166,12 @@ def test_options_outside_the_supported_scope_are_listed_as_not_supported():
         assert meanings[conformance.OPTION_CODES[option]] in unsupported
 
 
-def test_the_pixel_options_outside_table_e1_1_are_listed_as_not_supported(preset):
+def test_the_pixel_options_outside_table_e1_1_are_listed_as_not_supported(
+    preset, statement_for
+):
     # PS3.15 E.1.1 Note 11 leaves Clean Pixel Data and Clean Recognizable
     # Visual Features out of Table E.1-1; CID 7050 still codes them.
-    text = conformance_markdown.render_markdown(_statement(preset))
+    text = conformance_markdown.render_markdown(statement_for(preset))
     meanings = {
         c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
     }
@@ -175,9 +191,10 @@ def test_the_pixel_options_outside_table_e1_1_are_listed_as_not_supported(preset
 
 def test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_action(
     preset,
+    statement_for,
 ):
     composed = policy.compose_policy(preset)
-    statement = conformance.conformance_statement(composed, vocabulary=None)
+    statement = statement_for(preset)
     table = [e for e in statement.attributes if e.rule == conformance.TABLE_E1_1]
     supplementary = [
         e for e in statement.attributes if e.rule == conformance.SUPPLEMENTARY
@@ -195,8 +212,8 @@ def test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_actio
     assert all(e.name == names[e.tag] for e in supplementary)
 
 
-def test_every_ui_attribute_that_the_table_omits_is_listed_by_its_role():
-    statement = _statement("basic")
+def test_every_ui_attribute_that_the_table_omits_is_listed_by_its_role(statement_for):
+    statement = statement_for("basic")
     listed = {e.tag: e for e in statement.attributes}
     table = {row.tag for row in standard.load_table_e1_1().attributes}
     roles = uid_roles.load_uid_roles().rules
@@ -220,8 +237,9 @@ def test_every_ui_attribute_that_the_table_omits_is_listed_by_its_role():
 
 def test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_them(
     preset,
+    statement_for,
 ):
-    statement = _statement(preset)
+    statement = statement_for(preset)
     sequence_action = _sequence_action(policy.compose_policy(preset))
     tables = iods.load_iod_tables()
     for entry in statement.attributes:
@@ -242,8 +260,8 @@ def test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_th
         assert entry.places == tuple(expected), entry.tag
 
 
-def test_institution_name_is_resolved_by_its_type_at_each_place():
-    places = _entry(_statement("basic"), INSTITUTION_NAME).places
+def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
+    places = _entry(statement_for("basic"), INSTITUTION_NAME).places
     found = {(p.iod, p.path): p.action for p in places}
     assert found[("RT Plan", ASSERTER_IDENTIFICATION)] == "Z"
     assert found[("RT Structure Set", ())] == "X"
@@ -251,7 +269,7 @@ def test_institution_name_is_resolved_by_its_type_at_each_place():
     assert ("RT Structure Set", ROI_CREATOR) not in found
     assert ("RT Structure Set", REFERRING_PHYSICIAN_IDENTIFICATION) not in found
 
-    text = conformance_markdown.render_markdown(_statement("basic"))
+    text = conformance_markdown.render_markdown(statement_for("basic"))
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert row.endswith(
         "| Z within RT Assertions Sequence (0044,0110) > Asserter Identification "
@@ -259,8 +277,8 @@ def test_institution_name_is_resolved_by_its_type_at_each_place():
     )
 
 
-def test_x_z_on_a_type_1_attribute_is_described_as_the_dummy_value():
-    text = conformance_markdown.render_markdown(_statement("basic"))
+def test_x_z_on_a_type_1_attribute_is_described_as_the_dummy_value(statement_for):
+    text = conformance_markdown.render_markdown(statement_for("basic"))
     assert (
         "X/Z on a Type 1 or 1C attribute gives D, the dummy value that Z may write."
         in (" ".join(text.split()))
@@ -289,8 +307,8 @@ def test_a_place_that_sequesters_the_instance_is_listed_as_such(monkeypatch):
     )
 
 
-def test_the_scope_is_what_the_classifier_supports():
-    statement = _statement("basic")
+def test_the_scope_is_what_the_classifier_supports(statement_for):
+    statement = statement_for("basic")
     assert statement.iods == tuple(sorted(scope.SUPPORTED_IODS))
     assert {s.uid for s in statement.transfer_syntaxes} == (
         scope.SUPPORTED_TRANSFER_SYNTAXES
@@ -312,8 +330,8 @@ def test_the_scope_is_what_the_classifier_supports():
         assert f"| {syntax.uid} | {syntax.name} |" in text
 
 
-def test_the_dummy_values_are_those_that_d_writes():
-    text = conformance_markdown.render_markdown(_statement("basic"))
+def test_the_dummy_values_are_those_that_d_writes(statement_for):
+    text = conformance_markdown.render_markdown(statement_for("basic"))
     for vr, (first, second) in dummy_values.CONSTANTS.items():
         assert f"| {vr} | `{first}` | `{second}` |" in text
     assert f"`{pseudonyms.PATIENT_ID_PREFIX}`" in text
@@ -323,23 +341,25 @@ def test_the_dummy_values_are_those_that_d_writes():
     assert "PyMedPhys" not in "".join(map(str, dummy_values.CONSTANTS.values()))
 
 
-def test_the_key_and_the_scope_of_referential_integrity_are_described():
-    text = conformance_markdown.render_markdown(_statement("basic"))
+def test_the_key_and_the_scope_of_referential_integrity_are_described(statement_for):
+    text = conformance_markdown.render_markdown(statement_for("basic"))
     assert "256-bit" in text
     assert "HMAC-SHA256" in text
     assert "discarded after the run" in text
 
 
-def test_no_attribute_is_encrypted_for_later_reidentification():
-    text = conformance_markdown.render_markdown(_statement("basic"))
+def test_no_attribute_is_encrypted_for_later_reidentification(statement_for):
+    text = conformance_markdown.render_markdown(statement_for("basic"))
     assert "Encrypted Attributes Sequence (0400,0500)" in text
     assert "No attribute is placed in an Encrypted Attributes Data Set" in text
 
 
 @pytest.mark.parametrize("vocabulary", [None, VOCABULARY])
-def test_the_method_digest_is_the_policys_with_the_same_vocabulary(preset, vocabulary):
+def test_the_method_digest_is_the_policys_with_the_same_vocabulary(
+    preset, vocabulary, statement_for
+):
     composed = policy.compose_policy(preset)
-    statement = conformance.conformance_statement(composed, vocabulary=vocabulary)
+    statement = statement_for(preset, vocabulary=vocabulary)
     assert statement.method_digest == method_digest.method_digest(
         composed, vocabulary=vocabulary
     )
@@ -371,9 +391,9 @@ def test_a_policy_composed_from_another_table_is_refused():
         conformance.conformance_statement(composed, vocabulary=None)
 
 
-def test_tps_import_claims_no_conformance_and_names_each_unmet_option():
+def test_tps_import_claims_no_conformance_and_names_each_unmet_option(statement_for):
     composed = policy.compose_policy("tps-import")
-    statement = conformance.conformance_statement(composed, vocabulary=None)
+    statement = statement_for("tps-import")
     assert not statement.claims_conformance
     text = conformance_markdown.render_markdown(statement)
     assert "makes no PS3.15 conformance claim" in text
@@ -386,8 +406,8 @@ def test_tps_import_claims_no_conformance_and_names_each_unmet_option():
         assert "Retain Device Identity Option" in line
 
 
-def test_a_preset_that_is_not_enabled_makes_no_claim(preset):
-    statement = _statement(preset)
+def test_a_preset_that_is_not_enabled_makes_no_claim(preset, statement_for):
+    statement = statement_for(preset)
     assert not statement.enabled
     assert not statement.claims_conformance
     text = conformance_markdown.render_markdown(statement)
@@ -432,8 +452,10 @@ def test_a_complete_statement_of_an_enabled_preset_claims_conformance(monkeypatc
     assert "Not yet described" not in text
 
 
-def test_a_compound_action_that_no_supported_iod_defines_resolves_elsewhere():
-    statement = _statement("basic")
+def test_a_compound_action_that_no_supported_iod_defines_resolves_elsewhere(
+    statement_for,
+):
+    statement = statement_for("basic")
     text = conformance_markdown.render_markdown(statement)
     undefined = [
         e
@@ -446,8 +468,8 @@ def test_a_compound_action_that_no_supported_iod_defines_resolves_elsewhere():
         assert row.endswith(f"| {entry.elsewhere} elsewhere. |"), row
 
 
-def test_places_name_their_enclosing_sequences():
-    text = conformance_markdown.render_markdown(_statement("basic"))
+def test_places_name_their_enclosing_sequences(statement_for):
+    text = conformance_markdown.render_markdown(statement_for("basic"))
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert (
         "Z within RT Assertions Sequence (0044,0110) > Asserter Identification "
@@ -456,21 +478,23 @@ def test_places_name_their_enclosing_sequences():
     assert row.endswith(". X elsewhere. |")
 
 
-def test_retained_safe_private_attributes_are_pending_where_selected(preset):
+def test_retained_safe_private_attributes_are_pending_where_selected(
+    preset, statement_for
+):
     composed = policy.compose_policy(preset)
-    pending = _statement(preset).pending
+    pending = statement_for(preset).pending
     assert (conformance.PENDING_SAFE_PRIVATE in pending) == (
         "retain_safe_private" in composed.options
     )
 
 
-def test_synthetic_birth_dates_are_pending_only_for_tps_import(preset):
-    pending = _statement(preset).pending
+def test_synthetic_birth_dates_are_pending_only_for_tps_import(preset, statement_for):
+    pending = statement_for(preset).pending
     assert (conformance.PENDING_BIRTH_DATES in pending) == (preset == "tps-import")
 
 
-def test_cleaning_is_pending_only_for_a_policy_that_cleans(preset):
-    statement = _statement(preset)
+def test_cleaning_is_pending_only_for_a_policy_that_cleans(preset, statement_for):
+    statement = statement_for(preset)
     composed = policy.compose_policy(preset)
     cleans = "C" in {
         *composed.actions.values(),
@@ -493,8 +517,8 @@ def test_the_statement_is_the_same_every_time_it_is_generated(preset):
     assert _statement(preset) == _statement(preset)
 
 
-def test_every_table_in_the_markdown_has_a_cell_for_each_column(preset):
-    text = conformance_markdown.render_markdown(_statement(preset))
+def test_every_table_in_the_markdown_has_a_cell_for_each_column(preset, statement_for):
+    text = conformance_markdown.render_markdown(statement_for(preset))
     blocks = re.findall(r"(?:^\|.*\|\n)+", text + "\n", flags=re.MULTILINE)
     assert len(blocks) >= 4
     for block in blocks:
@@ -507,8 +531,8 @@ def test_every_table_in_the_markdown_has_a_cell_for_each_column(preset):
     assert not any(line != line.rstrip() for line in text.splitlines())
 
 
-def test_the_markdown_acknowledges_every_part_of_the_standard_it_quotes():
-    text = conformance_markdown.render_markdown(_statement("basic"))
+def test_the_markdown_acknowledges_every_part_of_the_standard_it_quotes(statement_for):
+    text = conformance_markdown.render_markdown(statement_for("basic"))
     for part in ("PS3.3", "PS3.4", "PS3.6", "PS3.15", "PS3.16"):
         assert f"DICOM {part} 2026d, © NEMA" in text
 
@@ -531,13 +555,13 @@ def _satisfied(composed):
     )
 
 
-def test_the_markers_are_no_longer_pending(preset):
-    assert not any("markers" in item for item in _statement(preset).pending)
+def test_the_markers_are_no_longer_pending(preset, statement_for):
+    assert not any("markers" in item for item in statement_for(preset).pending)
 
 
-def test_the_markers_match_those_the_engine_writes(preset):
+def test_the_markers_match_those_the_engine_writes(preset, statement_for):
     composed = policy.compose_policy(preset)
-    statement = conformance.conformance_statement(composed, vocabulary=None)
+    statement = statement_for(preset)
     written = markers.markers_for(
         composed, statement.method_digest, satisfied=_satisfied(composed)
     )
@@ -551,9 +575,9 @@ def test_the_markers_match_those_the_engine_writes(preset):
     )
 
 
-def test_every_attribute_the_markers_write_is_described(preset):
+def test_every_attribute_the_markers_write_is_described(preset, statement_for):
     composed = policy.compose_policy(preset)
-    statement = conformance.conformance_statement(composed, vocabulary=None)
+    statement = statement_for(preset)
     written = markers.apply_markers(
         pydicom.Dataset(),
         markers.markers_for(
@@ -575,8 +599,8 @@ def test_every_attribute_the_markers_write_is_described(preset):
     assert f"`{statement.markers.temporal}`" in section
 
 
-def test_the_inserted_codes_are_listed_with_their_meanings(preset):
-    statement = _statement(preset)
+def test_the_inserted_codes_are_listed_with_their_meanings(preset, statement_for):
+    statement = statement_for(preset)
     section = _section(
         conformance_markdown.render_markdown(statement), "Attributes inserted"
     )
@@ -589,8 +613,8 @@ def test_the_inserted_codes_are_listed_with_their_meanings(preset):
         assert "no item" in section
 
 
-def test_the_runtime_versions_are_described_not_quoted():
-    text = conformance_markdown.render_markdown(_statement("basic"))
+def test_the_runtime_versions_are_described_not_quoted(statement_for):
+    text = conformance_markdown.render_markdown(statement_for("basic"))
     assert f"pydicom {pydicom.__version__}" not in text
     assert f"tomlkit {tomlkit.__version__}" not in text
     assert f"{platform.python_implementation()} {platform.python_version()}" not in text
@@ -599,8 +623,8 @@ def test_the_runtime_versions_are_described_not_quoted():
     assert "`CPython <version>`" in text
 
 
-def test_private_attribute_removal_is_described(preset):
-    statement = _statement(preset)
+def test_private_attribute_removal_is_described(preset, statement_for):
+    statement = statement_for(preset)
     section = _section(conformance_markdown.render_markdown(statement), "Actions")
     row = _entry(statement, standard.PRIVATE_ATTRIBUTES_TAG)
     described = "X on Private Attributes removes every element" in section
@@ -620,9 +644,9 @@ def test_private_attribute_removal_is_described(preset):
     ],
 )
 def test_each_presets_inserted_codes_and_temporal_value(
-    name, expected_codes, review_codes, temporal
+    name, expected_codes, review_codes, temporal, statement_for
 ):
-    statement = _statement(name)
+    statement = statement_for(name)
     assert statement.markers.codes == expected_codes
     assert statement.markers.review_codes == review_codes
     assert statement.markers.temporal == temporal
@@ -634,9 +658,9 @@ def test_each_presets_inserted_codes_and_temporal_value(
     assert positions == sorted(positions)
 
 
-def test_the_markers_are_said_to_depend_on_the_satisfied_options():
+def test_the_markers_are_said_to_depend_on_the_satisfied_options(statement_for):
     section = _section(
-        conformance_markdown.render_markdown(_statement("basic-clean-descriptors")),
+        conformance_markdown.render_markdown(statement_for("basic-clean-descriptors")),
         "Attributes inserted",
     )
     assert "the options that the instance satisfies" in section
