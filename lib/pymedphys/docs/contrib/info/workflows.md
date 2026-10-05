@@ -7,7 +7,7 @@ PyMedPhys uses GitHub Actions for continuous integration and deployment. The wor
 ## Workflow Architecture
 
 ```text
-ci.yml <- pull request (selective), merge_group (all checks, quick units), main push
+ci.yml <- ready pull request (selective; drafts run nothing), merge_group (all checks, quick units), main push
   |-- pre-commit.yml
   |-- lint.yml
   |-- type-check.yml
@@ -18,7 +18,7 @@ ci.yml <- pull request (selective), merge_group (all checks, quick units), main 
   `-- CI Summary
 
 Manual run -> docs.yml
-security.yml <- schedule, manual run, main push, PR, merge_group
+security.yml <- schedule, manual run, main push, ready PR, merge_group
   |-- dependency audit / Bandit / zizmor (selected PRs; every merge group)
   `-- Security Summary
 Schedule / manual run -> deps.yml
@@ -38,8 +38,9 @@ Main push / PR labelled rtd-preview -> Read the Docs (see "Read the Docs" below)
 #### `ci.yml` - Main Orchestrator
 Coordinates all CI checks based on file changes, labels, and event types.
 
-- **Triggers**: Push to main, pull requests (including label changes, which queue
-  behind an in-flight run rather than cancelling it), and merge groups
+- **Triggers**: Push to main, pull requests that are not drafts (including
+  label changes, which queue behind an in-flight run rather than cancelling
+  it), and merge groups. See "Draft pull requests" below
 - **Jobs**:
   - `changes`: Tests the selection/gating policy and reads the tested merge diff
   - `pre-commit`: Auto-formatting and basic checks
@@ -138,6 +139,24 @@ pre-commit and fails when it fails. An auto-fix pushed with the bot's token
 starts a new run, which cancels the run for the superseded commit; either way,
 the summary fails until a fresh run passes on the new commit. The summaries
 reject any other unexpected skip. Integration jobs run alongside unit tests.
+
+#### Draft pull requests
+
+CI and the security scan run no jobs on a draft pull request, so pushing work
+in progress uses no runners. Marking the pull request ready for review starts
+both workflows on its current commit, and every later push runs them as usual.
+Converting a pull request back to a draft starts a run that skips every job and
+cancels any run still in progress for that pull request. Labels such as
+`full-test` take effect once the pull request is ready.
+
+Only the jobs that start a run (`changes` and `pre-commit` in `ci.yml`,
+`changes` in `security.yml`) and the two summaries carry the draft condition;
+every other job needs `changes`, so it is skipped with it. The selector and
+the summaries' conditional checks are unchanged. GitHub counts a skipped
+required check as passing, so a draft shows `CI Summary` and `Security Summary`
+as skipped rather than pending. This cannot let untested code merge: a draft
+can neither merge nor enter the merge queue, and the merge queue runs both
+workflows in full before anything reaches `main`.
 
 #### `pre-commit.yml`
 Runs pre-commit hooks for code formatting and basic checks.
@@ -391,8 +410,9 @@ into the project environment.
     including the check that each pin's version comment names the tag that
     carries the pinned commit, run only here
 - **Triggers**: Weekly, manually, on main pushes, on merge groups, and on every
-  PR (including label changes); job-level selection chooses scans while
-  `Security Summary` always runs. Python changes retain all three scans: online
+  PR that is not a draft (including label changes); job-level selection
+  chooses scans while `Security Summary` runs on every event except a draft
+  PR's. Python changes retain all three scans: online
   audits can discover new vulnerabilities without a lockfile or workflow edit. Unknown inputs also
   select all scans
 - **Coverage**: Change selection applies only to PRs; merge groups, main pushes,
