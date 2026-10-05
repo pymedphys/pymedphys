@@ -79,6 +79,7 @@ def deidentify_directory(
     *,
     transform: run.Transform,
     gate: run.Gate,
+    qc_destination: str | os.PathLike[str],
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
@@ -96,6 +97,9 @@ def deidentify_directory(
         The run's transform.
     gate : Gate
         The run's release gate.
+    qc_destination : str or os.PathLike
+        Where the run writes its confidential QC pack, as
+        :func:`~pymedphys._dicom.deidentify.run.run` takes it.
     stdout, stderr : text file, optional
         Where to print the summary, and the reason the run failed or left
         its staging area behind. By default, :data:`sys.stdout` and
@@ -113,7 +117,13 @@ def deidentify_directory(
     earlier_staging = os.path.lexists(staging)
     with redacted_diagnostics() as counts:
         try:
-            result = run.run(run.discover(source), release, transform, gate)
+            result = run.run(
+                run.discover(source),
+                release,
+                transform,
+                gate,
+                qc_destination=qc_destination,
+            )
         except (run.RunError, run.RunStopped) as error:
             # Each names only the caller's directories, or counts.
             _print(f"error: {error}", stderr)
@@ -257,6 +267,15 @@ def build_parser(
     parser.add_argument(
         "release", help="the release directory to create, which must not exist"
     )
+    parser.add_argument(
+        "--qc-pack",
+        required=True,
+        metavar="DIRECTORY",
+        help=(
+            "the confidential directory for the run's QC pack, outside "
+            "RELEASE, which must not exist or must be empty"
+        ),
+    )
     return parser
 
 
@@ -295,6 +314,7 @@ def main(
         arguments.release,
         transform=transform,
         gate=gate,
+        qc_destination=arguments.qc_pack,
         stdout=stdout,
         stderr=stderr,
     )

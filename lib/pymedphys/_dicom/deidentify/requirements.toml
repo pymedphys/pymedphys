@@ -218,6 +218,7 @@ decisions = ["D-016"]
 implementation = [
   "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/run.py",
+  "_dicom/deidentify/run_results.py",
 ]
 tests = [
   "tests/dicom/test_deidentify_element_rules.py::test_every_element_of_groups_0002_and_0004_in_a_data_set_is_removed",
@@ -771,6 +772,7 @@ implementation = [
   "_dicom/deidentify/reference_graph.py",
   "_dicom/deidentify/references.py",
   "_dicom/deidentify/run.py",
+  "_dicom/deidentify/run_results.py",
   "_dicom/deidentify/sequences.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/values.py",
@@ -1140,6 +1142,9 @@ implementation = [
   "_dicom/deidentify/qc_attestation.py",
   "_dicom/deidentify/qc_pack.py",
   "_dicom/deidentify/qc_store.py",
+  "_dicom/deidentify/run.py",
+  "_dicom/deidentify/run_qc.py",
+  "_dicom/deidentify/run_results.py",
 ]
 tests = [
   "tests/dicom/test_deidentify_qc_pack.py::test_the_document_holds_every_section",
@@ -1152,9 +1157,13 @@ tests = [
   "tests/dicom/test_deidentify_qc_attestation.py::test_attested_needs_every_review_that_d_017_requires",
   "tests/dicom/test_deidentify_qc_attestation.py::test_the_record_holds_only_the_reference_and_outcome",
   "tests/dicom/test_deidentify_qc_attestation.py::test_a_pack_changed_after_attestation_is_detected",
+  "tests/dicom/test_deidentify_run_qc.py::test_the_qc_pack_lists_every_input_with_labels_for_the_sequestered",
+  "tests/dicom/test_deidentify_run_qc.py::test_the_qc_pack_holds_the_transforms_and_gates_material_by_position",
+  "tests/dicom/test_deidentify_run_qc.py::test_a_qc_destination_in_the_release_or_staging_is_refused_first",
+  "tests/dicom/test_deidentify_run_qc.py::test_a_pack_that_cannot_be_written_publishes_nothing",
 ]
 note = '''
-D-016 provides the confidential QC pack, to which the residual search sends its text findings (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. The QC pack is built and written: each instance by run position and source path, with its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); and what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009). It is written only to a designated, owner-only location outside the release and staging directories, and is marked so that no release includes it (D-016). A reviewer attests to a pack once, stating whether they reviewed every distinct retained string, every series, and every instance in high-risk categories, and an outcome of attested needs all three; the attestation is bound to the pack by its digest, and gives the release report only the pack's opaque reference and the outcome (D-016, D-017). Remaining: image previews of each series and the instances in high-risk categories, the attestation's record in the release report, and writing the pack in each run (M4). This practice is not implemented until M4 also covers both open points, or the design assigns them to whoever releases the data.
+D-016 provides the confidential QC pack, to which the residual search sends its text findings (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. The QC pack is built and written: each instance by run position and source path, with its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); and what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009). It is written only to a designated, owner-only location outside the release and staging directories, and is marked so that no release includes it (D-016). A reviewer attests to a pack once, stating whether they reviewed every distinct retained string, every series, and every instance in high-risk categories, and an outcome of attested needs all three; the attestation is bound to the pack by its digest, and gives the release report only the pack's opaque reference and the outcome (D-016, D-017). Each run writes its pack before it publishes the release, to a QC destination that the caller must name and that is checked before anything is created; a pack that cannot be written publishes nothing. The pack lists every input from its outcome, each sequestered one by the random label that the run gives it, and the transform's and gate's material by run position: each residual search with its excerpts, each source value they left out of the search with its reason, what descriptor cleaning wrote for each ROI Name, and each retained string with its places. Remaining: image previews of each series and the instances in high-risk categories, the attestation's record in the release report, and a transform and gate that give the run this material (M4). This practice is not implemented until M4 also covers both open points, or the design assigns them to whoever releases the data.
 '''
 
 [[requirement]]
