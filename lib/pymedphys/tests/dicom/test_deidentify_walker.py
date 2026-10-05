@@ -49,7 +49,7 @@ from .test_deidentify_file_layout import (
 pytestmark = pytest.mark.pydicom
 
 RT_PLAN = b"1.2.840.10008.5.1.4.1.1.481.5\x00"
-INSTANCE_UID = b"2.25.7700192\x00"
+INSTANCE_UID = b"2.25.7700192"  # 12 bytes, so even without padding
 NAME = b"SENTINEL^NAME "
 LABEL = b"SENTINEL PLAN "
 BEAM_NAME = b"SENTINEL BEAM "

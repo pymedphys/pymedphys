@@ -275,7 +275,7 @@ def test_removed_text_outside_iso_646_without_a_character_set_is_collected():
     _, result = _edits(
         _explicit(0x00081030, "LO", b"SENTINEL \xe9")
         + _explicit(
-            0x00101002, "SQ", _item(_explicit(0x00100020, "LO", b"SENTINEL \xe9 "))
+            0x00101002, "SQ", _item(_explicit(0x00100020, "LO", b"SENTINEL \xe9"))
         )
     )
 
@@ -323,7 +323,7 @@ def test_text_with_an_escape_and_no_character_set_is_collected_byte_for_byte(tag
 
 def test_cleaned_text_outside_iso_646_without_a_character_set_sequesters():
     _, result = _edits(
-        _explicit(0x300A0003, "LO", b"SENTINEL \xe9 "),
+        _explicit(0x300A0003, "LO", b"SENTINEL \xe9"),
         _rules("basic-clean-descriptors"),
     )
 
