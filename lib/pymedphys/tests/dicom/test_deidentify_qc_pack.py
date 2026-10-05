@@ -26,7 +26,7 @@ from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import qc_pack, qc_store
+from pymedphys._dicom.deidentify import qc_pack, qc_store, residuals, reviewed_roi_names
 from pymedphys._dicom.deidentify.roi_names import Reason
 from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
 from pymedphys._dicom.deidentify.qc_pack import (
@@ -931,3 +931,10 @@ def test_drop_reasons_are_named_as_the_residual_search_names_them():
         "undecodable",
         "registered-uid",
     ]
+
+
+def test_the_pack_uses_the_release_report_and_search_names():
+    assert qc_pack.DropReason is residuals.UnsearchedReason
+    assert qc_pack.RoiNameOutcome is reviewed_roi_names.Outcome
+    with pytest.raises(QcPackError, match="label"):
+        _sequestered(label="S-001")
