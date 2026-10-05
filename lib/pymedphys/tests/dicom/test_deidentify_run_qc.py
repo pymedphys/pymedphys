@@ -296,6 +296,32 @@ def test_qc_material_is_left_out_of_reprs():
         assert "Dropped" not in repr(result)
 
 
+@pytest.mark.pydicom
+def test_a_pack_that_is_only_partly_withdrawn_keeps_its_marker(tmp_path, monkeypatch):
+    _write(tmp_path / "source", synthetic.collection()[:1])
+    unlink = run.Path.unlink
+
+    def rename(*_):
+        raise PermissionError("synthetic refusal")
+
+    def unlink_all_but_the_pack(path, *args, **kwargs):
+        if path.name == qc_store.PACK_FILE:
+            raise PermissionError("synthetic refusal")
+        return unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(run.os, "rename", rename)
+    with monkeypatch.context() as patched:
+        with pytest.raises(run.RunError, match="could not be removed"):
+            patched.setattr(run.Path, "unlink", unlink_all_but_the_pack)
+            _run(tmp_path)
+
+    qc = tmp_path / "qc"
+    assert (qc / qc_store.PACK_FILE).is_file()
+    assert (qc / qc_store.MARKER_FILE).is_file()
+    assert qc_store.is_qc_material(qc)
+    assert qc_store.is_qc_material(qc / qc_store.PACK_FILE)
+
+
 @dataclasses.dataclass(frozen=True)
 class _PartlySet:
     code: GateReason
