@@ -14,7 +14,9 @@
 
 """Tests for the engine's redaction of pydicom's warnings and log records."""
 
+import ast
 import io
+import pathlib
 import logging
 import threading
 import time
@@ -460,3 +462,63 @@ def test_chained_hooks_count_each_diagnostic_once(caplog):
     finally:
         logging.setLogRecordFactory(factory)
         warnings._showwarnmsg = show  # pylint: disable = protected-access
+
+
+_LEGACY = "pymedphys._dicom.anonymise"
+_ENGINE = "pymedphys._dicom.deidentify"
+
+
+def _uses_legacy(source, package=_ENGINE):
+    """Whether module source imports, or names, the legacy anonymiser."""
+    for node in ast.walk(ast.parse(source)):
+        names = []
+        if isinstance(node, ast.ImportFrom):
+            base = node.module or ""
+            if node.level:
+                parent = package.rsplit(".", node.level - 1)[0]
+                base = f"{parent}.{base}" if base else parent
+            names = [base] + [f"{base}.{alias.name}" for alias in node.names]
+        elif isinstance(node, ast.Import):
+            names = [alias.name for alias in node.names]
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+            # Catches importlib.import_module and the like.
+            names = [node.value]
+        if any(name == _LEGACY or name.startswith(_LEGACY + ".") for name in names):
+            return True
+    return False
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import pymedphys._dicom.anonymise",
+        "from pymedphys._dicom.anonymise.diagnostics import x",
+        "from pymedphys._dicom import anonymise",
+        "from .. import anonymise",
+        "from ..anonymise import diagnostics",
+        "import importlib\nimportlib.import_module('pymedphys._dicom.anonymise')",
+    ],
+)
+def test_the_legacy_import_check_finds_every_form(source):
+    assert _uses_legacy(source)
+
+
+def test_the_legacy_import_check_passes_engine_imports():
+    assert not _uses_legacy(
+        "from . import diagnostics\nfrom .diagnostics import redacted_diagnostics\n"
+        "from pymedphys._dicom import uid\nfrom .. import anonymised_names"
+    )
+
+
+def test_no_engine_module_uses_the_legacy_anonymiser():
+    # The engine owns its redaction, and depends on nothing in the legacy
+    # anonymiser's package.
+    root = pathlib.Path(diagnostics.__file__).parent
+    users = []
+    for module in sorted(root.rglob("*.py")):
+        parts = module.relative_to(root).with_suffix("").parts
+        package = ".".join((_ENGINE, *parts[:-1]))
+        if _uses_legacy(module.read_text(encoding="utf-8"), package):
+            users.append(module.name)
+
+    assert not users

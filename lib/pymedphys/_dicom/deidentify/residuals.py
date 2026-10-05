@@ -86,8 +86,12 @@ does. This errs towards a finding.
 its source held, as listed by :func:`written_constants`, is not searched,
 since finding it would reveal nothing about the source. A value of several
 values is compared value by value, and only those equal to a constant are
-left out. Values are compared as D compares a source value with its
-constant (:func:`~.dummy_values.same_value`), as text of the source value's
+left out. So is each form of a value that equals a constant, such as the
+family name of a name ``DEIDENTIFIED^ABCDEF``, with that family name's
+words, or the date of a datetime ``19000101120000`` as YYYYMMDD, while
+its other forms are still searched. Values and
+forms are compared as D compares a source value with its constant
+(:func:`~.dummy_values.same_value`), as text of the source value's
 VR: ignoring case and padding, a person name's trailing delimiters, and
 the full stops of a date written as YYYY.MM.DD, and taking a date and time
 as the time they give. Each source attribute left out in whole or in part
@@ -122,8 +126,8 @@ from .codes import load_context_group
 from .dummy_values import (
     CONSTANTS,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
+    comparison_key,
     items_for_d,
-    same_value,
 )
 from .file_layout import ElementPath, Location, Region, Span, read_file_layout
 from .values import CHECKED_VRS
@@ -362,8 +366,12 @@ class UnsearchedReason(enum.Enum):
 class Unsearched:
     """A source value that the residual search was not given, and why.
 
-    The release report counts these by attribute and reason (D-027), and
-    the QC pack lists each by instance and place.
+    For :attr:`UnsearchedReason.WRITTEN_CONSTANT`, it may be only some of
+    the value: a value among several, or a form such as a family name,
+    whose other values and forms were still searched. Each source attribute
+    is recorded once for each reason. The release report counts these by
+    attribute and reason (D-027), and the QC pack lists each by instance
+    and place.
 
     Attributes
     ----------
@@ -434,19 +442,16 @@ def find_residuals(
     after the last readable element at byte 3
     """
     layout = read_file_layout(data)
-    kept: list[SourceValue] = []
-    unsearched: list[Unsearched] = []
+    derived: list[_Needle | NotSearched | Unsearched] = []
     for value in dict.fromkeys(values):
         rest = _without_constants(value)
         if rest is not value:
-            unsearched.append(
-                Unsearched(value.source, UnsearchedReason.WRITTEN_CONSTANT)
-            )
+            derived.append(Unsearched(value.source, UnsearchedReason.WRITTEN_CONSTANT))
         if rest is not None:
-            kept.append(rest)
-    derived = [item for value in kept for item in _derive(value)]
+            derived += _derive(rest)
     needles = [item for item in derived if isinstance(item, _Needle)]
     omitted = [item for item in derived if isinstance(item, NotSearched)]
+    unsearched = [item for item in derived if isinstance(item, Unsearched)]
     with memoryview(data) as view, view.cast("B") as octets:
         found = _search(octets, layout.spans, layout.size, needles)
     order = sorted(
@@ -514,11 +519,7 @@ def _without_constants(value: SourceValue) -> SourceValue | None:
         return value
     text = str(value.value)  # a VR that is searched has text
     parts = [text] if value.vr in _SINGLE_VALUED else text.split("\\")
-    kept = [
-        part
-        for part in parts
-        if not any(same_value(value.vr, part, c) for _, c in written_constants())
-    ]
+    kept = [part for part in parts if not _is_constant(value.vr, part)]
     if len(kept) == len(parts):
         return value
     if not kept:
@@ -538,7 +539,18 @@ class _Needle:
     digits: bool  # whether the form is digits alone
 
 
-def _derive(value: SourceValue) -> Iterator[_Needle | NotSearched]:
+@functools.cache
+def _constant_keys(vr: str) -> frozenset[object]:
+    """Return the written constants as D compares them for ``vr``."""
+    return frozenset(comparison_key(vr, c) for _, c in written_constants())
+
+
+def _is_constant(vr: str, text: str) -> bool:
+    """Return whether ``text`` equals a written constant, compared for ``vr``."""
+    return comparison_key(vr, text) in _constant_keys(vr)
+
+
+def _derive(value: SourceValue) -> Iterator[_Needle | NotSearched | Unsearched]:
     """Yield the needles of a value, and the forms of it not searched."""
     if not isinstance(value, SourceValue):
         raise TypeError("each value to search for must be a SourceValue")
@@ -556,6 +568,10 @@ def _derive(value: SourceValue) -> Iterator[_Needle | NotSearched]:
         if _length(text) < MIN_CHARACTERS:
             if text:
                 yield omission(form, Omission.TOO_SHORT)
+            continue
+        # A form equal to a constant is written whatever the source held.
+        if _is_constant(value.vr, text):
+            yield Unsearched(value.source, UnsearchedReason.WRITTEN_CONSTANT)
             continue
         # Without a full date, a datetime is a number found throughout files.
         partial = not (len(text) >= 8 and text[:8].isdigit())
@@ -621,6 +637,8 @@ def _forms(text: str, vr: str, kind: ValueKind) -> Iterator[tuple[Form, str]]:
                     yield Form.NAME_JOINED, f"{family}, {given}"
                 for part in (family, given, middle):
                     yield Form.NAME_COMPONENT, part
+                    if _is_constant(vr, part):  # whose words the engine writes
+                        continue
                     if len(words := part.replace("-", " ").split()) > 1:
                         yield from ((Form.NAME_WORD, word) for word in words)
 
