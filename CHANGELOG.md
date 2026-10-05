@@ -243,6 +243,14 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** CI runs its larger unit-test suites on two
+  workers with bounded numerical thread pools and reports the slowest tests.
+  Pull requests select integration components by their inputs, CI reuses the
+  frozen dependency environment between commands, and newer main pushes
+  supersede obsolete CI runs. DICOM test listeners reserve their assigned ports
+  before clients connect; the listener exposes the actual port when started
+  with port 0. Full OS/Python, dependency and release validation
+  remains in place. [PR #2241](https://github.com/pymedphys/pymedphys/pull/2241)
 - Corrected the documentation dependency-group terminology, the weekly dependency update branch name and the current status of the historical coordinate expected failures. [PR #2246](https://github.com/pymedphys/pymedphys/pull/2246)
 
 - **[Contributor facing only]** CI and security workflows now validate

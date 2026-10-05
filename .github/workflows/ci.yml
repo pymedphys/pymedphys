@@ -13,11 +13,12 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  # Label changes queue behind an in-flight run instead of discarding it.
+  # New commits supersede obsolete PR/main runs; label changes still queue.
   cancel-in-progress: >-
-    ${{ github.event_name == 'pull_request' &&
+    ${{ (github.event_name == 'pull_request' &&
         github.event.action != 'labeled' &&
-        github.event.action != 'unlabeled' }}
+        github.event.action != 'unlabeled') ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
 
 jobs:
   changes:
@@ -26,6 +27,10 @@ jobs:
     outputs:
       run-python: ${{ steps.select.outputs.run-python }}
       run-integration: ${{ steps.select.outputs.run-integration }}
+      run-doctests: ${{ steps.select.outputs.run-doctests }}
+      run-slow: ${{ steps.select.outputs.run-slow }}
+      run-integration-scripts: ${{ steps.select.outputs.run-integration-scripts }}
+      run-packaging: ${{ steps.select.outputs.run-packaging }}
       run-database: ${{ steps.select.outputs.run-database }}
       run-docs: ${{ steps.select.outputs.run-docs }}
       run-scripts: ${{ steps.select.outputs.run-scripts }}
@@ -105,7 +110,11 @@ jobs:
     if: needs.changes.outputs.run-integration == 'true'
     uses: ./.github/workflows/integration-tests.yml
     with:
-      run-slow: true
+      # Only explicit false skips a component; absent outputs keep coverage.
+      run-doctests: ${{ needs.changes.outputs.run-doctests != 'false' }}
+      run-slow: ${{ needs.changes.outputs.run-slow != 'false' }}
+      run-scripts: ${{ needs.changes.outputs.run-integration-scripts != 'false' }}
+      run-packaging: ${{ needs.changes.outputs.run-packaging != 'false' }}
 
   mosaiq-db-tests:
     needs: [changes]
@@ -153,7 +162,7 @@ jobs:
   # Record it in an issue rather than only in the Actions tab.
   report-main-failure:
     needs: [summary]
-    if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: failure() && !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

@@ -70,8 +70,12 @@ any fallback.
 | Python tests only | Lint, type checks, unit tests and all security scans |
 | Other CI configuration or any unclassified path | Every standard check: lint, type checks, unit tests, script tests, documentation and all security scans |
 | Dependency or build metadata (`pyproject.toml`, `uv.lock`, the exported requirements, `pyproject.hash`, `dependency-extra.txt`, `_version.py`), `ci.yml` or `.github/actions/` | Standard checks, plus integration and database tests |
-| `.github/scripts/`, `integration-tests.yml`, `examples/`, or packaging filters (`.gitignore`, `.gitattributes`, `.hgignore`, including nested files) | Standard checks, plus integration tests |
-| Slow-test modules, modules with doctests, or non-Python test fixtures | Adds integration tests |
+| Reviewed `.github/scripts/` tooling | Standard checks, plus Windows/macOS tooling tests; `check_distributions.py` also selects packaging |
+| `examples/` | Adds doctests and example tests |
+| Modules with doctests | Adds doctests, example tests and slow regressions |
+| Slow-test modules | Adds slow tests |
+| Packaging filters (`.gitignore`, `.gitattributes`, `.hgignore`, including nested files) | Standard checks, plus packaging |
+| `integration-tests.yml`, unknown `.github/scripts/` tooling, or non-Python test fixtures | Adds every integration component |
 | Any path naming Mosaiq or a database (except documentation) | Adds database tests |
 | `conftest.py`, top-level package modules, or `_imports/`, `_data/`, `_utilities/` and `_base/` | Adds integration and database tests |
 | A symlink, a submodule or an unverifiable merge diff | Every check a changed path can select, including integration and database tests |
@@ -97,6 +101,13 @@ Windows and macOS tooling tests, the example scripts, the slow tests, the
 doctests and their shared inputs, or the database code and its locked drivers.
 An unclassified path selects every standard check, but not these. Unit tests
 use the quick matrix unless the PR has the `full-test` label.
+
+The selector chooses the integration components independently and enables the
+`integration-tests` wrapper when any is selected. Shared package and test
+inputs, dependency metadata, shared CI configuration, and unknown tooling keep
+every component. Only an explicit `false` output skips a component; missing
+outputs retain coverage. Merge groups, main pushes, `full-test`, links and
+unverifiable diffs enable every component.
 
 Unit runs skip the slow tests and never run doctests. `SLOW_TEST_FILES` and
 `DOCTEST_FILES` in `select_checks.py` list the package modules that apply the
@@ -172,6 +183,14 @@ Fast unit tests with smart matrix strategy.
   - Installs the `tests` extra, which includes `user`, so the headless Streamlit GUI tests run
   - Full OS and Python matrix for PRs labelled `full-test`
   - Excludes slow tests for rapid feedback
+  - Runs the full, dependency-floor, pydicom-version and narrow DICOM suites
+    with two pytest workers using `worksteal` scheduling; smaller narrow-extra
+    suites run serially
+  - Keeps Numba's parallel kernels on two threads per worker and other
+    numerical thread pools on one thread, bounding contention on the runner
+  - Reports the 15 slowest tests to help investigate future runtime growth
+  - DICOM test listeners bind port 0 and report the assigned port before
+    clients connect, so workers never release a port reservation during startup
   - JUnit XML report generation
 
 The `dependency-floors` job runs the unit tests (`-m "not slow"`, with the
@@ -243,6 +262,9 @@ Comprehensive testing beyond unit tests.
 - **Triggers**: Merge groups, main pushes, `full-test`, or a PR that changes
   dependency or build metadata, `ci.yml`, `.github/actions/`, `.github/scripts/`,
   `integration-tests.yml` or `examples/`, or a symlink or submodule
+  select integration checks. On PRs, doctests/examples, slow tests, tooling and
+  packaging follow their own inputs as listed in the selection table above;
+  releases and manual runs retain their default coverage.
 
 #### `mosaiq-db-tests.yml`
 SQL Server integration tests for Mosaiq database functionality.
@@ -458,8 +480,9 @@ Standardised project setup for all workflows.
     consume data
   - Dependency installation with the requested extras and dependency groups,
     always without the default `dev` group, which holds every extra and tool.
-    It sets `UV_NO_DEFAULT_GROUPS=1` for the rest of the job, so later `uv run`
-    steps do not install that group either
+    After successful installation it sets `UV_NO_SYNC=1` and
+    `UV_NO_DEFAULT_GROUPS=1` for the rest of the job. Commands reuse that frozen
+    environment; `uv run --with` still applies dependency-version overlays
   - Tool-only setup for jobs that do not need an installed project
 
 ### `actions/cache-data/action.yml`
@@ -507,6 +530,10 @@ individually with merge commits.
 ## Main Branch Workflow
 
 On merge to main:
+
+A newer main push cancels an obsolete in-flight CI run, so the newest state
+starts its full checks without waiting for earlier commits. Pull request label
+changes queue behind their current run.
 
 ```
 Every job except docs-check (Read the Docs publishes main), including:

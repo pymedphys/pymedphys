@@ -3,6 +3,18 @@ name: Integration Tests
 on:
   workflow_call:
     inputs:
+      run-doctests:
+        type: boolean
+        default: true
+        required: false
+      run-scripts:
+        type: boolean
+        default: true
+        required: false
+      run-packaging:
+        type: boolean
+        default: true
+        required: false
       run-wheel-build:
         description: Build and smoke-test distributions (the release builds its own)
         type: boolean
@@ -14,6 +26,18 @@ on:
         required: false
   workflow_dispatch:
     inputs:
+      run-doctests:
+        type: boolean
+        default: true
+        required: false
+      run-scripts:
+        type: boolean
+        default: true
+        required: false
+      run-packaging:
+        type: boolean
+        default: true
+        required: false
       run-wheel-build:
         description: Build and smoke-test distributions (the release builds its own)
         type: boolean
@@ -30,6 +54,7 @@ permissions:
 jobs:
   doctests:
     name: Doctests
+    if: ${{ inputs.run-doctests }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -83,6 +108,7 @@ jobs:
   # tests in ci.yml whenever the tooling checks are selected.
   script-tests:
     name: Script Tests (${{ matrix.os }})
+    if: ${{ inputs.run-scripts }}
     strategy:
       fail-fast: false
       matrix:
@@ -123,6 +149,7 @@ jobs:
   # reports even when the wheel checks fail.
   packaging:
     name: Packaging and Generated Files
+    if: ${{ inputs.run-packaging }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
