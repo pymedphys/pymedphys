@@ -11,11 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""The reviewed-names list for ROI Name cleaning.
+"""The reviewed tier of ROI Name cleaning, and the reviewed-names list.
 
-Every ROI Name here is synthetic.
+Every vocabulary here is invented, in the shape of the TG-263 spreadsheet's
+entries, and every ROI Name and identifier is synthetic.
 """
 
+import dataclasses
 import json
 import os
 import pathlib
@@ -24,7 +26,14 @@ from unittest import mock
 from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import reviewed_roi_names as reviewed
-from pymedphys._dicom.deidentify.reviewed_roi_names import Review, ReviewedName
+from pymedphys._dicom.deidentify import roi_names
+from pymedphys._dicom.deidentify.reviewed_roi_names import (
+    Outcome,
+    Review,
+    ReviewedName,
+)
+from pymedphys._dicom.deidentify.roi_names import Reason
+from pymedphys._nomenclature import tg263
 
 posix_only = pytest.mark.skipif(os.name != "posix", reason="POSIX file modes")
 
@@ -252,3 +261,253 @@ def test_a_read_error_does_not_carry_the_files_text(tmp_path):
         reviewed.ReviewedNames.open(path)
 
     assert error.value.__cause__ is None and error.value.__suppress_context__
+
+
+def _vocabulary(*names):
+    nomenclature = tg263.Nomenclature(
+        source=tg263.Source(file="invented.xls", sha256="0" * 64, sheet="Invented"),
+        attribution=tg263.ATTRIBUTION,
+        structures=tuple(
+            tg263.Structure(
+                target_type="Anatomic",
+                major_category="Invented",
+                minor_category="",
+                anatomic_group="",
+                primary_name=primary,
+                reverse_order_name=reverse,
+                description="",
+                fma_id=None,
+            )
+            for primary, reverse in names
+        ),
+    )
+    entries = [dataclasses.asdict(s) for s in nomenclature.structures]
+    published = {"TG263 vInvented": tg263.content_sha256(entries)}
+    with mock.patch.dict(roi_names.PUBLISHED_TG263, published):
+        return roi_names.RoiNameVocabulary(nomenclature)
+
+
+def _clean(names, reviewed_names, identifiers=(), **options):
+    return reviewed.clean_roi_names(
+        names, VOCABULARY, reviewed_names, identifiers=identifiers, **options
+    )
+
+
+def _written(results):
+    return [(result.outcome, result.value) for result in results]
+
+
+VOCABULARY = _vocabulary(("Lung_L", "L_Lung"), ("Heart", "Heart"), ("Hand_L", "L_Hand"))
+
+
+def test_a_reviewers_decision_to_keep_map_or_empty_a_name_is_applied():
+    names = _list(PRV_cord=KEEP, Lung_L_old=_map("Lung_L_Old"), Dr_X_lung=EMPTY)
+
+    results = _clean(["PRV cord", "Lung L old", "Dr X lung"], names)
+
+    assert _written(results) == [
+        (Outcome.KEPT, "PRV cord"),
+        (Outcome.MAPPED, "Lung_L_Old"),
+        (Outcome.EMPTIED, ""),
+    ]
+
+
+def test_a_bulk_rename_applies_to_every_structure_set_with_the_name():
+    names = _list(GTV_boost_1=_map("GTV_Boost"))
+
+    first = _clean(["GTV boost 1", "Heart"], names)
+    second = _clean(["Lung_L", "GTV boost 1"], names)
+
+    assert _written(first)[0] == _written(second)[1] == (Outcome.MAPPED, "GTV_Boost")
+
+
+def test_a_name_neither_renamed_nor_reviewed_is_held_with_the_automatic_reason():
+    results = _clean(["Lung_L1", "Heart"], _list())
+
+    assert [(r.outcome, r.held_because, r.value) for r in results] == [
+        (Outcome.HELD, Reason.UNMATCHED, None),
+        (Outcome.RENAMED, None, "Heart"),
+    ]
+
+
+def test_a_held_name_is_emptied_only_when_the_user_chooses_so():
+    results = _clean(["Lung_L1", "PRV cord"], _list(PRV_cord=KEEP), empty_held=True)
+
+    assert [(r.outcome, r.held_because, r.value) for r in results] == [
+        (Outcome.EMPTIED_UNREVIEWED, Reason.UNMATCHED, ""),
+        (Outcome.KEPT, None, "PRV cord"),
+    ]
+
+
+def test_the_automatic_tier_renames_before_the_list_is_consulted():
+    results = _clean(["lung l"], _list(lung_l=EMPTY))
+
+    assert _written(results) == [(Outcome.RENAMED, "Lung_L")]
+
+
+def test_an_empty_name_stays_empty():
+    assert _written(_clean(["  ", ""], _list())) == [
+        (Outcome.EMPTY, ""),
+        (Outcome.EMPTY, ""),
+    ]
+
+
+@pytest.mark.parametrize(
+    "source, decision",
+    [("Lung Smith", KEEP), ("Lung Doe", _map("Smith_Lung"))],
+)
+def test_a_reviewed_name_that_echoes_an_identifier_is_held(source, decision):
+    names = reviewed.ReviewedNames.empty()
+    names.record(source, decision)
+
+    results = _clean([source], names, identifiers=["Smith^Jo"])
+
+    assert [(r.outcome, r.held_because, r.value) for r in results] == [
+        (Outcome.HELD, Reason.ECHOES_IDENTIFIER, None)
+    ]
+
+
+def test_a_reviewed_mapping_is_checked_for_echoes_in_what_it_writes():
+    results = _clean(
+        ["Hand L"], _list(Hand_L=_map("Hand_L_Old")), identifiers=["Hand^Jo"]
+    )
+
+    # The written name still holds "Hand", so it is held.
+    assert results[0].held_because is Reason.ECHOES_IDENTIFIER
+    results = _clean(["Hand L"], _list(Hand_L=_map("Wrist_L")), identifiers=["Hand^Jo"])
+    assert _written(results) == [(Outcome.MAPPED, "Wrist_L")]
+
+
+@pytest.mark.parametrize(
+    "names, decisions",
+    [
+        (["lung l", "Lung L old"], {"Lung L old": _map("Lung_L")}),
+        (["PRV a", "PRV b"], {"PRV a": _map("PRV"), "PRV b": _map("PRV")}),
+        (["PRV", "prv"], {"PRV": KEEP, "prv": _map("PRV")}),
+        (["PRV a", "prv A"], {"PRV a": KEEP, "prv A": KEEP}),
+        (["Lung_L", "Lung L old"], {"Lung L old": _map("LUNG_L")}),
+    ],
+)
+def test_different_names_that_would_be_written_as_one_name_are_held(names, decisions):
+    reviewed_names = reviewed.ReviewedNames.empty()
+    for name, decision in decisions.items():
+        reviewed_names.record(name, decision)
+
+    results = _clean(names, reviewed_names)
+
+    assert [(r.outcome, r.held_because) for r in results] == [
+        (Outcome.HELD, Reason.WOULD_DUPLICATE)
+    ] * 2
+
+
+def test_a_reviewed_mapping_resolves_an_automatic_duplicate():
+    names = reviewed.ReviewedNames.empty()
+    names.record("LUNG-L", _map("Lung_L_2"))
+
+    results = _clean(["Lung_L", "LUNG-L"], names)
+
+    assert _written(results) == [
+        (Outcome.RENAMED, "Lung_L"),
+        (Outcome.MAPPED, "Lung_L_2"),
+    ]
+
+
+def test_names_the_automatic_tier_would_duplicate_stay_held_without_decisions():
+    results = _clean(["Lung_L", "LUNG-L"], _list())
+
+    assert [(r.outcome, r.held_because) for r in results] == [
+        (Outcome.HELD, Reason.WOULD_DUPLICATE)
+    ] * 2
+
+
+@pytest.mark.parametrize(
+    "names, identifiers", [("Heart", ()), (["Heart"], "Smith"), ([3], ())]
+)
+def test_names_and_identifiers_must_be_sequences_of_strings(names, identifiers):
+    with pytest.raises(TypeError):
+        _clean(names, _list(), identifiers=identifiers)
+
+
+def test_the_same_reviewed_name_twice_is_written_twice():
+    results = _clean(["PRV cord", "PRV cord  "], _list(PRV_cord=KEEP))
+
+    assert _written(results) == [(Outcome.KEPT, "PRV cord")] * 2
+
+
+def test_a_reviewed_name_matches_only_its_exact_spelling():
+    results = _clean(["prv cord", "PRV  cord"], _list(PRV_cord=KEEP))
+
+    assert [r.outcome for r in results] == [Outcome.HELD, Outcome.HELD]
+
+
+def test_without_a_vocabulary_every_name_needs_the_list():
+    results = reviewed.clean_roi_names(
+        ["Heart", "PRV cord"], None, _list(PRV_cord=KEEP), identifiers=()
+    )
+
+    assert [(r.outcome, r.held_because) for r in results] == [
+        (Outcome.HELD, Reason.UNMATCHED),
+        (Outcome.KEPT, None),
+    ]
+
+
+def test_results_and_the_list_never_show_a_name():
+    names = _list(PRV_cord=KEEP, Lung_old=_map("Lung_Old"))
+    results = _clean(["PRV cord", "Lung old", "Dr X"], names)
+
+    shown = repr(results) + repr(names) + repr(_map("Lung_Old"))
+
+    for value in ("PRV", "cord", "Lung", "Old", "Dr X"):
+        assert value not in shown
+
+
+def test_the_review_queue_lists_each_distinct_held_name_once():
+    queue = reviewed.ReviewQueue()
+    for names in (["Lung_L1", "Heart", "Dr X"], ["Lung_L1"], ["lung l", "LUNG-L"]):
+        queue.add(names, _clean(names, _list()))
+
+    assert queue.entries() == (
+        reviewed.PendingName("Dr X", frozenset({Reason.UNMATCHED}), 1),
+        reviewed.PendingName("LUNG-L", frozenset({Reason.WOULD_DUPLICATE}), 1),
+        reviewed.PendingName("Lung_L1", frozenset({Reason.UNMATCHED}), 2),
+        reviewed.PendingName("lung l", frozenset({Reason.WOULD_DUPLICATE}), 1),
+    )
+    assert queue.summary() == {Reason.UNMATCHED: 2, Reason.WOULD_DUPLICATE: 2}
+    assert "Lung" not in repr(queue) and "Dr X" not in repr(queue.entries()[0])
+
+
+def test_the_review_queue_needs_one_result_per_name():
+    with pytest.raises(ValueError, match="one result for each name"):
+        reviewed.ReviewQueue().add(["Lung_L1", "Heart"], _clean(["Heart"], _list()))
+
+
+def test_several_emptied_names_are_not_duplicates():
+    results = _clean(
+        ["A b", "C d", "Lung_L1"], _list(A_b=EMPTY, C_d=EMPTY), empty_held=True
+    )
+
+    assert [r.outcome for r in results] == [
+        Outcome.EMPTIED,
+        Outcome.EMPTIED,
+        Outcome.EMPTIED_UNREVIEWED,
+    ]
+
+
+def test_nul_padding_is_removed_before_the_list_is_consulted():
+    assert _written(_clean(["PRV cord\x00"], _list(PRV_cord=KEEP))) == [
+        (Outcome.KEPT, "PRV cord")
+    ]
+
+
+def test_the_review_queue_counts_structure_sets_and_merges_reasons():
+    queue = reviewed.ReviewQueue()
+    first = ["Hand L", "Hand L ", "Lung_L1\x00"]
+    queue.add(first, _clean(first, _list(), identifiers=["Hand^Jo"]))
+    second = ["Hand L"]
+    queue.add(second, _clean(second, _list(Hand_L=EMPTY), identifiers=["Hand^Jo"]))
+    queue.add(["Hand L"], _clean(["Hand L"], _list(Hand_L=KEEP), identifiers=["Hand"]))
+
+    assert queue.entries() == (
+        reviewed.PendingName("Hand L", frozenset({Reason.ECHOES_IDENTIFIER}), 2),
+        reviewed.PendingName("Lung_L1", frozenset({Reason.UNMATCHED}), 1),
+    )
