@@ -258,7 +258,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   A maintainer handbook separates review, CI, publishing, dependency and release
   tasks. Shared human procedures replace duplicated teaching in agent instructions;
   contributor policy and agent-specific mandates retain their authority.
-  Pull request link pending.
+  ([#2248](https://github.com/pymedphys/pymedphys/pull/2248))
 
 - Corrected the documentation dependency-group terminology, the weekly dependency update branch name and the current status of the historical coordinate expected failures. [PR #2246](https://github.com/pymedphys/pymedphys/pull/2246)
 
