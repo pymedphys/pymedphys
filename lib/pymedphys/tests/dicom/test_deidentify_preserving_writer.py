@@ -19,7 +19,9 @@ appear in a message carry the text ``SENTINEL``.
 """
 
 import io
+import logging
 import struct
+import warnings
 
 from pymedphys._imports import pydicom, pytest
 
@@ -753,3 +755,35 @@ def test_an_introduced_sequence_in_implicit_vr_takes_a_replaced_character_set():
     meaning = _path(("(0012,0064)", 0), "(0008,0104)")
     assert output.value_field(meaning) == _even("Profile Ü", "gb18030")
     assert output.element(method).vr is None
+
+
+@pytest.mark.parametrize("step", ["data-set", "file-meta"])
+def test_pydicom_diagnostics_while_writing_are_redacted(step, monkeypatch, caplog):
+    # A replacement or a File Meta value can be quoted in a warning about its
+    # encoding, and no caller need redact.
+    sentinel = "ZZSENTINELZZ"
+    name = "write_data_element" if step == "data-set" else "write_file_meta_info"
+    write = getattr(pydicom.filewriter, name)
+
+    def warn_and_write(*args, **kwargs):
+        pydicom.misc.warn_and_log(f"bad value {sentinel}")
+        return write(*args, **kwargs)
+
+    monkeypatch.setattr(pydicom.filewriter, name, warn_and_write)
+    caplog.set_level(logging.DEBUG, logger="pydicom")
+    source = read_source(_ct())
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        data_set = write_data_set(
+            source, **dict(zip(("kept", "removed", "replacements"), _ct_edit(source)))
+        )
+        write_file_bytes(
+            data_set,
+            sop_class_uid=CT_IMAGE.rstrip(b"\x00").decode(),
+            sop_instance_uid="2.25.200",
+            transfer_syntax_uid=EXPLICIT,
+        )
+
+    assert caught and caplog.records
+    assert sentinel not in " ".join(str(each.message) for each in caught)
+    assert sentinel not in caplog.text

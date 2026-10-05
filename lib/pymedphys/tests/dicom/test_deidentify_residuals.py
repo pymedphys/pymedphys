@@ -1477,11 +1477,10 @@ def test_a_source_value_equal_to_a_written_constant_is_skipped_and_recorded(vr, 
 @pytest.mark.parametrize(
     "vr, value",
     [
-        ("PN", "DEIDENTIFIED^ZEBEDEE"),
         ("LO", "DEIDENTIFIED 2"),
         ("LO", "PyMedPhys DEIDENTIFIED"),
         ("DA", "19000103"),
-        ("DT", "19000101000002"),
+        ("DT", "20240517000002"),
         ("SH", "1131000"),
         ("LO", "UNMODIFIED"),  # which the markers never write
     ],
@@ -1493,6 +1492,61 @@ def test_a_source_value_that_differs_from_every_constant_is_searched(vr, value):
 
     assert result.findings
     assert not result.unsearched
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "vr, value, copy, found",
+    [
+        # An earlier pseudonym's family name is the new pseudonym's.
+        ("PN", "DEIDENTIFIED^ZQ7741093ABCDEF", "DEIDENTIFIED^OTHERCODE", False),
+        ("PN", "DEIDENTIFIED^ZQ7741093ABCDEF", "code ZQ7741093ABCDEF", True),
+        ("PN", "DEIDENTIFIED^ZEBEDEE", "Dr Zebedee", True),
+        ("PN", "Zebedee Deidentified^Quillon", "DEIDENTIFIED", False),
+        # The words of a component that is a constant are not searched.
+        ("PN", "DE-IDENTIFIED^ZQ7741093ABCDEF", "DE-IDENTIFIED^OTHERCODE", False),
+        # A datetime's date is the dummy date, and its time is not.
+        ("DT", "19000101120000", "19000101", False),
+        ("DT", "19000101120000", "19000101120000", True),
+    ],
+)
+def test_a_form_equal_to_a_constant_is_skipped_and_the_others_searched(
+    vr, value, copy, found
+):
+    source = _source("(0010,1001)", vr, value)
+
+    result = find_residuals(_texts(copy), [source])
+
+    assert bool(result.findings) is found
+    assert result.unsearched == (
+        Unsearched(_path("(0010,1001)"), UnsearchedReason.WRITTEN_CONSTANT),
+    )
+
+
+def test_a_form_equal_to_a_constant_is_found_in_no_written_constant():
+    value = _source("(0010,1001)", "PN", "DEIDENTIFIED^ZEBEDEE")
+
+    result = find_residuals(_written_constants(), [value])
+
+    assert not result.findings
+    assert [skip.reason for skip in result.unsearched] == [
+        UnsearchedReason.WRITTEN_CONSTANT
+    ]
+
+
+def test_skips_of_values_and_of_forms_are_recorded_in_the_order_of_the_values():
+    values = [
+        _source("(0010,1001)", "PN", "DEIDENTIFIED^ZEBEDEE"),
+        _source("(0010,1002)", "LO", "DEIDENTIFIED"),
+        _source("(0010,1003)", "PN", "DEIDENTIFIED\\DEIDENTIFIED^QUILLON"),
+    ]
+
+    result = find_residuals(_written_constants(), values)
+
+    assert result.unsearched == tuple(
+        Unsearched(_path(tag), UnsearchedReason.WRITTEN_CONSTANT)
+        for tag in ("(0010,1001)", "(0010,1002)", "(0010,1003)")
+    )
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")

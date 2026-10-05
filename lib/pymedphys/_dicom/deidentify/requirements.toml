@@ -245,13 +245,18 @@ The Conformance Statement of an application that claims conformance to the Basic
 '''
 status = "partial"
 milestone = "M6"
-decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-020", "D-021", "D-026"]
-implementation = ["_dicom/deidentify/conformance.py"]
+decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-016", "D-020", "D-021", "D-022", "D-025", "D-026"]
+implementation = [
+  "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/conformance_markdown.py",
+]
 note = '''
 The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters.
-It lists the action of each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020); the values that Z, D, and U write, including the keyed pseudonyms and replacement UIDs (D-003, D-005, D-021); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); the attributes and values that the markers insert, as the engine computes them for the policy (D-012); the removal of private attributes at every level of nesting; and the options applied, those that can be composed, and those that are not supported.
+It lists the action that the engine applies to each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020), and why where the engine's own removals, the File Meta Information that it writes in place of the source's (D-025), or a sequence given C supersede the policy's action; the rules that give every other element its action (D-022); the values that Z, D, and U write, including the keyed pseudonyms and replacement UIDs (D-003, D-005, D-021); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); the attributes and values that the markers insert, as the engine computes them for the policy (D-012); the removal of private attributes at every level of nesting; and the options applied, those that can be composed, and those that are not supported.
 A statement lists what it cannot yet describe and then claims nothing.
-Remaining: the action for every other element, the action where an IOD requires an attribute that a plain X or Z would leave invalid (D-020), and writing the statement with each run (M6).
+Plain X, Z, and D are resolved by Type at every place too (D-020), except within a sequence that the engine removes with its contents, and the resolved Z and D are checked against the walker's plan of a synthetic instance.
+Where an IOD requires an attribute given a plain X, the statement names the enclosing sequence or overlay group that D-020 removes with it, or that the instance is sequestered, and each is checked against the walker's plan of a synthetic instance.
+Remaining: the manner of cleaning, for a policy that gives C; the safe private attributes retained, for a policy that selects Retain Safe Private; the synthetic birth date of `tps-import`; and writing the statement with each run (M6).
 '''
 
 [[requirement]]
@@ -562,7 +567,7 @@ implementation = [
 note = '''
 The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023).
 Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value.
-A source value equal to a constant that the engine writes is not searched, and is recorded by its source attribute (D-027).
+A source value, or a form of one, equal to a constant that the engine writes is not searched, and is recorded by its source attribute (D-027).
 The pipeline is to fail any output file that still holds a source person name, UID, date, or direct identifier, or a source value outside its data set, and to send other text findings to confidential review (D-027).
 `public-release` retains indirect identifiers only after its statistical assessment.
 A deterministic synthetic collection plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released.

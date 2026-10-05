@@ -344,6 +344,62 @@ def test_an_unsupported_character_set_sequesters_the_instance():
     assert sequestration.path == _path("(0008,0005)")
     assert sequestration.reason is walker.SequesterReason.UNSUPPORTED_CHARACTER_SET
     assert not result.edits
+    # With no character set to read the data set's text in, nothing in it is
+    # collected, and each value to collect is listed.
+    assert not result.source_values
+    assert [missing.path for missing in result.not_collected] == [_path("(0010,0010)")]
+    assert "SENTINEL" not in "".join(m.reason for m in result.not_collected)
+
+
+def test_an_item_with_its_own_character_set_is_read_under_an_unsupported_one(
+    monkeypatch,
+):
+    # An item's own Specific Character Set replaces the one it would inherit
+    # (PS3.5 Section 7.5.3), so its text can be read where the data set's
+    # cannot.
+    data_set = (
+        _explicit(0x00080005, "CS", b"ISO_IR 999")
+        + _explicit(0x00100010, "PN", b"SENTINEL^NAME ")
+        + _explicit(
+            0x00101002,
+            "SQ",
+            _item(
+                _explicit(0x00080005, "CS", b"ISO_IR 192")
+                + _explicit(0x00100020, "LO", b"SENTINEL ID ")
+            )
+            + _item(_explicit(0x00100020, "LO", b"SENTINEL ID 2 ")),
+        )
+        + _explicit(0x00101040, "LO", b"SENTINEL ADDR ")
+    )
+    evidence = source.read_source(_file(EXPLICIT, data_set))
+    plan = walker.plan_instance(evidence, _rules(), _rt_plan())
+    reads = []
+    original = source.SourceEvidence.dataset
+
+    def counted(self):
+        reads.append(self)
+        return original(self)
+
+    monkeypatch.setattr(source.SourceEvidence, "dataset", counted)
+    result = edits.edit_instance(evidence, plan, KEY)
+
+    (sequestration,) = result.sequestrations
+    assert sequestration.path == _path("(0008,0005)")
+    assert sequestration.reason is walker.SequesterReason.UNSUPPORTED_CHARACTER_SET
+    assert not result.edits
+    assert _collected(result) == {
+        _path(("(0010,1002)", 0), "(0008,0005)"): ("CS", "ISO_IR 192"),
+        _path(("(0010,1002)", 0), "(0010,0020)"): ("LO", "SENTINEL ID"),
+    }
+    # Text that inherits the unsupported character set is not read.
+    assert [missing.path for missing in result.not_collected] == [
+        _path("(0010,0010)"),
+        _path(("(0010,1002)", 1), "(0010,0020)"),
+        _path("(0010,1040)"),
+    ]
+    assert "SENTINEL" not in "".join(m.reason for m in result.not_collected)
+    # The source is read once, however many values cannot be.
+    assert len(reads) == 1
 
 
 def test_a_sequestered_plan_is_not_edited():
@@ -352,7 +408,145 @@ def test_a_sequestered_plan_is_not_edited():
     assert plan.sequestrations
     assert result.sequestrations == plan.sequestrations
     assert not result.edits
+    # Beam Sequence is kept, so it has no value to collect.
     assert not result.source_values
+    assert not result.not_collected
+
+
+def test_a_sequestered_plan_still_collects_every_value_that_decodes():
+    # Responsible Person (0010,2297) is required by the RT Plan IOD, so its
+    # plain X sequesters the plan (D-020).
+    data_set = (
+        _explicit(0x00080016, "UI", RT_PLAN_CLASS.encode() + b"\x00")
+        + _explicit(0x00080018, "UI", INSTANCE_UID.encode())
+        + _explicit(0x00081030, "LO", b"SENTINEL \xe9")
+        + _explicit(
+            0x00101002, "SQ", _item(_explicit(0x00100020, "LO", b"SENTINEL ID "))
+        )
+        + _explicit(0x00102297, "PN", b"SENTINEL^NAME ")
+    )
+    plan, result = _edits(data_set)
+
+    assert [each.reason for each in plan.sequestrations] == [
+        walker.SequesterReason.REQUIRED_BY_IOD
+    ]
+    # A sequestered plan still plans every element, with its consumers.
+    assert [element.path for element in plan.elements] == [
+        _path("(0008,0016)"),
+        _path("(0008,0018)"),
+        _path("(0008,1030)"),
+        OTHER_IDS,
+        _path(("(0010,1002)", 0), "(0010,0020)"),
+        _path("(0010,2297)"),
+    ]
+    assert result.sequestrations == plan.sequestrations
+    assert not result.edits
+    assert not result.not_collected
+    assert _collected(result) == {
+        _path("(0008,0018)"): ("UI", INSTANCE_UID),
+        _path("(0008,1030)"): ("LO", "SENTINEL \xe9"),
+        _path(("(0010,1002)", 0), "(0010,0020)"): ("LO", "SENTINEL ID"),
+        _path("(0010,2297)"): ("PN", "SENTINEL^NAME"),
+    }
+    assert result.read_as_latin_1 == (_path("(0008,1030)"),)
+    assert result.registered_uids == (_path("(0008,0016)"),)
+    assert "SENTINEL" not in repr(result)
+    assert INSTANCE_UID not in repr(result)
+
+
+def test_a_sequestration_while_editing_keeps_the_values_before_and_after_it(
+    monkeypatch,
+):
+    # Beam Name (300A,00C2) is removed from a kept Beam Sequence (300A,00B0).
+    first_beam = _path(("(300A,00B0)", 0), "(300A,00C2)")
+    second_beam = _path(("(300A,00B0)", 1), "(300A,00C2)")
+    _refusing(monkeypatch, _path("(300A,0002)"), first_beam)
+    data_set = (
+        _explicit(0x00080018, "UI", INSTANCE_UID.encode())
+        + _explicit(0x00081030, "LO", b"SENTINEL DESC ")
+        + _explicit(0x300A0002, "SH", b"SENTINEL")
+        + _explicit(
+            0x300A00B0,
+            "SQ",
+            _item(_explicit(0x300A00C2, "LO", b"SENTINEL BEAM "))
+            + _item(_explicit(0x300A00C2, "LO", b"SENTINEL BEAM 2 ")),
+        )
+    )
+    plan, result = _edits(data_set)
+
+    assert not plan.sequestrations
+    # D on Plan Label (300A,0002) needs its value.
+    assert result.sequestrations == (
+        walker.Sequestration(
+            _path("(300A,0002)"), "D", "SH", walker.SequesterReason.UNDECODABLE
+        ),
+    )
+    assert not result.edits
+    assert _collected(result) == {
+        _path("(0008,0018)"): ("UI", INSTANCE_UID),
+        _path("(0008,1030)"): ("LO", "SENTINEL DESC"),
+        second_beam: ("LO", "SENTINEL BEAM 2"),
+    }
+    # The value that the sequestering failure could not read, and one that is
+    # only collected, are listed, in file order.
+    assert [missing.path for missing in result.not_collected] == [
+        _path("(300A,0002)"),
+        first_beam,
+    ]
+    shown = repr(result) + "".join(repr(m) for m in result.not_collected)
+    assert "SENTINEL" not in shown
+    assert INSTANCE_UID not in shown
+
+
+def test_an_unsupported_character_set_in_an_item_keeps_the_other_values(
+    monkeypatch,
+):
+    _refusing(monkeypatch, _path("(300A,0002)"))
+    in_item = (("(0010,1002)", 0),)
+    data_set = (
+        _explicit(0x00081030, "LO", b"SENTINEL DESC ")
+        + _explicit(
+            0x00101002,
+            "SQ",
+            _item(
+                _explicit(0x00080005, "CS", b"ISO_IR 999")
+                + _explicit(0x00100020, "LO", b"SENTINEL ID ")
+            )
+            + _item(_explicit(0x00100020, "LO", b"SENTINEL ID 2 ")),
+        )
+        + _explicit(0x300A0002, "SH", b"SENTINEL")
+        + _explicit(0x300A0003, "LO", b"SENTINEL PLAN ")
+    )
+    _, result = _edits(data_set)
+
+    # Collection carries on past the first sequestration, and finds the
+    # second.
+    assert result.sequestrations == (
+        walker.Sequestration(
+            walker.ElementPath(in_item, "(0008,0005)"),
+            "X",
+            "CS",
+            walker.SequesterReason.UNSUPPORTED_CHARACTER_SET,
+        ),
+        walker.Sequestration(
+            _path("(300A,0002)"), "D", "SH", walker.SequesterReason.UNDECODABLE
+        ),
+    )
+    assert not result.edits
+    collected = _collected(result)
+    assert collected[_path("(0008,1030)")] == ("LO", "SENTINEL DESC")
+    assert collected[_path(("(0010,1002)", 1), "(0010,0020)")] == (
+        "LO",
+        "SENTINEL ID 2",
+    )
+    assert collected[_path("(300A,0003)")][1] == "SENTINEL PLAN"
+    assert [missing.path for missing in result.not_collected] == [
+        walker.ElementPath(in_item, "(0008,0005)"),
+        walker.ElementPath(in_item, "(0010,0020)"),
+        _path("(300A,0002)"),
+    ]
+    assert "SENTINEL" not in "".join(m.reason for m in result.not_collected)
+    assert "SENTINEL" not in repr(result)
 
 
 def test_results_hold_no_value_in_their_reprs(monkeypatch):
@@ -395,6 +589,16 @@ def test_a_kept_sequence_whose_items_cannot_be_read_sequesters(monkeypatch):
     assert (sequestration.path, sequestration.action) == (BEAM_SEQUENCE, "K")
     assert sequestration.reason is walker.SequesterReason.UNDECODABLE
     assert not result.edits
+    # The values outside it are collected, and those in it listed.
+    collected = _collected(result)
+    assert collected[_path("(0010,0010)")] == ("PN", "SENTINEL^NAME")
+    assert collected[_path(("(0010,1002)", 0), "(0010,0020)")] == (
+        "LO",
+        "SENTINEL ID",
+    )
+    assert [missing.path for missing in result.not_collected] == [
+        _path(("(300A,00B0)", 0), "(300A,00C2)")
+    ]
 
 
 def test_a_removed_sequence_whose_items_cannot_be_read_is_not_collected(
