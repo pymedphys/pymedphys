@@ -62,6 +62,7 @@ appear in it.
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 import enum
 from collections.abc import Callable, Mapping
@@ -82,6 +83,8 @@ from .elements import (
 from .file_layout import ElementPath
 from .iods import IODTables, load_iod_tables
 from .keys import DeidKey
+from .markers import MarkerError, Markers, apply_markers, markers_for
+from .method_digest import method_digest
 from .policy import Policy, PolicyError
 from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
@@ -117,6 +120,9 @@ class TransformReason(enum.Enum):
     UNNAMED_OUTPUT = "unnamed-output"
     # the output file cannot be read back as a source file
     UNREADABLE_OUTPUT = "unreadable-output"
+    # the de-identification markers cannot be added to what the instance
+    # already holds, such as a marker attribute read as UN (PS3.15 E.1.1)
+    UNMARKABLE = "unmarkable"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -139,6 +145,11 @@ class WriterPlan:
     ----------
     kept, removed : frozenset of ElementPath
     replacements : mapping of ElementPath to pydicom.DataElement
+    introduced : frozenset of ElementPath
+        The elements in the items of a sequence among ``replacements``,
+        which the writer writes from the sequence. The source elements
+        inside such a sequence are all in ``removed``, for the writer;
+        verification expects those at an introduced path to be changed.
     """
 
     kept: frozenset[ElementPath]
@@ -146,14 +157,15 @@ class WriterPlan:
     replacements: Mapping[ElementPath, pydicom.DataElement] = dataclasses.field(
         repr=False
     )
+    introduced: frozenset[ElementPath] = frozenset()
 
     @property
     def expectations(self) -> Expectations:
         """What verification expects of the file written from this plan."""
         return Expectations(
             kept=self.kept,
-            changed=frozenset(self.replacements),
-            removed=self.removed,
+            changed=frozenset(self.replacements) | self.introduced,
+            removed=self.removed - self.introduced,
         )
 
 
@@ -248,6 +260,120 @@ def writer_plan(
     return WriterPlan(frozenset(kept), frozenset(removed), replacements)
 
 
+# The attributes that PS3.15 E.1.1, E.2, and E.3.6 have a de-identifier add
+# or update, which apply_markers writes.
+MARKER_TAGS = (
+    "(0012,0062)",  # Patient Identity Removed
+    "(0012,0063)",  # De-identification Method
+    "(0012,0064)",  # De-identification Method Code Sequence
+    "(0018,A001)",  # Contributing Equipment Sequence
+    "(0028,0303)",  # Longitudinal Temporal Information Modified
+)
+
+
+def with_markers(
+    writing: WriterPlan,
+    source: SourceEvidence,
+    dataset: pydicom.Dataset | None,
+    markers: Markers,
+) -> WriterPlan:
+    """Return the writer's plan with the instance's markers written.
+
+    The markers are added, by :func:`~.markers.apply_markers`, to what the
+    plan already writes of each marker attribute: a kept element from the
+    source, or its replacement. Each marker attribute is then written whole
+    as a replacement, and the elements inside a source sequence it replaces
+    are removed; verification expects those the new sequence writes at the
+    same path to be changed instead.
+
+    Raises
+    ------
+    _Refused
+        With :attr:`TransformReason.UNMARKABLE` where a kept marker attribute
+        cannot be read, or the markers cannot be added to it.
+    """
+    present = pydicom.Dataset()
+    for tag in MARKER_TAGS:
+        path = ElementPath((), tag)
+        if path in writing.replacements:
+            present.add(copy.deepcopy(writing.replacements[path]))
+        elif path in writing.kept:
+            if dataset is None or _int_tag(tag) not in dataset:
+                raise _Refused(TransformReason.UNMARKABLE)
+            present.add(copy.deepcopy(dataset[_int_tag(tag)]))
+    try:
+        marked = apply_markers(present, markers)
+    except (MarkerError, TypeError, ValueError):
+        raise _Refused(TransformReason.UNMARKABLE) from None
+    kept, removed = set(writing.kept), set(writing.removed)
+    replacements = dict(writing.replacements)
+    introduced = set(writing.introduced)
+    for tag in MARKER_TAGS:
+        if _int_tag(tag) not in marked:
+            continue
+        element = marked[_int_tag(tag)]
+        path = ElementPath((), tag)
+        within = {
+            planned
+            for planned in kept | removed | set(replacements) | introduced
+            if planned.items and planned.items[0][0] == tag
+        }
+        kept -= within | {path}
+        removed -= within | {path}
+        introduced -= within
+        for planned in within:
+            replacements.pop(planned, None)
+        removed |= {
+            inside
+            for inside in source.paths()
+            if inside.items and inside.items[0][0] == tag
+        }
+        replacements[path] = element
+        introduced |= set(_paths_within(element, ()))
+    return WriterPlan(
+        frozenset(kept), frozenset(removed), replacements, frozenset(introduced)
+    )
+
+
+def _paths_within(
+    element: pydicom.DataElement, items: tuple[tuple[str, int], ...]
+) -> list[ElementPath]:
+    """Return the path of each element inside the items of a sequence element."""
+    if element.VR != "SQ":
+        return []
+    tag = _tag_text(element.tag)
+    paths: list[ElementPath] = []
+    for index, item in enumerate(element.value):
+        held = items + ((tag, index),)
+        for inner in item:
+            paths.append(ElementPath(held, _tag_text(inner.tag)))
+            paths.extend(_paths_within(inner, held))
+    return paths
+
+
+def _int_tag(tag: str) -> int:
+    return int(tag[1:5] + tag[6:10], 16)
+
+
+def _tag_text(tag: int) -> str:
+    return f"({tag >> 16:04X},{tag & 0xFFFF:04X})"
+
+
+def satisfied_options(policy: Policy) -> tuple[str, ...]:
+    """Return the options an instance satisfies by the policy's actions alone.
+
+    Every selected option but Clean Descriptors, which descriptor cleaning
+    must satisfy for each instance (D-009), and but any option the policy
+    records as unmet.
+    """
+    unmet = {option for resolution in policy.resolved for option in resolution.unmet}
+    return tuple(
+        option
+        for option in policy.options
+        if option != "clean_descriptors" and option not in unmet
+    )
+
+
 def _element(
     edit: Edit, vr: str | None, codecs: tuple[str, ...]
 ) -> pydicom.DataElement:
@@ -304,6 +430,11 @@ class InstanceTransform:
             )
         self._rules = ElementRules(policy)
         self._key = key
+        self._markers = markers_for(
+            policy,
+            method_digest(policy, vocabulary=None),
+            satisfied=satisfied_options(policy),
+        )
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
 
     def __repr__(self) -> str:
@@ -333,19 +464,18 @@ class InstanceTransform:
         if edits.sequestrations:
             return Sequestered(edits.sequestrations, evidence)
         try:
-            return Transformed(*_written(source, plan, edits, codecs), evidence)
+            writing = with_markers(
+                writer_plan(plan, edits, codecs), source, dataset, self._markers
+            )
+            return Transformed(*_written(source, writing), evidence)
         except _Refused as refused:
             return Sequestered(refused.reasons, evidence)
 
 
 def _written(
-    source: SourceEvidence,
-    plan: InstancePlan,
-    edits: InstanceEdits,
-    codecs: tuple[str, ...],
+    source: SourceEvidence, writing: WriterPlan
 ) -> tuple[PurePosixPath, bytes]:
     """Return the output's path and bytes, verified against the source."""
-    writing = writer_plan(plan, edits, codecs)
     path = _output_path(writing.replacements)
     sop_class = _replaced(writing.replacements, _SOP_CLASS)
     if sop_class is None:

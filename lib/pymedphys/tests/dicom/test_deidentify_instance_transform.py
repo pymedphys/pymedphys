@@ -41,12 +41,15 @@ from pymedphys._dicom.deidentify.instance_transform import (
     ReleaseGate,
     TransformReason,
     coverage_of,
+    satisfied_options,
     writer_plan,
 )
 from pymedphys._dicom.deidentify.element_rules import ElementRules
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.markers import MarkerError
+from pymedphys._dicom.deidentify.method_digest import method_digest
 from pymedphys._dicom.deidentify.policy import PolicyError, compose_policy
 from pymedphys._dicom.deidentify.preservation import PreservationReason
 from pymedphys._dicom.deidentify.preserving_writer import WriteReason
@@ -132,6 +135,60 @@ def test_each_instance_of_a_collection_is_written_and_named_by_its_replacements(
         )
         assert synthetic.PATIENT_ID.encode() not in result.data
         assert synthetic.PATIENTS_NAME.encode() not in result.data
+
+
+def test_each_output_carries_the_de_identification_markers():
+    digest = method_digest(compose_policy("basic"), vocabulary=None)
+    for dataset in synthetic.collection():
+        written = pydicom.dcmread(io.BytesIO(_transformed(dataset).data))
+
+        assert written.PatientIdentityRemoved == "YES"
+        assert list(written.DeidentificationMethod)[:1] == [digest]
+        assert [
+            (item.CodeValue, item.CodingSchemeDesignator)
+            for item in written.DeidentificationMethodCodeSequence
+        ] == [("113100", "DCM")]
+        assert written.LongitudinalTemporalInformationModified == "REMOVED"
+        (equipment,) = written.ContributingEquipmentSequence
+        assert equipment.Manufacturer == "PyMedPhys"
+
+
+def test_markers_already_present_are_updated_as_ps3_15_says():
+    # The equipment item that the policy keeps stays first, and the
+    # de-identifying equipment's follows it (E.1.1).
+    dose = synthetic.rt_dose()
+    dose.PatientIdentityRemoved = "NO"
+    item = pydicom.Dataset()
+    item.Manufacturer = "EARLIER EQUIPMENT"
+    dose.ContributingEquipmentSequence = pydicom.Sequence([item])
+    result = _transformed(dose)
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written.PatientIdentityRemoved == "YES"
+    assert [item.Manufacturer for item in written.ContributingEquipmentSequence] == [
+        "EARLIER EQUIPMENT",
+        "PyMedPhys",
+    ]
+
+
+def test_markers_that_cannot_be_added_sequester_the_instance(monkeypatch):
+    def refuse(_dataset, _markers):
+        raise MarkerError("refused")
+
+    monkeypatch.setattr(instance_transform, "apply_markers", refuse)
+    result = _transformed(synthetic.rt_dose())
+
+    assert isinstance(result, run.Sequestered)
+    assert result.reasons == (TransformReason.UNMARKABLE,)
+
+
+def test_the_satisfied_options_leave_out_clean_descriptors():
+    assert not satisfied_options(compose_policy("basic"))
+    assert not satisfied_options(compose_policy("basic-clean-descriptors"))
+    assert "clean_descriptors" not in satisfied_options(
+        compose_policy("public-release")
+    )
 
 
 def test_references_between_instances_follow_their_replacements():
