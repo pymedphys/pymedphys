@@ -55,6 +55,7 @@ from pymedphys._dicom.uid import PYMEDPHYS_FIXED_UID_ARC
 from pymedphys._version import __version__
 
 from . import scope, values
+from .diagnostics import redacted_diagnostics
 
 # The first UID of the arc 1.2.826.0.1.3680043.10.188.1, which PyMedPhys
 # reserves for UIDs that it fixes in its design, under the root issued to
@@ -240,8 +241,9 @@ def write_file(
 
     Notes
     -----
-    Errors and warnings that pydicom raises while it encodes the data set
-    are passed on unchanged, and they can quote values; a write that fails
+    pydicom's warnings and log records while it encodes the data set are
+    redacted by :func:`.diagnostics.redacted_diagnostics`. Its errors are
+    passed on unchanged, and they can quote values; a write that fails
     part-way can leave a partial file at a path destination. The engine's
     entry point is to redact the first and remove the second.
     """
@@ -255,4 +257,5 @@ def write_file(
     output = dataset.copy()
     output.file_meta = meta
     output.preamble = PREAMBLE
-    pydicom.dcmwrite(destination, output, enforce_file_format=True)
+    with redacted_diagnostics():
+        pydicom.dcmwrite(destination, output, enforce_file_format=True)

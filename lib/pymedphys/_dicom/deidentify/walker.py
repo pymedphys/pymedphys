@@ -29,7 +29,9 @@ each element of the data set, in file order:
    decided on 1 October 2026; a plain D on an attribute that the IOD does
    not define at that place gives X, following Note 13 after Table E.1-1a;
    and a plain Z on an attribute that is Type 1 or 1C there gives D, the
-   dummy value that Table E.1-1a allows Z (D-020);
+   dummy value that Table E.1-1a allows Z
+   (:func:`~pymedphys._dicom.deidentify.compound_actions.resolve_plain_in_iod`,
+   D-020);
 3. its consumers: what must read its value to apply the action, or to
    collect the value for the residual search.
 
@@ -70,12 +72,18 @@ dictionary gives SQ, and refuses one there that does not read as items
 sequestration is not to be applied; every element is still planned, so that
 every reason is known.
 
-Not yet planned: removing, with the attribute, the innermost enclosing
-sequence that is Type 3, where a plain X applies to an attribute that the
-IOD requires at its place, or sequestering the instance where no such
-sequence encloses it (D-020). Until it is, such an attribute is planned X,
-its enclosing sequences keep their own actions, and the plan records no
-sequestration for it. The consumers here are those of the actions; the
+A plain X always removes its attribute (D-020). Where the IOD requires the
+attribute at its place,
+:func:`~pymedphys._dicom.deidentify.compound_actions.resolve_plain_x_in_iod`
+says what goes with it: the innermost enclosing sequence that is Type 3 at
+its own place is planned X, with everything in it, before the attribute or
+after; for Overlay Data (60xx,3000), so is every other attribute of its
+overlay group in the same data set or item; and where neither applies, a
+:class:`Sequestration` is added. Each element so removed that its own rule
+would not remove names the attribute in :attr:`ElementPlan.removed_for`.
+The engine's own removals, such as Encrypted Attributes Sequence
+(0400,0500), apply alone, whatever the Type. The consumers here are those
+of the actions; the
 inputs of options that keep or modify values, such as patient pseudonyms
 and modified dates, are added with those options.
 
@@ -106,9 +114,15 @@ from __future__ import annotations
 import dataclasses
 import enum
 
-from .compound_actions import COMPOUND_ACTIONS, resolve_in_iod, strictest_type
+from .compound_actions import (
+    COMPOUND_ACTIONS,
+    RemovalExtent,
+    resolve_in_iod,
+    resolve_plain_in_iod,
+    resolve_plain_x_in_iod,
+)
 from .dummy_values import DUMMY_VRS
-from .element_rules import ElementRule, ElementRules
+from .element_rules import ElementRule, ElementRules, RuleSource
 from .file_layout import ElementPath
 from .iods import IOD
 from .source import SourceEvidence
@@ -144,12 +158,19 @@ _ACTION_CONSUMERS = {
 
 
 class SequesterReason(enum.Enum):
-    """Why a plan's instance must be sequestered."""
+    """Why an instance must be sequestered."""
 
     # a dummy value on an element whose VR has none, such as SQ
     NO_DUMMY_VALUE = "no-dummy-value"
     # written with a VR other than UN that the dictionary does not give
     VR_NOT_IN_DICTIONARY = "vr-not-in-dictionary"
+    # a value that the action needs, and that cannot be decoded
+    UNDECODABLE = "undecodable"
+    # a Specific Character Set that is not supported, or cannot be read (D-010)
+    UNSUPPORTED_CHARACTER_SET = "unsupported-character-set"
+    # a plain X on an attribute that the IOD requires there, with no enclosing
+    # sequence that is Type 3 at its own place to remove with it (D-020)
+    REQUIRED_BY_IOD = "required-by-iod"
 
 
 _EXPLANATIONS = {
@@ -159,6 +180,17 @@ _EXPLANATIONS = {
     ),
     SequesterReason.VR_NOT_IN_DICTIONARY: (
         "{path} is written with {vr}, which the pinned data dictionary does not give it"
+    ),
+    SequesterReason.UNDECODABLE: (
+        "{action} on {path} needs its value, which cannot be decoded"
+    ),
+    SequesterReason.UNSUPPORTED_CHARACTER_SET: (
+        "{path} is not, or cannot be read as, a supported Specific Character Set"
+    ),
+    SequesterReason.REQUIRED_BY_IOD: (
+        "{action} on {path} removes an attribute that the IOD requires there, "
+        "and no enclosing sequence that the IOD makes Type 3 can be removed "
+        "with it"
     ),
 }
 
@@ -211,6 +243,12 @@ class ElementPlan:
     removed_with : ElementPath or None
         The outermost sequence that removes it, or ``None``.
     consumers : frozenset of Consumer
+    removed_for : ElementPath or None
+        The attribute whose plain X, where the IOD requires that attribute,
+        removes this element, which its own rule would not remove (D-020):
+        the innermost enclosing sequence that is Type 3 at its own place, or
+        another attribute of the overlay group of Overlay Data (60xx,3000).
+        Otherwise ``None``.
     """
 
     path: ElementPath
@@ -219,6 +257,7 @@ class ElementPlan:
     action: str
     removed_with: ElementPath | None
     consumers: frozenset[Consumer]
+    removed_for: ElementPath | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -231,8 +270,7 @@ class InstancePlan:
         In file order, nested elements included.
     sequestrations : tuple of Sequestration
         Each reason found that the instance must be sequestered, in file
-        order; ``()`` if there is none. The reasons that plain X gives are
-        not yet planned.
+        order; ``()`` if there is none.
     """
 
     elements: tuple[ElementPlan, ...]
@@ -252,31 +290,6 @@ def _consumers(action: str, container: bool, dummy: bool) -> frozenset[Consumer]
     if action != "K":
         found.add(Consumer.RESIDUAL_COLLECTION)
     return frozenset(found)
-
-
-# The two resolvers below mirror, with the same signatures, the functions
-# of compound_actions that #2198 and #2211 bring, so that the walker
-# switches to those functions once they merge and the rules have one
-# implementation.
-
-
-def _resolve_in_iod(iod: IOD, tag: str, path: tuple[str, ...], action: str) -> str:
-    """Resolve a compound action, as ``compound_actions.resolve_in_iod`` (#2198)."""
-    # X/Z on Type 1 or 1C gives D, as decided on 1 October 2026.
-    if action == "X/Z" and strictest_type(iod, tag, path) == "1":
-        return "D"
-    return resolve_in_iod(iod, tag, path, action)
-
-
-def _resolve_plain_in_iod(
-    iod: IOD, tag: str, path: tuple[str, ...], action: str
-) -> str:
-    """Resolve D and Z, as ``compound_actions.resolve_plain_in_iod`` (#2211)."""
-    if action == "D" and not iod.lookup(tag, path):
-        return "X"  # Note 13 after Table E.1-1a
-    if action == "Z" and strictest_type(iod, tag, path) == "1":
-        return "D"
-    return action
 
 
 def _vr_contradicts_dictionary(tag: str, written: str | None) -> bool:
@@ -319,10 +332,122 @@ def _compared_in_reviewed_dummy(
     )
 
 
+@dataclasses.dataclass
+class _PlainRemovals:
+    """What plain X, where the IOD requires the attribute, removes with it.
+
+    Each removed sequence, and each overlay group, by its items' path and
+    group, maps to the first attribute in file order that removes it.
+    """
+
+    sequences: dict[ElementPath, ElementPath] = dataclasses.field(default_factory=dict)
+    overlay_groups: dict[tuple[tuple, str], ElementPath] = dataclasses.field(
+        default_factory=dict
+    )
+
+    def removed_for(self, path: ElementPath) -> ElementPath | None:
+        """Return the attribute whose plain X removes ``path``, if any."""
+        found = self.sequences.get(path)
+        if found is None:
+            found = self.overlay_groups.get((path.items, _group(path.tag)))
+        return None if found == path else found
+
+
+def _group(tag: str) -> str:
+    return tag[1:5]
+
+
+def _plan_plain_x(
+    iod: IOD,
+    path: ElementPath,
+    vr: str | None,
+    found: _PlainRemovals,
+    sequestrations: list[Sequestration],
+) -> None:
+    """Record what a plain X on an attribute removes with it (D-020)."""
+    removal = resolve_plain_x_in_iod(iod, path.tag, tuple(t for t, _ in path.items))
+    if removal.extent is RemovalExtent.SEQUENCE:
+        depth = removal.sequence
+        assert depth is not None  # PlainRemoval checks this
+        sequence = ElementPath(path.items[:depth], path.items[depth][0])
+        found.sequences.setdefault(sequence, path)
+    elif removal.extent is RemovalExtent.OVERLAY_GROUP:
+        found.overlay_groups.setdefault((path.items, _group(path.tag)), path)
+    elif removal.extent is RemovalExtent.SEQUESTER:
+        sequestrations.append(
+            Sequestration(path, _REMOVED, vr, SequesterReason.REQUIRED_BY_IOD)
+        )
+
+
+def _resolve(iod: IOD, path: ElementPath, rule: ElementRule) -> str:
+    """Resolve a rule's action from the element's Type at its place (D-020)."""
+    resolve = (
+        resolve_in_iod if rule.action in COMPOUND_ACTIONS else resolve_plain_in_iod
+    )
+    return resolve(iod, path.tag, tuple(tag for tag, _ in path.items), rule.action)
+
+
+def _plan(
+    source: SourceEvidence, rules: ElementRules, iod: IOD, forced: _PlainRemovals
+) -> tuple[InstancePlan, _PlainRemovals]:
+    """Plan every element, removing what ``forced`` says plain X removes.
+
+    Also return what each plain X found removes with its attribute.
+    """
+    elements: list[ElementPlan] = []
+    sequestrations: list[Sequestration] = []
+    found = _PlainRemovals()
+    removing: dict[ElementPath, str] = {}  # each removing sequence's action
+    for path in source.paths():
+        extent = source.element(path)
+        vr = extent.location.vr
+        container = extent.items is not None
+        removed_with = _removing_ancestor(path, removing)
+        if removed_with is not None:
+            consumers = _consumers(
+                _REMOVED,
+                container,
+                _compared_in_reviewed_dummy(path, removed_with, removing[removed_with]),
+            )
+            elements.append(
+                ElementPlan(path, vr, None, _REMOVED, removed_with, consumers)
+            )
+            continue
+        rule = rules.rule(path.tag, tuple(tag for tag, _ in path.items), iod=iod)
+        action = _resolve(iod, path, rule)
+        removed_for = forced.removed_for(path) if action != _REMOVED else None
+        if removed_for is not None:
+            action = _REMOVED
+        elif rule.action == _REMOVED and rule.source is not RuleSource.ENGINE:
+            # The engine's own removals apply whatever the Type.
+            _plan_plain_x(iod, path, vr, found, sequestrations)
+        if action != _REMOVED and _vr_contradicts_dictionary(path.tag, extent.vr):
+            sequestrations.append(
+                Sequestration(
+                    path, action, extent.vr, SequesterReason.VR_NOT_IN_DICTIONARY
+                )
+            )
+        elif action == "D" and not _has_dummy(path.tag, vr, container, action):
+            sequestrations.append(
+                Sequestration(path, action, vr, SequesterReason.NO_DUMMY_VALUE)
+            )
+        if container and action not in DESCENDED:
+            removing[path] = action
+        consumers = _consumers(action, container, False)
+        elements.append(
+            ElementPlan(path, vr, rule, action, None, consumers, removed_for)
+        )
+    return InstancePlan(tuple(elements), tuple(sequestrations)), found
+
+
 def plan_instance(
     source: SourceEvidence, rules: ElementRules, iod: IOD
 ) -> InstancePlan:
     """Return the plan of every element of a source file's data set.
+
+    A plain X can remove a sequence that encloses its attribute, or the
+    other attributes of an overlay group, some of which come before it in
+    file order, so the data set is planned again where one does.
 
     Parameters
     ----------
@@ -339,46 +464,8 @@ def plan_instance(
     -------
     InstancePlan
     """
-    elements: list[ElementPlan] = []
-    sequestrations: list[Sequestration] = []
-    removing: dict[ElementPath, str] = {}  # each removing sequence's action
-    for path in source.paths():
-        extent = source.element(path)
-        vr = extent.location.vr
-        container = extent.items is not None
-        removed_with = _removing_ancestor(path, removing)
-        if removed_with is not None:
-            dummy = _compared_in_reviewed_dummy(
-                path, removed_with, removing[removed_with]
-            )
-            consumers = _consumers(_REMOVED, container, dummy)
-            elements.append(
-                ElementPlan(path, vr, None, _REMOVED, removed_with, consumers)
-            )
-            continue
-        sequences = tuple(tag for tag, _ in path.items)
-        rule = rules.rule(path.tag, sequences, iod=iod)
-        resolve = (
-            _resolve_in_iod
-            if rule.action in COMPOUND_ACTIONS
-            else _resolve_plain_in_iod
-        )
-        action = resolve(iod, path.tag, sequences, rule.action)
-        if action != _REMOVED and _vr_contradicts_dictionary(path.tag, extent.vr):
-            sequestrations.append(
-                Sequestration(
-                    path, action, extent.vr, SequesterReason.VR_NOT_IN_DICTIONARY
-                )
-            )
-        elif action == "D" and not _has_dummy(path.tag, vr, container, action):
-            sequestrations.append(
-                Sequestration(path, action, vr, SequesterReason.NO_DUMMY_VALUE)
-            )
-        if container and action not in DESCENDED:
-            removing[path] = action
-        elements.append(
-            ElementPlan(
-                path, vr, rule, action, None, _consumers(action, container, False)
-            )
-        )
-    return InstancePlan(tuple(elements), tuple(sequestrations))
+    plan, removals = _plan(source, rules, iod, _PlainRemovals())
+    if removals.sequences or removals.overlay_groups:
+        # Planning again only removes more, so it finds nothing new to force.
+        plan, _ = _plan(source, rules, iod, removals)
+    return plan

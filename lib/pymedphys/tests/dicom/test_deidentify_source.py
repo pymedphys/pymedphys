@@ -502,3 +502,130 @@ def test_a_value_that_only_starts_like_items_is_one_element():
 
     assert list(evidence.paths()) == [_path("(0009,0010)"), _path("(0009,1001)")]
     assert evidence.value_field(_path("(0009,1001)")) == looks_like_items
+
+
+# Thirteen bytes, so odd, and an even counterpart one byte longer.
+ODD_VALUE = b"SENTINEL^ODD^"
+EVEN_VALUE = ODD_VALUE + b" "
+
+
+def _private_un(value):
+    """A private element of VR UN, whose header has a 32-bit length."""
+    return _explicit(0x00090010, "LO", b"SYNTHETIC ") + _explicit(
+        0x00091001, "UN", value
+    )
+
+
+def _nested(value):
+    """Beam Name two items deep, in sequences and items of undefined length."""
+    nested = _explicit(BEAM_NAME, "LO", value)
+    for _ in range(2):
+        nested = (
+            _explicit(BEAM_SEQUENCE, "SQ", length=UNDEFINED)
+            + _item(length=UNDEFINED)
+            + nested
+            + ITEM_END
+            + SEQUENCE_END
+        )
+    return nested
+
+
+def _in_an_item_of_defined_length(value):
+    """An item whose length is odd when its element's is."""
+    return (
+        _explicit(BEAM_SEQUENCE, "SQ", length=UNDEFINED)
+        + _item(_explicit(BEAM_NAME, "LO", value))
+        + SEQUENCE_END
+    )
+
+
+def _in_a_fragment(value):
+    """Encapsulated Pixel Data whose second item is the value."""
+    return (
+        _explicit(0x7FE00010, "OB", length=UNDEFINED)
+        + _item()
+        + _item(value)
+        + SEQUENCE_END
+    )
+
+
+def _in_the_data_set(transfer_syntax, build, at):
+    """Build a file around a data set, and say where its odd length starts."""
+    start = len(_file(transfer_syntax))
+    return (lambda value: _file(transfer_syntax, build(value)), start + at)
+
+
+def _in_the_file_meta(value):
+    """Implementation Version Name (0002,0013) after the File Meta Information."""
+    return _file(EXPLICIT) + _explicit(0x00020013, "SH", value)
+
+
+# Each builds a file from a value, and gives where the first element or item
+# whose length is odd starts when the value is odd.
+ODD_LENGTHS = {
+    "explicit-16-bit": _in_the_data_set(
+        EXPLICIT, lambda value: _explicit(0x00100010, "PN", value), 0
+    ),
+    "explicit-32-bit": _in_the_data_set(EXPLICIT, _private_un, 18),
+    "implicit": _in_the_data_set(
+        IMPLICIT, lambda value: _implicit(0x00100010, value), 0
+    ),
+    "nested": _in_the_data_set(EXPLICIT, _nested, 40),
+    # The item comes before the element it holds.
+    "item": _in_the_data_set(EXPLICIT, _in_an_item_of_defined_length, 12),
+    "fragment": _in_the_data_set(EXPLICIT, _in_a_fragment, 20),
+    "file-meta": (_in_the_file_meta, len(_file(EXPLICIT))),
+}
+
+
+@pytest.mark.parametrize("build, at", ODD_LENGTHS.values(), ids=ODD_LENGTHS)
+def test_an_odd_length_is_refused_where_it_starts(build, at):
+    # Every Value Length but the undefined length is even (PS3.5 Section
+    # 7.1.1), and so is every Item Length (Section 7.5).
+    with pytest.raises(source.SourceRefused) as raised:
+        source.read_source(build(ODD_VALUE))
+
+    assert raised.value.reason is source.SourceReason.STRUCTURE
+    assert raised.value.offset == at
+    assert "SENTINEL" not in str(raised.value) + repr(raised.value)
+
+
+@pytest.mark.parametrize("build, at", ODD_LENGTHS.values(), ids=ODD_LENGTHS)
+def test_the_same_structure_with_even_lengths_is_admitted(build, at):
+    data = build(EVEN_VALUE)
+
+    evidence = source.read_source(data)
+
+    assert evidence.size == len(data) > at
+
+
+@pytest.mark.parametrize("build, at", ODD_LENGTHS.values(), ids=ODD_LENGTHS)
+def test_the_layout_still_reads_a_file_with_an_odd_length(build, at):
+    # The written files that residuals.find_residuals searches are read
+    # whatever their lengths, so that nothing in them escapes the search.
+    layout = file_layout.read_file_layout(build(ODD_VALUE))
+
+    assert layout.readable
+    assert layout.locate(at).region is not file_layout.Region.TRAILING
+
+
+@pytest.mark.parametrize(
+    "transfer_syntax, data_set",
+    [
+        (EXPLICIT, _nested(EVEN_VALUE) + _in_a_fragment(EVEN_VALUE)),
+        (
+            IMPLICIT,
+            _implicit(BEAM_SEQUENCE, length=UNDEFINED)
+            + _item(length=UNDEFINED)
+            + _implicit(BEAM_NAME, EVEN_VALUE)
+            + ITEM_END
+            + SEQUENCE_END,
+        ),
+    ],
+    ids=["explicit-vr", "implicit-vr"],
+)
+def test_an_undefined_length_is_admitted(transfer_syntax, data_set):
+    # The undefined length, FFFFFFFFH, is odd, but is not a Value Length.
+    evidence = source.read_source(_file(transfer_syntax, data_set))
+
+    assert evidence.element(_path("(300A,00B0)")).undefined_length

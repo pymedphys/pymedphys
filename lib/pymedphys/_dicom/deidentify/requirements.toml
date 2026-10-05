@@ -28,6 +28,9 @@ tests = [
   "tests/dicom/test_deidentify_dummy_values.py::test_different_source_values_give_the_same_dummy_value",
   "tests/dicom/test_deidentify_dummy_values.py::test_ui_takes_the_keyed_replacement",
   "tests/dicom/test_deidentify_dummy_values.py::test_a_vr_without_a_generic_dummy_value_is_refused",
+  "tests/dicom/test_deidentify_dummy_values.py::test_d_on_person_identification_code_sequence_writes_one_item",
+  "tests/dicom/test_deidentify_dummy_values.py::test_d_on_person_identification_code_sequence_takes_the_second_constants",
+  "tests/dicom/test_deidentify_dummy_values.py::test_d_on_any_other_sequence_is_refused",
   "tests/dicom/test_deidentify_pseudonyms.py::test_a_pseudonym_follows_the_specified_derivation",
   "tests/dicom/test_deidentify_pseudonyms.py::test_a_pseudonym_is_valid_for_its_vr_and_conspicuous",
   "tests/dicom/test_deidentify_pseudonyms.py::test_different_subjects_give_different_pseudonyms",
@@ -35,7 +38,7 @@ tests = [
   "tests/dicom/test_deidentify_pseudonyms.py::test_a_pseudonym_does_not_contain_the_identifier",
 ]
 note = '''
-Patient ID and Patient's Name have keyed replacement values that keep subjects separate and do not contain the source identifier. Z writes a zero-length value, and D a conspicuous constant for each VR that does not depend on the source value, or a second constant where the source value equals the first, so the replacement always differs from it; a UI value takes its keyed replacement, and D on an attribute of any other VR is refused until a reviewed rule covers it (D-021). Remaining: removing or replacing each Attribute to be protected in a data set (M3).
+Patient ID and Patient's Name have keyed replacement values that keep subjects separate and do not contain the source identifier. Z writes a zero-length value, and D a conspicuous constant for each VR that does not depend on the source value, or a second constant where the source value equals the first, so the replacement always differs from it; a UI value takes its keyed replacement, and D on an attribute of any other VR is refused until a reviewed rule covers it. The one reviewed rule so far gives Person Identification Code Sequence one item with a dummy code (D-021). Remaining: removing or replacing each Attribute to be protected in a data set (M3).
 '''
 
 [[requirement]]
@@ -47,16 +50,42 @@ Each Attribute specified to be retained shall be retained. At the discretion of 
 status = "partial"
 milestone = "M3"
 decisions = ["D-007", "D-011", "D-022", "D-023"]
-implementation = ["_dicom/deidentify/actions.py", "_dicom/deidentify/policy.py"]
+implementation = [
+  "_dicom/deidentify/actions.py",
+  "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/preservation.py",
+  "_dicom/deidentify/preserving_writer.py",
+]
 tests = [
   "tests/dicom/test_deidentify_actions.py::test_an_option_overrides_the_profile",
   "tests/dicom/test_deidentify_policy.py::test_tps_import_keeps_device_identity_and_patient_characteristics",
   "tests/dicom/test_deidentify_policy.py::test_a_custom_option_set_is_validated_and_never_enabled",
   "tests/dicom/test_deidentify_policy.py::test_the_tps_import_options_are_rejected_without_the_preset",
   "tests/dicom/test_deidentify_policy.py::test_a_conflict_that_a_new_edition_adds_is_rejected",
+  "tests/dicom/test_deidentify_preservation.py::test_a_copy_that_keeps_every_element_is_preserved",
+  "tests/dicom/test_deidentify_preservation.py::test_another_transfer_syntax_is_refused",
+  "tests/dicom/test_deidentify_preservation.py::test_each_element_must_correspond_to_its_plan",
+  "tests/dicom/test_deidentify_preservation.py::test_a_kept_value_that_decodes_the_same_from_other_bytes_is_refused",
+  "tests/dicom/test_deidentify_preservation.py::test_an_ambiguous_vr_resolved_again_with_the_same_bytes_is_refused",
+  "tests/dicom/test_deidentify_preservation.py::test_a_kept_sequence_with_another_number_of_items_is_refused",
+  "tests/dicom/test_deidentify_preservation.py::test_a_kept_value_written_with_another_length_encoding_is_refused",
+  "tests/dicom/test_deidentify_preservation.py::test_kept_text_in_another_character_set_is_refused",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_a_written_plan_preserves_what_it_keeps",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_kept_text_keeps_its_inherited_bytes_and_new_text_takes_them",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_a_ct_voi_lut_descriptor_keeps_its_vr_and_bytes",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_pydicom_resolves_the_descriptor_again_where_this_writer_does_not",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_an_element_without_a_plan_is_refused",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_an_edit_inside_a_un_sequence_keeps_it_un_with_implicit_items",
+  "tests/dicom/test_deidentify_preservation.py::test_a_kept_element_in_another_context_is_refused",
+  "tests/dicom/test_deidentify_preservation.py::test_an_empty_specific_character_set_is_the_default_as_an_absent_one_is",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_a_data_set_kept_whole_is_copied_byte_for_byte",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_a_kept_element_inside_a_removed_or_replaced_sequence_is_refused",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_a_replaced_character_set_under_kept_text_is_refused",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_an_introduced_sequence_is_written_with_its_items",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_a_kept_value_of_fragments_is_refused",
 ]
 note = '''
-Reviewed rules add the text attributes, dates, and times that Table E.1-1 omits to those protected (D-022, D-023). A policy keeps (K) each attribute that its selected options retain, and an option set that gives an attribute to be retained another action as well is rejected. The one exception is `tps-import`, which modifies eleven device and beam hold dates and times that Retain Device Identity would keep and claims no PS3.15 conformance (D-007). Remaining: retaining each such attribute in a data set (M3).
+Reviewed rules add the text attributes, dates, and times that Table E.1-1 omits to those protected (D-022, D-023). A policy keeps (K) each attribute that its selected options retain, and an option set that gives an attribute to be retained another action as well is rejected. The one exception is `tps-import`, which modifies eleven device and beam hold dates and times that Retain Device Identity would keep and claims no PS3.15 conformance (D-007). A written file can be verified against the plan for its instance: every source element is kept, changed, or removed; nothing else is written; the file has its source's transfer syntax; every change is written; and each kept element has the same VR as written, length form, and Value Field bytes as in the source, a kept private element the same Private Creator, and kept text the same Specific Character Set in force, so a VR resolved again or text decoded and encoded again is refused. A data set is written from its source's bytes: each kept element is copied byte for byte, including a sequence with no change in it; a kept sequence with a change in it is written with undefined lengths, keeping every item; and only replacements and introduced elements are encoded, each refused unless its text can be written in the character set in force at its place and its VR is the one written, so pydicom never re-encodes a kept value or resolves its VR again. A plan that keeps an element inside a removed or replaced sequence, keeps a group length, or changes the character set of kept text is refused. Remaining: planning each instance's data set from its policy, and sequestering an instance whose output fails verification (M3).
 '''
 
 [[requirement]]
@@ -148,7 +177,10 @@ If the Data Set being de-identified is being stored within a DICOM File, then th
 status = "partial"
 milestone = "M3"
 decisions = ["D-002", "D-025", "D-027"]
-implementation = ["_dicom/deidentify/file_meta.py"]
+implementation = [
+  "_dicom/deidentify/file_meta.py",
+  "_dicom/deidentify/preserving_writer.py",
+]
 tests = [
   "tests/dicom/test_deidentify_file_meta.py::test_the_file_meta_information_holds_exactly_the_seven_elements_in_order",
   "tests/dicom/test_deidentify_file_meta.py::test_the_implementation_class_uid_is_the_first_uid_of_the_reserved_arc",
@@ -156,6 +188,8 @@ tests = [
   "tests/dicom/test_deidentify_file_meta.py::test_the_group_length_counts_the_bytes_of_the_elements_after_it",
   "tests/dicom/test_deidentify_file_meta.py::test_a_written_file_has_a_zero_preamble_and_exactly_the_built_elements",
   "tests/dicom/test_deidentify_file_meta.py::test_no_source_file_meta_element_or_preamble_is_written",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_the_file_has_new_file_meta_information",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_an_element_that_does_not_belong_in_a_data_set_is_refused",
 ]
 note = '''
 The File Meta Information that replaces the source file's describes the de-identifier by a fixed Implementation Class UID under the PyMedPhys root and an Implementation Version Name, and holds no Application Entity Title, Presentation Address, or private element. A data set is written with it and a zeroed preamble, whatever File Meta Information and preamble the source file held. Remaining: writing each de-identified instance this way (M3).
@@ -207,6 +241,7 @@ implementation = [
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/private_attributes.py",
   "_dicom/deidentify/sequences.py",
+  "_dicom/deidentify/source.py",
   "_dicom/deidentify/standard.py",
 ]
 tests = [
@@ -220,6 +255,18 @@ tests = [
   "tests/dicom/test_deidentify_compound_actions.py::test_each_compound_action_resolves_by_type",
   "tests/dicom/test_deidentify_compound_actions.py::test_the_type_depends_on_the_enclosing_sequence",
   "tests/dicom/test_deidentify_compound_actions.py::test_x_z_on_a_type_1_attribute_writes_the_dummy_value",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_d_on_an_attribute_the_iod_does_not_define_there_removes_it",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_d_on_an_attribute_the_iod_defines_there_stays_d",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_z_on_an_attribute_the_iod_does_not_define_there_empties_it",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_z_on_a_type_1_attribute_writes_the_dummy_value",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_z_on_a_type_2_or_3_attribute_stays_z",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_x_on_an_optional_attribute_removes_it_alone",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_x_on_a_required_attribute_removes_the_innermost_type_3_sequence",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_x_skips_each_enclosing_sequence_that_is_required",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_x_on_a_required_attribute_outside_a_type_3_sequence_sequesters",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_x_on_overlay_data_removes_its_repeating_group",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_x_on_overlay_data_in_a_conditional_overlay_module_sequesters",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_x_on_roi_interpreter_sequence_removes_it_alone",
   "tests/dicom/test_deidentify_elements.py::test_an_implicit_vr_rt_plan_decodes_rt_assertions_with_the_pinned_vr",
   "tests/dicom/test_deidentify_elements.py::test_un_in_explicit_vr_is_decoded_as_implicit_vr_with_the_pinned_vr",
   "tests/dicom/test_deidentify_elements.py::test_a_vr_that_conflicts_with_the_pinned_dictionary_is_refused",
@@ -236,9 +283,12 @@ tests = [
   "tests/dicom/test_deidentify_element_rules.py::test_every_element_of_group_0000_in_a_data_set_is_removed",
   "tests/dicom/test_deidentify_elements.py::test_a_un_sequence_that_pydicom_has_decoded_is_refused",
   "tests/dicom/test_deidentify_elements.py::test_text_that_could_not_be_written_back_is_refused",
+  "tests/dicom/test_deidentify_source.py::test_an_odd_length_is_refused_where_it_starts",
+  "tests/dicom/test_deidentify_source.py::test_the_same_structure_with_even_lengths_is_admitted",
+  "tests/dicom/test_deidentify_source.py::test_an_undefined_length_is_admitted",
 ]
 note = '''
-Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute gives D, the non-zero-length dummy value that Table E.1-1a allows Z (D-020). Each element, at the top level or in an item, is read with the VR that the pinned data dictionary gives its attribute, so that the attributes inside a sequence that pydicom does not know and reads as UN, such as an RT Plan's RT Assertions Sequence, can be found; an element whose VR conflicts with the dictionary, or whose value or items do not decode exactly, is reported as undecodable rather than read as pydicom guesses it. Each element, at the top level or in an item, takes the rule of the first source that covers it: the engine's own removals, Table E.1-1's Private Attributes row, the table's other rows, whose masked tags match only the repeating groups, the supplementary rules and UID roles, removal by Type of other text, and the rule for attributes that no rule covers (D-022); a sequence to which an option gives C takes its Basic Profile action (D-009). Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028). Remaining: protecting or retaining every instance of each other attribute, at the top level and in sequences, and removing private attributes from each instance the engine de-identifies (M3).
+Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict. Policy validation rejects every conflict except those the `tps-import` preset resolves, so each preset's policy gives every attribute one action. A compound action of Table E.1-1a resolves to one action from the strictest Type that the instance's IOD gives the attribute at its place, at the top level or in a sequence, and X/Z on a Type 1 or 1C attribute gives D, the non-zero-length dummy value that Table E.1-1a allows Z. A plain Z on such an attribute gives D too, and a plain D on an attribute that the IOD does not define at that place gives X, as Note 13 after Table E.1-1a describes. A plain X removes the attribute whatever its Type; where the IOD requires the attribute at that place, the innermost enclosing sequence that the IOD makes Type 3 at its own place is removed with it, and where none encloses it, the instance is sequestered. Removing Overlay Data removes every attribute of its repeating group, and ROI Interpreter Sequence is removed alone (D-020). Each element, at the top level or in an item, is read with the VR that the pinned data dictionary gives its attribute, so that the attributes inside a sequence that pydicom does not know and reads as UN, such as an RT Plan's RT Assertions Sequence, can be found; an element whose VR conflicts with the dictionary, or whose value or items do not decode exactly, is reported as undecodable rather than read as pydicom guesses it. Each element, at the top level or in an item, takes the rule of the first source that covers it: the engine's own removals, Table E.1-1's Private Attributes row, the table's other rows, whose masked tags match only the repeating groups, the supplementary rules and UID roles, removal by Type of other text, and the rule for attributes that no rule covers (D-022); a sequence to which an option gives C takes its Basic Profile action (D-009). Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028). A source file is admitted only once its whole structure is read from its own bytes, with every Value Length and Item Length but the undefined length even, so that every element at the top level and in items is found. Remaining: applying the resolved actions to every instance of each attribute, at the top level and in sequences, including the sequences and overlay groups that a plain X removes with an attribute and the instances that it sequesters, and removing private attributes from each instance the engine de-identifies (M3).
 '''
 
 [[requirement]]
@@ -307,9 +357,13 @@ tests = [
   "tests/dicom/test_deidentify_conformance.py::test_options_outside_the_supported_scope_are_listed_as_not_supported",
   "tests/dicom/test_deidentify_conformance.py::test_a_statement_with_sections_still_to_describe_makes_no_claim",
   "tests/dicom/test_deidentify_conformance.py::test_no_enabled_preset_has_an_incomplete_statement",
+  "tests/dicom/test_deidentify_conformance.py::test_the_markers_match_those_the_engine_writes",
+  "tests/dicom/test_deidentify_conformance.py::test_every_attribute_the_markers_write_is_described",
+  "tests/dicom/test_deidentify_conformance.py::test_private_attribute_removal_is_described",
+  "tests/dicom/test_deidentify_conformance.py::test_each_presets_inserted_codes_and_temporal_value",
 ]
 note = '''
-The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters. It lists the action of each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020); the values that Z, D, and U write, including the keyed pseudonyms and replacement UIDs (D-003, D-005, D-021); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); and the options applied, those that can be composed, and those that are not supported. A statement lists what it cannot yet describe and then claims nothing. Remaining: the attributes and values that the markers insert (D-012), the action for every other element, the action where an IOD requires an attribute that a plain X or Z would leave invalid (D-020), and writing the statement with each run (M6).
+The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters. It lists the action of each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020); the values that Z, D, and U write, including the keyed pseudonyms and replacement UIDs (D-003, D-005, D-021); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); the attributes and values that the markers insert, as the engine computes them for the policy (D-012); the removal of private attributes at every level of nesting; and the options applied, those that can be composed, and those that are not supported. A statement lists what it cannot yet describe and then claims nothing. Remaining: the action for every other element, the action where an IOD requires an attribute that a plain X or Z would leave invalid (D-020), and writing the statement with each run (M6).
 '''
 
 [[requirement]]
@@ -412,7 +466,10 @@ When this Option is specified in addition to the Basic Application Level Confide
 status = "partial"
 milestone = "M4"
 decisions = ["D-009", "D-022"]
-implementation = ["_dicom/deidentify/roi_names.py"]
+implementation = [
+  "_dicom/deidentify/roi_names.py",
+  "_dicom/deidentify/reviewed_roi_names.py",
+]
 tests = [
   "tests/dicom/test_deidentify_roi_names.py::test_a_name_that_matches_once_case_whitespace_and_separators_are_disregarded_is_written_in_the_vocabularys_spelling",
   "tests/dicom/test_deidentify_roi_names.py::test_a_near_match_goes_to_review",
@@ -423,9 +480,19 @@ tests = [
   "tests/dicom/test_deidentify_roi_names.py::test_an_unpublished_vocabulary_is_refused",
   "tests/dicom/test_deidentify_roi_names.py::test_a_vocabulary_name_with_a_hyphen_is_not_matched_without_it",
   "tests/dicom/test_deidentify_roi_names.py::test_a_name_with_a_leading_underscore_or_hyphen_goes_to_review",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_reviewed_decisions_are_reused_on_later_runs",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_the_list_is_refused_inside_a_protected_directory",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_the_list_never_shows_a_name",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_reviewers_decision_to_keep_map_or_empty_a_name_is_applied",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_bulk_rename_applies_to_every_structure_set_with_the_name",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_name_neither_renamed_nor_reviewed_is_held_with_the_automatic_reason",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_held_name_is_emptied_only_when_the_user_chooses_so",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_reviewed_name_that_echoes_an_identifier_is_held",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_different_names_that_would_be_written_as_one_name_are_held",
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_the_review_queue_lists_each_distinct_held_name_once",
 ]
 note = '''
-The first supported release includes the Option for ROI names (D-009). The automatic tier decides, for the ROI names of one structure set, which are written in the spelling of the TG-263 spreadsheet's published edition, whose entries' digest the module records, because they match one of its names once case, spaces, and the separators `_` and `-` are disregarded (a hyphen in a vocabulary name, which TG-263 writes for a subtraction, must be matched by one, and a name starting with `_`, which TG-263 gives a structure not used for dose evaluation, or `-` goes to review), and which go to review, because they match none or several, echo a known patient or other person identifier, or would duplicate a differently spelt name of the same structure set. A name so written is cleaned, not retained, so it needs no review before the claim. Remaining: applying these decisions to each data set (M3); review of the other names, each kept, mapped, or emptied by a reviewer, with a reviewed-names list reused on later runs, and holding an instance whose names nobody has reviewed unless the user chooses explicitly to empty such names, and recording each rename in the QC material (M4); vocabularies converted from an institutional list, every match against which goes to review; and claiming the Option only for output whose retained descriptors have passed pooled human review, which needs the QC pack (M4).
+The first supported release includes the Option for ROI names (D-009). The automatic tier decides, for the ROI names of one structure set, which are written in the spelling of the TG-263 spreadsheet's published edition, whose entries' digest the module records, because they match one of its names once case, spaces, and the separators `_` and `-` are disregarded (a hyphen in a vocabulary name, which TG-263 writes for a subtraction, must be matched by one, and a name starting with `_`, which TG-263 gives a structure not used for dose evaluation, or `-` goes to review), and which go to review, because they match none or several, echo a known patient or other person identifier, or would duplicate a differently spelt name of the same structure set. A name so written is cleaned, not retained, so it needs no review before the claim. The reviewed-names list, which the custodian keeps outside output and QC directories and which names no value in its errors or `repr`, records a reviewer's decision to keep, map, or empty each other name, for reuse on later runs. The reviewed tier applies the list's decisions to the names the automatic tier does not rename; checks what a kept or mapped name would write for echoes and for duplicates, ignoring case, as the automatic tier does; holds every other name, or empties it where the user chooses so explicitly; and collects the distinct held names for review, with counts by reason that carry no name. Remaining: applying these decisions to each data set and holding instances in the staging area (M3); writing the held names and each rename to the QC material, and the reviewer's workflow for recording decisions (M4); the list's keyed digest in the method digest (D-024); vocabularies converted from an institutional list, every match against which goes to review; and claiming the Option only for output whose retained descriptors have passed pooled human review, which needs the QC pack (M4).
 '''
 
 [[requirement]]
@@ -680,9 +747,13 @@ tests = [
   "tests/dicom/test_deidentify_residuals.py::test_a_value_in_a_nested_sequence_item_is_found",
   "tests/dicom/test_deidentify_residuals.py::test_encapsulated_fragments_are_searched_for_every_form",
   "tests/dicom/test_deidentify_residuals.py::test_a_clean_file_has_no_findings",
+  "tests/dicom/test_deidentify_residuals.py::test_a_source_value_equal_to_a_written_constant_is_skipped_and_recorded",
+  "tests/dicom/test_deidentify_residuals.py::test_a_source_value_that_differs_from_every_constant_is_searched",
+  "tests/dicom/test_deidentify_residuals.py::test_a_constant_among_several_values_is_skipped_alone",
+  "tests/dicom/test_deidentify_source.py::test_the_layout_still_reads_a_file_with_an_odd_length",
 ]
 note = '''
-The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. The release gate runs that search itself, for exactly the values collected across the file's subject, and checks the collection against the values the walker planned to collect. It withholds any output file that still holds a source person name, UID, date, datetime, or direct identifier, or a source value outside its data set, or whose collection of person names, UIDs, dates, datetimes, direct identifiers, or sequences was incomplete, and sends other text findings and other incomplete collection, including of private values, to confidential review; a search that finds nothing does not on its own release a file (D-027). `public-release` retains indirect identifiers only after its statistical assessment. Remaining: removing and replacing identifiers in each data set (M3), and acting on the gate's decision in the pipeline, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
+The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. A source value equal to a constant that the engine writes is not searched, and is recorded by its source attribute (D-027). The release gate runs that search itself, for exactly the values collected across the file's subject, and checks the collection against the values the walker planned to collect. It withholds any output file that still holds a source person name, UID, date, datetime, or direct identifier, or a source value outside its data set, or whose collection of person names, UIDs, dates, datetimes, direct identifiers, or sequences was incomplete, and sends other text findings and other incomplete collection, including of private values, to confidential review; a search that finds nothing does not on its own release a file (D-027). `public-release` retains indirect identifiers only after its statistical assessment. A deterministic synthetic collection plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released. Remaining: removing and replacing identifiers in each data set (M3), and acting on the gate's decision in the pipeline, validating each preset end to end by searching its output of that collection for the markers, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
 '''
 
 [[requirement]]
@@ -709,15 +780,20 @@ implementation = [
   "_dicom/deidentify/elements.py",
   "_dicom/deidentify/file_layout.py",
   "_dicom/deidentify/iods.py",
+  "_dicom/deidentify/preserving_writer.py",
   "_dicom/deidentify/reference_graph.py",
   "_dicom/deidentify/references.py",
   "_dicom/deidentify/sequences.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/values.py",
+  "_dicom/deidentify/written_references.py",
 ]
 tests = [
+  "tests/dicom/test_deidentify_preserving_writer.py::test_pydicom_resolves_the_descriptor_again_where_this_writer_does_not",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_a_replacement_whose_vr_a_reader_cannot_tell_is_refused",
   "tests/dicom/test_deidentify_dummy_values.py::test_every_dummy_value_is_valid_for_its_vr_and_the_attributes_vm",
   "tests/dicom/test_deidentify_dummy_values.py::test_table_e1_1_attributes_without_a_generic_dummy_value_are_refused",
+  "tests/dicom/test_deidentify_dummy_values.py::test_the_person_identification_item_is_valid_for_each_vr_and_vm",
   "tests/dicom/test_deidentify_iods.py::test_the_first_supported_release_iods_are_generated",
   "tests/dicom/test_deidentify_iods.py::test_an_attribute_can_have_a_different_type_in_each_module",
   "tests/dicom/test_deidentify_iods.py::test_types_depend_on_the_enclosing_sequence",
@@ -733,6 +809,13 @@ tests = [
   "tests/dicom/test_deidentify_compound_actions.py::test_no_attribute_with_x_z_is_type_1_in_the_first_release_iods",
   "tests/dicom/test_deidentify_compound_actions.py::test_no_required_attribute_with_a_compound_action_is_removed_in_any_generated_iod",
   "tests/dicom/test_deidentify_compound_actions.py::test_x_z_gives_d_only_to_referenced_study_sequence_in_two_generated_iods",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated_iods",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_x_on_a_required_attribute_in_the_first_release_iods",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_x_on_a_required_attribute_outside_a_type_3_sequence_sequesters",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_x_skips_each_enclosing_sequence_that_is_required",
+  "tests/dicom/test_deidentify_plain_actions.py::test_overlay_data_is_type_1_only_at_the_top_level_of_a_user_optional_module",
+  "tests/dicom/test_deidentify_plain_actions.py::test_the_overlay_plane_module_is_conditional_only_in_the_known_iods",
+  "tests/dicom/test_deidentify_plain_actions.py::test_a_plain_x_on_roi_interpreter_sequence_removes_it_alone",
   "tests/dicom/test_deidentify_references.py::test_reference_sites_include_the_rt_references",
   "tests/dicom/test_deidentify_references.py::test_an_unknown_value_whose_items_cannot_be_read_is_refused",
   "tests/dicom/test_deidentify_references.py::test_a_sequence_whose_items_cannot_be_read_is_refused",
@@ -766,9 +849,21 @@ tests = [
   "tests/dicom/test_deidentify_elements.py::test_without_a_vr_in_the_file_the_voi_lut_input_decides_its_descriptor",
   "tests/dicom/test_deidentify_elements.py::test_written_elements_carry_the_pinned_vr_and_round_trip",
   "tests/dicom/test_deidentify_elements.py::test_a_written_value_problem_is_described_without_quoting_it",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_items_from_pydicom_are_never_resolved_again",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_text_that_cannot_be_written_in_its_character_set_is_refused",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_a_default_repertoire_value_outside_iso_646_is_refused",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_a_replacement_that_does_not_fit_its_place_is_refused",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_a_value_that_pydicom_would_write_with_another_vr_is_refused",
+  "tests/dicom/test_deidentify_preserving_writer.py::test_an_introduced_sequence_in_implicit_vr_takes_a_replaced_character_set",
+  "tests/dicom/test_deidentify_written_references.py::test_a_consistently_replaced_collection_has_no_findings",
+  "tests/dicom/test_deidentify_written_references.py::test_a_slice_written_in_another_series_than_its_input_series_is_mismatched",
+  "tests/dicom/test_deidentify_written_references.py::test_a_kept_reference_is_an_original_uid",
+  "tests/dicom/test_deidentify_written_references.py::test_a_reference_to_another_written_instance_is_mismatched",
+  "tests/dicom/test_deidentify_written_references.py::test_a_reference_to_a_written_instance_with_a_mismatched_uid_is_unresolved",
+  "tests/dicom/test_deidentify_written_references.py::test_a_shared_replacement_is_reported",
 ]
 note = '''
-The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, and an attribute whose VR has no generic dummy value is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. It also reports instances that share a SOP Instance UID, as identical copies only where their source bytes, the transfer syntax and the data set as the file encodes it, are shown to be the same, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, each a Patient ID with its issuer, with the instances without a Patient ID as one more. An element to be written is built with a VR that the pinned dictionary gives it, of alternatives the one that applies in its data set, only once its values have been checked against that VR and the attribute's VM, against the data set's character set, and, for a person name, against the repertoire of its first component group, and it reads back unchanged from Implicit and Explicit VR Little Endian. Remaining: writing the dummy values that the resolved compound actions call for (M3); and checking frames of reference in the first pass, acting on its findings, validating output against its IOD, and checking after writing that references are intact (M4).
+The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written. Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C, and a plain Z on a Type 1 or 1C attribute gives D's dummy value too. A plain X on an attribute that the IOD requires at its place removes with it the innermost enclosing sequence that the IOD makes Type 3 at its own place, or sequesters the instance where none encloses it, so it never leaves the output without an attribute that the IOD requires; Overlay Data takes its whole repeating group, whose module is user-optional in the CT Image IOD, and ROI Interpreter Sequence, whose condition lapses once ROI Creator Sequence is removed, goes alone (D-020). Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, as is each element of the dummy item of Person Identification Code Sequence, and an attribute whose VR has no generic dummy value and no reviewed rule is refused rather than given an invalid value. Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID. It also reports instances that share a SOP Instance UID, as identical copies only where their source bytes, the transfer syntax and the data set as the file encodes it, are shown to be the same, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, each a Patient ID with its issuer, with the instances without a Patient ID as one more. An element to be written is built with a VR that the pinned dictionary gives it, of alternatives the one that applies in its data set, only once its values have been checked against that VR and the attribute's VM, against the data set's character set, and, for a person name, against the repertoire of its first component group, and it reads back unchanged from Implicit and Explicit VR Little Endian. A data set is written from its source's bytes, so a kept element keeps the VR its source gives it, such as SS for the VOI LUT Descriptor of a CT image in Hounsfield Units, where pydicom's writer can resolve it again as US. A sequence kept as UN keeps its items in implicit VR, and a replacement in implicit VR is written only where the pinned dictionary gives its VR alone, since a reader takes the VR from its dictionary. A second pass checks what was written against the first: that each written instance's SOP Instance, Series Instance, and Study Instance UIDs, and each value at its reference sites, are the keyed replacements of its input's, never a source UID; that each reference that named an input before writing names a written instance, series, or study after it; that no two source UIDs share a replacement; and that no two written instances share a SOP Instance UID. Remaining: writing the dummy values that the resolved compound actions call for (M3); and checking frames of reference in the first pass, acting on its findings, validating output against its IOD, and running the second pass on each run's output (M4).
 '''
 
 [[requirement]]
@@ -924,16 +1019,18 @@ status = "partial"
 milestone = "M4"
 decisions = ["D-009", "D-017", "D-022", "D-027"]
 implementation = [
+  "_dicom/deidentify/reviewed_roi_names.py",
   "_dicom/deidentify/roi_names.py",
   "_dicom/deidentify/supplementary_actions.py",
 ]
 tests = [
+  "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_reviewed_name_that_echoes_an_identifier_is_held",
   "tests/dicom/test_deidentify_roi_names.py::test_a_name_that_echoes_a_known_identifier_goes_to_review",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text",
 ]
 note = '''
-Under the Basic Profile, every text attribute that a supported IOD uses is removed or replaced, by Table E.1-1 or a reviewed supplementary rule, except coded and technical values and De-identification Method, which the engine adds to (D-022). Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocabulary only where it matches one of its names and echoes no known patient or other person identifier, and goes to review otherwise (D-009). Remaining: applying the actions to each data set (M3); and the review of descriptors with pooled human review, the residual search, and reporting indicators of burned-in text, since the engine does not change pixel data (M4).
+Under the Basic Profile, every text attribute that a supported IOD uses is removed or replaced, by Table E.1-1 or a reviewed supplementary rule, except coded and technical values and De-identification Method, which the engine adds to (D-022). Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocabulary only where it matches one of its names and echoes no known patient or other person identifier, and goes to review otherwise; a reviewer's decision to keep or map a name is applied only where what it would write echoes no such identifier (D-009). Remaining: applying the actions to each data set (M3); and the review of descriptors with pooled human review, the residual search, and reporting indicators of burned-in text, since the engine does not change pixel data (M4).
 '''
 
 [[requirement]]
@@ -1057,7 +1154,7 @@ Document the de-identification process in detail, including the release of PS3.1
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-011", "D-012", "D-016", "D-024", "D-029"]
+decisions = ["D-011", "D-012", "D-016", "D-024", "D-026", "D-027", "D-029"]
 implementation = [
   "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/markers.py",
@@ -1082,13 +1179,19 @@ tests = [
   "tests/dicom/test_deidentify_release_report.py::test_the_report_holds_no_path_of_the_installed_engine",
   "tests/dicom/test_deidentify_release_report.py::test_the_report_holds_the_vocabulary_digest_not_its_entries",
   "tests/dicom/test_deidentify_release_report.py::test_a_report_with_a_field_that_could_hold_a_value_or_path_is_refused",
+  "tests/dicom/test_deidentify_release_report.py::test_sequestered_instances_are_listed_by_label_with_their_reasons",
+  "tests/dicom/test_deidentify_release_report.py::test_labels_are_random_and_carry_nothing_from_the_run",
+  "tests/dicom/test_deidentify_release_report.py::test_values_not_searched_are_counted_by_attribute_and_reason",
+  "tests/dicom/test_deidentify_release_report.py::test_a_run_section_with_a_field_that_could_hold_a_value_is_refused",
   "tests/dicom/test_deidentify_method_digest.py::test_the_components_of_a_small_synthetic_input_are_digests_of_its_members",
   "tests/dicom/test_deidentify_method_digest.py::test_the_components_show_which_input_changed_the_digest",
   "tests/dicom/test_deidentify_runtime.py::test_each_value_is_read_from_its_source_at_each_call",
   "tests/dicom/test_deidentify_conformance.py::test_the_statement_names_the_edition_preset_and_options",
   "tests/dicom/test_deidentify_conformance.py::test_the_method_digest_is_the_policys_with_the_same_vocabulary",
   "tests/dicom/test_deidentify_conformance.py::test_the_statement_is_the_same_every_time_it_is_generated",
+  "tests/dicom/test_deidentify_conformance.py::test_the_inserted_codes_are_listed_with_their_meanings",
+  "tests/dicom/test_deidentify_conformance.py::test_the_runtime_versions_are_described_not_quoted",
 ]
 note = '''
-Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the method digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives in Software Versions its version and the runtime environment that ran, which the method digest does not cover (D-012, D-024). The validated policy records the edition, preset, and options. The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers, and the same policy and engine always give the same text. The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016). Remaining: writing the release report for each run, with its sections on the run's instances and a human-readable form, and publishing it with the collection (M4); and writing the conformance statement with each run and publishing it with each release (M4, M6).
+Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the method digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives in Software Versions its version and the runtime environment that ran, which the method digest does not cover (D-012, D-024). The validated policy records the edition, preset, and options. The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers, and the markers that each instance gains, and the same policy and engine always give the same text. The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016). Its sections on a run name each sequestered instance by a random label for the run, with each reason's stage and code, and the attribute, action, and VR where the walker sequestered it (D-026), and count the source values that the residual search did not search, in full or in part, by attribute and reason (D-027). Remaining: writing the release report for each run, with its residual search findings and a human-readable form, and publishing it with the collection (M4); and writing the conformance statement with each run and publishing it with each release (M4, M6).
 '''
