@@ -14,7 +14,9 @@
 
 """Tests for the engine's redaction of pydicom's warnings and log records."""
 
+import ast
 import io
+import pathlib
 import logging
 import threading
 import time
@@ -460,3 +462,22 @@ def test_chained_hooks_count_each_diagnostic_once(caplog):
     finally:
         logging.setLogRecordFactory(factory)
         warnings._showwarnmsg = show  # pylint: disable = protected-access
+
+
+def test_no_engine_module_uses_the_legacy_anonymiser():
+    # The engine owns its redaction, and depends on nothing in the legacy
+    # anonymiser's package.
+    package = pathlib.Path(diagnostics.__file__).parent
+    legacy = "pymedphys._dicom.anonymise"
+    users = []
+    for module in sorted(package.glob("*.py")):
+        for node in ast.walk(ast.parse(module.read_text(encoding="utf-8"))):
+            names = []
+            if isinstance(node, ast.ImportFrom) and node.level == 0:
+                names = [node.module or ""]
+            elif isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            if any(name == legacy or name.startswith(legacy + ".") for name in names):
+                users.append(module.name)
+
+    assert not users
