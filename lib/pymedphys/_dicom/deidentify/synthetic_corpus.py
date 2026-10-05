@@ -111,10 +111,11 @@ deliberately outside admission.
 placement: its element path, VR, values, kind, the Table E.1-1 row it
 covers, and why it was not planted where it was not.
 :meth:`CorpusManifest.to_json` serialises it the same way every time.
-Building neither reads nor writes a file, takes no time or randomness, and
-logs nothing; :func:`write_corpus` writes the files to the directory
-:data:`INSTANCES_DIRECTORY` of a directory its caller names, and the manifest
-beside it, so that the directory of instances can be a run's input.
+Building reads the bundled tables, writes no files, uses no clock or
+randomness, and logs nothing; :func:`write_corpus` writes the files to the
+directory :data:`INSTANCES_DIRECTORY` of a directory its caller names, and
+the manifest beside it, so that the directory of instances can be a run's
+input.
 """
 
 # The builder, its manifest's types, and its description stay together, so
