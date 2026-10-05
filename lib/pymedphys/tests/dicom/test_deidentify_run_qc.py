@@ -294,3 +294,15 @@ def test_qc_material_is_left_out_of_reprs():
         run.Transformed(PurePosixPath("a"), b"", qc=material),
     ):
         assert "Dropped" not in repr(result)
+
+
+@dataclasses.dataclass(frozen=True)
+class _PartlySet:
+    code: GateReason
+    later: str = dataclasses.field(init=False)
+
+
+def test_a_reason_field_left_unset_is_left_out():
+    assert run_qc.reason_text(_PartlySet(GateReason.TEXT_FINDING)) == (
+        f"_PartlySet(code={GateReason.TEXT_FINDING.value})"
+    )

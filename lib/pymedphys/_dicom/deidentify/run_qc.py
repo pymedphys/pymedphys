@@ -200,9 +200,12 @@ def reason_text(reason: object) -> str:
     if isinstance(reason, enum.Enum):
         return f"{type(reason).__name__}.{reason.name}"
     if dataclasses.is_dataclass(reason) and not isinstance(reason, type):
+        # A field left unset, such as one with init=False, holds nothing to
+        # write, and must not fail the whole run.
         fields = ", ".join(
             f"{field.name}={_field_text(getattr(reason, field.name))}"
             for field in dataclasses.fields(reason)
+            if hasattr(reason, field.name)
         )
         return f"{type(reason).__name__}({fields})"
     raise TypeError("a reason must be an enum member or a dataclass instance")
