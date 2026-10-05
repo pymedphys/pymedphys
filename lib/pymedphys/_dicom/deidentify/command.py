@@ -28,8 +28,8 @@ line's arguments, for the ``pymedphys`` command to call once the engine is
 public; nothing registers it yet.
 
 The summary and every message name inputs only by count, reasons only by
-their type and the names of enum members, theirs or their fields', and
-directories only where the caller chose them: the release directory and its
+their type and the names of enum members (their own, or those of a
+dataclass reason's fields), and directories only where the caller chose them: the release directory and its
 staging area. A failure that the run does not expect is reported by its
 exception's type alone, since its message could quote a value.
 
@@ -219,7 +219,7 @@ def _reason_name(reason: object) -> str:
         members = [
             f"{field.name}={_member(value)}"
             for field in dataclasses.fields(reason)
-            if isinstance(value := getattr(reason, field.name), enum.Enum)
+            if isinstance(value := getattr(reason, field.name, None), enum.Enum)
         ]
         if members:
             return f"{name}({', '.join(members)})"

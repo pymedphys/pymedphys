@@ -122,6 +122,8 @@ def test_a_dataclass_reason_is_named_with_its_enum_fields(tmp_path):
         code: GateReason
         text: str
         missing: GateReason | None = None
+        # A field that nothing sets has no value to show.
+        unset: GateReason = dataclasses.field(init=False)
 
     gate = Gate(
         {
