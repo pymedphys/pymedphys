@@ -369,7 +369,7 @@ def test_an_item_with_its_own_character_set_is_read_under_an_unsupported_one(
             )
             + _item(_explicit(0x00100020, "LO", b"SENTINEL ID 2 ")),
         )
-        + _explicit(0x00101040, "LO", b"SENTINEL ADDRESS ")
+        + _explicit(0x00101040, "LO", b"SENTINEL ADDR ")
     )
     evidence = source.read_source(_file(EXPLICIT, data_set))
     plan = walker.plan_instance(evidence, _rules(), _rt_plan())
