@@ -195,20 +195,26 @@ def _left_out(edits: InstanceEdits) -> dict[ElementPath, DropReason]:
 def dropped_of(edits: InstanceEdits) -> tuple[Dropped, ...]:
     """Return the QC pack's drops of an instance's edits (D-027).
 
-    Each element left out of the residual search as :func:`coverage_of`
-    leaves it out, and each value that could not be decoded to collect, by
-    its place in the source. A value equal to a written
-    constant is dropped by the search itself, which the gate records.
+    Each element whose every UID U retains; each element with a UID that the
+    pinned tables register, since that UID is left out of the search even
+    where the element's other UIDs are collected; and each value that could
+    not be decoded to collect, by its place in the source and once for each
+    reason. A value equal to a written constant is dropped by the search
+    itself, which the gate records.
     """
     left_out = _left_out(edits)
-    undecodable = {
-        missing.path: DropReason.UNDECODABLE
+    drops = [
+        (path, reason)
+        for path, reason in left_out.items()
+        if reason is DropReason.RETAINED
+    ]
+    drops += [(path, DropReason.REGISTERED_UID) for path in edits.registered_uids]
+    drops += [
+        (missing.path, DropReason.UNDECODABLE)
         for missing in edits.not_collected
         if missing.path not in left_out
-    }
-    return tuple(
-        Dropped(path, reason) for path, reason in {**left_out, **undecodable}.items()
-    )
+    ]
+    return tuple(Dropped(path, reason) for path, reason in dict.fromkeys(drops))
 
 
 def coverage_of(plan: InstancePlan, edits: InstanceEdits) -> Coverage:

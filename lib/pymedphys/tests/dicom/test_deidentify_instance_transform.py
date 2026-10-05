@@ -33,7 +33,7 @@ from pymedphys._dicom.deidentify import (
     preserving_writer,
     run,
 )
-from pymedphys._dicom.deidentify.edits import EditKind, edit_instance
+from pymedphys._dicom.deidentify.edits import EditKind, InstanceEdits, edit_instance
 from pymedphys._dicom.deidentify.element_rules import ElementRules
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import (
@@ -652,16 +652,40 @@ def test_values_left_out_of_the_search_are_dropped_with_their_reasons():
         read_source(data), plan, KEY, InstanceRecord.from_file(data).patient
     )
 
-    drops = {drop.source: drop.reason for drop in dropped_of(edits)}
+    drops = {(drop.source, drop.reason) for drop in dropped_of(edits)}
 
-    assert drops[_top("(0008,0016)")] is DropReason.RETAINED
+    assert (_top("(0008,0016)"), DropReason.RETAINED) in drops
     registered = ElementPath((("(0008,1140)", 0),), "(0008,1150)")
-    assert drops[registered] is DropReason.REGISTERED_UID
-    # Nothing that the search is given is dropped.
-    assert not set(drops) & {value.source for value in edits.source_values}
+    assert (registered, DropReason.REGISTERED_UID) in drops
+    # Every registered UID is dropped, and nothing else that the search is
+    # given.
+    assert {path for path, reason in drops if reason is DropReason.REGISTERED_UID} == (
+        set(edits.registered_uids)
+    )
+    collected = {value.source for value in edits.source_values}
+    assert all(
+        path not in collected
+        for path, reason in drops
+        if reason is not DropReason.REGISTERED_UID
+    )
     result = _transform()(data, InstanceRecord.from_file(data))
     assert isinstance(result, run.Transformed)
     assert result.qc == dropped_of(edits)
+
+
+def test_a_registered_uid_beside_a_collected_one_is_still_dropped():
+    # A multi-valued UI whose other UID is collected still has its
+    # registered UID left out of the search.
+    path = _top("(0008,001A)")
+    edits = InstanceEdits(
+        edits=(),
+        source_values=(SourceValue(path, "UI", "2.25.4242"),),
+        not_collected=(),
+        sequestrations=(),
+        registered_uids=(path,),
+    )
+
+    assert dropped_of(edits) == (Dropped(path, DropReason.REGISTERED_UID),)
 
 
 def test_the_gate_drops_the_instances_values_equal_to_a_written_constant():
