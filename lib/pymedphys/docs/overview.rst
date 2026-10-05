@@ -1,33 +1,18 @@
-======================
 Overview
-======================
+========
 
-For most users, the docs homepage and the
-:doc:`Getting Started section <users/get-started/index>` are the best entry
-points into PyMedPhys.
+For users choosing a capability, interface or installation route. Start with
+:doc:`What PyMedPhys can do <users/get-started/what-pymedphys-can-do>`, compare
+the library, CLI and apps in :doc:`Choose your path <users/get-started/choose-your-path>`,
+then choose :doc:`installation options <users/get-started/installation-options>`.
 
-A good reading order is:
+.. toctree::
+   :maxdepth: 1
 
-#. :doc:`What PyMedPhys can do <users/get-started/what-pymedphys-can-do>`
-#. :doc:`Choose your path <users/get-started/choose-your-path>`
-#. :doc:`Installation options <users/get-started/installation-options>`
-#. :doc:`Quick Start Guide <users/get-started/quick-start>`
+   users/get-started/what-pymedphys-can-do
+   users/get-started/choose-your-path
 
-The **Users Guide** is organised into four main areas:
-
-:doc:`Getting Started <users/get-started/index>`
-    Start here if you're new to PyMedPhys, unsure which interface to use, or
-    need installation help.
-
-:doc:`How-to Guides <users/howto/index>`
-    Task-focused guides for common workflows such as gamma and interpolation.
-
-:doc:`Technical Reference <users/ref/index>`
-    Reference material for library modules and CLI commands. Use this when you
-    already know the feature name and want precise inputs, outputs, and options.
-
-:doc:`Background <users/background/index>`
-    Explanations and context for larger projects and concepts.
-
-If you want to contribute code or documentation, head to the
-:doc:`Developer guide <contrib/guide>`.
+For a result you can reproduce, follow :doc:`First successful result <users/tasks/first-result>`.
+Established users can select a task in the :doc:`User guide <users/tasks/index>`;
+contributors start in the :doc:`Developer guide <contrib/guide>`. Upgrade and
+project context are in :doc:`Project information <project/index>`.

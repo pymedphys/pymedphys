@@ -325,5 +325,5 @@ Past contributors
 .. _`uv`: https://docs.astral.sh/uv/
 
 .. _`Developer guide`: https://docs.pymedphys.com/en/latest/contrib/guide.html
-.. _`User guide`: https://docs.pymedphys.com/en/latest/users/get-started/index.html
+.. _`User guide`: https://docs.pymedphys.com/en/latest/users/tasks/index.html
 .. _`Project information`: https://docs.pymedphys.com/en/latest/project/index.html

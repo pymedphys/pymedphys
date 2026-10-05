@@ -39,6 +39,9 @@ jobs:
       - name: Build documentation
         run: uv run pymedphys dev docs
 
+      - name: Check retained documentation URLs and local links
+        run: uv run --no-sync python .github/scripts/check_documentation_migration.py lib/pymedphys/docs/_build/html
+
       - name: Upload documentation HTML
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

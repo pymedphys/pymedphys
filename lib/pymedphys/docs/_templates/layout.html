@@ -1,0 +1,16 @@
+{% extends "!layout.html" %}
+
+{% block scripts %}
+  {# sphinx_thebe.init_thebe_core can register the same inline configuration
+     more than once while Sphinx reads documents. Repeating its const
+     declarations raises a browser SyntaxError, including in a fresh build.
+     Render identical tags once, retaining their order and all distinct tags. #}
+  {% set scripts = namespace(rendered=[]) %}
+  {% for js in script_files %}
+    {% set tag = js_tag(js) %}
+    {% if tag not in scripts.rendered %}
+      {{ tag }}
+      {% set scripts.rendered = scripts.rendered + [tag] %}
+    {% endif %}
+  {% endfor %}
+{% endblock %}

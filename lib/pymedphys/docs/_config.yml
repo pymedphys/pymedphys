@@ -32,6 +32,8 @@ sphinx:
   config:
     language: en
     myst_heading_anchors: 4
+    templates_path:
+      - _templates
     # Unauthenticated github.com requests are frequently rate limited.
     # Check new or changed GitHub links manually; they are excluded here.
     linkcheck_ignore:

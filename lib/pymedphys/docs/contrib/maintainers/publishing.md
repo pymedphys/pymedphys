@@ -109,6 +109,18 @@ stop. Adding or removing any label also re-runs CI and the security workflow.
 
 ## Validate a migration
 
-Follow [documentation ownership and checking](../../project/documentation.md) when retaining URLs and important fragments. Inspect source and HTML relative links, retained section anchors, notebook launches, report bundles, navigation, search and version selection on desktop and narrow screens. [Distribution checks](release.md#verify-packaging-before-a-release) must confirm documents needed at runtime or by installed tests remain packaged.
+The [migration manifest](../../project/documentation.md) records retained URLs and important fragments. Run its checker against built HTML, inspect source and HTML relative links, and verify notebook launches, report bundles, navigation, search and version selection on desktop and narrow screens. [Distribution checks](release.md#verify-packaging-before-a-release) must confirm documents needed at runtime or by installed tests remain packaged.
 
-Recheck this guide whenever `_dev/docs.py`, `_config.yml`, `.readthedocs.yml`, the documentation workflow or hosted dashboard rules change.
+After a theme change, verify generated source views as well as guide pages.
+Sphinx's `viewcode` extension can reuse module HTML whose modification time is
+newer than its Python source, even with `-E -a`. Use a fresh HTML output directory
+for a complete theme check; keep the separate notebook execution cache.
+The migration checker rejects duplicate sidebar controls and repeated inline
+Thebe declarations, which can break browser behaviour without a Sphinx warning.
+
+`_templates/sections/header.html` omits the Book theme's hidden navbar so its
+duplicate controls cannot take the visible sidebar controls' event handlers.
+`_templates/layout.html` renders each identical script tag once. Recheck these
+compatibility measures when upgrading either theme or `sphinx_thebe`.
+
+Recheck this guide whenever `_dev/docs.py`, `_config.yml`, `_templates`, `.readthedocs.yml`, the documentation workflow or hosted dashboard rules change.

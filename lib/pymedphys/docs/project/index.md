@@ -10,6 +10,7 @@ compatibility
 community
 history
 documentation
+reference-coverage
 ```
 
-Start with [Compatibility and migration](compatibility.md) before upgrading an established workflow. For implementation work, use the [Developer guide](../contrib/guide.md); for practical usage, use the [User guide](../users/get-started/index.md).
+Start with [Compatibility and migration](compatibility.md) before upgrading an established workflow. For implementation work, use the [Developer guide](../contrib/guide.md); for practical usage, use the [User guide](../users/tasks/index.md).

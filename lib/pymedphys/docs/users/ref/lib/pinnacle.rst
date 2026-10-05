@@ -18,6 +18,8 @@ PyMedPhys 0.40.0; see the :doc:`release notes </release-notes>`.
 .. seealso::
 
    For the command line interface, see :doc:`../cli/pinnacle`.
+   For explicit source selection and output checks, see
+   :doc:`../../tasks/pinnacle`.
 
 ***
 API

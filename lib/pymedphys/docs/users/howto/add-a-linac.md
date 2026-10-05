@@ -4,6 +4,9 @@
 This page is a historical record of a site-specific deployment at Cancer Care Associates, kept as originally written. Commands, versions, hostnames, paths, and external links have not been updated or verified against current PyMedPhys or third-party software.
 
 [Issue #849](https://github.com/pymedphys/pymedphys/issues/849), described below as unresolved, was closed in May 2025 after a report that Elekta fixed the underlying behaviour in Integrity 4.0.6.3.
+
+
+For current configuration and operations, use the [configuration reference](https://docs.pymedphys.com/en/latest/users/ref/configuration.html) and [user task guides](https://docs.pymedphys.com/en/latest/users/tasks/index.html).
 ```
 
 ## Background

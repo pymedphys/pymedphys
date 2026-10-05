@@ -1,0 +1,6 @@
+{# The Book theme hides PyData's navbar, but PyData adds a default search
+   component and emits sidebar toggles there. Both themes bind only the first
+   toggle of each kind, leaving the visible article controls unresponsive.
+   Omit this hidden navbar's contents so the native handlers bind to the Book
+   controls. Search remains in the primary sidebar; repository and notebook
+   launch options keep their generated configuration. Recheck on theme upgrades. #}

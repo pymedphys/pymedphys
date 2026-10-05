@@ -5,7 +5,7 @@ Git with SSH on Windows
 
    Historical deployment record. The commands and conditions below describe
    the original environment. For current operations, use the
-   :doc:`user guidance </users/get-started/index>`.
+   :doc:`user task guides </users/tasks/index>`.
 
 SSH is optional. The setup guide uses an HTTPS clone URL; use Git Credential
 Manager or GitHub CLI if you prefer HTTPS authentication.
