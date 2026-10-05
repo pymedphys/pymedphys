@@ -812,6 +812,30 @@ def test_numbers_in_decimal_strings_are_not_findings():
     ]
 
 
+def test_digits_inside_the_integer_of_a_uuid_derived_uid_are_not_findings():
+    # A UID under the 2.25 root holds an integer derived from a UUID (PS3.5
+    # B.2), as every UID the engine writes does, so a date at the start of
+    # its digits is chance.
+    datetime = _source("(0008,002A)", "DT", "20240517101500")
+    data = _private(
+        ("UI", "2.25.197102034455667788"),
+        ("UI", "2.25.20240517101500998877"),
+        ("UI", f"{ROOT}.19710203.1"),
+        ("UI", "2.25.1\\1.2.19710203"),
+        ("UI", "2.25.19710203"),
+        ("LT", "2.25.197102034455"),
+    )
+
+    result = find_residuals(data, [BIRTH_SOURCE, datetime])
+
+    assert _summary(result) == [
+        ("(0010,0030)", Form.VALUE, "utf-8", "(0019,1002)"),
+        ("(0010,0030)", Form.VALUE, "utf-8", "(0019,1003)"),
+        ("(0010,0030)", Form.VALUE, "utf-8", "(0019,1004)"),
+        ("(0010,0030)", Form.VALUE, "utf-8", "(0019,1005)"),
+    ]
+
+
 def test_a_uid_is_found_but_not_inside_a_longer_component():
     data = _texts(
         STUDY_UID,
@@ -1442,11 +1466,10 @@ def test_a_source_value_equal_to_a_written_constant_is_skipped_and_recorded(vr, 
 @pytest.mark.parametrize(
     "vr, value",
     [
-        ("PN", "DEIDENTIFIED^ZEBEDEE"),
         ("LO", "DEIDENTIFIED 2"),
         ("LO", "PyMedPhys DEIDENTIFIED"),
         ("DA", "19000103"),
-        ("DT", "19000101000002"),
+        ("DT", "20240517000002"),
         ("SH", "1131000"),
         ("LO", "UNMODIFIED"),  # which the markers never write
     ],
@@ -1458,6 +1481,60 @@ def test_a_source_value_that_differs_from_every_constant_is_searched(vr, value):
 
     assert result.findings
     assert not result.unsearched
+
+
+@pytest.mark.parametrize(
+    "vr, value, copy, found",
+    [
+        # An earlier pseudonym's family name is the new pseudonym's.
+        ("PN", "DEIDENTIFIED^ZQ7741093ABCDEF", "DEIDENTIFIED^OTHERCODE", False),
+        ("PN", "DEIDENTIFIED^ZQ7741093ABCDEF", "code ZQ7741093ABCDEF", True),
+        ("PN", "DEIDENTIFIED^ZEBEDEE", "Dr Zebedee", True),
+        ("PN", "Zebedee Deidentified^Quillon", "DEIDENTIFIED", False),
+        # The words of a component that is a constant are not searched.
+        ("PN", "DE-IDENTIFIED^ZQ7741093ABCDEF", "DE-IDENTIFIED^OTHERCODE", False),
+        # A datetime's date is the dummy date, and its time is not.
+        ("DT", "19000101120000", "19000101", False),
+        ("DT", "19000101120000", "19000101120000", True),
+    ],
+)
+def test_a_form_equal_to_a_constant_is_skipped_and_the_others_searched(
+    vr, value, copy, found
+):
+    source = _source("(0010,1001)", vr, value)
+
+    result = find_residuals(_texts(copy), [source])
+
+    assert bool(result.findings) is found
+    assert result.unsearched == (
+        Unsearched(_path("(0010,1001)"), UnsearchedReason.WRITTEN_CONSTANT),
+    )
+
+
+def test_a_form_equal_to_a_constant_is_found_in_no_written_constant():
+    value = _source("(0010,1001)", "PN", "DEIDENTIFIED^ZEBEDEE")
+
+    result = find_residuals(_written_constants(), [value])
+
+    assert not result.findings
+    assert [skip.reason for skip in result.unsearched] == [
+        UnsearchedReason.WRITTEN_CONSTANT
+    ]
+
+
+def test_skips_of_values_and_of_forms_are_recorded_in_the_order_of_the_values():
+    values = [
+        _source("(0010,1001)", "PN", "DEIDENTIFIED^ZEBEDEE"),
+        _source("(0010,1002)", "LO", "DEIDENTIFIED"),
+        _source("(0010,1003)", "PN", "DEIDENTIFIED\\DEIDENTIFIED^QUILLON"),
+    ]
+
+    result = find_residuals(_written_constants(), values)
+
+    assert result.unsearched == tuple(
+        Unsearched(_path(tag), UnsearchedReason.WRITTEN_CONSTANT)
+        for tag in ("(0010,1001)", "(0010,1002)", "(0010,1003)")
+    )
 
 
 def test_a_constant_among_several_values_is_skipped_alone():

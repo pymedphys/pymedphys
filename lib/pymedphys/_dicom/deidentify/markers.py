@@ -108,6 +108,7 @@ from pymedphys._imports import pydicom
 
 from . import runtime
 from .codes import CodedConcept, load_context_group
+from .diagnostics import redacted_diagnostics
 from .policy import MODIFIED_DATES, Policy
 from .standard import DictionaryAttribute, StandardTableError, load_data_dictionary
 from .values import values_problem
@@ -611,7 +612,9 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
     less strict state; an empty value counts as absent. A De-identification
     Method Code Sequence that would have no item, as under ``tps-import``
     where none was present, is left out, since the Patient Module makes it
-    Type 1C and so, where present, it needs one.
+    Type 1C and so, where present, it needs one. pydicom's warnings and log
+    records while it marks are redacted by
+    :func:`.diagnostics.redacted_diagnostics`.
 
     Parameters
     ----------
@@ -661,6 +664,15 @@ def apply_markers(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset
     if not isinstance(markers, Markers):
         raise TypeError("markers must be Markers, from markers_for")
     _check(markers)
+    # pydicom converts a value read from a file when it is first accessed,
+    # and validates a value as it is set, and its warnings and log records
+    # can quote a value already present.
+    with redacted_diagnostics():
+        return _marked(dataset, markers)
+
+
+def _marked(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset:
+    """Return a copy of a data set with checked markers added."""
     marked = copy.deepcopy(dataset)
     method = _existing(marked, _DEIDENTIFICATION_METHOD)
     method_codes = _existing(marked, _DEIDENTIFICATION_METHOD_CODES)

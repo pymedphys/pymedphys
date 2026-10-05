@@ -307,8 +307,8 @@ def search_coverage(
     reason, however many of its forms or spellings that reason left out,
     since a :class:`~pymedphys._dicom.deidentify.residuals.NotSearched`
     names one form of a value at its place, and an
-    :class:`~pymedphys._dicom.deidentify.residuals.Unsearched` a whole
-    value. Values at the same place in different instances count apart.
+    :class:`~pymedphys._dicom.deidentify.residuals.Unsearched` a value
+    left out in whole or, for a written constant, in part. Values at the same place in different instances count apart.
     The counts are in the order of their attributes and reasons.
 
     >>> from pymedphys._dicom.deidentify.residuals import (
