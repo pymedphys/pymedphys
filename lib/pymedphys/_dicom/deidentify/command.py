@@ -28,10 +28,10 @@ line's arguments, for the ``pymedphys`` command to call once the engine is
 public; nothing registers it yet.
 
 The summary and every message name inputs only by count, reasons only by
-their type and member name, and directories only where the caller chose
-them: the release directory and its staging area. A failure that the run
-does not expect is reported by its exception's type alone, since its
-message could quote a value.
+their type and the names of enum members, theirs or their fields', and
+directories only where the caller chose them: the release directory and its
+staging area. A failure that the run does not expect is reported by its
+exception's type alone, since its message could quote a value.
 
 Exit statuses:
 
@@ -53,6 +53,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import dataclasses
 import enum
 import os
 import sys
@@ -208,10 +209,25 @@ def summary_lines(result: run.RunResult, redacted: RedactionCounts) -> list[str]
 
 def _reason_name(reason: object) -> str:
     # A reason's fields could hold anything a transform or gate put there,
-    # so only an enum member's name, which the code defines, is shown.
+    # so only enum members' names, which the code defines, are shown: the
+    # reason's own, or those of a dataclass reason's fields, such as a
+    # release gate's decision and code.
     if isinstance(reason, enum.Enum):
-        return f"{type(reason).__name__}.{reason.name}"
-    return type(reason).__name__
+        return _member(reason)
+    name = type(reason).__name__
+    if dataclasses.is_dataclass(reason) and not isinstance(reason, type):
+        members = [
+            f"{field.name}={_member(value)}"
+            for field in dataclasses.fields(reason)
+            if isinstance(value := getattr(reason, field.name), enum.Enum)
+        ]
+        if members:
+            return f"{name}({', '.join(members)})"
+    return name
+
+
+def _member(member: enum.Enum) -> str:
+    return f"{type(member).__name__}.{member.name}"
 
 
 class _Parser(argparse.ArgumentParser):
