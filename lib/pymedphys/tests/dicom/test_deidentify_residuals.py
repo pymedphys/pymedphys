@@ -1467,6 +1467,8 @@ def test_a_source_value_that_differs_from_every_constant_is_searched(vr, value):
         ("PN", "DEIDENTIFIED^ZQ7741093ABCDEF", "code ZQ7741093ABCDEF", True),
         ("PN", "DEIDENTIFIED^ZEBEDEE", "Dr Zebedee", True),
         ("PN", "Zebedee Deidentified^Quillon", "DEIDENTIFIED", False),
+        # The words of a component that is a constant are not searched.
+        ("PN", "DE-IDENTIFIED^ZQ7741093ABCDEF", "DE-IDENTIFIED^OTHERCODE", False),
         # A datetime's date is the dummy date, and its time is not.
         ("DT", "19000101120000", "19000101", False),
         ("DT", "19000101120000", "19000101120000", True),
@@ -1494,6 +1496,21 @@ def test_a_form_equal_to_a_constant_is_found_in_no_written_constant():
     assert [skip.reason for skip in result.unsearched] == [
         UnsearchedReason.WRITTEN_CONSTANT
     ]
+
+
+def test_skips_of_values_and_of_forms_are_recorded_in_the_order_of_the_values():
+    values = [
+        _source("(0010,1001)", "PN", "DEIDENTIFIED^ZEBEDEE"),
+        _source("(0010,1002)", "LO", "DEIDENTIFIED"),
+        _source("(0010,1003)", "PN", "DEIDENTIFIED\\DEIDENTIFIED^QUILLON"),
+    ]
+
+    result = find_residuals(_written_constants(), values)
+
+    assert result.unsearched == tuple(
+        Unsearched(_path(tag), UnsearchedReason.WRITTEN_CONSTANT)
+        for tag in ("(0010,1001)", "(0010,1002)", "(0010,1003)")
+    )
 
 
 def test_a_constant_among_several_values_is_skipped_alone():

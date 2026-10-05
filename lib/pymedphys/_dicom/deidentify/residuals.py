@@ -87,8 +87,9 @@ its source held, as listed by :func:`written_constants`, is not searched,
 since finding it would reveal nothing about the source. A value of several
 values is compared value by value, and only those equal to a constant are
 left out. So is each form of a value that equals a constant, such as the
-family name of a name ``DEIDENTIFIED^ABC`` or the date of a datetime
-``19000101120000``, while its other forms are still searched. Values and
+family name of a name ``DEIDENTIFIED^ABCDEF``, with that family name's
+words, or the date of a datetime ``19000101120000`` as YYYYMMDD, while
+its other forms are still searched. Values and
 forms are compared as D compares a source value with its constant
 (:func:`~.dummy_values.same_value`), as text of the source value's
 VR: ignoring case and padding, a person name's trailing delimiters, and
@@ -436,20 +437,16 @@ def find_residuals(
     after the last readable element at byte 3
     """
     layout = read_file_layout(data)
-    kept: list[SourceValue] = []
-    unsearched: list[Unsearched] = []
+    derived: list[_Needle | NotSearched | Unsearched] = []
     for value in dict.fromkeys(values):
         rest = _without_constants(value)
         if rest is not value:
-            unsearched.append(
-                Unsearched(value.source, UnsearchedReason.WRITTEN_CONSTANT)
-            )
+            derived.append(Unsearched(value.source, UnsearchedReason.WRITTEN_CONSTANT))
         if rest is not None:
-            kept.append(rest)
-    derived = [item for value in kept for item in _derive(value)]
+            derived += _derive(rest)
     needles = [item for item in derived if isinstance(item, _Needle)]
     omitted = [item for item in derived if isinstance(item, NotSearched)]
-    unsearched += [item for item in derived if isinstance(item, Unsearched)]
+    unsearched = [item for item in derived if isinstance(item, Unsearched)]
     with memoryview(data) as view, view.cast("B") as octets:
         found = _search(octets, layout.spans, layout.size, needles)
     order = sorted(
@@ -635,6 +632,8 @@ def _forms(text: str, vr: str, kind: ValueKind) -> Iterator[tuple[Form, str]]:
                     yield Form.NAME_JOINED, f"{family}, {given}"
                 for part in (family, given, middle):
                     yield Form.NAME_COMPONENT, part
+                    if _is_constant(vr, part):  # whose words the engine writes
+                        continue
                     if len(words := part.replace("-", " ").split()) > 1:
                         yield from ((Form.NAME_WORD, word) for word in words)
 
