@@ -182,6 +182,53 @@ def test_markers_already_present_are_updated_as_ps3_15_says():
     ]
 
 
+def test_edits_inside_kept_marker_sequences_are_written():
+    # Contributing Equipment Sequence and De-identification Method Code
+    # Sequence are kept, but the policy removes or replaces elements in
+    # their items, which the markers must not bring back.
+    dose = synthetic.rt_dose()
+    equipment = pydicom.Dataset()
+    equipment.Manufacturer = "EARLIER EQUIPMENT"
+    equipment.InstitutionName = "SENTINEL HOSPITAL"
+    equipment.DeviceUID = "2.25.731"
+    dose.ContributingEquipmentSequence = pydicom.Sequence([equipment])
+    code = pydicom.Dataset()
+    code.CodeValue = "113101"
+    code.CodingSchemeDesignator = "DCM"
+    code.ContextGroupExtensionCreatorUID = "2.25.732"
+    code.CodeMeaning = "Clean Pixel Data Option"
+    dose.DeidentificationMethodCodeSequence = pydicom.Sequence([code])
+    result = _transformed(dose)
+
+    assert isinstance(result, run.Transformed)
+    assert b"SENTINEL" not in result.data
+    assert b"2.25.731" not in result.data
+    assert b"2.25.732" not in result.data
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    earlier, ours = written.ContributingEquipmentSequence
+    assert earlier.Manufacturer == "EARLIER EQUIPMENT"
+    assert ours.Manufacturer == "PyMedPhys"
+
+
+def test_an_unplanned_element_in_a_kept_marker_sequence_sequesters():
+    source = pydicom.Dataset()
+    item = pydicom.Dataset()
+    item.Manufacturer = "EARLIER EQUIPMENT"
+    item.InstitutionName = "SENTINEL HOSPITAL"
+    source.ContributingEquipmentSequence = pydicom.Sequence([item])
+    sequence = _top("(0018,A001)")
+    writing = instance_transform.WriterPlan(
+        kept=frozenset({sequence, ElementPath((("(0018,A001)", 0),), "(0008,0070)")}),
+        removed=frozenset(),
+        replacements={},
+    )
+
+    with pytest.raises(instance_transform._Refused):  # pylint: disable = protected-access
+        instance_transform._as_planned(  # pylint: disable = protected-access
+            source[0x0018A001], (), writing
+        )
+
+
 def test_markers_that_cannot_be_added_sequester_the_instance(monkeypatch):
     def refuse(_dataset, _markers):
         raise MarkerError("refused")
