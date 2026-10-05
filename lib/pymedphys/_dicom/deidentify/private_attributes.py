@@ -52,8 +52,9 @@ by pydicom in place, and so written from its items, once
 :func:`.sequences.decode_items` finds that items fill it. pydicom writes the
 elements of those items as it read them, except a sequence of undefined
 length, which it decodes with the value, so that check does not see into a
-sequence of defined length nested in them. Each, at every depth, is decoded here and checked in
-the same way, with the character set of the item that holds it.
+sequence of defined length nested in them. Each nested sequence, at every
+depth, is decoded here and checked in the same way, with the character set
+of the item that holds it.
 
 An item's text is in the Specific Character Set (0008,0005) of the item, or
 else of the data set that holds it (PS3.5 Section 7.5.3). pydicom does not

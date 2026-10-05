@@ -105,7 +105,8 @@ _FIRST_GROUP = (
     (0x20, 0x1FFF), (0x3001, 0x3002), (0x300C, 0x300D), (0x3099, 0x309C),
     (0x30A0, 0x30FF),
 )  # fmt: skip
-_CHARACTER_SET_VRS = frozenset({"LO", "LT", "PN", "SH", "ST", "UC", "UT"})
+# The VRs whose text is in the Specific Character Set (PS3.5 Table 6.2-1).
+CHARACTER_SET_VRS = frozenset({"LO", "LT", "PN", "SH", "ST", "UC", "UT"})
 _SOP_CLASS_UID = "(0008,0016)"
 _BITS_STORED = "(0028,0101)"
 _PIXEL_REPRESENTATION = "(0028,0103)"
@@ -321,7 +322,7 @@ def read_element(
         # is ISO 646 (PS3.5 Section 6.1.2.1).
         if (
             not outside_repertoire_as_latin_1
-            and vr in _CHARACTER_SET_VRS
+            and vr in CHARACTER_SET_VRS
             and tuple(codecs) == DEFAULT_CODECS
             and not all(_in_iso_646(str(each)) for each in plain)
         ):
@@ -329,7 +330,7 @@ def read_element(
         # Reading is no more lenient than writing, but for text read as ISO
         # 8859-1 in place of ISO 646, which is never written back.
         latin_1 = outside_repertoire_as_latin_1 and tuple(codecs) == DEFAULT_CODECS
-        if not latin_1 and (problem := _character_set_problem(vr, plain, codecs)):
+        if not latin_1 and (problem := character_set_problem(vr, plain, codecs)):
             raise UndecodableElement(
                 path, f"could not be written back as VR {vr}, since {problem}"
             )
@@ -363,7 +364,7 @@ def _outside_repertoire(
         isinstance(element, pydicom.dataelem.RawDataElement)
         and isinstance(element.value, bytes)
         and element.length == len(element.value)
-        and vr in _CHARACTER_SET_VRS
+        and vr in CHARACTER_SET_VRS
         and tuple(codecs) == DEFAULT_CODECS
     ):
         return None
@@ -724,14 +725,14 @@ def written_value_problem(
     >>> written_value_problem("PN", "1", ["ΩΜΕΓΑ^ΑΛΦΑ"], ("UTF8",)) is None
     True
     """
-    return values_problem(vr, vm, values) or _character_set_problem(vr, values, codecs)
+    return values_problem(vr, vm, values) or character_set_problem(vr, values, codecs)
 
 
-def _character_set_problem(
+def character_set_problem(
     vr: str, values: Sequence[object], codecs: Sequence[str]
 ) -> str | None:
     """Return why text values could not be written in the codecs, or None."""
-    if vr not in _CHARACTER_SET_VRS:
+    if vr not in CHARACTER_SET_VRS:
         return None
     for number, value in enumerate(values, start=1):
         if not (
