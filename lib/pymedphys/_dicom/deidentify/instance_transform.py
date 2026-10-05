@@ -42,10 +42,9 @@ value-free reason: a :class:`~.scope.Disposition`, a
 :class:`~.source.SourceReason`, the walker's
 :class:`~.walker.Sequestration` objects, a
 :class:`~.preserving_writer.WriteReason`, a
-:class:`~.preservation.PreservationReason`, a :class:`TransformReason`, or a
-:class:`PendingEdit` for each edit still to come, which no stage of the
-release report gives, so that a run with a reporter sequesters the instance
-for an invalid reason.
+:class:`~.preservation.PreservationReason`, or a :class:`TransformReason`,
+such as :attr:`TransformReason.PENDING_EDIT` for the edits still to come
+that :func:`writer_plan` names by :class:`PendingEdit`.
 No exception message is kept, since some come from pydicom and can quote a
 value.
 
@@ -56,6 +55,11 @@ collected, and those that could not be. :class:`ReleaseGate` is the run's
 :class:`~pymedphys._dicom.deidentify.run.Gate`: it pools the coverage of the
 file's subject, sequestered instances included, and asks
 :func:`~.release_gate.release_condition` about the written file (D-027).
+Where the edits sequester an instance, the values that they did not reach
+are uncollected; and where an instance of the subject gives no coverage at
+all, because its source is refused or out of scope, the transform raises, or
+it changed during the run, the gate withholds the file, since its values
+could be there unsearched for.
 
 A UID that the pinned tables register, and that U therefore retains, such
 as a SOP Class UID, is meant to stay in the output, so it is neither planned
@@ -105,12 +109,14 @@ from .reviewed_roi_names import ReviewQueue
 from .release_gate import (
     Coverage,
     Decision,
+    ReasonCode,
     ReleaseCondition,
+    ReleaseReason,
     Uncollected,
     release_condition,
 )
 from .residuals import NotSearched, has_written_constant, not_searched_of
-from .run import HoldForReview, Release, Sequestered, Transformed
+from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
 from .run_qc import Dropped, SearchMaterial
 from .run_report import ReleaseReporter
 from .scope import classify
@@ -267,25 +273,41 @@ def coverage_of(
     pinned tables all register, which the edits leave out of collection
     wherever it is, removed sequences included, and for each path in
     ``retained``, such as a ROI Name that descriptor cleaning writes with a
-    value.
+    value. Where the edits sequester the instance, each planned value that
+    they did not reach is uncollected.
     """
     left_out: set[ElementPath] = set(retained) | set(_left_out(edits))
-    return Coverage(
-        planned=frozenset(
-            element.path
-            for element in plan.elements
-            if Consumer.RESIDUAL_COLLECTION in element.consumers
-            and element.path not in left_out
-        ),
-        collected=tuple(
-            value for value in edits.source_values if value.source not in left_out
-        ),
-        uncollected=tuple(
-            Uncollected(path=missing.path, reason=missing.reason)
-            for missing in edits.not_collected
-            if missing.path not in left_out
-        ),
+    planned = frozenset(
+        element.path
+        for element in plan.elements
+        if Consumer.RESIDUAL_COLLECTION in element.consumers
+        and element.path not in left_out
     )
+    collected = tuple(
+        value for value in edits.source_values if value.source not in left_out
+    )
+    uncollected = [
+        Uncollected(path=missing.path, reason=missing.reason)
+        for missing in edits.not_collected
+        if missing.path not in left_out
+    ]
+    if edits.sequestrations:
+        # The edits stop at the first sequestration, so the values that they
+        # did not reach are uncollected, which withholds the subject's other
+        # files for that reason rather than as not reported.
+        reached = {value.source for value in collected} | {
+            missing.path for missing in uncollected
+        }
+        uncollected += [
+            Uncollected(path=path, reason=_NOT_REACHED)
+            for path in sorted(planned - reached, key=str)
+        ]
+    return Coverage(
+        planned=planned, collected=collected, uncollected=tuple(uncollected)
+    )
+
+
+_NOT_REACHED = "the instance was sequestered before the value was read"
 
 
 class _Refused(Exception):
@@ -682,7 +704,11 @@ class InstanceTransform:
             )
             return Transformed(*_written(source, writing), evidence, qc)
         except _Refused as refused:
-            return Sequestered(refused.reasons, evidence, qc)
+            reasons = tuple(
+                TransformReason.PENDING_EDIT if isinstance(r, PendingEdit) else r
+                for r in refused.reasons
+            )
+            return Sequestered(tuple(dict.fromkeys(reasons)), evidence, qc)
 
 
 def transform_for(
@@ -820,7 +846,11 @@ class ReleaseGate:
     A release decision releases the file; QC review holds it for review and
     withholding sequesters it, each with the condition's reasons, which are
     :class:`~.release_gate.ReleaseReason` objects naming codes and paths,
-    never values. An instance whose evidence is a :class:`HeldEvidence` is
+    never values. A file of a subject with an instance that gave no evidence
+    (:data:`~pymedphys._dicom.deidentify.run.NO_EVIDENCE`) is withheld, with
+    :attr:`~.release_gate.ReasonCode.NOT_REPORTED` for the file as a whole,
+    since that instance's values may be in it unsearched for (D-027). An
+    instance whose evidence is a :class:`HeldEvidence` is
     held for review, with its held ROI Names first among the reasons, unless
     the condition withholds it. Evidence that is neither a
     :class:`~.release_gate.Coverage` nor a :class:`HeldEvidence` raises
@@ -842,18 +872,28 @@ class ReleaseGate:
     def __call__(
         self, written: bytes, evidence: object, subject: tuple[object, ...]
     ) -> Release | HoldForReview | Sequestered:
-        coverages = tuple(_coverage(each) for each in (evidence, *subject))
+        given = tuple(each for each in subject if each is not NO_EVIDENCE)
+        coverages = tuple(_coverage(each) for each in (evidence, *given))
         condition = self._condition(Coverage.merge(*coverages[1:]), written)
         held = evidence.held if isinstance(evidence, HeldEvidence) else ()
         # Each value's omissions are its own instance's material, from the
         # transform, so the pooled search's are left out here.
         search = dataclasses.replace(condition.search, not_searched=(), unsearched=())
         qc = (SearchMaterial(search, written),)
-        if condition.decision is Decision.WITHHOLD:
-            return Sequestered(condition.reasons, qc=qc)
+        reasons = condition.reasons
+        if len(given) < len(subject):
+            # An instance of the subject gave no evidence, so its values may be
+            # in this file unsearched for (D-027).
+            reasons = (*reasons, _SUBJECT_NOT_REPORTED)
+        if condition.decision is Decision.WITHHOLD or len(given) < len(subject):
+            return Sequestered(reasons, qc=qc)
         if held or condition.decision is Decision.QC_REVIEW:
             return HoldForReview((*held, *condition.reasons), qc)
         return Release(qc)
+
+
+# An instance of the file's subject whose values could not be collected at all.
+_SUBJECT_NOT_REPORTED = ReleaseReason(Decision.WITHHOLD, ReasonCode.NOT_REPORTED)
 
 
 def _coverage(evidence: object) -> Coverage:

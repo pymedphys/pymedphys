@@ -104,6 +104,7 @@ from .reference_graph import Finding, FindingKind, build_reference_graph
 from .references import InstanceRecord, UnreadableSequence
 from .reasons import RunReason
 from .run_results import (
+    NO_EVIDENCE,
     Gate,
     HoldForReview,
     Release,
@@ -787,17 +788,18 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches
                 outcomes[candidate] = _outcome(
                     candidate, Status.SEQUESTERED, RunReason.CHANGED_DURING_RUN
                 )
+        subject = _WITHOUT_PATIENT_ID if record.patient is None else record.patient
         if data is None:
+            evidence[subject].append(NO_EVIDENCE)
             continue
         following.update((copy, position) for copy in group if copy > position)
 
         result = _guarded(transform, data, record)
         material[position] += _material(result)
-        subject = _WITHOUT_PATIENT_ID if record.patient is None else record.patient
-        if isinstance(result, (Transformed, Sequestered)) and (
-            result.evidence is not None
-        ):
-            evidence[subject].append(result.evidence)
+        given = (
+            result.evidence if isinstance(result, (Transformed, Sequestered)) else None
+        )
+        evidence[subject].append(NO_EVIDENCE if given is None else given)
         if position in first.sequestered:
             continue  # transformed only for its evidence
         if not _is_transformed(result):

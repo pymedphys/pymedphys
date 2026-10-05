@@ -25,7 +25,8 @@ from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import command, diagnostics, run
+from pymedphys._dicom.deidentify import command, diagnostics, run, run_report
+from pymedphys._dicom.deidentify.policy import compose_policy
 from pymedphys._dicom.deidentify.reference_graph import Finding, FindingKind
 
 from . import _synthetic_references as synthetic
@@ -54,7 +55,9 @@ def _short_tmp_path(tmp_path):
     shutil.rmtree(short, ignore_errors=True)
 
 
-def _call(tmp_path, transform=None, gate=None, source=None, release=None):
+def _call(  # pylint: disable = too-many-arguments, too-many-positional-arguments
+    tmp_path, transform=None, gate=None, source=None, release=None, reporter=None
+):
     stdout, stderr = io.StringIO(), io.StringIO()
     status = command.deidentify_directory(
         source or tmp_path / "source",
@@ -62,6 +65,7 @@ def _call(tmp_path, transform=None, gate=None, source=None, release=None):
         transform=transform or Transform(),
         gate=gate or Gate(),
         qc_destination=tmp_path / "qc",
+        reporter=reporter,
         stdout=stdout,
         stderr=stderr,
     )
@@ -79,6 +83,16 @@ def test_a_clean_run_exits_zero_and_summarises_by_status(tmp_path):
     assert "sequestered" not in out
     assert err == ""
     assert (tmp_path / "release").is_dir()
+
+
+def test_a_run_given_a_reporter_publishes_its_release_report(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    reporter = run_report.ReleaseReporter(compose_policy("basic"), vocabulary=None)
+
+    status, _, _ = _call(tmp_path, reporter=reporter)
+
+    assert status == command.EXIT_RELEASED
+    assert (tmp_path / "release" / run_report.RELEASE_REPORT).is_file()
 
 
 def test_a_withheld_input_exits_one_and_names_reasons_by_type(tmp_path):

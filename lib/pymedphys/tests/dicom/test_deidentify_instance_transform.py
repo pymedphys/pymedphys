@@ -33,6 +33,7 @@ from pymedphys._dicom.deidentify import (
     output_names,
     preservation,
     preserving_writer,
+    release_report,
     run,
 )
 from pymedphys._dicom.deidentify.edits import EditKind, InstanceEdits, edit_instance
@@ -322,10 +323,11 @@ def test_without_the_subjects_identity_the_pseudonyms_are_pending():
 
     result = _transform()(data, record)
 
+    # A reason that the release report gives, naming no path.
     assert isinstance(result, run.Sequestered)
-    assert PendingEdit(_top("(0010,0010)"), "Z") in result.reasons
-    assert all(isinstance(reason, PendingEdit) for reason in result.reasons)
+    assert result.reasons == (TransformReason.PENDING_EDIT,)
     assert isinstance(result.evidence, Coverage)
+    assert release_report.sequestration_reason(TransformReason.PENDING_EDIT)
 
 
 def test_the_walkers_sequestrations_are_its_reasons_and_keep_the_evidence():
@@ -339,6 +341,81 @@ def test_the_walkers_sequestrations_are_its_reasons_and_keep_the_evidence():
     assert reason.reason is SequesterReason.VR_NOT_IN_DICTIONARY
     assert isinstance(result.evidence, Coverage)
     assert "SENTINEL" not in repr(result)
+
+
+_MR_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.4"
+_SHARED = "QUIMBYZELDA7"
+
+
+def _plan_label_kept_in_a_dose(tmp_path, plan_class=None):
+    """A plan, at position 0, whose label its subject's dose keeps."""
+    plan = synthetic.rt_plan()
+    plan.RTPlanLabel = _SHARED
+    if plan_class is not None:
+        plan.SOPClassUID = plan_class
+    dose = synthetic.rt_dose()
+    dose.DoseUnits = _SHARED  # kept as it is (K)
+    return _source(tmp_path, [plan, dose])
+
+
+@pytest.mark.parametrize("cause", ["out-of-scope", "raises", "changed"])
+def test_a_sibling_that_gives_no_evidence_withholds_its_subject(
+    tmp_path, monkeypatch, cause
+):
+    # Without the plan's coverage, the dose's search could not look for the
+    # plan's label, which the dose keeps (D-027).
+    out_of_scope = _MR_IMAGE_STORAGE if cause == "out-of-scope" else None
+    discovery = _plan_label_kept_in_a_dose(tmp_path, out_of_scope)
+    transform = _transform()
+    if cause == "raises":
+        calls = []
+
+        def raising(data, record):
+            calls.append(record)
+            if len(calls) == 1:
+                raise RuntimeError("refused")
+            return _transform()(data, record)
+
+        transform = raising
+
+    elif cause == "changed":
+        second_read = run._second_read  # pylint: disable = protected-access
+
+        def changed(found, first, position):
+            return None if position == 0 else second_read(found, first, position)
+
+        monkeypatch.setattr(run, "_second_read", changed)
+
+    result = run.run(
+        discovery,
+        tmp_path / "release",
+        transform,
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+    )
+
+    dose = result.outcomes[1]
+    assert dose.status is run.Status.SEQUESTERED
+    assert ReleaseReason(Decision.WITHHOLD, ReasonCode.NOT_REPORTED) in dose.reasons
+
+
+def test_a_walker_sequestered_sibling_withholds_as_uncollected(tmp_path):
+    plan = _plan_with_sentinels()
+    plan[0x300A0002] = pydicom.DataElement(0x300A0002, "LO", SENTINEL_LABEL)
+
+    result = run.run(
+        _source(tmp_path, [plan, synthetic.rt_dose()]),
+        tmp_path / "release",
+        _transform(),
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+    )
+
+    dose = result.outcomes[1]
+    assert dose.status is run.Status.SEQUESTERED
+    codes = {reason.code for reason in dose.reasons}
+    assert ReasonCode.UNCOLLECTED in codes
+    assert ReasonCode.NOT_REPORTED not in codes
 
 
 def test_a_write_the_writer_refuses_is_sequestered_by_its_reason(monkeypatch):

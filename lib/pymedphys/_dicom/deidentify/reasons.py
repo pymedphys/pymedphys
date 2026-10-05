@@ -59,3 +59,6 @@ class TransformReason(enum.Enum):
     # the de-identification markers cannot be added to what the instance
     # already holds, such as a marker attribute read as UN (PS3.15 E.1.1)
     UNMARKABLE = "unmarkable"
+    # an edit still to come when the output is written, such as a pseudonym
+    # without the subject's identity
+    PENDING_EDIT = "pending-edit"

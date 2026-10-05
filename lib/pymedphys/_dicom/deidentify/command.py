@@ -61,7 +61,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import NoReturn, TextIO
 
-from . import run
+from . import run, run_report
 from .qc_pack import QcPackError
 from .diagnostics import RedactionCounts, redacted_diagnostics
 
@@ -82,6 +82,7 @@ def deidentify_directory(
     transform: run.Transform,
     gate: run.Gate,
     qc_destination: str | os.PathLike[str],
+    reporter: run_report.Reporter | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
@@ -102,6 +103,11 @@ def deidentify_directory(
     qc_destination : str or os.PathLike
         Where the run writes its confidential QC pack, as
         :func:`~pymedphys._dicom.deidentify.run.run` takes it.
+    reporter : Reporter, optional
+        The run's release report, as
+        :func:`~pymedphys._dicom.deidentify.run.run` takes it, such as an
+        :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`'s
+        ``reporter``. Without one, the release has no report.
     stdout, stderr : text file, optional
         Where to print the summary, and the reason the run failed or left
         its staging area behind. By default, :data:`sys.stdout` and
@@ -125,6 +131,7 @@ def deidentify_directory(
                 transform,
                 gate,
                 qc_destination=qc_destination,
+                reporter=reporter,
             )
         except (run.RunError, run.RunStopped, QcPackError) as error:
             # Each names only the caller's directories, counts, or the
