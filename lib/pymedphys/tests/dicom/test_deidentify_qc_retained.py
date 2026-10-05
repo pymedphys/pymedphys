@@ -18,16 +18,25 @@ Every file and value is synthetic. Values that must never appear in an error
 carry the text ``SENTINEL``.
 """
 
-from pymedphys._imports import pydicom, pytest
+from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import qc_retained
+from pymedphys._dicom.deidentify import qc_retained, source, walker
+from pymedphys._dicom.deidentify.edits import _Reader
+from pymedphys._dicom.deidentify.elements import ElementValue
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.qc_pack import QcPackError, retained_strings
 from pymedphys._dicom.deidentify.qc_retained import retained_paths, retained_text
 from pymedphys._dicom.deidentify.run_qc import RetainedText
 from pymedphys._dicom.deidentify.walker import ElementPlan, InstancePlan
 
-from .test_deidentify_walker import _path, _plan
+from .test_deidentify_file_layout import EXPLICIT, _file
+from .test_deidentify_walker import (
+    _path,
+    _plan,
+    _rt_plan,
+    _rt_plan_data_set,
+    _rules,
+)
 
 pytestmark = pytest.mark.pydicom
 
@@ -113,8 +122,8 @@ def test_retained_text_splits_multiple_values_and_skips_empty_ones():
     )
     values = {
         description: "QUILLON CLINIC CT",
-        types: pydicom.multival.MultiValue(str, ["ORIGINAL", "", "AXIAL"]),
-        station: None,
+        types: ("ORIGINAL", "", "AXIAL"),
+        station: (),
     }
 
     found = retained_text(plan, values)
@@ -126,35 +135,36 @@ def test_retained_text_splits_multiple_values_and_skips_empty_ones():
     ]
 
 
-def test_retained_text_gives_numbers_and_names_as_they_were_written():
-    number = _path("(0020,0013)")
-    thickness = _path("(0018,0050)")
-    operator = _path("(0008,1070)")
-    plan = _instance(
-        _element(number, vr="IS"),
-        _element(thickness, vr="DS"),
-        _element(operator, vr="PN"),
+def test_retained_text_reads_what_the_engine_read_from_the_source():
+    evidence = source.read_source(_file(EXPLICIT, _rt_plan_data_set()))
+    plan = walker.plan_instance(evidence, _rules(), _rt_plan())
+    reader = _Reader(evidence, plan)
+
+    found = retained_text(
+        plan, {path: reader.read(path) for path in retained_paths(plan)}
     )
-    values = {
-        number: pydicom.valuerep.IS("0007"),
-        thickness: pydicom.valuerep.DSfloat("2.50", auto_format=False),
-        operator: pydicom.valuerep.PersonName("ZEBEDEE^QUILLON"),
-    }
 
-    found = retained_text(plan, values)
-
-    assert [text.value for text in found] == ["0007", "2.50", "ZEBEDEE^QUILLON"]
-
-
-def test_retained_text_reads_a_walker_plan_with_decoded_values():
-    values = {
-        FIRST_BEAM_NUMBER: pydicom.valuerep.IS("1"),
-        SECOND_BEAM_NUMBER: pydicom.valuerep.IS("2"),
-    }
-
-    assert retained_text(_plan(), values) == (
+    # Beam Number is read as the text it was written as.
+    assert found == (
         RetainedText("1", FIRST_BEAM_NUMBER),
         RetainedText("2", SECOND_BEAM_NUMBER),
+    )
+
+
+def test_retained_text_keeps_every_group_of_a_person_name():
+    operator = _path("(0008,1070)")
+    value = ElementValue(operator, "PN", ("ZEBEDEE^QUILLON=ZB^QL=ZB^Q",))
+
+    found = retained_text(_instance(_element(operator, vr="PN")), {operator: value})
+
+    assert [text.value for text in found] == ["ZEBEDEE^QUILLON=ZB^QL=ZB^Q"]
+
+
+def test_an_empty_element_value_gives_no_retained_text():
+    path = _path("(0008,1030)")
+
+    assert not retained_text(
+        _instance(_element(path)), {path: ElementValue(path, "LO")}
     )
 
 
@@ -165,10 +175,19 @@ def test_a_retained_value_that_was_not_read_is_refused():
     assert "SENTINEL" not in str(caught.value)
 
 
+def test_a_retained_value_that_could_not_be_decoded_is_refused():
+    # The engine reads a kept value that it cannot decode as None, since
+    # keeping it needs no value, but the review does.
+    path = _path("(0008,1030)")
+
+    with pytest.raises(QcPackError, match=r"\(0008,1030\) was not decoded"):
+        retained_text(_instance(_element(path)), {path: None})
+
+
 @pytest.mark.parametrize(
     "value",
-    [b"SENTINEL", 7, 2.5, ["SENTINEL", b"SENTINEL"]],
-    ids=["bytes", "int", "float", "list holding bytes"],
+    [b"SENTINEL", 7, 2.5, ("SENTINEL", b"SENTINEL"), ["SENTINEL"]],
+    ids=["bytes", "int", "float", "tuple holding bytes", "list"],
 )
 def test_a_retained_value_that_is_not_decoded_text_is_refused(value):
     path = _path("(0008,1030)")

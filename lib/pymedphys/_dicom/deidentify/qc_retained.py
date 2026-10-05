@@ -38,8 +38,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from pymedphys._imports import pydicom
-
+from .elements import ElementValue
 from .file_layout import ElementPath
 from .qc_pack import QcPackError
 from .run_qc import RetainedText
@@ -107,9 +106,10 @@ def retained_text(
     ----------
     plan : ~pymedphys._dicom.deidentify.walker.InstancePlan
     values : mapping of ElementPath to object
-        The decoded value of every path of :func:`retained_paths`: a string,
-        a person name, or a sequence of them for a multi-valued element, or
-        ``None`` for an empty one.
+        The decoded value of every path of :func:`retained_paths`, as the
+        engine reads it: an :class:`~.elements.ElementValue`, or its
+        ``values``, a tuple of strings that is empty for an empty element,
+        or a single string.
 
     Returns
     -------
@@ -120,8 +120,9 @@ def retained_text(
     Raises
     ------
     QcPackError
-        If a path's value is missing, so that a retained string would go
-        unreviewed, or is not text. The error names the path, never a value.
+        If a path's value is missing or ``None``, as for a value that could
+        not be decoded, so that a retained string would go unreviewed, or if
+        it is not text. The error names the path, never a value.
     """
     found: list[RetainedText] = []
     for path in retained_paths(plan):
@@ -135,20 +136,11 @@ def retained_text(
 
 def _values(value: object, path: ElementPath) -> tuple[str, ...]:
     if value is None:
-        return ()
+        raise QcPackError(f"the retained value of {path} was not decoded for review")
+    if isinstance(value, ElementValue):
+        value = value.values
     if isinstance(value, str):
         return (value,)
-    if isinstance(value, (list, tuple, pydicom.multival.MultiValue)):
-        return tuple(text for item in value for text in _values(item, path))
-    if isinstance(
-        value,
-        (
-            pydicom.valuerep.PersonName,
-            pydicom.valuerep.IS,
-            pydicom.valuerep.DSfloat,
-            pydicom.valuerep.DSdecimal,
-        ),
-    ):
-        # Each gives the text it was read from by str().
-        return (str(value),)
+    if isinstance(value, tuple) and all(isinstance(item, str) for item in value):
+        return value
     raise QcPackError(f"the retained value of {path} is not decoded text")
