@@ -154,9 +154,16 @@ Only the jobs that start a run (`changes` and `pre-commit` in `ci.yml`,
 every other job needs `changes`, so it is skipped with it. The selector and
 the summaries' conditional checks are unchanged. GitHub counts a skipped
 required check as passing, so a draft shows `CI Summary` and `Security Summary`
-as skipped rather than pending. This cannot let untested code merge: a draft
-can neither merge nor enter the merge queue, and the merge queue runs both
-workflows in full before anything reaches `main`.
+as skipped rather than pending. When a draft is marked ready without a new
+push, those skipped summaries stay the latest checks of their names on that
+commit until the new run's summary jobs start, which is after every check they
+need has finished. Until then the pull request can look as if its required
+checks passed, so read the run started by "ready for review" rather than the
+summary names, and do not request review or enable auto-merge before it
+finishes. This cannot let untested code merge: a draft can neither merge nor
+enter the merge queue, and the merge queue runs both workflows in full before
+anything reaches `main`. The cost of entering the queue early is a wasted queue
+build.
 
 #### `pre-commit.yml`
 Runs pre-commit hooks for code formatting and basic checks.
