@@ -76,7 +76,7 @@ from .preservation import PreservationReason
 from .preserving_writer import WriteReason
 from .reasons import RunReason, TransformReason
 from .reference_graph import FindingKind
-from .release_gate import ReasonCode, ReleaseReason
+from .release_gate import Decision, ReasonCode, ReleaseReason
 from .roi_names import Reason as RoiNameReason
 from .residuals import NotSearched, Omission, Unsearched, UnsearchedReason
 from .runtime import RuntimeEnvironment, runtime_environment
@@ -134,9 +134,6 @@ _SEQUESTERING = {
     "verifier": frozenset(r.value for r in PreservationReason),
     "release": frozenset(r.value for r in ReasonCode),
 }
-# The stages whose reasons may name an attribute, and the one of them that
-# may also name the action and VR.
-_WITH_ATTRIBUTE = frozenset({"walker", "release"})
 # The reason codes of each stage that holds an instance for review.
 _HOLDING = {
     "roi-names": frozenset(r.value for r in RoiNameReason),
@@ -429,7 +426,8 @@ def held_for_review(
     """Count the instances held for review by stage and reason (D-009).
 
     ``instances`` holds, for each held instance, its reasons: a ROI Name
-    that descriptor cleaning held, or the release gate's reason. An instance
+    that descriptor cleaning held, or a release gate's reason that requires
+    QC review. An instance
     counts once for each stage and code, however many of its names or
     attributes have it. The counts are in the order of their stages and
     codes.
@@ -437,7 +435,8 @@ def held_for_review(
     Raises
     ------
     TypeError
-        For a reason of another type.
+        For a reason of another type, or a release gate's reason that does
+        not require QC review.
     """
     counts: collections.Counter[tuple[str, str]] = collections.Counter()
     for reasons in instances:
@@ -447,10 +446,17 @@ def held_for_review(
         for reason in reasons:
             if isinstance(reason, HeldRoiName):
                 codes.add(("roi-names", reason.reason.value))
-            elif isinstance(reason, ReleaseReason):
+            elif (
+                isinstance(reason, ReleaseReason)
+                and reason.decision is Decision.QC_REVIEW
+                and isinstance(reason.code, ReasonCode)
+            ):
                 codes.add(("release", reason.code.value))
             else:
-                raise TypeError("a held reason must be a HeldRoiName or ReleaseReason")
+                raise TypeError(
+                    "a held reason must be a HeldRoiName or a release reason "
+                    "that requires QC review"
+                )
         counts.update(codes)
     return tuple(
         HeldForReview(stage, code, count)
@@ -647,7 +653,7 @@ def _reason_entry(reason: object) -> dict:
             "code": code,
             "attribute": _attribute("sequestered attribute", reason.attribute),
         }
-    if stage not in _WITH_ATTRIBUTE:
+    if stage != "walker":
         if (reason.attribute, reason.action, reason.vr) != (None, None, None):
             raise _refuse("sequestered attribute", "is given for another stage")
         return {"stage": stage, "code": code}

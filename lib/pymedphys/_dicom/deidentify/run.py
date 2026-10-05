@@ -408,7 +408,9 @@ def run(
         as :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT` at
         the root of the release, such as a
         :class:`~pymedphys._dicom.deidentify.run_report.ReleaseReporter`.
-        Without one, no report is written.
+        Without one, no report is written. A withheld input whose reasons
+        the reporter does not admit is sequestered for
+        :attr:`RunReason.INVALID_REASON` instead.
 
     Returns
     -------
@@ -481,6 +483,8 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
     removed = False
     try:
         outcomes, material = _stage_and_gate(discovery, first, staging, transform, gate)
+        if reporter is not None:
+            outcomes = _admitted(outcomes, reporter)
         outcomes = _labelled(outcomes)
         pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
         # Built before the pack is written, so that a report that cannot be
@@ -520,6 +524,22 @@ def _remove_empty_directories(root: Path) -> None:
         # Deepest first, so a directory that held only empty ones is empty.
         if Path(directory) != root and not os.listdir(directory):
             os.rmdir(directory)
+
+
+def _admitted(
+    outcomes: tuple[Outcome, ...], reporter: run_report.Reporter
+) -> tuple[Outcome, ...]:
+    """Sequester each withheld outcome whose reasons the reporter cannot give.
+
+    So one input's reasons set aside that input, never the release.
+    """
+    return tuple(
+        _outcome(outcome.position, Status.SEQUESTERED, RunReason.INVALID_REASON)
+        if outcome.status in (Status.SEQUESTERED, Status.HELD_FOR_REVIEW)
+        and not reporter.admits(outcome.status.value, outcome.reasons)
+        else outcome
+        for outcome in outcomes
+    )
 
 
 def _labelled(outcomes: tuple[Outcome, ...]) -> tuple[Outcome, ...]:

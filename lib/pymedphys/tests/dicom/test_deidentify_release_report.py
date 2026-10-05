@@ -831,7 +831,11 @@ def test_the_codes_of_each_stage_are_distinct():
         values = [each.value for enum in enums for each in enum]
         assert len(values) == len(set(values)), stage
         codes = release_report._SEQUESTERING  # pylint: disable = protected-access
-        assert codes[stage] <= set(values), stage
+        # Every member gives a code, except the run's that refuse an input.
+        if stage == "run":
+            assert codes[stage] == set(values) - {each.value for each in _REFUSING}
+        else:
+            assert codes[stage] == set(values), stage
 
 
 def test_each_drop_reason_is_a_reason_that_coverage_counts():
@@ -915,7 +919,19 @@ def test_held_instances_are_counted_by_stage_and_reason_each_once(basic):
 
 
 @pytest.mark.parametrize(
-    "instances", [[_held_name()], [("SENTINEL",)]], ids=["not-by-instance", "unknown"]
+    "instances",
+    [
+        [_held_name()],
+        [("SENTINEL",)],
+        [
+            (
+                release_gate.ReleaseReason(
+                    release_gate.Decision.WITHHOLD, release_gate.ReasonCode.UNCOLLECTED
+                ),
+            )
+        ],
+    ],
+    ids=["not-by-instance", "unknown", "withheld"],
 )
 def test_held_reasons_must_be_given_by_instance_and_known(instances):
     with pytest.raises(TypeError) as raised:

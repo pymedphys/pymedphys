@@ -37,6 +37,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
 )
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.policy import compose_policy
+from pymedphys._dicom.deidentify.reasons import RunReason, TransformReason
 from pymedphys._dicom.deidentify.reference_graph import FindingKind
 from pymedphys._dicom.deidentify.residuals import (
     Form,
@@ -49,6 +50,7 @@ from pymedphys._dicom.deidentify.residuals import (
 from pymedphys._dicom.deidentify.run_report import (
     HELD_FOR_REVIEW,
     RELEASE_REPORT,
+    SEQUESTERED,
     ReleaseReporter,
     coverage_records,
     held_instances,
@@ -119,23 +121,79 @@ def test_the_report_names_each_sequestered_input_by_its_label(tmp_path):
     )
 
 
+class _FailingReporter:
+    def admits(self, status, reasons):  # pylint: disable = unused-argument
+        return True
+
+    def __call__(self, outcomes, material):
+        raise ValueError("no report")
+
+
 @pytest.mark.pydicom
 def test_a_report_that_cannot_be_written_publishes_nothing(tmp_path):
-    datasets = synthetic.collection()[:1]
-    _write(tmp_path / "source", datasets)
-    # No stage of the report gives the stand-in gate's reason.
-    gate = Gate(
-        {
-            b"OUTPUT " + datasets[0].SOPInstanceUID.encode(): run.Sequestered(
-                (GateReason.TEXT_FINDING,)
-            )
-        }
-    )
+    _write(tmp_path / "source", synthetic.collection()[:1])
 
-    with pytest.raises((TypeError, ValueError)):
-        _run(tmp_path, Transform(), gate, _reporter())
+    with pytest.raises(ValueError, match="no report"):
+        _run(tmp_path, Transform(), Gate(), _FailingReporter())
 
     assert _listing(tmp_path) == ["source"]
+
+
+_WITHHOLD = release_gate.ReleaseReason(
+    release_gate.Decision.WITHHOLD, release_gate.ReasonCode.UNCOLLECTED
+)
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "verdict",
+    [
+        # No stage of the report gives the stand-in gate's reason.
+        run.Sequestered((GateReason.TEXT_FINDING,)),
+        run.HoldForReview((GateReason.TEXT_FINDING,)),
+        # A held instance's gate reasons require QC review, never withholding.
+        run.HoldForReview((_WITHHOLD,)),
+        run.HoldForReview((TransformReason.UNMARKABLE,)),
+    ],
+    ids=["sequestered", "held", "held-withheld", "held-for-a-transform-reason"],
+)
+def test_an_input_whose_reasons_cannot_be_reported_is_sequestered_alone(
+    tmp_path, verdict
+):
+    datasets = synthetic.collection()[:2]
+    _write(tmp_path / "source", datasets)
+    gate = Gate({b"OUTPUT " + datasets[0].SOPInstanceUID.encode(): verdict})
+
+    result = _run(tmp_path, Transform(), gate, _reporter())
+
+    withheld = [o for o in result.outcomes if o.status is not run.Status.RELEASED]
+    assert [(o.status, o.reasons) for o in withheld] == [
+        (run.Status.SEQUESTERED, (RunReason.INVALID_REASON,))
+    ]
+    document = json.loads((tmp_path / "release" / RELEASE_REPORT).read_text())
+    assert document["sequestered"] == [
+        {
+            "label": "S-0001",
+            "reasons": [{"stage": "run", "code": "invalid-reason"}],
+        }
+    ]
+    assert document["held_for_review"] == []
+
+
+def test_the_reporter_admits_only_reasons_it_can_report():
+    reporter = _reporter()
+    review = release_gate.ReleaseReason(
+        release_gate.Decision.QC_REVIEW, release_gate.ReasonCode.UNCOLLECTED
+    )
+
+    assert reporter.admits(SEQUESTERED, (_WITHHOLD, FindingKind.CONFLICTING_INSTANCE))
+    assert reporter.admits(HELD_FOR_REVIEW, (review,))
+    assert not reporter.admits(HELD_FOR_REVIEW, (_WITHHOLD,))
+    assert not reporter.admits(SEQUESTERED, (RunReason.SYMBOLIC_LINK,))
+    assert not reporter.admits(SEQUESTERED, ())
+    assert not reporter.admits(SEQUESTERED, [_WITHHOLD])
+    assert not reporter.admits("released", (_WITHHOLD,))
+    assert run.Status.SEQUESTERED.value == SEQUESTERED
 
 
 @pytest.mark.pydicom

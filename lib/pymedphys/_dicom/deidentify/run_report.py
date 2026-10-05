@@ -21,9 +21,13 @@ before it publishes it. :class:`ReleaseReporter` builds the report of
 :mod:`~pymedphys._dicom.deidentify.release_report` from them: each
 sequestered input by its label and reasons (D-026), how many inputs were
 held for review by reason (D-009), and how many source values each gated
-file's residual search did not search, by attribute and reason (D-027). The report holds no source value or path (D-016), and
+file's residual search did not search, by attribute and reason (D-027). The
+report holds no source value or path (D-016), and
 :func:`~pymedphys._dicom.deidentify.release_report.to_json` refuses any
-field that could hold one.
+field that could hold one. Before the run labels its outcomes, it asks the
+reporter whether it :meth:`~Reporter.admits` each withheld input's reasons,
+and sequesters one whose reasons it cannot report for that alone, so that
+one input's reasons never stop the release.
 """
 
 from __future__ import annotations
@@ -41,13 +45,21 @@ from .run_qc import Dropped, SearchMaterial
 # The release report's name at the root of a release. Output names are
 # upper case, so it cannot be one.
 RELEASE_REPORT = "release-report.json"
-# The status of an outcome held for review, which this module reads without
+# The statuses of withheld outcomes, which this module reads without
 # importing the run.
 HELD_FOR_REVIEW = "held-for-review"
+SEQUESTERED = "sequestered"
 
 
 class Reporter(Protocol):
     """Return a run's release report as text, from its outcomes and material."""
+
+    def admits(self, status: str, reasons: tuple[object, ...]) -> bool:
+        """Whether the report can give a withheld outcome with these reasons.
+
+        ``status`` is the value of the outcome's status, such as
+        ``"sequestered"``.
+        """
 
     def __call__(
         self,
@@ -78,6 +90,10 @@ class ReleaseReporter:
 
     def __repr__(self) -> str:
         return "ReleaseReporter()"
+
+    def admits(self, status: str, reasons: tuple[object, ...]) -> bool:
+        """Whether the report can give a withheld outcome with these reasons."""
+        return reportable(status, reasons)
 
     def __call__(
         self,
@@ -119,6 +135,28 @@ def sequestered_instances(
         for outcome in outcomes
         if getattr(outcome, "label") is not None
     )
+
+
+def reportable(status: str, reasons: tuple[object, ...]) -> bool:
+    """Whether the release report can give a withheld outcome's reasons.
+
+    A sequestered outcome's reasons must each be one that a stage of the
+    report gives; a held outcome's, a ROI Name that descriptor cleaning held
+    or a release gate's reason that requires QC review.
+    """
+    if not isinstance(reasons, tuple) or not reasons:
+        return False
+    try:
+        if status == SEQUESTERED:
+            for reason in reasons:
+                release_report.sequestration_reason(reason)  # type: ignore[arg-type]
+        elif status == HELD_FOR_REVIEW:
+            release_report.held_for_review((reasons,))  # type: ignore[arg-type]
+        else:
+            return False
+    except (TypeError, ValueError):
+        return False
+    return True
 
 
 def held_instances(
