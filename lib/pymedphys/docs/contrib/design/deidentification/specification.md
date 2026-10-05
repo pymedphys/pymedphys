@@ -82,4 +82,3 @@ The engine will live in `lib/pymedphys/_dicom/deidentify/`, with its public API 
 - `public-release` omits Retain Device Identity, because device serial numbers and machine names can identify an institution and, with dates, individual treatments.
 - **Open question.** Whether the naming principle above should also rename `tps-import` and `public-release`, which are named after their purposes rather than after a profile, is not yet decided.
 - Profile conformance and readiness to release are reported separately. `basic` and `basic-clean-descriptors` output is not thereby ready to share. `tps-import` output is for non-clinical databases only. `public-release` output also needs a statistical assessment, pixel and face review, and a human QC attestation (D-016 and D-017).
-
