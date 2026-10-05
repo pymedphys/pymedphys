@@ -50,6 +50,7 @@ from pymedphys._nomenclature import tg263
 from .edits import Edit, EditKind, InstanceEdits
 from .file_layout import ElementPath
 from .policy import Policy, compose_custom_policy, compose_policy
+from .qc_pack import RoiNameOutcome
 from .reviewed_roi_names import (
     CleanedRoiName,
     Outcome,
@@ -58,6 +59,7 @@ from .reviewed_roi_names import (
     clean_roi_names,
 )
 from .roi_names import Reason, RoiNameVocabulary
+from .run_qc import RetainedText, RoiNameMaterial
 
 CLEAN_DESCRIPTORS = "clean_descriptors"
 _ROI_SEQUENCE = "(3006,0020)"
@@ -152,12 +154,20 @@ class CleanedDescriptors:
     retained : frozenset of ElementPath
         The ROI Names written with a value, which the residual search leaves
         out.
+    qc : tuple
+        The QC pack's material of the instance's ROI Names: what was written
+        for each, as :class:`~.run_qc.RoiNameMaterial`, and each kept source
+        name as :class:`~.run_qc.RetainedText`, in file order. Left out of
+        the ``repr``, since it holds source names.
     """
 
     edits: InstanceEdits
     held: tuple[HeldRoiName, ...]
     satisfied: bool
     retained: frozenset[ElementPath]
+    qc: tuple[RoiNameMaterial | RetainedText, ...] = dataclasses.field(
+        default=(), repr=False
+    )
 
 
 class DescriptorsRefused(Exception):
@@ -223,10 +233,12 @@ def clean_descriptors(
     settled: dict[ElementPath, Edit] = {}
     held: list[HeldRoiName] = []
     retained: set[ElementPath] = set()
+    qc: list[RoiNameMaterial | RetainedText] = []
     satisfied = not others
     if names:
-        results = _cleaned_names(edits, names, cleaning, vocabulary, queue)
-        for edit, result in zip(names, results):
+        texts, results = _cleaned_names(edits, names, cleaning, vocabulary, queue)
+        for edit, text, result in zip(names, texts, results):
+            qc.extend(_material(edit.path, text, result))
             if result.outcome is Outcome.HELD:
                 assert result.held_because is not None
                 held.append(HeldRoiName(edit.path, result.held_because))
@@ -249,7 +261,24 @@ def clean_descriptors(
         tuple(held),
         satisfied,
         frozenset(retained),
+        tuple(qc),
     )
+
+
+def _material(
+    path: ElementPath, source: str, result: CleanedRoiName
+) -> tuple[RoiNameMaterial | RetainedText, ...]:
+    """Return the QC pack's material of one cleaned ROI Name."""
+    material = RoiNameMaterial(
+        path,
+        source,
+        RoiNameOutcome(result.outcome.value),
+        result.held_because,
+        result.value,
+    )
+    if result.outcome is Outcome.KEPT and result.value:
+        return (material, RetainedText(result.value, path))
+    return (material,)
 
 
 def _is_roi_name(path: ElementPath) -> bool:
@@ -266,7 +295,7 @@ def _cleaned_names(
     cleaning: DescriptorCleaning,
     vocabulary: RoiNameVocabulary | None,
     queue: ReviewQueue,
-) -> tuple[CleanedRoiName, ...]:
+) -> tuple[list[str], tuple[CleanedRoiName, ...]]:
     undecoded = {missing.path for missing in edits.not_collected}
     if any(edit.path in undecoded for edit in names):
         raise DescriptorsRefused(DescriptorReason.UNDECODABLE_ROI_NAME)
@@ -291,7 +320,7 @@ def _cleaned_names(
         empty_held=cleaning.empty_held,
     )
     queue.add(texts, results)
-    return results
+    return texts, results
 
 
 def _fallen_back(

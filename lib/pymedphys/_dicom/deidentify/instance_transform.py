@@ -622,6 +622,7 @@ class InstanceTransform:
             return Sequestered(edits.sequestrations, evidence, dropped_of(edits))
         satisfied = False
         retained: frozenset[ElementPath] = frozenset()
+        names: tuple[object, ...] = ()
         if self._cleaning is not None and self._fallback is not None:
             fallback = self._fallback
 
@@ -645,10 +646,11 @@ class InstanceTransform:
                 return Sequestered((refused.reason,), evidence, dropped_of(edits))
             edits, satisfied = cleaned.edits, cleaned.satisfied
             retained = frozenset(cleaned.retained)
+            names = cleaned.qc
             evidence = coverage_of(plan, edits, retained)
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
-        qc = dropped_of(edits, retained)
+        qc = (*dropped_of(edits, retained), *names)
         try:
             writing = with_markers(
                 writer_plan(plan, edits, codecs),

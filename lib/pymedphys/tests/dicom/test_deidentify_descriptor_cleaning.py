@@ -183,6 +183,16 @@ def test_retained_roi_names_are_left_out_of_the_residual_search(tmp_path):
         and drop["source"].endswith("(3006,0026)")
         for drop in drops
     )
+    pack = json.loads(result.qc_pack.read_text(encoding="utf-8"))
+    (name,) = pack["roi_names"]
+    assert (name["position"], name["source"], name["outcome"]) == (
+        3,
+        "PTV_CUSTOM",
+        "kept",
+    )
+    (kept,) = pack["retained_strings"]
+    assert kept["value"] == "PTV_CUSTOM"
+    assert [place["position"] for place in kept["places"]] == [3]
 
 
 def test_a_roi_name_without_a_decision_holds_the_instance_for_review():
@@ -236,6 +246,15 @@ def test_a_run_holds_the_structure_set_and_releases_the_rest(tmp_path):
         + [run.Status.HELD_FOR_REVIEW]
         + [run.Status.RELEASED] * 2
     )
+    pack = json.loads(result.qc_pack.read_text(encoding="utf-8"))
+    (name,) = pack["roi_names"]
+    assert (name["source"], name["outcome"], name["written"]) == (
+        "SURGEONS ROI",
+        "held",
+        None,
+    )
+    assert name["held_because"]
+    assert pack["instances"][3]["disposition"] == "held-for-review"
 
 
 def test_held_names_are_emptied_where_the_user_chooses_so():
