@@ -55,6 +55,8 @@ from .residuals import _PIXEL_DATA
 from .values import CHECKED_VRS
 from .walker import REVIEWED_DUMMY_SEQUENCES
 
+TEMPORAL_MODIFIED = "(0028,0303)"  # Longitudinal Temporal Information Modified
+
 # The name of each codec in which the residual search encodes every form.
 CODEC_NAMES: Mapping[str, str] = types.MappingProxyType(
     {"utf-8": "UTF-8", "latin-1": "ISO 8859-1", "utf-16-le": "UTF-16LE"}
@@ -126,7 +128,8 @@ UNSEARCHED_REASONS: Mapping[residuals.UnsearchedReason, str] = types.MappingProx
             "the policy retains the value, so it is dropped from the search"
         ),
         residuals.UnsearchedReason.WRITTEN_CONSTANT: (
-            "the value exactly equals a constant that the engine always writes"
+            "the value, or one of its values, equals, as D compares values, a "
+            "constant that the engine writes whatever the source held"
         ),
         residuals.UnsearchedReason.UNDECODABLE: (
             "the value could not be decoded to collect it, and is removed or replaced"
@@ -299,7 +302,7 @@ def dates_and_times(
         "writes a zero-length value, or D's constant where the attribute is "
         "Type 1 or 1C at its place (D-020). "
         f"{named(timezone)} takes {code(actions[timezone])}, and "
-        f"Longitudinal Temporal Information Modified (0028,0303) is "
+        f"{named(TEMPORAL_MODIFIED)} is "
         f"`{statement.markers.temporal}`, as Attributes inserted describes.",
     ]
 
@@ -315,7 +318,7 @@ def residual_search(named: Callable[[str], str]) -> list[str]:
         "The engine collects each source value that it removes or replaces, "
         "at every level of nesting and with the descendants of a removed "
         "sequence, for the residual search, which searches every byte of a "
-        "written file for them: the "
+        "written file for them, once the engine applies it to each run: the "
         "preamble, the File Meta Information, every element, Data Set "
         "Trailing Padding, and the bytes after the last readable element "
         "(D-027). Values of VR "
@@ -324,7 +327,8 @@ def residual_search(named: Callable[[str], str]) -> list[str]:
         "in several forms of each, such as each name of a person name and "
         "each common spelling of a date, and a longer value by its first "
         f"{residuals.MAX_CHARACTERS} characters. In {pixel_data} of the "
-        f"top-level data set, where native, and in values of VR {numbers}, "
+        f"top-level data set, where native, and where a written file holds "
+        f"values of VR {numbers}, "
         f"only forms of at least {residuals.MIN_BYTES_IN_NUMBERS} bytes that "
         "are not UTF-16LE are searched, since shorter forms match sample "
         "values by chance.",
@@ -357,14 +361,15 @@ def release_report() -> list[str]:
         f"output name, by a label for the run, from `{first}` to `S-n` for `n` "
         "sequestered instances, assigned in an order drawn at random, so that "
         "a label says nothing of the instance or its place in the run "
-        "(D-026). With each label, the report gives each reason that the "
-        "instance was sequestered, as the stage that sequestered it and the "
-        "stage's reason code:",
+        "(D-026). With each label, the report gives each reason that one of "
+        "these stages sequestered the instance, as the stage and its reason "
+        "code:",
         "",
         *stages,
         "",
         "A reason from the walker also gives the attribute's tags from the "
-        "outermost sequence, without items, the action, and the VR.",
+        "outermost sequence, without items, the action, and the VR where it "
+        "is known.",
         "",
         "The report counts the source values that the residual search did "
         "not search, in full or in part, by attribute, as tags from the "
@@ -381,7 +386,8 @@ def release_report() -> list[str]:
         "The report holds no source value or original path: each field is a "
         "digest, a version, a known edition, preset, or option, a file name "
         "or path within the engine's package, one of the run's labels, a path "
-        "of tags, a code that the engine defines, or a positive count, and "
+        "of tags, a code that the engine defines, a positive count, true or "
+        "false, the report's or the method digest's format label, or none, and "
         "the report refuses any other. Only the confidential QC pack maps "
         "labels to source instances and lists each value not searched by "
         "instance and place (D-016).",

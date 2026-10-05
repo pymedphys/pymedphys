@@ -14,8 +14,8 @@
 
 """The values, dates, residual search, and release report that the statement describes."""
 
-import functools
 import collections
+import functools
 
 from pymedphys._imports import pytest
 
@@ -189,8 +189,12 @@ def test_the_residual_search_coverage_is_described(preset):
     assert f"first {residuals.MAX_CHARACTERS} characters" in section
     for codec in residuals.CODECS:
         assert conformance_values.CODEC_NAMES[codec] in section
-    for vr in residuals._KINDS:  # pylint: disable = protected-access
-        assert vr in section
+    searched = sorted(residuals._KINDS)  # pylint: disable = protected-access
+    assert f"Values of VR {conformance_values.join(searched)} are searched" in section
+    pixel_data = residuals._PIXEL_DATA  # pylint: disable = protected-access
+    assert conformance_values.join(_named(tag) for tag in sorted(pixel_data)) in section
+    numbers = residuals._NUMBERS  # pylint: disable = protected-access
+    assert f"values of VR {conformance_values.join(sorted(numbers), 'or')}," in section
 
 
 def test_every_reason_a_value_is_not_searched_is_described():
@@ -199,6 +203,26 @@ def test_every_reason_a_value_is_not_searched_is_described():
     section = _section("basic", "Residual search")
     for reason in residuals.Omission:
         assert conformance_values.OMISSIONS[reason] in section
+
+
+def test_a_value_equal_to_a_written_constant_as_d_compares_is_not_searched():
+    # D compares an LO value without regard to case or padding, and the
+    # search drops only the values of a multi-valued attribute that match.
+    source = ElementPath((), "(0008,1040)")
+    assert ("LO", "DEIDENTIFIED") in residuals.written_constants()
+    whole = residuals.SourceValue(source, "LO", "deidentified ")
+    result = residuals.find_residuals(b"deidentified", [whole])
+    assert not result.findings
+    (unsearched,) = result.unsearched
+    assert unsearched.reason is residuals.UnsearchedReason.WRITTEN_CONSTANT
+    part = residuals.SourceValue(source, "LO", "QUILLON\\deidentified")
+    result = residuals.find_residuals(b"QUILLON", [part])
+    assert result.findings
+    (unsearched,) = result.unsearched
+    assert unsearched.reason is residuals.UnsearchedReason.WRITTEN_CONSTANT
+    described = conformance_values.UNSEARCHED_REASONS[unsearched.reason]
+    assert "or one of its values" in described
+    assert "as D compares values" in described
 
 
 def test_each_vr_described_as_not_searched_is_not_searched():
@@ -279,6 +303,8 @@ def test_what_remains_of_the_release_report_is_pending(preset):
     for decision in ("D-016", "D-026", "D-027"):
         assert decision in pending
     assert "QC pack" in pending
+    assert "search each written file" in pending
+    assert "the run itself sequesters" in pending
     assert "staging area" in pending
     # How the report names a sequestered instance is now described.
     assert "how it names" not in pending
