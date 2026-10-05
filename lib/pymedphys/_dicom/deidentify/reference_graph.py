@@ -122,8 +122,8 @@ class FindingKind(enum.Enum):
     that it compares, which is reported as missing. Its ``attribute`` is the
     tag of the UID that its inputs share: SOP Instance UID for duplicates and
     conflicts, Series Instance UID for a series, and Study Instance UID for a
-    study. What the pipeline does with an input that lacks one of these UIDs
-    is not yet decided.
+    study. The run (:mod:`~pymedphys._dicom.deidentify.run`) sequesters an
+    input that lacks one of these UIDs.
     """
 
     MISSING_IDENTIFIER = "missing-identifier"
