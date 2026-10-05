@@ -253,6 +253,13 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- The Developer guide now connects setup, a first pull request, change recipes,
+  documentation authoring, architecture, tests and scientific verification.
+  A maintainer handbook separates review, CI, publishing, dependency and release
+  tasks. Shared human procedures replace duplicated teaching in agent instructions;
+  contributor policy and agent-specific mandates retain their authority.
+  ([#2248](https://github.com/pymedphys/pymedphys/pull/2248))
+
 - Corrected the documentation dependency-group terminology, the weekly dependency update branch name and the current status of the historical coordinate expected failures. [PR #2246](https://github.com/pymedphys/pymedphys/pull/2246)
 
 - **[Contributor facing only]** CI and security workflows now validate

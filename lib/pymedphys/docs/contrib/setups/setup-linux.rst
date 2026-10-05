@@ -1,53 +1,43 @@
-Linux Setup
-===========
+Linux prerequisites
+===================
+
+This page prepares a Linux workstation for the current source checkout.
+When Git and uv are available, continue with the shared
+:doc:`development environment procedure <../start/setup>`.
 
 Install prerequisites
-=====================
+---------------------
 
 Install `Git <https://git-scm.com/downloads>`_ and
-`uv <https://docs.astral.sh/uv/getting-started/installation/>`_.
-On Linux, the standalone uv installer is:
+`uv <https://docs.astral.sh/uv/getting-started/installation/>`_ through a
+method allowed by your organisation. The standalone uv installer is:
 
 .. code-block:: bash
 
     curl -LsSf https://astral.sh/uv/install.sh | sh
 
-Open a new terminal if ``uv`` is not yet on your ``PATH``.
+Open a new terminal if ``uv`` is not on your ``PATH``. Run ``git --version``
+and ``uv --version``; each should print its installed version.
 
-Create the development environment
-===================================
+Optional tools
+--------------
 
-Run these commands from the directory where you keep your projects. If you
-will contribute through a fork, substitute your fork's clone URL.
+Install `Pandoc <https://pandoc.org/installing.html>`_ when you need notebook
+or document conversion, for example ``sudo apt-get install pandoc`` on
+Debian/Ubuntu. It is not required for the normal HTML documentation build.
+An editor such as `Visual Studio Code <https://code.visualstudio.com/>`_
+is optional.
 
-.. code-block:: bash
+The shared setup guide owns the clone, locked environment, hook installation,
+and success checks. Use :doc:`the Jupyter kernel instructions
+<../tips/add-jupyter-kernel>` when working with notebooks.
 
-    git clone https://github.com/pymedphys/pymedphys.git
-    cd pymedphys
-    uv python install 3.14
-    uv sync --python 3.14 --locked
-    uv run pre-commit install
+.. raw:: html
 
-The current source supports Python 3.11, 3.12, 3.13, and 3.14. Python 3.14 matches
-the quick CI run; Python 3.11 must be 3.11.4 or later. uv can install
-Python for you, so a separate Python or pipx installation is not required.
+    <span id="linux-setup"></span>
+    <span id="create-the-development-environment"></span>
+    <span id="next-steps"></span>
 
-``uv sync`` creates the repository's ``.venv`` and installs an editable copy of
-PyMedPhys with the contributor dependencies. Run project commands with
-``uv run`` from the repository root.
-
-Install `Pandoc <https://pandoc.org/installing.html>`_ if needed for notebook
-or document conversion (for example, ``sudo apt-get install pandoc`` on
-Debian/Ubuntu). The HTML documentation build uses the Python dependencies
-installed above.
-
-
-Next steps
-==========
-
-* Run ``uv run pymedphys dev tests -m "not slow"``.
-* Follow the :doc:`documentation guide <../info/docs-guide>` to build the site.
-* Read the :doc:`workflow guide <../info/workflows>` before opening a PR.
-* For notebooks, :doc:`register the project kernel <../tips/add-jupyter-kernel>`.
-* An editor such as `Visual Studio Code <https://code.visualstudio.com/>`_ is
-  optional.
+The shared :doc:`checkout setup <../start/setup>` replaces the former
+platform-specific environment instructions. Continue with
+:doc:`your first contribution <../start/first-contribution>`.

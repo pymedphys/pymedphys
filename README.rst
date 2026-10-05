@@ -103,17 +103,17 @@ For a fuller comparison, read `Choose your path`_.
 Documentation
 =============
 
-The PyMedPhys documentation has two overarching guides:
+Choose documentation by the task you want to complete:
 
-1. **The Users Guide**: where you can `get started`_ with the library, the CLI,
-   and the app layer; read task-focused `how-to guides`_; find
-   `background information`_ on larger projects and concepts; and browse the
-   `Technical Reference`_ when you already know the feature you need.
+* **The User guide**: first results, dose and delivery comparisons, DICOM,
+  logfile and Mosaiq workflows, graphical apps, and API/CLI/configuration reference.
+* **The Developer guide**: first contribution, shared setup, tests,
+  architecture, scientific verification, maintainer procedures and design evidence.
+* **Project information**: releases, compatibility, community, citation,
+  licensing and historical records.
 
-2. **The Contributors Guide**: for those who want to contribute to PyMedPhys.
-   This includes the `Contributors Guide`_ landing page, detailed
-   `workstation setup guides`_, important `repository information`_, and some
-   `tips & tricks`_ for common problems.
+Use the `User guide`_, `Developer guide`_, or `Project information`_ to begin.
+Contributor-wide policy remains in the generated `Contributors Guide`_.
 
 Community
 *********
@@ -323,3 +323,7 @@ Past contributors
 .. _`repository information`: https://docs.pymedphys.com/en/latest/contrib/info/index.html
 .. _`tips & tricks`: https://docs.pymedphys.com/en/latest/contrib/tips/index.html
 .. _`uv`: https://docs.astral.sh/uv/
+
+.. _`Developer guide`: https://docs.pymedphys.com/en/latest/contrib/guide.html
+.. _`User guide`: https://docs.pymedphys.com/en/latest/users/get-started/index.html
+.. _`Project information`: https://docs.pymedphys.com/en/latest/project/index.html

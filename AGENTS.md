@@ -3,69 +3,15 @@
 Guidance for every coding agent working in this repository. Follow it, and
 the [contributor language policy](CONTRIBUTING.md#language), for every change.
 
-## Development Commands
+## Development Instructions
 
-### Setup and Installation
-
-```bash
-# Install with uv (required for development)
-uv sync --python 3.14 --locked
-
-# Install pre-commit hooks
-uv run -- pre-commit install
-
-# Install for user use only
-python -m pip install "pymedphys[user]"
-```
-
-### Testing
-
-```bash
-# Run default tests (slow/database selection has separate options)
-uv run -- pymedphys dev tests
-
-# Run specific test file or directory (relative to lib/pymedphys or the cwd)
-uv run -- pymedphys dev tests tests/path/to/test.py
-
-# Run with specific pytest options
-uv run -- pymedphys dev tests -v -s -k "test_name"
-
-# Add the slow tests to the default selection, or run only the slow tests
-uv run -- pymedphys dev tests --include-slow
-uv run -- pymedphys dev tests --slow
-
-# Run tests in parallel, one worker per CPU (pytest-xdist)
-uv run -- pymedphys dev tests --slow -n auto
-
-# Run doctests
-uv run -- pymedphys dev doctests
-```
-
-### Code Quality
-
-```bash
-# Run linting with ruff (automatically fixes issues)
-uv run -- ruff check --fix .
-uv run -- ruff format .
-
-# Run type checking with pyright
-uv run -- pyright
-
-# Run pre-commit on all files
-uv run -- pre-commit run --all-files
-
-# Check imports are clean
-uv run -- pymedphys dev imports
-```
-
-### Documentation
-
-```bash
-# Build documentation
-uv run -- pymedphys dev docs
-
-# The docs use Jupyter Book and are located in lib/pymedphys/docs/
-```
+Use uv for development and the locked checkout environment. Follow
+[development setup](lib/pymedphys/docs/contrib/start/setup.md),
+[the developer command reference](lib/pymedphys/docs/contrib/guides/dev-reference.rst),
+[testing and code-quality checks](lib/pymedphys/docs/contrib/validation/testing.md),
+and [documentation builds](lib/pymedphys/docs/contrib/info/docs-guide.rst).
+Use [the user installation guide](lib/pymedphys/docs/users/get-started/quick-start.rst)
+when installing solely for use.
 
 Documentation notebooks must use declared, locked dependencies rather than
 installing packages while running. Add documentation dependencies to the
@@ -105,15 +51,11 @@ historical record.
 
 ### Project Structure
 
-PyMedPhys is a medical physics library organised as follows:
-
-- **lib/pymedphys/**: Main library code
-  - `_<module>/`: Private implementation modules (e.g., `_dicom/`, `_gamma/`, `_mosaiq/`)
-  - `<module>.py`: Public API modules that expose the private implementations
-  - `cli/`: Command-line interface implementations
-  - `tests/`: Test suite organised by module
-  - `_experimental/`: Experimental features not yet stable
-  - `_streamlit/`: Streamlit web app components
+The canonical [repository map](lib/pymedphys/docs/contrib/architecture/index.md)
+describes the source layout, public/private modules, dependencies, generated
+files, and packaging boundaries. Use
+[feature anatomy](lib/pymedphys/docs/contrib/architecture/feature-anatomy.md)
+to trace the affected API, CLI, GUI, tests, and documentation before a change.
 
 ### Project Maintainers
 
@@ -128,72 +70,41 @@ Use this list wherever metadata needs the maintainers.
 
 ### Key Architectural Patterns
 
-1. **Private/Public Module Pattern**: Implementation details are in `_module/` directories, with public APIs exposed through `module.py` files at the package root.
-
-2. **Delivery Abstraction**: The `Delivery` class (`_base/delivery.py`) provides a unified interface for treatment delivery data from various sources (DICOM, TRF files, Mosaiq, Monaco).
-
-3. **CLI Architecture**: The CLI is modular with subcommands defined in `cli/` subdirectory. Each major feature has its own CLI module (e.g., `dicom_cli`, `trf_cli`).
-
-4. **Data Management**:
-   - External data is managed through Zenodo with hashes stored in `_data/hashes.json`
-   - The `_data` module provides utilities for downloading and caching external datasets
-
-5. **Vendor-Specific Integrations**:
-   - **Mosaiq**: SQL-based integration for Elekta's oncology information system
-   - **Monaco**: Support for Elekta Monaco treatment planning system files
-   - **Pinnacle**: DICOM export functionality for Philips Pinnacle
-   - **iCOM**: Real-time treatment delivery monitoring for Elekta linacs
+Follow the public/private implementation, shared Delivery, CLI, data-cache,
+and vendor-integration patterns in
+[Architecture](lib/pymedphys/docs/contrib/architecture/index.md).
+For implementation recipes, use
+[Make a change](lib/pymedphys/docs/contrib/guides/make-a-change.md).
 
 ### Testing Strategy
 
-- Unit tests are in `lib/pymedphys/tests/` mirroring the source structure
-- Tests use pytest with fixtures defined in `conftest.py`
-- `pymedphys dev tests` changes the working directory to `lib/pymedphys` before
-  invoking pytest, so relative output paths (e.g. `--junitxml`) resolve there.
-  Use absolute paths in CI. Test paths may be given relative to `lib/pymedphys`
-  or to the caller's directory; the whole package is collected only when no
-  path is given. Resolve positional paths after pytest parses its arguments;
-  do not maintain a list of value-taking options, since plugins can add more.
-  The `pymedphys._dev.pytest_paths` plugin does this in the controller and in
-  every pytest-xdist worker, which parse the original arguments again.
-- Tests marked `slow` (and `mosaiqdb`, `anthropic_key`) are skipped by
-  `conftest.py` unless requested. `--include-slow` (and `--include-mosaiqdb`,
-  `--include-anthropic`) adds them to the default selection. `--slow` (and
-  `--mosaiqdb`, `--anthropic`, `--pydicom`) runs only the tests with that
-  marker; several of these select the union. `--all` runs everything.
-  `pytest -m slow` alone selects the slow tests but still skips every one.
-- CI runs the slow tests in parallel (`-n auto`), so keep every test
-  independent of the others: no shared output paths or ordering assumptions.
-  Processes that share the data cache take turns with each file, and with
-  each archive from downloading or repairing it to extracting it, so
-  concurrent `data_path` and `zip_data_paths` calls are safe.
-- `[tool.pytest.ini_options]` in `pyproject.toml` enforces strict markers and
-  strict xfail, and stops any test after 900 s (`pytest-timeout`). Register a
-  new marker in `MARKER_CONFIG` in the root conftest.
-- The root conftest points `HOME` and `USERPROFILE` at a temporary directory for
-  the whole session, so tests never read or write the real `~/.pymedphys` or
-  `~/.streamlit`. The Zenodo cache stays shared through `PYMEDPHYS_DATA_DIR`,
-  which `pymedphys._data.download.get_data_dir` honours. Write test outputs to
-  `tmp_path`, never beside cached data files.
-- Tests must also pass from an installed wheel, because the published-release
-  jobs run the installed package's suite. Read only files inside the package,
-  and take the package's own requirements from `importlib.metadata`, never from
-  `pyproject.toml` or other files outside `lib/pymedphys`.
-- `dev tests` and `dev doctests` bypass user logging configuration during CLI
-  startup, before pytest can isolate the home directory. Keep this boundary:
-  opening a configured log can modify user files before any test runs.
-- Data downloads require recorded hashes by default and never write to
-  `hashes.json`; record the hash of every file added to `urls.json`.
-  `check_hash=False` explicitly accepts unverified data. Archives extracted
-  into the cache are refreshed when the archive changes, extraction metadata
-  is missing or invalid, an archived member is missing, or a file's size no
-  longer matches. Directories a caller chooses, such as the GUI demo's working
-  directory, only gain missing files, so user edits there survive.
+[Run and write tests](lib/pymedphys/docs/contrib/validation/testing.md) owns
+test selection, opt-in marker flags, pytest configuration, isolated home
+directories, and AppTest procedures.
+[Scientific evidence](lib/pymedphys/docs/contrib/validation/scientific.md)
+and [Fixtures and external data](lib/pymedphys/docs/contrib/validation/data.md)
+explain independent expectations, fixture provenance, and the shared cache.
+
+- Use absolute report paths in CI. Resolve positional test paths after pytest
+  parses its arguments; do not maintain a list of value-taking options, since
+  plugins can add more. Preserve the `_dev.pytest_paths` plugin's resolution
+  in both the controller and pytest-xdist workers.
+- Keep tests independent for parallel runs: no shared output paths or ordering
+  assumptions. Write outputs to `tmp_path`, never beside cached data.
+- Register a new project selection marker in `MARKER_CONFIG` in root conftest.
+- Tests must also pass from an installed wheel. Read only files inside the
+  package, and take package requirements from `importlib.metadata`, never
+  from `pyproject.toml` or other files outside `lib/pymedphys`.
+- Preserve the `dev tests` and `dev doctests` bypass of user logging
+  configuration during CLI startup, before pytest can isolate home. Opening a
+  configured log can modify user files before any test runs.
+- Record the hash of every file added to `urls.json`; downloads require a
+  recorded hash by default and must never write to `hashes.json`.
+  `check_hash=False` explicitly accepts unverified data.
 - Prefer small, deterministic local fixtures for regression tests. Before
-  retiring download-backed tests, record the tested revisions, fixture
-  provenance and results, and retain their useful coverage locally. Distinguish
-  changed expectations from unchanged baselines and previously skipped tests.
-- Mock data and fixtures are in `_mocks/` and test data directories
+  retiring download-backed tests, record tested revisions, fixture provenance,
+  and results, and retain their useful coverage locally. Distinguish changed
+  expectations from unchanged baselines and previously skipped tests.
 - Test coordinate and geometry code against values derived independently
   from the governing definition (for DICOM, the voxel position formula in
   PS3.3), on off-centre grids with non-square spacing and every supported
@@ -222,115 +133,86 @@ Use this list wherever metadata needs the maintainers.
   cosines; snapping cosines before comparison can conceal a growing edge
   error. Acceptance does not resample a grid or assess clinical significance.
   Keep orientation rounding and absolute-offset metadata validation separate.
-- The Streamlit GUI is tested headlessly with `streamlit.testing.v1.AppTest` in
-  `lib/pymedphys/tests/streamlit/`: apps are driven by widget label and assertions
-  read the rendered markdown. Data-driven scenarios use the
-  `metersetmap-gui-e2e-data.zip` demo archive and run from a temporary working
-  directory because the apps extract it into the current directory. The apps
-  memoise `get_config` with `st.cache_data` for the life of the pytest process,
-  so a fixture that serves a different configuration must clear `st.cache_data`
-  on entry and exit. The root conftest also pins `MPLBACKEND=Agg`, because the
-  apps draw matplotlib figures on the AppTest worker thread and the GUI backends
-  abort the interpreter off the main thread.
+- Follow the AppTest fixtures for temporary demo working directories. When
+  serving a different configuration, clear `st.cache_data` on entry and exit.
+  Preserve the non-interactive `Agg` backend for figures on AppTest's worker
+  thread.
 
 ### Dependencies and Extras
 
-Extras (`[project.optional-dependencies]`) are published and are for people who install PyMedPhys. Dependency groups (`[dependency-groups]`) are not published and are for working on PyMedPhys from a checkout. uv.lock pins both.
+The [dependency/environment map](lib/pymedphys/docs/contrib/architecture/index.md#dependencies-and-environments)
+defines published extras and checkout-only groups. Follow the
+[dependency recipe](lib/pymedphys/docs/contrib/guides/make-a-change.md#add-or-update-a-dependency)
+when changing them.
 
-- Extras:
-  - `user`: every dependency of the library, CLI, and GUI; the documented install.
-  - `ai`: the experimental Mosaiq chat app's Anthropic dependencies; opt-in, never part of `user`.
-  - `tests`: `user` plus what running the installed test suite needs.
-  - `all`: `user`, `ai`, and `tests`.
-  - `gamma`, `dicom`, `mosaiq`, `icom`, `trf`: narrow extras, one per feature. Each lists every package its feature's public functions and commands import, directly or through PyMedPhys code, not only those its dependencies happen to bring. The `narrow-extras` job in `unit-tests.yml` installs each alone with the `test-runner` group and runs its feature's tests, and `mosaiq-db-tests.yml` does the same for `mosaiq` against SQL Server. Add a new feature extra only with a matrix entry there. Every package in a feature extra must also be in `user`, which missing-package messages suggest; a test in `lib/pymedphys/tests/imports` checks this. Plotting helpers, private code, and the GUI are not part of any narrow extra; `user` covers them.
-  - `cli`: an alias for `user`, because the command line spans every feature.
-- Groups:
-  - `dev`, the default: PyMedPhys with every extra, plus the `docs`, `lint`, and `pre-commit` groups. A plain `uv sync` installs it.
-  - `docs`: the documentation build, including the packages its notebooks run.
-  - `lint`: linters, type checkers, and stubs.
-  - `pre-commit` and `script-tests`: the small sets their CI jobs install on their own.
-  - `test-runner`: pytest and the packages the tests themselves use, without any feature's packages, for the narrow-extras jobs. `mosaiq-db-fixtures` adds what loading the test Mosaiq database needs.
-- When a narrow-extras job fails because a feature's code needs a package, add the package to that extra. Skip a test with `pytest.importorskip` only when it exercises another feature, private code, or a plotting helper that shares the folder, and say which in a comment.
-- Put a tool that only contributors or CI use in a group, never an extra. CI jobs install only what they need, through the `extras` and `groups` inputs of `.github/actions/setup-project`, which always passes `--no-default-groups`.
+- Every narrow extra must list every package its public functions and commands
+  need, directly or through PyMedPhys, rather than relying on transitive
+  installation. Every package in a feature extra must also be in `user`.
+- Add a new feature extra only with its CI matrix entry.
+- When a narrow-extra job fails because its feature needs a package, add it to
+  that extra. Use `pytest.importorskip` only for a test of another feature,
+  private code, or a plotting helper, and say which in a comment.
+- Put contributor/CI-only tools in dependency groups, never published extras.
 
 ### Optional Dependencies
 
 - Import every third-party package other than the base dependencies through `pymedphys._imports`, for example `from pymedphys._imports import numpy as np`. It imports the package on first use and, when the package is missing, names the extra that provides it. Register a new package in `lib/pymedphys/_imports/imports.py`, and add it to `DISTRIBUTION_FOR_IMPORT` in `lib/pymedphys/_extras.py` when its import name differs from its distribution name.
 - Every module must import with only the base dependencies, except those listed in `REQUIRED_EXTRAS` in `lib/pymedphys/_dev/import_policy.py`: the Streamlit apps, the AI modules, and the tests. So outside those, do not use an optional package when a module is imported: not at module level, in decorators, default arguments, or class bodies, nor in annotations unless the module has `from __future__ import annotations`.
-- The tests in `lib/pymedphys/tests/imports` check both rules in every unit test job, by importing each module in a fresh interpreter in which only the standard library and the base dependencies can be imported. `pymedphys dev imports` checks the same policy against real installs.
-- `lib/pymedphys/docs/contrib/info/lazy-imports.md` explains the mechanism, the messages users see, and these rules with examples. Update it when they change.
+- [Lazy imports](lib/pymedphys/docs/contrib/info/lazy-imports.md) owns the
+  mechanism, messages, examples, and policy-check descriptions. Update it
+  when those rules change.
 
 ### Packaging
 
-- `uv build` makes the sdist and then the wheel from it, so a file missing from
-  the sdist also breaks the wheel. Check a build with
-  `python .github/scripts/check_distributions.py dist`, which also installs the
-  wheel into a fresh virtual environment.
-- Set Hatchling file selection per build target, never build-wide: a build-wide
-  `include` is an allow-list that also replaces the sdist's contents. The sdist
-  uses `only-include`, because a full-tree walk reaches the repository-root
-  `docs` symlink first and then skips `lib/pymedphys/docs` as already seen.
-- Declare the licence as a PEP 639 SPDX expression (`license = "..."`) that
-  covers bundled third-party code as well as PyMedPhys's own, and list every
-  licence file in `license-files`. Update both when vendoring code under a new
-  licence or removing the last code under one. Treat bundled data, such as
-  vocabularies, datasets, and tables generated from standards, like code:
-  bundle it only under terms compatible with Apache-2.0, never under
-  non-commercial or no-derivatives terms, and include any required
-  attribution. Keep the independent licence
-  expectations in `.github/scripts/check_distributions.py` and its test
-  fixtures in sync with these settings. Check declarations as well as file
-  presence, so removing a metadata entry cannot bypass the release guard.
-- Keep `version` in `pyproject.toml` in canonical PEP 440 form (`0.42.0.dev0`,
-  not `0.42.0-dev0`); the release tag must be `v` followed by it. The build
-  check fails a non-canonical version before publishing, because Hatchling
-  copies it into the metadata unchanged but canonicalises the filenames.
-- Distribution smoke tests must ignore the caller's Python path overrides,
-  run outside the checkout, and verify that package imports come from the
-  test environment. A fresh venv alone does not isolate `PYTHONPATH`, and
-  `python -I` does not isolate pip configuration. Disable pip configuration
-  files and inherited behavioural `PIP_*` settings for installs and their
-  build subprocesses; preserve only explicit network settings such as proxy,
-  certificate, time-out, and retry settings.
-- Include every root-level input to documentation preparation in the sdist:
-  `README.rst`, `CHANGELOG.md`, and `CONTRIBUTING.md`.
-- Keep `release-guide.md` and `workflows.md` aligned with `release.yml`,
-  including pre-releases, publishing destinations, and post-publication checks.
-  Record release-test evidence on the release pull request.
-- Verify a release from the published files, not the checkout: install the
-  wheel and the sdist separately into fresh environments outside the checkout,
-  force the sdist to build, and check which file pip installed and where it
-  came from. `check_distributions.py --published` does this, and with
-  `--tests` also runs the test suite against the published wheel; the release
-  workflow runs both after publishing, and `--summary` writes the report for
-  the release pull request. Extend the script or the workflow rather than
-  documenting manual steps.
-- `Release Summary` fails unless every release job succeeded; add each new
-  release job to its `needs`.
-- Publishing a GitHub release or pre-release is the only way to publish.
-  There is no manual or TestPyPI route, as the maintainers decided a library
-  release needs no rehearsal beyond the checks before publishing; rehearse a
-  change to the release pipeline with a development release on PyPI.
-- Tag a commit on `main`: for a stable release, the merge commit of its
-  reviewed release pull request, which is the state of `main` that CI tested,
-  never a commit from the release branch. After publishing, a separate pull
-  request sets `main` to the next unpublished `.devN`, so a development
-  release (`X.Y.Z.devN`, a GitHub pre-release) can be tagged from `main`
-  without a release pull request. Only a stable release pull request needs the
-  `full-test` label, and changelog entries stay under `## Unreleased` until
-  the stable release.
-- The publish job uses `skip-existing`, so a re-run after a partial upload is
-  safe; `verify-published` then requires the files on the index to match the
-  build. Release asset uploads must wait for that verification, so a skipped
-  duplicate cannot overwrite GitHub assets with different bytes. They must not
-  wait for `test-published`, whose dependencies and datasets change outside the
-  repository; keep it a separate job that reports to `Release Summary`.
-- Resolve PyMedPhys's published archive from PyPI's JSON Simple API and
-  install its exact URL, so no other configured index can substitute it.
-- Recover releases using their original distribution files. A rebuild of the
-  same tag can differ when the build backend changes. A failed retry does not
-  prove earlier attempts left PyPI untouched; preserve release tags and use a
-  new version for changed files.
+Follow [release preparation and distribution checks](lib/pymedphys/docs/contrib/maintainers/release.md),
+and [release recovery](lib/pymedphys/docs/contrib/maintainers/recovery.md).
+These guides explain the build targets, isolated verification, publishing
+jobs, and recovery from the original distribution files.
+
+- Set Hatchling file selection per build target, never build-wide. Keep the
+  sdist's `only-include` selection so the root `docs` symlink cannot cause
+  `lib/pymedphys/docs` to be skipped.
+- Declare the licence as a PEP 639 SPDX expression that covers bundled
+  third-party code as well as PyMedPhys's own, and list every licence file in
+  `license-files`. Update both for changed vendoring. Bundle data,
+  vocabularies, and standard-derived tables only under terms compatible with
+  Apache-2.0, never non-commercial or no-derivatives terms, and retain required
+  attribution. Keep the independent licence expectations and fixtures in
+  `.github/scripts/check_distributions.py` in sync. Check declarations and
+  file presence so removing metadata cannot bypass the release guard.
+- Keep `version` in `pyproject.toml` in canonical PEP 440 form
+  (`0.42.0.dev0`, not `0.42.0-dev0`); the release tag must be `v` followed by it.
+- Distribution smoke tests must ignore Python path overrides, run outside the
+  checkout, and verify imports come from the test environment. Disable pip
+  configuration files and inherited behavioural `PIP_*` settings for installs
+  and build subprocesses; preserve only explicit network settings such as
+  proxy, certificate, time-out, and retry settings.
+- Include root documentation-preparation inputs in the sdist: `README.rst`,
+  `CHANGELOG.md`, and `CONTRIBUTING.md`.
+- Keep release and CI documentation aligned with `release.yml`, including
+  pre-releases, destinations, and post-publication checks. Record release-test
+  evidence on the release PR.
+- Verify published wheel and sdist files in separate fresh environments outside
+  the checkout, forcing the sdist to build and checking the installed file and
+  its source. Extend `check_distributions.py` or the workflow rather than
+  documenting manual verification steps.
+- Add every new release job to `Release Summary`'s `needs`.
+- Publishing a GitHub release or pre-release is the only publishing route.
+  Rehearse release-pipeline changes with a development release on PyPI; do not
+  introduce a manual or TestPyPI route.
+- Tag a commit on `main`: for a stable release, tag the merge commit of its
+  reviewed release PR, never a release-branch commit. After publishing, use a
+  separate PR to set the next unpublished `.devN`. Development pre-releases
+  may be tagged from `main` without a release PR. Only stable release PRs need
+  `full-test`, and changelog entries stay under `## Unreleased` until stable.
+- Release asset uploads must wait for `verify-published`, so a skipped duplicate
+  cannot overwrite assets with different bytes. Keep `test-published` separate
+  and reporting to `Release Summary`; assets must not wait for that job.
+- Resolve published archives through PyPI's JSON Simple API and install the
+  exact URL so another configured index cannot substitute a package.
+- Recover releases using their original distribution files. Preserve release
+  tags and use a new version for changed files; a failed retry does not prove
+  previous attempts left PyPI untouched.
 
 ## Important Implementation Notes
 

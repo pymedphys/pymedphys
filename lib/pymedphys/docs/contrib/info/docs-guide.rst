@@ -6,6 +6,8 @@ This documentation site is built with Sphinx, MyST, and Jupyter Book 1.x. This p
 document aims to help contributors to improve the PyMedPhys
 documentation.
 
+.. _building-the-documentation-on-your-workstation:
+
 Building the documentation on your workstation
 ----------------------------------------------
 
@@ -39,6 +41,8 @@ The build generates ``conf.py`` from ``_config.yml``. The generated file is
 ignored by git, so change ``_config.yml`` rather than ``conf.py``.
 
 
+.. _previewing-and-checking-the-site:
+
 Previewing and checking the site
 --------------------------------
 
@@ -63,6 +67,8 @@ first. Read ``output.txt`` or ``output.json`` in
 request may be a rate limit, authentication requirement, or temporary outage;
 verify it before replacing a link. CI reports external-link failures as
 advisory, so a green summary alone does not establish that every link works.
+
+.. _checking-a-pull-request-s-documentation:
 
 Checking a pull request's documentation
 ---------------------------------------
@@ -92,6 +98,8 @@ Read the Docs does not build pull requests unless a maintainer asks for a
 hosted preview with the ``rtd-preview`` label; the "Read the Docs" section of
 the :doc:`workflow guide <workflows>` explains how.
 
+.. _source-files-and-publishing:
+
 Source files and publishing
 ---------------------------
 
@@ -109,6 +117,8 @@ Read the Docs publishes the public site separately, using
 ``main``, and the ``stable`` site matches the latest release; use ``stable``
 when checking released behaviour.
 
+.. _writing-portable-links:
+
 Writing portable links
 ----------------------
 
@@ -122,6 +132,10 @@ from another page in the same directory. This works when browsing the source,
 and MyST resolves the source path to the corresponding page in the built site.
 See the `MyST cross-reference documentation
 <https://myst-parser.readthedocs.io/en/latest/syntax/cross-referencing.html>`_.
+
+MyST cannot validate a Markdown fragment link to a reStructuredText heading.
+Use its published HTML URL and fragment for that case, and check the rendered
+anchor rather than suppressing the warning.
 
 In notebooks that readers can download individually, use published
 documentation URLs so links work without the rest of the repository. Also use
@@ -165,10 +179,10 @@ maintenance requirements. See the `DRY programming philosophy
 <https://en.wikipedia.org/wiki/Don%27t_repeat_yourself>`__ for more on
 this.
 
-To solve this problem, most of PyMedPhys' documentation is written as
-docstrings, which are then automatically extracted into the main
-documentation pages. For this to work properly, docstrings need to be
-formatted according to the numpy style. See the following sites for
+Public API reference is written as docstrings, which are automatically
+extracted into the reference pages. Task guides and background explanations
+link to that reference rather than duplicating its parameter definitions.
+Docstrings need to be formatted according to NumPy style. See these sites for
 examples of how to conform to that style:
 
 - `Napoleon Docs - Example NumPy Style Python Docstrings
@@ -176,5 +190,7 @@ examples of how to conform to that style:
 - `NumPyDoc docstring guide
   <https://numpydoc.readthedocs.io/en/latest/format.html>`__
 
-See existing examples within PyMedPhys for how to include new function
-docstrings into the main PyMedPhys documentation.
+Follow :doc:`Author documentation <../guides/authoring>` for worked recipes
+for prose pages, executed notebooks, public API references, and command help.
+The :doc:`first-contribution tutorial <../start/first-contribution>` takes a
+small documentation correction through preview and pull request submission.

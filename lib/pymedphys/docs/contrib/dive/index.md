@@ -1,14 +1,7 @@
+---
+orphan: true
+---
+
 # Deep Dive
 
-A deep dive into various approaches and reasonings within the PyMedPhys
-repository. The executable-building article is a historical write-up, not a
-current packaging guide. The target audience are either contributors who want
-to understand more about something within the repository or external
-developers who would like to replicate something that PyMedPhys has undergone.
-
-```{toctree}
-:maxdepth: 1
-
-why-open-source
-create-streamlit-exe
-```
+This former landing page retains its URL. Read [Architecture](../architecture/index.md) for current implementation explanations, [Design programmes](../design/index.md) for programme decisions, and [Historical articles](../../project/history.md) for the original open-source and executable-building accounts.
