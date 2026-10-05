@@ -61,6 +61,7 @@ def _call(tmp_path, transform=None, gate=None, source=None, release=None):
         release or tmp_path / "release",
         transform=transform or Transform(),
         gate=gate or Gate(),
+        qc_destination=tmp_path / "qc",
         stdout=stdout,
         stderr=stderr,
     )
@@ -156,6 +157,26 @@ def test_an_existing_release_directory_exits_three(tmp_path):
 
     assert status == command.EXIT_NOT_RUN
     assert "already exists" in err
+
+
+def test_a_refused_qc_destination_exits_three_naming_its_check(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    stdout, stderr = io.StringIO(), io.StringIO()
+
+    status = command.deidentify_directory(
+        tmp_path / "source",
+        tmp_path / "release",
+        transform=Transform(),
+        gate=Gate(),
+        qc_destination=tmp_path / "release" / "qc",
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert status == command.EXIT_NOT_RUN
+    assert stderr.getvalue().startswith("error: ")
+    assert "details are not shown" not in stderr.getvalue()
+    assert not (tmp_path / "release").exists()
 
 
 def test_a_stopped_run_exits_three_and_writes_nothing(tmp_path):
@@ -291,7 +312,12 @@ def test_main_parses_source_and_release(tmp_path):
     stdout = io.StringIO()
 
     status = command.main(
-        [str(tmp_path / "source"), str(tmp_path / "release")],
+        [
+            str(tmp_path / "source"),
+            str(tmp_path / "release"),
+            "--qc-pack",
+            str(tmp_path / "qc"),
+        ],
         transform=Transform(),
         gate=Gate(),
         stdout=stdout,
@@ -314,8 +340,12 @@ def test_build_parser_takes_a_program_name():
     parser = command.build_parser(prog="pymedphys dicom deidentify")
 
     assert parser.prog == "pymedphys dicom deidentify"
-    arguments = parser.parse_args(["in", "out"])
-    assert (arguments.source, arguments.release) == ("in", "out")
+    arguments = parser.parse_args(["in", "out", "--qc-pack", "qc"])
+    assert (arguments.source, arguments.release, arguments.qc_pack) == (
+        "in",
+        "out",
+        "qc",
+    )
 
 
 def test_a_failed_run_that_leaves_its_staging_area_says_so(tmp_path, monkeypatch):
@@ -375,6 +405,7 @@ def test_a_release_name_the_output_cannot_encode_is_escaped(tmp_path):
         release,
         transform=Transform(),
         gate=Gate(),
+        qc_destination=tmp_path / "qc",
         stdout=stdout,
         stderr=io.StringIO(),
     )
