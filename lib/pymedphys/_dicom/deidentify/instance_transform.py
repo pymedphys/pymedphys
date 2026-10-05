@@ -274,7 +274,9 @@ def coverage_of(
     wherever it is, removed sequences included, and for each path in
     ``retained``, such as a ROI Name that descriptor cleaning writes with a
     value. Where the edits sequester the instance, each planned value that
-    they did not reach is uncollected.
+    they did not reach is uncollected. Each value read as ISO 8859-1, since
+    no Specific Character Set applies, is carried over as read as bytes, so
+    that its collection is incomplete (D-027).
     """
     left_out: set[ElementPath] = set(retained) | set(_left_out(edits))
     planned = frozenset(
@@ -303,7 +305,10 @@ def coverage_of(
             for path in sorted(planned - reached, key=str)
         ]
     return Coverage(
-        planned=planned, collected=collected, uncollected=tuple(uncollected)
+        planned=planned,
+        collected=collected,
+        uncollected=tuple(uncollected),
+        decoded_as_bytes=frozenset(edits.read_as_latin_1) - left_out,
     )
 
 

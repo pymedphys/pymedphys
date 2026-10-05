@@ -138,6 +138,7 @@ status = "partial"
 milestone = "M3"
 decisions = ["D-012", "D-024"]
 implementation = [
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/markers.py",
   "_dicom/deidentify/method_digest.py",
 ]
@@ -163,9 +164,11 @@ tests = [
   "tests/dicom/test_deidentify_markers.py::test_the_same_release_and_policy_applied_twice_gives_the_markers_of_one_run",
   "tests/dicom/test_deidentify_markers.py::test_a_code_already_present_is_not_added_again_and_new_codes_follow",
   "tests/dicom/test_deidentify_markers.py::test_marked_output_reads_back_strictly_and_gains_nothing_when_marked_again",
+  "tests/dicom/test_deidentify_instance_transform.py::test_each_output_carries_the_de_identification_markers",
+  "tests/dicom/test_deidentify_instance_transform.py::test_markers_already_present_are_updated_as_ps3_15_says",
 ]
 note = '''
-The markers of an instance are computed from its policy, the de-identification method digest, and the options it satisfies, and added to a copy of its data set (D-012). Patient Identity Removed is set to YES. De-identification Method keeps its values and, unless they already include the pair as two consecutive values, gains two: the method digest, 64 lowercase hexadecimal digits, which fit one LO value, computed from the policy and everything the engine could apply, including its own source and rule files, whether or not the policy's options use them, and then a readable value naming PyMedPhys, its version, the PS3.15 edition, and the preset. The digest identifies the policy and the PyMedPhys implementation and resources that apply it, not the runtime environment, which Software Versions records instead, so upgrading Python, pydicom, or tomlkit leaves it unchanged (D-012, D-024). The digest is PyMedPhys's own provenance, added beside the readable description that this paragraph allows; PS3.15 does not require it. De-identification Method Code Sequence keeps its items and gains the CID 7050 codes of the Basic Profile and of each satisfied option that it does not already hold. Under a policy that claims conformance, every selected option must be satisfied except Clean Descriptors, so that the codes name each option whose actions the instance carries. `tps-import`, which claims no conformance, adds no code and says so in its readable value. Remaining: adding the markers to each instance the engine de-identifies, from its validated result (M3).
+The markers of an instance are computed from its policy, the de-identification method digest, and the options it satisfies, and added to a copy of its data set (D-012). Patient Identity Removed is set to YES. De-identification Method keeps its values and, unless they already include the pair as two consecutive values, gains two: the method digest, 64 lowercase hexadecimal digits, which fit one LO value, computed from the policy and everything the engine could apply, including its own source and rule files, whether or not the policy's options use them, and then a readable value naming PyMedPhys, its version, the PS3.15 edition, and the preset. The digest identifies the policy and the PyMedPhys implementation and resources that apply it, not the runtime environment, which Software Versions records instead, so upgrading Python, pydicom, or tomlkit leaves it unchanged (D-012, D-024). The digest is PyMedPhys's own provenance, added beside the readable description that this paragraph allows; PS3.15 does not require it. De-identification Method Code Sequence keeps its items and gains the CID 7050 codes of the Basic Profile and of each satisfied option that it does not already hold. Under a policy that claims conformance, every selected option must be satisfied except Clean Descriptors, so that the codes name each option whose actions the instance carries. `tps-import`, which claims no conformance, adds no code and says so in its readable value. The run's instance transform adds the markers to each instance it de-identifies, then writes the instance and verifies what it preserves. Remaining: validating each preset end to end (M4).
 '''
 
 [[requirement]]
@@ -380,15 +383,19 @@ The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be ad
 status = "partial"
 milestone = "M3"
 decisions = ["D-012"]
-implementation = ["_dicom/deidentify/markers.py"]
+implementation = [
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/markers.py",
+]
 tests = [
+  "tests/dicom/test_deidentify_instance_transform.py::test_each_output_carries_the_de_identification_markers",
   "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
   "tests/dicom/test_deidentify_markers.py::test_existing_markers_and_contributing_equipment_items_are_kept",
   "tests/dicom/test_deidentify_markers.py::test_temporal_information_modified_keeps_the_stricter_value",
   "tests/dicom/test_deidentify_markers.py::test_an_unknown_temporal_information_modified_is_refused_without_quoting_it",
 ]
 note = '''
-Every policy that does not apply Modified Dates, the only Retain Longitudinal Temporal Information Option in scope, sets Longitudinal Temporal Information Modified to REMOVED in its markers, replacing any value already present, since REMOVED is the strictest, and refusing a present value that is not UNMODIFIED, MODIFIED, or REMOVED (D-012). Remaining: adding it to each instance the engine de-identifies (M3).
+Every policy that does not apply Modified Dates, the only Retain Longitudinal Temporal Information Option in scope, sets Longitudinal Temporal Information Modified to REMOVED in its markers, replacing any value already present, since REMOVED is the strictest, and refusing a present value that is not UNMODIFIED, MODIFIED, or REMOVED (D-012). The run's instance transform adds it to each instance it de-identifies. Remaining: validating each preset end to end (M4).
 '''
 
 [[requirement]]
@@ -472,6 +479,7 @@ status = "partial"
 milestone = "M4"
 decisions = ["D-009", "D-022"]
 implementation = [
+  "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/roi_names.py",
   "_dicom/deidentify/reviewed_roi_names.py",
 ]
@@ -495,9 +503,16 @@ tests = [
   "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_reviewed_name_that_echoes_an_identifier_is_held",
   "tests/dicom/test_deidentify_reviewed_roi_names.py::test_different_names_that_would_be_written_as_one_name_are_held",
   "tests/dicom/test_deidentify_reviewed_roi_names.py::test_the_review_queue_lists_each_distinct_held_name_once",
+  "tests/dicom/test_deidentify_descriptor_cleaning.py::test_roi_names_are_renamed_or_given_their_reviewed_decision",
+  "tests/dicom/test_deidentify_descriptor_cleaning.py::test_a_roi_name_without_a_decision_holds_the_instance_for_review",
+  "tests/dicom/test_deidentify_descriptor_cleaning.py::test_a_run_holds_the_structure_set_and_releases_the_rest",
+  "tests/dicom/test_deidentify_descriptor_cleaning.py::test_held_names_are_emptied_where_the_user_chooses_so",
+  "tests/dicom/test_deidentify_descriptor_cleaning.py::test_a_kept_name_that_echoes_the_patient_is_held",
+  "tests/dicom/test_deidentify_descriptor_cleaning.py::test_other_descriptors_take_their_basic_profile_action_and_lose_the_claim",
+  "tests/dicom/test_deidentify_descriptor_cleaning.py::test_a_roi_name_that_was_not_collected_sequesters_its_instance",
 ]
 note = '''
-The first supported release includes the Option for ROI names (D-009). The automatic tier decides, for the ROI names of one structure set, which are written in the spelling of the TG-263 spreadsheet's published edition, whose entries' digest the module records, because they match one of its names once case, spaces, and the separators `_` and `-` are disregarded (a hyphen in a vocabulary name, which TG-263 writes for a subtraction, must be matched by one, and a name starting with `_`, which TG-263 gives a structure not used for dose evaluation, or `-` goes to review), and which go to review, because they match none or several, echo a known patient or other person identifier, or would duplicate a differently spelt name of the same structure set. A name so written is cleaned, not retained, so it needs no review before the claim. The reviewed-names list, which the custodian keeps outside output and QC directories and which names no value in its errors or `repr`, records a reviewer's decision to keep, map, or empty each other name, for reuse on later runs. The reviewed tier applies the list's decisions to the names the automatic tier does not rename; checks what a kept or mapped name would write for echoes and for duplicates, ignoring case, as the automatic tier does; holds every other name, or empties it where the user chooses so explicitly; and collects the distinct held names for review, with counts by reason that carry no name. Remaining: applying these decisions to each data set and holding instances in the staging area (M3); writing the held names and each rename to the QC material, and the reviewer's workflow for recording decisions (M4); the list's keyed digest in the method digest (D-024); vocabularies converted from an institutional list, every match against which goes to review; and claiming the Option only for output whose retained descriptors have passed pooled human review, which needs the QC pack (M4).
+The first supported release includes the Option for ROI names (D-009). The automatic tier decides, for the ROI names of one structure set, which are written in the spelling of the TG-263 spreadsheet's published edition, whose entries' digest the module records, because they match one of its names once case, spaces, and the separators `_` and `-` are disregarded (a hyphen in a vocabulary name, which TG-263 writes for a subtraction, must be matched by one, and a name starting with `_`, which TG-263 gives a structure not used for dose evaluation, or `-` goes to review), and which go to review, because they match none or several, echo a known patient or other person identifier, or would duplicate a differently spelt name of the same structure set. A name so written is cleaned, not retained, so it needs no review before the claim. The reviewed-names list, which the custodian keeps outside output and QC directories and which names no value in its errors or `repr`, records a reviewer's decision to keep, map, or empty each other name, for reuse on later runs. The reviewed tier applies the list's decisions to the names the automatic tier does not rename; checks what a kept or mapped name would write for echoes and for duplicates, ignoring case, as the automatic tier does; holds every other name, or empties it where the user chooses so explicitly; and collects the distinct held names for review, with counts by reason that carry no name. In a run, descriptor cleaning applies these decisions to the ROI Names of each instance, holds an instance with a held name for review, or empties the name where the user chooses so and then does not claim the Option for it, and gives the QC pack what it wrote for each ROI Name, or why it held it. Remaining: the reviewer's workflow for recording decisions (M4); the list's keyed digest in the method digest (D-024); vocabularies converted from an institutional list, every match against which goes to review; and claiming the Option only for output whose retained descriptors have passed pooled human review, which needs the QC pack (M4).
 '''
 
 [[requirement]]
@@ -567,14 +582,18 @@ The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be ad
 status = "partial"
 milestone = "M3"
 decisions = ["D-012"]
-implementation = ["_dicom/deidentify/markers.py"]
+implementation = [
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/markers.py",
+]
 tests = [
+  "tests/dicom/test_deidentify_instance_transform.py::test_each_output_carries_the_de_identification_markers",
   "tests/dicom/test_deidentify_markers.py::test_each_preset_adds_exactly_its_markers",
   "tests/dicom/test_deidentify_markers.py::test_a_custom_option_set_with_modified_dates_marks_dates_as_modified",
   "tests/dicom/test_deidentify_markers.py::test_temporal_information_modified_keeps_the_stricter_value",
 ]
 note = '''
-Every policy that applies Modified Dates, including `tps-import`, sets Longitudinal Temporal Information Modified to MODIFIED in its markers, unless REMOVED is already present from an earlier run, which is kept because the dates that run removed are not restored (D-012). Remaining: adding it to each instance the engine de-identifies (M3).
+Every policy that applies Modified Dates, including `tps-import`, sets Longitudinal Temporal Information Modified to MODIFIED in its markers, unless REMOVED is already present from an earlier run, which is kept because the dates that run removed are not restored (D-012). The run's instance transform adds it to each instance it de-identifies. Remaining: validating each preset end to end (M4).
 '''
 
 [[requirement]]
@@ -722,6 +741,7 @@ milestone = "M4"
 decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027"]
 implementation = [
   "_dicom/deidentify/file_layout.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/release_gate.py",
   "_dicom/deidentify/residuals.py",
 ]
@@ -742,6 +762,12 @@ tests = [
   "tests/dicom/test_deidentify_release_gate.py::test_a_text_finding_inside_the_data_set_goes_to_qc_review",
   "tests/dicom/test_deidentify_release_gate.py::test_an_unreadable_file_is_withheld",
   "tests/dicom/test_deidentify_release_gate.py::test_exclusions_are_listed_and_never_count_as_incomplete",
+  "tests/dicom/test_deidentify_instance_transform.py::test_a_run_with_the_transform_and_gate_releases_the_collection",
+  "tests/dicom/test_deidentify_instance_transform.py::test_a_value_removed_from_one_instance_withholds_its_siblings_that_keep_it",
+  "tests/dicom/test_deidentify_instance_transform.py::test_a_removed_value_read_as_latin_1_makes_collection_incomplete",
+  "tests/dicom/test_deidentify_instance_transform.py::test_a_value_read_as_latin_1_withholds_its_siblings",
+  "tests/dicom/test_deidentify_instance_transform.py::test_a_value_in_a_declared_character_set_is_not_read_as_latin_1",
+  "tests/dicom/test_deidentify_instance_transform.py::test_a_value_left_out_of_the_search_is_not_read_as_latin_1",
   "tests/dicom/test_deidentify_residuals.py::test_a_value_hidden_in_the_preamble_is_found",
   "tests/dicom/test_deidentify_residuals.py::test_a_value_in_the_file_meta_information_is_found",
   "tests/dicom/test_deidentify_residuals.py::test_a_value_in_data_set_trailing_padding_is_found",
@@ -759,7 +785,7 @@ tests = [
   "tests/dicom/test_deidentify_source.py::test_the_layout_still_reads_a_file_with_an_odd_length",
 ]
 note = '''
-The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. A source value, or a form of one, equal to a constant that the engine writes is not searched, and is recorded by its source attribute (D-027). The release gate runs that search itself, for exactly the values collected across the file's subject, and checks the collection against the values the walker planned to collect. It withholds any output file that still holds a source person name, UID, date, datetime, or direct identifier, or a source value outside its data set, or whose collection of person names, UIDs, dates, datetimes, direct identifiers, or sequences was incomplete, and sends other text findings and other incomplete collection, including of private values, to confidential review; a search that finds nothing does not on its own release a file (D-027). `public-release` retains indirect identifiers only after its statistical assessment. A deterministic synthetic collection plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released. Remaining: removing and replacing identifiers in each data set (M3), and acting on the gate's decision in the pipeline, validating each preset end to end by searching its output of that collection for the markers, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
+The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. A source value, or a form of one, equal to a constant that the engine writes is not searched, and is recorded by its source attribute (D-027). The release gate runs that search itself, for exactly the values collected across the file's subject, and checks the collection against the values the walker planned to collect. It withholds any output file that still holds a source person name, UID, date, datetime, or direct identifier, or a source value outside its data set, or whose collection of person names, UIDs, dates, datetimes, direct identifiers, or sequences was incomplete, and sends other text findings and other incomplete collection, including of private values, to confidential review; a search that finds nothing does not on its own release a file (D-027). `public-release` retains indirect identifiers only after its statistical assessment. A deterministic synthetic collection plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released. The run's instance transform removes and replaces identifiers in each data set and gives the gate its coverage, including each value read as ISO 8859-1, and the run acts on the gate's decision. Remaining: validating each preset end to end by searching its output of that collection for the markers, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
 '''
 
 [[requirement]]
@@ -1032,18 +1058,21 @@ status = "partial"
 milestone = "M4"
 decisions = ["D-009", "D-017", "D-022", "D-027"]
 implementation = [
+  "_dicom/deidentify/descriptor_cleaning.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/reviewed_roi_names.py",
   "_dicom/deidentify/roi_names.py",
   "_dicom/deidentify/supplementary_actions.py",
 ]
 tests = [
+  "tests/dicom/test_deidentify_descriptor_cleaning.py::test_a_kept_name_that_echoes_the_patient_is_held",
   "tests/dicom/test_deidentify_reviewed_roi_names.py::test_a_reviewed_name_that_echoes_an_identifier_is_held",
   "tests/dicom/test_deidentify_roi_names.py::test_a_name_that_echoes_a_known_identifier_goes_to_review",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule",
   "tests/dicom/test_deidentify_supplementary_actions.py::test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text",
 ]
 note = '''
-Under the Basic Profile, every text attribute that a supported IOD uses is removed or replaced, by Table E.1-1 or a reviewed supplementary rule, except coded and technical values and De-identification Method, which the engine adds to (D-022). Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocabulary only where it matches one of its names and echoes no known patient or other person identifier, and goes to review otherwise; a reviewer's decision to keep or map a name is applied only where what it would write echoes no such identifier (D-009). Remaining: applying the actions to each data set (M3); and the review of descriptors with pooled human review, the residual search, and reporting indicators of burned-in text, since the engine does not change pixel data (M4).
+Under the Basic Profile, every text attribute that a supported IOD uses is removed or replaced, by Table E.1-1 or a reviewed supplementary rule, except coded and technical values and De-identification Method, which the engine adds to (D-022). Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocabulary only where it matches one of its names and echoes no known patient or other person identifier, and goes to review otherwise; a reviewer's decision to keep or map a name is applied only where what it would write echoes no such identifier (D-009). The run's instance transform applies the actions to each data set, and descriptor cleaning holds for review a ROI name whose decision would echo an identifier. Remaining: the review of descriptors with pooled human review, the residual search, and reporting indicators of burned-in text, since the engine does not change pixel data (M4).
 '''
 
 [[requirement]]
@@ -1157,6 +1186,8 @@ status = "partial"
 milestone = "M4"
 decisions = ["D-016", "D-017", "D-026", "D-027"]
 implementation = [
+  "_dicom/deidentify/descriptor_cleaning.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/qc_attestation.py",
   "_dicom/deidentify/qc_pack.py",
   "_dicom/deidentify/qc_store.py",
@@ -1187,9 +1218,10 @@ tests = [
   "tests/dicom/test_deidentify_instance_transform.py::test_a_run_writes_the_qc_pack_of_the_transform_and_gate",
   "tests/dicom/test_deidentify_instance_transform.py::test_a_sibling_that_gives_no_evidence_withholds_its_subject",
   "tests/dicom/test_deidentify_instance_transform.py::test_a_walker_sequestered_sibling_withholds_as_uncollected",
+  "tests/dicom/test_deidentify_descriptor_cleaning.py::test_a_run_holds_the_structure_set_and_releases_the_rest",
 ]
 note = '''
-D-016 provides the confidential QC pack, to which the release gate sends the residual search's text findings inside the data set, and files whose collection for the search was incomplete for other text or for private values or values to which the pinned dictionary gives no VR (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. The QC pack is built and written: each instance by run position and source path, with its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); and what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009). It is written only to a designated, owner-only location outside the release and staging directories, and is marked so that no release includes it (D-016). A reviewer attests to a pack once, stating whether they reviewed every distinct retained string, every series, and every instance in high-risk categories, and an outcome of attested needs all three; the attestation is bound to the pack by its digest, and gives the release report only the pack's opaque reference and the outcome (D-016, D-017). Each run writes its pack before it publishes the release, to a QC destination that the caller must name and that is checked before anything is created; a pack that cannot be written publishes nothing, and the pack of a release that cannot be published is removed, or named if it cannot be. The pack lists every input from its outcome, each sequestered one by the random label that the run gives it, and the transform's and gate's material by run position: each residual search with its excerpts, each source value they left out of the search with its reason, what descriptor cleaning wrote for each ROI Name, and each retained string with its places. Remaining: image previews of each series and the instances in high-risk categories, the attestation's record in the release report, and a transform and gate that give the run this material (M4). This practice is not implemented until M4 also covers both open points, or the design assigns them to whoever releases the data.
+D-016 provides the confidential QC pack, to which the release gate sends the residual search's text findings inside the data set, and files whose collection for the search was incomplete for other text or for private values or values to which the pinned dictionary gives no VR (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation. The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded. The QC pack is built and written: each instance by run position and source path, with its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); and what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009). It is written only to a designated, owner-only location outside the release and staging directories, and is marked so that no release includes it (D-016). A reviewer attests to a pack once, stating whether they reviewed every distinct retained string, every series, and every instance in high-risk categories, and an outcome of attested needs all three; the attestation is bound to the pack by its digest, and gives the release report only the pack's opaque reference and the outcome (D-016, D-017). Each run writes its pack before it publishes the release, to a QC destination that the caller must name and that is checked before anything is created; a pack that cannot be written publishes nothing, and the pack of a release that cannot be published is removed, or named if it cannot be. The run's instance transform and release gate adapter give it this material. The pack lists every input from its outcome, each sequestered one by the random label that the run gives it, and the transform's and gate's material by run position: each residual search with its excerpts, each source value they left out of the search with its reason, what descriptor cleaning wrote for each ROI Name, and each retained string with its places. Remaining: image previews of each series and the instances in high-risk categories, and the attestation's record in the release report (M4). This practice is not implemented until M4 also covers both open points, or the design assigns them to whoever releases the data.
 '''
 
 [[requirement]]

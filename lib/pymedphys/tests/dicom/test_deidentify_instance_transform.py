@@ -422,6 +422,80 @@ def test_a_walker_sequestered_sibling_withholds_as_uncollected(tmp_path):
     assert ReasonCode.NOT_REPORTED not in codes
 
 
+_PATIENTS_NAME = 0x00100010
+_INSTITUTION_NAME = 0x00080080
+
+
+def _with_latin_1(dataset, tag, character_set=None):
+    # Bytes outside ISO 646, which no Specific Character Set decodes unless
+    # one is declared.
+    vr = "PN" if tag == _PATIENTS_NAME else "LO"
+    dataset[tag] = pydicom.DataElement(tag, vr, b"Synth\xe9tic^Name")
+    if character_set is not None:
+        dataset.SpecificCharacterSet = character_set
+    return dataset
+
+
+@pytest.mark.parametrize(
+    "tag, decision",
+    [(_PATIENTS_NAME, Decision.WITHHOLD), (_INSTITUTION_NAME, Decision.QC_REVIEW)],
+)
+def test_a_removed_value_read_as_latin_1_makes_collection_incomplete(tag, decision):
+    data = synthetic.written(_with_latin_1(synthetic.rt_plan(), tag))
+    record = InstanceRecord.from_file(data)
+    transformed = _transform()(data, record)
+    assert isinstance(transformed, run.Transformed)
+
+    evidence = transformed.evidence
+    assert isinstance(evidence, Coverage)
+    path = _top(f"({tag >> 16:04X},{tag & 0xFFFF:04X})")
+    read_as_latin_1 = evidence.decoded_as_bytes  # pylint: disable=no-member
+    assert read_as_latin_1 == frozenset({path})
+    result = ReleaseGate()(transformed.data, evidence, (evidence,))
+    assert ReleaseReason(decision, ReasonCode.READ_AS_LATIN_1, path) in result.reasons
+
+
+def test_a_value_read_as_latin_1_withholds_its_siblings(tmp_path):
+    plan = _with_latin_1(synthetic.rt_plan(), _PATIENTS_NAME)
+
+    result = run.run(
+        _source(tmp_path, [plan, synthetic.rt_dose()]),
+        tmp_path / "release",
+        _transform(),
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+    )
+
+    path = _top("(0010,0010)")
+    for outcome in result.outcomes:
+        assert outcome.status is run.Status.SEQUESTERED
+        reason = ReleaseReason(Decision.WITHHOLD, ReasonCode.READ_AS_LATIN_1, path)
+        assert reason in outcome.reasons
+
+
+def test_a_value_in_a_declared_character_set_is_not_read_as_latin_1():
+    plan = _with_latin_1(synthetic.rt_plan(), _PATIENTS_NAME, "ISO_IR 100")
+    transformed = _transformed(plan)
+
+    assert isinstance(transformed, run.Transformed)
+    evidence = transformed.evidence
+    assert isinstance(evidence, Coverage)
+    assert not evidence.decoded_as_bytes  # pylint: disable=no-member
+
+
+def test_a_value_left_out_of_the_search_is_not_read_as_latin_1():
+    data = synthetic.written(_with_latin_1(synthetic.rt_plan(), _PATIENTS_NAME))
+    source = read_source(data)
+    rules = ElementRules(compose_policy("basic"))
+    plan = plan_instance(source, rules, _iod("RT Plan"))
+    edits = edit_instance(source, plan, KEY)
+    path = _top("(0010,0010)")
+    assert path in edits.read_as_latin_1
+
+    assert coverage_of(plan, edits).decoded_as_bytes == frozenset({path})
+    assert coverage_of(plan, edits, frozenset({path})).decoded_as_bytes == frozenset()
+
+
 def test_a_write_the_writer_refuses_is_sequestered_by_its_reason(monkeypatch):
     def refusing(*_args, **_kwargs):
         raise preserving_writer.WriteRefused(WriteReason.ENCODING, _top("(0010,0010)"))
