@@ -14,6 +14,7 @@
 
 """The values, dates, residual search, and release report that the statement describes."""
 
+import functools
 import collections
 
 from pymedphys._imports import pytest
@@ -45,7 +46,9 @@ def _preset(request):
     return request.param
 
 
+@functools.cache
 def _statement(preset):
+    """Return a preset's statement, built once: no test here patches its inputs."""
     return conformance.conformance_statement(
         policy.compose_policy(preset), vocabulary=None
     )
