@@ -19,6 +19,8 @@ Every input is synthetic.
 
 import json
 import os
+import subprocess
+import sys
 
 from pymedphys._imports import pytest
 
@@ -318,3 +320,27 @@ def test_no_output_name_is_the_release_report(name):
     pattern = output_names._PATIENT_ID  # pylint: disable = protected-access
     assert pattern.fullmatch(name) is None
     assert pattern.fullmatch(name.casefold()) is None
+
+
+def test_the_release_report_imports_nothing_that_imports_the_qc_pack():
+    # The QC pack takes its label pattern from the release report, so the
+    # release report must not import, even indirectly, a module that imports
+    # the QC pack, or neither can be imported first.
+    importers = (
+        "pymedphys._dicom.deidentify.descriptor_cleaning",
+        "pymedphys._dicom.deidentify.qc_pack",
+        "pymedphys._dicom.deidentify.run_qc",
+    )
+    code = (
+        "import sys\n"
+        "import pymedphys._dicom.deidentify.release_report\n"
+        f"print([name for name in {importers!r} if name in sys.modules])\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+    )
+    assert result.stdout.strip() == "[]"

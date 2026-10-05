@@ -17,12 +17,18 @@
 They are here, apart from :mod:`~pymedphys._dicom.deidentify.run` and
 :mod:`~pymedphys._dicom.deidentify.instance_transform`, which re-export
 them, so that :mod:`~pymedphys._dicom.deidentify.release_report` can name
-them without importing either.
+them without importing either; and those of descriptor cleaning, which
+:mod:`~pymedphys._dicom.deidentify.descriptor_cleaning` re-exports, since
+it imports the QC pack, which imports the release report.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import enum
+
+from .file_layout import ElementPath
+from .roi_names import Reason
 
 
 class RunReason(enum.Enum):
@@ -62,3 +68,21 @@ class TransformReason(enum.Enum):
     # an edit still to come when the output is written, such as a pseudonym
     # without the subject's identity
     PENDING_EDIT = "pending-edit"
+
+
+class DescriptorReason(enum.Enum):
+    """Why descriptor cleaning sequesters an instance."""
+
+    # a ROI Name whose value could not be decoded
+    UNDECODABLE_ROI_NAME = "undecodable-roi-name"
+    # an attribute given C whose action without Clean Descriptors is still
+    # to come, or under which the instance would be sequestered
+    UNSETTLED_DESCRIPTOR = "unsettled-descriptor"
+
+
+@dataclasses.dataclass(frozen=True)
+class HeldRoiName:
+    """A ROI Name held for review, by its path and reason, never its value."""
+
+    path: ElementPath
+    reason: Reason

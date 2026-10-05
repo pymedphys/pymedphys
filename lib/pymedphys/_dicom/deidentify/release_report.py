@@ -71,10 +71,9 @@ from . import method_digest
 from .method_digest import MethodDigestComponents
 from .file_layout import TAG_PATTERN, ElementPath
 from .policy import PRESETS, Policy
-from .descriptor_cleaning import DescriptorReason, HeldRoiName
 from .preservation import PreservationReason
 from .preserving_writer import WriteReason
-from .reasons import RunReason, TransformReason
+from .reasons import DescriptorReason, HeldRoiName, RunReason, TransformReason
 from .reference_graph import FindingKind
 from .release_gate import Decision, ReasonCode, ReleaseReason
 from .roi_names import Reason as RoiNameReason

@@ -45,7 +45,6 @@ reviewer's replacement need not resemble it.
 from __future__ import annotations
 
 import dataclasses
-import enum
 from collections.abc import Callable, Sequence
 
 from pymedphys._nomenclature import tg263
@@ -54,6 +53,7 @@ from .edits import Edit, EditKind, InstanceEdits
 from .file_layout import ElementPath
 from .policy import Policy, compose_custom_policy, compose_policy
 from .qc_pack import RoiNameOutcome
+from .reasons import DescriptorReason, HeldRoiName
 from .reviewed_roi_names import (
     CleanedRoiName,
     Outcome,
@@ -61,7 +61,7 @@ from .reviewed_roi_names import (
     ReviewQueue,
     clean_roi_names,
 )
-from .roi_names import Reason, RoiNameVocabulary
+from .roi_names import RoiNameVocabulary
 from .run_qc import RetainedText, RoiNameMaterial
 
 CLEAN_DESCRIPTORS = "clean_descriptors"
@@ -77,16 +77,6 @@ _REVIEWED = frozenset(
 # The outcomes whose written name the residual search, which ignores case,
 # could find for its source value.
 _WRITES_ITS_SOURCE = frozenset({Outcome.RENAMED, Outcome.KEPT})
-
-
-class DescriptorReason(enum.Enum):
-    """Why descriptor cleaning sequesters an instance."""
-
-    # a ROI Name whose value could not be decoded
-    UNDECODABLE_ROI_NAME = "undecodable-roi-name"
-    # an attribute given C whose action without Clean Descriptors is still
-    # to come, or under which the instance would be sequestered
-    UNSETTLED_DESCRIPTOR = "unsettled-descriptor"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -134,14 +124,6 @@ class DescriptorCleaning:
         if self.nomenclature is None:
             return None
         return RoiNameVocabulary(self.nomenclature)
-
-
-@dataclasses.dataclass(frozen=True)
-class HeldRoiName:
-    """A ROI Name held for review, by its path and reason, never its value."""
-
-    path: ElementPath
-    reason: Reason
 
 
 @dataclasses.dataclass(frozen=True)
