@@ -25,6 +25,8 @@ import sys
 from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import (
+    conformance,
+    conformance_markdown,
     output_names,
     qc_pack,
     release_gate,
@@ -50,13 +52,20 @@ from pymedphys._dicom.deidentify.residuals import (
     Unsearched,
     UnsearchedReason,
 )
+from pymedphys._dicom.deidentify.release_report_markdown import (
+    ReleaseReportMarkdownError,
+    to_markdown,
+)
 from pymedphys._dicom.deidentify.run_report import (
+    CONFORMANCE_STATEMENT,
     HELD_FOR_REVIEW,
     RELEASE_REPORT,
+    RELEASE_REPORT_MARKDOWN,
     SEQUESTERED,
     ReleaseReporter,
     coverage_records,
     held_instances,
+    release_files,
 )
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 
@@ -105,6 +114,40 @@ def test_a_run_publishes_its_release_report_naming_no_value(tmp_path):
     assert {"retained", "registered-uid"} <= reasons
     for value in (synthetic.PATIENT_ID, synthetic.PATIENTS_NAME, str(tmp_path)):
         assert value not in text
+
+
+@pytest.mark.pydicom
+def test_a_run_publishes_the_reports_human_readable_form_beside_it(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    transform = InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
+
+    _run(tmp_path, transform, ReleaseGate(), transform.reporter)
+
+    text = (tmp_path / "release" / RELEASE_REPORT).read_text(encoding="utf-8")
+    markdown = (tmp_path / "release" / RELEASE_REPORT_MARKDOWN).read_text(
+        encoding="utf-8"
+    )
+    assert markdown == to_markdown(text)
+    assert RELEASE_REPORT in markdown
+    for value in (synthetic.PATIENT_ID, synthetic.PATIENTS_NAME, str(tmp_path)):
+        assert value not in markdown
+
+
+def test_the_release_files_are_the_report_and_its_form_from_it_alone():
+    text = release_report.to_json(
+        release_report.release_report(
+            compose_policy("basic"), vocabulary=None, reviewed_roi_names=None
+        )
+    )
+    assert release_files(text) == {
+        RELEASE_REPORT: text.encode("utf-8"),
+        RELEASE_REPORT_MARKDOWN: to_markdown(text).encode("utf-8"),
+    }
+    assert release_files(text, statement="# Statement\n") == {
+        RELEASE_REPORT: text.encode("utf-8"),
+        RELEASE_REPORT_MARKDOWN: to_markdown(text).encode("utf-8"),
+        CONFORMANCE_STATEMENT: b"# Statement\n",
+    }
 
 
 @pytest.mark.pydicom
@@ -161,6 +204,27 @@ def test_a_report_that_cannot_be_written_publishes_nothing(tmp_path):
 
     with pytest.raises(ValueError, match="no report"):
         _run(tmp_path, Transform(), Gate(), _FailingReporter())
+
+    assert _listing(tmp_path) == ["source"]
+
+
+class _UnreadableReporter:
+    def admits(self, status, reasons):  # pylint: disable = unused-argument
+        return True
+
+    def __call__(self, outcomes, material, _qc_pack):
+        return "{}"
+
+    def conformance_statement(self):
+        return "# Statement\n"
+
+
+@pytest.mark.pydicom
+def test_a_report_whose_form_cannot_be_generated_publishes_nothing(tmp_path):
+    _write(tmp_path / "source", synthetic.collection()[:1])
+
+    with pytest.raises(ReleaseReportMarkdownError):
+        _run(tmp_path, Transform(), Gate(), _UnreadableReporter())
 
     assert _listing(tmp_path) == ["source"]
 
@@ -261,6 +325,50 @@ def test_without_a_reporter_no_report_is_written(tmp_path):
     _run(tmp_path, Transform(), Gate(), None)
 
     assert not os.path.lexists(tmp_path / "release" / RELEASE_REPORT)
+    assert not os.path.lexists(tmp_path / "release" / CONFORMANCE_STATEMENT)
+
+
+@pytest.mark.pydicom
+def test_a_run_publishes_the_conformance_statement_of_its_policy(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    policy = compose_policy("basic")
+    transform = InstanceTransform(policy, KEY, unvalidated_policy=True)
+
+    _run(tmp_path, transform, ReleaseGate(), transform.reporter)
+
+    text = (tmp_path / "release" / CONFORMANCE_STATEMENT).read_text(encoding="utf-8")
+    expected = conformance.conformance_statement(policy, vocabulary=None)
+    assert text == conformance_markdown.render_markdown(expected)
+    assert text == transform.reporter.conformance_statement()
+    for value in (synthetic.PATIENT_ID, synthetic.PATIENTS_NAME, str(tmp_path)):
+        assert value not in text
+    document = json.loads((tmp_path / "release" / RELEASE_REPORT).read_text())
+    # The statement describes the policy whose digest the report records.
+    assert expected.method_digest == document["method"]["method_digest"]
+
+
+class _StatementlessReporter:
+    def __init__(self):
+        self._reporter = _reporter()
+
+    def admits(self, status, reasons):
+        return self._reporter.admits(status, reasons)
+
+    def __call__(self, outcomes, material, reference):
+        return self._reporter(outcomes, material, reference)
+
+    def conformance_statement(self):
+        raise ValueError("no statement")
+
+
+@pytest.mark.pydicom
+def test_a_statement_that_cannot_be_written_publishes_nothing(tmp_path):
+    _write(tmp_path / "source", synthetic.collection()[:1])
+
+    with pytest.raises(ValueError, match="no statement"):
+        _run(tmp_path, Transform(), Gate(), _StatementlessReporter())
+
+    assert _listing(tmp_path) == ["source"]
 
 
 def test_coverage_records_follow_the_drops_and_the_search():
@@ -335,10 +443,21 @@ def test_only_held_outcomes_are_counted():
     assert run.Status.HELD_FOR_REVIEW.value == HELD_FOR_REVIEW
 
 
-@pytest.mark.parametrize("name", [RELEASE_REPORT, RELEASE_REPORT.upper()])
+@pytest.mark.parametrize(
+    "name",
+    [
+        RELEASE_REPORT,
+        RELEASE_REPORT.upper(),
+        RELEASE_REPORT_MARKDOWN,
+        RELEASE_REPORT_MARKDOWN.upper(),
+        CONFORMANCE_STATEMENT,
+        CONFORMANCE_STATEMENT.upper(),
+    ],
+)
 def test_no_output_name_is_the_release_report(name):
     # The first part of every output's path is a pseudonymous Patient ID, so
-    # even a file system that ignores case cannot confuse one with the report.
+    # even a file system that ignores case cannot confuse one with the report
+    # or the conformance statement.
     pattern = output_names._PATIENT_ID  # pylint: disable = protected-access
     assert pattern.fullmatch(name) is None
     assert pattern.fullmatch(name.casefold()) is None
@@ -346,7 +465,7 @@ def test_no_output_name_is_the_release_report(name):
 
 @pytest.mark.parametrize(
     "module",
-    ["release_report", "qc_pack", "run_qc", "descriptor_cleaning", "run"],
+    ["release_report", "qc_pack", "run_qc", "descriptor_cleaning", "run", "run_report"],
 )
 def test_each_module_of_the_report_and_the_qc_pack_imports_first(module):
     # The QC pack and the release report import from each other's

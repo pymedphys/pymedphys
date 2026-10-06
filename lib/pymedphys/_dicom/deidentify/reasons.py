@@ -68,6 +68,10 @@ class TransformReason(enum.Enum):
     # the de-identification markers cannot be added to what the instance
     # already holds, such as a marker attribute read as UN (PS3.15 E.1.1)
     UNMARKABLE = "unmarkable"
+    # a value that the plan keeps as it is cannot be decoded for D-017's
+    # review of every retained string, such as text outside ISO 646 where no
+    # Specific Character Set applies
+    UNREVIEWABLE_RETAINED_TEXT = "unreviewable-retained-text"
     # an edit still to come when the output is written, such as a pseudonym
     # without the subject's identity
     PENDING_EDIT = "pending-edit"
