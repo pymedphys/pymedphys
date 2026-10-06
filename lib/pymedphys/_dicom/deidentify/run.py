@@ -56,9 +56,10 @@ A run has five steps:
    instances that the finding names, deleting their files, and checks what
    is left again, until nothing but such references remains; a finding
    that names no released instance, or a check that raises, publishes
-   nothing (:class:`ReleaseWithheld`). A reference to an input that was
-   withheld, such as a plan's to a sequestered image, is reported only, as
-   the first pass reports a dangling reference.
+   nothing (:class:`ReleaseWithheld`), as
+   :mod:`~pymedphys._dicom.deidentify.run_written` describes. A reference
+   to an input that was withheld, such as a plan's to a sequestered image,
+   is reported only, as the first pass reports a dangling reference.
 5. The release directory is published by renaming the staging area's
    release tree to it, so it appears whole, holding only files that their
    gate released and any release report, or not at all.
@@ -84,11 +85,7 @@ Where the design leaves a detail open, the run takes these defaults:
 - the published tree keeps the staging area's permissions, for its owner
   alone, until whoever releases it decides otherwise;
 - a file held for review is not published, and its staged bytes are
-  deleted;
-- of the second pass's findings, those that name a written reference that
-  resolves to nothing written are acted on only where no other finding at
-  fault remains, since an instance whose reference names one that was
-  itself written wrongly is sound once that one is withheld.
+  deleted.
 
 Nothing here logs, warns, or raises with a source path or value, and
 pydicom's warnings and log records, in the thread that runs it, including
@@ -101,8 +98,6 @@ material, and are left out of its ``repr``.
 
 from __future__ import annotations
 
-# pylint: disable = too-many-lines
-
 import collections
 import dataclasses
 import enum
@@ -110,11 +105,11 @@ import hashlib
 import os
 import shutil
 import stat
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import TypeGuard
 
-from . import output_names, qc_store, release_report, run_qc, run_report
+from . import output_names, qc_store, release_report, run_qc, run_report, run_written
 from .diagnostics import redacted_diagnostics
 from .file_layout import Region, read_file_layout
 from .reference_graph import (
@@ -125,6 +120,14 @@ from .reference_graph import (
 )
 from .references import InstanceRecord, UnreadableSequence
 from .reasons import RunReason
+
+# discover and ReleaseWithheld are part of the run's interface, from here.
+from .run_discovery import (  # pylint: disable = unused-import
+    Discovery,
+    RunError,
+    _Entry,
+    discover,
+)
 from .run_results import (
     NO_EVIDENCE,
     Gate,
@@ -135,29 +138,20 @@ from .run_results import (
     Transformed,
     WrittenCheck,
 )
-from .written_references import WrittenFinding, WrittenFindingKind
+from .run_written import ReleaseWithheld  # pylint: disable = unused-import
+from .written_references import WrittenFinding
 
 # Media Storage SOP Class UID of a DICOMDIR: the Media Storage Directory
 # Storage SOP Class (PS3.4 Annex F, PS3.6 Table A-1).
 MEDIA_STORAGE_DIRECTORY_STORAGE = "1.2.840.10008.1.3.10"
 _MEDIA_STORAGE_SOP_CLASS = "(0002,0002)"
 _DIRECTORY_RECORD_SEQUENCE = "(0004,1220)"
-_DICOMDIR_NAME = "DICOMDIR"
 STAGING_SUFFIX = ".staging"
 # The staging area's tree that becomes the release directory.
 _STAGED_RELEASE = "release"
 _PARTIAL_SUFFIX = ".partial"
 # Without long path support, Windows limits a file's path to 259 characters.
 _WINDOWS_MAX_PATH = 259
-_FILE_ATTRIBUTE_REPARSE_POINT = 0x400
-
-
-class RunError(Exception):
-    """A run that cannot start, for a reason in its directories.
-
-    Its message names the release directory or staging area, which the
-    caller chose, and never a source path.
-    """
 
 
 class RunStopped(Exception):
@@ -181,34 +175,6 @@ class RunStopped(Exception):
         )
 
 
-class ReleaseWithheld(Exception):
-    """A run whose second reference pass found a fault it could not isolate.
-
-    Nothing is published, and no QC pack is written. Its message gives only
-    the number of findings.
-
-    Attributes
-    ----------
-    findings : tuple of WrittenFinding
-        The second pass's findings that withheld the release, by run
-        position; empty if the check itself failed.
-    """
-
-    def __init__(self, findings: tuple[WrittenFinding, ...] = ()) -> None:
-        super().__init__(findings)
-        self.findings = findings
-
-    def __str__(self) -> str:
-        if not self.findings:
-            return "the second reference pass failed, so nothing was published"
-        return (
-            "the second reference pass found faults in what was written that "
-            f"no instance could be withheld for ({len(self.findings)} "
-            f"finding{'' if len(self.findings) == 1 else 's'}), so nothing was "
-            "published"
-        )
-
-
 class Status(enum.Enum):
     """What happened to an input."""
 
@@ -219,61 +185,12 @@ class Status(enum.Enum):
     REFUSED = "refused"  # not an instance that the run can read
 
 
-# The second pass's findings that are reported only: a reference to an input
-# that was withheld names nothing that was written, as the first pass's
-# dangling reference names nothing that was given.
-_REPORTED_ONLY = frozenset({WrittenFindingKind.UNWRITTEN_TARGET})
-
 # The first pass's findings that sequester the inputs that they name.
 _SEQUESTERING_FINDINGS = (
     FindingKind.MISSING_IDENTIFIER,
     FindingKind.CONFLICTING_INSTANCE,
     FindingKind.SERIES_IN_SEVERAL_STUDIES,
 )
-
-
-@dataclasses.dataclass(frozen=True)
-class _Entry:
-    """An entry as discovery found it."""
-
-    path: Path
-    refusal: RunReason | None
-    device: int
-    inode: int
-
-
-@dataclasses.dataclass(frozen=True, repr=False)
-class Discovery:
-    """The entries below a source directory, by run position.
-
-    Its ``repr`` shows only how many there are.
-
-    Attributes
-    ----------
-    source : Path
-        The source directory, resolved.
-    paths : tuple of Path
-        Each entry's path, at its run position. Confidential: they are for
-        the QC material alone.
-    refusals : tuple of RunReason or None
-        For each position, why discovery refused the entry, or ``None`` for
-        a regular file.
-    """
-
-    source: Path
-    entries: tuple[_Entry, ...]
-
-    @property
-    def paths(self) -> tuple[Path, ...]:
-        return tuple(entry.path for entry in self.entries)
-
-    @property
-    def refusals(self) -> tuple[RunReason | None, ...]:
-        return tuple(entry.refusal for entry in self.entries)
-
-    def __repr__(self) -> str:
-        refused = sum(entry.refusal is not None for entry in self.entries)
-        return f"Discovery(entries={len(self.entries)}, refused={refused})"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -342,90 +259,6 @@ class RunResult:
     written_findings: tuple[WrittenFinding, ...] = ()
     staging_removed: bool = True
     qc_pack: Path | None = None
-
-
-def discover(source: str | os.PathLike[str]) -> Discovery:
-    """List every entry below a source directory, by run position.
-
-    Entries are ordered by their paths relative to ``source``, compared
-    component by component as the bytes that the file system holds, so the
-    order is the same on every run. A directory is descended and is not an
-    entry itself. A symbolic link, to a directory or a file, or another
-    link, such as a Windows junction, is an entry that is refused and not
-    followed; any other entry that is not a regular file, such as a named
-    pipe, is refused without being opened; and a regular file named
-    ``DICOMDIR``, in any case, is refused, as is one that the first pass
-    finds to be a DICOMDIR.
-
-    Parameters
-    ----------
-    source : str or os.PathLike
-        The source directory. A symbolic link to it is followed.
-
-    Returns
-    -------
-    Discovery
-
-    Raises
-    ------
-    RunError
-        If ``source`` is not a directory, or a directory below it cannot be
-        listed. The message names no path.
-    """
-    root = Path(source)
-    try:
-        root = root.resolve()
-        is_directory = root.is_dir()
-    except OSError:
-        is_directory = False
-    if not is_directory:
-        raise RunError("the source is not a directory that can be read")
-    try:
-        found = list(_walk(root))
-    except OSError:
-        raise RunError("a directory below the source cannot be listed") from None
-    found.sort(
-        key=lambda entry: tuple(
-            os.fsencode(part) for part in entry.path.relative_to(root).parts
-        )
-    )
-    return Discovery(root, tuple(found))
-
-
-def _walk(root: Path) -> Iterator[_Entry]:
-    """Yield every entry below ``root``, without recursion or following links."""
-    pending = [root]
-    while pending:
-        with os.scandir(pending.pop()) as listing:
-            entries = list(listing)
-        for entry in entries:
-            path = Path(entry.path)
-            details = entry.stat(follow_symlinks=False)
-            refusal = None
-            if _is_link(entry, details):
-                refusal = RunReason.SYMBOLIC_LINK
-            elif stat.S_ISDIR(details.st_mode):
-                pending.append(path)
-                continue
-            elif not stat.S_ISREG(details.st_mode):
-                refusal = RunReason.NOT_A_REGULAR_FILE
-            elif entry.name.upper() == _DICOMDIR_NAME:
-                refusal = RunReason.DICOMDIR
-            else:
-                # On Windows, a directory entry's own stat has no device or
-                # inode, which reading the file compares.
-                details = os.lstat(path)
-            yield _Entry(path, refusal, details.st_dev, details.st_ino)
-
-
-def _is_link(entry: os.DirEntry, details: os.stat_result) -> bool:
-    if entry.is_symlink():
-        return True
-    is_junction = getattr(entry, "is_junction", None)  # Python 3.12 and later
-    if is_junction is not None and is_junction():
-        return True
-    attributes = getattr(details, "st_file_attributes", 0)  # Windows
-    return bool(attributes & _FILE_ATTRIBUTE_REPARSE_POINT)
 
 
 def staging_path(release: str | os.PathLike[str]) -> Path:
@@ -949,7 +782,7 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches, to
             for entry in staged.values()
             if outcomes[entry.position].status is Status.RELEASED
         ]
-        written = _second_reference_pass(first, released, outcomes, written_check)
+        written = _check_written(first, released, outcomes, written_check)
 
     for copy, processed in following.items():
         outcome = outcomes[processed]
@@ -965,98 +798,36 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches, to
     )
 
 
-def _second_reference_pass(
+def _check_written(
     first: _FirstPass,
     released: list[_Staged],
     outcomes: dict[int, Outcome],
     written_check: WrittenCheck,
 ) -> tuple[WrittenFinding, ...]:
-    """Check the released files against the first pass, and fail closed.
+    """Run the second reference pass on the released files, as read back.
 
-    Sequester each released instance that a finding at fault names, setting
-    its outcome and deleting its file, and check what is left again, until
-    only findings reported only remain. Return the findings that sequestered
-    instances, then those of the last check, once each, by run position.
-
-    Raises
-    ------
-    ReleaseWithheld
-        If the check raises, or a finding at fault names no instance that
-        is still released.
+    Each file that it withholds, or that changed since it was staged, is
+    deleted and sequestered.
     """
-    index = {position: at for at, position in enumerate(first.positions)}
-    files: dict[int, _Staged] = {}
-    records: dict[int, InstanceRecord] = {}
-    for entry in sorted(released, key=lambda entry: entry.position):
-        data = entry.file.read_bytes()
-        reason = None
-        if hashlib.sha256(data).digest() != entry.digest:
-            reason = RunReason.STAGED_FILE_CHANGED
+    data: dict[int, bytes] = {}
+    withheld: dict[int, RunReason] = {}
+    for entry in released:
+        written = entry.file.read_bytes()
+        if hashlib.sha256(written).digest() == entry.digest:
+            data[entry.position] = written
         else:
-            try:
-                records[index[entry.position]] = InstanceRecord.from_file(data)
-            # What was written cannot be shown to refer as its input did, and
-            # pydicom's message could quote a value, so none is kept.
-            except Exception:  # pylint: disable = broad-exception-caught
-                reason = RunReason.INCONSISTENT_REFERENCES
-        if reason is None:
-            files[index[entry.position]] = entry
-            continue
-        entry.file.unlink()
-        outcomes[entry.position] = _outcome(entry.position, Status.SEQUESTERED, reason)
-
-    found: dict[WrittenFinding, None] = {}
-    while True:
-        try:
-            findings = tuple(
-                _by_run_position(finding, first.positions)
-                for finding in written_check(first.graph, dict(records))
-            )
-        # The check is the run's own, but its message could still quote a
-        # value, so none is kept, and nothing is published.
-        except Exception:  # pylint: disable = broad-exception-caught
-            raise ReleaseWithheld() from None
-        faults = [finding for finding in findings if finding.kind not in _REPORTED_ONLY]
-        if not faults:
-            found.update(dict.fromkeys(findings))
-            return tuple(found)
-        # An instance whose reference names one that was written wrongly is
-        # itself sound once that one is withheld, so it is withheld only if
-        # it is at fault alone.
-        acted = [
-            finding
-            for finding in faults
-            if finding.kind is not WrittenFindingKind.UNRESOLVED_REFERENCE
-        ] or faults
-        named = {
-            index[position]
-            for finding in acted
-            for group in finding.instances
-            for position in group
-            if index.get(position) in records
-        }
-        if not named:
-            raise ReleaseWithheld(tuple(faults))
-        found.update(dict.fromkeys(acted))
-        for at in sorted(named):
-            del records[at]
-            entry = files.pop(at)
+            withheld[entry.position] = RunReason.STAGED_FILE_CHANGED
+    findings, faulty = run_written.second_pass(
+        first.graph, first.positions, data, written_check
+    )
+    withheld.update(faulty)
+    for entry in released:
+        if entry.position in withheld:
             entry.file.unlink()
             outcomes[entry.position] = _outcome(
-                entry.position, Status.SEQUESTERED, RunReason.INCONSISTENT_REFERENCES
+                entry.position, Status.SEQUESTERED, withheld[entry.position]
             )
-
-
-def _by_run_position(
-    finding: WrittenFinding, positions: tuple[int, ...]
-) -> WrittenFinding:
-    """Return a finding of the graph's positions by the run's positions."""
-    return dataclasses.replace(
-        finding,
-        instances=tuple(
-            tuple(positions[at] for at in group) for group in finding.instances
-        ),
-    )
+    return findings
 
 
 def _material(result: object) -> tuple[object, ...]:

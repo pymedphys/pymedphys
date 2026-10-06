@@ -222,6 +222,7 @@ decisions = ["D-016"]
 implementation = [
   "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/run.py",
+  "_dicom/deidentify/run_discovery.py",
   "_dicom/deidentify/run_results.py",
 ]
 tests = [
@@ -904,6 +905,7 @@ implementation = [
   "_dicom/deidentify/references.py",
   "_dicom/deidentify/run.py",
   "_dicom/deidentify/run_results.py",
+  "_dicom/deidentify/run_written.py",
   "_dicom/deidentify/sequences.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/values.py",
