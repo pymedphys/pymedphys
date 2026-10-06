@@ -47,7 +47,7 @@ from . import dummy_values, pseudonyms, residuals, uids
 from . import release_report as report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
-from .release_report import _SEQUESTERING
+from .release_report import _HOLDING, _SEQUESTERING
 from .residuals import _BINARY as _BINARY_VRS
 from .residuals import _KINDS
 from .residuals import _NUMBERS as _NUMBER_VRS
@@ -128,8 +128,9 @@ UNSEARCHED_REASONS: Mapping[residuals.UnsearchedReason, str] = types.MappingProx
             "the policy retains the value, so it is dropped from the search"
         ),
         residuals.UnsearchedReason.WRITTEN_CONSTANT: (
-            "the value, or one of its values, equals, as D compares values, a "
-            "constant that the engine writes whatever the source held"
+            "the value, one of its values, or a form of a value equals, as D "
+            "compares values, a constant that the engine writes whatever the "
+            "source held; other values and forms are still searched"
         ),
         residuals.UnsearchedReason.UNDECODABLE: (
             "the value could not be decoded to collect it, and is removed or replaced"
@@ -147,6 +148,40 @@ STAGES: Mapping[str, str] = types.MappingProxyType(
         "admission": "its source file was refused and set aside",
         "references": "the first pass's reference graph sequestered it",
         "walker": "an element's action could not be applied at its place",
+        "run": (
+            "the run's own checks after its first pass refused it, such as for "
+            "a source file that changed during the run or an output name that "
+            "another instance shares"
+        ),
+        "transform": (
+            "the instance could not be transformed, such as for an edit still "
+            "to come when its output is written, or a ROI Name that descriptor "
+            "cleaning could not decode"
+        ),
+        "writer": "its output could not be written as planned",
+        "verifier": (
+            "the written output could not be shown to preserve each value that "
+            "the policy keeps"
+        ),
+        "release": (
+            "the release gate withheld it, for what the residual search found "
+            "in its written file, a written file not read to its end, or a "
+            "value of it or of another instance of its subject that could not "
+            "be collected for the search"
+        ),
+    }
+)
+
+# What each stage that holds an instance for review does.
+HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
+    {
+        "roi-names": "descriptor cleaning sent one of its ROI Names to review",
+        "release": (
+            "the release gate requires QC review, for other text that the "
+            "residual search found inside the data set, or a value that could "
+            "not be collected for the search and is not a person name, UID, "
+            "date, datetime, direct identifier, or sequence"
+        ),
     }
 )
 
@@ -352,6 +387,12 @@ def release_report() -> list[str]:
         + "."
         for stage, codes in _SEQUESTERING.items()
     ]
+    holding = [
+        f"- {code(stage)}: {HOLDING_STAGES[stage]}, by "
+        + join((code(c) for c in sorted(codes)), "or")
+        + "."
+        for stage, codes in _HOLDING.items()
+    ]
     omissions = join((code(o.value) for o in residuals.Omission), "or")
     return [
         "## Release report",
@@ -371,6 +412,12 @@ def release_report() -> list[str]:
         "outermost sequence, without items, the action, and the VR where it "
         "is known.",
         "",
+        "The report counts the instances held for review, by the stage that "
+        "held each and its reason code, an instance once for each stage and "
+        "code however many of its names or attributes have it (D-009):",
+        "",
+        *holding,
+        "",
         "The report counts the source values that the residual search did "
         "not search, in full or in part, by attribute, as tags from the "
         "outermost sequence without items, and by reason, each value once for "
@@ -383,10 +430,19 @@ def release_report() -> list[str]:
             for reason in residuals.UnsearchedReason
         ),
         "",
+        "The report lists each released instance by its output name alone, "
+        "which is built from the replacement Patient ID and UIDs, and gives "
+        "the run's QC pack by its opaque reference, with the outcome of its "
+        "attestation (`attested`, `rejected`, or `not-attested`), or none for "
+        "a run without a QC pack. A report written before the pack is "
+        "reviewed gives the outcome `not-attested` (D-016, D-026).",
+        "",
         "The report holds no source value or original path: each field is a "
         "digest, a version, a known edition, preset, or option, a file name "
-        "or path within the engine's package, one of the run's labels, a path "
-        "of tags, a code that the engine defines, a positive count, true or "
+        "or path within the engine's package, a QC pack's reference or an "
+        "attestation outcome, an output name listed once, one of the run's "
+        "labels, a path of tags, a code that the engine defines, a positive "
+        "count, true or "
         "false, the report's or the method digest's format label, or none, and "
         "the report refuses any other. Only the confidential QC pack maps "
         "labels to source instances and lists each value not searched by "

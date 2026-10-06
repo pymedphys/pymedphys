@@ -220,9 +220,16 @@ def test_a_value_equal_to_a_written_constant_as_d_compares_is_not_searched():
     assert result.findings
     (unsearched,) = result.unsearched
     assert unsearched.reason is residuals.UnsearchedReason.WRITTEN_CONSTANT
+    name = ElementPath((), "(0010,1001)")
+    form = residuals.SourceValue(name, "PN", "DEIDENTIFIED^ZEBEDEE")
+    result = residuals.find_residuals(b"ZEBEDEE", [form])
+    assert result.findings
+    (unsearched,) = result.unsearched
+    assert unsearched.reason is residuals.UnsearchedReason.WRITTEN_CONSTANT
     described = conformance_values.UNSEARCHED_REASONS[unsearched.reason]
-    assert "or one of its values" in described
+    assert "one of its values, or a form of a value" in described
     assert "as D compares values" in described
+    assert "other values and forms are still searched" in described
 
 
 def test_each_vr_described_as_not_searched_is_not_searched():
@@ -254,6 +261,19 @@ def test_the_release_report_names_sequestered_instances_by_label(preset):
     for stage, codes in stages.items():
         line = section.split(f"- `{stage}`: ", 1)[1].split(" - ", 1)[0]
         assert line.startswith(conformance_values.STAGES[stage])
+        for reason in codes:
+            assert f"`{reason}`" in line, (stage, reason)
+
+
+def test_the_release_report_counts_held_instances_by_stage(preset):
+    section = _section(preset, "Release report")
+    held = section.split("counts the instances held for review", 1)[1]
+    stages = release_report._HOLDING  # pylint: disable = protected-access
+    assert set(conformance_values.HOLDING_STAGES) == set(stages)
+    assert "(D-009)" in held
+    for stage, codes in stages.items():
+        line = held.split(f"- `{stage}`: ", 1)[1].split(" - ", 1)[0]
+        assert line.startswith(conformance_values.HOLDING_STAGES[stage])
         for reason in codes:
             assert f"`{reason}`" in line, (stage, reason)
 

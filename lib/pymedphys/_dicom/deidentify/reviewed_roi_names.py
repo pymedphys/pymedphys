@@ -228,6 +228,15 @@ class ReviewedNames:
     def __len__(self) -> int:
         return len(self._names)
 
+    def snapshot(self) -> ReviewedNames:
+        """Return a copy of the decisions as they stand, which is never saved.
+
+        A decision recorded in either list afterwards does not change the
+        other, so a run can apply, and record the keyed digest of, one
+        version of the list.
+        """
+        return ReviewedNames(None, dict(self._names))
+
     def _document(self) -> dict:
         names = {
             name: {"review": d.review.value, "to": d.to}

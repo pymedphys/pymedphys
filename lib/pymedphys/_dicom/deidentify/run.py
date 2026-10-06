@@ -50,7 +50,7 @@ A run has five steps:
    not released is deleted at once.
 5. The release directory is published by renaming the staging area's
    release tree to it, so it appears whole, holding only files that their
-   gate released, or not at all.
+   gate released and any release report, or not at all.
 
 The run decides nothing about an instance's content: the transform and the
 gate do. The run fails closed. An exception that either raises, or a result
@@ -97,12 +97,14 @@ from collections.abc import Callable, Iterator
 from pathlib import Path, PurePosixPath
 from typing import TypeGuard
 
-from . import output_names, qc_store, release_report, run_qc
+from . import output_names, qc_store, release_report, run_qc, run_report
 from .diagnostics import redacted_diagnostics
 from .file_layout import Region, read_file_layout
 from .reference_graph import Finding, FindingKind, build_reference_graph
 from .references import InstanceRecord, UnreadableSequence
+from .reasons import RunReason
 from .run_results import (
+    NO_EVIDENCE,
     Gate,
     HoldForReview,
     Release,
@@ -163,26 +165,6 @@ class Status(enum.Enum):
     HELD_FOR_REVIEW = "held-for-review"  # withheld until it is reviewed
     SEQUESTERED = "sequestered"  # withheld from the release
     REFUSED = "refused"  # not an instance that the run can read
-
-
-class RunReason(enum.Enum):
-    """Why the run itself refused or sequestered an input."""
-
-    # discovery
-    SYMBOLIC_LINK = "symbolic-link"  # or another link, such as a junction
-    NOT_A_REGULAR_FILE = "not-a-regular-file"
-    DICOMDIR = "dicomdir"
-    # the first pass
-    UNREADABLE_FILE = "unreadable-file"  # the operating system cannot read it
-    NOT_READABLE_AS_DICOM = "not-readable-as-dicom"
-    UNREADABLE_SEQUENCE = "unreadable-sequence"
-    # the second pass and after
-    CHANGED_DURING_RUN = "changed-during-run"
-    INVALID_OUTPUT_NAME = "invalid-output-name"
-    SHARED_OUTPUT_NAME = "shared-output-name"
-    STAGED_FILE_CHANGED = "staged-file-changed"
-    INVALID_REASON = "invalid-reason"
-    INTERNAL_ERROR = "internal-error"
 
 
 # The first pass's findings that sequester the inputs that they name.
@@ -399,6 +381,7 @@ def run(
     gate: Gate,
     *,
     qc_destination: str | os.PathLike[str],
+    reporter: run_report.Reporter | None = None,
 ) -> RunResult:
     """De-identify the discovered inputs into a new release directory.
 
@@ -420,6 +403,13 @@ def run(
         staging area, as
         :func:`~pymedphys._dicom.deidentify.qc_store.check_confidential_destination`
         checks before anything is created. There is no default (D-016).
+    reporter : Reporter, optional
+        Given the labelled outcomes, each input's QC material, and the QC
+        pack's reference, returns the report's text, published at the root as
+        :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT`.
+        Without one, no report is written. A withheld input whose reasons
+        the reporter does not admit is sequestered for
+        :attr:`RunReason.INVALID_REASON`, followed by its own reasons.
 
     Returns
     -------
@@ -443,6 +433,10 @@ def run(
         If a transform's or gate's QC material is not a tuple of the
         material types of :mod:`~pymedphys._dicom.deidentify.run_qc`.
         Nothing is published.
+    ~pymedphys._dicom.deidentify.release_report.ReleaseReportError
+        If the release report has a field that could hold a value or a path,
+        or a reason that no stage of the report gives; or anything else the
+        reporter raises. Nothing is published, and no QC pack is written.
 
     Notes
     -----
@@ -455,17 +449,17 @@ def run(
     # and in the transform and gate, and its warnings and log records can
     # quote them.
     with redacted_diagnostics():
-        return _run(
-            discovery, Path(release).absolute(), transform, gate, qc_destination
-        )
+        release_path = Path(release).absolute()
+        return _run(discovery, release_path, transform, gate, qc_destination, reporter)
 
 
-def _run(
+def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
     discovery: Discovery,
     release_path: Path,
     transform: Transform,
     gate: Gate,
     qc_destination: str | os.PathLike[str],
+    reporter: run_report.Reporter | None,
 ) -> RunResult:
     staging = staging_path(release_path)
     _check_directories(discovery.source, release_path, staging)
@@ -489,11 +483,19 @@ def _run(
     removed = False
     try:
         outcomes, material = _stage_and_gate(discovery, first, staging, transform, gate)
+        if reporter is not None:
+            outcomes = _admitted(outcomes, reporter)
         outcomes = _labelled(outcomes)
         pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
+        # Built before the pack is written, so a failure leaves no QC material.
+        report = reporter(outcomes, material, pack.reference) if reporter else None
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
         _remove_empty_directories(staged_release)
+        if report is not None:
+            _write_atomically(
+                staged_release / run_report.RELEASE_REPORT, report.encode("utf-8")
+            )
         if os.path.lexists(release_path):
             raise RunError(_RELEASE_EXISTS.format(release=release_path))
         # The pack is written before the release is published, so that a
@@ -508,34 +510,13 @@ def _run(
             os.rename(staged_release, release_path)
         except OSError:
             # Nor does a pack outlive a release that was not published.
-            if not _withdrawn(qc_pack):
+            if not qc_store.withdraw_qc_pack(qc_pack.parent):
                 raise RunError(_PACK_LEFT.format(destination=qc_pack.parent)) from None
             raise
         _sync_directory(release_path.parent)
     finally:
         removed = _remove(staging)
     return RunResult(release_path, outcomes, first.findings, removed, qc_pack)
-
-
-def _withdrawn(pack: Path) -> bool:
-    """Remove the files that a run wrote for a pack it did not publish.
-
-    Return whether they are all gone. The destination directory is kept,
-    empty, so that a run may write to it again.
-    """
-    withdrawn = True
-    for name in (qc_store.PACK_FILE, qc_store.NOTICE_FILE):
-        try:
-            (pack.parent / name).unlink(missing_ok=True)
-        except OSError:
-            withdrawn = False
-    # The marker goes last, so whatever remains is still QC material (D-016).
-    if withdrawn:
-        try:
-            (pack.parent / qc_store.MARKER_FILE).unlink(missing_ok=True)
-        except OSError:
-            withdrawn = False
-    return withdrawn
 
 
 def _remove_empty_directories(root: Path) -> None:
@@ -548,6 +529,24 @@ def _remove_empty_directories(root: Path) -> None:
         # Deepest first, so a directory that held only empty ones is empty.
         if Path(directory) != root and not os.listdir(directory):
             os.rmdir(directory)
+
+
+def _admitted(
+    outcomes: tuple[Outcome, ...], reporter: run_report.Reporter
+) -> tuple[Outcome, ...]:
+    """Sequester each withheld input whose reasons the reporter cannot give."""
+    # Its own reasons follow, for the QC pack; the report gives the first alone.
+    return tuple(
+        dataclasses.replace(
+            outcome,
+            status=Status.SEQUESTERED,
+            reasons=(RunReason.INVALID_REASON, *outcome.reasons),
+        )
+        if outcome.status in (Status.SEQUESTERED, Status.HELD_FOR_REVIEW)
+        and not reporter.admits(outcome.status.value, outcome.reasons)
+        else outcome
+        for outcome in outcomes
+    )
 
 
 def _labelled(outcomes: tuple[Outcome, ...]) -> tuple[Outcome, ...]:
@@ -789,17 +788,18 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches
                 outcomes[candidate] = _outcome(
                     candidate, Status.SEQUESTERED, RunReason.CHANGED_DURING_RUN
                 )
+        subject = _WITHOUT_PATIENT_ID if record.patient is None else record.patient
         if data is None:
+            evidence[subject].append(NO_EVIDENCE)
             continue
         following.update((copy, position) for copy in group if copy > position)
 
         result = _guarded(transform, data, record)
         material[position] += _material(result)
-        subject = _WITHOUT_PATIENT_ID if record.patient is None else record.patient
-        if isinstance(result, (Transformed, Sequestered)) and (
-            result.evidence is not None
-        ):
-            evidence[subject].append(result.evidence)
+        given = (
+            result.evidence if isinstance(result, (Transformed, Sequestered)) else None
+        )
+        evidence[subject].append(NO_EVIDENCE if given is None else given)
         if position in first.sequestered:
             continue  # transformed only for its evidence
         if not _is_transformed(result):

@@ -23,15 +23,20 @@ whole of it runs within
 :func:`~pymedphys._dicom.deidentify.diagnostics.redacted_diagnostics`, so
 no warning or log record of pydicom's, or of the transform's or gate's,
 shows a source value or path, and the summary says how many were redacted.
-:func:`main` parses the source and release directories from the command
-line's arguments, for the ``pymedphys`` command to call once the engine is
-public; nothing registers it yet.
+:func:`main` parses the source and release directories, the QC
+destination, and the preset from the command line's arguments, builds the
+preset's transform for a new run-scoped key with :func:`build_transform`,
+and runs it with the release gate and the transform's release report, for
+the ``pymedphys`` command to call once the engine is public; nothing
+registers it yet. No preset is enabled yet, so until one is, the command
+refuses to run.
 
 The summary and every message name inputs only by count, reasons only by
-their type and member name, and directories only where the caller chose
-them: the release directory, its staging area, and the QC destination. A failure that the run
-does not expect is reported by its exception's type alone, since its
-message could quote a value.
+their type and the names of enum members (their own, or those of a
+dataclass reason's fields), and directories only where the caller chose
+them: the release directory, its staging area, and the QC destination. A
+failure that the run does not expect is reported by its exception's type
+alone, since its message could quote a value.
 
 Exit statuses:
 
@@ -54,6 +59,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import dataclasses
 import enum
 import os
 import sys
@@ -61,9 +67,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import NoReturn, TextIO
 
-from . import run
+from . import instance_transform, policy, run, run_report
 from .qc_pack import QcPackError
 from .diagnostics import RedactionCounts, redacted_diagnostics
+from .keys import DeidKey
 
 EXIT_RELEASED = 0
 EXIT_WITHHELD = 1
@@ -73,6 +80,11 @@ EXIT_STAGING_LEFT = 4
 EXIT_INTERNAL_ERROR = 70
 
 _RELEASED = (run.Status.RELEASED, run.Status.DUPLICATE)
+# The presets the command can build: those of the first supported release
+# (design document, Scope) whose transform needs nothing more. Clean
+# Descriptors joins them with the options for its vocabulary and
+# reviewed-names list.
+_PRESETS = ("basic",)
 
 
 def deidentify_directory(
@@ -82,6 +94,7 @@ def deidentify_directory(
     transform: run.Transform,
     gate: run.Gate,
     qc_destination: str | os.PathLike[str],
+    reporter: run_report.Reporter | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
@@ -102,6 +115,11 @@ def deidentify_directory(
     qc_destination : str or os.PathLike
         Where the run writes its confidential QC pack, as
         :func:`~pymedphys._dicom.deidentify.run.run` takes it.
+    reporter : Reporter, optional
+        The run's release report, as
+        :func:`~pymedphys._dicom.deidentify.run.run` takes it, such as an
+        :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`'s
+        ``reporter``. Without one, the release has no report.
     stdout, stderr : text file, optional
         Where to print the summary, and the reason the run failed or left
         its staging area behind. By default, :data:`sys.stdout` and
@@ -125,6 +143,7 @@ def deidentify_directory(
                 transform,
                 gate,
                 qc_destination=qc_destination,
+                reporter=reporter,
             )
         except (run.RunError, run.RunStopped, QcPackError) as error:
             # Each names only the caller's directories, counts, or the
@@ -221,10 +240,25 @@ def summary_lines(result: run.RunResult, redacted: RedactionCounts) -> list[str]
 
 def _reason_name(reason: object) -> str:
     # A reason's fields could hold anything a transform or gate put there,
-    # so only an enum member's name, which the code defines, is shown.
+    # so only enum members' names, which the code defines, are shown: the
+    # reason's own, or those of a dataclass reason's fields, such as a
+    # release gate's decision and code.
     if isinstance(reason, enum.Enum):
-        return f"{type(reason).__name__}.{reason.name}"
-    return type(reason).__name__
+        return _member(reason)
+    name = type(reason).__name__
+    if dataclasses.is_dataclass(reason) and not isinstance(reason, type):
+        members = [
+            f"{field.name}={_member(value)}"
+            for field in dataclasses.fields(reason)
+            if isinstance(value := getattr(reason, field.name, None), enum.Enum)
+        ]
+        if members:
+            return f"{name}({', '.join(members)})"
+    return name
+
+
+def _member(member: enum.Enum) -> str:
+    return f"{type(member).__name__}.{member.name}"
 
 
 class _Parser(argparse.ArgumentParser):
@@ -279,24 +313,52 @@ def build_parser(
             "RELEASE, which must not exist or must be empty"
         ),
     )
+    parser.add_argument(
+        "--preset",
+        choices=_PRESETS,
+        default=policy.DEFAULT_PRESET,
+        help="the de-identification policy: the Basic Profile (basic, the default)",
+    )
     return parser
+
+
+def build_transform(preset: str, key: DeidKey) -> instance_transform.InstanceTransform:
+    """Return the run's transform under ``preset`` and ``key``.
+
+    Raises
+    ------
+    PolicyError
+        If the preset is not enabled, with a message that quotes nothing
+        but the preset's name.
+    """
+    return instance_transform.InstanceTransform(policy.select_policy(preset), key)
 
 
 def main(
     argv: Sequence[str] | None = None,
     *,
-    transform: run.Transform,
-    gate: run.Gate,
+    transform: run.Transform | None = None,
+    gate: run.Gate | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
     """Parse the command line's arguments, and de-identify as they say.
 
+    Each run has a new key, which nothing keeps, as M6's run-scoped key
+    requires; the transform is :func:`build_transform`'s for it, and the
+    release report is that transform's.
+
     Parameters
     ----------
     argv : sequence of str, optional
         The arguments, by default ``sys.argv[1:]``.
-    transform, gate, stdout, stderr
+    transform : Transform, optional
+        In place of :func:`build_transform`'s, for tests; the release then
+        has no report.
+    gate : Gate, optional
+        By default, the release gate,
+        :class:`~pymedphys._dicom.deidentify.instance_transform.ReleaseGate`.
+    stdout, stderr
         As for :func:`deidentify_directory`.
 
     Returns
@@ -312,12 +374,22 @@ def main(
         ``stderr``, or 0 for ``--help``, as :mod:`argparse` does.
     """
     arguments = build_parser(stderr=stderr).parse_args(argv)
+    reporter = None
+    if transform is None:
+        try:
+            with redacted_diagnostics():
+                built = build_transform(arguments.preset, DeidKey.generate())
+        except policy.PolicyError as error:
+            _print(f"error: {error}", sys.stderr if stderr is None else stderr)
+            return EXIT_NOT_RUN
+        transform, reporter = built, built.reporter
     return deidentify_directory(
         arguments.source,
         arguments.release,
         transform=transform,
-        gate=gate,
+        gate=instance_transform.ReleaseGate() if gate is None else gate,
         qc_destination=arguments.qc_pack,
+        reporter=reporter,
         stdout=stdout,
         stderr=stderr,
     )

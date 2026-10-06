@@ -123,6 +123,16 @@ class Transform(Protocol):
     ) -> Transformed | Sequestered: ...
 
 
+class _NoEvidence:
+    """The evidence of an instance of a subject that gave none."""
+
+    def __repr__(self) -> str:
+        return "NO_EVIDENCE"
+
+
+NO_EVIDENCE = _NoEvidence()
+
+
 class Gate(Protocol):
     """Decide whether a staged file may be released.
 
@@ -130,7 +140,10 @@ class Gate(Protocol):
     its transform's evidence; and ``subject`` the evidence of every instance
     of its subject in the run that the transform returned evidence for,
     ``evidence`` first and then in run order, sequestered instances
-    included.
+    included, and :data:`NO_EVIDENCE` for each other instance of its subject,
+    whose values the gate therefore cannot know were searched for (D-027):
+    one the transform refused or raised for, gave no evidence of, or that
+    changed during the run.
     """
 
     def __call__(
