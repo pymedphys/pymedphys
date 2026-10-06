@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review, converted_to_draft]
   merge_group:
 
 # Default to read-only. Jobs that need more override at the job level.
@@ -21,7 +21,12 @@ concurrency:
         (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
 
 jobs:
+  # Draft PRs run no jobs: every job needs this one or carries its condition.
+  # Marking a PR ready for review starts a full run, and converting it to a
+  # draft cancels an in-flight one. A skipped required check counts as passing,
+  # but a draft can neither merge nor enter the merge queue.
   changes:
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -73,8 +78,10 @@ jobs:
       - name: Test distribution and workflow tooling
         run: uv run --no-sync pytest -n auto .github/scripts
 
-  # Pre-commit always runs. Needs write access for auto-fix pushes on PRs.
+  # Pre-commit runs unless the PR is a draft. Needs write access for auto-fix
+  # pushes on PRs.
   pre-commit:
+    if: github.event.pull_request.draft != true
     uses: ./.github/workflows/pre-commit.yml
     permissions:
       contents: write
@@ -134,7 +141,7 @@ jobs:
   summary:
     name: CI Summary
     needs: [changes, pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check, script-tests]
-    if: always()
+    if: always() && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

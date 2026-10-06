@@ -95,13 +95,21 @@ import shutil
 import stat
 from collections.abc import Callable, Iterator
 from pathlib import Path, PurePosixPath
-from typing import Protocol, TypeGuard
+from typing import TypeGuard
 
-from . import output_names
+from . import output_names, qc_store, release_report, run_qc
 from .diagnostics import redacted_diagnostics
 from .file_layout import Region, read_file_layout
 from .reference_graph import Finding, FindingKind, build_reference_graph
 from .references import InstanceRecord, UnreadableSequence
+from .run_results import (
+    Gate,
+    HoldForReview,
+    Release,
+    Sequestered,
+    Transform,
+    Transformed,
+)
 
 # Media Storage SOP Class UID of a DICOMDIR: the Media Storage Directory
 # Storage SOP Class (PS3.4 Annex F, PS3.6 Table A-1).
@@ -186,96 +194,6 @@ _SEQUESTERING_FINDINGS = (
 
 
 @dataclasses.dataclass(frozen=True)
-class Sequestered:
-    """A transform's or gate's decision to withhold an instance.
-
-    Attributes
-    ----------
-    reasons : tuple
-        Why, as value-free objects of the engine: each an enum member, such
-        as a :class:`~pymedphys._dicom.deidentify.source.SourceReason`, or a
-        frozen dataclass instance, such as a walker's
-        :class:`~pymedphys._dicom.deidentify.walker.Sequestration`. None may
-        be text, which could hold a value: reasons that are not all such
-        objects are replaced by :attr:`RunReason.INVALID_REASON`.
-    evidence : object, optional
-        From a transform, its evidence of the instance, for the gates of
-        the other files of its subject. A gate's is ignored.
-    """
-
-    reasons: tuple[object, ...]
-    evidence: object = dataclasses.field(default=None, repr=False)
-
-
-@dataclasses.dataclass(frozen=True)
-class HoldForReview:
-    """A gate's decision to withhold a file until it is reviewed.
-
-    Attributes
-    ----------
-    reasons : tuple
-        Why, as for :class:`Sequestered`.
-    """
-
-    reasons: tuple[object, ...]
-
-
-@dataclasses.dataclass(frozen=True)
-class Release:
-    """A gate's decision to release a file: the only one that releases it."""
-
-
-@dataclasses.dataclass(frozen=True, repr=False)
-class Transformed:
-    """An instance's output file, and the transform's evidence of it.
-
-    Its ``repr`` shows only the file's size.
-
-    Attributes
-    ----------
-    path : PurePosixPath
-        Where the file goes below the release directory, as
-        :func:`~pymedphys._dicom.deidentify.output_names.instance_path` gives
-        it from the instance's replacement values.
-    data : bytes
-        The whole output file.
-    evidence : object, optional
-        What the gate needs of the instance, such as the source values that
-        were removed or replaced, which the run passes on unread.
-    """
-
-    path: PurePosixPath
-    data: bytes
-    evidence: object = None
-
-    def __repr__(self) -> str:
-        return f"Transformed(bytes={len(self.data)})"
-
-
-class Transform(Protocol):
-    """De-identify one instance: the walker, the writer, and verification."""
-
-    def __call__(
-        self, data: bytes, record: InstanceRecord
-    ) -> Transformed | Sequestered: ...
-
-
-class Gate(Protocol):
-    """Decide whether a staged file may be released.
-
-    ``written`` is the file as read back from the staging area; ``evidence``
-    its transform's evidence; and ``subject`` the evidence of every instance
-    of its subject in the run that the transform returned evidence for,
-    ``evidence`` first and then in run order, sequestered instances
-    included.
-    """
-
-    def __call__(
-        self, written: bytes, evidence: object, subject: tuple[object, ...]
-    ) -> Release | HoldForReview | Sequestered: ...
-
-
-@dataclasses.dataclass(frozen=True)
 class _Entry:
     """An entry as discovery found it."""
 
@@ -339,6 +257,11 @@ class Outcome:
         For an identical copy of another input, the position of the copy
         that was processed. A copy takes that copy's status and reasons,
         except that a copy of a released input is a duplicate.
+    label : str or None
+        For a sequestered input, the opaque per-run label by which the
+        release report refers to it, from
+        :func:`~pymedphys._dicom.deidentify.release_report.sequestration_labels`;
+        only the QC pack maps labels to sources (D-026).
     """
 
     position: int
@@ -346,6 +269,7 @@ class Outcome:
     reasons: tuple[object, ...] = ()
     output: PurePosixPath | None = None
     duplicate_of: int | None = None
+    label: str | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -363,12 +287,15 @@ class RunResult:
     staging_removed : bool
         Whether the staging area was deleted. If it was not, it may hold
         output that still identifies people, and needs deleting by hand.
+    qc_pack : Path or None
+        The QC pack that the run wrote, which :func:`run` always gives.
     """
 
     release: Path
     outcomes: tuple[Outcome, ...]
     findings: tuple[Finding, ...]
     staging_removed: bool = True
+    qc_pack: Path | None = None
 
 
 def discover(source: str | os.PathLike[str]) -> Discovery:
@@ -470,6 +397,8 @@ def run(
     release: str | os.PathLike[str],
     transform: Transform,
     gate: Gate,
+    *,
+    qc_destination: str | os.PathLike[str],
 ) -> RunResult:
     """De-identify the discovered inputs into a new release directory.
 
@@ -485,6 +414,12 @@ def run(
     gate : Gate
         Called once for each staged file, in run order, after every
         instance has been transformed.
+    qc_destination : str or os.PathLike
+        Where the run writes its confidential QC pack: a directory that
+        does not exist, or is empty, outside the release directory and its
+        staging area, as
+        :func:`~pymedphys._dicom.deidentify.qc_store.check_confidential_destination`
+        checks before anything is created. There is no default (D-016).
 
     Returns
     -------
@@ -495,9 +430,19 @@ def run(
     RunError
         If the release directory or its staging area exists, the release
         directory would be inside the source directory, or, on Windows, its
-        files' paths could be too long.
+        files' paths could be too long; or if the release could not be
+        published and its QC pack could not be removed, naming the QC
+        destination. Otherwise, the error that stopped the publication is
+        raised once the pack is removed.
     RunStopped
         If a study's instances name several patients. Nothing is created.
+    ~pymedphys._dicom.deidentify.qc_pack.QcPackError
+        If the QC destination is refused, or the pack cannot be built or
+        written. Nothing is published.
+    TypeError
+        If a transform's or gate's QC material is not a tuple of the
+        material types of :mod:`~pymedphys._dicom.deidentify.run_qc`.
+        Nothing is published.
 
     Notes
     -----
@@ -510,14 +455,23 @@ def run(
     # and in the transform and gate, and its warnings and log records can
     # quote them.
     with redacted_diagnostics():
-        return _run(discovery, Path(release).absolute(), transform, gate)
+        return _run(
+            discovery, Path(release).absolute(), transform, gate, qc_destination
+        )
 
 
 def _run(
-    discovery: Discovery, release_path: Path, transform: Transform, gate: Gate
+    discovery: Discovery,
+    release_path: Path,
+    transform: Transform,
+    gate: Gate,
+    qc_destination: str | os.PathLike[str],
 ) -> RunResult:
     staging = staging_path(release_path)
     _check_directories(discovery.source, release_path, staging)
+    qc_store.check_confidential_destination(
+        qc_destination, release_directory=release_path, staging_directory=staging
+    )
 
     first = _first_pass(discovery)
     stopping = tuple(
@@ -534,19 +488,90 @@ def _run(
         raise RunError(_STAGING_EXISTS.format(staging=staging)) from None
     removed = False
     try:
-        outcomes = _stage_and_gate(discovery, first, staging, transform, gate)
+        outcomes, material = _stage_and_gate(discovery, first, staging, transform, gate)
+        outcomes = _labelled(outcomes)
+        pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
+        _remove_empty_directories(staged_release)
         if os.path.lexists(release_path):
             raise RunError(_RELEASE_EXISTS.format(release=release_path))
-        os.rename(staged_release, release_path)
+        # The pack is written before the release is published, so that a
+        # release never exists without its QC material.
+        qc_pack = qc_store.write_qc_pack(
+            pack,
+            qc_destination,
+            release_directory=release_path,
+            staging_directory=staging,
+        )
+        try:
+            os.rename(staged_release, release_path)
+        except OSError:
+            # Nor does a pack outlive a release that was not published.
+            if not _withdrawn(qc_pack):
+                raise RunError(_PACK_LEFT.format(destination=qc_pack.parent)) from None
+            raise
         _sync_directory(release_path.parent)
     finally:
         removed = _remove(staging)
-    return RunResult(release_path, outcomes, first.findings, removed)
+    return RunResult(release_path, outcomes, first.findings, removed, qc_pack)
+
+
+def _withdrawn(pack: Path) -> bool:
+    """Remove the files that a run wrote for a pack it did not publish.
+
+    Return whether they are all gone. The destination directory is kept,
+    empty, so that a run may write to it again.
+    """
+    withdrawn = True
+    for name in (qc_store.PACK_FILE, qc_store.NOTICE_FILE):
+        try:
+            (pack.parent / name).unlink(missing_ok=True)
+        except OSError:
+            withdrawn = False
+    # The marker goes last, so whatever remains is still QC material (D-016).
+    if withdrawn:
+        try:
+            (pack.parent / qc_store.MARKER_FILE).unlink(missing_ok=True)
+        except OSError:
+            withdrawn = False
+    return withdrawn
+
+
+def _remove_empty_directories(root: Path) -> None:
+    """Remove each directory below ``root`` that holds no file, deepest first.
+
+    A withheld file's patient, study, or series directory is otherwise
+    published empty, which says that something was withheld there.
+    """
+    for directory, _, _ in os.walk(root, topdown=False):
+        # Deepest first, so a directory that held only empty ones is empty.
+        if Path(directory) != root and not os.listdir(directory):
+            os.rmdir(directory)
+
+
+def _labelled(outcomes: tuple[Outcome, ...]) -> tuple[Outcome, ...]:
+    """Give each sequestered outcome its opaque label for the run (D-026)."""
+    sequestered = [
+        outcome.position for outcome in outcomes if outcome.status is Status.SEQUESTERED
+    ]
+    labels = dict(
+        zip(sequestered, release_report.sequestration_labels(len(sequestered)))
+    )
+    return tuple(
+        dataclasses.replace(outcome, label=labels[outcome.position])
+        if outcome.position in labels
+        else outcome
+        for outcome in outcomes
+    )
 
 
 _RELEASE_EXISTS = "the release directory {release} already exists"
+_PACK_LEFT = (
+    "the release could not be published, and the QC pack in {destination} "
+    "could not be removed; it holds source paths and values, so delete it "
+    "before running again"
+)
 _STAGING_EXISTS = (
     "the staging area {staging} already exists, perhaps from a run that was "
     "interrupted; it may hold output that still identifies people, so review "
@@ -736,8 +761,10 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches
     staging: Path,
     transform: Transform,
     gate: Gate,
-) -> tuple[Outcome, ...]:
+) -> tuple[tuple[Outcome, ...], dict[int, tuple[object, ...]]]:
     outcomes: dict[int, Outcome] = dict(first.settled)
+    # The QC material of each position, from its transform and gate.
+    material: dict[int, tuple[object, ...]] = collections.defaultdict(tuple)
     staged: dict[str, _Staged] = {}
     # File names that several instances gave: none of them is written.
     shared: set[str] = set()
@@ -767,6 +794,7 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches
         following.update((copy, position) for copy in group if copy > position)
 
         result = _guarded(transform, data, record)
+        material[position] += _material(result)
         subject = _WITHOUT_PATIENT_ID if record.patient is None else record.patient
         if isinstance(result, (Transformed, Sequestered)) and (
             result.evidence is not None
@@ -809,7 +837,8 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches
         )
 
     for entry in sorted(staged.values(), key=lambda entry: entry.position):
-        outcomes[entry.position] = _gate(entry, evidence[entry.subject], gate)
+        outcomes[entry.position], gated = _gate(entry, evidence[entry.subject], gate)
+        material[entry.position] += gated
 
     for copy, processed in following.items():
         outcome = outcomes[processed]
@@ -818,7 +847,21 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches
         outcomes[copy] = dataclasses.replace(
             outcome, position=copy, duplicate_of=processed
         )
-    return tuple(outcomes[position] for position in range(len(discovery.entries)))
+    return (
+        tuple(outcomes[position] for position in range(len(discovery.entries))),
+        dict(material),
+    )
+
+
+def _material(result: object) -> tuple[object, ...]:
+    """Return the QC material that a transform's or gate's result carries."""
+    if isinstance(result, (Transformed, Sequestered, HoldForReview, Release)):
+        qc = result.qc
+        if not isinstance(qc, tuple):
+            # Material a reviewer needs is never dropped unseen.
+            raise TypeError("QC material must be a tuple")
+        return qc
+    return ()
 
 
 def _second_read(discovery: Discovery, first: _FirstPass, position: int):
@@ -829,27 +872,34 @@ def _second_read(discovery: Discovery, first: _FirstPass, position: int):
     return data
 
 
-def _gate(entry: _Staged, pooled: list[object], gate: Gate) -> Outcome:
-    """Gate a staged file, deleting it unless it is released."""
+def _gate(
+    entry: _Staged, pooled: list[object], gate: Gate
+) -> tuple[Outcome, tuple[object, ...]]:
+    """Gate a staged file, deleting it unless it is released.
+
+    Return its outcome and the QC material that the gate gave.
+    """
     written = entry.file.read_bytes()
     if hashlib.sha256(written).digest() != entry.digest:
         entry.file.unlink()
-        return _outcome(
+        changed = _outcome(
             entry.position, Status.SEQUESTERED, RunReason.STAGED_FILE_CHANGED
         )
+        return changed, ()
     own = entry.evidence
     others = tuple(item for item in pooled if item is not own)
     subject = others if own is None else (own, *others)
     verdict = _guarded(gate, written, own, subject)
+    gated = _material(verdict)
     if isinstance(verdict, Release):
-        return Outcome(entry.position, Status.RELEASED, output=entry.path)
+        return Outcome(entry.position, Status.RELEASED, output=entry.path), gated
     entry.file.unlink()
     status = (
         Status.HELD_FOR_REVIEW
         if isinstance(verdict, HoldForReview)
         else Status.SEQUESTERED
     )
-    return _withheld(entry.position, status, verdict)
+    return _withheld(entry.position, status, verdict), gated
 
 
 def _guarded(call: Callable[..., object], *args: object) -> object:
