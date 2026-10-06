@@ -102,7 +102,7 @@ from .elements import (
     read_element,
 )
 from .file_layout import ElementPath
-from .iod_conformance import lost_requirements
+from .iod_conformance import lost_requirements, source_gaps
 from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
 from .markers import MarkerError, Markers, apply_markers, markers_for
@@ -691,7 +691,9 @@ class InstanceTransform:
         ):
             return Sequestered((classification.disposition,))
         iod = self._iods.iods[classification.iod]
-        risk = _pixel_risk(dataset, record)
+        risk: tuple[object, ...] = _pixel_risk(dataset, record)
+        if not classification.sequestered:
+            risk += source_gaps(source, iod)
         plan = plan_instance(source, self._rules, iod)
         edits = edit_instance(source, plan, self._key, record.patient)
         evidence: Coverage | HeldEvidence = coverage_of(plan, edits)

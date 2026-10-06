@@ -95,15 +95,15 @@ _ROI_NAME_OPTIONS = (
     "with --preset basic-clean-descriptors"
 )
 _TG263_UNLOADED = (
-    "error: the TG-263 edition could not be loaded; its details are not "
+    "the TG-263 edition could not be loaded; its details are not "
     "shown because they can contain file paths"
 )
 _REVIEWED_MISSING = (
-    "error: the reviewed-names list does not exist; its path is not shown "
+    "the reviewed-names list does not exist; its path is not shown "
     "because it can name a person"
 )
 _REVIEWED_UNUSABLE = (
-    "error: the reviewed-names list could not be used; its details are not "
+    "the reviewed-names list could not be used; its details are not "
     "shown because they can contain file paths or ROI names"
 )
 
@@ -388,7 +388,7 @@ def build_parser(
     return parser
 
 
-class _NotBuilt(Exception):
+class TransformNotBuilt(Exception):
     """A transform that cannot be built, with a message that quotes nothing."""
 
 
@@ -418,76 +418,127 @@ def build_transform(
     )
 
 
-def _descriptor_cleaning(arguments: argparse.Namespace) -> DescriptorCleaning:
-    """Return what the parsed options clean ROI Names with (D-009).
+def _descriptor_cleaning(  # pylint: disable = too-many-arguments
+    *,
+    source: str | os.PathLike[str],
+    release: str | os.PathLike[str],
+    qc_pack: str | os.PathLike[str],
+    tg263_spreadsheet: str | os.PathLike[str] | None,
+    reviewed_names: str | os.PathLike[str] | None,
+    empty_held_roi_names: bool,
+) -> DescriptorCleaning:
+    """Return what ROI Names are cleaned with (D-009).
 
-    The pinned TG-263 edition is read from ``--tg263`` or else from
-    PyMedPhys's cached download. The custodian's reviewed-names list is read
-    from ``--reviewed-names``, which must exist, since this command records no
-    decision (:mod:`.reviewed_names_command` records them), and lie outside the source, the release and its staging area,
-    and the QC destination; without it, the list is empty. Held names are
-    emptied only with ``--empty-held-roi-names``.
+    The pinned TG-263 edition is read from ``tg263_spreadsheet`` or else
+    from PyMedPhys's cached download. The custodian's reviewed-names list is
+    read from ``reviewed_names``, which must exist, since a run records no
+    decision (:mod:`.reviewed_names_command` records them), and lie outside
+    the source, the release and its staging area, and the QC destination;
+    without it, the list is empty. Held names are emptied only with
+    ``empty_held_roi_names``.
 
     Raises
     ------
-    _NotBuilt
+    TransformNotBuilt
         If the edition or the list cannot be used.
     """
     try:
         nomenclature = (
             tg263_published.load()
-            if arguments.tg263 is None
-            else tg263_published.load(spreadsheet=Path(arguments.tg263))
+            if tg263_spreadsheet is None
+            else tg263_published.load(spreadsheet=Path(tg263_spreadsheet))
         )
     except (tg263.TG263Error, OSError):
-        raise _NotBuilt(_TG263_UNLOADED) from None
-    if arguments.reviewed_names is None:
+        raise TransformNotBuilt(_TG263_UNLOADED) from None
+    if reviewed_names is None:
         reviewed = ReviewedNames.empty()
     else:
-        release = Path(arguments.release).absolute()
+        absolute_release = Path(release).absolute()
         protected = (
-            Path(arguments.source),
-            release,
-            run.staging_path(release),
-            Path(arguments.qc_pack),
+            Path(source),
+            absolute_release,
+            run.staging_path(absolute_release),
+            Path(qc_pack),
         )
         try:
-            if not Path(arguments.reviewed_names).is_file():
-                raise _NotBuilt(_REVIEWED_MISSING)
-            reviewed = ReviewedNames.open(
-                arguments.reviewed_names, protected_dirs=protected
-            )
+            if not Path(reviewed_names).is_file():
+                raise TransformNotBuilt(_REVIEWED_MISSING)
+            reviewed = ReviewedNames.open(reviewed_names, protected_dirs=protected)
         except (ReviewedNamesError, OSError):
-            raise _NotBuilt(_REVIEWED_UNUSABLE) from None
-    return DescriptorCleaning(
-        nomenclature, reviewed, empty_held=arguments.empty_held_roi_names
+            raise TransformNotBuilt(_REVIEWED_UNUSABLE) from None
+    return DescriptorCleaning(nomenclature, reviewed, empty_held=empty_held_roi_names)
+
+
+def transform_for(  # pylint: disable = too-many-arguments
+    preset: str,
+    key: DeidKey,
+    *,
+    source: str | os.PathLike[str],
+    release: str | os.PathLike[str],
+    qc_pack: str | os.PathLike[str],
+    tg263_spreadsheet: str | os.PathLike[str] | None = None,
+    reviewed_names: str | os.PathLike[str] | None = None,
+    empty_held_roi_names: bool = False,
+) -> instance_transform.InstanceTransform:
+    """Return :func:`build_transform`'s transform for a run's options.
+
+    The command line and the library build a run's transform here, so that
+    both load the same things in the same order. The preset is checked
+    before anything is loaded; under Clean Descriptors, ROI Names are
+    cleaned with the pinned TG-263 edition, from ``tg263_spreadsheet`` or
+    PyMedPhys's cached download, and the custodian's ``reviewed_names``
+    list, which must exist and lie outside ``source``, ``release`` and its
+    staging area, and ``qc_pack``. Under any other preset, the ROI name
+    options are not read.
+
+    Raises
+    ------
+    TransformNotBuilt
+        If the preset is not enabled, or what ROI Names are cleaned with
+        cannot be used, with a message that quotes nothing but the preset's
+        name.
+    """
+    try:
+        selected = policy.select_policy(preset)
+    except policy.PolicyError as error:
+        raise TransformNotBuilt(str(error)) from None
+    cleaning = (
+        _descriptor_cleaning(
+            source=source,
+            release=release,
+            qc_pack=qc_pack,
+            tg263_spreadsheet=tg263_spreadsheet,
+            reviewed_names=reviewed_names,
+            empty_held_roi_names=empty_held_roi_names,
+        )
+        if CLEAN_DESCRIPTORS in selected.options
+        else None
     )
+    try:
+        return build_transform(preset, key, cleaning=cleaning)
+    except policy.PolicyError as error:
+        raise TransformNotBuilt(str(error)) from None
+
+
+def roi_name_options_apply(preset: str) -> bool:
+    """Return whether ``preset`` takes the ROI name options, as Clean Descriptors does."""
+    return CLEAN_DESCRIPTORS in policy.PRESETS.get(preset, ())
 
 
 def _built(
     arguments: argparse.Namespace, key: DeidKey
 ) -> instance_transform.InstanceTransform:
-    """Return :func:`build_transform`'s transform for the parsed options.
-
-    Raises
-    ------
-    _NotBuilt
-        If the preset is not enabled, which is checked before anything is
-        loaded, or what ROI Names are cleaned with cannot be used.
-    """
-    try:
-        selected = policy.select_policy(arguments.preset)
-    except policy.PolicyError as error:
-        raise _NotBuilt(f"error: {error}") from None
-    cleaning = (
-        _descriptor_cleaning(arguments)
-        if CLEAN_DESCRIPTORS in selected.options
-        else None
+    """Return :func:`transform_for`'s transform for the parsed options."""
+    return transform_for(
+        arguments.preset,
+        key,
+        source=arguments.source,
+        release=arguments.release,
+        qc_pack=arguments.qc_pack,
+        tg263_spreadsheet=arguments.tg263,
+        reviewed_names=arguments.reviewed_names,
+        empty_held_roi_names=arguments.empty_held_roi_names,
     )
-    try:
-        return build_transform(arguments.preset, key, cleaning=cleaning)
-    except policy.PolicyError as error:
-        raise _NotBuilt(f"error: {error}") from None
 
 
 def main(
@@ -536,7 +587,7 @@ def main(
         or arguments.reviewed_names is not None
         or arguments.empty_held_roi_names
     )
-    if roi_name_options and CLEAN_DESCRIPTORS not in policy.PRESETS[arguments.preset]:
+    if roi_name_options and not roi_name_options_apply(arguments.preset):
         _print(_ROI_NAME_OPTIONS, error_stream)
         return EXIT_USAGE
     reporter = written_check = None
@@ -544,8 +595,8 @@ def main(
         try:
             with redacted_diagnostics():
                 built = _built(arguments, DeidKey.generate())
-        except _NotBuilt as error:
-            _print(str(error), error_stream)
+        except TransformNotBuilt as error:
+            _print(f"error: {error}", error_stream)
             return EXIT_NOT_RUN
         transform, reporter = built, built.reporter
         written_check = built.written_check

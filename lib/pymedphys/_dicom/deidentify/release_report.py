@@ -47,7 +47,7 @@ defines, never from DICOM data directly, and the check is a backstop: a
 field of another form, which could be a source value or a path outside the
 package, is refused. A field that fails is named, never quoted.
 
-Seven sections describe a run, by replacement identifiers, attribute tags,
+Eight sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
 
 - ``qc_review``: the run's QC pack by its opaque reference, with the outcome
@@ -85,6 +85,11 @@ and codes that the engine defines, never by a source value or path:
   residual search did not search, in full or in part, by reason (D-027),
   from :func:`search_coverage`. The QC pack lists each by instance and
   place.
+- ``source_gaps``: how many instances' sources lack each attribute that
+  their IOD unconditionally requires, by its tags and Type, from
+  :func:`source_gaps`. The run reports these and never acts on them, since
+  the source lacked them before de-identification (MIDI-BP-03). The QC pack
+  lists each by instance and place.
 """
 
 from __future__ import annotations
@@ -103,6 +108,7 @@ from pymedphys._nomenclature import tg263
 from . import method_digest, output_names
 from .method_digest import MethodDigestComponents
 from .file_layout import TAG_PATTERN, ElementPath
+from .iod_conformance import SourceGap
 from .labels import LABEL_PATTERN as _LABEL_PATTERN
 from .policy import PRESETS, Policy
 from .preservation import PreservationReason
@@ -122,7 +128,7 @@ from .standard import OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/6"
+FORMAT = "pymedphys-deid-release-report/7"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -356,6 +362,25 @@ class ReferenceFindings:
 
 
 @dataclasses.dataclass(frozen=True)
+class SourceGapCount:
+    """How many instances' sources lack one attribute that their IOD requires.
+
+    Attributes
+    ----------
+    attribute : str
+        The attribute's tags from the outermost sequence, without items.
+    type : str
+        ``"1"`` or ``"2"``, the Type that requires it.
+    count : int
+        How many instances lack it, each once.
+    """
+
+    attribute: str
+    type: str
+    count: int
+
+
+@dataclasses.dataclass(frozen=True)
 class ReleaseReport:
     """A release report's record of the method, the runtime, and the run.
 
@@ -371,6 +396,7 @@ class ReleaseReport:
     held_for_review : tuple of HeldForReview
     roi_names : ~pymedphys._dicom.deidentify.reviewed_roi_names.RoiNameCounts
     reference_findings : tuple of ReferenceFindings
+    source_gaps : tuple of SourceGapCount
     """
 
     policy: PolicyRecord
@@ -385,6 +411,7 @@ class ReleaseReport:
         default_factory=lambda: RoiNameCounts({}, {})
     )
     reference_findings: tuple[ReferenceFindings, ...] = ()
+    source_gaps: tuple[SourceGapCount, ...] = ()
 
 
 def attribute_tags(path: ElementPath) -> str:
@@ -508,6 +535,36 @@ def search_coverage(
     )
 
 
+def source_gaps(
+    instances: Iterable[Iterable[SourceGap]],
+) -> tuple[SourceGapCount, ...]:
+    """Count the instances whose sources lack each required attribute.
+
+    ``instances`` holds, for each instance, what its source lacks. An
+    instance counts once for an attribute and Type, however many of its
+    items lack it. The counts are in the order of their attributes and
+    Types.
+
+    >>> gap = SourceGap(ElementPath((), "(0008,0060)"), "1")
+    >>> source_gaps([[gap], [gap], []])
+    (SourceGapCount(attribute='(0008,0060)', type='1', count=2),)
+    """
+    counts: collections.Counter[tuple[str, str]] = collections.Counter()
+    for gaps in instances:
+        if isinstance(gaps, SourceGap):
+            raise TypeError("gaps must be given for each instance")
+        found = set()
+        for gap in gaps:
+            if not isinstance(gap, SourceGap):
+                raise TypeError("a gap must be a SourceGap")
+            found.add((attribute_tags(gap.path), gap.type))
+        counts.update(found)
+    return tuple(
+        SourceGapCount(attribute, gap_type, count)
+        for (attribute, gap_type), count in sorted(counts.items())
+    )
+
+
 def held_for_review(
     instances: Iterable[Iterable[HeldRoiName | ReleaseReason]],
 ) -> tuple[HeldForReview, ...]:
@@ -604,6 +661,7 @@ def release_report(
     held: Iterable[HeldForReview] = (),
     roi_names: RoiNameCounts | None = None,
     findings: Iterable[ReferenceFindings] = (),
+    gaps: Iterable[SourceGapCount] = (),
 ) -> ReleaseReport:
     """Return the release report of a policy, its method, the runtime, and a run.
 
@@ -647,6 +705,9 @@ def release_report(
         How many of the run's instances have each kind of reference finding
         that the run reports without acting on it, from
         :func:`reference_findings`.
+    gaps : iterable of SourceGapCount, optional
+        How many of the run's instances' sources lack each attribute that
+        their IOD requires, from :func:`source_gaps`.
 
     Returns
     -------
@@ -668,7 +729,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'qc_review', 'released', 'sequestered', 'held_for_review', 'roi_names', 'reference_findings', 'search_coverage']
+    ['format', 'policy', 'method', 'runtime', 'qc_review', 'released', 'sequestered', 'held_for_review', 'roi_names', 'reference_findings', 'search_coverage', 'source_gaps']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -690,6 +751,7 @@ def release_report(
         held_for_review=tuple(held),
         roi_names=RoiNameCounts({}, {}) if roi_names is None else roi_names,
         reference_findings=tuple(findings),
+        source_gaps=tuple(gaps),
     )
 
 
@@ -987,20 +1049,42 @@ def _reference_findings_section(found: tuple[ReferenceFindings, ...]) -> list:
     return sorted(entries, key=lambda entry: entry["kind"])
 
 
+def _gaps_section(gaps: tuple[SourceGapCount, ...]) -> list:
+    entries = []
+    for each in gaps:
+        if not isinstance(each, SourceGapCount):
+            raise _refuse("source_gaps", "is not a tuple of gap counts")
+        if not (isinstance(each.count, int) and not isinstance(each.count, bool)):
+            raise _refuse("source_gaps count", "is not a whole number")
+        if each.count < 1:
+            raise _refuse("source_gaps count", "is not positive")
+        entries.append(
+            {
+                "attribute": _attribute("source_gaps attribute", each.attribute),
+                "type": _code("source_gaps type", each.type, _REQUIRED_TYPES),
+                "count": each.count,
+            }
+        )
+    return sorted(entries, key=lambda entry: (entry["attribute"], entry["type"]))
+
+
+_REQUIRED_TYPES = frozenset({"1", "2"})
+
+
 def report_document(report: ReleaseReport) -> dict:
     """Return a release report as JSON values, after checking every field.
 
     The document is an object with the members ``format`` (:data:`FORMAT`),
     ``policy``, ``method``, ``runtime``, ``qc_review``, ``released``,
     ``sequestered``, ``held_for_review``, ``roi_names``,
-    ``reference_findings``, and ``search_coverage``, in that order, each section's fields in the order
-    of its class, the digests of tables and files sorted by name,
-    ``qc_review`` null where the run wrote no QC pack, the released output
-    names sorted, the sequestered instances by label, each with its reasons
-    once, in the order given, the held counts by stage and code, the ROI
-    Names' ``outcomes`` and ``held`` counts each by code, the reference
-    findings' counts by kind, and the coverage
-    by attribute and reason. A walker
+    ``reference_findings``, ``search_coverage``, and ``source_gaps``, in that
+    order, each section's fields in the order of its class, the digests of
+    tables and files sorted by name, ``qc_review`` null where the run wrote no
+    QC pack, the released output names sorted, the sequestered instances by
+    label, each with its reasons once, in the order given, the held counts by
+    stage and code, the ROI Names' ``outcomes`` and ``held`` counts each by
+    code, the reference findings' counts by kind, the coverage by attribute
+    and reason, and the source gaps by attribute and Type. A walker
     reason has its stage, code, attribute, action, and VR, which is null
     where it is not known; a release gate's reason has its stage and code,
     and its attribute where it names one; and a reason from any other stage
@@ -1039,6 +1123,7 @@ def report_document(report: ReleaseReport) -> dict:
         "roi_names": _roi_names_section(report.roi_names),
         "reference_findings": _reference_findings_section(report.reference_findings),
         "search_coverage": _coverage_section(report.search_coverage),
+        "source_gaps": _gaps_section(report.source_gaps),
     }
 
 
