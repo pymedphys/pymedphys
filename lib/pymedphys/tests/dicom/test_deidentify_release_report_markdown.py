@@ -245,12 +245,60 @@ def _changed(change):
         lambda d: d["method"]["table_digests"].update({"x`y": "0"}),
         lambda d: d.update(sequestered={}),
         lambda d: d["sequestered"][0].update(reasons=[]),
+        # Each stage's reason has exactly the fields the report gives it.
+        lambda d: d["sequestered"][0]["reasons"][0].update(action="K"),
+        lambda d: d["sequestered"][0]["reasons"][1].pop("vr"),
+        lambda d: d["sequestered"][1]["reasons"][0].update(vr="SQ"),
+        lambda d: d["method"].update(method_digest=None),
+        lambda d: d["released"].append(""),
+        lambda d: d["released"].append(" SENTINEL "),
+        lambda d: d["policy"].update({"SENTINEL|": 1}),
     ],
 )
 def test_a_document_not_in_the_reports_form_is_refused(change):
     with pytest.raises(ReleaseReportMarkdownError) as raised:
         to_markdown(_changed(change))
     assert "SENTINEL" not in str(raised.value)
+
+
+def test_a_member_named_twice_is_refused():
+    # JSON keeps the last of two members of the same name, which would hide
+    # the first from the form.
+    text = release_report.to_json(_full_report())
+    twice = text.replace('"released": [', '"released": ["SENTINEL"], "released": [', 1)
+    with pytest.raises(ReleaseReportMarkdownError) as raised:
+        to_markdown(twice)
+    assert "SENTINEL" not in str(raised.value)
+
+
+def test_reasons_with_and_without_optional_fields_leave_their_cells_empty():
+    walked = walker.Sequestration(
+        ElementPath((), "(0010,0020)"),
+        "X",
+        None,
+        walker.SequesterReason.NO_DUMMY_VALUE,
+    )
+    gate = release_gate.ReleaseReason(
+        release_gate.Decision.WITHHOLD, release_gate.ReasonCode.UNCOLLECTED
+    )
+    report = _report(
+        sequestered=(
+            release_report.SequesteredInstance(
+                "S-0001",
+                (
+                    release_report.sequestration_reason(walked),
+                    release_report.sequestration_reason(gate),
+                ),
+            ),
+        ),
+        held=(release_report.HeldForReview("roi-names", "unmatched", 1),),
+    )
+    markdown = to_markdown(release_report.to_json(report))
+    assert "| `S-0001` | `walker` | `no-dummy-value` | `(0010,0020)` | `X` | |" in (
+        markdown
+    )
+    assert "| | `release` | `uncollected` | | | |" in markdown
+    assert "| `roi-names` | `unmatched` | `1` |" in markdown
 
 
 def test_text_that_is_not_json_is_refused():
