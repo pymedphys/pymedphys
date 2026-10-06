@@ -141,6 +141,7 @@ def _value_id(value):
     return None
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.parametrize("vr, value", VALID, ids=_value_id)
 def test_valid_values(vr, value):
     assert values.value_problem(vr, value) is None
@@ -271,6 +272,7 @@ INVALID = [
 ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.parametrize("vr, value", INVALID, ids=_value_id)
 def test_invalid_values(vr, value):
     problem = values.value_problem(vr, value)
@@ -442,6 +444,7 @@ def test_a_malformed_vm_is_rejected(vm):
         values.vm_problem(vm, 1)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_values_are_checked_for_their_vm_and_vr():
     assert values.values_problem("DS", "3", ["1.0", "2.5", "-3e2"]) is None
     assert values.values_problem("CS", "1-n", []) is None

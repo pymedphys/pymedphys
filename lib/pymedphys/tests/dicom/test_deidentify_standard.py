@@ -36,6 +36,7 @@ def _write(path, document):
     return path
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 @pytest.mark.parametrize(
     "name, source",
     [
@@ -127,6 +128,7 @@ def test_rows_are_hashable_and_read_only():
         attribute.options["retain_uids"] = "K"  # type: ignore[index]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 def test_an_altered_row_is_rejected(tmp_path):
     document = _document()
     document["rows"][0]["basic_profile"] = "K"
@@ -552,6 +554,7 @@ def test_dictionary_keywords_are_unique():
     assert len(set(named)) == len(named)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 def test_every_table_e1_1_attribute_is_in_the_data_dictionary():
     tags = {a.tag for a in standard.load_data_dictionary().attributes}
     missing = {a.tag for a in standard.load_table_e1_1().attributes} - tags
