@@ -19,7 +19,8 @@ says the first supported release ships beside the command line. It runs a
 directory exactly as :func:`~pymedphys._dicom.deidentify.command.main`
 does: a new run-scoped key that nothing keeps, the preset's transform from
 :func:`~pymedphys._dicom.deidentify.command.transform_for`, the release
-gate, and the transform's release report. Where the command prints a
+gate, the transform's release report, and the reference graph's second
+pass under its key. Where the command prints a
 summary and returns an exit status, it prints nothing and returns
 :class:`Deidentified`; where the command exits because the run could not
 start, it raises.
@@ -187,5 +188,6 @@ def deidentify(  # pylint: disable = too-many-arguments
             instance_transform.ReleaseGate(),
             qc_destination=qc_pack,
             reporter=transform.reporter,
+            written_check=transform.written_check,
         )
     return Deidentified(result, counts)
