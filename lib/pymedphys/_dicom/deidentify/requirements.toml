@@ -921,6 +921,7 @@ status = "partial"
 milestone = "M4"
 decisions = ["D-016", "D-017", "D-026", "D-027"]
 implementation = [
+  "_dicom/deidentify/attestation_command.py",
   "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/qc_attestation.py",
@@ -934,7 +935,7 @@ implementation = [
 ]
 note = '''
 D-016 provides the confidential QC pack, to which the release gate sends the residual search's text findings inside the data set, and files whose collection for the search was incomplete for other text or for private values or values to which the pinned dictionary gives no VR (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation.
-The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded.
+For the first release, the design assigns to whoever releases the data the confirmation that utility is preserved and that the residual risk is acceptable (decided 6 October 2026).
 The QC pack is built and written: each instance by run position and source path, with its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); and what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009).
 It is written only to a designated, owner-only location outside the source, release, and staging directories, and is marked so that no release includes it (D-016).
 A reviewer attests to a pack once, stating whether they reviewed every distinct retained string, every series, and every instance in high-risk categories, and an outcome of attested needs all three; the attestation is bound to the pack by its digest, and gives the release report only the pack's opaque reference and the outcome (D-016, D-017).
@@ -943,8 +944,9 @@ The run's instance transform and release gate adapter give it this material.
 The pack lists every input from its outcome, each sequestered one by the random label that the run gives it, and the transform's and gate's material by run position: each residual search with its excerpts, each source value they left out of the search with its reason, what descriptor cleaning wrote for each ROI Name, and each retained string with its places.
 The retained strings of an instance are the values that its plan keeps as they are, in elements with a text VR other than UI, outside any removed sequence, and other than Specific Character Set, and a value that was not read for review, or could not be decoded, is refused rather than left out, and the run's transform sequesters an instance with such a value.
 The pack previews each series released or held for review, by a cine strip and, for a volume, a frontal maximum intensity projection, and each instance whose source shows an indicator of risk in its pixel data at full resolution, with those indicators, and lists each series whose released and held instances are a CT volume or name the head or neck, with the instances that show each; it lists each instance it could not preview, with why, and records each preview's SHA-256, so that an attestation covers the previews too (D-017).
+A reviewer records an attestation of a pack with a command, which refuses a directory that holds no QC pack and quotes neither the reviewer nor a path; the release report published with the run keeps the record it was written with.
+The person releasing the data may confirm in the attestation, yes or no, that the output was checked for its intended use and that its residual risk was accepted under the institution's governance, and the record that a release report takes carries those outcomes alone.
 Remaining: the attestation's record in the release report (M4).
-This practice is not implemented until M4 also covers both open points, or the design assigns them to whoever releases the data.
 '''
 
 [[requirement]]
