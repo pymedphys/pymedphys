@@ -164,9 +164,15 @@ PENDING_REFUSED = (
 # Pending only for a policy that gives an attribute C.
 PENDING_CLEANING = (
     "The manner of cleaning each attribute other than ROI Name (3006,0026) "
-    "to which the policy gives C, including how dates and times are modified and how retained patient "
-    "characteristics are cleaned (PS3.15 E.3.5, E.3.6, and E.3.7; D-007, "
-    "D-009)."
+    "to which the policy gives C, including how dates and times are modified "
+    "and how retained patient characteristics are cleaned (PS3.15 E.3.5, "
+    "E.3.6, and E.3.7; D-007, D-009)."
+)
+# Pending only for a policy that gives ROI Name C.
+PENDING_ROI_NAMES = (
+    "Cleaning each ROI Name (3006,0026) in a run as the section Cleaning "
+    "ROI names describes: no run yet writes the cleaned names, holds an instance in the "
+    "staging area, or empties held names where it is told to (D-009)."
 )
 # Pending only for a policy that selects Retain Safe Private.
 PENDING_SAFE_PRIVATE = (
@@ -751,11 +757,13 @@ def conformance_statement(
         rules = None
     attributes = tuple(_attributes(policy, rules))
     actions = {entry.action for entry in attributes if entry.tag != _ROI_NAME}
+    roi_name_actions = {e.action for e in attributes if e.tag == _ROI_NAME}
     pending = PENDING + tuple(
         item
         for item, applies in (
             (PENDING_REFUSED, rules is None),
             (PENDING_CLEANING, "C" in actions),
+            (PENDING_ROI_NAMES, "C" in roi_name_actions),
             (PENDING_SAFE_PRIVATE, "retain_safe_private" in policy.options),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
         )

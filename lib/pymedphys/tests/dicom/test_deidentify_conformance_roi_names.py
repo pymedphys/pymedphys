@@ -31,7 +31,11 @@ from pymedphys.tests.dicom.test_deidentify_conformance import (
     _section,
     _statement,
 )
-from pymedphys.tests.dicom.test_deidentify_method_digest import VOCABULARY
+from pymedphys.tests.dicom.test_deidentify_method_digest import (
+    VOCABULARY,
+    _structure,
+    _vocabulary,
+)
 
 ROI_NAME = "(3006,0026)"
 
@@ -73,6 +77,7 @@ def test_an_unpublished_vocabulary_renames_no_roi_name():
         conformance_markdown.render_markdown(statement), "Cleaning ROI names"
     )
     assert "not a published edition" in section
+    assert "every ROI Name takes a reviewer's decision" in section
 
 
 def test_a_published_vocabulary_is_named_with_its_edition(monkeypatch):
@@ -135,7 +140,108 @@ def test_every_reviewer_decision_and_outcome_is_described():
     assert "never written to the output" in section
 
 
-def test_cleaning_of_roi_names_is_not_pending():
+def test_the_manner_of_cleaning_roi_names_is_described_not_pending():
     statement = _statement("basic-clean-descriptors")
     assert conformance.PENDING_CLEANING in statement.pending
     assert "other than ROI Name (3006,0026)" in conformance.PENDING_CLEANING
+
+
+@pytest.mark.parametrize("preset", list(policy.PRESETS))
+def test_applying_roi_name_cleaning_in_a_run_is_pending(preset):
+    # No run yet calls the cleaning that the section describes.
+    statement = _statement(preset)
+    cleaned = statement.roi_names is not None
+    assert (conformance.PENDING_ROI_NAMES in statement.pending) == cleaned
+    assert "no run yet writes the cleaned names" in conformance.PENDING_ROI_NAMES
+
+
+def test_the_described_hyphen_and_reverse_order_matching_is_the_engines(monkeypatch):
+    vocabulary = _vocabulary(
+        _structure("Lung_L", "L_Lung"), _structure("Lungs-PTV", "PTV-Lungs")
+    )
+    entries = [dataclasses.asdict(s) for s in vocabulary.structures]
+    monkeypatch.setitem(
+        roi_names.PUBLISHED_TG263, "TG263 vInvented", tg263.content_sha256(entries)
+    )
+    accepted = roi_names.RoiNameVocabulary(vocabulary)
+    section = _section(
+        conformance_markdown.render_markdown(
+            _statement("basic-clean-descriptors", vocabulary)
+        ),
+        "Cleaning ROI names",
+    )
+    assert "primary or reverse-order" in section
+    assert "`Lungs-PTV`" in section
+    assert "`l lung` becomes the reverse-order `L_Lung`" in section
+    for name, written in (
+        ("l lung", "L_Lung"),
+        ("LUNGS-ptv", "Lungs-PTV"),
+        ("Lungs_PTV", None),
+        ("Lungs PTV", None),
+    ):
+        (decision,) = roi_names.clean_roi_names(
+            [name], accepted, identifiers=["DOE^JANE"]
+        )
+        assert decision.value == written
+
+
+def test_the_described_echo_check_is_the_engines(monkeypatch):
+    vocabulary = roi_names.RoiNameVocabulary(_published_vocabulary(monkeypatch))
+    reason = conformance_markdown.ROI_REVIEW_REASONS[roi_names.Reason.ECHOES_IDENTIFIER]
+    assert "a word of more than one character" in reason
+    # A one-character word, such as the `L` of `lung l`, is not an echo.
+    (renamed,) = roi_names.clean_roi_names(
+        ["lung l"], vocabulary, identifiers=["L^QUILLON"]
+    )
+    assert renamed.value == "Lung_L"
+    (echo,) = roi_names.clean_roi_names(
+        ["Heart"], vocabulary, identifiers=["HEART^QUILLON"]
+    )
+    assert echo.value is None
+    assert echo.reason is roi_names.Reason.ECHOES_IDENTIFIER
+
+
+def test_the_described_checks_of_reviewed_names_are_the_engines():
+    section = _section(
+        conformance_markdown.render_markdown(_statement("basic-clean-descriptors")),
+        "Cleaning ROI names",
+    )
+    keep = reviewed_roi_names.ReviewedName(reviewed_roi_names.Review.KEEP, None)
+    reviewed = reviewed_roi_names.ReviewedNames(
+        None, {"Quillon": keep, "Boost": keep, "BOOST": keep}
+    )
+    held = reviewed_roi_names.Outcome.HELD
+    # A kept name that echoes an identifier is held.
+    assert "a kept or mapped name that echoes an identifier" in section
+    (echo,) = reviewed_roi_names.clean_roi_names(
+        ["Quillon"], None, reviewed, identifiers=["QUILLON^JO"]
+    )
+    assert (echo.outcome, echo.held_because) == (
+        held,
+        roi_names.Reason.ECHOES_IDENTIFIER,
+    )
+    # Names written the same but for case are duplicates; empty names are not.
+    assert "ignoring case" in section
+    assert "Several empty names are not duplicates." in section
+    results = reviewed_roi_names.clean_roi_names(
+        ["Boost", "BOOST", "", " "], None, reviewed, identifiers=["DOE^JANE"]
+    )
+    assert [(r.outcome, r.held_because) for r in results] == [
+        (held, roi_names.Reason.WOULD_DUPLICATE),
+        (held, roi_names.Reason.WOULD_DUPLICATE),
+        (reviewed_roi_names.Outcome.EMPTY, None),
+        (reviewed_roi_names.Outcome.EMPTY, None),
+    ]
+    # A name the list does not cover is held.
+    (unreviewed,) = reviewed_roi_names.clean_roi_names(
+        ["Ring"], None, reviewed, identifiers=["DOE^JANE"]
+    )
+    assert unreviewed.outcome is held
+
+
+def test_a_run_with_a_reviewed_list_records_a_different_digest():
+    section = _section(
+        conformance_markdown.render_markdown(_statement("basic-clean-descriptors")),
+        "Cleaning ROI names",
+    )
+    assert "records the list's keyed digest in its method digest" in section

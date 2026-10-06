@@ -333,13 +333,14 @@ def _roi_names(statement: ConformanceStatement) -> list[str]:
         return []
     if cleaning.edition is not None:
         automatic = (
-            "The run's vocabulary is the published edition of the TG-263 "
+            "The vocabulary is the published edition of the TG-263 "
             f"Structure Spreadsheet `{cleaning.edition}`, whose entries have "
             f"the digest `{statement.vocabulary_digest}`. A ROI Name that "
             "matches one of its names, primary or reverse-order, once case, "
             "spaces, and the separators `_` and `-` are disregarded, is "
-            "written in the vocabulary's spelling, so `lung l` and `LUNG-L` "
-            "both become `Lung_L`. TG-263 writes `-` for a subtraction, as in "
+            "written in the vocabulary's spelling of the name it matches, so "
+            "`lung l` and `LUNG-L` both become `Lung_L`, and `l lung` becomes "
+            "the reverse-order `L_Lung`. TG-263 writes `-` for a subtraction, as in "
             "`Lungs-PTV`, so a vocabulary name that contains `-` matches only "
             "a name with `-` in the same place."
         )
@@ -354,10 +355,11 @@ def _roi_names(statement: ConformanceStatement) -> list[str]:
         )
     else:
         automatic = (
-            "The run's vocabulary is not a published edition of the TG-263 "
-            "Structure Spreadsheet, so no ROI Name is renamed automatically: "
-            "only the generic names that AAPM publishes, such as `lung l` "
-            "and `LUNG-L` written as `Lung_L`, are written without review."
+            "The vocabulary is not a published edition of the TG-263 "
+            "Structure Spreadsheet, so no ROI Name is renamed automatically "
+            "and every ROI Name takes a reviewer's decision. Only with a "
+            "published edition, whose entries are generic names of anatomy "
+            "and targets, is a name renamed without review."
         )
     reviews = _join((f"`{review.value}`" for review in Review), "or")
     return [
@@ -369,25 +371,28 @@ def _roi_names(statement: ConformanceStatement) -> list[str]:
         "",
         automatic,
         "",
-        "The automatic tier sends a name to review, rather than renaming it, where:",
+        "The automatic tier sends a name to review, rather than renaming it, "
+        "where any of these holds:",
         "",
-        *(f"- {text};" for text in list(ROI_REVIEW_REASONS.values())[:-1]),
-        f"- or {list(ROI_REVIEW_REASONS.values())[-1]}.",
+        *(f"- {text}." for text in ROI_REVIEW_REASONS.values()),
         "",
         f"Every other name takes the reviewer's decision, {reviews}, that the "
-        "site's or project's reviewed list holds for exactly its spelling, once "
-        "its padding is removed; `empty` writes an empty value. The custodian "
-        "keeps the list with the key, since it holds source names verbatim, "
-        "and it is never written to the output. What would then be written "
-        "is checked again: a kept or mapped name that echoes an identifier "
-        "of the instance, and different names of one structure set that "
-        "would be written as the same name, ignoring case, are held, as is "
-        "a name the list does not cover.",
+        "reviewed list holds for exactly its spelling, once its padding is "
+        "removed; `empty` writes an empty value. The list is the site's or "
+        "project's, which the custodian keeps with the key since it holds "
+        "source names verbatim, or one kept for a single run, and it is never "
+        "written to the output. A run with a reviewed list records the list's "
+        "keyed digest in its method digest, so that digest differs from the "
+        "one this statement gives, which describes the policy without a list "
+        "(D-024). What would then be written is checked again: a kept or "
+        "mapped name that echoes an identifier of the instance, and different "
+        "names of one structure set that would be written as the same name, "
+        "ignoring case, are held, as is a name the list does not cover. "
+        "Several empty names are not duplicates.",
         "",
-        "For each ROI Name, the engine writes:",
+        "For each ROI Name, cleaning writes one of these:",
         "",
-        *(f"- {text};" for text in list(ROI_OUTCOMES.values())[:-1]),
-        f"- or {list(ROI_OUTCOMES.values())[-1]}.",
+        *(f"- {text}." for text in ROI_OUTCOMES.values()),
         "",
     ]
 
