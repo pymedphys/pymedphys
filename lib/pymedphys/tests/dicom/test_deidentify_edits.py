@@ -152,7 +152,7 @@ def test_an_empty_uid_value_is_not_registered():
     assert not result.registered_uids
 
 
-@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01", "MIDI-BP-03")
 def test_d_writes_the_dummy_value_and_the_second_where_the_source_equals_it():
     _, result = _edits()
     label = {edit.path: edit for edit in result.edits}[_path("(300A,0002)")]
