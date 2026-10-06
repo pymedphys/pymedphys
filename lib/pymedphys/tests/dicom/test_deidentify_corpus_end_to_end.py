@@ -64,6 +64,7 @@ from pymedphys._dicom.deidentify.reviewed_roi_names import (
 )
 from pymedphys._dicom.deidentify.roi_names import Reason
 from pymedphys._dicom.deidentify.run_report import (
+    CONFORMANCE_STATEMENT,
     RELEASE_REPORT,
     RELEASE_REPORT_MARKDOWN,
 )
@@ -376,8 +377,8 @@ def test_each_preset_releases_all_but_the_instances_it_must_hold(
 def test_no_published_file_holds_a_marker(preset_run):
     corpus, result = preset_run.corpus, preset_run.result
     released, published = preset_run.released, preset_run.published
-    # The released instances and the release report in both its forms, and
-    # nothing else.
+    # The released instances, the release report in both its forms, and the
+    # conformance statement, and nothing else.
     assert set(published) == {
         *(
             outcome.output.as_posix()
@@ -386,6 +387,7 @@ def test_no_published_file_holds_a_marker(preset_run):
         ),
         RELEASE_REPORT,
         RELEASE_REPORT_MARKDOWN,
+        CONFORMANCE_STATEMENT,
     }
 
     for name, data in published.items():
