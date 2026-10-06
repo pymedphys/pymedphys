@@ -403,6 +403,7 @@ implementation = [
 ]
 note = '''
 The conformance statement describes how ROI Name (3006,0026) is cleaned under Clean Descriptors: automatic renaming against the published TG-263 edition that it names, or none without such a vocabulary, the reasons a name goes to review, the reviewers' decisions, the checks of what a reviewed decision would write, that a run's method digest covers its reviewed list (D-024), and what cleaning writes for each name, including that a held name holds its instance for review.
+It also says that a run can be given an institutional list of ROI names, which renames nothing and only shows the reviewer of a held name the list's names it matched.
 It lists applying that cleaning in a run as pending, since no run yet does.
 Remaining: applying ROI Name cleaning in each run, and the manner of cleaning every other attribute given C, such as the other descriptors and, under Modified Dates, the dates and times (E.3.6).
 '''

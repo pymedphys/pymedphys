@@ -24,12 +24,21 @@ from pymedphys._dicom.deidentify import (
     policy,
     reviewed_roi_names,
     roi_names,
+    run,
+    run_qc,
 )
 from pymedphys._nomenclature import tg263
 from pymedphys.tests.dicom.test_deidentify_conformance import (
     _entry,
     _section,
     _statement,
+)
+from pymedphys.tests.dicom.test_deidentify_descriptor_cleaning import (
+    _NOMENCLATURE,
+    _institutional,
+    _structure_set,
+    _transform,
+    _transformed,
 )
 from pymedphys.tests.dicom.test_deidentify_method_digest import (
     VOCABULARY,
@@ -258,3 +267,56 @@ def test_a_run_with_a_reviewed_list_records_a_different_digest():
         "Cleaning ROI names",
     )
     assert "records the list's keyed digest in its method digest" in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-02")
+def test_the_described_institutional_list_is_the_engines(monkeypatch):
+    section = _section(
+        conformance_markdown.render_markdown(_statement("basic-clean-descriptors")),
+        "Cleaning ROI names",
+    )
+    assert (
+        "A run may also be given an institutional list of ROI names, converted "
+        "from CSV. It renames nothing: a held name that matches one of its "
+        "names, as the automatic tier matches, stays held, and the confidential "
+        "QC pack shows the reviewer the list's names it matched." in section
+    )
+    entries = [dataclasses.asdict(s) for s in _NOMENCLATURE.structures]
+    monkeypatch.setitem(
+        roi_names.PUBLISHED_TG263, "TG263 vInvented", tg263.content_sha256(entries)
+    )
+    dataset = _structure_set("lung l", "clinicx lung")
+    plain, listed = (
+        _transformed(_transform(institutional=institutional), dataset)
+        for institutional in (None, _institutional("ClinicX_Lung"))
+    )
+
+    assert isinstance(plain, run.Transformed)
+    assert isinstance(listed, run.Transformed)
+    # The matching name stays held, for the same reason, and nothing written
+    # changes; only the QC pack's material gains the list's name.
+    assert listed.data == plain.data
+    assert listed.evidence == plain.evidence
+    material = [
+        [
+            (
+                item.source,
+                item.outcome.value,
+                item.held_because,
+                item.institutional_matches,
+            )
+            for item in result.qc
+            if isinstance(item, run_qc.RoiNameMaterial)
+        ]
+        for result in (plain, listed)
+    ]
+    assert material == [
+        [
+            ("lung l", "renamed", None, ()),
+            ("clinicx lung", "held", roi_names.Reason.UNMATCHED, ()),
+        ],
+        [
+            ("lung l", "renamed", None, ()),
+            ("clinicx lung", "held", roi_names.Reason.UNMATCHED, ("ClinicX_Lung",)),
+        ],
+    ]
