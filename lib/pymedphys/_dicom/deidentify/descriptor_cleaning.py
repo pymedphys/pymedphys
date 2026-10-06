@@ -48,7 +48,7 @@ reviewer's replacement need not resemble it.
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 
 from pymedphys._nomenclature import tg263
 
@@ -342,4 +342,33 @@ def _fallen_back(
         if instead is None or instead.kind is EditKind.PENDING:
             raise DescriptorsRefused(DescriptorReason.UNSETTLED_DESCRIPTOR)
         settled[edit.path] = instead
+        # Where the action removes an attribute that the IOD requires, it
+        # removes an enclosing sequence with it (D-020), which goes too.
+        removed = _removed_sequence(edit.path, by_path)
+        if removed is not None:
+            settled.update(
+                (path, by_path[path]) for path in by_path if _within(path, removed)
+            )
     return settled
+
+
+def _removed_sequence(
+    path: ElementPath, by_path: Mapping[ElementPath, Edit]
+) -> ElementPath | None:
+    """Return the outermost sequence holding ``path`` that ``by_path`` removes."""
+    for depth, (tag, _) in enumerate(path.items):
+        sequence = ElementPath(path.items[:depth], tag)
+        found = by_path.get(sequence)
+        if found is not None and found.kind is EditKind.REMOVE:
+            return sequence
+    return None
+
+
+def _within(path: ElementPath, sequence: ElementPath) -> bool:
+    """Return whether ``path`` is ``sequence`` or an element in its items."""
+    depth = len(sequence.items)
+    return path == sequence or (
+        len(path.items) > depth
+        and path.items[:depth] == sequence.items
+        and path.items[depth][0] == sequence.tag
+    )
