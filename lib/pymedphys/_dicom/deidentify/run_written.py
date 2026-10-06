@@ -17,8 +17,9 @@
 :mod:`~pymedphys._dicom.deidentify.run` calls :func:`second_pass` once its
 gate has decided every staged file, with each file that the gate released,
 as read back from the staging area one at a time. Each file is recorded as
-the first pass recorded its input before the next is read, so only one
-file's bytes are held at once, and the run's
+the first pass recorded its input before the next is read, so the whole
+release's bytes are never held, only those of a file and the one before it,
+and the run's
 :class:`~pymedphys._dicom.deidentify.run_results.WrittenCheck` compares the
 records with the first pass's graph.
 

@@ -814,7 +814,7 @@ def _check_written(
     withheld: dict[int, RunReason] = {}
 
     def read_back() -> Iterator[tuple[int, bytes]]:
-        # One file at a time, so only one file's bytes are held at once.
+        # One file at a time, so the whole release's bytes are never held.
         for entry in released:
             written = entry.file.read_bytes()
             if hashlib.sha256(written).digest() == entry.digest:
