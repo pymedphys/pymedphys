@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module for the report's model and the checks that keep each field value-free.
+
 """The release report: a record of a de-identification run and its method.
 
 Each de-identification run writes a release report, through
