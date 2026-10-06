@@ -35,6 +35,14 @@ Sequence (3006,004E), whose condition lapses with ROI Creator Sequence
 (3006,004D). Nor are the items of a sequence that the engine replaced, such
 as the dummy item that D writes, compared with the source's.
 
+What the source lacks is reported instead, by :func:`source_gaps`, and never
+acted on. Since no condition is evaluated, only an unconditional requirement
+is reported: a Type 1 or 2 attribute of a mandatory module at the top level of
+the data set, or of an item that the source holds, where a Functional Group
+Macro that defines it is mandatory too. A conditional module, such as an
+optional Overlay Plane Module, or a 1C or 2C Type would otherwise report what
+the IOD does not require of that instance.
+
 This module reads only the files' structure, the lengths and item counts of
 their elements, and never a value.
 """
@@ -75,6 +83,74 @@ class LostRequirement:
     path: ElementPath
     type: str
     emptied: bool
+
+
+@dataclasses.dataclass(frozen=True)
+class SourceGap:
+    """An attribute that the IOD unconditionally requires and the source lacks.
+
+    Attributes
+    ----------
+    path : ElementPath
+        Where the source would hold it: the top level of the data set, or an
+        item that the source holds.
+    type : str
+        ``"1"`` or ``"2"``, the strictest Type that requires it there.
+    """
+
+    path: ElementPath
+    type: str
+
+
+def source_gaps(source: SourceEvidence, iod: IOD) -> tuple[SourceGap, ...]:
+    """Return each unconditional requirement of the IOD that the source lacks.
+
+    Parameters
+    ----------
+    source : SourceEvidence
+        The source file.
+    iod : IOD
+        The instance's IOD.
+
+    Returns
+    -------
+    tuple of SourceGap
+        For the top level of the data set, then each item in the source's
+        file order, in the order of the IOD's modules and rows. An item
+        within a table that includes itself, such as a nested Content
+        Sequence item, is checked only as far as the IOD lists it.
+    """
+    required = _unconditional(iod)
+    places: dict[tuple[tuple[str, int], ...], None] = {(): None}
+    for path in source.paths():
+        extent = source.element(path)
+        for item in range(extent.items or 0):
+            places[(*path.items, (path.tag, item))] = None
+    gaps: list[SourceGap] = []
+    for items in places:
+        for tag, attribute_type in required.get(tuple(t for t, _ in items), {}).items():
+            path = ElementPath(items, tag)
+            if path not in source:
+                gaps.append(SourceGap(path, attribute_type))
+    return tuple(gaps)
+
+
+def _unconditional(iod: IOD) -> dict[tuple[str, ...], dict[str, str]]:
+    """Return each place's unconditionally required tags, with their Types."""
+    usage = {module.module: module.usage for module in iod.modules}
+    macros = {macro.macro: macro.usage for macro in iod.functional_group_macros}
+    required: dict[tuple[str, ...], dict[str, str]] = {}
+    for definition in iod.definitions:
+        if (
+            definition.type not in ("1", "2")
+            or "xx" in definition.tag
+            or (not definition.path and usage[definition.module] != "M")
+            or macros.get(definition.functional_group, "M") != "M"
+        ):
+            continue
+        place = required.setdefault(definition.path, {})
+        place[definition.tag] = min(place.get(definition.tag, "2"), definition.type)
+    return required
 
 
 def lost_requirements(

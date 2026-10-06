@@ -50,6 +50,10 @@ A pack holds, for one run:
   attestation of the pack covers them; and ``not_previewed``: each instance
   whose pixel data could not be previewed, with why (D-017). The images are
   made by :mod:`~pymedphys._dicom.deidentify.qc_previews`.
+- ``source_gaps``: each instance whose source lacks an attribute that its
+  IOD unconditionally requires, with each such attribute's place and Type,
+  which the run reports and never acts on (MIDI-BP-03); the release report
+  gives only their counts by attribute and Type.
 
 Its ``reference`` is an opaque random token that the release report records
 with the attestation's outcome, in place of the review material (D-016). It
@@ -74,6 +78,7 @@ from collections.abc import Iterable
 from pathlib import PurePosixPath
 
 from . import pixel_risk, residuals, roi_names
+from .iod_conformance import SourceGap
 from .file_layout import ElementPath, Location
 from .labels import LABEL_PATTERN
 from .residuals import UnsearchedReason
@@ -702,6 +707,31 @@ class PixelRiskEntry:
             )
 
 
+@dataclasses.dataclass(frozen=True)
+class SourceGapEntry:
+    """An instance whose source lacks attributes that its IOD requires.
+
+    Attributes
+    ----------
+    position : int
+        The instance's run position.
+    gaps : tuple of ~pymedphys._dicom.deidentify.iod_conformance.SourceGap
+        At least one; each names a place and a Type, never a value.
+    """
+
+    position: int
+    gaps: tuple[SourceGap, ...]
+
+    def __post_init__(self) -> None:
+        _check_position("an instance with source gaps", self.position)
+        if not (
+            isinstance(self.gaps, tuple)
+            and self.gaps
+            and all(isinstance(gap, SourceGap) for gap in self.gaps)
+        ):
+            raise QcPackError(f"instance {self.position} needs its source gaps")
+
+
 @dataclasses.dataclass(frozen=True, repr=False)
 class QcPack:
     """What a reviewer needs from one run, as the module describes.
@@ -726,6 +756,8 @@ class QcPack:
         Named ``P-0001.png`` onwards, in order, at one width.
     not_previewed : tuple of NotPreviewedEntry
         Each instance once, in run position order.
+    source_gaps : tuple of SourceGapEntry
+        Each instance once, in run position order.
 
     Raises
     ------
@@ -738,8 +770,8 @@ class QcPack:
         an instance; or if two retained strings are the same; if a preview
         shows a frame of an instance that was neither released nor held for
         review, or the previews are not named P-0001.png onwards; or if an
-        instance is listed twice as high-risk or as not previewed, or out of
-        order.
+        instance is listed twice as high-risk, as not previewed, or with source
+        gaps, or out of order.
     """
 
     reference: str
@@ -752,6 +784,7 @@ class QcPack:
     pixel_risks: tuple[PixelRiskEntry, ...] = ()
     previews: tuple[Preview, ...] = ()
     not_previewed: tuple[NotPreviewedEntry, ...] = ()
+    source_gaps: tuple[SourceGapEntry, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -768,6 +801,7 @@ class QcPack:
             "pixel_risks": PixelRiskEntry,
             "previews": Preview,
             "not_previewed": NotPreviewedEntry,
+            "source_gaps": SourceGapEntry,
         }
         for name, kind in sections.items():
             entries = getattr(self, name)
@@ -788,6 +822,7 @@ class QcPack:
             "roi_names",
             "pixel_risks",
             "not_previewed",
+            "source_gaps",
         ):
             if any(entry.position >= positions for entry in getattr(self, name)):
                 raise QcPackError(f"{name} names a run position without an instance")
@@ -802,7 +837,7 @@ class QcPack:
         values = [retained.value for retained in self.retained_strings]
         if len(set(values)) != len(values):
             raise QcPackError("retained_strings must hold each value once")
-        for name in ("pixel_risks", "not_previewed"):
+        for name in ("pixel_risks", "not_previewed", "source_gaps"):
             listed = [entry.position for entry in getattr(self, name)]
             if listed != sorted(set(listed)):
                 raise QcPackError(f"{name} must list each instance once, in order")
@@ -855,7 +890,8 @@ class QcPack:
             f"retained_strings={len(self.retained_strings)}, "
             f"roi_names={len(self.roi_names)}, "
             f"pixel_risks={len(self.pixel_risks)}, previews={len(self.previews)}, "
-            f"not_previewed={len(self.not_previewed)})"
+            f"not_previewed={len(self.not_previewed)}, "
+            f"source_gaps={len(self.source_gaps)})"
         )
 
 
@@ -986,6 +1022,15 @@ def pack_document(pack: QcPack) -> dict:
         "not_previewed": [
             {"position": entry.position, "reason": entry.reason.value}
             for entry in pack.not_previewed
+        ],
+        "source_gaps": [
+            {
+                "position": entry.position,
+                "gaps": [
+                    {"element": str(gap.path), "type": gap.type} for gap in entry.gaps
+                ],
+            }
+            for entry in pack.source_gaps
         ],
     }
 

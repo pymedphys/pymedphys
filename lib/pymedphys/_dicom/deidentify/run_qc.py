@@ -32,6 +32,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePosixPath
 
 from . import pixel_risk, qc_pack, qc_previews, residuals
+from .iod_conformance import SourceGap
 from .file_layout import ElementPath
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .roi_names import Reason
@@ -166,10 +167,13 @@ def qc_pack_of(
     retained: list[tuple[str, int, ElementPath]] = []
     written: dict[int, bytes] = {}
     risks: dict[int, list[pixel_risk.Finding]] = {}
+    gaps: dict[int, list[SourceGap]] = {}
     for position in sorted(material):
         for item in material[position]:
             if isinstance(item, PixelRiskMaterial):
                 risks.setdefault(position, []).extend(item.assessment.findings)
+            elif isinstance(item, SourceGap):
+                gaps.setdefault(position, []).append(item)
             elif isinstance(item, SearchMaterial):
                 if instances[position].disposition in _PREVIEWED:
                     written.setdefault(position, item.written)
@@ -224,6 +228,10 @@ def qc_pack_of(
         ),
         previews=previews.previews,
         not_previewed=not_previewed,
+        source_gaps=tuple(
+            qc_pack.SourceGapEntry(position, tuple(found))
+            for position, found in sorted(gaps.items())
+        ),
     )
 
 

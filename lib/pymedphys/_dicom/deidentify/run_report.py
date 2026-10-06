@@ -48,6 +48,7 @@ from .policy import Policy
 from .qc_attestation import AttestationRecord, Outcome
 from .reasons import RunReason
 from .residuals import NotSearched, Unsearched, UnsearchedReason
+from .iod_conformance import SourceGap
 from .run_qc import Dropped, SearchMaterial
 
 # The release report's name at the root of a release. Output names are
@@ -155,6 +156,10 @@ class ReleaseReporter:
             held=held_instances(outcomes),
             coverage=release_report.search_coverage(
                 coverage_records(material[position]) for position in sorted(material)
+            ),
+            gaps=release_report.source_gaps(
+                [item for item in material[position] if isinstance(item, SourceGap)]
+                for position in sorted(material)
             ),
         )
         return release_report.to_json(report)

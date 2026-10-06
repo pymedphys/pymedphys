@@ -492,6 +492,7 @@ def test_the_document_holds_every_section():
         "pixel_risks",
         "previews",
         "not_previewed",
+        "source_gaps",
     ]
 
 

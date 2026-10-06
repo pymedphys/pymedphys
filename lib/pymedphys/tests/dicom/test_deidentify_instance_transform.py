@@ -51,6 +51,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
     transform_for,
     writer_plan,
 )
+from pymedphys._dicom.deidentify.iod_conformance import SourceGap
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.markers import MarkerError
@@ -833,7 +834,10 @@ def test_values_left_out_of_the_search_are_dropped_with_their_reasons():
     )
     result = _transform()(data, InstanceRecord.from_file(data))
     assert isinstance(result, run.Transformed)
-    assert result.qc == dropped_of(edits)
+    # Besides what its source lacks of its IOD's requirements.
+    assert tuple(
+        item for item in result.qc if not isinstance(item, SourceGap)
+    ) == dropped_of(edits)
 
 
 def test_a_registered_uid_beside_a_collected_one_is_still_dropped():
