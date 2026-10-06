@@ -43,7 +43,7 @@ import base64
 import types
 from collections.abc import Callable, Iterable, Mapping
 
-from . import dummy_values, pseudonyms, residuals, uids
+from . import dummy_values, pixel_risk, pseudonyms, residuals, uids
 from . import release_report as report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
@@ -534,6 +534,17 @@ def release_report() -> list[str]:
         "reference finding that the run reports without acting on it, as "
         + join(sorted(code(kind.value) for kind in report.REPORTED_FINDINGS), "or")
         + ", each instance once for each kind, naming none of them (D-026).",
+        "",
+        "The report counts the released instances, and those held for "
+        "review, that show each risk in their pixel data, as "
+        + join((code(risk.value) for risk in pixel_risk.Risk), "or")
+        + ", and each indicator of it, as "
+        + join((code(indicator.value) for indicator in pixel_risk.Indicator), "or")
+        + ", each instance once for each, an identical copy counting as the "
+        "instance it copies, and names none of them (D-015). The indicators "
+        "are read from the instances' attributes, and a CT volume's from its "
+        "series; the pixel data are not inspected, so an instance without an "
+        "indicator may still show the risk.",
         "",
         "The report summarises the engine's structural checks of the "
         "release, as "

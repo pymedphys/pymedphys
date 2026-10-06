@@ -86,6 +86,7 @@ _SECTIONS = (
     "held_for_review",
     "roi_names",
     "reference_findings",
+    "pixel_risks",
     "search_coverage",
     "source_gaps",
     "structural_checks",
@@ -148,6 +149,7 @@ def to_markdown(report: str) -> str:
         *_held(document["held_for_review"]),
         *_roi_names(document["roi_names"]),
         *_reference_findings(document["reference_findings"]),
+        *_pixel_risks(document["pixel_risks"]),
         *_coverage(document["search_coverage"]),
         *_gaps(document["source_gaps"]),
         *_structural_checks(document["structural_checks"]),
@@ -415,6 +417,45 @@ def _reference_findings(section: object) -> list[Block]:
             "the confidential QC pack lists them."
         ],
         _table(("Kind", "Instances"), rows) if rows else [_NONE],
+    ]
+
+
+def _pixel_risks(section: object) -> list[Block]:
+    section = _fields("pixel_risks", section, ("instances", "indicators"))
+    tables = []
+    for field, keys, header in (
+        ("instances", ("disposition", "risk"), ("Disposition", "Risk", "Instances")),
+        (
+            "indicators",
+            ("disposition", "risk", "indicator"),
+            ("Disposition", "Risk", "Indicator", "Instances"),
+        ),
+    ):
+        rows = []
+        for entry in _list(f"pixel_risks {field}", section[field]):
+            entry = _fields(f"pixel_risks {field}", entry, (*keys, "count"))
+            rows.append(
+                (
+                    *(_code(f"pixel_risks {key}", entry[key]) for key in keys),
+                    _count(f"pixel_risks {field} count", entry["count"]),
+                )
+            )
+        tables.append(_table(header, rows) if rows else [_NONE])
+    return [
+        ["## Pixel data risks"],
+        [
+            "How many released instances, and how many held for review, show "
+            "each risk in their pixel data, and each indicator of it, each "
+            "instance once for each. The indicators are read from the "
+            "instances' attributes, and a CT volume's from its series; the "
+            "pixel data are not inspected or changed, so an instance without "
+            "an indicator may still show the risk. Only the confidential QC "
+            "pack lists the instances."
+        ],
+        ["### Instances with each risk"],
+        tables[0],
+        ["### Instances with each indicator"],
+        tables[1],
     ]
 
 

@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pydicom
@@ -363,18 +363,42 @@ def _series_risks(
     instances: Sequence[qc_pack.InstanceEntry], evidence: Mapping[int, SeriesEvidence]
 ) -> tuple[qc_pack.SeriesRiskEntry, ...]:
     """Assess each series of the released and held instances, by first position."""
+    return tuple(
+        qc_pack.SeriesRiskEntry(positions, found)
+        for positions, found in assessed_series(
+            (
+                position
+                for position in evidence
+                if instances[position].disposition in _PREVIEWED
+            ),
+            evidence,
+        )
+    )
+
+
+def assessed_series(
+    positions: Iterable[int], evidence: Mapping[int, SeriesEvidence]
+) -> list[tuple[tuple[int, ...], tuple[pixel_risk.SeriesFinding, ...]]]:
+    """Assess each series of some instances, and return those with findings.
+
+    The instances at ``positions`` that give :class:`SeriesEvidence` are
+    grouped by series, in run position order, and each series is assessed
+    with :func:`~.pixel_risk.assess_ct_series`. Each series with a finding
+    is returned, by first position, as the run positions of its instances
+    and its findings, whose ``instances`` count from 0 within those
+    positions.
+    """
     groups: dict[str | None, list[int]] = {}
-    for position in sorted(evidence):
-        if instances[position].disposition in _PREVIEWED:
-            groups.setdefault(evidence[position].series, []).append(position)
-    entries = []
-    for positions in groups.values():
+    for position in sorted(set(positions) & set(evidence)):
+        groups.setdefault(evidence[position].series, []).append(position)
+    assessed = []
+    for grouped in groups.values():
         found = pixel_risk.assess_ct_series(
-            [evidence[position].evidence for position in positions]
+            [evidence[position].evidence for position in grouped]
         )
         if found:
-            entries.append(qc_pack.SeriesRiskEntry(tuple(positions), found))
-    return tuple(entries)
+            assessed.append((tuple(grouped), found))
+    return assessed
 
 
 def _instance(outcome: object, source: Path) -> qc_pack.InstanceEntry:

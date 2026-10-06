@@ -43,6 +43,7 @@ from pymedphys._dicom.deidentify import (
     uids,
     walker,
 )
+from pymedphys._dicom.deidentify.pixel_risk import Indicator, Risk
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.reasons import TransformReason
@@ -466,6 +467,17 @@ def test_the_release_report_records_the_releasers_confirmations(preset):
     assert "checked for its intended use" in review
     assert "residual risk" in review
     assert "not stated" in review
+
+
+@pytest.mark.deid_requirement("MIDI-BP-10", "MIDI-BP-18")
+def test_the_release_report_counts_pixel_risks_by_risk_and_indicator(preset):
+    section = _section(preset, "Release report")
+    counted = section.split("that show each risk in their pixel data", 1)[1]
+    counted = counted.split("\n\n", 1)[0]
+    assert "names none of them (D-015)" in counted
+    assert "the pixel data are not inspected" in counted
+    for code in (*Risk, *Indicator):
+        assert f"`{code.value}`" in counted, code
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")

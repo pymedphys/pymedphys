@@ -19,8 +19,12 @@ The first pass of a run records each input as an
 :class:`ReferenceGraph` from the records before anything is written. The
 graph resolves each reference to the inputs it names, and reports each input
 that lacks an identifier, each reference that names nothing in the
-collection, and an inconsistent hierarchy: inputs that share a SOP Instance
-UID, a series in several studies, and a study of several patients.
+collection, an inconsistent hierarchy: inputs that share a SOP Instance
+UID, a series in several studies, and a study of several patients, and each
+frame of reference mismatch: a series in several frames of reference, an
+RT Structure Set ROI whose frame of reference the structure set does not
+list once, and a structure set that lists an input image in another frame
+of reference than the image's own.
 
 A reference resolves by the level of its site, to each input with that SOP
 Instance UID, Series Instance UID, or Study Instance UID. Referenced SOP
@@ -56,7 +60,18 @@ import enum
 from collections.abc import Callable, Hashable, Iterator, Sequence
 from typing import NamedTuple
 
-from .references import IDENTITY_TAGS, InstanceRecord, Level, ReferenceSite
+from .references import (
+    FRAME_IMAGE_PATH,
+    FRAME_OF_REFERENCE_TAG,
+    IDENTITY_TAGS,
+    REFERENCED_FRAME_OF_REFERENCE_SEQUENCE,
+    REFERENCED_FRAME_OF_REFERENCE_UID_TAG,
+    REFERENCED_SOP_INSTANCE_TAG,
+    STRUCTURE_SET_ROI_SEQUENCE,
+    InstanceRecord,
+    Level,
+    ReferenceSite,
+)
 from .sop_classes import load_storage_sop_classes
 from .uids import well_known_uids
 
@@ -117,6 +132,30 @@ class FindingKind(enum.Enum):
         pseudonym, and that identity would give it a different pseudonym
         from the rest of its study. Its groups hold the inputs of each
         patient. The run stops before anything is written.
+    SERIES_IN_SEVERAL_FRAMES
+        The inputs with one Series Instance UID have different Frame of
+        Reference UIDs (0020,0052), though "each Series shall have a single
+        Frame of Reference UID" (PS3.3 Section C.7.4.1.1.1). An input
+        without one is left out. Its groups hold the inputs of each frame of
+        reference, and its ``attribute`` is Frame of Reference UID. It is
+        reported only.
+    UNLISTED_ROI_FRAME
+        An RT Structure Set has an ROI whose Referenced Frame of Reference
+        UID (3006,0024), in its Structure Set ROI Sequence (3006,0020), is
+        not listed once and only once as a Frame of Reference UID in its
+        Referenced Frame of Reference Sequence (3006,0010), as PS3.3
+        Section C.8.8.5.1 requires, or has no value. There is one finding for
+        each such input, whose ``count`` is the number of distinct such
+        values, an empty one included. It is reported only.
+    CONTOUR_IMAGE_IN_ANOTHER_FRAME
+        An item of an RT Structure Set's Referenced Frame of Reference
+        Sequence lists, in its Contour Image Sequences (3006,0016), an input
+        whose own Frame of Reference UID is not the item's: the frame of
+        reference of a set of ROIs is the one "obtained from the source
+        images" (PS3.3 Section C.8.8.5.1, Note). An input without a Frame
+        of Reference UID, and an item without one, are left out. Its groups
+        hold the structure set, then the inputs so listed, and its ``count``
+        is the number of distinct images. It is reported only.
 
     A finding that compares inputs leaves out each input that lacks a UID
     that it compares, which is reported as missing. Its ``attribute`` is the
@@ -132,6 +171,9 @@ class FindingKind(enum.Enum):
     CONFLICTING_INSTANCE = "conflicting-instance"
     SERIES_IN_SEVERAL_STUDIES = "series-in-several-studies"
     STUDY_WITH_SEVERAL_PATIENTS = "study-with-several-patients"
+    SERIES_IN_SEVERAL_FRAMES = "series-in-several-frames-of-reference"
+    UNLISTED_ROI_FRAME = "unlisted-roi-frame-of-reference"
+    CONTOUR_IMAGE_IN_ANOTHER_FRAME = "contour-image-in-another-frame-of-reference"
 
 
 _RANK = {kind: rank for rank, kind in enumerate(FindingKind)}
@@ -148,15 +190,18 @@ class Finding:
     kind : FindingKind
     instances : tuple of tuple of int
         The positions of the inputs concerned, in groups: ``((position,),)``
-        for a missing identifier or a dangling reference, and otherwise the
-        groups that :class:`FindingKind` gives, by first position, each in
-        ascending order.
+        for a missing identifier, a dangling reference, or an unlisted ROI
+        frame of reference, and otherwise the groups that
+        :class:`FindingKind` gives, by first position, each in ascending
+        order.
     attribute : tuple of str
         The tags from the outermost sequence to the attribute concerned,
         such as ``("(300C,0060)", "(0008,1155)")``.
     count : int
         For a dangling reference, the number of distinct values that name
-        nothing; otherwise 0.
+        nothing; for an unlisted ROI frame of reference or a contour image
+        in another frame of reference, the count :class:`FindingKind` gives;
+        otherwise 0.
     """
 
     kind: FindingKind
@@ -259,6 +304,7 @@ def build_reference_graph(records: Sequence[InstanceRecord]) -> ReferenceGraph:
         )
 
     findings.extend(_hierarchy_findings(records, index))
+    findings.extend(_frame_findings(records, index))
     findings.sort(
         key=lambda finding: (_RANK[finding.kind], finding.instances, finding.attribute)
     )
@@ -285,6 +331,55 @@ def _hierarchy_findings(
         groups = _grouped(positions, lambda position: _patient(records[position]))
         if len(groups) > 1:
             yield Finding(FindingKind.STUDY_WITH_SEVERAL_PATIENTS, groups, (study,))
+
+
+# The attributes that frame of reference findings name.
+_ROI_FRAME = (STRUCTURE_SET_ROI_SEQUENCE, REFERENCED_FRAME_OF_REFERENCE_UID_TAG)
+_CONTOUR_IMAGE = (
+    REFERENCED_FRAME_OF_REFERENCE_SEQUENCE,
+    *FRAME_IMAGE_PATH,
+    REFERENCED_SOP_INSTANCE_TAG,
+)
+
+
+def _frame_findings(
+    records: tuple[InstanceRecord, ...], index: dict[Level, dict[str, list[int]]]
+) -> Iterator[Finding]:
+    """Yield the findings of frames of reference that do not agree."""
+    for positions in index[Level.SERIES].values():
+        groups = _grouped(
+            positions, lambda position: records[position].frame_of_reference
+        )
+        if len(groups) > 1:
+            yield Finding(
+                FindingKind.SERIES_IN_SEVERAL_FRAMES, groups, (FRAME_OF_REFERENCE_TAG,)
+            )
+    for position, record in enumerate(records):
+        listed = collections.Counter(use.frame for use in record.frames if use.frame)
+        unlisted = {frame for frame in record.roi_frames if listed[frame] != 1}
+        if unlisted:
+            yield Finding(
+                FindingKind.UNLISTED_ROI_FRAME,
+                ((position,),),
+                _ROI_FRAME,
+                len(unlisted),
+            )
+        images: set[str] = set()
+        others: set[int] = set()
+        for use in record.frames:
+            for image in use.images if use.frame else ():
+                for target in index[Level.INSTANCE].get(image, ()):
+                    frame = records[target].frame_of_reference
+                    if frame is not None and frame != use.frame:
+                        images.add(image)
+                        others.add(target)
+        if images:
+            yield Finding(
+                FindingKind.CONTOUR_IMAGE_IN_ANOTHER_FRAME,
+                ((position,), tuple(sorted(others))),
+                _CONTOUR_IMAGE,
+                len(images),
+            )
 
 
 def _source(records: tuple[InstanceRecord, ...], position: int) -> Hashable:
