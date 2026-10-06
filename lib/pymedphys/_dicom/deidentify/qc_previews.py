@@ -85,8 +85,10 @@ VOLUME_SLICES = 3
 _PERCENTILES = (0.5, 99.5)
 _MONOCHROME = frozenset({"MONOCHROME1", "MONOCHROME2"})
 _FLOAT_PIXEL_DATA = ("FloatPixelData", "DoubleFloatPixelData")
-# A direction cosine at least this large puts an axis along a patient axis.
-_ALONG = 0.7
+# An axis lies along a patient axis when its other two direction cosines are
+# each at most this; a projection along an oblique axis would superimpose
+# what a frontal view keeps apart.
+_ALIGNMENT_TOLERANCE = 1e-4
 _ORIENTATION_TOLERANCE = 1e-4
 # In millimetres, how far a slice's origin may lie off the normal of the first.
 _STACKING_TOLERANCE = 0.01
@@ -521,9 +523,10 @@ def _window(values: np.ndarray) -> tuple[float, float]:
 def _grey(image: np.ndarray, window: tuple[float, float], inverted: bool) -> np.ndarray:
     low, high = window
     scaled = np.clip((image - low) / (high - low), 0.0, 1.0)
-    scaled = np.nan_to_num(scaled, nan=0.0)
     if inverted:
         scaled = 1.0 - scaled
+    # Padding, which is NaN, is black whatever the photometric interpretation.
+    scaled = np.nan_to_num(scaled, nan=0.0)
     return np.round(scaled * 255).astype(np.uint8)
 
 
@@ -613,19 +616,20 @@ def _stacked(origins: np.ndarray, normal: np.ndarray) -> tuple[float, ...] | Non
 def _roles(directions) -> tuple[int, int, int] | None:
     """The axes along anterior-posterior, superior-inferior, and left-right.
 
-    None unless each lies along a different one of the three.
+    None unless each lies along a different one of the three, within
+    :data:`_ALIGNMENT_TOLERANCE`.
     """
-    roles = []
-    # The patient's y (anterior-posterior), z (superior), then x (left).
-    for patient_axis in (1, 2, 0):
-        components = [abs(float(direction[patient_axis])) for direction in directions]
-        axis = int(np.argmax(components))
-        if components[axis] < _ALONG:
+    along = []
+    for direction in directions:
+        magnitudes = np.abs(np.asarray(direction, dtype=float))
+        axis = int(np.argmax(magnitudes))
+        if np.delete(magnitudes, axis).max() > _ALIGNMENT_TOLERANCE:
             return None
-        roles.append(axis)
-    if len(set(roles)) != 3:
+        along.append(axis)
+    if len(set(along)) != 3:
         return None
-    return roles[0], roles[1], roles[2]
+    # The patient's y (anterior-posterior), z (superior), then x (left).
+    return along.index(1), along.index(2), along.index(0)
 
 
 class _Projection:

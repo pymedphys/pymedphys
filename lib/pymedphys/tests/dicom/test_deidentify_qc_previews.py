@@ -18,6 +18,7 @@ Every image is synthetic.
 """
 
 import io
+import math
 import struct
 import zlib
 
@@ -298,17 +299,39 @@ def test_the_projection_follows_the_direction_cosines():
 @pytest.mark.pydicom
 @pytest.mark.parametrize(
     "case",
-    ["two slices", "oblique", "mixed sizes", "repeated position", "no spacing"],
+    [
+        "two slices",
+        "rotated about z",
+        "tilted",
+        "oblique",
+        "mixed sizes",
+        "repeated position",
+        "no spacing",
+    ],
 )
 def test_a_series_that_is_not_a_volume_gets_no_projection(case):
-    # No axis lies along the anterior-posterior direction.
-    oblique = (0.6, 0.64, 0.48, 0.0, 0.6, -0.8)
+    # Each oblique stack is stacked along its normal, so only the alignment of
+    # its axes with the patient's refuses it: a projection along an oblique
+    # column would superimpose what a frontal view keeps apart.
+    angle = math.radians(30 if case == "rotated about z" else 0.1)
+    cosine, sine = round(math.cos(angle), 6), round(math.sin(angle), 6)
+    rotated = (cosine, sine, 0.0, -sine, cosine, 0.0)
+    orientation = {
+        "rotated about z": rotated,
+        "tilted": rotated,
+        "oblique": (0.6, 0.64, 0.48, 0.0, 0.6, -0.8),
+    }.get(case, AXIAL)
+    normal = np.cross(orientation[:3], orientation[3:])
     written = {
         position: _image(
             np.ones((5, 6) if case == "mixed sizes" and position == 1 else (4, 6)),
             number=position + 1,
-            z=0.0 if case == "repeated position" and position == 1 else float(position),
-            orientation=oblique if case == "oblique" else AXIAL,
+            origin=tuple(
+                round(float(component), 6)
+                for component in normal
+                * (0.0 if case == "repeated position" and position == 1 else position)
+            ),
+            orientation=orientation,
             spacing=None if case == "no spacing" else (1.0, 1.0),
         )
         for position in range(2 if case == "two slices" else 3)
@@ -317,6 +340,25 @@ def test_a_series_that_is_not_a_volume_gets_no_projection(case):
     previews = qc_previews.previews_of(written, ())
 
     assert [preview.kind for preview in previews.previews] == [PreviewKind.SERIES_CINE]
+
+
+@pytest.mark.pydicom
+def test_axes_within_the_alignment_tolerance_still_get_a_projection():
+    # Direction cosines written to six decimal places are aligned.
+    nearly = (1.0, 0.00001, 0.0, -0.00001, 1.0, 0.0)
+    written = {
+        position: _image(
+            np.ones((4, 6)), number=position + 1, z=float(position), orientation=nearly
+        )
+        for position in range(3)
+    }
+
+    previews = qc_previews.previews_of(written, ())
+
+    assert [preview.kind for preview in previews.previews] == [
+        PreviewKind.SERIES_CINE,
+        PreviewKind.SERIES_MIP,
+    ]
 
 
 @pytest.mark.pydicom
@@ -466,6 +508,24 @@ def test_padding_is_left_out_of_the_window_and_shown_black():
     assert not image[:, :4].any()
     # Windowed from what is not padding: 0 to 100, not -32768 to 100.
     assert image[1, 5] == 0 and image[0, 4] == 255
+
+
+@pytest.mark.pydicom
+def test_padding_is_shown_black_when_monochrome1_is_inverted():
+    pixels = np.full((4, 8), -32768)
+    pixels[:, 4:] = 0
+    pixels[0, 4] = 100
+    dataset = pydicom.dcmread(
+        io.BytesIO(_image(pixels, series=None, photometric="MONOCHROME1"))
+    )
+    dataset.add_new(0x00280120, "SS", -32768)  # Pixel Padding Value
+    written = {0: _file(dataset)}
+
+    image = _decoded(qc_previews.previews_of(written, {0}).previews[1].png)
+
+    assert not image[:, :4].any()
+    # Inverted: the lowest value is white and the highest black.
+    assert image[1, 5] == 255 and image[0, 4] == 0
 
 
 @pytest.mark.pydicom
