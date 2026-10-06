@@ -591,6 +591,7 @@ def test_the_document_holds_every_section():
         "series_risks",
         "previews",
         "not_previewed",
+        "source_gaps",
     ]
 
 
