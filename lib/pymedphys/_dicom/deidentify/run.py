@@ -32,7 +32,7 @@ A run has five steps:
    several studies, and every instance without its SOP Instance, Series
    Instance, or Study Instance UID is sequestered; identical copies are
    processed once, from the first copy that reads unchanged; and a dangling
-   reference is reported only.
+   reference or a frame of reference mismatch is reported only.
 3. The second pass reads each file again, sequesters it if it is no longer
    the file that discovery found or its bytes differ from the first pass's,
    and gives it to the run's :class:`Transform`. A transform returns the
@@ -814,7 +814,7 @@ def _check_written(
     withheld: dict[int, RunReason] = {}
 
     def read_back() -> Iterator[tuple[int, bytes]]:
-        # One file at a time, so only one file's bytes are held at once.
+        # One file at a time, so the whole release's bytes are never held.
         for entry in released:
             written = entry.file.read_bytes()
             if hashlib.sha256(written).digest() == entry.digest:
