@@ -257,7 +257,7 @@ def test_each_string_the_plan_keeps_is_given_to_the_qc_pack():
     assert [item.path for item in retained] == list(paths)
 
 
-@pytest.mark.deid_requirement("MIDI-BP-17")
+@pytest.mark.deid_requirement("MIDI-BP-17", "PS3.15-E.1.3-01")
 def test_a_kept_string_that_cannot_be_decoded_sequesters_the_instance():
     dataset = synthetic.rt_dose()
     dataset.Manufacturer = "SENTINEL QQ"

@@ -430,7 +430,7 @@ def test_a_kept_name_that_echoes_the_patient_is_held():
     assert evidence.held[0].reason is Reason.ECHOES_IDENTIFIER  # pylint: disable=no-member
 
 
-@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "PS3.15-E.3.5-02")
 def test_other_descriptors_take_their_basic_profile_action_and_keep_the_claim():
     # PS3.15 E.3.5 specifies what the option removes, not what it retains,
     # and E.1.1 makes Table E.1-1 the minimum actions, so a descriptor that
