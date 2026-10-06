@@ -55,6 +55,7 @@ def _undefined_item(content):
     return _implicit(ITEM, content, UNDEFINED) + _implicit(ITEM_END)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize(
     "value, explicit",
     [
@@ -71,6 +72,7 @@ def test_items_are_decoded(value, explicit):
     assert [item[REFERENCED_INSTANCE].value for item in decoded] == ["2.25.1"]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize("undefined", [False, True], ids=["defined", "undefined"])
 def test_a_sequence_nested_in_an_item_is_decoded(undefined):
     inner = _implicit(ITEM, _implicit(REFERENCED_INSTANCE, UID))
@@ -94,6 +96,7 @@ def test_an_empty_value_has_no_items():
     assert not decoded
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize("own", [False, True], ids=["inherited", "its-own"])
 def test_an_item_is_decoded_in_its_own_character_set_or_the_one_it_inherits(own):
     # PS3.5 Section 7.5.3: the Specific Character Set of the data set that
@@ -137,6 +140,7 @@ MALFORMED = {
 }
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize("value", MALFORMED.values(), ids=MALFORMED.keys())
 def test_a_value_that_is_not_only_items_is_refused(value):
     with pytest.raises(sequences.UnreadableItems) as raised:
