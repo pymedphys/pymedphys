@@ -21,8 +21,8 @@ directory, labelled with its format, :data:`FORMAT`. The attestation names
 the reviewer and when they attested, states whether they reviewed what D-017
 requires (every distinct retained string, every series, and every instance in
 high-risk categories), and gives the outcome. It is bound to the pack by the
-SHA-256 of the pack's file, so a pack changed after it was attested is
-detected. A pack is attested once: the file is never overwritten.
+SHA-256 of the pack's file, which records the SHA-256 of each of its image
+previews, so a pack or preview changed after it was attested is detected. A pack is attested once: the file is never overwritten.
 
 The attestation is confidential with the pack, since it names the reviewer
 and sits beside the review material. The release report records only
@@ -56,6 +56,9 @@ ATTESTATION_FILE = "attestation.json"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _REFERENCE = re.compile(r"A-[0-9a-f]{32}")
+_PREVIEW_FILE = re.compile(
+    re.escape(qc_pack.PREVIEW_DIRECTORY) + "/" + qc_pack.PREVIEW_NAME.pattern
+)
 
 
 class Outcome(enum.Enum):
@@ -220,14 +223,18 @@ def attest(
     Raises
     ------
     QcPackError
-        If the directory holds no QC pack, the pack is not of its format, or
-        it has already been attested; or for any reason that
+        If the directory holds no QC pack, the pack is not of its format, a
+        preview that it lists is missing or changed, or it has already been
+        attested; or for any reason that
         :class:`Attestation` gives.
     """
     directory = Path(pack_directory)
     data = _pack_bytes(directory)
+    reference = _reference_of(data)
+    if not _previews_intact(directory, data):
+        raise QcPackError("a preview of the QC pack is missing or changed")
     attestation = Attestation(
-        reference=_reference_of(data),
+        reference=reference,
         pack_digest=hashlib.sha256(data).hexdigest(),
         outcome=outcome,
         coverage=coverage,
@@ -266,8 +273,8 @@ def attestation_record(pack_directory: os.PathLike | str) -> AttestationRecord:
     ------
     QcPackError
         If the directory holds no QC pack; if the attestation is not of its
-        format or is for another pack; or if the pack changed after it was
-        attested.
+        format or is for another pack; or if the pack, or a preview that it
+        lists, changed after it was attested.
     """
     directory = Path(pack_directory)
     data = _pack_bytes(directory)
@@ -278,7 +285,9 @@ def attestation_record(pack_directory: os.PathLike | str) -> AttestationRecord:
     attestation = _attestation_from(content)
     if attestation.reference != reference:
         raise QcPackError("the attestation is for another QC pack")
-    if attestation.pack_digest != hashlib.sha256(data).hexdigest():
+    if attestation.pack_digest != hashlib.sha256(
+        data
+    ).hexdigest() or not _previews_intact(directory, data):
         raise QcPackError("the QC pack changed after it was attested")
     return AttestationRecord(reference, attestation.outcome)
 
@@ -317,6 +326,34 @@ def _pack_bytes(directory: Path) -> bytes:
     if data is None:
         raise QcPackError("the directory holds no QC pack")
     return data
+
+
+def _previews_intact(directory: Path, data: bytes) -> bool:
+    """Whether every preview that the pack lists has the SHA-256 it records."""
+    document = json.loads(data.decode("ascii"))  # _reference_of has parsed it
+    previews = document.get("previews", [])
+    if not isinstance(previews, list):
+        return False
+    for preview in previews:
+        name = preview.get("file") if isinstance(preview, dict) else None
+        digest = preview.get("sha256") if isinstance(preview, dict) else None
+        if (
+            not isinstance(name, str)
+            or not _PREVIEW_FILE.fullmatch(name)
+            or not isinstance(digest, str)
+        ):
+            return False
+        # Only a regular file is read, so that a preview replaced by a link,
+        # a FIFO, or a device is not followed.
+        status = qc_store.path_status(
+            directory / name, "a preview of the QC pack could not be read", follow=False
+        )
+        if status is None or not stat.S_ISREG(status.st_mode):
+            return False
+        content = _read(directory / name, "a preview of the QC pack")
+        if content is None or hashlib.sha256(content).hexdigest() != digest:
+            return False
+    return True
 
 
 def _read(path: Path, what: str) -> bytes | None:

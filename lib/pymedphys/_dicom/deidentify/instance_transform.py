@@ -56,8 +56,12 @@ collected, and those that could not be. :class:`ReleaseGate` is the run's
 file's subject, sequestered instances included, and asks
 :func:`~.release_gate.release_condition` about the written file (D-027).
 Where the edits sequester an instance, the values that they did not reach
-are uncollected; and where an instance of the subject gives no coverage at
-all, because its source is refused or out of scope, the transform raises, or
+are uncollected. An instance out of scope whose IOD the pinned tables
+define, such as an MR image or a spatial registration, is planned and
+edited too when its source is readable, only so that its values are
+collected for its subject's search; it is never written. Where
+an instance of the subject gives no coverage at all, because its source is
+refused, its SOP Class names no IOD of the tables, the transform raises, or
 it changed during the run, the gate withholds the file, since its values
 could be there unsearched for.
 
@@ -118,7 +122,8 @@ from .release_gate import (
 )
 from .residuals import NotSearched, has_written_constant, not_searched_of
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
-from .run_qc import Dropped, SearchMaterial
+from .pixel_risk import assess_pixel_risk
+from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial
 from .run_report import ReleaseReporter
 from .scope import classify
 from .source import SourceEvidence, SourceRefused, read_source
@@ -663,17 +668,24 @@ class InstanceTransform:
         classification = classify(
             _text(dataset, _SOP_CLASS, source), source.transfer_syntax
         )
-        if classification.sequestered or classification.iod is None:
+        if classification.iod is None or (
+            classification.sequestered and classification.iod not in self._iods.iods
+        ):
             return Sequestered((classification.disposition,))
         iod = self._iods.iods[classification.iod]
+        risk = _pixel_risk(dataset)
         plan = plan_instance(source, self._rules, iod)
         edits = edit_instance(source, plan, self._key, record.patient)
         evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
-        if edits.sequestrations:
+        if classification.sequestered or edits.sequestrations:
+            # An instance out of scope is planned and edited only so that
+            # its identifiers are collected for its subject's search (D-027).
             return Sequestered(
-                edits.sequestrations,
+                (classification.disposition,)
+                if classification.sequestered
+                else edits.sequestrations,
                 evidence,
-                (*dropped_of(edits), *omissions_of(evidence)),
+                (*risk, *dropped_of(edits), *omissions_of(evidence)),
             )
         satisfied = False
         retained: frozenset[ElementPath] = frozenset()
@@ -701,7 +713,7 @@ class InstanceTransform:
                 return Sequestered(
                     (refused.reason,),
                     evidence,
-                    (*dropped_of(edits), *omissions_of(evidence)),
+                    (*risk, *dropped_of(edits), *omissions_of(evidence)),
                 )
             edits, satisfied = cleaned.edits, cleaned.satisfied
             retained = frozenset(cleaned.retained)
@@ -709,7 +721,7 @@ class InstanceTransform:
             evidence = coverage_of(plan, edits, retained)
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
-        qc = (*dropped_of(edits, retained), *omissions_of(evidence), *names)
+        qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         try:
             qc = (*qc, *_retained(source, plan))
             writing = with_markers(
@@ -725,6 +737,20 @@ class InstanceTransform:
                 for r in refused.reasons
             )
             return Sequestered(tuple(dict.fromkeys(reasons)), evidence, qc)
+
+
+def _pixel_risk(dataset: pydicom.Dataset | None) -> tuple[PixelRiskMaterial, ...]:
+    """The QC material of the source's indicators of risk in its pixel data.
+
+    The source is assessed, since the Basic Profile removes some of the
+    evidence, such as an overlay group whose graphics lie in the pixel data.
+    A source whose data set does not decode gives none: the walker and the
+    gate decide what becomes of it.
+    """
+    if dataset is None:
+        return ()
+    assessment = assess_pixel_risk(dataset)
+    return (PixelRiskMaterial(assessment),) if assessment.findings else ()
 
 
 def transform_for(
