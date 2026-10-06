@@ -69,6 +69,7 @@ def _named(tag):
     return f"{standard.dictionary_attribute(tag).name} {tag}"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_reviewed_dummy_item_is_described():
     section = _section("basic", "Values written")
     assert walker.REVIEWED_DUMMY_SEQUENCES
@@ -88,6 +89,7 @@ def test_the_reviewed_dummy_item_is_described():
             assert _named(compared_tag) in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
     section = _section("basic", "Values written")
     named = [
@@ -109,6 +111,7 @@ def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_pseudonyms_are_described_where_the_engine_writes_them():
     section = _section("basic", "Values written")
     names = " and ".join(_named(tag) for tag in sorted(edits.PSEUDONYM_TAGS))
@@ -124,6 +127,7 @@ def test_pseudonyms_are_described_where_the_engine_writes_them():
     assert _named("(0010,0021)") in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_longest_replacement_uid_is_described():
     section = _section("basic", "Values written")
     key = DeidKey(bytes(range(32)))
@@ -136,6 +140,7 @@ def test_the_longest_replacement_uid_is_described():
     assert f"at most {limit} characters in all" in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 @pytest.mark.parametrize("preset", ["basic", "basic-clean-descriptors"])
 def test_dates_take_their_listed_actions_without_a_temporal_option(preset):
     statement = _statement(preset)
@@ -150,6 +155,7 @@ def test_dates_take_their_listed_actions_without_a_temporal_option(preset):
         assert f"`{first}`" in section and f"`{second}`" in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 @pytest.mark.parametrize("preset", ["tps-import", "public-release"])
 def test_dates_under_modified_dates_are_cleaned_and_their_manner_is_pending(preset):
     statement = _statement(preset)
@@ -160,6 +166,7 @@ def test_dates_under_modified_dates_are_cleaned_and_their_manner_is_pending(pres
     assert "is not yet described" in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_temporal_attributes_are_counted_by_their_listed_action(preset):
     statement = _statement(preset)
     roles = temporal_roles.load_temporal_roles().rules
@@ -182,6 +189,7 @@ def test_the_temporal_attributes_are_counted_by_their_listed_action(preset):
         assert _named(tag) in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_residual_search_coverage_is_described(preset):
     section = _section(preset, "Residual search")
     assert f"fewer than {residuals.MIN_CHARACTERS} characters" in section
@@ -197,6 +205,7 @@ def test_the_residual_search_coverage_is_described(preset):
     assert f"values of VR {conformance_values.join(sorted(numbers), 'or')}," in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_every_reason_a_value_is_not_searched_is_described():
     assert set(conformance_values.OMISSIONS) == set(residuals.Omission)
     assert set(conformance_values.CODEC_NAMES) == set(residuals.CODECS)
@@ -232,6 +241,7 @@ def test_a_value_equal_to_a_written_constant_as_d_compares_is_not_searched():
     assert "other values and forms are still searched" in described
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_each_vr_described_as_not_searched_is_not_searched():
     described = conformance_values.unsearched_vrs()
     assert described[residuals.Omission.BINARY]
@@ -248,6 +258,7 @@ def test_each_vr_described_as_not_searched_is_not_searched():
     assert searched | unsearched == set(standard.VRS) - {"SQ"}
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
 def test_the_release_report_names_sequestered_instances_by_label(preset):
     section = _section(preset, "Release report")
     assert f"`{release_report.FORMAT}`" in section
@@ -265,6 +276,7 @@ def test_the_release_report_names_sequestered_instances_by_label(preset):
             assert f"`{reason}`" in line, (stage, reason)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
 def test_the_release_report_counts_held_instances_by_stage(preset):
     section = _section(preset, "Release report")
     held = section.split("counts the instances held for review", 1)[1]
@@ -278,6 +290,7 @@ def test_the_release_report_counts_held_instances_by_stage(preset):
             assert f"`{reason}`" in line, (stage, reason)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
 def test_every_reason_that_the_release_report_counts_is_described(preset):
     reasons = [*residuals.Omission, *residuals.UnsearchedReason]
     assert set(conformance_values.UNSEARCHED_REASONS) == set(residuals.UnsearchedReason)
@@ -310,6 +323,7 @@ def test_every_reason_that_the_release_report_counts_is_described(preset):
         assert f"`{reason.value}`" in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_per_instance_detail_is_only_in_the_qc_pack(preset):
     section = _section(preset, "Release report")
     assert "no source value or original path" in section
@@ -319,6 +333,7 @@ def test_per_instance_detail_is_only_in_the_qc_pack(preset):
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_what_remains_of_the_release_report_is_pending(preset):
     statement = _statement(preset)
     pending = conformance.PENDING_RELEASE_REPORT

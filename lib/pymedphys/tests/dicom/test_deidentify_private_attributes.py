@@ -268,6 +268,7 @@ NESTED_PATHS = {
 }
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09", "PS3.15-E.3.10-02", "MIDI-BP-13")
 def test_the_basic_profile_removes_every_private_attribute(basic):
     dataset = _plan()
 
@@ -282,6 +283,7 @@ def test_the_basic_profile_removes_every_private_attribute(basic):
     assert dataset == _plan()
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02")
 def test_a_private_sequence_is_removed_with_everything_in_it(basic):
     # X removes a sequence with all its items and their attributes (Table
     # E.1-1a), so the standard and private attributes in a private sequence
@@ -296,6 +298,7 @@ def test_a_private_sequence_is_removed_with_everything_in_it(basic):
     assert 0x00091002 not in result
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02", "MIDI-BP-06", "MIDI-BP-13")
 @pytest.mark.parametrize(
     "tag",
     [
@@ -334,6 +337,7 @@ def test_every_odd_group_element_is_removed(basic, tag):
     assert result.PatientID == result.BeamSequence[0].PatientID == PATIENT_ID
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02")
 @pytest.mark.parametrize("preset", ["basic", "basic-clean-descriptors", "tps-import"])
 def test_each_preset_without_retain_safe_private_removes_private_attributes(preset):
     composed = policy.compose_policy(preset)
@@ -345,6 +349,7 @@ def test_each_preset_without_retain_safe_private_removes_private_attributes(pres
     assert _odd_groups(result) == []
 
 
+@pytest.mark.deid_requirement("MIDI-BP-13")
 @pytest.mark.parametrize(
     "composed",
     [
@@ -368,6 +373,7 @@ def test_retain_safe_private_is_refused(composed, apply):
         apply(_plan(), composed())
 
 
+@pytest.mark.deid_requirement("MIDI-BP-13")
 @pytest.mark.parametrize(
     "actions",
     [
@@ -388,6 +394,7 @@ def test_a_policy_that_does_not_remove_private_attributes_is_refused(basic, acti
         private_attributes.without_private_attributes(_plan(), changed)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize(
@@ -536,6 +543,7 @@ def test_a_sequence_of_a_repeating_group_is_searched(basic):
     ]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09", "PS3.15-E.3.10-02")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_private_attributes_in_a_sequence_read_as_unknown_are_removed(
@@ -952,6 +960,7 @@ def test_an_unknown_value_is_decoded_only_where_the_dictionary_gives_sq(
     assert result[tag].value == ASSERTION
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02")
 @pytest.mark.pydicom
 @pytest.mark.parametrize(
     "value",
@@ -1010,6 +1019,7 @@ def test_an_unknown_value_of_zero_length_has_no_items(monkeypatch, basic, value)
     assert result[RT_ASSERTIONS_SEQUENCE].value == value
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02")
 @pytest.mark.pydicom
 def test_a_sequence_that_pydicom_cannot_decode_is_refused(basic):
     # A Beam Sequence read from Explicit VR Little Endian, still raw, whose
@@ -1029,6 +1039,7 @@ def test_a_sequence_that_pydicom_cannot_decode_is_refused(basic):
         assert "SYN" not in str(raised.value)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour", "reading_validation")
 @pytest.mark.filterwarnings("error")
@@ -1056,6 +1067,7 @@ def test_an_unknown_character_set_in_an_item_read_from_a_file_is_refused(
     assert UNKNOWN_CHARACTER_SET not in caplog.text
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour", "reading_validation")
 @pytest.mark.filterwarnings("error")
@@ -1081,6 +1093,7 @@ def test_an_unknown_character_set_in_an_item_of_an_unknown_value_is_refused(
     assert UNKNOWN_CHARACTER_SET not in caplog.text
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour", "reading_validation")
 @pytest.mark.filterwarnings("error")
@@ -1128,6 +1141,7 @@ def test_a_character_set_that_pydicom_does_not_map_as_given_is_refused(
     assert quoted not in caplog.text
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.filterwarnings("error")
@@ -1187,6 +1201,7 @@ def test_a_character_set_that_pydicom_maps_as_given_is_accepted(basic, value):
     assert _odd_groups(result) == []
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour", "reading_validation")
 @pytest.mark.filterwarnings("error")
@@ -1218,6 +1233,7 @@ def test_a_sequence_stored_with_another_vr_is_refused(basic, vr, value, path):
     _assert_refused(read, basic, path, "SYNTHETIC")
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize(
@@ -1242,6 +1258,7 @@ def test_a_malformed_sequence_read_from_explicit_vr_is_refused(basic, tag, path)
     _assert_refused(read, basic, path, "PRIVATE")
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02")
 @pytest.mark.pydicom
 def test_items_nested_deeper_than_can_be_read_are_refused(monkeypatch, basic):
     # Concept Name Code Sequences of undefined length, nested one deeper

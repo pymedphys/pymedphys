@@ -100,6 +100,7 @@ def test_a_clean_run_exits_zero_and_summarises_by_status(tmp_path):
     assert (tmp_path / "release").is_dir()
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_a_run_given_a_reporter_publishes_its_release_report(tmp_path):
     _write(tmp_path / "source", synthetic.collection())
     reporter = run_report.ReleaseReporter(

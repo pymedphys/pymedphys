@@ -179,6 +179,7 @@ def _outputs(result):
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_consistently_written_collection_is_released_without_findings(tmp_path):
     result = _run(tmp_path, _source(tmp_path))
 
@@ -187,6 +188,7 @@ def test_a_consistently_written_collection_is_released_without_findings(tmp_path
     assert _published(result) == _outputs(result)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_an_instance_written_with_its_source_uid_is_sequestered(tmp_path):
     def keep_uid(dataset):
         dataset.SOPInstanceUID = synthetic.PLAN
@@ -209,6 +211,7 @@ def test_an_instance_written_with_its_source_uid_is_sequestered(tmp_path):
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_reference_written_wrongly_sequesters_only_its_instance(tmp_path):
     def wrong_reference(dataset):
         dataset.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID = "2.25.999"
@@ -244,6 +247,7 @@ def test_instances_written_with_one_sop_instance_uid_are_all_sequestered(tmp_pat
     assert Kind.UNWRITTEN_TARGET in kinds
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_reference_whose_replacement_is_shared_is_sequestered(tmp_path, monkeypatch):
     # Two input UIDs whose replacements collide, as SHA-1 names almost never
     # do. The slices then share an output name, which withholds both before
@@ -306,6 +310,7 @@ def test_a_copy_of_an_instance_at_fault_is_sequestered_with_it(tmp_path):
     assert result.outcomes[copy].duplicate_of == PLAN
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_check_that_raises_publishes_nothing(tmp_path):
     def raising(graph, written):
         raise RuntimeError("2.25.401")
@@ -320,6 +325,7 @@ def test_a_check_that_raises_publishes_nothing(tmp_path):
     assert not (tmp_path / "qc").exists() or not any((tmp_path / "qc").iterdir())
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_fault_that_names_no_released_instance_publishes_nothing(tmp_path):
     def unwritten(graph, written):
         del written

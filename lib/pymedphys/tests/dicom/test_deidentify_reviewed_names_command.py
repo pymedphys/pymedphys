@@ -71,6 +71,7 @@ def _assert_quotes_nothing(*texts):
             assert sentinel not in text
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_decisions_from_a_csv_start_a_new_list_that_a_run_applies(tmp_path, custodian):
     decisions = _csv(
         tmp_path / "secretdir-decisions.csv",
@@ -109,6 +110,7 @@ def test_decisions_from_a_csv_start_a_new_list_that_a_run_applies(tmp_path, cust
     ]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_later_decisions_are_added_to_the_list(tmp_path, custodian):
     listed = custodian / "reviewed.json"
     _run(listed, _csv(tmp_path / "first.csv", "roi_name,decision\nQuokka,keep\n"))
@@ -129,6 +131,7 @@ def test_later_decisions_are_added_to_the_list(tmp_path, custodian):
     assert names.get("Bilby") == ReviewedName(Review.EMPTY)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_a_different_decision_on_a_listed_name_is_refused_unless_replaced(
     tmp_path, custodian
 ):
@@ -158,6 +161,7 @@ def test_a_different_decision_on_a_listed_name_is_refused_unless_replaced(
     assert names.get("Bilby") == ReviewedName(Review.EMPTY)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_different_decisions_on_one_name_in_the_file_are_refused(tmp_path, custodian):
     listed = custodian / "reviewed.json"
     decisions = _csv(
@@ -210,6 +214,7 @@ def test_padding_case_and_extra_columns_are_tolerated(tmp_path, custodian):
     assert names.get("Quokka") == ReviewedName(Review.KEEP)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 @pytest.mark.parametrize(
     "text, problem",
     [
@@ -265,6 +270,7 @@ def test_a_missing_decisions_file_is_refused_without_its_path(tmp_path, custodia
     _assert_quotes_nothing(stderr)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_the_list_is_refused_inside_a_protected_directory(tmp_path, home):
     decisions = _csv(tmp_path / "decisions.csv", "roi_name,decision\nQuokka,keep\n")
     output = tmp_path / "secretdir-output"

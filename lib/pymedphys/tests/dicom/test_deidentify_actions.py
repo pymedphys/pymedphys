@@ -47,6 +47,7 @@ def _rows():
     return standard.load_table_e1_1().attributes
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 def test_the_basic_profile_alone_gives_each_attribute_its_profile_action():
     effective = actions.effective_actions()
 
@@ -57,6 +58,7 @@ def test_the_basic_profile_alone_gives_each_attribute_its_profile_action():
     assert dict(effective.actions) == {row.tag: row.basic_profile for row in _rows()}
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02", "PS3.15-E.1.1-09")
 @pytest.mark.parametrize(
     "option, tag, profile_action, option_action",
     [
@@ -148,6 +150,7 @@ def test_only_device_identity_and_modified_dates_conflict():
     assert counts == {(DEVICE_IDENTITY, MODIFIED_DATES): 11}
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @hypothesis.given(
     st.sets(st.sampled_from(standard.OPTIONS)).filter(
         lambda selected: not {FULL_DATES, MODIFIED_DATES} <= selected

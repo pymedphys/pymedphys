@@ -43,6 +43,7 @@ def _ui_attributes():
     }
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04")
 def test_every_ui_attribute_in_the_dictionary_has_exactly_one_role():
     roles = uid_roles.load_uid_roles()
 
@@ -60,6 +61,7 @@ def test_the_roles_follow_the_dictionarys_edition():
     assert roles.acknowledgement == f"DICOM PS3.6 {roles.edition}, © NEMA"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04")
 def test_every_uid_table_e1_1_replaces_is_an_instance_uid():
     # The supplementary rules only strengthen Table E.1-1.
     ui = _ui_attributes()
@@ -187,6 +189,7 @@ def test_registered_uids_are_retained_under_any_key(key, value):
     assert uids.transform_uid(key, uid_roles.UIDRole.INSTANCE, value)[0] == value
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04")
 def test_an_instance_uid_is_replaced():
     value = "1.2.840.99999.1.2.3"
 

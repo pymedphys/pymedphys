@@ -188,6 +188,9 @@ def _marker_strings(found):
     yield from found.software_versions
 
 
+@pytest.mark.deid_requirement(
+    "PS3.15-E.1.1-05", "PS3.15-E.2-01", "PS3.15-E.3.6-03", "MIDI-BP-18"
+)
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
 def test_each_preset_adds_exactly_its_markers(preset):
     composed = policy.compose_policy(preset)
@@ -206,6 +209,7 @@ def test_each_preset_adds_exactly_its_markers(preset):
     assert marked == _expected(readable, digest, code_values, temporal, version)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 def test_basic_clean_descriptors_claims_clean_descriptors_only_where_satisfied():
     composed = policy.compose_policy("basic-clean-descriptors")
 
@@ -218,6 +222,7 @@ def test_basic_clean_descriptors_claims_clean_descriptors_only_where_satisfied()
     assert unclaimed.method[1].endswith("; PS3.15 2026d; basic-clean-descriptors")
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 def test_a_custom_option_set_is_named_as_one_and_claims_its_satisfied_options():
     composed = policy.compose_custom_policy(CUSTOM_OPTIONS)
     version = _version.__version__
@@ -236,6 +241,7 @@ def test_a_custom_option_set_is_named_as_one_and_claims_its_satisfied_options():
     assert not any(" " in name for name in policy.PRESETS)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.6-03")
 def test_a_custom_option_set_with_modified_dates_marks_dates_as_modified():
     options = ["retain_longitudinal_modified_dates"]
     found = markers.markers_for(
@@ -261,6 +267,7 @@ def test_codes_follow_the_profile_in_table_e1_1s_order_of_options():
     ]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05", "MIDI-BP-18")
 def test_tps_import_claims_no_ps3_15_conformance_and_adds_no_codes():
     composed = policy.compose_policy("tps-import")
     version = _version.__version__
@@ -317,6 +324,7 @@ def _legitimate_satisfied(preset):
     ]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
 def test_patient_identity_removed_is_never_no(preset):
     composed = policy.compose_policy(preset)
@@ -326,6 +334,7 @@ def test_patient_identity_removed_is_never_no(preset):
         assert found.patient_identity_removed == "YES"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05", "MIDI-BP-18")
 def test_the_first_method_value_is_exactly_the_method_digest():
     composed = policy.compose_policy("basic")
     digest = method_digest.method_digest(
@@ -339,6 +348,7 @@ def test_the_first_method_value_is_exactly_the_method_digest():
     assert len(found.method) == 2
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 def test_every_code_is_a_row_of_the_pinned_context_groups():
     cid_7050 = codes.load_context_group(7050).rows
     cid_7005 = codes.load_context_group(7005).rows
@@ -376,6 +386,7 @@ def _elements(dataset, path=()):
                 yield from _elements(item, (*path, element.tag))
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 def test_every_marker_value_is_valid_for_its_vr_and_vm():
     dictionary = {
         attribute.tag: attribute
@@ -397,6 +408,7 @@ def test_every_marker_value_is_valid_for_its_vr_and_vm():
                 assert values.values_problem(attribute.vr, attribute.vm, given) is None
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize("iod_name", FIRST_RELEASE_IODS)
 def test_the_markers_are_defined_by_the_iod_and_the_equipment_item_is_complete(
     iod_name,
@@ -482,6 +494,7 @@ def _with_runtime(monkeypatch, versions):
             monkeypatch.setattr(module, attribute, value)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_software_versions_give_pymedphys_then_python_pydicom_and_tomlkit(
     monkeypatch,
 ):
@@ -501,6 +514,7 @@ def test_software_versions_give_pymedphys_then_python_pydicom_and_tomlkit(
     assert found.method[1] == "PyMedPhys 0.42.0; PS3.15 2026d; basic"
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_software_versions_give_the_running_python_pydicom_and_tomlkit():
     found = markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
     (equipment,) = markers.apply_markers(
@@ -516,6 +530,7 @@ def test_software_versions_give_the_running_python_pydicom_and_tomlkit():
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_software_versions_are_the_runtime_environment_of_the_release_report(
     monkeypatch,
 ):
@@ -535,6 +550,7 @@ def test_software_versions_are_the_runtime_environment_of_the_release_report(
     assert found.software_versions == environment.software_versions
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize(
     ("source", "value", "position", "expected"),
     [
@@ -573,6 +589,7 @@ def test_each_source_of_software_versions_changes_its_own_value(
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_python_and_library_versions_change_software_versions_not_the_digest(
     monkeypatch,
 ):
@@ -734,6 +751,7 @@ def test_a_code_invalid_for_its_vr_is_refused(monkeypatch, code_value):
         markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05", "PS3.15-E.2-01")
 @pytest.mark.parametrize(
     "existing_method",
     [None, "", "SYNTHETIC TOOL 1", ["SYNTHETIC TOOL 1", "SYNTHETIC METHOD 2"]],
@@ -806,6 +824,7 @@ def _found(preset="basic", digest=DIGEST):
     return markers.markers_for(composed, digest, satisfied=composed.options)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
 def test_the_same_release_and_policy_applied_twice_gives_the_markers_of_one_run(
     preset,
@@ -874,6 +893,7 @@ def _coded(value, designator="DCM", meaning=None, version=None):
     return item
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 @pytest.mark.parametrize(
     ("existing", "expected_values"),
     [
@@ -979,6 +999,7 @@ STRICTER = {
 }
 
 
+@pytest.mark.deid_requirement("PS3.15-E.2-01", "PS3.15-E.3.6-03")
 @pytest.mark.parametrize(("present", "new"), list(STRICTER))
 def test_temporal_information_modified_keeps_the_stricter_value(present, new):
     source = _identifying_dataset()
@@ -1002,6 +1023,7 @@ def test_temporal_information_modified_without_a_value_takes_this_runs(present):
     assert marked.LongitudinalTemporalInformationModified == "MODIFIED"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.2-01")
 @pytest.mark.parametrize(
     "present",
     ["SYNTHETIC", "SYNTHETIC_MOD", ["SYNTHETIC", "REMOVED"]],
@@ -1363,6 +1385,7 @@ ROUND_TRIP_VERSIONS = ("0.42.0.dev1", LONGEST_VERSION)
 DEIDENTIFICATION_METHOD_TAG = 0x00120063
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 @pytest.mark.usefixtures("pydicom_behaviour", "strict_reading")
 @pytest.mark.parametrize(
     "transfer_syntax", TRANSFER_SYNTAXES, ids=["implicit", "explicit"]
@@ -1523,6 +1546,7 @@ def test_a_malformed_digest_is_refused_without_quoting_it(digest):
 LONG_TEXT = "x" * 80
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 @pytest.mark.parametrize(
     ("changes", "error", "match"),
     [
@@ -1661,6 +1685,7 @@ def _compose(selected):
     return policy.compose_custom_policy(selected)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 @pytest.mark.parametrize(
     ("selected", "satisfied", "missing"),
     [
@@ -1700,6 +1725,7 @@ def test_a_satisfied_list_that_leaves_out_a_selected_option_is_refused(
     assert not isinstance(raised.value, markers.MarkerError)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 @pytest.mark.parametrize(
     ("preset", "satisfied", "code_values", "temporal"),
     [

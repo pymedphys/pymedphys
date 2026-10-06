@@ -83,6 +83,7 @@ def _clean(names, identifiers=()):
     return roi_names.clean_roi_names(names, VOCABULARY, identifiers=identifiers)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 @pytest.mark.parametrize(
     "name",
     [
@@ -112,6 +113,7 @@ def test_a_name_with_one_spelling_in_both_columns_matches():
     assert _clean(["HEART"]) == (roi_names.RoiNameDecision(Reason.MATCHED, "Heart"),)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 @pytest.mark.parametrize(
     "name",
     [
@@ -158,6 +160,7 @@ def test_a_name_of_separators_alone_goes_to_review(name):
     assert _clean([name]) == (roi_names.RoiNameDecision(Reason.UNMATCHED, None),)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 @pytest.mark.parametrize(
     "name",
     ["_Heart", "_Lung_L", "  _Heart", "_Heart\x00", "__heart", "-Heart", " - Lung L"],
@@ -175,6 +178,7 @@ def test_a_prefixed_name_does_not_stop_the_plain_name_being_renamed():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_a_name_that_matches_more_than_one_vocabulary_name_goes_to_review():
     # VB_S and VBs normalise alike, as in the 2017-08-15 edition.
     assert _clean(["vb s"]) == (roi_names.RoiNameDecision(Reason.AMBIGUOUS, None),)
@@ -184,6 +188,7 @@ def test_a_vocabulary_name_that_is_ambiguous_is_not_written_even_when_spelt_exac
     assert _clean(["VB_S"]) == (roi_names.RoiNameDecision(Reason.AMBIGUOUS, None),)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_different_names_that_would_be_written_as_one_vocabulary_name_go_to_review():
     decisions = _clean(["Lung_L", "LUNG-L", "Heart"])
     assert decisions == (
@@ -224,6 +229,7 @@ def test_a_name_whose_twin_echoes_an_identifier_is_still_a_duplicate():
     ]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-11")
 @pytest.mark.parametrize(
     "identifier",
     [
@@ -345,6 +351,7 @@ def test_the_vocabulary_is_taken_from_a_tg263_nomenclature_only():
         roi_names.RoiNameVocabulary(["Lung_L"])
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_a_nomenclature_without_the_tg263_attribution_is_rejected():
     nomenclature = dataclasses.replace(
         _nomenclature(("Lung_L", "L_Lung")), attribution="An institutional list"
@@ -415,6 +422,7 @@ def test_a_vocabulary_name_with_a_hyphen_matches_a_hyphen_in_the_same_place(
     assert _clean([name]) == (roi_names.RoiNameDecision(Reason.MATCHED, spelling),)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 @pytest.mark.parametrize(
     "name", ["Lungs PTV", "Lungs_PTV", "LungsPTV", "Lung-s PTV", "Kidney-R GTV"]
 )
@@ -439,6 +447,7 @@ def test_a_name_matching_with_and_without_its_hyphen_is_ambiguous():
     assert decisions == (roi_names.RoiNameDecision(Reason.AMBIGUOUS, None),)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_an_unpublished_vocabulary_is_refused():
     # A converted workbook extended with a local name carries AAPM's
     # attribution, as the converter writes it for every TG-263 workbook.

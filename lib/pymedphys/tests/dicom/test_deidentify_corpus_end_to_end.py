@@ -190,6 +190,7 @@ def _encodings(form):
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_the_basic_profile_releases_all_but_the_instances_it_must_hold(
     basic_run,
 ):
