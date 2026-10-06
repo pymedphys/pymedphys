@@ -34,9 +34,10 @@ that do not depend on the instances of a run:
 as text; each first checks that every field has the form of a digest, a
 version, a known edition, preset, or option, or a file name or path within
 the engine's package. Every field is built from the policy, the engine's own
-files, and the versions that run it, never from DICOM data, and the check is
-a backstop: a field of another form, which could be a source value or a path
-outside the package, is refused. A field that fails is named, never quoted.
+files, the versions that run it, and the keyed digest of the reviewed-names
+list, never from DICOM data directly, and the check is a backstop: a field
+of another form, which could be a source value or a path outside the
+package, is refused. A field that fails is named, never quoted.
 
 Four sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
@@ -77,7 +78,7 @@ from pathlib import PurePosixPath
 
 from pymedphys._nomenclature import tg263
 
-from . import method_digest, output_names
+from . import labels, method_digest, output_names
 from .method_digest import MethodDigestComponents
 from .file_layout import TAG_PATTERN, ElementPath
 from .policy import PRESETS, Policy
@@ -102,6 +103,9 @@ _VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+!_-]{0,63}")
 # ".." or a cache), and a table, which is a JSON file of the tables' folder.
 _NAME = re.compile(r"[0-9A-Za-z_][0-9A-Za-z_.-]*")
 _TABLE = re.compile(r"[0-9A-Za-z_][0-9A-Za-z_.-]*\.json")
+# The form of a sequestered instance's label, kept here for the modules that
+# name it as the release report's.
+LABEL_PATTERN = labels.LABEL_PATTERN
 _ATTRIBUTE = re.compile(rf"{TAG_PATTERN.pattern}( > {TAG_PATTERN.pattern})*")
 _ACTIONS = frozenset({"K", "X", "Z", "D", "U", "C"})
 # The QC pack's opaque reference, as qc_pack gives it (D-016).
@@ -353,6 +357,7 @@ def release_report(
     policy: Policy,
     *,
     vocabulary: tg263.Nomenclature | None,
+    reviewed_roi_names: str | None,
     qc_review: AttestationRecord | None = None,
     released: Iterable[PurePosixPath] = (),
     sequestered: Iterable[SequesteredInstance] = (),
@@ -370,6 +375,11 @@ def release_report(
         against, or None without one. It must be given by name, and has no
         default, so that every caller states whether there is one. The
         report records only its content digest.
+    reviewed_roi_names : str or None
+        The keyed digest of the reviewed-names list whose decisions
+        descriptor cleaning applies to ROI Names, or None without a list. It
+        must be given by name, and has no default, so that every caller
+        states whether there is one. The report records only this digest.
     qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord, optional
         The run's QC pack by its reference, with its attestation's outcome,
         from
@@ -399,7 +409,9 @@ def release_report(
     Examples
     --------
     >>> from pymedphys._dicom.deidentify.policy import compose_policy
-    >>> report = release_report(compose_policy("basic"), vocabulary=None)
+    >>> report = release_report(
+    ...     compose_policy("basic"), vocabulary=None, reviewed_roi_names=None
+    ... )
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
@@ -414,7 +426,9 @@ def release_report(
             options=tuple(policy.options),
             claims_conformance=policy.claims_conformance,
         ),
-        method=method_digest.method_digest_components(policy, vocabulary=vocabulary),
+        method=method_digest.method_digest_components(
+            policy, vocabulary=vocabulary, reviewed_roi_names=reviewed_roi_names
+        ),
         runtime=runtime_environment(),
         qc_review=qc_review,
         released=tuple(released),
@@ -496,6 +510,9 @@ def _method_section(method: MethodDigestComponents) -> dict:
         "l3_rules": _optional_digest("l3_rules", method.l3_rules),
         "vocabulary_digest": _optional_digest(
             "vocabulary_digest", method.vocabulary_digest
+        ),
+        "reviewed_roi_names": _optional_digest(
+            "reviewed_roi_names", method.reviewed_roi_names
         ),
         "generated_values_digest": _digest(
             "generated_values_digest", method.generated_values_digest
