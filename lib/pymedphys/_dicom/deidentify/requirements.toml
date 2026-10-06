@@ -884,6 +884,7 @@ status = "partial"
 milestone = "M4"
 decisions = ["D-016", "D-017", "D-026", "D-027"]
 implementation = [
+  "_dicom/deidentify/attestation_command.py",
   "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/qc_attestation.py",
@@ -906,6 +907,7 @@ The run's instance transform and release gate adapter give it this material.
 The pack lists every input from its outcome, each sequestered one by the random label that the run gives it, and the transform's and gate's material by run position: each residual search with its excerpts, each source value they left out of the search with its reason, what descriptor cleaning wrote for each ROI Name, and each retained string with its places.
 The retained strings of an instance are the values that its plan keeps as they are, in elements with a text VR other than UI, outside any removed sequence, and other than Specific Character Set, and a value that was not read for review, or could not be decoded, is refused rather than left out, and the run's transform sequesters an instance with such a value.
 The pack previews each series released or held for review, by a cine strip and, for a volume, a frontal maximum intensity projection, and each instance whose source shows an indicator of risk in its pixel data at full resolution, with those indicators; it lists each instance it could not preview, with why, and records each preview's SHA-256, so that an attestation covers the previews too (D-017).
+A reviewer records an attestation of a pack with a command, which refuses a directory that holds no QC pack and quotes neither the reviewer nor a path; the release report published with the run keeps the record it was written with.
 Remaining: the attestation's record in the release report (M4).
 This practice is not implemented until M4 also covers both open points, or the design assigns them to whoever releases the data.
 '''
