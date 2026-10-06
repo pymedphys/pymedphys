@@ -399,8 +399,8 @@ def run(
         instance has been transformed.
     qc_destination : str or os.PathLike
         Where the run writes its confidential QC pack: a directory that
-        does not exist, or is empty, outside the release directory and its
-        staging area, as
+        does not exist, or is empty, outside the source and release
+        directories and the release's staging area, as
         :func:`~pymedphys._dicom.deidentify.qc_store.check_confidential_destination`
         checks before anything is created. There is no default (D-016).
     reporter : Reporter, optional
@@ -463,9 +463,12 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
 ) -> RunResult:
     staging = staging_path(release_path)
     _check_directories(discovery.source, release_path, staging)
-    qc_store.check_confidential_destination(
-        qc_destination, release_directory=release_path, staging_directory=staging
-    )
+    apart = {
+        "release_directory": release_path,
+        "staging_directory": staging,
+        "source_directory": discovery.source,
+    }
+    qc_store.check_confidential_destination(qc_destination, **apart)
 
     first = _first_pass(discovery)
     stopping = tuple(
@@ -500,12 +503,7 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
             raise RunError(_RELEASE_EXISTS.format(release=release_path))
         # The pack is written before the release is published, so that a
         # release never exists without its QC material.
-        qc_pack = qc_store.write_qc_pack(
-            pack,
-            qc_destination,
-            release_directory=release_path,
-            staging_directory=staging,
-        )
+        qc_pack = qc_store.write_qc_pack(pack, qc_destination, **apart)
         try:
             os.rename(staged_release, release_path)
         except OSError:
