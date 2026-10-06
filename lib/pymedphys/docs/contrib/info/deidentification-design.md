@@ -1,6 +1,6 @@
 # DICOM de-identification design
 
-This document specifies the DICOM de-identification engine that will replace `pymedphys.dicom.anonymise` and the experimental pseudonymisation module, and records the decisions behind it. So far the generated standard tables, the requirements register, and some of the primitives exist, but nothing yet de-identifies a data set; the register records what is implemented. The current tools share one engine in `lib/pymedphys/_dicom/anonymise/`, do not implement a DICOM confidentiality profile, and have the limitations listed in [DICOM de-identification](../../users/background/dicom-deidentification.md).
+This document specifies the DICOM de-identification engine that will replace `pymedphys.dicom.anonymise` and the experimental pseudonymisation module, and records the decisions behind it. A run now de-identifies, checks, and reports a collection, but no preset is enabled until the first supported release; the register records what is implemented. The current tools share one engine in `lib/pymedphys/_dicom/anonymise/`, do not implement a DICOM confidentiality profile, and have the limitations listed in [DICOM de-identification](../../users/background/dicom-deidentification.md).
 
 Pull requests for this work are listed in the [tracking issue](https://github.com/pymedphys/pymedphys/issues/2075). A pull request that changes a decision updates this document, the user documentation, and any affected code in the same change.
 

@@ -486,7 +486,7 @@ def _sequestered(label="S-0001"):
     )
 
 
-@pytest.mark.deid_requirement("MIDI-BP-18")
+@pytest.mark.deid_requirement("MIDI-BP-18", "MIDI-BP-06")
 def test_sequestered_instances_are_listed_by_label_with_their_reasons(basic):
     report = release_report.release_report(
         basic,

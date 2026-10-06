@@ -99,6 +99,7 @@ def test_each_element_has_one_edit_in_file_order():
     assert found[_path(("(300A,00B0)", 0), "(300A,00C2)")].kind is EditKind.REMOVE
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04")
 def test_uids_are_replaced_by_their_keyed_replacement_unless_registered():
     _, result = _edits()
     found = {edit.path: edit for edit in result.edits}
@@ -151,6 +152,7 @@ def test_an_empty_uid_value_is_not_registered():
     assert not result.registered_uids
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 def test_d_writes_the_dummy_value_and_the_second_where_the_source_equals_it():
     _, result = _edits()
     label = {edit.path: edit for edit in result.edits}[_path("(300A,0002)")]
@@ -622,6 +624,7 @@ def test_a_removed_sequence_whose_items_cannot_be_read_is_not_collected(
     }
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 def test_patients_name_and_id_take_the_pseudonyms_of_a_given_identity():
     evidence = source.read_source(
         _file(
@@ -659,6 +662,7 @@ def test_a_sequence_kept_under_u_is_kept_and_its_items_are_edited():
     assert BEAM_SEQUENCE not in _collected(result)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04")
 def test_a_sequence_kept_under_u_by_its_iod_is_kept_and_its_uids_replaced():
     # X/Z/U* on Referenced Image Sequence (0008,1140), Type 1 in an
     # X-Ray Angiographic Image, resolves to U.
@@ -786,6 +790,7 @@ def _dummy_item(code_value, code_meaning):
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 def test_d_replaces_person_identification_code_sequence_with_its_dummy_item():
     # D-021: one item of constants, the second ones where a source item's
     # Code Value or Code Meaning equals the first.

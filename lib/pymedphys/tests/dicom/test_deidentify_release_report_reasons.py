@@ -82,7 +82,7 @@ _SEQUESTERING = [
 ]
 
 
-@pytest.mark.deid_requirement("MIDI-BP-18")
+@pytest.mark.deid_requirement("MIDI-BP-18", "MIDI-BP-06")
 @pytest.mark.parametrize(
     "cause, stage", _SEQUESTERING, ids=[str(each) for each, _ in _SEQUESTERING]
 )
