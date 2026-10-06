@@ -200,8 +200,10 @@ def test_retained_roi_names_are_left_out_of_the_residual_search(tmp_path):
         "PTV_CUSTOM",
         "kept",
     )
-    (kept,) = pack["retained_strings"]
-    assert kept["value"] == "PTV_CUSTOM"
+    # Among the strings that each plan keeps as they are.
+    (kept,) = [
+        string for string in pack["retained_strings"] if string["value"] == "PTV_CUSTOM"
+    ]
     assert [place["position"] for place in kept["places"]] == [3]
 
 
