@@ -106,7 +106,27 @@ In `benchmark.md`, read the findings first. The deliberate differences are where
 
 ## 7. Optional: score the same release with the NCI script
 
-The NCI validation script (<https://github.com/CBIIT/midi_validation_script>) pins `pydicom==2.2.1` and other old versions, so clone it outside the PyMedPhys checkout and install it in its own virtual environment, following its README.
+The NCI validation script (<https://github.com/CBIIT/midi_validation_script>) pins `pydicom==2.2.1` and other old versions in its `requirements.txt`, so clone it outside the PyMedPhys checkout and give it a virtual environment of its own. Its manual, `manual/midi_validation_manual.docx` in the clone, describes the script in full.
+
+bash:
+
+```bash
+git clone https://github.com/CBIIT/midi_validation_script.git
+cd midi_validation_script
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
+
+PowerShell:
+
+```powershell
+git clone https://github.com/CBIIT/midi_validation_script.git
+Set-Location midi_validation_script
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
 
 Write its config, for example `midi-validation-basic-1.json`, naming the release and the mapping files from step 5:
 
