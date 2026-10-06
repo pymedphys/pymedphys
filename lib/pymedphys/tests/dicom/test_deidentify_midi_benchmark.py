@@ -435,11 +435,53 @@ def test_a_kept_check_on_what_the_policy_removes_is_a_deliberate_difference():
 
 
 def test_a_kept_check_in_a_sequence_that_the_policy_removes_is_deliberate():
-    # Referenced Study Sequence is X/Z under the Basic Profile, which removes
-    # or empties it with what it holds, whatever the attribute's own action.
+    # Referenced Study Sequence is X/Z under the Basic Profile and Type 3 in
+    # the CT Image IOD, so the walker removes it with what it holds, whatever
+    # the attribute's own action.
     assert _score(
         "tag_retained", "<(0008,1110)>[<0000>]<(0008,1150)>"
-    ) == benchmark.Scored(benchmark.Result.FAILED, "X/Z", deliberate=True)
+    ) == benchmark.Scored(benchmark.Result.FAILED, "X", deliberate=True)
+
+
+@pytest.mark.parametrize("action", ["tag_retained", "text_notnull"])
+def test_a_compound_action_that_selects_removal_is_deliberate(action):
+    # Series Date is X/D and Type 3 in the CT Image IOD: the walker selects X.
+    assert _score(action, "<(0008,0021)>") == benchmark.Scored(
+        benchmark.Result.FAILED, "X", deliberate=True
+    )
+
+
+@pytest.mark.parametrize(
+    "action, place, iod",
+    [
+        # RT Plan Date is X/D and Type 2 in the RT Plan IOD: the walker
+        # selects D, so the attribute must be present with a dummy value.
+        ("tag_retained", "<(300A,0006)>", "RT Plan"),
+        ("text_notnull", "<(300A,0006)>", "RT Plan"),
+        # Patient Species Description is X/Z/D and Type 1C in the CT Image
+        # IOD: D, so neither its absence nor an empty value is deliberate.
+        ("tag_retained", "<(0010,2201)>", "CT Image"),
+        ("text_notnull", "<(0010,2201)>", "CT Image"),
+        # A plain Z on a Type 1 attribute selects D.
+        (
+            "text_notnull",
+            "<(300A,0614)>[<0000>]<(300A,0610)>[<0000>]<(300A,0611)>",
+            "C-Arm Photon-Electron Radiation",
+        ),
+        # Referenced Image Sequence is X/Z/U* and Type 1C inside Referenced
+        # Spatial Registration Sequence in the RT Dose IOD: the walker keeps
+        # it as a container (U), so it does not explain its items' absence.
+        (
+            "tag_retained",
+            "<(300C,0116)>[<0000>]<(0008,1140)>[<0000>]<(0008,1150)>",
+            "RT Dose",
+        ),
+    ],
+)
+def test_a_missing_attribute_that_the_selected_action_replaces_is_a_finding(
+    action, place, iod
+):
+    assert _score(action, place, iod=iod) == FAILED
 
 
 def test_a_kept_check_on_what_the_policy_keeps_is_a_finding():
@@ -463,9 +505,13 @@ def test_a_missing_attribute_that_the_policy_replaces_or_keeps_is_a_finding(plac
     assert _score("tag_retained", place) == FAILED
 
 
-def test_the_iod_decides_whether_a_missing_sequence_is_deliberate():
-    assert _score("tag_retained", "<(0008,9215)>", iod=None) == benchmark.Scored(
-        benchmark.Result.FAILED, "X", deliberate=True
+def test_without_the_iod_no_failure_is_deliberate():
+    # The walker selects no action without the IOD, so nothing explains a
+    # failure, even of an attribute that the policy removes.
+    assert _score("tag_retained", "<(0008,9215)>", iod=None) == FAILED
+    assert (
+        _score("text_retained", "<(0008,1030)>", text=STUDY_DESCRIPTION, iod=None)
+        == FAILED
     )
 
 

@@ -49,8 +49,9 @@ separately for each answer-key category rather than as one score:
   support, which the run sequesters), and those of answer-key instances that
   the input did not hold, none of which is scored;
 - the **deliberate differences**: each failed check that asked for an
-  attribute to be kept, where the policy's own action, for the instance's
-  IOD, explains the failure (:func:`score_check`), such as a description
+  attribute to be kept, where the action that the engine selects from the
+  policy, for the attribute's Type in the instance's IOD, explains the
+  failure (:func:`score_check`), such as a description
   that the Basic Profile removes but TCIA's curation of the source
   collection kept. The validation
   manual says that many answers follow that curation rather than the
@@ -107,6 +108,7 @@ from pathlib import Path, PurePosixPath
 from pymedphys._imports import pydicom
 
 from . import run
+from .compound_actions import COMPOUND_ACTIONS, resolve_in_iod, resolve_plain_in_iod
 from .descriptor_cleaning import CLEAN_DESCRIPTORS
 from .diagnostics import redacted_diagnostics
 from .element_rules import KEEP, ElementRules
@@ -127,6 +129,7 @@ from .midi_answer_key import (
 from .policy import Policy, compose_policy
 from .runtime import runtime_environment
 from .scope import classify
+from .walker import DESCENDED
 
 FORMAT = "pymedphys-deid-midi-benchmark/1"
 RESULTS_JSON = "benchmark.json"
@@ -577,16 +580,21 @@ def score_check(
 ) -> Scored:
     """Score one check against a released instance.
 
-    A failed check is a deliberate difference only where the policy's own
-    action explains it, for the instance's IOD: an attribute that a
-    ``tag_retained`` check asks for is missing because the policy may remove
-    it (an action that offers X), or removes or empties a sequence that held
-    it (one that offers X or Z); a value that ``text_notnull`` asks for is
-    missing because the policy may remove the attribute or give it no value
-    (X or Z); and a text that ``text_retained`` asks for differs because the
-    policy does anything but keep it. Any other failure, such as a missing
-    attribute that the policy replaces (D or U) or keeps, or changed pixel
-    data, is a finding.
+    A failed check is a deliberate difference only where the action that the
+    engine selects explains it. That action is the policy's, resolved for the
+    attribute's Type at its place in the instance's IOD as the walker resolves
+    it (D-020): a compound action such as X/D gives one of its alternatives,
+    and a plain Z on a Type 1 attribute gives D. An attribute that a
+    ``tag_retained`` check asks for is missing because the selected action
+    is X, or because an enclosing sequence is not kept as a container (any
+    action but K or U, which remove, empty, or replace its items); a value
+    that ``text_notnull`` asks for is missing because the selected action is
+    X or Z, or for such a sequence; and a text that ``text_retained`` asks
+    for differs because the selected action is anything but K, or for such
+    a sequence. Any other failure, such as a missing attribute that the
+    selected action replaces (D or U) or keeps, or changed pixel data, is a
+    finding. Without the instance's IOD no action can be selected, so every
+    failure is a finding.
     """
     scored = _score(check, dataset, mapping)
     if scored.result is not Result.FAILED or check.path is None:
@@ -604,16 +612,15 @@ def score_check(
     return Scored(Result.FAILED, action, deliberate=True)
 
 
-# For each action that asks for something to be kept, the components of a
-# policy's action for the attribute itself that explain its failure; None
-# means any action but K. A sequence that holds the attribute explains it if
-# its action offers X or Z.
+# For each action that asks for something to be kept, the selected actions
+# for the attribute itself that explain its failure; None means any action
+# but K. A sequence that holds the attribute explains it if its selected
+# action does not keep it as a container.
 _EXPLAINING: dict[Action, frozenset[str] | None] = {
     Action.TAG_RETAINED: frozenset({"X"}),
     Action.TEXT_NOTNULL: frozenset({"X", "Z"}),
     Action.TEXT_RETAINED: None,
 }
-_EMPTYING = frozenset({"X", "Z"})
 
 
 def _explaining_action(
@@ -622,23 +629,33 @@ def _explaining_action(
     iod: IOD | None,
     allowed: frozenset[str] | None,
 ) -> str | None:
-    """Return the policy's action on ``path`` that explains a failure, if any.
+    """Return the selected action on ``path`` that explains a failure, if any.
 
     The enclosing sequences are taken outermost first, then the attribute.
     """
+    if iod is None:
+        return None
     tags = [_rule_tag(element) for element in path.elements]
     for depth, tag in enumerate(tags):
         try:
-            action = rules.rule(tag, tags[:depth], iod=iod).action
+            action = _selected_action(rules, iod, tag, tags[:depth])
         except ValueError:
             return None
-        parts = frozenset(action.split("/"))
         if depth < len(tags) - 1:
-            if parts & _EMPTYING:
+            if action not in DESCENDED:
                 return action
-        elif (action != KEEP) if allowed is None else bool(parts & allowed):
+        elif (action != KEEP) if allowed is None else action in allowed:
             return action
     return None
+
+
+def _selected_action(
+    rules: ElementRules, iod: IOD, tag: str, sequences: list[str]
+) -> str:
+    """Return the action that the walker selects for an attribute (D-020)."""
+    action = rules.rule(tag, tuple(sequences), iod=iod).action
+    resolve = resolve_in_iod if action in COMPOUND_ACTIONS else resolve_plain_in_iod
+    return resolve(iod, tag, tuple(sequences), action)
 
 
 def _rule_tag(element: Element) -> str:
