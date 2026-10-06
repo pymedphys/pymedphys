@@ -78,9 +78,10 @@ from pathlib import PurePosixPath
 
 from pymedphys._nomenclature import tg263
 
-from . import labels, method_digest, output_names
+from . import method_digest, output_names
 from .method_digest import MethodDigestComponents
 from .file_layout import TAG_PATTERN, ElementPath
+from .labels import LABEL_PATTERN as _LABEL_PATTERN
 from .policy import PRESETS, Policy
 from .qc_attestation import AttestationRecord, Outcome
 from .reference_graph import FindingKind
@@ -105,7 +106,7 @@ _NAME = re.compile(r"[0-9A-Za-z_][0-9A-Za-z_.-]*")
 _TABLE = re.compile(r"[0-9A-Za-z_][0-9A-Za-z_.-]*\.json")
 # The form of a sequestered instance's label, kept here for the modules that
 # name it as the release report's.
-LABEL_PATTERN = labels.LABEL_PATTERN
+LABEL_PATTERN = _LABEL_PATTERN
 _ATTRIBUTE = re.compile(rf"{TAG_PATTERN.pattern}( > {TAG_PATTERN.pattern})*")
 _ACTIONS = frozenset({"K", "X", "Z", "D", "U", "C"})
 # The QC pack's opaque reference, as qc_pack gives it (D-016).
