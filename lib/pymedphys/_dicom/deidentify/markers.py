@@ -35,9 +35,9 @@ to a copy of a data set and changes nothing else in it:
   present and, for a policy that can claim conformance, gains the CID 7050
   codes of the Basic Profile and of each satisfied option, in Table E.1-1's
   order of options. Every selected option must be satisfied except Clean
-  Descriptors, which is satisfied only by output whose retained descriptors
-  have passed pooled human review, and otherwise goes unsatisfied because
-  the Basic Profile's actions apply to the descriptors instead.
+  Descriptors, which goes unsatisfied where an instance retains a
+  descriptor that has not passed pooled human review (D-009); a descriptor
+  removed or replaced by its Basic Profile action instead still meets it.
   A code is not added where an item already present has the same Code
   Value and Coding Scheme Designator, and the same Coding Scheme Version
   where either has one. ``tps-import`` adds no code, and the sequence is left
@@ -140,7 +140,7 @@ DEIDENTIFYING_EQUIPMENT = "109104"
 # strict to the strictest.
 TEMPORAL_VALUES = ("UNMODIFIED", "MODIFIED", "REMOVED")
 # The one selected option that a policy claiming conformance can leave
-# unsatisfied: the Basic Profile's actions then apply to the descriptors.
+# unsatisfied: in an instance that retains a descriptor without review.
 _CLEAN_DESCRIPTORS = "clean_descriptors"
 
 _PATIENT_IDENTITY_REMOVED = "(0012,0062)"
@@ -267,8 +267,8 @@ def _satisfied(policy: Policy, satisfied: Iterable[str]) -> tuple[str, ...]:
     if policy.claims_conformance and missing:
         raise ValueError(
             f"satisfied leaves out {', '.join(missing)}, which the policy "
-            f"selects; only {_CLEAN_DESCRIPTORS} can go unsatisfied, since the "
-            "Basic Profile's actions then apply to the descriptors"
+            f"selects; only {_CLEAN_DESCRIPTORS} can go unsatisfied, in an "
+            "instance that retains a descriptor without review"
         )
     return tuple(option for option in policy.options if option in chosen)
 
@@ -383,9 +383,9 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         The policy's options that the instance's validated result satisfies,
         whose codes a policy that can claim conformance adds. Such a policy
         must have every selected option satisfied except Clean Descriptors,
-        which is satisfied only by output whose retained descriptors have
-        passed pooled human review; an instance that applies the Basic
-        Profile's actions to its descriptors instead does not satisfy it.
+        which an instance that retains a descriptor that has not passed
+        pooled human review does not satisfy; one whose descriptors are
+        removed or replaced by their Basic Profile actions instead does.
         ``tps-import``, which claims no conformance and adds no codes, needs
         none satisfied, and never the Retain Device Identity that it records
         as unmet.
