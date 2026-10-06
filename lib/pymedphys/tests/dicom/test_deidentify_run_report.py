@@ -45,7 +45,7 @@ from pymedphys._dicom.deidentify.policy import compose_policy
 from pymedphys._dicom.deidentify.reasons import RunReason, TransformReason
 from pymedphys._dicom.deidentify.reviewed_roi_names import Outcome, RoiNameCounts
 from pymedphys._dicom.deidentify.roi_names import Reason
-from pymedphys._dicom.deidentify.reference_graph import FindingKind
+from pymedphys._dicom.deidentify.reference_graph import Finding, FindingKind
 from pymedphys._dicom.deidentify.residuals import (
     Form,
     NotSearched,
@@ -73,7 +73,7 @@ from pymedphys._dicom.deidentify.run_report import (
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 
 from . import _synthetic_references as synthetic
-from .test_deidentify_run import Gate, GateReason, Transform, _listing, _write
+from .test_deidentify_run import PLAN, Gate, GateReason, Transform, _listing, _write
 
 # The run module's fixture, for a base directory short enough for Windows.
 from .test_deidentify_run import (  # noqa: F401  # pylint: disable = unused-import
@@ -458,6 +458,111 @@ def test_the_report_counts_the_runs_roi_names_without_naming_them():
     }
     for name in ("SENTINEL", "Heart", "Lung_L"):
         assert name not in text
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-18")
+@pytest.mark.pydicom
+def test_a_dangling_reference_is_counted_in_the_report_and_listed_in_the_pack(
+    tmp_path,
+):
+    datasets = synthetic.collection()
+    datasets[PLAN].ReferencedDoseSequence = [
+        synthetic.reference(synthetic.RT_DOSE_STORAGE, "2.25.999")
+    ]
+    _write(tmp_path / "source", datasets)
+    transform = InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
+
+    result = _run(tmp_path, transform, ReleaseGate(), transform.reporter)
+
+    # The instance is written as usual.
+    assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
+    text = (tmp_path / "release" / RELEASE_REPORT).read_text(encoding="utf-8")
+    assert json.loads(text)["reference_findings"] == [
+        {"kind": "dangling-reference", "count": 1}
+    ]
+    assert "2.25.999" not in text
+    pack = json.loads(result.qc_pack.read_text(encoding="utf-8"))
+    assert pack["reference_findings"] == [
+        {
+            "position": PLAN,
+            "kind": "dangling-reference",
+            "attribute": "(300C,0080) > (0008,1155)",
+            "count": 1,
+        }
+    ]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-18")
+@pytest.mark.pydicom
+def test_a_dangling_reference_at_an_identical_copy_counts_once(tmp_path):
+    datasets = synthetic.collection()
+    datasets[PLAN].ReferencedDoseSequence = [
+        synthetic.reference(synthetic.RT_DOSE_STORAGE, "2.25.999")
+    ]
+    _write(tmp_path / "source", [*datasets, datasets[PLAN]])
+    transform = InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
+
+    result = _run(tmp_path, transform, ReleaseGate(), transform.reporter)
+
+    assert result.outcomes[-1].duplicate_of == PLAN
+    text = (tmp_path / "release" / RELEASE_REPORT).read_text(encoding="utf-8")
+    assert json.loads(text)["reference_findings"] == [
+        {"kind": "dangling-reference", "count": 1}
+    ]
+    pack = json.loads(result.qc_pack.read_text(encoding="utf-8"))
+    assert [entry["position"] for entry in pack["reference_findings"]] == [
+        PLAN,
+        len(datasets),
+    ]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_the_run_acts_on_every_finding_that_it_does_not_report_only():
+    acted_on = {
+        *run._SEQUESTERING_FINDINGS,  # pylint: disable = protected-access
+        FindingKind.STUDY_WITH_SEVERAL_PATIENTS,
+        FindingKind.DUPLICATE_INSTANCE,
+    }
+    assert release_report.REPORTED_FINDINGS == frozenset(FindingKind) - acted_on
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_each_reported_finding_is_added_once_to_each_input_it_names():
+    kept = object()
+    findings = (
+        Finding(
+            FindingKind.DANGLING_REFERENCE, ((2,),), ("(300C,0080)", "(0008,1155)"), 1
+        ),
+        Finding(FindingKind.DANGLING_REFERENCE, ((1, 2), (2, 3)), ("(0020,0052)",)),
+        Finding(FindingKind.MISSING_IDENTIFIER, ((0,),), ("(0008,0018)",)),
+    )
+
+    added = run_qc.with_reported_findings({2: (kept,), 4: ()}, findings)
+
+    first = run_qc.ReferenceFindingMaterial(
+        FindingKind.DANGLING_REFERENCE, ("(300C,0080)", "(0008,1155)"), 1
+    )
+    second = run_qc.ReferenceFindingMaterial(
+        FindingKind.DANGLING_REFERENCE, ("(0020,0052)",)
+    )
+    assert added == {1: (second,), 2: (kept, first, second), 3: (second,), 4: ()}
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-18")
+def test_the_report_counts_each_instance_once_for_each_kind_of_finding():
+    found = run_qc.ReferenceFindingMaterial(
+        FindingKind.DANGLING_REFERENCE, ("(300C,0080)", "(0008,1155)"), 2
+    )
+    other = run_qc.ReferenceFindingMaterial(
+        FindingKind.DANGLING_REFERENCE, ("(300C,0002)", "(0008,1155)"), 1
+    )
+    material = {0: (found, other), 2: (found,), 3: ()}
+
+    text = _reporter()((), material, "A-" + "0" * 32)
+
+    assert json.loads(text)["reference_findings"] == [
+        {"kind": "dangling-reference", "count": 2}
+    ]
 
 
 def test_the_reporter_shows_nothing_and_refuses_a_policy_it_cannot_record():
