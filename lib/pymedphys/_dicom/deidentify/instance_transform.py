@@ -109,6 +109,7 @@ from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
 from .reasons import TransformReason
+from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
 from .release_gate import (
@@ -122,13 +123,14 @@ from .release_gate import (
 )
 from .residuals import NotSearched, has_written_constant, not_searched_of
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
-from .pixel_risk import assess_pixel_risk
-from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial
+from .pixel_risk import assess_pixel_risk, series_evidence
+from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial, SeriesEvidence
 from .run_report import ReleaseReporter
 from .scope import classify
 from .source import SourceEvidence, SourceRefused, read_source
 from .uids import UIDOutcome
 from .walker import Consumer, InstancePlan, plan_instance
+from .written_references import WrittenFinding, verify_written_references
 
 _SOP_CLASS = ElementPath((), "(0008,0016)")
 _SOP_INSTANCE = ElementPath((), "(0008,0018)")
@@ -652,6 +654,18 @@ class InstanceTransform:
     def __repr__(self) -> str:
         return "InstanceTransform()"
 
+    def written_check(
+        self, graph: ReferenceGraph, written: Mapping[int, InstanceRecord]
+    ) -> tuple[WrittenFinding, ...]:
+        """Check what a run with this transform wrote against its first pass.
+
+        The reference graph's second pass under the transform's key, for
+        :func:`~pymedphys._dicom.deidentify.run.run`'s ``written_check``, as
+        :func:`~pymedphys._dicom.deidentify.written_references.verify_written_references`
+        makes it.
+        """
+        return verify_written_references(self._key, graph, written)
+
     def __call__(
         self, data: bytes, record: InstanceRecord
     ) -> Transformed | Sequestered:
@@ -673,7 +687,7 @@ class InstanceTransform:
         ):
             return Sequestered((classification.disposition,))
         iod = self._iods.iods[classification.iod]
-        risk = _pixel_risk(dataset)
+        risk = _pixel_risk(dataset, record)
         plan = plan_instance(source, self._rules, iod)
         edits = edit_instance(source, plan, self._key, record.patient)
         evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
@@ -739,18 +753,24 @@ class InstanceTransform:
             return Sequestered(tuple(dict.fromkeys(reasons)), evidence, qc)
 
 
-def _pixel_risk(dataset: pydicom.Dataset | None) -> tuple[PixelRiskMaterial, ...]:
+def _pixel_risk(
+    dataset: pydicom.Dataset | None, record: InstanceRecord
+) -> tuple[PixelRiskMaterial | SeriesEvidence, ...]:
     """The QC material of the source's indicators of risk in its pixel data.
 
     The source is assessed, since the Basic Profile removes some of the
-    evidence, such as an overlay group whose graphics lie in the pixel data.
-    A source whose data set does not decode gives none: the walker and the
-    gate decide what becomes of it.
+    evidence, such as an overlay group whose graphics lie in the pixel data:
+    its own indicators, if any, and what it gives the assessment of its
+    series, by its source Series Instance UID. A source whose data set does
+    not decode gives none: the walker and the gate decide what becomes of it.
     """
     if dataset is None:
         return ()
     assessment = assess_pixel_risk(dataset)
-    return (PixelRiskMaterial(assessment),) if assessment.findings else ()
+    return (
+        *((PixelRiskMaterial(assessment),) if assessment.findings else ()),
+        SeriesEvidence(record.series, series_evidence(dataset)),
+    )
 
 
 def transform_for(

@@ -51,6 +51,7 @@ from .qc_retained import _NOT_REVIEWED_TAGS, RETAINED_TEXT_VRS
 from .reasons import TransformReason
 from .release_gate import ReasonCode
 from .release_report import _HOLDING, _SEQUESTERING
+from .reviewed_roi_names import Outcome as RoiNameOutcome
 from .residuals import _BINARY as _BINARY_VRS
 from .residuals import _KINDS
 from .residuals import _NUMBERS as _NUMBER_VRS
@@ -494,6 +495,15 @@ def release_report() -> list[str]:
         "code however many of its names or attributes have it (D-009):",
         "",
         *holding,
+        "",
+        "Where descriptor cleaning cleans ROI Names, the report counts the "
+        "ROI Names of the structure sets it cleaned, each name by its "
+        "outcome, as "
+        + join((code(o.value) for o in RoiNameOutcome), "or")
+        + ", and the distinct names it sent for review, whether then held "
+        "or emptied unreviewed, each once for each of its reasons, by the "
+        f"reason codes of {code('roi-names')} above, naming "
+        "none of them (D-009).",
         "",
         "The report counts the source values that the residual search did "
         "not search, in full or in part, by attribute, as tags from the "
