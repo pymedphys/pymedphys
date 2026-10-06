@@ -88,6 +88,7 @@ class RoiNameMaterial:
     outcome: RoiNameOutcome
     held_because: Reason | None = None
     written: str | None = None
+    institutional_matches: tuple[str, ...] = ()
 
     def __repr__(self) -> str:
         return (
@@ -272,6 +273,7 @@ def qc_pack_of(
                         item.outcome,
                         item.held_because,
                         item.written,
+                        item.institutional_matches,
                     )
                 )
             elif isinstance(item, ReferenceFindingMaterial):

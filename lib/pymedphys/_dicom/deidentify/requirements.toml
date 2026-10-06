@@ -371,8 +371,7 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information that is embedded in text or string Attributes corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-009", "D-022"]
 implementation = [
   "_dicom/deidentify/descriptor_cleaning.py",
@@ -391,7 +390,7 @@ The list's keyed digest, an HMAC under the key in a domain of its own, which rev
 In a run, descriptor cleaning applies these decisions to the ROI Names of each instance, holds an instance with a held name for review, or empties the name where the user chooses so and then does not claim the Option for it; gives every other attribute given C its action without the Option, and still claims the Option where that action removes or replaces each, since this Option specifies what is removed, not what is retained; and gives the QC pack what it wrote for each ROI Name, or why it held it; the run's method digest and release report take the keyed digest, under the de-identification key, of the list's decisions as they stood when the run's transform was made, which are the decisions it applies, and the report counts the instances held for review by reason.
 A private command records a reviewer's decisions from a CSV file in the list, all or nothing, refusing a decision that differs from the list's unless told to replace it.
 The release report counts the ROI Names of the structure sets that descriptor cleaning cleaned, each by its outcome, and the distinct names sent for review by reason, whether then held or emptied unreviewed, without a name.
-Remaining: vocabularies converted from an institutional list, every match against which goes to review.
+A run can also be given an institutional list converted from CSV, as the maintainer decided on 6 October 2026; it renames nothing, and the QC pack shows the reviewer of a held name the list's names it matched.
 A ROI Name kept or mapped by a reviewer's decision in the reviewed-names list has passed pooled human review, since each distinct name is reviewed once for the collection.
 '''
 
@@ -410,6 +409,7 @@ implementation = [
 ]
 note = '''
 The conformance statement describes how ROI Name (3006,0026) is cleaned under Clean Descriptors: automatic renaming against the published TG-263 edition that it names, or none without such a vocabulary, the reasons a name goes to review, the reviewers' decisions, the checks of what a reviewed decision would write, that a run's method digest covers its reviewed list (D-024), and what cleaning writes for each name, including that a held name holds its instance for review.
+It also says that a run can be given an institutional list of ROI names, which renames nothing and only shows the reviewer of a held name the list's names it matched.
 Every other attribute given C under Clean Descriptors takes the action that the policy gives it without that option, as the maintainer decided on 6 October 2026 (D-009); the statement lists that action for each, at each place, as the one the engine applies, so for `basic-clean-descriptors` it lists no manner of cleaning as pending.
 Remaining: the manner of cleaning an attribute to which the policy gives C without Clean Descriptors too, such as the dates and times under Modified Dates (E.3.6) and the patient characteristics under Retain Patient Characteristics (E.3.7), which no M6 preset selects.
 '''

@@ -25,7 +25,7 @@ from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pytest
 
-from pymedphys._nomenclature import tg263
+from pymedphys._nomenclature import roi_list, tg263
 
 from pymedphys._dicom.deidentify import (
     command,
@@ -723,6 +723,51 @@ def test_a_reviewed_names_list_where_a_run_writes_exits_three_naming_no_path(
     assert not built
 
 
+def _converted_list(path, *names):
+    source = path.parent / "list.csv"
+    source.write_text("Name\n" + "".join(f"{name}\n" for name in names), "utf-8")
+    path.write_text(roi_list.to_json(roi_list.read_csv(source, version="1")), "utf-8")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+@pytest.mark.usefixtures("enabled", "edition")
+def test_an_institutional_list_converted_from_csv_is_used(tmp_path, monkeypatch):
+    path = tmp_path / "lists" / "institutional.json"
+    path.parent.mkdir()
+    _converted_list(path, "ClinicX_Lung", "PTV_Boost")
+
+    status, err, built = _cleaning(tmp_path, monkeypatch, "--roi-list", str(path))
+
+    assert (status, err) == (command.EXIT_RELEASED, "")
+    (cleaning,) = built
+    assert cleaning.institutional == roi_list.load_json(path)
+    assert cleaning.institutional_names.matches("clinicx lung") == ("ClinicX_Lung",)
+
+
+@pytest.mark.usefixtures("enabled", "edition")
+@pytest.mark.parametrize("problem", ["missing", "edited", "not json"])
+def test_an_institutional_list_that_cannot_be_used_exits_three_naming_no_path(
+    tmp_path, monkeypatch, problem
+):
+    path = tmp_path / "lists" / f"{SENTINEL}.json"
+    path.parent.mkdir()
+    if problem == "edited":
+        _converted_list(path, f"{SENTINEL}_Lung")
+        path.write_text(
+            path.read_text("utf-8").replace(f"{SENTINEL}_Lung", f"{SENTINEL}_Lungs"),
+            "utf-8",
+        )
+    elif problem == "not json":
+        path.write_text(SENTINEL, "utf-8")
+
+    status, err, built = _cleaning(tmp_path, monkeypatch, "--roi-list", str(path))
+
+    assert status == command.EXIT_NOT_RUN
+    assert err.startswith("error: the institutional list of ROI names")
+    assert SENTINEL not in err and str(tmp_path) not in err
+    assert not built
+
+
 @pytest.mark.usefixtures("enabled")
 @pytest.mark.parametrize(
     "failure", [tg263.TG263Error(SENTINEL), OSError(SENTINEL)], ids=["pin", "os"]
@@ -755,7 +800,12 @@ def test_clean_descriptors_not_enabled_exits_three_before_loading_anything(
 
 @pytest.mark.parametrize(
     "option",
-    [("--tg263", "x"), ("--reviewed-names", "x"), ("--empty-held-roi-names",)],
+    [
+        ("--tg263", "x"),
+        ("--reviewed-names", "x"),
+        ("--empty-held-roi-names",),
+        ("--roi-list", "x"),
+    ],
     ids=lambda option: option[0],
 )
 def test_roi_name_options_without_clean_descriptors_are_a_usage_error(

@@ -42,7 +42,8 @@ A pack holds, for one run:
   string (D-017);
 - ``roi_names``: what descriptor cleaning wrote for each ROI Name, for the
   audit of every name renamed, kept, or mapped, and each name held for
-  review, with why (D-009);
+  review, with why and the names of the run's institutional list that it
+  matched (D-009);
 - ``reference_findings``: each reference finding that the run reports
   without acting on it, such as a dangling reference, at each instance it
   names, with the attribute's tags and its count; the release report gives
@@ -555,6 +556,10 @@ class RoiNameEntry:
         What was written: the vocabulary's spelling, the source name
         without its leading and trailing spaces and NULs if kept, the reviewer's name if mapped, and ``""`` if emptied or empty;
         None if held.
+    institutional_matches : tuple of str, optional
+        For a held or emptied unreviewed name, the names of the run's
+        institutional list that it matched, to show its reviewer; empty
+        otherwise, or where the run had no list.
     """
 
     position: int
@@ -563,6 +568,7 @@ class RoiNameEntry:
     outcome: RoiNameOutcome
     held_because: roi_names.Reason | None = None
     written: str | None = None
+    institutional_matches: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         _check_position("a ROI name", self.position)
@@ -574,7 +580,7 @@ class RoiNameEntry:
             raise QcPackError(
                 f"a ROI name of instance {self.position} needs a RoiNameOutcome"
             )
-        problem = self._problem()
+        problem = self._problem() or self._matches_problem()
         if problem:
             raise QcPackError(
                 f"a {self.outcome.value} ROI name of instance {self.position} {problem}"
@@ -593,6 +599,15 @@ class RoiNameEntry:
             _LO_PADDING
         ):
             return "is written as its source name, without padding"
+        return None
+
+    def _matches_problem(self) -> str | None:
+        if not isinstance(self.institutional_matches, tuple) or not all(
+            isinstance(name, str) and name for name in self.institutional_matches
+        ):
+            return "needs its institutional matches as a tuple of names as text"
+        if self.institutional_matches and self.outcome not in _HELD:
+            return "has institutional matches only when it was held"
         return None
 
     def __repr__(self) -> str:
@@ -1126,6 +1141,7 @@ def pack_document(pack: QcPack) -> dict:
                     None if entry.held_because is None else entry.held_because.value
                 ),
                 "written": entry.written,
+                "institutional_matches": list(entry.institutional_matches),
             }
             for entry in pack.roi_names
         ],

@@ -434,6 +434,11 @@ def _roi_names(statement: ConformanceStatement) -> list[str]:
         "",
         automatic,
         "",
+        "A run may also be given an institutional list of ROI names, "
+        "converted from CSV. It renames nothing: a held name that matches one "
+        "of its names, as the automatic tier matches, stays held, and the "
+        "confidential QC pack shows the reviewer the list's names it matched.",
+        "",
         "The automatic tier sends a name to review, rather than renaming it, "
         "where any of these holds:",
         "",

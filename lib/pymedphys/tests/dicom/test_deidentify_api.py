@@ -22,7 +22,7 @@ from pathlib import Path
 
 from pymedphys._imports import pytest
 
-from pymedphys._nomenclature import tg263
+from pymedphys._nomenclature import roi_list, tg263
 
 from pymedphys._dicom.deidentify import (
     api,
@@ -236,6 +236,7 @@ def test_an_unknown_preset_raises(tmp_path):
         {"tg263_spreadsheet": "x"},
         {"reviewed_names": "x"},
         {"empty_held_roi_names": True},
+        {"roi_list": "x"},
     ],
     ids=lambda option: next(iter(option)),
 )
@@ -302,6 +303,64 @@ def test_a_reviewed_names_list_that_cannot_be_used_raises_naming_no_path(
     expected = "does not exist" if where == "custodian" else "could not be used"
     assert message.startswith("the reviewed-names list") and expected in message
     assert SENTINEL not in message and str(tmp_path) not in message
+    assert sorted(tmp_path.rglob("*")) == before
+
+
+def _converted_list(path, *names):
+    source = path.parent / "list.csv"
+    source.write_text("Name\n" + "".join(f"{name}\n" for name in names), "utf-8")
+    path.write_text(roi_list.to_json(roi_list.read_csv(source, version="1")), "utf-8")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+@pytest.mark.usefixtures("enabled", "edition")
+def test_an_institutional_list_is_used_as_the_command_line_uses_it(
+    tmp_path, monkeypatch
+):
+    calls = _recorded_run(monkeypatch)
+    (tmp_path / "source").mkdir()
+    path = tmp_path / "lists" / "institutional.json"
+    path.parent.mkdir()
+    _converted_list(path, "ClinicX_Lung")
+
+    command.main(
+        [
+            str(tmp_path / "source"),
+            str(tmp_path / "release"),
+            "--qc-pack",
+            str(tmp_path / "qc"),
+            "--preset",
+            _CLEAN,
+            "--roi-list",
+            str(path),
+        ]
+    )
+    _deidentify(tmp_path, preset=_CLEAN, roi_list=path)
+
+    # pylint: disable-next = protected-access
+    by_command, by_library = (call[4]._cleaning for call in calls)
+    assert by_library.institutional == by_command.institutional
+    assert by_library.institutional == roi_list.load_json(path)
+
+
+@pytest.mark.usefixtures("enabled", "edition")
+@pytest.mark.parametrize("problem", ["missing", "not json"])
+def test_an_institutional_list_that_cannot_be_used_raises_naming_no_path(
+    tmp_path, problem
+):
+    path = tmp_path / "lists" / f"{SENTINEL}.json"
+    path.parent.mkdir()
+    if problem == "not json":
+        path.write_text(SENTINEL, "utf-8")
+    before = sorted(tmp_path.rglob("*"))
+
+    with pytest.raises(api.DeidentifyError) as raised:
+        _deidentify(tmp_path, preset=_CLEAN, roi_list=path)
+
+    message = str(raised.value)
+    assert message.startswith("the institutional list of ROI names")
+    assert SENTINEL not in message and str(tmp_path) not in message
+    assert raised.value.__cause__ is None and raised.value.__suppress_context__
     assert sorted(tmp_path.rglob("*")) == before
 
 
