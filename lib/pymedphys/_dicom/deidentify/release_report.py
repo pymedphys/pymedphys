@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The release report's record of the method and the runtime environment.
+"""The release report: a record of a de-identification run and its method.
 
 Each de-identification run writes a release report, through
 :mod:`~pymedphys._dicom.deidentify.run_report`: a record of what was done
 that can be distributed with the output, so it contains no source attribute
-value, original path, or key. These parts of it do not depend on the
-instances of a run:
+value, original path, or key. The run writes it as ``release-report.json``,
+with its human-readable form, which
+:mod:`~pymedphys._dicom.deidentify.release_report_markdown` generates from
+that text alone, as ``release-report.md``. These parts of it do not depend
+on the instances of a run:
 
 - ``policy``: the PS3.15 edition, the preset (None for a custom option set),
   the selected options, and whether the policy can claim conformance;
@@ -32,15 +35,16 @@ instances of a run:
   (:class:`~pymedphys._dicom.deidentify.runtime.RuntimeEnvironment`).
 
 :func:`report_document` gives a report as JSON values, and :func:`to_json`
-as text; each first checks that every field has the form of a digest, a
-version, a known edition, preset, or option, or a file name or path within
-the engine's package. Every field is built from the policy, the engine's own
-files, the versions that run it, and the keyed digest of the reviewed-names
-list, never from DICOM data directly, and the check is a backstop: a field
-of another form, which could be a source value or a path outside the
+as text; each first checks every field's form, as :func:`report_document`
+lists. Every field is built from the policy, the engine's own files, the
+versions that run it, the keyed digest of the reviewed-names list, the QC
+pack's opaque reference, the replacement identifiers that name released
+instances, the run's labels, and codes and attribute tags that the engine
+defines, never from DICOM data directly, and the check is a backstop: a
+field of another form, which could be a source value or a path outside the
 package, is refused. A field that fails is named, never quoted.
 
-Five sections describe a run, by replacement identifiers, attribute tags,
+Six sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
 
 - ``qc_review``: the run's QC pack by its opaque reference, with the outcome
@@ -909,13 +913,16 @@ def report_document(report: ReleaseReport) -> dict:
     The document is an object with the members ``format`` (:data:`FORMAT`),
     ``policy``, ``method``, ``runtime``, ``qc_review``, ``released``,
     ``sequestered``, ``held_for_review``, ``search_coverage``, and
-    ``source_gaps``, in that order, each section's
-    fields in the order of its class, the digests of tables and files sorted
-    by name, ``qc_review`` null where the run wrote no QC pack, the released
-    output names sorted, the sequestered instances by label, each with its
-    reasons once, in the order given, and the coverage by attribute and
-    reason, and the source gaps by attribute and Type. A reason from a stage
-    other than the walker has only its stage and code.
+    ``source_gaps``, in that order, each section's fields in the order of its
+    class, the digests of tables and files sorted by name, ``qc_review`` null
+    where the run wrote no QC pack, the released output names sorted, the
+    sequestered instances by label, each with its reasons once, in the order
+    given, the held counts by stage and code, the coverage by attribute and
+    reason, and the source gaps by attribute and Type. A walker reason has its
+    stage, code, attribute, action, and VR, which is null where it is not
+    known; a release gate's reason has its stage and code, and its attribute
+    where it names one; and a reason from any other stage has only its stage
+    and code.
 
     Parameters
     ----------
@@ -929,12 +936,14 @@ def report_document(report: ReleaseReport) -> dict:
     ------
     ReleaseReportError
         If a field does not have the form of a digest, a version, a known
-        edition, preset, or option, a file name or path within the engine's
-        package, a QC pack's reference and an attestation outcome, an output
-        name that :func:`~pymedphys._dicom.deidentify.output_names.instance_path`
+        edition, preset, or option, the method digest's format, a file name
+        or path within the engine's package, a QC pack's reference and an
+        attestation outcome, an output name that
+        :func:`~pymedphys._dicom.deidentify.output_names.instance_path`
         gives, listed once, one of the labels ``S-0001`` to ``S-n`` for ``n``
         sequestered instances, a path of tags, a code that the engine
-        defines, or a positive count, or is not of its class. The message names the field, never its value.
+        defines for its stage, a positive count, or true or false, or is not
+        of its class. The message names the field, never its value.
     """
     return {
         "format": FORMAT,
