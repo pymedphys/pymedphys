@@ -338,7 +338,8 @@ def test_each_iod_is_expanded_when_its_types_are_first_needed(tmp_path):
     assert [name for name, iod in loaded.iods.items() if "_expansion" in vars(iod)] == [
         "CT Image"
     ]
-    assert ct.definitions is ct.definitions
+    definitions = ct.definitions
+    assert ct.definitions is definitions
 
 
 def test_an_iods_attribute_tables_cannot_be_changed(tables):
