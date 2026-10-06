@@ -307,6 +307,18 @@ def _gate_reasons(code):
         coverage["collected"] = (residuals.SourceValue(path, "LO", "ZARQUON"),)
         text = b"ZARQUON "
         written += struct.pack("<HH2sH", 0x0008, 0x103E, b"LO", len(text)) + text
+    elif code is release_gate.ReasonCode.RESIDUAL_PERSON_NAME:
+        name = ElementPath((), "(0010,0010)")
+        coverage["planned"] = frozenset({name})
+        coverage["collected"] = (residuals.SourceValue(name, "PN", "ZEBEDEE^QUILLON"),)
+        text = b"ZEBEDEE^QUILLON "
+        written += struct.pack("<HH2sH", 0x0008, 0x103E, b"LO", len(text)) + text
+    elif code is release_gate.ReasonCode.RESIDUAL_OUTSIDE_DATA_SET:
+        coverage["collected"] = (residuals.SourceValue(path, "LO", "ZARQUON"),)
+        written += b"\xff\xff\xff\xffZARQUON STUDY"
+    elif code is release_gate.ReasonCode.UNREADABLE_FILE:
+        coverage["collected"] = ()
+        written += struct.pack("<HH2sH", 0x0008, 0x103E, b"LO", 40) + b"SHORT"
     return release_gate.release_condition(release_gate.Coverage(**coverage), written)
 
 
@@ -315,6 +327,15 @@ def test_each_code_described_as_holding_holds_an_instance(code):
     condition = _gate_reasons(release_gate.ReasonCode(code))
     assert condition.decision is release_gate.Decision.QC_REVIEW
     assert [r.code.value for r in condition.reasons] == [code]
+
+
+@pytest.mark.parametrize(
+    "code", ["residual-person-name", "residual-outside-data-set", "unreadable-file"]
+)
+def test_a_code_not_described_as_holding_withholds(code):
+    condition = _gate_reasons(release_gate.ReasonCode(code))
+    assert condition.decision is release_gate.Decision.WITHHOLD
+    assert code in [r.code.value for r in condition.reasons]
 
 
 def test_every_other_release_code_withholds():
@@ -336,6 +357,7 @@ def test_every_other_release_code_withholds():
 def test_one_instance_without_collected_values_withholds_its_subject(preset):
     section = _section(preset, "Release report")
     assert "withhold every other file of its subject, by `not-reported`" in section
+    assert "has no known subject and withholds no other file" in section
     gate = instance_transform.ReleaseGate()
     released = gate(_gate_written(), _empty_coverage(), (_empty_coverage(),))
     assert isinstance(released, run.Release)

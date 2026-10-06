@@ -82,9 +82,10 @@ ROI_OUTCOMES: Mapping[Outcome, str] = types.MappingProxyType(
         Outcome.MAPPED: "the reviewer's name, where a reviewer mapped it",
         Outcome.EMPTIED: "an empty value, where a reviewer had it emptied",
         Outcome.HELD: "an empty value, where the name is held, in a file "
-        "that is not released: the run holds its instance for review, deletes "
-        "the file from the staging area, and counts the instance in the "
-        "release report as held for review",
+        "that is not released: unless the run or the release gate sequesters "
+        "it, the run holds its instance for review, deletes the file from the "
+        "staging area, and the release report counts the instance as held for "
+        "review",
         Outcome.EMPTIED_UNREVIEWED: "an empty value, where the name is held "
         "and the run's descriptor cleaning is set to empty held names, in an "
         "instance that may then be released without the Clean Descriptors "

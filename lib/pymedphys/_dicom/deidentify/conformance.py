@@ -143,7 +143,8 @@ PENDING: tuple[str, ...] = (
     "What each run does not yet do: assess the pixel data risk indicators of "
     "each instance, whose Pixel Data (7FE0,0010) it writes unchanged (D-015); "
     "list in the confidential QC pack each distinct string that the policy "
-    "retains, other than a ROI Name (3006,0026), for the review of every "
+    "retains, other than a ROI Name (3006,0026) that a reviewer kept, for the "
+    "review of every "
     "distinct retained string (D-017); and write this statement with the "
     "release report.",
 )
@@ -362,9 +363,10 @@ class InsertedMarkers:
         Profile's and each selected option's that the policy applies, or none
         for a policy that claims no conformance.
     review_codes : tuple of str
-        The Code Values that it gains only in an instance whose descriptor
-        cleaning settles every attribute given C: Clean Descriptors', where
-        the policy selects it and can claim conformance.
+        The Code Values that it gains only in an instance in which every
+        attribute given C is a ROI Name that was renamed, was empty, or took a
+        reviewer's decision: Clean Descriptors', where the policy selects it
+        and can claim conformance.
     temporal : str
         Longitudinal Temporal Information Modified (0028,0303), unless the
         value already present is stricter.

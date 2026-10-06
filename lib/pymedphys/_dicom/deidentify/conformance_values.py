@@ -435,12 +435,14 @@ def release_report() -> list[str]:
         "is known, and one from the release gate gives the attribute's tags "
         "in the same way where it names an attribute.",
         "",
-        "An instance whose values were not collected at all, since it was "
-        "sequestered before its transform collected them, as for its scope, "
-        "its source file, an error, or a source file that changed during the "
-        "run, makes the release gate withhold every other file of its "
-        "subject, by `not-reported`, since its values were not searched for "
-        "in them (D-027).",
+        "An instance that the first pass read but whose values were not "
+        "collected at all, since it was sequestered before its transform "
+        "collected them, as for its scope, a source file refused on its "
+        "second read, an error, or a source file that changed during the run, "
+        "makes the release gate withhold every other file of its subject, by "
+        "`not-reported`, since its values were not searched for in them "
+        "(D-027). An input that the first pass sequesters for a sequence it "
+        "cannot read has no known subject and withholds no other file.",
         "",
         "The report counts the instances held for review, by the stage that "
         "held each and its reason code, an instance once for each stage and "
@@ -464,7 +466,7 @@ def release_report() -> list[str]:
         "which is built from the replacement Patient ID and UIDs, and gives "
         "the run's QC pack by its opaque reference, with the outcome of its "
         "attestation (`attested`, `rejected`, or `not-attested`). Every run "
-        "writes a QC pack, so a run's report always gives one. A report "
+        "writes a QC pack, so a report that a run writes always gives one. A report "
         "written before the pack is reviewed gives the outcome `not-attested` "
         "(D-016, D-026). An input that the run refuses, as not an instance "
         "that it can read, such as a symbolic link, a DICOMDIR, or a file not "
