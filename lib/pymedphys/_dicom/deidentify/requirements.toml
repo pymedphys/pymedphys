@@ -253,6 +253,7 @@ implementation = [
   "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/conformance_markdown.py",
   "_dicom/deidentify/conformance_values.py",
+  "_dicom/deidentify/run_report.py",
 ]
 note = '''
 The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters.
@@ -261,7 +262,8 @@ A statement lists what it cannot yet describe and then claims nothing.
 Plain X, Z, and D are resolved by Type at every place too (D-020), except within a sequence that the engine removes with its contents, and the resolved Z and D are checked against the walker's plan of a synthetic instance.
 Where an IOD requires an attribute given a plain X, the statement names the enclosing sequence or overlay group that D-020 removes with it, or that the instance is sequestered, and each is checked against the walker's plan of a synthetic instance.
 Under Clean Descriptors, it describes how ROI Name is cleaned in two tiers: automatic renaming against a published TG-263 edition, which it names, and reviewers' decisions, with every reason a name is held (D-009).
-Remaining: the manner of cleaning every other attribute given C, including how Modified Dates modifies dates and times; the safe private attributes retained, for a policy that selects Retain Safe Private; the synthetic birth date of `tps-import`; writing the release report and the confidential QC pack with each run, searching each written file, recording the values that the engine does not give the residual search, acting on the search's findings, and recording in the report an instance that the run itself or a gate sequesters (D-016, D-026, D-027); and writing the statement with each run (M6).
+Each run with a release reporter writes the statement of its policy, as `conformance-statement.md` beside the release report at the root of the release, since it holds no instance value; it describes the policy and vocabulary that the report records, and the report gives the run's own method digest and reviewed-names digest.
+Remaining: the manner of cleaning every other attribute given C, including how Modified Dates modifies dates and times; the safe private attributes retained, for a policy that selects Retain Safe Private; the synthetic birth date of `tps-import`; and writing the release report and the confidential QC pack with each run, searching each written file, recording the values that the engine does not give the residual search, acting on the search's findings, and recording in the report an instance that the run itself or a gate sequesters (D-016, D-026, D-027).
 '''
 
 [[requirement]]
@@ -935,5 +937,6 @@ Its sections on a run give the QC pack's opaque reference with its attestation's
 A run given a reporter writes the report as `release-report.json` at the root of the release before it publishes it, with its QC pack by reference, not yet attested, its released instances by output name, its sequestered instances by label, its held instances by reason, an identical copy counting as the instance it copies, and the values that the residual searches did not search, each counted once at the instance that holds it, and a report that cannot be built publishes nothing and leaves no QC pack; an input whose reasons the report cannot give is sequestered for an invalid reason instead, which the report gives alone and the QC pack lists before its own reasons, so that it never stops the release.
 Beside the report, the run writes its human-readable form as `release-report.md`: CommonMark, with GitHub Flavored Markdown tables, generated from the JSON text alone, which shows every value of the document, and each file name that keys a digest, as a code span as often as the document holds it, and draws nothing else from the report; the same text always gives the same form, and a report whose form cannot be generated publishes nothing.
 Every reason that sequesters or holds an instance in a run, from the run's own checks, the transform, the writer, the preservation check, and the release gate, has a stage and code in the report, and the codes within each stage are distinct.
-Remaining: its residual search findings and writing it in every run (M4); and writing the conformance statement with each run and publishing it with each release (M4, M6).
+Each run given a release reporter publishes the conformance statement of its policy with its release, beside the release report.
+Remaining: its residual search findings and writing it in every run (M4).
 '''
