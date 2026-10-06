@@ -494,6 +494,7 @@ def test_the_document_holds_every_section():
         "retained_strings",
         "roi_names",
         "pixel_risks",
+        "series_risks",
         "previews",
         "not_previewed",
         "source_gaps",

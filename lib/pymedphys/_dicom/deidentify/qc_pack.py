@@ -44,7 +44,11 @@ A pack holds, for one run:
   audit of every name renamed, kept, or mapped, and each name held for
   review, with why (D-009);
 - ``pixel_risks``: each instance in a high-risk category, with the
-  indicators of risk in its pixel data that put it there (D-017);
+  indicators of risk in its pixel data that put it there (D-017); and
+  ``series_risks``: each series of released or held instances with
+  findings of its series assessment, a CT volume, the head or neck, or
+  unreadable evidence of either, with the instances that show each (D-015,
+  D-017);
 - ``previews``: each image preview, by its file in the previews directory
   beside the pack, with what it shows and the file's SHA-256, so that an
   attestation of the pack covers them; and ``not_previewed``: each instance
@@ -732,6 +736,60 @@ class SourceGapEntry:
             raise QcPackError(f"instance {self.position} needs its source gaps")
 
 
+@dataclasses.dataclass(frozen=True)
+class SeriesRiskEntry:
+    """A series with indicators of risk as a whole, and the instances that show each.
+
+    Attributes
+    ----------
+    positions : tuple of int
+        The run positions of the series' instances that were assessed, in
+        order, each once.
+    findings : tuple of ~pymedphys._dicom.deidentify.pixel_risk.SeriesFinding
+        At least one, as :func:`~.pixel_risk.assess_ct_series` gave them for
+        those instances, so that each finding's ``instances`` count from 0
+        in ``positions``, each once, in order; each names an indicator, its risk, and an
+        attribute path or none, never a value.
+    """
+
+    positions: tuple[int, ...]
+    findings: tuple[pixel_risk.SeriesFinding, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.positions, tuple) or not self.positions:
+            raise QcPackError("a series with risks needs its instances' run positions")
+        for position in self.positions:
+            _check_position("a series with risks", position)
+        if list(self.positions) != sorted(set(self.positions)):
+            raise QcPackError(
+                "a series with risks must list each instance once, in order"
+            )
+        if not (
+            isinstance(self.findings, tuple)
+            and self.findings
+            and all(
+                isinstance(finding, pixel_risk.SeriesFinding)
+                and finding.instances
+                and all(
+                    isinstance(index, int)
+                    and not isinstance(index, bool)
+                    and 0 <= index < len(self.positions)
+                    for index in finding.instances
+                )
+                and list(finding.instances) == sorted(set(finding.instances))
+                for finding in self.findings
+            )
+        ):
+            raise QcPackError(
+                f"the series at run position {self.positions[0]} needs its "
+                "findings, each of its own instances"
+            )
+
+    def shown_by(self, finding: pixel_risk.SeriesFinding) -> tuple[int, ...]:
+        """Return the run positions of the instances that show a finding."""
+        return tuple(self.positions[index] for index in finding.instances)
+
+
 @dataclasses.dataclass(frozen=True, repr=False)
 class QcPack:
     """What a reviewer needs from one run, as the module describes.
@@ -752,6 +810,9 @@ class QcPack:
     roi_names : tuple of RoiNameEntry
     pixel_risks : tuple of PixelRiskEntry
         Each high-risk instance once, in run position order.
+    series_risks : tuple of SeriesRiskEntry
+        Each instance in at most one, by its first run position in order;
+        each instance released or held for review.
     previews : tuple of Preview
         Named ``P-0001.png`` onwards, in order, at one width.
     not_previewed : tuple of NotPreviewedEntry
@@ -771,7 +832,9 @@ class QcPack:
         shows a frame of an instance that was neither released nor held for
         review, or the previews are not named P-0001.png onwards; or if an
         instance is listed twice as high-risk, as not previewed, or with source
-        gaps, or out of order.
+        gaps, or out of order; or if an instance is in two series with risks,
+        the series are out of order, or one has an instance that was neither
+        released nor held for review.
     """
 
     reference: str
@@ -782,6 +845,7 @@ class QcPack:
     retained_strings: tuple[RetainedString, ...] = ()
     roi_names: tuple[RoiNameEntry, ...] = ()
     pixel_risks: tuple[PixelRiskEntry, ...] = ()
+    series_risks: tuple[SeriesRiskEntry, ...] = ()
     previews: tuple[Preview, ...] = ()
     not_previewed: tuple[NotPreviewedEntry, ...] = ()
     source_gaps: tuple[SourceGapEntry, ...] = ()
@@ -799,6 +863,7 @@ class QcPack:
             "retained_strings": RetainedString,
             "roi_names": RoiNameEntry,
             "pixel_risks": PixelRiskEntry,
+            "series_risks": SeriesRiskEntry,
             "previews": Preview,
             "not_previewed": NotPreviewedEntry,
             "source_gaps": SourceGapEntry,
@@ -841,7 +906,27 @@ class QcPack:
             listed = [entry.position for entry in getattr(self, name)]
             if listed != sorted(set(listed)):
                 raise QcPackError(f"{name} must list each instance once, in order")
+        self._check_series()
         self._check_previews()
+
+    def _check_series(self) -> None:
+        firsts = [entry.positions[0] for entry in self.series_risks]
+        if firsts != sorted(firsts):
+            raise QcPackError("series_risks must be in order of their first instance")
+        listed = [
+            position for entry in self.series_risks for position in entry.positions
+        ]
+        if len(set(listed)) != len(listed):
+            raise QcPackError("an instance is in two series of series_risks")
+        if any(
+            position >= len(self.instances)
+            or self.instances[position].disposition not in _REVIEWED
+            for position in listed
+        ):
+            raise QcPackError(
+                "series_risks names an instance that was neither released nor "
+                "held for review"
+            )
 
     def _check_previews(self) -> None:
         width = max(4, len(str(len(self.previews))))
@@ -889,7 +974,8 @@ class QcPack:
             f"drops={len(self.drops)}, not_searched={len(self.not_searched)}, "
             f"retained_strings={len(self.retained_strings)}, "
             f"roi_names={len(self.roi_names)}, "
-            f"pixel_risks={len(self.pixel_risks)}, previews={len(self.previews)}, "
+            f"pixel_risks={len(self.pixel_risks)}, "
+            f"series_risks={len(self.series_risks)}, previews={len(self.previews)}, "
             f"not_previewed={len(self.not_previewed)}, "
             f"source_gaps={len(self.source_gaps)})"
         )
@@ -1005,6 +1091,21 @@ def pack_document(pack: QcPack) -> dict:
                 ],
             }
             for entry in pack.pixel_risks
+        ],
+        "series_risks": [
+            {
+                "positions": list(entry.positions),
+                "findings": [
+                    {
+                        "indicator": finding.indicator.value,
+                        "risk": finding.risk.value if finding.risk else None,
+                        "element": None if finding.path is None else str(finding.path),
+                        "positions": list(entry.shown_by(finding)),
+                    }
+                    for finding in entry.findings
+                ],
+            }
+            for entry in pack.series_risks
         ],
         "previews": [
             {

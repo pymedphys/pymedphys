@@ -80,6 +80,7 @@ _SECTIONS = (
     "released",
     "sequestered",
     "held_for_review",
+    "roi_names",
     "search_coverage",
     "source_gaps",
 )
@@ -139,6 +140,7 @@ def to_markdown(report: str) -> str:
         *_released(document["released"]),
         *_sequestered(document["sequestered"]),
         *_held(document["held_for_review"]),
+        *_roi_names(document["roi_names"]),
         *_coverage(document["search_coverage"]),
         *_gaps(document["source_gaps"]),
     ]
@@ -339,6 +341,39 @@ def _held(section: object) -> list[Block]:
             "neither released nor named."
         ],
         _table(("Stage", "Code", "Instances"), rows) if rows else [_NONE],
+    ]
+
+
+def _roi_names(section: object) -> list[Block]:
+    section = _fields("roi_names", section, ("outcomes", "held"))
+    tables = []
+    for field, key, header in (
+        ("outcomes", "outcome", ("Outcome", "Names")),
+        ("held", "reason", ("Reason", "Distinct names")),
+    ):
+        rows = []
+        for entry in _list(f"roi_names {field}", section[field]):
+            entry = _fields(f"roi_names {field}", entry, (key, "count"))
+            rows.append(
+                (
+                    _code(f"roi_names {key}", entry[key]),
+                    _count(f"roi_names {field} count", entry["count"]),
+                )
+            )
+        tables.append(_table(header, rows) if rows else [_NONE])
+    return [
+        ["## ROI names"],
+        [
+            "The outcome of each ROI Name of the structure sets that descriptor "
+            "cleaning cleaned, every name counted, and how many distinct names "
+            "it sent for review for each reason, whether they were then held "
+            "or emptied unreviewed. Only the confidential QC pack lists the "
+            "names."
+        ],
+        ["### Outcome of each name"],
+        tables[0],
+        ["### Distinct names sent for review"],
+        tables[1],
     ]
 
 

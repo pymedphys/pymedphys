@@ -55,7 +55,8 @@ from .qc_attestation import AttestationRecord, Outcome
 from .reasons import RunReason
 from .residuals import NotSearched, Unsearched, UnsearchedReason
 from .iod_conformance import SourceGap
-from .run_qc import Dropped, SearchMaterial
+from .reviewed_roi_names import CleanedRoiName, ReviewQueue, RoiNameCounts
+from .run_qc import Dropped, RoiNameMaterial, SearchMaterial
 
 # The release report's name at the root of a release. Output names are
 # upper case, so it cannot be one.
@@ -173,6 +174,7 @@ class ReleaseReporter:
             coverage=release_report.search_coverage(
                 coverage_records(material[position]) for position in sorted(material)
             ),
+            roi_names=roi_name_counts(material),
             gaps=release_report.source_gaps(
                 [item for item in material[position] if isinstance(item, SourceGap)]
                 for position in sorted(material)
@@ -348,3 +350,29 @@ def coverage_records(material: Sequence[object]) -> list[NotSearched | Unsearche
         elif isinstance(item, SearchMaterial):
             records.extend(item.search.not_searched)
     return records
+
+
+def roi_name_counts(material: Mapping[int, Sequence[object]]) -> RoiNameCounts:
+    """Return what descriptor cleaning wrote for a run's ROI Names, by count.
+
+    ``material`` is each input's QC material, by its position. Each input's
+    :class:`~.run_qc.RoiNameMaterial` is the ROI Names of the one structure
+    set that descriptor cleaning cleaned for it, as the QC pack lists them,
+    so every name counts by its outcome, and each distinct held name once
+    for each of its reasons, as
+    :meth:`~pymedphys._dicom.deidentify.reviewed_roi_names.ReviewQueue.report_counts`
+    gives, without a name.
+    """
+    queue = ReviewQueue()
+    for position in sorted(material):
+        names = [
+            item for item in material[position] if isinstance(item, RoiNameMaterial)
+        ]
+        queue.add(
+            [name.source for name in names],
+            [
+                CleanedRoiName(name.outcome, name.held_because, name.written)
+                for name in names
+            ],
+        )
+    return queue.report_counts()

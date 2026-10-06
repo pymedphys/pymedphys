@@ -56,7 +56,8 @@ indicator. Findings name attribute paths, never values.
 :func:`assess_ct_series` reads the indicators that need a whole series:
 every CT volume may hold a reconstructable face, and one whose attributes
 name a region of the head or neck in a reviewed list from PS3.16 Annex L
-says that it does.
+says that it does. :func:`series_evidence` gives the part of an instance
+that it reads.
 
 Reading leaves the data set as it was: pydicom converts an element read from
 a file on first access, in place, and under strict reading its errors can
@@ -743,6 +744,50 @@ def assess_ct_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFindin
         ),
         *unreadable,
     )
+
+
+# The top-level elements that assess_ct_series reads; nested ones are read
+# within these.
+_SERIES_EVIDENCE = (
+    _SOP_CLASS_UID,
+    _IMAGE_TYPE,
+    _ANATOMIC_REGION_SEQUENCE,
+    _BODY_PART_EXAMINED,
+    _NUMBER_OF_FRAMES,
+    _SHARED_FUNCTIONAL_GROUPS_SEQUENCE,
+    _PER_FRAME_FUNCTIONAL_GROUPS_SEQUENCE,
+)
+
+
+def series_evidence(dataset: pydicom.Dataset) -> pydicom.Dataset:
+    """Return the part of an instance that :func:`assess_ct_series` reads.
+
+    A run keeps this, not the whole instance, until it has every instance of
+    a series. Each element is copied as it was stored, so the series is
+    assessed, with the same findings at the same paths, as if from the
+    instances themselves, and the data set is left as it was. An Enhanced or
+    Legacy Converted Enhanced CT image's Per-frame Functional Groups
+    Sequence holds an item for each frame, so its evidence can be much of
+    its header. The copied elements share the instance's stored values.
+
+    Parameters
+    ----------
+    dataset : pydicom.Dataset
+        An instance, as read.
+
+    Returns
+    -------
+    pydicom.Dataset
+        A new data set of its SOP Class UID, Image Type, Number of Frames,
+        Body Part Examined, Anatomic Region Sequence, and Shared and
+        Per-frame Functional Groups Sequences, those it has.
+    """
+    evidence = pydicom.Dataset()
+    for tag in _SERIES_EVIDENCE:
+        stored = dataset.get_item(_int_tag(tag), keep_deferred=True)
+        if stored is not None:
+            evidence[_int_tag(tag)] = stored
+    return evidence
 
 
 def _unreadable_in(index: int, path: ElementPath) -> SeriesFinding:

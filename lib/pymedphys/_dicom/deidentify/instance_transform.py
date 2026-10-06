@@ -127,8 +127,8 @@ from .release_gate import (
 )
 from .residuals import NotSearched, has_written_constant, not_searched_of
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
-from .pixel_risk import assess_pixel_risk
-from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial
+from .pixel_risk import assess_pixel_risk, series_evidence
+from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial, SeriesEvidence
 from .run_report import ReleaseReporter
 from .scope import classify
 from .source import SourceEvidence, SourceRefused, read_source
@@ -691,7 +691,7 @@ class InstanceTransform:
         ):
             return Sequestered((classification.disposition,))
         iod = self._iods.iods[classification.iod]
-        risk: tuple[object, ...] = _pixel_risk(dataset)
+        risk: tuple[object, ...] = _pixel_risk(dataset, record)
         if not classification.sequestered:
             risk += source_gaps(source, iod)
         plan = plan_instance(source, self._rules, iod)
@@ -759,18 +759,24 @@ class InstanceTransform:
             return Sequestered(tuple(dict.fromkeys(reasons)), evidence, qc)
 
 
-def _pixel_risk(dataset: pydicom.Dataset | None) -> tuple[PixelRiskMaterial, ...]:
+def _pixel_risk(
+    dataset: pydicom.Dataset | None, record: InstanceRecord
+) -> tuple[PixelRiskMaterial | SeriesEvidence, ...]:
     """The QC material of the source's indicators of risk in its pixel data.
 
     The source is assessed, since the Basic Profile removes some of the
-    evidence, such as an overlay group whose graphics lie in the pixel data.
-    A source whose data set does not decode gives none: the walker and the
-    gate decide what becomes of it.
+    evidence, such as an overlay group whose graphics lie in the pixel data:
+    its own indicators, if any, and what it gives the assessment of its
+    series, by its source Series Instance UID. A source whose data set does
+    not decode gives none: the walker and the gate decide what becomes of it.
     """
     if dataset is None:
         return ()
     assessment = assess_pixel_risk(dataset)
-    return (PixelRiskMaterial(assessment),) if assessment.findings else ()
+    return (
+        *((PixelRiskMaterial(assessment),) if assessment.findings else ()),
+        SeriesEvidence(record.series, series_evidence(dataset)),
+    )
 
 
 def transform_for(
