@@ -448,6 +448,7 @@ def test_reference_findings_count_each_instance_once_for_each_kind(basic):
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_a_run_without_reference_findings_counts_none(basic):
     report = release_report.release_report(
         basic, vocabulary=None, reviewed_roi_names=None
@@ -461,6 +462,7 @@ def test_a_run_without_reference_findings_counts_none(basic):
     [[_DANGLING], *([[kind]] for kind in _ACTED_ON), [["dangling-reference"]]],
     ids=["not-by-instance", *(kind.value for kind in _ACTED_ON), "a-string"],
 )
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_reference_findings_must_be_given_by_instance_and_reported_only(instances):
     with pytest.raises(TypeError):
         release_report.reference_findings(instances)

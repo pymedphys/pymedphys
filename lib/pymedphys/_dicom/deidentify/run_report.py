@@ -181,14 +181,7 @@ class ReleaseReporter:
                 coverage_records(material[position]) for position in sorted(material)
             ),
             roi_names=roi_name_counts(material),
-            findings=release_report.reference_findings(
-                [
-                    item.kind
-                    for item in material[position]
-                    if isinstance(item, ReferenceFindingMaterial)
-                ]
-                for position in sorted(material)
-            ),
+            findings=reference_findings(outcomes, material),
         )
         return release_report.to_json(report)
 
@@ -318,6 +311,32 @@ def released_instances(outcomes: Sequence[object]) -> tuple[PurePosixPath, ...]:
         getattr(outcome, "output")
         for outcome in outcomes
         if getattr(outcome, "status").value == RELEASED
+    )
+
+
+def reference_findings(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> tuple[release_report.ReferenceFindings, ...]:
+    """Count the instances with each kind of reference finding reported only.
+
+    Each input's kinds come from its
+    :class:`~pymedphys._dicom.deidentify.run_qc.ReferenceFindingMaterial`.
+    An identical copy of an input is the same instance, so it is not counted
+    again, although the QC pack lists the finding at each copy.
+    """
+    copies = {
+        getattr(outcome, "position")
+        for outcome in outcomes
+        if getattr(outcome, "duplicate_of") is not None
+    }
+    return release_report.reference_findings(
+        [
+            item.kind
+            for item in material[position]
+            if isinstance(item, ReferenceFindingMaterial)
+        ]
+        for position in sorted(material)
+        if position not in copies
     )
 
 

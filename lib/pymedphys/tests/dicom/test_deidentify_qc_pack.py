@@ -379,7 +379,6 @@ def test_roi_name_outcomes_are_named_as_descriptor_cleaning_names_them():
     ]
 
 
-@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.parametrize(
     "fields",
@@ -399,6 +398,7 @@ def test_a_reference_finding_entry_is_checked(fields):
     assert "SENTINEL" not in str(raised.value)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_an_excerpt_shows_the_bytes_around_a_residual():
     data = b"Seen by Dr Zebedee today"
     search = find_residuals(data, [SourceValue(NAME_PATH, "PN", NAME)])
