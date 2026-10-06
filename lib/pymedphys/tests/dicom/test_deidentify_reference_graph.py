@@ -64,6 +64,7 @@ def _dangling(position, attribute, count=1):
     return Finding(DANGLING, ((position,),), attribute, count)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_a_consistent_collection_has_no_findings():
     records = [synthetic.record(dataset) for dataset in synthetic.collection()]
@@ -75,6 +76,7 @@ def test_a_consistent_collection_has_no_findings():
     assert len(graph.records) == 6
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_each_reference_resolves_to_its_instance():
     datasets = synthetic.collection()
@@ -100,6 +102,7 @@ def test_each_reference_resolves_to_its_instance():
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.parametrize(
     "dropped, expected",
@@ -181,6 +184,7 @@ def test_a_reference_to_a_series_or_study_not_in_the_collection_is_dangling(
     assert len(graph.edges) == 10
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.parametrize("padding", ["", "\x00"], ids=["unpadded", "padded"])
 @pytest.mark.parametrize(
@@ -581,6 +585,7 @@ INSTANCES = [
 ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.parametrize("build, position", INSTANCES)
 def test_copies_of_one_instance_are_duplicates(build, position):
@@ -617,6 +622,7 @@ def _plans_in_implicit_and_explicit_vr(change=None):
     return datasets
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_copies_in_implicit_and_explicit_vr_conflict():
@@ -629,6 +635,7 @@ def test_copies_in_implicit_and_explicit_vr_conflict():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_copies_in_implicit_and_explicit_vr_with_a_private_element_conflict():
@@ -644,6 +651,7 @@ def test_copies_in_implicit_and_explicit_vr_with_a_private_element_conflict():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.parametrize(
     "change",
@@ -733,6 +741,7 @@ def test_an_instance_without_a_sop_instance_uid_is_no_duplicate():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.parametrize(
     "study, several",
@@ -790,6 +799,7 @@ def _set_patient(dataset, patient_id, issuer):
             setattr(dataset, keyword, value)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.parametrize(
     "first, second, several",
@@ -880,6 +890,7 @@ def test_a_study_with_three_patients_is_grouped_by_patient():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_a_study_whose_instances_all_lack_a_patient_id_has_one_patient():
     # Whether the Patient ID is absent, empty, or only padding, and whatever
@@ -893,6 +904,7 @@ def test_a_study_whose_instances_all_lack_a_patient_id_has_one_patient():
     assert not _graph(datasets).findings
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_the_instances_without_a_patient_id_are_grouped_as_one_patient():
     datasets = synthetic.collection()
@@ -923,17 +935,9 @@ def _inconsistent_collection():
     datasets[PLAN].ReferencedRTPlanSequence = [
         synthetic.reference(synthetic.RT_PLAN_STORAGE, "2.25.9013")
     ]
-    # The slice in another study is also in another frame of reference, which
-    # the structure set lists it under, with an ROI in a frame it does not list.
-    for position, frame in ((0, "2.25.9014"), (1, "2.25.9014"), (2, "2.25.9015")):
-        synthetic.uid(datasets[position], "FrameOfReferenceUID", frame)
-    synthetic.uid(datasets[-2], "FrameOfReferenceUID", "2.25.9014")
-    structure_set = datasets[STRUCTURE_SET]
-    (listed,) = structure_set.ReferencedFrameOfReferenceSequence
-    synthetic.uid(listed, "FrameOfReferenceUID", "2.25.9014")
-    roi = synthetic.item(ROINumber=1)
-    synthetic.uid(roi, "ReferencedFrameOfReferenceUID", "2.25.9016")
-    structure_set.StructureSetROISequence = [roi]
+    # The slice in another study is in another frame of reference too.
+    frames = {0: "2.25.9014", 1: "2.25.9014", 2: "2.25.9015", 6: "2.25.9014"}
+    synthetic.set_frames(datasets, frames, "2.25.9014", ("2.25.9016",))
     values = {
         OTHER_PATIENT_ID,
         SOURCE_ISSUER,

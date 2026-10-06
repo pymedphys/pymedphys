@@ -203,6 +203,7 @@ def _written_and_verified(data, edit):
     return output, _with_source_meta(data, source, written)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize(
     "explicit, character_set",
@@ -227,6 +228,7 @@ def test_a_written_plan_preserves_what_it_keeps(explicit, character_set):
             assert output.element(path).undefined_length
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_kept_text_keeps_its_inherited_bytes_and_new_text_takes_them():
     output, data = _written_and_verified(_plan(True, "GB18030"), _plan_edit)
 
@@ -240,6 +242,7 @@ def _ct_edit(source):
     return frozenset(source.paths()) - {NAME_PATH}, frozenset(), replacements
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.parametrize("voi_lut_vr", ["SQ", "UN"])
 def test_a_ct_voi_lut_descriptor_keeps_its_vr_and_bytes(voi_lut_vr):
     output, _ = _written_and_verified(_ct(voi_lut_vr), _ct_edit)
@@ -249,6 +252,7 @@ def test_a_ct_voi_lut_descriptor_keeps_its_vr_and_bytes(voi_lut_vr):
     assert output.element(_path("(0028,3010)")).vr == voi_lut_vr
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02", "MIDI-BP-03")
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_pydicom_resolves_the_descriptor_again_where_this_writer_does_not():
     # The same edit through pydicom: once the data set has been walked, as
@@ -277,6 +281,7 @@ def test_pydicom_resolves_the_descriptor_again_where_this_writer_does_not():
     _written_and_verified(data, _ct_edit)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-06")
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_the_file_has_new_file_meta_information():
     source = read_source(_ct())
@@ -308,6 +313,7 @@ def _tag(keyword):
     return f"({tag.group:04X},{tag.elem:04X})"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_an_introduced_sequence_is_written_with_its_items():
     data = _ct()
@@ -348,6 +354,7 @@ def _refused(source, **plan):
     return raised.value.reason, raised.value.path
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_an_element_without_a_plan_is_refused():
     source = read_source(_ct())
 
@@ -377,6 +384,7 @@ def test_an_element_introduced_where_nothing_is_written_is_refused():
     ) == (WriteReason.UNPLACED, stray)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.parametrize(
     "element",
     [
@@ -424,6 +432,7 @@ def test_an_element_planned_twice_is_rejected():
         )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_a_kept_value_of_fragments_is_refused():
     # Encapsulated Document as fragments, which verification cannot show
     # preserved.
@@ -464,6 +473,7 @@ def _pydicom_vrs(data):
     }
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize("explanation", ["WINDOW", ""], ids=["replaced", "emptied"])
 def test_an_edit_inside_a_un_sequence_keeps_it_un_with_implicit_items(explanation):
@@ -486,6 +496,7 @@ def test_an_edit_inside_a_un_sequence_keeps_it_un_with_implicit_items(explanatio
     assert _pydicom_vrs(written)[0x00283002] == "US"
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.parametrize(
     "path, element",
     [
@@ -522,6 +533,7 @@ def _inside(source):
     return frozenset(each for each in source.paths() if each.items)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_items_from_pydicom_are_never_resolved_again():
     # A replaced VOI LUT Sequence taken from a view of the source, whose
     # items pydicom holds raw, with the descriptor's VR still to resolve.
@@ -554,6 +566,7 @@ def _with_character_set(term):
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.parametrize(
     "data, element",
     [
@@ -572,6 +585,7 @@ def test_text_that_cannot_be_written_in_its_character_set_is_refused(data, eleme
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_default_repertoire_value_outside_iso_646_is_refused():
     source = read_source(_with_character_set(b"ISO_IR 192"))
     identity = _path("(0012,0062)")
@@ -586,6 +600,7 @@ def test_a_default_repertoire_value_outside_iso_646_is_refused():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-06")
 @pytest.mark.parametrize(
     "path, element",
     [
@@ -616,6 +631,7 @@ def test_a_kept_group_length_is_refused():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_value_that_pydicom_would_write_with_another_vr_is_refused():
     # pydicom writes an LT longer than its 16-bit length allows as UN.
     source = read_source(_ct())
@@ -640,6 +656,7 @@ def test_a_replacement_of_undefined_length_without_items_is_refused():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_a_kept_element_inside_a_removed_or_replaced_sequence_is_refused():
     source = read_source(_ct())
     voi_lut = _path("(0028,3010)")
@@ -652,6 +669,7 @@ def test_a_kept_element_inside_a_removed_or_replaced_sequence_is_refused():
     assert _refused(source, **replaced) == (WriteReason.UNPLACED, descriptor)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_a_replaced_character_set_under_kept_text_is_refused():
     source = read_source(_with_character_set(b"ISO_IR 100"))
     character_set = pydicom.DataElement(0x00080005, "CS", "ISO_IR 192")
@@ -683,6 +701,7 @@ def _private_items():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.parametrize(
     "data",
     [
@@ -704,6 +723,7 @@ def test_a_data_set_kept_whole_is_copied_byte_for_byte(data):
     assert _with_source_meta(data, source, written) == data
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_an_introduced_sequence_in_implicit_vr_takes_a_replaced_character_set():
     data = _plan(False)
     source = read_source(data)

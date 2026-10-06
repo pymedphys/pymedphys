@@ -47,6 +47,7 @@ def test_the_namespace_is_derived_from_its_documented_name():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04")
 def test_a_replacement_follows_the_specified_derivation():
     # HMAC-SHA256 of the UID under the key, as the name of a version 5 UUID
     # in the PyMedPhys namespace, written under the 2.25 root.
@@ -77,6 +78,7 @@ def test_version_5_uuids_match_the_standard_library(namespace, name):
     assert uids.uuid5(namespace, name.encode("utf-8")) == uuid.uuid5(namespace, name)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04")
 @hypothesis.given(any_key, any_uid)
 def test_a_replacement_is_a_valid_uid_from_a_version_5_uuid(key, uid):
     replacement = uids.replacement_uid(key, uid)
@@ -89,6 +91,7 @@ def test_a_replacement_is_a_valid_uid_from_a_version_5_uuid(key, uid):
     assert derived.variant == uuid.RFC_4122
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04")
 @hypothesis.given(any_key, any_uid, padding)
 def test_a_replacement_depends_only_on_the_key_and_the_unpadded_uid(key, uid, pad):
     replacement = uids.replacement_uid(key, uid)
@@ -106,6 +109,7 @@ def test_different_keys_give_unrelated_replacements(secrets, uid):
     assert uids.replacement_uid(first, uid) != uids.replacement_uid(second, uid)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04")
 @hypothesis.given(
     any_key,
     st.lists(any_uid, min_size=2, max_size=2, unique_by=uids.normalise_uid),

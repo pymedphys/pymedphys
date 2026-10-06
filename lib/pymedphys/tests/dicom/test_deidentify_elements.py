@@ -133,6 +133,7 @@ def _plan_with_assertions(*assertions):
 ASSERTER_NAME_PATH = _path((RT_ASSERTIONS, 0), (ASSERTER, 0), PERSON_NAME)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")
 def test_an_implicit_vr_rt_plan_decodes_rt_assertions_with_the_pinned_vr():
@@ -155,6 +156,7 @@ def test_an_implicit_vr_rt_plan_decodes_rt_assertions_with_the_pinned_vr():
     assert read[_tag(RT_ASSERTIONS)].VR == "UN"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_un_in_explicit_vr_is_decoded_as_implicit_vr_with_the_pinned_vr(
     monkeypatch,
@@ -186,6 +188,7 @@ def _image(pixel_representation=None, **attributes):
     return dataset
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize("representation, vr, value", [(0, "US", 65535), (1, "SS", -1)])
 def test_us_or_ss_is_resolved_from_pixel_representation(representation, vr, value):
@@ -319,6 +322,7 @@ def _voi_lut_image(descriptor, **changes):
     return dataset
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.usefixtures("pydicom_behaviour")
 @TRANSFER_SYNTAXES
 def test_the_voi_lut_descriptor_of_a_ct_in_hounsfield_units_is_ss(transfer_syntax):
@@ -361,6 +365,7 @@ def test_the_voi_lut_descriptor_takes_the_vr_that_explicit_vr_states(stated, cha
 _WITHOUT_RESCALE = {"RescaleIntercept": None, "RescaleSlope": None, "RescaleType": None}
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.parametrize("stated", [None, "UN"], ids=["implicit-vr", "un"])
 @pytest.mark.parametrize(
     "changes, vr",
@@ -621,6 +626,7 @@ def test_encapsulated_pixel_data_is_ob():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize(
     "tag, stated",
     [
@@ -940,6 +946,7 @@ def test_text_that_does_not_decode_in_its_character_set_is_refused():
         _read(dataset, _path("(0010,0010)"), elements.dataset_codecs(dataset))
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize(
     "character_set, tag, value",
     [
@@ -1007,6 +1014,7 @@ def test_text_in_a_character_set_with_code_extensions_is_read(transfer_syntax):
     assert found == [(name,), ("SYNTHETIC 研究",)]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize(
     "value",
     [
@@ -1083,6 +1091,7 @@ def _accessed(dataset, tag, access):
 ACCESSES = pytest.mark.parametrize("access", ["index", "get", "attribute", "iteration"])
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.usefixtures("pydicom_behaviour")
 @ACCESSES
 def test_a_un_sequence_that_pydicom_has_decoded_is_refused(monkeypatch, access):
@@ -1298,6 +1307,7 @@ WRITTEN = [
 ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")
 @TRANSFER_SYNTAXES
@@ -1344,6 +1354,7 @@ def test_a_new_element_is_built_without_pydicoms_checks():
     assert (element.VR, str(element.value)) == ("DS", "1.5")
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.parametrize(
     "tag, vr, values, codecs, problem",
     [

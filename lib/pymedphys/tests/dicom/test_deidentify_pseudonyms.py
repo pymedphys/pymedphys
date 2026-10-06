@@ -51,6 +51,7 @@ def _frame(value):
     return len(value).to_bytes(4, "big") + value
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 def test_a_pseudonym_follows_the_specified_derivation():
     identity = pseudonyms.SubjectIdentity.from_patient_id("MRN0001", "FIXTURE HOSPITAL")
     token = hmac.new(
@@ -79,6 +80,7 @@ def test_pseudonyms_are_pinned():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 @hypothesis.given(any_key, any_identity)
 def test_a_pseudonym_is_valid_for_its_vr_and_conspicuous(key, identity):
     from pydicom import config, valuerep
@@ -111,6 +113,7 @@ def test_different_keys_give_unrelated_pseudonyms(secrets, identity):
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 @hypothesis.given(any_key, st.lists(any_identity, min_size=2, max_size=2, unique=True))
 def test_different_subjects_give_different_pseudonyms(key, pair):
     first, second = pair
@@ -120,6 +123,7 @@ def test_different_subjects_give_different_pseudonyms(key, pair):
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 def test_the_same_identifier_from_another_issuer_is_another_subject():
     first = pseudonyms.SubjectIdentity.from_patient_id("123456", "HOSPITAL A")
     second = pseudonyms.SubjectIdentity.from_patient_id("123456", "HOSPITAL B")
@@ -152,6 +156,7 @@ def test_an_empty_identity_cannot_name_a_subject(identifier):
         pseudonyms.SubjectIdentity.curated(identifier)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 def test_a_pseudonym_does_not_contain_the_identifier():
     for identifier in ("MRN0001", "RT-2026-0042", "Q7XK2PLM"):
         pseudonym = pseudonyms.patient_pseudonym(

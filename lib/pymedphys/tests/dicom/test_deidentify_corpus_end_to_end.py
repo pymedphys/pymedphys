@@ -46,14 +46,17 @@ from pymedphys._dicom.deidentify.release_gate import (
     ReleaseReason,
 )
 from pymedphys._dicom.deidentify.run_report import (
+    CONFORMANCE_STATEMENT,
     RELEASE_REPORT,
     RELEASE_REPORT_MARKDOWN,
 )
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
+from pymedphys._dicom.deidentify.written_references import WrittenFindingKind
 
 pytestmark = pytest.mark.pydicom
 
 KEY = DeidKey(bytes(range(32)))
+UNWRITTEN_TARGET = WrittenFindingKind.UNWRITTEN_TARGET
 Kind = corpus_module.PlacementKind
 # The kinds whose values the Basic Profile removes or replaces.
 REMOVED_KINDS = frozenset(Kind) - {
@@ -107,6 +110,7 @@ def fixture_basic_run():
                     ReleaseGate(),
                     qc_destination=directory / "qc",
                     reporter=transform.reporter,
+                    written_check=transform.written_check,
                 )
         finally:
             logger.removeHandler(shown)
@@ -186,6 +190,7 @@ def _encodings(form):
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_the_basic_profile_releases_all_but_the_instances_it_must_hold(
     basic_run,
 ):
@@ -195,6 +200,16 @@ def test_the_basic_profile_releases_all_but_the_instances_it_must_hold(
     review = names.index(corpus_module.REVIEW_FILE)
 
     assert not result.findings
+    # What was written refers to itself as the corpus did, but for the
+    # references to the instances that were withheld, which are reported.
+    assert result.written_findings
+    assert all(
+        finding.kind is UNWRITTEN_TARGET
+        and all(
+            position not in (sequestered, review) for (position,) in finding.instances
+        )
+        for finding in result.written_findings
+    )
     assert result.staging_removed
     assert sorted(outcome.position for outcome in result.outcomes) == list(
         range(len(names))
@@ -235,8 +250,8 @@ def test_the_basic_profile_releases_all_but_the_instances_it_must_hold(
 def test_no_published_file_holds_a_marker(basic_run):
     corpus, result, released, _ = basic_run
     published = _published(result)
-    # The released instances and the release report in both its forms, and
-    # nothing else.
+    # The released instances, the release report in both its forms, and the
+    # conformance statement, and nothing else.
     assert set(published) == {
         *(
             outcome.output.as_posix()
@@ -245,6 +260,7 @@ def test_no_published_file_holds_a_marker(basic_run):
         ),
         RELEASE_REPORT,
         RELEASE_REPORT_MARKDOWN,
+        CONFORMANCE_STATEMENT,
     }
 
     for name, data in published.items():

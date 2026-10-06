@@ -18,7 +18,9 @@ Every file and value is synthetic. Values that must never appear in an error
 carry the text ``SENTINEL``.
 """
 
-from pymedphys._imports import pytest
+import io
+
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import qc_retained, run, source, walker
 from pymedphys._dicom.deidentify.edits import _Reader
@@ -71,6 +73,7 @@ def _instance(*elements):
     return InstancePlan(elements=tuple(elements), sequestrations=())
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_walker_plan_retains_its_kept_text_in_file_order():
     # The RT Plan keeps both Beam Numbers as they are. Its Specific Character
     # Set, replaced UIDs, emptied name, removed private and unlisted elements,
@@ -178,6 +181,7 @@ def test_an_empty_element_value_gives_no_retained_text():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_a_retained_value_that_was_not_read_is_refused():
     with pytest.raises(QcPackError, match=r"\(300A,00C0\) was not read") as caught:
         retained_text(_plan(), {FIRST_BEAM_NUMBER: "SENTINEL"})
@@ -234,6 +238,7 @@ def test_retained_text_becomes_the_packs_distinct_retained_strings():
     assert strings[0].places == ((0, description), (1, description))
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_each_string_the_plan_keeps_is_given_to_the_qc_pack():
     dataset = synthetic.rt_dose()
     dataset.Manufacturer = "SENTINEL MAKER"
@@ -252,6 +257,7 @@ def test_each_string_the_plan_keeps_is_given_to_the_qc_pack():
     assert [item.path for item in retained] == list(paths)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_a_kept_string_that_cannot_be_decoded_sequesters_the_instance():
     dataset = synthetic.rt_dose()
     dataset.Manufacturer = "SENTINEL QQ"
@@ -266,3 +272,28 @@ def test_a_kept_string_that_cannot_be_decoded_sequesters_the_instance():
     assert isinstance(result, run.Sequestered)
     assert result.reasons == (TransformReason.UNREVIEWABLE_RETAINED_TEXT,)
     assert not any(isinstance(item, RetainedText) for item in result.qc)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_the_private_creators_of_removed_private_blocks_are_not_kept():
+    item = pydicom.Dataset()
+    item.PrivateGroupReference = 0x0009
+    item.PrivateCreatorReference = SENTINEL_LABEL
+    dataset = synthetic.rt_dose()
+    dataset.PrivateDataElementCharacteristicsSequence = pydicom.Sequence([item])
+    dataset.private_block(0x0009, SENTINEL_LABEL, create=True).add_new(
+        0x01, "LO", "SENTINEL VALUE"
+    )
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert "PrivateDataElementCharacteristicsSequence" not in written
+    assert SENTINEL_LABEL.encode() not in result.data
+    assert b"SENTINEL VALUE" not in result.data
+    assert not [
+        item
+        for item in result.qc
+        if isinstance(item, RetainedText) and SENTINEL_LABEL in item.value
+    ]

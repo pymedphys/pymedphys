@@ -480,7 +480,7 @@ def _frames(
                 if (image := _uid(each, REFERENCED_SOP_INSTANCE_TAG))
             )
             frames.append(FrameUse(_uid(item, FRAME_OF_REFERENCE_TAG) or "", images))
-    roi_frames = ()
+    roi_frames: tuple[str, ...] = ()
     if of_rois:
         roi_frames = tuple(
             _uid(item, REFERENCED_FRAME_OF_REFERENCE_UID_TAG) or ""

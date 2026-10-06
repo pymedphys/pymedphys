@@ -105,6 +105,7 @@ def _frame_findings(inputs):
     return [finding for finding in graph.findings if finding.kind in FRAME_KINDS]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_the_record_holds_the_frames_of_reference():
     inputs = _collection(listed=(CT_FRAME, OTHER_FRAME), roi_frames=(CT_FRAME, ""))
 
@@ -134,11 +135,13 @@ def test_padding_is_removed_from_a_frame_of_reference():
     assert not _frame_findings(inputs)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_frames_of_reference_that_agree_have_no_findings():
     # The dose is in a frame of reference of its own, which nothing compares.
     assert not _frame_findings(_collection())
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_series_in_several_frames_of_reference_is_reported():
     inputs = _collection(ct_frames=(CT_FRAME, OTHER_FRAME, CT_FRAME))
 
@@ -162,6 +165,7 @@ def test_an_input_without_a_frame_of_reference_is_left_out_of_its_series():
     ],
     ids=["not-listed", "listed-twice", "empty", "distinct", "item-without-frame"],
 )
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_an_roi_whose_frame_of_reference_is_not_listed_once_is_reported(
     listed, roi_frames, count
 ):
@@ -173,6 +177,7 @@ def test_an_roi_whose_frame_of_reference_is_not_listed_once_is_reported(
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_contour_image_in_another_frame_of_reference_is_reported():
     inputs = _collection(listed=(OTHER_FRAME,), roi_frames=(OTHER_FRAME,))
 
@@ -229,6 +234,7 @@ def _item_past_its_sequence(data, tag):
     return bytes(data)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")
 def test_a_structure_set_roi_sequence_that_cannot_be_read_is_refused():
     structure_set = _collection()[STRUCTURE_SET]
@@ -269,6 +275,7 @@ def _gate(written, evidence, subject):
     return run.Release()
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_run_reports_frame_findings_and_releases_their_instances(tmp_path):
     inputs = _collection(
         ct_frames=(CT_FRAME, OTHER_FRAME, CT_FRAME),

@@ -47,7 +47,19 @@ A run has five steps:
    :class:`Gate` with its own evidence and that of every instance of its
    subject that the transform returned evidence for, its own first. The
    gate releases it, holds it for review, or sequesters it. A file that is
-   not released is deleted at once.
+   not released is deleted at once. Then the reference graph's second pass,
+   the run's :class:`WrittenCheck`, checks the files that the gate released,
+   each read back from disk again and recorded as the first pass recorded
+   its input, against the first pass's graph. A finding of what was
+   written, other than a reference to an input that was not written, is a
+   fault of the engine, so the run fails closed: it sequesters the
+   instances that the finding names, deleting their files, and checks what
+   is left again, until nothing but such references remains; a finding
+   that names no released instance, or a check that raises, publishes
+   nothing (:class:`ReleaseWithheld`), as
+   :mod:`~pymedphys._dicom.deidentify.run_written` describes. A reference
+   to an input that was withheld, such as a plan's to a sequestered image,
+   is reported only, as the first pass reports a dangling reference.
 5. The release directory is published by renaming the staging area's
    release tree to it, so it appears whole, holding only files that their
    gate released and any release report, or not at all.
@@ -93,16 +105,29 @@ import hashlib
 import os
 import shutil
 import stat
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import TypeGuard
 
-from . import output_names, qc_store, release_report, run_qc, run_report
+from . import output_names, qc_store, release_report, run_qc, run_report, run_written
 from .diagnostics import redacted_diagnostics
 from .file_layout import Region, read_file_layout
-from .reference_graph import Finding, FindingKind, build_reference_graph
+from .reference_graph import (
+    Finding,
+    FindingKind,
+    ReferenceGraph,
+    build_reference_graph,
+)
 from .references import InstanceRecord, UnreadableSequence
 from .reasons import RunReason
+
+# discover and ReleaseWithheld are part of the run's interface, from here.
+from .run_discovery import (  # pylint: disable = unused-import
+    Discovery,
+    RunError,
+    _Entry,
+    discover,
+)
 from .run_results import (
     NO_EVIDENCE,
     Gate,
@@ -111,29 +136,22 @@ from .run_results import (
     Sequestered,
     Transform,
     Transformed,
+    WrittenCheck,
 )
+from .run_written import ReleaseWithheld  # pylint: disable = unused-import
+from .written_references import WrittenFinding
 
 # Media Storage SOP Class UID of a DICOMDIR: the Media Storage Directory
 # Storage SOP Class (PS3.4 Annex F, PS3.6 Table A-1).
 MEDIA_STORAGE_DIRECTORY_STORAGE = "1.2.840.10008.1.3.10"
 _MEDIA_STORAGE_SOP_CLASS = "(0002,0002)"
 _DIRECTORY_RECORD_SEQUENCE = "(0004,1220)"
-_DICOMDIR_NAME = "DICOMDIR"
 STAGING_SUFFIX = ".staging"
 # The staging area's tree that becomes the release directory.
 _STAGED_RELEASE = "release"
 _PARTIAL_SUFFIX = ".partial"
 # Without long path support, Windows limits a file's path to 259 characters.
 _WINDOWS_MAX_PATH = 259
-_FILE_ATTRIBUTE_REPARSE_POINT = 0x400
-
-
-class RunError(Exception):
-    """A run that cannot start, for a reason in its directories.
-
-    Its message names the release directory or staging area, which the
-    caller chose, and never a source path.
-    """
 
 
 class RunStopped(Exception):
@@ -173,50 +191,6 @@ _SEQUESTERING_FINDINGS = (
     FindingKind.CONFLICTING_INSTANCE,
     FindingKind.SERIES_IN_SEVERAL_STUDIES,
 )
-
-
-@dataclasses.dataclass(frozen=True)
-class _Entry:
-    """An entry as discovery found it."""
-
-    path: Path
-    refusal: RunReason | None
-    device: int
-    inode: int
-
-
-@dataclasses.dataclass(frozen=True, repr=False)
-class Discovery:
-    """The entries below a source directory, by run position.
-
-    Its ``repr`` shows only how many there are.
-
-    Attributes
-    ----------
-    source : Path
-        The source directory, resolved.
-    paths : tuple of Path
-        Each entry's path, at its run position. Confidential: they are for
-        the QC material alone.
-    refusals : tuple of RunReason or None
-        For each position, why discovery refused the entry, or ``None`` for
-        a regular file.
-    """
-
-    source: Path
-    entries: tuple[_Entry, ...]
-
-    @property
-    def paths(self) -> tuple[Path, ...]:
-        return tuple(entry.path for entry in self.entries)
-
-    @property
-    def refusals(self) -> tuple[RunReason | None, ...]:
-        return tuple(entry.refusal for entry in self.entries)
-
-    def __repr__(self) -> str:
-        refused = sum(entry.refusal is not None for entry in self.entries)
-        return f"Discovery(entries={len(self.entries)}, refused={refused})"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -266,6 +240,12 @@ class RunResult:
         One for each run position, in order.
     findings : tuple of Finding
         The first pass's findings, by run position.
+    written_findings : tuple of WrittenFinding
+        The second reference pass's findings, by run position, once each:
+        those that sequestered the instances they name, check by check,
+        then those of its last check, which name a reference to an input
+        that was not written and are reported only. Empty without a
+        :class:`WrittenCheck`.
     staging_removed : bool
         Whether the staging area was deleted. If it was not, it may hold
         output that still identifies people, and needs deleting by hand.
@@ -276,92 +256,9 @@ class RunResult:
     release: Path
     outcomes: tuple[Outcome, ...]
     findings: tuple[Finding, ...]
+    written_findings: tuple[WrittenFinding, ...] = ()
     staging_removed: bool = True
     qc_pack: Path | None = None
-
-
-def discover(source: str | os.PathLike[str]) -> Discovery:
-    """List every entry below a source directory, by run position.
-
-    Entries are ordered by their paths relative to ``source``, compared
-    component by component as the bytes that the file system holds, so the
-    order is the same on every run. A directory is descended and is not an
-    entry itself. A symbolic link, to a directory or a file, or another
-    link, such as a Windows junction, is an entry that is refused and not
-    followed; any other entry that is not a regular file, such as a named
-    pipe, is refused without being opened; and a regular file named
-    ``DICOMDIR``, in any case, is refused, as is one that the first pass
-    finds to be a DICOMDIR.
-
-    Parameters
-    ----------
-    source : str or os.PathLike
-        The source directory. A symbolic link to it is followed.
-
-    Returns
-    -------
-    Discovery
-
-    Raises
-    ------
-    RunError
-        If ``source`` is not a directory, or a directory below it cannot be
-        listed. The message names no path.
-    """
-    root = Path(source)
-    try:
-        root = root.resolve()
-        is_directory = root.is_dir()
-    except OSError:
-        is_directory = False
-    if not is_directory:
-        raise RunError("the source is not a directory that can be read")
-    try:
-        found = list(_walk(root))
-    except OSError:
-        raise RunError("a directory below the source cannot be listed") from None
-    found.sort(
-        key=lambda entry: tuple(
-            os.fsencode(part) for part in entry.path.relative_to(root).parts
-        )
-    )
-    return Discovery(root, tuple(found))
-
-
-def _walk(root: Path) -> Iterator[_Entry]:
-    """Yield every entry below ``root``, without recursion or following links."""
-    pending = [root]
-    while pending:
-        with os.scandir(pending.pop()) as listing:
-            entries = list(listing)
-        for entry in entries:
-            path = Path(entry.path)
-            details = entry.stat(follow_symlinks=False)
-            refusal = None
-            if _is_link(entry, details):
-                refusal = RunReason.SYMBOLIC_LINK
-            elif stat.S_ISDIR(details.st_mode):
-                pending.append(path)
-                continue
-            elif not stat.S_ISREG(details.st_mode):
-                refusal = RunReason.NOT_A_REGULAR_FILE
-            elif entry.name.upper() == _DICOMDIR_NAME:
-                refusal = RunReason.DICOMDIR
-            else:
-                # On Windows, a directory entry's own stat has no device or
-                # inode, which reading the file compares.
-                details = os.lstat(path)
-            yield _Entry(path, refusal, details.st_dev, details.st_ino)
-
-
-def _is_link(entry: os.DirEntry, details: os.stat_result) -> bool:
-    if entry.is_symlink():
-        return True
-    is_junction = getattr(entry, "is_junction", None)  # Python 3.12 and later
-    if is_junction is not None and is_junction():
-        return True
-    attributes = getattr(details, "st_file_attributes", 0)  # Windows
-    return bool(attributes & _FILE_ATTRIBUTE_REPARSE_POINT)
 
 
 def staging_path(release: str | os.PathLike[str]) -> Path:
@@ -382,6 +279,7 @@ def run(
     *,
     qc_destination: str | os.PathLike[str],
     reporter: run_report.Reporter | None = None,
+    written_check: WrittenCheck | None = None,
 ) -> RunResult:
     """De-identify the discovered inputs into a new release directory.
 
@@ -407,11 +305,20 @@ def run(
         Given the labelled outcomes, each input's QC material, and the QC
         pack's reference, returns the report's text, published at the root as
         :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT`, with
-        its human-readable form beside it as
-        :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT_MARKDOWN`.
-        Without one, no report is written. A withheld input whose reasons
+        its human-readable form and its policy's conformance statement beside
+        it, as :func:`~pymedphys._dicom.deidentify.run_report.release_files`
+        gives them. Without one, neither is written. A withheld input whose reasons
         the reporter does not admit is sequestered for
         :attr:`RunReason.INVALID_REASON`, followed by its own reasons.
+    written_check : WrittenCheck, optional
+        The reference graph's second pass under the run's key, such as an
+        :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`'s
+        ``written_check``, called on the released files once every staged
+        file is gated. An instance whose written file it finds at fault, or
+        that cannot be recorded to check, is sequestered for
+        :attr:`RunReason.INCONSISTENT_REFERENCES`. Without one, what was
+        written is not checked, which only a transform that writes no
+        keyed replacements, such as a test's, should leave out.
 
     Returns
     -------
@@ -428,6 +335,9 @@ def run(
         raised once the pack is removed.
     RunStopped
         If a study's instances name several patients. Nothing is created.
+    ReleaseWithheld
+        If the second reference pass raises, or finds a fault that names no
+        released instance. Nothing is published, and no QC pack is written.
     ~pymedphys._dicom.deidentify.qc_pack.QcPackError
         If the QC destination is refused, or the pack cannot be built or
         written. Nothing is published.
@@ -453,16 +363,25 @@ def run(
     # quote them.
     with redacted_diagnostics():
         release_path = Path(release).absolute()
-        return _run(discovery, release_path, transform, gate, qc_destination, reporter)
+        return _run(
+            discovery,
+            release_path,
+            transform,
+            gate,
+            qc_destination,
+            reporter,
+            written_check,
+        )
 
 
-def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
+def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments, too-many-locals
     discovery: Discovery,
     release_path: Path,
     transform: Transform,
     gate: Gate,
     qc_destination: str | os.PathLike[str],
     reporter: run_report.Reporter | None,
+    written_check: WrittenCheck | None,
 ) -> RunResult:
     staging = staging_path(release_path)
     _check_directories(discovery.source, release_path, staging)
@@ -488,14 +407,15 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         raise RunError(_STAGING_EXISTS.format(staging=staging)) from None
     removed = False
     try:
-        outcomes, material = _stage_and_gate(discovery, first, staging, transform, gate)
+        outcomes, material, written = _stage_and_gate(
+            discovery, first, staging, transform, gate, written_check
+        )
         if reporter is not None:
             outcomes = _admitted(outcomes, reporter)
         outcomes = _labelled(outcomes)
         pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
         # Built before the pack is written, so a failure leaves no QC material.
-        report = reporter(outcomes, material, pack.reference) if reporter else None
-        files = run_report.release_files(report) if report is not None else {}
+        files = run_report.documents(reporter, outcomes, material, pack.reference)
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
         _remove_empty_directories(staged_release)
@@ -516,7 +436,7 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         _sync_directory(release_path.parent)
     finally:
         removed = _remove(staging)
-    return RunResult(release_path, outcomes, first.findings, removed, qc_pack)
+    return RunResult(release_path, outcomes, first.findings, written, removed, qc_pack)
 
 
 def _remove_empty_directories(root: Path) -> None:
@@ -613,6 +533,10 @@ def _check_directories(source: Path, release: Path, staging: Path) -> None:
 @dataclasses.dataclass(frozen=True)
 class _FirstPass:
     records: dict[int, InstanceRecord]
+    # The graph of the records, whose positions are indices of ``positions``.
+    graph: ReferenceGraph
+    # The run position of each of the graph's positions.
+    positions: tuple[int, ...]
     digests: dict[int, bytes]
     findings: tuple[Finding, ...]
     # The outcome of each position that the second pass does not process.
@@ -680,7 +604,16 @@ def _first_pass(discovery: Discovery) -> _FirstPass:
             copies[group[0]] = group
     for position, found in kinds.items():
         settled[position] = _outcome(position, Status.SEQUESTERED, *found)
-    return _FirstPass(records, digests, findings, settled, copies, frozenset(kinds))
+    return _FirstPass(
+        records,
+        graph,
+        positions,
+        digests,
+        findings,
+        settled,
+        copies,
+        frozenset(kinds),
+    )
 
 
 def _read(entry: _Entry) -> bytes | None:
@@ -754,13 +687,16 @@ class _Staged:
 _WITHOUT_PATIENT_ID = object()
 
 
-def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches
+def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches, too-many-arguments, too-many-positional-arguments
     discovery: Discovery,
     first: _FirstPass,
     staging: Path,
     transform: Transform,
     gate: Gate,
-) -> tuple[tuple[Outcome, ...], dict[int, tuple[object, ...]]]:
+    written_check: WrittenCheck | None,
+) -> tuple[
+    tuple[Outcome, ...], dict[int, tuple[object, ...]], tuple[WrittenFinding, ...]
+]:
     outcomes: dict[int, Outcome] = dict(first.settled)
     # The QC material of each position, from its transform and gate.
     material: dict[int, tuple[object, ...]] = collections.defaultdict(tuple)
@@ -840,6 +776,15 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches
         outcomes[entry.position], gated = _gate(entry, evidence[entry.subject], gate)
         material[entry.position] += gated
 
+    written: tuple[WrittenFinding, ...] = ()
+    if written_check is not None:
+        released = [
+            entry
+            for entry in staged.values()
+            if outcomes[entry.position].status is Status.RELEASED
+        ]
+        written = _check_written(first, released, outcomes, written_check)
+
     for copy, processed in following.items():
         outcome = outcomes[processed]
         if outcome.status is Status.RELEASED:
@@ -850,7 +795,40 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches
     return (
         tuple(outcomes[position] for position in range(len(discovery.entries))),
         dict(material),
+        written,
     )
+
+
+def _check_written(
+    first: _FirstPass,
+    released: list[_Staged],
+    outcomes: dict[int, Outcome],
+    written_check: WrittenCheck,
+) -> tuple[WrittenFinding, ...]:
+    """Run the second reference pass on the released files, as read back.
+
+    Each file that it withholds, or that changed since it was staged, is
+    deleted and sequestered.
+    """
+    data: dict[int, bytes] = {}
+    withheld: dict[int, RunReason] = {}
+    for entry in released:
+        written = entry.file.read_bytes()
+        if hashlib.sha256(written).digest() == entry.digest:
+            data[entry.position] = written
+        else:
+            withheld[entry.position] = RunReason.STAGED_FILE_CHANGED
+    findings, faulty = run_written.second_pass(
+        first.graph, first.positions, data, written_check
+    )
+    withheld.update(faulty)
+    for entry in released:
+        if entry.position in withheld:
+            entry.file.unlink()
+            outcomes[entry.position] = _outcome(
+                entry.position, Status.SEQUESTERED, withheld[entry.position]
+            )
+    return findings
 
 
 def _material(result: object) -> tuple[object, ...]:

@@ -25,7 +25,8 @@ drawn for the run, and scores the released files against the data set's
 answer key (:mod:`~pymedphys._dicom.deidentify.midi_answer_key`). It writes,
 into a work directory that must not exist:
 
-- ``release/``, the run's release, with its release report;
+- ``release/``, the run's release, with its release report and conformance
+  statement;
 - ``qc/``, the run's confidential QC pack;
 - ``validation-script/``, the UID and Patient ID mapping files that the NCI
   validation script needs to score the release itself: CSV files with the
@@ -289,6 +290,7 @@ def run_benchmark(
         ReleaseGate(),
         qc_destination=work / "qc",
         reporter=transform.reporter,
+        written_check=transform.written_check,
     )
     headers = _headers(discovery)
     mapping = released_mapping(headers, result.outcomes)
