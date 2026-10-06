@@ -94,8 +94,7 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 The Attribute Patient Identity Removed (0012,0062) shall be replaced or added to the Data Set with a value of YES. Additionally, one or more codes from CID 7050 “De-identification Method” corresponding to the Profile and Options used shall be added to De-identification Method Code Sequence (0012,0064), and/or a text string describing the method used shall be inserted in or added to De-identification Method (0012,0063).
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-012", "D-024"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
@@ -112,7 +111,7 @@ De-identification Method Code Sequence keeps its items and gains the CID 7050 co
 Under a policy that claims conformance, every selected option must be satisfied except Clean Descriptors, so that the codes name each option whose actions the instance carries.
 `tps-import`, which claims no conformance, adds no code and says so in its readable value.
 The run's instance transform adds the markers to each instance it de-identifies, then writes the instance and verifies what it preserves.
-Remaining: validating each preset end to end (M4).
+An end-to-end test runs `basic` and `basic-clean-descriptors` over the synthetic collection and finds in every released instance Patient Identity Removed YES, the method digest as the first value of De-identification Method, and the code of the Basic Profile, with that of Clean Descriptors exactly where the preset satisfies it (MIDI-BP-01).
 '''
 
 [[requirement]]
@@ -279,8 +278,7 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.2
 text = '''
 The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "REMOVED" if none of the Retain Longitudinal Temporal Information Options is applied.
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-012"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
@@ -289,7 +287,7 @@ implementation = [
 note = '''
 Every policy that does not apply Modified Dates, the only Retain Longitudinal Temporal Information Option in scope, sets Longitudinal Temporal Information Modified to REMOVED in its markers, replacing any value already present, since REMOVED is the strictest, and refusing a present value that is not UNMODIFIED, MODIFIED, or REMOVED (D-012).
 The run's instance transform adds it to each instance it de-identifies.
-Remaining: validating each preset end to end (M4).
+An end-to-end test runs `basic` and `basic-clean-descriptors`, neither of which applies Modified Dates, over the synthetic collection and finds REMOVED in every released instance (MIDI-BP-01).
 '''
 
 [[requirement]]
@@ -459,7 +457,7 @@ text = '''
 The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "MODIFIED".
 '''
 status = "partial"
-milestone = "M3"
+milestone = "M4"
 decisions = ["D-012"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
@@ -468,7 +466,8 @@ implementation = [
 note = '''
 Every policy that applies Modified Dates, including `tps-import`, sets Longitudinal Temporal Information Modified to MODIFIED in its markers, unless REMOVED is already present from an earlier run, which is kept because the dates that run removed are not restored (D-012).
 The run's instance transform adds it to each instance it de-identifies.
-Remaining: validating each preset end to end (M4).
+Neither preset of the first supported release applies Modified Dates, so the end-to-end test of `basic` and `basic-clean-descriptors` does not reach this marker.
+Remaining: validating `tps-import` and `public-release`, which apply Modified Dates, end to end, once they modify every date and time in a data set (PS3.15-E.3.6-02) (M4).
 '''
 
 [[requirement]]
