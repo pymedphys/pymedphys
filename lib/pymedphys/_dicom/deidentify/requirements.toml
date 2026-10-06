@@ -920,6 +920,7 @@ tests = [
   "tests/dicom/test_deidentify_iod_conformance.py::test_each_written_instance_of_a_collection_keeps_its_requirements",
   "tests/dicom/test_deidentify_iod_conformance.py::test_an_instance_whose_de_identification_loses_a_requirement_is_sequestered",
   "tests/dicom/test_deidentify_iod_conformance.py::test_a_descriptor_whose_basic_x_needs_its_sequence_takes_the_sequence",
+  "tests/dicom/test_deidentify_iod_conformance.py::test_an_instance_whose_de_identification_keeps_part_of_an_overlay_is_sequestered",
   "tests/dicom/test_deidentify_preserving_writer.py::test_pydicom_resolves_the_descriptor_again_where_this_writer_does_not",
   "tests/dicom/test_deidentify_preserving_writer.py::test_a_replacement_whose_vr_a_reader_cannot_tell_is_refused",
   "tests/dicom/test_deidentify_dummy_values.py::test_every_dummy_value_is_valid_for_its_vr_and_the_attributes_vm",
