@@ -64,6 +64,9 @@ from pathlib import PurePosixPath
 
 from . import residuals, roi_names
 from .file_layout import ElementPath, Location
+from .release_report import LABEL_PATTERN
+from .residuals import UnsearchedReason
+from .reviewed_roi_names import Outcome
 
 # The format of the pack document. A change to its fields takes a new label.
 FORMAT = "pymedphys-deid-qc-pack/1"
@@ -73,9 +76,6 @@ EXCERPT_BYTES = 48
 _CHUNK_BYTES = 4096
 
 _REFERENCE = re.compile(r"A-[0-9a-f]{32}")
-# The release report's opaque per-run label of a sequestered instance, such as
-# "S-0001", with more digits beyond S-9999 (D-026).
-_LABEL = re.compile(r"S-[0-9]{4,}")
 
 
 class QcPackError(ValueError):
@@ -98,30 +98,11 @@ class Disposition(enum.Enum):
 _WITH_OUTPUT = frozenset({Disposition.RELEASED, Disposition.DUPLICATE})
 
 
-class DropReason(enum.Enum):
-    """Why a source value was left out of the residual search (D-027)."""
-
-    # a value that the policy legitimately retains
-    RETAINED = "retained"
-    # a value that exactly equals a constant that the engine always writes
-    WRITTEN_CONSTANT = "written-constant"
-    # content that cannot be decoded, inside a sequence that is removed
-    UNDECODABLE = "undecodable"
-    # a UID that the pinned tables register, which names no one
-    REGISTERED_UID = "registered-uid"
-
-
-class RoiNameOutcome(enum.Enum):
-    """What was written for a ROI Name under descriptor cleaning (D-009)."""
-
-    RENAMED = "renamed"  # the automatic tier's vocabulary spelling
-    EMPTY = "empty"  # the source name was empty
-    KEPT = "kept"  # by a reviewer's decision
-    MAPPED = "mapped"  # to another name, by a reviewer's decision
-    EMPTIED = "emptied"  # by a reviewer's decision
-    HELD = "held"  # held for review; nothing is written
-    # held, but the user chose to empty such names so that the run proceeds
-    EMPTIED_UNREVIEWED = "emptied unreviewed"
+# Why a source value was left out of the residual search (D-027), as the
+# search and the release report name it.
+DropReason = UnsearchedReason
+# What was written for a ROI Name under descriptor cleaning (D-009).
+RoiNameOutcome = Outcome
 
 
 _LO_PADDING = " \x00"
@@ -213,7 +194,8 @@ class InstanceEntry:
             (
                 sequestered
                 and (
-                    not isinstance(self.label, str) or not _LABEL.fullmatch(self.label)
+                    not isinstance(self.label, str)
+                    or not LABEL_PATTERN.fullmatch(self.label)
                 ),
                 "needs a label such as S-0001",
             ),
