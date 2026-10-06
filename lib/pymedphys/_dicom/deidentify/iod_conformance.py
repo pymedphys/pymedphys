@@ -32,7 +32,8 @@ evaluated, as for the compound actions. The two removals that
 allows without an enclosing sequence are not findings: the attributes of an
 overlay group whose Overlay Plane Module is user-optional, and ROI Interpreter
 Sequence (3006,004E), whose condition lapses with ROI Creator Sequence
-(3006,004D).
+(3006,004D). Nor are the items of a sequence that the engine replaced, such
+as the dummy item that D writes, compared with the source's.
 
 This module reads only the files' structure, the lengths and item counts of
 their elements, and never a value.
@@ -42,6 +43,7 @@ from __future__ import annotations
 
 import dataclasses
 import re
+from collections.abc import Collection
 
 from .compound_actions import RemovalExtent, resolve_plain_x_in_iod, strictest_type
 from .file_layout import ElementPath
@@ -76,7 +78,10 @@ class LostRequirement:
 
 
 def lost_requirements(
-    source: SourceEvidence, output: SourceEvidence, iod: IOD
+    source: SourceEvidence,
+    output: SourceEvidence,
+    iod: IOD,
+    replaced: Collection[ElementPath] = (),
 ) -> tuple[LostRequirement, ...]:
     """Return each required attribute of the source that the output lost.
 
@@ -88,6 +93,11 @@ def lost_requirements(
         The file written from it, read back.
     iod : IOD
         The instance's IOD.
+    replaced : collection of ElementPath, optional
+        The elements that the engine wrote new values for. The items of a
+        replaced sequence, such as the dummy item that D writes, are the
+        engine's own, so the source's items there are not compared with
+        them.
 
     Returns
     -------
@@ -97,6 +107,8 @@ def lost_requirements(
     """
     lost: list[LostRequirement] = []
     for path in source.paths():
+        if _in_replaced_sequence(path, replaced):
+            continue
         tags = tuple(tag for tag, _ in path.items)
         required = strictest_type(iod, path.tag, tags)
         if required == "3" or not _item_kept(output, path):
@@ -107,6 +119,14 @@ def lost_requirements(
         elif required == "1" and _empty(output, path) and not _empty(source, path):
             lost.append(LostRequirement(path, required, emptied=True))
     return tuple(lost)
+
+
+def _in_replaced_sequence(path: ElementPath, replaced: Collection[ElementPath]) -> bool:
+    """Return whether a sequence that holds ``path`` was given new items."""
+    return any(
+        ElementPath(path.items[:depth], tag) in replaced
+        for depth, (tag, _) in enumerate(path.items)
+    )
 
 
 def _item_kept(output: SourceEvidence, path: ElementPath) -> bool:

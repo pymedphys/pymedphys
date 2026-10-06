@@ -825,7 +825,7 @@ def _written(
         verify_preservation(source, output, writing.expectations)
     except PreservationFailed as failed:
         raise _Refused(failed.reason) from None
-    if lost_requirements(source, output, iod):
+    if lost_requirements(source, output, iod, frozenset(writing.replacements)):
         raise _Refused(TransformReason.REQUIRED_ATTRIBUTE_LOST)
     return path, data
 

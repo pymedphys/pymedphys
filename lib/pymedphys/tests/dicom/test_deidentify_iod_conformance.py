@@ -210,6 +210,19 @@ def test_the_check_reads_types_at_every_depth():
     assert lost.type == "1"
 
 
+def test_the_items_of_a_replaced_sequence_are_the_engines_own():
+    output = _structure_set()
+    study = output.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence[0]
+    del study.RTReferencedSeriesSequence[0].SeriesInstanceUID
+    series = ElementPath((("(3006,0010)", 0), ("(3006,0012)", 0)), "(3006,0014)")
+    source = read_source(synthetic.written(_structure_set()))
+    written = read_source(synthetic.written(output))
+    iod = _iods()["RT Structure Set"]
+
+    assert lost_requirements(source, written, iod)
+    assert not lost_requirements(source, written, iod, replaced={series})
+
+
 def test_the_repr_names_only_the_path_and_type():
     lost = LostRequirement(MODALITY, "1", emptied=False)
 
@@ -264,18 +277,19 @@ def test_the_reason_is_named_by_its_value():
     assert TransformReason.REQUIRED_ATTRIBUTE_LOST.value == "required-attribute-lost"
 
 
-def test_the_check_needs_the_output_read_back(monkeypatch):
+def test_the_written_file_is_checked_against_its_iod(monkeypatch):
     checked = []
     original = instance_transform.lost_requirements
 
-    def recording(source, output, iod):
-        checked.append(iod.name)
-        return original(source, output, iod)
+    def recording(source, output, iod, replaced):
+        checked.append((iod.name, output.size))
+        return original(source, output, iod, replaced)
 
     monkeypatch.setattr(instance_transform, "lost_requirements", recording)
+    result = _transformed(_ct())
 
-    assert isinstance(_transformed(_ct()), run.Transformed)
-    assert checked == ["CT Image"]
+    assert isinstance(result, run.Transformed)
+    assert checked == [("CT Image", len(result.data))]
 
 
 def _plan_with_setup_photo():
@@ -305,3 +319,7 @@ def test_a_descriptor_whose_basic_x_needs_its_sequence_takes_the_sequence(cleani
     (setup,) = written.PatientSetupSequence
     (preparation,) = setup.PatientTreatmentPreparationSequence
     assert "ReferencedPatientSetupPhotoSequence" not in preparation
+    # A descriptor that its Basic Profile action removes still meets the
+    # option, with the sequence that goes with it.
+    codes = [item.CodeValue for item in written.DeidentificationMethodCodeSequence]
+    assert ("113105" in codes) == cleaning
