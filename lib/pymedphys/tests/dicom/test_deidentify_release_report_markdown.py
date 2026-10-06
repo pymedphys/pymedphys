@@ -162,6 +162,15 @@ def test_the_text_around_the_values_does_not_depend_on_them():
 
 
 @pytest.mark.deid_requirement("MIDI-BP-18")
+def test_the_form_cites_no_decision_number():
+    # Decision numbers belong to the design document and may be renumbered,
+    # so an archived report describes each guarantee instead.
+    for report in (_full_report(), _report()):
+        markdown = to_markdown(release_report.to_json(report))
+        assert not re.search(r"\bD-\d", _CODE_SPAN.sub("``", markdown))
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_form_is_the_same_every_time_it_is_generated():
     text = release_report.to_json(_full_report())
     assert to_markdown(text) == to_markdown(text)
