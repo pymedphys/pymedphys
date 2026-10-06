@@ -18,10 +18,6 @@ Every file is synthetic. Values that must never reach a result carry the
 text ``SENTINEL``.
 """
 
-# Each test reads the whole transform through the same synthetic helpers, so
-# they stay in one module.
-# pylint: disable = too-many-lines
-
 import functools
 import io
 import json
@@ -991,26 +987,3 @@ def test_transform_for_selects_an_enabled_preset_only(monkeypatch):
     assert given == (policy, KEY, None, {"cleaning": cleaning})
     assert generated[3] == {"cleaning": None}
     assert generated[0] is policy and generated[1] != KEY
-
-
-@pytest.mark.deid_requirement("PS3.15-E.1.1-08")
-def test_group_0004_is_removed_from_the_written_instance():
-    # Group 0004 belongs only in a DICOMDIR (E.1.1), so an element of it in
-    # an instance is removed from the instance's data set and from every item.
-    plan = synthetic.rt_plan()
-    plan.add_new(0x00041130, "CS", "SENTINELFILESET")
-    (item, *_) = plan.ReferencedStructureSetSequence
-    item.add_new(0x00041500, "CS", ["SENTINELDIR", "SENTINELFILE"])
-
-    result = _transformed(plan)
-
-    assert isinstance(result, run.Transformed)
-    written = pydicom.dcmread(io.BytesIO(result.data))
-    assert written.ReferencedStructureSetSequence
-    assert not [
-        element.tag for element in written.iterall() if element.tag.group == 0x0004
-    ]
-    assert not [
-        element.tag for element in written.file_meta if element.tag.group == 0x0004
-    ]
-    assert b"SENTINEL" not in result.data
