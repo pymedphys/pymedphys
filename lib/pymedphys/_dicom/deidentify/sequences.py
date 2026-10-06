@@ -19,8 +19,9 @@ an item whose length runs past the value, and an element where an item
 belongs, and leaves out what they hold. :func:`decode_items` has pydicom
 decode a value only once :func:`.file_layout.reads_as_items` finds that it
 holds only items. The element decoder (:mod:`.elements`), the first pass's
-reference records (:mod:`.references`), and the removal of private
-attributes (:mod:`.private_attributes`) pass each sequence value that
+reference records (:mod:`.references`), the removal of private
+attributes (:mod:`.private_attributes`), and the pixel data risk
+indicators (:mod:`.pixel_risk`) pass each sequence value that
 pydicom holds undecoded through it before they read its items, and each
 reports :class:`UnreadableItems` with its own exception, by the path of the
 sequence. pydicom's warnings and log records while it decodes are redacted
