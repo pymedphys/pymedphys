@@ -537,6 +537,7 @@ def test_the_document_holds_every_section():
         "roi_names",
         "reference_findings",
         "pixel_risks",
+        "series_risks",
         "previews",
         "not_previewed",
     ]
