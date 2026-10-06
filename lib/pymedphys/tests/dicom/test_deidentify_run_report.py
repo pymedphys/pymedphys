@@ -151,7 +151,7 @@ class _FailingReporter:
     def admits(self, status, reasons):  # pylint: disable = unused-argument
         return True
 
-    def __call__(self, outcomes, material, qc_pack):
+    def __call__(self, outcomes, material, _qc_pack):
         raise ValueError("no report")
 
 
