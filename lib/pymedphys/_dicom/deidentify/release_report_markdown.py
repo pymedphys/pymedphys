@@ -14,7 +14,8 @@
 
 """The release report's human-readable form.
 
-:func:`to_markdown` gives the text of a release report as CommonMark, from
+:func:`to_markdown` gives the text of a release report as CommonMark with
+GitHub Flavored Markdown tables, from
 the JSON text that
 :func:`~pymedphys._dicom.deidentify.release_report.to_json` writes and
 nothing else, so that it can hold no value or path that the JSON lacks.
@@ -25,10 +26,13 @@ sections follow the document's order, with a table for each, and the same
 text always gives the same form. The JSON remains the record.
 
 The document must have exactly the sections and fields of
-:data:`~pymedphys._dicom.deidentify.release_report.FORMAT`, with values of
-their JSON types, none of which holds a backtick, a vertical bar, or a line
-break; any other text is refused with a message that names the field, never
-its value.
+:data:`~pymedphys._dicom.deidentify.release_report.FORMAT`, in order, each
+reason with the fields that its stage gives, and values of their JSON types,
+each text non-empty, without a backtick, a vertical bar, a line break, or
+space at either end, and no member named twice; any other text is refused
+with a message that names the field, never its value. The forms of the
+values themselves, such as digests and codes, are those that
+:func:`~pymedphys._dicom.deidentify.release_report.to_json` checks.
 """
 
 from __future__ import annotations
@@ -58,6 +62,8 @@ _METHOD = {
     "generated_values_digest": "Generated values digest",
     "engine_files": None,
 }
+# The method's fields that are null where the run has none.
+_OPTIONAL_METHOD = frozenset({"l3_rules", "vocabulary_digest", "reviewed_roi_names"})
 _RUNTIME = {
     "pymedphys_version": "PyMedPhys",
     "python_implementation": "Python implementation",
@@ -107,10 +113,12 @@ def to_markdown(report: str) -> str:
         :data:`~pymedphys._dicom.deidentify.release_report.FORMAT`.
     """
     try:
-        document = json.loads(report)
+        document = json.loads(report, object_pairs_hook=_members)
+    except ReleaseReportMarkdownError:
+        raise
     except (TypeError, ValueError):
         raise ReleaseReportMarkdownError("The release report is not JSON.") from None
-    document = _fields("the report", document, _SECTIONS)
+    document = _fields("top level", document, _SECTIONS)
     if document["format"] != FORMAT:
         raise ReleaseReportMarkdownError(
             "The release report's format is not " + FORMAT + "."
@@ -177,7 +185,12 @@ def _policy(section: object) -> list[Block]:
 def _method(section: object) -> list[Block]:
     section = _fields("method", section, _METHOD)
     rows = [
-        (label, _optional(f"method {name}", section[name]))
+        (
+            label,
+            _optional(f"method {name}", section[name])
+            if name in _OPTIONAL_METHOD
+            else _code(f"method {name}", section[name]),
+        )
         for name, label in _METHOD.items()
         if label is not None
     ]
@@ -250,6 +263,10 @@ def _released(section: object) -> list[Block]:
 
 
 _REASON = ("stage", "code", "attribute", "action", "vr")
+# The fields of a reason from each stage, as the report gives them: the
+# walker's VR may be null, and the release gate names an attribute at most.
+_WALKER = _REASON
+_RELEASE = (("stage", "code"), ("stage", "code", "attribute"))
 
 
 def _sequestered(section: object) -> list[Block]:
@@ -261,16 +278,17 @@ def _sequestered(section: object) -> list[Block]:
         if not reasons:
             raise _refuse("sequestered reasons")
         for position, reason in enumerate(reasons):
-            if not isinstance(reason, dict) or not (
-                set(reason) <= set(_REASON) and {"stage", "code"} <= set(reason)
-            ):
-                raise _refuse("sequestered reasons")
+            reason = _reason(reason)
             rows.append(
                 (
                     # The label heads its instance's first reason only.
                     "" if position else label,
                     *(
                         _optional(f"sequestered {name}", reason.get(name), "")
+                        if name == "vr"
+                        else _code(f"sequestered {name}", reason[name])
+                        if name in reason
+                        else ""
                         for name in _REASON
                     ),
                 )
@@ -287,6 +305,17 @@ def _sequestered(section: object) -> list[Block]:
         if rows
         else [_NONE],
     ]
+
+
+def _reason(reason: object) -> dict:
+    """Return a reason, if it has the fields that its stage gives, in order."""
+    stage = reason.get("stage") if isinstance(reason, dict) else None
+    if stage == "walker":
+        return _fields("sequestered reasons", reason, _WALKER)
+    shapes = _RELEASE if stage == "release" else _RELEASE[:1]
+    if not isinstance(reason, dict) or tuple(reason) not in shapes:
+        raise _refuse("sequestered reasons")
+    return reason
 
 
 def _held(section: object) -> list[Block]:
@@ -358,7 +387,7 @@ def _fields(
     """Return the section, if it has exactly these fields, in this order."""
     if not isinstance(section, dict) or list(section) != list(names):
         raise ReleaseReportMarkdownError(
-            f"The release report's {field} does not have the fields of {FORMAT}."
+            f"The fields of the release report's {field} are not those of {FORMAT}."
         )
     return section
 
@@ -370,7 +399,14 @@ def _list(field: str, value: object) -> list:
 
 
 def _code(field: str, value: object) -> str:
-    if not isinstance(value, str) or any(c in value for c in "`|\n\r"):
+    # An empty code span, or one with space at an end, would not show the
+    # value as it is.
+    if (
+        not isinstance(value, str)
+        or not value
+        or value != value.strip()
+        or any(c in value for c in "`|\n\r")
+    ):
         raise _refuse(field)
     return f"`{value}`"
 
@@ -389,6 +425,16 @@ def _boolean(field: str, value: object) -> str:
 
 def _optional(field: str, value: object, absent: str = "none") -> str:
     return absent if value is None else _code(field, value)
+
+
+def _members(pairs: list[tuple[str, object]]) -> dict:
+    """Return a JSON object's members, refusing a member named twice."""
+    members = dict(pairs)
+    if len(members) != len(pairs):
+        raise ReleaseReportMarkdownError(
+            "The release report names a member twice in one object."
+        )
+    return members
 
 
 def _refuse(field: str) -> ReleaseReportMarkdownError:

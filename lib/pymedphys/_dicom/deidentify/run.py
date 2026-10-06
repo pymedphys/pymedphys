@@ -436,10 +436,10 @@ def run(
         material types of :mod:`~pymedphys._dicom.deidentify.run_qc`.
         Nothing is published.
     ~pymedphys._dicom.deidentify.release_report.ReleaseReportError
-        If the release report has a field that could hold a value or a path,
-        or a reason that no stage of the report gives; or anything else the
-        reporter raises, or that generating the report's human-readable form
-        raises. Nothing is published, and no QC pack is written.
+        If the report has a field that could hold a value or a path, or a
+        reason that no stage gives; so does whatever the reporter raises, or
+        a ``ReleaseReportMarkdownError`` for a report with no readable form.
+        Nothing is published, and no QC pack is written.
 
     Notes
     -----

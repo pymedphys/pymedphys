@@ -73,7 +73,10 @@ SEQUESTERED = "sequestered"
 class Reporter(Protocol):
     """Return a run's release report as text, from its outcomes and material.
 
-    ``qc_pack`` is the opaque reference of the run's QC pack.
+    The text is that which
+    :func:`~pymedphys._dicom.deidentify.release_report.to_json` gives, from
+    which the run generates the report's human-readable form. ``qc_pack`` is
+    the opaque reference of the run's QC pack.
     """
 
     def admits(self, status: str, reasons: tuple[object, ...]) -> bool:
