@@ -30,6 +30,15 @@ and sits beside the review material. The release report records only
 (D-016). An outcome of attested needs every review that D-017 requires; a
 reviewer who could not complete them records a rejection.
 
+The person releasing the data may also confirm, yes or no, that the output
+was checked for its intended use and that its residual risk was accepted
+under the institution's governance. Each confirmation is optional, holds no
+text, is bound to the pack with the rest of the attestation, and reaches the
+release report's record as its outcome alone. Fitness for a use and an
+acceptable residual risk depend on the purpose and the recipient, which only
+the releaser knows, so the engine records the releaser's word and decides
+neither.
+
 An attestation covers human review of the pack. It is one of the three gates
 of a ``public-release`` run, with statistical disclosure control and pixel and
 face review (D-017), and passing it does not pass the others.
@@ -116,6 +125,9 @@ class Attestation:
         Who attested, as they name themselves.
     attested_at : datetime.datetime
         When, in UTC.
+    intended_use_checked, residual_risk_accepted : bool or None
+        The releaser's confirmations, as the module describes; ``None``
+        where not stated.
     """
 
     reference: str
@@ -124,6 +136,8 @@ class Attestation:
     coverage: Coverage
     reviewer: str
     attested_at: datetime.datetime
+    intended_use_checked: bool | None = None
+    residual_risk_accepted: bool | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -148,6 +162,7 @@ class Attestation:
             self.attested_at, datetime.datetime
         ) or self.attested_at.utcoffset() != datetime.timedelta(0):
             raise QcPackError("an attestation needs its time in UTC")
+        _check_confirmations(self.intended_use_checked, self.residual_risk_accepted)
 
     def __repr__(self) -> str:
         return (
@@ -164,10 +179,15 @@ class AttestationRecord:
     reference : str
         The QC pack's opaque reference, ``A-`` and 32 hex digits.
     outcome : Outcome
+    intended_use_checked, residual_risk_accepted : bool or None
+        The releaser's confirmations in the attestation; ``None`` where not
+        stated or not attested.
     """
 
     reference: str
     outcome: Outcome
+    intended_use_checked: bool | None = None
+    residual_risk_accepted: bool | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -176,6 +196,17 @@ class AttestationRecord:
             raise QcPackError("an attestation record needs the pack's reference")
         if not isinstance(self.outcome, Outcome):
             raise QcPackError("an attestation record needs an Outcome")
+        _check_confirmations(self.intended_use_checked, self.residual_risk_accepted)
+        if self.outcome is Outcome.NOT_ATTESTED and (
+            self.intended_use_checked is not None
+            or self.residual_risk_accepted is not None
+        ):
+            raise QcPackError("a pack that is not attested has no confirmations")
+
+
+def _check_confirmations(*confirmations: object) -> None:
+    if not all(each is None or isinstance(each, bool) for each in confirmations):
+        raise QcPackError("each confirmation must be True, False, or None")
 
 
 def attestation_document(attestation: Attestation) -> dict:
@@ -190,6 +221,10 @@ def attestation_document(attestation: Attestation) -> dict:
         "coverage": dataclasses.asdict(attestation.coverage),
         "reviewer": attestation.reviewer,
         "attested_at": attestation.attested_at.isoformat(),
+        "releaser": {
+            "intended_use_checked": attestation.intended_use_checked,
+            "residual_risk_accepted": attestation.residual_risk_accepted,
+        },
     }
 
 
@@ -200,6 +235,8 @@ def attest(
     outcome: Outcome,
     coverage: Coverage,
     attested_at: datetime.datetime | None = None,
+    intended_use_checked: bool | None = None,
+    residual_risk_accepted: bool | None = None,
 ) -> Attestation:
     """Attest to a QC pack, and write the attestation beside it.
 
@@ -215,6 +252,9 @@ def attest(
         What the reviewer reviewed; complete for an outcome of attested.
     attested_at : datetime.datetime, optional
         When, in UTC; now if not given.
+    intended_use_checked, residual_risk_accepted : bool, optional
+        The releaser's confirmations, as the module describes; not stated
+        if not given.
 
     Returns
     -------
@@ -244,6 +284,8 @@ def attest(
             if attested_at is None
             else attested_at
         ),
+        intended_use_checked=intended_use_checked,
+        residual_risk_accepted=residual_risk_accepted,
     )
     text = json.dumps(attestation_document(attestation), indent=2, ensure_ascii=True)
     try:
@@ -267,7 +309,8 @@ def attestation_record(pack_directory: os.PathLike | str) -> AttestationRecord:
     -------
     AttestationRecord
         The pack's reference, with :attr:`Outcome.NOT_ATTESTED` if no
-        attestation has been written, and otherwise its outcome.
+        attestation has been written, and otherwise its outcome and the
+        releaser's confirmations.
 
     Raises
     ------
@@ -289,7 +332,12 @@ def attestation_record(pack_directory: os.PathLike | str) -> AttestationRecord:
         data
     ).hexdigest() or not _previews_intact(directory, data):
         raise QcPackError("the QC pack changed after it was attested")
-    return AttestationRecord(reference, attestation.outcome)
+    return AttestationRecord(
+        reference,
+        attestation.outcome,
+        attestation.intended_use_checked,
+        attestation.residual_risk_accepted,
+    )
 
 
 def _attestation_from(content: bytes) -> Attestation:
@@ -298,7 +346,12 @@ def _attestation_from(content: bytes) -> Attestation:
         document = json.loads(content.decode("ascii"))
         if isinstance(document, dict) and document.get("format") == FORMAT:
             coverage = document["coverage"]
-            if isinstance(coverage, dict):
+            # An attestation written before the releaser's confirmations
+            # has none, which reads as not stated.
+            releaser = document.get("releaser", {})
+            if isinstance(coverage, dict) and isinstance(releaser, dict):
+                if set(releaser) - {"intended_use_checked", "residual_risk_accepted"}:
+                    raise QcPackError("the attestation is not of its format")
                 return Attestation(
                     reference=document["reference"],
                     pack_digest=document["pack_digest"],
@@ -308,6 +361,8 @@ def _attestation_from(content: bytes) -> Attestation:
                     attested_at=datetime.datetime.fromisoformat(
                         document["attested_at"]
                     ),
+                    intended_use_checked=releaser.get("intended_use_checked"),
+                    residual_risk_accepted=releaser.get("residual_risk_accepted"),
                 )
     # UnicodeError and QcPackError are ValueErrors; TypeError covers wrong
     # types and Coverage's unknown or missing fields.

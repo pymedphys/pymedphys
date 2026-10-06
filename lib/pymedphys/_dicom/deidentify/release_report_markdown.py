@@ -81,6 +81,7 @@ _SECTIONS = (
     "sequestered",
     "held_for_review",
     "roi_names",
+    "reference_findings",
     "search_coverage",
     "source_gaps",
 )
@@ -141,6 +142,7 @@ def to_markdown(report: str) -> str:
         *_sequestered(document["sequestered"]),
         *_held(document["held_for_review"]),
         *_roi_names(document["roi_names"]),
+        *_reference_findings(document["reference_findings"]),
         *_coverage(document["search_coverage"]),
         *_gaps(document["source_gaps"]),
     ]
@@ -374,6 +376,28 @@ def _roi_names(section: object) -> list[Block]:
         tables[0],
         ["### Distinct names sent for review"],
         tables[1],
+    ]
+
+
+def _reference_findings(section: object) -> list[Block]:
+    rows = []
+    for entry in _list("reference_findings", section):
+        entry = _fields("reference_findings", entry, ("kind", "count"))
+        rows.append(
+            (
+                _code("reference_findings kind", entry["kind"]),
+                _count("reference_findings count", entry["count"]),
+            )
+        )
+    return [
+        ["## Reference findings"],
+        [
+            "How many instances have each kind of reference finding that the "
+            "run reported without acting on it, such as a reference that names "
+            "no instance of the run, each instance once for each kind. Only "
+            "the confidential QC pack lists them."
+        ],
+        _table(("Kind", "Instances"), rows) if rows else [_NONE],
     ]
 
 

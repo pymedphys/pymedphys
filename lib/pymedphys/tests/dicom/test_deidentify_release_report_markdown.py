@@ -103,6 +103,7 @@ def _full_report():
                 reviewed_roi_names.Outcome.EMPTIED_UNREVIEWED: 1,
             },
         ),
+        findings=(release_report.ReferenceFindings("dangling-reference", 2),),
         gaps=(
             release_report.SourceGapCount("(0008,0060)", "1", 2),
             release_report.SourceGapCount("(3006,0010) > (0020,0052)", "2", 1),
@@ -197,6 +198,7 @@ def test_the_sections_follow_the_documents_order():
         "## Sequestered instances",
         "## Instances held for review",
         "## ROI names",
+        "## Reference findings",
         "## Values not searched",
         "## Required attributes missing from the source",
     ]
@@ -230,10 +232,22 @@ def test_the_roi_names_are_counted_by_outcome_and_held_reason():
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-18")
+def test_the_reference_findings_are_counted_by_kind():
+    markdown = to_markdown(release_report.to_json(_full_report()))
+    section = markdown.split("## Reference findings", 1)[1].split("\n## ", 1)[0]
+    rows = [line for line in section.splitlines() if line.startswith("| ")]
+    assert rows == [
+        "| Kind | Instances |",
+        "| --- | --- |",
+        "| `dangling-reference` | `2` |",
+    ]
+
+
 def test_an_empty_run_says_so_in_each_run_section():
     markdown = to_markdown(release_report.to_json(_report()))
     assert "No QC pack was written for this run." in markdown
-    assert markdown.count("None.") == 7
+    assert markdown.count("None.") == 8
     assert "|" not in markdown.split("## QC review", 1)[1]
 
 
@@ -290,6 +304,10 @@ def _changed(change):
         lambda d: d["roi_names"]["outcomes"][0].update(reason="renamed"),
         lambda d: d["roi_names"]["held"][0].update(count=0),
         lambda d: d["roi_names"]["held"].append({"reason": "`SENTINEL`", "count": 1}),
+        lambda d: d.pop("reference_findings"),
+        lambda d: d["reference_findings"][0].update(count=0),
+        lambda d: d["reference_findings"][0].update(extra="x"),
+        lambda d: d["reference_findings"].append({"kind": "`SENTINEL`", "count": 1}),
         lambda d: d["source_gaps"][0].update(note="x"),
         lambda d: d["source_gaps"][0].update(count=0),
         lambda d: d.pop("source_gaps"),

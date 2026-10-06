@@ -50,7 +50,7 @@ A run has five steps:
    not released is deleted at once. Then the reference graph's second pass,
    the run's :class:`WrittenCheck`, checks the files that the gate released,
    each read back from disk again and recorded as the first pass recorded
-   its input, against the first pass's graph. A finding of what was
+   its input before the next is read, against the first pass's graph. A finding of what was
    written, other than a reference to an input that was not written, is a
    fault of the engine, so the run fails closed: it sequesters the
    instances that the finding names, deleting their files, and checks what
@@ -105,7 +105,7 @@ import hashlib
 import os
 import shutil
 import stat
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path, PurePosixPath
 from typing import TypeGuard
 
@@ -410,6 +410,7 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         outcomes, material, written = _stage_and_gate(
             discovery, first, staging, transform, gate, written_check
         )
+        material = run_qc.with_reported_findings(material, first.findings)
         if reporter is not None:
             outcomes = _admitted(outcomes, reporter)
         outcomes = _labelled(outcomes)
@@ -780,7 +781,7 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches, to
     if written_check is not None:
         released = [
             entry
-            for entry in staged.values()
+            for entry in sorted(staged.values(), key=lambda entry: entry.position)
             if outcomes[entry.position].status is Status.RELEASED
         ]
         written = _check_written(first, released, outcomes, written_check)
@@ -810,16 +811,19 @@ def _check_written(
     Each file that it withholds, or that changed since it was staged, is
     deleted and sequestered.
     """
-    data: dict[int, bytes] = {}
     withheld: dict[int, RunReason] = {}
-    for entry in released:
-        written = entry.file.read_bytes()
-        if hashlib.sha256(written).digest() == entry.digest:
-            data[entry.position] = written
-        else:
-            withheld[entry.position] = RunReason.STAGED_FILE_CHANGED
+
+    def read_back() -> Iterator[tuple[int, bytes]]:
+        # One file at a time, so only one file's bytes are held at once.
+        for entry in released:
+            written = entry.file.read_bytes()
+            if hashlib.sha256(written).digest() == entry.digest:
+                yield entry.position, written
+            else:
+                withheld[entry.position] = RunReason.STAGED_FILE_CHANGED
+
     findings, faulty = run_written.second_pass(
-        first.graph, first.positions, data, written_check
+        first.graph, first.positions, read_back(), written_check
     )
     withheld.update(faulty)
     for entry in released:

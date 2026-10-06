@@ -24,7 +24,9 @@ with its human-readable form as :data:`RELEASE_REPORT_MARKDOWN` beside it
 pack by its reference, not yet attested, since a reviewer attests to it
 after the run (D-016); each released instance by its output name, and each
 sequestered input by its label and reasons (D-026); how many instances
-were held for review by reason (D-009), and how many source values the
+were held for review by reason (D-009), how many instances have each kind
+of reference finding that the run reports without acting on it, from the
+material that the run adds for them, and how many source values the
 residual searches did not search, by attribute and reason, each counted at
 the instance that holds it among those that the transform gave material for
 (D-027). The report holds no source value or path (D-016), and
@@ -56,7 +58,12 @@ from .reasons import RunReason
 from .residuals import NotSearched, Unsearched, UnsearchedReason
 from .iod_conformance import SourceGap
 from .reviewed_roi_names import CleanedRoiName, ReviewQueue, RoiNameCounts
-from .run_qc import Dropped, RoiNameMaterial, SearchMaterial
+from .run_qc import (
+    Dropped,
+    ReferenceFindingMaterial,
+    RoiNameMaterial,
+    SearchMaterial,
+)
 
 # The release report's name at the root of a release. Output names are
 # upper case, so it cannot be one.
@@ -175,6 +182,7 @@ class ReleaseReporter:
                 coverage_records(material[position]) for position in sorted(material)
             ),
             roi_names=roi_name_counts(material),
+            findings=reference_findings(outcomes, material),
             gaps=release_report.source_gaps(
                 [item for item in material[position] if isinstance(item, SourceGap)]
                 for position in sorted(material)
@@ -308,6 +316,32 @@ def released_instances(outcomes: Sequence[object]) -> tuple[PurePosixPath, ...]:
         getattr(outcome, "output")
         for outcome in outcomes
         if getattr(outcome, "status").value == RELEASED
+    )
+
+
+def reference_findings(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> tuple[release_report.ReferenceFindings, ...]:
+    """Count the instances with each kind of reference finding reported only.
+
+    Each input's kinds come from its
+    :class:`~pymedphys._dicom.deidentify.run_qc.ReferenceFindingMaterial`.
+    An identical copy of an input is the same instance, so it is not counted
+    again, although the QC pack lists the finding at each copy.
+    """
+    copies = {
+        getattr(outcome, "position")
+        for outcome in outcomes
+        if getattr(outcome, "duplicate_of") is not None
+    }
+    return release_report.reference_findings(
+        [
+            item.kind
+            for item in material[position]
+            if isinstance(item, ReferenceFindingMaterial)
+        ]
+        for position in sorted(material)
+        if position not in copies
     )
 
 

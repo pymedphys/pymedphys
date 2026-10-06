@@ -15,9 +15,10 @@
 """The reference graph's second pass in a run, which fails closed.
 
 :mod:`~pymedphys._dicom.deidentify.run` calls :func:`second_pass` once its
-gate has decided every staged file, with the bytes of each file that the
-gate released, as read back from the staging area. Each file is recorded as
-the first pass recorded its input, and the run's
+gate has decided every staged file, with each file that the gate released,
+as read back from the staging area one at a time. Each file is recorded as
+the first pass recorded its input before the next is read, so only one
+file's bytes are held at once, and the run's
 :class:`~pymedphys._dicom.deidentify.run_results.WrittenCheck` compares the
 records with the first pass's graph.
 
@@ -37,7 +38,7 @@ withholds the whole release (:class:`ReleaseWithheld`).
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Mapping
+from collections.abc import Iterable
 
 from .reasons import RunReason
 from .reference_graph import ReferenceGraph
@@ -80,7 +81,7 @@ class ReleaseWithheld(Exception):
 def second_pass(
     graph: ReferenceGraph,
     positions: tuple[int, ...],
-    written: Mapping[int, bytes],
+    written: Iterable[tuple[int, bytes]],
     written_check: WrittenCheck,
 ) -> tuple[tuple[WrittenFinding, ...], dict[int, RunReason]]:
     """Check what was written against the first pass, and fail closed.
@@ -91,8 +92,10 @@ def second_pass(
         The first pass's graph.
     positions : tuple of int
         The run position of each of the graph's positions.
-    written : mapping of int to bytes
-        Each released file, as read back, by the run position of its input.
+    written : iterable of (int, bytes)
+        The run position of each released file's input, with the file as
+        read back. Each file is recorded before the next is taken, so it
+        can be read as it is taken.
     written_check : WrittenCheck
         The run's second pass.
 
@@ -115,7 +118,7 @@ def second_pass(
     index = {position: at for at, position in enumerate(positions)}
     withheld: dict[int, RunReason] = {}
     records: dict[int, InstanceRecord] = {}
-    for position, data in sorted(written.items()):
+    for position, data in written:
         try:
             records[index[position]] = InstanceRecord.from_file(data)
         # What was written cannot be shown to refer as its input did, and

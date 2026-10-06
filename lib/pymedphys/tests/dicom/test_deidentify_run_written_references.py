@@ -30,6 +30,7 @@ from pymedphys._dicom.deidentify import (
     pseudonyms,
     release_report,
     run,
+    run_written,
     uid_roles,
     uids,
     written_references,
@@ -132,7 +133,7 @@ def _gate(written, evidence, subject):
     return run.Release()
 
 
-def _run(tmp_path, source, transform=None, written_check=None, key=KEY):
+def _run(tmp_path, source, transform=None, written_check=None, key=KEY, gate=_gate):
     if written_check is None:
         written_check = functools.partial(
             written_references.verify_written_references, key
@@ -141,7 +142,7 @@ def _run(tmp_path, source, transform=None, written_check=None, key=KEY):
         run.discover(source),
         tmp_path / "release",
         transform or Transform(),
-        _gate,
+        gate,
         qc_destination=tmp_path / "qc",
         written_check=written_check,
     )
@@ -363,6 +364,62 @@ def test_the_check_is_given_each_released_file_as_read_back(tmp_path):
         assert record == InstanceRecord.from_file(
             (result.release / outcome.output).read_bytes()
         )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_each_file_is_recorded_before_the_next_is_read(monkeypatch):
+    inputs = synthetic.collection()
+    graph = build_reference_graph([synthetic.record(each) for each in inputs])
+    events = []
+    record = InstanceRecord.from_file
+
+    def recording(data):
+        events.append("record")
+        return record(data)
+
+    def read_back():
+        for position, dataset in enumerate(inputs):
+            events.append("read")
+            yield position, synthetic.written(dataset)
+
+    monkeypatch.setattr(InstanceRecord, "from_file", recording)
+    findings, withheld = run_written.second_pass(
+        graph, tuple(range(len(inputs))), read_back(), lambda graph, written: ()
+    )
+
+    assert (findings, withheld) == ((), {})
+    assert events == ["read", "record"] * len(inputs)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_a_released_file_that_changes_before_it_is_read_back_is_sequestered(
+    tmp_path,
+):
+    staging = run.staging_path(tmp_path / "release")
+    gated = []
+
+    def tampering(written, evidence, subject):
+        gated.append(written)
+        if len(gated) == len(SLICES) + 3:
+            (first,) = [
+                path for path in staging.rglob("*.dcm") if path.read_bytes() == gated[0]
+            ]
+            first.write_bytes(b"CHANGED")
+        return _gate(written, evidence, subject)
+
+    result = _run(tmp_path, _source(tmp_path), gate=tampering)
+
+    assert _statuses(result)[SLICES[0]] == (
+        SEQUESTERED,
+        (run.RunReason.STAGED_FILE_CHANGED,),
+    )
+    assert _released(result) == [*SLICES[1:], STRUCTURE_SET, PLAN, DOSE]
+    assert {finding.kind for finding in result.written_findings} == {
+        Kind.UNWRITTEN_TARGET
+    }
+    assert b"CHANGED" not in b"".join(
+        path.read_bytes() for path in result.release.rglob("*") if path.is_file()
+    )
 
 
 def test_the_transforms_check_is_the_second_pass_under_its_key():

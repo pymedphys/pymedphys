@@ -36,4 +36,6 @@ EXPECTED = np.array(
 def test_deformability_unchanged():
     result = calculate_deformability(X_TEST, Y_TEST, X_DATA, Y_DATA, Z_DATA)
 
-    np.testing.assert_array_equal(result, EXPECTED)
+    # FITPACK round-off differs across platforms by about 1e-14. Keep the
+    # recorded baseline, allowing only a tight absolute numerical tolerance.
+    np.testing.assert_allclose(result, EXPECTED, rtol=0, atol=1e-12)
