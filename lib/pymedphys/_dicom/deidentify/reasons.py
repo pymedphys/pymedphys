@@ -47,6 +47,9 @@ class RunReason(enum.Enum):
     INVALID_OUTPUT_NAME = "invalid-output-name"
     SHARED_OUTPUT_NAME = "shared-output-name"
     STAGED_FILE_CHANGED = "staged-file-changed"
+    # the reference graph's second pass found what was written at fault, or
+    # could not record it to check
+    INCONSISTENT_REFERENCES = "inconsistent-references"
     INVALID_REASON = "invalid-reason"
     INTERNAL_ERROR = "internal-error"
 

@@ -143,6 +143,7 @@ _SEQUESTERING = {
             RunReason.INVALID_OUTPUT_NAME,
             RunReason.SHARED_OUTPUT_NAME,
             RunReason.STAGED_FILE_CHANGED,
+            RunReason.INCONSISTENT_REFERENCES,
             RunReason.INVALID_REASON,
             RunReason.INTERNAL_ERROR,
         )
@@ -213,8 +214,9 @@ class SequestrationReason:
         What sequestered it: ``"scope"``, ``"admission"`` (a source file
         refused, which is set aside like any sequestered instance),
         ``"references"`` (the first pass's reference graph), ``"walker"``,
-        ``"run"`` (the run's own checks of each input and of what the
-        transform and gate return), ``"transform"`` (the transform,
+        ``"run"`` (the run's own checks of each input, of what the transform
+        and gate return, and of what was written against the reference
+        graph), ``"transform"`` (the transform,
         including descriptor cleaning), ``"writer"``, ``"verifier"`` (the
         check that the source is preserved), or ``"release"`` (the release
         gate).

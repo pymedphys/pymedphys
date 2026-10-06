@@ -289,6 +289,7 @@ def run_benchmark(
         ReleaseGate(),
         qc_destination=work / "qc",
         reporter=transform.reporter,
+        written_check=transform.written_check,
     )
     headers = _headers(discovery)
     mapping = released_mapping(headers, result.outcomes)

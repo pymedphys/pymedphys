@@ -47,7 +47,18 @@ A run has five steps:
    :class:`Gate` with its own evidence and that of every instance of its
    subject that the transform returned evidence for, its own first. The
    gate releases it, holds it for review, or sequesters it. A file that is
-   not released is deleted at once.
+   not released is deleted at once. Then the reference graph's second pass,
+   the run's :class:`WrittenCheck`, checks the files that the gate released,
+   each read back from disk again and recorded as the first pass recorded
+   its input, against the first pass's graph. A finding of what was
+   written, other than a reference to an input that was not written, is a
+   fault of the engine, so the run fails closed: it sequesters the
+   instances that the finding names, deleting their files, and checks what
+   is left again, until nothing but such references remains; a finding
+   that names no released instance, or a check that raises, publishes
+   nothing (:class:`ReleaseWithheld`). A reference to an input that was
+   withheld, such as a plan's to a sequestered image, is reported only, as
+   the first pass reports a dangling reference.
 5. The release directory is published by renaming the staging area's
    release tree to it, so it appears whole, holding only files that their
    gate released and any release report, or not at all.
@@ -73,7 +84,11 @@ Where the design leaves a detail open, the run takes these defaults:
 - the published tree keeps the staging area's permissions, for its owner
   alone, until whoever releases it decides otherwise;
 - a file held for review is not published, and its staged bytes are
-  deleted.
+  deleted;
+- of the second pass's findings, those that name a written reference that
+  resolves to nothing written are acted on only where no other finding at
+  fault remains, since an instance whose reference names one that was
+  itself written wrongly is sound once that one is withheld.
 
 Nothing here logs, warns, or raises with a source path or value, and
 pydicom's warnings and log records, in the thread that runs it, including
@@ -85,6 +100,8 @@ material, and are left out of its ``repr``.
 """
 
 from __future__ import annotations
+
+# pylint: disable = too-many-lines
 
 import collections
 import dataclasses
@@ -100,7 +117,12 @@ from typing import TypeGuard
 from . import output_names, qc_store, release_report, run_qc, run_report
 from .diagnostics import redacted_diagnostics
 from .file_layout import Region, read_file_layout
-from .reference_graph import Finding, FindingKind, build_reference_graph
+from .reference_graph import (
+    Finding,
+    FindingKind,
+    ReferenceGraph,
+    build_reference_graph,
+)
 from .references import InstanceRecord, UnreadableSequence
 from .reasons import RunReason
 from .run_results import (
@@ -111,7 +133,9 @@ from .run_results import (
     Sequestered,
     Transform,
     Transformed,
+    WrittenCheck,
 )
+from .written_references import WrittenFinding, WrittenFindingKind
 
 # Media Storage SOP Class UID of a DICOMDIR: the Media Storage Directory
 # Storage SOP Class (PS3.4 Annex F, PS3.6 Table A-1).
@@ -157,6 +181,34 @@ class RunStopped(Exception):
         )
 
 
+class ReleaseWithheld(Exception):
+    """A run whose second reference pass found a fault it could not isolate.
+
+    Nothing is published, and no QC pack is written. Its message gives only
+    the number of findings.
+
+    Attributes
+    ----------
+    findings : tuple of WrittenFinding
+        The second pass's findings that withheld the release, by run
+        position; empty if the check itself failed.
+    """
+
+    def __init__(self, findings: tuple[WrittenFinding, ...] = ()) -> None:
+        super().__init__(findings)
+        self.findings = findings
+
+    def __str__(self) -> str:
+        if not self.findings:
+            return "the second reference pass failed, so nothing was published"
+        return (
+            "the second reference pass found faults in what was written that "
+            f"no instance could be withheld for ({len(self.findings)} "
+            f"finding{'' if len(self.findings) == 1 else 's'}), so nothing was "
+            "published"
+        )
+
+
 class Status(enum.Enum):
     """What happened to an input."""
 
@@ -166,6 +218,11 @@ class Status(enum.Enum):
     SEQUESTERED = "sequestered"  # withheld from the release
     REFUSED = "refused"  # not an instance that the run can read
 
+
+# The second pass's findings that are reported only: a reference to an input
+# that was withheld names nothing that was written, as the first pass's
+# dangling reference names nothing that was given.
+_REPORTED_ONLY = frozenset({WrittenFindingKind.UNWRITTEN_TARGET})
 
 # The first pass's findings that sequester the inputs that they name.
 _SEQUESTERING_FINDINGS = (
@@ -266,6 +323,12 @@ class RunResult:
         One for each run position, in order.
     findings : tuple of Finding
         The first pass's findings, by run position.
+    written_findings : tuple of WrittenFinding
+        The second reference pass's findings, by run position, once each:
+        those that sequestered the instances they name, check by check,
+        then those of its last check, which name a reference to an input
+        that was not written and are reported only. Empty without a
+        :class:`WrittenCheck`.
     staging_removed : bool
         Whether the staging area was deleted. If it was not, it may hold
         output that still identifies people, and needs deleting by hand.
@@ -276,6 +339,7 @@ class RunResult:
     release: Path
     outcomes: tuple[Outcome, ...]
     findings: tuple[Finding, ...]
+    written_findings: tuple[WrittenFinding, ...] = ()
     staging_removed: bool = True
     qc_pack: Path | None = None
 
@@ -382,6 +446,7 @@ def run(
     *,
     qc_destination: str | os.PathLike[str],
     reporter: run_report.Reporter | None = None,
+    written_check: WrittenCheck | None = None,
 ) -> RunResult:
     """De-identify the discovered inputs into a new release directory.
 
@@ -410,6 +475,15 @@ def run(
         Without one, no report is written. A withheld input whose reasons
         the reporter does not admit is sequestered for
         :attr:`RunReason.INVALID_REASON`, followed by its own reasons.
+    written_check : WrittenCheck, optional
+        The reference graph's second pass under the run's key, such as an
+        :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`'s
+        ``written_check``, called on the released files once every staged
+        file is gated. An instance whose written file it finds at fault, or
+        that cannot be recorded to check, is sequestered for
+        :attr:`RunReason.INCONSISTENT_REFERENCES`. Without one, what was
+        written is not checked, which only a transform that writes no
+        keyed replacements, such as a test's, should leave out.
 
     Returns
     -------
@@ -426,6 +500,9 @@ def run(
         raised once the pack is removed.
     RunStopped
         If a study's instances name several patients. Nothing is created.
+    ReleaseWithheld
+        If the second reference pass raises, or finds a fault that names no
+        released instance. Nothing is published, and no QC pack is written.
     ~pymedphys._dicom.deidentify.qc_pack.QcPackError
         If the QC destination is refused, or the pack cannot be built or
         written. Nothing is published.
@@ -450,16 +527,25 @@ def run(
     # quote them.
     with redacted_diagnostics():
         release_path = Path(release).absolute()
-        return _run(discovery, release_path, transform, gate, qc_destination, reporter)
+        return _run(
+            discovery,
+            release_path,
+            transform,
+            gate,
+            qc_destination,
+            reporter,
+            written_check,
+        )
 
 
-def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
+def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments, too-many-locals
     discovery: Discovery,
     release_path: Path,
     transform: Transform,
     gate: Gate,
     qc_destination: str | os.PathLike[str],
     reporter: run_report.Reporter | None,
+    written_check: WrittenCheck | None,
 ) -> RunResult:
     staging = staging_path(release_path)
     _check_directories(discovery.source, release_path, staging)
@@ -485,7 +571,9 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         raise RunError(_STAGING_EXISTS.format(staging=staging)) from None
     removed = False
     try:
-        outcomes, material = _stage_and_gate(discovery, first, staging, transform, gate)
+        outcomes, material, written = _stage_and_gate(
+            discovery, first, staging, transform, gate, written_check
+        )
         if reporter is not None:
             outcomes = _admitted(outcomes, reporter)
         outcomes = _labelled(outcomes)
@@ -514,7 +602,7 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         _sync_directory(release_path.parent)
     finally:
         removed = _remove(staging)
-    return RunResult(release_path, outcomes, first.findings, removed, qc_pack)
+    return RunResult(release_path, outcomes, first.findings, written, removed, qc_pack)
 
 
 def _remove_empty_directories(root: Path) -> None:
@@ -611,6 +699,10 @@ def _check_directories(source: Path, release: Path, staging: Path) -> None:
 @dataclasses.dataclass(frozen=True)
 class _FirstPass:
     records: dict[int, InstanceRecord]
+    # The graph of the records, whose positions are indices of ``positions``.
+    graph: ReferenceGraph
+    # The run position of each of the graph's positions.
+    positions: tuple[int, ...]
     digests: dict[int, bytes]
     findings: tuple[Finding, ...]
     # The outcome of each position that the second pass does not process.
@@ -678,7 +770,16 @@ def _first_pass(discovery: Discovery) -> _FirstPass:
             copies[group[0]] = group
     for position, found in kinds.items():
         settled[position] = _outcome(position, Status.SEQUESTERED, *found)
-    return _FirstPass(records, digests, findings, settled, copies, frozenset(kinds))
+    return _FirstPass(
+        records,
+        graph,
+        positions,
+        digests,
+        findings,
+        settled,
+        copies,
+        frozenset(kinds),
+    )
 
 
 def _read(entry: _Entry) -> bytes | None:
@@ -752,13 +853,16 @@ class _Staged:
 _WITHOUT_PATIENT_ID = object()
 
 
-def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches
+def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches, too-many-arguments, too-many-positional-arguments
     discovery: Discovery,
     first: _FirstPass,
     staging: Path,
     transform: Transform,
     gate: Gate,
-) -> tuple[tuple[Outcome, ...], dict[int, tuple[object, ...]]]:
+    written_check: WrittenCheck | None,
+) -> tuple[
+    tuple[Outcome, ...], dict[int, tuple[object, ...]], tuple[WrittenFinding, ...]
+]:
     outcomes: dict[int, Outcome] = dict(first.settled)
     # The QC material of each position, from its transform and gate.
     material: dict[int, tuple[object, ...]] = collections.defaultdict(tuple)
@@ -838,6 +942,15 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches
         outcomes[entry.position], gated = _gate(entry, evidence[entry.subject], gate)
         material[entry.position] += gated
 
+    written: tuple[WrittenFinding, ...] = ()
+    if written_check is not None:
+        released = [
+            entry
+            for entry in staged.values()
+            if outcomes[entry.position].status is Status.RELEASED
+        ]
+        written = _second_reference_pass(first, released, outcomes, written_check)
+
     for copy, processed in following.items():
         outcome = outcomes[processed]
         if outcome.status is Status.RELEASED:
@@ -848,6 +961,101 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches
     return (
         tuple(outcomes[position] for position in range(len(discovery.entries))),
         dict(material),
+        written,
+    )
+
+
+def _second_reference_pass(
+    first: _FirstPass,
+    released: list[_Staged],
+    outcomes: dict[int, Outcome],
+    written_check: WrittenCheck,
+) -> tuple[WrittenFinding, ...]:
+    """Check the released files against the first pass, and fail closed.
+
+    Sequester each released instance that a finding at fault names, setting
+    its outcome and deleting its file, and check what is left again, until
+    only findings reported only remain. Return the findings that sequestered
+    instances, then those of the last check, once each, by run position.
+
+    Raises
+    ------
+    ReleaseWithheld
+        If the check raises, or a finding at fault names no instance that
+        is still released.
+    """
+    index = {position: at for at, position in enumerate(first.positions)}
+    files: dict[int, _Staged] = {}
+    records: dict[int, InstanceRecord] = {}
+    for entry in sorted(released, key=lambda entry: entry.position):
+        data = entry.file.read_bytes()
+        reason = None
+        if hashlib.sha256(data).digest() != entry.digest:
+            reason = RunReason.STAGED_FILE_CHANGED
+        else:
+            try:
+                records[index[entry.position]] = InstanceRecord.from_file(data)
+            # What was written cannot be shown to refer as its input did, and
+            # pydicom's message could quote a value, so none is kept.
+            except Exception:  # pylint: disable = broad-exception-caught
+                reason = RunReason.INCONSISTENT_REFERENCES
+        if reason is None:
+            files[index[entry.position]] = entry
+            continue
+        entry.file.unlink()
+        outcomes[entry.position] = _outcome(entry.position, Status.SEQUESTERED, reason)
+
+    found: dict[WrittenFinding, None] = {}
+    while True:
+        try:
+            findings = tuple(
+                _by_run_position(finding, first.positions)
+                for finding in written_check(first.graph, dict(records))
+            )
+        # The check is the run's own, but its message could still quote a
+        # value, so none is kept, and nothing is published.
+        except Exception:  # pylint: disable = broad-exception-caught
+            raise ReleaseWithheld() from None
+        faults = [finding for finding in findings if finding.kind not in _REPORTED_ONLY]
+        if not faults:
+            found.update(dict.fromkeys(findings))
+            return tuple(found)
+        # An instance whose reference names one that was written wrongly is
+        # itself sound once that one is withheld, so it is withheld only if
+        # it is at fault alone.
+        acted = [
+            finding
+            for finding in faults
+            if finding.kind is not WrittenFindingKind.UNRESOLVED_REFERENCE
+        ] or faults
+        named = {
+            index[position]
+            for finding in acted
+            for group in finding.instances
+            for position in group
+            if index.get(position) in records
+        }
+        if not named:
+            raise ReleaseWithheld(tuple(faults))
+        found.update(dict.fromkeys(acted))
+        for at in sorted(named):
+            del records[at]
+            entry = files.pop(at)
+            entry.file.unlink()
+            outcomes[entry.position] = _outcome(
+                entry.position, Status.SEQUESTERED, RunReason.INCONSISTENT_REFERENCES
+            )
+
+
+def _by_run_position(
+    finding: WrittenFinding, positions: tuple[int, ...]
+) -> WrittenFinding:
+    """Return a finding of the graph's positions by the run's positions."""
+    return dataclasses.replace(
+        finding,
+        instances=tuple(
+            tuple(positions[at] for at in group) for group in finding.instances
+        ),
     )
 
 

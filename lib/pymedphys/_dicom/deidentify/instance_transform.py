@@ -108,6 +108,7 @@ from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .reasons import TransformReason
+from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
 from .release_gate import (
@@ -128,6 +129,7 @@ from .scope import classify
 from .source import SourceEvidence, SourceRefused, read_source
 from .uids import UIDOutcome
 from .walker import Consumer, InstancePlan, plan_instance
+from .written_references import WrittenFinding, verify_written_references
 
 _SOP_CLASS = ElementPath((), "(0008,0016)")
 _SOP_INSTANCE = ElementPath((), "(0008,0018)")
@@ -650,6 +652,18 @@ class InstanceTransform:
 
     def __repr__(self) -> str:
         return "InstanceTransform()"
+
+    def written_check(
+        self, graph: ReferenceGraph, written: Mapping[int, InstanceRecord]
+    ) -> tuple[WrittenFinding, ...]:
+        """Check what a run with this transform wrote against its first pass.
+
+        The reference graph's second pass under the transform's key, for
+        :func:`~pymedphys._dicom.deidentify.run.run`'s ``written_check``, as
+        :func:`~pymedphys._dicom.deidentify.written_references.verify_written_references`
+        makes it.
+        """
+        return verify_written_references(self._key, graph, written)
 
     def __call__(
         self, data: bytes, record: InstanceRecord
