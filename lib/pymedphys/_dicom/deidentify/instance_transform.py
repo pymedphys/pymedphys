@@ -33,7 +33,10 @@ each instance it may process. It joins the engine's per-instance steps:
    :func:`~pymedphys._dicom.deidentify.preserving_writer.write_file_bytes`
    write the file;
 6. :func:`~pymedphys._dicom.deidentify.preservation.verify_preservation`
-   checks the file written against its source and the same plan; and
+   checks the file written against its source and the same plan, and
+   :func:`~pymedphys._dicom.deidentify.iod_conformance.lost_requirements`
+   checks that it still holds each attribute that its IOD requires where
+   the source held one; and
 7. :func:`~pymedphys._dicom.deidentify.output_names.instance_path` names the
    file from its replacement Patient ID and UIDs alone (D-016).
 
@@ -99,7 +102,8 @@ from .elements import (
     read_element,
 )
 from .file_layout import ElementPath
-from .iods import IODTables, load_iod_tables
+from .iod_conformance import lost_requirements
+from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
 from .markers import MarkerError, Markers, apply_markers, markers_for
 from .method_digest import method_digest
@@ -744,7 +748,7 @@ class InstanceTransform:
                 dataset,
                 self._markers[satisfied],
             )
-            return Transformed(*_written(source, writing), evidence, qc)
+            return Transformed(*_written(source, writing, iod), evidence, qc)
         except _Refused as refused:
             reasons = tuple(
                 TransformReason.PENDING_EDIT if isinstance(r, PendingEdit) else r
@@ -828,9 +832,9 @@ def _retained(source: SourceEvidence, plan: InstancePlan) -> tuple[object, ...]:
 
 
 def _written(
-    source: SourceEvidence, writing: WriterPlan
+    source: SourceEvidence, writing: WriterPlan, iod: IOD
 ) -> tuple[PurePosixPath, bytes]:
-    """Return the output's path and bytes, verified against the source."""
+    """Return the output's path and bytes, verified against the source and IOD."""
     path = _output_path(writing.replacements)
     sop_class = _replaced(writing.replacements, _SOP_CLASS)
     if sop_class is None:
@@ -858,6 +862,8 @@ def _written(
         verify_preservation(source, output, writing.expectations)
     except PreservationFailed as failed:
         raise _Refused(failed.reason) from None
+    if lost_requirements(source, output, iod, frozenset(writing.replacements)):
+        raise _Refused(TransformReason.REQUIRED_ATTRIBUTE_LOST)
     return path, data
 
 
