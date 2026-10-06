@@ -74,7 +74,7 @@ from pymedphys._dicom.deidentify.residuals import (
     not_searched_of,
     written_constants,
 )
-from pymedphys._dicom.deidentify.run_qc import Dropped, SearchMaterial
+from pymedphys._dicom.deidentify.run_qc import Dropped, SearchMaterial, SeriesEvidence
 from pymedphys._dicom.deidentify.scope import Disposition
 from pymedphys._dicom.deidentify.source import SourceReason, read_source
 from pymedphys._dicom.deidentify.uids import UIDOutcome, replacement_uid
@@ -833,7 +833,11 @@ def test_values_left_out_of_the_search_are_dropped_with_their_reasons():
     )
     result = _transform()(data, InstanceRecord.from_file(data))
     assert isinstance(result, run.Transformed)
-    assert result.qc == dropped_of(edits)
+    # Besides what its series' assessment needs, the instance's QC material
+    # is its drops.
+    assert tuple(
+        item for item in result.qc if not isinstance(item, SeriesEvidence)
+    ) == dropped_of(edits)
 
 
 def test_a_registered_uid_beside_a_collected_one_is_still_dropped():
