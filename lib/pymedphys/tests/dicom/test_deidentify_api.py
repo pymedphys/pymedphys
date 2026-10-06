@@ -337,10 +337,8 @@ def test_an_institutional_list_is_used_as_the_command_line_uses_it(
     )
     _deidentify(tmp_path, preset=_CLEAN, roi_list=path)
 
-    by_command, by_library = (
-        call[4]._cleaning
-        for call in calls  # pylint: disable = protected-access
-    )
+    # pylint: disable-next = protected-access
+    by_command, by_library = (call[4]._cleaning for call in calls)
     assert by_library.institutional == by_command.institutional
     assert by_library.institutional == roi_list.load_json(path)
 
