@@ -14,6 +14,8 @@
 
 """Running de-identification over a directory, through a staging area."""
 
+# pylint: disable = too-many-lines
+
 import dataclasses
 import enum
 import io
