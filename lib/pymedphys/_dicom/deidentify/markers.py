@@ -36,8 +36,9 @@ to a copy of a data set and changes nothing else in it:
   codes of the Basic Profile and of each satisfied option, in Table E.1-1's
   order of options. Every selected option must be satisfied except Clean
   Descriptors, which goes unsatisfied where an instance retains a
-  descriptor that has not passed pooled human review (D-009); a descriptor
-  removed or replaced by its Basic Profile action instead still meets it.
+  descriptor that has not passed pooled human review, such as a reviewer's
+  decision in the reviewed-names list (D-009); a descriptor removed or
+  replaced by its Basic Profile action instead still meets it.
   A code is not added where an item already present has the same Code
   Value and Coding Scheme Designator, and the same Coding Scheme Version
   where either has one. ``tps-import`` adds no code, and the sequence is left
