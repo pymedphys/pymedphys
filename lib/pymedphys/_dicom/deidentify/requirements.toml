@@ -153,6 +153,7 @@ decisions = ["D-016"]
 implementation = [
   "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/run.py",
+  "_dicom/deidentify/run_discovery.py",
   "_dicom/deidentify/run_results.py",
 ]
 note = '''
@@ -641,6 +642,7 @@ implementation = [
   "_dicom/deidentify/references.py",
   "_dicom/deidentify/run.py",
   "_dicom/deidentify/run_results.py",
+  "_dicom/deidentify/run_written.py",
   "_dicom/deidentify/sequences.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/values.py",
@@ -658,8 +660,9 @@ A data set is written from its source's bytes, so a kept element keeps the VR it
 A sequence kept as UN keeps its items in implicit VR, and a replacement in implicit VR is written only where the pinned dictionary gives its VR alone, since a reader takes the VR from its dictionary.
 A run acts on those findings before it writes anything: a study with several patients stops it, every conflicting copy, every instance of a series in several studies, and every instance without one of those UIDs is sequestered, an identical duplicate is written once, and a dangling reference is only reported.
 A second pass checks what was written against the first: that each written instance's SOP Instance, Series Instance, and Study Instance UIDs, and each value at its reference sites, are the keyed replacements of its input's, never a source UID; that each reference that named an input before writing names a written instance, series, or study after it; that no two source UIDs share a replacement; and that no two written instances share a SOP Instance UID.
+A run makes that check of every file that its gate releases, before anything is published: each instance that a finding names is sequestered, and what is left is checked again, a reference to an instance that was withheld being reported only, while a check that fails, or a finding that no sequestration can isolate, publishes nothing.
 Each written instance is checked against its IOD before it can be released: every attribute that its source holds where the IOD requires it, by the same strictest Type, must still be there where the item that held it is, and a Type 1 or 1C one must not have been emptied, or the instance is sequestered, since the engine caused it; the removals that a plain X allows on their own are not findings, and what the source already lacks is not acted on.
-Remaining: writing the dummy values that the resolved compound actions call for (M3); and checking frames of reference in the first pass, and running the second pass on each run's output (M4).
+Remaining: writing the dummy values that the resolved compound actions call for (M3); and checking frames of reference in the first pass (M4).
 '''
 
 [[requirement]]
@@ -692,7 +695,8 @@ Every person name in the pinned dictionary has an action that removes or replace
 Every text attribute that a supported IOD uses is removed or replaced too, other than coded and technical values and De-identification Method, which the engine adds to; the names and identifiers of people, organisations, records, and networks, and identifiers that a device reads, among those that Table E.1-1 omits are removed under every option, and accessory and equipment identifiers are kept only under Retain Device Identity (D-022).
 URN Code Value and Coding Scheme URL, which name coding concepts and schemes, are kept.
 Every other URI and URL attribute that Table E.1-1 omits is removed by Type under every option, as are seven sequences that it omits whose content can identify an institution or other patients or say something about the patient, such as Requesting Service Code Sequence (0032,1034), Issuer of Patient ID Qualifiers Sequence (0010,0024), and Group of Patients Identification Sequence (0010,0027), and three measures of the patient's body, Patient's Body Mass Index (0010,1022), Measured AP Dimension (0010,1023), and Measured Lateral Dimension (0010,1024) (D-022).
-Remaining, and undecided (D-022): whether the kept codes of local coding schemes, and in-house private creators, which can carry an institution's name or abbreviation, need a reviewed rule.
+Private Data Element Characteristics Sequence (0008,0300) is removed by Type under every option, since no policy keeps a private attribute, so the private creators of removed private blocks do not survive in its items (D-028). The conformance statement says that the kept codes of local coding schemes can carry an institution's name or abbreviation, and that each kept value is listed among the QC pack's retained strings.
+The maintainer decided on 6 October 2026 that the kept codes of local coding schemes need no further rule beyond that disclosure (D-022).
 Also remaining: applying the actions to each data set (M3).
 The Retain Institution Identity Option is not supported.
 '''

@@ -18,7 +18,9 @@ Every file and value is synthetic. Values that must never appear in an error
 carry the text ``SENTINEL``.
 """
 
-from pymedphys._imports import pytest
+import io
+
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import qc_retained, run, source, walker
 from pymedphys._dicom.deidentify.edits import _Reader
@@ -270,3 +272,28 @@ def test_a_kept_string_that_cannot_be_decoded_sequesters_the_instance():
     assert isinstance(result, run.Sequestered)
     assert result.reasons == (TransformReason.UNREVIEWABLE_RETAINED_TEXT,)
     assert not any(isinstance(item, RetainedText) for item in result.qc)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_the_private_creators_of_removed_private_blocks_are_not_kept():
+    item = pydicom.Dataset()
+    item.PrivateGroupReference = 0x0009
+    item.PrivateCreatorReference = SENTINEL_LABEL
+    dataset = synthetic.rt_dose()
+    dataset.PrivateDataElementCharacteristicsSequence = pydicom.Sequence([item])
+    dataset.private_block(0x0009, SENTINEL_LABEL, create=True).add_new(
+        0x01, "LO", "SENTINEL VALUE"
+    )
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert "PrivateDataElementCharacteristicsSequence" not in written
+    assert SENTINEL_LABEL.encode() not in result.data
+    assert b"SENTINEL VALUE" not in result.data
+    assert not [
+        item
+        for item in result.qc
+        if isinstance(item, RetainedText) and SENTINEL_LABEL in item.value
+    ]

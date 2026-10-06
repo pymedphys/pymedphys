@@ -199,7 +199,7 @@ def _method(section: object) -> list[Block]:
         [
             "The method digest, which De-identification Method (0012,0063) of "
             "each released instance records, with the components it is "
-            "computed from (D-024)."
+            "computed from."
         ],
         _table(("Field", "Value"), rows),
         ["### Standard tables"],
@@ -215,7 +215,7 @@ def _runtime(section: object) -> list[Block]:
         ["## Runtime environment"],
         [
             "The versions that ran, which Software Versions (0018,1020) of the "
-            "de-identifying equipment records (D-029)."
+            "de-identifying equipment records."
         ],
         _table(
             ("Software", "Version"),
@@ -236,7 +236,7 @@ def _qc_review(section: object) -> list[Block]:
         heading,
         [
             "The run's confidential QC pack, by its opaque reference, and the "
-            "outcome of a reviewer's attestation of it (D-016)."
+            "outcome of a reviewer's attestation of it."
         ],
         _table(
             ("Field", "Value"),
@@ -254,7 +254,7 @@ def _released(section: object) -> list[Block]:
         ["## Released instances"],
         [
             "Each released instance by its output name, the path of its file "
-            "below the release (D-026)."
+            "below the release."
         ],
         _table(("Output name",), [(_code("released", name),) for name in names])
         if names
@@ -298,7 +298,7 @@ def _sequestered(section: object) -> list[Block]:
         [
             "Each sequestered instance by a label drawn at random for the run, "
             "on the first of its rows, with each reason's stage and code, and, where the reason names "
-            "them, the attribute's tags, the action, and the VR (D-026). Only "
+            "them, the attribute's tags, the action, and the VR. Only "
             "the confidential QC pack maps labels to source files."
         ],
         _table(("Label", "Stage", "Code", "Attribute", "Action", "VR"), rows)
@@ -334,7 +334,7 @@ def _held(section: object) -> list[Block]:
         [
             "How many instances were held for review for each stage and reason, "
             "each instance once for each of its reasons. Held instances are "
-            "neither released nor named (D-009)."
+            "neither released nor named."
         ],
         _table(("Stage", "Code", "Instances"), rows) if rows else [_NONE],
     ]
@@ -355,7 +355,7 @@ def _coverage(section: object) -> list[Block]:
         ["## Values not searched"],
         [
             "How many source values of each attribute the residual search did "
-            "not search, in full or in part, for each reason (D-027). The QC "
+            "not search, in full or in part, for each reason. The QC "
             "pack lists each by instance and place."
         ],
         _table(("Attribute", "Reason", "Values"), rows) if rows else [_NONE],

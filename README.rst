@@ -234,6 +234,11 @@ Active contributors
 
 .. _`Marcus Fisk`: https://github.com/laser47-hue
 
+* `Vishu`_
+    * Hansraj College, India
+
+.. _`Vishu`: https://github.com/httpsVishu
+
 |uth| |ccr|
 
 Past contributors
@@ -302,6 +307,8 @@ Past contributors
 .. _`Yale University School of Medicine`: https://medicine.yale.edu/
 
 .. _`Cancer Care Riverina`: https://cancercare.com.au/clinics/cancer-care-riverina/
+
+.. _`Hansraj College`: https://hansrajcollege.ac.in/
 
 .. _`Astropy Project`: https://www.astropy.org/
 .. _`PyPI`: https://pypi.org/project/pymedphys/
