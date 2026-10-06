@@ -1073,3 +1073,9 @@ tag = "(4FFE,0001)"
 keyword = "MACParametersSequence"
 action = "X/Z/D"
 note = "Describes how the Message Authentication Codes of digital signatures were computed. It belongs to the digital signatures that Table E.1-1 removes with Digital Signatures Sequence (FFFA,FFFA), which de-identification would invalidate, so it is removed by Type under every option. It is Type 3 in the SOP Common Module."
+
+[[attribute]]
+tag = "(0008,0300)"
+keyword = "PrivateDataElementCharacteristicsSequence"
+action = "X/Z/D"
+note = "Describes the instance's private blocks, by their private creators, and how to de-identify them. Without the Retain Safe Private Option, which every policy refuses until reviewed rules say which private attributes are safe, every private attribute is removed, so the sequence describes only blocks that are gone, and its Private Creator Reference values can name the institution's own software. It is removed by Type under every option. It is Type 3 in the SOP Common Module."
