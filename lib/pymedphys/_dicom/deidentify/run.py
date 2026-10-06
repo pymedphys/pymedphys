@@ -407,9 +407,9 @@ def run(
         Given the labelled outcomes, each input's QC material, and the QC
         pack's reference, returns the report's text, published at the root as
         :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT`, with
-        its human-readable form beside it as
-        :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT_MARKDOWN`.
-        Without one, no report is written. A withheld input whose reasons
+        its human-readable form and its policy's conformance statement beside
+        it, as :func:`~pymedphys._dicom.deidentify.run_report.release_files`
+        gives them. Without one, neither is written. A withheld input whose reasons
         the reporter does not admit is sequestered for
         :attr:`RunReason.INVALID_REASON`, followed by its own reasons.
 
@@ -494,8 +494,7 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         outcomes = _labelled(outcomes)
         pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
         # Built before the pack is written, so a failure leaves no QC material.
-        report = reporter(outcomes, material, pack.reference) if reporter else None
-        files = run_report.release_files(report) if report is not None else {}
+        files = run_report.documents(reporter, outcomes, material, pack.reference)
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
         _remove_empty_directories(staged_release)
