@@ -53,6 +53,11 @@ from . import _synthetic_references as synthetic
 from .test_deidentify_instance_transform import _source, _transform, _transformed
 from .test_deidentify_qc_previews import SECONDARY_CAPTURE, _image, _slices
 
+# A run needs a base directory short enough for Windows' output path limit.
+from .test_deidentify_run import (  # noqa: F401  # pylint: disable = unused-import
+    _short_tmp_path,
+)
+
 
 # The pack's entries.
 
