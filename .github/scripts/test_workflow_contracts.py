@@ -67,6 +67,45 @@ class WorkflowContractTests(unittest.TestCase):
                     [name],
                 )
 
+    def test_draft_pull_requests_run_no_jobs(self):
+        # Marking a PR ready for review must start a run, and converting it to
+        # a draft must start one that cancels any in-flight run.
+        types = (
+            "    types: [opened, synchronize, reopened, labeled, unlabeled, "
+            "ready_for_review, converted_to_draft]\n"
+        )
+        not_draft = "github.event.pull_request.draft != true"
+        for filename, summary_id in (
+            ("ci.yml", "summary"),
+            ("security.yml", "security-summary"),
+        ):
+            with self.subTest(workflow=filename):
+                text = (WORKFLOWS / filename).read_text(encoding="utf-8")
+                self.assertIn(f"  pull_request:\n{types}", text)
+                workflow = jobs(filename)
+                conditions = {
+                    job: re.findall(r"(?m)^    if: (.+)$", body)
+                    for job, body in workflow.items()
+                }
+                # Jobs without needs start the run, so each must skip drafts;
+                # the jobs that need them are then skipped too.
+                for job, body in workflow.items():
+                    if not needs(body):
+                        with self.subTest(job=job):
+                            self.assertEqual(conditions[job], [not_draft])
+                self.assertEqual(conditions[summary_id], [f"always() && {not_draft}"])
+                # A status function would run a job after its needs were
+                # skipped, so only the summary and push-only jobs may use one.
+                for job, condition in conditions.items():
+                    if re.search(
+                        r"\b(always|cancelled|failure)\(\)", "".join(condition)
+                    ):
+                        with self.subTest(job=job):
+                            self.assertTrue(
+                                job == summary_id
+                                or "github.event_name == 'push'" in condition[0]
+                            )
+
     def test_merge_group_dependency_audit_is_advisory(self):
         audit = jobs("security.yml")["dependency-audit"]
         self.assertEqual(
