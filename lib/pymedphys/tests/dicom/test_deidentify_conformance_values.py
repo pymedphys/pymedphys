@@ -488,7 +488,7 @@ def test_nothing_of_the_run_is_pending(preset):
     # each written file, acts on what the search finds, lists each retained
     # string, assesses each instance's indicators of risk in its pixel data,
     # and lists each CT volume in the QC pack.
-    assert conformance.PENDING == ()
+    assert not conformance.PENDING
     for done in (
         "search each written file",
         "the run itself sequesters",
