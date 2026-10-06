@@ -31,7 +31,7 @@ import enum
 from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePosixPath
 
-from . import qc_pack, residuals
+from . import pixel_risk, qc_pack, qc_previews, residuals
 from .file_layout import ElementPath
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .roi_names import Reason
@@ -99,8 +99,24 @@ class RetainedText:
         return f"RetainedText(path={str(self.path)!r})"
 
 
+@dataclasses.dataclass(frozen=True)
+class PixelRiskMaterial:
+    """The indicators of risk in an instance's pixel data, read from its source.
+
+    An instance with any finding is in a high-risk category (D-017): the pack
+    lists it with its findings, and previews its written file at full
+    resolution. The source is assessed, since the Basic Profile removes some
+    of the evidence, such as an overlay group whose graphics lie in the
+    pixel data.
+    """
+
+    assessment: pixel_risk.PixelRiskAssessment
+
+
 # The QC pack's disposition of each run status, by the status's value.
 _DISPOSITIONS = {disposition.value: disposition for disposition in Disposition}
+# The dispositions whose written files are previewed for the reviewer.
+_PREVIEWED = frozenset({Disposition.RELEASED, Disposition.HELD_FOR_REVIEW})
 
 
 def qc_pack_of(
@@ -124,6 +140,14 @@ def qc_pack_of(
     reference : str, optional
         The pack's reference; a new one by default.
 
+    Notes
+    -----
+    The pack's image previews (:func:`~.qc_previews.previews_of`) are made
+    from the file that each released or held instance's gate searched, in
+    its :class:`SearchMaterial`, with the instances that a
+    :class:`PixelRiskMaterial` gives findings for as high-risk. A released or
+    held instance without one is listed as not previewed.
+
     Raises
     ------
     QcPackError
@@ -140,9 +164,15 @@ def qc_pack_of(
     drops: list[qc_pack.DropEntry] = []
     roi_names: list[qc_pack.RoiNameEntry] = []
     retained: list[tuple[str, int, ElementPath]] = []
+    written: dict[int, bytes] = {}
+    risks: dict[int, list[pixel_risk.Finding]] = {}
     for position in sorted(material):
         for item in material[position]:
-            if isinstance(item, SearchMaterial):
+            if isinstance(item, PixelRiskMaterial):
+                risks.setdefault(position, []).extend(item.assessment.findings)
+            elif isinstance(item, SearchMaterial):
+                if instances[position].disposition in _PREVIEWED:
+                    written.setdefault(position, item.written)
                 found, omitted = qc_pack.entries_for_search(
                     position, item.search, item.written
                 )
@@ -167,6 +197,19 @@ def qc_pack_of(
                 retained.append((item.value, position, item.path))
             else:
                 raise TypeError("QC material must be of the run's QC material types")
+    high_risk = {position: tuple(found) for position, found in risks.items() if found}
+    previews = qc_previews.previews_of(written, high_risk)
+    # A released or held file that no gate handed over is listed, not lost.
+    missing = [
+        qc_pack.NotPreviewedEntry(
+            entry.position, qc_pack.NotPreviewedReason.NOT_AVAILABLE
+        )
+        for entry in instances
+        if entry.disposition in _PREVIEWED and entry.position not in written
+    ]
+    not_previewed = tuple(
+        sorted((*previews.not_previewed, *missing), key=lambda entry: entry.position)
+    )
     return QcPack(
         reference=qc_pack.new_reference() if reference is None else reference,
         instances=instances,
@@ -175,6 +218,12 @@ def qc_pack_of(
         not_searched=tuple(omissions),
         retained_strings=qc_pack.retained_strings(retained),
         roi_names=tuple(roi_names),
+        pixel_risks=tuple(
+            qc_pack.PixelRiskEntry(position, found)
+            for position, found in sorted(high_risk.items())
+        ),
+        previews=previews.previews,
+        not_previewed=not_previewed,
     )
 
 
