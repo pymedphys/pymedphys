@@ -18,7 +18,8 @@ A run gives its :class:`Reporter` the outcome of each input, the QC
 material that the transform and gate gave for it, and the opaque reference
 of the run's QC pack, and writes the text that
 the reporter returns as :data:`RELEASE_REPORT` at the root of the release,
-before it publishes it. :class:`ReleaseReporter` builds the report of
+with its human-readable form as :data:`RELEASE_REPORT_MARKDOWN` beside it
+(:func:`release_files`), before it publishes it. :class:`ReleaseReporter` builds the report of
 :mod:`~pymedphys._dicom.deidentify.release_report` from them: the QC
 pack by its reference, not yet attested, since a reviewer attests to it
 after the run (D-016); each released instance by its output name, and each
@@ -43,7 +44,7 @@ from typing import Protocol
 
 from pymedphys._nomenclature import tg263
 
-from . import release_report
+from . import release_report, release_report_markdown
 from .policy import Policy
 from .qc_attestation import AttestationRecord, Outcome
 from .reasons import RunReason
@@ -54,6 +55,8 @@ from .run_qc import Dropped, SearchMaterial
 # The release report's name at the root of a release. Output names are
 # upper case, so it cannot be one.
 RELEASE_REPORT = "release-report.json"
+# Its human-readable form, beside it.
+RELEASE_REPORT_MARKDOWN = "release-report.md"
 # The statuses of withheld outcomes, which this module reads without
 # importing the run.
 HELD_FOR_REVIEW = "held-for-review"
@@ -64,7 +67,10 @@ SEQUESTERED = "sequestered"
 class Reporter(Protocol):
     """Return a run's release report as text, from its outcomes and material.
 
-    ``qc_pack`` is the opaque reference of the run's QC pack.
+    The text is that which
+    :func:`~pymedphys._dicom.deidentify.release_report.to_json` gives, from
+    which the run generates the report's human-readable form. ``qc_pack`` is
+    the opaque reference of the run's QC pack.
     """
 
     def admits(self, status: str, reasons: tuple[object, ...]) -> bool:
@@ -171,6 +177,28 @@ class ReleaseReporter:
             reviewed_roi_names=self._reviewed_roi_names,
             **run,  # type: ignore[arg-type]
         )
+
+
+def release_files(report: str) -> dict[str, bytes]:
+    """Return the files that a run writes at the root of its release.
+
+    They are the report as given, as :data:`RELEASE_REPORT`, and its
+    human-readable form, generated from it alone by
+    :func:`~pymedphys._dicom.deidentify.release_report_markdown.to_markdown`,
+    as :data:`RELEASE_REPORT_MARKDOWN`, each encoded as UTF-8.
+
+    Raises
+    ------
+    ~pymedphys._dicom.deidentify.release_report_markdown.ReleaseReportMarkdownError
+        If the report is not one that
+        :func:`~pymedphys._dicom.deidentify.release_report.to_json` gives.
+    """
+    return {
+        RELEASE_REPORT: report.encode("utf-8"),
+        RELEASE_REPORT_MARKDOWN: release_report_markdown.to_markdown(report).encode(
+            "utf-8"
+        ),
+    }
 
 
 # A label for the report that tries whether a reason can be given.

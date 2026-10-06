@@ -356,7 +356,9 @@ def build_parser(
         help=(
             "with basic-clean-descriptors, the custodian's reviewed-names "
             "list, outside SOURCE, RELEASE, and the QC pack; by default, none, "
-            "so every ROI Name that cleaning does not rename is held for review"
+            "so every ROI Name that cleaning does not rename is held for "
+            "review; python -m pymedphys._dicom.deidentify.reviewed_names_command "
+            "records a reviewer's decisions in it"
         ),
     )
     parser.add_argument(
@@ -405,8 +407,8 @@ def _descriptor_cleaning(arguments: argparse.Namespace) -> DescriptorCleaning:
 
     The pinned TG-263 edition is read from ``--tg263`` or else from
     PyMedPhys's cached download. The custodian's reviewed-names list is read
-    from ``--reviewed-names``, which must exist, since the command records no
-    decision, and lie outside the source, the release and its staging area,
+    from ``--reviewed-names``, which must exist, since this command records no
+    decision (:mod:`.reviewed_names_command` records them), and lie outside the source, the release and its staging area,
     and the QC destination; without it, the list is empty. Held names are
     emptied only with ``--empty-held-roi-names``.
 

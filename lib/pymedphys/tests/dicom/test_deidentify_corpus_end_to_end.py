@@ -45,7 +45,10 @@ from pymedphys._dicom.deidentify.release_gate import (
     ReasonCode,
     ReleaseReason,
 )
-from pymedphys._dicom.deidentify.run_report import RELEASE_REPORT
+from pymedphys._dicom.deidentify.run_report import (
+    RELEASE_REPORT,
+    RELEASE_REPORT_MARKDOWN,
+)
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 
 pytestmark = pytest.mark.pydicom
@@ -232,7 +235,8 @@ def test_the_basic_profile_releases_all_but_the_instances_it_must_hold(
 def test_no_published_file_holds_a_marker(basic_run):
     corpus, result, released, _ = basic_run
     published = _published(result)
-    # The released instances and the release report, and nothing else.
+    # The released instances and the release report in both its forms, and
+    # nothing else.
     assert set(published) == {
         *(
             outcome.output.as_posix()
@@ -240,6 +244,7 @@ def test_no_published_file_holds_a_marker(basic_run):
             if outcome.position in released
         ),
         RELEASE_REPORT,
+        RELEASE_REPORT_MARKDOWN,
     }
 
     for name, data in published.items():
