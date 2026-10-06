@@ -512,7 +512,9 @@ def release_report() -> list[str]:
         f"the release as `{run_report.RELEASE_REPORT}` and, beside it, its "
         f"human-readable form as `{run_report.RELEASE_REPORT_MARKDOWN}`, "
         "generated from the report's text alone, which shows every value of "
-        "the report and draws nothing else from it.",
+        "the report and draws nothing else from it. Beside them, it writes "
+        "this statement of its policy, which holds no instance value, as "
+        f"`{run_report.CONFORMANCE_STATEMENT}`.",
         "",
         "The report holds no source value or original path: each field is a "
         "digest, a version, a known edition, preset, or option, a file name "

@@ -142,8 +142,7 @@ SEQUENCE_NOT_CLEANED = "sequence not cleaned"
 PENDING: tuple[str, ...] = (
     "What each run does not yet do: list in the confidential QC pack each "
     "CT volume, as one that may hold a face that could be reconstructed, "
-    "with whether its attributes name a region of the head or neck (D-015); "
-    "and write this statement with the release report.",
+    "with whether its attributes name a region of the head or neck (D-015).",
 )
 PENDING_RUN = PENDING[0]
 # Pending only for a policy whose element rules the engine refuses.

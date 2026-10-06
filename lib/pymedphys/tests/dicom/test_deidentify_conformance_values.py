@@ -424,7 +424,6 @@ def test_what_remains_of_the_run_is_pending(preset):
     assert pending in statement.pending
     assert "D-015" in pending
     assert "CT" in pending
-    assert "write this statement" in pending
     # Each run now writes its report and QC pack, searches each written file,
     # acts on what the search finds, lists each retained string in the QC
     # pack, and assesses each instance's indicators of risk in its pixel data.
@@ -433,6 +432,7 @@ def test_what_remains_of_the_run_is_pending(preset):
         "the run itself sequesters",
         "D-017",
         "risk indicators of each instance",
+        "write this statement",
     ):
         assert done not in pending
     assert not statement.claims_conformance
@@ -473,4 +473,8 @@ def test_the_report_describes_what_a_run_always_writes(preset):
     assert (
         f"`{run_report.RELEASE_REPORT}` and, beside it, its human-readable "
         f"form as `{run_report.RELEASE_REPORT_MARKDOWN}`"
+    ) in section
+    assert (
+        "this statement of its policy, which holds no instance value, as "
+        f"`{run_report.CONFORMANCE_STATEMENT}`"
     ) in section
