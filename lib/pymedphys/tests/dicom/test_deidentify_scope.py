@@ -153,6 +153,7 @@ def test_an_instance_without_a_sop_class_is_sequestered(sop_class):
     assert found == scope.Classification(Disposition.NO_SOP_CLASS, None)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-14")
 @pytest.mark.parametrize(
     "transfer_syntax",
     [

@@ -29,7 +29,9 @@ from pymedphys._dicom.deidentify import (
     pseudonyms,
     release_report,
     residuals,
+    reviewed_roi_names,
     standard,
+    supplementary_actions,
     temporal_roles,
     uids,
     walker,
@@ -67,6 +69,38 @@ def _section(preset, heading):
 
 def _named(tag):
     return f"{standard.dictionary_attribute(tag).name} {tag}"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_kept_local_codes_are_said_to_be_listed_in_the_qc_pack(preset):
+    rules = supplementary_actions.load_supplementary_actions().rules
+    codes = ("(0008,0100)", "(0008,0102)", "(0008,0104)")
+    assert {rules[tag].action for tag in codes} == {"K"}
+
+    section = _section(preset, "Codes of local coding schemes")
+
+    for tag in codes:
+        assert _named(tag) in section
+    assert 'begins with "99" or is "L"' in section
+    assert "the institution's name or abbreviation" in section
+    assert "retained strings of the run's confidential QC pack" in section
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_the_removed_private_creators_description_is_described(preset):
+    statement = _statement(preset)
+    private = next(
+        e
+        for e in statement.attributes
+        if e.tag == conformance_markdown.PRIVATE_ATTRIBUTES_TAG
+    )
+    sentence = (
+        "Private Data Element Characteristics Sequence (0008,0300), which "
+        "describes the private blocks by their private creators, is removed by "
+        "its supplementary rule"
+    )
+
+    assert (sentence in _section(preset, "Actions")) == (private.action == "X")
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
@@ -288,6 +322,16 @@ def test_the_release_report_counts_held_instances_by_stage(preset):
         assert line.startswith(conformance_values.HOLDING_STAGES[stage])
         for reason in codes:
             assert f"`{reason}`" in line, (stage, reason)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_the_release_report_counts_roi_names_by_outcome(preset):
+    section = _section(preset, "Release report")
+    counted = section.split("counts the ROI Names", 1)[1].split("\n\n", 1)[0]
+    assert "(D-009)" in counted
+    assert "naming none of them" in counted
+    for outcome in reviewed_roi_names.Outcome:
+        assert f"`{outcome.value}`" in counted, outcome
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")

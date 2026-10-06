@@ -29,6 +29,7 @@ from pymedphys._dicom.deidentify import (
     release_gate,
     release_report,
     residuals,
+    reviewed_roi_names,
     roi_names,
     scope,
     source,
@@ -81,7 +82,7 @@ _SEQUESTERING = [
 ]
 
 
-@pytest.mark.deid_requirement("MIDI-BP-18")
+@pytest.mark.deid_requirement("MIDI-BP-18", "MIDI-BP-06")
 @pytest.mark.parametrize(
     "cause, stage", _SEQUESTERING, ids=[str(each) for each, _ in _SEQUESTERING]
 )
@@ -311,6 +312,101 @@ def test_a_held_section_that_could_hold_a_value_is_refused(basic, held):
     for write in (release_report.report_document, release_report.to_json):
         with pytest.raises(
             release_report.ReleaseReportError, match="held_for_review"
+        ) as raised:
+            write(report)
+        assert "SENTINEL" not in str(raised.value)
+        assert raised.value.__cause__ is None
+
+
+_KEPT = reviewed_roi_names.Outcome.KEPT
+_UNMATCHED = roi_names.Reason.UNMATCHED
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-18")
+def test_roi_names_are_counted_by_outcome_and_held_names_by_reason(basic):
+    counts = reviewed_roi_names.RoiNameCounts(
+        held={_UNMATCHED: 2, roi_names.Reason.ECHOES_IDENTIFIER: 1},
+        outcomes={
+            reviewed_roi_names.Outcome.RENAMED: 5,
+            _KEPT: 3,
+            reviewed_roi_names.Outcome.HELD: 2,
+            reviewed_roi_names.Outcome.EMPTIED_UNREVIEWED: 1,
+        },
+    )
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None, roi_names=counts
+    )
+
+    # Sorted by code, as every other count of the report is, and without a
+    # name: only the confidential QC pack lists the names.
+    assert release_report.report_document(report)["roi_names"] == {
+        "outcomes": [
+            {"outcome": "emptied unreviewed", "count": 1},
+            {"outcome": "held", "count": 2},
+            {"outcome": "kept", "count": 3},
+            {"outcome": "renamed", "count": 5},
+        ],
+        "held": [
+            {"reason": "echoes identifier", "count": 1},
+            {"reason": "unmatched", "count": 2},
+        ],
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-18")
+def test_a_run_without_roi_names_counts_none(basic):
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
+
+    assert report.roi_names == reviewed_roi_names.RoiNameCounts({}, {})
+    assert release_report.report_document(report)["roi_names"] == {
+        "outcomes": [],
+        "held": [],
+    }
+
+
+def _roi_name_counts_with(field, value):
+    counts = reviewed_roi_names.RoiNameCounts({}, {})
+    object.__setattr__(counts, field, value)
+    return counts
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-18")
+@pytest.mark.parametrize(
+    "counts",
+    [
+        _roi_name_counts_with("held", 42),
+        _roi_name_counts_with("outcomes", ["SENTINEL"]),
+        "SENTINEL",
+        reviewed_roi_names.RoiNameCounts({}, {"SENTINEL": 1}),
+        reviewed_roi_names.RoiNameCounts({"SENTINEL": 1}, {}),
+        reviewed_roi_names.RoiNameCounts({}, {_UNMATCHED: 1}),
+        reviewed_roi_names.RoiNameCounts({_KEPT: 1}, {}),
+        reviewed_roi_names.RoiNameCounts({}, {_KEPT: True}),
+        reviewed_roi_names.RoiNameCounts({_UNMATCHED: 1.5}, {}),
+    ],
+    ids=[
+        "held-not-a-mapping",
+        "outcomes-not-a-mapping",
+        "not-counts",
+        "outcome",
+        "reason",
+        "reason-as-outcome",
+        "outcome-as-reason",
+        "boolean-count",
+        "fractional-count",
+    ],
+)
+def test_roi_name_counts_that_could_hold_a_value_are_refused(basic, counts):
+    report = _with(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None),
+        roi_names=counts,
+    )
+
+    for write in (release_report.report_document, release_report.to_json):
+        with pytest.raises(
+            release_report.ReleaseReportError, match="roi_names"
         ) as raised:
             write(report)
         assert "SENTINEL" not in str(raised.value)

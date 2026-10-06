@@ -549,6 +549,7 @@ def test_the_document_holds_every_section():
         "retained_strings",
         "roi_names",
         "pixel_risks",
+        "series_risks",
         "previews",
         "not_previewed",
     ]
@@ -816,6 +817,9 @@ def _peak_allocation(function):
         # The escape sequence that sets the state is 4 MiB before the excerpt.
         (b"\x1b$B" + b"0!" * (2 * 2**20), "iso2022_jp"),
     ],
+    # Pytest puts the case id in PYTEST_CURRENT_TEST; the multi-MiB input
+    # exceeds Windows' 32,767-character environment variable limit.
+    ids=["large-utf8", "large-iso2022-jp"],
 )
 def test_an_excerpt_of_a_late_residual_needs_little_memory(tmp_path, prefix, encoding):
     path = tmp_path / "large.dcm"

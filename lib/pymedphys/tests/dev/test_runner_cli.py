@@ -25,13 +25,24 @@ import toml
 from pymedphys._dev.tests import LIBRARY_ROOT
 
 
-def _run_cli(cwd, *args, env=None):
+def _run_cli(cwd, command, *args, env=None):
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(LIBRARY_ROOT.parent)
     if env:
         environment.update(env)
+    # Keep nested collection inside this test's directory. Other workers
+    # can remove temporary siblings while pytest compares their paths.
     return subprocess.run(
-        [sys.executable, "-m", "pymedphys", "dev", *args],
+        [
+            sys.executable,
+            "-m",
+            "pymedphys",
+            "dev",
+            command,
+            "--confcutdir",
+            str(cwd),
+            *args,
+        ],
         cwd=cwd,
         env=environment,
         capture_output=True,
@@ -134,3 +145,29 @@ def test_parallel_workers_resolve_caller_relative_paths(tmp_path):
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "4 passed" in result.stdout
+
+
+def test_cli_does_not_inspect_sibling_directories(tmp_path):
+    suite = tmp_path / "suite"
+    suite.mkdir()
+    sibling = tmp_path / "disappearing"
+    sibling.mkdir()
+    # Simulate another worker removing a sibling between listing and stat.
+    (suite / "conftest.py").write_text(
+        "from pathlib import Path\n\n"
+        "def pytest_configure():\n"
+        "    original = Path.lstat\n"
+        "    def lstat(path):\n"
+        f"        if path == Path({str(sibling)!r}):\n"
+        "            raise FileNotFoundError('synthetic sibling was removed')\n"
+        "        return original(path)\n"
+        "    Path.lstat = lstat\n",
+        encoding="utf-8",
+    )
+    sample = suite / "test_sample.py"
+    sample.write_text("def test_sample():\n    assert True\n", encoding="utf-8")
+
+    result = _run_cli(suite, "tests", str(sample), "-q")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 passed" in result.stdout

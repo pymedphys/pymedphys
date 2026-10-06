@@ -27,7 +27,8 @@ shows a source value or path, and the summary says how many were redacted.
 destination, the preset, and, under Clean Descriptors, what ROI Names are
 cleaned with from the command line's arguments, builds the preset's
 transform for a new run-scoped key with :func:`build_transform`, and runs
-it with the release gate and the transform's release report, for the
+it with the release gate, the transform's release report, and the
+reference graph's second pass under its key, for the
 ``pymedphys`` command to call once the engine is public; nothing registers
 it yet. No preset is enabled yet, so until one is, the command refuses to
 run.
@@ -119,6 +120,7 @@ def deidentify_directory(
     gate: run.Gate,
     qc_destination: str | os.PathLike[str],
     reporter: run_report.Reporter | None = None,
+    written_check: run.WrittenCheck | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
@@ -145,6 +147,11 @@ def deidentify_directory(
         :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`'s
         ``reporter``. Without one, the release has no report or conformance
         statement.
+    written_check : WrittenCheck, optional
+        The reference graph's second pass, as
+        :func:`~pymedphys._dicom.deidentify.run.run` takes it, such as an
+        :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`'s
+        ``written_check``. Without one, what was written is not checked.
     stdout, stderr : text file, optional
         Where to print the summary, and the reason the run failed or left
         its staging area behind. By default, :data:`sys.stdout` and
@@ -169,6 +176,7 @@ def deidentify_directory(
                 gate,
                 qc_destination=qc_destination,
                 reporter=reporter,
+                written_check=written_check,
             )
         except (run.RunError, run.RunStopped, QcPackError) as error:
             # Each names only the caller's directories, counts, or the
@@ -226,8 +234,9 @@ def summary_lines(result: run.RunResult, redacted: RedactionCounts) -> list[str]
 
     It gives the release directory; the number of inputs, and of each status
     that any input has; how many inputs each reason withheld; how many
-    first-pass findings there were of each kind; and, if any were, how many
-    warnings and log records were redacted.
+    first-pass findings, and second-pass findings of what was written, there
+    were of each kind; and, if any were, how many warnings and log records
+    were redacted.
     """
     statuses = collections.Counter(outcome.status for outcome in result.outcomes)
     # Each input counts once for each type of reason it has, and reasons
@@ -239,6 +248,9 @@ def summary_lines(result: run.RunResult, redacted: RedactionCounts) -> list[str]
     )
     findings = collections.Counter(
         _reason_name(finding.kind) for finding in result.findings
+    )
+    written = collections.Counter(
+        _reason_name(finding.kind) for finding in result.written_findings
     )
     lines = [
         f"release directory: {result.release}",
@@ -255,6 +267,9 @@ def summary_lines(result: run.RunResult, redacted: RedactionCounts) -> list[str]
     if findings:
         lines.append("first-pass findings:")
         lines += [f"  {name}: {count}" for name, count in sorted(findings.items())]
+    if written:
+        lines.append("second-pass findings:")
+        lines += [f"  {name}: {count}" for name, count in sorted(written.items())]
     if redacted.warnings or redacted.log_records:
         lines.append(
             f"redacted diagnostics: {redacted.warnings} warnings, "
@@ -550,7 +565,7 @@ def main(
     if roi_name_options and CLEAN_DESCRIPTORS not in policy.PRESETS[arguments.preset]:
         _print(_ROI_NAME_OPTIONS, error_stream)
         return EXIT_USAGE
-    reporter = None
+    reporter = written_check = None
     if transform is None:
         try:
             with redacted_diagnostics():
@@ -559,6 +574,7 @@ def main(
             _print(str(error), error_stream)
             return EXIT_NOT_RUN
         transform, reporter = built, built.reporter
+        written_check = built.written_check
     return deidentify_directory(
         arguments.source,
         arguments.release,
@@ -566,6 +582,7 @@ def main(
         gate=instance_transform.ReleaseGate() if gate is None else gate,
         qc_destination=arguments.qc_pack,
         reporter=reporter,
+        written_check=written_check,
         stdout=stdout,
         stderr=stderr,
     )

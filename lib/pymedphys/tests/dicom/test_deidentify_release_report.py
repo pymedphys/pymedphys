@@ -178,9 +178,10 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "released",
         "sequestered",
         "held_for_review",
+        "roi_names",
         "search_coverage",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/4"
+    assert document["format"] == "pymedphys-deid-release-report/5"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
@@ -485,7 +486,7 @@ def _sequestered(label="S-0001"):
     )
 
 
-@pytest.mark.deid_requirement("MIDI-BP-18")
+@pytest.mark.deid_requirement("MIDI-BP-18", "MIDI-BP-06")
 def test_sequestered_instances_are_listed_by_label_with_their_reasons(basic):
     report = release_report.release_report(
         basic,

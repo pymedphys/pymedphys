@@ -47,6 +47,9 @@ class RunReason(enum.Enum):
     INVALID_OUTPUT_NAME = "invalid-output-name"
     SHARED_OUTPUT_NAME = "shared-output-name"
     STAGED_FILE_CHANGED = "staged-file-changed"
+    # the reference graph's second pass found what was written at fault, or
+    # could not record it to check
+    INCONSISTENT_REFERENCES = "inconsistent-references"
     INVALID_REASON = "invalid-reason"
     INTERNAL_ERROR = "internal-error"
 
@@ -72,6 +75,9 @@ class TransformReason(enum.Enum):
     # an edit still to come when the output is written, such as a pseudonym
     # without the subject's identity
     PENDING_EDIT = "pending-edit"
+    # the output no longer holds, or holds empty, an attribute that the IOD
+    # requires where its source held it (MIDI-BP-03)
+    REQUIRED_ATTRIBUTE_LOST = "required-attribute-lost"
 
 
 class DescriptorReason(enum.Enum):

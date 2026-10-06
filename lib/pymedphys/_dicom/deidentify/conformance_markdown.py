@@ -52,6 +52,7 @@ from .standard import (
     load_data_dictionary,
     load_table_e1_1a,
 )
+from .supplementary_actions import load_supplementary_actions
 
 _ROI_NAME_NAMED = "ROI Name (3006,0026)"
 # Why the automatic tier sends a ROI Name to review rather than renaming it.
@@ -230,6 +231,47 @@ def _private(statement: ConformanceStatement) -> list[str]:
         "creator; and each element in an odd group that PS3.5 Section 7.8.1 "
         "does not allow. A private sequence is removed whole, with its items "
         "(PS3.15 E.1.1 and E.3.10).",
+        *(
+            [
+                "",
+                "Private Data Element Characteristics Sequence (0008,0300), which "
+                "describes the private blocks by their private creators, is "
+                "removed by its supplementary rule, so no private creator of a "
+                "removed block survives in its items.",
+            ]
+            if _rule_action(_PRIVATE_CHARACTERISTICS) != "K"
+            else []
+        ),
+    ]
+
+
+_PRIVATE_CHARACTERISTICS = "(0008,0300)"
+# Code Value, Coding Scheme Designator, and Code Meaning.
+_CODE_TAGS = ("(0008,0100)", "(0008,0102)", "(0008,0104)")
+
+
+def _rule_action(tag: str) -> str | None:
+    """Return the Basic Profile action of an attribute's supplementary rule."""
+    rule = load_supplementary_actions().rules.get(tag)
+    return None if rule is None else rule.action
+
+
+def _local_codes(named: Callable[[str], str]) -> list[str]:
+    """Say that the codes of local coding schemes are kept, where they are."""
+    if any(_rule_action(tag) != "K" for tag in _CODE_TAGS):
+        return []
+    return [
+        "## Codes of local coding schemes",
+        "",
+        f"{_join(named(tag) for tag in _CODE_TAGS)} are kept ({_code('K')}) by "
+        "their supplementary rules, whatever the coding scheme, so that coded "
+        "meaning survives (D-022). A code of a local coding scheme, whose "
+        'Coding Scheme Designator begins with "99" or is "L" (PS3.3 Section '
+        "8.2), can carry the institution's name or abbreviation in those "
+        "values. Each such value, like every other string that the engine "
+        "keeps, is listed among the retained strings of the run's "
+        "confidential QC pack, where a reviewer can find it (D-017).",
+        "",
     ]
 
 
@@ -618,6 +660,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         *_superseded(statement),
         "",
         *_other(statement, named),
+        *_local_codes(named),
         *_roi_names(statement),
         *conformance_values.values_written(named),
         "",

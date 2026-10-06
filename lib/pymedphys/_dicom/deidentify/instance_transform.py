@@ -33,7 +33,10 @@ each instance it may process. It joins the engine's per-instance steps:
    :func:`~pymedphys._dicom.deidentify.preserving_writer.write_file_bytes`
    write the file;
 6. :func:`~pymedphys._dicom.deidentify.preservation.verify_preservation`
-   checks the file written against its source and the same plan; and
+   checks the file written against its source and the same plan, and
+   :func:`~pymedphys._dicom.deidentify.iod_conformance.lost_requirements`
+   checks that it still holds each attribute that its IOD requires where
+   the source held one; and
 7. :func:`~pymedphys._dicom.deidentify.output_names.instance_path` names the
    file from its replacement Patient ID and UIDs alone (D-016).
 
@@ -99,7 +102,8 @@ from .elements import (
     read_element,
 )
 from .file_layout import ElementPath
-from .iods import IODTables, load_iod_tables
+from .iod_conformance import lost_requirements
+from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
 from .markers import MarkerError, Markers, apply_markers, markers_for
 from .method_digest import method_digest
@@ -109,6 +113,7 @@ from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
 from .reasons import TransformReason
+from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
 from .release_gate import (
@@ -122,13 +127,14 @@ from .release_gate import (
 )
 from .residuals import NotSearched, has_written_constant, not_searched_of
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
-from .pixel_risk import assess_pixel_risk
-from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial
+from .pixel_risk import assess_pixel_risk, series_evidence
+from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial, SeriesEvidence
 from .run_report import ReleaseReporter
 from .scope import classify
 from .source import SourceEvidence, SourceRefused, read_source
 from .uids import UIDOutcome
 from .walker import Consumer, InstancePlan, plan_instance
+from .written_references import WrittenFinding, verify_written_references
 
 _SOP_CLASS = ElementPath((), "(0008,0016)")
 _SOP_INSTANCE = ElementPath((), "(0008,0018)")
@@ -652,6 +658,18 @@ class InstanceTransform:
     def __repr__(self) -> str:
         return "InstanceTransform()"
 
+    def written_check(
+        self, graph: ReferenceGraph, written: Mapping[int, InstanceRecord]
+    ) -> tuple[WrittenFinding, ...]:
+        """Check what a run with this transform wrote against its first pass.
+
+        The reference graph's second pass under the transform's key, for
+        :func:`~pymedphys._dicom.deidentify.run.run`'s ``written_check``, as
+        :func:`~pymedphys._dicom.deidentify.written_references.verify_written_references`
+        makes it.
+        """
+        return verify_written_references(self._key, graph, written)
+
     def __call__(
         self, data: bytes, record: InstanceRecord
     ) -> Transformed | Sequestered:
@@ -673,7 +691,7 @@ class InstanceTransform:
         ):
             return Sequestered((classification.disposition,))
         iod = self._iods.iods[classification.iod]
-        risk = _pixel_risk(dataset)
+        risk = _pixel_risk(dataset, record)
         plan = plan_instance(source, self._rules, iod)
         edits = edit_instance(source, plan, self._key, record.patient)
         evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
@@ -730,7 +748,7 @@ class InstanceTransform:
                 dataset,
                 self._markers[satisfied],
             )
-            return Transformed(*_written(source, writing), evidence, qc)
+            return Transformed(*_written(source, writing, iod), evidence, qc)
         except _Refused as refused:
             reasons = tuple(
                 TransformReason.PENDING_EDIT if isinstance(r, PendingEdit) else r
@@ -739,18 +757,24 @@ class InstanceTransform:
             return Sequestered(tuple(dict.fromkeys(reasons)), evidence, qc)
 
 
-def _pixel_risk(dataset: pydicom.Dataset | None) -> tuple[PixelRiskMaterial, ...]:
+def _pixel_risk(
+    dataset: pydicom.Dataset | None, record: InstanceRecord
+) -> tuple[PixelRiskMaterial | SeriesEvidence, ...]:
     """The QC material of the source's indicators of risk in its pixel data.
 
     The source is assessed, since the Basic Profile removes some of the
-    evidence, such as an overlay group whose graphics lie in the pixel data.
-    A source whose data set does not decode gives none: the walker and the
-    gate decide what becomes of it.
+    evidence, such as an overlay group whose graphics lie in the pixel data:
+    its own indicators, if any, and what it gives the assessment of its
+    series, by its source Series Instance UID. A source whose data set does
+    not decode gives none: the walker and the gate decide what becomes of it.
     """
     if dataset is None:
         return ()
     assessment = assess_pixel_risk(dataset)
-    return (PixelRiskMaterial(assessment),) if assessment.findings else ()
+    return (
+        *((PixelRiskMaterial(assessment),) if assessment.findings else ()),
+        SeriesEvidence(record.series, series_evidence(dataset)),
+    )
 
 
 def transform_for(
@@ -808,9 +832,9 @@ def _retained(source: SourceEvidence, plan: InstancePlan) -> tuple[object, ...]:
 
 
 def _written(
-    source: SourceEvidence, writing: WriterPlan
+    source: SourceEvidence, writing: WriterPlan, iod: IOD
 ) -> tuple[PurePosixPath, bytes]:
-    """Return the output's path and bytes, verified against the source."""
+    """Return the output's path and bytes, verified against the source and IOD."""
     path = _output_path(writing.replacements)
     sop_class = _replaced(writing.replacements, _SOP_CLASS)
     if sop_class is None:
@@ -838,6 +862,8 @@ def _written(
         verify_preservation(source, output, writing.expectations)
     except PreservationFailed as failed:
         raise _Refused(failed.reason) from None
+    if lost_requirements(source, output, iod, frozenset(writing.replacements)):
+        raise _Refused(TransformReason.REQUIRED_ATTRIBUTE_LOST)
     return path, data
 
 

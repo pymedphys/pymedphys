@@ -287,6 +287,7 @@ def test_a_sequence_is_descended_under_k_or_u_and_removed_under_any_other_action
             assert elements[beam_number].action == "K"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 def test_x_z_on_a_type_1_attribute_gives_d():
     # RT Plan Label (300A,0002) is Type 1 in an RT Plan, so the Z that X/Z
     # offers writes D's dummy value, as decided on 1 October 2026.
@@ -408,6 +409,7 @@ def _patient_setup_photo():
     return _explicit(0x300A0180, "SQ", _item(setup))
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 def test_a_plain_x_where_the_iod_requires_the_attribute_removes_a_type_3_sequence():
     # D-020: the attribute is removed, and with it the innermost enclosing
     # sequence that is Type 3 at its own place, with everything in it, the
@@ -434,6 +436,7 @@ def test_a_plain_x_where_the_iod_requires_the_attribute_removes_a_type_3_sequenc
     assert elements[_path(("(300A,0180)", 0), "(300A,0182)")].action == "K"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 def test_a_plain_x_where_the_iod_requires_the_attribute_and_no_sequence_sequesters():
     # Responsible Person (0010,2297) is Type 2C in the Patient Module, and no
     # sequence encloses it (D-020).
@@ -454,6 +457,7 @@ def test_a_plain_x_where_the_iod_requires_the_attribute_and_no_sequence_sequeste
     assert name.action == "Z"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 def test_removing_overlay_data_removes_every_attribute_of_its_group():
     # The CT Image IOD includes the Overlay Plane Module as user-optional, so
     # removing Overlay Data (6000,3000) removes its group, but not another
