@@ -287,7 +287,7 @@ def test_a_sequence_is_descended_under_k_or_u_and_removed_under_any_other_action
             assert elements[beam_number].action == "K"
 
 
-@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09", "MIDI-BP-03")
 def test_x_z_on_a_type_1_attribute_gives_d():
     # RT Plan Label (300A,0002) is Type 1 in an RT Plan, so the Z that X/Z
     # offers writes D's dummy value, as decided on 1 October 2026.
@@ -375,6 +375,7 @@ def test_person_identification_code_sequence_has_a_reviewed_dummy_value():
     assert item("(0008,0100)").removed_with == codes
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_plain_z_on_a_type_1_attribute_writes_and_compares_a_dummy_value():
     elements = _by_path(_plan(rules=_Overridden({"(300A,0002)": "Z"})))
 

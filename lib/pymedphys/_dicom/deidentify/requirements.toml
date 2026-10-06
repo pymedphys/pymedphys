@@ -645,14 +645,15 @@ id = "MIDI-BP-03"
 text = '''
 Do not let de-identification compromise conformance with the standards that define the content or reduce functionality. DICOM output should still conform to its original IOD, with dummy values synthesised where needed and replacement values consistent across files within a defined scope, such as replaced UIDs that keep references intact. This covers optional attributes critical to functionality as well as required ones.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-026"]
 implementation = [
   "_dicom/deidentify/compound_actions.py",
   "_dicom/deidentify/dummy_values.py",
+  "_dicom/deidentify/edits.py",
   "_dicom/deidentify/elements.py",
   "_dicom/deidentify/file_layout.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/iod_conformance.py",
   "_dicom/deidentify/iods.py",
   "_dicom/deidentify/preserving_writer.py",
@@ -668,6 +669,7 @@ implementation = [
   "_dicom/deidentify/sequences.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/values.py",
+  "_dicom/deidentify/walker.py",
   "_dicom/deidentify/written_references.py",
 ]
 note = '''
@@ -687,7 +689,7 @@ A second pass checks what was written against the first: that each written insta
 A run makes that check of every file that its gate releases, before anything is published: each instance that a finding names is sequestered, and what is left is checked again, a reference to an instance that was withheld being reported only, while a check that fails, or a finding that no sequestration can isolate, publishes nothing.
 Each written instance is checked against its IOD before it can be released: every attribute that its source holds where the IOD requires it, by the same strictest Type, must still be there where the item that held it is, and a Type 1 or 1C one must not have been emptied, or the instance is sequestered, since the engine caused it; the removals that a plain X allows on their own are not findings, and what the source already lacks is not acted on.
 Instead, each attribute that the IOD unconditionally requires, a Type 1 or 2 attribute of a mandatory module at the top level or of an item that the source holds, and that the source lacks, is reported: the release report counts the instances by attribute and Type, and the QC pack lists each by instance and place.
-Remaining: writing the dummy values that the resolved compound actions call for (M3).
+The walker gives D's dummy value wherever a compound action, or a plain Z, resolves to it on a Type 1 or 1C attribute, and the run's instance transform writes it, so a written instance keeps a valid value wherever its IOD requires one (D-020, D-021).
 '''
 
 [[requirement]]
