@@ -617,8 +617,10 @@ class InstanceTransform:
         )
         self._vocabulary = None if cleaning is None else cleaning.vocabulary
         self.review_queue = ReviewQueue()
+        nomenclature = None if cleaning is None else cleaning.nomenclature
+        reviewed = None if cleaning is None else cleaning.reviewed.keyed_digest(key)
         digest = method_digest(
-            policy, vocabulary=None if cleaning is None else cleaning.nomenclature
+            policy, vocabulary=nomenclature, reviewed_roi_names=reviewed
         )
         satisfied = satisfied_options(policy)
         self._markers = {
@@ -631,7 +633,7 @@ class InstanceTransform:
         }
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
         self.reporter = ReleaseReporter(
-            policy, vocabulary=None if cleaning is None else cleaning.nomenclature
+            policy, vocabulary=nomenclature, reviewed_roi_names=reviewed
         )
 
     def __repr__(self) -> str:

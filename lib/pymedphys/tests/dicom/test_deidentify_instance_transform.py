@@ -152,7 +152,9 @@ def test_each_instance_of_a_collection_is_written_and_named_by_its_replacements(
 
 
 def test_each_output_carries_the_de_identification_markers():
-    digest = method_digest(compose_policy("basic"), vocabulary=None)
+    digest = method_digest(
+        compose_policy("basic"), vocabulary=None, reviewed_roi_names=None
+    )
     for dataset in synthetic.collection():
         written = pydicom.dcmread(io.BytesIO(_transformed(dataset).data))
 

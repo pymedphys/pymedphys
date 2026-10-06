@@ -46,6 +46,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
     ReleaseGate,
 )
 from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.method_digest import method_digest
 from pymedphys._dicom.deidentify.policy import PolicyError, compose_policy
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.reviewed_roi_names import (
@@ -227,6 +228,23 @@ def test_a_roi_name_without_a_decision_holds_the_instance_for_review():
     assert isinstance(decision, run.HoldForReview)
     assert decision.reasons[0] == HeldRoiName(path, Reason.UNMATCHED)
     assert "SURGEONS" not in repr(decision) + repr(result)
+
+
+def test_the_method_digest_and_the_report_cover_the_reviewed_names():
+    reviewed = _reviewed(PTV_CUSTOM=ReviewedName(Review.KEEP))
+    transform = _transform(reviewed)
+    result = _transformed(transform, _structure_set("PTV_CUSTOM"))
+
+    keyed = reviewed.keyed_digest(KEY)
+    digest = method_digest(
+        compose_policy("basic-clean-descriptors"),
+        vocabulary=_NOMENCLATURE,
+        reviewed_roi_names=keyed,
+    )
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert list(written.DeidentificationMethod)[:1] == [digest]
+    method = json.loads(transform.reporter((), {}))["method"]
+    assert (method["method_digest"], method["reviewed_roi_names"]) == (digest, keyed)
 
 
 def test_a_run_holds_the_structure_set_and_releases_the_rest(tmp_path):

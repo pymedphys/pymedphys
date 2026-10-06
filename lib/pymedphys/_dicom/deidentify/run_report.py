@@ -83,13 +83,25 @@ class ReleaseReporter:
         against, or None without one, as
         :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
+    reviewed_roi_names : str or None
+        The keyed digest of the reviewed-names list that descriptor cleaning
+        applies to ROI Names, or None without one, as
+        :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        takes it.
     """
 
-    def __init__(self, policy: Policy, *, vocabulary: tg263.Nomenclature | None):
+    def __init__(
+        self,
+        policy: Policy,
+        *,
+        vocabulary: tg263.Nomenclature | None,
+        reviewed_roi_names: str | None,
+    ):
         if not isinstance(policy, Policy):
             raise TypeError("policy must be a Policy")
         self._policy = policy
         self._vocabulary = vocabulary
+        self._reviewed_roi_names = reviewed_roi_names
 
     def __repr__(self) -> str:
         return "ReleaseReporter()"
@@ -138,6 +150,7 @@ class ReleaseReporter:
         return release_report.release_report(
             self._policy,
             vocabulary=self._vocabulary,
+            reviewed_roi_names=self._reviewed_roi_names,
             **run,  # type: ignore[arg-type]
         )
 

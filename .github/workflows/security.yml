@@ -6,7 +6,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review, converted_to_draft]
   merge_group:
   workflow_dispatch:
 
@@ -32,7 +32,9 @@ env:
 jobs:
   # PR scans follow their inputs. Main pushes, merge groups, scheduled and
   # manual runs always scan, because vulnerabilities can appear without changes.
+  # Draft PRs run no jobs, as in ci.yml; marking one ready starts its scans.
   changes:
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -225,7 +227,7 @@ jobs:
   security-summary:
     name: Security Summary
     needs: [changes, dependency-audit, python-security, workflow-audit]
-    if: always()
+    if: always() && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

@@ -72,7 +72,9 @@ KEY = DeidKey(bytes(range(32)))
 
 
 def _reporter():
-    return ReleaseReporter(compose_policy("basic"), vocabulary=None)
+    return ReleaseReporter(
+        compose_policy("basic"), vocabulary=None, reviewed_roi_names=None
+    )
 
 
 def _run(tmp_path, transform, gate, reporter):
@@ -266,7 +268,7 @@ def test_coverage_records_follow_the_drops_and_the_search():
 def test_the_reporter_shows_nothing_and_refuses_a_policy_it_cannot_record():
     assert repr(_reporter()) == "ReleaseReporter()"
     with pytest.raises(TypeError):
-        ReleaseReporter("basic", vocabulary=None)
+        ReleaseReporter("basic", vocabulary=None, reviewed_roi_names=None)
 
 
 @pytest.mark.pydicom
