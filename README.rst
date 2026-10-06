@@ -308,6 +308,8 @@ Past contributors
 
 .. _`Cancer Care Riverina`: https://cancercare.com.au/clinics/cancer-care-riverina/
 
+.. _`Hansraj College`: https://hansrajcollege.ac.in/
+
 .. _`Astropy Project`: https://www.astropy.org/
 .. _`PyPI`: https://pypi.org/project/pymedphys/
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
