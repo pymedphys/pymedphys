@@ -364,9 +364,10 @@ class InsertedMarkers:
         for a policy that claims no conformance.
     review_codes : tuple of str
         The Code Values that it gains only in an instance in which every
-        attribute given C is a ROI Name that was renamed, was empty, or took a
-        reviewer's decision: Clean Descriptors', where the policy selects it
-        and can claim conformance.
+        ROI Name was renamed, was empty, or took a reviewer's decision, and
+        whose other attributes given C are removed or replaced:
+        Clean Descriptors', where the policy selects it and can claim
+        conformance.
     temporal : str
         Longitudinal Temporal Information Modified (0028,0303), unless the
         value already present is stricter.

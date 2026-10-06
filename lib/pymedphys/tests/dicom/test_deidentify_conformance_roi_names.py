@@ -212,23 +212,25 @@ def test_the_described_condition_for_the_clean_descriptors_code_is_the_engines(
     )
     assert "pooled human review" not in section
     assert (
-        "only in an instance in which every attribute given C is a ROI Name "
-        "(3006,0026) that was renamed by the automatic tier, was empty, or took "
-        "a reviewer's decision"
+        "only in an instance in which every ROI Name (3006,0026) was renamed by "
+        "the automatic tier, was empty, or took a reviewer's decision"
     ) in section
-    assert "takes the action that the policy gives it without Clean Descriptors" in (
+    assert "where that action removes or replaces it, the instance still meets" in (
         section
     )
+    assert "another attribute given C that that action keeps" in section
     # Renamed automatically, so the instance gains the code.
     _, decision, codes = _released_codes(_transform(), _structure_set("lung_l"))
     assert isinstance(decision, run.Release)
     assert CLEAN_DESCRIPTORS_CODE in codes
-    # Another descriptor given C loses it.
-    _, decision, codes = _released_codes(
+    # Another descriptor given C, which its Basic Profile action removes,
+    # keeps it.
+    written, decision, codes = _released_codes(
         _transform(),
         _structure_set("lung_l", StudyDescription="SENTINEL STUDY"),
     )
-    assert CLEAN_DESCRIPTORS_CODE not in codes
+    assert "StudyDescription" not in written
+    assert CLEAN_DESCRIPTORS_CODE in codes
 
 
 @pytest.mark.parametrize("preset", list(policy.PRESETS))

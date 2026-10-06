@@ -419,13 +419,16 @@ def _inserted(
             codes += (
                 ", then "
                 f"{_join(coded(c) for c in found.review_codes)} only in an "
-                f"instance in which every attribute given C is a "
-                f"{_ROI_NAME_NAMED} that was renamed by the automatic tier, "
-                "was empty, or took a reviewer's decision. Every other "
-                "attribute given C takes the action that the policy gives it "
-                "without Clean Descriptors, since how it is cleaned is not yet "
-                "described, and an instance that holds one, a held name, or a "
-                "name emptied without review does not gain that code"
+                f"instance in which every {_ROI_NAME_NAMED} was renamed by "
+                "the automatic tier, was empty, or took a reviewer's "
+                "decision. Every other attribute given C takes the action "
+                "that the policy gives it without Clean Descriptors, since how "
+                "it is cleaned is not yet described; where that action removes "
+                "or replaces it, the instance still meets the option, since "
+                "PS3.15 E.3.5 specifies what the option removes, and Table "
+                "E.1-1 gives the minimum actions. An instance with a held "
+                "name, a name emptied without review, or another attribute "
+                "given C that that action keeps does not gain that code"
             )
         codes += (
             ". A code is not added where an item already present has the same "
