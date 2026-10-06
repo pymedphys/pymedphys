@@ -354,6 +354,33 @@ def _write_bytes(path: Path | str, data: bytes, directory: int | None) -> None:
         file.write(data)
 
 
+def withdraw_qc_pack(destination: Path) -> bool:
+    """Remove the files that :func:`write_qc_pack` wrote in ``destination``.
+
+    For a pack whose release was not published. The pack and its notice go
+    first and the marker last, only once both are gone, so that whatever
+    remains is still recognised as QC material (D-016). The directory is
+    kept, empty, so that a run may write to it again.
+
+    Returns
+    -------
+    bool
+        Whether every file is gone.
+    """
+    withdrawn = True
+    for name in (PACK_FILE, NOTICE_FILE):
+        try:
+            (destination / name).unlink(missing_ok=True)
+        except OSError:
+            withdrawn = False
+    if withdrawn:
+        try:
+            (destination / MARKER_FILE).unlink(missing_ok=True)
+        except OSError:
+            withdrawn = False
+    return withdrawn
+
+
 def is_qc_material(path: os.PathLike | str) -> bool:
     """Return whether a path is QC material, or a directory that holds some.
 

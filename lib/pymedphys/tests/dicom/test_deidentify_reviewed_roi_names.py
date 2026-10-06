@@ -535,6 +535,19 @@ def test_the_keyed_digest_is_the_hmac_of_the_lists_canonical_form():
     assert names.keyed_digest(TEST_KEY) == KEYED_DIGEST
 
 
+def test_a_snapshot_keeps_the_decisions_as_they_stood_and_is_never_saved():
+    names = _list(Spine=KEEP)
+    snapshot = names.snapshot()
+    names.record("Gross_Tumour", _map("GTV"))
+    snapshot.record("Cord", KEEP)
+
+    assert snapshot.get("Gross_Tumour") is None
+    assert names.get("Cord") is None
+    assert snapshot.canonical_bytes() != names.canonical_bytes()
+    with pytest.raises(reviewed.ReviewedNamesError):
+        snapshot.save()
+
+
 def test_the_keyed_digest_is_stable_for_the_same_list_and_key(tmp_path):
     path = tmp_path / "reviewed-roi-names.json"
     first = reviewed.ReviewedNames.open(path)

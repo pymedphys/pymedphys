@@ -17,7 +17,8 @@
 A transform's or gate's result carries, besides its value-free reasons, the
 confidential material that a reviewer needs of the instance, as ``qc``: a
 tuple of the objects below, which hold source values and so are left out of
-every ``repr``. The run never reads them; :func:`qc_pack_of` turns them, by
+every ``repr``, and of :class:`~pymedphys._dicom.deidentify.residuals.NotSearched`
+records of the instance's own values. The run never reads them; :func:`qc_pack_of` turns them, by
 run position, into the entries of the run's
 :class:`~pymedphys._dicom.deidentify.qc_pack.QcPack`, with an entry for every
 input from its outcome and source path (D-016, D-026, D-027).
@@ -39,6 +40,12 @@ from .roi_names import Reason
 @dataclasses.dataclass(frozen=True, repr=False)
 class SearchMaterial:
     """The residual search of a gated file, and the file it searched.
+
+    Each of its findings is listed at the file's position, and each form it
+    did not search, which is better given as a
+    :class:`~pymedphys._dicom.deidentify.residuals.NotSearched` item of the
+    instance that holds the value, since a search covers the subject's
+    other instances' values too.
 
     Attributes
     ----------
@@ -171,6 +178,8 @@ def qc_pack_of(
                 )
                 findings.extend(found)
                 omissions.extend(omitted)
+            elif isinstance(item, residuals.NotSearched):
+                omissions.append(qc_pack.NotSearchedEntry(position, item))
             elif isinstance(item, Dropped):
                 drops.append(qc_pack.DropEntry(position, item.source, item.reason))
             elif isinstance(item, RoiNameMaterial):

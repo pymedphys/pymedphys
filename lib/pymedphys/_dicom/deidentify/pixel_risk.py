@@ -63,8 +63,9 @@ a file on first access, in place, and under strict reading its errors can
 quote the value. So each element is read as it was stored, with
 ``get_item(..., keep_deferred=True)``, checked against its pinned VR, and
 decoded apart from the data set; any decoding error is replaced, not
-chained, and pydicom's warnings and log records while a sequence is
-decoded are redacted by :func:`.diagnostics.redacted_diagnostics`.
+chained. A sequence's value is decoded by :func:`.sequences.decode_items`,
+which refuses one that does not hold only items and redacts pydicom's
+warnings and log records while it decodes.
 """
 
 from __future__ import annotations
@@ -79,9 +80,9 @@ from collections.abc import Iterator, MutableSequence, Sequence
 
 from pymedphys._imports import pydicom
 
-from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
-from .standard import VRS, load_data_dictionary
+from .sequences import UnreadableItems, decode_items
+from .standard import load_data_dictionary
 from .uids import normalise_uid
 
 
@@ -296,18 +297,20 @@ def _decoded(vr: str, value: bytes, stored) -> object:
     """
     if vr == "SQ":
         # A UN value is in Implicit VR Little Endian (PS3.5 Section 6.2.2).
-        if stored.VR in (None, "UN"):
-            stored = stored._replace(is_implicit_VR=True, is_little_endian=True)
+        # A nested sequence is read by its own path, as each is reached.
+        explicit = stored.VR == "SQ" and not stored.is_implicit_VR
         try:
-            with redacted_diagnostics():
-                items = pydicom.values.convert_value("SQ", stored._replace(VR="SQ"))
-        # pydicom raises many types for a malformed sequence, and its
-        # message can quote what it read.
-        except Exception:  # pylint: disable = broad-exception-caught
+            return list(
+                decode_items(
+                    value,
+                    explicit=explicit,
+                    little_endian=stored.is_little_endian or not explicit,
+                    offset=stored.value_tell or 0,
+                    nested=False,
+                )
+            )
+        except UnreadableItems:
             raise _Unreadable from None
-        if not all(_whole(item) for item in items):
-            raise _Unreadable
-        return list(items)
     if vr == "LO":
         # Only an ASCII name is compared, and any other is no outline's name.
         text = value.decode("ascii", errors="replace")
@@ -335,28 +338,6 @@ def _decoded(vr: str, value: bytes, stored) -> object:
     except ValueError:
         # Too many digits to convert (Python's integer string conversion limit).
         raise _Unreadable from None
-
-
-def _whole(item: pydicom.Dataset) -> bool:
-    """Return whether each element of an item read from bytes has all its value.
-
-    pydicom reads past the end of a malformed sequence and keeps what it
-    finds, so an element it reads there has an unknown VR or less value than
-    its length. This is no check of the source's structure, which the engine
-    establishes before it assesses an instance, but it stops such an element
-    from passing as the item's content.
-    """
-    for tag in item.keys():
-        stored = item.get_item(tag, keep_deferred=True)
-        if not isinstance(stored, pydicom.dataelem.RawDataElement):
-            continue
-        if stored.VR is not None and stored.VR not in VRS:
-            return False
-        if stored.length != _UNDEFINED_LENGTH and stored.length != len(
-            stored.value or b""
-        ):
-            return False
-    return True
 
 
 def _converted(vr: str, value: object) -> object:
