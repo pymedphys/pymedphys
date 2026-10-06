@@ -113,6 +113,48 @@ def test_a_dataclass_reason_is_named_by_its_type_alone(tmp_path):
     assert SENTINEL not in out + err
 
 
+def test_a_dataclass_reason_is_named_with_its_enum_fields(tmp_path):
+    # Enum members are defined by the code, so they quote nothing; a release
+    # gate's reason gives its decision and code this way.
+    _write(tmp_path / "source", synthetic.collection())
+
+    @dataclasses.dataclass(frozen=True)
+    class Withheld:
+        code: GateReason
+        text: str
+        missing: GateReason | None = None
+
+    gate = Gate(
+        {
+            _output(synthetic.PLAN): run.Sequestered(
+                (Withheld(GateReason.TEXT_FINDING, SENTINEL),)
+            ),
+            _output(synthetic.DOSE): run.Sequestered(
+                (Withheld(GateReason.TEXT_FINDING, "other"),)
+            ),
+        }
+    )
+
+    status, out, err = _call(tmp_path, gate=gate)
+
+    assert status == command.EXIT_WITHHELD
+    assert "Withheld(code=GateReason.TEXT_FINDING): 2" in out
+    assert SENTINEL not in out + err
+
+
+def test_a_dataclass_field_that_nothing_set_is_left_out():
+    @dataclasses.dataclass(frozen=True)
+    class Withheld:
+        code: GateReason
+        unset: GateReason = dataclasses.field(init=False)
+
+    reason = Withheld(GateReason.TEXT_FINDING)
+
+    assert command._reason_name(reason) == (  # pylint: disable=protected-access
+        "Withheld(code=GateReason.TEXT_FINDING)"
+    )
+
+
 def test_refused_inputs_and_findings_are_counted(tmp_path):
     source = _write(tmp_path / "source", synthetic.collection())
     (source / "DICOMDIR").write_bytes(b"not read")
