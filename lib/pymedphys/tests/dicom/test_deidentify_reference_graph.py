@@ -33,6 +33,9 @@ DUPLICATE = reference_graph.FindingKind.DUPLICATE_INSTANCE
 CONFLICTING = reference_graph.FindingKind.CONFLICTING_INSTANCE
 SEVERAL_STUDIES = reference_graph.FindingKind.SERIES_IN_SEVERAL_STUDIES
 SEVERAL_PATIENTS = reference_graph.FindingKind.STUDY_WITH_SEVERAL_PATIENTS
+SEVERAL_FRAMES = reference_graph.FindingKind.SERIES_IN_SEVERAL_FRAMES
+UNLISTED_FRAME = reference_graph.FindingKind.UNLISTED_ROI_FRAME
+IMAGE_FRAME = reference_graph.FindingKind.CONTOUR_IMAGE_IN_ANOTHER_FRAME
 SOP_INSTANCE_UID, SERIES_INSTANCE_UID, STUDY_INSTANCE_UID = (
     "(0008,0018)",
     "(0020,000E)",
@@ -932,11 +935,14 @@ def _inconsistent_collection():
     datasets[PLAN].ReferencedRTPlanSequence = [
         synthetic.reference(synthetic.RT_PLAN_STORAGE, "2.25.9013")
     ]
+    # The slice in another study is in another frame of reference too.
+    frames = {0: "2.25.9014", 1: "2.25.9014", 2: "2.25.9015", 6: "2.25.9014"}
+    synthetic.set_frames(datasets, frames, "2.25.9014", ("2.25.9016",))
     values = {
         OTHER_PATIENT_ID,
         SOURCE_ISSUER,
         OTHER_STUDY,
-        "2.25.9013",
+        *(f"2.25.{number}" for number in range(9013, 9017)),
         "SYNTHETIC PRIVATE TEXT",
     }
     return datasets, values
@@ -959,6 +965,9 @@ def test_findings_are_ordered_by_kind_from_instance_to_study():
             ((0, 1, 3, 6, 7), (PLAN,), (DOSE,)),
             (STUDY_INSTANCE_UID,),
         ),
+        Finding(SEVERAL_FRAMES, ((0, 1, 6), (2,)), ("(0020,0052)",)),
+        Finding(UNLISTED_FRAME, ((STRUCTURE_SET,),), ("(3006,0020)", "(3006,0024)"), 1),
+        Finding(IMAGE_FRAME, ((STRUCTURE_SET,), (2,)), synthetic.CONTOUR_IMAGES, 1),
     )
 
 
