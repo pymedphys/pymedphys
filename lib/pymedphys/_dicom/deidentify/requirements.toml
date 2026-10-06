@@ -372,8 +372,7 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information that is embedded in text or string Attributes corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-009", "D-022"]
 implementation = [
   "_dicom/deidentify/descriptor_cleaning.py",
