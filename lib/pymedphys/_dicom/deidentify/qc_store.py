@@ -17,8 +17,8 @@
 A QC pack (:mod:`~pymedphys._dicom.deidentify.qc_pack`) may identify people,
 so it is written only to a location that the caller designates explicitly,
 restricted to authorised reviewers, and never inside a release (D-016).
-:func:`write_qc_pack` writes a pack as :data:`PACK_FILE`, beside a handling
-notice, :data:`NOTICE_FILE`, and the marker :data:`MARKER_FILE`, by which
+:func:`write_qc_pack` writes a pack as :data:`PACK_FILE`, with its image
+previews, beside a handling notice, :data:`NOTICE_FILE`, and the marker :data:`MARKER_FILE`, by which
 :func:`is_qc_material` recognises QC material so that a release step can
 refuse it.
 
@@ -34,7 +34,7 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 
-from .qc_pack import FORMAT, QcPack, QcPackError, to_json
+from .qc_pack import FORMAT, PREVIEW_DIRECTORY, QcPack, QcPackError, to_json
 
 PACK_FILE = "qc-pack.json"
 NOTICE_FILE = "README.txt"
@@ -217,9 +217,11 @@ def write_qc_pack(
     release and staging directories are then repeated on what was created.
     On POSIX, the directory is opened without following a symbolic link,
     given mode 0o700, and its files are created within it, each with mode
-    0o600. It receives, in this order, the marker :data:`MARKER_FILE`,
-    :data:`PACK_FILE` from :func:`~.qc_pack.to_json`, and :data:`NOTICE_FILE`,
-    the handling notice :data:`NOTICE`. A file is never overwritten.
+    0o600. It receives, in this order, the marker :data:`MARKER_FILE`; the
+    pack's previews, if it has any, in a new directory
+    :data:`~.qc_pack.PREVIEW_DIRECTORY` of mode 0o700; :data:`PACK_FILE` from
+    :func:`~.qc_pack.to_json`; and :data:`NOTICE_FILE`, the handling notice
+    :data:`NOTICE`. A file or directory is never overwritten.
 
     Parameters
     ----------
@@ -265,13 +267,23 @@ def write_qc_pack(
             raise os_error("the QC destination could not be created", error) from None
     if check(target) != target:
         raise QcPackError("the QC destination changed while it was checked")
-    files = ((MARKER_FILE, FORMAT + "\n"), (PACK_FILE, document), (NOTICE_FILE, NOTICE))
+    marker = (MARKER_FILE, (FORMAT + "\n").encode("ascii"))
+    previews = tuple((preview.name, preview.png) for preview in pack.previews)
+    files = (
+        (PACK_FILE, document.encode("ascii")),
+        (NOTICE_FILE, NOTICE.encode("ascii")),
+    )
     try:
         if _POSIX:
-            _write_within(target, files)
+            _write_within(target, marker, previews, files)
         else:
-            for name, text in files:
-                write_new(target / name, text)
+            _write_bytes(target / marker[0], marker[1], None)
+            if previews:
+                (target / PREVIEW_DIRECTORY).mkdir(mode=_DIRECTORY_MODE)
+                for name, data in previews:
+                    _write_bytes(target / PREVIEW_DIRECTORY / name, data, None)
+            for name, data in files:
+                _write_bytes(target / name, data, None)
     except FileExistsError:
         raise QcPackError(
             "the QC destination gained a file while it was written"
@@ -281,16 +293,35 @@ def write_qc_pack(
     return target / PACK_FILE
 
 
-def _write_within(target: Path, files: tuple[tuple[str, str], ...]) -> None:
+_Files = tuple[tuple[str, bytes], ...]
+_OPEN_DIRECTORY = (
+    os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW  # pylint: disable = no-member
+    if _POSIX
+    else 0
+)
+
+
+def _write_within(
+    target: Path, marker: tuple[str, bytes], previews: _Files, files: _Files
+) -> None:
     """Write new files within a directory opened without following links."""
-    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW  # pylint: disable = no-member
-    directory = os.open(target, flags)
+    directory = os.open(target, _OPEN_DIRECTORY)
     try:
         if not os.path.samestat(os.fstat(directory), target.stat()):
             raise QcPackError("the QC destination changed while it was written")
         os.fchmod(directory, _DIRECTORY_MODE)  # pylint: disable = no-member
-        for name, text in files:
-            _write_bytes(name, text.encode("ascii"), directory)
+        _write_bytes(*marker, directory)
+        if previews:
+            os.mkdir(PREVIEW_DIRECTORY, _DIRECTORY_MODE, dir_fd=directory)
+            within = os.open(PREVIEW_DIRECTORY, _OPEN_DIRECTORY, dir_fd=directory)
+            try:
+                os.fchmod(within, _DIRECTORY_MODE)  # pylint: disable = no-member
+                for name, data in previews:
+                    _write_bytes(name, data, within)
+            finally:
+                os.close(within)
+        for name, data in files:
+            _write_bytes(name, data, directory)
     finally:
         os.close(directory)
 

@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module for the pack's model, whose checks span its entries.
+
 """The confidential QC pack: what a reviewer needs, kept apart from releases.
 
 A de-identification run's release report can be distributed with its output,
@@ -39,7 +42,14 @@ A pack holds, for one run:
   string (D-017);
 - ``roi_names``: what descriptor cleaning wrote for each ROI Name, for the
   audit of every name renamed, kept, or mapped, and each name held for
-  review, with why (D-009).
+  review, with why (D-009);
+- ``pixel_risks``: each instance in a high-risk category, with the
+  indicators of risk in its pixel data that put it there (D-017);
+- ``previews``: each image preview, by its file in the previews directory
+  beside the pack, with what it shows and the file's SHA-256, so that an
+  attestation of the pack covers them; and ``not_previewed``: each instance
+  whose pixel data could not be previewed, with why (D-017). The images are
+  made by :mod:`~pymedphys._dicom.deidentify.qc_previews`.
 
 Its ``reference`` is an opaque random token that the release report records
 with the attestation's outcome, in place of the review material (D-016). It
@@ -56,13 +66,14 @@ from __future__ import annotations
 import codecs
 import dataclasses
 import enum
+import hashlib
 import json
 import re
 import secrets
 from collections.abc import Iterable
 from pathlib import PurePosixPath
 
-from . import residuals, roi_names
+from . import pixel_risk, residuals, roi_names
 from .file_layout import ElementPath, Location
 from .labels import LABEL_PATTERN
 from .residuals import UnsearchedReason
@@ -72,6 +83,9 @@ from .reviewed_roi_names import Outcome
 FORMAT = "pymedphys-deid-qc-pack/1"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
+
+# The directory, beside the pack's file, that holds its previews.
+PREVIEW_DIRECTORY = "previews"
 # The most bytes copied at a time while finding an excerpt's decoding state.
 _CHUNK_BYTES = 4096
 
@@ -533,6 +547,159 @@ class RoiNameEntry:
         )
 
 
+class PreviewKind(enum.Enum):
+    """What an image preview shows (D-017)."""
+
+    SERIES_CINE = "series-cine"  # frames evenly spaced through a series
+    SERIES_MIP = "series-mip"  # a frontal maximum intensity projection
+    INSTANCE = "instance"  # a high-risk instance at full resolution
+
+
+class NotPreviewedReason(enum.Enum):
+    """Why an instance has no image preview."""
+
+    COMPRESSED = "compressed-pixel-data"
+    UNSUPPORTED = "unsupported-pixel-data"
+    UNREADABLE = "unreadable-pixel-data"
+    # a high-risk instance, such as an RT Structure Set, without pixel data
+    NO_PIXEL_DATA = "no-pixel-data"
+
+
+PREVIEW_NAME = re.compile(r"P-[0-9]{4,}\.png")
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+# The dispositions whose written files a reviewer sees.
+_REVIEWED = frozenset({Disposition.RELEASED, Disposition.HELD_FOR_REVIEW})
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class Preview:
+    """An image preview, as a PNG file, for the review of D-017.
+
+    Its ``repr`` leaves out the image.
+
+    Attributes
+    ----------
+    name : str
+        Its file name, ``P-0001.png`` onwards, which the pack's previews
+        directory holds.
+    kind : PreviewKind
+    frames : tuple of (int, int)
+        The frames it shows, each by run position and frame index from 0,
+        in the order shown: row by row for a strip.
+    total_frames : int
+        How many frames its series or instance has, at least as many as it
+        shows.
+    png : bytes
+        The PNG file.
+    """
+
+    name: str
+    kind: PreviewKind
+    frames: tuple[tuple[int, int], ...]
+    total_frames: int
+    png: bytes
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.name, str) or not PREVIEW_NAME.fullmatch(self.name):
+            raise QcPackError("a preview needs a name such as P-0001.png")
+        if not isinstance(self.kind, PreviewKind):
+            raise QcPackError(f"preview {self.name} needs a PreviewKind")
+        if not (
+            isinstance(self.frames, tuple)
+            and self.frames
+            and all(_is_frame(frame) for frame in self.frames)
+            and len(set(self.frames)) == len(self.frames)
+        ):
+            raise QcPackError(
+                f"preview {self.name} needs distinct frames of a run position "
+                "and a frame index"
+            )
+        if (
+            not isinstance(self.total_frames, int)
+            or isinstance(self.total_frames, bool)
+            or self.total_frames < len(self.frames)
+        ):
+            raise QcPackError(
+                f"preview {self.name} needs at least as many frames as it shows"
+            )
+        if not isinstance(self.png, bytes) or not self.png.startswith(_PNG_SIGNATURE):
+            raise QcPackError(f"preview {self.name} needs a PNG file")
+
+    @property
+    def sha256(self) -> str:
+        """The SHA-256 of the PNG file, in lower-case hexadecimal."""
+        return hashlib.sha256(self.png).hexdigest()
+
+    def __repr__(self) -> str:
+        return (
+            f"Preview(name={self.name!r}, kind={self.kind.value!r}, "
+            f"frames={len(self.frames)}, total_frames={self.total_frames})"
+        )
+
+
+def _is_frame(frame: object) -> bool:
+    return (
+        isinstance(frame, tuple)
+        and len(frame) == 2
+        and all(
+            isinstance(index, int) and not isinstance(index, bool) and index >= 0
+            for index in frame
+        )
+    )
+
+
+@dataclasses.dataclass(frozen=True)
+class NotPreviewedEntry:
+    """An instance whose written file has no preview, and why.
+
+    Attributes
+    ----------
+    position : int
+        The instance's run position.
+    reason : NotPreviewedReason
+    """
+
+    position: int
+    reason: NotPreviewedReason
+
+    def __post_init__(self) -> None:
+        _check_position("an instance not previewed", self.position)
+        if not isinstance(self.reason, NotPreviewedReason):
+            raise QcPackError(
+                f"instance {self.position} not previewed needs a NotPreviewedReason"
+            )
+
+
+@dataclasses.dataclass(frozen=True)
+class PixelRiskEntry:
+    """An instance in a high-risk category, and the indicators that put it there.
+
+    Attributes
+    ----------
+    position : int
+        The instance's run position.
+    findings : tuple of ~pymedphys._dicom.deidentify.pixel_risk.Finding
+        At least one; each names an indicator, its risk, and an attribute
+        path, never a value.
+    """
+
+    position: int
+    findings: tuple[pixel_risk.Finding, ...]
+
+    def __post_init__(self) -> None:
+        _check_position("a high-risk instance", self.position)
+        if not (
+            isinstance(self.findings, tuple)
+            and self.findings
+            and all(
+                isinstance(finding, pixel_risk.Finding) for finding in self.findings
+            )
+        ):
+            raise QcPackError(
+                f"high-risk instance {self.position} needs its pixel risk findings"
+            )
+
+
 @dataclasses.dataclass(frozen=True, repr=False)
 class QcPack:
     """What a reviewer needs from one run, as the module describes.
@@ -551,6 +718,12 @@ class QcPack:
     retained_strings : tuple of RetainedString
         Each value once.
     roi_names : tuple of RoiNameEntry
+    pixel_risks : tuple of PixelRiskEntry
+        Each high-risk instance once, in run position order.
+    previews : tuple of Preview
+        Named ``P-0001.png`` onwards, in order, at one width.
+    not_previewed : tuple of NotPreviewedEntry
+        Each instance once, in run position order.
 
     Raises
     ------
@@ -560,7 +733,11 @@ class QcPack:
         S-0001 to S-n, each once, at the width of n or 4 digits, as the
         release report gives them; if two released instances share an output
         path; if a duplicate's output path is not a released instance's; if an entry names a run position without
-        an instance; or if two retained strings are the same.
+        an instance; or if two retained strings are the same; if a preview
+        shows a frame of an instance that was neither released nor held for
+        review, or the previews are not named P-0001.png onwards; or if an
+        instance is listed twice as high-risk or as not previewed, or out of
+        order.
     """
 
     reference: str
@@ -570,6 +747,9 @@ class QcPack:
     not_searched: tuple[NotSearchedEntry, ...] = ()
     retained_strings: tuple[RetainedString, ...] = ()
     roi_names: tuple[RoiNameEntry, ...] = ()
+    pixel_risks: tuple[PixelRiskEntry, ...] = ()
+    previews: tuple[Preview, ...] = ()
+    not_previewed: tuple[NotPreviewedEntry, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -583,6 +763,9 @@ class QcPack:
             "not_searched": NotSearchedEntry,
             "retained_strings": RetainedString,
             "roi_names": RoiNameEntry,
+            "pixel_risks": PixelRiskEntry,
+            "previews": Preview,
+            "not_previewed": NotPreviewedEntry,
         }
         for name, kind in sections.items():
             entries = getattr(self, name)
@@ -596,7 +779,14 @@ class QcPack:
             raise QcPackError("instances must be one for each run position from 0")
         self._check_names()
         positions = len(self.instances)
-        for name in ("residual_findings", "drops", "not_searched", "roi_names"):
+        for name in (
+            "residual_findings",
+            "drops",
+            "not_searched",
+            "roi_names",
+            "pixel_risks",
+            "not_previewed",
+        ):
             if any(entry.position >= positions for entry in getattr(self, name)):
                 raise QcPackError(f"{name} names a run position without an instance")
         if any(
@@ -610,6 +800,28 @@ class QcPack:
         values = [retained.value for retained in self.retained_strings]
         if len(set(values)) != len(values):
             raise QcPackError("retained_strings must hold each value once")
+        for name in ("pixel_risks", "not_previewed"):
+            listed = [entry.position for entry in getattr(self, name)]
+            if listed != sorted(set(listed)):
+                raise QcPackError(f"{name} must list each instance once, in order")
+        self._check_previews()
+
+    def _check_previews(self) -> None:
+        width = max(4, len(str(len(self.previews))))
+        if [preview.name for preview in self.previews] != [
+            f"P-{number:0{width}d}.png" for number in range(1, len(self.previews) + 1)
+        ]:
+            raise QcPackError("previews must be named P-0001.png onwards, at one width")
+        if any(
+            position >= len(self.instances)
+            or self.instances[position].disposition not in _REVIEWED
+            for preview in self.previews
+            for position, _ in preview.frames
+        ):
+            raise QcPackError(
+                "a preview shows an instance that was neither released nor held "
+                "for review"
+            )
 
     def _check_names(self) -> None:
         labels = [entry.label for entry in self.instances if entry.label is not None]
@@ -639,7 +851,9 @@ class QcPack:
             f"residual_findings={len(self.residual_findings)}, "
             f"drops={len(self.drops)}, not_searched={len(self.not_searched)}, "
             f"retained_strings={len(self.retained_strings)}, "
-            f"roi_names={len(self.roi_names)})"
+            f"roi_names={len(self.roi_names)}, "
+            f"pixel_risks={len(self.pixel_risks)}, previews={len(self.previews)}, "
+            f"not_previewed={len(self.not_previewed)})"
         )
 
 
@@ -739,6 +953,37 @@ def pack_document(pack: QcPack) -> dict:
                 "written": entry.written,
             }
             for entry in pack.roi_names
+        ],
+        "pixel_risks": [
+            {
+                "position": entry.position,
+                "findings": [
+                    {
+                        "indicator": finding.indicator.value,
+                        "risk": finding.risk.value if finding.risk else None,
+                        "element": str(finding.path),
+                    }
+                    for finding in entry.findings
+                ],
+            }
+            for entry in pack.pixel_risks
+        ],
+        "previews": [
+            {
+                "file": f"{PREVIEW_DIRECTORY}/{preview.name}",
+                "kind": preview.kind.value,
+                "frames": [
+                    {"position": position, "frame": frame}
+                    for position, frame in preview.frames
+                ],
+                "total_frames": preview.total_frames,
+                "sha256": preview.sha256,
+            }
+            for preview in pack.previews
+        ],
+        "not_previewed": [
+            {"position": entry.position, "reason": entry.reason.value}
+            for entry in pack.not_previewed
         ],
     }
 

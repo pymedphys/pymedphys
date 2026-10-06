@@ -184,6 +184,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/private_attributes.py",
         "lib/pymedphys/_dicom/deidentify/pseudonyms.py",
         "lib/pymedphys/_dicom/deidentify/qc_pack.py",
+        "lib/pymedphys/_dicom/deidentify/qc_previews.py",
         "lib/pymedphys/_dicom/deidentify/references.py",
         "lib/pymedphys/_dicom/deidentify/release_gate.py",
         "lib/pymedphys/_dicom/deidentify/release_report.py",
