@@ -14,6 +14,10 @@
 
 """The confidential QC pack and where it may be written."""
 
+# The pack's entries and its store share the same fixtures, so they stay in
+# one module.
+# pylint: disable = too-many-lines
+
 import json
 import re
 import logging
@@ -352,6 +356,56 @@ def test_a_roi_name_entry_is_consistent(outcome, held_because, written, match):
         RoiNameEntry(0, NAME_PATH, "lung l", outcome, held_because, written)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+def test_a_held_roi_name_lists_the_institutional_names_it_matched():
+    held = RoiNameEntry(
+        0,
+        NAME_PATH,
+        "clinicx lung",
+        RoiNameOutcome.HELD,
+        Reason.UNMATCHED,
+        institutional_matches=("CLINICX_LUNG", "ClinicX_Lung"),
+    )
+    emptied = RoiNameEntry(
+        0,
+        NAME_PATH,
+        "clinicx lung",
+        RoiNameOutcome.EMPTIED_UNREVIEWED,
+        Reason.UNMATCHED,
+        "",
+        institutional_matches=("ClinicX_Lung",),
+    )
+
+    assert held.institutional_matches == ("CLINICX_LUNG", "ClinicX_Lung")
+    assert emptied.institutional_matches == ("ClinicX_Lung",)
+    assert "ClinicX" not in repr(held)
+
+
+@pytest.mark.parametrize(
+    "outcome, held_because, written, matches, match",
+    [
+        (RoiNameOutcome.RENAMED, None, "Lung_L", ("Lung_L",), "only when it was held"),
+        (RoiNameOutcome.KEPT, None, "lung l", ("Lung_L",), "only when it was held"),
+        (RoiNameOutcome.HELD, Reason.UNMATCHED, None, ["Lung_L"], "names as text"),
+        (RoiNameOutcome.HELD, Reason.UNMATCHED, None, (1,), "names as text"),
+        (RoiNameOutcome.HELD, Reason.UNMATCHED, None, ("",), "names as text"),
+    ],
+)
+def test_institutional_matches_are_names_of_a_held_roi_name_only(
+    outcome, held_because, written, matches, match
+):
+    with pytest.raises(QcPackError, match=match):
+        RoiNameEntry(
+            0,
+            NAME_PATH,
+            "lung l",
+            outcome,
+            held_because,
+            written,
+            institutional_matches=matches,
+        )
+
+
 def test_roi_name_outcomes_are_named_as_descriptor_cleaning_names_them():
     assert [outcome.value for outcome in RoiNameOutcome] == [
         "renamed",
@@ -482,6 +536,7 @@ def test_the_document_holds_every_section():
             "outcome": "renamed",
             "held_because": None,
             "written": "Lung_L",
+            "institutional_matches": [],
         }
     ]
     assert list(document) == [

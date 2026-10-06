@@ -57,6 +57,13 @@ with the TG-263 columns, including one extended with local names, such as
 content digest of a published edition, as :data:`PUBLISHED_TG263` records.
 Any other list, however converted, is refused, so the caller sends its names
 to review.
+
+An institutional list, converted by :mod:`pymedphys._nomenclature.roi_list`,
+can hold a name that identifies a site or a person, so it renames nothing.
+:class:`InstitutionalNames` matches a name against it as this tier matches,
+except that a leading ``_`` or ``-`` must be matched exactly rather than
+sending the name to review, so that the reviewer of a held name can be shown
+the list's names it matched.
 """
 
 from __future__ import annotations
@@ -67,7 +74,7 @@ import enum
 import re
 from collections.abc import Iterable, Mapping, Sequence
 
-from pymedphys._nomenclature import tg263
+from pymedphys._nomenclature import roi_list, tg263
 
 # LO values may be padded with spaces (PS3.5 Section 6.2); some writers pad
 # with NUL instead.
@@ -190,6 +197,59 @@ class RoiNameVocabulary:
         return f"RoiNameVocabulary(names={len(self.names)})"
 
 
+class InstitutionalNames:
+    """The names of an institutional list, which a held ROI Name is matched against.
+
+    A ROI Name matches a name of the list as the automatic tier matches a
+    vocabulary name, once case, padding, spaces, and the separators ``_``
+    and ``-`` are disregarded, a hyphen in a list name being matched only by
+    a hyphen in the same place, and only names of printable ASCII matching;
+    but leading ``_`` and ``-`` characters must be the same in both, since
+    TG-263 gives a structure not used for dose evaluation a leading ``_``.
+    Matching renames nothing: it shows a reviewer the list's names that a
+    held name matched (D-009).
+
+    Parameters
+    ----------
+    names : ~pymedphys._nomenclature.roi_list.RoiList
+        A list converted by :mod:`pymedphys._nomenclature.roi_list`.
+
+    Raises
+    ------
+    TypeError
+        If ``names`` is not a converted institutional list.
+    """
+
+    def __init__(self, names: roi_list.RoiList):
+        if not isinstance(names, roi_list.RoiList):
+            raise TypeError("the institutional list must be a converted RoiList")
+        index: dict[str, set[str]] = collections.defaultdict(set)
+        for entry in names.entries:
+            key = _prefixed(entry.name, keep_hyphens="-" in entry.name.lstrip("_-"))
+            if key:
+                index[key].add(entry.name)
+        self._index: Mapping[str, frozenset[str]] = {
+            key: frozenset(found) for key, found in index.items()
+        }
+        self._names = frozenset(entry.name for entry in names.entries)
+
+    @property
+    def names(self) -> frozenset[str]:
+        """Every name of the list."""
+        return self._names
+
+    def matches(self, name: str) -> tuple[str, ...]:
+        """Return the list's names that a ROI Name matches, sorted."""
+        stripped = name.strip(_PADDING)
+        keys = {_prefixed(stripped), _prefixed(stripped, keep_hyphens=True)} - {""}
+        return tuple(
+            sorted(frozenset().union(*(self._index.get(key, ()) for key in keys)))
+        )
+
+    def __repr__(self) -> str:
+        return f"InstitutionalNames(names={len(self._names)})"
+
+
 def clean_roi_names(
     names: Sequence[str],
     vocabulary: RoiNameVocabulary,
@@ -272,6 +332,19 @@ def _normalised(name: str, *, keep_hyphens: bool = False) -> str:
         return ""
     pattern = _DISREGARDED_BESIDE_HYPHENS if keep_hyphens else _DISREGARDED
     return pattern.sub("", name).lower()
+
+
+def _prefixed(name: str, *, keep_hyphens: bool = False) -> str:
+    """Return the matching form of a name with its leading separators kept.
+
+    The form is ``""`` if the name cannot match, including where nothing
+    follows its leading separators.
+    """
+    rest = name.lstrip("_-")
+    normalised = _normalised(rest, keep_hyphens=keep_hyphens)
+    if not normalised or not _PRINTABLE_ASCII.fullmatch(name):
+        return ""
+    return name[: len(name) - len(rest)] + normalised
 
 
 def _words(text: str) -> set[str]:

@@ -26,7 +26,7 @@ from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import roi_names
 from pymedphys._dicom.deidentify.roi_names import Reason
-from pymedphys._nomenclature import tg263, tg263_published
+from pymedphys._nomenclature import roi_list, tg263, tg263_published
 
 
 def _structure(primary, reverse):
@@ -461,3 +461,59 @@ def test_the_published_edition_is_the_one_pymedphys_downloads():
     pinned = tg263_published.PUBLISHED
 
     assert roi_names.PUBLISHED_TG263 == {pinned.sheet: pinned.content_sha256}
+
+
+def _institutional(*names):
+    """Return the names of an invented institutional list, as converted."""
+    return roi_names.InstitutionalNames(
+        roi_list.RoiList(
+            source=roi_list.Source(
+                kind=roi_list.KIND, file="invented.csv", sha256="0" * 64, version="1"
+            ),
+            entries=tuple(roi_list.Entry(name, "") for name in names),
+        )
+    )
+
+
+INSTITUTIONAL = _institutional(
+    "ClinicX_Lung", "Lungs-PTV", "_PTV_Opt", "PTV Opt", "Lung_L_Old", "LUNG L OLD"
+)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+@pytest.mark.parametrize(
+    "name, matches",
+    [
+        ("clinicx lung", ("ClinicX_Lung",)),
+        ("CLINICX-LUNG", ("ClinicX_Lung",)),
+        ("  ClinicX_Lung\x00", ("ClinicX_Lung",)),
+        ("lungs - ptv", ("Lungs-PTV",)),
+        ("Lungs PTV", ()),
+        ("_ptv opt", ("_PTV_Opt",)),
+        ("ptv_opt", ("PTV Opt",)),
+        ("-PTV Opt", ()),
+        ("lung l old", ("LUNG L OLD", "Lung_L_Old")),
+        ("Clinicx_Lung\u00e9", ()),
+        ("Heart", ()),
+        ("", ()),
+        ("__", ()),
+    ],
+)
+def test_an_institutional_list_is_matched_as_the_automatic_tier_matches(name, matches):
+    # As the automatic tier: case, padding, and separators are disregarded,
+    # a hyphen in a list name needs a hyphen, and only printable ASCII
+    # matches; a leading separator, which TG-263 gives a structure not used
+    # for dose evaluation, must be matched exactly.
+    assert INSTITUTIONAL.matches(name) == matches
+
+
+def test_an_institutional_list_is_taken_from_a_converted_list_only():
+    with pytest.raises(TypeError, match="institutional list"):
+        roi_names.InstitutionalNames(_nomenclature(("Lung_L", "L_Lung")))  # type: ignore[arg-type]
+
+
+def test_an_institutional_list_never_shows_a_name():
+    assert repr(INSTITUTIONAL) == "InstitutionalNames(names=6)"
+    assert INSTITUTIONAL.names == frozenset(
+        {"ClinicX_Lung", "Lungs-PTV", "_PTV_Opt", "PTV Opt", "Lung_L_Old", "LUNG L OLD"}
+    )

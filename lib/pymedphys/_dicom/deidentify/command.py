@@ -70,7 +70,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import NoReturn, TextIO
 
-from pymedphys._nomenclature import tg263, tg263_published
+from pymedphys._nomenclature import roi_list, tg263, tg263_published
 
 from . import instance_transform, policy, run, run_report
 from .descriptor_cleaning import CLEAN_DESCRIPTORS, DescriptorCleaning
@@ -90,8 +90,8 @@ _RELEASED = (run.Status.RELEASED, run.Status.DUPLICATE)
 # The first supported release's presets (design document, Scope).
 _PRESETS = ("basic", "basic-clean-descriptors")
 _ROI_NAME_OPTIONS = (
-    "error: --tg263, --reviewed-names, and --empty-held-roi-names apply only "
-    "with --preset basic-clean-descriptors"
+    "error: --tg263, --reviewed-names, --empty-held-roi-names, and --roi-list "
+    "apply only with --preset basic-clean-descriptors"
 )
 _TG263_UNLOADED = (
     "error: the TG-263 edition could not be loaded; its details are not "
@@ -100,6 +100,10 @@ _TG263_UNLOADED = (
 _REVIEWED_MISSING = (
     "error: the reviewed-names list does not exist; its path is not shown "
     "because it can name a person"
+)
+_ROI_LIST_UNUSABLE = (
+    "error: the institutional list of ROI names could not be used; its "
+    "details are not shown because they can contain file paths or ROI names"
 )
 _REVIEWED_UNUSABLE = (
     "error: the reviewed-names list could not be used; its details are not "
@@ -370,6 +374,16 @@ def build_parser(
             "held for review, so that its instance can be released"
         ),
     )
+    parser.add_argument(
+        "--roi-list",
+        metavar="FILE",
+        help=(
+            "with basic-clean-descriptors, an institutional list of ROI names "
+            "converted by python -m pymedphys._nomenclature roi-list; it "
+            "renames nothing, and the QC pack shows the reviewer of a held "
+            "ROI Name the list's names it matches"
+        ),
+    )
     return parser
 
 
@@ -411,12 +425,14 @@ def _descriptor_cleaning(arguments: argparse.Namespace) -> DescriptorCleaning:
     from ``--reviewed-names``, which must exist, since this command records no
     decision (:mod:`.reviewed_names_command` records them), and lie outside the source, the release and its staging area,
     and the QC destination; without it, the list is empty. Held names are
-    emptied only with ``--empty-held-roi-names``.
+    emptied only with ``--empty-held-roi-names``. An institutional list,
+    converted from CSV, is read from ``--roi-list``; it renames nothing, and
+    is matched against held names for their reviewer (D-009).
 
     Raises
     ------
     _NotBuilt
-        If the edition or the list cannot be used.
+        If the edition or either list cannot be used.
     """
     try:
         nomenclature = (
@@ -444,8 +460,17 @@ def _descriptor_cleaning(arguments: argparse.Namespace) -> DescriptorCleaning:
             )
         except (ReviewedNamesError, OSError):
             raise _NotBuilt(_REVIEWED_UNUSABLE) from None
+    institutional = None
+    if arguments.roi_list is not None:
+        try:
+            institutional = roi_list.load_json(Path(arguments.roi_list))
+        except (roi_list.RoiListError, OSError, UnicodeDecodeError):
+            raise _NotBuilt(_ROI_LIST_UNUSABLE) from None
     return DescriptorCleaning(
-        nomenclature, reviewed, empty_held=arguments.empty_held_roi_names
+        nomenclature,
+        reviewed,
+        empty_held=arguments.empty_held_roi_names,
+        institutional=institutional,
     )
 
 
@@ -520,6 +545,7 @@ def main(
         arguments.tg263 is not None
         or arguments.reviewed_names is not None
         or arguments.empty_held_roi_names
+        or arguments.roi_list is not None
     )
     if roi_name_options and CLEAN_DESCRIPTORS not in policy.PRESETS[arguments.preset]:
         _print(_ROI_NAME_OPTIONS, error_stream)
