@@ -47,7 +47,7 @@ defines, never from DICOM data directly, and the check is a backstop: a
 field of another form, which could be a source value or a path outside the
 package, is refused. A field that fails is named, never quoted.
 
-Eight sections describe a run, by replacement identifiers, attribute tags,
+Nine sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
 
 - ``qc_review``: the run's QC pack by its opaque reference, with the outcome
@@ -81,6 +81,10 @@ and codes that the engine defines, never by a source value or path:
   finding that the run reports without acting on it, such as a dangling
   reference, from :func:`reference_findings`, each instance once for each
   kind. Only the QC pack lists them by instance.
+- ``pixel_risks``: how many released instances, and how many held for
+  review, show each risk in their pixel data, and each indicator of it, from
+  :func:`pixel_risks`, each instance once for each (D-015). Only the QC pack
+  lists the instances, with the attributes that show each indicator.
 - ``search_coverage``: how many source values of each attribute the
   residual search did not search, in full or in part, by reason (D-027),
   from :func:`search_coverage`. The QC pack lists each by instance and
@@ -109,6 +113,7 @@ from . import method_digest, output_names
 from .method_digest import MethodDigestComponents
 from .file_layout import TAG_PATTERN, ElementPath
 from .iod_conformance import SourceGap
+from .pixel_risk import Indicator, Risk
 from .labels import LABEL_PATTERN as _LABEL_PATTERN
 from .policy import PRESETS, Policy
 from .preservation import PreservationReason
@@ -128,7 +133,7 @@ from .standard import OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/7"
+FORMAT = "pymedphys-deid-release-report/8"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -200,6 +205,11 @@ _HOLDING = {
     "roi-names": frozenset(r.value for r in RoiNameReason),
     "release": _SEQUESTERING["release"],
 }
+# The dispositions of the instances whose pixel data risks are counted: those
+# that reach a recipient, or may once reviewed.
+PIXEL_RISK_DISPOSITIONS = ("released", "held-for-review")
+_RISKS = frozenset(risk.value for risk in Risk)
+_INDICATORS = frozenset(indicator.value for indicator in Indicator)
 # Each enum whose members are a stage's codes, by its stage.
 _STAGES = {
     Disposition: "scope",
@@ -362,6 +372,37 @@ class ReferenceFindings:
 
 
 @dataclasses.dataclass(frozen=True)
+class PixelRiskCount:
+    """How many instances of one disposition show one risk in their pixel data.
+
+    The engine reads indicators of each risk from an instance's attributes,
+    and those of a CT volume from its series, and never inspects the pixel
+    data, so an instance without one may still show the risk (D-015).
+
+    Attributes
+    ----------
+    disposition : str
+        ``"released"`` or ``"held-for-review"``.
+    risk : str
+        A :class:`~pymedphys._dicom.deidentify.pixel_risk.Risk`, as its
+        value, such as ``"burned-in-text"``.
+    indicator : str or None
+        A :class:`~pymedphys._dicom.deidentify.pixel_risk.Indicator` that
+        bears on the risk, as its value, such as ``"secondary-image"``, where
+        the count is of the instances with that indicator; None where it is
+        of the instances with any indicator of the risk. Unreadable evidence,
+        ``"unreadable"``, bears on the risk it was read for.
+    count : int
+        How many instances, each once.
+    """
+
+    disposition: str
+    risk: str
+    indicator: str | None
+    count: int
+
+
+@dataclasses.dataclass(frozen=True)
 class SourceGapCount:
     """How many instances' sources lack one attribute that their IOD requires.
 
@@ -396,6 +437,7 @@ class ReleaseReport:
     held_for_review : tuple of HeldForReview
     roi_names : ~pymedphys._dicom.deidentify.reviewed_roi_names.RoiNameCounts
     reference_findings : tuple of ReferenceFindings
+    pixel_risks : tuple of PixelRiskCount
     source_gaps : tuple of SourceGapCount
     """
 
@@ -411,6 +453,7 @@ class ReleaseReport:
         default_factory=lambda: RoiNameCounts({}, {})
     )
     reference_findings: tuple[ReferenceFindings, ...] = ()
+    pixel_risks: tuple[PixelRiskCount, ...] = ()
     source_gaps: tuple[SourceGapCount, ...] = ()
 
 
@@ -649,6 +692,73 @@ def reference_findings(
     )
 
 
+def pixel_risks(
+    instances: Iterable[tuple[str, Iterable[tuple[Risk, Indicator]]]],
+) -> tuple[PixelRiskCount, ...]:
+    """Count the instances that show each risk in their pixel data, by disposition.
+
+    ``instances`` holds, for each released or held instance with an
+    indicator, its disposition and the risk and indicator of each of its
+    findings, its own and its series'. An instance counts once for each
+    risk that any of its findings bears on, and once for each of that risk's
+    indicators, however many of its findings have it. The counts are in the
+    order of disposition, risk, and indicator, each risk's count of
+    instances first.
+
+    >>> pixel_risks(
+    ...     [
+    ...         (
+    ...             "released",
+    ...             [
+    ...                 (Risk.BURNED_IN_TEXT, Indicator.SECONDARY_IMAGE),
+    ...                 (Risk.BURNED_IN_TEXT, Indicator.CONVERTED_IMAGE),
+    ...             ],
+    ...         ),
+    ...         ("released", [(Risk.BURNED_IN_TEXT, Indicator.SECONDARY_IMAGE)]),
+    ...     ]
+    ... )  # doctest: +NORMALIZE_WHITESPACE
+    (PixelRiskCount(disposition='released', risk='burned-in-text', indicator=None, count=2),
+     PixelRiskCount(disposition='released', risk='burned-in-text', indicator='converted-image', count=1),
+     PixelRiskCount(disposition='released', risk='burned-in-text', indicator='secondary-image', count=2))
+
+    Raises
+    ------
+    TypeError
+        For a disposition other than ``"released"`` or
+        ``"held-for-review"``, or a finding that is not a
+        :class:`~pymedphys._dicom.deidentify.pixel_risk.Risk` and an
+        :class:`~pymedphys._dicom.deidentify.pixel_risk.Indicator` that
+        bears on it.
+    """
+    counts: collections.Counter[tuple[str, str, str]] = collections.Counter()
+    for disposition, findings in instances:
+        if disposition not in PIXEL_RISK_DISPOSITIONS:
+            raise TypeError("a pixel risk's instance must be released or held")
+        found = set()
+        for risk, indicator in findings:
+            if not isinstance(risk, Risk) or not isinstance(indicator, Indicator):
+                raise TypeError("a pixel risk must be a Risk and an Indicator")
+            if indicator.risk not in (None, risk):
+                raise TypeError("an indicator must bear on its finding's risk")
+            found.update(
+                {
+                    (disposition, risk.value, ""),
+                    (disposition, risk.value, indicator.value),
+                }
+            )
+        counts.update(found)
+    return tuple(
+        PixelRiskCount(disposition, risk, indicator or None, count)
+        for (disposition, risk, indicator), count in sorted(
+            counts.items(),
+            key=lambda item: (
+                PIXEL_RISK_DISPOSITIONS.index(item[0][0]),
+                *item[0][1:],
+            ),
+        )
+    )
+
+
 def release_report(
     policy: Policy,
     *,
@@ -661,6 +771,7 @@ def release_report(
     held: Iterable[HeldForReview] = (),
     roi_names: RoiNameCounts | None = None,
     findings: Iterable[ReferenceFindings] = (),
+    pixel: Iterable[PixelRiskCount] = (),
     gaps: Iterable[SourceGapCount] = (),
 ) -> ReleaseReport:
     """Return the release report of a policy, its method, the runtime, and a run.
@@ -705,6 +816,9 @@ def release_report(
         How many of the run's instances have each kind of reference finding
         that the run reports without acting on it, from
         :func:`reference_findings`.
+    pixel : iterable of PixelRiskCount, optional
+        How many of the run's released and held instances show each risk in
+        their pixel data, and each indicator of it, from :func:`pixel_risks`.
     gaps : iterable of SourceGapCount, optional
         How many of the run's instances' sources lack each attribute that
         their IOD requires, from :func:`source_gaps`.
@@ -729,7 +843,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'qc_review', 'released', 'sequestered', 'held_for_review', 'roi_names', 'reference_findings', 'search_coverage', 'source_gaps']
+    ['format', 'policy', 'method', 'runtime', 'qc_review', 'released', 'sequestered', 'held_for_review', 'roi_names', 'reference_findings', 'pixel_risks', 'search_coverage', 'source_gaps']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -751,6 +865,7 @@ def release_report(
         held_for_review=tuple(held),
         roi_names=RoiNameCounts({}, {}) if roi_names is None else roi_names,
         reference_findings=tuple(findings),
+        pixel_risks=tuple(pixel),
         source_gaps=tuple(gaps),
     )
 
@@ -1049,6 +1164,44 @@ def _reference_findings_section(found: tuple[ReferenceFindings, ...]) -> list:
     return sorted(entries, key=lambda entry: entry["kind"])
 
 
+def _pixel_risk_order(entry: dict) -> tuple:
+    codes = tuple(entry.values())[:-1]
+    return (PIXEL_RISK_DISPOSITIONS.index(codes[0]), *codes[1:])
+
+
+def _pixel_risks_section(counts: tuple[PixelRiskCount, ...]) -> dict:
+    instances, indicators = [], []
+    for each in counts:
+        if not isinstance(each, PixelRiskCount):
+            raise _refuse("pixel_risks", "is not a tuple of pixel risk counts")
+        if type(each.count) is not int:  # pylint: disable = unidiomatic-typecheck
+            raise _refuse("pixel_risks count", "is not a whole number")
+        if each.count < 1:
+            raise _refuse("pixel_risks count", "is not positive")
+        disposition = _code(
+            "pixel_risks disposition", each.disposition, PIXEL_RISK_DISPOSITIONS
+        )
+        risk = _code("pixel_risks risk", each.risk, _RISKS)
+        entry = {"disposition": disposition, "risk": risk}
+        if each.indicator is None:
+            instances.append({**entry, "count": each.count})
+            continue
+        indicator = _code("pixel_risks indicator", each.indicator, _INDICATORS)
+        if Indicator(indicator).risk not in (None, Risk(risk)):
+            raise _refuse("pixel_risks indicator", "does not bear on its risk")
+        indicators.append({**entry, "indicator": indicator, "count": each.count})
+    for field, entries in (("instances", instances), ("indicators", indicators)):
+        # Each entry's codes, its fields but its count, in their order.
+        keys = [tuple(entry.values())[:-1] for entry in entries]
+        if len(set(keys)) != len(keys):
+            raise _refuse(f"pixel_risks {field}", "counts an entry more than once")
+        entries.sort(key=_pixel_risk_order)
+    risks = {(entry["disposition"], entry["risk"]) for entry in instances}
+    if any((entry["disposition"], entry["risk"]) not in risks for entry in indicators):
+        raise _refuse("pixel_risks indicators", "count a risk without its instances")
+    return {"instances": instances, "indicators": indicators}
+
+
 def _gaps_section(gaps: tuple[SourceGapCount, ...]) -> list:
     entries = []
     for each in gaps:
@@ -1077,14 +1230,16 @@ def report_document(report: ReleaseReport) -> dict:
     The document is an object with the members ``format`` (:data:`FORMAT`),
     ``policy``, ``method``, ``runtime``, ``qc_review``, ``released``,
     ``sequestered``, ``held_for_review``, ``roi_names``,
-    ``reference_findings``, ``search_coverage``, and ``source_gaps``, in that
-    order, each section's fields in the order of its class, the digests of
-    tables and files sorted by name, ``qc_review`` null where the run wrote no
-    QC pack, the released output names sorted, the sequestered instances by
-    label, each with its reasons once, in the order given, the held counts by
-    stage and code, the ROI Names' ``outcomes`` and ``held`` counts each by
-    code, the reference findings' counts by kind, the coverage by attribute
-    and reason, and the source gaps by attribute and Type. A walker
+    ``reference_findings``, ``pixel_risks``, ``search_coverage``, and
+    ``source_gaps``, in that order, each section's fields in the order of its
+    class, the digests of tables and files sorted by name, ``qc_review`` null
+    where the run wrote no QC pack, the released output names sorted, the
+    sequestered instances by label, each with its reasons once, in the order
+    given, the held counts by stage and code, the ROI Names' ``outcomes`` and
+    ``held`` counts each by code, the reference findings' counts by kind, the
+    pixel risks' ``instances`` counts by disposition and risk and
+    ``indicators`` counts by disposition, risk, and indicator, the coverage
+    by attribute and reason, and the source gaps by attribute and Type. A walker
     reason has its stage, code, attribute, action, and VR, which is null
     where it is not known; a release gate's reason has its stage and code,
     and its attribute where it names one; and a reason from any other stage
@@ -1122,6 +1277,7 @@ def report_document(report: ReleaseReport) -> dict:
         "held_for_review": _held_section(report.held_for_review),
         "roi_names": _roi_names_section(report.roi_names),
         "reference_findings": _reference_findings_section(report.reference_findings),
+        "pixel_risks": _pixel_risks_section(report.pixel_risks),
         "search_coverage": _coverage_section(report.search_coverage),
         "source_gaps": _gaps_section(report.source_gaps),
     }
