@@ -50,6 +50,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
     ReleaseGate,
 )
 from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.method_digest import method_digest
 from pymedphys._dicom.deidentify.policy import compose_policy
 from pymedphys._dicom.deidentify.reasons import HeldRoiName
 from pymedphys._dicom.deidentify.release_gate import (
@@ -196,6 +197,13 @@ def _run(corpus, preset, reviewed=None):
         shown_messages = _Messages(
             tuple(shown.messages), tuple(str(warning.message) for warning in caught)
         )
+        # The method digest as D-024 composes it, independently of the
+        # transform's own.
+        digest = method_digest(
+            compose_policy(preset),
+            vocabulary=None if cleaning is None else cleaning.nomenclature,
+            reviewed_roi_names=None if reviewed is None else reviewed.keyed_digest(KEY),
+        )
         return _Run(
             preset,
             corpus,
@@ -203,6 +211,7 @@ def _run(corpus, preset, reviewed=None):
             _released(result),
             shown_messages,
             _published(result),
+            digest,
         )
     finally:
         shutil.rmtree(directory, ignore_errors=True)
@@ -258,6 +267,7 @@ class _Run:
     released: dict
     messages: "_Messages"
     published: dict
+    method_digest: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -483,6 +493,22 @@ def test_every_released_instance_claims_the_presets_options(preset_run):
         assert (CLEAN_DESCRIPTORS_CODE in codes) == clean_descriptors
 
 
+def test_every_released_instance_carries_the_profiles_markers(preset_run):
+    # E.1.1: Patient Identity Removed is YES and De-identification Method
+    # holds the method digest first; E.2: without the Retain Longitudinal
+    # Temporal Information Options, the dates and times are removed.
+    released = preset_run.released
+    assert released
+
+    for data in released.values():
+        dataset = _read(data)
+        assert dataset.PatientIdentityRemoved == "YES"
+        assert list(_multi(dataset.DeidentificationMethod))[:1] == [
+            preset_run.method_digest
+        ]
+        assert dataset.LongitudinalTemporalInformationModified == "REMOVED"
+
+
 def test_roi_names_take_the_vocabulary_spelling_or_the_reviewed_decision(
     preset_run,
 ):
@@ -530,6 +556,10 @@ def _codes(dataset):
         (item.get("CodeValue"), item.get("CodingSchemeDesignator"))
         for item in dataset.DeidentificationMethodCodeSequence
     ]
+
+
+def _multi(value):
+    return list(value) if isinstance(value, pydicom.multival.MultiValue) else [value]
 
 
 def _numbers(vr, values):
