@@ -108,6 +108,26 @@ def test_a_run_publishes_its_release_report_naming_no_value(tmp_path):
 
 
 @pytest.mark.pydicom
+def test_the_report_lists_released_inputs_and_its_qc_pack_not_yet_attested(tmp_path):
+    datasets = synthetic.collection()
+    _write(tmp_path / "source", [*datasets, datasets[0]])
+
+    result = _run(tmp_path, Transform(), Gate(), _reporter())
+
+    statuses = [outcome.status for outcome in result.outcomes]
+    assert statuses == [run.Status.RELEASED] * 6 + [run.Status.DUPLICATE]
+    document = json.loads((tmp_path / "release" / RELEASE_REPORT).read_text())
+    assert document["released"] == sorted(
+        str(outcome.output) for outcome in result.outcomes[:6]
+    )
+    pack = json.loads(result.qc_pack.read_text(encoding="utf-8"))
+    assert document["qc_review"] == {
+        "reference": pack["reference"],
+        "outcome": "not-attested",
+    }
+
+
+@pytest.mark.pydicom
 def test_the_report_names_each_sequestered_input_by_its_label(tmp_path):
     datasets = synthetic.collection()
     conflicting = synthetic.ct_slice(0)
@@ -131,7 +151,7 @@ class _FailingReporter:
     def admits(self, status, reasons):  # pylint: disable = unused-argument
         return True
 
-    def __call__(self, outcomes, material):
+    def __call__(self, outcomes, material, qc_pack):
         raise ValueError("no report")
 
 

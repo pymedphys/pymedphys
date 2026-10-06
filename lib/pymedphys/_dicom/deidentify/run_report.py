@@ -14,12 +14,15 @@
 
 """The release report that a run publishes with its release.
 
-A run gives its :class:`Reporter` the outcome of each input and the QC
-material that the transform and gate gave for it, and writes the text that
+A run gives its :class:`Reporter` the outcome of each input, the QC
+material that the transform and gate gave for it, and the opaque reference
+of the run's QC pack, and writes the text that
 the reporter returns as :data:`RELEASE_REPORT` at the root of the release,
 before it publishes it. :class:`ReleaseReporter` builds the report of
-:mod:`~pymedphys._dicom.deidentify.release_report` from them: each
-sequestered input by its label and reasons (D-026), how many instances
+:mod:`~pymedphys._dicom.deidentify.release_report` from them: the QC
+pack by its reference, not yet attested, since a reviewer attests to it
+after the run (D-016); each released instance by its output name, and each
+sequestered input by its label and reasons (D-026); how many instances
 were held for review by reason (D-009), and how many source values the
 residual searches did not search, by attribute and reason, each counted at
 the instance that holds it among those that the transform gave material for
@@ -35,12 +38,14 @@ so that one input's reasons never stop the release.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from pathlib import PurePosixPath
 from typing import Protocol
 
 from pymedphys._nomenclature import tg263
 
 from . import release_report
 from .policy import Policy
+from .qc_attestation import AttestationRecord, Outcome
 from .reasons import RunReason
 from .residuals import NotSearched, Unsearched, UnsearchedReason
 from .run_qc import Dropped, SearchMaterial
@@ -51,11 +56,15 @@ RELEASE_REPORT = "release-report.json"
 # The statuses of withheld outcomes, which this module reads without
 # importing the run.
 HELD_FOR_REVIEW = "held-for-review"
+RELEASED = "released"
 SEQUESTERED = "sequestered"
 
 
 class Reporter(Protocol):
-    """Return a run's release report as text, from its outcomes and material."""
+    """Return a run's release report as text, from its outcomes and material.
+
+    ``qc_pack`` is the opaque reference of the run's QC pack.
+    """
 
     def admits(self, status: str, reasons: tuple[object, ...]) -> bool:
         """Whether the report can give a withheld outcome with these reasons.
@@ -68,6 +77,7 @@ class Reporter(Protocol):
         self,
         outcomes: Sequence[object],
         material: Mapping[int, Sequence[object]],
+        qc_pack: str,
     ) -> str: ...
 
 
@@ -136,8 +146,11 @@ class ReleaseReporter:
         self,
         outcomes: Sequence[object],
         material: Mapping[int, Sequence[object]],
+        qc_pack: str,
     ) -> str:
         report = self._report(
+            qc_review=AttestationRecord(qc_pack, Outcome.NOT_ATTESTED),
+            released=released_instances(outcomes),
             sequestered=sequestered_instances(outcomes),
             held=held_instances(outcomes),
             coverage=release_report.search_coverage(
@@ -194,6 +207,19 @@ def sequestered_instances(
         )
         for outcome in outcomes
         if getattr(outcome, "label") is not None
+    )
+
+
+def released_instances(outcomes: Sequence[object]) -> tuple[PurePosixPath, ...]:
+    """Return the output name of each released outcome (D-026).
+
+    An identical copy of a released input is a duplicate, not released, so
+    each output name is given once.
+    """
+    return tuple(
+        getattr(outcome, "output")
+        for outcome in outcomes
+        if getattr(outcome, "status").value == RELEASED
     )
 
 
