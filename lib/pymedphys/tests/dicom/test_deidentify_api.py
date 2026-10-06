@@ -108,6 +108,7 @@ def _deidentify(tmp_path, **options):
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.usefixtures("enabled")
 def test_the_basic_preset_releases_a_collection_with_its_report(tmp_path):
     _write(tmp_path / "source", synthetic.collection())
@@ -119,6 +120,7 @@ def test_the_basic_preset_releases_a_collection_with_its_report(tmp_path):
     assert done.result.release == (tmp_path / "release").absolute()
     assert len(done.result.outcomes) == 6
     assert (tmp_path / "release" / run_report.RELEASE_REPORT).is_file()
+    assert (tmp_path / "release" / run_report.CONFORMANCE_STATEMENT).is_file()
     assert any((tmp_path / "qc").iterdir())
     assert done.summary()[1] == "inputs: 6"
     assert str(tmp_path / "source") not in "\n".join(done.summary())
