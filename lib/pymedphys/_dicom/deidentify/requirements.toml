@@ -348,8 +348,11 @@ The Conformance Statement of an application that claims conformance to the Basic
 '''
 status = "partial"
 milestone = "M6"
-decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-020", "D-021", "D-026"]
-implementation = ["_dicom/deidentify/conformance.py"]
+decisions = ["D-003", "D-004", "D-005", "D-012", "D-013", "D-016", "D-020", "D-021", "D-022", "D-025", "D-026"]
+implementation = [
+  "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/conformance_markdown.py",
+]
 tests = [
   "tests/dicom/test_deidentify_conformance.py::test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_action",
   "tests/dicom/test_deidentify_conformance.py::test_every_ui_attribute_that_the_table_omits_is_listed_by_its_role",
@@ -365,9 +368,36 @@ tests = [
   "tests/dicom/test_deidentify_conformance.py::test_every_attribute_the_markers_write_is_described",
   "tests/dicom/test_deidentify_conformance.py::test_private_attribute_removal_is_described",
   "tests/dicom/test_deidentify_conformance.py::test_each_presets_inserted_codes_and_temporal_value",
+  "tests/dicom/test_deidentify_conformance.py::test_every_listed_action_is_the_one_the_engine_applies",
+  "tests/dicom/test_deidentify_conformance.py::test_the_engines_own_removals_supersede_the_table",
+  "tests/dicom/test_deidentify_conformance.py::test_a_sequence_that_the_policy_cleans_takes_its_basic_profile_action",
+  "tests/dicom/test_deidentify_conformance.py::test_the_rules_for_other_elements_are_the_engines",
+  "tests/dicom/test_deidentify_conformance.py::test_the_rules_for_other_elements_are_described",
+  "tests/dicom/test_deidentify_conformance.py::test_a_policy_that_the_engine_refuses_lists_the_policys_actions",
+  "tests/dicom/test_deidentify_conformance.py::test_the_file_meta_information_the_engine_writes_is_described",
+  "tests/dicom/test_deidentify_conformance.py::test_elements_that_no_row_covers_are_no_longer_pending",
+  "tests/dicom/test_deidentify_conformance.py::test_every_engine_group_has_its_reason",
+  "tests/dicom/test_deidentify_conformance.py::test_every_attribute_that_no_row_covers_takes_the_action_described",
+  "tests/dicom/test_deidentify_conformance.py::test_elements_outside_the_dictionary_and_rows_are_removed",
+  "tests/dicom/test_deidentify_conformance.py::test_cleaning_is_pending_only_where_the_engine_cleans",
+  "tests/dicom/test_deidentify_conformance.py::test_institution_name_is_resolved_by_its_type_at_each_place",
+  "tests/dicom/test_deidentify_conformance_places.py::test_plain_actions_are_resolved_by_type_at_every_place",
+  "tests/dicom/test_deidentify_conformance_places.py::test_a_plain_x_on_a_required_attribute_removes_its_sequence",
+  "tests/dicom/test_deidentify_conformance_places.py::test_a_plain_x_that_no_removal_keeps_valid_sequesters",
+  "tests/dicom/test_deidentify_conformance_places.py::test_a_plain_x_on_overlay_data_removes_its_overlay_group",
+  "tests/dicom/test_deidentify_conformance_places.py::test_a_plain_d_that_no_supported_iod_defines_is_removed",
+  "tests/dicom/test_deidentify_conformance_places.py::test_a_plain_z_on_a_type_1_attribute_gives_d",
+  "tests/dicom/test_deidentify_conformance_places.py::test_plain_actions_by_type_are_no_longer_pending",
+  "tests/dicom/test_deidentify_conformance_places.py::test_the_last_column_lists_places_that_remove_more_than_the_attribute",
+  "tests/dicom/test_deidentify_conformance_places.py::test_the_walker_sequesters_where_the_statement_says",
+  "tests/dicom/test_deidentify_conformance_places.py::test_the_walker_removes_the_enclosing_sequence_that_the_statement_names",
+  "tests/dicom/test_deidentify_conformance_places.py::test_the_walker_removes_the_overlay_group_that_the_statement_names",
+  "tests/dicom/test_deidentify_conformance_places.py::test_plain_z_and_d_are_resolved_as_the_walker_plans_them",
+  "tests/dicom/test_deidentify_conformance_places.py::test_places_within_a_sequence_that_the_policy_removes_are_not_listed",
+  "tests/dicom/test_deidentify_conformance_places.py::test_places_within_a_removed_sequence_follow_the_policy_without_rules",
 ]
 note = '''
-The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters. It lists the action of each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020); the values that Z, D, and U write, including the keyed pseudonyms and replacement UIDs (D-003, D-005, D-021); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); the attributes and values that the markers insert, as the engine computes them for the policy (D-012); the removal of private attributes at every level of nesting; and the options applied, those that can be composed, and those that are not supported. A statement lists what it cannot yet describe and then claims nothing. Remaining: the action for every other element, the action where an IOD requires an attribute that a plain X or Z would leave invalid (D-020), and writing the statement with each run (M6).
+The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters. It lists the action that the engine applies to each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020), and why where the engine's own removals, the File Meta Information that it writes in place of the source's (D-025), or a sequence given C supersede the policy's action; the rules that give every other element its action (D-022); the values that Z, D, and U write, including the keyed pseudonyms and replacement UIDs (D-003, D-005, D-021); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); the attributes and values that the markers insert, as the engine computes them for the policy (D-012); the removal of private attributes at every level of nesting; and the options applied, those that can be composed, and those that are not supported. A statement lists what it cannot yet describe and then claims nothing. Plain X, Z, and D are resolved by Type at every place too (D-020), except within a sequence that the engine removes with its contents, and the resolved Z and D are checked against the walker's plan of a synthetic instance. Where an IOD requires an attribute given a plain X, the statement names the enclosing sequence or overlay group that D-020 removes with it, or that the instance is sequestered, and each is checked against the walker's plan of a synthetic instance. Remaining: the manner of cleaning, for a policy that gives C; the safe private attributes retained, for a policy that selects Retain Safe Private; the synthetic birth date of `tps-import`; and writing the statement with each run (M6).
 '''
 
 [[requirement]]
@@ -737,10 +767,11 @@ tests = [
   "tests/dicom/test_deidentify_residuals.py::test_a_source_value_equal_to_a_written_constant_is_skipped_and_recorded",
   "tests/dicom/test_deidentify_residuals.py::test_a_source_value_that_differs_from_every_constant_is_searched",
   "tests/dicom/test_deidentify_residuals.py::test_a_constant_among_several_values_is_skipped_alone",
+  "tests/dicom/test_deidentify_residuals.py::test_a_form_equal_to_a_constant_is_skipped_and_the_others_searched",
   "tests/dicom/test_deidentify_source.py::test_the_layout_still_reads_a_file_with_an_odd_length",
 ]
 note = '''
-The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. A source value equal to a constant that the engine writes is not searched, and is recorded by its source attribute (D-027). The pipeline is to fail any output file that still holds a source person name, UID, date, or direct identifier, or a source value outside its data set, and to send other text findings to confidential review (D-027). `public-release` retains indirect identifiers only after its statistical assessment. A deterministic synthetic collection plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released. Remaining: removing and replacing identifiers in each data set (M3), and acting on what the search finds, validating each preset end to end by searching its output of that collection for the markers, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
+The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023). Every byte of a written file, from the preamble to any bytes after its last readable element, can be searched for the source values that had to be removed or replaced, and each one found is reported by its source attribute and its place in the file, never by its value. A source value, or a form of one, equal to a constant that the engine writes is not searched, and is recorded by its source attribute (D-027). The pipeline is to fail any output file that still holds a source person name, UID, date, or direct identifier, or a source value outside its data set, and to send other text findings to confidential review (D-027). `public-release` retains indirect identifiers only after its statistical assessment. A deterministic synthetic collection plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released. Remaining: removing and replacing identifiers in each data set (M3), and acting on what the search finds, validating each preset end to end by searching its output of that collection for the markers, the statistical assessment, and pixel and face review (M4). Pixel data are assessed for risk, not cleaned (D-015).
 '''
 
 [[requirement]]

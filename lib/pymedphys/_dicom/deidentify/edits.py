@@ -55,6 +55,14 @@ collected and compared, and the instance is de-identified, with its path in
 :attr:`InstanceEdits.read_as_latin_1`; where it is to be cleaned, the
 instance is sequestered.
 
+Collection does not depend on the transformation succeeding. Where the plan
+sequesters the instance, or editing finds that it must be, every value to
+collect is still read and collected wherever it decodes, as it would be
+otherwise, and each that cannot be read, such as one that the sequestering
+failure itself prevents reading, is listed as not collected. Editing stops
+at the first sequestration, so no partial edit can be written, but reading
+carries on, and each further reason that reading finds is also returned.
+
 A kept sequence's items are read, so that each element in them can be
 written or kept; where they cannot be, the instance is sequestered. Nothing
 is written to a data set here. Values are read from one fresh
@@ -176,20 +184,25 @@ class InstanceEdits:
         One for each element of the plan, in file order; ``()`` if the
         instance must be sequestered.
     source_values : tuple of SourceValue
-        The values collected for the residual search, in file order.
+        The values collected for the residual search, in file order, whether
+        or not the instance must be sequestered.
     not_collected : tuple of NotCollected
+        In file order, each value to collect that could not be read,
+        including one whose reading sequesters the instance.
     sequestrations : tuple of Sequestration
-        Each reason that the instance must be sequestered.
+        Each reason found that the instance must be sequestered: the plan's,
+        then those found while editing and collecting, in file order.
     read_as_latin_1 : tuple of ElementPath
         In file order, the path of each value, removed or replaced, that was
         read as ISO 8859-1, being text outside ISO 646 where no Specific
-        Character Set applies, so that its writer knows; ``()`` if there is
-        none, or the instance must be sequestered.
+        Character Set applies, so that its writer knows, and as evidence of
+        how each collected value was read, whether or not the instance must
+        be sequestered; ``()`` if there is none.
     registered_uids : tuple of ElementPath
         In file order, the path of each UI value with a UID that the pinned
         tables register, which is left out of ``source_values``, since it
-        names no one and stays wherever it is kept; ``()`` if there is none,
-        or the instance must be sequestered.
+        names no one and stays wherever it is kept, whether or not the
+        instance must be sequestered; ``()`` if there is none.
     """
 
     edits: tuple[Edit, ...]
@@ -210,44 +223,83 @@ class InstanceEdits:
 
 
 class _Sequester(Exception):
-    def __init__(self, sequestration: Sequestration) -> None:
+    """A reason to sequester the instance.
+
+    ``not_read`` says, naming no value, why the element's value was not
+    read, where reading it sequesters the instance.
+    """
+
+    def __init__(
+        self, sequestration: Sequestration, not_read: str = "could not be read"
+    ) -> None:
         super().__init__(sequestration)
         self.sequestration = sequestration
+        self.not_read = not_read
 
 
 class _Reader:
     """Read planned values against the source, through the items that hold them.
 
-    Each sequence is read once, however many of its items are reached.
+    The source is read once, and each sequence once, however many of its
+    items are reached. Each data set's character set is resolved when it is
+    first reached, by :meth:`check_character_set` or a read. Where it is not
+    supported, the data set's structure is still followed, but its text, and
+    that of each item that inherits its character set, cannot be read; an item
+    with a supported character set of its own (PS3.5 Section 7.5.3) is read in
+    it, so that its values can be collected even where the data set's cannot.
     """
 
     def __init__(self, source: SourceEvidence, plan: InstancePlan) -> None:
         self._source = source
         self._planned = {element.path: element for element in plan.elements}
         self._sequences: dict[ElementPath, ElementValue] = {}
-        root = source.dataset()
-        self._holders: dict[tuple, tuple] = {(): (root, (), self._codecs(root, ()))}
+        # Each data set by its items: it, its ancestors, and its codecs, or
+        # why they cannot be resolved.
+        self._holders: dict[tuple, tuple] = {}
 
-    def _codecs(self, dataset, items, inherited=elements.DEFAULT_CODECS):
+    def check_character_set(self) -> None:
+        """Resolve the data set's own character set."""
+        self._codecs_at(())
+
+    def _codecs(self, dataset, items, inherited):
+        """Return a data set's codecs, or why they are not supported."""
+        if isinstance(inherited, _Sequester) and 0x00080005 not in dataset:
+            return inherited
         try:
             return elements.dataset_codecs(
-                dataset, inherited, items, source=self._source
+                dataset,
+                elements.DEFAULT_CODECS
+                if isinstance(inherited, _Sequester)
+                else inherited,
+                items,
+                source=self._source,
             )
         except UndecodableElement as error:
             planned = self._planned.get(error.path)
-            raise _Sequester(
+            return _Sequester(
                 Sequestration(
                     error.path,
                     planned.action if planned is not None else "K",
                     "CS",
                     SequesterReason.UNSUPPORTED_CHARACTER_SET,
-                )
-            ) from None
+                ),
+                "is in a data set whose Specific Character Set is not supported",
+            )
+
+    def _codecs_at(self, items: tuple) -> tuple[str, ...]:
+        """Return the codecs of the data set at ``items``, if supported."""
+        codecs: tuple[str, ...] | _Sequester = self._holder(items)[2]
+        if isinstance(codecs, _Sequester):
+            raise _Sequester(codecs.sequestration, codecs.not_read)
+        return codecs
 
     def sequence(self, path: ElementPath) -> ElementValue:
         """Return a sequence, read once, with its items."""
         if path not in self._sequences:
             dataset, ancestors, codecs = self._holder(path.items)
+            # A sequence's items are found without decoding any text in them.
+            if isinstance(codecs, _Sequester):
+                codecs = elements.DEFAULT_CODECS
             self._sequences[path] = elements.read_element(
                 dataset, path, codecs, ancestors, source=self._source
             )
@@ -256,23 +308,30 @@ class _Reader:
     def _holder(self, items: tuple) -> tuple:
         """Return the data set at ``items``, its ancestors, and its codecs."""
         if items not in self._holders:
-            dataset, ancestors, codecs = self._holder(items[:-1])
-            tag, index = items[-1]
-            item = self.sequence(ElementPath(items[:-1], tag)).items[index]
-            self._holders[items] = (
-                item,
-                (dataset, *ancestors),
-                self._codecs(item, items, codecs),
-            )
+            if not items:
+                root = self._source.dataset()
+                codecs = self._codecs(root, (), elements.DEFAULT_CODECS)
+                self._holders[()] = (root, (), codecs)
+            else:
+                dataset, ancestors, inherited = self._holder(items[:-1])
+                tag, index = items[-1]
+                item = self.sequence(ElementPath(items[:-1], tag)).items[index]
+                self._holders[items] = (
+                    item,
+                    (dataset, *ancestors),
+                    self._codecs(item, items, inherited),
+                )
         return self._holders[items]
 
     def check_items(self, path: ElementPath) -> None:
         """Read a sequence's items and resolve each one's character set."""
         for index, _ in enumerate(self.sequence(path).items):
-            self._holder((*path.items, (path.tag, index)))
+            self._codecs_at((*path.items, (path.tag, index)))
 
     def read(self, path: ElementPath, latin_1: bool = False) -> ElementValue:
-        dataset, ancestors, codecs = self._holder(path.items)
+        """Read a value against the source, in its data set's character set."""
+        codecs = self._codecs_at(path.items)
+        dataset, ancestors, _ = self._holder(path.items)
         return elements.read_element(
             dataset,
             path,
@@ -311,7 +370,8 @@ def _read_planned(
                     "D" if compared else element.action,
                     element.vr,
                     SequesterReason.UNDECODABLE,
-                )
+                ),
+                error.reason,
             ) from None
         return None, NotCollected(element.path, error.reason), False
 
@@ -463,17 +523,31 @@ class _Gathered:
         # compared with, by item and tag.
         self.compared: dict[ElementPath, dict[int, dict[str, str]]] = {}
 
-    def read(self, reader: _Reader, element: ElementPlan) -> ElementValue | None:
-        """Read a planned value, collect it, and keep it for comparing."""
-        value, not_read, as_latin_1 = _read_planned(reader, element)
+    def read(
+        self, reader: _Reader, element: ElementPlan, compare: bool = True
+    ) -> ElementValue | None:
+        """Read a planned value, collect it, and keep it for comparing.
+
+        It is collected before it is compared, so that a comparison that
+        sequesters the instance leaves it collected. Where reading it
+        sequesters the instance, it is listed as not collected.
+        """
+        try:
+            value, not_read, as_latin_1 = _read_planned(reader, element)
+        except _Sequester as raised:
+            if Consumer.RESIDUAL_COLLECTION in element.consumers:
+                self.missing.append(NotCollected(element.path, raised.not_read))
+            raise
         if not_read is not None:
             self.missing.append(not_read)
         if as_latin_1:
             self.latin_1.append(element.path)
         if value is None:
             return None
+        self._collect(element, value)
         if (
-            element.removed_with is not None
+            compare
+            and element.removed_with is not None
             and Consumer.DUMMY_COMPARISON in element.consumers
         ):
             index = element.path.items[-1][1]
@@ -481,6 +555,10 @@ class _Gathered:
             item.setdefault(index, {})[element.path.tag] = _compared_text(
                 element, value
             )
+        return value
+
+    def _collect(self, element: ElementPlan, value: ElementValue) -> None:
+        """Collect a value for the residual search, if it is to be."""
         if Consumer.RESIDUAL_COLLECTION in element.consumers:
             searched = self._unregistered(element.path, value)
             try:
@@ -494,7 +572,6 @@ class _Gathered:
                 self.missing.append(
                     NotCollected(element.path, "could not be collected")
                 )
-        return value
 
     def _unregistered(
         self, path: ElementPath, value: ElementValue
@@ -519,19 +596,33 @@ class _Gathered:
         return dataclasses.replace(value, values=left)
 
     def result(
-        self, found: list[Edit], reviewed: dict[ElementPath, int]
+        self,
+        found: list[Edit],
+        reviewed: dict[ElementPath, int],
+        sequestrations: list[Sequestration],
     ) -> InstanceEdits:
-        """Return the edits, each reviewed dummy sequence's with its items."""
-        for path, position in reviewed.items():
+        """Return the edits, each reviewed dummy sequence's with its items.
+
+        There are none if the instance must be sequestered.
+        """
+        if sequestrations:
+            found = []
+        for path, position in reviewed.items() if found else ():
             found[position] = _with_items(found[position], self.compared.get(path, {}))
         return InstanceEdits(
             tuple(found),
             tuple(self.collected),
             tuple(self.missing),
-            (),
+            tuple(sequestrations),
             tuple(self.latin_1),
             tuple(self.registered),
         )
+
+
+def _record(sequestrations: list[Sequestration], raised: _Sequester) -> None:
+    """Record a reason to sequester, once however many reads find it."""
+    if raised.sequestration not in sequestrations:
+        sequestrations.append(raised.sequestration)
 
 
 def edit_instance(
@@ -558,18 +649,27 @@ def edit_instance(
     Returns
     -------
     InstanceEdits
-        With no edits or values if the plan, or reading a value it needs,
-        sequesters the instance.
+        With no edits if the plan, or reading a value it needs, sequesters
+        the instance, but with every value to collect that can be read.
     """
-    if plan.sequestrations:
-        return InstanceEdits((), (), (), plan.sequestrations)
+    sequestrations = list(plan.sequestrations)
     found: list[Edit] = []
     gathered = _Gathered()
     # Each reviewed dummy sequence's edit, by its position in ``found``.
     reviewed: dict[ElementPath, int] = {}
+    reader = _Reader(source, plan)
     try:
-        reader = _Reader(source, plan)
-        for element in plan.elements:
+        reader.check_character_set()
+    except _Sequester as raised:
+        _record(sequestrations, raised)
+    for element in plan.elements:
+        try:
+            if sequestrations:
+                # Edits stop at the first sequestration, but collection
+                # carries on, so that the residual search has every value.
+                if Consumer.RESIDUAL_COLLECTION in element.consumers:
+                    gathered.read(reader, element, compare=False)
+                continue
             container = source.element(element.path).items is not None
             if _kept_container(element, container):
                 _check_items(reader, element)
@@ -578,6 +678,6 @@ def edit_instance(
             if container and edit.kind is EditKind.REPLACE:
                 reviewed[edit.path] = len(found)
             found.append(edit)
-    except _Sequester as raised:
-        return InstanceEdits((), (), (), (raised.sequestration,))
-    return gathered.result(found, reviewed)
+        except _Sequester as raised:
+            _record(sequestrations, raised)
+    return gathered.result(found, reviewed, sequestrations)
