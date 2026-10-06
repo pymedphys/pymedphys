@@ -69,6 +69,7 @@ def _table_e1_1():
     return {row.tag: row for row in standard.load_table_e1_1().attributes}
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02")
 def test_every_temporal_attribute_in_the_dictionary_has_exactly_one_role():
     roles = temporal_roles.load_temporal_roles()
 
@@ -105,6 +106,7 @@ def test_the_conflicting_options_affect_only_the_listed_attributes():
     assert {tag: roles.role(tag) for tag in conflicting} == CONFLICTING
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02")
 def test_every_attribute_modified_dates_cleans_has_a_role():
     # Table E.1-1 gives C under Modified Dates to 166 temporal attributes and
     # to three of other VRs. A new edition that cleans another attribute of
@@ -169,6 +171,7 @@ def test_attribute_roles(keyword, role):
     assert temporal_roles.load_temporal_roles().role(_tag(keyword)) is role
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02", "MIDI-BP-12")
 @pytest.mark.parametrize(
     "role, action",
     [

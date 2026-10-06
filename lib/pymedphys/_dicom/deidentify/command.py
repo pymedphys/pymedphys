@@ -139,7 +139,8 @@ def deidentify_directory(
         The run's release report, as
         :func:`~pymedphys._dicom.deidentify.run.run` takes it, such as an
         :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`'s
-        ``reporter``. Without one, the release has no report.
+        ``reporter``. Without one, the release has no report or conformance
+        statement.
     stdout, stderr : text file, optional
         Where to print the summary, and the reason the run failed or left
         its staging area behind. By default, :data:`sys.stdout` and
@@ -356,7 +357,9 @@ def build_parser(
         help=(
             "with basic-clean-descriptors, the custodian's reviewed-names "
             "list, outside SOURCE, RELEASE, and the QC pack; by default, none, "
-            "so every ROI Name that cleaning does not rename is held for review"
+            "so every ROI Name that cleaning does not rename is held for "
+            "review; python -m pymedphys._dicom.deidentify.reviewed_names_command "
+            "records a reviewer's decisions in it"
         ),
     )
     parser.add_argument(
@@ -405,8 +408,8 @@ def _descriptor_cleaning(arguments: argparse.Namespace) -> DescriptorCleaning:
 
     The pinned TG-263 edition is read from ``--tg263`` or else from
     PyMedPhys's cached download. The custodian's reviewed-names list is read
-    from ``--reviewed-names``, which must exist, since the command records no
-    decision, and lie outside the source, the release and its staging area,
+    from ``--reviewed-names``, which must exist, since this command records no
+    decision (:mod:`.reviewed_names_command` records them), and lie outside the source, the release and its staging area,
     and the QC destination; without it, the list is empty. Held names are
     emptied only with ``--empty-held-roi-names``.
 

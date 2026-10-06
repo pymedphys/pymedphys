@@ -179,6 +179,7 @@ def _only_site(monkeypatch, site):
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.parametrize("iod, attribute, level", RT_REFERENCES, ids=_id)
 def test_reference_sites_include_the_rt_references(iod, attribute, level):
     sites = references.reference_sites(_iod(iod))
@@ -831,6 +832,7 @@ UNREADABLE_ITEMS = {
 }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize(
@@ -880,6 +882,7 @@ def _item_past_its_sequence(data, tag, explicit):
     return bytes(data)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")

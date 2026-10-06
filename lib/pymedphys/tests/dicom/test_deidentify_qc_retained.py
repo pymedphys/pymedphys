@@ -20,16 +20,26 @@ carry the text ``SENTINEL``.
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import qc_retained, source, walker
+from pymedphys._dicom.deidentify import qc_retained, run, source, walker
 from pymedphys._dicom.deidentify.edits import _Reader
 from pymedphys._dicom.deidentify.elements import ElementValue
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.qc_pack import QcPackError, retained_strings
 from pymedphys._dicom.deidentify.qc_retained import retained_paths, retained_text
+from pymedphys._dicom.deidentify.reasons import TransformReason
+from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.run_qc import RetainedText
 from pymedphys._dicom.deidentify.walker import ElementPlan, InstancePlan
 
+from . import _synthetic_references as synthetic
 from .test_deidentify_file_layout import EXPLICIT, _file
+from .test_deidentify_instance_transform import (
+    SENTINEL_LABEL,
+    _plan_of,
+    _top,
+    _transform,
+    _transformed,
+)
 from .test_deidentify_walker import (
     _path,
     _plan,
@@ -61,6 +71,7 @@ def _instance(*elements):
     return InstancePlan(elements=tuple(elements), sequestrations=())
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_walker_plan_retains_its_kept_text_in_file_order():
     # The RT Plan keeps both Beam Numbers as they are. Its Specific Character
     # Set, replaced UIDs, emptied name, removed private and unlisted elements,
@@ -168,6 +179,7 @@ def test_an_empty_element_value_gives_no_retained_text():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_a_retained_value_that_was_not_read_is_refused():
     with pytest.raises(QcPackError, match=r"\(300A,00C0\) was not read") as caught:
         retained_text(_plan(), {FIRST_BEAM_NUMBER: "SENTINEL"})
@@ -222,3 +234,39 @@ def test_retained_text_becomes_the_packs_distinct_retained_strings():
     assert len(strings) == 1
     assert strings[0].value == "QUILLON CLINIC CT"
     assert strings[0].places == ((0, description), (1, description))
+
+
+@pytest.mark.deid_requirement("MIDI-BP-17")
+def test_each_string_the_plan_keeps_is_given_to_the_qc_pack():
+    dataset = synthetic.rt_dose()
+    dataset.Manufacturer = "SENTINEL MAKER"
+    dataset.DoseUnits = "GY"
+    dataset.InstitutionName = SENTINEL_LABEL  # removed, so not retained
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Transformed)
+    retained = [item for item in result.qc if isinstance(item, RetainedText)]
+    assert retained == [
+        RetainedText("SENTINEL MAKER", _top("(0008,0070)")),
+        RetainedText("GY", _top("(3004,0002)")),
+    ]
+    paths = retained_paths(_plan_of(synthetic.written(dataset)))
+    assert [item.path for item in retained] == list(paths)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-17")
+def test_a_kept_string_that_cannot_be_decoded_sequesters_the_instance():
+    dataset = synthetic.rt_dose()
+    dataset.Manufacturer = "SENTINEL QQ"
+    data = synthetic.written(dataset)
+    assert data.count(b"QQ") == 1
+    # Outside ISO 646 with no Specific Character Set, so it cannot be decoded
+    # for review (D-017).
+    data = data.replace(b"QQ", b"Q\xc9")
+
+    result = _transform()(data, InstanceRecord.from_file(data))
+
+    assert isinstance(result, run.Sequestered)
+    assert result.reasons == (TransformReason.UNREVIEWABLE_RETAINED_TEXT,)
+    assert not any(isinstance(item, RetainedText) for item in result.qc)

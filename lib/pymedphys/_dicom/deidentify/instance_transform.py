@@ -92,7 +92,7 @@ from .descriptor_cleaning import (
     clean_descriptors,
     fallback_policy,
 )
-from .edits import Edit, EditKind, InstanceEdits, edit_instance
+from .edits import Edit, EditKind, InstanceEdits, edit_instance, read_values
 from .element_rules import ElementRules
 from .elements import (
     DEFAULT_CODECS,
@@ -111,6 +111,7 @@ from .policy import DEFAULT_PRESET, Policy, PolicyError, select_policy
 from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
+from .qc_retained import retained_paths, retained_text
 from .reasons import TransformReason
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
@@ -726,6 +727,7 @@ class InstanceTransform:
                 evidence = HeldEvidence(evidence, cleaned.held)
         qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         try:
+            qc = (*qc, *_retained(source, plan))
             writing = with_markers(
                 writer_plan(plan, edits, codecs),
                 source,
@@ -792,6 +794,21 @@ def transform_for(
         iod_tables,
         cleaning=cleaning,
     )
+
+
+def _retained(source: SourceEvidence, plan: InstancePlan) -> tuple[object, ...]:
+    """Return the QC material of each string that the plan keeps (D-017).
+
+    Raises
+    ------
+    _Refused
+        If a kept value cannot be decoded for review, such as text outside
+        ISO 646 where no Specific Character Set applies.
+    """
+    kept = read_values(source, plan, retained_paths(plan))
+    if None in kept.values():
+        raise _Refused(TransformReason.UNREVIEWABLE_RETAINED_TEXT)
+    return retained_text(plan, kept)
 
 
 def _written(

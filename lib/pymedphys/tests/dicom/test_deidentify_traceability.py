@@ -32,7 +32,7 @@ METHOD = "tests/dicom/test_b.py::TestGroup::test_method"
 UNRUN = "tests/dicom/test_b.py::test_unrun"
 
 REGISTER = {
-    "schema": "pymedphys-deid-requirements/1",
+    "schema": "pymedphys-deid-requirements/2",
     "edition": "2026d",
     "acknowledgement": "DICOM PS3.15 2026d, © NEMA",
     "midi_report": "Clunie DA et al., MIDI Task Group report",
@@ -45,7 +45,6 @@ REGISTER = {
             "milestone": "M3",
             "decisions": ["D-001", "D-011"],
             "implementation": ["_dicom/deidentify/actions.py"],
-            "tests": [PLAIN, CASES],
             "note": "Remaining: the walker,\nwhich applies `X | Z` (M3).",
         },
         {
@@ -62,7 +61,6 @@ REGISTER = {
             "status": "implemented",
             "decisions": ["D-001"],
             "implementation": ["_dicom/deidentify/standard.py"],
-            "tests": [METHOD, UNRUN],
         },
         {
             "id": "MIDI-BP-09",
@@ -80,11 +78,48 @@ REGISTER = {
 }
 
 
+# The tests that cite the register's requirements: PLAIN and CASES cite
+# PS3.15-E.1.1-01, and METHOD and UNRUN cite MIDI-BP-06.
+CITING_TESTS = {
+    "tests/dicom/test_a.py": """
+import pytest
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+def test_plain():
+    pass
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.parametrize("value", [1, 2])
+def test_cases(value):
+    pass
+""",
+    "tests/dicom/test_b.py": """
+import pytest
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+class TestGroup:
+    def test_method(self):
+        pass
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+def test_unrun():
+    pass
+""",
+}
+
+
 @pytest.fixture(name="register")
 def _register(tmp_path):
+    for name, source in CITING_TESTS.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(source, encoding="utf-8")
     path = tmp_path / "requirements.toml"
     path.write_text(tomlkit.dumps(REGISTER), encoding="utf-8")
-    return requirements.load_requirements(path)
+    return requirements.load_requirements(path, requirements.cited_tests(tmp_path))
 
 
 def _junit(path, *cases):
@@ -422,10 +457,26 @@ def _run(*options):
     args.func(args)
 
 
+def _run_in(tmp_path, *options):
+    """Run the command with the register and citing tests in ``tmp_path``."""
+    _run(
+        "--register",
+        str(tmp_path / "requirements.toml"),
+        "--tests",
+        str(tmp_path),
+        *options,
+    )
+
+
+def test_the_command_refuses_a_tests_root_without_tests(tmp_path):
+    with pytest.raises(SystemExit, match="has no tests directory"):
+        _run("--tests", str(tmp_path / "missing"))
+
+
 def test_the_command_writes_the_matrix(register, tmp_path):
     output = tmp_path / "matrix.md"
     register_path = tmp_path / "requirements.toml"
-    _run("--register", str(register_path), "--output", str(output))
+    _run_in(tmp_path, "--output", str(output))
     markdown = output.read_text(encoding="utf-8")
     assert markdown == traceability.render_markdown(
         traceability.build_matrix(register, source=str(register_path))
@@ -444,7 +495,7 @@ def test_the_matrix_names_the_shipped_register_by_default(register):
 
 def test_the_command_prints_the_matrix(register, tmp_path, capsys):
     path = tmp_path / "requirements.toml"
-    _run("--register", str(path))
+    _run_in(tmp_path)
     assert capsys.readouterr().out == traceability.render_markdown(
         traceability.build_matrix(register, source=str(path))
     )
@@ -453,9 +504,8 @@ def test_the_command_prints_the_matrix(register, tmp_path, capsys):
 @pytest.mark.usefixtures("register")
 def test_the_check_passes_when_each_traced_test_passed(tmp_path, capsys):
     report = _passing(tmp_path / "junit.xml")
-    _run(
-        "--register",
-        str(tmp_path / "requirements.toml"),
+    _run_in(
+        tmp_path,
         "--junit",
         str(report),
         "--check",
@@ -469,9 +519,8 @@ def test_the_check_fails_when_a_traced_test_did_not_pass(register, tmp_path, cap
     report = _junit(tmp_path / "junit.xml", (MODULE_A, "test_plain", FAILURE))
     output = tmp_path / "matrix.md"
     with pytest.raises(SystemExit) as raised:
-        _run(
-            "--register",
-            str(tmp_path / "requirements.toml"),
+        _run_in(
+            tmp_path,
             "--junit",
             str(report),
             "--check",
@@ -493,15 +542,10 @@ def test_the_check_fails_when_a_traced_test_did_not_pass(register, tmp_path, cap
 @pytest.mark.usefixtures("register")
 def test_the_check_needs_test_results(tmp_path):
     with pytest.raises(SystemExit, match="--check needs at least one --junit"):
-        _run("--register", str(tmp_path / "requirements.toml"), "--check")
+        _run_in(tmp_path, "--check")
 
 
 @pytest.mark.usefixtures("register")
 def test_the_command_reports_a_bad_report_without_a_traceback(tmp_path):
     with pytest.raises(SystemExit, match="missing.xml"):
-        _run(
-            "--register",
-            str(tmp_path / "requirements.toml"),
-            "--junit",
-            str(tmp_path / "missing.xml"),
-        )
+        _run_in(tmp_path, "--junit", str(tmp_path / "missing.xml"))
