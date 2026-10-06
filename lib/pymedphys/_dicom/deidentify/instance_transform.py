@@ -89,7 +89,7 @@ from .descriptor_cleaning import (
     clean_descriptors,
     fallback_policy,
 )
-from .edits import Edit, EditKind, InstanceEdits, edit_instance
+from .edits import Edit, EditKind, InstanceEdits, edit_instance, read_values
 from .element_rules import ElementRules
 from .elements import (
     DEFAULT_CODECS,
@@ -107,6 +107,7 @@ from .policy import DEFAULT_PRESET, Policy, PolicyError, select_policy
 from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
+from .qc_retained import retained_paths, retained_text
 from .reasons import TransformReason
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
@@ -121,7 +122,8 @@ from .release_gate import (
 )
 from .residuals import NotSearched, has_written_constant, not_searched_of
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
-from .run_qc import Dropped, SearchMaterial
+from .pixel_risk import assess_pixel_risk
+from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial
 from .run_report import ReleaseReporter
 from .scope import classify
 from .source import SourceEvidence, SourceRefused, read_source
@@ -671,6 +673,7 @@ class InstanceTransform:
         ):
             return Sequestered((classification.disposition,))
         iod = self._iods.iods[classification.iod]
+        risk = _pixel_risk(dataset)
         plan = plan_instance(source, self._rules, iod)
         edits = edit_instance(source, plan, self._key, record.patient)
         evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
@@ -682,7 +685,7 @@ class InstanceTransform:
                 if classification.sequestered
                 else edits.sequestrations,
                 evidence,
-                (*dropped_of(edits), *omissions_of(evidence)),
+                (*risk, *dropped_of(edits), *omissions_of(evidence)),
             )
         satisfied = False
         retained: frozenset[ElementPath] = frozenset()
@@ -710,7 +713,7 @@ class InstanceTransform:
                 return Sequestered(
                     (refused.reason,),
                     evidence,
-                    (*dropped_of(edits), *omissions_of(evidence)),
+                    (*risk, *dropped_of(edits), *omissions_of(evidence)),
                 )
             edits, satisfied = cleaned.edits, cleaned.satisfied
             retained = frozenset(cleaned.retained)
@@ -718,8 +721,9 @@ class InstanceTransform:
             evidence = coverage_of(plan, edits, retained)
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
-        qc = (*dropped_of(edits, retained), *omissions_of(evidence), *names)
+        qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         try:
+            qc = (*qc, *_retained(source, plan))
             writing = with_markers(
                 writer_plan(plan, edits, codecs),
                 source,
@@ -733,6 +737,20 @@ class InstanceTransform:
                 for r in refused.reasons
             )
             return Sequestered(tuple(dict.fromkeys(reasons)), evidence, qc)
+
+
+def _pixel_risk(dataset: pydicom.Dataset | None) -> tuple[PixelRiskMaterial, ...]:
+    """The QC material of the source's indicators of risk in its pixel data.
+
+    The source is assessed, since the Basic Profile removes some of the
+    evidence, such as an overlay group whose graphics lie in the pixel data.
+    A source whose data set does not decode gives none: the walker and the
+    gate decide what becomes of it.
+    """
+    if dataset is None:
+        return ()
+    assessment = assess_pixel_risk(dataset)
+    return (PixelRiskMaterial(assessment),) if assessment.findings else ()
 
 
 def transform_for(
@@ -772,6 +790,21 @@ def transform_for(
         iod_tables,
         cleaning=cleaning,
     )
+
+
+def _retained(source: SourceEvidence, plan: InstancePlan) -> tuple[object, ...]:
+    """Return the QC material of each string that the plan keeps (D-017).
+
+    Raises
+    ------
+    _Refused
+        If a kept value cannot be decoded for review, such as text outside
+        ISO 646 where no Specific Character Set applies.
+    """
+    kept = read_values(source, plan, retained_paths(plan))
+    if None in kept.values():
+        raise _Refused(TransformReason.UNREVIEWABLE_RETAINED_TEXT)
+    return retained_text(plan, kept)
 
 
 def _written(

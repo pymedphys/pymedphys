@@ -50,13 +50,19 @@ from pymedphys._dicom.deidentify.residuals import (
     Unsearched,
     UnsearchedReason,
 )
+from pymedphys._dicom.deidentify.release_report_markdown import (
+    ReleaseReportMarkdownError,
+    to_markdown,
+)
 from pymedphys._dicom.deidentify.run_report import (
     HELD_FOR_REVIEW,
     RELEASE_REPORT,
+    RELEASE_REPORT_MARKDOWN,
     SEQUESTERED,
     ReleaseReporter,
     coverage_records,
     held_instances,
+    release_files,
 )
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 
@@ -105,6 +111,35 @@ def test_a_run_publishes_its_release_report_naming_no_value(tmp_path):
     assert {"retained", "registered-uid"} <= reasons
     for value in (synthetic.PATIENT_ID, synthetic.PATIENTS_NAME, str(tmp_path)):
         assert value not in text
+
+
+@pytest.mark.pydicom
+def test_a_run_publishes_the_reports_human_readable_form_beside_it(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    transform = InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
+
+    _run(tmp_path, transform, ReleaseGate(), transform.reporter)
+
+    text = (tmp_path / "release" / RELEASE_REPORT).read_text(encoding="utf-8")
+    markdown = (tmp_path / "release" / RELEASE_REPORT_MARKDOWN).read_text(
+        encoding="utf-8"
+    )
+    assert markdown == to_markdown(text)
+    assert RELEASE_REPORT in markdown
+    for value in (synthetic.PATIENT_ID, synthetic.PATIENTS_NAME, str(tmp_path)):
+        assert value not in markdown
+
+
+def test_the_release_files_are_the_report_and_its_form_from_it_alone():
+    text = release_report.to_json(
+        release_report.release_report(
+            compose_policy("basic"), vocabulary=None, reviewed_roi_names=None
+        )
+    )
+    assert release_files(text) == {
+        RELEASE_REPORT: text.encode("utf-8"),
+        RELEASE_REPORT_MARKDOWN: to_markdown(text).encode("utf-8"),
+    }
 
 
 @pytest.mark.pydicom
@@ -161,6 +196,24 @@ def test_a_report_that_cannot_be_written_publishes_nothing(tmp_path):
 
     with pytest.raises(ValueError, match="no report"):
         _run(tmp_path, Transform(), Gate(), _FailingReporter())
+
+    assert _listing(tmp_path) == ["source"]
+
+
+class _UnreadableReporter:
+    def admits(self, status, reasons):  # pylint: disable = unused-argument
+        return True
+
+    def __call__(self, outcomes, material, _qc_pack):
+        return "{}"
+
+
+@pytest.mark.pydicom
+def test_a_report_whose_form_cannot_be_generated_publishes_nothing(tmp_path):
+    _write(tmp_path / "source", synthetic.collection()[:1])
+
+    with pytest.raises(ReleaseReportMarkdownError):
+        _run(tmp_path, Transform(), Gate(), _UnreadableReporter())
 
     assert _listing(tmp_path) == ["source"]
 
@@ -335,7 +388,15 @@ def test_only_held_outcomes_are_counted():
     assert run.Status.HELD_FOR_REVIEW.value == HELD_FOR_REVIEW
 
 
-@pytest.mark.parametrize("name", [RELEASE_REPORT, RELEASE_REPORT.upper()])
+@pytest.mark.parametrize(
+    "name",
+    [
+        RELEASE_REPORT,
+        RELEASE_REPORT.upper(),
+        RELEASE_REPORT_MARKDOWN,
+        RELEASE_REPORT_MARKDOWN.upper(),
+    ],
+)
 def test_no_output_name_is_the_release_report(name):
     # The first part of every output's path is a pseudonymous Patient ID, so
     # even a file system that ignores case cannot confuse one with the report.

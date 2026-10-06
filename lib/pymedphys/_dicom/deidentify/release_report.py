@@ -14,10 +14,11 @@
 
 """The release report's record of the method and the runtime environment.
 
-Each de-identification run is to write a release report: a record of what
-was done that can be distributed with the output, so it contains no source
-attribute value, original path, or key. This module gives the parts of it
-that do not depend on the instances of a run:
+Each de-identification run writes a release report, through
+:mod:`~pymedphys._dicom.deidentify.run_report`: a record of what was done
+that can be distributed with the output, so it contains no source attribute
+value, original path, or key. These parts of it do not depend on the
+instances of a run:
 
 - ``policy``: the PS3.15 edition, the preset (None for a custom option set),
   the selected options, and whether the policy can claim conformance;
@@ -39,7 +40,7 @@ list, never from DICOM data directly, and the check is a backstop: a field
 of another form, which could be a source value or a path outside the
 package, is refused. A field that fails is named, never quoted.
 
-Four sections describe a run, by replacement identifiers, attribute tags,
+Five sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
 
 - ``qc_review``: the run's QC pack by its opaque reference, with the outcome
@@ -55,14 +56,18 @@ and codes that the engine defines, never by a source value or path:
   :func:`sequestration_labels` gives at random for the run, with each
   reason (D-026). A sequestered instance has no output name, and the label
   holds nothing of the instance or its place in the run; only the
-  confidential QC pack maps labels to sources (D-016).
+  confidential QC pack maps labels to sources (D-016). The release gate's
+  reasons, among them the residual search's findings, name the stage
+  ``"release"``, a code, and, where the reason names one, the attribute's
+  tags.
+- ``held_for_review``: how many instances were held for review, by stage and
+  reason (D-009), from :func:`held_for_review`: a ROI Name that descriptor
+  cleaning held, or a release gate's reason that requires QC review. A held
+  instance has neither an output name nor a label.
 - ``search_coverage``: how many source values of each attribute the
   residual search did not search, in full or in part, by reason (D-027),
   from :func:`search_coverage`. The QC pack lists each by instance and
   place.
-
-The residual search's findings, and the stage that sequesters an instance
-for them, are to follow.
 """
 
 from __future__ import annotations
