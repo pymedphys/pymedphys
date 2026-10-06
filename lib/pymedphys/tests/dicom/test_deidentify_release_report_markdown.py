@@ -26,6 +26,7 @@ from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import (
     output_names,
+    pixel_risk,
     qc_attestation,
     reference_graph,
     release_gate,
@@ -104,6 +105,32 @@ def _full_report():
             },
         ),
         findings=(release_report.ReferenceFindings("dangling-reference", 2),),
+        pixel=release_report.pixel_risks(
+            [
+                (
+                    "released",
+                    [
+                        (
+                            pixel_risk.Risk.BURNED_IN_TEXT,
+                            pixel_risk.Indicator.SECONDARY_IMAGE,
+                        )
+                    ],
+                ),
+                (
+                    "held-for-review",
+                    [
+                        (
+                            pixel_risk.Risk.RECONSTRUCTABLE_FACE,
+                            pixel_risk.Indicator.CT_VOLUME,
+                        ),
+                        (
+                            pixel_risk.Risk.RECONSTRUCTABLE_FACE,
+                            pixel_risk.Indicator.HEAD_OR_NECK,
+                        ),
+                    ],
+                ),
+            ]
+        ),
         gaps=(
             release_report.SourceGapCount("(0008,0060)", "1", 2),
             release_report.SourceGapCount("(3006,0010) > (0020,0052)", "2", 1),
@@ -199,6 +226,7 @@ def test_the_sections_follow_the_documents_order():
         "## Instances held for review",
         "## ROI names",
         "## Reference findings",
+        "## Pixel data risks",
         "## Values not searched",
         "## Required attributes missing from the source",
     ]
@@ -252,10 +280,29 @@ def test_the_releasers_confirmations_are_shown_or_said_to_be_absent():
     assert "| Residual risk accepted | not stated |" in review
 
 
+@pytest.mark.deid_requirement("MIDI-BP-10", "MIDI-BP-18")
+def test_the_pixel_risks_are_counted_by_disposition_risk_and_indicator():
+    markdown = to_markdown(release_report.to_json(_full_report()))
+    section = markdown.split("## Pixel data risks", 1)[1].split("\n## ", 1)[0]
+    rows = [line for line in section.splitlines() if line.startswith("| ")]
+    assert rows == [
+        "| Disposition | Risk | Instances |",
+        "| --- | --- | --- |",
+        "| `released` | `burned-in-text` | `1` |",
+        "| `held-for-review` | `reconstructable-face` | `1` |",
+        "| Disposition | Risk | Indicator | Instances |",
+        "| --- | --- | --- | --- |",
+        "| `released` | `burned-in-text` | `secondary-image` | `1` |",
+        "| `held-for-review` | `reconstructable-face` | `ct-volume` | `1` |",
+        "| `held-for-review` | `reconstructable-face` | `head-or-neck` | `1` |",
+    ]
+    assert "pixel data are not inspected" in section
+
+
 def test_an_empty_run_says_so_in_each_run_section():
     markdown = to_markdown(release_report.to_json(_report()))
     assert "No QC pack was written for this run." in markdown
-    assert markdown.count("None.") == 8
+    assert markdown.count("None.") == 10
     assert "|" not in markdown.split("## QC review", 1)[1]
 
 
@@ -319,6 +366,11 @@ def _changed(change):
         lambda d: d["reference_findings"][0].update(count=0),
         lambda d: d["reference_findings"][0].update(extra="x"),
         lambda d: d["reference_findings"].append({"kind": "`SENTINEL`", "count": 1}),
+        lambda d: d.pop("pixel_risks"),
+        lambda d: d["pixel_risks"].pop("indicators"),
+        lambda d: d["pixel_risks"]["instances"][0].update(count=0),
+        lambda d: d["pixel_risks"]["indicators"][0].pop("indicator"),
+        lambda d: d["pixel_risks"]["indicators"][0].update(risk="a|b"),
         lambda d: d["source_gaps"][0].update(note="x"),
         lambda d: d["source_gaps"][0].update(count=0),
         lambda d: d.pop("source_gaps"),

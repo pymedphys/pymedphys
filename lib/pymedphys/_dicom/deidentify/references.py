@@ -28,10 +28,12 @@ Series and Study Instance UIDs identify the instance itself.
 
 An :class:`InstanceRecord` holds what the reference graph
 (:mod:`~pymedphys._dicom.deidentify.reference_graph`) needs from one
-instance: its identifiers, its patient, a digest of its source bytes, and
-the value at each reference site with the Referenced SOP Class UID
-(0008,1150) beside it. Its ``repr`` shows only the IOD, so identifiers do
-not reach logs. An attribute without a value at a Type 3 site is left out,
+instance: its identifiers, its patient, a digest of its source bytes, the
+value at each reference site with the Referenced SOP Class UID (0008,1150)
+beside it, and its frames of reference: its own Frame of Reference UID
+(0020,0052), and, where its IOD defines them, the frames of reference that
+an RT Structure Set lists and those its ROIs are defined in. Its ``repr``
+shows only the IOD, so identifiers do not reach logs. An attribute without a value at a Type 3 site is left out,
 since it means the same as an absent one (PS3.5 Section 7.4.5). Each
 sequence that pydicom holds undecoded is decoded by
 :func:`~pymedphys._dicom.deidentify.sequences.decode_items`, including one
@@ -102,6 +104,15 @@ from .uids import normalise_uid
 SOP_CLASS_TAG = "(0008,0016)"
 REFERENCED_SOP_CLASS_TAG = "(0008,1150)"
 REFERENCED_SOP_INSTANCE_TAG = "(0008,1155)"
+FRAME_OF_REFERENCE_TAG = "(0020,0052)"
+# Referenced Frame of Reference Sequence, whose items list the frames of
+# reference of an RT Structure Set, and the path in each item to the images
+# its contours are on (PS3.3 Section C.8.8.5).
+REFERENCED_FRAME_OF_REFERENCE_SEQUENCE = "(3006,0010)"
+FRAME_IMAGE_PATH = ("(3006,0012)", "(3006,0014)", "(3006,0016)")
+# Structure Set ROI Sequence, and the frame of reference each ROI is in.
+STRUCTURE_SET_ROI_SEQUENCE = "(3006,0020)"
+REFERENCED_FRAME_OF_REFERENCE_UID_TAG = "(3006,0024)"
 PATIENT_ID_TAG = "(0010,0020)"
 ISSUER_OF_PATIENT_ID_TAG = "(0010,0021)"
 _TRAILING_PADDING_TAG = "(FFFC,FFFC)"
@@ -280,6 +291,28 @@ class Reference:
 
 
 @dataclasses.dataclass(frozen=True)
+class FrameUse:
+    """An item of an RT Structure Set's Referenced Frame of Reference Sequence.
+
+    Its ``repr`` shows nothing of its values.
+
+    Attributes
+    ----------
+    frame : str
+        Its Frame of Reference UID (0020,0052), without padding, or ``""``
+        if it has none, or a value that is not one UID.
+    images : tuple of str
+        The Referenced SOP Instance UID (0008,1155) of each item of its
+        Contour Image Sequences (3006,0016), in its RT Referenced Study
+        Sequence (3006,0012) and RT Referenced Series Sequence (3006,0014),
+        in the order of the items, leaving out those without one UID.
+    """
+
+    frame: str = dataclasses.field(repr=False)
+    images: tuple[str, ...] = dataclasses.field(repr=False)
+
+
+@dataclasses.dataclass(frozen=True)
 class InstanceRecord:
     """What the reference graph needs from one instance.
 
@@ -319,6 +352,16 @@ class InstanceRecord:
         big endian, or a top-level group length or Data Set Trailing Padding
         holds items. It only compares the
         inputs of a run, and is never stored or reported.
+    frame_of_reference : str or None
+        The Frame of Reference UID (0020,0052) at the top level, without
+        padding, or ``None`` if it is absent, empty, or not one UID.
+    frames : tuple of FrameUse
+        Each item of the Referenced Frame of Reference Sequence (3006,0010),
+        where the IOD defines its Frame of Reference UID, in order.
+    roi_frames : tuple of str
+        The Referenced Frame of Reference UID (3006,0024) of each item of the
+        Structure Set ROI Sequence (3006,0020), where the IOD defines it, in
+        order, without padding, or ``""`` for an item without one UID.
     """
 
     iod: str | None
@@ -328,6 +371,9 @@ class InstanceRecord:
     references: tuple[Reference, ...] = dataclasses.field(repr=False)
     patient: SubjectIdentity | None = dataclasses.field(repr=False)
     digest: bytes | None = dataclasses.field(repr=False)
+    frame_of_reference: str | None = dataclasses.field(default=None, repr=False)
+    frames: tuple[FrameUse, ...] = dataclasses.field(default=(), repr=False)
+    roi_frames: tuple[str, ...] = dataclasses.field(default=(), repr=False)
 
     @classmethod
     def from_file(cls, data: bytes | bytearray | memoryview) -> InstanceRecord:
@@ -346,8 +392,9 @@ class InstanceRecord:
         Raises
         ------
         UnreadableSequence
-            If the value of a sequence on the path to a reference site does
-            not hold only items, as in a file truncated within it, or is big
+            If the value of a sequence on the path to a reference site, or
+            to a frame of reference that the record holds, does not hold
+            only items, as in a file truncated within it, or is big
             endian, which only pydicom can read.
         Exception
             Whatever pydicom raises for a file that it cannot read, such as
@@ -370,6 +417,7 @@ class InstanceRecord:
                     target = _uid(item, site.tag) or ""
                     target_class = _uid(item, REFERENCED_SOP_CLASS_TAG)
                     found.append(Reference(site, target, target_class))
+            frames, roi_frames = _frames(dataset, sop_class) if iod else ((), ())
             return cls(
                 iod,
                 _uid(dataset, IDENTITY_TAGS[Level.INSTANCE]),
@@ -378,6 +426,9 @@ class InstanceRecord:
                 tuple(found),
                 _patient(dataset),
                 _source_digest(data),
+                _uid(dataset, FRAME_OF_REFERENCE_TAG),
+                frames,
+                roi_frames,
             )
 
     def identifier(self, level: Level) -> str | None:
@@ -395,6 +446,47 @@ def _iod_and_sites(sop_class: str) -> tuple[str | None, tuple[ReferenceSite, ...
     if iod is None:
         return None, ()
     return iod.name, reference_sites(iod)
+
+
+@functools.lru_cache(maxsize=128)
+def _frame_places(sop_class: str) -> tuple[bool, bool]:
+    """Return whether the IOD defines the listed frames and the ROIs' frames."""
+    iod = iod_for_sop_class(sop_class)
+    places = (
+        set()
+        if iod is None
+        else {(definition.path, definition.tag) for definition in iod.definitions}
+    )
+    return (
+        ((REFERENCED_FRAME_OF_REFERENCE_SEQUENCE,), FRAME_OF_REFERENCE_TAG) in places,
+        ((STRUCTURE_SET_ROI_SEQUENCE,), REFERENCED_FRAME_OF_REFERENCE_UID_TAG)
+        in places,
+    )
+
+
+def _frames(
+    dataset: pydicom.Dataset, sop_class: str
+) -> tuple[tuple[FrameUse, ...], tuple[str, ...]]:
+    """Return the frames of reference that an instance lists, and its ROIs'."""
+    listed, of_rois = _frame_places(sop_class)
+    frames = []
+    if listed:
+        path = (REFERENCED_FRAME_OF_REFERENCE_SEQUENCE,)
+        for index, item in enumerate(_items(dataset, path)):
+            within = ((REFERENCED_FRAME_OF_REFERENCE_SEQUENCE, index),)
+            images = tuple(
+                image
+                for each in _items(item, FRAME_IMAGE_PATH, within)
+                if (image := _uid(each, REFERENCED_SOP_INSTANCE_TAG))
+            )
+            frames.append(FrameUse(_uid(item, FRAME_OF_REFERENCE_TAG) or "", images))
+    roi_frames: tuple[str, ...] = ()
+    if of_rois:
+        roi_frames = tuple(
+            _uid(item, REFERENCED_FRAME_OF_REFERENCE_UID_TAG) or ""
+            for item in _items(dataset, (STRUCTURE_SET_ROI_SEQUENCE,))
+        )
+    return tuple(frames), roi_frames
 
 
 def _element(dataset: pydicom.Dataset, tag: str) -> pydicom.DataElement | None:
