@@ -30,6 +30,7 @@ from pymedphys._dicom.deidentify import (
     release_report,
     residuals,
     standard,
+    supplementary_actions,
     temporal_roles,
     uids,
     walker,
@@ -347,3 +348,35 @@ def test_what_remains_of_the_release_report_is_pending(preset):
     # How the report names a sequestered instance is now described.
     assert "how it names" not in pending
     assert not statement.claims_conformance
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_kept_local_codes_are_said_to_be_listed_in_the_qc_pack(preset):
+    rules = supplementary_actions.load_supplementary_actions().rules
+    codes = ("(0008,0100)", "(0008,0102)", "(0008,0104)")
+    assert {rules[tag].action for tag in codes} == {"K"}
+
+    section = _section(preset, "Codes of local coding schemes")
+
+    for tag in codes:
+        assert _named(tag) in section
+    assert 'begins with "99" or is "L"' in section
+    assert "the institution's name or abbreviation" in section
+    assert "retained strings of the run's confidential QC pack" in section
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_the_removed_private_creators_description_is_described(preset):
+    statement = _statement(preset)
+    private = next(
+        e
+        for e in statement.attributes
+        if e.tag == conformance_markdown.PRIVATE_ATTRIBUTES_TAG
+    )
+    sentence = (
+        "Private Data Element Characteristics Sequence (0008,0300), which "
+        "describes the private blocks by their private creators, is removed by "
+        "its supplementary rule"
+    )
+
+    assert (sentence in _section(preset, "Actions")) == (private.action == "X")
