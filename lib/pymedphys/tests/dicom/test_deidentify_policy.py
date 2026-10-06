@@ -98,6 +98,7 @@ def test_the_presets_select_only_the_options_the_scope_targets():
         assert options == tuple(o for o in policy.TARGET_OPTIONS if o in options)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 def test_the_basic_policy_gives_each_attribute_its_basic_profile_action():
     basic = policy.compose_policy("basic")
 
@@ -169,6 +170,7 @@ def test_public_release_cleans_dates_descriptors_and_safe_private_attributes():
     assert release.actions["(0010,1010)"] == "X"  # Patient's Age
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02")
 def test_tps_import_modifies_the_eleven_device_identity_and_date_conflicts():
     tps = policy.compose_policy("tps-import")
     roles = {resolution.conflict.tag: resolution.role for resolution in tps.resolved}
@@ -192,6 +194,7 @@ def test_tps_import_modifies_the_eleven_device_identity_and_date_conflicts():
     assert not tps.claims_conformance
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.parametrize(
     "tag",
     [
@@ -218,6 +221,7 @@ def test_tps_import_changes_only_what_its_options_change():
     assert sum(tps.actions[tag] == "K" for tag in changed) == 51
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize(
     "preset", ["basic", "basic-clean-descriptors", "tps-import", "public-release"]
 )
@@ -304,6 +308,7 @@ def test_only_composing_an_enabled_preset_enables_a_policy(monkeypatch):
     assert hash(selected) == hash(policy.compose_policy())
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.parametrize(
     "options",
     [
@@ -333,6 +338,7 @@ def test_a_custom_option_set_is_validated_and_never_enabled(options):
     assert custom.claims_conformance
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_the_tps_import_options_are_rejected_without_the_preset():
     with pytest.raises(policy.PolicyError) as raised:
         policy.compose_custom_policy(policy.PRESETS["tps-import"])
@@ -369,6 +375,7 @@ def test_only_the_tps_import_preset_resolves_its_conflicts(monkeypatch):
     assert len(policy.compose_policy("tps-import").resolved) == 11
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.parametrize(
     "preset, tag, option, action",
     [

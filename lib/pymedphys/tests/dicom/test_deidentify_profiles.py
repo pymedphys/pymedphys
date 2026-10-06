@@ -49,6 +49,7 @@ def test_a_new_subject_gets_the_derived_offset():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02", "MIDI-BP-12")
 def test_profiles_persist_across_runs(tmp_path):
     path = tmp_path / "custodian" / "profiles.json"
     path.parent.mkdir()
@@ -59,6 +60,7 @@ def test_profiles_persist_across_runs(tmp_path):
     assert profiles.ProfileStore.open(FIXTURE_KEY, path).profile(SUBJECT) == profile
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02", "MIDI-BP-12")
 def test_a_stored_offset_wins_over_a_changed_derivation(tmp_path):
     # A change of derivation never silently changes an exported subject.
     path = tmp_path / "profiles.json"

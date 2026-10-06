@@ -102,6 +102,7 @@ def test_the_reference_and_identity_tags_are_instance_uids():
         assert roles.role(tag) is uid_roles.UIDRole.INSTANCE
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_a_consistently_replaced_collection_has_no_findings():
     inputs = synthetic.collection()
@@ -165,6 +166,7 @@ def test_an_identifier_replaced_under_another_key_is_mismatched(tag):
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_a_slice_written_in_another_series_than_its_input_series_is_mismatched():
     # Each slice of one input series must be written in one series.
@@ -202,6 +204,7 @@ def test_an_input_without_an_identifier_is_not_checked_for_it():
     assert not _verify(inputs, written)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.parametrize(
     "position, attribute, value",
@@ -245,6 +248,7 @@ def test_each_kept_value_at_a_site_is_counted_once():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_a_reference_to_another_written_instance_is_mismatched():
     # The plan's dose reference is the replacement of the structure set's
@@ -384,6 +388,7 @@ def test_a_series_reference_resolves_only_to_a_series():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_a_reference_to_a_written_instance_with_a_mismatched_uid_is_unresolved():
     inputs = synthetic.collection()
@@ -457,6 +462,7 @@ def test_conflicting_copies_written_with_one_uid_are_reported():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_a_shared_replacement_is_reported(monkeypatch):
     # Two input UIDs whose replacements collide, as SHA-1 names almost never

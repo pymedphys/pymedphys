@@ -72,6 +72,7 @@ def test_derive_follows_the_specified_framing():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04")
 def test_derivations_are_pinned():
     # A changed derivation would silently change every exported value, so
     # these known answers change only with a new derivation version.

@@ -81,6 +81,7 @@ _SEQUESTERING = [
 ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize(
     "cause, stage", _SEQUESTERING, ids=[str(each) for each, _ in _SEQUESTERING]
 )
@@ -147,6 +148,7 @@ def test_what_does_not_sequester_an_instance_is_not_a_reason(cause):
     assert "SENTINEL" not in str(raised.value)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_codes_of_each_stage_are_distinct():
     # A code names one reason of its stage, so no two enums that give a stage
     # its codes share a value.
@@ -174,6 +176,7 @@ def test_each_drop_reason_is_a_reason_that_coverage_counts():
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize(
     "path, place",
     [
@@ -235,6 +238,7 @@ def _qc_review(code=release_gate.ReasonCode.UNCOLLECTED):
     return release_gate.ReleaseReason(release_gate.Decision.QC_REVIEW, code)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_held_instances_are_counted_by_stage_and_reason_each_once(basic):
     held = release_report.held_for_review(
         [
@@ -276,6 +280,7 @@ def test_held_reasons_must_be_given_by_instance_and_known(instances):
     assert "SENTINEL" not in str(raised.value)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize(
     "held",
     [

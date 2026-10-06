@@ -154,6 +154,7 @@ def test_a_png_holds_only_its_pixels():
             qc_previews.png(refused)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.pydicom
 def test_a_series_gets_a_cine_strip_in_slice_order():
     # Given out of order, and with Instance Numbers that disagree with the
@@ -231,6 +232,7 @@ def test_monochrome1_is_inverted_and_rescale_is_applied():
         assert image[centre, centre + qc_previews.TILE_PIXELS] == 0
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.pydicom
 def test_a_volume_gets_a_frontal_projection_head_up_and_right_on_the_left():
     # Axial slices 3 mm apart, 1 mm pixels. One bright voxel, in the most
@@ -361,6 +363,7 @@ def test_axes_within_the_alignment_tolerance_still_get_a_projection():
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.pydicom
 def test_a_high_risk_instance_is_previewed_at_full_resolution():
     frames = np.arange(20 * 30 * 40).reshape(20, 30, 40) % 1000
@@ -434,6 +437,7 @@ def _structure_set():
     return _file(dataset)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.pydicom
 def test_an_instance_that_cannot_be_previewed_is_listed_with_why():
     written = {

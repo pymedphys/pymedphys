@@ -14,6 +14,8 @@
 
 """Running de-identification over a directory, through a staging area."""
 
+# pylint: disable = too-many-lines
+
 import dataclasses
 import enum
 import io
@@ -303,6 +305,7 @@ def _dicomdir(**file_meta):
     return buffer.getvalue()
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-08")
 @pytest.mark.pydicom
 def test_a_dicomdir_is_never_passed_through(tmp_path):
     by_class = _dicomdir(MediaStorageSOPClassUID=run.MEDIA_STORAGE_DIRECTORY_STORAGE)
@@ -319,6 +322,7 @@ def test_a_dicomdir_is_never_passed_through(tmp_path):
     assert _statuses(result) == [RELEASED] + [(REFUSED, (Reason.DICOMDIR,))] * 3
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_a_study_with_several_patients_stops_the_run_before_anything_is_created(
     tmp_path,
@@ -338,6 +342,7 @@ def test_a_study_with_several_patients_stops_the_run_before_anything_is_created(
     assert _listing(tmp_path) == ["source"]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_findings_name_inputs_by_run_position(tmp_path):
     datasets = synthetic.collection()
@@ -359,6 +364,7 @@ def test_findings_name_inputs_by_run_position(tmp_path):
     assert finding.instances == ((PLAN + 1,),)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_an_identical_duplicate_is_processed_once(tmp_path):
     datasets = synthetic.collection()
@@ -420,6 +426,7 @@ def test_a_later_copy_is_processed_when_the_first_changes(tmp_path, monkeypatch)
     assert transform.calls == [synthetic.PLAN]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_conflicting_copies_and_a_series_in_several_studies_are_sequestered(
     tmp_path,
@@ -449,6 +456,7 @@ def test_conflicting_copies_and_a_series_in_several_studies_are_sequestered(
     assert len(_released_files(tmp_path / "release")) == 4
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_an_instance_without_a_uid_it_needs_is_sequestered(tmp_path):
     datasets = synthetic.collection()

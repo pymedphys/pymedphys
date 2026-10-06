@@ -62,6 +62,7 @@ def _published_vocabulary(monkeypatch, edition="TG263 vInvented"):
     return VOCABULARY
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "PS3.15-E.3.5-02")
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
 def test_roi_name_cleaning_is_described_only_where_roi_name_is_cleaned(preset):
     statement = _statement(preset)
@@ -72,6 +73,7 @@ def test_roi_name_cleaning_is_described_only_where_roi_name_is_cleaned(preset):
     assert cleaned == (preset != "basic")
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-02")
 def test_without_a_vocabulary_no_roi_name_is_renamed_automatically():
     statement = _statement("basic-clean-descriptors")
     assert statement.roi_names == conformance.RoiNameCleaning(edition=None)
@@ -81,6 +83,7 @@ def test_without_a_vocabulary_no_roi_name_is_renamed_automatically():
     assert "without a vocabulary, so no ROI Name is renamed automatically" in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-02")
 def test_an_unpublished_vocabulary_renames_no_roi_name():
     with pytest.raises(ValueError):
         roi_names.RoiNameVocabulary(VOCABULARY)
@@ -93,6 +96,7 @@ def test_an_unpublished_vocabulary_renames_no_roi_name():
     assert "every ROI Name takes a reviewer's decision" in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "PS3.15-E.3.5-02")
 def test_a_published_vocabulary_is_named_with_its_edition(monkeypatch):
     vocabulary = _published_vocabulary(monkeypatch)
     statement = _statement("basic-clean-descriptors", vocabulary)
@@ -104,6 +108,7 @@ def test_a_published_vocabulary_is_named_with_its_edition(monkeypatch):
     assert statement.vocabulary_digest in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "PS3.15-E.3.5-02")
 def test_the_described_automatic_renaming_is_the_engines(monkeypatch):
     vocabulary = roi_names.RoiNameVocabulary(_published_vocabulary(monkeypatch))
     section = _section(
@@ -124,6 +129,7 @@ def test_the_described_automatic_renaming_is_the_engines(monkeypatch):
     assert "`_Heart`" in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "PS3.15-E.3.5-02")
 def test_every_review_reason_is_described():
     described = set(conformance_markdown.ROI_REVIEW_REASONS)
     reasons = set(roi_names.Reason) - {
@@ -139,6 +145,7 @@ def test_every_review_reason_is_described():
         assert text in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "PS3.15-E.3.5-02")
 def test_every_reviewer_decision_and_outcome_is_described():
     section = _section(
         conformance_markdown.render_markdown(_statement("basic-clean-descriptors")),
@@ -153,12 +160,14 @@ def test_every_reviewer_decision_and_outcome_is_described():
     assert "never written to the output" in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-02")
 def test_the_manner_of_cleaning_roi_names_is_described_not_pending():
     statement = _statement("basic-clean-descriptors")
     assert conformance.PENDING_CLEANING not in statement.pending
     assert "other than ROI Name (3006,0026)" in conformance.PENDING_CLEANING
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-02")
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
 def test_each_other_attribute_given_c_is_described_by_its_fallback_action(preset):
     statement = _statement(preset)
@@ -198,6 +207,7 @@ def test_each_other_attribute_given_c_is_described_by_its_fallback_action(preset
     assert all(e.action != "C" and e.policy_action == "C" for e in fallen_back.values())
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-02")
 def test_the_described_fallback_is_the_maintainers_decision():
     text = conformance_markdown.render_markdown(_statement("basic-clean-descriptors"))
     actions = _section(text, "Actions")
@@ -228,6 +238,7 @@ def _released_codes(transform, dataset):
     return written, decision, _codes(written)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "PS3.15-E.3.5-02")
 def test_the_described_holding_of_a_roi_name_is_the_engines(monkeypatch):
     _cleaning_published(monkeypatch)
     held = conformance_markdown.ROI_OUTCOMES[reviewed_roi_names.Outcome.HELD]
@@ -252,6 +263,7 @@ def test_the_described_holding_of_a_roi_name_is_the_engines(monkeypatch):
     assert CLEAN_DESCRIPTORS_CODE not in codes
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "PS3.15-E.3.5-02")
 def test_the_described_condition_for_the_clean_descriptors_code_is_the_engines(
     monkeypatch,
 ):
@@ -283,6 +295,7 @@ def test_the_described_condition_for_the_clean_descriptors_code_is_the_engines(
     assert CLEAN_DESCRIPTORS_CODE in codes
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
 def test_a_policy_whose_fallback_cannot_be_composed_is_pending(preset):
     statement = _statement(preset)
@@ -306,6 +319,7 @@ def test_a_policy_whose_fallback_cannot_be_composed_is_pending(preset):
             )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-02")
 def test_the_described_hyphen_and_reverse_order_matching_is_the_engines(monkeypatch):
     vocabulary = _vocabulary(
         _structure("Lung_L", "L_Lung"), _structure("Lungs-PTV", "PTV-Lungs")
@@ -336,6 +350,7 @@ def test_the_described_hyphen_and_reverse_order_matching_is_the_engines(monkeypa
         assert decision.value == written
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-02")
 def test_the_described_echo_check_is_the_engines(monkeypatch):
     vocabulary = roi_names.RoiNameVocabulary(_published_vocabulary(monkeypatch))
     reason = conformance_markdown.ROI_REVIEW_REASONS[roi_names.Reason.ECHOES_IDENTIFIER]
@@ -352,6 +367,7 @@ def test_the_described_echo_check_is_the_engines(monkeypatch):
     assert echo.reason is roi_names.Reason.ECHOES_IDENTIFIER
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-02")
 def test_the_described_checks_of_reviewed_names_are_the_engines():
     section = _section(
         conformance_markdown.render_markdown(_statement("basic-clean-descriptors")),
@@ -390,6 +406,7 @@ def test_the_described_checks_of_reviewed_names_are_the_engines():
     assert unreviewed.outcome is held
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-02")
 def test_a_run_with_a_reviewed_list_records_a_different_digest():
     section = _section(
         conformance_markdown.render_markdown(_statement("basic-clean-descriptors")),

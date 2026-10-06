@@ -76,6 +76,7 @@ def _named(tag):
     return f"{standard.dictionary_attribute(tag).name} {tag}"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_reviewed_dummy_item_is_described():
     section = _section("basic", "Values written")
     assert walker.REVIEWED_DUMMY_SEQUENCES
@@ -95,6 +96,7 @@ def test_the_reviewed_dummy_item_is_described():
             assert _named(compared_tag) in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
     section = _section("basic", "Values written")
     named = [
@@ -116,6 +118,7 @@ def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_pseudonyms_are_described_where_the_engine_writes_them():
     section = _section("basic", "Values written")
     names = " and ".join(_named(tag) for tag in sorted(edits.PSEUDONYM_TAGS))
@@ -131,6 +134,7 @@ def test_pseudonyms_are_described_where_the_engine_writes_them():
     assert _named("(0010,0021)") in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_longest_replacement_uid_is_described():
     section = _section("basic", "Values written")
     key = DeidKey(bytes(range(32)))
@@ -143,6 +147,7 @@ def test_the_longest_replacement_uid_is_described():
     assert f"at most {limit} characters in all" in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 @pytest.mark.parametrize("preset", ["basic", "basic-clean-descriptors"])
 def test_dates_take_their_listed_actions_without_a_temporal_option(preset):
     statement = _statement(preset)
@@ -157,6 +162,7 @@ def test_dates_take_their_listed_actions_without_a_temporal_option(preset):
         assert f"`{first}`" in section and f"`{second}`" in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 @pytest.mark.parametrize("preset", ["tps-import", "public-release"])
 def test_dates_under_modified_dates_are_cleaned_and_their_manner_is_pending(preset):
     statement = _statement(preset)
@@ -167,6 +173,7 @@ def test_dates_under_modified_dates_are_cleaned_and_their_manner_is_pending(pres
     assert "is not yet described" in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_temporal_attributes_are_counted_by_their_listed_action(preset):
     statement = _statement(preset)
     roles = temporal_roles.load_temporal_roles().rules
@@ -189,6 +196,7 @@ def test_the_temporal_attributes_are_counted_by_their_listed_action(preset):
         assert _named(tag) in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_residual_search_coverage_is_described(preset):
     section = _section(preset, "Residual search")
     assert f"fewer than {residuals.MIN_CHARACTERS} characters" in section
@@ -204,6 +212,7 @@ def test_the_residual_search_coverage_is_described(preset):
     assert f"values of VR {conformance_values.join(sorted(numbers), 'or')}," in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_every_reason_a_value_is_not_searched_is_described():
     assert set(conformance_values.OMISSIONS) == set(residuals.Omission)
     assert set(conformance_values.CODEC_NAMES) == set(residuals.CODECS)
@@ -239,6 +248,7 @@ def test_a_value_equal_to_a_written_constant_as_d_compares_is_not_searched():
     assert "other values and forms are still searched" in described
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_each_vr_described_as_not_searched_is_not_searched():
     described = conformance_values.unsearched_vrs()
     assert described[residuals.Omission.BINARY]
@@ -255,6 +265,7 @@ def test_each_vr_described_as_not_searched_is_not_searched():
     assert searched | unsearched == set(standard.VRS) - {"SQ"}
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
 def test_the_release_report_names_sequestered_instances_by_label(preset):
     section = _section(preset, "Release report")
     assert f"`{release_report.FORMAT}`" in section
@@ -272,6 +283,7 @@ def test_the_release_report_names_sequestered_instances_by_label(preset):
             assert f"`{reason}`" in line, (stage, reason)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
 def test_the_release_report_counts_held_instances_by_stage(preset):
     section = _section(preset, "Release report")
     held = section.split("counts the instances held for review", 1)[1]
@@ -325,6 +337,7 @@ def _gate_reasons(code):
     return release_gate.release_condition(release_gate.Coverage(**coverage), written)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 @pytest.mark.parametrize("code", sorted(conformance_values.REVIEW_CODES))
 def test_each_code_described_as_holding_holds_an_instance(code):
     condition = _gate_reasons(release_gate.ReasonCode(code))
@@ -335,12 +348,14 @@ def test_each_code_described_as_holding_holds_an_instance(code):
 @pytest.mark.parametrize(
     "code", ["residual-person-name", "residual-outside-data-set", "unreadable-file"]
 )
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_code_not_described_as_holding_withholds(code):
     condition = _gate_reasons(release_gate.ReasonCode(code))
     assert condition.decision is release_gate.Decision.WITHHOLD
     assert code in [r.code.value for r in condition.reasons]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_every_other_release_code_withholds():
     # Each reason with another code is given only with WITHHOLD (D-027).
     withholding = {c.value for c in release_gate.ReasonCode}
@@ -357,6 +372,7 @@ def test_every_other_release_code_withholds():
     assert conformance_values.REVIEW_CODES <= release_report._HOLDING["release"]  # pylint: disable = protected-access
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_one_instance_without_collected_values_withholds_its_subject(preset):
     section = _section(preset, "Release report")
     assert "withhold every other file of its subject, by `not-reported`" in section
@@ -377,6 +393,7 @@ def _empty_coverage():
     return release_gate.Coverage(planned=frozenset(), collected=())
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
 def test_every_reason_that_the_release_report_counts_is_described(preset):
     reasons = [*residuals.Omission, *residuals.UnsearchedReason]
     assert set(conformance_values.UNSEARCHED_REASONS) == set(residuals.UnsearchedReason)
@@ -409,6 +426,7 @@ def test_every_reason_that_the_release_report_counts_is_described(preset):
         assert f"`{reason.value}`" in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_per_instance_detail_is_only_in_the_qc_pack(preset):
     section = _section(preset, "Release report")
     assert "no source value or original path" in section
@@ -418,6 +436,7 @@ def test_per_instance_detail_is_only_in_the_qc_pack(preset):
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_what_remains_of_the_run_is_pending(preset):
     statement = _statement(preset)
     pending = conformance.PENDING_RUN
@@ -438,6 +457,7 @@ def test_what_remains_of_the_run_is_pending(preset):
     assert not statement.claims_conformance
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_qc_pack_lists_what_the_run_keeps_for_review(preset):
     section = _section(preset, "QC pack")
     assert (
@@ -451,6 +471,7 @@ def test_the_qc_pack_lists_what_the_run_keeps_for_review(preset):
     assert "CT" not in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_described_reason_for_an_undecodable_kept_string_sequesters():
     assert (
         TransformReason.UNREVIEWABLE_RETAINED_TEXT.value
@@ -458,12 +479,14 @@ def test_the_described_reason_for_an_undecodable_kept_string_sequesters():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_residual_search_is_described_as_part_of_each_release(preset):
     section = _section(preset, "Residual search")
     assert "before the file is released" in section
     assert "once the engine applies it" not in section
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_report_describes_what_a_run_always_writes(preset):
     section = _section(preset, "Release report")
     assert "a run without a QC pack" not in section

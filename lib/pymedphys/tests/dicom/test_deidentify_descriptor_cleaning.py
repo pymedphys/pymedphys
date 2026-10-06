@@ -147,6 +147,7 @@ def _codes(written):
     ]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_roi_names_are_renamed_or_given_their_reviewed_decision():
     transform = _transform(
         _reviewed(
@@ -209,6 +210,7 @@ def test_retained_roi_names_are_left_out_of_the_residual_search(tmp_path):
     assert [place["position"] for place in kept["places"]] == [3]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_a_roi_name_without_a_decision_holds_the_instance_for_review():
     transform = _transform()
     result = _transformed(transform, _structure_set("lung_l", "SURGEONS ROI"))
@@ -235,6 +237,7 @@ def test_a_roi_name_without_a_decision_holds_the_instance_for_review():
     assert "SURGEONS" not in repr(decision) + repr(result)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_the_method_digest_and_the_report_cover_the_reviewed_names():
     reviewed = _reviewed(PTV_CUSTOM=ReviewedName(Review.KEEP))
     transform = _transform(reviewed)
@@ -253,6 +256,7 @@ def test_the_method_digest_and_the_report_cover_the_reviewed_names():
     assert (method["method_digest"], method["reviewed_roi_names"]) == (digest, keyed)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_decisions_recorded_after_the_transform_is_made_do_not_apply():
     reviewed = ReviewedNames.empty()
     transform = _transform(reviewed)
@@ -268,6 +272,7 @@ def test_decisions_recorded_after_the_transform_is_made_do_not_apply():
     assert method["reviewed_roi_names"] == ReviewedNames.empty().keyed_digest(KEY)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-17")
 def test_a_run_holds_the_structure_set_and_releases_the_rest(tmp_path):
     datasets = [
         _structure_set("SURGEONS ROI") if index == 3 else dataset
@@ -304,6 +309,7 @@ def test_a_run_holds_the_structure_set_and_releases_the_rest(tmp_path):
     assert pack["instances"][3]["disposition"] == "held-for-review"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_held_names_are_emptied_where_the_user_chooses_so():
     transform = _transform(empty_held=True)
     result = _transformed(transform, _structure_set("SURGEONS ROI"))
@@ -317,6 +323,7 @@ def test_held_names_are_emptied_where_the_user_chooses_so():
     assert entry.reasons == frozenset({Reason.UNMATCHED})
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-11")
 def test_a_kept_name_that_echoes_the_patient_is_held():
     surname = synthetic.PATIENTS_NAME.split("^")[0]
     transform = _transform(_reviewed(**{surname: ReviewedName(Review.KEEP)}))
@@ -327,6 +334,7 @@ def test_a_kept_name_that_echoes_the_patient_is_held():
     assert evidence.held[0].reason is Reason.ECHOES_IDENTIFIER  # pylint: disable=no-member
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "PS3.15-E.3.5-02")
 def test_other_descriptors_take_their_basic_profile_action_and_keep_the_claim():
     # PS3.15 E.3.5 specifies what the option removes, not what it retains,
     # and E.1.1 makes Table E.1-1 the minimum actions, so a descriptor that
@@ -351,6 +359,7 @@ def test_other_descriptors_take_their_basic_profile_action_and_keep_the_claim():
     assert ("113100", "DCM") in _codes(written)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_a_descriptor_that_the_fallback_keeps_loses_the_claim(monkeypatch):
     fallen_back = descriptor_cleaning._fallen_back  # pylint: disable=protected-access
 
@@ -374,6 +383,7 @@ def test_a_descriptor_that_the_fallback_keeps_loses_the_claim(monkeypatch):
 
 
 # The corpus plants markers in UI elements, which pydicom warns of on reading.
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 @pytest.mark.filterwarnings("ignore:Invalid value for VR UI:UserWarning")
 def test_the_synthetic_rt_plan_claims_the_option():
     # Its RT Plan Label, which is Type 1, and its other descriptors given C
@@ -392,6 +402,7 @@ def test_the_synthetic_rt_plan_claims_the_option():
     assert CLEAN_DESCRIPTORS_CODE in _codes(written)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_a_roi_name_that_was_not_collected_sequesters_its_instance(monkeypatch):
     path = ElementPath((("(3006,0020)", 0),), "(3006,0026)")
     collect = instance_transform.edit_instance
