@@ -27,7 +27,7 @@ note = '''
 Patient ID and Patient's Name have keyed replacement values that keep subjects separate and do not contain the source identifier.
 Z writes a zero-length value, and D a conspicuous constant for each VR that does not depend on the source value, or a second constant where the source value equals the first, so the replacement always differs from it; a UI value takes its keyed replacement, and D on an attribute of any other VR is refused until a reviewed rule covers it.
 The one reviewed rule so far gives Person Identification Code Sequence one item with a dummy code (D-021).
-The run's instance transform removes or replaces each Attribute to be protected in every instance it writes, and an end-to-end test of `basic` over the synthetic collection finds none of the collection's markers in the published files (MIDI-BP-01).
+The run's instance transform removes or replaces each Attribute to be protected in every instance it writes, and an end-to-end test of `basic` and `basic-clean-descriptors` over the synthetic collection finds none of the collection's markers in the published files (MIDI-BP-01).
 '''
 
 [[requirement]]
@@ -111,7 +111,7 @@ De-identification Method Code Sequence keeps its items and gains the CID 7050 co
 Under a policy that claims conformance, every selected option must be satisfied except Clean Descriptors, so that the codes name each option whose actions the instance carries.
 `tps-import`, which claims no conformance, adds no code and says so in its readable value.
 The run's instance transform adds the markers to each instance it de-identifies, then writes the instance and verifies what it preserves.
-An end-to-end test runs `basic` and `basic-clean-descriptors` over the synthetic collection and finds in every released instance Patient Identity Removed YES, the method digest as the first value of De-identification Method, and the code of the Basic Profile, with that of Clean Descriptors exactly where the preset satisfies it (MIDI-BP-01).
+An end-to-end test runs `basic` and `basic-clean-descriptors` over the synthetic collection and finds in every released instance Patient Identity Removed YES, the method digest as the first value of De-identification Method, and the code of the Basic Profile, with that of Clean Descriptors under `basic-clean-descriptors` and not under `basic` (MIDI-BP-01).
 '''
 
 [[requirement]]
