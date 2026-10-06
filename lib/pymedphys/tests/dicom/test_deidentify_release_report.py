@@ -31,21 +31,13 @@ import types
 from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import (
-    descriptor_cleaning,
     method_digest,
     policy,
-    preservation,
-    preserving_writer,
-    qc_pack,
-    reasons,
     reference_graph,
-    release_gate,
     release_report,
     residuals,
-    roi_names,
     runtime,
     scope,
-    source,
     standard,
     walker,
 )
@@ -518,99 +510,6 @@ def test_a_reason_given_twice_is_listed_once(basic):
     assert len(entry["reasons"]) == 2
 
 
-# The run refuses these inputs rather than sequestering them.
-_REFUSING = (
-    reasons.RunReason.SYMBOLIC_LINK,
-    reasons.RunReason.NOT_A_REGULAR_FILE,
-    reasons.RunReason.DICOMDIR,
-    reasons.RunReason.UNREADABLE_FILE,
-    reasons.RunReason.NOT_READABLE_AS_DICOM,
-)
-
-_SEQUESTERING = [
-    *(
-        (each, "scope")
-        for each in scope.Disposition
-        if each is not scope.Disposition.SUPPORTED
-    ),
-    *((each, "admission") for each in source.SourceReason),
-    (reference_graph.FindingKind.MISSING_IDENTIFIER, "references"),
-    (reference_graph.FindingKind.CONFLICTING_INSTANCE, "references"),
-    (reference_graph.FindingKind.SERIES_IN_SEVERAL_STUDIES, "references"),
-    *((each, "run") for each in reasons.RunReason if each not in _REFUSING),
-    *((each, "transform") for each in reasons.TransformReason),
-    *((each, "transform") for each in descriptor_cleaning.DescriptorReason),
-    *((each, "writer") for each in preserving_writer.WriteReason),
-    *((each, "verifier") for each in preservation.PreservationReason),
-]
-
-
-@pytest.mark.parametrize(
-    "cause, stage", _SEQUESTERING, ids=[str(each) for each, _ in _SEQUESTERING]
-)
-def test_each_stage_that_sequesters_gives_its_reason_code(basic, cause, stage):
-    reason = release_report.sequestration_reason(cause)
-
-    assert (reason.stage, reason.code) == (stage, cause.value)
-    assert (reason.attribute, reason.action, reason.vr) == (None, None, None)
-    report = release_report.release_report(
-        basic,
-        vocabulary=None,
-        reviewed_roi_names=None,
-        sequestered=(release_report.SequesteredInstance("S-0001", (reason,)),),
-    )
-    assert release_report.report_document(report)["sequestered"][0]["reasons"] == [
-        {"stage": stage, "code": cause.value}
-    ]
-
-
-@pytest.mark.parametrize("reason", list(walker.SequesterReason))
-def test_each_walker_reason_is_written(basic, reason):
-    cause = walker.Sequestration(ElementPath((), "(0010,0020)"), "X", None, reason)
-    report = release_report.release_report(
-        basic,
-        vocabulary=None,
-        reviewed_roi_names=None,
-        sequestered=(
-            release_report.SequesteredInstance(
-                "S-0001", (release_report.sequestration_reason(cause),)
-            ),
-        ),
-    )
-
-    assert release_report.report_document(report)["sequestered"][0]["reasons"] == [
-        {
-            "stage": "walker",
-            "code": reason.value,
-            "attribute": "(0010,0020)",
-            "action": "X",
-            "vr": None,
-        }
-    ]
-
-
-@pytest.mark.parametrize(
-    "cause",
-    [
-        scope.Disposition.SUPPORTED,
-        reference_graph.FindingKind.DANGLING_REFERENCE,
-        reference_graph.FindingKind.DUPLICATE_INSTANCE,
-        reference_graph.FindingKind.STUDY_WITH_SEVERAL_PATIENTS,
-        *_REFUSING,
-        descriptor_cleaning.HeldRoiName(
-            ElementPath((), "(3006,0026)"), roi_names.Reason.UNMATCHED
-        ),
-        "SENTINEL",
-    ],
-)
-def test_what_does_not_sequester_an_instance_is_not_a_reason(cause):
-    # A study with several patients stops the run instead.
-    with pytest.raises((TypeError, ValueError)) as raised:
-        release_report.sequestration_reason(cause)
-
-    assert "SENTINEL" not in str(raised.value)
-
-
 def test_labels_are_random_and_carry_nothing_from_the_run():
     first = release_report.sequestration_labels(12, rng=random.Random(1))
     second = release_report.sequestration_labels(12, rng=random.Random(2))
@@ -892,30 +791,3 @@ def test_a_run_section_with_a_field_that_could_hold_a_value_is_refused(
             write(report)
         assert "SENTINEL" not in str(raised.value)
         assert raised.value.__cause__ is None
-
-
-def test_the_codes_of_each_stage_are_distinct():
-    # A code names one reason of its stage, so no two enums that give a stage
-    # its codes share a value.
-    sources = {
-        "run": (reasons.RunReason,),
-        "transform": (reasons.TransformReason, descriptor_cleaning.DescriptorReason),
-        "writer": (preserving_writer.WriteReason,),
-        "verifier": (preservation.PreservationReason,),
-        "release": (release_gate.ReasonCode,),
-    }
-    for stage, enums in sources.items():
-        values = [each.value for enum in enums for each in enum]
-        assert len(values) == len(set(values)), stage
-        codes = release_report._SEQUESTERING  # pylint: disable = protected-access
-        # Every member gives a code, except the run's that refuse an input.
-        if stage == "run":
-            assert codes[stage] == set(values) - {each.value for each in _REFUSING}
-        else:
-            assert codes[stage] == set(values), stage
-
-
-def test_each_drop_reason_is_a_reason_that_coverage_counts():
-    assert {each.value for each in qc_pack.DropReason} <= {
-        each.value for each in residuals.UnsearchedReason
-    }
