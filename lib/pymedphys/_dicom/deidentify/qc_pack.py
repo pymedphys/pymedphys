@@ -19,8 +19,8 @@ so it holds no source value or original path (D-016). Human review needs
 more: which source file each instance came from, the text that the residual
 search found and what surrounds it, and the strings that the policy retains.
 That material may still identify people, so it goes in a QC pack, written to
-a location that the caller designates explicitly, outside the release and
-staging directories, and readable only by its owner (D-016).
+a location that the caller designates explicitly, outside the source,
+release, and staging directories, and readable only by its owner (D-016).
 
 A pack holds, for one run:
 

@@ -177,6 +177,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/keys.py",
         "lib/pymedphys/_dicom/deidentify/markers.py",
         "lib/pymedphys/_dicom/deidentify/method_digest.py",
+        "lib/pymedphys/_dicom/deidentify/midi_answer_key.py",
         "lib/pymedphys/_dicom/deidentify/output_names.py",
         "lib/pymedphys/_dicom/deidentify/pixel_risk.py",
         "lib/pymedphys/_dicom/deidentify/preservation.py",
