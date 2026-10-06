@@ -435,11 +435,15 @@ def release_report() -> list[str]:
         "is known, and one from the release gate gives the attribute's tags "
         "in the same way where it names an attribute.",
         "",
-        "An instance that the first pass read but whose values were not "
-        "collected at all, since it was sequestered before its transform "
-        "collected them, as for its scope, a source file refused on its "
-        "second read, an error, or a source file that changed during the run, "
-        "makes the release gate withhold every other file of its subject, by "
+        "An instance outside the supported scope whose IOD the pinned tables "
+        "define, such as an MR image or a spatial registration, is planned "
+        "and edited, where its source can be read, only so that its values "
+        "are collected for its subject's search; it is never written. An "
+        "instance that the first pass read but whose values were not "
+        "collected at all, since its source file was refused on its second "
+        "read, its SOP Class names no IOD of the pinned tables, its transform "
+        "raised an error, or its source file changed during the run, makes "
+        "the release gate withhold every other file of its subject, by "
         "`not-reported`, since its values were not searched for in them "
         "(D-027). An input that the first pass sequesters for a sequence it "
         "cannot read has no known subject and withholds no other file.",

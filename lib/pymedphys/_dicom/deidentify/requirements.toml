@@ -420,6 +420,8 @@ tests = [
   "tests/dicom/test_deidentify_conformance_values.py::test_a_code_not_described_as_holding_withholds",
   "tests/dicom/test_deidentify_conformance_values.py::test_every_other_release_code_withholds",
   "tests/dicom/test_deidentify_conformance_values.py::test_one_instance_without_collected_values_withholds_its_subject",
+  "tests/dicom/test_deidentify_out_of_scope_siblings.py::test_an_out_of_scope_sibling_no_longer_withholds_its_subject",
+  "tests/dicom/test_deidentify_out_of_scope_siblings.py::test_an_unlisted_sop_class_still_withholds_its_subject",
   "tests/dicom/test_deidentify_conformance_values.py::test_the_residual_search_is_described_as_part_of_each_release",
   "tests/dicom/test_deidentify_conformance_values.py::test_the_report_describes_what_a_run_always_writes",
   "tests/dicom/test_deidentify_conformance_roi_names.py::test_roi_name_cleaning_is_described_only_where_roi_name_is_cleaned",

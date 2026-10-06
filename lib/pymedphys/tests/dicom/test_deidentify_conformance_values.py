@@ -358,6 +358,8 @@ def test_one_instance_without_collected_values_withholds_its_subject(preset):
     section = _section(preset, "Release report")
     assert "withhold every other file of its subject, by `not-reported`" in section
     assert "has no known subject and withholds no other file" in section
+    assert "only so that its values are collected for its subject's search" in (section)
+    assert "as for its scope" not in section
     gate = instance_transform.ReleaseGate()
     released = gate(_gate_written(), _empty_coverage(), (_empty_coverage(),))
     assert isinstance(released, run.Release)
