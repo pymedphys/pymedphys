@@ -16,6 +16,7 @@
 
 import collections
 import functools
+import struct
 
 from pymedphys._imports import pytest
 
@@ -25,11 +26,17 @@ from pymedphys._dicom.deidentify import (
     conformance_values,
     dummy_values,
     edits,
+    instance_transform,
+    pixel_risk,
     policy,
     pseudonyms,
+    qc_retained,
+    release_gate,
     release_report,
     residuals,
     reviewed_roi_names,
+    run,
+    run_report,
     standard,
     supplementary_actions,
     temporal_roles,
@@ -38,6 +45,7 @@ from pymedphys._dicom.deidentify import (
 )
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.reasons import TransformReason
 
 TEMPORAL_VRS = frozenset({"DA", "DT", "TM"})
 TIMEZONE_OFFSET = "(0008,0201)"
@@ -321,7 +329,103 @@ def test_the_release_report_counts_held_instances_by_stage(preset):
         line = held.split(f"- `{stage}`: ", 1)[1].split(" - ", 1)[0]
         assert line.startswith(conformance_values.HOLDING_STAGES[stage])
         for reason in codes:
-            assert f"`{reason}`" in line, (stage, reason)
+            holds = stage != "release" or reason in conformance_values.REVIEW_CODES
+            assert (f"`{reason}`" in line) == holds, (stage, reason)
+
+
+def _gate_written():
+    """A written file whose data set holds only an emptied Study Description."""
+    meta = struct.pack("<HH2sH", 0x0002, 0x0010, b"UI", 20) + b"1.2.840.10008.1.2.1\x00"
+    data_set = struct.pack("<HH2sH", 0x0008, 0x1030, b"LO", 0)
+    return bytes(128) + b"DICM" + meta + data_set
+
+
+def _gate_reasons(code):
+    """The release condition's reasons where ``code`` is all that is wrong."""
+    path = ElementPath((), "(0008,1030)")  # Study Description, LO
+    written = _gate_written()
+    collected = ()
+    coverage = {"planned": frozenset({path}), "collected": collected}
+    if code is release_gate.ReasonCode.UNCOLLECTED:
+        coverage["uncollected"] = (release_gate.Uncollected(path, "undecodable"),)
+    elif code is release_gate.ReasonCode.READ_AS_LATIN_1:
+        coverage["collected"] = (residuals.SourceValue(path, "LO", "ZARQUON"),)
+        coverage["decoded_as_bytes"] = frozenset({path})
+    elif code is release_gate.ReasonCode.COLLECTED_AS_OTHER_VR:
+        coverage["collected"] = (residuals.SourceValue(path, "UT", "ZARQUON"),)
+    elif code is release_gate.ReasonCode.RESIDUAL_TEXT:
+        coverage["collected"] = (residuals.SourceValue(path, "LO", "ZARQUON"),)
+        text = b"ZARQUON "
+        written += struct.pack("<HH2sH", 0x0008, 0x103E, b"LO", len(text)) + text
+    elif code is release_gate.ReasonCode.RESIDUAL_PERSON_NAME:
+        name = ElementPath((), "(0010,0010)")
+        coverage["planned"] = frozenset({name})
+        coverage["collected"] = (residuals.SourceValue(name, "PN", "ZEBEDEE^QUILLON"),)
+        text = b"ZEBEDEE^QUILLON "
+        written += struct.pack("<HH2sH", 0x0008, 0x103E, b"LO", len(text)) + text
+    elif code is release_gate.ReasonCode.RESIDUAL_OUTSIDE_DATA_SET:
+        coverage["collected"] = (residuals.SourceValue(path, "LO", "ZARQUON"),)
+        written += b"\xff\xff\xff\xffZARQUON STUDY"
+    elif code is release_gate.ReasonCode.UNREADABLE_FILE:
+        coverage["collected"] = ()
+        written += struct.pack("<HH2sH", 0x0008, 0x103E, b"LO", 40) + b"SHORT"
+    return release_gate.release_condition(release_gate.Coverage(**coverage), written)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize("code", sorted(conformance_values.REVIEW_CODES))
+def test_each_code_described_as_holding_holds_an_instance(code):
+    condition = _gate_reasons(release_gate.ReasonCode(code))
+    assert condition.decision is release_gate.Decision.QC_REVIEW
+    assert [r.code.value for r in condition.reasons] == [code]
+
+
+@pytest.mark.parametrize(
+    "code", ["residual-person-name", "residual-outside-data-set", "unreadable-file"]
+)
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_a_code_not_described_as_holding_withholds(code):
+    condition = _gate_reasons(release_gate.ReasonCode(code))
+    assert condition.decision is release_gate.Decision.WITHHOLD
+    assert code in [r.code.value for r in condition.reasons]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_every_other_release_code_withholds():
+    # Each reason with another code is given only with WITHHOLD (D-027).
+    withholding = {c.value for c in release_gate.ReasonCode}
+    withholding -= conformance_values.REVIEW_CODES
+    assert withholding == {
+        "unreadable-file",
+        "residual-person-name",
+        "residual-uid",
+        "residual-date",
+        "residual-datetime",
+        "residual-direct-identifier",
+        "residual-outside-data-set",
+    }
+    assert conformance_values.REVIEW_CODES <= release_report._HOLDING["release"]  # pylint: disable = protected-access
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_one_instance_without_collected_values_withholds_its_subject(preset):
+    section = _section(preset, "Release report")
+    assert "withhold every other file of its subject, by `not-reported`" in section
+    assert "has no known subject and withholds no other file" in section
+    assert "only so that its values are collected for its subject's search" in (section)
+    assert "as for its scope" not in section
+    gate = instance_transform.ReleaseGate()
+    released = gate(_gate_written(), _empty_coverage(), (_empty_coverage(),))
+    assert isinstance(released, run.Release)
+    withheld = gate(
+        _gate_written(), _empty_coverage(), (_empty_coverage(), run.NO_EVIDENCE)
+    )
+    assert isinstance(withheld, run.Sequestered)
+    assert [r.code.value for r in withheld.reasons] == ["not-reported"]
+
+
+def _empty_coverage():
+    return release_gate.Coverage(planned=frozenset(), collected=())
 
 
 @pytest.mark.deid_requirement("MIDI-BP-18")
@@ -397,16 +501,85 @@ def test_per_instance_detail_is_only_in_the_qc_pack(preset):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
-def test_what_remains_of_the_release_report_is_pending(preset):
+def test_nothing_of_the_run_is_pending(preset):
     statement = _statement(preset)
-    pending = conformance.PENDING_RELEASE_REPORT
-    assert pending in statement.pending
-    for decision in ("D-016", "D-026", "D-027"):
-        assert decision in pending
-    assert "QC pack" in pending
-    assert "search each written file" in pending
-    assert "the run itself sequesters" in pending
-    assert "staging area" in pending
-    # How the report names a sequestered instance is now described.
-    assert "how it names" not in pending
+    # Each run now writes its report, QC pack, and this statement, searches
+    # each written file, acts on what the search finds, lists each retained
+    # string, assesses each instance's indicators of risk in its pixel data,
+    # and lists each CT volume in the QC pack.
+    assert not conformance.PENDING
+    for done in (
+        "search each written file",
+        "the run itself sequesters",
+        "D-015",
+        "D-017",
+        "CT volume",
+        "write this statement",
+    ):
+        assert not any(done in item for item in statement.pending)
+    # No preset is enabled, so none claims conformance, complete or not.
+    assert not statement.enabled
     assert not statement.claims_conformance
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_qc_pack_lists_what_the_run_keeps_for_review(preset):
+    section = _section(preset, "QC pack")
+    assert (
+        "of VR " + conformance_values.join(sorted(qc_retained.RETAINED_TEXT_VRS), "or")
+    ) in section
+    assert "other than Specific Character Set (0008,0005)" in section
+    assert f"`{TransformReason.UNREVIEWABLE_RETAINED_TEXT.value}`" in section
+    assert "Pixel Data (7FE0,0010) unchanged" in section
+    assert "never from its pixel data" in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_qc_pack_lists_each_ct_volume(preset):
+    section = _section(preset, "QC pack")
+    for indicator in (
+        pixel_risk.Indicator.CT_VOLUME,
+        pixel_risk.Indicator.HEAD_OR_NECK,
+        pixel_risk.Indicator.UNREADABLE,
+    ):
+        assert f"`{indicator.value}`" in section
+    assert "each CT volume among the instances that are released or held" in section
+    assert "PS3.16 Annex L" in section
+    assert "Series Instance UID (0020,000E), which it never writes" in section
+    assert "assesses only the released and held instances" in section
+    assert (
+        "a series with just one single-frame CT image among them is not a volume"
+        in section
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_described_reason_for_an_undecodable_kept_string_sequesters():
+    assert (
+        TransformReason.UNREVIEWABLE_RETAINED_TEXT.value
+        in release_report._SEQUESTERING["transform"]  # pylint: disable = protected-access
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_residual_search_is_described_as_part_of_each_release(preset):
+    section = _section(preset, "Residual search")
+    assert "before the file is released" in section
+    assert "once the engine applies it" not in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_report_describes_what_a_run_always_writes(preset):
+    section = _section(preset, "Release report")
+    assert "a run without a QC pack" not in section
+    assert "Every run writes a QC pack" in section
+    assert "neither labelled nor counted in the report" in section
+    assert "one from the release gate gives the attribute's tags" in section
+    assert (
+        f"`{run_report.RELEASE_REPORT}` and, beside it, its human-readable "
+        f"form as `{run_report.RELEASE_REPORT_MARKDOWN}`"
+    ) in section
+    assert (
+        "this statement of its policy, which holds no instance value, as "
+        f"`{run_report.CONFORMANCE_STATEMENT}`"
+    ) in section

@@ -509,7 +509,7 @@ def test_no_warning_or_log_record_shows_a_marker(preset_run):
             assert signature not in message
 
 
-@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05", "PS3.15-E.3.5-01")
 def test_every_released_instance_claims_the_presets_options(preset_run):
     released = preset_run.released
     clean_descriptors = preset_run.preset == CLEAN_DESCRIPTORS
