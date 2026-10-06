@@ -462,8 +462,8 @@ def qc_pack(named: Callable[[str], str]) -> list[str]:
         "Converted Enhanced CT image whose Number of Frames cannot be read. "
         "The run groups instances into series by their source's "
         f"{named(_SERIES_INSTANCE_UID)}, which it never writes, and assesses "
-        "only the instances that reach a recipient, so a series of which "
-        "one image is released is not a volume (D-015).",
+        "only the released and held instances, so a series with just one "
+        "single-frame CT image among them is not a volume (D-015).",
     ]
 
 

@@ -527,7 +527,11 @@ def test_the_qc_pack_lists_each_ct_volume(preset):
     assert "each CT volume among the instances that are released or held" in section
     assert "PS3.16 Annex L" in section
     assert "Series Instance UID (0020,000E), which it never writes" in section
-    assert "a series of which one image is released is not a volume" in section
+    assert "assesses only the released and held instances" in section
+    assert (
+        "a series with just one single-frame CT image among them is not a volume"
+        in section
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
