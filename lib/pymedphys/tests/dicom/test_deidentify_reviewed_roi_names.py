@@ -18,6 +18,7 @@ entries, and every ROI Name and identifier is synthetic.
 """
 
 import dataclasses
+import hashlib
 import json
 import os
 import pathlib
@@ -25,6 +26,7 @@ from unittest import mock
 
 from pymedphys._imports import pytest
 
+from pymedphys._dicom.deidentify import keys
 from pymedphys._dicom.deidentify import reviewed_roi_names as reviewed
 from pymedphys._dicom.deidentify import roi_names
 from pymedphys._dicom.deidentify.reviewed_roi_names import (
@@ -511,3 +513,126 @@ def test_the_review_queue_counts_structure_sets_and_merges_reasons():
         reviewed.PendingName("Hand L", frozenset({Reason.ECHOES_IDENTIFIER}), 2),
         reviewed.PendingName("Lung_L1", frozenset({Reason.UNMATCHED}), 1),
     )
+
+
+# A key of the bytes 0 to 31, and the keyed digest of the list below under it,
+# computed with `openssl dgst -sha256 -mac HMAC` over the framed message
+# written out by hand, independently of the code under test: the derivation
+# version, the domain "reviewed-roi-names", and these canonical bytes, each
+# preceded by its length as four big-endian bytes.
+TEST_KEY = keys.DeidKey(bytes(range(32)))
+CANONICAL_LIST = (
+    b'{"format":"pymedphys-deid-reviewed-roi-names/1","names":{'
+    b'"Gross Tumour":{"review":"map","to":"GTV"},"Spine":{"review":"keep"}}}'
+)
+KEYED_DIGEST = "4247e696d65fef56fae5a25e8b7e2ffc5f81727a0a44395ca29acdc48df4d667"
+
+
+def test_the_keyed_digest_is_the_hmac_of_the_lists_canonical_form():
+    names = _list(Spine=KEEP, Gross_Tumour=_map("GTV"))
+
+    assert names.canonical_bytes() == CANONICAL_LIST
+    assert names.keyed_digest(TEST_KEY) == KEYED_DIGEST
+
+
+def test_the_keyed_digest_is_stable_for_the_same_list_and_key(tmp_path):
+    path = tmp_path / "reviewed-roi-names.json"
+    first = reviewed.ReviewedNames.open(path)
+    first.record("Spine", KEEP)
+    first.record("Gross Tumour", _map("GTV"))
+    first.save()
+
+    reopened = reviewed.ReviewedNames.open(path)
+
+    assert reopened.keyed_digest(TEST_KEY) == KEYED_DIGEST
+    assert _list(Gross_Tumour=_map("GTV"), Spine=KEEP).keyed_digest(TEST_KEY) == (
+        KEYED_DIGEST
+    )
+
+
+@pytest.mark.parametrize(
+    "decisions",
+    [
+        {"Spine": KEEP},
+        {"Spine": KEEP, "Gross_Tumour": _map("GTV"), "Cord": KEEP},
+        {"Spine": EMPTY, "Gross_Tumour": _map("GTV")},
+        {"Spine": KEEP, "Gross_Tumour": _map("GTVp")},
+        {"Spine": KEEP, "Gross_Tumour": EMPTY},
+        {"spine": KEEP, "Gross_Tumour": _map("GTV")},
+        {},
+    ],
+    ids=["removed", "added", "review", "target", "map-to-empty", "spelling", "empty"],
+)
+def test_any_change_to_the_list_changes_the_keyed_digest(decisions):
+    assert _list(**decisions).keyed_digest(TEST_KEY) != KEYED_DIGEST
+
+
+def test_the_keyed_digest_depends_on_the_key_and_is_not_an_unkeyed_hash():
+    names = _list(Spine=KEEP, Gross_Tumour=_map("GTV"))
+    run_key = keys.DeidKey.generate()
+
+    digest = names.keyed_digest(run_key)
+
+    assert len(digest) == 64 and digest == digest.lower() and int(digest, 16) >= 0
+    assert digest != names.keyed_digest(keys.DeidKey.generate())
+    assert digest == names.keyed_digest(run_key)
+    assert digest != hashlib.sha256(names.canonical_bytes()).hexdigest()
+
+
+def test_an_empty_list_has_a_keyed_digest():
+    digest = reviewed.ReviewedNames.empty().keyed_digest(TEST_KEY)
+
+    assert (
+        digest
+        == keys.DeidKey(bytes(range(32)))
+        .derive(
+            "reviewed-roi-names",
+            b'{"format":"pymedphys-deid-reviewed-roi-names/1","names":{}}',
+        )
+        .hex()
+    )
+
+
+@pytest.mark.parametrize("key", [bytes(range(32)), None, "0" * 64])
+def test_the_keyed_digest_needs_a_deidentification_key(key):
+    with pytest.raises(TypeError, match="DeidKey"):
+        _list(Spine=KEEP).keyed_digest(key)
+
+
+def test_the_report_counts_give_held_names_by_reason_and_names_by_outcome():
+    queue = reviewed.ReviewQueue()
+    first = ["Heart", "Lung_L1", "PRV cord", "Dr X", ""]
+    queue.add(first, _clean(first, _list(PRV_cord=KEEP, Dr_X=EMPTY)))
+    second = ["Lung_L1", "Heart", "Old lung"]
+    queue.add(second, _clean(second, _list(Old_lung=_map("Lung_Old"))))
+    third = ["Lung_L1"]
+    queue.add(third, _clean(third, _list(), empty_held=True))
+
+    counts = queue.report_counts()
+
+    assert counts.held == {Reason.UNMATCHED: 1}
+    assert counts.outcomes == {
+        Outcome.RENAMED: 2,
+        Outcome.EMPTY: 1,
+        Outcome.KEPT: 1,
+        Outcome.MAPPED: 1,
+        Outcome.EMPTIED: 1,
+        Outcome.HELD: 2,
+        Outcome.EMPTIED_UNREVIEWED: 1,
+    }
+    assert counts.held == queue.summary()
+
+
+def test_the_report_counts_hold_only_positive_counts_and_are_read_only():
+    queue = reviewed.ReviewQueue()
+    queue.add(["Heart"], _clean(["Heart"], _list()))
+
+    counts = queue.report_counts()
+
+    assert counts.held == {} and counts.outcomes == {Outcome.RENAMED: 1}
+    with pytest.raises(TypeError):
+        counts.outcomes[Outcome.HELD] = 1  # type: ignore[index]
+    assert reviewed.ReviewQueue().report_counts() == reviewed.RoiNameCounts({}, {})
+    assert reviewed.RoiNameCounts(
+        {Reason.UNMATCHED: 0}, {Outcome.HELD: 0, Outcome.KEPT: 2}
+    ) == reviewed.RoiNameCounts({}, {Outcome.KEPT: 2})
