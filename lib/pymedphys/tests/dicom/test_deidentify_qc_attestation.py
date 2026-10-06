@@ -86,9 +86,12 @@ def test_the_record_holds_only_the_reference_and_outcome(pack, outcome):
     _attest(pack, outcome)
     record = qc_attestation.attestation_record(pack)
     assert record == AttestationRecord(REFERENCE, outcome)
+    # With the releaser's yes-or-no confirmations, never the reviewer.
     assert [field.name for field in qc_attestation.dataclasses.fields(record)] == [
         "reference",
         "outcome",
+        "intended_use_checked",
+        "residual_risk_accepted",
     ]
 
 
@@ -108,6 +111,7 @@ def test_the_attestation_is_written_beside_the_pack(pack):
         },
         "reviewer": REVIEWER,
         "attested_at": "2026-10-02T17:30:00+00:00",
+        "releaser": {"intended_use_checked": None, "residual_risk_accepted": None},
     }
     assert attestation.pack_digest == digest
     if os.name == "posix":
@@ -345,3 +349,88 @@ def test_an_attestation_that_cannot_be_written_shows_no_path(pack, monkeypatch):
     with pytest.raises(QcPackError, match="could not be written") as raised:
         _attest(pack)
     assert _shows_no_path(raised.value, pack)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-17")
+def test_the_releasers_confirmations_are_bound_to_the_pack(pack):
+    qc_attestation.attest(
+        pack,
+        reviewer=REVIEWER,
+        outcome=Outcome.ATTESTED,
+        coverage=COMPLETE,
+        attested_at=WHEN,
+        intended_use_checked=True,
+        residual_risk_accepted=False,
+    )
+
+    written = json.loads((pack / qc_attestation.ATTESTATION_FILE).read_text("ascii"))
+    assert written["releaser"] == {
+        "intended_use_checked": True,
+        "residual_risk_accepted": False,
+    }
+    assert qc_attestation.attestation_record(pack) == AttestationRecord(
+        REFERENCE, Outcome.ATTESTED, True, False
+    )
+
+
+def test_confirmations_not_stated_are_recorded_as_none(pack):
+    _attest(pack)
+    written = json.loads((pack / qc_attestation.ATTESTATION_FILE).read_text("ascii"))
+    assert written["releaser"] == {
+        "intended_use_checked": None,
+        "residual_risk_accepted": None,
+    }
+    record = qc_attestation.attestation_record(pack)
+    assert (record.intended_use_checked, record.residual_risk_accepted) == (None, None)
+
+
+def test_an_attestation_without_the_releaser_reads_as_not_stated(pack):
+    _attest(pack)
+    path = pack / qc_attestation.ATTESTATION_FILE
+    document = json.loads(path.read_text("ascii"))
+    del document["releaser"]
+    path.chmod(0o600)
+    path.write_text(json.dumps(document), encoding="ascii")
+
+    assert qc_attestation.attestation_record(pack) == AttestationRecord(
+        REFERENCE, Outcome.ATTESTED
+    )
+
+
+@pytest.mark.parametrize(
+    "releaser",
+    [
+        {"intended_use_checked": "yes"},
+        {"intended_use_checked": 1},
+        {"note": True},
+        ["intended_use_checked"],
+    ],
+)
+def test_malformed_confirmations_are_refused(pack, releaser):
+    _attest(pack)
+    path = pack / qc_attestation.ATTESTATION_FILE
+    document = json.loads(path.read_text("ascii"))
+    path.chmod(0o600)
+    path.write_text(json.dumps({**document, "releaser": releaser}), encoding="ascii")
+
+    with pytest.raises(QcPackError, match="not of its format"):
+        qc_attestation.attestation_record(pack)
+
+
+@pytest.mark.parametrize("value", ["yes", 1, 0])
+def test_a_confirmation_is_true_false_or_none(pack, value):
+    with pytest.raises(QcPackError, match="True, False, or None"):
+        qc_attestation.attest(
+            pack,
+            reviewer=REVIEWER,
+            outcome=Outcome.REJECTED,
+            coverage=COMPLETE,
+            intended_use_checked=value,
+        )
+    with pytest.raises(QcPackError, match="True, False, or None"):
+        AttestationRecord(REFERENCE, Outcome.ATTESTED, residual_risk_accepted=value)
+
+
+def test_a_pack_not_attested_has_no_confirmations():
+    with pytest.raises(QcPackError, match="no confirmations"):
+        AttestationRecord(REFERENCE, Outcome.NOT_ATTESTED, True)

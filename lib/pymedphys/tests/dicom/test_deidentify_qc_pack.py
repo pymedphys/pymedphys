@@ -14,8 +14,8 @@
 
 """The confidential QC pack and where it may be written."""
 
-# The pack's entries and its store share the same fixtures, so they stay in
-# one module.
+# The tests share the pack and entry builders below, so they stay in one
+# module.
 # pylint: disable = too-many-lines
 
 import json
@@ -31,6 +31,7 @@ from pathlib import Path, PurePosixPath
 from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import qc_pack, qc_store, residuals, reviewed_roi_names
+from pymedphys._dicom.deidentify.reference_graph import FindingKind
 from pymedphys._dicom.deidentify.roi_names import Reason
 from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
 from pymedphys._dicom.deidentify.qc_pack import (
@@ -41,6 +42,7 @@ from pymedphys._dicom.deidentify.qc_pack import (
     InstanceEntry,
     QcPack,
     QcPackError,
+    ReferenceFindingEntry,
     ResidualEntry,
     RetainedString,
     RoiNameEntry,
@@ -120,6 +122,11 @@ def _full_pack():
                 "lung l",
                 RoiNameOutcome.RENAMED,
                 written="Lung_L",
+            ),
+        ),
+        reference_findings=(
+            ReferenceFindingEntry(
+                0, FindingKind.DANGLING_REFERENCE, ("(300C,0080)", "(0008,1155)"), 2
             ),
         ),
     )
@@ -264,6 +271,10 @@ def test_a_duplicate_names_a_written_instance_output():
             RoiNameEntry(1, NAME_PATH, "x", RoiNameOutcome.HELD, Reason.UNMATCHED),
         ),
         ("retained_strings", RetainedString(RETAINED, ((1, NAME_PATH),))),
+        (
+            "reference_findings",
+            ReferenceFindingEntry(1, FindingKind.DANGLING_REFERENCE, ("(0008,1155)",)),
+        ),
     ],
 )
 def test_entries_name_an_instance(section, entry):
@@ -418,6 +429,25 @@ def test_roi_name_outcomes_are_named_as_descriptor_cleaning_names_them():
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
+@pytest.mark.parametrize(
+    "fields",
+    [
+        ("dangling-reference", ("(0008,1155)",), 1),
+        (FindingKind.DANGLING_REFERENCE, (), 1),
+        (FindingKind.DANGLING_REFERENCE, "(0008,1155)", 1),
+        (FindingKind.DANGLING_REFERENCE, ("SENTINEL",), 1),
+        (FindingKind.DANGLING_REFERENCE, ("(0008,1155)",), -1),
+        (FindingKind.DANGLING_REFERENCE, ("(0008,1155)",), True),
+    ],
+    ids=["kind", "no-tags", "tags-as-text", "not-a-tag", "negative", "boolean"],
+)
+def test_a_reference_finding_entry_is_checked(fields):
+    with pytest.raises(QcPackError, match="reference finding") as raised:
+        ReferenceFindingEntry(0, *fields)
+    assert "SENTINEL" not in str(raised.value)
+
+
 @pytest.mark.deid_requirement("MIDI-BP-17")
 def test_an_excerpt_shows_the_bytes_around_a_residual():
     data = b"Seen by Dr Zebedee today"
@@ -539,6 +569,14 @@ def test_the_document_holds_every_section():
             "institutional_matches": [],
         }
     ]
+    assert document["reference_findings"] == [
+        {
+            "position": 0,
+            "kind": "dangling-reference",
+            "attribute": "(300C,0080) > (0008,1155)",
+            "count": 2,
+        }
+    ]
     assert list(document) == [
         "format",
         "reference",
@@ -548,6 +586,7 @@ def test_the_document_holds_every_section():
         "not_searched",
         "retained_strings",
         "roi_names",
+        "reference_findings",
         "pixel_risks",
         "series_risks",
         "previews",

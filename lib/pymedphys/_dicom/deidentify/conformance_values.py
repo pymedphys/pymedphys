@@ -428,6 +428,11 @@ def release_report() -> list[str]:
         f"reason codes of {code('roi-names')} above, naming "
         "none of them (D-009).",
         "",
+        "The report counts the instances that have each kind of first-pass "
+        "reference finding that the run reports without acting on it, as "
+        + join(sorted(code(kind.value) for kind in report.REPORTED_FINDINGS), "or")
+        + ", each instance once for each kind, naming none of them (D-026).",
+        "",
         "The report counts the source values that the residual search did "
         "not search, in full or in part, by attribute, as tags from the "
         "outermost sequence without items, and by reason, each value once for "

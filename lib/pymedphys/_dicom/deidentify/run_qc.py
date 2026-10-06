@@ -21,7 +21,9 @@ every ``repr``, and of :class:`~pymedphys._dicom.deidentify.residuals.NotSearche
 records of the instance's own values. The run never reads them; :func:`qc_pack_of` turns them, by
 run position, into the entries of the run's
 :class:`~pymedphys._dicom.deidentify.qc_pack.QcPack`, with an entry for every
-input from its outcome and source path (D-016, D-026, D-027).
+input from its outcome and source path (D-016, D-026, D-027). The run adds
+a :class:`ReferenceFindingMaterial` of its own to each input that the first
+pass reports a finding at without acting on it.
 """
 
 from __future__ import annotations
@@ -36,6 +38,8 @@ from pymedphys._imports import pydicom
 from . import pixel_risk, qc_pack, qc_previews, residuals
 from .file_layout import ElementPath
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
+from .reference_graph import Finding, FindingKind
+from .release_report import REPORTED_FINDINGS
 from .roi_names import Reason
 
 
@@ -114,6 +118,42 @@ class PixelRiskMaterial:
     """
 
     assessment: pixel_risk.PixelRiskAssessment
+
+
+@dataclasses.dataclass(frozen=True)
+class ReferenceFindingMaterial:
+    """A reference finding at an input that the run reports without acting on it.
+
+    The run gives one to each input that a first-pass finding of a kind in
+    :data:`~pymedphys._dicom.deidentify.release_report.REPORTED_FINDINGS`
+    names, in any of its groups. Its attributes are those of
+    :class:`~pymedphys._dicom.deidentify.reference_graph.Finding` but its
+    positions, and hold no value.
+    """
+
+    kind: FindingKind
+    attribute: tuple[str, ...]
+    count: int = 0
+
+
+def with_reported_findings(
+    material: Mapping[int, Sequence[object]], findings: Sequence[Finding]
+) -> dict[int, tuple[object, ...]]:
+    """Return a run's material with the findings that it reports only.
+
+    Each finding of a kind in
+    :data:`~pymedphys._dicom.deidentify.release_report.REPORTED_FINDINGS`
+    is added as a :class:`ReferenceFindingMaterial` to the material of each
+    input in its groups, once.
+    """
+    added = {position: tuple(items) for position, items in material.items()}
+    for finding in findings:
+        if finding.kind not in REPORTED_FINDINGS:
+            continue
+        item = ReferenceFindingMaterial(finding.kind, finding.attribute, finding.count)
+        for position in sorted({p for group in finding.instances for p in group}):
+            added[position] = (*added.get(position, ()), item)
+    return added
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -197,6 +237,7 @@ def qc_pack_of(
     omissions: list[qc_pack.NotSearchedEntry] = []
     drops: list[qc_pack.DropEntry] = []
     roi_names: list[qc_pack.RoiNameEntry] = []
+    reference_findings: list[qc_pack.ReferenceFindingEntry] = []
     retained: list[tuple[str, int, ElementPath]] = []
     written: dict[int, bytes] = {}
     risks: dict[int, list[pixel_risk.Finding]] = {}
@@ -231,6 +272,12 @@ def qc_pack_of(
                         item.institutional_matches,
                     )
                 )
+            elif isinstance(item, ReferenceFindingMaterial):
+                reference_findings.append(
+                    qc_pack.ReferenceFindingEntry(
+                        position, item.kind, item.attribute, item.count
+                    )
+                )
             elif isinstance(item, RetainedText):
                 retained.append((item.value, position, item.path))
             else:
@@ -256,6 +303,7 @@ def qc_pack_of(
         not_searched=tuple(omissions),
         retained_strings=qc_pack.retained_strings(retained),
         roi_names=tuple(roi_names),
+        reference_findings=tuple(reference_findings),
         pixel_risks=tuple(
             qc_pack.PixelRiskEntry(position, found)
             for position, found in sorted(high_risk.items())

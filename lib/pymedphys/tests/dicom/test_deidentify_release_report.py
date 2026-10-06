@@ -179,9 +179,10 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "sequestered",
         "held_for_review",
         "roi_names",
+        "reference_findings",
         "search_coverage",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/5"
+    assert document["format"] == "pymedphys-deid-release-report/6"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
