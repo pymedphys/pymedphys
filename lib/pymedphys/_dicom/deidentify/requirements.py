@@ -274,6 +274,11 @@ def _requirements(
             _ID_PATTERN.fullmatch(identifier) if isinstance(identifier, str) else None
         )
         label = identifier if match else f"#{number}"
+        if "tests" in entry:
+            raise RequirementsError(
+                f"{name} requirement {label} lists tests; cite it from each test "
+                f"with @pytest.mark.{MARKER} instead"
+            )
         if not entry.keys() <= _FIELDS:
             raise RequirementsError(
                 f"{name} requirement {label} does not have only the fields "
@@ -389,6 +394,8 @@ def cited_tests(root: pathlib.Path | None = None) -> dict[str, tuple[str, ...]]:
     function whose name starts with ``test`` at the top level of the file,
     or a class whose name starts with ``Test`` there, which cites the
     requirements for each of its methods whose name starts with ``test``.
+    Methods that a class inherits, and classes nested in it, are not read;
+    the marker must be spelt ``pytest.mark.deid_requirement``.
 
     Parameters
     ----------
@@ -408,7 +415,8 @@ def cited_tests(root: pathlib.Path | None = None) -> dict[str, tuple[str, ...]]:
     RequirementsError
         If a test file cannot be read or parsed, a marker is used other than
         to decorate such a function or class, its arguments are not one or
-        more string literals, or a test cites a requirement twice.
+        more string literals, the marker is spelt otherwise, or a test cites
+        a requirement twice.
     """
     root = root or LIBRARY_ROOT
     cited: dict[str, list[tuple[str, int, str]]] = collections.defaultdict(list)
@@ -419,6 +427,16 @@ def cited_tests(root: pathlib.Path | None = None) -> dict[str, tuple[str, ...]]:
         except (OSError, SyntaxError, ValueError) as error:
             raise RequirementsError(f"{module} could not be read") from error
         nodes = [node for node in ast.walk(tree) if _is_marker(node)]
+        if any(
+            isinstance(node, ast.Attribute)
+            and node.attr == MARKER
+            and not _is_marker(node)
+            for node in ast.walk(tree)
+        ):
+            raise RequirementsError(
+                f"{module} spells the {MARKER} marker other than as "
+                f"pytest.mark.{MARKER}"
+            )
         # A called marker's attribute is part of the call.
         called = {id(node.func) for node in nodes if isinstance(node, ast.Call)}
         markers = {id(node) for node in nodes} - called

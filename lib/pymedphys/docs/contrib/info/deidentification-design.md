@@ -65,8 +65,8 @@ Identifiers are stable and never reused. `PS3.15-E.1.1-01` numbers the paragraph
 | Status | Meaning | Entry also records |
 | --- | --- | --- |
 | `planned` | In scope, not yet implemented | The milestone that completes it |
-| `partial` | Partly implemented | Modules and tests so far, what remains, and the milestone that completes it |
-| `implemented` | Met for the supported scope | Modules and the tests that show it |
+| `partial` | Partly implemented | Modules so far, what remains, and the milestone that completes it; tests so far cite it |
+| `implemented` | Met for the supported scope | Modules; the tests that show it cite it |
 | `out-of-scope` | Not supported, such as an Option that Scope excludes | A note saying why |
 | `not-applicable` | Outside PyMedPhys's role, such as re-identification | A note saying why |
 

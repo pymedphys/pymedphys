@@ -517,7 +517,9 @@ def test_a_register_that_lists_tests_is_rejected(tmp_path):
     # Tests cite requirements with the marker; the register does not list them.
     path = _write(tmp_path / "r.toml", VALID)
     with pytest.raises(
-        requirements.RequirementsError, match="MIDI-BP-06 does not have only the fields"
+        requirements.RequirementsError,
+        match="MIDI-BP-06 lists tests; cite it from each test with "
+        "@pytest.mark.deid_requirement instead",
     ):
         requirements.load_requirements(path, {})
 
@@ -673,6 +675,14 @@ def test_no_tests_directory_cites_nothing(tmp_path):
             "TestGroup::test_x cites a requirement more than once",
         ),
         ("def test_x(:\n", "could not be read"),
+        (
+            "from pytest import mark\n@mark.deid_requirement('MIDI-BP-01')\ndef test_x(): pass\n",
+            "spells the deid_requirement marker other than as",
+        ),
+        (
+            "import pytest as pt\n@pt.mark.deid_requirement('MIDI-BP-01')\ndef test_x(): pass\n",
+            "spells the deid_requirement marker other than as",
+        ),
     ],
 )
 def test_a_citation_that_cannot_be_read_from_the_source_is_rejected(

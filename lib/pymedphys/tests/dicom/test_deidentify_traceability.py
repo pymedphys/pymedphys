@@ -468,6 +468,11 @@ def _run_in(tmp_path, *options):
     )
 
 
+def test_the_command_refuses_a_tests_root_without_tests(tmp_path):
+    with pytest.raises(SystemExit, match="has no tests directory"):
+        _run("--tests", str(tmp_path / "missing"))
+
+
 def test_the_command_writes_the_matrix(register, tmp_path):
     output = tmp_path / "matrix.md"
     register_path = tmp_path / "requirements.toml"

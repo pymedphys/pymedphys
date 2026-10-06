@@ -130,7 +130,9 @@ def pytest_itemcollected(item):
         for identifier in marker.args
     )
     if cited:
-        item.session.stash.setdefault(_COLLECTED_CITATIONS, {})[node_id] = cited
+        # The cases of a parametrised test share a node id.
+        citations = item.session.stash.setdefault(_COLLECTED_CITATIONS, {})
+        citations[node_id] = citations.get(node_id, frozenset()) | cited
 
 
 @pytest.fixture(scope="session")

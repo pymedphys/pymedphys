@@ -196,6 +196,8 @@ def run_deid_matrix(args):
 
     if args.check and not args.junit:
         raise SystemExit("--check needs at least one --junit report")
+    if args.tests and not (pathlib.Path(args.tests) / "tests").is_dir():
+        raise SystemExit(f"--tests {args.tests} has no tests directory")
     try:
         register = requirements.load_requirements(
             pathlib.Path(args.register) if args.register else None,
