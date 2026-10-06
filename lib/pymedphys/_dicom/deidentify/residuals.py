@@ -72,8 +72,8 @@ of a longer value; where a letter adjoins a person name form at an edge that
 is a letter, as "MARY" in "PRIMARY"; for a form of digits alone, inside
 a DS or IS value, such as contour data; and, for a form of digits alone that
 a digit follows, inside the integer of a UI value under the ``2.25.`` root
-(PS3.5 B.2), where every UID the engine writes lives, so that a date found at
-the start of a keyed replacement UID is not a finding. That rule recognises
+(PS3.5 B.2), which the engine uses for keyed replacement UIDs, so that a date
+at the start of a keyed replacement UID is not a finding. That rule recognises
 the root, not who wrote the UID, so it applies to a source UID kept under
 that root too; digits that make up the whole integer, and UIDs under other
 roots, are still found. Values that hold numbers (native
@@ -756,7 +756,7 @@ def _inside_uuid_integer(
     """Return whether digits at ``offset`` are part of a 2.25 UID's integer.
 
     Under the 2.25 root, a UID's one further component is an integer derived
-    from a UUID (PS3.5 B.2), as in every UID the engine writes, so digits
+    from a UUID (PS3.5 B.2), as in every keyed replacement UID, so digits
     found at its start or in its middle are there by chance. Digits that make
     up the whole integer are still a finding.
     """
