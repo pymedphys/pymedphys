@@ -120,18 +120,36 @@ def test_a_kept_manufacturer_and_coding_scheme_url_are_said_to_name_an_instituti
 def test_the_releaser_accepts_the_residual_risk_of_these_values(preset):
     section = _section(preset, "Values that can name an institution")
 
-    assert "without an assessment of their residual risk" in section
+    assert "The engine does not itself assess the residual risk" in section
     assert "names an institution, not a patient" in section
+    assert "`public-release` preset has a person review every distinct" in section
     assert (
-        "Whoever releases the data is responsible for accepting that residual "
-        "risk, and records "
-        "whether they accept it, yes or no, in the attestation of the run's "
-        "QC pack (D-017)."
+        "the residual risk of the output, these values included, is for "
+        "whoever releases the data to accept, which they may confirm, yes or "
+        "no, in the attestation of the run's QC pack"
     ) in section
-    # The attestation holds that confirmation.
-    assert "residual_risk_accepted" in {
-        field.name for field in dataclasses.fields(qc_attestation.Attestation)
+    # The attestation holds that confirmation, which is optional.
+    defaults = {
+        field.name: field.default
+        for field in dataclasses.fields(qc_attestation.Attestation)
     }
+    assert defaults["residual_risk_accepted"] is None
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_an_unkept_coding_scheme_url_is_not_said_to_be_kept(monkeypatch):
+    actions = {"(0008,010E)": "X/Z/D"}
+    original = conformance_markdown._rule_action  # pylint: disable=protected-access
+    monkeypatch.setattr(
+        conformance_markdown,
+        "_rule_action",
+        lambda tag: actions.get(tag, original(tag)),
+    )
+
+    text = " ".join(conformance_markdown._local_codes(_named))  # pylint: disable=protected-access
+
+    assert "Coding Scheme URL (0008,010E), also kept" not in text
+    assert "in those values. Manufacturer (0008,0070)" in text
 
 
 @pytest.mark.deid_requirement("MIDI-BP-05")

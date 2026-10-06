@@ -269,7 +269,7 @@ def _local_codes(named: Callable[[str], str]) -> list[str]:
     if any(_rule_action(tag) != "K" for tag in _CODE_TAGS):
         return []
     url = (
-        f" and such a scheme's {named(_CODING_SCHEME_URL)}, also kept, can name "
+        f", and such a scheme's {named(_CODING_SCHEME_URL)}, also kept, can name "
         "the institution's host"
         if _rule_action(_CODING_SCHEME_URL) == "K"
         else ""
@@ -292,18 +292,22 @@ def _local_codes(named: Callable[[str], str]) -> list[str]:
         "meaning survives (D-022). A code of a local coding scheme, whose "
         'Coding Scheme Designator begins with "99" or is "L" (PS3.3 Section '
         "8.2), can carry the institution's name or abbreviation in those "
-        f"values,{url}. "
+        f"values{url}. "
         + "".join(manufacturer)
         + "Each such value, like every other string that the engine keeps, is "
         "listed among the retained strings of the run's confidential QC pack, "
         "where a reviewer can find it (D-017).",
         "",
-        "The engine keeps these values without an assessment of their residual "
-        "risk, which the design accepts because such a value names an "
-        "institution, not a patient (D-022). Whoever releases the data is "
-        "responsible for accepting that residual risk, and records whether "
-        "they accept it, yes or no, in the attestation of the run's QC pack "
-        "(D-017).",
+        "The engine does not itself assess the residual risk of these values. "
+        "The design accepts it for Manufacturer and Coding Scheme URL because "
+        "such a value names an institution, not a patient, and for the codes "
+        "of local coding schemes requires this disclosure (D-022). The "
+        "`public-release` preset has a person review every distinct retained "
+        "string (D-017); the other presets keep these values without review. "
+        "For the first release, the residual risk of the output, these values "
+        "included, is for whoever releases the data to accept, which they may "
+        "confirm, yes or no, in the attestation of the run's QC pack, under "
+        "the institution's governance (D-016).",
         "",
     ]
 
