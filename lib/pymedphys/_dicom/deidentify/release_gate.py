@@ -34,8 +34,8 @@ read only as bytes, as ISO 8859-1, since searching those bytes may still
 find a copy but does not stand in for the decoded text; and where a value
 was collected under another VR, so that the search derived the wrong forms
 from it or left it out. The forms that the search itself leaves out by its
-rules, such as those shorter than four characters, or binary and private
-values, are its exclusions; they are listed, and never count as incomplete.
+rules, such as forms shorter than four characters and binary values, are its
+exclusions; they are listed, and never count as incomplete.
 The values searched for in a file, and so its coverage, are pooled across
 its subject: the instance's own and those of the subject's other instances
 in the run, since a sibling's value that was not collected was not searched
