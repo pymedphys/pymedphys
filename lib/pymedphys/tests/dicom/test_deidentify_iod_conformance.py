@@ -97,12 +97,14 @@ def test_an_unchanged_instance_loses_no_requirement():
     assert not _found(_structure_set(), _structure_set(), "RT Structure Set")
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_removed_type_1_attribute_is_found():
     assert _found(_ct(), _without(_ct(), "Modality"), "CT Image") == (
         LostRequirement(MODALITY, "1", emptied=False),
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_an_emptied_type_1_attribute_is_found():
     output = _ct()
     output.Modality = ""
@@ -112,6 +114,7 @@ def test_an_emptied_type_1_attribute_is_found():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_removed_type_2_attribute_is_found_but_an_emptied_one_is_not():
     emptied = _ct()
     emptied.PatientName = ""
@@ -126,6 +129,7 @@ def test_a_removed_type_3_attribute_is_not_found():
     assert not _found(_ct(), _without(_ct(), "ConsultingPhysicianName"), "CT Image")
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_an_attribute_missing_or_empty_in_the_source_is_not_the_engines():
     empty = _ct()
     empty.Modality = ""
@@ -145,6 +149,7 @@ def test_a_removed_type_1_attribute_is_found_even_if_its_source_was_empty():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_required_attribute_in_a_kept_item_is_found_at_its_path():
     output = _structure_set()
     del output.SourceSeriesInformationSequence[0].SeriesDescription
@@ -156,6 +161,7 @@ def test_a_required_attribute_in_a_kept_item_is_found_at_its_path():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_required_attribute_goes_with_its_removed_type_3_sequence():
     output = _without(_structure_set(), "SourceSeriesInformationSequence")
 
@@ -267,6 +273,7 @@ def _transformed(dataset):
     return _transform()(data, InstanceRecord.from_file(data))
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_each_written_instance_of_a_collection_keeps_its_requirements():
     for dataset in (*synthetic.collection(), _ct(), _structure_set()):
         data = synthetic.written(dataset)
@@ -279,6 +286,7 @@ def test_each_written_instance_of_a_collection_keeps_its_requirements():
         )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_an_instance_whose_de_identification_loses_a_requirement_is_sequestered(
     monkeypatch,
 ):
@@ -300,6 +308,7 @@ def test_an_instance_whose_de_identification_loses_a_requirement_is_sequestered(
     assert result.reasons == (TransformReason.REQUIRED_ATTRIBUTE_LOST,)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_an_instance_whose_de_identification_keeps_part_of_an_overlay_is_sequestered(
     monkeypatch,
 ):
@@ -363,6 +372,7 @@ def _plan_with_setup_photo():
 
 
 @pytest.mark.parametrize("cleaning", [False, True])
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_descriptor_whose_basic_x_needs_its_sequence_takes_the_sequence(cleaning):
     # Patient Setup Photo Description, X in the Basic Profile and C with
     # Clean Descriptors, is Type 2 in Referenced Patient Setup Photo

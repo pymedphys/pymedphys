@@ -67,6 +67,7 @@ def _structure_set(**series):
     return dataset
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_type_1_attribute_of_a_mandatory_module_that_the_source_lacks_is_a_gap():
     gaps = _gaps(synthetic.ct_slice(0), "CT Image")
 
@@ -88,6 +89,7 @@ def test_a_type_2_attribute_that_the_source_lacks_is_a_gap():
     assert SourceGap(ElementPath((), "(0010,0030)"), "2") in gaps  # Birth Date
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_only_unconditional_requirements_of_mandatory_modules_are_gaps():
     iod = _iods()["CT Image"]
     usage = {module.module: module.usage for module in iod.modules}
@@ -106,6 +108,7 @@ def test_the_overlay_plane_modules_attributes_are_not_gaps():
     assert not any(tag.startswith("(60") for tag in tags)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_requirement_in_an_item_the_source_holds_is_a_gap_at_its_path():
     gaps = _gaps(_structure_set(SeriesDescription="SYNTHETIC"), "RT Structure Set")
     in_item = {gap.path.tag for gap in gaps if gap.path.items == ((SOURCE_SERIES, 0),)}
@@ -262,6 +265,7 @@ def test_the_transform_gives_each_in_scope_instance_its_gaps_as_qc_material():
     assert given
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_run_reports_its_source_gaps_in_the_report_and_the_qc_pack():
     gap = _gap()
     material = {0: (gap,), 1: ()}

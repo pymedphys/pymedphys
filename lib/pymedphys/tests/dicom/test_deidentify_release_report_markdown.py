@@ -132,6 +132,7 @@ def _spans(markdown):
     return _CODE_SPAN.findall(markdown)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_every_value_of_the_report_is_shown_and_nothing_else():
     report = _full_report()
     document = _document(report)
@@ -145,6 +146,7 @@ def test_every_value_of_the_report_is_shown_and_nothing_else():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_text_around_the_values_does_not_depend_on_them():
     # Two reports of the same shape differ only inside their code spans, so
     # nothing outside them is drawn from the report.
@@ -159,6 +161,7 @@ def test_the_text_around_the_values_does_not_depend_on_them():
     assert _CODE_SPAN.sub("``", first) == _CODE_SPAN.sub("``", second)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_form_is_the_same_every_time_it_is_generated():
     text = release_report.to_json(_full_report())
     assert to_markdown(text) == to_markdown(text)
@@ -234,6 +237,7 @@ def _changed(change):
     return json.dumps(document)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize(
     "change",
     [

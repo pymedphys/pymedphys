@@ -133,6 +133,7 @@ def test_the_report_records_the_policy_the_method_and_the_runtime(basic):
     assert report.runtime == runtime.runtime_environment()
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
 def test_the_policy_section_names_the_edition_preset_and_options(preset):
     composed = policy.compose_policy(preset)
@@ -162,6 +163,7 @@ def test_a_custom_option_set_has_no_preset():
     assert report.policy.options == ("clean_descriptors",)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
     document = release_report.report_document(
         release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
@@ -185,6 +187,7 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
     assert list(document["runtime"]) == RUNTIME_FIELDS
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_method_section_holds_the_digest_and_its_components(basic):
     vocabulary = _vocabulary("Heart", "Lung_L")
     components = method_digest.method_digest_components(
@@ -211,6 +214,7 @@ def test_the_method_section_holds_the_digest_and_its_components(basic):
     assert document["method"]["l3_rules"] is None
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_runtime_section_holds_the_values_of_software_versions(basic):
     environment = runtime.runtime_environment()
 
@@ -253,6 +257,7 @@ def _installed_engine(tmp_path, monkeypatch):
     return engine
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_report_holds_no_path_of_the_installed_engine(basic, tmp_path, monkeypatch):
     engine = _installed_engine(tmp_path, monkeypatch)
 
@@ -277,6 +282,7 @@ def test_the_report_holds_no_path_of_the_running_engine_or_home(basic):
         assert str(directory) not in text and directory.as_posix() not in text
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_report_holds_the_vocabulary_digest_not_its_entries(basic):
     vocabulary = _vocabulary("Heart", SENTINEL_ROI)
 
@@ -298,6 +304,7 @@ def test_the_report_holds_the_vocabulary_digest_not_its_entries(basic):
 REVIEWED_ROI_NAMES = "4247e696d65fef56fae5a25e8b7e2ffc5f81727a0a44395ca29acdc48df4d667"
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_the_report_holds_the_reviewed_names_digest_it_was_given(basic):
     report = release_report.release_report(
         basic, vocabulary=None, reviewed_roi_names=REVIEWED_ROI_NAMES
@@ -343,6 +350,7 @@ def _engine_files(report, path):
     return _with_method(report, engine_files=types.MappingProxyType(files))
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize(
     "change, field",
     [
@@ -478,6 +486,7 @@ def _sequestered(label="S-0001"):
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_sequestered_instances_are_listed_by_label_with_their_reasons(basic):
     report = release_report.release_report(
         basic,
@@ -516,6 +525,7 @@ def test_a_reason_given_twice_is_listed_once(basic):
     assert len(entry["reasons"]) == 2
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_labels_are_random_and_carry_nothing_from_the_run():
     first = release_report.sequestration_labels(12, rng=random.Random(1))
     second = release_report.sequestration_labels(12, rng=random.Random(2))
@@ -545,6 +555,7 @@ def test_labels_are_drawn_from_the_operating_system_by_default(monkeypatch):
 # D-027, as the maintainer decided on 2 October 2026: the report counts what
 # the residual search did not search, by attribute and reason, and the QC
 # pack lists each by instance and place.
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_values_not_searched_are_counted_by_attribute_and_reason(basic):
     name = ElementPath((), "(0010,0010)")
     nested = ElementPath((("(0010,1002)", 0),), "(0010,0020)")
@@ -620,6 +631,7 @@ def _instance(*causes, label="S-0001"):
     return release_report.SequesteredInstance(label, causes)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize(
     "change, field",
     [
@@ -815,6 +827,7 @@ def _output_name(patient="DEID-AAAAAAAAAAAAAAAA", instance="sop"):
 _REFERENCE = "A-" + "0" * 32
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_released_instances_are_listed_by_output_name_alone(basic):
     names = [
         _output_name(instance="b"),
@@ -830,6 +843,7 @@ def test_released_instances_are_listed_by_output_name_alone(basic):
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize("outcome", list(qc_attestation.Outcome))
 def test_the_qc_review_is_recorded_by_the_packs_reference_and_outcome(basic, outcome):
     record = qc_attestation.AttestationRecord(_REFERENCE, outcome)
@@ -843,6 +857,7 @@ def test_the_qc_review_is_recorded_by_the_packs_reference_and_outcome(basic, out
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 def test_a_run_without_a_qc_pack_records_no_qc_review(basic):
     document = release_report.report_document(
         release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
@@ -862,6 +877,7 @@ def _record(**changes):
     return record
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize(
     "changes, field",
     [

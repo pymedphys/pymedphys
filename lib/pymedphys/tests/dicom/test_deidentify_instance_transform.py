@@ -152,6 +152,7 @@ def test_each_instance_of_a_collection_is_written_and_named_by_its_replacements(
         assert synthetic.PATIENTS_NAME.encode() not in result.data
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05", "PS3.15-E.2-01", "PS3.15-E.3.6-03")
 def test_each_output_carries_the_de_identification_markers():
     digest = method_digest(
         compose_policy("basic"), vocabulary=None, reviewed_roi_names=None
@@ -170,6 +171,7 @@ def test_each_output_carries_the_de_identification_markers():
         assert equipment.Manufacturer == "PyMedPhys"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 def test_markers_already_present_are_updated_as_ps3_15_says():
     # The equipment item that the policy keeps stays first, and the
     # de-identifying equipment's follows it (E.1.1).
@@ -365,6 +367,7 @@ def _plan_label_kept_in_a_dose(tmp_path, plan_class=None):
     return _source(tmp_path, [plan, dose])
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.parametrize("cause", ["no-iod", "raises", "changed"])
 def test_a_sibling_that_gives_no_evidence_withholds_its_subject(
     tmp_path, monkeypatch, cause
@@ -406,6 +409,7 @@ def test_a_sibling_that_gives_no_evidence_withholds_its_subject(
     assert ReleaseReason(Decision.WITHHOLD, ReasonCode.NOT_REPORTED) in dose.reasons
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_a_walker_sequestered_sibling_withholds_as_uncollected(tmp_path):
     plan = _plan_with_sentinels()
     plan[0x300A0002] = pydicom.DataElement(0x300A0002, "LO", SENTINEL_LABEL)
@@ -442,6 +446,7 @@ def _with_latin_1(dataset, tag, character_set=None):
     return dataset
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.parametrize(
     "tag, decision",
     [(_PATIENTS_NAME, Decision.WITHHOLD), (_INSTITUTION_NAME, Decision.QC_REVIEW)],
@@ -461,6 +466,7 @@ def test_a_removed_value_read_as_latin_1_makes_collection_incomplete(tag, decisi
     assert ReleaseReason(decision, ReasonCode.READ_AS_LATIN_1, path) in result.reasons
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_value_read_as_latin_1_withholds_its_siblings(tmp_path):
     plan = _with_latin_1(synthetic.rt_plan(), _PATIENTS_NAME)
 
@@ -479,6 +485,7 @@ def test_a_value_read_as_latin_1_withholds_its_siblings(tmp_path):
         assert reason in outcome.reasons
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_value_in_a_declared_character_set_is_not_read_as_latin_1():
     plan = _with_latin_1(synthetic.rt_plan(), _PATIENTS_NAME, "ISO_IR 100")
     transformed = _transformed(plan)
@@ -489,6 +496,7 @@ def test_a_value_in_a_declared_character_set_is_not_read_as_latin_1():
     assert not evidence.decoded_as_bytes  # pylint: disable=no-member
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_value_left_out_of_the_search_is_not_read_as_latin_1():
     data = synthetic.written(_with_latin_1(synthetic.rt_plan(), _PATIENTS_NAME))
     source = read_source(data)
@@ -698,6 +706,7 @@ def test_a_removed_registered_uid_does_not_withhold_the_collection(tmp_path):
     assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_run_with_the_transform_and_gate_releases_the_collection(tmp_path):
     release = tmp_path / "release"
     result = run.run(
@@ -715,6 +724,7 @@ def test_a_run_with_the_transform_and_gate_releases_the_collection(tmp_path):
         assert synthetic.PATIENTS_NAME.encode() not in data
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_value_removed_from_one_instance_withholds_its_siblings_that_keep_it(
     tmp_path,
 ):
@@ -809,6 +819,7 @@ def _rt_plan_file():
     return _file(EXPLICIT, _rt_plan_data_set())
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_values_left_out_of_the_search_are_dropped_with_their_reasons():
     data = synthetic.written(_dose_referencing_an_image())
     plan = _plan_of(data)
@@ -855,6 +866,7 @@ def test_a_registered_uid_beside_a_collected_one_is_still_dropped():
     assert dropped_of(edits) == (Dropped(path, DropReason.REGISTERED_UID),)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_an_instances_own_omissions_are_its_material_not_the_gates():
     vr, constant = next((vr, value) for vr, value in written_constants() if vr == "LO")
     path = _top("(0008,1030)")
@@ -889,6 +901,7 @@ def test_an_instances_own_omissions_are_its_material_not_the_gates():
     assert search.search.unsearched == ()
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_each_value_not_searched_is_listed_once_at_its_own_instance(tmp_path):
     datasets = synthetic.collection()
     datasets[0].StationName = "AB"
@@ -910,6 +923,7 @@ def test_each_value_not_searched_is_listed_once_at_its_own_instance(tmp_path):
     assert positions == {0}
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_a_sequestered_instance_keeps_its_written_constant_drops(monkeypatch):
     # Its values are still searched for in its subject's other files.
     _, constant = next((vr, value) for vr, value in written_constants() if vr == "LO")
@@ -926,6 +940,7 @@ def test_a_sequestered_instance_keeps_its_written_constant_drops(monkeypatch):
     assert Dropped(_top("(0008,1030)"), DropReason.WRITTEN_CONSTANT) in result.qc
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_a_run_writes_the_qc_pack_of_the_transform_and_gate(tmp_path):
     plan = synthetic.rt_plan()
     plan.RTPlanLabel = "SENTINELPLAN7"

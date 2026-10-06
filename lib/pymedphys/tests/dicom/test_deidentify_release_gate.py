@@ -132,6 +132,7 @@ def _codes(condition):
 # The direct identifiers.
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_the_rule_selects_exactly_the_direct_identifiers_the_design_lists():
     assert direct_identifiers() == frozenset(LISTED)
 
@@ -147,6 +148,7 @@ def test_a_complete_collection_with_a_clean_search_is_released():
     assert not condition.reasons
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_nothing_collected_with_values_to_collect_is_withheld():
     # The walker planned to collect Patient's Name, but reported neither the
     # value nor why it could not be collected.
@@ -165,6 +167,7 @@ def test_a_planned_text_value_not_reported_goes_to_qc_review():
     assert _codes(condition) == [ReasonCode.NOT_REPORTED]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.parametrize(
     "tag, items",
     [
@@ -183,6 +186,7 @@ def test_an_uncollected_value_of_a_required_kind_is_withheld(tag, items):
     assert condition.decision is Decision.WITHHOLD
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.parametrize(
     "tag",
     [
@@ -211,6 +215,7 @@ def test_duplicate_gaps_at_one_path_give_one_reason():
 # the transformation proceeds, but release is conditional on coverage.
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_removed_name_read_only_as_latin_1_is_withheld_after_a_clean_search():
     coverage = _coverage(SourceValue(NAME_PATH, "PN", LATIN_NAME), latin_1=[NAME_PATH])
     condition = release_condition(coverage, _written())
@@ -221,6 +226,7 @@ def test_a_removed_name_read_only_as_latin_1_is_withheld_after_a_clean_search():
     assert (reason.path, reason.code) == (NAME_PATH, ReasonCode.READ_AS_LATIN_1)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_removed_description_read_only_as_latin_1_goes_to_qc_review():
     value = SourceValue(DESCRIPTION_PATH, "LO", LATIN_DESCRIPTION)
     coverage = _coverage(value, latin_1=[DESCRIPTION_PATH])
@@ -232,6 +238,7 @@ def test_a_removed_description_read_only_as_latin_1_goes_to_qc_review():
 # Values collected under a VR that the pinned dictionary does not give.
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_name_collected_as_lo_and_found_is_withheld_as_a_name():
     coverage = _coverage(SourceValue(NAME_PATH, "LO", PERSON))
     condition = release_condition(coverage, _written(PERSON))
@@ -240,6 +247,7 @@ def test_a_name_collected_as_lo_and_found_is_withheld_as_a_name():
     assert ReasonCode.COLLECTED_AS_OTHER_VR in _codes(condition)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.parametrize(
     "vr, value, omission",
     [
@@ -274,6 +282,7 @@ def test_coverages_merge_in_order_without_repeats():
     assert Coverage.merge() == Coverage(planned=frozenset(), collected=())
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_siblings_uncollected_name_withholds_this_file():
     # This instance's own values were all collected, and its search is clean,
     # but a sibling's Patient's Name could not be collected, so its copies in
@@ -304,6 +313,7 @@ def test_only_the_middle_of_three_coverages_has_the_gap():
     assert _codes(condition) == [ReasonCode.UNCOLLECTED]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_siblings_unreported_name_is_not_hidden_by_this_instances_copy():
     # Both instances planned Patient's Name at the same path; this one
     # collected it, and the sibling reported nothing for it.
@@ -315,6 +325,7 @@ def test_a_siblings_unreported_name_is_not_hidden_by_this_instances_copy():
     assert _codes(condition) == [ReasonCode.NOT_REPORTED]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_the_search_covers_the_pooled_values():
     sibling = _coverage(SourceValue(ID_PATH, "LO", PATIENT_ID))
     pooled = Coverage.merge(_coverage(), sibling)
@@ -331,6 +342,7 @@ def test_merge_takes_only_coverages():
 # Exclusions and the search.
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_exclusions_are_listed_and_never_count_as_incomplete():
     short = SourceValue(NAME_PATH, "PN", "ZEBEDEE^LI")
     binary = SourceValue(PRIVATE_PATH, "OB", b"\x01\x02\x03\x04\x05")
@@ -343,6 +355,7 @@ def test_exclusions_are_listed_and_never_count_as_incomplete():
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_an_unreadable_file_is_withheld():
     condition = release_condition(_coverage(), _written(DESCRIPTION, Region.TRAILING))
     assert condition.decision is Decision.WITHHOLD
@@ -351,6 +364,7 @@ def test_an_unreadable_file_is_withheld():
     assert reason.code is ReasonCode.UNREADABLE_FILE
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.parametrize(
     "path, vr, value, code",
     [
@@ -393,6 +407,7 @@ def test_a_retained_registered_uid_is_released_only_when_not_collected():
     assert _codes(withheld) == [ReasonCode.RESIDUAL_UID]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.parametrize(
     "region",
     [Region.PREAMBLE, Region.FILE_META, Region.TRAILING_PADDING, Region.TRAILING],
@@ -406,6 +421,7 @@ def test_a_text_finding_outside_the_data_set_is_withheld(region):
     assert found[0].location.region is region
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_text_finding_inside_the_data_set_goes_to_qc_review():
     coverage = _coverage(SourceValue(DESCRIPTION_PATH, "LO", DESCRIPTION))
     condition = release_condition(coverage, _written(DESCRIPTION))
