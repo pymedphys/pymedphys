@@ -681,3 +681,29 @@ def edit_instance(
         except _Sequester as raised:
             _record(sequestrations, raised)
     return gathered.result(found, reviewed, sequestrations)
+
+
+def read_values(
+    source: SourceEvidence, plan: InstancePlan, paths: tuple[ElementPath, ...]
+) -> dict[ElementPath, ElementValue | None]:
+    """Decode the values at ``paths`` as :func:`edit_instance` reads them.
+
+    For values that the edits do not otherwise read, such as those that a
+    plan keeps as they are, which D-017's review needs
+    (:func:`~pymedphys._dicom.deidentify.qc_retained.retained_paths`).
+
+    Returns
+    -------
+    dict of ElementPath to ElementValue or None
+        Each path's value, or ``None`` where it, or an item or character set
+        that holds it, cannot be decoded. Text outside ISO 646 where no
+        Specific Character Set applies cannot be.
+    """
+    found: dict[ElementPath, ElementValue | None] = dict.fromkeys(paths)
+    reader = _Reader(source, plan)
+    for path in paths:
+        try:
+            found[path] = reader.read(path)
+        except (UndecodableElement, _Sequester):
+            pass
+    return found
