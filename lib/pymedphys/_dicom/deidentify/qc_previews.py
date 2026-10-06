@@ -25,9 +25,11 @@ run wrote, since the engine never changes pixel data:
   :data:`CINE_COLUMNS`;
 - a frontal maximum intensity projection of each series that forms a
   volume: at least :data:`VOLUME_SLICES` single-frame instances of one size,
-  orientation, and pixel spacing, at distinct positions, whose axes lie along
-  the patient's anterior-posterior, left-right, and superior-inferior
-  directions. It is projected along the anterior-posterior axis and shown
+  orientation, and pixel spacing, at distinct positions stacked along the
+  normal of their orientation, whose axes lie along the patient's
+  anterior-posterior, left-right, and superior-inferior directions. A
+  multi-frame volume, such as an Enhanced CT image, is shown by its cine
+  strip only. It is projected along the anterior-posterior axis and shown
   with the patient's head at the top and right on the viewer's left, sampled
   to square pixels by nearest neighbour, at most :data:`MIP_PIXELS` a side;
 - each high-risk instance at full resolution: every frame, or
@@ -35,14 +37,17 @@ run wrote, since the engine never changes pixel data:
   small.
 
 A series is the instances that share a Series Instance UID, or an instance
-alone without one, in the order of their positions along the normal of their
-common orientation, then of Instance Number, then of run position. Each
+alone without one. Its instances are ordered by their positions along the
+normal where every one has a position and they share an orientation, or else
+by Instance Number where every one has one, or else by run position, with
+ties in run position order. Each
 preview lists the frames it shows, by run position and frame index from 0,
 and how many frames its series or instance has.
 
 Monochrome pixel data are rescaled by Rescale Slope and Rescale Intercept,
-where given, and windowed from the 0.5th to the 99.5th percentile of what the
-preview shows; MONOCHROME1 is inverted so that higher values are darker. RGB
+where both can be read, and windowed from the 0.5th to the 99.5th percentile
+of what the preview shows, leaving out the stored values that Pixel Padding
+Value and Pixel Padding Range Limit name, which are shown black; MONOCHROME1 is inverted so that higher values are darker. RGB
 pixel data with 8 bits allocated are shown as they are. An instance whose
 pixel data cannot be previewed is reported with why, rather than left out:
 pixel data in a compressed transfer syntax, which the engine does not support
@@ -50,7 +55,8 @@ yet; a photometric interpretation other than MONOCHROME1, MONOCHROME2, or
 RGB, or float pixel data; or pixel data that cannot be decoded. A high-risk
 instance without pixel data, such as an RT Structure Set with the patient's
 outline, is reported too, so that the reviewer knows there is nothing to see
-of it here.
+of it here. Only the frames that a preview shows are decoded, one at a
+time, so an instance is reported as undecodable only where one of them is.
 
 A PNG is written with no ancillary chunks, so it holds no time or text, and
 the same pixels always give the same file with the same zlib.
@@ -82,6 +88,8 @@ _FLOAT_PIXEL_DATA = ("FloatPixelData", "DoubleFloatPixelData")
 # A direction cosine at least this large puts an axis along a patient axis.
 _ALONG = 0.7
 _ORIENTATION_TOLERANCE = 1e-4
+# In millimetres, how far a slice's origin may lie off the normal of the first.
+_STACKING_TOLERANCE = 0.01
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -98,8 +106,13 @@ class _Plane:
 
 @dataclasses.dataclass(frozen=True)
 class _Instance:
+    """What a preview needs of a file; its frames are decoded one at a time."""
+
     position: int
-    dataset: pydicom.Dataset
+    data: bytes = dataclasses.field(repr=False)
+    series: str | None
+    shape: tuple[int, int]
+    padding: tuple[int, int] | None  # stored values, inclusive, not shown
     frames: int
     colour: bool
     inverted: bool
@@ -190,11 +203,13 @@ def _instance(position: int, data: bytes) -> _Instance | NotPreviewedReason | No
         return NotPreviewedReason.UNSUPPORTED
     if "PixelData" not in dataset:
         return None
-    return _described(position, dataset)
+    # The data set is not kept: its frames are decoded from the file one at
+    # a time, so that a run's pixel data are never all decoded at once.
+    return _described(position, dataset, data)
 
 
 def _described(
-    position: int, dataset: pydicom.Dataset
+    position: int, dataset: pydicom.Dataset, data: bytes
 ) -> _Instance | NotPreviewedReason:
     """Describe an image whose pixel data a preview can show, or say why not."""
     try:
@@ -205,28 +220,32 @@ def _described(
         allocated = int(dataset.BitsAllocated)
         frames = int(dataset.get("NumberOfFrames") or 1)
         rows, columns = int(dataset.Rows), int(dataset.Columns)
-        rescale = (
-            float(dataset.get("RescaleSlope", 1)),
-            float(dataset.get("RescaleIntercept", 0)),
-        )
-        number = dataset.get("InstanceNumber")
-        number = None if number in (None, "") else int(number)
     except Exception:  # pylint: disable = broad-exception-caught
         return NotPreviewedReason.UNREADABLE
+    # Attributes that only adjust a preview are read tolerantly: one that
+    # cannot be read is left out, rather than the preview.
+    slope = _number(dataset, "RescaleSlope", float)
+    intercept = _number(dataset, "RescaleIntercept", float)
+    rescale = (
+        (1.0, 0.0)
+        if slope is None or intercept is None
+        else (float(slope), float(intercept))
+    )
+    number = _number(dataset, "InstanceNumber", int)
+    number = None if number is None else int(number)
     colour = photometric == "RGB" and samples == 3 and allocated == 8
     if not colour and not (photometric in _MONOCHROME and samples == 1):
         return NotPreviewedReason.UNSUPPORTED
-    if (
-        frames < 1
-        or rows < 1
-        or columns < 1
-        or not all(math.isfinite(value) for value in rescale)
-    ):
+    if frames < 1 or rows < 1 or columns < 1:
         return NotPreviewedReason.UNREADABLE
     spacing = _spacing(dataset)
+    uid = dataset.get("SeriesInstanceUID")
     return _Instance(
         position=position,
-        dataset=dataset,
+        data=data,
+        series=str(uid) if uid else None,
+        shape=(rows, columns),
+        padding=None if colour else _padding(dataset),
         frames=frames,
         colour=colour,
         inverted=photometric == "MONOCHROME1",
@@ -235,6 +254,25 @@ def _described(
         plane=_plane(dataset, spacing, (rows, columns)) if frames == 1 else None,
         number=number,
     )
+
+
+def _number(dataset: pydicom.Dataset, keyword: str, kind: type) -> float | int | None:
+    """An attribute's single finite value as ``kind``, or None."""
+    try:
+        value = kind(dataset[keyword].value) if keyword in dataset else None
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
+    return value if value is None or math.isfinite(value) else None
+
+
+def _padding(dataset: pydicom.Dataset) -> tuple[int, int] | None:
+    """The stored values that Pixel Padding Value and its range limit pad with."""
+    value = _number(dataset, "PixelPaddingValue", int)
+    if value is None:
+        return None
+    limit = _number(dataset, "PixelPaddingRangeLimit", int)
+    limit = value if limit is None else limit
+    return int(min(value, limit)), int(max(value, limit))
 
 
 def _floats(dataset: pydicom.Dataset, keyword: str, count: int) -> tuple | None:
@@ -281,25 +319,27 @@ def _plane(
 
 
 class _Decoder:
-    """Decodes an instance's frames, recording an instance that fails."""
+    """Decodes an instance's frames one at a time, recording one that fails."""
 
     def __init__(self, refused: dict[int, NotPreviewedReason]) -> None:
         self._refused = refused
 
-    def frames(self, instance: _Instance) -> np.ndarray | None:
-        """Return the frames as (frame, row, column[, sample]), or None.
+    def frame(self, instance: _Instance, index: int) -> np.ndarray | None:
+        """Return one frame as (row, column[, sample]), or None.
 
-        Monochrome frames are rescaled to float; RGB frames are uint8.
+        Monochrome frames are rescaled to float32, with padding as NaN; RGB
+        frames are uint8.
         """
         if instance.position in self._refused:
             return None
         try:
-            pixels = np.asarray(instance.dataset.pixel_array)
+            pixels = np.asarray(
+                pydicom.pixels.pixel_array(io.BytesIO(instance.data), index=index)
+            )
         except Exception:  # pylint: disable = broad-exception-caught
             self._refused[instance.position] = NotPreviewedReason.UNREADABLE
             return None
-        rows, columns = int(instance.dataset.Rows), int(instance.dataset.Columns)
-        shape = (instance.frames, rows, columns) + ((3,) if instance.colour else ())
+        shape = instance.shape + ((3,) if instance.colour else ())
         if pixels.size != math.prod(shape):
             self._refused[instance.position] = NotPreviewedReason.UNREADABLE
             return None
@@ -307,15 +347,19 @@ class _Decoder:
         if instance.colour:
             return pixels.astype(np.uint8)
         slope, intercept = instance.rescale
-        return pixels.astype(np.float64) * slope + intercept
+        shown = pixels.astype(np.float32) * np.float32(slope) + np.float32(intercept)
+        if instance.padding is not None:
+            low, high = instance.padding
+            shown[(pixels >= low) & (pixels <= high)] = np.nan
+        return shown
 
 
 def _series(instances: Sequence[_Instance]) -> Iterator[list[_Instance]]:
     """Yield each series, in order of its first position, its instances ordered."""
     groups: dict[object, list[_Instance]] = {}
     for instance in instances:
-        uid = instance.dataset.get("SeriesInstanceUID")
-        key = ("series", str(uid)) if uid else ("instance", instance.position)
+        uid = instance.series
+        key = ("series", uid) if uid else ("instance", instance.position)
         groups.setdefault(key, []).append(instance)
     for group in groups.values():
         yield sorted(group, key=_order_key(group))
@@ -368,21 +412,19 @@ def _series_images(series: list[_Instance], decoder: _Decoder):
     tiles: list[tuple[int, int, np.ndarray, _Instance]] = []
     projection = _Projection(volume) if volume is not None else None
     for instance in series:
-        pixels = decoder.frames(instance)
-        if pixels is None:
-            continue
         for frame in range(instance.frames):
-            if (instance.position, frame) in chosen:
+            shown = (instance.position, frame) in chosen
+            if not shown and (projection is None or frame):
+                continue
+            pixels = decoder.frame(instance, frame)
+            if pixels is None:
+                break
+            if shown:
                 tiles.append(
-                    (
-                        instance.position,
-                        frame,
-                        _fitted(pixels[frame], instance),
-                        instance,
-                    )
+                    (instance.position, frame, _fitted(pixels, instance), instance)
                 )
-        if projection is not None:
-            projection.add(instance, pixels[0])
+            if projection is not None:
+                projection.add(instance, pixels)
     if tiles:
         image = _sheet(
             _windowed_tiles([(tile, instance) for _, _, tile, instance in tiles]),
@@ -402,11 +444,14 @@ def _series_images(series: list[_Instance], decoder: _Decoder):
 
 
 def _instance_image(instance: _Instance, decoder: _Decoder):
-    pixels = decoder.frames(instance)
-    if pixels is None:
-        return None
     chosen = _evenly(instance.frames, CINE_FRAMES)
-    tiles = _windowed_tiles([(pixels[frame], instance) for frame in chosen])
+    frames = []
+    for frame in chosen:
+        pixels = decoder.frame(instance, frame)
+        if pixels is None:
+            return None
+        frames.append((pixels, instance))
+    tiles = _windowed_tiles(frames)
     return (
         PreviewKind.INSTANCE,
         tuple((instance.position, frame) for frame in chosen),
@@ -529,8 +574,9 @@ def _volume(series: list[_Instance]) -> _Volume | None:
         for plane in planes
     ):
         return None
-    positions = tuple(float(np.dot(normal, plane.origin)) for plane in planes if plane)
-    if any(later - earlier <= 1e-6 for earlier, later in zip(positions, positions[1:])):
+    origins = np.array([plane.origin for plane in planes if plane])
+    positions = _stacked(origins, normal)
+    if positions is None:
         return None
     directions = (normal, np.array(first.column), np.array(first.row))
     roles = _roles(directions)
@@ -546,6 +592,22 @@ def _volume(series: list[_Instance]) -> _Volume | None:
         vertical=vertical,
         horizontal=horizontal,
     )
+
+
+def _stacked(origins: np.ndarray, normal: np.ndarray) -> tuple[float, ...] | None:
+    """Each slice's position along the normal, if the slices stack along it.
+
+    None if two share a position, or if any is offset within the plane or
+    sheared, as by a gantry tilt.
+    """
+    positions = tuple(float(position) for position in origins @ normal)
+    if any(later - earlier <= 1e-6 for earlier, later in zip(positions, positions[1:])):
+        return None
+    offsets = origins - origins[0]
+    in_plane = offsets - np.outer(offsets @ normal, normal)
+    if np.abs(in_plane).max() > _STACKING_TOLERANCE:
+        return None
+    return positions
 
 
 def _roles(directions) -> tuple[int, int, int] | None:
@@ -582,13 +644,12 @@ class _Projection:
         self._inverted.append(instance.inverted)
         anterior = self._volume.anterior
         if anterior == 0:
+            # fmax ignores padding, which is NaN, unless every value is.
             self._maximum = (
-                frame.copy()
-                if self._maximum is None
-                else np.maximum(self._maximum, frame)
+                frame.copy() if self._maximum is None else np.fmax(self._maximum, frame)
             )
         else:
-            self._slices.append(frame.max(axis=anterior - 1))
+            self._slices.append(np.fmax.reduce(frame, axis=anterior - 1))
 
     def image(self):
         volume = self._volume
@@ -612,7 +673,9 @@ class _Projection:
         extents = [float(coordinates[axis][-1]) for axis in axes]
         step = max(step, max(extents) / (MIP_PIXELS - 1))
         for dimension, axis in enumerate(axes):
-            wanted = np.arange(int(extents[dimension] / step) + 1) * step
+            # The end is kept, though the division falls a little short of it.
+            count = math.floor(extents[dimension] / step + 1e-6) + 1
+            wanted = np.arange(count) * step
             nearest = _nearest(coordinates[axis], wanted)
             image = np.take(image, nearest, axis=dimension)
         vertical, horizontal = (volume.directions[axis] for axis in axes)

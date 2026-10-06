@@ -343,6 +343,13 @@ def _previews_intact(directory: Path, data: bytes) -> bool:
             or not isinstance(digest, str)
         ):
             return False
+        # Only a regular file is read, so that a preview replaced by a link,
+        # a FIFO, or a device is not followed.
+        status = qc_store.path_status(
+            directory / name, "a preview of the QC pack could not be read", follow=False
+        )
+        if status is None or not stat.S_ISREG(status.st_mode):
+            return False
         content = _read(directory / name, "a preview of the QC pack")
         if content is None or hashlib.sha256(content).hexdigest() != digest:
             return False

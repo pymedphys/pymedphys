@@ -473,6 +473,93 @@ def test_series_come_in_order_of_their_first_instance():
 
 
 @pytest.mark.pydicom
+def test_padding_is_left_out_of_the_window_and_shown_black():
+    pixels = np.full((4, 8), -32768)
+    pixels[:, 4:] = 0
+    pixels[0, 4] = 100
+    dataset = pydicom.dcmread(io.BytesIO(_image(pixels, series=None)))
+    dataset.add_new(0x00280120, "SS", -32768)  # Pixel Padding Value
+    written = {0: _file(dataset)}
+
+    image = _decoded(qc_previews.previews_of(written, {0}).previews[1].png)
+
+    assert not image[:, :4].any()
+    # Windowed from what is not padding: 0 to 100, not -32768 to 100.
+    assert image[1, 5] == 0 and image[0, 4] == 255
+
+
+@pytest.mark.pydicom
+def test_a_projection_keeps_its_last_column_and_slice():
+    # 0.7 mm pixels: 3 * 0.7 / 0.7 falls just short of 3 in floating point.
+    count, rows, columns = 4, 4, 4
+    written = {}
+    for position in range(count):
+        pixels = np.zeros((rows, columns))
+        if position == 0:
+            pixels[0, columns - 1] = 1000
+        written[position] = _image(
+            pixels, number=position + 1, z=0.7 * position, spacing=(0.7, 0.7)
+        )
+
+    image = _decoded(qc_previews.previews_of(written, ()).previews[1].png)
+
+    assert image.shape == (count, columns)
+    assert image[count - 1, columns - 1] == 255
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("shift", [(5.0, 0.0, 0.0), (0.0, 0.5, 0.0)])
+def test_slices_that_do_not_stack_along_the_normal_get_no_projection(shift):
+    # Offset within the plane, or sheared as by a gantry tilt.
+    written = {
+        position: _image(
+            np.ones((4, 4)),
+            number=position + 1,
+            origin=tuple(
+                position * (axis + (1.0 if i == 2 else 0.0))
+                for i, axis in enumerate(shift)
+            ),
+        )
+        for position in range(3)
+    }
+
+    previews = qc_previews.previews_of(written, ())
+
+    assert [preview.kind for preview in previews.previews] == [PreviewKind.SERIES_CINE]
+
+
+@pytest.mark.pydicom
+def test_attributes_that_only_adjust_a_preview_are_read_tolerantly():
+    dataset = pydicom.dcmread(io.BytesIO(_image(np.ones((4, 4)), series=None)))
+    dataset.RescaleSlope = ["1", "2"]
+    dataset.InstanceNumber = None
+    written = {0: _file(dataset)}
+
+    previews = qc_previews.previews_of(written, ())
+
+    assert len(previews.previews) == 1 and not previews.not_previewed
+
+
+@pytest.mark.pydicom
+def test_only_the_frames_shown_are_decoded(monkeypatch):
+    decode = pydicom.pixels.pixel_array
+    calls = []
+
+    def counted(source, **kwargs):
+        calls.append(kwargs.get("index"))
+        return decode(source, **kwargs)
+
+    monkeypatch.setattr(pydicom.pixels, "pixel_array", counted)
+    frames = np.arange(40 * 4 * 4).reshape(40, 4, 4)
+    written = {0: _image(frames, series=None, sop_class=SECONDARY_CAPTURE)}
+
+    qc_previews.previews_of(written, {0})
+
+    # Sixteen frames for the cine strip, and the same again for the instance.
+    assert None not in calls and len(calls) == 2 * qc_previews.CINE_FRAMES
+
+
+@pytest.mark.pydicom
 def test_the_same_files_give_the_same_previews():
     first = qc_previews.previews_of(_slices(5), {2})
     second = qc_previews.previews_of(_slices(5), {2})
@@ -689,9 +776,16 @@ def test_previews_are_written_beside_the_pack_and_only_for_its_owner(tmp_path):
 
     previews = directory / qc_pack.PREVIEW_DIRECTORY
     assert sorted(path.name for path in previews.iterdir()) == [
+        qc_store.MARKER_FILE,
         "P-0001.png",
         "P-0002.png",
     ]
+    # Copied away on its own, the directory is still recognised.
+    copy = tmp_path / "copied"
+    copy.mkdir()
+    for path in previews.iterdir():
+        (copy / path.name).write_bytes(path.read_bytes())
+    assert qc_store.is_qc_material(copy)
     for preview in pack.previews:
         assert (previews / preview.name).read_bytes() == preview.png
     document = json.loads((directory / qc_store.PACK_FILE).read_text("ascii"))
@@ -756,6 +850,25 @@ def test_a_pack_whose_preview_changed_cannot_be_attested(tmp_path):
         _attest(directory)
 
     assert not (directory / qc_attestation.ATTESTATION_FILE).exists()
+
+
+@pytest.mark.pydicom
+@pytest.mark.skipif(os.name != "posix", reason="needs a FIFO and symbolic links")
+@pytest.mark.parametrize("kind", ["fifo", "link"])
+def test_a_preview_that_is_not_a_regular_file_is_not_read(tmp_path, kind):
+    directory = _write_pack(tmp_path, _pack_with_previews())
+    preview = directory / qc_pack.PREVIEW_DIRECTORY / "P-0001.png"
+    original = preview.read_bytes()
+    preview.unlink()
+    if kind == "fifo":
+        os.mkfifo(preview)  # pylint: disable = no-member
+    else:
+        target = tmp_path / "elsewhere.png"
+        target.write_bytes(original)
+        preview.symlink_to(target)
+
+    with pytest.raises(QcPackError, match="preview of the QC pack"):
+        _attest(directory)
 
 
 @pytest.mark.pydicom
@@ -833,3 +946,22 @@ def test_the_run_pack_previews_released_and_held_files_and_lists_high_risk():
         PixelRiskEntry(4, (_finding(),)),
     )
     assert not pack.not_previewed
+
+
+@pytest.mark.pydicom
+def test_a_reviewed_file_that_no_gate_handed_over_is_listed():
+    outcomes = (
+        _outcome(0, run.Status.RELEASED, PurePosixPath("a/0.dcm")),
+        _outcome(1, run.Status.HELD_FOR_REVIEW, reasons=(run.RunReason.DICOMDIR,)),
+        _outcome(
+            2, run.Status.SEQUESTERED, label="S-0001", reasons=(run.RunReason.DICOMDIR,)
+        ),
+    )
+    sources = [Path(f"in/{n}.dcm") for n in range(3)]
+
+    pack = run_qc.qc_pack_of(sources, outcomes, {})
+
+    assert pack.not_previewed == (
+        NotPreviewedEntry(0, NotPreviewedReason.NOT_AVAILABLE),
+        NotPreviewedEntry(1, NotPreviewedReason.NOT_AVAILABLE),
+    )

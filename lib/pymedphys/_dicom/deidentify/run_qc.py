@@ -138,7 +138,8 @@ def qc_pack_of(
     The pack's image previews (:func:`~.qc_previews.previews_of`) are made
     from the file that each released or held instance's gate searched, in
     its :class:`SearchMaterial`, with the instances that a
-    :class:`PixelRiskMaterial` gives findings for as high-risk.
+    :class:`PixelRiskMaterial` gives findings for as high-risk. A released or
+    held instance without one is listed as not previewed.
 
     Raises
     ------
@@ -189,6 +190,17 @@ def qc_pack_of(
                 raise TypeError("QC material must be of the run's QC material types")
     high_risk = {position: tuple(found) for position, found in risks.items() if found}
     previews = qc_previews.previews_of(written, high_risk)
+    # A released or held file that no gate handed over is listed, not lost.
+    missing = [
+        qc_pack.NotPreviewedEntry(
+            entry.position, qc_pack.NotPreviewedReason.NOT_AVAILABLE
+        )
+        for entry in instances
+        if entry.disposition in _PREVIEWED and entry.position not in written
+    ]
+    not_previewed = tuple(
+        sorted((*previews.not_previewed, *missing), key=lambda entry: entry.position)
+    )
     return QcPack(
         reference=qc_pack.new_reference() if reference is None else reference,
         instances=instances,
@@ -202,7 +214,7 @@ def qc_pack_of(
             for position, found in sorted(high_risk.items())
         ),
         previews=previews.previews,
-        not_previewed=previews.not_previewed,
+        not_previewed=not_previewed,
     )
 
 

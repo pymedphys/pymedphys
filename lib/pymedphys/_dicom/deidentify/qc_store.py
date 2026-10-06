@@ -219,7 +219,8 @@ def write_qc_pack(
     given mode 0o700, and its files are created within it, each with mode
     0o600. It receives, in this order, the marker :data:`MARKER_FILE`; the
     pack's previews, if it has any, in a new directory
-    :data:`~.qc_pack.PREVIEW_DIRECTORY` of mode 0o700; :data:`PACK_FILE` from
+    :data:`~.qc_pack.PREVIEW_DIRECTORY` of mode 0o700, after a copy of the
+    marker so that the directory is recognised as QC material on its own; :data:`PACK_FILE` from
     :func:`~.qc_pack.to_json`; and :data:`NOTICE_FILE`, the handling notice
     :data:`NOTICE`. A file or directory is never overwritten.
 
@@ -280,6 +281,7 @@ def write_qc_pack(
             _write_bytes(target / marker[0], marker[1], None)
             if previews:
                 (target / PREVIEW_DIRECTORY).mkdir(mode=_DIRECTORY_MODE)
+                _write_bytes(target / PREVIEW_DIRECTORY / marker[0], marker[1], None)
                 for name, data in previews:
                     _write_bytes(target / PREVIEW_DIRECTORY / name, data, None)
             for name, data in files:
@@ -316,6 +318,8 @@ def _write_within(
             within = os.open(PREVIEW_DIRECTORY, _OPEN_DIRECTORY, dir_fd=directory)
             try:
                 os.fchmod(within, _DIRECTORY_MODE)  # pylint: disable = no-member
+                # The marker again, so the previews are recognised on their own.
+                _write_bytes(*marker, within)
                 for name, data in previews:
                     _write_bytes(name, data, within)
             finally:

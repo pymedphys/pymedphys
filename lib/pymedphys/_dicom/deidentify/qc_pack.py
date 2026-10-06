@@ -563,6 +563,8 @@ class NotPreviewedReason(enum.Enum):
     UNREADABLE = "unreadable-pixel-data"
     # a high-risk instance, such as an RT Structure Set, without pixel data
     NO_PIXEL_DATA = "no-pixel-data"
+    # a released or held instance whose written file the run did not hand over
+    NOT_AVAILABLE = "file-not-available"
 
 
 PREVIEW_NAME = re.compile(r"P-[0-9]{4,}\.png")
