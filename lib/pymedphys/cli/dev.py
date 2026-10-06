@@ -15,6 +15,7 @@ def dev_cli(subparsers):
     add_propagate_parser(dev_subparsers)
     add_deid_tables_parser(dev_subparsers)
     add_deid_matrix_parser(dev_subparsers)
+    add_deid_benchmark_parsers(dev_subparsers)
     add_tg263_check_parser(dev_subparsers)
     add_doctests_parser(dev_subparsers)
     add_clean_imports_parser(dev_subparsers)
@@ -205,6 +206,88 @@ def run_deid_matrix(args):
         print(problem, file=sys.stderr)
     if problems:
         raise SystemExit(1)
+
+
+def add_deid_benchmark_parsers(dev_subparsers):
+    parser = dev_subparsers.add_parser(
+        "deid-benchmark",
+        help=(
+            "De-identify a local copy of an NCI MIDI test data set under a "
+            "preset, whether enabled or not, and score the release against its "
+            "answer key by answer-key category (D-018). For development only."
+        ),
+    )
+    parser.add_argument(
+        "--source", required=True, help="The test data set's DICOM files."
+    )
+    parser.add_argument(
+        "--answer-key", required=True, help="Its answer key, an SQLite database."
+    )
+    parser.add_argument(
+        "--work",
+        required=True,
+        help=(
+            "A directory, which must not exist, for the release, the "
+            "confidential QC pack and validation script inputs, and the results."
+        ),
+    )
+    parser.add_argument(
+        "--preset",
+        default="basic",
+        help="A preset without Clean Descriptors. Defaults to basic.",
+    )
+    parser.add_argument(
+        "--collection",
+        help="The test data set's name and version, recorded in the results.",
+    )
+    parser.set_defaults(func=run_deid_benchmark)
+
+    parser = dev_subparsers.add_parser(
+        "deid-benchmark-script-results",
+        help=(
+            "Count the NCI validation script's results (validation_results.db) "
+            "by answer-key category, as JSON. For development only."
+        ),
+    )
+    parser.add_argument("results", help="The script's validation_results.db.")
+    parser.set_defaults(func=run_deid_benchmark_script_results)
+
+
+def run_deid_benchmark(args):
+    # Imported here so that other commands do not load the de-identification
+    # package.
+    from pymedphys._dicom.deidentify import midi_answer_key, midi_benchmark, run
+    from pymedphys._dicom.deidentify.policy import PolicyError
+
+    try:
+        result = midi_benchmark.run_benchmark(
+            args.source,
+            args.answer_key,
+            args.work,
+            preset=args.preset,
+            collection=args.collection,
+        )
+    except (
+        midi_benchmark.BenchmarkError,
+        midi_answer_key.AnswerKeyError,
+        PolicyError,
+        run.RunError,
+        run.RunStopped,
+    ) as error:
+        raise SystemExit(str(error)) from None
+    sys.stdout.write(result.markdown())
+
+
+def run_deid_benchmark_script_results(args):
+    import json
+
+    from pymedphys._dicom.deidentify import midi_benchmark
+
+    try:
+        summary = midi_benchmark.summarise_script_results(args.results)
+    except midi_benchmark.BenchmarkError as error:
+        raise SystemExit(str(error)) from None
+    sys.stdout.write(json.dumps(summary, indent=2) + "\n")
 
 
 def add_tg263_check_parser(dev_subparsers):
