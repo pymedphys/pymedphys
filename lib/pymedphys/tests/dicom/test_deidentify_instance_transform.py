@@ -125,7 +125,7 @@ def _plan_with_sentinels():
     return plan
 
 
-@pytest.mark.deid_requirement("PS3.15-E.1.1-01", "PS3.15-E.1.1-06")
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 def test_each_instance_of_a_collection_is_written_and_named_by_its_replacements():
     pseudonym = patient_pseudonym(
         KEY, InstanceRecord.from_file(synthetic.written(synthetic.ct_slice(0))).patient
@@ -266,6 +266,23 @@ def test_references_between_instances_follow_their_replacements():
 
     referenced = dose.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID
     assert referenced == plan.SOPInstanceUID == replacement_uid(KEY, synthetic.PLAN)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-06")
+def test_the_source_preamble_and_file_meta_are_not_written():
+    data = synthetic.written(synthetic.rt_plan())
+    source = b"SENTINEL PREAMBLE".ljust(128, b"\0") + data[128:]
+    source_meta = pydicom.dcmread(io.BytesIO(source)).file_meta
+
+    result = _transform()(source, InstanceRecord.from_file(source))
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written.preamble == bytes(128)
+    assert (
+        written.file_meta.ImplementationClassUID != source_meta.ImplementationClassUID
+    )
+    assert b"SENTINEL" not in result.data
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-08")

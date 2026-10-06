@@ -155,12 +155,13 @@ status = "implemented"
 decisions = ["D-016"]
 implementation = [
   "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/run.py",
   "_dicom/deidentify/run_results.py",
 ]
 note = '''
 Every element of group 0004 in a data set, at the top level or in an item, has a rule that removes it, under every policy, before any other rule applies.
-A source DICOMDIR is never passed through, and none is written, since the output is a plain directory tree rather than a File-set (D-016): a run refuses a source file named `DICOMDIR` or whose Media Storage SOP Class UID is the Media Storage Directory Storage SOP Class.
+A source DICOMDIR is never passed through, and none is written, since the output is a plain directory tree rather than a File-set (D-016): a run refuses a source file named `DICOMDIR`, whose Media Storage SOP Class UID is the Media Storage Directory Storage SOP Class, or that holds a Directory Record Sequence.
 The run's instance transform applies those rules to each instance it writes, so no written file holds an element of group 0004.
 '''
 
@@ -706,7 +707,8 @@ id = "MIDI-BP-06"
 text = '''
 Use the release of PS3.15 current at the time of de-identification as the reference for which data elements to de-identify, augmented by knowledge of other unsafe attributes, including private ones. Categorise retained elements by the PS3.15 Options, and apply the approach to any DICOM object, whether or not its IOD is recognised.
 '''
-status = "implemented"
+status = "partial"
+milestone = "M4"
 decisions = ["D-001", "D-010", "D-022", "D-023"]
 implementation = [
   "_dev/deid_tables/annex_e.py",
@@ -732,6 +734,8 @@ Without Retain Safe Private, every private attribute is removed from a data set,
 Every element, whether or not the pinned dictionary lists its attribute, has one rule, and every URI and URL attribute that the table omits has a reviewed one; no person name, date, time, datetime, or UID is left to the default for attributes that no rule covers, which keeps codes, tags, and numbers, keeps a sequence or a binary value only where the IOD defines it, and removes anything else (D-022).
 `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and `.github/workflows/deid-edition-check.yml` runs it monthly.
 The run's instance transform removes private attributes from, and applies each element's rule to, each instance it de-identifies, and the run sequesters the instances so classified and lists them in the release report with their reasons.
+An object of any other SOP Class is handled by classifying and sequestering it, not by de-identifying it.
+Remaining: naming the IOD of an unsupported instance in the release report, as D-010 says (M4).
 Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
@@ -777,11 +781,16 @@ Assess, for every image type, the risk from burned-in text, objects bearing text
 status = "partial"
 milestone = "M4"
 decisions = ["D-015", "D-017"]
-implementation = ["_dicom/deidentify/pixel_risk.py"]
+implementation = [
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/pixel_risk.py",
+  "_dicom/deidentify/qc_pack.py",
+  "_dicom/deidentify/run_qc.py",
+]
 note = '''
 Every instance's attributes are read for indicators of burned-in text, whatever its IOD: Burned In Annotation of YES, a secondary or converted image, and an overlay without Overlay Data, which may lie in the pixel data; an attribute that cannot be read is itself reported, and a received NO counts for nothing.
 The pixel data are never inspected or changed (D-015).
-Each run gives every source's indicators to the confidential QC pack, which lists and previews the instances at high risk.
+Each run gives the indicators of each source it can decode to the confidential QC pack, which lists the instances at high risk and previews those released or held.
 Remaining: pixel review before `public-release` (M4).
 '''
 
@@ -790,15 +799,18 @@ id = "MIDI-BP-11"
 text = '''
 Remove or replace all unstructured text, whether in data elements, pixel data, or overlays, or, where it is needed for utility, scan it for identifiers and sensitive information, manually or automatically with human review.
 '''
-status = "implemented"
+status = "partial"
+milestone = "M4"
 decisions = ["D-009", "D-017", "D-022", "D-027"]
 implementation = [
   "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/pixel_risk.py",
   "_dicom/deidentify/release_gate.py",
   "_dicom/deidentify/residuals.py",
   "_dicom/deidentify/reviewed_roi_names.py",
   "_dicom/deidentify/roi_names.py",
+  "_dicom/deidentify/run_qc.py",
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
@@ -807,6 +819,7 @@ Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocab
 The run's instance transform applies the actions to each data set, and descriptor cleaning holds for review a ROI name whose decision would echo an identifier.
 A reviewer's decision on a ROI name applies to every ROI Name of that spelling, in the collection and in later runs, and each run searches every written file for the source values that had to be removed or replaced (MIDI-BP-01).
 Indicators of burned-in text are reported in the confidential QC pack, since the engine does not change pixel data (D-015).
+Remaining: human review of the instances whose indicators show burned-in text, before `public-release` (M4, with MIDI-BP-10).
 '''
 
 [[requirement]]
