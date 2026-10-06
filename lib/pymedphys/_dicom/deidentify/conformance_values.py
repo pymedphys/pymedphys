@@ -47,6 +47,10 @@ from . import dummy_values, pseudonyms, residuals, uids
 from . import release_report as report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
+from .pixel_risk import Indicator
+from .qc_retained import _NOT_REVIEWED_TAGS, RETAINED_TEXT_VRS
+from .reasons import TransformReason
+from .release_gate import ReasonCode
 from .release_report import _HOLDING, _SEQUESTERING
 from .reviewed_roi_names import Outcome as RoiNameOutcome
 from .residuals import _BINARY as _BINARY_VRS
@@ -57,6 +61,7 @@ from .values import CHECKED_VRS
 from .walker import REVIEWED_DUMMY_SEQUENCES
 
 TEMPORAL_MODIFIED = "(0028,0303)"  # Longitudinal Temporal Information Modified
+_SERIES_INSTANCE_UID = "(0020,000E)"
 
 # The name of each codec in which the residual search encodes every form.
 CODEC_NAMES: Mapping[str, str] = types.MappingProxyType(
@@ -171,6 +176,20 @@ STAGES: Mapping[str, str] = types.MappingProxyType(
             "be collected for the search"
         ),
     }
+)
+
+# The codes by which the release gate can hold an instance for review rather
+# than withhold it: a gap in collection for a value of no required kind, and
+# other text found inside the data set.
+REVIEW_CODES = frozenset(
+    code.value
+    for code in (
+        ReasonCode.UNCOLLECTED,
+        ReasonCode.NOT_REPORTED,
+        ReasonCode.READ_AS_LATIN_1,
+        ReasonCode.COLLECTED_AS_OTHER_VR,
+        ReasonCode.RESIDUAL_TEXT,
+    )
 )
 
 # What each stage that holds an instance for review does.
@@ -354,7 +373,7 @@ def residual_search(named: Callable[[str], str]) -> list[str]:
         "The engine collects each source value that it removes or replaces, "
         "at every level of nesting and with the descendants of a removed "
         "sequence, for the residual search, which searches every byte of a "
-        "written file for them, once the engine applies it to each run: the "
+        "written file for them before the file is released: the "
         "preamble, the File Meta Information, every element, Data Set "
         "Trailing Padding, and the bytes after the last readable element "
         "(D-027). Values of VR "
@@ -379,6 +398,75 @@ def residual_search(named: Callable[[str], str]) -> list[str]:
     ]
 
 
+def _held_by(stage: str, codes: Iterable[str]) -> list[str]:
+    """Return the codes by which a stage can hold an instance for review."""
+    if stage == "release":
+        return [c for c in codes if c in REVIEW_CODES]
+    return list(codes)
+
+
+# The names under which a run writes its release report, the report's
+# human-readable form, and this statement, as ``run_report`` gives them; the
+# statement's tests check that they agree. ``run_report`` imports the
+# statement, so it is not imported here.
+_RELEASE_REPORT = "release-report.json"
+_RELEASE_REPORT_MARKDOWN = "release-report.md"
+_CONFORMANCE_STATEMENT = "conformance-statement.md"
+
+
+def qc_pack(named: Callable[[str], str]) -> list[str]:
+    """Return the lines of the section on what the QC pack lists for review."""
+    vrs = join(sorted(RETAINED_TEXT_VRS), "or")
+    exempt = join(named(tag) for tag in sorted(_NOT_REVIEWED_TAGS))
+    unreviewable = code(TransformReason.UNREVIEWABLE_RETAINED_TEXT.value)
+    volume, head, unreadable = (
+        code(indicator.value)
+        for indicator in (
+            Indicator.CT_VOLUME,
+            Indicator.HEAD_OR_NECK,
+            Indicator.UNREADABLE,
+        )
+    )
+    return [
+        "## QC pack",
+        "",
+        "The confidential QC pack of each run lists, for the review of every "
+        "distinct retained string, each distinct string that an instance's "
+        "plan keeps as it is, in an element of VR "
+        f"{vrs} outside any removed sequence, other than {exempt}, with every "
+        "place where it was kept (D-017). The run sequesters an instance "
+        "with such a value that cannot be decoded for review, such as text "
+        "outside ISO 646 where no Specific Character Set applies, by "
+        f"{unreviewable}, rather than releasing it unreviewed.",
+        "",
+        "The engine writes Pixel Data (7FE0,0010) unchanged and claims "
+        "neither Clean Pixel Data nor Clean Recognizable Visual Features. "
+        "The QC pack lists each instance whose source's attributes show an "
+        "indicator of text burned into its pixel data or of a face that "
+        "could be reconstructed, with those indicators, and, where the "
+        "instance is released or held for review, previews its written file "
+        "at full resolution or records why it could not. The engine reads "
+        "these indicators from the "
+        "instance's attributes, never from its pixel data, so the absence "
+        "of an indicator is not evidence that the risk is absent (D-015).",
+        "",
+        "The QC pack also lists each CT volume among the instances that are "
+        "released or held for review, as one that may hold a face that could "
+        f"be reconstructed, by {volume}, whether or not it covers the face, "
+        "since the engine cannot tell without inspecting its pixel data; "
+        "where the volume's attributes name a region of the head or neck in "
+        f"a reviewed list from PS3.16 Annex L, by {head}; and where such "
+        f"evidence cannot be read, by {unreadable}; each with the instances "
+        "that show it. A CT volume is a series whose CT images hold at least "
+        "two frames that are not localizers, or an Enhanced or Legacy "
+        "Converted Enhanced CT image whose Number of Frames cannot be read. "
+        "The run groups instances into series by their source's "
+        f"{named(_SERIES_INSTANCE_UID)}, which it never writes, and assesses "
+        "only the released and held instances, so a series with just one "
+        "single-frame CT image among them is not a volume (D-015).",
+    ]
+
+
 def release_report() -> list[str]:
     """Return the lines of the section on what the release report records."""
     (first,) = report.sequestration_labels(1)
@@ -390,7 +478,7 @@ def release_report() -> list[str]:
     ]
     holding = [
         f"- {code(stage)}: {HOLDING_STAGES[stage]}, by "
-        + join((code(c) for c in sorted(codes)), "or")
+        + join((code(c) for c in sorted(_held_by(stage, codes))), "or")
         + "."
         for stage, codes in _HOLDING.items()
     ]
@@ -411,9 +499,24 @@ def release_report() -> list[str]:
         "",
         "A reason from the walker also gives the attribute's tags from the "
         "outermost sequence, without items, the action, and the VR where it "
-        "is known. A reason of scope `unsupported-iod` also gives the "
-        "instance's IOD by its name in PS3.4 Table B.5-1, such as "
-        "`Comprehensive SR` for the Comprehensive SR IOD (D-010).",
+        "is known, and one from the release gate gives the attribute's tags "
+        "in the same way where it names an attribute. A reason of scope "
+        "`unsupported-iod` also gives the instance's IOD by its name in "
+        "PS3.4 Table B.5-1, such as `Comprehensive SR` for the Comprehensive "
+        "SR IOD (D-010).",
+        "",
+        "An instance outside the supported scope whose IOD the pinned tables "
+        "define, such as an MR image or a spatial registration, is planned "
+        "and edited, where its source can be read, only so that its values "
+        "are collected for its subject's search; it is never written. An "
+        "instance that the first pass read but whose values were not "
+        "collected at all, since its source file was refused on its second "
+        "read, its SOP Class names no IOD of the pinned tables, its transform "
+        "raised an error, or its source file changed during the run, makes "
+        "the release gate withhold every other file of its subject, by "
+        "`not-reported`, since its values were not searched for in them "
+        "(D-027). An input that the first pass sequesters for a sequence it "
+        "cannot read has no known subject and withholds no other file.",
         "",
         "The report counts the instances held for review, by the stage that "
         "held each and its reason code, an instance once for each stage and "
@@ -450,9 +553,19 @@ def release_report() -> list[str]:
         "The report lists each released instance by its output name alone, "
         "which is built from the replacement Patient ID and UIDs, and gives "
         "the run's QC pack by its opaque reference, with the outcome of its "
-        "attestation (`attested`, `rejected`, or `not-attested`), or none for "
-        "a run without a QC pack. A report written before the pack is "
-        "reviewed gives the outcome `not-attested` (D-016, D-026).",
+        "attestation (`attested`, `rejected`, or `not-attested`). Every run "
+        "writes a QC pack, so a report that a run writes always gives one. A report "
+        "written before the pack is reviewed gives the outcome `not-attested` "
+        "(D-016, D-026). An input that the run refuses, as not an instance "
+        "that it can read, such as a symbolic link, a DICOMDIR, or a file not "
+        "readable as DICOM, is neither labelled nor counted in the report; "
+        "only the QC pack lists it. A run writes the report at the root of "
+        f"the release as `{_RELEASE_REPORT}` and, beside it, its "
+        f"human-readable form as `{_RELEASE_REPORT_MARKDOWN}`, "
+        "generated from the report's text alone, which shows every value of "
+        "the report and draws nothing else from it. Beside them, it writes "
+        "this statement of its policy, which holds no instance value, as "
+        f"`{_CONFORMANCE_STATEMENT}`.",
         "",
         "The report holds no source value or original path: each field is a "
         "digest, a version, a known edition, preset, or option, a file name "
