@@ -98,9 +98,39 @@ def test_an_attestation_is_recorded_beside_the_pack(pack):
         "  every distinct retained string: reviewed",
         "  every series: reviewed",
         "  every instance in high-risk categories: reviewed",
+        "  checked for its intended use: not stated",
+        "  residual risk accepted: not stated",
         "the release report published with the run is unchanged",
     ]
     _assert_quotes_nothing(stdout, stderr)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-17")
+@pytest.mark.parametrize(
+    "use, risk, expected",
+    [
+        ("yes", "yes", (True, True)),
+        ("no", "yes", (False, True)),
+        ("yes", None, (True, None)),
+    ],
+)
+def test_the_releasers_confirmations_reach_the_record(pack, use, risk, expected):
+    argv = [str(pack), "--reviewer", REVIEWER, "--outcome", "attested", *EVERY_REVIEW]
+    argv += ["--intended-use-checked", use]
+    if risk is not None:
+        argv += ["--residual-risk-accepted", risk]
+
+    status, stdout, stderr = _run(*argv)
+
+    assert status == command.EXIT_RECORDED, stderr
+    assert qc_attestation.attestation_record(pack) == AttestationRecord(
+        REFERENCE, Outcome.ATTESTED, *expected
+    )
+    words = {True: "yes", False: "no", None: "not stated"}
+    assert (
+        f"  checked for its intended use: {words[expected[0]]}" in stdout.splitlines()
+    )
+    assert f"  residual risk accepted: {words[expected[1]]}" in stdout.splitlines()
 
 
 def test_a_rejection_records_the_reviews_that_were_done(pack):
@@ -207,6 +237,15 @@ def test_a_pack_of_another_format_is_refused(pack):
         ["PACK", "--outcome", "attested"],
         ["PACK", "--reviewer", REVIEWER, "--outcome", "not-attested"],
         ["PACK", "--reviewer", REVIEWER, "--outcome", "rejected", "--Quokka"],
+        [
+            "PACK",
+            "--reviewer",
+            REVIEWER,
+            "--outcome",
+            "rejected",
+            "--intended-use-checked",
+            "maybe",
+        ],
     ],
 )
 def test_arguments_that_cannot_be_parsed_are_refused_without_quoting(argv):

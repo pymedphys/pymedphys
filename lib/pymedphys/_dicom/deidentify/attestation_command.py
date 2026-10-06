@@ -17,7 +17,12 @@
 Run as ``python -m pymedphys._dicom.deidentify.attestation_command PACK
 --reviewer NAME --outcome attested|rejected``, with a flag for each review
 that D-017 requires and the reviewer did: ``--reviewed-retained-strings``,
-``--reviewed-series``, and ``--reviewed-high-risk-instances``. It is not
+``--reviewed-series``, and ``--reviewed-high-risk-instances``. The person
+releasing the data may add their confirmations, each ``yes`` or ``no``:
+``--intended-use-checked``, that the output was checked for its intended
+use, and ``--residual-risk-accepted``, that its residual risk was accepted
+under the institution's governance; either left out is recorded as not
+stated. It is not
 registered with the ``pymedphys`` command: nothing de-identification related
 joins the public command line before the first supported release.
 
@@ -66,14 +71,16 @@ EXIT_USAGE = command.EXIT_USAGE
 
 # The outcomes that a reviewer can record, by their values.
 _OUTCOMES = {outcome.value: outcome for outcome in (Outcome.ATTESTED, Outcome.REJECTED)}
+# The releaser's answers, by their words.
+_ANSWERS = {"yes": True, "no": False}
 
 
 def summary_lines(attestation: Attestation) -> list[str]:
     """Return the summary that the command prints, which names no one.
 
     It gives the pack's reference, the outcome, whether each review that
-    D-017 requires was done, and that the published release report is
-    unchanged.
+    D-017 requires was done, the releaser's confirmations, and that the
+    published release report is unchanged.
     """
     coverage = attestation.coverage
     return [
@@ -89,8 +96,19 @@ def summary_lines(attestation: Attestation) -> list[str]:
                 ),
             )
         ),
+        *(
+            f"  {confirmation}: {_answer(given)}"
+            for confirmation, given in (
+                ("checked for its intended use", attestation.intended_use_checked),
+                ("residual risk accepted", attestation.residual_risk_accepted),
+            )
+        ),
         "the release report published with the run is unchanged",
     ]
+
+
+def _answer(given: bool | None) -> str:
+    return "not stated" if given is None else ("yes" if given else "no")
 
 
 def build_parser(*, stderr: TextIO | None = None) -> argparse.ArgumentParser:
@@ -134,6 +152,22 @@ def build_parser(*, stderr: TextIO | None = None) -> argparse.ArgumentParser:
         ),
     ):
         parser.add_argument(flag, action="store_true", help=f"you reviewed {review}")
+    parser.add_argument(
+        "--intended-use-checked",
+        choices=tuple(_ANSWERS),
+        help=(
+            "the releaser's confirmation that the output was checked for its "
+            "intended use; not stated if left out"
+        ),
+    )
+    parser.add_argument(
+        "--residual-risk-accepted",
+        choices=tuple(_ANSWERS),
+        help=(
+            "the releaser's confirmation that the residual risk was accepted "
+            "under the institution's governance; not stated if left out"
+        ),
+    )
     return parser
 
 
@@ -169,6 +203,8 @@ def main(
                 series=arguments.reviewed_series,
                 high_risk_instances=arguments.reviewed_high_risk_instances,
             ),
+            intended_use_checked=_ANSWERS.get(arguments.intended_use_checked),
+            residual_risk_accepted=_ANSWERS.get(arguments.residual_risk_accepted),
         )
     except QcPackError as error:
         # QcPackError and the OSErrors it replaces name a check, never a path.
