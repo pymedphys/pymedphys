@@ -80,6 +80,7 @@ def test_an_unattested_pack_is_recorded_as_not_attested(pack):
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.parametrize("outcome", [Outcome.ATTESTED, Outcome.REJECTED])
 def test_the_record_holds_only_the_reference_and_outcome(pack, outcome):
     _attest(pack, outcome)
@@ -113,6 +114,7 @@ def test_the_attestation_is_written_beside_the_pack(pack):
         assert stat.S_IMODE(written.stat().st_mode) == 0o600
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_attested_needs_every_review_that_d_017_requires(pack):
     for missing in ("retained_strings", "series", "high_risk_instances"):
         partial = Coverage(
@@ -138,6 +140,7 @@ def test_a_pack_is_attested_once(pack):
     assert qc_attestation.attestation_record(pack).outcome is Outcome.REJECTED
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_a_pack_changed_after_attestation_is_detected(pack):
     _attest(pack)
     path = pack / qc_store.PACK_FILE

@@ -146,6 +146,7 @@ def _padded(value, pad):
     return encoded + pad * (len(encoded) % 2)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-06")
 def test_the_implementation_class_uid_is_the_first_uid_of_the_reserved_arc():
     root = pymedphys_uid.PYMEDPHYS_ROOT_UID
     arc = pymedphys_uid.PYMEDPHYS_FIXED_UID_ARC
@@ -212,6 +213,7 @@ def test_the_preamble_is_128_zero_bytes():
     assert isinstance(file_meta.PREAMBLE, bytes)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-06")
 @pytest.mark.parametrize(
     "version, name",
     [
@@ -288,6 +290,7 @@ def test_the_installed_version_name_follows_the_package_version(monkeypatch):
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-06")
 def test_the_file_meta_information_holds_exactly_the_seven_elements_in_order():
     meta = _meta()
 
@@ -330,6 +333,7 @@ def test_each_call_gives_new_file_meta_information():
     assert _meta().MediaStorageSOPInstanceUID == REPLACEMENT_UID
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-06")
 @pytest.mark.parametrize(
     "sop_class_uid, sop_instance_uid, transfer_syntax_uid",
     [
@@ -352,6 +356,7 @@ def test_the_group_length_counts_the_bytes_of_the_elements_after_it(
     assert struct.unpack("<L", elements[0][2]) == (_bytes_after_group_length(data),)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-06")
 @pytest.mark.parametrize("transfer_syntax_uid", [IMPLICIT_LE, EXPLICIT_LE])
 def test_a_written_file_has_a_zero_preamble_and_exactly_the_built_elements(
     transfer_syntax_uid,
@@ -435,6 +440,7 @@ def test_the_source_file_holds_every_identifying_element():
         assert source.file_meta[tag].value == value
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-06")
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_no_source_file_meta_element_or_preamble_is_written():
     source = _source_file()

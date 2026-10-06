@@ -338,6 +338,7 @@ def _attest(directory):
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.pydicom
 @pytest.mark.parametrize("change", ["altered", "missing"])
 def test_a_preview_changed_after_attestation_is_detected(tmp_path, change):
@@ -504,6 +505,7 @@ def test_the_transform_gives_the_sources_pixel_risk_as_qc_material():
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_a_run_previews_its_images_in_the_qc_pack(tmp_path):
     plan = synthetic.rt_plan()
     dose = synthetic.rt_dose()

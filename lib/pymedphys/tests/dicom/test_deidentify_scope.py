@@ -94,6 +94,7 @@ def test_padding_is_ignored():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 @pytest.mark.parametrize(
     "sop_class, iod",
     [
@@ -122,6 +123,7 @@ def test_a_standard_sop_class_of_another_iod_is_sequestered(sop_class, iod):
     assert found.sequestered
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 @pytest.mark.parametrize(
     "sop_class",
     [

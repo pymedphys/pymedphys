@@ -135,6 +135,7 @@ def test_the_compound_actions_are_those_of_table_e1_1a():
     assert compound_actions.COMPOUND_ACTIONS <= standard.ACTION_CODES
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize("action, attribute_type, expected", CASES)
 def test_each_compound_action_resolves_by_type(action, attribute_type, expected):
     assert resolve(action, attribute_type) == expected
@@ -178,6 +179,7 @@ def test_a_module_of_any_usage_can_give_the_strictest_type(
     assert resolve_in_iod(iod, INSTITUTION_NAME, (), "X/Z/D") == expected
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_an_attribute_gets_the_action_of_its_strictest_type_across_modules(tables):
     rt_dose = tables.iods["RT Dose"]
     usage = {module.module: module.usage for module in rt_dose.modules}
@@ -207,6 +209,7 @@ def test_an_attribute_gets_the_action_of_its_strictest_type_across_modules(table
     assert resolve_in_iod(tables.iods["CT Image"], "(0008,0008)", (), "X/D") == "D"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize(
     "iod, path, expected",
     [
@@ -262,6 +265,7 @@ def test_an_attribute_the_iod_does_not_define_there_is_type_3(tables, action, ex
     assert resolve_in_iod(ct, PATIENT_ID, ("(0008,1140)",), action) == expected
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize("attribute_type", ["1", "1C"])
 def test_x_z_on_a_type_1_attribute_writes_the_dummy_value(tmp_path, attribute_type):
     # Table E.1-1a lets Z write a non-zero-length dummy value consistent with
@@ -324,6 +328,7 @@ def _check_kept_where_required(where, types, found):
         assert found in {"X", "Z"}, where
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_no_required_attribute_with_a_compound_action_is_removed(resolutions):
     resolved = set()
     for name in FIRST_RELEASE_IODS:
@@ -336,6 +341,7 @@ def test_no_required_attribute_with_a_compound_action_is_removed(resolutions):
     assert resolved == {"X", "Z", "D", "U"}
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_no_required_attribute_with_a_compound_action_is_removed_in_any_generated_iod(
     resolutions,
 ):
@@ -351,6 +357,7 @@ def test_no_required_attribute_with_a_compound_action_is_removed_in_any_generate
     assert resolved == {"X", "Z", "D", "U"}
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_x_z_gives_d_only_to_referenced_study_sequence_in_two_generated_iods(
     resolutions,
 ):
@@ -394,6 +401,7 @@ def test_x_z_gives_d_only_to_referenced_study_sequence_in_two_generated_iods(
     assert "SQ" not in dummy_values.CONSTANTS
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_no_attribute_with_x_z_is_type_1_in_the_first_release_iods(tables):
     x_z = {tag for tag, action in _compound_attributes() if action == "X/Z"}
     defined = [

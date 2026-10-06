@@ -93,6 +93,7 @@ def _series_with_every_kind_of_evidence():
     return [head, localizer, enhanced, dose]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-15")
 @pytest.mark.parametrize(
     "transfer_syntax", [None, IMPLICIT_LE, EXPLICIT_LE], ids=["memory", "ivr", "evr"]
 )
@@ -284,6 +285,7 @@ def _evidence(series, dataset):
     return run_qc.SeriesEvidence(series, pixel_risk.series_evidence(dataset))
 
 
+@pytest.mark.deid_requirement("MIDI-BP-15")
 def test_the_run_pack_assesses_each_series_of_released_and_held_instances():
     outcomes = (
         _outcome(0, run.Status.RELEASED, PurePosixPath("a/0.dcm")),
@@ -373,6 +375,7 @@ def test_the_transform_gives_each_source_series_evidence():
     assert "PatientID" not in material.evidence
 
 
+@pytest.mark.deid_requirement("MIDI-BP-15", "MIDI-BP-17")
 def test_a_run_over_the_synthetic_corpus_lists_its_ct_volume(tmp_path):
     corpus = corpus_module.build_corpus()
     # A short directory, since a run refuses output paths that could exceed

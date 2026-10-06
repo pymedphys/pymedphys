@@ -2575,6 +2575,7 @@ def test_the_pinned_edition_lists_valid_digests():
         int(source.sha256, 16)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 def test_generate_writes_table_e1_1_with_its_provenance(source_dir, tmp_path):
     output_dir = tmp_path / "tables"
 
@@ -2854,6 +2855,7 @@ def test_generation_is_byte_for_byte_reproducible(source_dir, tmp_path):
     assert first.endswith(b"\n")
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 def test_check_passes_only_when_the_tables_are_current(source_dir, tmp_path, capsys):
     output_dir = tmp_path / "tables"
 
@@ -2883,6 +2885,7 @@ def test_check_passes_only_when_the_tables_are_current(source_dir, tmp_path, cap
     assert table.read_bytes() == before
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 def test_a_source_with_another_digest_is_not_parsed(source_dir, tmp_path):
     (source_dir / "chtml" / "part15" / "chapter_E.html").write_bytes(
         FIXTURE_PAGE + b" "
@@ -3108,6 +3111,7 @@ def test_a_page_that_changes_no_table_changes_nothing(tables_dir):
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 def test_a_changed_cell_changes_exactly_its_table(tables_dir):
     assert _e1_1_page(E1_1_ROWS) == FIXTURE_PAGE
     rows = list(E1_1_ROWS)
@@ -3127,6 +3131,7 @@ def test_a_changed_cell_changes_exactly_its_table(tables_dir):
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 @pytest.mark.parametrize(
     "path, page, tables",
     [

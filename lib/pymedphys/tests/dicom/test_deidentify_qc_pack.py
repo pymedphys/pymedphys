@@ -274,6 +274,7 @@ def test_sections_hold_their_own_entries():
         _pack(instances=(_written(), "x"))
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_retained_strings_are_grouped_by_value():
     title, other = _path("(0008,1090)"), _path("(0008,1010)")
     grouped = qc_pack.retained_strings(
@@ -363,6 +364,7 @@ def test_roi_name_outcomes_are_named_as_descriptor_cleaning_names_them():
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_an_excerpt_shows_the_bytes_around_a_residual():
     data = b"Seen by Dr Zebedee today"
     search = find_residuals(data, [SourceValue(NAME_PATH, "PN", NAME)])
@@ -401,6 +403,7 @@ def test_an_excerpt_needs_the_residual_offset_in_the_file():
         qc_pack.excerpt(b"abc", _finding(offset=3))
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_a_search_gives_entries_with_excerpts_and_omissions():
     data = b"Seen by Dr Zebedee today"
     values = [
@@ -415,6 +418,7 @@ def test_a_search_gives_entries_with_excerpts_and_omissions():
     assert omissions and all(entry.position == 3 for entry in omissions)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_document_holds_every_section():
     document = json.loads(qc_pack.to_json(_full_pack()))
     assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/1"
@@ -542,6 +546,7 @@ def fixture_places(tmp_path):
     return tmp_path, release, staging
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.parametrize(
     "where",
     ["release", "release/qc", "release/a/b/qc", "staging/qc", "", "."],
@@ -565,6 +570,7 @@ def test_the_destination_is_compared_once_resolved(places, monkeypatch):
         )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.parametrize("where", ["source/qc", "source/a/qc"])
 def test_the_destination_is_outside_the_source_directory(places, where):
     root, release, staging = places
@@ -656,6 +662,7 @@ def test_a_pack_is_written_with_its_marker_and_notice(places):
     assert "delete the whole directory" in notice
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @POSIX_ONLY
 def test_a_written_pack_is_readable_only_by_its_owner(places):
     root, release, _ = places
@@ -687,6 +694,7 @@ def test_nothing_is_written_for_a_bad_pack_or_destination(places):
     assert not (root / "qc").exists() and not any(release.iterdir())
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 def test_qc_material_is_recognised_wherever_it_is(places):
     root, release, _ = places
     written = qc_store.write_qc_pack(

@@ -62,6 +62,7 @@ def _preset(request):
     return request.param
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_plain_actions_are_resolved_by_type_at_every_place(preset):
     statement = _statement(preset)
     sequence_action = _sequence_action(policy.compose_policy(preset))
@@ -110,6 +111,7 @@ def _row(text, tag):
     return next(line for line in text.splitlines() if f"| {tag} |" in line)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_plain_x_on_a_required_attribute_removes_its_sequence():
     statement = _statement("basic")
     place = conformance.Place(
@@ -132,6 +134,7 @@ def test_a_plain_x_on_a_required_attribute_removes_its_sequence():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_plain_x_that_no_removal_keeps_valid_sequesters():
     statement = _statement("basic")
     assert conformance.Place("CT Image", (), conformance.SEQUESTER) in (
@@ -141,6 +144,7 @@ def test_a_plain_x_that_no_removal_keeps_valid_sequesters():
     assert "instance sequestered at the top level" in row
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_plain_x_on_overlay_data_removes_its_overlay_group():
     statement = _statement("basic")
     assert conformance.Place("CT Image", (), "X", conformance.OVERLAY_GROUP) in (
@@ -150,6 +154,7 @@ def test_a_plain_x_on_overlay_data_removes_its_overlay_group():
     assert "X with its overlay group at the top level in CT Image" in row
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_plain_d_that_no_supported_iod_defines_is_removed():
     entry = _entry(_statement("basic"), VERIFYING_OBSERVER_SEQUENCE)
     assert (entry.action, entry.places, entry.elsewhere) == ("D", (), "X")
@@ -160,6 +165,7 @@ def test_a_plain_d_that_no_supported_iod_defines_is_removed():
     assert row.endswith("| X elsewhere. |")
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_plain_z_on_a_type_1_attribute_gives_d(preset):
     # No supported IOD has a Type 1 place for an attribute given plain Z, so
     # the D branch is exercised directly at a Type 1 place.
@@ -183,6 +189,7 @@ def test_a_plain_z_on_a_type_1_attribute_gives_d(preset):
             assert place.action == ("D" if required else "Z"), entry.tag
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_plain_actions_by_type_are_no_longer_pending(preset):
     assert not any("D-020" in item for item in conformance.PENDING)
     pending = _statement(preset).pending
@@ -196,6 +203,7 @@ def test_plain_actions_by_type_are_no_longer_pending(preset):
     assert "not yet apply" not in " ".join(section.split())
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_last_column_lists_places_that_remove_more_than_the_attribute():
     section = _section(
         conformance_markdown.render_markdown(_statement("basic")), "Actions"
@@ -228,6 +236,7 @@ def _place(statement, tag, iod_name, path):
     return place
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 @pytest.mark.pydicom
 def test_the_walker_sequesters_where_the_statement_says():
     # Responsible Person (0010,2297) is Type 2C at the top level of CT Image,
@@ -247,6 +256,7 @@ def test_the_walker_sequesters_where_the_statement_says():
     assert (place.action, place.removes) == (conformance.SEQUESTER, "")
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 @pytest.mark.pydicom
 def test_the_walker_removes_the_enclosing_sequence_that_the_statement_names():
     # Series Description (0008,103E) is Type 1 within Source Series
@@ -279,6 +289,7 @@ def test_the_walker_removes_the_enclosing_sequence_that_the_statement_names():
     assert (place.action, place.removes) == ("X", sequence.path.tag)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 @pytest.mark.pydicom
 def test_the_walker_removes_the_overlay_group_that_the_statement_names():
     # The CT Image IOD includes the Overlay Plane Module as user-optional, so
@@ -300,6 +311,7 @@ def test_the_walker_removes_the_overlay_group_that_the_statement_names():
     assert (place.action, place.removes) == ("X", conformance.OVERLAY_GROUP)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 @pytest.mark.pydicom
 def test_plain_z_and_d_are_resolved_as_the_walker_plans_them():
     # Patient's Name (0010,0010) is Z and Clinical Trial Sponsor Name
@@ -331,6 +343,7 @@ def test_plain_z_and_d_are_resolved_as_the_walker_plans_them():
     ]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 @pytest.mark.pydicom
 def test_places_within_a_sequence_that_the_policy_removes_are_not_listed():
     # The walker removes Attribute Modification DateTime with Original
@@ -366,6 +379,7 @@ def test_places_within_a_sequence_that_the_policy_removes_are_not_listed():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_places_within_a_removed_sequence_follow_the_policy_without_rules():
     # The engine refuses public-release's element rules, so the policy's own
     # actions decide which sequences are removed.

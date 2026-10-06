@@ -578,6 +578,7 @@ ODD_LENGTHS = {
 }
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize("build, at", ODD_LENGTHS.values(), ids=ODD_LENGTHS)
 def test_an_odd_length_is_refused_where_it_starts(build, at):
     # Every Value Length but the undefined length is even (PS3.5 Section
@@ -590,6 +591,7 @@ def test_an_odd_length_is_refused_where_it_starts(build, at):
     assert "SENTINEL" not in str(raised.value) + repr(raised.value)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize("build, at", ODD_LENGTHS.values(), ids=ODD_LENGTHS)
 def test_the_same_structure_with_even_lengths_is_admitted(build, at):
     data = build(EVEN_VALUE)
@@ -599,6 +601,7 @@ def test_the_same_structure_with_even_lengths_is_admitted(build, at):
     assert evidence.size == len(data) > at
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.parametrize("build, at", ODD_LENGTHS.values(), ids=ODD_LENGTHS)
 def test_the_layout_still_reads_a_file_with_an_odd_length(build, at):
     # The written files that residuals.find_residuals searches are read
@@ -609,6 +612,7 @@ def test_the_layout_still_reads_a_file_with_an_odd_length(build, at):
     assert layout.locate(at).region is not file_layout.Region.TRAILING
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize(
     "transfer_syntax, data_set",
     [
