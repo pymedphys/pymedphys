@@ -24,7 +24,8 @@ writes it as CommonMark:
 - the PS3.15 edition, the preset, and its options, with their CID 7050
   codes, and the options that are not supported;
 - whether the policy can claim conformance, and why not where it cannot;
-- the method digest of the policy (D-024) and the vocabulary it covers;
+- the method digest of the policy (D-024), the vocabulary it covers, and
+  the absence of a reviewed-names list;
 - the supported IODs, their Storage SOP Classes, and the transfer
   syntaxes they are read in (D-010);
 - the action that the engine applies to each attribute of Table E.1-1, of
@@ -396,7 +397,8 @@ class ConformanceStatement:
     resolved : tuple of ResolvedConflict
         The conflicts between options that the preset resolves.
     method_digest : str
-        The policy's method digest under the vocabulary given (D-024).
+        The policy's method digest under the vocabulary given, without a
+        reviewed-names list (D-024).
     vocabulary_digest : str or None
         The content digest of the vocabulary's entries, or None without one.
     iods, sop_classes, transfer_syntaxes : tuple
@@ -696,6 +698,8 @@ def conformance_statement(
         the published baseline digest of a preset (D-024). It must be given
         by name, as for
         :func:`~pymedphys._dicom.deidentify.method_digest.method_digest`.
+        The digest is always computed without a reviewed-names list, which
+        is a site's confidential resource, and the statement says so.
 
     Returns
     -------
@@ -767,7 +771,8 @@ def conformance_statement(
         load_context_group(7050),
         load_context_group(7005),
     )
-    digest = method_digest(policy, vocabulary=vocabulary)
+    # A statement describes a policy, never a site's reviewed-names list.
+    digest = method_digest(policy, vocabulary=vocabulary, reviewed_roi_names=None)
     return ConformanceStatement(
         engine_version=_version.__version__,
         edition=policy.edition,
@@ -776,7 +781,9 @@ def conformance_statement(
         enabled=policy.enabled,
         resolved=policy.resolved,
         method_digest=digest,
-        vocabulary_digest=digest_inputs(vocabulary=vocabulary).vocabulary,
+        vocabulary_digest=digest_inputs(
+            vocabulary=vocabulary, reviewed_roi_names=None
+        ).vocabulary,
         iods=tuple(sorted(SUPPORTED_IODS)),
         sop_classes=supported,
         transfer_syntaxes=syntaxes,

@@ -284,7 +284,10 @@ def test_every_reason_that_the_release_report_counts_is_described(preset):
         ]
     )
     counted = release_report.release_report(
-        policy.compose_policy(preset), vocabulary=None, coverage=coverage
+        policy.compose_policy(preset),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        coverage=coverage,
     )
     document = release_report.report_document(counted)
     assert {e["reason"] for e in document["search_coverage"]} == {
