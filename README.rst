@@ -234,6 +234,11 @@ Active contributors
 
 .. _`Marcus Fisk`: https://github.com/laser47-hue
 
+* `Vishu`_
+    * Hansraj College, India
+
+.. _`Vishu`: https://github.com/httpsVishu
+
 |uth| |ccr|
 
 Past contributors
