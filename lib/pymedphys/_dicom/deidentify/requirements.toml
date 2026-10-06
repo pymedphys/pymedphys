@@ -862,10 +862,14 @@ decisions = ["D-015", "D-017"]
 implementation = [
   "_dicom/deidentify/pixel_risk.py",
   "_dicom/deidentify/head_and_neck_regions.toml",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/run_qc.py",
+  "_dicom/deidentify/qc_pack.py",
 ]
 note = '''
 Recognizable Visual Features of YES, an RT Structure Set's contours of an ROI whose interpreted type or name is EXTERNAL, BODY, or SKIN, the patient's outline, and every CT volume, whatever its slice spacing, are reported as indicators of a reconstructable face, and a volume that names a region of the head or neck as showing it.
-Remaining: reporting them, and the `public-release` assessment and face review (M4).
+Each run lists each instance's indicators and each series' indicators, assessed over its released and held instances, in its QC pack for review.
+Remaining: the `public-release` assessment and face review (M4).
 '''
 
 [[requirement]]
@@ -909,7 +913,7 @@ Each run writes its pack before it publishes the release, to a QC destination th
 The run's instance transform and release gate adapter give it this material.
 The pack lists every input from its outcome, each sequestered one by the random label that the run gives it, and the transform's and gate's material by run position: each residual search with its excerpts, each source value they left out of the search with its reason, what descriptor cleaning wrote for each ROI Name, and each retained string with its places.
 The retained strings of an instance are the values that its plan keeps as they are, in elements with a text VR other than UI, outside any removed sequence, and other than Specific Character Set, and a value that was not read for review, or could not be decoded, is refused rather than left out, and the run's transform sequesters an instance with such a value.
-The pack previews each series released or held for review, by a cine strip and, for a volume, a frontal maximum intensity projection, and each instance whose source shows an indicator of risk in its pixel data at full resolution, with those indicators; it lists each instance it could not preview, with why, and records each preview's SHA-256, so that an attestation covers the previews too (D-017).
+The pack previews each series released or held for review, by a cine strip and, for a volume, a frontal maximum intensity projection, and each instance whose source shows an indicator of risk in its pixel data at full resolution, with those indicators, and lists each series whose released and held instances are a CT volume or name the head or neck, with the instances that show each; it lists each instance it could not preview, with why, and records each preview's SHA-256, so that an attestation covers the previews too (D-017).
 Remaining: the attestation's record in the release report (M4).
 This practice is not implemented until M4 also covers both open points, or the design assigns them to whoever releases the data.
 '''
