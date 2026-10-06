@@ -173,6 +173,8 @@ def test_the_report_lists_released_inputs_and_its_qc_pack_not_yet_attested(tmp_p
     assert document["qc_review"] == {
         "reference": pack["reference"],
         "outcome": "not-attested",
+        "intended_use_checked": None,
+        "residual_risk_accepted": None,
     }
 
 

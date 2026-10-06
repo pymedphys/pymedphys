@@ -71,6 +71,10 @@ _RUNTIME = {
     "pydicom_version": "pydicom",
     "tomlkit_version": "tomlkit",
 }
+_CONFIRMATIONS = {
+    "intended_use_checked": "Intended use checked",
+    "residual_risk_accepted": "Residual risk accepted",
+}
 _SECTIONS = (
     "format",
     "policy",
@@ -239,18 +243,29 @@ def _qc_review(section: object) -> list[Block]:
     heading = ["## QC review"]
     if section is None:
         return [heading, ["No QC pack was written for this run."]]
-    section = _fields("qc_review", section, ("reference", "outcome"))
+    section = _fields("qc_review", section, ("reference", "outcome", *_CONFIRMATIONS))
     return [
         heading,
         [
-            "The run's confidential QC pack, by its opaque reference, and the "
-            "outcome of a reviewer's attestation of it."
+            "The run's confidential QC pack, by its opaque reference, the "
+            "outcome of a reviewer's attestation of it, and whether the person "
+            "releasing the data confirmed in it that the output was checked "
+            "for its intended use and that its residual risk was accepted."
         ],
         _table(
             ("Field", "Value"),
             [
                 ("Reference", _code("qc_review reference", section["reference"])),
                 ("Attestation", _code("qc_review outcome", section["outcome"])),
+                *(
+                    (
+                        label,
+                        "not stated"
+                        if section[name] is None
+                        else _boolean(f"qc_review {name}", section[name]),
+                    )
+                    for name, label in _CONFIRMATIONS.items()
+                ),
             ],
         ),
     ]

@@ -78,7 +78,7 @@ def _full_report():
     )
     return _report(
         qc_review=qc_attestation.AttestationRecord(
-            _REFERENCE, qc_attestation.Outcome.NOT_ATTESTED
+            _REFERENCE, qc_attestation.Outcome.ATTESTED, True, None
         ),
         released=(_output_name("one"), _output_name("two")),
         sequestered=(
@@ -272,6 +272,14 @@ def test_the_reference_findings_are_counted_by_kind():
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
+def test_the_releasers_confirmations_are_shown_or_said_to_be_absent():
+    markdown = to_markdown(release_report.to_json(_full_report()))
+    review = markdown.split("## QC review", 1)[1].split("\n## ", 1)[0]
+    assert "| Intended use checked | `true` |" in review
+    assert "| Residual risk accepted | not stated |" in review
+
+
 @pytest.mark.deid_requirement("MIDI-BP-10", "MIDI-BP-18")
 def test_the_pixel_risks_are_counted_by_disposition_risk_and_indicator():
     markdown = to_markdown(release_report.to_json(_full_report()))
@@ -351,6 +359,9 @@ def _changed(change):
         lambda d: d["roi_names"]["outcomes"][0].update(reason="renamed"),
         lambda d: d["roi_names"]["held"][0].update(count=0),
         lambda d: d["roi_names"]["held"].append({"reason": "`SENTINEL`", "count": 1}),
+        lambda d: d["qc_review"].pop("residual_risk_accepted"),
+        lambda d: d["qc_review"].update(intended_use_checked="yes"),
+        lambda d: d["qc_review"].update(residual_risk_accepted=1),
         lambda d: d.pop("reference_findings"),
         lambda d: d["reference_findings"][0].update(count=0),
         lambda d: d["reference_findings"][0].update(extra="x"),

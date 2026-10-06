@@ -51,7 +51,9 @@ Nine sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
 
 - ``qc_review``: the run's QC pack by its opaque reference, with the outcome
-  of a reviewer's attestation of it (D-016), from
+  of a reviewer's attestation of it (D-016) and the releaser's confirmations
+  in it, each true, false, or None where not stated, that the output was
+  checked for its intended use and that its residual risk was accepted, from
   :func:`~pymedphys._dicom.deidentify.qc_attestation.attestation_record`;
   None for a run that wrote no QC pack. The pack and the attestation, which
   names the reviewer, stay confidential.
@@ -133,7 +135,7 @@ from .standard import OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/8"
+FORMAT = "pymedphys-deid-release-report/9"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -792,8 +794,8 @@ def release_report(
         must be given by name, and has no default, so that every caller
         states whether there is one. The report records only this digest.
     qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord, optional
-        The run's QC pack by its reference, with its attestation's outcome,
-        from
+        The run's QC pack by its reference, with its attestation's outcome
+        and the releaser's confirmations, from
         :func:`~pymedphys._dicom.deidentify.qc_attestation.attestation_record`;
         None, the default, where the run wrote no QC pack.
     released : iterable of pathlib.PurePosixPath, optional
@@ -1009,6 +1011,10 @@ def _reason_entry(reason: object) -> dict:
     }
 
 
+# The releaser's confirmations in an attestation, in the report's order.
+_CONFIRMATIONS = ("intended_use_checked", "residual_risk_accepted")
+
+
 def _qc_review_section(record: AttestationRecord | None) -> dict | None:
     if record is None:
         return None
@@ -1018,7 +1024,17 @@ def _qc_review_section(record: AttestationRecord | None) -> dict | None:
         raise _refuse("qc_review reference", "is not a QC pack's reference")
     if type(record.outcome) is not Outcome:  # pylint: disable = unidiomatic-typecheck
         raise _refuse("qc_review outcome", "is not an attestation outcome")
-    return {"reference": record.reference, "outcome": record.outcome.value}
+    confirmations = {name: getattr(record, name) for name in _CONFIRMATIONS}
+    for name, value in confirmations.items():
+        if value is not None and type(value) is not bool:  # pylint: disable = unidiomatic-typecheck
+            raise _refuse(f"qc_review {name}", "is not true, false, or None")
+        if value is not None and record.outcome is Outcome.NOT_ATTESTED:
+            raise _refuse(f"qc_review {name}", "is given without an attestation")
+    return {
+        "reference": record.reference,
+        "outcome": record.outcome.value,
+        **confirmations,
+    }
 
 
 def _is_output_name(path: object) -> bool:
@@ -1259,7 +1275,8 @@ def report_document(report: ReleaseReport) -> dict:
         If a field does not have the form of a digest, a version, a known
         edition, preset, or option, the method digest's format, a file name
         or path within the engine's package, a QC pack's reference and an
-        attestation outcome, an output name that
+        attestation outcome, a confirmation given only with an attestation,
+        an output name that
         :func:`~pymedphys._dicom.deidentify.output_names.instance_path`
         gives, listed once, one of the labels ``S-0001`` to ``S-n`` for ``n``
         sequestered instances, a path of tags, a code that the engine

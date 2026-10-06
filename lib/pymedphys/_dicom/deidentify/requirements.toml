@@ -939,6 +939,8 @@ implementation = [
   "_dicom/deidentify/qc_previews.py",
   "_dicom/deidentify/qc_retained.py",
   "_dicom/deidentify/qc_store.py",
+  "_dicom/deidentify/release_report.py",
+  "_dicom/deidentify/release_report_markdown.py",
   "_dicom/deidentify/run.py",
   "_dicom/deidentify/run_qc.py",
   "_dicom/deidentify/run_results.py",
@@ -955,8 +957,8 @@ The pack lists every input from its outcome, each sequestered one by the random 
 The retained strings of an instance are the values that its plan keeps as they are, in elements with a text VR other than UI, outside any removed sequence, and other than Specific Character Set, and a value that was not read for review, or could not be decoded, is refused rather than left out, and the run's transform sequesters an instance with such a value.
 The pack previews each series released or held for review, by a cine strip and, for a volume, a frontal maximum intensity projection, and each instance whose source shows an indicator of risk in its pixel data at full resolution, with those indicators, and lists each series whose released and held instances are a CT volume or name the head or neck, with the instances that show each; it lists each instance it could not preview, with why, and records each preview's SHA-256, so that an attestation covers the previews too (D-017).
 A reviewer records an attestation of a pack with a command, which refuses a directory that holds no QC pack and quotes neither the reviewer nor a path; the release report published with the run keeps the record it was written with.
-The person releasing the data may confirm in the attestation, yes or no, that the output was checked for its intended use and that its residual risk was accepted under the institution's governance, and the record that a release report takes carries those outcomes alone.
-Remaining: the attestation's record in the release report (M4).
+The person releasing the data may confirm in the attestation, yes or no, that the output was checked for its intended use and that its residual risk was accepted under the institution's governance, and the record that a release report takes carries those outcomes alone; the report's QC review gives each as true, false, or not stated, and refuses one without an attestation.
+Remaining: the release report's summary of the engine's structural checks (M4).
 '''
 
 [[requirement]]
