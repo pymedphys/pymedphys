@@ -56,8 +56,12 @@ collected, and those that could not be. :class:`ReleaseGate` is the run's
 file's subject, sequestered instances included, and asks
 :func:`~.release_gate.release_condition` about the written file (D-027).
 Where the edits sequester an instance, the values that they did not reach
-are uncollected; and where an instance of the subject gives no coverage at
-all, because its source is refused or out of scope, the transform raises, or
+are uncollected. An instance out of scope whose IOD the pinned tables
+define, such as an MR image or a spatial registration, or whose transfer
+syntax the release does not write, is planned and edited too, only so that
+its values are collected for its subject's search; it is never written. Where
+an instance of the subject gives no coverage at all, because its source is
+refused, its SOP Class names no IOD of the tables, the transform raises, or
 it changed during the run, the gate withholds the file, since its values
 could be there unsearched for.
 
@@ -662,15 +666,21 @@ class InstanceTransform:
         classification = classify(
             _text(dataset, _SOP_CLASS, source), source.transfer_syntax
         )
-        if classification.sequestered or classification.iod is None:
+        if classification.iod is None or (
+            classification.sequestered and classification.iod not in self._iods.iods
+        ):
             return Sequestered((classification.disposition,))
         iod = self._iods.iods[classification.iod]
         plan = plan_instance(source, self._rules, iod)
         edits = edit_instance(source, plan, self._key, record.patient)
         evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
-        if edits.sequestrations:
+        if classification.sequestered or edits.sequestrations:
+            # An instance out of scope is planned and edited only so that
+            # its identifiers are collected for its subject's search (D-027).
             return Sequestered(
-                edits.sequestrations,
+                (classification.disposition,)
+                if classification.sequestered
+                else edits.sequestrations,
                 evidence,
                 (*dropped_of(edits), *omissions_of(evidence)),
             )
