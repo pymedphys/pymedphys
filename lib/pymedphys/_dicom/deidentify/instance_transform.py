@@ -57,9 +57,9 @@ file's subject, sequestered instances included, and asks
 :func:`~.release_gate.release_condition` about the written file (D-027).
 Where the edits sequester an instance, the values that they did not reach
 are uncollected. An instance out of scope whose IOD the pinned tables
-define, such as an MR image or a spatial registration, or whose transfer
-syntax the release does not write, is planned and edited too, only so that
-its values are collected for its subject's search; it is never written. Where
+define, such as an MR image or a spatial registration, is planned and
+edited too when its source is readable, only so that its values are
+collected for its subject's search; it is never written. Where
 an instance of the subject gives no coverage at all, because its source is
 refused, its SOP Class names no IOD of the tables, the transform raises, or
 it changed during the run, the gate withholds the file, since its values

@@ -30,6 +30,11 @@ from pymedphys._dicom.deidentify.scope import Disposition
 from . import _synthetic_references as synthetic
 from .test_deidentify_instance_transform import _source, _transform
 
+# The run module's fixture, for a base directory short enough for Windows.
+from .test_deidentify_run import (  # noqa: F401  # pylint: disable = unused-import
+    _short_tmp_path,
+)
+
 pytestmark = pytest.mark.pydicom
 
 _SHARED = "QUIMBYZELDA7"
