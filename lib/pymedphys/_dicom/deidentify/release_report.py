@@ -39,9 +39,18 @@ list, never from DICOM data directly, and the check is a backstop: a field
 of another form, which could be a source value or a path outside the
 package, is refused. A field that fails is named, never quoted.
 
-Two sections describe a run's instances, by attribute tags and reason codes
-that the engine defines, never by a value or a path:
+Four sections describe a run, by replacement identifiers, attribute tags,
+and codes that the engine defines, never by a source value or path:
 
+- ``qc_review``: the run's QC pack by its opaque reference, with the outcome
+  of a reviewer's attestation of it (D-016), from
+  :func:`~pymedphys._dicom.deidentify.qc_attestation.attestation_record`;
+  None for a run that wrote no QC pack. The pack and the attestation, which
+  names the reviewer, stay confidential.
+- ``released``: each released instance by its output name, the path below
+  the release directory that
+  :func:`~pymedphys._dicom.deidentify.output_names.instance_path` gives
+  from its replacement Patient ID and UIDs (D-026).
 - ``sequestered``: each instance that was sequestered, by a label that
   :func:`sequestration_labels` gives at random for the run, with each
   reason (D-026). A sequestered instance has no output name, and the label
@@ -65,13 +74,16 @@ import random
 import re
 import secrets
 from collections.abc import Iterable, Mapping
+from pathlib import PurePosixPath
 
 from pymedphys._nomenclature import tg263
 
-from . import method_digest
+from . import method_digest, output_names
 from .method_digest import MethodDigestComponents
 from .file_layout import TAG_PATTERN, ElementPath
+from .labels import LABEL_PATTERN as _LABEL_PATTERN
 from .policy import PRESETS, Policy
+from .qc_attestation import AttestationRecord, Outcome
 from .reference_graph import FindingKind
 from .residuals import NotSearched, Omission, Unsearched, UnsearchedReason
 from .runtime import RuntimeEnvironment, runtime_environment
@@ -81,7 +93,7 @@ from .standard import OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/2"
+FORMAT = "pymedphys-deid-release-report/3"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -92,10 +104,13 @@ _VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+!_-]{0,63}")
 # ".." or a cache), and a table, which is a JSON file of the tables' folder.
 _NAME = re.compile(r"[0-9A-Za-z_][0-9A-Za-z_.-]*")
 _TABLE = re.compile(r"[0-9A-Za-z_][0-9A-Za-z_.-]*\.json")
-# The form of a sequestered instance's label, which the QC pack maps.
-LABEL_PATTERN = re.compile(r"S-[0-9]{4,}")
+# The form of a sequestered instance's label, kept here for the modules that
+# name it as the release report's.
+LABEL_PATTERN = _LABEL_PATTERN
 _ATTRIBUTE = re.compile(rf"{TAG_PATTERN.pattern}( > {TAG_PATTERN.pattern})*")
 _ACTIONS = frozenset({"K", "X", "Z", "D", "U", "C"})
+# The QC pack's opaque reference, as qc_pack gives it (D-016).
+_REFERENCE = re.compile(r"A-[0-9a-f]{32}")
 
 # The reason codes of each stage that sequesters an instance.
 _SEQUESTERING = {
@@ -219,6 +234,8 @@ class ReleaseReport:
     policy : PolicyRecord
     method : ~pymedphys._dicom.deidentify.method_digest.MethodDigestComponents
     runtime : ~pymedphys._dicom.deidentify.runtime.RuntimeEnvironment
+    qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord or None
+    released : tuple of pathlib.PurePosixPath
     sequestered : tuple of SequesteredInstance
     search_coverage : tuple of SearchCoverage
     """
@@ -226,6 +243,8 @@ class ReleaseReport:
     policy: PolicyRecord
     method: MethodDigestComponents
     runtime: RuntimeEnvironment
+    qc_review: AttestationRecord | None = None
+    released: tuple[PurePosixPath, ...] = ()
     sequestered: tuple[SequesteredInstance, ...] = ()
     search_coverage: tuple[SearchCoverage, ...] = ()
 
@@ -340,6 +359,8 @@ def release_report(
     *,
     vocabulary: tg263.Nomenclature | None,
     reviewed_roi_names: str | None,
+    qc_review: AttestationRecord | None = None,
+    released: Iterable[PurePosixPath] = (),
     sequestered: Iterable[SequesteredInstance] = (),
     coverage: Iterable[SearchCoverage] = (),
 ) -> ReleaseReport:
@@ -360,6 +381,15 @@ def release_report(
         descriptor cleaning applies to ROI Names, or None without a list. It
         must be given by name, and has no default, so that every caller
         states whether there is one. The report records only this digest.
+    qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord, optional
+        The run's QC pack by its reference, with its attestation's outcome,
+        from
+        :func:`~pymedphys._dicom.deidentify.qc_attestation.attestation_record`;
+        None, the default, where the run wrote no QC pack.
+    released : iterable of pathlib.PurePosixPath, optional
+        The output name of each released instance, as
+        :func:`~pymedphys._dicom.deidentify.output_names.instance_path`
+        gives it.
     sequestered : iterable of SequesteredInstance, optional
         The run's sequestered instances.
     coverage : iterable of SearchCoverage, optional
@@ -386,7 +416,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'sequestered', 'search_coverage']
+    ['format', 'policy', 'method', 'runtime', 'qc_review', 'released', 'sequestered', 'search_coverage']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -401,6 +431,8 @@ def release_report(
             policy, vocabulary=vocabulary, reviewed_roi_names=reviewed_roi_names
         ),
         runtime=runtime_environment(),
+        qc_review=qc_review,
+        released=tuple(released),
         sequestered=tuple(sequestered),
         search_coverage=tuple(coverage),
     )
@@ -535,6 +567,46 @@ def _reason_entry(reason: object) -> dict:
     }
 
 
+def _qc_review_section(record: AttestationRecord | None) -> dict | None:
+    if record is None:
+        return None
+    if not isinstance(record, AttestationRecord):
+        raise _refuse("qc_review", "is not an attestation record")
+    if _string(record.reference) is None or not _REFERENCE.fullmatch(record.reference):
+        raise _refuse("qc_review reference", "is not a QC pack's reference")
+    if type(record.outcome) is not Outcome:  # pylint: disable = unidiomatic-typecheck
+        raise _refuse("qc_review outcome", "is not an attestation outcome")
+    return {"reference": record.reference, "outcome": record.outcome.value}
+
+
+def _is_output_name(path: object) -> bool:
+    """Whether ``path`` is one that ``output_names.instance_path`` gives."""
+    if type(path) is not PurePosixPath:  # pylint: disable = unidiomatic-typecheck
+        return False
+    if len(path.parts) != 4 or not path.name.endswith(output_names.FILE_SUFFIX):
+        return False
+    patient, study, series, name = path.parts
+    try:
+        expected = output_names.instance_path(
+            patient_id=patient,
+            study_instance_uid=study,
+            series_instance_uid=series,
+            sop_instance_uid=name[: -len(output_names.FILE_SUFFIX)],
+        )
+    except output_names.OutputNameError:
+        return False
+    return expected == path
+
+
+def _released_section(released: tuple[PurePosixPath, ...]) -> list:
+    if not all(_is_output_name(path) for path in released):
+        raise _refuse("released", "is not a tuple of output names")
+    names = sorted(str(path) for path in released)
+    if len(set(names)) != len(names):
+        raise _refuse("released", "names an instance twice")
+    return names
+
+
 def _sequestered_section(instances: tuple[SequesteredInstance, ...]) -> list:
     if not all(isinstance(each, SequesteredInstance) for each in instances):
         raise _refuse("sequestered", "is not a tuple of sequestered instances")
@@ -582,12 +654,14 @@ def report_document(report: ReleaseReport) -> dict:
     """Return a release report as JSON values, after checking every field.
 
     The document is an object with the members ``format`` (:data:`FORMAT`),
-    ``policy``, ``method``, ``runtime``, ``sequestered``, and
-    ``search_coverage``, in that order, each section's fields in the order
-    of its class, the digests of tables and files sorted by name, the
-    sequestered instances by label, each with its reasons once, in the
-    order given, and the coverage by attribute and reason. A reason from a
-    stage other than the walker has only its stage and code.
+    ``policy``, ``method``, ``runtime``, ``qc_review``, ``released``,
+    ``sequestered``, and ``search_coverage``, in that order, each section's
+    fields in the order of its class, the digests of tables and files sorted
+    by name, ``qc_review`` null where the run wrote no QC pack, the released
+    output names sorted, the sequestered instances by label, each with its
+    reasons once, in the order given, and the coverage by attribute and
+    reason. A reason from a stage other than the walker has only its stage
+    and code.
 
     Parameters
     ----------
@@ -602,7 +676,9 @@ def report_document(report: ReleaseReport) -> dict:
     ReleaseReportError
         If a field does not have the form of a digest, a version, a known
         edition, preset, or option, a file name or path within the engine's
-        package, one of the labels ``S-0001`` to ``S-n`` for ``n``
+        package, a QC pack's reference and an attestation outcome, an output
+        name that :func:`~pymedphys._dicom.deidentify.output_names.instance_path`
+        gives, listed once, one of the labels ``S-0001`` to ``S-n`` for ``n``
         sequestered instances, a path of tags, a code that the engine
         defines, or a positive count, or is not of its class. The message names the field, never its value.
     """
@@ -611,6 +687,8 @@ def report_document(report: ReleaseReport) -> dict:
         "policy": _policy_section(report.policy),
         "method": _method_section(report.method),
         "runtime": _runtime_section(report.runtime),
+        "qc_review": _qc_review_section(report.qc_review),
+        "released": _released_section(report.released),
         "sequestered": _sequestered_section(report.sequestered),
         "search_coverage": _coverage_section(report.search_coverage),
     }

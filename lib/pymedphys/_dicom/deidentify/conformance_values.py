@@ -383,10 +383,19 @@ def release_report() -> list[str]:
             for reason in residuals.UnsearchedReason
         ),
         "",
+        "The report lists each released instance by its output name alone, "
+        "which is built from the replacement Patient ID and UIDs, and gives "
+        "the run's QC pack by its opaque reference, with the outcome of its "
+        "attestation (`attested`, `rejected`, or `not-attested`), or none for "
+        "a run without a QC pack. A report written before the pack is "
+        "reviewed gives the outcome `not-attested` (D-016, D-026).",
+        "",
         "The report holds no source value or original path: each field is a "
         "digest, a version, a known edition, preset, or option, a file name "
-        "or path within the engine's package, one of the run's labels, a path "
-        "of tags, a code that the engine defines, a positive count, true or "
+        "or path within the engine's package, a QC pack's reference or an "
+        "attestation outcome, an output name listed once, one of the run's "
+        "labels, a path of tags, a code that the engine defines, a positive "
+        "count, true or "
         "false, the report's or the method digest's format label, or none, and "
         "the report refuses any other. Only the confidential QC pack maps "
         "labels to source instances and lists each value not searched by "

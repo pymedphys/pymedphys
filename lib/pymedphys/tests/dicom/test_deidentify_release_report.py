@@ -27,12 +27,15 @@ import pathlib
 import random
 import shutil
 import types
+import uuid
 
 from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import (
     method_digest,
+    output_names,
     policy,
+    qc_attestation,
     reference_graph,
     release_report,
     residuals,
@@ -170,10 +173,12 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "policy",
         "method",
         "runtime",
+        "qc_review",
+        "released",
         "sequestered",
         "search_coverage",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/2"
+    assert document["format"] == "pymedphys-deid-release-report/3"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
@@ -859,6 +864,112 @@ def test_a_run_section_with_a_field_that_could_hold_a_value_is_refused(
 ):
     report = change(
         release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
+    )
+
+    for write in (release_report.report_document, release_report.to_json):
+        with pytest.raises(release_report.ReleaseReportError, match=field) as raised:
+            write(report)
+        assert "SENTINEL" not in str(raised.value)
+        assert raised.value.__cause__ is None
+
+
+def _uid(name):
+    return f"2.25.{uuid.uuid5(uuid.NAMESPACE_OID, name).int}"
+
+
+def _output_name(patient="DEID-AAAAAAAAAAAAAAAA", instance="sop"):
+    return output_names.instance_path(
+        patient_id=patient,
+        study_instance_uid=_uid("study"),
+        series_instance_uid=_uid("series"),
+        sop_instance_uid=_uid(instance),
+    )
+
+
+_REFERENCE = "A-" + "0" * 32
+
+
+def test_released_instances_are_listed_by_output_name_alone(basic):
+    names = [
+        _output_name(instance="b"),
+        _output_name(patient="DEID-BBBBBBBBBBBBBBBB"),
+        _output_name(instance="a"),
+    ]
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None, released=names
+    )
+
+    assert release_report.report_document(report)["released"] == sorted(
+        str(name) for name in names
+    )
+
+
+@pytest.mark.parametrize("outcome", list(qc_attestation.Outcome))
+def test_the_qc_review_is_recorded_by_the_packs_reference_and_outcome(basic, outcome):
+    record = qc_attestation.AttestationRecord(_REFERENCE, outcome)
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None, qc_review=record
+    )
+
+    assert release_report.report_document(report)["qc_review"] == {
+        "reference": _REFERENCE,
+        "outcome": outcome.value,
+    }
+
+
+def test_a_run_without_a_qc_pack_records_no_qc_review(basic):
+    document = release_report.report_document(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
+    )
+
+    assert document["qc_review"] is None
+    assert document["released"] == []
+
+
+def _record(**changes):
+    record = qc_attestation.AttestationRecord(
+        _REFERENCE, qc_attestation.Outcome.ATTESTED
+    )
+    # Bypass the record's own checks, as a fault or a substitute could.
+    for name, value in changes.items():
+        object.__setattr__(record, name, value)
+    return record
+
+
+@pytest.mark.parametrize(
+    "changes, field",
+    [
+        ({"released": ("SENTINEL",)}, "released"),
+        ({"released": (pathlib.PurePosixPath("SENTINEL/a/b/c.dcm"),)}, "released"),
+        (
+            {"released": (pathlib.PurePosixPath("DEID-AAAAAAAAAAAAAAAA/SENTINEL"),)},
+            "released",
+        ),
+        ({"released": (_output_name(), _output_name())}, "released"),
+        ({"released": (pathlib.PureWindowsPath(str(_output_name())),)}, "released"),
+        ({"qc_review": "SENTINEL"}, "qc_review"),
+        ({"qc_review": _record(reference="A-SENTINEL")}, "qc_review reference"),
+        ({"qc_review": _record(reference=_Text(_REFERENCE))}, "qc_review reference"),
+        ({"qc_review": _record(outcome="attested")}, "qc_review outcome"),
+    ],
+    ids=[
+        "not-a-path",
+        "not-an-output-name",
+        "too-few-parts",
+        "listed-twice",
+        "windows-path",
+        "not-a-record",
+        "reference",
+        "reference-subclass",
+        "outcome-text",
+    ],
+)
+def test_a_release_or_review_field_that_could_hold_a_value_is_refused(
+    basic, changes, field
+):
+    report = _with(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None),
+        **changes,
     )
 
     for write in (release_report.report_document, release_report.to_json):
