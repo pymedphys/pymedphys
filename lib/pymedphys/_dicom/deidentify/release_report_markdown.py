@@ -380,8 +380,8 @@ def _gaps(section: object) -> list[Block]:
         [
             "How many instances' source files lack each attribute that their "
             "IOD unconditionally requires, by its Type. The run reports these "
-            "and does not act on them (MIDI-BP-03). The QC pack lists each by "
-            "instance and place."
+            "and does not act on them: an instance is never withheld for what "
+            "its source lacked. The QC pack lists each by instance and place."
         ],
         _table(("Attribute", "Type", "Instances"), rows) if rows else [_NONE],
     ]
