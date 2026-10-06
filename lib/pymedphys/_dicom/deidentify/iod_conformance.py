@@ -30,10 +30,11 @@ only if its source value was not empty. No condition of a 1C or 2C Type is
 evaluated, as for the compound actions. The two removals that
 :func:`~pymedphys._dicom.deidentify.compound_actions.resolve_plain_x_in_iod`
 allows without an enclosing sequence are not findings: the attributes of an
-overlay group whose Overlay Plane Module is user-optional, and ROI Interpreter
-Sequence (3006,004E), whose condition lapses with ROI Creator Sequence
-(3006,004D). Nor are the items of a sequence that the engine replaced, such
-as the dummy item that D writes, compared with the source's.
+overlay group whose Overlay Plane Module is user-optional, where the whole
+group was removed, and ROI Interpreter Sequence (3006,004E), whose condition
+lapses with ROI Creator Sequence (3006,004D). Nor are the items of a sequence
+that the engine replaced, such as the dummy item that D writes, compared with
+the source's.
 
 What the source lacks is reported instead, by :func:`source_gaps`, and never
 acted on. Since no condition is evaluated, only an unconditional requirement
@@ -190,7 +191,7 @@ def lost_requirements(
         if required == "3" or not _item_kept(output, path):
             continue
         if path not in output:
-            if not _allowed_removal(iod, path.tag, tags):
+            if not _allowed_removal(iod, path, output):
                 lost.append(LostRequirement(path, required, emptied=False))
         elif required == "1" and _empty(output, path) and not _empty(source, path):
             lost.append(LostRequirement(path, required, emptied=True))
@@ -224,9 +225,22 @@ def _empty(evidence: SourceEvidence, path: ElementPath) -> bool:
     return not extent.undefined_length and extent.end == extent.value_start
 
 
-def _allowed_removal(iod: IOD, tag: str, path: tuple[str, ...]) -> bool:
-    """Return whether a plain X may remove the required attribute on its own."""
+def _allowed_removal(iod: IOD, path: ElementPath, output: SourceEvidence) -> bool:
+    """Return whether a plain X may remove the required attribute on its own.
+
+    An attribute of an overlay group may go only with its whole group, so
+    none of the group's attributes may remain in the data set, or item, that
+    held it.
+    """
+    tag = path.tag
+    tags = tuple(each for each, _ in path.items)
     overlay = _OVERLAY_GROUP.fullmatch(tag)
     if overlay:
-        tag = f"({overlay.group(1)},3000)"
-    return resolve_plain_x_in_iod(iod, tag, path).extent in _ALLOWED
+        group = overlay.group(1)
+        if any(
+            kept.items == path.items and kept.tag[1:5] == group
+            for kept in output.paths()
+        ):
+            return False
+        tag = f"({group},3000)"
+    return resolve_plain_x_in_iod(iod, tag, tags).extent in _ALLOWED

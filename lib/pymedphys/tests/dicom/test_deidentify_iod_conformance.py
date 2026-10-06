@@ -190,6 +190,33 @@ def test_a_user_optional_overlay_group_may_go():
     assert not _found(source, _ct(), "CT Image")
 
 
+def _with_overlay(dataset, group=0x6000):
+    dataset.add_new(group << 16 | 0x0010, "US", 4)  # Overlay Rows, Type 1
+    dataset.add_new(group << 16 | 0x0011, "US", 4)  # Overlay Columns, Type 1
+    dataset.add_new(group << 16 | 0x0040, "CS", "G")  # Overlay Type, Type 1
+    dataset.add_new(group << 16 | 0x0050, "SS", [1, 1])  # Overlay Origin, Type 1
+    dataset.add_new(group << 16 | 0x0100, "US", 1)  # Overlay Bits Allocated
+    dataset.add_new(group << 16 | 0x0102, "US", 0)  # Overlay Bit Position
+    dataset.add_new(group << 16 | 0x3000, "OW", bytes(2))  # Overlay Data
+    return dataset
+
+
+def test_a_partly_removed_overlay_group_is_found():
+    output = _with_overlay(_ct())
+    del output[0x60000010]
+
+    assert _found(_with_overlay(_ct()), output, "CT Image") == (
+        LostRequirement(ElementPath((), "(6000,0010)"), "1", emptied=False),
+    )
+
+
+def test_one_whole_overlay_group_may_go_while_another_stays():
+    source = _with_overlay(_with_overlay(_ct()), group=0x6002)
+    output = _with_overlay(_ct(), group=0x6002)
+
+    assert not _found(source, output, "CT Image")
+
+
 def test_the_check_reads_types_at_every_depth():
     output = _structure_set()
     del (
@@ -271,6 +298,37 @@ def test_an_instance_whose_de_identification_loses_a_requirement_is_sequestered(
 
     assert isinstance(result, run.Sequestered)
     assert result.reasons == (TransformReason.REQUIRED_ATTRIBUTE_LOST,)
+
+
+def test_an_instance_whose_de_identification_keeps_part_of_an_overlay_is_sequestered(
+    monkeypatch,
+):
+    original = instance_transform.writer_plan
+    rows = ElementPath((), "(6000,0010)")
+
+    def keeping_part_of_the_overlay(plan, edits, codecs):
+        writing = original(plan, edits, codecs)
+        overlay = {path for path in writing.removed if path.tag.startswith("(6000,")}
+        assert rows in overlay
+        return instance_transform.WriterPlan(
+            writing.kept | (overlay - {rows}),
+            writing.removed - (overlay - {rows}),
+            writing.replacements,
+            writing.introduced,
+        )
+
+    monkeypatch.setattr(instance_transform, "writer_plan", keeping_part_of_the_overlay)
+    result = _transformed(_with_overlay(_ct()))
+
+    assert isinstance(result, run.Sequestered)
+    assert result.reasons == (TransformReason.REQUIRED_ATTRIBUTE_LOST,)
+
+
+def test_an_instance_whose_whole_overlay_is_removed_is_released():
+    result = _transformed(_with_overlay(_ct()))
+
+    assert isinstance(result, run.Transformed)
+    assert "OverlayRows" not in synthetic.read(result.data)
 
 
 def test_the_reason_is_named_by_its_value():
