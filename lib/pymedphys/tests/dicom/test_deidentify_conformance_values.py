@@ -344,6 +344,15 @@ def test_the_release_report_counts_reported_reference_findings_by_kind(preset):
         assert f"`{kind.value}`" in counted, kind
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17", "MIDI-BP-18")
+def test_the_release_report_records_the_releasers_confirmations(preset):
+    section = _section(preset, "Release report")
+    review = section.split("outcome of its attestation", 1)[1].split("\n\n", 1)[0]
+    assert "checked for its intended use" in review
+    assert "residual risk" in review
+    assert "not stated" in review
+
+
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
 def test_every_reason_that_the_release_report_counts_is_described(preset):
     reasons = [*residuals.Omission, *residuals.UnsearchedReason]

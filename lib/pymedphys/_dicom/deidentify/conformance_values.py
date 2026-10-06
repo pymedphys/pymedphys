@@ -449,8 +449,12 @@ def release_report() -> list[str]:
         "which is built from the replacement Patient ID and UIDs, and gives "
         "the run's QC pack by its opaque reference, with the outcome of its "
         "attestation (`attested`, `rejected`, or `not-attested`), or none for "
-        "a run without a QC pack. A report written before the pack is "
-        "reviewed gives the outcome `not-attested` (D-016, D-026).",
+        "a run without a QC pack. With an attestation, it also records "
+        "whether the person releasing the data confirmed in it that the "
+        "output was checked for its intended use and that its residual risk "
+        "was accepted, each true, false, or not stated, and nothing else of "
+        "them. A report written before the pack is reviewed gives the outcome "
+        "`not-attested`, with neither confirmation stated (D-016, D-026).",
         "",
         "The report holds no source value or original path: each field is a "
         "digest, a version, a known edition, preset, or option, a file name "
