@@ -95,6 +95,7 @@ def deidentify(  # pylint: disable = too-many-arguments
     tg263_spreadsheet: str | os.PathLike[str] | None = None,
     reviewed_names: str | os.PathLike[str] | None = None,
     empty_held_roi_names: bool = False,
+    roi_list: str | os.PathLike[str] | None = None,
 ) -> Deidentified:
     """De-identify the DICOM files below a source directory into a new release.
 
@@ -127,6 +128,11 @@ def deidentify(  # pylint: disable = too-many-arguments
     empty_held_roi_names : bool, optional
         With ``basic-clean-descriptors``, empty each ROI Name that would be
         held for review, so that its instance can be released.
+    roi_list : str or os.PathLike, optional
+        With ``basic-clean-descriptors``, an institutional list of ROI
+        names, converted from CSV by ``python -m pymedphys._nomenclature
+        roi-list``. It renames nothing: the QC pack shows the reviewer of a
+        held ROI Name the list's names that it matches (D-009).
 
     Returns
     -------
@@ -138,12 +144,13 @@ def deidentify(  # pylint: disable = too-many-arguments
     Raises
     ------
     ValueError
-        If ``tg263_spreadsheet``, ``reviewed_names``, or
-        ``empty_held_roi_names`` is given with a preset without Clean
-        Descriptors. Nothing is read or created.
+        If ``tg263_spreadsheet``, ``reviewed_names``,
+        ``empty_held_roi_names``, or ``roi_list`` is given with a preset
+        without Clean Descriptors. Nothing is read or created.
     DeidentifyError
-        If the preset is not enabled, or the TG-263 edition or the
-        reviewed-names list cannot be used. Nothing is created.
+        If the preset is not enabled, or the TG-263 edition, the
+        reviewed-names list, or the institutional list cannot be used.
+        Nothing is created.
     ~pymedphys._dicom.deidentify.run.RunError
     ~pymedphys._dicom.deidentify.run.RunStopped
     ~pymedphys._dicom.deidentify.qc_pack.QcPackError
@@ -161,11 +168,12 @@ def deidentify(  # pylint: disable = too-many-arguments
         tg263_spreadsheet is not None
         or reviewed_names is not None
         or empty_held_roi_names
+        or roi_list is not None
     )
     if roi_name_options and not command.roi_name_options_apply(preset):
         raise ValueError(
-            "tg263_spreadsheet, reviewed_names, and empty_held_roi_names "
-            "apply only with the basic-clean-descriptors preset"
+            "tg263_spreadsheet, reviewed_names, empty_held_roi_names, and "
+            "roi_list apply only with the basic-clean-descriptors preset"
         )
     with redacted_diagnostics() as counts:
         try:
@@ -178,6 +186,7 @@ def deidentify(  # pylint: disable = too-many-arguments
                 tg263_spreadsheet=tg263_spreadsheet,
                 reviewed_names=reviewed_names,
                 empty_held_roi_names=empty_held_roi_names,
+                roi_list_path=roi_list,
             )
         except command.TransformNotBuilt as error:
             raise DeidentifyError(str(error)) from None
