@@ -70,7 +70,9 @@ def _short_tmp_path(tmp_path):
     if os.name != "nt":
         yield tmp_path
         return
-    directory = Path(tempfile.mkdtemp(prefix="d"))
+    # Resolve Windows' short-name aliases before comparing with run results,
+    # which use resolved paths.
+    directory = Path(tempfile.mkdtemp(prefix="d")).resolve()
     yield directory
     shutil.rmtree(directory, ignore_errors=True)
 
