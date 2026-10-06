@@ -29,6 +29,7 @@ from pymedphys._nomenclature import tg263
 from pymedphys._dicom.deidentify import (
     descriptor_cleaning,
     instance_transform,
+    qc_pack,
     roi_names,
     run,
     run_qc,
@@ -243,7 +244,8 @@ def test_the_method_digest_and_the_report_cover_the_reviewed_names():
     )
     written = pydicom.dcmread(io.BytesIO(result.data))
     assert list(written.DeidentificationMethod)[:1] == [digest]
-    method = json.loads(transform.reporter((), {}))["method"]
+    report = transform.reporter((), {}, qc_pack.new_reference())
+    method = json.loads(report)["method"]
     assert (method["method_digest"], method["reviewed_roi_names"]) == (digest, keyed)
 
 

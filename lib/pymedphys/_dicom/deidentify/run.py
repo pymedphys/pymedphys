@@ -404,8 +404,8 @@ def run(
         :func:`~pymedphys._dicom.deidentify.qc_store.check_confidential_destination`
         checks before anything is created. There is no default (D-016).
     reporter : Reporter, optional
-        Given the labelled outcomes and each input's QC material, returns
-        the release report's text, published at the release's root as
+        Given the labelled outcomes, each input's QC material, and the QC
+        pack's reference, returns the report's text, published at the root as
         :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT`.
         Without one, no report is written. A withheld input whose reasons
         the reporter does not admit is sequestered for
@@ -488,7 +488,7 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         outcomes = _labelled(outcomes)
         pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
         # Built before the pack is written, so a failure leaves no QC material.
-        report = None if reporter is None else reporter(outcomes, material)
+        report = reporter(outcomes, material, pack.reference) if reporter else None
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
         _remove_empty_directories(staged_release)
