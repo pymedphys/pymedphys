@@ -63,7 +63,7 @@ def _released(tmp_path):
     return sorted(path.name for path in release.rglob("*.dcm"))
 
 
-@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.3-01")
 def test_an_out_of_scope_sibling_no_longer_withholds_its_subject(tmp_path):
     result = _run(tmp_path, [_mr(), synthetic.rt_dose()])
 
@@ -113,7 +113,7 @@ def test_an_out_of_scope_sibling_whose_values_are_not_all_collected_withholds(
     assert _released(tmp_path) == []
 
 
-@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.3-01")
 def test_an_unlisted_sop_class_still_withholds_its_subject(tmp_path):
     # No IOD of the pinned tables gives a plan by which to collect its values.
     unlisted = _mr()

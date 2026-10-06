@@ -25,6 +25,7 @@ from pymedphys._dicom.deidentify import (
     compound_actions,
     conformance,
     conformance_markdown,
+    descriptor_cleaning,
     dummy_values,
     element_rules,
     file_meta,
@@ -431,8 +432,8 @@ def test_a_preset_that_is_not_enabled_makes_no_claim(preset, statement_for):
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_statement_with_sections_still_to_describe_makes_no_claim(monkeypatch):
-    # Clean Descriptors leaves the manner of cleaning to describe.
-    preset = "basic-clean-descriptors"
+    # Modified Dates leaves the manner of cleaning dates and times to describe.
+    preset = "tps-import"
     monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({preset}))
     statement = _statement(preset)
     assert statement.enabled
@@ -508,6 +509,7 @@ def test_synthetic_birth_dates_are_pending_only_for_tps_import(preset, statement
     assert (conformance.PENDING_BIRTH_DATES in pending) == (preset == "tps-import")
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-02")
 def test_cleaning_is_pending_only_for_a_policy_that_cleans(preset, statement_for):
     statement = statement_for(preset)
     composed = policy.compose_policy(preset)
@@ -516,7 +518,14 @@ def test_cleaning_is_pending_only_for_a_policy_that_cleans(preset, statement_for
         *composed.supplementary_actions.values(),
     }
     assert cleans == (preset != "basic")
-    assert (conformance.PENDING_CLEANING in statement.pending) == cleans
+    # Under Clean Descriptors, an attribute other than ROI Name given C whose
+    # fallback action is not C takes that action (D-009), so only what keeps
+    # C there is pending.
+    undescribed = "C" in {
+        e.action for e in statement.attributes if e.tag != "(3006,0026)"
+    }
+    assert undescribed == (cleans and preset != "basic-clean-descriptors")
+    assert (conformance.PENDING_CLEANING in statement.pending) == undescribed
     assert set(conformance.PENDING) <= set(statement.pending)
 
 
@@ -714,7 +723,7 @@ def _concrete(tag):
     return CONCRETE.get(tag, tag.replace("60xx", "6000"))
 
 
-@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "PS3.15-E.3.5-02")
 @pytest.mark.parametrize("name", SUPPORTED_BY_THE_ENGINE)
 def test_every_listed_action_is_the_one_the_engine_applies(name):
     composed = policy.compose_policy(name)
@@ -723,6 +732,16 @@ def test_every_listed_action_is_the_one_the_engine_applies(name):
     given = {**composed.actions, **composed.supplementary_actions}
     for entry in statement.attributes:
         rule = rules.rule(_concrete(entry.tag))
+        if entry.superseded_by == conformance.CLEAN_DESCRIPTORS_FALLBACK:
+            # The element rules give C; cleaning then takes the fallback's
+            # action for it (D-009).
+            fallback = descriptor_cleaning.fallback_policy(composed)
+            fallen_back = element_rules.ElementRules(fallback).rule(
+                _concrete(entry.tag)
+            )
+            assert (rule.action, entry.policy_action) == ("C", "C"), entry.tag
+            assert entry.action == fallen_back.action, entry.tag
+            continue
         assert entry.action == rule.action, entry.tag
         policy_action = given.get(entry.tag, "U")
         if policy_action == rule.action:
