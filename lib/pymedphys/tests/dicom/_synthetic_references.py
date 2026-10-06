@@ -220,6 +220,25 @@ def collection():
     ]
 
 
+def set_frames(datasets, frames, listed, roi_frames):
+    """Give the inputs of a collection frames of reference.
+
+    ``frames`` maps positions to Frame of Reference UIDs. The structure set at
+    position 3 lists ``listed`` in its one Referenced Frame of Reference item,
+    and has an ROI in each of ``roi_frames``.
+    """
+    for position, frame in frames.items():
+        uid(datasets[position], "FrameOfReferenceUID", frame)
+    structure_set_ = datasets[3]
+    (item_,) = structure_set_.ReferencedFrameOfReferenceSequence
+    uid(item_, "FrameOfReferenceUID", listed)
+    rois = []
+    for number, frame in enumerate(roi_frames, start=1):
+        rois.append(item(ROINumber=number))
+        uid(rois[-1], "ReferencedFrameOfReferenceUID", frame)
+    structure_set_.StructureSetROISequence = rois
+
+
 def written(dataset, transfer_syntax=EXPLICIT_VR_LITTLE_ENDIAN):
     """Return ``dataset`` written as a file in ``transfer_syntax``.
 
