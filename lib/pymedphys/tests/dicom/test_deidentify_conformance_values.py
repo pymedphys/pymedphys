@@ -25,6 +25,7 @@ from pymedphys._dicom.deidentify import (
     conformance_values,
     dummy_values,
     edits,
+    pixel_risk,
     policy,
     pseudonyms,
     release_report,
@@ -342,6 +343,17 @@ def test_the_release_report_counts_reported_reference_findings_by_kind(preset):
     assert "naming none of them (D-026)" in counted
     for kind in release_report.REPORTED_FINDINGS:
         assert f"`{kind.value}`" in counted, kind
+
+
+@pytest.mark.deid_requirement("MIDI-BP-10", "MIDI-BP-18")
+def test_the_release_report_counts_pixel_risks_by_risk_and_indicator(preset):
+    section = _section(preset, "Release report")
+    counted = section.split("that show each risk in their pixel data", 1)[1]
+    counted = counted.split("\n\n", 1)[0]
+    assert "names none of them (D-015)" in counted
+    assert "the pixel data are not inspected" in counted
+    for code in (*pixel_risk.Risk, *pixel_risk.Indicator):
+        assert f"`{code.value}`" in counted, code
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")

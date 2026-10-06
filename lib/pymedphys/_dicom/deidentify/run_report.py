@@ -26,7 +26,10 @@ after the run (D-016); each released instance by its output name, and each
 sequestered input by its label and reasons (D-026); how many instances
 were held for review by reason (D-009), how many instances have each kind
 of reference finding that the run reports without acting on it, from the
-material that the run adds for them, and how many source values the
+material that the run adds for them, how many released and held instances
+show each risk in their pixel data, and each indicator of it, from the
+material that the transform gives and the assessment of their series, as
+the QC pack lists them (D-015), and how many source values the
 residual searches did not search, by attribute and reason, each counted at
 the instance that holds it among those that the transform gave material for
 (D-027). The report holds no source value or path (D-016), and
@@ -59,9 +62,12 @@ from .residuals import NotSearched, Unsearched, UnsearchedReason
 from .reviewed_roi_names import CleanedRoiName, ReviewQueue, RoiNameCounts
 from .run_qc import (
     Dropped,
+    PixelRiskMaterial,
     ReferenceFindingMaterial,
     RoiNameMaterial,
     SearchMaterial,
+    SeriesEvidence,
+    assessed_series,
 )
 
 # The release report's name at the root of a release. Output names are
@@ -182,6 +188,7 @@ class ReleaseReporter:
             ),
             roi_names=roi_name_counts(material),
             findings=reference_findings(outcomes, material),
+            pixel=pixel_risks(outcomes, material),
         )
         return release_report.to_json(report)
 
@@ -337,6 +344,54 @@ def reference_findings(
         ]
         for position in sorted(material)
         if position not in copies
+    )
+
+
+def pixel_risks(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> tuple[release_report.PixelRiskCount, ...]:
+    """Count the released and held instances by the risks in their pixel data.
+
+    Each input's own indicators come from its
+    :class:`~pymedphys._dicom.deidentify.run_qc.PixelRiskMaterial`, and its
+    series' from the assessment of the released and held instances'
+    :class:`~pymedphys._dicom.deidentify.run_qc.SeriesEvidence`, grouped by
+    series as the QC pack groups them, so that the report counts the
+    findings that the pack lists (D-015). An identical copy of an input is
+    the same instance, so it is not counted again, although it is assessed
+    with its series.
+    """
+    statuses = {
+        getattr(outcome, "position"): getattr(outcome, "status").value
+        for outcome in outcomes
+        if getattr(outcome, "status").value in release_report.PIXEL_RISK_DISPOSITIONS
+    }
+    copies = {
+        getattr(outcome, "position")
+        for outcome in outcomes
+        if getattr(outcome, "duplicate_of") is not None
+    }
+    found: dict[int, list] = {}
+    evidence: dict[int, SeriesEvidence] = {}
+    for position in sorted(material):
+        for item in material[position]:
+            if isinstance(item, PixelRiskMaterial):
+                found.setdefault(position, []).extend(
+                    (finding.risk, finding.indicator)
+                    for finding in item.assessment.findings
+                )
+            elif isinstance(item, SeriesEvidence):
+                evidence.setdefault(position, item)
+    for positions, series_findings in assessed_series(statuses, evidence):
+        for finding in series_findings:
+            for index in finding.instances:
+                found.setdefault(positions[index], []).append(
+                    (finding.risk, finding.indicator)
+                )
+    return release_report.pixel_risks(
+        (statuses[position], found[position])
+        for position in sorted(found)
+        if position in statuses and position not in copies
     )
 
 
