@@ -131,6 +131,10 @@ def _full_report():
                 ),
             ]
         ),
+        gaps=(
+            release_report.SourceGapCount("(0008,0060)", "1", 2),
+            release_report.SourceGapCount("(3006,0010) > (0020,0052)", "2", 1),
+        ),
     )
 
 
@@ -224,6 +228,7 @@ def test_the_sections_follow_the_documents_order():
         "## Reference findings",
         "## Pixel data risks",
         "## Values not searched",
+        "## Required attributes missing from the source",
     ]
     assert markdown.splitlines()[0] == "# De-identification release report"
 
@@ -289,7 +294,7 @@ def test_the_pixel_risks_are_counted_by_disposition_risk_and_indicator():
 def test_an_empty_run_says_so_in_each_run_section():
     markdown = to_markdown(release_report.to_json(_report()))
     assert "No QC pack was written for this run." in markdown
-    assert markdown.count("None.") == 9
+    assert markdown.count("None.") == 10
     assert "|" not in markdown.split("## QC review", 1)[1]
 
 
@@ -355,6 +360,9 @@ def _changed(change):
         lambda d: d["pixel_risks"]["instances"][0].update(count=0),
         lambda d: d["pixel_risks"]["indicators"][0].pop("indicator"),
         lambda d: d["pixel_risks"]["indicators"][0].update(risk="a|b"),
+        lambda d: d["source_gaps"][0].update(note="x"),
+        lambda d: d["source_gaps"][0].update(count=0),
+        lambda d: d.pop("source_gaps"),
         lambda d: d["method"]["table_digests"].update({"x`y": "0"}),
         lambda d: d.update(sequestered={}),
         lambda d: d["sequestered"][0].update(reasons=[]),
@@ -417,3 +425,15 @@ def test_reasons_with_and_without_optional_fields_leave_their_cells_empty():
 def test_text_that_is_not_json_is_refused():
     with pytest.raises(ReleaseReportMarkdownError):
         to_markdown("SENTINEL")
+
+
+def test_each_source_gap_is_a_row_with_its_type_and_count():
+    markdown = to_markdown(release_report.to_json(_full_report()))
+    section = markdown.split("## Required attributes missing from the source", 1)[1]
+    rows = [line for line in section.splitlines() if line.startswith("| ")]
+    assert rows == [
+        "| Attribute | Type | Instances |",
+        "| --- | --- | --- |",
+        "| `(0008,0060)` | `1` | `2` |",
+        "| `(3006,0010) > (0020,0052)` | `2` | `1` |",
+    ]

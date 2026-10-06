@@ -59,6 +59,7 @@ from .policy import Policy
 from .qc_attestation import AttestationRecord, Outcome
 from .reasons import RunReason
 from .residuals import NotSearched, Unsearched, UnsearchedReason
+from .iod_conformance import SourceGap
 from .reviewed_roi_names import CleanedRoiName, ReviewQueue, RoiNameCounts
 from .run_qc import (
     Dropped,
@@ -189,6 +190,10 @@ class ReleaseReporter:
             roi_names=roi_name_counts(material),
             findings=reference_findings(outcomes, material),
             pixel=pixel_risks(outcomes, material),
+            gaps=release_report.source_gaps(
+                [item for item in material[position] if isinstance(item, SourceGap)]
+                for position in sorted(material)
+            ),
         )
         return release_report.to_json(report)
 

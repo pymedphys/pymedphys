@@ -36,6 +36,7 @@ from pathlib import Path, PurePosixPath
 from pymedphys._imports import pydicom
 
 from . import pixel_risk, qc_pack, qc_previews, residuals
+from .iod_conformance import SourceGap
 from .file_layout import ElementPath
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .reference_graph import Finding, FindingKind
@@ -240,11 +241,14 @@ def qc_pack_of(
     retained: list[tuple[str, int, ElementPath]] = []
     written: dict[int, bytes] = {}
     risks: dict[int, list[pixel_risk.Finding]] = {}
+    gaps: dict[int, list[SourceGap]] = {}
     series: dict[int, SeriesEvidence] = {}
     for position in sorted(material):
         for item in material[position]:
             if isinstance(item, PixelRiskMaterial):
                 risks.setdefault(position, []).extend(item.assessment.findings)
+            elif isinstance(item, SourceGap):
+                gaps.setdefault(position, []).append(item)
             elif isinstance(item, SeriesEvidence):
                 series.setdefault(position, item)
             elif isinstance(item, SearchMaterial):
@@ -309,6 +313,10 @@ def qc_pack_of(
         series_risks=_series_risks(instances, series),
         previews=previews.previews,
         not_previewed=not_previewed,
+        source_gaps=tuple(
+            qc_pack.SourceGapEntry(position, tuple(found))
+            for position, found in sorted(gaps.items())
+        ),
     )
 
 
