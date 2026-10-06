@@ -33,6 +33,7 @@ from pymedphys._dicom.deidentify import (
     roi_names,
     run,
     run_qc,
+    synthetic_corpus,
 )
 from pymedphys._dicom.deidentify.descriptor_cleaning import (
     DescriptorCleaning,
@@ -139,8 +140,9 @@ def _transformed(transform, dataset):
 
 
 def _codes(written):
+    # An item already present may hold a Long or URN Code Value instead.
     return [
-        (item.CodeValue, item.CodingSchemeDesignator)
+        (item.get("CodeValue"), item.get("CodingSchemeDesignator"))
         for item in written.DeidentificationMethodCodeSequence
     ]
 
@@ -323,7 +325,41 @@ def test_a_kept_name_that_echoes_the_patient_is_held():
     assert evidence.held[0].reason is Reason.ECHOES_IDENTIFIER  # pylint: disable=no-member
 
 
-def test_other_descriptors_take_their_basic_profile_action_and_lose_the_claim():
+def test_other_descriptors_take_their_basic_profile_action_and_keep_the_claim():
+    # PS3.15 E.3.5 specifies what the option removes, not what it retains,
+    # and E.1.1 makes Table E.1-1 the minimum actions, so a descriptor that
+    # takes its Basic Profile action instead of being cleaned still meets it.
+    result = _transformed(
+        _transform(),
+        _structure_set(
+            "lung_l",
+            StudyDescription="SENTINEL STUDY",
+            StructureSetLabel="SENTINEL LABEL",
+        ),
+    )
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert "StudyDescription" not in written
+    # Type 1, so D writes a dummy value rather than removing it.
+    assert written.StructureSetLabel
+    assert b"SENTINEL" not in result.data
+    assert written.StructureSetROISequence[0].ROIName == "Lung_L"
+    assert CLEAN_DESCRIPTORS_CODE in _codes(written)
+    assert ("113100", "DCM") in _codes(written)
+
+
+def test_a_descriptor_that_the_fallback_keeps_loses_the_claim(monkeypatch):
+    fallen_back = descriptor_cleaning._fallen_back  # pylint: disable=protected-access
+
+    def kept(others, fallback):
+        return {
+            path: dataclasses.replace(edit, kind=descriptor_cleaning.EditKind.KEEP)
+            for path, edit in fallen_back(others, fallback).items()
+        }
+
+    monkeypatch.setattr(descriptor_cleaning, "_fallen_back", kept)
+
     result = _transformed(
         _transform(),
         _structure_set("lung_l", StudyDescription="SENTINEL STUDY"),
@@ -331,11 +367,27 @@ def test_other_descriptors_take_their_basic_profile_action_and_lose_the_claim():
 
     assert isinstance(result, run.Transformed)
     written = pydicom.dcmread(io.BytesIO(result.data))
-    assert "StudyDescription" not in written
-    assert b"SENTINEL" not in result.data
-    assert written.StructureSetROISequence[0].ROIName == "Lung_L"
+    assert written.StudyDescription == "SENTINEL STUDY"
     assert CLEAN_DESCRIPTORS_CODE not in _codes(written)
-    assert ("113100", "DCM") in _codes(written)
+
+
+# The corpus plants markers in UI elements, which pydicom warns of on reading.
+@pytest.mark.filterwarnings("ignore:Invalid value for VR UI:UserWarning")
+def test_the_synthetic_rt_plan_claims_the_option():
+    # Its RT Plan Label, which is Type 1, and its other descriptors given C
+    # take their Basic Profile actions.
+    (plan,) = [
+        file
+        for file in synthetic_corpus.build_corpus().files
+        if file.manifest.iod == "RT Plan"
+    ]
+
+    result = _transform()(plan.data, InstanceRecord.from_file(plan.data))
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written.RTPlanLabel
+    assert CLEAN_DESCRIPTORS_CODE in _codes(written)
 
 
 def test_a_roi_name_that_was_not_collected_sequesters_its_instance(monkeypatch):

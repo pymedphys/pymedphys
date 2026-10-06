@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Clean Descriptors in the transform: ROI Names cleaned, other descriptors not.
+"""Clean Descriptors in the transform: ROI Names cleaned, others removed or replaced.
 
 Under a policy that selects the Clean Descriptors Option, the edits leave
 each attribute that Table E.1-1 gives C pending (D-009). This module settles
@@ -30,11 +30,14 @@ them for one instance:
   source values of every person name, Patient ID, Issuer of Patient ID, and
   Other Patient IDs that the edits collected.
 - Every other attribute given C, which D-009 does not yet clean, takes its
-  action under the policy without Clean Descriptors, so the instance does
-  not satisfy the option and does not claim it.
+  action under the policy without Clean Descriptors. Where that action
+  removes or replaces it, the instance still satisfies the option, since
+  PS3.15 E.3.5 specifies what the option removes, not what it retains, and
+  E.1.1 makes Table E.1-1 the minimum actions; where it keeps it, the
+  instance does not.
 
-An instance satisfies Clean Descriptors only where every attribute given C
-was a ROI Name, and none was held or emptied without review. A ROI Name
+An instance satisfies Clean Descriptors only where no ROI Name was held or
+emptied without review, and no other attribute given C was kept. A ROI Name
 kept as it is, or renamed in the vocabulary's spelling, which the search,
 ignoring case, could otherwise find in what is written, is retained, so its
 source value is left out of the residual search, as D-027 has retained
@@ -138,7 +141,8 @@ class CleanedDescriptors:
         Each ROI Name held for review, in file order; the instance is not to
         be released while there is one.
     satisfied : bool
-        Whether the instance satisfies Clean Descriptors.
+        Whether the instance satisfies Clean Descriptors: no ROI Name held
+        or emptied without review, and no other attribute given C kept.
     retained : frozenset of ElementPath
         The ROI Names written with a value, which the residual search leaves
         out.
@@ -222,7 +226,7 @@ def clean_descriptors(
     held: list[HeldRoiName] = []
     retained: set[ElementPath] = set()
     qc: list[RoiNameMaterial | RetainedText] = []
-    satisfied = not others
+    satisfied = True
     if names:
         texts, results = _cleaned_names(edits, names, cleaning, vocabulary)
         for edit, text, result in zip(names, texts, results):
@@ -242,7 +246,14 @@ def clean_descriptors(
                     edit, kind=EditKind.EMPTY, values=()
                 )
     if others:
-        settled.update(_fallen_back(others, fallback()))
+        instead = _fallen_back(others, fallback())
+        settled.update(instead)
+        # A descriptor that its action without the option removes or
+        # replaces still meets it, since E.3.5 specifies what the option
+        # removes, not what it retains; one that the action keeps does not.
+        satisfied = satisfied and all(
+            edit.kind is not EditKind.KEEP for edit in instead.values()
+        )
     if names:
         # Only once the instance is settled, so that a refused instance adds
         # nothing to the review.

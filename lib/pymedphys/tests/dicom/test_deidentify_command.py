@@ -25,15 +25,23 @@ from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pytest
 
+from pymedphys._nomenclature import tg263
+
 from pymedphys._dicom.deidentify import (
     command,
     diagnostics,
     instance_transform,
     policy,
+    roi_names,
     run,
     run_report,
 )
 from pymedphys._dicom.deidentify.policy import compose_policy
+from pymedphys._dicom.deidentify.reviewed_roi_names import (
+    Review,
+    ReviewedName,
+    ReviewedNames,
+)
 from pymedphys._dicom.deidentify.reference_graph import Finding, FindingKind
 
 from . import _synthetic_references as synthetic
@@ -593,16 +601,171 @@ def test_a_given_transform_runs_without_a_release_report(tmp_path, monkeypatch):
     assert call["reporter"] is None
 
 
-def test_clean_descriptors_waits_for_its_roi_name_options(capsys):
-    # Its transform needs a vocabulary and reviewed-names list, which the
-    # command cannot take yet.
-    with pytest.raises(SystemExit) as raised:
-        command.main(
-            ["in", "out", "--qc-pack", "qc", "--preset", "basic-clean-descriptors"]
-        )
+_NOMENCLATURE = tg263.Nomenclature(
+    source=tg263.Source(file="invented.xls", sha256="0" * 64, sheet="Invented"),
+    attribution=tg263.ATTRIBUTION,
+    structures=(
+        tg263.Structure(
+            target_type="Anatomic",
+            major_category="Invented",
+            minor_category="",
+            anatomic_group="",
+            primary_name="Lung_L",
+            reverse_order_name="L_Lung",
+            description="",
+            fma_id=None,
+        ),
+    ),
+)
+_CLEAN = ("--preset", "basic-clean-descriptors")
 
-    assert raised.value.code == command.EXIT_USAGE
-    capsys.readouterr()
+
+@pytest.fixture(name="edition")
+def _edition(monkeypatch):
+    """Serve an invented edition, published for the test, in place of TG-263's."""
+    entries = [dataclasses.asdict(s) for s in _NOMENCLATURE.structures]
+    monkeypatch.setitem(
+        roi_names.PUBLISHED_TG263, "TG263 vInvented", tg263.content_sha256(entries)
+    )
+    loads = []
+
+    def load(*args, **kwargs):
+        loads.append((args, kwargs))
+        return _NOMENCLATURE
+
+    monkeypatch.setattr(command.tg263_published, "load", load)
+    return loads
+
+
+def _cleaning(tmp_path, monkeypatch, *options):
+    """Run main under Clean Descriptors, and return its status, error, and cleaning."""
+    built = []
+    real = instance_transform.InstanceTransform
+
+    def recording(selected, key, *args, cleaning=None, **kwargs):
+        built.append(cleaning)
+        return real(selected, key, *args, cleaning=cleaning, **kwargs)
+
+    monkeypatch.setattr(instance_transform, "InstanceTransform", recording)
+    status, _, err, _ = _parsed_call(tmp_path, monkeypatch, *_CLEAN, *options)
+    return status, err, built
+
+
+@pytest.mark.usefixtures("enabled")
+def test_clean_descriptors_cleans_with_the_pinned_edition_and_no_list(
+    tmp_path, monkeypatch, edition
+):
+    status, err, built = _cleaning(tmp_path, monkeypatch)
+
+    assert (status, err) == (command.EXIT_RELEASED, "")
+    (cleaning,) = built
+    assert cleaning.nomenclature is _NOMENCLATURE
+    assert len(cleaning.reviewed) == 0
+    assert cleaning.empty_held is False
+    assert edition == [((), {})]
+
+
+@pytest.mark.usefixtures("enabled")
+def test_a_given_spreadsheet_is_read_in_place_of_the_download(
+    tmp_path, monkeypatch, edition
+):
+    spreadsheet = tmp_path / "tg263.xlsx"
+
+    _cleaning(tmp_path, monkeypatch, "--tg263", str(spreadsheet))
+
+    assert edition == [((), {"spreadsheet": spreadsheet})]
+
+
+@pytest.mark.usefixtures("enabled", "edition")
+def test_the_reviewed_names_list_and_emptying_held_names_are_used(
+    tmp_path, monkeypatch
+):
+    path = tmp_path / "custodian" / "reviewed.json"
+    path.parent.mkdir()
+    reviewed = ReviewedNames.open(path)
+    reviewed.record("PTV boost", ReviewedName(Review.KEEP))
+    reviewed.save()
+
+    status, _, built = _cleaning(
+        tmp_path,
+        monkeypatch,
+        "--reviewed-names",
+        str(path),
+        "--empty-held-roi-names",
+    )
+
+    assert status == command.EXIT_RELEASED
+    (cleaning,) = built
+    assert cleaning.reviewed.get("PTV boost") == ReviewedName(Review.KEEP)
+    assert cleaning.empty_held is True
+
+
+@pytest.mark.usefixtures("enabled", "edition")
+@pytest.mark.parametrize(
+    "where", ["custodian", "release", "qc", "source"], ids=lambda where: where
+)
+def test_a_reviewed_names_list_where_a_run_writes_exits_three_naming_no_path(
+    tmp_path, monkeypatch, where
+):
+    path = tmp_path / where / SENTINEL
+    path.parent.mkdir()
+    ReviewedNames.open(path).save()
+    if where == "custodian":
+        path = tmp_path / where / "missing.json"
+
+    status, err, built = _cleaning(tmp_path, monkeypatch, "--reviewed-names", str(path))
+
+    assert status == command.EXIT_NOT_RUN
+    expected = "does not exist" if where == "custodian" else "could not be used"
+    assert err.startswith("error: the reviewed-names list") and expected in err
+    assert SENTINEL not in err and str(tmp_path) not in err
+    assert not built
+
+
+@pytest.mark.usefixtures("enabled")
+@pytest.mark.parametrize(
+    "failure", [tg263.TG263Error(SENTINEL), OSError(SENTINEL)], ids=["pin", "os"]
+)
+def test_an_edition_that_cannot_be_loaded_exits_three_naming_no_path(
+    tmp_path, monkeypatch, failure
+):
+    def load(*_, **__):
+        raise failure
+
+    monkeypatch.setattr(command.tg263_published, "load", load)
+
+    status, err, built = _cleaning(tmp_path, monkeypatch)
+
+    assert status == command.EXIT_NOT_RUN
+    assert err.startswith("error: the TG-263 edition")
+    assert SENTINEL not in err
+    assert not built
+
+
+def test_clean_descriptors_not_enabled_exits_three_before_loading_anything(
+    tmp_path, monkeypatch, edition
+):
+    status, err, built = _cleaning(tmp_path, monkeypatch)
+
+    assert status == command.EXIT_NOT_RUN
+    assert "not enabled" in err
+    assert (edition, built) == ([], [])
+
+
+@pytest.mark.parametrize(
+    "option",
+    [("--tg263", "x"), ("--reviewed-names", "x"), ("--empty-held-roi-names",)],
+    ids=lambda option: option[0],
+)
+def test_roi_name_options_without_clean_descriptors_are_a_usage_error(
+    tmp_path, monkeypatch, option
+):
+    status, out, err, calls = _parsed_call(tmp_path, monkeypatch, *option)
+
+    assert status == command.EXIT_USAGE
+    assert (out, calls) == ("", [])
+    assert err.startswith("error: ") and "basic-clean-descriptors" in err
+    assert not any(tmp_path.iterdir())
 
 
 @pytest.mark.usefixtures("enabled")
@@ -653,3 +816,26 @@ def test_main_runs_the_basic_preset_end_to_end(tmp_path):
     assert (tmp_path / "release" / run_report.RELEASE_REPORT).is_file()
     assert any((tmp_path / "qc").iterdir())
     assert str(tmp_path / "source") not in stdout.getvalue() + stderr.getvalue()
+
+
+@pytest.mark.usefixtures("enabled", "edition")
+def test_main_runs_clean_descriptors_end_to_end(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    stdout, stderr = io.StringIO(), io.StringIO()
+
+    status = command.main(
+        [
+            str(tmp_path / "source"),
+            str(tmp_path / "release"),
+            "--qc-pack",
+            str(tmp_path / "qc"),
+            *_CLEAN,
+            "--empty-held-roi-names",
+        ],
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert status == command.EXIT_RELEASED, stdout.getvalue() + stderr.getvalue()
+    assert (tmp_path / "release" / run_report.RELEASE_REPORT).is_file()
+    assert any((tmp_path / "qc").iterdir())
