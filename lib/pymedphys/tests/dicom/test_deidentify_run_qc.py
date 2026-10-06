@@ -166,8 +166,10 @@ def test_material_of_an_unknown_type_publishes_nothing(tmp_path):
 
 
 @pytest.mark.pydicom
-@pytest.mark.parametrize("destination", ["release/qc", ".release.staging/qc"])
-def test_a_qc_destination_in_the_release_or_staging_is_refused_first(
+@pytest.mark.parametrize(
+    "destination", ["release/qc", ".release.staging/qc", "source/qc"]
+)
+def test_a_qc_destination_in_the_source_release_or_staging_is_refused_first(
     tmp_path, destination
 ):
     _write(tmp_path / "source", synthetic.collection()[:1])
