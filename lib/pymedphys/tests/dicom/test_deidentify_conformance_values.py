@@ -220,9 +220,16 @@ def test_a_value_equal_to_a_written_constant_as_d_compares_is_not_searched():
     assert result.findings
     (unsearched,) = result.unsearched
     assert unsearched.reason is residuals.UnsearchedReason.WRITTEN_CONSTANT
+    name = ElementPath((), "(0010,1001)")
+    form = residuals.SourceValue(name, "PN", "DEIDENTIFIED^ZEBEDEE")
+    result = residuals.find_residuals(b"ZEBEDEE", [form])
+    assert result.findings
+    (unsearched,) = result.unsearched
+    assert unsearched.reason is residuals.UnsearchedReason.WRITTEN_CONSTANT
     described = conformance_values.UNSEARCHED_REASONS[unsearched.reason]
-    assert "or one of its values" in described
+    assert "one of its values, or a form of a value" in described
     assert "as D compares values" in described
+    assert "other values and forms are still searched" in described
 
 
 def test_each_vr_described_as_not_searched_is_not_searched():
