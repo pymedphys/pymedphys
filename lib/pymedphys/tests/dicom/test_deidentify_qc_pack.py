@@ -493,6 +493,9 @@ def test_the_document_holds_every_section():
         "not_searched",
         "retained_strings",
         "roi_names",
+        "pixel_risks",
+        "previews",
+        "not_previewed",
     ]
 
 

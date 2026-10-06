@@ -414,9 +414,9 @@ def _inserted(
             codes += (
                 ", then "
                 f"{_join(coded(c) for c in found.review_codes)} only in an "
-                "instance whose retained descriptors have passed pooled human "
-                "review, since otherwise the Basic Profile's actions apply to "
-                "the descriptors"
+                "instance that retains no descriptor without pooled human "
+                "review; a descriptor that its Basic Profile action removes or "
+                "replaces instead still meets the option"
             )
         codes += (
             ". A code is not added where an item already present has the same "

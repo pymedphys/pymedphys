@@ -24,12 +24,13 @@ whole of it runs within
 no warning or log record of pydicom's, or of the transform's or gate's,
 shows a source value or path, and the summary says how many were redacted.
 :func:`main` parses the source and release directories, the QC
-destination, and the preset from the command line's arguments, builds the
-preset's transform for a new run-scoped key with :func:`build_transform`,
-and runs it with the release gate and the transform's release report, for
-the ``pymedphys`` command to call once the engine is public; nothing
-registers it yet. No preset is enabled yet, so until one is, the command
-refuses to run.
+destination, the preset, and, under Clean Descriptors, what ROI Names are
+cleaned with from the command line's arguments, builds the preset's
+transform for a new run-scoped key with :func:`build_transform`, and runs
+it with the release gate and the transform's release report, for the
+``pymedphys`` command to call once the engine is public; nothing registers
+it yet. No preset is enabled yet, so until one is, the command refuses to
+run.
 
 The summary and every message name inputs only by count, reasons only by
 their type and the names of enum members (their own, or those of a
@@ -45,10 +46,12 @@ Exit statuses:
 - :data:`EXIT_WITHHELD`, 1: the release was published, but at least one
   input was refused, sequestered, or held for review;
 - :data:`EXIT_USAGE`, 2: the arguments could not be parsed, as for any
-  :mod:`argparse` command, though the message quotes none of them;
-- :data:`EXIT_NOT_RUN`, 3: the run could not start, the first pass
-  stopped it, or its QC pack could not be written, and nothing was
-  published;
+  :mod:`argparse` command, though the message quotes none of them, or
+  they give ROI name options without Clean Descriptors;
+- :data:`EXIT_NOT_RUN`, 3: the run could not start, because its preset is
+  not enabled, or what it cleans ROI Names with cannot be used, among other
+  reasons, the first pass stopped it, or its QC pack could not be written,
+  and nothing was published;
 - :data:`EXIT_STAGING_LEFT`, 4: the staging area could not be deleted, and
   may hold output that still identifies people, whatever else happened;
 - :data:`EXIT_INTERNAL_ERROR`, 70: anything else failed, and nothing was
@@ -67,10 +70,14 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import NoReturn, TextIO
 
+from pymedphys._nomenclature import tg263, tg263_published
+
 from . import instance_transform, policy, run, run_report
-from .qc_pack import QcPackError
+from .descriptor_cleaning import CLEAN_DESCRIPTORS, DescriptorCleaning
 from .diagnostics import RedactionCounts, redacted_diagnostics
 from .keys import DeidKey
+from .qc_pack import QcPackError
+from .reviewed_roi_names import ReviewedNames, ReviewedNamesError
 
 EXIT_RELEASED = 0
 EXIT_WITHHELD = 1
@@ -80,11 +87,24 @@ EXIT_STAGING_LEFT = 4
 EXIT_INTERNAL_ERROR = 70
 
 _RELEASED = (run.Status.RELEASED, run.Status.DUPLICATE)
-# The presets the command can build: those of the first supported release
-# (design document, Scope) whose transform needs nothing more. Clean
-# Descriptors joins them with the options for its vocabulary and
-# reviewed-names list.
-_PRESETS = ("basic",)
+# The first supported release's presets (design document, Scope).
+_PRESETS = ("basic", "basic-clean-descriptors")
+_ROI_NAME_OPTIONS = (
+    "error: --tg263, --reviewed-names, and --empty-held-roi-names apply only "
+    "with --preset basic-clean-descriptors"
+)
+_TG263_UNLOADED = (
+    "error: the TG-263 edition could not be loaded; its details are not "
+    "shown because they can contain file paths"
+)
+_REVIEWED_MISSING = (
+    "error: the reviewed-names list does not exist; its path is not shown "
+    "because it can name a person"
+)
+_REVIEWED_UNUSABLE = (
+    "error: the reviewed-names list could not be used; its details are not "
+    "shown because they can contain file paths or ROI names"
+)
 
 
 def deidentify_directory(
@@ -317,21 +337,141 @@ def build_parser(
         "--preset",
         choices=_PRESETS,
         default=policy.DEFAULT_PRESET,
-        help="the de-identification policy: the Basic Profile (basic, the default)",
+        help=(
+            "the de-identification policy: the Basic Profile alone (basic, "
+            "the default) or with Clean Descriptors (basic-clean-descriptors)"
+        ),
+    )
+    parser.add_argument(
+        "--tg263",
+        metavar="SPREADSHEET",
+        help=(
+            "with basic-clean-descriptors, a copy of the pinned TG-263 "
+            "spreadsheet to read; by default, PyMedPhys's cached download"
+        ),
+    )
+    parser.add_argument(
+        "--reviewed-names",
+        metavar="FILE",
+        help=(
+            "with basic-clean-descriptors, the custodian's reviewed-names "
+            "list, outside SOURCE, RELEASE, and the QC pack; by default, none, "
+            "so every ROI Name that cleaning does not rename is held for "
+            "review; python -m pymedphys._dicom.deidentify.reviewed_names_command "
+            "records a reviewer's decisions in it"
+        ),
+    )
+    parser.add_argument(
+        "--empty-held-roi-names",
+        action="store_true",
+        help=(
+            "with basic-clean-descriptors, empty each ROI Name that would be "
+            "held for review, so that its instance can be released"
+        ),
     )
     return parser
 
 
-def build_transform(preset: str, key: DeidKey) -> instance_transform.InstanceTransform:
+class _NotBuilt(Exception):
+    """A transform that cannot be built, with a message that quotes nothing."""
+
+
+def build_transform(
+    preset: str, key: DeidKey, *, cleaning: DescriptorCleaning | None = None
+) -> instance_transform.InstanceTransform:
     """Return the run's transform under ``preset`` and ``key``.
+
+    Parameters
+    ----------
+    preset : str
+        As :func:`~pymedphys._dicom.deidentify.policy.select_policy` takes it.
+    key : DeidKey
+        The run's key.
+    cleaning : DescriptorCleaning, optional
+        What ROI Names are cleaned with, which a preset with Clean
+        Descriptors needs and no other preset takes.
 
     Raises
     ------
     PolicyError
-        If the preset is not enabled, with a message that quotes nothing
-        but the preset's name.
+        If the preset is not enabled, or ``cleaning`` does not fit it, with a
+        message that quotes nothing but the preset's name.
     """
-    return instance_transform.InstanceTransform(policy.select_policy(preset), key)
+    return instance_transform.InstanceTransform(
+        policy.select_policy(preset), key, cleaning=cleaning
+    )
+
+
+def _descriptor_cleaning(arguments: argparse.Namespace) -> DescriptorCleaning:
+    """Return what the parsed options clean ROI Names with (D-009).
+
+    The pinned TG-263 edition is read from ``--tg263`` or else from
+    PyMedPhys's cached download. The custodian's reviewed-names list is read
+    from ``--reviewed-names``, which must exist, since this command records no
+    decision (:mod:`.reviewed_names_command` records them), and lie outside the source, the release and its staging area,
+    and the QC destination; without it, the list is empty. Held names are
+    emptied only with ``--empty-held-roi-names``.
+
+    Raises
+    ------
+    _NotBuilt
+        If the edition or the list cannot be used.
+    """
+    try:
+        nomenclature = (
+            tg263_published.load()
+            if arguments.tg263 is None
+            else tg263_published.load(spreadsheet=Path(arguments.tg263))
+        )
+    except (tg263.TG263Error, OSError):
+        raise _NotBuilt(_TG263_UNLOADED) from None
+    if arguments.reviewed_names is None:
+        reviewed = ReviewedNames.empty()
+    else:
+        release = Path(arguments.release).absolute()
+        protected = (
+            Path(arguments.source),
+            release,
+            run.staging_path(release),
+            Path(arguments.qc_pack),
+        )
+        try:
+            if not Path(arguments.reviewed_names).is_file():
+                raise _NotBuilt(_REVIEWED_MISSING)
+            reviewed = ReviewedNames.open(
+                arguments.reviewed_names, protected_dirs=protected
+            )
+        except (ReviewedNamesError, OSError):
+            raise _NotBuilt(_REVIEWED_UNUSABLE) from None
+    return DescriptorCleaning(
+        nomenclature, reviewed, empty_held=arguments.empty_held_roi_names
+    )
+
+
+def _built(
+    arguments: argparse.Namespace, key: DeidKey
+) -> instance_transform.InstanceTransform:
+    """Return :func:`build_transform`'s transform for the parsed options.
+
+    Raises
+    ------
+    _NotBuilt
+        If the preset is not enabled, which is checked before anything is
+        loaded, or what ROI Names are cleaned with cannot be used.
+    """
+    try:
+        selected = policy.select_policy(arguments.preset)
+    except policy.PolicyError as error:
+        raise _NotBuilt(f"error: {error}") from None
+    cleaning = (
+        _descriptor_cleaning(arguments)
+        if CLEAN_DESCRIPTORS in selected.options
+        else None
+    )
+    try:
+        return build_transform(arguments.preset, key, cleaning=cleaning)
+    except policy.PolicyError as error:
+        raise _NotBuilt(f"error: {error}") from None
 
 
 def main(
@@ -374,13 +514,22 @@ def main(
         ``stderr``, or 0 for ``--help``, as :mod:`argparse` does.
     """
     arguments = build_parser(stderr=stderr).parse_args(argv)
+    error_stream = sys.stderr if stderr is None else stderr
+    roi_name_options = (
+        arguments.tg263 is not None
+        or arguments.reviewed_names is not None
+        or arguments.empty_held_roi_names
+    )
+    if roi_name_options and CLEAN_DESCRIPTORS not in policy.PRESETS[arguments.preset]:
+        _print(_ROI_NAME_OPTIONS, error_stream)
+        return EXIT_USAGE
     reporter = None
     if transform is None:
         try:
             with redacted_diagnostics():
-                built = build_transform(arguments.preset, DeidKey.generate())
-        except policy.PolicyError as error:
-            _print(f"error: {error}", sys.stderr if stderr is None else stderr)
+                built = _built(arguments, DeidKey.generate())
+        except _NotBuilt as error:
+            _print(str(error), error_stream)
             return EXIT_NOT_RUN
         transform, reporter = built, built.reporter
     return deidentify_directory(

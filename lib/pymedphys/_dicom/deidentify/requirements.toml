@@ -370,6 +370,7 @@ implementation = [
   "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/roi_names.py",
   "_dicom/deidentify/reviewed_roi_names.py",
+  "_dicom/deidentify/reviewed_names_command.py",
 ]
 note = '''
 The first supported release includes the Option for ROI names (D-009).
@@ -378,8 +379,10 @@ A name so written is cleaned, not retained, so it needs no review before the cla
 The reviewed-names list, which the custodian keeps outside output and QC directories and which names no value in its errors or `repr`, records a reviewer's decision to keep, map, or empty each other name, for reuse on later runs.
 The reviewed tier applies the list's decisions to the names the automatic tier does not rename; checks what a kept or mapped name would write for echoes and for duplicates, ignoring case, as the automatic tier does; holds every other name, or empties it where the user chooses so explicitly; and collects the distinct held names for review, with counts by reason that carry no name, and counts every name by what is written for it.
 The list's keyed digest, an HMAC under the key in a domain of its own, which reveals no name, is an input to the method digest and recorded in the release report (D-024).
-In a run, descriptor cleaning applies these decisions to the ROI Names of each instance, holds an instance with a held name for review, or empties the name where the user chooses so and then does not claim the Option for it, and gives the QC pack what it wrote for each ROI Name, or why it held it; the run's method digest and release report take the keyed digest, under the de-identification key, of the list's decisions as they stood when the run's transform was made, which are the decisions it applies, and the report counts the instances held for review by reason.
-Remaining: the reviewer's workflow for recording decisions (M4); the release report's counts of ROI Names by what is written for each (M4); vocabularies converted from an institutional list, every match against which goes to review; and claiming the Option only for output whose retained descriptors have passed pooled human review, which needs the QC pack (M4).
+In a run, descriptor cleaning applies these decisions to the ROI Names of each instance, holds an instance with a held name for review, or empties the name where the user chooses so and then does not claim the Option for it; gives every other attribute given C its action without the Option, and still claims the Option where that action removes or replaces each, since this Option specifies what is removed, not what is retained; and gives the QC pack what it wrote for each ROI Name, or why it held it; the run's method digest and release report take the keyed digest, under the de-identification key, of the list's decisions as they stood when the run's transform was made, which are the decisions it applies, and the report counts the instances held for review by reason.
+A private command records a reviewer's decisions from a CSV file in the list, all or nothing, refusing a decision that differs from the list's unless told to replace it.
+Remaining: the release report's counts of ROI Names by what is written for each (M4); and vocabularies converted from an institutional list, every match against which goes to review.
+A ROI Name kept or mapped by a reviewer's decision in the reviewed-names list has passed pooled human review, since each distinct name is reviewed once for the collection.
 '''
 
 [[requirement]]
@@ -600,6 +603,7 @@ It withholds any output file that still holds a source person name, UID, date, d
 `public-release` retains indirect identifiers only after its statistical assessment.
 A deterministic synthetic collection plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released.
 The run's instance transform removes and replaces identifiers in each data set and gives the gate its coverage, including each value read as ISO 8859-1, and the run acts on the gate's decision.
+An instance out of scope whose IOD the pinned tables define is read only to collect its values for its subject's search, and is never written; an instance whose values could not be collected at all withholds every file of its subject.
 Remaining: validating each preset end to end by searching its output of that collection for the markers, the statistical assessment, and pixel and face review (M4).
 Pixel data are assessed for risk, not cleaned (D-015).
 '''
@@ -882,6 +886,7 @@ implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/qc_attestation.py",
   "_dicom/deidentify/qc_pack.py",
+  "_dicom/deidentify/qc_previews.py",
   "_dicom/deidentify/qc_retained.py",
   "_dicom/deidentify/qc_store.py",
   "_dicom/deidentify/run.py",
@@ -897,8 +902,9 @@ A reviewer attests to a pack once, stating whether they reviewed every distinct 
 Each run writes its pack before it publishes the release, to a QC destination that the caller must name and that is checked before anything is created; a pack that cannot be written publishes nothing, and the pack of a release that cannot be published is removed, or named if it cannot be.
 The run's instance transform and release gate adapter give it this material.
 The pack lists every input from its outcome, each sequestered one by the random label that the run gives it, and the transform's and gate's material by run position: each residual search with its excerpts, each source value they left out of the search with its reason, what descriptor cleaning wrote for each ROI Name, and each retained string with its places.
-The retained strings of an instance are the values that its plan keeps as they are, in elements with a text VR other than UI, outside any removed sequence, and other than Specific Character Set, and a value that was not read for review, or could not be decoded, is refused rather than left out.
-Remaining: image previews of each series and the instances in high-risk categories, and the attestation's record in the release report (M4).
+The retained strings of an instance are the values that its plan keeps as they are, in elements with a text VR other than UI, outside any removed sequence, and other than Specific Character Set, and a value that was not read for review, or could not be decoded, is refused rather than left out, and the run's transform sequesters an instance with such a value.
+The pack previews each series released or held for review, by a cine strip and, for a volume, a frontal maximum intensity projection, and each instance whose source shows an indicator of risk in its pixel data at full resolution, with those indicators; it lists each instance it could not preview, with why, and records each preview's SHA-256, so that an attestation covers the previews too (D-017).
+Remaining: the attestation's record in the release report (M4).
 This practice is not implemented until M4 also covers both open points, or the design assigns them to whoever releases the data.
 '''
 
@@ -916,6 +922,7 @@ implementation = [
   "_dicom/deidentify/markers.py",
   "_dicom/deidentify/method_digest.py",
   "_dicom/deidentify/release_report.py",
+  "_dicom/deidentify/release_report_markdown.py",
   "_dicom/deidentify/run_report.py",
   "_dicom/deidentify/runtime.py",
 ]
@@ -926,6 +933,7 @@ The conformance statement generated from a policy names the PyMedPhys version, t
 The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016).
 Its sections on a run give the QC pack's opaque reference with its attestation's outcome (D-016), list each released instance by its output name, name each sequestered instance by a random label for the run, with each reason's stage and code, and the attribute, action, and VR where the walker sequestered it, or the attribute where the release gate's reason names one (D-026); count the instances held for review by stage and reason, naming none (D-009); and count the source values that the residual search did not search, in full or in part, by attribute and reason (D-027); the conformance statement describes them, generated from the report's format, labels, and reason codes.
 A run given a reporter writes the report as `release-report.json` at the root of the release before it publishes it, with its QC pack by reference, not yet attested, its released instances by output name, its sequestered instances by label, its held instances by reason, an identical copy counting as the instance it copies, and the values that the residual searches did not search, each counted once at the instance that holds it, and a report that cannot be built publishes nothing and leaves no QC pack; an input whose reasons the report cannot give is sequestered for an invalid reason instead, which the report gives alone and the QC pack lists before its own reasons, so that it never stops the release.
+Beside the report, the run writes its human-readable form as `release-report.md`: CommonMark, with GitHub Flavored Markdown tables, generated from the JSON text alone, which shows every value of the document, and each file name that keys a digest, as a code span as often as the document holds it, and draws nothing else from the report; the same text always gives the same form, and a report whose form cannot be generated publishes nothing.
 Every reason that sequesters or holds an instance in a run, from the run's own checks, the transform, the writer, the preservation check, and the release gate, has a stage and code in the report, and the codes within each stage are distinct.
-Remaining: its residual search findings, a human-readable form, and writing it in every run (M4); and writing the conformance statement with each run and publishing it with each release (M4, M6).
+Remaining: its residual search findings and writing it in every run (M4); and writing the conformance statement with each run and publishing it with each release (M4, M6).
 '''

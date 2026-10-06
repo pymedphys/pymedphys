@@ -121,8 +121,8 @@ plan does not reference, keeps in
 Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
-value of another instance in its output and sends it to review. Every other
-file stays releasable.
+value of another instance in its output and sends it to review. The third
+CT slice remains sequestered; the other five files stay releasable.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
 placement: its element path, VR, values, kind, the Table E.1-1 row it
