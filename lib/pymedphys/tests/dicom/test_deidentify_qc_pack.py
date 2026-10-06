@@ -564,6 +564,27 @@ def test_the_destination_is_compared_once_resolved(places, monkeypatch):
         )
 
 
+@pytest.mark.parametrize("where", ["source/qc", "source/a/qc"])
+def test_the_destination_is_outside_the_source_directory(places, where):
+    root, release, staging = places
+    (root / "source").mkdir()
+    with pytest.raises(QcPackError, match="inside the source directory"):
+        qc_store.check_confidential_destination(
+            root / where,
+            release_directory=release,
+            staging_directory=staging,
+            source_directory=root / "source",
+        )
+    with pytest.raises(QcPackError, match="inside the source directory"):
+        qc_store.write_qc_pack(
+            _full_pack(),
+            root / where,
+            release_directory=release,
+            source_directory=root / "source",
+        )
+    assert os.listdir(root / "source") == []
+
+
 @POSIX_ONLY
 def test_a_link_into_the_release_directory_is_refused(places):
     root, release, _ = places

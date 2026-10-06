@@ -70,12 +70,13 @@ def check_confidential_destination(
     *,
     release_directory: os.PathLike | str,
     staging_directory: os.PathLike | str | None = None,
+    source_directory: os.PathLike | str | None = None,
 ) -> Path:
     """Check that a directory may receive confidential material, and return it.
 
     The destination must be given explicitly: there is no default. It must
-    be neither inside the release directory or the staging directory nor
-    contain either. Paths are compared once made absolute with their
+    be neither inside the release, staging, or source directory nor contain
+    any of them, so that no run reads a pack as input. Paths are compared once made absolute with their
     symbolic links resolved, without case on Windows and macOS, and also by
     the device and inode of each existing directory, which finds the same
     directory under another spelling, as on a case-insensitive share or
@@ -91,6 +92,8 @@ def check_confidential_destination(
         Where released output goes.
     staging_directory : path-like, optional
         Where output waits for its residual search (D-027).
+    source_directory : path-like, optional
+        Where the run reads its input.
 
     Returns
     -------
@@ -110,6 +113,8 @@ def check_confidential_destination(
         others["staging directory"] = _resolved(
             staging_directory, "the staging directory"
         )
+    if source_directory is not None:
+        others["source directory"] = _resolved(source_directory, "the source directory")
     _check_apart(target, others)
     status = path_status(target, _CHECKING)
     if status is not None:
@@ -208,13 +213,14 @@ def write_qc_pack(
     *,
     release_directory: os.PathLike | str,
     staging_directory: os.PathLike | str | None = None,
+    source_directory: os.PathLike | str | None = None,
 ) -> Path:
     """Write a QC pack to a designated, restricted directory.
 
     The destination is checked by :func:`check_confidential_destination`.
     A new destination is created, with any missing parents, and must not
     appear between the check and its creation; the checks against the
-    release and staging directories are then repeated on what was created.
+    other directories are then repeated on what was created.
     On POSIX, the directory is opened without following a symbolic link,
     given mode 0o700, and its files are created within it, each with mode
     0o600. It receives, in this order, the marker :data:`MARKER_FILE`; the
@@ -228,7 +234,7 @@ def write_qc_pack(
     ----------
     pack : ~pymedphys._dicom.deidentify.qc_pack.QcPack
     destination : path-like
-    release_directory, staging_directory : path-like
+    release_directory, staging_directory, source_directory : path-like
         As for :func:`check_confidential_destination`.
 
     Returns
@@ -250,6 +256,7 @@ def write_qc_pack(
             path,
             release_directory=release_directory,
             staging_directory=staging_directory,
+            source_directory=source_directory,
         )
 
     target = check(destination)

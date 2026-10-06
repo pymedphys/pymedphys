@@ -216,37 +216,76 @@ def test_pydicom_diagnostics_while_decoding_are_redacted(monkeypatch, caplog):
     assert sentinel not in caplog.text
 
 
-def _sequence_decoders(path: pathlib.Path) -> list[str]:
-    """Return each call in a module that has pydicom decode a sequence's items."""
+def _sequence_decoders(source: str) -> list[tuple[str, str]]:
+    """Return each call in a module's source that may have pydicom decode items.
+
+    Each is given by the function it is in and the call, with the VR it
+    passes to ``convert_value``: a VR that is not a constant may be SQ.
+    """
     found = []
-    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
-        if not isinstance(node, ast.Call):
-            continue
-        name = getattr(node.func, "attr", getattr(node.func, "id", None))
-        if name in ("convert_SQ", "read_sequence", "read_sequence_item"):
-            found.append(name)
-        elif name == "convert_value" and (
-            not node.args
-            or not isinstance(node.args[0], ast.Constant)
-            or node.args[0].value == "SQ"
-        ):
-            # A VR that is not a constant may be SQ, unless the caller
-            # decodes SQ by this module first; such a call is listed below.
-            found.append(f"{name}:{node.lineno}")
+
+    def visit(node: ast.AST, function: str) -> None:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            function = node.name
+        if isinstance(node, ast.Call):
+            name = getattr(node.func, "attr", getattr(node.func, "id", None))
+            if name in ("convert_SQ", "read_sequence", "read_sequence_item"):
+                found.append((function, name))
+            elif name == "convert_value" and (
+                not node.args
+                or not isinstance(node.args[0], ast.Constant)
+                or node.args[0].value == "SQ"
+            ):
+                vr = ast.unparse(node.args[0]) if node.args else ""
+                found.append((function, f"convert_value({vr})"))
+        for child in ast.iter_child_nodes(node):
+            visit(child, function)
+
+    visit(ast.parse(source), "")
     return found
+
+
+# The calls outside this module that may be given VR SQ. Each decodes SQ by
+# decode_items first, so the VR it is given is another.
+_REVIEWED_DECODERS = {
+    "sequences.py": [("decode_items", "convert_SQ")],
+    "elements.py": [
+        ("_decoded", "convert_value(vr)"),
+        ("_written_back", "convert_value(vr)"),
+    ],
+}
+
+
+def _engine_sources() -> dict[str, str]:
+    package = pathlib.Path(sequences.__file__).parent
+    return {
+        path.name: path.read_text(encoding="utf-8")
+        for path in sorted(package.glob("*.py"))
+    }
 
 
 def test_only_this_module_has_pydicom_decode_items():
     # A caller that decoded items itself would skip the check that they fill
     # the value, which pydicom does not make.
-    package = pathlib.Path(sequences.__file__).parent
     decoders = {
-        path.name: _sequence_decoders(path)
-        for path in sorted(package.glob("*.py"))
-        if _sequence_decoders(path)
+        name: calls
+        for name, source in _engine_sources().items()
+        if (calls := _sequence_decoders(source))
     }
-    assert set(decoders) <= {"sequences.py", "elements.py"}
-    assert decoders["sequences.py"] == ["convert_SQ"]
-    # elements decodes SQ by decode_items before either call, which is for a
-    # value of another VR.
-    assert all(call.startswith("convert_value:") for call in decoders["elements.py"])
+    assert decoders == _REVIEWED_DECODERS
+
+
+@pytest.mark.parametrize("module", ["elements.py", "references.py"])
+@pytest.mark.parametrize(
+    "call",
+    [
+        "pydicom.values.convert_value('SQ', value)",
+        "pydicom.values.convert_value(vr, value)",
+        "pydicom.values.convert_SQ(value, True, True)",
+    ],
+)
+def test_a_new_decoder_of_items_is_found(module, call):
+    source = (
+        _engine_sources()[module] + f"\n\ndef _added(value, vr):\n    return {call}\n"
+    )
+    assert _sequence_decoders(source) != _REVIEWED_DECODERS.get(module, [])
