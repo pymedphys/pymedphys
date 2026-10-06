@@ -53,6 +53,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
     transform_for,
     writer_plan,
 )
+from pymedphys._dicom.deidentify.iod_conformance import SourceGap
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.markers import MarkerError
@@ -886,10 +887,10 @@ def test_values_left_out_of_the_search_are_dropped_with_their_reasons():
     )
     result = _transform()(data, InstanceRecord.from_file(data))
     assert isinstance(result, run.Transformed)
-    # Besides what its series' assessment needs, the instance's QC material
-    # is its drops.
+    # Besides what its series' assessment needs and what its source lacks of
+    # its IOD's requirements, the instance's QC material is its drops.
     assert tuple(
-        item for item in result.qc if not isinstance(item, SeriesEvidence)
+        item for item in result.qc if not isinstance(item, (SeriesEvidence, SourceGap))
     ) == dropped_of(edits)
 
 
