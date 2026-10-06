@@ -84,6 +84,10 @@ paths are held only by the :class:`Discovery`, for the confidential QC
 material, and are left out of its ``repr``.
 """
 
+# The run, its publication, and their documentation stay together, so the
+# module is long.
+# pylint: disable = too-many-lines
+
 from __future__ import annotations
 
 import collections
@@ -406,8 +410,10 @@ def run(
     reporter : Reporter, optional
         Given the labelled outcomes, each input's QC material, and the QC
         pack's reference, returns the report's text, published at the root as
-        :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT`.
-        Without one, no report is written. A withheld input whose reasons
+        :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT`, and
+        gives the conformance statement of its policy, published beside it
+        as :data:`~pymedphys._dicom.deidentify.run_report.CONFORMANCE_STATEMENT`.
+        Without one, neither is written. A withheld input whose reasons
         the reporter does not admit is sequestered for
         :attr:`RunReason.INVALID_REASON`, followed by its own reasons.
 
@@ -436,7 +442,8 @@ def run(
     ~pymedphys._dicom.deidentify.release_report.ReleaseReportError
         If the release report has a field that could hold a value or a path,
         or a reason that no stage of the report gives; or anything else the
-        reporter raises. Nothing is published, and no QC pack is written.
+        reporter raises, including while giving the conformance statement.
+        Nothing is published, and no QC pack is written.
 
     Notes
     -----
@@ -492,13 +499,16 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
         # Built before the pack is written, so a failure leaves no QC material.
         report = reporter(outcomes, material, pack.reference) if reporter else None
+        statement = reporter.conformance_statement() if reporter else None
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
         _remove_empty_directories(staged_release)
-        if report is not None:
-            _write_atomically(
-                staged_release / run_report.RELEASE_REPORT, report.encode("utf-8")
-            )
+        for name, text in (
+            (run_report.RELEASE_REPORT, report),
+            (run_report.CONFORMANCE_STATEMENT, statement),
+        ):
+            if text is not None:
+                _write_atomically(staged_release / name, text.encode("utf-8"))
         if os.path.lexists(release_path):
             raise RunError(_RELEASE_EXISTS.format(release=release_path))
         # The pack is written before the release is published, so that a
