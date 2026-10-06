@@ -38,9 +38,10 @@ what would be written is checked again, as the automatic tier checks its own:
   empties every ROI Name.
 
 A name that the list does not cover is held too, with the automatic tier's
-reason. The caller holds an instance with a held name in the staging area for
-review, unless the user chooses explicitly to empty held names so that the
-run proceeds (``empty_held``), which empties a name held by these checks as
+reason. The caller holds an instance with a held name for review and does not
+release it: a run deletes its staged file, and a run after the review writes
+it again. That is unless the user chooses explicitly to empty held names so
+that the run proceeds (``empty_held``), which empties a name held by these checks as
 well as one the list does not cover. :class:`ReviewQueue` collects the distinct
 held names of a run for the confidential QC material.
 

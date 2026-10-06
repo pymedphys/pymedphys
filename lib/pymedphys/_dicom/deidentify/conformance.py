@@ -352,9 +352,9 @@ class InsertedMarkers:
         Profile's and each selected option's that the policy applies, or none
         for a policy that claims no conformance.
     review_codes : tuple of str
-        The Code Values that it gains only in an instance whose retained
-        descriptors have passed pooled human review: Clean Descriptors',
-        where the policy selects it and can claim conformance.
+        The Code Values that it gains only in an instance that retains no
+        descriptor without pooled human review: Clean Descriptors', where
+        the policy selects it and can claim conformance.
     temporal : str
         Longitudinal Temporal Information Modified (0028,0303), unless the
         value already present is stricter.
