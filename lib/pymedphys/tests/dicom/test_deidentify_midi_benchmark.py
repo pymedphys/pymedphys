@@ -20,6 +20,8 @@ made up for the tests.
 """
 
 import csv
+import os
+import stat
 import hashlib
 import json
 import sqlite3
@@ -27,7 +29,9 @@ import sqlite3
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import midi_benchmark as benchmark
+from pymedphys._dicom.deidentify import midi_benchmark_command, midi_script_results
 from pymedphys._dicom.deidentify.element_rules import ElementRules
+from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.midi_answer_key import (
     Action,
     AnswerKeyError,
@@ -51,6 +55,7 @@ MR_STUDY = "2.25.702"
 MR_SERIES = "2.25.703"
 MR_INSTANCE = "2.25.704"
 ABSENT_INSTANCE = "2.25.705"
+CT_IOD = "CT Image"
 
 
 def _check(action, place=None, *, value=None, text=None, **categories):
@@ -206,6 +211,42 @@ def test_a_file_that_is_not_a_database_is_refused(tmp_path):
         read_answer_key(path)
 
 
+def test_the_checks_of_every_row_of_an_instance_are_taken_together(tmp_path):
+    first = _row(synthetic.CT_SLICES[0], [_check("tag_retained", "<(0008,0060)>")])
+    second = _row(
+        synthetic.CT_SLICES[0],
+        [_check("date_shifted", "<(0008,0020)>", value=STUDY_DATE)],
+        scope="Series",
+    )
+    key = read_answer_key(_answer_key(tmp_path / "key.db", [first, second], scope=True))
+
+    (instance,) = list(key.by_sop_instance().values())
+    assert [check.action for check in instance.checks] == [
+        Action.TAG_RETAINED,
+        Action.DATE_SHIFTED,
+    ]
+
+
+def test_a_numeric_patient_id_and_missing_identifiers_are_read(tmp_path):
+    row = _row(synthetic.CT_SLICES[0], [])
+    row["PatientID"] = 1234
+    row["Modality"] = None
+    row["SOPClassUID"] = None
+
+    (instance,) = read_answer_key(_answer_key(tmp_path / "key.db", [row])).instances
+
+    assert instance.patient_id == "1234"
+    assert instance.modality is None and instance.sop_class_uid is None
+
+
+def test_a_row_without_its_sop_instance_uid_is_refused(tmp_path):
+    row = _row(synthetic.CT_SLICES[0], [])
+    row["SOPInstanceUID"] = None
+
+    with pytest.raises(AnswerKeyError, match="row 1 has no SOPInstanceUID"):
+        read_answer_key(_answer_key(tmp_path / "key.db", [row]))
+
+
 def test_checks_that_are_not_json_are_refused_without_quoting_them(tmp_path):
     row = _row(synthetic.CT_SLICES[0], [])
     row["AnswerData"] = f"{synthetic.PATIENT_ID} is not JSON"
@@ -268,10 +309,14 @@ MAPPING = benchmark.IdentifierMapping(
 )
 
 
-def _score(action, place=None, **fields):
+def _score(action, place=None, *, iod=CT_IOD, **fields):
     check = read_answer_check(action, place, **fields)
     return benchmark.score_check(
-        check, _released_ct(), MAPPING, ElementRules(compose_policy("basic"))
+        check,
+        _released_ct(),
+        MAPPING,
+        ElementRules(compose_policy("basic")),
+        None if iod is None else load_iod_tables().iods[iod],
     )
 
 
@@ -400,6 +445,51 @@ def test_a_kept_check_in_a_sequence_that_the_policy_removes_is_deliberate():
 def test_a_kept_check_on_what_the_policy_keeps_is_a_finding():
     # The Basic Profile keeps Rows, so its absence is not deliberate.
     assert _score("tag_retained", "<(0028,0010)>") == FAILED
+
+
+@pytest.mark.parametrize(
+    "place",
+    [
+        # Patient's Name is Z and Study Instance UID is U: the policy
+        # replaces them, so a file without them breaks the policy.
+        "<(0010,0010)>",
+        "<(0020,000D)>",
+        # The CT Image IOD defines Derivation Code Sequence, which the
+        # Basic Profile therefore keeps; without the IOD it would be removed.
+        "<(0008,9215)>",
+    ],
+)
+def test_a_missing_attribute_that_the_policy_replaces_or_keeps_is_a_finding(place):
+    assert _score("tag_retained", place) == FAILED
+
+
+def test_the_iod_decides_whether_a_missing_sequence_is_deliberate():
+    assert _score("tag_retained", "<(0008,9215)>", iod=None) == benchmark.Scored(
+        benchmark.Result.FAILED, "X", deliberate=True
+    )
+
+
+def test_changed_pixel_data_is_never_deliberate():
+    assert _score("pixels_retained", "<(7FE0,0010)>", text="0" * 32) == FAILED
+
+
+@pytest.mark.parametrize(
+    "action, expected",
+    [
+        ("text_removed", PASSED),
+        ("text_retained", FAILED),
+        ("date_shifted", PASSED),
+        ("uid_changed", PASSED),
+    ],
+)
+def test_a_missing_attribute_is_scored_before_what_the_check_compares(action, expected):
+    # As the script does: the check has no text or value to compare, but
+    # the attribute is not in the file, so the check is scored all the same.
+    assert _score(action, "<(0028,0010)>") == expected
+
+
+def test_an_empty_value_is_within_any_text_as_the_script_finds():
+    assert _score("date_shifted", "<(0008,0060)>", value="") == FAILED
 
 
 def _source(tmp_path):
@@ -575,6 +665,26 @@ def test_the_mapping_files_name_what_the_run_wrote(tmp_path):
     assert OTHER_PATIENT not in dict(patients[1:])
 
 
+@pytest.mark.skipif(os.name != "posix", reason="owner-only modes are POSIX")
+def test_the_mapping_files_are_for_their_owner_alone(tmp_path):
+    work = tmp_path / "work"
+    benchmark.run_benchmark(_source(tmp_path), _benchmark_key(tmp_path), work)
+
+    for directory in (work, work / "validation-script"):
+        assert stat.S_IMODE(directory.stat().st_mode) == 0o700
+    for name in ("uid_mapping.csv", "patid_mapping.csv"):
+        mode = (work / "validation-script" / name).stat().st_mode
+        assert stat.S_IMODE(mode) == 0o600
+
+
+@pytest.mark.parametrize(
+    "modality, expected",
+    [("CT", "CT"), (" RTDOSE ", "RTDOSE"), (None, "other"), ("Not a code", "other")],
+)
+def test_a_modality_is_reported_only_as_a_code_string(modality, expected):
+    assert benchmark._modality(modality) == expected  # pylint: disable = protected-access
+
+
 def test_the_results_hold_no_value_from_the_test_data_set(tmp_path):
     work = tmp_path / "work"
     benchmark.run_benchmark(_source(tmp_path), _benchmark_key(tmp_path), work)
@@ -677,7 +787,7 @@ def test_the_scripts_results_are_counted_by_category(tmp_path):
         ],
     )
 
-    summary = benchmark.summarise_script_results(path)
+    summary = midi_script_results.summarise_script_results(path)
 
     assert summary["results_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
     assert summary["categories"] == [
@@ -689,6 +799,24 @@ def test_the_scripts_results_are_counted_by_category(tmp_path):
     assert "SYNTHETIC VALUE" not in json.dumps(summary)
 
 
+def test_the_scripts_results_need_only_the_category_columns_it_made(tmp_path):
+    path = tmp_path / "validation_results.db"
+    connection = sqlite3.connect(path)
+    with connection:
+        connection.execute(
+            "CREATE TABLE validation_results (action, check_passed, hipaa_z)"
+        )
+        connection.execute(
+            "INSERT INTO validation_results VALUES (?, ?, ?)",
+            ["<text_removed>", 0, "TEST-Z"],
+        )
+    connection.close()
+
+    assert midi_script_results.summarise_script_results(path)["categories"] == [
+        {"family": "hipaa", "code": "TEST-Z", "passed": 0, "failed": 1, "blank": 0}
+    ]
+
+
 def test_results_without_the_scripts_table_are_refused(tmp_path):
     path = tmp_path / "validation_results.db"
     connection = sqlite3.connect(path)
@@ -696,20 +824,32 @@ def test_results_without_the_scripts_table_are_refused(tmp_path):
         connection.execute("CREATE TABLE other (action)")
     connection.close()
 
-    with pytest.raises(benchmark.BenchmarkError, match="validation_results"):
-        benchmark.summarise_script_results(path)
+    with pytest.raises(
+        midi_script_results.ScriptResultsError, match="validation_results"
+    ):
+        midi_script_results.summarise_script_results(path)
+
+
+def test_the_commands_are_not_on_the_pymedphys_command_line(capsys):
+    # Nothing de-identification related joins the public command line before
+    # the first supported release.
+    with pytest.raises(SystemExit):
+        define_parser().parse_args(["dev", "--help"])
+    assert "benchmark" not in capsys.readouterr().out
+    for command in ("deid-benchmark", "deid-benchmark-script-results"):
+        with pytest.raises(SystemExit):
+            define_parser().parse_args(["dev", command])
 
 
 def _command(*arguments):
-    args = define_parser().parse_args(["dev", *arguments])
-    args.func(args)
+    assert midi_benchmark_command.main(arguments) == 0
 
 
-def test_the_development_command_runs_a_benchmark(tmp_path, capsys):
+def test_the_command_runs_a_benchmark(tmp_path, capsys):
     work = tmp_path / "work"
 
     _command(
-        "deid-benchmark",
+        "run",
         "--source",
         str(_source(tmp_path)),
         "--answer-key",
@@ -725,24 +865,24 @@ def test_the_development_command_runs_a_benchmark(tmp_path, capsys):
     assert capsys.readouterr().out == (work / benchmark.RESULTS_MARKDOWN).read_text()
 
 
-def test_the_development_command_summarises_the_scripts_results(tmp_path, capsys):
+def test_the_command_summarises_the_scripts_results(tmp_path, capsys):
     path = _script_results(
         tmp_path / "validation_results.db", [("<uid_changed>", 1, {})]
     )
 
-    _command("deid-benchmark-script-results", str(path))
+    _command("script-results", str(path))
 
     assert json.loads(capsys.readouterr().out)["categories"] == [
         {"family": "hipaa", "code": "HIPAA-R", "passed": 1, "failed": 0, "blank": 0}
     ]
 
 
-def test_the_development_command_reports_a_refusal_without_a_traceback(tmp_path):
+def test_the_command_reports_a_refusal_without_a_traceback(tmp_path):
     (tmp_path / "work").mkdir()
 
     with pytest.raises(SystemExit, match="must not exist"):
         _command(
-            "deid-benchmark",
+            "run",
             "--source",
             str(tmp_path),
             "--answer-key",

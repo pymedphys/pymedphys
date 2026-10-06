@@ -14,8 +14,12 @@
 
 """Benchmark the engine against an NCI MIDI test data set (D-018).
 
-A development tool, outside the public command line until the first
-supported release: :func:`run_benchmark` de-identifies a local copy of a
+A development tool. It is not registered with the ``pymedphys`` command,
+and stays out of the public command line until the first supported release;
+:mod:`~pymedphys._dicom.deidentify.midi_benchmark_command` runs it as
+``python -m pymedphys._dicom.deidentify.midi_benchmark_command``, with the
+subcommands ``run`` and ``script-results``. :func:`run_benchmark`
+de-identifies a local copy of a
 MIDI-B test data set through the run pipeline, under a preset and a key
 drawn for the run, and scores the released files against the data set's
 answer key (:mod:`~pymedphys._dicom.deidentify.midi_answer_key`). It writes,
@@ -28,12 +32,15 @@ into a work directory that must not exist:
   columns ``id_old`` and ``id_new``, mapping each released instance's test
   data set Study, Series, and SOP Instance UIDs, and its Patient ID, to
   those the run wrote. They hold the test data set's identifiers, so they
-  are confidential, as the QC pack is;
+  are confidential, as the QC pack is, and the work directory, this one, and
+  the files are made for their owner alone where the platform allows;
 - ``benchmark.json`` and ``benchmark.md``, the results.
 
-The results hold no value from the data set: only versions, digests, counts,
-answer-key categories, actions, and attribute tags. They give, separately
-for each answer-key category rather than as one score:
+The results hold no attribute value from the data set's files: only
+versions, digests, counts, attribute tags, and what the answer key names:
+its category codes, its action names, and each instance's modality, given
+only in the form of a Code String and otherwise as ``other``. They give,
+separately for each answer-key category rather than as one score:
 
 - the checks of released instances that passed, failed, or were not
   evaluated;
@@ -42,9 +49,10 @@ for each answer-key category rather than as one score:
   support, which the run sequesters), and those of answer-key instances that
   the input did not hold, none of which is scored;
 - the **deliberate differences**: each failed check that asked for an
-  attribute to be kept, where the policy's own action for the attribute
-  removes or replaces it, such as a description that the Basic Profile
-  removes but TCIA's curation of the source collection kept. The validation
+  attribute to be kept, where the policy's own action, for the instance's
+  IOD, explains the failure (:func:`score_check`), such as a description
+  that the Basic Profile removes but TCIA's curation of the source
+  collection kept. The validation
   manual says that many answers follow that curation rather than the
   standard, so these are counted by category, attribute, and action, apart
   from failures;
@@ -53,7 +61,9 @@ for each answer-key category rather than as one score:
 
 The scoring follows the validation script's rules, in this module's words,
 with these differences, so the script's own results remain the published
-figures (:func:`summarise_script_results` reads them):
+figures
+(:func:`~pymedphys._dicom.deidentify.midi_script_results.summarise_script_results`
+reads them):
 
 - each check is scored against its own instance only, never against the
   other instances of its series or study, whatever its scope;
@@ -63,11 +73,21 @@ figures (:func:`summarise_script_results` reads them):
   can score differently;
 - a multi-valued attribute is compared in its encoded form, its values
   joined by ``\\``, and a sequence by the text of everything it holds;
-- a check that the script cannot score, such as one without the text it
-  compares, is not evaluated rather than left blank, and so is one of a
-  consistent UID that the mapping files do not cover (they map only Study,
-  Series, and SOP Instance UIDs, as the manual describes them), and one of
-  burned-in text (``pixels_hidden``), which needs OCR and review.
+- bytes are read as ISO 8859-1 text, where the script compares Python's
+  representation of them, apart from Pixel Data and Overlay Data, which
+  both read as removed;
+- a check of an attribute that the file holds, where the script cannot
+  score it for want of the text or value it compares, is not evaluated
+  rather than left blank; so is one of a consistent UID or Patient ID that
+  the mapping files do not cover (they map only the released instances'
+  Study, Series, and SOP Instance UIDs and Patient IDs, as the manual
+  describes them), which the script fails, and one of burned-in text
+  (``pixels_hidden``), which needs OCR and review.
+
+:func:`~pymedphys._dicom.deidentify.midi_script_results.summarise_script_results`
+counts the script's results for each check
+of each instance, as its instance report does, not as its series report,
+which counts a check once for each series.
 """
 
 from __future__ import annotations
@@ -78,9 +98,9 @@ import dataclasses
 import enum
 import hashlib
 import io
+import os
 import json
 import re
-import sqlite3
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path, PurePosixPath
 
@@ -91,18 +111,17 @@ from .descriptor_cleaning import CLEAN_DESCRIPTORS
 from .diagnostics import redacted_diagnostics
 from .element_rules import KEEP, ElementRules
 from .instance_transform import InstanceTransform, ReleaseGate
+from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
 from .method_digest import method_digest
 from .midi_answer_key import (
-    RETAINING_ACTIONS,
     Action,
     AnswerKey,
     AttributePath,
-    Categories,
     Category,
     Check,
     Element,
-    category_of,
+    category_order,
     read_answer_key,
 )
 from .policy import Policy, compose_policy
@@ -115,8 +134,6 @@ RESULTS_MARKDOWN = "benchmark.md"
 SCRIPT_INPUTS = "validation-script"
 UID_MAPPING = "uid_mapping.csv"
 PATIENT_ID_MAPPING = "patid_mapping.csv"
-# The table and columns of the validation script's results database.
-SCRIPT_RESULTS_TABLE = "validation_results"
 
 
 class BenchmarkError(Exception):
@@ -258,7 +275,9 @@ def run_benchmark(
         )
     transform = InstanceTransform(policy, DeidKey.generate(), unvalidated_policy=True)
     discovery = run.discover(source)
-    work.mkdir()
+    # The work directory holds the QC pack and the mapping files, which hold
+    # the test data set's identifiers: for its owner alone, as the QC store's.
+    work.mkdir(mode=0o700)
     release = work / "release"
     result = run.run(
         discovery,
@@ -327,7 +346,7 @@ def _header(path: Path) -> _Header | None:
 def _text_of(value: object) -> str | None:
     if value is None:
         return None
-    text = str(value).strip(" \x00")
+    text = str(value).strip(" \t\r\n\x00")
     return text or None
 
 
@@ -358,7 +377,7 @@ def released_mapping(
 
 def write_mapping_files(directory: Path, mapping: IdentifierMapping) -> None:
     """Write the validation script's UID and Patient ID mapping files."""
-    directory.mkdir()
+    directory.mkdir(mode=0o700)
     for name, pairs in (
         (UID_MAPPING, mapping.uids),
         (PATIENT_ID_MAPPING, mapping.patient_ids),
@@ -367,7 +386,11 @@ def write_mapping_files(directory: Path, mapping: IdentifierMapping) -> None:
         writer = csv.writer(text, lineterminator="\n")
         writer.writerow(("id_old", "id_new"))
         writer.writerows(pairs.items())
-        (directory / name).write_text(text.getvalue(), encoding="utf-8", newline="")
+        descriptor = os.open(
+            directory / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+        )
+        with open(descriptor, "w", encoding="utf-8", newline="") as file:
+            file.write(text.getvalue())
 
 
 def score(  # pylint: disable = too-many-arguments, too-many-locals
@@ -387,6 +410,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
         if header is not None and header.instance is not None:
             positions.setdefault(header.instance, position)
     rules = ElementRules(policy)
+    iod_tables: IODTables = load_iod_tables()
     counts: dict[Category | None, CategoryCounts] = collections.defaultdict(
         CategoryCounts
     )
@@ -398,11 +422,12 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     )
     withheld_reasons: collections.Counter = collections.Counter()
     with redacted_diagnostics():
-        for answer in key.by_sop_instance().values():
+        for answer in key.by_sop_instance().values():  # one per instance
             position = positions.get(answer.sop_instance_uid)
-            context, dataset = _context(position, headers, outcomes, release)
+            context, dataset, iod_name = _context(position, headers, outcomes, release)
+            iod = None if iod_name is None else iod_tables.iods.get(iod_name)
             instances[context] += 1
-            modalities[answer.modality][context] += 1
+            modalities[_modality(answer.modality)][context] += 1
             if context is Context.WITHHELD and position is not None:
                 for reason in outcomes[position].reasons:
                     withheld_reasons[reason_code(reason)] += 1
@@ -412,7 +437,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                     field = context.value.replace("-", "_")
                     setattr(tally, field, getattr(tally, field) + 1)
                     continue
-                scored = score_check(check, dataset, mapping, rules)
+                scored = score_check(check, dataset, mapping, rules, iod)
                 described = (
                     str(check.category or "unknown"),
                     check.action_name,
@@ -460,7 +485,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 **dataclasses.asdict(tally),
             }
             for category, tally in sorted(
-                counts.items(), key=lambda pair: _category_order(pair[0])
+                counts.items(), key=lambda pair: category_order(pair[0])
             )
         ],
         "deliberate_differences": [
@@ -495,10 +520,6 @@ def _counted_order(pair: tuple[tuple[str | None, ...], int]) -> tuple[str, ...]:
     return tuple("" if part is None else part for part in pair[0])
 
 
-def _category_order(category: Category | None) -> tuple[str, str]:
-    return ("~", "") if category is None else (category.family, category.code)
-
-
 def _attribute(check: Check) -> str | None:
     return None if check.path is None else str(check.path)
 
@@ -518,20 +539,33 @@ def _context(
     headers: Sequence[_Header | None],
     outcomes: Sequence[run.Outcome],
     release: Path,
-) -> tuple[Context, pydicom.Dataset | None]:
+) -> tuple[Context, pydicom.Dataset | None, str | None]:
+    """Return where an instance ended up, its released file, and its IOD."""
     if position is None:
-        return Context.NOT_IN_INPUT, None
+        return Context.NOT_IN_INPUT, None, None
     header = headers[position]
     assert header is not None  # positions holds only read headers
-    if classify(header.sop_class, header.transfer_syntax).sequestered:
-        return Context.OUTSIDE_COVERAGE, None
+    classification = classify(header.sop_class, header.transfer_syntax)
+    if classification.sequestered:
+        return Context.OUTSIDE_COVERAGE, None, None
     outcome = outcomes[position]
     if outcome.output is None or outcome.status not in (
         run.Status.RELEASED,
         run.Status.DUPLICATE,
     ):
-        return Context.WITHHELD, None
-    return Context.RELEASED, pydicom.dcmread(release / outcome.output)
+        return Context.WITHHELD, None, None
+    dataset = pydicom.dcmread(release / outcome.output)
+    return Context.RELEASED, dataset, classification.iod
+
+
+_MODALITY = re.compile(r"[A-Z0-9_]{1,16}")
+
+
+def _modality(modality: str | None) -> str:
+    """Return a modality as a code string of the standard's form, or ``other``."""
+    if modality is None or not _MODALITY.fullmatch(modality.strip()):
+        return "other"
+    return modality.strip()
 
 
 def score_check(
@@ -539,41 +573,72 @@ def score_check(
     dataset: pydicom.Dataset,
     mapping: IdentifierMapping,
     rules: ElementRules,
+    iod: IOD | None = None,
 ) -> Scored:
-    """Score one check against a released instance."""
+    """Score one check against a released instance.
+
+    A failed check is a deliberate difference only where the policy's own
+    action explains it, for the instance's IOD: an attribute that a
+    ``tag_retained`` check asks for is missing because the policy may remove
+    it (an action that offers X), or removes or empties a sequence that held
+    it (one that offers X or Z); a value that ``text_notnull`` asks for is
+    missing because the policy may remove the attribute or give it no value
+    (X or Z); and a text that ``text_retained`` asks for differs because the
+    policy does anything but keep it. Any other failure, such as a missing
+    attribute that the policy replaces (D or U) or keeps, or changed pixel
+    data, is a finding.
+    """
     scored = _score(check, dataset, mapping)
-    if scored.result is not Result.FAILED:
+    if scored.result is not Result.FAILED or check.path is None:
         return scored
-    if (
-        check.action
-        in RETAINING_ACTIONS
-        - {
-            Action.UID_CONSISTENT,
-            Action.PATID_CONSISTENT,
-        }
-        and check.path is not None
-    ):
-        action = _policy_action(rules, check.path)
-        if action is not None and action != KEEP:
-            return Scored(Result.FAILED, action, deliberate=True)
-    return scored
+    if check.action not in _EXPLAINING:
+        return scored
+    action = _explaining_action(
+        rules,
+        check.path,
+        iod,
+        _EXPLAINING[check.action],  # type: ignore[index]
+    )
+    if action is None:
+        return scored
+    return Scored(Result.FAILED, action, deliberate=True)
 
 
-def _policy_action(rules: ElementRules, path: AttributePath) -> str | None:
-    """Return the first action on ``path`` that does not keep, outermost first.
+# For each action that asks for something to be kept, the components of a
+# policy's action for the attribute itself that explain its failure; None
+# means any action but K. A sequence that holds the attribute explains it if
+# its action offers X or Z.
+_EXPLAINING: dict[Action, frozenset[str] | None] = {
+    Action.TAG_RETAINED: frozenset({"X"}),
+    Action.TEXT_NOTNULL: frozenset({"X", "Z"}),
+    Action.TEXT_RETAINED: None,
+}
+_EMPTYING = frozenset({"X", "Z"})
 
-    A sequence that the policy removes or empties takes the attribute in it
-    with it, whatever the attribute's own action.
+
+def _explaining_action(
+    rules: ElementRules,
+    path: AttributePath,
+    iod: IOD | None,
+    allowed: frozenset[str] | None,
+) -> str | None:
+    """Return the policy's action on ``path`` that explains a failure, if any.
+
+    The enclosing sequences are taken outermost first, then the attribute.
     """
     tags = [_rule_tag(element) for element in path.elements]
     for depth, tag in enumerate(tags):
         try:
-            action = rules.rule(tag, tags[:depth]).action
+            action = rules.rule(tag, tags[:depth], iod=iod).action
         except ValueError:
             return None
-        if action != KEEP:
+        parts = frozenset(action.split("/"))
+        if depth < len(tags) - 1:
+            if parts & _EMPTYING:
+                return action
+        elif (action != KEEP) if allowed is None else bool(parts & allowed):
             return action
-    return KEEP
+    return None
 
 
 def _rule_tag(element: Element) -> str:
@@ -591,19 +656,20 @@ _NOT_EVALUATED_ACTIONS = {
 def _score(  # pylint: disable = too-many-return-statements, too-many-branches
     check: Check, dataset: pydicom.Dataset, mapping: IdentifierMapping
 ) -> Scored:
+    """Score a check, deciding from what the file holds first, as the script does."""
     action = check.action
     if action is None:
         return Scored(Result.NOT_EVALUATED, "unknown action")
     if action in _NOT_EVALUATED_ACTIONS:
         return Scored(Result.NOT_EVALUATED, _NOT_EVALUATED_ACTIONS[action])
     if action is Action.PIXELS_RETAINED:
-        if check.action_text is None:
-            return Scored(Result.NOT_EVALUATED, "no digest")
         pixels = dataset.get(0x7FE00010)
         if pixels is None or not isinstance(pixels.value, bytes):
             return Scored(Result.FAILED)
+        if check.action_text is None:
+            return Scored(Result.NOT_EVALUATED, "no digest")
         digest = hashlib.md5(pixels.value, usedforsecurity=False).hexdigest()
-        return _passed(digest == check.action_text.strip().lower())
+        return _passed(digest == _unbracketed(check.action_text).strip().lower())
     if check.path is None:
         return Scored(
             Result.NOT_EVALUATED,
@@ -612,35 +678,43 @@ def _score(  # pylint: disable = too-many-return-statements, too-many-branches
     element = find_element(dataset, check.path)
     if action is Action.TAG_RETAINED:
         return _passed(element is not None)
-    text = None if element is None else element_text(element)
     if action is Action.TEXT_NOTNULL:
-        return _passed(bool(text))
-    if action is Action.TEXT_RETAINED:
+        return _passed(element is not None and bool(element_text(element)))
+    if element is None:
+        # Only a check that asks for a text to be kept fails on its absence.
+        return _passed(action is not Action.TEXT_RETAINED)
+    text = element_text(element)
+    if action in (Action.TEXT_RETAINED, Action.TEXT_REMOVED):
+        keep = action is Action.TEXT_RETAINED
+        if not text or (not keep and _is_bulk_data(element)):
+            # The script reads Pixel Data and Overlay Data as removed.
+            return _passed(not keep)
         if check.action_text is None:
             return Scored(Result.NOT_EVALUATED, "no text to compare")
-        if not text:
-            return Scored(Result.FAILED)
-        return compare_text(text, check.action_text, keep=True)
-    if action is Action.TEXT_REMOVED:
-        if check.action_text is None:
-            return Scored(Result.NOT_EVALUATED, "no text to compare")
-        if not text:
-            return Scored(Result.PASSED)
-        return compare_text(text, check.action_text, keep=False)
+        return compare_text(text, check.action_text, keep=keep)
+    if check.value is None:
+        return Scored(Result.NOT_EVALUATED, "no value to compare")
     if action in (Action.DATE_SHIFTED, Action.UID_CHANGED):
-        value = (check.value or "").replace("\\", "")
-        if not value:
-            return Scored(Result.NOT_EVALUATED, "no value to compare")
-        return _passed(value not in (text or "").replace("\\", ""))
+        value = _unbracketed(check.value).replace("\\", "")
+        return _passed(value not in text.replace("\\", ""))
     replacements = (
         mapping.uids if action is Action.UID_CONSISTENT else mapping.patient_ids
     )
-    if element is None:
-        return Scored(Result.PASSED)
-    expected = replacements.get(check.value or "")
+    expected = replacements.get(check.value)
     if expected is None:
         return Scored(Result.NOT_EVALUATED, "not in the mapping files")
     return _passed(text == expected)
+
+
+def _unbracketed(text: str) -> str:
+    """Return ``text`` without any ``<`` or ``>``, as the script compares it."""
+    return text.replace("<", "").replace(">", "")
+
+
+def _is_bulk_data(element: pydicom.DataElement) -> bool:
+    return element.tag == 0x7FE00010 or (
+        element.tag.group & 0xFF01 == 0x6000 and element.tag.element == 0x3000
+    )
 
 
 def _passed(passed: bool) -> Scored:
@@ -658,8 +732,8 @@ def compare_text(text: str, answer: str, *, keep: bool) -> Scored:
     within the text, and removed if none of its words is; a text that keeps
     some of its words, but not all, fails both.
     """
-    text = text.lower()
-    answer = answer.lower()
+    text = _unbracketed(text).lower()
+    answer = _unbracketed(answer).lower()
     if _NUMBER.fullmatch(text) and _NUMBER.fullmatch(answer):
         return _passed((float(text) == float(answer)) == keep)
     if answer in text:
@@ -727,82 +801,10 @@ def element_text(element: pydicom.DataElement) -> str:
     if value is None:
         return ""
     if isinstance(value, (bytes, bytearray)):
-        return bytes(value).decode("latin-1").strip(" \x00")
+        return bytes(value).decode("latin-1").strip(" \t\r\n\x00")
     if isinstance(value, pydicom.multival.MultiValue):
-        return "\\".join(str(each) for each in value).strip(" \x00")
-    return str(value).strip(" \x00")
-
-
-def summarise_script_results(path: str | Path) -> dict[str, object]:
-    """Count the validation script's results by answer-key category.
-
-    Parameters
-    ----------
-    path : str or Path
-        The script's ``validation_results.db``.
-
-    Returns
-    -------
-    dict
-        ``categories``: for each category, the checks that the script
-        passed, failed, and left blank, ordered as :func:`run_benchmark`
-        orders them; and ``results_sha256``, naming the file.
-
-    Raises
-    ------
-    BenchmarkError
-        If the file is not an SQLite database with the script's table.
-    """
-    path = Path(path)
-    try:
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        connection = sqlite3.connect(f"{path.absolute().as_uri()}?mode=ro", uri=True)
-    except (OSError, sqlite3.Error):
-        raise BenchmarkError("the validation results could not be read") from None
-    fields = [field.name for field in dataclasses.fields(Categories)]
-    try:
-        rows = connection.execute(
-            f"SELECT action, check_passed, {', '.join(fields)} "  # nosec B608
-            f"FROM {SCRIPT_RESULTS_TABLE}"
-        ).fetchall()
-    except sqlite3.Error:
-        raise BenchmarkError(
-            f"the validation results have no table {SCRIPT_RESULTS_TABLE!r} "
-            "with the script's columns"
-        ) from None
-    finally:
-        connection.close()
-    counts: dict[Category | None, collections.Counter] = collections.defaultdict(
-        collections.Counter
-    )
-    for action_text, passed, *codes in rows:
-        name = action_text.strip("<>") if isinstance(action_text, str) else ""
-        try:
-            action: Action | None = Action(name)
-        except ValueError:
-            action = None
-        categories = Categories(
-            *(code if isinstance(code, str) and code else None for code in codes)
-        )
-        outcome = {1: "passed", 0: "failed"}.get(
-            int(passed) if isinstance(passed, (int, float)) else -1, "blank"
-        )
-        counts[category_of(action, categories)][outcome] += 1
-    return {
-        "results_sha256": digest,
-        "categories": [
-            {
-                "family": None if category is None else category.family,
-                "code": None if category is None else category.code,
-                "passed": tally["passed"],
-                "failed": tally["failed"],
-                "blank": tally["blank"],
-            }
-            for category, tally in sorted(
-                counts.items(), key=lambda pair: _category_order(pair[0])
-            )
-        ],
-    }
+        return "\\".join(str(each) for each in value).strip(" \t\r\n\x00")
+    return str(value).strip(" \t\r\n\x00")
 
 
 def render_markdown(document: Mapping[str, object]) -> str:
@@ -924,4 +926,6 @@ def _table(header: Sequence[str], rows: Iterable[Sequence[object]]) -> str:
 
 
 def _cell(value: object) -> str:
-    return "none" if value is None else str(value).replace("|", "\\|")
+    if value is None:
+        return "none"
+    return " ".join(str(value).split()).replace("|", "\\|")

@@ -234,12 +234,12 @@ class Check:
 class AnswerInstance:
     """An instance of the test data set, with its checks."""
 
-    patient_id: str
-    study_instance_uid: str
-    series_instance_uid: str
+    patient_id: str | None
+    study_instance_uid: str | None
+    series_instance_uid: str | None
     sop_instance_uid: str
-    sop_class_uid: str
-    modality: str
+    sop_class_uid: str | None
+    modality: str | None
     scope: str | None
     checks: tuple[Check, ...]
 
@@ -252,10 +252,20 @@ class AnswerKey:
     sha256: str
 
     def by_sop_instance(self) -> dict[str, AnswerInstance]:
-        """The instances by SOP Instance UID; the first row of a repeated UID wins."""
+        """The instances by SOP Instance UID, in the order of their first rows.
+
+        The checks of every row of a SOP Instance UID are taken together, in
+        row order, as the validation script takes them; the identifiers are
+        the first row's.
+        """
         found: dict[str, AnswerInstance] = {}
         for instance in self.instances:
-            found.setdefault(instance.sop_instance_uid, instance)
+            first = found.get(instance.sop_instance_uid)
+            found[instance.sop_instance_uid] = (
+                instance
+                if first is None
+                else dataclasses.replace(first, checks=first.checks + instance.checks)
+            )
         return found
 
 
@@ -273,8 +283,10 @@ def category_of(action: Action | None, categories: Categories) -> Category | Non
     Returns
     -------
     Category or None
-        ``None`` where the rule gives no category, as the script's reports
-        count under ``unknown``.
+        ``None`` where the rule gives no category: for an action that the
+        script does not know, which its reports count under ``unknown``, and
+        for a check without the category its action needs, which its
+        reports leave out or cannot count.
     """
     fixed = {
         Action.DATE_SHIFTED: ("hipaa", "HIPAA-C"),
@@ -305,6 +317,11 @@ def category_of(action: Action | None, categories: Categories) -> Category | Non
     else:
         return None
     return next((Category(f, code) for f, code in ordered if code), None)
+
+
+def category_order(category: Category | None) -> tuple[str, str]:
+    """Order categories by family and code, with no category last."""
+    return ("~", "") if category is None else (category.family, category.code)
 
 
 _ELEMENT = (
@@ -409,22 +426,23 @@ def _instances(path: Path) -> Iterator[AnswerInstance]:
             f"SELECT {', '.join(columns)} FROM {ANSWER_TABLE} "  # nosec B608
             "ORDER BY rowid"
         )
-        for number, row in enumerate(connection.execute(query), start=1):
+        try:
+            rows = connection.execute(query).fetchall()
+        except sqlite3.Error:
+            raise AnswerKeyError("the answer key could not be read") from None
+        for number, row in enumerate(rows, start=1):
             yield _instance(number, dict(zip(columns, row)))
     finally:
         connection.close()
 
 
 def _instance(number: int, row: Mapping[str, object]) -> AnswerInstance:
-    identifiers = {}
-    for column in _COLUMNS[:-1]:
-        value = row[column]
-        if not isinstance(value, str):
-            raise AnswerKeyError(f"row {number} has no text {column}")
-        identifiers[column] = value
+    identifiers = {column: _identifier(row[column]) for column in _COLUMNS[:-1]}
+    if identifiers["SOPInstanceUID"] is None:
+        raise AnswerKeyError(f"row {number} has no SOPInstanceUID")
     try:
         answers = json.loads(row["AnswerData"])  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, RecursionError):
         raise AnswerKeyError(f"row {number}'s AnswerData is not JSON") from None
     if isinstance(answers, Mapping):
         answers = list(answers.values())
@@ -437,12 +455,25 @@ def _instance(number: int, row: Mapping[str, object]) -> AnswerInstance:
         patient_id=identifiers["PatientID"],
         study_instance_uid=identifiers["StudyInstanceUID"],
         series_instance_uid=identifiers["SeriesInstanceUID"],
-        sop_instance_uid=identifiers["SOPInstanceUID"],
+        sop_instance_uid=identifiers["SOPInstanceUID"],  # type: ignore[arg-type]
         sop_class_uid=identifiers["SOPClassUID"],
         modality=identifiers["Modality"],
         scope=unwrap(scope) if isinstance(scope, str) else None,
         checks=tuple(parse_check(answer, row=number) for answer in answers),
     )
+
+
+def _identifier(value: object) -> str | None:
+    """Return an identifier as text: an integer, as a numeric Patient ID may
+    be stored, becomes its digits; anything else but text is ``None``."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, str) and value:
+        unwrapped = unwrap(value)
+        return value if unwrapped is None else unwrapped or None
+    return None
 
 
 def parse_check(answer: Mapping[str, object], *, row: int | None = None) -> Check:
