@@ -710,7 +710,8 @@ id = "MIDI-BP-05"
 text = '''
 Remove or replace the identities of other persons, departments, institutions, and organisations, except where they are needed for utility and a residual risk assessment supports keeping them.
 '''
-status = "implemented"
+status = "partial"
+milestone = "M4"
 decisions = ["D-001", "D-022"]
 implementation = [
   "_dicom/deidentify/element_rules.py",
@@ -728,6 +729,7 @@ Manufacturer, Manufacturer's Model Name, and Software Versions are kept because 
 The run's instance transform applies these actions to each instance it de-identifies.
 As for MIDI-BP-01, an end-to-end test of `basic` and `basic-clean-descriptors` over the synthetic collection, which plants markers in the names of other persons, institutions, departments, and stations, finds none of them in the published files; the removals of D-022's other attributes, such as Requesting Service Code Sequence, rest on the tests of the element and supplementary rules.
 The Retain Institution Identity Option is not supported.
+Remaining: a residual risk assessment of the institutional identity that the first supported release keeps without one, in an in-house device's Manufacturer and in the codes and Coding Scheme URLs of local coding schemes, which D-022 accepts and the QC pack lists among its retained strings; for the first release, whoever releases the data confirms that the residual risk is acceptable (MIDI-BP-17) (M4).
 '''
 
 [[requirement]]
