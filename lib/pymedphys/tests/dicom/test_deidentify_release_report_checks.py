@@ -61,11 +61,12 @@ def _sequestered(*reasons, label="S-0001"):
     )
 
 
-def _reported(references=0, iod=0, written=0):
-    return (
-        StructuralCheck("references", references),
-        StructuralCheck("iod-requirements", iod),
-        StructuralCheck("written-references", written),
+def _reported(references=0, iod=0, written=0, sequestered=(0, 0, 0)):
+    return tuple(
+        StructuralCheck(check, count, reported)
+        for check, count, reported in zip(
+            STRUCTURAL_CHECKS, sequestered, (references, iod, written)
+        )
     )
 
 
@@ -87,33 +88,64 @@ def test_a_run_without_instances_shows_each_check_with_none(basic):
     assert list(document)[-1] == "structural_checks"
 
 
+_SEQUESTERED = (
+    _sequestered(
+        FindingKind.CONFLICTING_INSTANCE,
+        FindingKind.MISSING_IDENTIFIER,
+        label="S-0001",
+    ),
+    _sequestered(TransformReason.REQUIRED_ATTRIBUTE_LOST, label="S-0002"),
+    _sequestered(RunReason.INCONSISTENT_REFERENCES, label="S-0003"),
+    _sequestered(
+        RunReason.INCONSISTENT_REFERENCES,
+        TransformReason.REQUIRED_ATTRIBUTE_LOST,
+        label="S-0004",
+    ),
+    _sequestered(RunReason.STAGED_FILE_CHANGED, label="S-0005"),
+)
+
+
 @pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-17")
-def test_each_check_counts_the_instances_it_sequestered_from_their_reasons(basic):
-    sequestered = (
-        _sequestered(
-            FindingKind.CONFLICTING_INSTANCE,
-            FindingKind.MISSING_IDENTIFIER,
-            label="S-0001",
-        ),
-        _sequestered(TransformReason.REQUIRED_ATTRIBUTE_LOST, label="S-0002"),
-        _sequestered(RunReason.INCONSISTENT_REFERENCES, label="S-0003"),
-        _sequestered(
-            RunReason.INCONSISTENT_REFERENCES,
-            TransformReason.REQUIRED_ATTRIBUTE_LOST,
-            label="S-0004",
-        ),
-        _sequestered(RunReason.STAGED_FILE_CHANGED, label="S-0005"),
+def test_each_check_is_given_by_the_reasons_it_sequesters_with():
+    assert [
+        sorted(release_report.sequestering_checks(instance.reasons))
+        for instance in _SEQUESTERED
+    ] == [
+        ["references"],
+        ["iod-requirements"],
+        ["written-references"],
+        ["iod-requirements", "written-references"],
+        [],
+    ]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-17", "MIDI-BP-18")
+def test_each_check_gives_what_it_sequestered_and_reported(basic):
+    report = _report(
+        basic,
+        sequestered=_SEQUESTERED,
+        checks=_reported(2, 1, 3, sequestered=(1, 2, 1)),
     )
 
-    report = _report(basic, sequestered=sequestered, checks=_reported(2, 1, 3))
-
-    # Each instance is counted once for each check that sequestered it,
-    # however many of its reasons that check gave.
     assert _checks(report) == {
         "references": (1, 2),
         "iod-requirements": (2, 1),
-        "written-references": (2, 3),
+        "written-references": (1, 3),
     }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-17")
+def test_a_check_cannot_have_sequestered_more_than_the_report_lists(basic):
+    # Each check's instances are among those sequestered with its reasons;
+    # fewer where an identical copy has a label of its own.
+    report = _report(
+        basic,
+        sequestered=_SEQUESTERED,
+        checks=_reported(sequestered=(1, 2, 3)),
+    )
+
+    with pytest.raises(release_report.ReleaseReportError, match="sequestered"):
+        release_report.report_document(report)
 
 
 @pytest.mark.deid_requirement("MIDI-BP-17", "MIDI-BP-18")
@@ -122,18 +154,27 @@ def test_each_check_counts_the_instances_it_sequestered_from_their_reasons(basic
     [
         (("SENTINEL", *_reported()[1:]), "structural_checks"),
         (
-            (StructuralCheck("SENTINEL", 0), *_reported()[1:]),
+            (StructuralCheck("SENTINEL", 0, 0), *_reported()[1:]),
             "structural_checks check",
         ),
         (
-            (StructuralCheck(_Text("references"), 0), *_reported()[1:]),
+            (StructuralCheck(_Text("references"), 0, 0), *_reported()[1:]),
             "structural_checks check",
         ),
-        ((StructuralCheck("references", True), *_reported()[1:]), "structural_checks"),
-        ((StructuralCheck("references", -1), *_reported()[1:]), "structural_checks"),
-        ((StructuralCheck("references", "1"), *_reported()[1:]), "structural_checks"),
+        (
+            (StructuralCheck("references", 0, True), *_reported()[1:]),
+            "structural_checks reported",
+        ),
+        (
+            (StructuralCheck("references", -1, 0), *_reported()[1:]),
+            "structural_checks sequestered",
+        ),
+        (
+            (StructuralCheck("references", 0, "1"), *_reported()[1:]),
+            "structural_checks reported",
+        ),
         (_reported()[:2], "structural_checks"),
-        ((*_reported(), StructuralCheck("references", 0)), "structural_checks"),
+        ((*_reported(), StructuralCheck("references", 0, 0)), "structural_checks"),
         (tuple(reversed(_reported())), "structural_checks"),
     ],
     ids=[
@@ -167,7 +208,7 @@ def test_the_summary_is_a_table_of_each_check(basic):
     markdown = _markdown(
         basic,
         sequestered=(_sequestered(TransformReason.REQUIRED_ATTRIBUTE_LOST),),
-        checks=_reported(references=2),
+        checks=_reported(references=2, sequestered=(0, 1, 0)),
     )
 
     section = markdown.split("## Structural checks", 1)[1]

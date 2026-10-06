@@ -440,9 +440,9 @@ def release_report() -> list[str]:
         "instance keeps the attributes that its IOD requires where its source "
         "had them, and whether what was written refers to itself as the "
         "inputs did. For each, it counts the instances that the check "
-        "sequestered, from the reasons of the sequestered instances, and "
-        "those it reported without acting on them, each instance once, "
-        "naming none of them. The checks show that the release is consistent "
+        "sequestered and those it reported without acting on them, each "
+        "instance once, an identical copy counting as the instance it "
+        "copies, naming none of them. The checks show that the release is consistent "
         "and well formed, not that it suits a particular use, which the "
         "person releasing the data confirms (D-016).",
         "",

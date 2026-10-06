@@ -94,9 +94,10 @@ and codes that the engine defines, never by a source value or path:
   lists each by instance and place.
 - ``structural_checks``: for each of the engine's checks that its output is
   well formed and refers to itself as its source did, in the order of
-  :data:`STRUCTURAL_CHECKS`, how many instances it sequestered, counted from
-  the ``sequestered`` section's reasons, and how many it reported without
-  acting on, from :class:`StructuralCheck`. Only the QC pack names them.
+  :data:`STRUCTURAL_CHECKS`, how many instances it sequestered and how many
+  it reported without acting on, each once, an identical copy counting as
+  the instance it copies, from :class:`StructuralCheck`. Only the QC pack
+  names them.
 """
 
 from __future__ import annotations
@@ -408,26 +409,42 @@ class SourceGapCount:
 
 @dataclasses.dataclass(frozen=True)
 class StructuralCheck:
-    """How many instances one of the engine's structural checks reported.
-
-    The report counts the instances that the check sequestered from the
-    reasons of its ``sequestered`` section, so that the two always agree.
+    """How many instances one of the engine's structural checks acted on and reported.
 
     Attributes
     ----------
     check : str
         One of :data:`STRUCTURAL_CHECKS`.
+    sequestered : int
+        How many instances the check sequestered, each once, an identical
+        copy counting as the instance it copies, from 0: those whose reasons
+        :func:`sequestering_checks` gives the check for. The report refuses a
+        count above that of its ``sequestered`` section, which lists a copy
+        by its own label.
     reported : int
         How many instances have a finding of the check that the run
         reported without acting on it, each once, from 0.
     """
 
     check: str
+    sequestered: int
     reported: int
 
 
+def sequestering_checks(reasons: Iterable[SequestrationReason]) -> frozenset[str]:
+    """Return the structural checks that sequestered an instance for these reasons.
+
+    >>> sequestering_checks(
+    ...     [sequestration_reason(TransformReason.REQUIRED_ATTRIBUTE_LOST)]
+    ... )
+    frozenset({'iod-requirements'})
+    """
+    given = {(reason.stage, reason.code) for reason in reasons}
+    return frozenset(check for check, codes in _CHECK_REASONS.items() if given & codes)
+
+
 def _no_checks() -> tuple[StructuralCheck, ...]:
-    return tuple(StructuralCheck(check, 0) for check in STRUCTURAL_CHECKS)
+    return tuple(StructuralCheck(check, 0, 0) for check in STRUCTURAL_CHECKS)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -764,10 +781,9 @@ def release_report(
         How many of the run's instances' sources lack each attribute that
         their IOD requires, from :func:`source_gaps`.
     checks : iterable of StructuralCheck, optional
-        How many instances each of :data:`STRUCTURAL_CHECKS` reported
-        without acting on them, each check once, in that order; None, the
-        default, for none of each. The report counts those that each check
-        sequestered from ``sequestered``.
+        How many instances each of :data:`STRUCTURAL_CHECKS` sequestered and
+        reported without acting on them, each check once, in that order;
+        None, the default, for none of each.
 
     Returns
     -------
@@ -1159,22 +1175,23 @@ def _checks_section(
     ]
     if tuple(names) != STRUCTURAL_CHECKS:
         raise _refuse("structural_checks", "does not give each check once, in order")
+    listed = [sequestering_checks(instance.reasons) for instance in sequestered]
     entries = []
     for each in checks:
-        if type(each.reported) is not int or each.reported < 0:  # pylint: disable = unidiomatic-typecheck
-            raise _refuse("structural_checks reported", "is not a count from 0")
-        reasons = _CHECK_REASONS[each.check]
+        for field in ("sequestered", "reported"):
+            count = getattr(each, field)
+            if type(count) is not int or count < 0:  # pylint: disable = unidiomatic-typecheck
+                raise _refuse(f"structural_checks {field}", "is not a count from 0")
+        # An identical copy has its own label, so the section can list more.
+        if each.sequestered > sum(each.check in checks for checks in listed):
+            raise _refuse(
+                "structural_checks sequestered",
+                "is more than the sequestered section lists",
+            )
         entries.append(
             {
                 "check": each.check,
-                # Each instance once, however many of its reasons the check gave.
-                "sequestered": sum(
-                    any(
-                        (reason.stage, reason.code) in reasons
-                        for reason in instance.reasons
-                    )
-                    for instance in sequestered
-                ),
+                "sequestered": each.sequestered,
                 "reported": each.reported,
             }
         )
@@ -1221,7 +1238,8 @@ def report_document(report: ReleaseReport) -> dict:
         gives, listed once, one of the labels ``S-0001`` to ``S-n`` for ``n``
         sequestered instances, a path of tags, a code that the engine
         defines for its stage, a positive count, a structural check's count
-        from 0, or true or false, or is not of its class. The message names the field, never its value.
+        from 0, no more sequestered than ``sequestered`` lists, or true or
+        false, or is not of its class. The message names the field, never its value.
     """
     return {
         "format": FORMAT,

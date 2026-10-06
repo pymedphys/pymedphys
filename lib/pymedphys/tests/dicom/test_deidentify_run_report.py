@@ -528,6 +528,29 @@ def test_a_dangling_reference_at_an_identical_copy_counts_once(tmp_path):
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-17")
+@pytest.mark.pydicom
+def test_an_identical_copy_of_a_sequestered_input_is_counted_once(tmp_path):
+    datasets = synthetic.collection()
+    del datasets[PLAN].SeriesInstanceUID
+    _write(tmp_path / "source", [*datasets, datasets[PLAN]])
+    transform = InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
+
+    result = _run(tmp_path, transform, ReleaseGate(), transform.reporter)
+
+    assert result.outcomes[-1].duplicate_of == PLAN
+    document = json.loads(
+        (tmp_path / "release" / RELEASE_REPORT).read_text(encoding="utf-8")
+    )
+    # The copy has a label of its own, but it is the same instance.
+    assert len(document["sequestered"]) == 2
+    assert document["structural_checks"][0] == {
+        "check": "references",
+        "sequestered": 1,
+        "reported": 0,
+    }
+
+
 @pytest.mark.deid_requirement("MIDI-BP-03")
 def test_the_run_acts_on_every_finding_that_it_does_not_report_only():
     acted_on = {
@@ -594,14 +617,14 @@ def test_the_structural_checks_count_each_reported_instance_once():
     }
     # Position 2 is an identical copy of position 0, the same instance.
     outcomes = [
-        types.SimpleNamespace(position=position, duplicate_of=copy_of)
+        types.SimpleNamespace(position=position, duplicate_of=copy_of, label=None)
         for position, copy_of in ((0, None), (1, None), (2, 0), (3, None))
     ]
 
     assert run_report.structural_checks(outcomes, material) == (
-        release_report.StructuralCheck("references", 1),
-        release_report.StructuralCheck("iod-requirements", 1),
-        release_report.StructuralCheck("written-references", 1),
+        release_report.StructuralCheck("references", 0, 1),
+        release_report.StructuralCheck("iod-requirements", 0, 1),
+        release_report.StructuralCheck("written-references", 0, 1),
     )
 
 

@@ -358,26 +358,34 @@ _REPORTED_BY_CHECK = {
 def structural_checks(
     outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
 ) -> tuple[release_report.StructuralCheck, ...]:
-    """Count the instances that each structural check reported only.
+    """Count the instances that each structural check sequestered and reported.
 
-    An instance is reported by the first pass's references for a
+    An instance is sequestered by a check for the reasons that
+    :func:`~pymedphys._dicom.deidentify.release_report.sequestering_checks`
+    gives it for. It is reported by the first pass's references for a
     :class:`~pymedphys._dicom.deidentify.run_qc.ReferenceFindingMaterial`,
     by the IOD requirements for a gap in its source, a
     :class:`~pymedphys._dicom.deidentify.iod_conformance.SourceGap`, and by
     the written references for a
-    :class:`~pymedphys._dicom.deidentify.run_qc.WrittenFindingMaterial`,
-    each once however many it has. An identical copy of an input is the same
-    instance, so it is not counted again. The report counts the instances
-    that each check sequestered from their reasons.
+    :class:`~pymedphys._dicom.deidentify.run_qc.WrittenFindingMaterial`.
+    Each is counted once however many it has, and an identical copy of an
+    input is the same instance, so it is not counted again.
     """
     copies = {
         getattr(outcome, "position")
         for outcome in outcomes
         if getattr(outcome, "duplicate_of") is not None
     }
+    sequestered = [
+        release_report.sequestering_checks(_reasons_given(getattr(outcome, "reasons")))
+        for outcome in outcomes
+        if getattr(outcome, "label") is not None
+        and getattr(outcome, "duplicate_of") is None
+    ]
     return tuple(
         release_report.StructuralCheck(
             check,
+            sum(check in checks for checks in sequestered),
             sum(
                 any(isinstance(item, kind) for item in material[position])
                 for position in material
