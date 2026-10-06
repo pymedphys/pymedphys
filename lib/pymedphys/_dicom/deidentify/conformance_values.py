@@ -47,6 +47,7 @@ from . import dummy_values, pseudonyms, residuals, uids
 from . import release_report as report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
+from .pixel_risk import Indicator
 from .qc_retained import _NOT_REVIEWED_TAGS, RETAINED_TEXT_VRS
 from .reasons import TransformReason
 from .release_gate import ReasonCode
@@ -60,6 +61,7 @@ from .values import CHECKED_VRS
 from .walker import REVIEWED_DUMMY_SEQUENCES
 
 TEMPORAL_MODIFIED = "(0028,0303)"  # Longitudinal Temporal Information Modified
+_SERIES_INSTANCE_UID = "(0020,000E)"
 
 # The name of each codec in which the residual search encodes every form.
 CODEC_NAMES: Mapping[str, str] = types.MappingProxyType(
@@ -417,6 +419,14 @@ def qc_pack(named: Callable[[str], str]) -> list[str]:
     vrs = join(sorted(RETAINED_TEXT_VRS), "or")
     exempt = join(named(tag) for tag in sorted(_NOT_REVIEWED_TAGS))
     unreviewable = code(TransformReason.UNREVIEWABLE_RETAINED_TEXT.value)
+    volume, head, unreadable = (
+        code(indicator.value)
+        for indicator in (
+            Indicator.CT_VOLUME,
+            Indicator.HEAD_OR_NECK,
+            Indicator.UNREADABLE,
+        )
+    )
     return [
         "## QC pack",
         "",
@@ -439,6 +449,21 @@ def qc_pack(named: Callable[[str], str]) -> list[str]:
         "these indicators from the "
         "instance's attributes, never from its pixel data, so the absence "
         "of an indicator is not evidence that the risk is absent (D-015).",
+        "",
+        "The QC pack also lists each CT volume among the instances that are "
+        "released or held for review, as one that may hold a face that could "
+        f"be reconstructed, by {volume}, whether or not it covers the face, "
+        "since the engine cannot tell without inspecting its pixel data; "
+        "where the volume's attributes name a region of the head or neck in "
+        f"a reviewed list from PS3.16 Annex L, by {head}; and where such "
+        f"evidence cannot be read, by {unreadable}; each with the instances "
+        "that show it. A CT volume is a series whose CT images hold at least "
+        "two frames that are not localizers, or an Enhanced or Legacy "
+        "Converted Enhanced CT image whose Number of Frames cannot be read. "
+        "The run groups instances into series by their source's "
+        f"{named(_SERIES_INSTANCE_UID)}, which it never writes, and assesses "
+        "only the instances that reach a recipient, so a series of which "
+        "one image is released is not a volume (D-015).",
     ]
 
 

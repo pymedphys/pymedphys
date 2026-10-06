@@ -432,8 +432,8 @@ def test_a_preset_that_is_not_enabled_makes_no_claim(preset, statement_for):
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_statement_with_sections_still_to_describe_makes_no_claim(monkeypatch):
-    # Clean Descriptors leaves the manner of cleaning to describe.
-    preset = "basic-clean-descriptors"
+    # Modified Dates leaves the manner of cleaning dates and times to describe.
+    preset = "tps-import"
     monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({preset}))
     statement = _statement(preset)
     assert statement.enabled

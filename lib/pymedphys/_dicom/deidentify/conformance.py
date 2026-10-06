@@ -140,14 +140,9 @@ SEQUENCE_NOT_CLEANED = "sequence not cleaned"
 CLEAN_DESCRIPTORS_FALLBACK = "clean descriptors fallback"
 
 
-# What the statement cannot yet describe from the engine. Each is to be
-# generated once the engine decides it.
-PENDING: tuple[str, ...] = (
-    "What each run does not yet do: list in the confidential QC pack each "
-    "CT volume, as one that may hold a face that could be reconstructed, "
-    "with whether its attributes name a region of the head or neck (D-015).",
-)
-PENDING_RUN = PENDING[0]
+# What the statement cannot yet describe from the engine, whatever the
+# policy. Each is to be generated once the engine decides it; none remains.
+PENDING: tuple[str, ...] = ()
 # Pending only for a policy whose element rules the engine refuses.
 PENDING_REFUSED = (
     "The actions that the engine applies under this policy, which it refuses "

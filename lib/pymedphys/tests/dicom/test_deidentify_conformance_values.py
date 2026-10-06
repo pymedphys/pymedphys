@@ -27,6 +27,7 @@ from pymedphys._dicom.deidentify import (
     dummy_values,
     edits,
     instance_transform,
+    pixel_risk,
     policy,
     pseudonyms,
     qc_retained,
@@ -481,23 +482,24 @@ def test_per_instance_detail_is_only_in_the_qc_pack(preset):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
-def test_what_remains_of_the_run_is_pending(preset):
+def test_nothing_of_the_run_is_pending(preset):
     statement = _statement(preset)
-    pending = conformance.PENDING_RUN
-    assert pending in statement.pending
-    assert "D-015" in pending
-    assert "CT" in pending
-    # Each run now writes its report and QC pack, searches each written file,
-    # acts on what the search finds, lists each retained string in the QC
-    # pack, and assesses each instance's indicators of risk in its pixel data.
+    # Each run now writes its report, QC pack, and this statement, searches
+    # each written file, acts on what the search finds, lists each retained
+    # string, assesses each instance's indicators of risk in its pixel data,
+    # and lists each CT volume in the QC pack.
+    assert conformance.PENDING == ()
     for done in (
         "search each written file",
         "the run itself sequesters",
+        "D-015",
         "D-017",
-        "risk indicators of each instance",
+        "CT volume",
         "write this statement",
     ):
-        assert done not in pending
+        assert not any(done in item for item in statement.pending)
+    # No preset is enabled, so none claims conformance, complete or not.
+    assert not statement.enabled
     assert not statement.claims_conformance
 
 
@@ -511,8 +513,21 @@ def test_the_qc_pack_lists_what_the_run_keeps_for_review(preset):
     assert f"`{TransformReason.UNREVIEWABLE_RETAINED_TEXT.value}`" in section
     assert "Pixel Data (7FE0,0010) unchanged" in section
     assert "never from its pixel data" in section
-    # The series assessment of a reconstructable face is not yet in a run.
-    assert "CT" not in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_qc_pack_lists_each_ct_volume(preset):
+    section = _section(preset, "QC pack")
+    for indicator in (
+        pixel_risk.Indicator.CT_VOLUME,
+        pixel_risk.Indicator.HEAD_OR_NECK,
+        pixel_risk.Indicator.UNREADABLE,
+    ):
+        assert f"`{indicator.value}`" in section
+    assert "each CT volume among the instances that are released or held" in section
+    assert "PS3.16 Annex L" in section
+    assert "Series Instance UID (0020,000E), which it never writes" in section
+    assert "a series of which one image is released is not a volume" in section
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
