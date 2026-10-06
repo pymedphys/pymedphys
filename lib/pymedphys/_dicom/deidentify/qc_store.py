@@ -357,10 +357,11 @@ def _write_bytes(path: Path | str, data: bytes, directory: int | None) -> None:
 def withdraw_qc_pack(destination: Path) -> bool:
     """Remove the files that :func:`write_qc_pack` wrote in ``destination``.
 
-    For a pack whose release was not published. The pack and its notice go
-    first and the marker last, only once both are gone, so that whatever
-    remains is still recognised as QC material (D-016). The directory is
-    kept, empty, so that a run may write to it again.
+    For a pack whose release was not published. The pack, its notice, and
+    its previews go first, each directory's marker only once the rest of it
+    is gone, so that whatever remains is still recognised as QC material
+    (D-016). The directory is kept, empty, so that a run may write to it
+    again.
 
     Returns
     -------
@@ -373,12 +374,42 @@ def withdraw_qc_pack(destination: Path) -> bool:
             (destination / name).unlink(missing_ok=True)
         except OSError:
             withdrawn = False
+    if not _withdraw_previews(destination / PREVIEW_DIRECTORY):
+        withdrawn = False
     if withdrawn:
         try:
             (destination / MARKER_FILE).unlink(missing_ok=True)
         except OSError:
             withdrawn = False
     return withdrawn
+
+
+def _withdraw_previews(directory: Path) -> bool:
+    """Remove a pack's previews directory, its marker last; whether it is gone."""
+    try:
+        names = [
+            entry.name for entry in os.scandir(directory) if entry.name != MARKER_FILE
+        ]
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
+    withdrawn = True
+    for name in names:
+        try:
+            (directory / name).unlink(missing_ok=True)
+        except OSError:
+            withdrawn = False
+    if not withdrawn:
+        return False
+    try:
+        (directory / MARKER_FILE).unlink(missing_ok=True)
+        directory.rmdir()
+    except FileNotFoundError:
+        pass
+    except OSError:
+        return False
+    return True
 
 
 def is_qc_material(path: os.PathLike | str) -> bool:

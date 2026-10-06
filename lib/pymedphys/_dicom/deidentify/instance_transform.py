@@ -117,7 +117,8 @@ from .release_gate import (
 )
 from .residuals import NotSearched, has_written_constant, not_searched_of
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
-from .run_qc import Dropped, SearchMaterial
+from .pixel_risk import assess_pixel_risk
+from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial
 from .run_report import ReleaseReporter
 from .scope import classify
 from .source import SourceEvidence, SourceRefused, read_source
@@ -665,6 +666,7 @@ class InstanceTransform:
         if classification.sequestered or classification.iod is None:
             return Sequestered((classification.disposition,))
         iod = self._iods.iods[classification.iod]
+        risk = _pixel_risk(dataset)
         plan = plan_instance(source, self._rules, iod)
         edits = edit_instance(source, plan, self._key, record.patient)
         evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
@@ -672,7 +674,7 @@ class InstanceTransform:
             return Sequestered(
                 edits.sequestrations,
                 evidence,
-                (*dropped_of(edits), *omissions_of(evidence)),
+                (*risk, *dropped_of(edits), *omissions_of(evidence)),
             )
         satisfied = False
         retained: frozenset[ElementPath] = frozenset()
@@ -700,7 +702,7 @@ class InstanceTransform:
                 return Sequestered(
                     (refused.reason,),
                     evidence,
-                    (*dropped_of(edits), *omissions_of(evidence)),
+                    (*risk, *dropped_of(edits), *omissions_of(evidence)),
                 )
             edits, satisfied = cleaned.edits, cleaned.satisfied
             retained = frozenset(cleaned.retained)
@@ -708,7 +710,7 @@ class InstanceTransform:
             evidence = coverage_of(plan, edits, retained)
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
-        qc = (*dropped_of(edits, retained), *omissions_of(evidence), *names)
+        qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         try:
             writing = with_markers(
                 writer_plan(plan, edits, codecs),
@@ -723,6 +725,20 @@ class InstanceTransform:
                 for r in refused.reasons
             )
             return Sequestered(tuple(dict.fromkeys(reasons)), evidence, qc)
+
+
+def _pixel_risk(dataset: pydicom.Dataset | None) -> tuple[PixelRiskMaterial, ...]:
+    """The QC material of the source's indicators of risk in its pixel data.
+
+    The source is assessed, since the Basic Profile removes some of the
+    evidence, such as an overlay group whose graphics lie in the pixel data.
+    A source whose data set does not decode gives none: the walker and the
+    gate decide what becomes of it.
+    """
+    if dataset is None:
+        return ()
+    assessment = assess_pixel_risk(dataset)
+    return (PixelRiskMaterial(assessment),) if assessment.findings else ()
 
 
 def transform_for(
