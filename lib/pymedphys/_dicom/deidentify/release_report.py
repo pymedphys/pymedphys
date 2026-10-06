@@ -44,7 +44,7 @@ defines, never from DICOM data directly, and the check is a backstop: a
 field of another form, which could be a source value or a path outside the
 package, is refused. A field that fails is named, never quoted.
 
-Five sections describe a run, by replacement identifiers, attribute tags,
+Six sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
 
 - ``qc_review``: the run's QC pack by its opaque reference, with the outcome
@@ -68,6 +68,12 @@ and codes that the engine defines, never by a source value or path:
   reason (D-009), from :func:`held_for_review`: a ROI Name that descriptor
   cleaning held, or a release gate's reason that requires QC review. A held
   instance has neither an output name nor a label.
+- ``roi_names``: the outcome of each ROI Name of the structure sets that
+  descriptor cleaning cleaned, every name counted, and how many distinct
+  names it sent for review for each reason, whether they were then held or
+  emptied unreviewed, from
+  :meth:`~pymedphys._dicom.deidentify.reviewed_roi_names.ReviewQueue.report_counts`,
+  naming none of them (D-009). Only the QC pack lists the names.
 - ``search_coverage``: how many source values of each attribute the
   residual search did not search, in full or in part, by reason (D-027),
   from :func:`search_coverage`. The QC pack lists each by instance and
@@ -98,6 +104,8 @@ from .qc_attestation import AttestationRecord, Outcome
 from .reasons import DescriptorReason, HeldRoiName, RunReason, TransformReason
 from .reference_graph import FindingKind
 from .release_gate import Decision, ReasonCode, ReleaseReason
+from .reviewed_roi_names import Outcome as RoiNameOutcome
+from .reviewed_roi_names import RoiNameCounts
 from .roi_names import Reason as RoiNameReason
 from .residuals import NotSearched, Omission, Unsearched, UnsearchedReason
 from .runtime import RuntimeEnvironment, runtime_environment
@@ -107,7 +115,7 @@ from .standard import OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/4"
+FORMAT = "pymedphys-deid-release-report/5"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -315,6 +323,7 @@ class ReleaseReport:
     sequestered : tuple of SequesteredInstance
     search_coverage : tuple of SearchCoverage
     held_for_review : tuple of HeldForReview
+    roi_names : ~pymedphys._dicom.deidentify.reviewed_roi_names.RoiNameCounts
     """
 
     policy: PolicyRecord
@@ -325,6 +334,9 @@ class ReleaseReport:
     sequestered: tuple[SequesteredInstance, ...] = ()
     search_coverage: tuple[SearchCoverage, ...] = ()
     held_for_review: tuple[HeldForReview, ...] = ()
+    roi_names: RoiNameCounts = dataclasses.field(
+        default_factory=lambda: RoiNameCounts({}, {})
+    )
 
 
 def attribute_tags(path: ElementPath) -> str:
@@ -502,6 +514,7 @@ def release_report(
     sequestered: Iterable[SequesteredInstance] = (),
     coverage: Iterable[SearchCoverage] = (),
     held: Iterable[HeldForReview] = (),
+    roi_names: RoiNameCounts | None = None,
 ) -> ReleaseReport:
     """Return the release report of a policy, its method, the runtime, and a run.
 
@@ -537,6 +550,10 @@ def release_report(
     held : iterable of HeldForReview, optional
         How many of the run's instances were held for review, by reason,
         from :func:`held_for_review`.
+    roi_names : ~pymedphys._dicom.deidentify.reviewed_roi_names.RoiNameCounts, optional
+        What descriptor cleaning wrote for the run's ROI Names, from
+        :meth:`~pymedphys._dicom.deidentify.reviewed_roi_names.ReviewQueue.report_counts`;
+        None, the default, counts none.
 
     Returns
     -------
@@ -558,7 +575,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'qc_review', 'released', 'sequestered', 'held_for_review', 'search_coverage']
+    ['format', 'policy', 'method', 'runtime', 'qc_review', 'released', 'sequestered', 'held_for_review', 'roi_names', 'search_coverage']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -578,6 +595,7 @@ def release_report(
         sequestered=tuple(sequestered),
         search_coverage=tuple(coverage),
         held_for_review=tuple(held),
+        roi_names=RoiNameCounts({}, {}) if roi_names is None else roi_names,
     )
 
 
@@ -823,17 +841,54 @@ def _held_section(held: tuple[HeldForReview, ...]) -> list:
     return sorted(entries, key=lambda entry: (entry["stage"], entry["code"]))
 
 
+def _roi_name_counts(
+    field: str, counts: object, codes: type[RoiNameOutcome] | type[RoiNameReason]
+) -> list[tuple[str, int]]:
+    """Return the counts of one kind of ROI Name code, sorted by code."""
+    if not isinstance(counts, Mapping):
+        raise _refuse(f"roi_names {field}", "is not counts by code")
+    entries = []
+    for code, count in counts.items():
+        if type(code) is not codes:  # pylint: disable = unidiomatic-typecheck
+            raise _refuse(f"roi_names {field}", "is not a code that the engine defines")
+        if type(count) is not int:  # pylint: disable = unidiomatic-typecheck
+            raise _refuse(f"roi_names {field} count", "is not a whole number")
+        if count < 1:
+            raise _refuse(f"roi_names {field} count", "is not positive")
+        entries.append((code.value, count))
+    return sorted(entries)
+
+
+def _roi_names_section(counts: RoiNameCounts) -> dict:
+    if not isinstance(counts, RoiNameCounts):
+        raise _refuse("roi_names", "is not counts of ROI Names")
+    return {
+        "outcomes": [
+            {"outcome": code, "count": count}
+            for code, count in _roi_name_counts(
+                "outcome", counts.outcomes, RoiNameOutcome
+            )
+        ],
+        "held": [
+            {"reason": code, "count": count}
+            for code, count in _roi_name_counts("reason", counts.held, RoiNameReason)
+        ],
+    }
+
+
 def report_document(report: ReleaseReport) -> dict:
     """Return a release report as JSON values, after checking every field.
 
     The document is an object with the members ``format`` (:data:`FORMAT`),
     ``policy``, ``method``, ``runtime``, ``qc_review``, ``released``,
-    ``sequestered``, ``held_for_review``, and ``search_coverage``, in that
-    order, each section's fields in the order of its class, the digests of
-    tables and files sorted by name, ``qc_review`` null where the run wrote
-    no QC pack, the released output names sorted, the sequestered instances
-    by label, each with its reasons once, in the order given, the held counts
-    by stage and code, and the coverage by attribute and reason. A walker
+    ``sequestered``, ``held_for_review``, ``roi_names``, and
+    ``search_coverage``, in that order, each section's fields in the order
+    of its class, the digests of tables and files sorted by name,
+    ``qc_review`` null where the run wrote no QC pack, the released output
+    names sorted, the sequestered instances by label, each with its reasons
+    once, in the order given, the held counts by stage and code, the ROI
+    Names' ``outcomes`` and ``held`` counts each by code, and the coverage
+    by attribute and reason. A walker
     reason has its stage, code, attribute, action, and VR, which is null
     where it is not known; a release gate's reason has its stage and code,
     and its attribute where it names one; and a reason from any other stage
@@ -869,6 +924,7 @@ def report_document(report: ReleaseReport) -> dict:
         "released": _released_section(report.released),
         "sequestered": _sequestered_section(report.sequestered),
         "held_for_review": _held_section(report.held_for_review),
+        "roi_names": _roi_names_section(report.roi_names),
         "search_coverage": _coverage_section(report.search_coverage),
     }
 

@@ -30,6 +30,8 @@ from pymedphys._dicom.deidentify import (
     reference_graph,
     release_gate,
     release_report,
+    reviewed_roi_names,
+    roi_names,
     walker,
 )
 from pymedphys._dicom.deidentify.file_layout import ElementPath
@@ -94,6 +96,13 @@ def _full_report():
         ),
         held=(release_report.HeldForReview("release", "read-as-latin-1", 2),),
         coverage=(release_report.SearchCoverage("(0010,0010)", "too-short", 3),),
+        roi_names=reviewed_roi_names.RoiNameCounts(
+            held={roi_names.Reason.ECHOES_IDENTIFIER: 1},
+            outcomes={
+                reviewed_roi_names.Outcome.RENAMED: 7,
+                reviewed_roi_names.Outcome.EMPTIED_UNREVIEWED: 1,
+            },
+        ),
     )
 
 
@@ -174,6 +183,7 @@ def test_the_sections_follow_the_documents_order():
         "## Released instances",
         "## Sequestered instances",
         "## Instances held for review",
+        "## ROI names",
         "## Values not searched",
     ]
     assert markdown.splitlines()[0] == "# De-identification release report"
@@ -190,10 +200,26 @@ def test_each_sequestered_reason_is_a_row_under_its_label():
     ]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-18")
+def test_the_roi_names_are_counted_by_outcome_and_held_reason():
+    markdown = to_markdown(release_report.to_json(_full_report()))
+    section = markdown.split("## ROI names", 1)[1].split("\n## ", 1)[0]
+    rows = [line for line in section.splitlines() if line.startswith("| ")]
+    assert rows == [
+        "| Outcome | Names |",
+        "| --- | --- |",
+        "| `emptied unreviewed` | `1` |",
+        "| `renamed` | `7` |",
+        "| Reason | Distinct names |",
+        "| --- | --- |",
+        "| `echoes identifier` | `1` |",
+    ]
+
+
 def test_an_empty_run_says_so_in_each_run_section():
     markdown = to_markdown(release_report.to_json(_report()))
     assert "No QC pack was written for this run." in markdown
-    assert markdown.count("None.") == 4
+    assert markdown.count("None.") == 6
     assert "|" not in markdown.split("## QC review", 1)[1]
 
 
@@ -246,6 +272,10 @@ def _changed(change):
         lambda d: d["released"].append("`SENTINEL`"),
         lambda d: d["released"].append("a\nb"),
         lambda d: d["search_coverage"][0].update(attribute="a | b"),
+        lambda d: d["roi_names"].pop("held"),
+        lambda d: d["roi_names"]["outcomes"][0].update(reason="renamed"),
+        lambda d: d["roi_names"]["held"][0].update(count=0),
+        lambda d: d["roi_names"]["held"].append({"reason": "`SENTINEL`", "count": 1}),
         lambda d: d["method"]["table_digests"].update({"x`y": "0"}),
         lambda d: d.update(sequestered={}),
         lambda d: d["sequestered"][0].update(reasons=[]),

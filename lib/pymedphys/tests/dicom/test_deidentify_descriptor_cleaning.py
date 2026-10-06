@@ -57,6 +57,10 @@ from pymedphys._dicom.deidentify.reviewed_roi_names import (
     ReviewedNames,
 )
 from pymedphys._dicom.deidentify.roi_names import Reason
+from pymedphys._dicom.deidentify.run_report import (
+    RELEASE_REPORT,
+    RELEASE_REPORT_MARKDOWN,
+)
 
 from . import _synthetic_references as synthetic
 
@@ -307,6 +311,98 @@ def test_a_run_holds_the_structure_set_and_releases_the_rest(tmp_path):
     )
     assert name["held_because"]
     assert pack["instances"][3]["disposition"] == "held-for-review"
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-18")
+def test_the_runs_release_report_counts_its_roi_names_naming_none(tmp_path):
+    datasets = [
+        _structure_set("SURGEONS ROI") if index == 3 else dataset
+        for index, dataset in enumerate(synthetic.collection())
+    ]
+    source = tmp_path / "source"
+    source.mkdir()
+    for position, dataset in enumerate(datasets):
+        (source / f"{position}.dcm").write_bytes(synthetic.written(dataset))
+    transform = _transform()
+
+    run.run(
+        run.discover(source),
+        tmp_path / "release",
+        transform,
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+        reporter=transform.reporter,
+    )
+
+    # The report counts the names that the transform's own queue collected.
+    text = (tmp_path / "release" / RELEASE_REPORT).read_text(encoding="utf-8")
+    counts = transform.review_queue.report_counts()
+    assert json.loads(text)["roi_names"] == {
+        "outcomes": [
+            {"outcome": outcome.value, "count": count}
+            for outcome, count in sorted(
+                counts.outcomes.items(), key=lambda each: each[0].value
+            )
+        ],
+        "held": [{"reason": "unmatched", "count": 1}],
+    }
+    markdown = (tmp_path / "release" / RELEASE_REPORT_MARKDOWN).read_text(
+        encoding="utf-8"
+    )
+    for written in (text, markdown):
+        assert "SURGEONS" not in written
+
+
+def _reported_roi_names(tmp_path, datasets, transform):
+    source = tmp_path / "source"
+    source.mkdir()
+    for position, dataset in enumerate(datasets):
+        (source / f"{position}.dcm").write_bytes(synthetic.written(dataset))
+    run.run(
+        run.discover(source),
+        tmp_path / "release",
+        transform,
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+        reporter=transform.reporter,
+    )
+    text = (tmp_path / "release" / RELEASE_REPORT).read_text(encoding="utf-8")
+    return json.loads(text)["roi_names"]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-18")
+def test_an_identical_copy_of_a_structure_set_is_counted_once(tmp_path):
+    held = _structure_set("SURGEONS ROI")
+    datasets = [
+        held if index == 3 else each
+        for index, each in enumerate(synthetic.collection())
+    ]
+
+    assert _reported_roi_names(tmp_path, [*datasets, held], _transform()) == {
+        "outcomes": [{"outcome": "held", "count": 1}],
+        "held": [{"reason": "unmatched", "count": 1}],
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-18")
+def test_a_structure_set_refused_by_descriptor_cleaning_counts_no_name(
+    tmp_path, monkeypatch
+):
+    def refuse(*_):
+        raise DescriptorsRefused(DescriptorReason.UNSETTLED_DESCRIPTOR)
+
+    monkeypatch.setattr(descriptor_cleaning, "_fallen_back", refuse)
+    datasets = [
+        _structure_set("SURGEONS ROI", StudyDescription="SENTINEL STUDY")
+        if index == 3
+        else each
+        for index, each in enumerate(synthetic.collection())
+    ]
+
+    assert _reported_roi_names(tmp_path, datasets, _transform()) == {
+        "outcomes": [],
+        "held": [],
+    }
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")

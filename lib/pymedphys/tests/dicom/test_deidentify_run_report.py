@@ -43,6 +43,8 @@ from pymedphys._dicom.deidentify.instance_transform import (
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.policy import compose_policy
 from pymedphys._dicom.deidentify.reasons import RunReason, TransformReason
+from pymedphys._dicom.deidentify.reviewed_roi_names import Outcome, RoiNameCounts
+from pymedphys._dicom.deidentify.roi_names import Reason
 from pymedphys._dicom.deidentify.reference_graph import FindingKind
 from pymedphys._dicom.deidentify.residuals import (
     Form,
@@ -66,6 +68,7 @@ from pymedphys._dicom.deidentify.run_report import (
     coverage_records,
     held_instances,
     release_files,
+    roi_name_counts,
 )
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 
@@ -401,6 +404,60 @@ def test_coverage_records_follow_the_drops_and_the_search():
         own,
         omission,
     ]
+
+
+def _roi_name(item, source, outcome, held_because=None):
+    return run_qc.RoiNameMaterial(
+        ElementPath((("(3006,0020)", item),), "(3006,0026)"),
+        source,
+        outcome,
+        held_because,
+        None if outcome is Outcome.HELD else source,
+    )
+
+
+# Two structure sets' QC material: the second holds the first's held name
+# again, with its padding, and a name that the run kept.
+_ROI_MATERIAL = {
+    0: (
+        _roi_name(0, "Lung_L", Outcome.RENAMED),
+        _roi_name(1, "SENTINEL", Outcome.HELD, Reason.UNMATCHED),
+        run_qc.Dropped(ElementPath((), "(0010,0010)"), qc_pack.DropReason.RETAINED),
+    ),
+    3: (
+        _roi_name(0, "SENTINEL ", Outcome.HELD, Reason.UNMATCHED),
+        _roi_name(1, "Heart", Outcome.KEPT),
+        run_qc.RetainedText("Heart", ElementPath((), "(3006,0026)")),
+    ),
+}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-18")
+def test_roi_names_are_counted_from_each_structure_sets_qc_material():
+    # Every name counts by its outcome, at the structure set that holds it;
+    # a held name counts once for each reason, however many structure sets
+    # hold it, as the QC pack lists it once.
+    assert roi_name_counts(_ROI_MATERIAL) == RoiNameCounts(
+        held={Reason.UNMATCHED: 1},
+        outcomes={Outcome.RENAMED: 1, Outcome.HELD: 2, Outcome.KEPT: 1},
+    )
+    assert roi_name_counts({}) == RoiNameCounts({}, {})
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-18")
+def test_the_report_counts_the_runs_roi_names_without_naming_them():
+    text = _reporter()((), _ROI_MATERIAL, "A-" + "0" * 32)
+
+    assert json.loads(text)["roi_names"] == {
+        "outcomes": [
+            {"outcome": "held", "count": 2},
+            {"outcome": "kept", "count": 1},
+            {"outcome": "renamed", "count": 1},
+        ],
+        "held": [{"reason": "unmatched", "count": 1}],
+    }
+    for name in ("SENTINEL", "Heart", "Lung_L"):
+        assert name not in text
 
 
 def test_the_reporter_shows_nothing_and_refuses_a_policy_it_cannot_record():
