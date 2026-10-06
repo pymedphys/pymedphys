@@ -75,6 +75,9 @@ class TransformReason(enum.Enum):
     # an edit still to come when the output is written, such as a pseudonym
     # without the subject's identity
     PENDING_EDIT = "pending-edit"
+    # the output no longer holds, or holds empty, an attribute that the IOD
+    # requires where its source held it (MIDI-BP-03)
+    REQUIRED_ATTRIBUTE_LOST = "required-attribute-lost"
 
 
 class DescriptorReason(enum.Enum):
