@@ -17,8 +17,8 @@
 A QC pack (:mod:`~pymedphys._dicom.deidentify.qc_pack`) may identify people,
 so it is written only to a location that the caller designates explicitly,
 restricted to authorised reviewers, and never inside a release (D-016).
-:func:`write_qc_pack` writes a pack as :data:`PACK_FILE`, beside a handling
-notice, :data:`NOTICE_FILE`, and the marker :data:`MARKER_FILE`, by which
+:func:`write_qc_pack` writes a pack as :data:`PACK_FILE`, with its image
+previews, beside a handling notice, :data:`NOTICE_FILE`, and the marker :data:`MARKER_FILE`, by which
 :func:`is_qc_material` recognises QC material so that a release step can
 refuse it.
 
@@ -34,7 +34,7 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 
-from .qc_pack import FORMAT, QcPack, QcPackError, to_json
+from .qc_pack import FORMAT, PREVIEW_DIRECTORY, QcPack, QcPackError, to_json
 
 PACK_FILE = "qc-pack.json"
 NOTICE_FILE = "README.txt"
@@ -223,9 +223,12 @@ def write_qc_pack(
     other directories are then repeated on what was created.
     On POSIX, the directory is opened without following a symbolic link,
     given mode 0o700, and its files are created within it, each with mode
-    0o600. It receives, in this order, the marker :data:`MARKER_FILE`,
-    :data:`PACK_FILE` from :func:`~.qc_pack.to_json`, and :data:`NOTICE_FILE`,
-    the handling notice :data:`NOTICE`. A file is never overwritten.
+    0o600. It receives, in this order, the marker :data:`MARKER_FILE`; the
+    pack's previews, if it has any, in a new directory
+    :data:`~.qc_pack.PREVIEW_DIRECTORY` of mode 0o700, after a copy of the
+    marker so that the directory is recognised as QC material on its own; :data:`PACK_FILE` from
+    :func:`~.qc_pack.to_json`; and :data:`NOTICE_FILE`, the handling notice
+    :data:`NOTICE`. A file or directory is never overwritten.
 
     Parameters
     ----------
@@ -272,13 +275,24 @@ def write_qc_pack(
             raise os_error("the QC destination could not be created", error) from None
     if check(target) != target:
         raise QcPackError("the QC destination changed while it was checked")
-    files = ((MARKER_FILE, FORMAT + "\n"), (PACK_FILE, document), (NOTICE_FILE, NOTICE))
+    marker = (MARKER_FILE, (FORMAT + "\n").encode("ascii"))
+    previews = tuple((preview.name, preview.png) for preview in pack.previews)
+    files = (
+        (PACK_FILE, document.encode("ascii")),
+        (NOTICE_FILE, NOTICE.encode("ascii")),
+    )
     try:
         if _POSIX:
-            _write_within(target, files)
+            _write_within(target, marker, previews, files)
         else:
-            for name, text in files:
-                write_new(target / name, text)
+            _write_bytes(target / marker[0], marker[1], None)
+            if previews:
+                (target / PREVIEW_DIRECTORY).mkdir(mode=_DIRECTORY_MODE)
+                _write_bytes(target / PREVIEW_DIRECTORY / marker[0], marker[1], None)
+                for name, data in previews:
+                    _write_bytes(target / PREVIEW_DIRECTORY / name, data, None)
+            for name, data in files:
+                _write_bytes(target / name, data, None)
     except FileExistsError:
         raise QcPackError(
             "the QC destination gained a file while it was written"
@@ -288,16 +302,37 @@ def write_qc_pack(
     return target / PACK_FILE
 
 
-def _write_within(target: Path, files: tuple[tuple[str, str], ...]) -> None:
+_Files = tuple[tuple[str, bytes], ...]
+_OPEN_DIRECTORY = (
+    os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW  # pylint: disable = no-member
+    if _POSIX
+    else 0
+)
+
+
+def _write_within(
+    target: Path, marker: tuple[str, bytes], previews: _Files, files: _Files
+) -> None:
     """Write new files within a directory opened without following links."""
-    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW  # pylint: disable = no-member
-    directory = os.open(target, flags)
+    directory = os.open(target, _OPEN_DIRECTORY)
     try:
         if not os.path.samestat(os.fstat(directory), target.stat()):
             raise QcPackError("the QC destination changed while it was written")
         os.fchmod(directory, _DIRECTORY_MODE)  # pylint: disable = no-member
-        for name, text in files:
-            _write_bytes(name, text.encode("ascii"), directory)
+        _write_bytes(*marker, directory)
+        if previews:
+            os.mkdir(PREVIEW_DIRECTORY, _DIRECTORY_MODE, dir_fd=directory)
+            within = os.open(PREVIEW_DIRECTORY, _OPEN_DIRECTORY, dir_fd=directory)
+            try:
+                os.fchmod(within, _DIRECTORY_MODE)  # pylint: disable = no-member
+                # The marker again, so the previews are recognised on their own.
+                _write_bytes(*marker, within)
+                for name, data in previews:
+                    _write_bytes(name, data, within)
+            finally:
+                os.close(within)
+        for name, data in files:
+            _write_bytes(name, data, directory)
     finally:
         os.close(directory)
 
@@ -329,10 +364,11 @@ def _write_bytes(path: Path | str, data: bytes, directory: int | None) -> None:
 def withdraw_qc_pack(destination: Path) -> bool:
     """Remove the files that :func:`write_qc_pack` wrote in ``destination``.
 
-    For a pack whose release was not published. The pack and its notice go
-    first and the marker last, only once both are gone, so that whatever
-    remains is still recognised as QC material (D-016). The directory is
-    kept, empty, so that a run may write to it again.
+    For a pack whose release was not published. The pack, its notice, and
+    its previews go first, each directory's marker only once the rest of it
+    is gone, so that whatever remains is still recognised as QC material
+    (D-016). The directory is kept, empty, so that a run may write to it
+    again.
 
     Returns
     -------
@@ -345,12 +381,42 @@ def withdraw_qc_pack(destination: Path) -> bool:
             (destination / name).unlink(missing_ok=True)
         except OSError:
             withdrawn = False
+    if not _withdraw_previews(destination / PREVIEW_DIRECTORY):
+        withdrawn = False
     if withdrawn:
         try:
             (destination / MARKER_FILE).unlink(missing_ok=True)
         except OSError:
             withdrawn = False
     return withdrawn
+
+
+def _withdraw_previews(directory: Path) -> bool:
+    """Remove a pack's previews directory, its marker last; whether it is gone."""
+    try:
+        names = [
+            entry.name for entry in os.scandir(directory) if entry.name != MARKER_FILE
+        ]
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
+    withdrawn = True
+    for name in names:
+        try:
+            (directory / name).unlink(missing_ok=True)
+        except OSError:
+            withdrawn = False
+    if not withdrawn:
+        return False
+    try:
+        (directory / MARKER_FILE).unlink(missing_ok=True)
+        directory.rmdir()
+    except FileNotFoundError:
+        pass
+    except OSError:
+        return False
+    return True
 
 
 def is_qc_material(path: os.PathLike | str) -> bool:
