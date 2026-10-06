@@ -153,6 +153,7 @@ decisions = ["D-016"]
 implementation = [
   "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/run.py",
+  "_dicom/deidentify/run_discovery.py",
   "_dicom/deidentify/run_results.py",
 ]
 note = '''
@@ -640,6 +641,7 @@ implementation = [
   "_dicom/deidentify/references.py",
   "_dicom/deidentify/run.py",
   "_dicom/deidentify/run_results.py",
+  "_dicom/deidentify/run_written.py",
   "_dicom/deidentify/sequences.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/values.py",
@@ -657,7 +659,8 @@ A data set is written from its source's bytes, so a kept element keeps the VR it
 A sequence kept as UN keeps its items in implicit VR, and a replacement in implicit VR is written only where the pinned dictionary gives its VR alone, since a reader takes the VR from its dictionary.
 A run acts on those findings before it writes anything: a study with several patients stops it, every conflicting copy, every instance of a series in several studies, and every instance without one of those UIDs is sequestered, an identical duplicate is written once, and a dangling reference is only reported.
 A second pass checks what was written against the first: that each written instance's SOP Instance, Series Instance, and Study Instance UIDs, and each value at its reference sites, are the keyed replacements of its input's, never a source UID; that each reference that named an input before writing names a written instance, series, or study after it; that no two source UIDs share a replacement; and that no two written instances share a SOP Instance UID.
-Remaining: writing the dummy values that the resolved compound actions call for (M3); and checking frames of reference in the first pass, validating output against its IOD, and running the second pass on each run's output (M4).
+A run makes that check of every file that its gate releases, before anything is published: each instance that a finding names is sequestered, and what is left is checked again, a reference to an instance that was withheld being reported only, while a check that fails, or a finding that no sequestration can isolate, publishes nothing.
+Remaining: writing the dummy values that the resolved compound actions call for (M3); and checking frames of reference in the first pass and validating output against its IOD (M4).
 '''
 
 [[requirement]]

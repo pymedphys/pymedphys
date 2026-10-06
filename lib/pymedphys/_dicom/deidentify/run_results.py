@@ -14,18 +14,21 @@
 
 """The results that a run's transform and gate return, and their signatures.
 
-:mod:`~pymedphys._dicom.deidentify.run` takes a :class:`Transform` and a
-:class:`Gate`, and gives these results the meanings that it describes. They
-are importable from there too.
+:mod:`~pymedphys._dicom.deidentify.run` takes a :class:`Transform`, a
+:class:`Gate`, and a :class:`WrittenCheck`, and gives these results the
+meanings that it describes. They are importable from there too.
 """
 
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Mapping
 from pathlib import PurePosixPath
 from typing import Protocol
 
+from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
+from .written_references import WrittenFinding
 
 
 @dataclasses.dataclass(frozen=True)
@@ -149,3 +152,20 @@ class Gate(Protocol):
     def __call__(
         self, written: bytes, evidence: object, subject: tuple[object, ...]
     ) -> Release | HoldForReview | Sequestered: ...
+
+
+class WrittenCheck(Protocol):
+    """Check that what a run wrote refers to itself as its inputs did.
+
+    The reference graph's second pass (Architecture item 8), as
+    :func:`~pymedphys._dicom.deidentify.written_references.verify_written_references`
+    makes it under the run's key, which an
+    :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`
+    gives as its ``written_check``. ``graph`` is the first pass's graph of
+    the run's inputs, and ``written`` the record of each file that the gate
+    released, by the position in ``graph`` of the input it was written from.
+    """
+
+    def __call__(
+        self, graph: ReferenceGraph, written: Mapping[int, InstanceRecord]
+    ) -> tuple[WrittenFinding, ...]: ...
