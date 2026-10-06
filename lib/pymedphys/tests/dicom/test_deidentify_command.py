@@ -25,7 +25,14 @@ from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import command, diagnostics, run, run_report
+from pymedphys._dicom.deidentify import (
+    command,
+    diagnostics,
+    instance_transform,
+    policy,
+    run,
+    run_report,
+)
 from pymedphys._dicom.deidentify.policy import compose_policy
 from pymedphys._dicom.deidentify.reference_graph import Finding, FindingKind
 
@@ -523,3 +530,92 @@ def test_help_is_printed_as_usual(capsys):
 
     assert raised.value.code == 0
     assert "the release directory to create" in capsys.readouterr().out
+
+
+def _parsed_call(tmp_path, monkeypatch, *options):
+    """Run main with options, and return its status, streams, and call."""
+    calls = []
+
+    def recording(*_, **kwargs):
+        calls.append(kwargs)
+        return command.EXIT_RELEASED
+
+    monkeypatch.setattr(command, "deidentify_directory", recording)
+    stdout, stderr = io.StringIO(), io.StringIO()
+    argv = [
+        str(tmp_path / "source"),
+        str(tmp_path / "release"),
+        "--qc-pack",
+        str(tmp_path / "qc"),
+        *options,
+    ]
+    status = command.main(argv, stdout=stdout, stderr=stderr)
+    return status, stdout.getvalue(), stderr.getvalue(), calls
+
+
+@pytest.fixture(name="enabled")
+def _enabled(monkeypatch):
+    """Enable the first release's presets, which no release enables yet."""
+    monkeypatch.setattr(
+        policy, "ENABLED_PRESETS", frozenset({"basic", "basic-clean-descriptors"})
+    )
+
+
+@pytest.mark.usefixtures("enabled")
+@pytest.mark.parametrize(
+    "options", [(), ("--preset", "basic")], ids=["default", "named"]
+)
+def test_main_builds_the_basic_transform_and_release_gate(
+    tmp_path, monkeypatch, options
+):
+    status, _, err, calls = _parsed_call(tmp_path, monkeypatch, *options)
+
+    assert (status, err) == (command.EXIT_RELEASED, "")
+    (call,) = calls
+    assert isinstance(call["transform"], instance_transform.InstanceTransform)
+    assert isinstance(call["gate"], instance_transform.ReleaseGate)
+    assert call["qc_destination"] == str(tmp_path / "qc")
+
+
+@pytest.mark.usefixtures("enabled")
+def test_the_transform_has_the_chosen_preset(tmp_path, monkeypatch):
+    chosen = []
+    built = instance_transform.InstanceTransform
+
+    def recording(selected, key, *args, **kwargs):
+        chosen.append(selected.preset)
+        return built(selected, key, *args, **kwargs)
+
+    monkeypatch.setattr(instance_transform, "InstanceTransform", recording)
+
+    _parsed_call(tmp_path, monkeypatch, "--preset", "basic-clean-descriptors")
+
+    assert chosen == ["basic-clean-descriptors"]
+
+
+@pytest.mark.usefixtures("enabled")
+def test_each_run_has_a_new_key(tmp_path, monkeypatch):
+    _, _, _, first = _parsed_call(tmp_path, monkeypatch)
+    _, _, _, second = _parsed_call(tmp_path, monkeypatch)
+
+    keys = [call["transform"]._key for call in first + second]  # pylint: disable = protected-access
+    assert keys[0].key_id != keys[1].key_id
+
+
+def test_a_preset_not_enabled_exits_three_before_anything_runs(tmp_path, monkeypatch):
+    # No release enables a preset yet.
+    status, out, err, calls = _parsed_call(tmp_path, monkeypatch)
+
+    assert status == command.EXIT_NOT_RUN
+    assert (out, calls) == ("", [])
+    assert err.startswith("error: ") and "not enabled" in err
+    assert not any(tmp_path.iterdir())
+
+
+def test_an_unknown_preset_is_a_usage_error(capsys):
+    with pytest.raises(SystemExit) as raised:
+        command.main(["in", "out", "--qc-pack", "qc", "--preset", SENTINEL])
+
+    captured = capsys.readouterr()
+    assert raised.value.code == command.EXIT_USAGE
+    assert SENTINEL not in captured.out + captured.err

@@ -23,9 +23,12 @@ whole of it runs within
 :func:`~pymedphys._dicom.deidentify.diagnostics.redacted_diagnostics`, so
 no warning or log record of pydicom's, or of the transform's or gate's,
 shows a source value or path, and the summary says how many were redacted.
-:func:`main` parses the source and release directories from the command
-line's arguments, for the ``pymedphys`` command to call once the engine is
-public; nothing registers it yet.
+:func:`main` parses the source and release directories and the preset
+from the command line's arguments, builds the preset's transform for a new
+run-scoped key with :func:`build_transform`, and runs it with the release
+gate, for the ``pymedphys`` command to call once the engine is public;
+nothing registers it yet. No preset is enabled yet, so until one is, the
+command refuses to run.
 
 The summary and every message name inputs only by count, reasons only by
 their type and the names of enum members (their own, or those of a
@@ -63,9 +66,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import NoReturn, TextIO
 
-from . import run, run_report
+from . import instance_transform, policy, run, run_report
 from .qc_pack import QcPackError
 from .diagnostics import RedactionCounts, redacted_diagnostics
+from .keys import DeidKey
 
 EXIT_RELEASED = 0
 EXIT_WITHHELD = 1
@@ -75,6 +79,8 @@ EXIT_STAGING_LEFT = 4
 EXIT_INTERNAL_ERROR = 70
 
 _RELEASED = (run.Status.RELEASED, run.Status.DUPLICATE)
+# The first supported release's presets (design document, Scope).
+_PRESETS = ("basic", "basic-clean-descriptors")
 
 
 def deidentify_directory(
@@ -303,24 +309,53 @@ def build_parser(
             "RELEASE, which must not exist or must be empty"
         ),
     )
+    parser.add_argument(
+        "--preset",
+        choices=_PRESETS,
+        default=policy.DEFAULT_PRESET,
+        help=(
+            "the de-identification policy: the Basic Profile alone (basic, "
+            "the default) or with Clean Descriptors (basic-clean-descriptors)"
+        ),
+    )
     return parser
+
+
+def build_transform(preset: str, key: DeidKey) -> instance_transform.InstanceTransform:
+    """Return the run's transform under ``preset`` and ``key``.
+
+    Raises
+    ------
+    PolicyError
+        If the preset is not enabled, with a message that quotes nothing
+        but the preset's name.
+    """
+    return instance_transform.InstanceTransform(policy.select_policy(preset), key)
 
 
 def main(
     argv: Sequence[str] | None = None,
     *,
-    transform: run.Transform,
-    gate: run.Gate,
+    transform: run.Transform | None = None,
+    gate: run.Gate | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
     """Parse the command line's arguments, and de-identify as they say.
 
+    Each run has a new key, which nothing keeps, as M6's run-scoped key
+    requires; the transform is :func:`build_transform`'s for it.
+
     Parameters
     ----------
     argv : sequence of str, optional
         The arguments, by default ``sys.argv[1:]``.
-    transform, gate, stdout, stderr
+    transform : Transform, optional
+        In place of :func:`build_transform`'s, for tests.
+    gate : Gate, optional
+        By default, the release gate,
+        :class:`~pymedphys._dicom.deidentify.instance_transform.ReleaseGate`.
+    stdout, stderr
         As for :func:`deidentify_directory`.
 
     Returns
@@ -336,11 +371,18 @@ def main(
         ``stderr``, or 0 for ``--help``, as :mod:`argparse` does.
     """
     arguments = build_parser(stderr=stderr).parse_args(argv)
+    if transform is None:
+        try:
+            with redacted_diagnostics():
+                transform = build_transform(arguments.preset, DeidKey.generate())
+        except policy.PolicyError as error:
+            _print(f"error: {error}", sys.stderr if stderr is None else stderr)
+            return EXIT_NOT_RUN
     return deidentify_directory(
         arguments.source,
         arguments.release,
         transform=transform,
-        gate=gate,
+        gate=instance_transform.ReleaseGate() if gate is None else gate,
         qc_destination=arguments.qc_pack,
         stdout=stdout,
         stderr=stderr,
