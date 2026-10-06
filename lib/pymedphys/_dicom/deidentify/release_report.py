@@ -66,7 +66,8 @@ and codes that the engine defines, never by a source value or path:
   confidential QC pack maps labels to sources (D-016). The release gate's
   reasons, among them the residual search's findings, name the stage
   ``"release"``, a code, and, where the reason names one, the attribute's
-  tags.
+  tags. A reason of scope ``"unsupported-iod"`` names the IOD, as PS3.4
+  Table B.5-1 names it without "IOD" (D-010).
 - ``held_for_review``: how many instances were held for review, by stage and
   reason (D-009), from :func:`held_for_review`: a ROI Name that descriptor
   cleaning held, or a release gate's reason that requires QC review. A held
@@ -116,13 +117,13 @@ from .reviewed_roi_names import RoiNameCounts
 from .roi_names import Reason as RoiNameReason
 from .residuals import NotSearched, Omission, Unsearched, UnsearchedReason
 from .runtime import RuntimeEnvironment, runtime_environment
-from .scope import Disposition
+from .scope import Disposition, UnsupportedIod, unsupported_iods
 from .source import SourceReason
 from .standard import OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/6"
+FORMAT = "pymedphys-deid-release-report/7"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -266,6 +267,10 @@ class SequestrationReason:
     vr : str or None
         For the walker, the VR that the action met, if known; None for every
         other stage.
+    iod : str or None
+        For scope's ``"unsupported-iod"``, and only for it, the IOD, as
+        PS3.4 Table B.5-1 names it without "IOD", such as
+        ``"Comprehensive SR"`` (D-010).
     """
 
     stage: str
@@ -273,6 +278,7 @@ class SequestrationReason:
     attribute: str | None = None
     action: str | None = None
     vr: str | None = None
+    iod: str | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -399,6 +405,7 @@ def attribute_tags(path: ElementPath) -> str:
 def sequestration_reason(
     cause: (
         Disposition
+        | UnsupportedIod
         | SourceReason
         | FindingKind
         | Sequestration
@@ -421,10 +428,22 @@ def sequestration_reason(
         several patients, which stops the run instead. An instance missing
         an identifier is sequestered, as the run pipeline does by default;
         or a reason of the run that refuses an input rather than
-        sequestering it, such as a symbolic link.
+        sequestering it, such as a symbolic link. For
+        :attr:`~.scope.Disposition.UNSUPPORTED_IOD` alone, which a report
+        gives only with its IOD, from an :class:`~.scope.UnsupportedIod`;
+        and for an :class:`~.scope.UnsupportedIod` whose IOD is not one
+        that Table B.5-1 names and the release does not support.
     TypeError
         For anything else.
     """
+    if isinstance(cause, UnsupportedIod):
+        if cause.code is not Disposition.UNSUPPORTED_IOD:
+            raise TypeError("an UnsupportedIod must have its code")
+        if _string(cause.iod) not in unsupported_iods():
+            raise ValueError("an UnsupportedIod names an IOD that is not unsupported")
+        return SequestrationReason("scope", cause.code.value, iod=cause.iod)
+    if cause is Disposition.UNSUPPORTED_IOD:
+        raise ValueError("Disposition.UNSUPPORTED_IOD is given with its IOD")
     if isinstance(cause, Sequestration):
         return SequestrationReason(
             "walker",
@@ -809,6 +828,16 @@ def _reason_entry(reason: object) -> dict:
         raise _refuse("sequestered reasons", "are not a tuple of reasons")
     stage = _code("sequestered stage", reason.stage, _SEQUESTERING)
     code = _code("sequestered code", reason.code, _SEQUESTERING[stage])
+    if (stage, code) == ("scope", Disposition.UNSUPPORTED_IOD.value):
+        if (reason.attribute, reason.action, reason.vr) != (None, None, None):
+            raise _refuse("sequestered attribute", "is given for another stage")
+        return {
+            "stage": stage,
+            "code": code,
+            "iod": _code("sequestered iod", reason.iod, unsupported_iods()),
+        }
+    if reason.iod is not None:
+        raise _refuse("sequestered iod", "is given for another reason")
     if stage == "release":
         if (reason.action, reason.vr) != (None, None):
             raise _refuse("sequestered action", "is given for another stage")

@@ -121,6 +121,9 @@ def test_a_standard_sop_class_of_another_iod_is_sequestered(sop_class, iod):
 
     assert found == scope.Classification(Disposition.UNSUPPORTED_IOD, iod)
     assert found.sequestered
+    # Its reason names the IOD, for the release report (D-010).
+    assert found.reason == scope.UnsupportedIod(iod)
+    assert found.reason.code is Disposition.UNSUPPORTED_IOD
 
 
 @pytest.mark.deid_requirement("MIDI-BP-06")
@@ -177,6 +180,36 @@ def test_a_supported_sop_class_in_another_transfer_syntax_is_sequestered(
         Disposition.UNSUPPORTED_TRANSFER_SYNTAX, "CT Image"
     )
     assert found.sequestered
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize(
+    "sop_class, transfer_syntax, reason",
+    [
+        (None, EXPLICIT_LE, Disposition.NO_SOP_CLASS),
+        ("1.2.3.4.5", EXPLICIT_LE, Disposition.UNLISTED_SOP_CLASS),
+        (
+            "1.2.840.10008.5.1.4.1.1.2",
+            "1.2.840.10008.1.2.4.50",
+            Disposition.UNSUPPORTED_TRANSFER_SYNTAX,
+        ),
+        ("1.2.840.10008.5.1.4.1.1.2", EXPLICIT_LE, Disposition.SUPPORTED),
+    ],
+)
+def test_only_an_unsupported_iod_has_a_reason_with_its_iod(
+    sop_class, transfer_syntax, reason
+):
+    assert scope.classify(sop_class, transfer_syntax).reason is reason
+
+
+def test_an_unsupported_iods_reason_holds_its_iod_and_code_alone():
+    reason = scope.UnsupportedIod("MR Image")
+
+    assert repr(reason) == "UnsupportedIod(iod='MR Image')"
+    assert [field.name for field in dataclasses.fields(reason)] == ["iod", "code"]
+    with pytest.raises(TypeError):
+        # pylint: disable-next = too-many-function-args
+        scope.UnsupportedIod("MR Image", Disposition.NO_SOP_CLASS)  # type: ignore[call-arg]
 
 
 def test_the_sop_class_decides_before_the_transfer_syntax():

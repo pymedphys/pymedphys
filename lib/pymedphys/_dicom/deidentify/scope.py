@@ -84,6 +84,64 @@ class Classification:
         """Whether the instance is sequestered rather than de-identified."""
         return self.disposition is not Disposition.SUPPORTED
 
+    @property
+    def reason(self) -> Disposition | UnsupportedIod:
+        """Why a sequestered instance is sequestered, for its run's report.
+
+        An instance of an unsupported IOD is sequestered with that IOD, so
+        that the release report can name it (D-010); any other has its
+        disposition alone.
+
+        Examples
+        --------
+        >>> classify("1.2.840.10008.5.1.4.1.1.88.33", "1.2.840.10008.1.2.1").reason
+        UnsupportedIod(iod='Comprehensive SR')
+        >>> classify(None, "1.2.840.10008.1.2.1").reason
+        <Disposition.NO_SOP_CLASS: 'no-sop-class'>
+        """
+        if self.disposition is Disposition.UNSUPPORTED_IOD:
+            assert self.iod is not None  # classify names the IOD it found
+            return UnsupportedIod(self.iod)
+        return self.disposition
+
+
+@dataclasses.dataclass(frozen=True)
+class UnsupportedIod:
+    """An instance sequestered because its IOD is not supported (D-010).
+
+    Attributes
+    ----------
+    iod : str
+        The IOD of the instance's Standard Storage SOP Class, as PS3.4
+        Table B.5-1 names it without "IOD", such as ``"Comprehensive SR"``:
+        a name from the standard, never a value from the instance.
+    code : Disposition
+        Always :attr:`Disposition.UNSUPPORTED_IOD`, the reason's code.
+    """
+
+    iod: str
+    code: Disposition = dataclasses.field(
+        default=Disposition.UNSUPPORTED_IOD, init=False, repr=False
+    )
+
+
+def unsupported_iods(
+    sop_classes: RegistryTable[StorageSOPClass] | None = None,
+) -> frozenset[str]:
+    """Return the IODs of Table B.5-1 that the first supported release does not support.
+
+    Each is named as :attr:`UnsupportedIod.iod` names it.
+
+    Parameters
+    ----------
+    sop_classes : RegistryTable of StorageSOPClass, optional
+        PS3.4 Table B.5-1. Defaults to
+        :func:`~pymedphys._dicom.deidentify.sop_classes.load_storage_sop_classes`.
+    """
+    if sop_classes is None:
+        sop_classes = load_storage_sop_classes()
+    return frozenset(row.iod_name for row in sop_classes.rows) - SUPPORTED_IODS
+
 
 @functools.lru_cache(maxsize=None)
 def _by_uid(

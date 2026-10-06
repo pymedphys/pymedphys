@@ -182,7 +182,7 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "reference_findings",
         "search_coverage",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/6"
+    assert document["format"] == "pymedphys-deid-release-report/7"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
@@ -723,7 +723,7 @@ def _instance(*causes, label="S-0001"):
                     _instance(
                         dataclasses.replace(
                             release_report.sequestration_reason(
-                                scope.Disposition.UNSUPPORTED_IOD
+                                scope.Disposition.NO_SOP_CLASS
                             ),
                             attribute="(0010,0010)",
                         )

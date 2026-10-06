@@ -266,11 +266,13 @@ def _released(section: object) -> list[Block]:
     ]
 
 
-_REASON = ("stage", "code", "attribute", "action", "vr")
+_REASON = ("stage", "code", "attribute", "action", "vr", "iod")
 # The fields of a reason from each stage, as the report gives them: the
-# walker's VR may be null, and the release gate names an attribute at most.
-_WALKER = _REASON
+# walker's VR may be null, the release gate names an attribute at most, and
+# scope names the IOD of an unsupported IOD.
+_WALKER = ("stage", "code", "attribute", "action", "vr")
 _RELEASE = (("stage", "code"), ("stage", "code", "attribute"))
+_UNSUPPORTED_IOD = ("stage", "code", "iod")
 
 
 def _sequestered(section: object) -> list[Block]:
@@ -302,10 +304,10 @@ def _sequestered(section: object) -> list[Block]:
         [
             "Each sequestered instance by a label drawn at random for the run, "
             "on the first of its rows, with each reason's stage and code, and, where the reason names "
-            "them, the attribute's tags, the action, and the VR. Only "
+            "them, the attribute's tags, the action, the VR, and the IOD. Only "
             "the confidential QC pack maps labels to source files."
         ],
-        _table(("Label", "Stage", "Code", "Attribute", "Action", "VR"), rows)
+        _table(("Label", "Stage", "Code", "Attribute", "Action", "VR", "IOD"), rows)
         if rows
         else [_NONE],
     ]
@@ -313,9 +315,15 @@ def _sequestered(section: object) -> list[Block]:
 
 def _reason(reason: object) -> dict:
     """Return a reason, if it has the fields that its stage gives, in order."""
-    stage = reason.get("stage") if isinstance(reason, dict) else None
+    stage, code = (
+        (reason.get("stage"), reason.get("code"))
+        if isinstance(reason, dict)
+        else (None, None)
+    )
     if stage == "walker":
         return _fields("sequestered reasons", reason, _WALKER)
+    if (stage, code) == ("scope", "unsupported-iod"):
+        return _fields("sequestered reasons", reason, _UNSUPPORTED_IOD)
     shapes = _RELEASE if stage == "release" else _RELEASE[:1]
     if not isinstance(reason, dict) or tuple(reason) not in shapes:
         raise _refuse("sequestered reasons")

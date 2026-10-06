@@ -411,7 +411,9 @@ def release_report() -> list[str]:
         "",
         "A reason from the walker also gives the attribute's tags from the "
         "outermost sequence, without items, the action, and the VR where it "
-        "is known.",
+        "is known. A reason of scope `unsupported-iod` also gives the "
+        "instance's IOD by its name in PS3.4 Table B.5-1, such as "
+        "`Comprehensive SR` for the Comprehensive SR IOD (D-010).",
         "",
         "The report counts the instances held for review, by the stage that "
         "held each and its reason code, an instance once for each stage and "
