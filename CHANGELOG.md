@@ -245,7 +245,9 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 - **[Contributor facing only]** The de-identification tests use short,
   resolved temporary paths on Windows and compact case names for large
-  residual-search inputs. The electron-factor baseline comparison allows
+  residual-search inputs. Nested CLI tests collect within their own temporary
+  directories, avoiding races with other workers' directory cleanup.
+  The electron-factor baseline comparison allows
   floating-point round-off across platforms with a tight absolute tolerance.
   These changes restore portable CI checks while retaining the production
   path limits and numerical baseline. [PR #2308](https://github.com/pymedphys/pymedphys/pull/2308)
