@@ -66,6 +66,7 @@ from pymedphys._nomenclature import tg263
 
 from . import compound_actions, markers, roi_names
 from .codes import load_context_group
+from .descriptor_cleaning import fallback_policy
 from .element_rules import (
     _ENGINE_GROUPS,
     _ENGINE_TAGS,
@@ -139,21 +140,14 @@ SEQUENCE_NOT_CLEANED = "sequence not cleaned"
 # What the statement cannot yet describe from the engine. Each is to be
 # generated once the engine decides it.
 PENDING: tuple[str, ...] = (
-    "What the engine does not yet do for each run's release report and "
-    "residual search: write the release report with each run; search each "
-    "written file; record the "
-    "values that it does not give the residual search, for the reasons "
-    "listed under Release report (D-027); act on the search's findings, by "
-    "sequestering an instance whose written file fails the search and "
-    "moving output from a staging area to the release directory only after "
-    "a clean search (D-027); and write the confidential QC pack, which maps "
-    "each label to its source instance and lists each value not searched by "
-    "instance and place (D-016, D-026, and D-027). The report cannot yet "
-    "record an instance that the run itself sequesters, such as one whose "
-    "file changes during the run, or that a gate sequesters, since neither "
-    "is one of the stages listed under Release report.",
+    "What each run does not yet do: assess the pixel data risk indicators of "
+    "each instance, whose Pixel Data (7FE0,0010) it writes unchanged (D-015); "
+    "list in the confidential QC pack each distinct string that the policy "
+    "retains, other than a ROI Name (3006,0026), for the review of every "
+    "distinct retained string (D-017); and write this statement with the "
+    "release report.",
 )
-PENDING_RELEASE_REPORT = PENDING[0]
+PENDING_RUN = PENDING[0]
 # Pending only for a policy whose element rules the engine refuses.
 PENDING_REFUSED = (
     "The actions that the engine applies under this policy, which it refuses "
@@ -168,11 +162,13 @@ PENDING_CLEANING = (
     "and how retained patient characteristics are cleaned (PS3.15 E.3.5, "
     "E.3.6, and E.3.7; D-007, D-009)."
 )
-# Pending only for a policy that gives ROI Name C.
-PENDING_ROI_NAMES = (
-    "Cleaning each ROI Name (3006,0026) in a run as the section Cleaning "
-    "ROI names describes: no run yet writes the cleaned names, holds an instance in the "
-    "staging area, or empties held names where it is told to (D-009)."
+# Pending only for a policy that selects Clean Descriptors and whose other
+# options cannot be composed without it.
+PENDING_FALLBACK = (
+    "A run under this policy, which the engine refuses: an attribute other "
+    "than ROI Name (3006,0026) to which the policy gives C takes the action "
+    "that the policy gives it without Clean Descriptors, and its other "
+    "options cannot be composed into a policy without that option (D-009)."
 )
 # Pending only for a policy that selects Retain Safe Private.
 PENDING_SAFE_PRIVATE = (
@@ -192,6 +188,20 @@ _CLEAN_DESCRIPTORS = "clean_descriptors"
 # time, or datetime.
 _TEMPORAL_OPTIONS = next(o for o in MUTUALLY_EXCLUSIVE if _FULL_DATES in o)
 _TEMPORAL_VRS = frozenset({"DA", "DT", "TM"})
+
+
+def _falls_back(policy: Policy) -> bool:
+    """Whether a run can give the policy's other attributes given C a fallback.
+
+    A policy without Clean Descriptors needs none.
+    """
+    if _CLEAN_DESCRIPTORS not in policy.options:
+        return True
+    try:
+        fallback_policy(policy)
+    except PolicyError:
+        return False
+    return True
 
 
 @dataclasses.dataclass(frozen=True)
@@ -352,9 +362,9 @@ class InsertedMarkers:
         Profile's and each selected option's that the policy applies, or none
         for a policy that claims no conformance.
     review_codes : tuple of str
-        The Code Values that it gains only in an instance whose retained
-        descriptors have passed pooled human review: Clean Descriptors',
-        where the policy selects it and can claim conformance.
+        The Code Values that it gains only in an instance whose descriptor
+        cleaning settles every attribute given C: Clean Descriptors', where
+        the policy selects it and can claim conformance.
     temporal : str
         Longitudinal Temporal Information Modified (0028,0303), unless the
         value already present is stricter.
@@ -757,13 +767,12 @@ def conformance_statement(
         rules = None
     attributes = tuple(_attributes(policy, rules))
     actions = {entry.action for entry in attributes if entry.tag != _ROI_NAME}
-    roi_name_actions = {e.action for e in attributes if e.tag == _ROI_NAME}
     pending = PENDING + tuple(
         item
         for item, applies in (
             (PENDING_REFUSED, rules is None),
             (PENDING_CLEANING, "C" in actions),
-            (PENDING_ROI_NAMES, "C" in roi_name_actions),
+            (PENDING_FALLBACK, not _falls_back(policy)),
             (PENDING_SAFE_PRIVATE, "retain_safe_private" in policy.options),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
         )

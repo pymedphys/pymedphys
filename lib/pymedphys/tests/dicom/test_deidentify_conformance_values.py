@@ -16,6 +16,7 @@
 
 import collections
 import functools
+import struct
 
 from pymedphys._imports import pytest
 
@@ -25,10 +26,13 @@ from pymedphys._dicom.deidentify import (
     conformance_values,
     dummy_values,
     edits,
+    instance_transform,
     policy,
     pseudonyms,
+    release_gate,
     release_report,
     residuals,
+    run,
     standard,
     temporal_roles,
     uids,
@@ -275,7 +279,75 @@ def test_the_release_report_counts_held_instances_by_stage(preset):
         line = held.split(f"- `{stage}`: ", 1)[1].split(" - ", 1)[0]
         assert line.startswith(conformance_values.HOLDING_STAGES[stage])
         for reason in codes:
-            assert f"`{reason}`" in line, (stage, reason)
+            holds = stage != "release" or reason in conformance_values.REVIEW_CODES
+            assert (f"`{reason}`" in line) == holds, (stage, reason)
+
+
+def _gate_written():
+    """A written file whose data set holds only an emptied Study Description."""
+    meta = struct.pack("<HH2sH", 0x0002, 0x0010, b"UI", 20) + b"1.2.840.10008.1.2.1\x00"
+    data_set = struct.pack("<HH2sH", 0x0008, 0x1030, b"LO", 0)
+    return bytes(128) + b"DICM" + meta + data_set
+
+
+def _gate_reasons(code):
+    """The release condition's reasons where ``code`` is all that is wrong."""
+    path = ElementPath((), "(0008,1030)")  # Study Description, LO
+    written = _gate_written()
+    collected = ()
+    coverage = {"planned": frozenset({path}), "collected": collected}
+    if code is release_gate.ReasonCode.UNCOLLECTED:
+        coverage["uncollected"] = (release_gate.Uncollected(path, "undecodable"),)
+    elif code is release_gate.ReasonCode.READ_AS_LATIN_1:
+        coverage["collected"] = (residuals.SourceValue(path, "LO", "ZARQUON"),)
+        coverage["decoded_as_bytes"] = frozenset({path})
+    elif code is release_gate.ReasonCode.COLLECTED_AS_OTHER_VR:
+        coverage["collected"] = (residuals.SourceValue(path, "UT", "ZARQUON"),)
+    elif code is release_gate.ReasonCode.RESIDUAL_TEXT:
+        coverage["collected"] = (residuals.SourceValue(path, "LO", "ZARQUON"),)
+        text = b"ZARQUON "
+        written += struct.pack("<HH2sH", 0x0008, 0x103E, b"LO", len(text)) + text
+    return release_gate.release_condition(release_gate.Coverage(**coverage), written)
+
+
+@pytest.mark.parametrize("code", sorted(conformance_values.REVIEW_CODES))
+def test_each_code_described_as_holding_holds_an_instance(code):
+    condition = _gate_reasons(release_gate.ReasonCode(code))
+    assert condition.decision is release_gate.Decision.QC_REVIEW
+    assert [r.code.value for r in condition.reasons] == [code]
+
+
+def test_every_other_release_code_withholds():
+    # Each reason with another code is given only with WITHHOLD (D-027).
+    withholding = {c.value for c in release_gate.ReasonCode}
+    withholding -= conformance_values.REVIEW_CODES
+    assert withholding == {
+        "unreadable-file",
+        "residual-person-name",
+        "residual-uid",
+        "residual-date",
+        "residual-datetime",
+        "residual-direct-identifier",
+        "residual-outside-data-set",
+    }
+    assert conformance_values.REVIEW_CODES <= release_report._HOLDING["release"]  # pylint: disable = protected-access
+
+
+def test_one_instance_without_collected_values_withholds_its_subject(preset):
+    section = _section(preset, "Release report")
+    assert "withhold every other file of its subject, by `not-reported`" in section
+    gate = instance_transform.ReleaseGate()
+    released = gate(_gate_written(), _empty_coverage(), (_empty_coverage(),))
+    assert isinstance(released, run.Release)
+    withheld = gate(
+        _gate_written(), _empty_coverage(), (_empty_coverage(), run.NO_EVIDENCE)
+    )
+    assert isinstance(withheld, run.Sequestered)
+    assert [r.code.value for r in withheld.reasons] == ["not-reported"]
+
+
+def _empty_coverage():
+    return release_gate.Coverage(planned=frozenset(), collected=())
 
 
 def test_every_reason_that_the_release_report_counts_is_described(preset):
@@ -319,16 +391,30 @@ def test_per_instance_detail_is_only_in_the_qc_pack(preset):
     )
 
 
-def test_what_remains_of_the_release_report_is_pending(preset):
+def test_what_remains_of_the_run_is_pending(preset):
     statement = _statement(preset)
-    pending = conformance.PENDING_RELEASE_REPORT
+    pending = conformance.PENDING_RUN
     assert pending in statement.pending
-    for decision in ("D-016", "D-026", "D-027"):
+    for decision in ("D-015", "D-017"):
         assert decision in pending
     assert "QC pack" in pending
-    assert "search each written file" in pending
-    assert "the run itself sequesters" in pending
-    assert "staging area" in pending
-    # How the report names a sequestered instance is now described.
-    assert "how it names" not in pending
+    assert "write this statement" in pending
+    # Each run now writes its report and QC pack, searches each written file,
+    # and acts on what the search finds.
+    for done in ("search each written file", "the run itself sequesters"):
+        assert done not in pending
     assert not statement.claims_conformance
+
+
+def test_the_residual_search_is_described_as_part_of_each_release(preset):
+    section = _section(preset, "Residual search")
+    assert "before the file is released" in section
+    assert "once the engine applies it" not in section
+
+
+def test_the_report_describes_what_a_run_always_writes(preset):
+    section = _section(preset, "Release report")
+    assert "a run without a QC pack" not in section
+    assert "Every run writes a QC pack" in section
+    assert "neither labelled nor counted in the report" in section
+    assert "one from the release gate gives the attribute's tags" in section

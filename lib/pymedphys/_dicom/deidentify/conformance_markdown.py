@@ -81,10 +81,14 @@ ROI_OUTCOMES: Mapping[Outcome, str] = types.MappingProxyType(
         Outcome.KEPT: "the name as it is, where a reviewer kept it",
         Outcome.MAPPED: "the reviewer's name, where a reviewer mapped it",
         Outcome.EMPTIED: "an empty value, where a reviewer had it emptied",
-        Outcome.HELD: "nothing, where the name is held: its instance waits in "
-        "the staging area for review",
+        Outcome.HELD: "an empty value, where the name is held, in a file "
+        "that is not released: the run holds its instance for review, deletes "
+        "the file from the staging area, and counts the instance in the "
+        "release report as held for review",
         Outcome.EMPTIED_UNREVIEWED: "an empty value, where the name is held "
-        "and the run was told to empty held names rather than wait for review",
+        "and the run's descriptor cleaning is set to empty held names, in an "
+        "instance that may then be released without the Clean Descriptors "
+        "code",
     }
 )
 
@@ -414,9 +418,13 @@ def _inserted(
             codes += (
                 ", then "
                 f"{_join(coded(c) for c in found.review_codes)} only in an "
-                "instance whose retained descriptors have passed pooled human "
-                "review, since otherwise the Basic Profile's actions apply to "
-                "the descriptors"
+                f"instance in which every attribute given C is a "
+                f"{_ROI_NAME_NAMED} that was renamed by the automatic tier, "
+                "was empty, or took a reviewer's decision. Every other "
+                "attribute given C takes the action that the policy gives it "
+                "without Clean Descriptors, since how it is cleaned is not yet "
+                "described, and an instance that holds one, a held name, or a "
+                "name emptied without review does not gain that code"
             )
         codes += (
             ". A code is not added where an item already present has the same "

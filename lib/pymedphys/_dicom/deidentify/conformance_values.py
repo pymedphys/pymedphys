@@ -47,6 +47,7 @@ from . import dummy_values, pseudonyms, residuals, uids
 from . import release_report as report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
+from .release_gate import ReasonCode
 from .release_report import _HOLDING, _SEQUESTERING
 from .residuals import _BINARY as _BINARY_VRS
 from .residuals import _KINDS
@@ -170,6 +171,20 @@ STAGES: Mapping[str, str] = types.MappingProxyType(
             "be collected for the search"
         ),
     }
+)
+
+# The codes by which the release gate can hold an instance for review rather
+# than withhold it: a gap in collection for a value of no required kind, and
+# other text found inside the data set.
+REVIEW_CODES = frozenset(
+    code.value
+    for code in (
+        ReasonCode.UNCOLLECTED,
+        ReasonCode.NOT_REPORTED,
+        ReasonCode.READ_AS_LATIN_1,
+        ReasonCode.COLLECTED_AS_OTHER_VR,
+        ReasonCode.RESIDUAL_TEXT,
+    )
 )
 
 # What each stage that holds an instance for review does.
@@ -353,7 +368,7 @@ def residual_search(named: Callable[[str], str]) -> list[str]:
         "The engine collects each source value that it removes or replaces, "
         "at every level of nesting and with the descendants of a removed "
         "sequence, for the residual search, which searches every byte of a "
-        "written file for them, once the engine applies it to each run: the "
+        "written file for them before the file is released: the "
         "preamble, the File Meta Information, every element, Data Set "
         "Trailing Padding, and the bytes after the last readable element "
         "(D-027). Values of VR "
@@ -378,6 +393,13 @@ def residual_search(named: Callable[[str], str]) -> list[str]:
     ]
 
 
+def _held_by(stage: str, codes: Iterable[str]) -> list[str]:
+    """Return the codes by which a stage can hold an instance for review."""
+    if stage == "release":
+        return [c for c in codes if c in REVIEW_CODES]
+    return list(codes)
+
+
 def release_report() -> list[str]:
     """Return the lines of the section on what the release report records."""
     (first,) = report.sequestration_labels(1)
@@ -389,7 +411,7 @@ def release_report() -> list[str]:
     ]
     holding = [
         f"- {code(stage)}: {HOLDING_STAGES[stage]}, by "
-        + join((code(c) for c in sorted(codes)), "or")
+        + join((code(c) for c in sorted(_held_by(stage, codes))), "or")
         + "."
         for stage, codes in _HOLDING.items()
     ]
@@ -410,7 +432,15 @@ def release_report() -> list[str]:
         "",
         "A reason from the walker also gives the attribute's tags from the "
         "outermost sequence, without items, the action, and the VR where it "
-        "is known.",
+        "is known, and one from the release gate gives the attribute's tags "
+        "in the same way where it names an attribute.",
+        "",
+        "An instance whose values were not collected at all, since it was "
+        "sequestered before its transform collected them, as for its scope, "
+        "its source file, an error, or a source file that changed during the "
+        "run, makes the release gate withhold every other file of its "
+        "subject, by `not-reported`, since its values were not searched for "
+        "in them (D-027).",
         "",
         "The report counts the instances held for review, by the stage that "
         "held each and its reason code, an instance once for each stage and "
@@ -433,9 +463,13 @@ def release_report() -> list[str]:
         "The report lists each released instance by its output name alone, "
         "which is built from the replacement Patient ID and UIDs, and gives "
         "the run's QC pack by its opaque reference, with the outcome of its "
-        "attestation (`attested`, `rejected`, or `not-attested`), or none for "
-        "a run without a QC pack. A report written before the pack is "
-        "reviewed gives the outcome `not-attested` (D-016, D-026).",
+        "attestation (`attested`, `rejected`, or `not-attested`). Every run "
+        "writes a QC pack, so a run's report always gives one. A report "
+        "written before the pack is reviewed gives the outcome `not-attested` "
+        "(D-016, D-026). An input that the run refuses, as not an instance "
+        "that it can read, such as a symbolic link, a DICOMDIR, or a file not "
+        "readable as DICOM, is neither labelled nor counted in the report; "
+        "only the QC pack lists it.",
         "",
         "The report holds no source value or original path: each field is a "
         "digest, a version, a known edition, preset, or option, a file name "

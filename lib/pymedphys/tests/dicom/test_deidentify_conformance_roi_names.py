@@ -15,21 +15,34 @@
 """How the conformance statement describes the cleaning of ROI Names (D-009)."""
 
 import dataclasses
+import io
 
-from pymedphys._imports import pytest
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     conformance,
     conformance_markdown,
+    descriptor_cleaning,
+    instance_transform,
     policy,
     reviewed_roi_names,
     roi_names,
+    run,
 )
+from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._nomenclature import tg263
 from pymedphys.tests.dicom.test_deidentify_conformance import (
     _entry,
     _section,
     _statement,
+)
+from pymedphys.tests.dicom.test_deidentify_descriptor_cleaning import (
+    _NOMENCLATURE,
+    CLEAN_DESCRIPTORS_CODE,
+    _codes,
+    _structure_set,
+    _transform,
+    _transformed,
 )
 from pymedphys.tests.dicom.test_deidentify_method_digest import (
     VOCABULARY,
@@ -136,7 +149,7 @@ def test_every_reviewer_decision_and_outcome_is_described():
     assert set(conformance_markdown.ROI_OUTCOMES) == set(reviewed_roi_names.Outcome)
     for text in conformance_markdown.ROI_OUTCOMES.values():
         assert text in section
-    assert "staging area" in section
+    assert "deletes the file from the staging area" in section
     assert "never written to the output" in section
 
 
@@ -146,13 +159,99 @@ def test_the_manner_of_cleaning_roi_names_is_described_not_pending():
     assert "other than ROI Name (3006,0026)" in conformance.PENDING_CLEANING
 
 
+def _cleaning_published(monkeypatch):
+    """Take the descriptor cleaning tests' invented vocabulary as published."""
+    entries = [dataclasses.asdict(s) for s in _NOMENCLATURE.structures]
+    monkeypatch.setitem(
+        roi_names.PUBLISHED_TG263, "TG263 vInvented", tg263.content_sha256(entries)
+    )
+
+
+def _released_codes(transform, dataset):
+    """Return the gate's decision on one transformed instance, and its codes."""
+    result = _transformed(transform, dataset)
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    decision = instance_transform.ReleaseGate()(
+        result.data, result.evidence, (result.evidence,)
+    )
+    return written, decision, _codes(written)
+
+
+def test_the_described_holding_of_a_roi_name_is_the_engines(monkeypatch):
+    _cleaning_published(monkeypatch)
+    held = conformance_markdown.ROI_OUTCOMES[reviewed_roi_names.Outcome.HELD]
+    assert held.startswith("an empty value")
+    assert "holds its instance for review" in held
+    written, decision, codes = _released_codes(
+        _transform(), _structure_set("lung_l", "SURGEONS ROI")
+    )
+    assert written.StructureSetROISequence[1].ROIName == ""
+    assert isinstance(decision, run.HoldForReview)
+    assert CLEAN_DESCRIPTORS_CODE not in codes
+
+    emptied = conformance_markdown.ROI_OUTCOMES[
+        reviewed_roi_names.Outcome.EMPTIED_UNREVIEWED
+    ]
+    assert "released without the Clean Descriptors code" in emptied
+    written, decision, codes = _released_codes(
+        _transform(empty_held=True), _structure_set("SURGEONS ROI")
+    )
+    assert written.StructureSetROISequence[0].ROIName == ""
+    assert isinstance(decision, run.Release)
+    assert CLEAN_DESCRIPTORS_CODE not in codes
+
+
+def test_the_described_condition_for_the_clean_descriptors_code_is_the_engines(
+    monkeypatch,
+):
+    _cleaning_published(monkeypatch)
+    section = _section(
+        conformance_markdown.render_markdown(_statement("basic-clean-descriptors")),
+        "Attributes inserted",
+    )
+    assert "pooled human review" not in section
+    assert (
+        "only in an instance in which every attribute given C is a ROI Name "
+        "(3006,0026) that was renamed by the automatic tier, was empty, or took "
+        "a reviewer's decision"
+    ) in section
+    assert "takes the action that the policy gives it without Clean Descriptors" in (
+        section
+    )
+    # Renamed automatically, so the instance gains the code.
+    _, decision, codes = _released_codes(_transform(), _structure_set("lung_l"))
+    assert isinstance(decision, run.Release)
+    assert CLEAN_DESCRIPTORS_CODE in codes
+    # Another descriptor given C loses it.
+    _, decision, codes = _released_codes(
+        _transform(),
+        _structure_set("lung_l", StudyDescription="SENTINEL STUDY"),
+    )
+    assert CLEAN_DESCRIPTORS_CODE not in codes
+
+
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
-def test_applying_roi_name_cleaning_in_a_run_is_pending(preset):
-    # No run yet calls the cleaning that the section describes.
+def test_a_policy_whose_fallback_cannot_be_composed_is_pending(preset):
     statement = _statement(preset)
-    cleaned = statement.roi_names is not None
-    assert (conformance.PENDING_ROI_NAMES in statement.pending) == cleaned
-    assert "no run yet writes the cleaned names" in conformance.PENDING_ROI_NAMES
+    composed = policy.compose_policy(preset)
+    try:
+        descriptor_cleaning.fallback_policy(composed)
+        refused = False
+    except policy.PolicyError:
+        refused = "clean_descriptors" in composed.options
+    assert (conformance.PENDING_FALLBACK in statement.pending) == refused
+    assert refused == (preset == "tps-import")
+    if refused:
+        with pytest.raises(policy.PolicyError):
+            instance_transform.InstanceTransform(
+                composed,
+                DeidKey(bytes(32)),
+                cleaning=descriptor_cleaning.DescriptorCleaning(
+                    None, reviewed_roi_names.ReviewedNames.empty()
+                ),
+                unvalidated_policy=True,
+            )
 
 
 def test_the_described_hyphen_and_reverse_order_matching_is_the_engines(monkeypatch):
