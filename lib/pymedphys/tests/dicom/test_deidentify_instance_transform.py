@@ -18,6 +18,8 @@ Every file is synthetic. Values that must never reach a result carry the
 text ``SENTINEL``.
 """
 
+# pylint: disable = too-many-lines
+
 import functools
 import io
 import json
@@ -123,6 +125,7 @@ def _plan_with_sentinels():
     return plan
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01", "PS3.15-E.1.1-06")
 def test_each_instance_of_a_collection_is_written_and_named_by_its_replacements():
     pseudonym = patient_pseudonym(
         KEY, InstanceRecord.from_file(synthetic.written(synthetic.ct_slice(0))).patient
@@ -256,6 +259,7 @@ def test_the_satisfied_options_leave_out_clean_descriptors():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04")
 def test_references_between_instances_follow_their_replacements():
     dose = pydicom.dcmread(io.BytesIO(_transformed(synthetic.rt_dose()).data))
     plan = pydicom.dcmread(io.BytesIO(_transformed(synthetic.rt_plan()).data))
@@ -264,6 +268,23 @@ def test_references_between_instances_follow_their_replacements():
     assert referenced == plan.SOPInstanceUID == replacement_uid(KEY, synthetic.PLAN)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-08")
+def test_no_group_0004_element_is_written_at_any_level():
+    plan = synthetic.rt_plan()
+    plan.add_new(0x00041130, "CS", "SENTINEL TOP")
+    plan.ReferencedStructureSetSequence[0].add_new(0x00041500, "CS", "SENTINEL ITEM")
+    source = synthetic.written(plan)
+    assert b"SENTINEL TOP" in source and b"SENTINEL ITEM" in source
+
+    result = _transform()(source, InstanceRecord.from_file(source))
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert not [element for element in written.iterall() if element.tag.group == 4]
+    assert b"SENTINEL" not in result.data
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_the_output_is_written_from_the_source_and_verified_against_it(monkeypatch):
     verified = []
     original = preservation.verify_preservation
@@ -298,6 +319,7 @@ def test_the_evidence_holds_the_removed_values_and_shows_only_counts():
     assert b"SENTINEL" not in result.data
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 def test_an_instance_the_release_does_not_support_is_sequestered_by_its_disposition():
     mr = synthetic.instance(
         synthetic.MR_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
@@ -509,6 +531,7 @@ def test_a_value_left_out_of_the_search_is_not_read_as_latin_1():
     assert coverage_of(plan, edits, frozenset({path})).decoded_as_bytes == frozenset()
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_a_write_the_writer_refuses_is_sequestered_by_its_reason(monkeypatch):
     def refusing(*_args, **_kwargs):
         raise preserving_writer.WriteRefused(WriteReason.ENCODING, _top("(0010,0010)"))
@@ -521,6 +544,7 @@ def test_a_write_the_writer_refuses_is_sequestered_by_its_reason(monkeypatch):
     assert isinstance(result.evidence, Coverage)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 def test_output_that_does_not_preserve_its_source_is_sequestered(monkeypatch):
     def failing(*_args):
         raise preservation.PreservationFailed(

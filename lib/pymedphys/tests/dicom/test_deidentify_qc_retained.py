@@ -236,7 +236,7 @@ def test_retained_text_becomes_the_packs_distinct_retained_strings():
     assert strings[0].places == ((0, description), (1, description))
 
 
-@pytest.mark.deid_requirement("MIDI-BP-17")
+@pytest.mark.deid_requirement("MIDI-BP-17", "MIDI-BP-11")
 def test_each_string_the_plan_keeps_is_given_to_the_qc_pack():
     dataset = synthetic.rt_dose()
     dataset.Manufacturer = "SENTINEL MAKER"

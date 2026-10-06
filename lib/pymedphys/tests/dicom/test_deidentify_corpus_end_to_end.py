@@ -187,6 +187,7 @@ def _encodings(form):
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.1-09")
 def test_the_basic_profile_releases_all_but_the_instances_it_must_hold(
     basic_run,
 ):
@@ -233,6 +234,16 @@ def test_the_basic_profile_releases_all_but_the_instances_it_must_hold(
             )
 
 
+@pytest.mark.deid_requirement(
+    "MIDI-BP-01",
+    "PS3.15-E.1.1-01",
+    "PS3.15-E.1.1-04",
+    "PS3.15-E.1.1-06",
+    "PS3.15-E.1.1-09",
+    "PS3.15-E.3.10-02",
+    "MIDI-BP-11",
+    "MIDI-BP-13",
+)
 def test_no_published_file_holds_a_marker(basic_run):
     corpus, result, released, _ = basic_run
     published = _published(result)
@@ -267,6 +278,7 @@ def test_no_published_file_holds_a_marker(basic_run):
                         assert encoded not in data, (name, file.name, placement.path)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.1-01", "PS3.15-E.1.1-09")
 def test_no_released_file_keeps_a_numeric_marker_at_its_place(basic_run):
     corpus, _, released, _ = basic_run
     assert released
@@ -287,6 +299,7 @@ def test_no_released_file_keeps_a_numeric_marker_at_its_place(basic_run):
             )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.1-09")
 def test_no_released_file_keeps_a_removed_sequence_without_a_marker(basic_run):
     """A sequence whose item holds no marker is checked by its absence."""
     corpus, _, released, _ = basic_run
@@ -312,6 +325,7 @@ def test_no_released_file_keeps_a_removed_sequence_without_a_marker(basic_run):
     assert checked
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_no_warning_or_log_record_shows_a_marker(basic_run):
     corpus, _, _, messages = basic_run
     # pydicom warns about the invalid Device UID, quoting it.

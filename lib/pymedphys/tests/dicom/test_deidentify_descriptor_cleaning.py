@@ -272,7 +272,7 @@ def test_decisions_recorded_after_the_transform_is_made_do_not_apply():
     assert method["reviewed_roi_names"] == ReviewedNames.empty().keyed_digest(KEY)
 
 
-@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-17")
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-17", "MIDI-BP-11")
 def test_a_run_holds_the_structure_set_and_releases_the_rest(tmp_path):
     datasets = [
         _structure_set("SURGEONS ROI") if index == 3 else dataset

@@ -421,6 +421,7 @@ def _search(written):
     return run_qc.SearchMaterial(empty, written)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-10")
 @pytest.mark.pydicom
 def test_the_run_pack_previews_released_and_held_files_and_lists_high_risk():
     slices = _slices(3)
@@ -487,6 +488,7 @@ def test_a_reviewed_file_that_no_gate_handed_over_is_listed():
 # The transform's material, and a run with the real transform and gate.
 
 
+@pytest.mark.deid_requirement("MIDI-BP-10")
 def test_the_transform_gives_the_sources_pixel_risk_as_qc_material():
     dose = synthetic.rt_dose()
     dose.BurnedInAnnotation = "YES"
@@ -505,7 +507,7 @@ def test_the_transform_gives_the_sources_pixel_risk_as_qc_material():
     ]
 
 
-@pytest.mark.deid_requirement("MIDI-BP-17")
+@pytest.mark.deid_requirement("MIDI-BP-17", "MIDI-BP-10")
 def test_a_run_previews_its_images_in_the_qc_pack(tmp_path):
     plan = synthetic.rt_plan()
     dose = synthetic.rt_dose()
