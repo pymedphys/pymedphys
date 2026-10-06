@@ -21,6 +21,7 @@ import json
 import os
 import subprocess
 import sys
+import types
 
 from pymedphys._imports import pytest
 
@@ -33,9 +34,11 @@ from pymedphys._dicom.deidentify import (
     release_report,
     run,
     run_qc,
+    run_report,
 )
 from pymedphys._dicom.deidentify.descriptor_cleaning import HeldRoiName
 from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._dicom.deidentify.iod_conformance import SourceGap
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
     ReleaseGate,
@@ -71,6 +74,10 @@ from pymedphys._dicom.deidentify.run_report import (
     roi_name_counts,
 )
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
+from pymedphys._dicom.deidentify.written_references import (
+    WrittenFinding,
+    WrittenFindingKind,
+)
 
 from . import _synthetic_references as synthetic
 from .test_deidentify_run import PLAN, Gate, GateReason, Transform, _listing, _write
@@ -483,6 +490,9 @@ def test_a_dangling_reference_is_counted_in_the_report_and_listed_in_the_pack(
         {"kind": "dangling-reference", "count": 1}
     ]
     assert "2.25.999" not in text
+    checks = json.loads(text)["structural_checks"]
+    assert checks[0] == {"check": "references", "sequestered": 0, "reported": 1}
+    assert [entry["sequestered"] for entry in checks] == [0, 0, 0]
     pack = json.loads(result.qc_pack.read_text(encoding="utf-8"))
     assert pack["reference_findings"] == [
         {
@@ -565,6 +575,56 @@ def test_the_report_counts_each_instance_once_for_each_kind_of_finding():
     assert json.loads(text)["reference_findings"] == [
         {"kind": "dangling-reference", "count": 2}
     ]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-17")
+def test_the_structural_checks_count_each_reported_instance_once():
+    found = run_qc.ReferenceFindingMaterial(
+        FindingKind.DANGLING_REFERENCE, ("(300C,0080)", "(0008,1155)"), 1
+    )
+    gap = SourceGap(ElementPath((), "(0008,0060)"), "1")
+    unwritten = run_qc.WrittenFindingMaterial(
+        WrittenFindingKind.UNWRITTEN_TARGET, ("(300C,0002)", "(0008,1155)"), 1
+    )
+    material = {
+        0: (found, found, gap, gap),
+        1: (unwritten, unwritten),
+        2: (found, gap, unwritten),
+        3: (),
+    }
+    # Position 2 is an identical copy of position 0, the same instance.
+    outcomes = [
+        types.SimpleNamespace(position=position, duplicate_of=copy_of)
+        for position, copy_of in ((0, None), (1, None), (2, 0), (3, None))
+    ]
+
+    assert run_report.structural_checks(outcomes, material) == (
+        release_report.StructuralCheck("references", 1),
+        release_report.StructuralCheck("iod-requirements", 1),
+        release_report.StructuralCheck("written-references", 1),
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_each_written_finding_reported_only_is_added_once_to_each_input_it_names():
+    kept = object()
+    unwritten = WrittenFinding(
+        WrittenFindingKind.UNWRITTEN_TARGET, ((2,),), ("(300C,0002)", "(0008,1155)"), 1
+    )
+    acted = WrittenFinding(
+        WrittenFindingKind.MISMATCHED_REFERENCE, ((1,),), ("(0008,1155)",), 1
+    )
+
+    added = run_qc.with_written_findings({2: (kept,)}, (acted, unwritten, unwritten))
+
+    assert added == {
+        2: (
+            kept,
+            run_qc.WrittenFindingMaterial(
+                WrittenFindingKind.UNWRITTEN_TARGET, ("(300C,0002)", "(0008,1155)"), 1
+            ),
+        )
+    }
 
 
 def test_the_reporter_shows_nothing_and_refuses_a_policy_it_cannot_record():

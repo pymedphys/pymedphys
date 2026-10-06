@@ -63,6 +63,7 @@ from .run_qc import (
     ReferenceFindingMaterial,
     RoiNameMaterial,
     SearchMaterial,
+    WrittenFindingMaterial,
 )
 
 # The release report's name at the root of a release. Output names are
@@ -187,6 +188,7 @@ class ReleaseReporter:
                 [item for item in material[position] if isinstance(item, SourceGap)]
                 for position in sorted(material)
             ),
+            checks=structural_checks(outcomes, material),
         )
         return release_report.to_json(report)
 
@@ -342,6 +344,47 @@ def reference_findings(
         ]
         for position in sorted(material)
         if position not in copies
+    )
+
+
+# The material by which each structural check reports an instance.
+_REPORTED_BY_CHECK = {
+    "references": ReferenceFindingMaterial,
+    "iod-requirements": SourceGap,
+    "written-references": WrittenFindingMaterial,
+}
+
+
+def structural_checks(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> tuple[release_report.StructuralCheck, ...]:
+    """Count the instances that each structural check reported only.
+
+    An instance is reported by the first pass's references for a
+    :class:`~pymedphys._dicom.deidentify.run_qc.ReferenceFindingMaterial`,
+    by the IOD requirements for a gap in its source, a
+    :class:`~pymedphys._dicom.deidentify.iod_conformance.SourceGap`, and by
+    the written references for a
+    :class:`~pymedphys._dicom.deidentify.run_qc.WrittenFindingMaterial`,
+    each once however many it has. An identical copy of an input is the same
+    instance, so it is not counted again. The report counts the instances
+    that each check sequestered from their reasons.
+    """
+    copies = {
+        getattr(outcome, "position")
+        for outcome in outcomes
+        if getattr(outcome, "duplicate_of") is not None
+    }
+    return tuple(
+        release_report.StructuralCheck(
+            check,
+            sum(
+                any(isinstance(item, kind) for item in material[position])
+                for position in material
+                if position not in copies
+            ),
+        )
+        for check, kind in _REPORTED_BY_CHECK.items()
     )
 
 

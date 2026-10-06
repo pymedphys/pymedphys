@@ -345,6 +345,17 @@ def test_the_release_report_counts_reported_reference_findings_by_kind(preset):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-17", "MIDI-BP-18")
+def test_the_release_report_summarises_the_structural_checks(preset):
+    section = _section(preset, "Release report")
+    summary = section.split("structural checks", 1)[1].split("\n\n", 1)[0]
+    for check in release_report.STRUCTURAL_CHECKS:
+        assert f"`{check}`" in summary, check
+    assert "sequestered" in summary
+    assert "naming none of them" in summary
+    assert "not that it suits a particular use" in summary
+
+
+@pytest.mark.deid_requirement("MIDI-BP-17", "MIDI-BP-18")
 def test_the_release_report_records_the_releasers_confirmations(preset):
     section = _section(preset, "Release report")
     review = section.split("outcome of its attestation", 1)[1].split("\n\n", 1)[0]

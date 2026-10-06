@@ -47,7 +47,7 @@ defines, never from DICOM data directly, and the check is a backstop: a
 field of another form, which could be a source value or a path outside the
 package, is refused. A field that fails is named, never quoted.
 
-Eight sections describe a run, by replacement identifiers, attribute tags,
+Nine sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
 
 - ``qc_review``: the run's QC pack by its opaque reference, with the outcome
@@ -92,6 +92,11 @@ and codes that the engine defines, never by a source value or path:
   :func:`source_gaps`. The run reports these and never acts on them, since
   the source lacked them before de-identification (MIDI-BP-03). The QC pack
   lists each by instance and place.
+- ``structural_checks``: for each of the engine's checks that its output is
+  well formed and refers to itself as its source did, in the order of
+  :data:`STRUCTURAL_CHECKS`, how many instances it sequestered, counted from
+  the ``sequestered`` section's reasons, and how many it reported without
+  acting on, from :class:`StructuralCheck`. Only the QC pack names them.
 """
 
 from __future__ import annotations
@@ -130,7 +135,7 @@ from .standard import OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/8"
+FORMAT = "pymedphys-deid-release-report/9"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -197,6 +202,25 @@ _ACTED_ON_FINDINGS = frozenset(
 REPORTED_FINDINGS = frozenset(FindingKind) - _ACTED_ON_FINDINGS
 """The first pass's findings that a run reports without acting on them."""
 _REPORTED_CODES = frozenset(kind.value for kind in REPORTED_FINDINGS)
+STRUCTURAL_CHECKS = ("references", "iod-requirements", "written-references")
+"""The engine's structural checks, in the order the release report gives them.
+
+``references`` is the first pass's check of how the inputs refer to each
+other, ``iod-requirements`` the transform's check that each written instance
+keeps the attributes that its IOD requires where its source had them, with
+the source's own gaps, and ``written-references`` the second pass's check
+that what was written refers to itself as the inputs did.
+"""
+# The reasons, by stage and code, with which each check sequesters an instance.
+_CHECK_REASONS = {
+    "references": frozenset(
+        ("references", code) for code in _SEQUESTERING["references"]
+    ),
+    "iod-requirements": frozenset(
+        {("transform", TransformReason.REQUIRED_ATTRIBUTE_LOST.value)}
+    ),
+    "written-references": frozenset({("run", RunReason.INCONSISTENT_REFERENCES.value)}),
+}
 # The reason codes of each stage that holds an instance for review.
 _HOLDING = {
     "roi-names": frozenset(r.value for r in RoiNameReason),
@@ -383,6 +407,30 @@ class SourceGapCount:
 
 
 @dataclasses.dataclass(frozen=True)
+class StructuralCheck:
+    """How many instances one of the engine's structural checks reported.
+
+    The report counts the instances that the check sequestered from the
+    reasons of its ``sequestered`` section, so that the two always agree.
+
+    Attributes
+    ----------
+    check : str
+        One of :data:`STRUCTURAL_CHECKS`.
+    reported : int
+        How many instances have a finding of the check that the run
+        reported without acting on it, each once, from 0.
+    """
+
+    check: str
+    reported: int
+
+
+def _no_checks() -> tuple[StructuralCheck, ...]:
+    return tuple(StructuralCheck(check, 0) for check in STRUCTURAL_CHECKS)
+
+
+@dataclasses.dataclass(frozen=True)
 class ReleaseReport:
     """A release report's record of the method, the runtime, and the run.
 
@@ -399,6 +447,7 @@ class ReleaseReport:
     roi_names : ~pymedphys._dicom.deidentify.reviewed_roi_names.RoiNameCounts
     reference_findings : tuple of ReferenceFindings
     source_gaps : tuple of SourceGapCount
+    structural_checks : tuple of StructuralCheck
     """
 
     policy: PolicyRecord
@@ -414,6 +463,9 @@ class ReleaseReport:
     )
     reference_findings: tuple[ReferenceFindings, ...] = ()
     source_gaps: tuple[SourceGapCount, ...] = ()
+    structural_checks: tuple[StructuralCheck, ...] = dataclasses.field(
+        default_factory=_no_checks
+    )
 
 
 def attribute_tags(path: ElementPath) -> str:
@@ -664,6 +716,7 @@ def release_report(
     roi_names: RoiNameCounts | None = None,
     findings: Iterable[ReferenceFindings] = (),
     gaps: Iterable[SourceGapCount] = (),
+    checks: Iterable[StructuralCheck] | None = None,
 ) -> ReleaseReport:
     """Return the release report of a policy, its method, the runtime, and a run.
 
@@ -710,6 +763,11 @@ def release_report(
     gaps : iterable of SourceGapCount, optional
         How many of the run's instances' sources lack each attribute that
         their IOD requires, from :func:`source_gaps`.
+    checks : iterable of StructuralCheck, optional
+        How many instances each of :data:`STRUCTURAL_CHECKS` reported
+        without acting on them, each check once, in that order; None, the
+        default, for none of each. The report counts those that each check
+        sequestered from ``sequestered``.
 
     Returns
     -------
@@ -731,7 +789,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'qc_review', 'released', 'sequestered', 'held_for_review', 'roi_names', 'reference_findings', 'search_coverage', 'source_gaps']
+    ['format', 'policy', 'method', 'runtime', 'qc_review', 'released', 'sequestered', 'held_for_review', 'roi_names', 'reference_findings', 'search_coverage', 'source_gaps', 'structural_checks']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -754,6 +812,7 @@ def release_report(
         roi_names=RoiNameCounts({}, {}) if roi_names is None else roi_names,
         reference_findings=tuple(findings),
         source_gaps=tuple(gaps),
+        structural_checks=_no_checks() if checks is None else tuple(checks),
     )
 
 
@@ -1087,20 +1146,56 @@ def _gaps_section(gaps: tuple[SourceGapCount, ...]) -> list:
 _REQUIRED_TYPES = frozenset({"1", "2"})
 
 
+def _checks_section(
+    checks: tuple[StructuralCheck, ...], sequestered: tuple[SequesteredInstance, ...]
+) -> list:
+    if not isinstance(checks, tuple) or not all(
+        isinstance(each, StructuralCheck) for each in checks
+    ):
+        raise _refuse("structural_checks", "is not a tuple of structural checks")
+    names = [
+        _code("structural_checks check", each.check, STRUCTURAL_CHECKS)
+        for each in checks
+    ]
+    if tuple(names) != STRUCTURAL_CHECKS:
+        raise _refuse("structural_checks", "does not give each check once, in order")
+    entries = []
+    for each in checks:
+        if type(each.reported) is not int or each.reported < 0:  # pylint: disable = unidiomatic-typecheck
+            raise _refuse("structural_checks reported", "is not a count from 0")
+        reasons = _CHECK_REASONS[each.check]
+        entries.append(
+            {
+                "check": each.check,
+                # Each instance once, however many of its reasons the check gave.
+                "sequestered": sum(
+                    any(
+                        (reason.stage, reason.code) in reasons
+                        for reason in instance.reasons
+                    )
+                    for instance in sequestered
+                ),
+                "reported": each.reported,
+            }
+        )
+    return entries
+
+
 def report_document(report: ReleaseReport) -> dict:
     """Return a release report as JSON values, after checking every field.
 
     The document is an object with the members ``format`` (:data:`FORMAT`),
     ``policy``, ``method``, ``runtime``, ``qc_review``, ``released``,
     ``sequestered``, ``held_for_review``, ``roi_names``,
-    ``reference_findings``, ``search_coverage``, and ``source_gaps``, in that
-    order, each section's fields in the order of its class, the digests of
+    ``reference_findings``, ``search_coverage``, ``source_gaps``, and
+    ``structural_checks``, in that order, each section's fields in the order of its class, the digests of
     tables and files sorted by name, ``qc_review`` null where the run wrote no
     QC pack, the released output names sorted, the sequestered instances by
     label, each with its reasons once, in the order given, the held counts by
     stage and code, the ROI Names' ``outcomes`` and ``held`` counts each by
     code, the reference findings' counts by kind, the coverage by attribute
-    and reason, and the source gaps by attribute and Type. A walker
+    and reason, the source gaps by attribute and Type, and each structural
+    check once, in the order of :data:`STRUCTURAL_CHECKS`. A walker
     reason has its stage, code, attribute, action, and VR, which is null
     where it is not known; a release gate's reason has its stage and code,
     and its attribute where it names one; and a reason from any other stage
@@ -1125,8 +1220,8 @@ def report_document(report: ReleaseReport) -> dict:
         :func:`~pymedphys._dicom.deidentify.output_names.instance_path`
         gives, listed once, one of the labels ``S-0001`` to ``S-n`` for ``n``
         sequestered instances, a path of tags, a code that the engine
-        defines for its stage, a positive count, or true or false, or is not
-        of its class. The message names the field, never its value.
+        defines for its stage, a positive count, a structural check's count
+        from 0, or true or false, or is not of its class. The message names the field, never its value.
     """
     return {
         "format": FORMAT,
@@ -1141,6 +1236,9 @@ def report_document(report: ReleaseReport) -> dict:
         "reference_findings": _reference_findings_section(report.reference_findings),
         "search_coverage": _coverage_section(report.search_coverage),
         "source_gaps": _gaps_section(report.source_gaps),
+        "structural_checks": _checks_section(
+            report.structural_checks, report.sequestered
+        ),
     }
 
 

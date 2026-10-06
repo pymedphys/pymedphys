@@ -44,9 +44,10 @@ A pack holds, for one run:
   audit of every name renamed, kept, or mapped, and each name held for
   review, with why (D-009);
 - ``reference_findings``: each reference finding that the run reports
-  without acting on it, such as a dangling reference, at each instance it
-  names, with the attribute's tags and its count; the release report gives
-  only how many instances have each kind;
+  without acting on it, such as a dangling reference, or a written reference
+  to an instance that was not written, at each instance it names, with the
+  attribute's tags and its count; the release report gives only how many
+  instances have each kind;
 - ``pixel_risks``: each instance in a high-risk category, with the
   indicators of risk in its pixel data that put it there (D-017); and
   ``series_risks``: each series of released or held instances with
@@ -89,6 +90,8 @@ from . import pixel_risk, residuals, roi_names
 from .file_layout import TAG_PATTERN, ElementPath, Location
 from .iod_conformance import SourceGap
 from .reference_graph import FindingKind
+from .run_written import REPORTED_ONLY
+from .written_references import WrittenFindingKind
 from .labels import LABEL_PATTERN
 from .residuals import UnsearchedReason
 from .reviewed_roi_names import Outcome
@@ -437,7 +440,13 @@ class ReferenceFindingEntry:
     ----------
     position : int
         The instance's run position.
-    kind : ~pymedphys._dicom.deidentify.reference_graph.FindingKind
+    kind : FindingKind or WrittenFindingKind
+        A kind of the first pass's
+        :class:`~pymedphys._dicom.deidentify.reference_graph.FindingKind`,
+        or one of
+        :data:`~pymedphys._dicom.deidentify.run_written.REPORTED_ONLY`, the
+        second pass's kinds that the run reports only, whose codes no first
+        pass kind has.
     attribute : tuple of str
         The tags from the outermost sequence to the attribute concerned.
     count : int
@@ -448,7 +457,7 @@ class ReferenceFindingEntry:
     """
 
     position: int
-    kind: FindingKind
+    kind: FindingKind | WrittenFindingKind
     attribute: tuple[str, ...]
     count: int = 0
 
@@ -459,14 +468,14 @@ class ReferenceFindingEntry:
             for tag in self.attribute
         )
         if (
-            not isinstance(self.kind, FindingKind)
+            not (isinstance(self.kind, FindingKind) or self.kind in REPORTED_ONLY)
             or not (tags and self.attribute)
             or type(self.count) is not int  # pylint: disable = unidiomatic-typecheck
             or self.count < 0
         ):
             raise QcPackError(
                 f"a reference finding of instance {self.position} needs a "
-                "FindingKind, its tags, and a count from 0"
+                "finding kind, its tags, and a count from 0"
             )
 
 

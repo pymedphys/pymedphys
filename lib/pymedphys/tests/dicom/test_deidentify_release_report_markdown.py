@@ -201,6 +201,7 @@ def test_the_sections_follow_the_documents_order():
         "## Reference findings",
         "## Values not searched",
         "## Required attributes missing from the source",
+        "## Structural checks",
     ]
     assert markdown.splitlines()[0] == "# De-identification release report"
 
@@ -256,7 +257,8 @@ def test_an_empty_run_says_so_in_each_run_section():
     markdown = to_markdown(release_report.to_json(_report()))
     assert "No QC pack was written for this run." in markdown
     assert markdown.count("None.") == 8
-    assert "|" not in markdown.split("## QC review", 1)[1]
+    run = markdown.split("## QC review", 1)[1].split("## Structural checks", 1)[0]
+    assert "|" not in run
 
 
 def test_a_custom_option_set_and_absent_digests_are_named_in_words():
@@ -389,6 +391,7 @@ def test_text_that_is_not_json_is_refused():
 def test_each_source_gap_is_a_row_with_its_type_and_count():
     markdown = to_markdown(release_report.to_json(_full_report()))
     section = markdown.split("## Required attributes missing from the source", 1)[1]
+    section = section.split("\n## ", 1)[0]
     rows = [line for line in section.splitlines() if line.startswith("| ")]
     assert rows == [
         "| Attribute | Type | Instances |",
