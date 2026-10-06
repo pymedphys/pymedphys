@@ -45,6 +45,7 @@ from collections.abc import Callable, Iterable, Mapping
 
 from . import dummy_values, pseudonyms, residuals, uids
 from . import release_report as report
+from . import run_report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
 from .release_gate import ReasonCode
@@ -475,7 +476,11 @@ def release_report() -> list[str]:
         "(D-016, D-026). An input that the run refuses, as not an instance "
         "that it can read, such as a symbolic link, a DICOMDIR, or a file not "
         "readable as DICOM, is neither labelled nor counted in the report; "
-        "only the QC pack lists it.",
+        "only the QC pack lists it. A run writes the report at the root of "
+        f"the release as `{run_report.RELEASE_REPORT}` and, beside it, its "
+        f"human-readable form as `{run_report.RELEASE_REPORT_MARKDOWN}`, "
+        "generated from the report's text alone, which shows every value of "
+        "the report and draws nothing else from it.",
         "",
         "The report holds no source value or original path: each field is a "
         "digest, a version, a known edition, preset, or option, a file name "

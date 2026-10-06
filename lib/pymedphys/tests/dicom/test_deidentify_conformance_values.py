@@ -33,6 +33,7 @@ from pymedphys._dicom.deidentify import (
     release_report,
     residuals,
     run,
+    run_report,
     standard,
     temporal_roles,
     uids,
@@ -442,3 +443,7 @@ def test_the_report_describes_what_a_run_always_writes(preset):
     assert "Every run writes a QC pack" in section
     assert "neither labelled nor counted in the report" in section
     assert "one from the release gate gives the attribute's tags" in section
+    assert (
+        f"`{run_report.RELEASE_REPORT}` and, beside it, its human-readable "
+        f"form as `{run_report.RELEASE_REPORT_MARKDOWN}`"
+    ) in section
