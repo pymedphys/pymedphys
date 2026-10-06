@@ -659,6 +659,8 @@ def render_markdown(statement: ConformanceStatement) -> str:
         *conformance_values.residual_search(named),
         "",
         *conformance_values.release_report(),
+        "",
+        *conformance_values.qc_pack(named),
     ]
     if statement.pending:
         lines += ["", "## Not yet described", ""]

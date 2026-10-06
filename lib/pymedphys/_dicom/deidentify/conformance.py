@@ -140,13 +140,10 @@ SEQUENCE_NOT_CLEANED = "sequence not cleaned"
 # What the statement cannot yet describe from the engine. Each is to be
 # generated once the engine decides it.
 PENDING: tuple[str, ...] = (
-    "What each run does not yet do: assess the pixel data risk indicators of "
-    "each instance, whose Pixel Data (7FE0,0010) it writes unchanged (D-015); "
-    "list in the confidential QC pack each distinct string that the policy "
-    "retains, other than a ROI Name (3006,0026) that a reviewer kept, for the "
-    "review of every "
-    "distinct retained string (D-017); and write this statement with the "
-    "release report.",
+    "What each run does not yet do: list in the confidential QC pack each "
+    "CT volume, as one that may hold a face that could be reconstructed, "
+    "with whether its attributes name a region of the head or neck (D-015); "
+    "and write this statement with the release report.",
 )
 PENDING_RUN = PENDING[0]
 # Pending only for a policy whose element rules the engine refuses.

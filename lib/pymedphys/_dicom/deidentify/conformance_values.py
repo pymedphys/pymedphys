@@ -48,6 +48,8 @@ from . import release_report as report
 from . import run_report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
+from .qc_retained import _NOT_REVIEWED_TAGS, RETAINED_TEXT_VRS
+from .reasons import TransformReason
 from .release_gate import ReasonCode
 from .release_report import _HOLDING, _SEQUESTERING
 from .residuals import _BINARY as _BINARY_VRS
@@ -399,6 +401,36 @@ def _held_by(stage: str, codes: Iterable[str]) -> list[str]:
     if stage == "release":
         return [c for c in codes if c in REVIEW_CODES]
     return list(codes)
+
+
+def qc_pack(named: Callable[[str], str]) -> list[str]:
+    """Return the lines of the section on what the QC pack lists for review."""
+    vrs = join(sorted(RETAINED_TEXT_VRS), "or")
+    exempt = join(named(tag) for tag in sorted(_NOT_REVIEWED_TAGS))
+    unreviewable = code(TransformReason.UNREVIEWABLE_RETAINED_TEXT.value)
+    return [
+        "## QC pack",
+        "",
+        "The confidential QC pack of each run lists, for the review of every "
+        "distinct retained string, each distinct string that an instance's "
+        "plan keeps as it is, in an element of VR "
+        f"{vrs} outside any removed sequence, other than {exempt}, with every "
+        "place where it was kept (D-017). The run sequesters an instance "
+        "with such a value that cannot be decoded for review, such as text "
+        "outside ISO 646 where no Specific Character Set applies, by "
+        f"{unreviewable}, rather than releasing it unreviewed.",
+        "",
+        "The engine writes Pixel Data (7FE0,0010) unchanged and claims "
+        "neither Clean Pixel Data nor Clean Recognizable Visual Features. "
+        "The QC pack lists each instance whose source's attributes show an "
+        "indicator of text burned into its pixel data or of a face that "
+        "could be reconstructed, with those indicators, and, where the "
+        "instance is released or held for review, previews its written file "
+        "at full resolution or records why it could not. The engine reads "
+        "these indicators from the "
+        "instance's attributes, never from its pixel data, so the absence "
+        "of an indicator is not evidence that the risk is absent (D-015).",
+    ]
 
 
 def release_report() -> list[str]:

@@ -29,6 +29,7 @@ from pymedphys._dicom.deidentify import (
     instance_transform,
     policy,
     pseudonyms,
+    qc_retained,
     release_gate,
     release_report,
     residuals,
@@ -41,6 +42,7 @@ from pymedphys._dicom.deidentify import (
 )
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.reasons import TransformReason
 
 TEMPORAL_VRS = frozenset({"DA", "DT", "TM"})
 TIMEZONE_OFFSET = "(0008,0201)"
@@ -420,15 +422,40 @@ def test_what_remains_of_the_run_is_pending(preset):
     statement = _statement(preset)
     pending = conformance.PENDING_RUN
     assert pending in statement.pending
-    for decision in ("D-015", "D-017"):
-        assert decision in pending
-    assert "QC pack" in pending
+    assert "D-015" in pending
+    assert "CT" in pending
     assert "write this statement" in pending
     # Each run now writes its report and QC pack, searches each written file,
-    # and acts on what the search finds.
-    for done in ("search each written file", "the run itself sequesters"):
+    # acts on what the search finds, lists each retained string in the QC
+    # pack, and assesses each instance's indicators of risk in its pixel data.
+    for done in (
+        "search each written file",
+        "the run itself sequesters",
+        "D-017",
+        "risk indicators of each instance",
+    ):
         assert done not in pending
     assert not statement.claims_conformance
+
+
+def test_the_qc_pack_lists_what_the_run_keeps_for_review(preset):
+    section = _section(preset, "QC pack")
+    assert (
+        "of VR " + conformance_values.join(sorted(qc_retained.RETAINED_TEXT_VRS), "or")
+    ) in section
+    assert "other than Specific Character Set (0008,0005)" in section
+    assert f"`{TransformReason.UNREVIEWABLE_RETAINED_TEXT.value}`" in section
+    assert "Pixel Data (7FE0,0010) unchanged" in section
+    assert "never from its pixel data" in section
+    # The series assessment of a reconstructable face is not yet in a run.
+    assert "CT" not in section
+
+
+def test_the_described_reason_for_an_undecodable_kept_string_sequesters():
+    assert (
+        TransformReason.UNREVIEWABLE_RETAINED_TEXT.value
+        in release_report._SEQUESTERING["transform"]  # pylint: disable = protected-access
+    )
 
 
 def test_the_residual_search_is_described_as_part_of_each_release(preset):
