@@ -265,6 +265,19 @@ def test_the_release_report_names_sequestered_instances_by_label(preset):
             assert f"`{reason}`" in line, (stage, reason)
 
 
+def test_the_release_report_counts_held_instances_by_stage(preset):
+    section = _section(preset, "Release report")
+    held = section.split("counts the instances held for review", 1)[1]
+    stages = release_report._HOLDING  # pylint: disable = protected-access
+    assert set(conformance_values.HOLDING_STAGES) == set(stages)
+    assert "(D-009)" in held
+    for stage, codes in stages.items():
+        line = held.split(f"- `{stage}`: ", 1)[1].split(" - ", 1)[0]
+        assert line.startswith(conformance_values.HOLDING_STAGES[stage])
+        for reason in codes:
+            assert f"`{reason}`" in line, (stage, reason)
+
+
 def test_every_reason_that_the_release_report_counts_is_described(preset):
     reasons = [*residuals.Omission, *residuals.UnsearchedReason]
     assert set(conformance_values.UNSEARCHED_REASONS) == set(residuals.UnsearchedReason)

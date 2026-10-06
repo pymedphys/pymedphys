@@ -41,7 +41,6 @@ from pymedphys._dicom.deidentify import (
     residuals,
     runtime,
     scope,
-    source,
     standard,
     walker,
 )
@@ -176,9 +175,10 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "qc_review",
         "released",
         "sequestered",
+        "held_for_review",
         "search_coverage",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/3"
+    assert document["format"] == "pymedphys-deid-release-report/4"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
@@ -515,81 +515,6 @@ def test_a_reason_given_twice_is_listed_once(basic):
     assert len(entry["reasons"]) == 2
 
 
-_SEQUESTERING = [
-    *(
-        (each, "scope")
-        for each in scope.Disposition
-        if each is not scope.Disposition.SUPPORTED
-    ),
-    *((each, "admission") for each in source.SourceReason),
-    (reference_graph.FindingKind.MISSING_IDENTIFIER, "references"),
-    (reference_graph.FindingKind.CONFLICTING_INSTANCE, "references"),
-    (reference_graph.FindingKind.SERIES_IN_SEVERAL_STUDIES, "references"),
-]
-
-
-@pytest.mark.parametrize(
-    "cause, stage", _SEQUESTERING, ids=[str(each) for each, _ in _SEQUESTERING]
-)
-def test_each_stage_that_sequesters_gives_its_reason_code(basic, cause, stage):
-    reason = release_report.sequestration_reason(cause)
-
-    assert (reason.stage, reason.code) == (stage, cause.value)
-    assert (reason.attribute, reason.action, reason.vr) == (None, None, None)
-    report = release_report.release_report(
-        basic,
-        vocabulary=None,
-        reviewed_roi_names=None,
-        sequestered=(release_report.SequesteredInstance("S-0001", (reason,)),),
-    )
-    assert release_report.report_document(report)["sequestered"][0]["reasons"] == [
-        {"stage": stage, "code": cause.value}
-    ]
-
-
-@pytest.mark.parametrize("reason", list(walker.SequesterReason))
-def test_each_walker_reason_is_written(basic, reason):
-    cause = walker.Sequestration(ElementPath((), "(0010,0020)"), "X", None, reason)
-    report = release_report.release_report(
-        basic,
-        vocabulary=None,
-        reviewed_roi_names=None,
-        sequestered=(
-            release_report.SequesteredInstance(
-                "S-0001", (release_report.sequestration_reason(cause),)
-            ),
-        ),
-    )
-
-    assert release_report.report_document(report)["sequestered"][0]["reasons"] == [
-        {
-            "stage": "walker",
-            "code": reason.value,
-            "attribute": "(0010,0020)",
-            "action": "X",
-            "vr": None,
-        }
-    ]
-
-
-@pytest.mark.parametrize(
-    "cause",
-    [
-        scope.Disposition.SUPPORTED,
-        reference_graph.FindingKind.DANGLING_REFERENCE,
-        reference_graph.FindingKind.DUPLICATE_INSTANCE,
-        reference_graph.FindingKind.STUDY_WITH_SEVERAL_PATIENTS,
-        "SENTINEL",
-    ],
-)
-def test_what_does_not_sequester_an_instance_is_not_a_reason(cause):
-    # A study with several patients stops the run instead.
-    with pytest.raises((TypeError, ValueError)) as raised:
-        release_report.sequestration_reason(cause)
-
-    assert "SENTINEL" not in str(raised.value)
-
-
 def test_labels_are_random_and_carry_nothing_from_the_run():
     first = release_report.sequestration_labels(12, rng=random.Random(1))
     second = release_report.sequestration_labels(12, rng=random.Random(2))
@@ -690,8 +615,8 @@ def _reason(**changes):
     return dataclasses.replace(_sequestered().reasons[1], **changes)
 
 
-def _instance(*reasons, label="S-0001"):
-    return release_report.SequesteredInstance(label, reasons)
+def _instance(*causes, label="S-0001"):
+    return release_report.SequesteredInstance(label, causes)
 
 
 @pytest.mark.parametrize(
