@@ -554,7 +554,9 @@ class InstanceTransform:
     cleaning : DescriptorCleaning, optional
         The vocabulary and reviewed-names list that ROI Names are cleaned
         with, which a policy selecting Clean Descriptors needs, and no other
-        policy takes.
+        policy takes. The transform applies the list's decisions as they
+        stand when it is made, the version whose keyed digest its markers and
+        release report record; a decision recorded later does not apply.
     unvalidated_policy : bool, default False
         Allow a policy that is not enabled, such as a preset whose behaviour
         is not yet validated. For tests and validation runs only; nothing
@@ -608,6 +610,11 @@ class InstanceTransform:
             raise PolicyError(
                 "descriptor cleaning is given exactly when the policy selects "
                 "Clean Descriptors"
+            )
+        if cleaning is not None:
+            # One version of the list, for both cleaning and its digest.
+            cleaning = dataclasses.replace(
+                cleaning, reviewed=cleaning.reviewed.snapshot()
             )
         self._rules = ElementRules(policy)
         self._key = key

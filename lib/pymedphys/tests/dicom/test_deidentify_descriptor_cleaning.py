@@ -247,6 +247,21 @@ def test_the_method_digest_and_the_report_cover_the_reviewed_names():
     assert (method["method_digest"], method["reviewed_roi_names"]) == (digest, keyed)
 
 
+def test_decisions_recorded_after_the_transform_is_made_do_not_apply():
+    reviewed = ReviewedNames.empty()
+    transform = _transform(reviewed)
+    reviewed.record("PTV_CUSTOM", ReviewedName(Review.MAP, "GTVp"))
+
+    for _ in range(2):
+        result = _transformed(transform, _structure_set("PTV_CUSTOM"))
+        assert isinstance(result, run.Transformed)
+        assert isinstance(result.evidence, HeldEvidence)
+        reviewed.record("GTV1", ReviewedName(Review.KEEP))
+
+    method = json.loads(transform.reporter((), {}))["method"]
+    assert method["reviewed_roi_names"] == ReviewedNames.empty().keyed_digest(KEY)
+
+
 def test_a_run_holds_the_structure_set_and_releases_the_rest(tmp_path):
     datasets = [
         _structure_set("SURGEONS ROI") if index == 3 else dataset
