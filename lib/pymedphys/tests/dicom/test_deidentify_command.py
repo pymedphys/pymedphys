@@ -575,22 +575,34 @@ def test_main_builds_the_basic_transform_and_release_gate(
     assert isinstance(call["transform"], instance_transform.InstanceTransform)
     assert isinstance(call["gate"], instance_transform.ReleaseGate)
     assert call["qc_destination"] == str(tmp_path / "qc")
+    assert call["reporter"] is call["transform"].reporter
 
 
-@pytest.mark.usefixtures("enabled")
-def test_the_transform_has_the_chosen_preset(tmp_path, monkeypatch):
-    chosen = []
-    built = instance_transform.InstanceTransform
+def test_a_given_transform_runs_without_a_release_report(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        command, "deidentify_directory", lambda *_, **kwargs: calls.append(kwargs)
+    )
+    command.main(
+        ["in", "out", "--qc-pack", str(tmp_path / "qc")],
+        transform=Transform(),
+        gate=Gate(),
+    )
 
-    def recording(selected, key, *args, **kwargs):
-        chosen.append(selected.preset)
-        return built(selected, key, *args, **kwargs)
+    (call,) = calls
+    assert call["reporter"] is None
 
-    monkeypatch.setattr(instance_transform, "InstanceTransform", recording)
 
-    _parsed_call(tmp_path, monkeypatch, "--preset", "basic-clean-descriptors")
+def test_clean_descriptors_waits_for_its_roi_name_options(capsys):
+    # Its transform needs a vocabulary and reviewed-names list, which the
+    # command cannot take yet.
+    with pytest.raises(SystemExit) as raised:
+        command.main(
+            ["in", "out", "--qc-pack", "qc", "--preset", "basic-clean-descriptors"]
+        )
 
-    assert chosen == ["basic-clean-descriptors"]
+    assert raised.value.code == command.EXIT_USAGE
+    capsys.readouterr()
 
 
 @pytest.mark.usefixtures("enabled")
@@ -619,3 +631,25 @@ def test_an_unknown_preset_is_a_usage_error(capsys):
     captured = capsys.readouterr()
     assert raised.value.code == command.EXIT_USAGE
     assert SENTINEL not in captured.out + captured.err
+
+
+@pytest.mark.usefixtures("enabled")
+def test_main_runs_the_basic_preset_end_to_end(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    stdout, stderr = io.StringIO(), io.StringIO()
+
+    status = command.main(
+        [
+            str(tmp_path / "source"),
+            str(tmp_path / "release"),
+            "--qc-pack",
+            str(tmp_path / "qc"),
+        ],
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert status == command.EXIT_RELEASED, stdout.getvalue() + stderr.getvalue()
+    assert (tmp_path / "release" / run_report.RELEASE_REPORT).is_file()
+    assert any((tmp_path / "qc").iterdir())
+    assert str(tmp_path / "source") not in stdout.getvalue() + stderr.getvalue()
