@@ -14,18 +14,20 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 Each Attribute to be protected shall then either be removed from the Data Set, or have its value replaced by a different "replacement value" that does not allow identification of the patient.
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-001", "D-003", "D-005", "D-011", "D-020", "D-021"]
 implementation = [
   "_dicom/deidentify/dummy_values.py",
+  "_dicom/deidentify/edits.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/pseudonyms.py",
+  "_dicom/deidentify/walker.py",
 ]
 note = '''
 Patient ID and Patient's Name have keyed replacement values that keep subjects separate and do not contain the source identifier.
 Z writes a zero-length value, and D a conspicuous constant for each VR that does not depend on the source value, or a second constant where the source value equals the first, so the replacement always differs from it; a UI value takes its keyed replacement, and D on an attribute of any other VR is refused until a reviewed rule covers it.
 The one reviewed rule so far gives Person Identification Code Sequence one item with a dummy code (D-021).
-Remaining: removing or replacing each Attribute to be protected in a data set (M3).
+The run's instance transform removes or replaces each Attribute to be protected in every instance it writes, and an end-to-end test of `basic` over the synthetic collection finds none of the collection's markers in the published files (MIDI-BP-01).
 '''
 
 [[requirement]]
@@ -34,14 +36,15 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 Each Attribute specified to be retained shall be retained. At the discretion of the de-identifier, Attributes may be added to the Data Set to be protected.
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-007", "D-011", "D-022", "D-023"]
 implementation = [
   "_dicom/deidentify/actions.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/preservation.py",
   "_dicom/deidentify/preserving_writer.py",
+  "_dicom/deidentify/walker.py",
 ]
 note = '''
 Reviewed rules add the text attributes, dates, and times that Table E.1-1 omits to those protected (D-022, D-023).
@@ -50,7 +53,7 @@ The one exception is `tps-import`, which modifies eleven device and beam hold da
 A written file can be verified against the plan for its instance: every source element is kept, changed, or removed; nothing else is written; the file has its source's transfer syntax; every change is written; and each kept element has the same VR as written, length form, and Value Field bytes as in the source, a kept private element the same Private Creator, and kept text the same Specific Character Set in force, so a VR resolved again or text decoded and encoded again is refused.
 A data set is written from its source's bytes: each kept element is copied byte for byte, including a sequence with no change in it; a kept sequence with a change in it is written with undefined lengths, keeping every item; and only replacements and introduced elements are encoded, each refused unless its text can be written in the character set in force at its place and its VR is the one written, so pydicom never re-encodes a kept value or resolves its VR again.
 A plan that keeps an element inside a removed or replaced sequence, keeps a group length, or changes the character set of kept text is refused.
-Remaining: planning each instance's data set from its policy, and sequestering an instance whose output fails verification (M3).
+The run's instance transform plans each instance's data set from its policy, writes it this way, verifies it, and sequesters an instance whose output fails verification.
 '''
 
 [[requirement]]
@@ -71,17 +74,18 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 No requirements on the size of the asymmetric key pairs used for RSA key transport are defined in this confidentiality scheme. Implementations claiming conformance to the Basic Application Level Confidentiality Profile as a de-identifier shall always protect (e.g., encrypt and replace) the SOP Instance UID (0008,0018) Attribute as well as all references to other SOP Instances, whether contained in the main Data Set or embedded in an Item of a Sequence of Items, that could potentially be used by unauthorized entities to identify the patient.
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-003", "D-004"]
 implementation = [
+  "_dicom/deidentify/edits.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/keys.py",
   "_dicom/deidentify/uid_roles.py",
   "_dicom/deidentify/uids.py",
 ]
 note = '''
 Replacement UIDs are derived from the key, so every occurrence of a UID is replaced consistently, and every UI attribute has a reviewed role.
-Remaining: replacing each SOP Instance UID and reference in a data set, including in sequences (M3).
+The run's instance transform replaces each SOP Instance UID and each reference to another SOP Instance in a data set, at the top level and in sequences, with the same replacement in every instance of the run.
 '''
 
 [[requirement]]
@@ -117,17 +121,17 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 If the Data Set being de-identified is being stored within a DICOM File, then the File Meta Information including the 128 byte preamble, if present, shall be replaced with a description of the de-identifying application. Otherwise, there is a risk that identity information may leak through unmodified File Meta Information or preamble. See PS3.10. This includes information regarding Application Entity Titles, Presentation Addresses, implementation information, and private information.
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-002", "D-025", "D-027"]
 implementation = [
   "_dicom/deidentify/file_meta.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/preserving_writer.py",
 ]
 note = '''
 The File Meta Information that replaces the source file's describes the de-identifier by a fixed Implementation Class UID under the PyMedPhys root and an Implementation Version Name, and holds no Application Entity Title, Presentation Address, or private element.
 A data set is written with it and a zeroed preamble, whatever File Meta Information and preamble the source file held.
-Remaining: writing each de-identified instance this way (M3).
+The run's instance transform writes each de-identified instance this way.
 '''
 
 [[requirement]]
@@ -147,19 +151,19 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 All Data Elements with a Group Number of 0004 shall be removed from any SOP Instance or DICOM File other than a DICOMDIR File. If a DICOMDIR File is required, it shall either be created from the de-identified DICOM Files it references, or an existing DICOMDIR File shall be de-identifed according to this Profile. Any existing non-de-identified DICOMDIR File shall be removed from the File-set.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-016"]
 implementation = [
   "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/run.py",
   "_dicom/deidentify/run_discovery.py",
   "_dicom/deidentify/run_results.py",
 ]
 note = '''
 Every element of group 0004 in a data set, at the top level or in an item, has a rule that removes it, under every policy, before any other rule applies.
-A source DICOMDIR is never passed through, and none is written, since the output is a plain directory tree rather than a File-set (D-016): a run refuses a source file named `DICOMDIR` or whose Media Storage SOP Class UID is the Media Storage Directory Storage SOP Class.
-Remaining: removing group 0004 from each instance the engine writes, with the rest of the file container (M4).
+A source DICOMDIR is never passed through, and none is written, since the output is a plain directory tree rather than a File-set (D-016): a run refuses a source file named `DICOMDIR`, whose Media Storage SOP Class UID is the Media Storage Directory Storage SOP Class, or that holds a Directory Record Sequence.
+The run's instance transform applies those rules to each instance it writes, so no written file holds an element of group 0004.
 '''
 
 [[requirement]]
@@ -168,19 +172,21 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_
 text = '''
 The Attributes listed in Table E.1-1 for each Profile or Option are contained in Standard IODs, or may be contained in Standard Extended IODs. An implementation claiming conformance to the Basic Application Level Confidentiality Profile as a de-identifier shall protect or retain all instances of the Attributes listed in Table E.1-1, whether contained in the top level Data Set or embedded in an Item of a Sequence of Items. The action codes in Table E.1-1a are used in Table E.1-1.
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-001", "D-007", "D-009", "D-011", "D-020", "D-021", "D-022", "D-028"]
 implementation = [
   "_dicom/deidentify/actions.py",
   "_dicom/deidentify/compound_actions.py",
+  "_dicom/deidentify/edits.py",
   "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/elements.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/private_attributes.py",
   "_dicom/deidentify/sequences.py",
   "_dicom/deidentify/source.py",
   "_dicom/deidentify/standard.py",
+  "_dicom/deidentify/walker.py",
 ]
 note = '''
 Each attribute that Table E.1-1 lists has an action under the Basic Profile and the selected options, an option's action overriding the Profile's, and an attribute to which two selected options give different actions is reported as a conflict.
@@ -193,7 +199,7 @@ Each element, at the top level or in an item, is read with the VR that the pinne
 Each element, at the top level or in an item, takes the rule of the first source that covers it: the engine's own removals, Table E.1-1's Private Attributes row, the table's other rows, whose masked tags match only the repeating groups, the supplementary rules and UID roles, removal by Type of other text, and the rule for attributes that no rule covers (D-022); a sequence to which an option gives C takes its Basic Profile action (D-009).
 Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028).
 A source file is admitted only once its whole structure is read from its own bytes, with every Value Length and Item Length but the undefined length even, so that every element at the top level and in items is found.
-Remaining: applying the resolved actions to every instance of each attribute, at the top level and in sequences, including the sequences and overlay groups that a plain X removes with an attribute and the instances that it sequesters, and removing private attributes from each instance the engine de-identifies (M3).
+The run's instance transform applies the resolved actions to every instance of each attribute in each instance it de-identifies, at the top level and in sequences, including the sequences and overlay groups that a plain X removes with an attribute, sequesters the instances that a plain X calls for, and removes private attributes.
 '''
 
 [[requirement]]
@@ -537,17 +543,17 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is not specified, all Private Attributes shall be removed, as described in Table E.1-1.
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-028"]
 implementation = [
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/private_attributes.py",
   "_dicom/deidentify/sequences.py",
 ]
 note = '''
 Every element of an odd group, including private creators and the elements that PS3.5 does not allow, is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN, and a private sequence is removed with everything in it.
 A standard sequence that cannot be decoded exactly, that is stored with a VR other than SQ or UN, or whose items have a Specific Character Set that pydicom does not map as given or that is stored with another VR, is refused by its path; it is removed where a rule removes it or a sequence that holds it, and otherwise its instance is sequestered (D-028).
-Remaining: removing them from each instance the engine de-identifies (M3).
+The run's instance transform removes them from each instance it writes.
 '''
 
 [[requirement]]
@@ -609,7 +615,8 @@ It withholds any output file that still holds a source person name, UID, date, d
 A deterministic synthetic collection plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released.
 The run's instance transform removes and replaces identifiers in each data set and gives the gate its coverage, including each value read as ISO 8859-1, and the run acts on the gate's decision.
 An instance out of scope whose IOD the pinned tables define is read only to collect its values for its subject's search, and is never written; an instance whose values could not be collected at all withholds every file of its subject.
-Remaining: validating each preset end to end by searching its output of that collection for the markers, the statistical assessment, and pixel and face review (M4).
+An end-to-end test runs `basic` and `basic-clean-descriptors` over that collection and searches every published file for its markers, independently of the gate.
+Remaining: the statistical assessment, and pixel and face review (M4).
 Pixel data are assessed for risk, not cleaned (D-015).
 '''
 
@@ -640,9 +647,13 @@ implementation = [
   "_dicom/deidentify/iod_conformance.py",
   "_dicom/deidentify/iods.py",
   "_dicom/deidentify/preserving_writer.py",
+  "_dicom/deidentify/qc_pack.py",
   "_dicom/deidentify/reference_graph.py",
   "_dicom/deidentify/references.py",
+  "_dicom/deidentify/release_report.py",
   "_dicom/deidentify/run.py",
+  "_dicom/deidentify/run_qc.py",
+  "_dicom/deidentify/run_report.py",
   "_dicom/deidentify/run_results.py",
   "_dicom/deidentify/run_written.py",
   "_dicom/deidentify/sequences.py",
@@ -662,6 +673,7 @@ An element to be written is built with a VR that the pinned dictionary gives it,
 A data set is written from its source's bytes, so a kept element keeps the VR its source gives it, such as SS for the VOI LUT Descriptor of a CT image in Hounsfield Units, where pydicom's writer can resolve it again as US.
 A sequence kept as UN keeps its items in implicit VR, and a replacement in implicit VR is written only where the pinned dictionary gives its VR alone, since a reader takes the VR from its dictionary.
 A run acts on those findings before it writes anything: a study with several patients stops it, every conflicting copy, every instance of a series in several studies, and every instance without one of those UIDs is sequestered, an identical duplicate is written once, and a dangling reference or a frame of reference mismatch is only reported.
+The release report counts the instances with each kind of finding that the run reports only, and the QC pack lists each such finding at each instance it names, with the attribute's tags and its count.
 A second pass checks what was written against the first: that each written instance's SOP Instance, Series Instance, and Study Instance UIDs, and each value at its reference sites, are the keyed replacements of its input's, never a source UID; that each reference that named an input before writing names a written instance, series, or study after it; that no two source UIDs share a replacement; and that no two written instances share a SOP Instance UID.
 A run makes that check of every file that its gate releases, before anything is published: each instance that a finding names is sequestered, and what is left is checked again, a reference to an instance that was withheld being reported only, while a check that fails, or a finding that no sequestration can isolate, publishes nothing.
 Each written instance is checked against its IOD before it can be released: every attribute that its source holds where the IOD requires it, by the same strictest Type, must still be there where the item that held it is, and a Type 1 or 1C one must not have been emptied, or the instance is sequestered, since the engine caused it; the removals that a plain X allows on their own are not findings, and what the source already lacks is not acted on.
@@ -720,8 +732,10 @@ implementation = [
   "_dev/deid_tables/ps3_6.py",
   "_dicom/deidentify/actions.py",
   "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/private_attributes.py",
+  "_dicom/deidentify/run.py",
   "_dicom/deidentify/scope.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/standard.py",
@@ -733,7 +747,9 @@ Each such attribute that an option retains or cleans is categorised by that opti
 Without Retain Safe Private, every private attribute is removed from a data set, at every level (D-028).
 Every element, whether or not the pinned dictionary lists its attribute, has one rule, and every URI and URL attribute that the table omits has a reviewed one; no person name, date, time, datetime, or UID is left to the default for attributes that no rule covers, which keeps codes, tags, and numbers, keeps a sequence or a binary value only where the IOD defines it, and removes anything else (D-022).
 `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and `.github/workflows/deid-edition-check.yml` runs it monthly.
-Remaining: removing private attributes from, and applying each element's rule to, each instance the engine de-identifies (M3); and sequestering the instances so classified, and reporting them (M4).
+The run's instance transform removes private attributes from, and applies each element's rule to, each instance it de-identifies, and the run sequesters the instances so classified and lists them in the release report with their reasons.
+An object of any other SOP Class is handled by classifying and sequestering it, not by de-identifying it.
+Remaining: naming the IOD of an unsupported instance in the release report, as D-010 says (M4).
 Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
@@ -779,11 +795,17 @@ Assess, for every image type, the risk from burned-in text, objects bearing text
 status = "partial"
 milestone = "M4"
 decisions = ["D-015", "D-017"]
-implementation = ["_dicom/deidentify/pixel_risk.py"]
+implementation = [
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/pixel_risk.py",
+  "_dicom/deidentify/qc_pack.py",
+  "_dicom/deidentify/run_qc.py",
+]
 note = '''
 Every instance's attributes are read for indicators of burned-in text, whatever its IOD: Burned In Annotation of YES, a secondary or converted image, and an overlay without Overlay Data, which may lie in the pixel data; an attribute that cannot be read is itself reported, and a received NO counts for nothing.
 The pixel data are never inspected or changed (D-015).
-Remaining: reporting the indicators, the QC pack, and pixel review before `public-release` (M4).
+Each run gives the indicators of each source it can decode to the confidential QC pack, which lists the instances at high risk and previews those released or held.
+Remaining: pixel review before `public-release` (M4).
 '''
 
 [[requirement]]
@@ -797,15 +819,21 @@ decisions = ["D-009", "D-017", "D-022", "D-027"]
 implementation = [
   "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/pixel_risk.py",
+  "_dicom/deidentify/release_gate.py",
+  "_dicom/deidentify/residuals.py",
   "_dicom/deidentify/reviewed_roi_names.py",
   "_dicom/deidentify/roi_names.py",
+  "_dicom/deidentify/run_qc.py",
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
 Under the Basic Profile, every text attribute that a supported IOD uses is removed or replaced, by Table E.1-1 or a reviewed supplementary rule, except coded and technical values and De-identification Method, which the engine adds to (D-022).
 Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocabulary only where it matches one of its names and echoes no known patient or other person identifier, and goes to review otherwise; a reviewer's decision to keep or map a name is applied only where what it would write echoes no such identifier (D-009).
 The run's instance transform applies the actions to each data set, and descriptor cleaning holds for review a ROI name whose decision would echo an identifier.
-Remaining: the review of descriptors with pooled human review, the residual search, and reporting indicators of burned-in text, since the engine does not change pixel data (M4).
+A reviewer's decision on a ROI name applies to every ROI Name of that spelling, in the collection and in later runs, and each run searches every written file for the source values that had to be removed or replaced (MIDI-BP-01).
+Indicators of burned-in text are reported in the confidential QC pack, since the engine does not change pixel data (D-015).
+Remaining: human review of the instances whose indicators show burned-in text, before `public-release` (M4, with MIDI-BP-10).
 '''
 
 [[requirement]]
@@ -836,7 +864,8 @@ decisions = ["D-001", "D-028"]
 implementation = ["_dicom/deidentify/private_attributes.py"]
 note = '''
 Without Retain Safe Private, every private data element and private creator is removed from a data set, at every level, and a policy that selects the Option, which retains those known to be safe, is refused until reviewed rules say which are (D-028).
-Remaining: removing them from each instance the engine de-identifies, and the reviewed rules that `public-release` needs (M3).
+The run's instance transform removes them from each instance it writes.
+Remaining: the reviewed rules that `public-release` needs (M3).
 '''
 
 [[requirement]]
@@ -853,6 +882,7 @@ implementation = [
 ]
 note = '''
 ICC Profile (0028,2000), an embedded file whose contents the engine does not parse, is removed by Type under every option, which removes it wherever the first supported release's IODs define it (D-022).
+The first supported release reads only Implicit and Explicit VR Little Endian sources and sequesters an instance in any other transfer syntax, so it writes no compressed bitstream.
 Remaining: removing metadata in compressed pixel data without recompression (M3).
 '''
 
@@ -897,6 +927,7 @@ status = "partial"
 milestone = "M4"
 decisions = ["D-016", "D-017", "D-026", "D-027"]
 implementation = [
+  "_dicom/deidentify/attestation_command.py",
   "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/qc_attestation.py",
@@ -910,7 +941,7 @@ implementation = [
 ]
 note = '''
 D-016 provides the confidential QC pack, to which the release gate sends the residual search's text findings inside the data set, and files whose collection for the search was incomplete for other text or for private values or values to which the pinned dictionary gives no VR (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation.
-The design does not yet say how quality control confirms that utility is preserved, or how the residual-risk threshold before and after it is recorded.
+For the first release, the design assigns to whoever releases the data the confirmation that utility is preserved and that the residual risk is acceptable (decided 6 October 2026).
 The QC pack is built and written: each instance by run position and source path, with its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); and what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009).
 It is written only to a designated, owner-only location outside the source, release, and staging directories, and is marked so that no release includes it (D-016).
 A reviewer attests to a pack once, stating whether they reviewed every distinct retained string, every series, and every instance in high-risk categories, and an outcome of attested needs all three; the attestation is bound to the pack by its digest, and gives the release report only the pack's opaque reference and the outcome (D-016, D-017).
@@ -919,8 +950,9 @@ The run's instance transform and release gate adapter give it this material.
 The pack lists every input from its outcome, each sequestered one by the random label that the run gives it, and the transform's and gate's material by run position: each residual search with its excerpts, each source value they left out of the search with its reason, what descriptor cleaning wrote for each ROI Name, and each retained string with its places.
 The retained strings of an instance are the values that its plan keeps as they are, in elements with a text VR other than UI, outside any removed sequence, and other than Specific Character Set, and a value that was not read for review, or could not be decoded, is refused rather than left out, and the run's transform sequesters an instance with such a value.
 The pack previews each series released or held for review, by a cine strip and, for a volume, a frontal maximum intensity projection, and each instance whose source shows an indicator of risk in its pixel data at full resolution, with those indicators, and lists each series whose released and held instances are a CT volume or name the head or neck, with the instances that show each; it lists each instance it could not preview, with why, and records each preview's SHA-256, so that an attestation covers the previews too (D-017).
+A reviewer records an attestation of a pack with a command, which refuses a directory that holds no QC pack and quotes neither the reviewer nor a path; the release report published with the run keeps the record it was written with.
+The person releasing the data may confirm in the attestation, yes or no, that the output was checked for its intended use and that its residual risk was accepted under the institution's governance, and the record that a release report takes carries those outcomes alone.
 Remaining: the attestation's record in the release report (M4).
-This practice is not implemented until M4 also covers both open points, or the design assigns them to whoever releases the data.
 '''
 
 [[requirement]]
@@ -946,7 +978,7 @@ Each instance's markers record the process in the instance itself: De-identifica
 The validated policy records the edition, preset, and options.
 The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers and without a reviewed-names list, and the markers that each instance gains, and the same policy and engine always give the same text.
 The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016).
-Its sections on a run give the QC pack's opaque reference with its attestation's outcome (D-016), list each released instance by its output name, name each sequestered instance by a random label for the run, with each reason's stage and code, and the attribute, action, and VR where the walker sequestered it, or the attribute where the release gate's reason names one (D-026); count the instances held for review by stage and reason, naming none (D-009); count the ROI Names that descriptor cleaning cleaned by outcome, and the distinct names sent for review by reason, naming none (D-009); and count the source values that the residual search did not search, in full or in part, by attribute and reason (D-027); the conformance statement describes them, generated from the report's format, labels, and reason codes.
+Its sections on a run give the QC pack's opaque reference with its attestation's outcome (D-016), list each released instance by its output name, name each sequestered instance by a random label for the run, with each reason's stage and code, and the attribute, action, and VR where the walker sequestered it, or the attribute where the release gate's reason names one (D-026); count the instances held for review by stage and reason, naming none (D-009); count the ROI Names that descriptor cleaning cleaned by outcome, and the distinct names sent for review by reason, naming none (D-009); count the instances with each kind of reference finding that the run reports without acting on it, naming none (D-026); and count the source values that the residual search did not search, in full or in part, by attribute and reason (D-027); the conformance statement describes them, generated from the report's format, labels, and reason codes.
 A run given a reporter writes the report as `release-report.json` at the root of the release before it publishes it, with its QC pack by reference, not yet attested, its released instances by output name, its sequestered instances by label, its held instances by reason, an identical copy counting as the instance it copies, and the values that the residual searches did not search, each counted once at the instance that holds it, and a report that cannot be built publishes nothing and leaves no QC pack; an input whose reasons the report cannot give is sequestered for an invalid reason instead, which the report gives alone and the QC pack lists before its own reasons, so that it never stops the release.
 Beside the report, the run writes its human-readable form as `release-report.md`: CommonMark, with GitHub Flavored Markdown tables, generated from the JSON text alone, which shows every value of the document, and each file name that keys a digest, as a code span as often as the document holds it, and draws nothing else from the report; the same text always gives the same form, and a report whose form cannot be generated publishes nothing.
 Every reason that sequesters or holds an instance in a run, from the run's own checks, the transform, the writer, the preservation check, and the release gate, has a stage and code in the report, and the codes within each stage are distinct.

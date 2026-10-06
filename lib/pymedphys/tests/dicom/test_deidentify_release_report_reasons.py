@@ -82,7 +82,7 @@ _SEQUESTERING = [
 ]
 
 
-@pytest.mark.deid_requirement("MIDI-BP-18")
+@pytest.mark.deid_requirement("MIDI-BP-18", "MIDI-BP-06")
 @pytest.mark.parametrize(
     "cause, stage", _SEQUESTERING, ids=[str(each) for each, _ in _SEQUESTERING]
 )
@@ -407,6 +407,105 @@ def test_roi_name_counts_that_could_hold_a_value_are_refused(basic, counts):
     for write in (release_report.report_document, release_report.to_json):
         with pytest.raises(
             release_report.ReleaseReportError, match="roi_names"
+        ) as raised:
+            write(report)
+        assert "SENTINEL" not in str(raised.value)
+        assert raised.value.__cause__ is None
+
+
+_DANGLING = reference_graph.FindingKind.DANGLING_REFERENCE
+_ACTED_ON = (
+    reference_graph.FindingKind.MISSING_IDENTIFIER,
+    reference_graph.FindingKind.DUPLICATE_INSTANCE,
+    reference_graph.FindingKind.CONFLICTING_INSTANCE,
+    reference_graph.FindingKind.SERIES_IN_SEVERAL_STUDIES,
+    reference_graph.FindingKind.STUDY_WITH_SEVERAL_PATIENTS,
+)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_every_finding_the_run_does_not_act_on_is_reported():
+    assert release_report.REPORTED_FINDINGS == frozenset(
+        reference_graph.FindingKind
+    ) - frozenset(_ACTED_ON)
+    assert _DANGLING in release_report.REPORTED_FINDINGS
+    # The findings that sequester an instance are given as its reasons.
+    sequestering = release_report._SEQUESTERING  # pylint: disable = protected-access
+    reported = {kind.value for kind in release_report.REPORTED_FINDINGS}
+    assert not reported & sequestering["references"]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-18")
+def test_reference_findings_count_each_instance_once_for_each_kind(basic):
+    found = release_report.reference_findings([[_DANGLING, _DANGLING], [], [_DANGLING]])
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None, findings=found
+    )
+
+    assert found == (release_report.ReferenceFindings("dangling-reference", 2),)
+    assert release_report.report_document(report)["reference_findings"] == [
+        {"kind": "dangling-reference", "count": 2}
+    ]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_a_run_without_reference_findings_counts_none(basic):
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
+
+    assert release_report.report_document(report)["reference_findings"] == []
+
+
+@pytest.mark.parametrize(
+    "instances",
+    [[_DANGLING], *([[kind]] for kind in _ACTED_ON), [["dangling-reference"]]],
+    ids=["not-by-instance", *(kind.value for kind in _ACTED_ON), "a-string"],
+)
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_reference_findings_must_be_given_by_instance_and_reported_only(instances):
+    with pytest.raises(TypeError):
+        release_report.reference_findings(instances)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-18")
+@pytest.mark.parametrize(
+    "found",
+    [
+        "SENTINEL",
+        ("SENTINEL",),
+        (release_report.ReferenceFindings("SENTINEL", 1),),
+        (release_report.ReferenceFindings("missing-identifier", 1),),
+        (release_report.ReferenceFindings(_DANGLING, 1),),
+        (release_report.ReferenceFindings("dangling-reference", 0),),
+        (release_report.ReferenceFindings("dangling-reference", True),),
+        (release_report.ReferenceFindings("dangling-reference", 1.0),),
+        (
+            release_report.ReferenceFindings("dangling-reference", 1),
+            release_report.ReferenceFindings("dangling-reference", 1),
+        ),
+    ],
+    ids=[
+        "not-a-tuple",
+        "not-counts",
+        "unknown-kind",
+        "acted-on-kind",
+        "kind-as-enum",
+        "zero-count",
+        "boolean-count",
+        "fractional-count",
+        "counted-twice",
+    ],
+)
+def test_reference_finding_counts_that_could_hold_a_value_are_refused(basic, found):
+    report = _with(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None),
+        reference_findings=found,
+    )
+
+    for write in (release_report.report_document, release_report.to_json):
+        with pytest.raises(
+            release_report.ReleaseReportError, match="reference_findings"
         ) as raised:
             write(report)
         assert "SENTINEL" not in str(raised.value)

@@ -410,6 +410,7 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         outcomes, material, written = _stage_and_gate(
             discovery, first, staging, transform, gate, written_check
         )
+        material = run_qc.with_reported_findings(material, first.findings)
         if reporter is not None:
             outcomes = _admitted(outcomes, reporter)
         outcomes = _labelled(outcomes)

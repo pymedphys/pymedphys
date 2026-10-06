@@ -394,7 +394,7 @@ def test_a_policy_that_does_not_remove_private_attributes_is_refused(basic, acti
         private_attributes.without_private_attributes(_plan(), changed)
 
 
-@pytest.mark.deid_requirement("PS3.15-E.3.10-02")
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02", "MIDI-BP-13")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize(
