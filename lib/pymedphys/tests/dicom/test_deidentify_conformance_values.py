@@ -29,6 +29,7 @@ from pymedphys._dicom.deidentify import (
     pseudonyms,
     release_report,
     residuals,
+    reviewed_roi_names,
     standard,
     supplementary_actions,
     temporal_roles,
@@ -321,6 +322,16 @@ def test_the_release_report_counts_held_instances_by_stage(preset):
         assert line.startswith(conformance_values.HOLDING_STAGES[stage])
         for reason in codes:
             assert f"`{reason}`" in line, (stage, reason)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_the_release_report_counts_roi_names_by_outcome(preset):
+    section = _section(preset, "Release report")
+    counted = section.split("counts the ROI Names", 1)[1].split("\n\n", 1)[0]
+    assert "(D-009)" in counted
+    assert "naming none of them" in counted
+    for outcome in reviewed_roi_names.Outcome:
+        assert f"`{outcome.value}`" in counted, outcome
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
