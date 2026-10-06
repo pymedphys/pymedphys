@@ -243,6 +243,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** CI and the security scan run no jobs on draft pull requests. Marking a pull request ready for review starts both on its current commit, and converting it back to a draft cancels any run in progress, so work in progress uses no Actions runners. The merge queue still runs every check before a change reaches `main`. [PR #2269](https://github.com/pymedphys/pymedphys/pull/2269)
 - **[Contributor facing only]** Merge-queue validation uses the quick Ubuntu/Python 3.14 unit matrix while retaining every integration, database and security check. Main, releases and PRs labelled `full-test` retain the full OS/Python matrix. This avoids repeating all 12 environments immediately before and after each merge; platform failures discovered on main are corrected or reverted there. [PR #2249](https://github.com/pymedphys/pymedphys/pull/2249)
 - **[Contributor facing only]** De-identification tests reuse immutable conformance setup and file/table digest caches for ordinary assertions, while mutation and cold-read tests retain fresh inputs. Requirements traceability reuses actual pytest collection, and minimum/latest pydicom coverage can reuse the matching locked Ubuntu/Python 3.14 run with recorded evidence. All test cases and the existing matrix policy remain in place. [PR #2243](https://github.com/pymedphys/pymedphys/pull/2243)
 - **[Contributor facing only]** CI runs its larger unit-test suites on two

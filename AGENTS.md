@@ -467,6 +467,12 @@ detailed explanations of individual features.
   Keep selection and summary conditions identical, with regression coverage for
   deletions, renames and missing outputs. Release optimisation must retain
   fresh package verification and every publishing gate.
+- CI and the security scan run no jobs on draft pull requests; marking one
+  ready for review starts both. Only the jobs without `needs` and the two
+  summaries carry the draft condition, so every other job is skipped with
+  `changes`. Give a new job without `needs` the same condition, and use a
+  status function (`always()`, `cancelled()`, `failure()`) only on a summary or
+  a push-only job.
 
 - Main requires the GitHub Actions checks `CI Summary` and `Security Summary`.
   Keep these names unique across workflows; the release report is named
