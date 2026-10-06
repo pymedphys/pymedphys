@@ -90,6 +90,7 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
         }
     },
     vocabulary=None,
+    reviewed_roi_names=None,
     generated_values={
         "uids.UID_ROOT": "2.25.",
         "uids.UID_NAMESPACE": uuid.UUID("6f71d76c-0573-58b6-bfda-7c5b4ee304f1"),
@@ -103,7 +104,7 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
 SYNTHETIC_CANONICAL_BYTES = (
     '{"engine_version":"0.42.0.dev1",'
     '"files":{"policy.py":"' + "f" * 64 + '"},'
-    '"format":"pymedphys-deid-method-digest/1",'
+    '"format":"pymedphys-deid-method-digest/2",'
     '"generated_values":{'
     '"dates.MIN_OFFSET_WEEKS":["int",52],'
     '"dummy_values.CONSTANTS":["map",{"FL":["list",'
@@ -120,10 +121,11 @@ SYNTHETIC_CANONICAL_BYTES = (
     '"policy":{"actions":{"(0010,0010)":"Z"},"edition":"2026d","enabled":false,'
     '"options":[],"preset":"basic","resolved":[],'
     '"supplementary_actions":{"(300A,00C2)":"X/Z/D"}},'
+    '"reviewed_roi_names":null,'
     '"tables":{"e1_1.json":"' + "0" * 64 + '"},'
     '"vocabulary":null}'
 ).encode("utf-8")
-SYNTHETIC_SHA256 = "0d049c74cb9b9a9c850327fe413725e9ceae827aafd8f9c8f6f1353dc9f94fa2"
+SYNTHETIC_SHA256 = "1df94ac28b2f41430e85c3e1115196e88bdcfbeb2ab27b9cc17c4e36208a33fa"
 
 # Each parameter of generated values, and another value for it.
 GENERATED_VALUE_CHANGES = {
@@ -154,6 +156,7 @@ CANONICAL_MEMBERS = {
     "l2_rules",
     "l3_rules",
     "vocabulary",
+    "reviewed_roi_names",
     "generated_values",
     "files",
 }
@@ -257,7 +260,7 @@ def test_the_digest_is_only_64_lowercase_hexadecimal_digits_and_fits_one_lo_valu
     preset, vocabulary
 ):
     digest = method_digest.method_digest(
-        policy.compose_policy(preset), vocabulary=vocabulary
+        policy.compose_policy(preset), vocabulary=vocabulary, reviewed_roi_names=None
     )
 
     assert HEX_DIGEST.fullmatch(digest)
@@ -266,10 +269,13 @@ def test_the_digest_is_only_64_lowercase_hexadecimal_digits_and_fits_one_lo_valu
 
 def test_the_digest_is_the_sha256_of_the_canonical_form(basic):
     canonical = method_digest.canonical_bytes(
-        basic, method_digest.digest_inputs(vocabulary=VOCABULARY)
+        basic,
+        method_digest.digest_inputs(vocabulary=VOCABULARY, reviewed_roi_names=None),
     )
 
-    digest = method_digest.method_digest(basic, vocabulary=VOCABULARY)
+    digest = method_digest.method_digest(
+        basic, vocabulary=VOCABULARY, reviewed_roi_names=None
+    )
 
     assert digest == hashlib.sha256(canonical).hexdigest()
 
@@ -284,13 +290,21 @@ def test_a_small_synthetic_input_has_the_canonical_form_written_by_hand():
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-05")
 def test_the_same_inputs_always_give_the_same_digest(basic):
-    first = method_digest.method_digest(basic, vocabulary=VOCABULARY)
+    first = method_digest.method_digest(
+        basic, vocabulary=VOCABULARY, reviewed_roi_names=None
+    )
 
-    assert method_digest.method_digest(basic, vocabulary=VOCABULARY) == first
+    assert (
+        method_digest.method_digest(
+            basic, vocabulary=VOCABULARY, reviewed_roi_names=None
+        )
+        == first
+    )
     assert (
         method_digest.method_digest(
             policy.compose_policy("basic"),
             vocabulary=_vocabulary(*VOCABULARY.structures),
+            reviewed_roi_names=None,
         )
         == first
     )
@@ -326,13 +340,18 @@ def test_mappings_and_sets_are_encoded_in_a_defined_order():
 
 
 def test_the_engine_version_changes_the_digest(basic, monkeypatch):
-    before = method_digest.method_digest(basic, vocabulary=None)
+    before = method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
     monkeypatch.setattr(_version, "__version__", _version.__version__ + "+local")
 
-    assert method_digest.digest_inputs(vocabulary=None).engine_version.endswith(
-        "+local"
+    assert method_digest.digest_inputs(
+        vocabulary=None, reviewed_roi_names=None
+    ).engine_version.endswith("+local")
+    assert (
+        method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+        != before
     )
-    assert method_digest.method_digest(basic, vocabulary=None) != before
 
 
 def _with_changes(policy_, **changes):
@@ -399,13 +418,15 @@ def _resolved():
 )
 def test_any_part_of_the_policy_changes_the_digest(basic, change):
     assert method_digest.method_digest(
-        change(basic), vocabulary=None
-    ) != method_digest.method_digest(basic, vocabulary=None)
+        change(basic), vocabulary=None, reviewed_roi_names=None
+    ) != method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
 
 
 def test_each_preset_has_its_own_digest():
     digests = {
-        method_digest.method_digest(policy.compose_policy(preset), vocabulary=None)
+        method_digest.method_digest(
+            policy.compose_policy(preset), vocabulary=None, reviewed_roi_names=None
+        )
         for preset in policy.PRESETS
     }
 
@@ -429,16 +450,21 @@ def _rewrite(path, rows, recorded=None, indent=1):
     "name", sorted(path.name for path in standard.STANDARD_DIR.glob("*.json"))
 )
 def test_any_generated_table_changes_the_digest(basic, tmp_path, monkeypatch, name):
-    before = method_digest.method_digest(basic, vocabulary=None)
+    before = method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
     copy = _copied_tables(tmp_path)
     rows = json.loads((copy / name).read_text(encoding="utf-8"))["rows"]
     _rewrite(copy / name, rows[::-1])
     monkeypatch.setattr(standard, "STANDARD_DIR", copy)
 
-    assert method_digest.digest_inputs(vocabulary=None).tables[
+    assert method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None).tables[
         name
     ] == standard.content_sha256(rows[::-1])
-    assert method_digest.method_digest(basic, vocabulary=None) != before
+    assert (
+        method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+        != before
+    )
 
 
 def test_a_reformatted_table_keeps_its_row_digest_but_changes_its_file_digest(
@@ -449,12 +475,12 @@ def test_a_reformatted_table_keeps_its_row_digest_but_changes_its_file_digest(
     tables = _copied_tables(engine)
     monkeypatch.setattr(method_digest, "PACKAGE_DIR", engine)
     monkeypatch.setattr(standard, "STANDARD_DIR", tables)
-    before = method_digest.digest_inputs(vocabulary=None)
+    before = method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None)
     path = tables / "e1_1.json"
     layout = path.read_bytes()
     _rewrite(path, json.loads(layout.decode("utf-8"))["rows"], indent=4)
     read_again()
-    after = method_digest.digest_inputs(vocabulary=None)
+    after = method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None)
 
     assert path.read_bytes() != layout
     assert after.tables == before.tables
@@ -471,7 +497,7 @@ def test_a_table_that_does_not_match_its_recorded_digest_is_rejected(
     monkeypatch.setattr(standard, "STANDARD_DIR", copy)
 
     with pytest.raises(standard.StandardTableError, match="e3_10_1.json rows do not"):
-        method_digest.method_digest(basic, vocabulary=None)
+        method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
 
 
 def _changed_uid_roles():
@@ -517,23 +543,33 @@ def _changed_supplementary_actions():
 def test_any_supplementary_rule_changes_the_digest_even_one_the_options_do_not_use(
     basic, monkeypatch, module, name, changed
 ):
-    before = method_digest.method_digest(basic, vocabulary=None)
+    before = method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
     rules = changed()
     monkeypatch.setattr(module, name, lambda: rules)
 
-    assert method_digest.method_digest(basic, vocabulary=None) != before
+    assert (
+        method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+        != before
+    )
 
 
 def test_the_action_for_text_that_no_rule_covers_changes_the_digest(basic, monkeypatch):
-    before = method_digest.method_digest(basic, vocabulary=None)
+    before = method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
     monkeypatch.setattr(supplementary_actions, "UNCOVERED_TEXT_ACTION", "X")
 
-    assert method_digest.method_digest(basic, vocabulary=None) != before
+    assert (
+        method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+        != before
+    )
 
 
 def test_the_canonical_form_records_that_there_are_no_user_rules(basic):
     canonical = method_digest.canonical_bytes(
-        basic, method_digest.digest_inputs(vocabulary=None)
+        basic, method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None)
     )
 
     assert json.loads(canonical)["l3_rules"] is None
@@ -543,7 +579,9 @@ def test_adding_or_removing_a_vocabulary_or_changing_its_entries_changes_the_dig
     basic,
 ):
     digests = [
-        method_digest.method_digest(basic, vocabulary=vocabulary)
+        method_digest.method_digest(
+            basic, vocabulary=vocabulary, reviewed_roi_names=None
+        )
         for vocabulary in (
             None,
             VOCABULARY,
@@ -559,14 +597,23 @@ def test_the_vocabulary_is_covered_by_the_digest_its_file_records(basic):
     recorded = json.loads(tg263.to_json(VOCABULARY))["content_sha256"]
     renamed = _vocabulary(*VOCABULARY.structures, file="another-name.xls")
 
-    assert method_digest.digest_inputs(vocabulary=VOCABULARY).vocabulary == recorded
+    assert (
+        method_digest.digest_inputs(
+            vocabulary=VOCABULARY, reviewed_roi_names=None
+        ).vocabulary
+        == recorded
+    )
     assert method_digest.method_digest(
-        basic, vocabulary=renamed
-    ) == method_digest.method_digest(basic, vocabulary=VOCABULARY)
+        basic, vocabulary=renamed, reviewed_roi_names=None
+    ) == method_digest.method_digest(
+        basic, vocabulary=VOCABULARY, reviewed_roi_names=None
+    )
 
 
 def test_the_parameters_of_generated_values_are_those_of_each_generated_value():
-    generated = method_digest.digest_inputs(vocabulary=None).generated_values
+    generated = method_digest.digest_inputs(
+        vocabulary=None, reviewed_roi_names=None
+    ).generated_values
 
     assert set(generated) == set(GENERATED_VALUE_CHANGES)
     for name, (module, _) in GENERATED_VALUE_CHANGES.items():
@@ -575,11 +622,16 @@ def test_the_parameters_of_generated_values_are_those_of_each_generated_value():
 
 @pytest.mark.parametrize("name", list(GENERATED_VALUE_CHANGES))
 def test_any_parameter_of_generated_values_changes_the_digest(basic, monkeypatch, name):
-    before = method_digest.method_digest(basic, vocabulary=None)
+    before = method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
     module, value = GENERATED_VALUE_CHANGES[name]
     monkeypatch.setattr(module, name.rpartition(".")[2], value)
 
-    assert method_digest.method_digest(basic, vocabulary=None) != before
+    assert (
+        method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+        != before
+    )
 
 
 @pytest.mark.parametrize(
@@ -602,7 +654,7 @@ def test_a_parameter_that_changes_only_its_type_changes_the_digest(name, value):
 
 
 def test_the_canonical_form_holds_the_inputs_of_the_method_and_nothing_else(basic):
-    inputs = method_digest.digest_inputs(vocabulary=None)
+    inputs = method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None)
 
     assert set(json.loads(method_digest.canonical_bytes(basic, inputs))) == (
         CANONICAL_MEMBERS
@@ -635,16 +687,23 @@ def _change_runtime(monkeypatch, name):
 def test_python_and_library_versions_leave_the_digest_unchanged(
     basic, monkeypatch, read_again, names
 ):
-    before = method_digest.method_digest(basic, vocabulary=VOCABULARY)
+    before = method_digest.method_digest(
+        basic, vocabulary=VOCABULARY, reviewed_roi_names=None
+    )
     for name in names:
         _change_runtime(monkeypatch, name)
     read_again()
 
-    assert method_digest.method_digest(basic, vocabulary=VOCABULARY) == before
+    assert (
+        method_digest.method_digest(
+            basic, vocabulary=VOCABULARY, reviewed_roi_names=None
+        )
+        == before
+    )
 
 
 def test_every_module_rule_file_and_table_of_the_engine_is_covered():
-    files = method_digest.digest_inputs(vocabulary=None).files
+    files = method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None).files
     package = importlib.import_module("pymedphys._dicom.deidentify")
     modules = {
         f"{module.name}.py"
@@ -684,11 +743,16 @@ def test_changing_adding_or_removing_an_engine_file_changes_the_digest(
 ):
     engine = _engine(tmp_path, ENGINE_FILES)
     monkeypatch.setattr(method_digest, "PACKAGE_DIR", engine)
-    before = method_digest.method_digest(basic, vocabulary=None)
+    before = method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
     change(engine)
     read_again()
 
-    assert method_digest.method_digest(basic, vocabulary=None) != before
+    assert (
+        method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+        != before
+    )
 
 
 def test_every_file_of_the_engine_other_than_caches_has_a_covered_type():
@@ -707,7 +771,10 @@ def test_every_file_of_the_engine_other_than_caches_has_a_covered_type():
     )
 
     assert not uncovered, "the method digest does not cover these types of file"
-    assert set(method_digest.digest_inputs(vocabulary=None).files) == expected
+    assert (
+        set(method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None).files)
+        == expected
+    )
 
 
 def test_every_file_is_covered_when_the_engine_is_installed_below_a_hidden_directory(
@@ -719,7 +786,9 @@ def test_every_file_is_covered_when_the_engine_is_installed_below_a_hidden_direc
     )
     monkeypatch.setattr(method_digest, "PACKAGE_DIR", engine)
 
-    assert set(method_digest.digest_inputs(vocabulary=None).files) == set(ENGINE_FILES)
+    assert set(
+        method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None).files
+    ) == set(ENGINE_FILES)
 
 
 @pytest.mark.parametrize(
@@ -747,8 +816,10 @@ def test_the_digest_is_refused_without_the_engine_files(
     monkeypatch.setattr(method_digest, "PACKAGE_DIR", engine)
 
     for compute in (
-        lambda: method_digest.digest_inputs(vocabulary=None),
-        lambda: method_digest.method_digest(basic, vocabulary=None),
+        lambda: method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None),
+        lambda: method_digest.method_digest(
+            basic, vocabulary=None, reviewed_roi_names=None
+        ),
     ):
         with pytest.raises(method_digest.MethodDigestError, match=problem) as raised:
             compute()
@@ -772,12 +843,18 @@ def test_the_engine_files_and_tables_are_read_once_per_process(
     tables = _copied_tables(tmp_path)
     monkeypatch.setattr(method_digest, "PACKAGE_DIR", engine)
     monkeypatch.setattr(standard, "STANDARD_DIR", tables)
-    first = method_digest.method_digest(basic, vocabulary=None)
+    first = method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
     edit(engine, tables)
 
-    assert method_digest.method_digest(basic, vocabulary=None) == first
+    assert (
+        method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+        == first
+    )
     read_again()
-    assert method_digest.method_digest(basic, vocabulary=None) != first
+    assert (
+        method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+        != first
+    )
 
 
 def test_files_with_crlf_and_lf_line_endings_give_the_same_digest(
@@ -787,7 +864,9 @@ def test_files_with_crlf_and_lf_line_endings_give_the_same_digest(
     for newline in (b"\n", b"\r\n"):
         engine = _engine(tmp_path / str(len(newline)), ENGINE_FILES, newline)
         monkeypatch.setattr(method_digest, "PACKAGE_DIR", engine)
-        digests.append(method_digest.method_digest(basic, vocabulary=None))
+        digests.append(
+            method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+        )
 
     assert (tmp_path / "2" / "policy.py").read_bytes().count(b"\r\n") == 5
     assert digests[0] == digests[1]
@@ -798,7 +877,9 @@ def test_caches_and_files_of_other_types_are_not_covered(
 ):
     engine = _engine(tmp_path, ENGINE_FILES)
     monkeypatch.setattr(method_digest, "PACKAGE_DIR", engine)
-    before = method_digest.method_digest(basic, vocabulary=None)
+    before = method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
     _engine(
         engine,
         {
@@ -811,8 +892,13 @@ def test_caches_and_files_of_other_types_are_not_covered(
     )
     read_again()
 
-    assert set(method_digest.digest_inputs(vocabulary=None).files) == set(ENGINE_FILES)
-    assert method_digest.method_digest(basic, vocabulary=None) == before
+    assert set(
+        method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None).files
+    ) == set(ENGINE_FILES)
+    assert (
+        method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+        == before
+    )
 
 
 @pytest.mark.parametrize(
@@ -849,7 +935,7 @@ def test_a_vocabulary_whose_entries_cannot_be_encoded_is_rejected_without_quotin
     vocabulary = _vocabulary(_structure("secret\ud800", "Heart"))
 
     with pytest.raises(ValueError, match="UTF-8") as raised:
-        method_digest.digest_inputs(vocabulary=vocabulary)
+        method_digest.digest_inputs(vocabulary=vocabulary, reviewed_roi_names=None)
 
     assert "secret" not in str(raised.value)
 
@@ -864,11 +950,15 @@ def test_every_call_states_the_vocabulary_by_name(basic, vocabulary):
 
 def test_only_a_policy_and_a_tg263_vocabulary_are_accepted(basic):
     with pytest.raises(TypeError, match="policy must be"):
-        method_digest.method_digest({"preset": "basic"}, vocabulary=None)
+        method_digest.method_digest(
+            {"preset": "basic"}, vocabulary=None, reviewed_roi_names=None
+        )
     with pytest.raises(TypeError, match="policy must be"):
         method_digest.canonical_bytes({"preset": "basic"}, SYNTHETIC_INPUTS)
     with pytest.raises(TypeError, match="vocabulary must be"):
-        method_digest.method_digest(basic, vocabulary=["Heart"])
+        method_digest.method_digest(
+            basic, vocabulary=["Heart"], reviewed_roi_names=None
+        )
 
 
 # The members of the synthetic canonical form whose digests a release report
@@ -905,6 +995,7 @@ COMPONENT_FIELDS = (
     "l2_rules_digest",
     "l3_rules",
     "vocabulary_digest",
+    "reviewed_roi_names",
     "generated_values_digest",
     "engine_files",
 )
@@ -927,30 +1018,34 @@ def test_the_components_of_a_small_synthetic_input_are_digests_of_its_members():
     )
     assert components == method_digest.MethodDigestComponents(
         method_digest=SYNTHETIC_SHA256,
-        method_digest_format="pymedphys-deid-method-digest/1",
+        method_digest_format="pymedphys-deid-method-digest/2",
         engine_version="0.42.0.dev1",
         table_digests={"e1_1.json": "0" * 64},
         l2_rules_digest=SYNTHETIC_L2_RULES_SHA256,
         l3_rules=None,
         vocabulary_digest=None,
+        reviewed_roi_names=None,
         generated_values_digest=SYNTHETIC_GENERATED_VALUES_SHA256,
         engine_files={"policy.py": "f" * 64},
     )
 
 
 def test_the_components_give_the_method_digest_and_record_its_inputs(basic):
-    inputs = method_digest.digest_inputs(vocabulary=VOCABULARY)
+    inputs = method_digest.digest_inputs(vocabulary=VOCABULARY, reviewed_roi_names=None)
 
-    components = method_digest.method_digest_components(basic, vocabulary=VOCABULARY)
+    components = method_digest.method_digest_components(
+        basic, vocabulary=VOCABULARY, reviewed_roi_names=None
+    )
 
     assert components.method_digest == method_digest.method_digest(
-        basic, vocabulary=VOCABULARY
+        basic, vocabulary=VOCABULARY, reviewed_roi_names=None
     )
     assert components.method_digest_format == method_digest.FORMAT
     assert components.engine_version == inputs.engine_version == _version.__version__
     assert dict(components.table_digests) == dict(inputs.tables)
     assert components.l3_rules is None
     assert components.vocabulary_digest == inputs.vocabulary
+    assert components.reviewed_roi_names is inputs.reviewed_roi_names is None
     assert dict(components.engine_files) == dict(inputs.files)
 
 
@@ -959,7 +1054,7 @@ def test_the_member_digests_are_the_sha256_of_those_members_of_the_canonical_for
 ):
     document = json.loads(
         method_digest.canonical_bytes(
-            basic, method_digest.digest_inputs(vocabulary=None)
+            basic, method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None)
         )
     )
 
@@ -969,7 +1064,9 @@ def test_the_member_digests_are_the_sha256_of_those_members_of_the_canonical_for
         )
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
-    components = method_digest.method_digest_components(basic, vocabulary=None)
+    components = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
 
     assert components.l2_rules_digest == sha256("l2_rules")
     assert components.generated_values_digest == sha256("generated_values")
@@ -977,11 +1074,15 @@ def test_the_member_digests_are_the_sha256_of_those_members_of_the_canonical_for
 
 def _components_after(basic, monkeypatch, change):
     """Return which components differ after ``change``, besides the digest."""
-    before = method_digest.method_digest_components(basic, vocabulary=None)
+    before = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
     try:
         vocabulary = change(monkeypatch)
         _forget_reads()
-        after = method_digest.method_digest_components(basic, vocabulary=vocabulary)
+        after = method_digest.method_digest_components(
+            basic, vocabulary=vocabulary, reviewed_roi_names=None
+        )
         assert after.method_digest != before.method_digest
         return {
             name
@@ -1049,13 +1150,17 @@ def test_a_changed_engine_file_shows_only_in_the_engine_files(
 ):
     engine = _engine(tmp_path / "engine", ENGINE_FILES)
     monkeypatch.setattr(method_digest, "PACKAGE_DIR", engine)
-    before = method_digest.method_digest_components(basic, vocabulary=None)
+    before = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
 
     def edit_policy(_monkeypatch):
         (engine / "policy.py").write_bytes(b"ACTION = 'Z'\n")
 
     assert _components_after(basic, monkeypatch, edit_policy) == {"engine_files"}
-    after = method_digest.method_digest_components(basic, vocabulary=None)
+    after = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
     assert {
         path
         for path in after.engine_files
@@ -1065,15 +1170,21 @@ def test_a_changed_engine_file_shows_only_in_the_engine_files(
 
 def test_the_policy_shows_only_in_the_method_digest(basic):
     custom = policy.compose_custom_policy(("clean_descriptors",))
-    before = method_digest.method_digest_components(basic, vocabulary=None)
-    after = method_digest.method_digest_components(custom, vocabulary=None)
+    before = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
+    after = method_digest.method_digest_components(
+        custom, vocabulary=None, reviewed_roi_names=None
+    )
 
     assert after.method_digest != before.method_digest
     assert dataclasses.replace(after, method_digest=before.method_digest) == before
 
 
 def test_the_components_are_read_only(basic):
-    components = method_digest.method_digest_components(basic, vocabulary=None)
+    components = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
 
     with pytest.raises(dataclasses.FrozenInstanceError):
         components.method_digest = "0" * 64  # type: ignore[misc]
@@ -1091,6 +1202,104 @@ def test_the_components_take_the_vocabulary_by_name(basic, vocabulary):
 
 def test_the_components_take_only_a_policy():
     with pytest.raises(TypeError, match="policy must be"):
-        method_digest.method_digest_components({"preset": "basic"}, vocabulary=None)
+        method_digest.method_digest_components(
+            {"preset": "basic"}, vocabulary=None, reviewed_roi_names=None
+        )
     with pytest.raises(TypeError, match="policy must be"):
         method_digest.digest_components({"preset": "basic"}, SYNTHETIC_INPUTS)
+
+
+# A keyed digest of a reviewed-names list, as ReviewedNames.keyed_digest gives.
+REVIEWED_ROI_NAMES = "4247e696d65fef56fae5a25e8b7e2ffc5f81727a0a44395ca29acdc48df4d667"
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
+def test_the_reviewed_names_digest_is_an_input_that_shows_only_in_its_component(
+    basic,
+):
+    before = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
+
+    after = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=REVIEWED_ROI_NAMES
+    )
+
+    assert after.reviewed_roi_names == REVIEWED_ROI_NAMES
+    assert after.method_digest != before.method_digest
+    assert after.method_digest == method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=REVIEWED_ROI_NAMES
+    )
+    assert (
+        dataclasses.replace(
+            after, method_digest=before.method_digest, reviewed_roi_names=None
+        )
+        == before
+    )
+    assert before.reviewed_roi_names is None
+
+
+def test_a_different_reviewed_names_digest_gives_a_different_method_digest(basic):
+    digests = {
+        method_digest.method_digest(
+            basic, vocabulary=None, reviewed_roi_names=reviewed_roi_names
+        )
+        for reviewed_roi_names in (None, REVIEWED_ROI_NAMES, "0" * 64, "f" * 64)
+    }
+
+    assert len(digests) == 4
+
+
+def test_the_canonical_form_holds_the_reviewed_names_digest_as_given(basic):
+    inputs = method_digest.digest_inputs(
+        vocabulary=None, reviewed_roi_names=REVIEWED_ROI_NAMES
+    )
+
+    document = json.loads(method_digest.canonical_bytes(basic, inputs))
+
+    assert document["reviewed_roi_names"] == REVIEWED_ROI_NAMES
+    assert (
+        json.loads(
+            method_digest.canonical_bytes(
+                basic,
+                method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None),
+            )
+        )["reviewed_roi_names"]
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    "reviewed_roi_names",
+    ["A" * 64, "0" * 63, "0" * 65, " " + "0" * 63, "SENTINEL" * 8, b"0" * 64, 0],
+)
+def test_the_reviewed_names_digest_must_be_64_lowercase_hexadecimal_digits(
+    basic, reviewed_roi_names
+):
+    with pytest.raises((TypeError, ValueError), match="reviewed_roi_names") as raised:
+        method_digest.digest_inputs(
+            vocabulary=None, reviewed_roi_names=reviewed_roi_names
+        )
+    with pytest.raises((TypeError, ValueError), match="reviewed_roi_names"):
+        method_digest.method_digest(
+            basic, vocabulary=None, reviewed_roi_names=reviewed_roi_names
+        )
+
+    assert "SENTINEL" not in str(raised.value) and "AAAA" not in str(raised.value)
+
+
+def test_every_call_states_the_reviewed_names_digest_by_name(basic):
+    # These calls omit the argument, or pass it positionally, on purpose.
+    # pylint: disable = missing-kwoa, too-many-function-args
+    with pytest.raises(TypeError, match="reviewed_roi_names"):
+        method_digest.digest_inputs(vocabulary=None)  # type: ignore[call-arg]
+    with pytest.raises(TypeError, match="reviewed_roi_names"):
+        method_digest.method_digest(basic, vocabulary=None)  # type: ignore[call-arg]
+    with pytest.raises(TypeError, match="reviewed_roi_names"):
+        method_digest.method_digest_components(  # type: ignore[call-arg]
+            basic, vocabulary=None
+        )
+    with pytest.raises(TypeError, match="positional"):
+        method_digest.digest_inputs(None, REVIEWED_ROI_NAMES)  # type: ignore[misc]
+    with pytest.raises(TypeError, match="positional"):
+        method_digest.method_digest(basic, None, REVIEWED_ROI_NAMES)  # type: ignore[misc]

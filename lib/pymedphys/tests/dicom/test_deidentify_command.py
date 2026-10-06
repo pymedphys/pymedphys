@@ -25,7 +25,15 @@ from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import command, diagnostics, run
+from pymedphys._dicom.deidentify import (
+    command,
+    diagnostics,
+    instance_transform,
+    policy,
+    run,
+    run_report,
+)
+from pymedphys._dicom.deidentify.policy import compose_policy
 from pymedphys._dicom.deidentify.reference_graph import Finding, FindingKind
 
 from . import _synthetic_references as synthetic
@@ -54,13 +62,17 @@ def _short_tmp_path(tmp_path):
     shutil.rmtree(short, ignore_errors=True)
 
 
-def _call(tmp_path, transform=None, gate=None, source=None, release=None):
+def _call(  # pylint: disable = too-many-arguments, too-many-positional-arguments
+    tmp_path, transform=None, gate=None, source=None, release=None, reporter=None
+):
     stdout, stderr = io.StringIO(), io.StringIO()
     status = command.deidentify_directory(
         source or tmp_path / "source",
         release or tmp_path / "release",
         transform=transform or Transform(),
         gate=gate or Gate(),
+        qc_destination=tmp_path / "qc",
+        reporter=reporter,
         stdout=stdout,
         stderr=stderr,
     )
@@ -78,6 +90,19 @@ def test_a_clean_run_exits_zero_and_summarises_by_status(tmp_path):
     assert "sequestered" not in out
     assert err == ""
     assert (tmp_path / "release").is_dir()
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_a_run_given_a_reporter_publishes_its_release_report(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    reporter = run_report.ReleaseReporter(
+        compose_policy("basic"), vocabulary=None, reviewed_roi_names=None
+    )
+
+    status, _, _ = _call(tmp_path, reporter=reporter)
+
+    assert status == command.EXIT_RELEASED
+    assert (tmp_path / "release" / run_report.RELEASE_REPORT).is_file()
 
 
 def test_a_withheld_input_exits_one_and_names_reasons_by_type(tmp_path):
@@ -110,6 +135,48 @@ def test_a_dataclass_reason_is_named_by_its_type_alone(tmp_path):
     assert status == command.EXIT_WITHHELD
     assert "Residual: 1" in out
     assert SENTINEL not in out + err
+
+
+def test_a_dataclass_reason_is_named_with_its_enum_fields(tmp_path):
+    # Enum members are defined by the code, so they quote nothing; a release
+    # gate's reason gives its decision and code this way.
+    _write(tmp_path / "source", synthetic.collection())
+
+    @dataclasses.dataclass(frozen=True)
+    class Withheld:
+        code: GateReason
+        text: str
+        missing: GateReason | None = None
+
+    gate = Gate(
+        {
+            _output(synthetic.PLAN): run.Sequestered(
+                (Withheld(GateReason.TEXT_FINDING, SENTINEL),)
+            ),
+            _output(synthetic.DOSE): run.Sequestered(
+                (Withheld(GateReason.TEXT_FINDING, "other"),)
+            ),
+        }
+    )
+
+    status, out, err = _call(tmp_path, gate=gate)
+
+    assert status == command.EXIT_WITHHELD
+    assert "Withheld(code=GateReason.TEXT_FINDING): 2" in out
+    assert SENTINEL not in out + err
+
+
+def test_a_dataclass_field_that_nothing_set_is_left_out():
+    @dataclasses.dataclass(frozen=True)
+    class Withheld:
+        code: GateReason
+        unset: GateReason = dataclasses.field(init=False)
+
+    reason = Withheld(GateReason.TEXT_FINDING)
+
+    assert command._reason_name(reason) == (  # pylint: disable=protected-access
+        "Withheld(code=GateReason.TEXT_FINDING)"
+    )
 
 
 def test_refused_inputs_and_findings_are_counted(tmp_path):
@@ -156,6 +223,26 @@ def test_an_existing_release_directory_exits_three(tmp_path):
 
     assert status == command.EXIT_NOT_RUN
     assert "already exists" in err
+
+
+def test_a_refused_qc_destination_exits_three_naming_its_check(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    stdout, stderr = io.StringIO(), io.StringIO()
+
+    status = command.deidentify_directory(
+        tmp_path / "source",
+        tmp_path / "release",
+        transform=Transform(),
+        gate=Gate(),
+        qc_destination=tmp_path / "release" / "qc",
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert status == command.EXIT_NOT_RUN
+    assert stderr.getvalue().startswith("error: ")
+    assert "details are not shown" not in stderr.getvalue()
+    assert not (tmp_path / "release").exists()
 
 
 def test_a_stopped_run_exits_three_and_writes_nothing(tmp_path):
@@ -291,7 +378,12 @@ def test_main_parses_source_and_release(tmp_path):
     stdout = io.StringIO()
 
     status = command.main(
-        [str(tmp_path / "source"), str(tmp_path / "release")],
+        [
+            str(tmp_path / "source"),
+            str(tmp_path / "release"),
+            "--qc-pack",
+            str(tmp_path / "qc"),
+        ],
         transform=Transform(),
         gate=Gate(),
         stdout=stdout,
@@ -314,8 +406,12 @@ def test_build_parser_takes_a_program_name():
     parser = command.build_parser(prog="pymedphys dicom deidentify")
 
     assert parser.prog == "pymedphys dicom deidentify"
-    arguments = parser.parse_args(["in", "out"])
-    assert (arguments.source, arguments.release) == ("in", "out")
+    arguments = parser.parse_args(["in", "out", "--qc-pack", "qc"])
+    assert (arguments.source, arguments.release, arguments.qc_pack) == (
+        "in",
+        "out",
+        "qc",
+    )
 
 
 def test_a_failed_run_that_leaves_its_staging_area_says_so(tmp_path, monkeypatch):
@@ -375,6 +471,7 @@ def test_a_release_name_the_output_cannot_encode_is_escaped(tmp_path):
         release,
         transform=Transform(),
         gate=Gate(),
+        qc_destination=tmp_path / "qc",
         stdout=stdout,
         stderr=io.StringIO(),
     )
@@ -434,3 +531,126 @@ def test_help_is_printed_as_usual(capsys):
 
     assert raised.value.code == 0
     assert "the release directory to create" in capsys.readouterr().out
+
+
+def _parsed_call(tmp_path, monkeypatch, *options):
+    """Run main with options, and return its status, streams, and call."""
+    calls = []
+
+    def recording(*_, **kwargs):
+        calls.append(kwargs)
+        return command.EXIT_RELEASED
+
+    monkeypatch.setattr(command, "deidentify_directory", recording)
+    stdout, stderr = io.StringIO(), io.StringIO()
+    argv = [
+        str(tmp_path / "source"),
+        str(tmp_path / "release"),
+        "--qc-pack",
+        str(tmp_path / "qc"),
+        *options,
+    ]
+    status = command.main(argv, stdout=stdout, stderr=stderr)
+    return status, stdout.getvalue(), stderr.getvalue(), calls
+
+
+@pytest.fixture(name="enabled")
+def _enabled(monkeypatch):
+    """Enable the first release's presets, which no release enables yet."""
+    monkeypatch.setattr(
+        policy, "ENABLED_PRESETS", frozenset({"basic", "basic-clean-descriptors"})
+    )
+
+
+@pytest.mark.usefixtures("enabled")
+@pytest.mark.parametrize(
+    "options", [(), ("--preset", "basic")], ids=["default", "named"]
+)
+def test_main_builds_the_basic_transform_and_release_gate(
+    tmp_path, monkeypatch, options
+):
+    status, _, err, calls = _parsed_call(tmp_path, monkeypatch, *options)
+
+    assert (status, err) == (command.EXIT_RELEASED, "")
+    (call,) = calls
+    assert isinstance(call["transform"], instance_transform.InstanceTransform)
+    assert isinstance(call["gate"], instance_transform.ReleaseGate)
+    assert call["qc_destination"] == str(tmp_path / "qc")
+    assert call["reporter"] is call["transform"].reporter
+
+
+def test_a_given_transform_runs_without_a_release_report(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        command, "deidentify_directory", lambda *_, **kwargs: calls.append(kwargs)
+    )
+    command.main(
+        ["in", "out", "--qc-pack", str(tmp_path / "qc")],
+        transform=Transform(),
+        gate=Gate(),
+    )
+
+    (call,) = calls
+    assert call["reporter"] is None
+
+
+def test_clean_descriptors_waits_for_its_roi_name_options(capsys):
+    # Its transform needs a vocabulary and reviewed-names list, which the
+    # command cannot take yet.
+    with pytest.raises(SystemExit) as raised:
+        command.main(
+            ["in", "out", "--qc-pack", "qc", "--preset", "basic-clean-descriptors"]
+        )
+
+    assert raised.value.code == command.EXIT_USAGE
+    capsys.readouterr()
+
+
+@pytest.mark.usefixtures("enabled")
+def test_each_run_has_a_new_key(tmp_path, monkeypatch):
+    _, _, _, first = _parsed_call(tmp_path, monkeypatch)
+    _, _, _, second = _parsed_call(tmp_path, monkeypatch)
+
+    keys = [call["transform"]._key for call in first + second]  # pylint: disable = protected-access
+    assert keys[0].key_id != keys[1].key_id
+
+
+def test_a_preset_not_enabled_exits_three_before_anything_runs(tmp_path, monkeypatch):
+    # No release enables a preset yet.
+    status, out, err, calls = _parsed_call(tmp_path, monkeypatch)
+
+    assert status == command.EXIT_NOT_RUN
+    assert (out, calls) == ("", [])
+    assert err.startswith("error: ") and "not enabled" in err
+    assert not any(tmp_path.iterdir())
+
+
+def test_an_unknown_preset_is_a_usage_error(capsys):
+    with pytest.raises(SystemExit) as raised:
+        command.main(["in", "out", "--qc-pack", "qc", "--preset", SENTINEL])
+
+    captured = capsys.readouterr()
+    assert raised.value.code == command.EXIT_USAGE
+    assert SENTINEL not in captured.out + captured.err
+
+
+@pytest.mark.usefixtures("enabled")
+def test_main_runs_the_basic_preset_end_to_end(tmp_path):
+    _write(tmp_path / "source", synthetic.collection())
+    stdout, stderr = io.StringIO(), io.StringIO()
+
+    status = command.main(
+        [
+            str(tmp_path / "source"),
+            str(tmp_path / "release"),
+            "--qc-pack",
+            str(tmp_path / "qc"),
+        ],
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert status == command.EXIT_RELEASED, stdout.getvalue() + stderr.getvalue()
+    assert (tmp_path / "release" / run_report.RELEASE_REPORT).is_file()
+    assert any((tmp_path / "qc").iterdir())
+    assert str(tmp_path / "source") not in stdout.getvalue() + stderr.getvalue()

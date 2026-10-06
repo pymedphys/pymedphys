@@ -49,7 +49,9 @@ KEY_FILE_FORMAT = "pymedphys-deid-key/1"
 DERIVATION_VERSION = b"pymedphys-deid/1"
 # The domains values are derived in. Later derivations, such as patient
 # identifiers and date offsets, add their own.
-DOMAINS = frozenset({"date-offset", "key-id", "patient", "subject", "uid"})
+DOMAINS = frozenset(
+    {"date-offset", "key-id", "patient", "reviewed-roi-names", "subject", "uid"}
+)
 
 # POSIX honours the owner-only mode a key file is created with. Elsewhere,
 # such as on Windows, access depends on the directory's access control.

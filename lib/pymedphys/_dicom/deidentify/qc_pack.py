@@ -64,7 +64,7 @@ from pathlib import PurePosixPath
 
 from . import residuals, roi_names
 from .file_layout import ElementPath, Location
-from .release_report import LABEL_PATTERN
+from .labels import LABEL_PATTERN
 from .residuals import UnsearchedReason
 from .reviewed_roi_names import Outcome
 

@@ -378,6 +378,19 @@ def _private(element, character_set, creator=b"SENTINEL CREATOR"):
     )
 
 
+def _private_container(vr, creator=b"SENTINEL CREATOR"):
+    """A Private Creator and a private element that holds one item.
+
+    The item of a UN is in implicit VR (PS3.5 Section 6.2.2).
+    """
+    item = _implicit(0x300A00C2, DESCRIPTION) if vr == "UN" else TEXT
+    return (
+        _explicit(0x00080005, "CS", b"ISO_IR 100")
+        + (_explicit(0x00090010, "LO", creator) if creator else b"")
+        + _explicit(0x00091002, vr, _item(item))
+    )
+
+
 def _implicit_element(tag, _vr, value):
     return _implicit(tag, value)
 
@@ -385,6 +398,7 @@ def _implicit_element(tag, _vr, value):
 BEAM = ("(300A,00B0)", 0)
 TEXT = _explicit(0x300A00C2, "LO", DESCRIPTION)
 PRIVATE_TEXT = _path("(0009,1001)")
+PRIVATE_CONTAINER = _path("(0009,1002)")
 CREATOR = _path("(0009,0010)")
 CHARACTER_SET_FRAGMENTS = (
     _explicit(0x00080005, "OB", length=UNDEFINED) + _item(b"ISO_IR 100") + SEQUENCE_END
@@ -462,6 +476,21 @@ CONTEXT_CASES = {
         {CREATOR},
         (PreservationReason.PRIVATE_CREATOR, PRIVATE_TEXT),
     ),
+    # A kept private container needs its creator too (PS3.5 Section 7.8.1).
+    **{
+        f"{change}-private-creator-of-{vr}-items": (
+            _file(EXPLICIT, _private_container(vr)),
+            _file(EXPLICIT, _private_container(vr, creator)),
+            changed,
+            removed,
+            (PreservationReason.PRIVATE_CREATOR, PRIVATE_CONTAINER),
+        )
+        for vr in ("SQ", "UN")
+        for change, creator, changed, removed in (
+            ("another", b"ANOTHER CREATOR ", {CREATOR}, set()),
+            ("no", b"", set(), {CREATOR}),
+        )
+    },
 }
 
 

@@ -24,7 +24,8 @@ writes it as CommonMark:
 - the PS3.15 edition, the preset, and its options, with their CID 7050
   codes, and the options that are not supported;
 - whether the policy can claim conformance, and why not where it cannot;
-- the method digest of the policy (D-024) and the vocabulary it covers;
+- the method digest of the policy (D-024), the vocabulary it covers, and
+  the absence of a reviewed-names list;
 - the supported IODs, their Storage SOP Classes, and the transfer
   syntaxes they are read in (D-010);
 - the action that the engine applies to each attribute of Table E.1-1, of
@@ -37,8 +38,13 @@ writes it as CommonMark:
 - the rules that give every other element its action
   (:mod:`~pymedphys._dicom.deidentify.element_rules`, D-022);
 - the values that Z, D, and U write (D-003, D-005, and D-021);
+- how dates and times are handled, by the policy's Retain Longitudinal
+  Temporal Information Option, or without one (D-006, D-007, and D-023);
 - the scope of referential integrity under a run-scoped key (D-004);
-- that no attribute is encrypted for later re-identification (D-013).
+- that no attribute is encrypted for later re-identification (D-013);
+- what the residual search of each written file covers (D-027);
+- how the release report names sequestered instances and counts the
+  values that the residual search does not search (D-026 and D-027).
 
 What the statement cannot yet describe from the engine is listed in it, under
 "Not yet described" (:data:`PENDING`, and the items that apply only to
@@ -53,12 +59,12 @@ from __future__ import annotations
 import dataclasses
 import re
 import types
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 
 from pymedphys import _version
 from pymedphys._nomenclature import tg263
 
-from . import compound_actions, markers
+from . import compound_actions, markers, roi_names
 from .codes import load_context_group
 from .element_rules import (
     _ENGINE_GROUPS,
@@ -75,12 +81,14 @@ from .policy import Policy, PolicyError, ResolvedConflict
 from .scope import SUPPORTED_IODS, SUPPORTED_TRANSFER_SYNTAXES, classify
 from .sop_classes import load_storage_sop_classes
 from .standard import (
+    MUTUALLY_EXCLUSIVE,
     dictionary_attribute,
     load_data_dictionary,
     load_table_e1_1,
     load_table_e1_1a,
 )
 from .supplementary_actions import TEXT_VRS, UNCOVERED_TEXT_ACTION
+from .temporal_roles import load_temporal_roles
 from .uid_registry import load_uid_values
 from .uid_roles import UIDRole, load_uid_roles
 from .walker import DESCENDED
@@ -130,7 +138,22 @@ SEQUENCE_NOT_CLEANED = "sequence not cleaned"
 
 # What the statement cannot yet describe from the engine. Each is to be
 # generated once the engine decides it.
-PENDING: tuple[str, ...] = ()
+PENDING: tuple[str, ...] = (
+    "What the engine does not yet do for each run's release report and "
+    "residual search: write the release report with each run; search each "
+    "written file; record the "
+    "values that it does not give the residual search, for the reasons "
+    "listed under Release report (D-027); act on the search's findings, by "
+    "sequestering an instance whose written file fails the search and "
+    "moving output from a staging area to the release directory only after "
+    "a clean search (D-027); and write the confidential QC pack, which maps "
+    "each label to its source instance and lists each value not searched by "
+    "instance and place (D-016, D-026, and D-027). The report cannot yet "
+    "record an instance that the run itself sequesters, such as one whose "
+    "file changes during the run, or that a gate sequesters, since neither "
+    "is one of the stages listed under Release report.",
+)
+PENDING_RELEASE_REPORT = PENDING[0]
 # Pending only for a policy whose element rules the engine refuses.
 PENDING_REFUSED = (
     "The actions that the engine applies under this policy, which it refuses "
@@ -140,10 +163,16 @@ PENDING_REFUSED = (
 )
 # Pending only for a policy that gives an attribute C.
 PENDING_CLEANING = (
-    "The manner of cleaning each attribute to which the policy gives C, "
-    "including how dates and times are modified and how retained patient "
-    "characteristics are cleaned (PS3.15 E.3.5, E.3.6, and E.3.7; D-007, "
-    "D-009)."
+    "The manner of cleaning each attribute other than ROI Name (3006,0026) "
+    "to which the policy gives C, including how dates and times are modified "
+    "and how retained patient characteristics are cleaned (PS3.15 E.3.5, "
+    "E.3.6, and E.3.7; D-007, D-009)."
+)
+# Pending only for a policy that gives ROI Name C.
+PENDING_ROI_NAMES = (
+    "Cleaning each ROI Name (3006,0026) in a run as the section Cleaning "
+    "ROI names describes: no run yet writes the cleaned names, holds an instance in the "
+    "staging area, or empties held names where it is told to (D-009)."
 )
 # Pending only for a policy that selects Retain Safe Private.
 PENDING_SAFE_PRIVATE = (
@@ -156,7 +185,13 @@ PENDING_BIRTH_DATES = (
     "(0010,0030) in place of a zero-length value (D-008, D-021)."
 )
 _TPS_IMPORT = "tps-import"
+_FULL_DATES = "retain_longitudinal_full_dates"
+_ROI_NAME = "(3006,0026)"
 _CLEAN_DESCRIPTORS = "clean_descriptors"
+# The Retain Longitudinal Temporal Information Options, and the VRs of a date,
+# time, or datetime.
+_TEMPORAL_OPTIONS = next(o for o in MUTUALLY_EXCLUSIVE if _FULL_DATES in o)
+_TEMPORAL_VRS = frozenset({"DA", "DT", "TM"})
 
 
 @dataclasses.dataclass(frozen=True)
@@ -260,6 +295,32 @@ class OtherElements:
 
 
 @dataclasses.dataclass(frozen=True)
+class TemporalHandling:
+    """How the policy handles dates and times (D-006, D-007, and D-023).
+
+    Attributes
+    ----------
+    option : str
+        The selected Retain Longitudinal Temporal Information Option, or
+        ``""`` for none.
+    attributes : int
+        How many attributes the temporal roles cover: every DA, DT, and TM
+        attribute of the pinned data dictionary, and each attribute of
+        another VR that Table E.1-1 cleans under Modified Dates.
+    other_attributes : tuple of str
+        The tags of the attributes of another VR among them, in order.
+    actions : tuple of tuple of str and int
+        Each action listed for those attributes, with how many have it, most
+        first and then in the order of the actions.
+    """
+
+    option: str
+    attributes: int
+    other_attributes: tuple[str, ...]
+    actions: tuple[tuple[str, int], ...]
+
+
+@dataclasses.dataclass(frozen=True)
 class SOPClass:
     """A Storage SOP Class that is de-identified rather than sequestered."""
 
@@ -306,6 +367,24 @@ class InsertedMarkers:
 
 
 @dataclasses.dataclass(frozen=True)
+class RoiNameCleaning:
+    """How ROI Name (3006,0026) is cleaned, where the policy gives it C (D-009).
+
+    Attributes
+    ----------
+    edition : str or None
+        The published edition of the TG-263 Structure Spreadsheet, by its
+        worksheet name in
+        :data:`~pymedphys._dicom.deidentify.roi_names.PUBLISHED_TG263`,
+        whose names ROI Names are renamed to automatically, or None where no
+        ROI Name is renamed automatically: without a vocabulary, or with one
+        that is not a published edition.
+    """
+
+    edition: str | None
+
+
+@dataclasses.dataclass(frozen=True)
 class ConformanceStatement:
     """What the conformance statement of a policy describes.
 
@@ -324,7 +403,8 @@ class ConformanceStatement:
     resolved : tuple of ResolvedConflict
         The conflicts between options that the preset resolves.
     method_digest : str
-        The policy's method digest under the vocabulary given (D-024).
+        The policy's method digest under the vocabulary given, without a
+        reviewed-names list (D-024).
     vocabulary_digest : str or None
         The content digest of the vocabulary's entries, or None without one.
     iods, sop_classes, transfer_syntaxes : tuple
@@ -336,8 +416,13 @@ class ConformanceStatement:
     other_elements : OtherElements or None
         The rules for every other element, or None for a policy whose
         element rules the engine refuses.
+    roi_names : RoiNameCleaning or None
+        How ROI Names are cleaned, or None where the policy does not give
+        ROI Name C.
     markers : InsertedMarkers
         The parts of the markers that the policy decides.
+    temporal : TemporalHandling
+        How the policy handles dates and times.
     pending : tuple of str
         What the statement cannot yet describe.
     acknowledgements : tuple of str
@@ -357,7 +442,9 @@ class ConformanceStatement:
     transfer_syntaxes: tuple[TransferSyntax, ...]
     attributes: tuple[AttributeAction, ...]
     other_elements: OtherElements | None
+    roi_names: RoiNameCleaning | None
     markers: InsertedMarkers
+    temporal: TemporalHandling
     pending: tuple[str, ...]
     acknowledgements: tuple[str, ...]
 
@@ -538,6 +625,47 @@ def _other_elements() -> OtherElements:
     )
 
 
+def _temporal(
+    policy: Policy, attributes: tuple[AttributeAction, ...]
+) -> TemporalHandling:
+    """Return how the policy handles the attributes that have a temporal role."""
+    roles = load_temporal_roles().rules
+    actions = {e.tag: e.action for e in attributes}
+    counts: dict[str, int] = {}
+    for tag in roles:
+        counts[actions[tag]] = counts.get(actions[tag], 0) + 1
+    others = []
+    for tag in roles:
+        attribute = dictionary_attribute(tag)
+        if attribute is None or not set(attribute.vrs) <= _TEMPORAL_VRS:
+            others.append(tag)
+    return TemporalHandling(
+        option=next((o for o in policy.options if o in _TEMPORAL_OPTIONS), ""),
+        attributes=len(roles),
+        other_attributes=tuple(sorted(others)),
+        actions=tuple(sorted(counts.items(), key=lambda item: (-item[1], item[0]))),
+    )
+
+
+def _roi_names(
+    attributes: Iterable[AttributeAction], vocabulary: tg263.Nomenclature | None
+) -> RoiNameCleaning | None:
+    """Return how ROI Names are cleaned, where the policy gives ROI Name C."""
+    if next(e for e in attributes if e.tag == _ROI_NAME).action != "C":
+        return None
+    if vocabulary is None:
+        return RoiNameCleaning(None)
+    try:
+        roi_names.RoiNameVocabulary(vocabulary)
+    except ValueError:
+        # Not a published edition, so the automatic tier renames nothing.
+        return RoiNameCleaning(None)
+    entries = [dataclasses.asdict(s) for s in vocabulary.structures]
+    digest = tg263.content_sha256(entries)
+    edition = next(n for n, d in roi_names.PUBLISHED_TG263.items() if d == digest)
+    return RoiNameCleaning(edition)
+
+
 def _markers(policy: Policy, digest: str) -> InsertedMarkers:
     """Return the parts of the markers that the policy decides.
 
@@ -576,6 +704,8 @@ def conformance_statement(
         the published baseline digest of a preset (D-024). It must be given
         by name, as for
         :func:`~pymedphys._dicom.deidentify.method_digest.method_digest`.
+        The digest is always computed without a reviewed-names list, which
+        is a site's confidential resource, and the statement says so.
 
     Returns
     -------
@@ -626,12 +756,14 @@ def conformance_statement(
     except PolicyError:
         rules = None
     attributes = tuple(_attributes(policy, rules))
-    actions = {entry.action for entry in attributes}
+    actions = {entry.action for entry in attributes if entry.tag != _ROI_NAME}
+    roi_name_actions = {e.action for e in attributes if e.tag == _ROI_NAME}
     pending = PENDING + tuple(
         item
         for item, applies in (
             (PENDING_REFUSED, rules is None),
             (PENDING_CLEANING, "C" in actions),
+            (PENDING_ROI_NAMES, "C" in roi_name_actions),
             (PENDING_SAFE_PRIVATE, "retain_safe_private" in policy.options),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
         )
@@ -647,7 +779,8 @@ def conformance_statement(
         load_context_group(7050),
         load_context_group(7005),
     )
-    digest = method_digest(policy, vocabulary=vocabulary)
+    # A statement describes a policy, never a site's reviewed-names list.
+    digest = method_digest(policy, vocabulary=vocabulary, reviewed_roi_names=None)
     return ConformanceStatement(
         engine_version=_version.__version__,
         edition=policy.edition,
@@ -656,13 +789,17 @@ def conformance_statement(
         enabled=policy.enabled,
         resolved=policy.resolved,
         method_digest=digest,
-        vocabulary_digest=digest_inputs(vocabulary=vocabulary).vocabulary,
+        vocabulary_digest=digest_inputs(
+            vocabulary=vocabulary, reviewed_roi_names=None
+        ).vocabulary,
         iods=tuple(sorted(SUPPORTED_IODS)),
         sop_classes=supported,
         transfer_syntaxes=syntaxes,
         attributes=attributes,
         other_elements=None if rules is None else _other_elements(),
+        roi_names=_roi_names(attributes, vocabulary),
         markers=_markers(policy, digest),
+        temporal=_temporal(policy, attributes),
         pending=pending,
         acknowledgements=tuple(dict.fromkeys(t.acknowledgement for t in tables)),
     )

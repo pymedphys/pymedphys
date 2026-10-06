@@ -372,12 +372,15 @@ def test_the_method_digest_is_the_policys_with_the_same_vocabulary(
     composed = policy.compose_policy(preset)
     statement = statement_for(preset, vocabulary=vocabulary)
     assert statement.method_digest == method_digest.method_digest(
-        composed, vocabulary=vocabulary
+        composed, vocabulary=vocabulary, reviewed_roi_names=None
     )
-    expected = method_digest.digest_inputs(vocabulary=vocabulary).vocabulary
+    expected = method_digest.digest_inputs(
+        vocabulary=vocabulary, reviewed_roi_names=None
+    ).vocabulary
     assert statement.vocabulary_digest == expected
     text = conformance_markdown.render_markdown(statement)
     assert statement.method_digest in text
+    assert "and without a reviewed-names list, is" in text
     if vocabulary is None:
         assert "without a vocabulary" in text
     else:

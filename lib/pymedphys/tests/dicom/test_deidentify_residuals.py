@@ -822,7 +822,7 @@ def test_numbers_in_decimal_strings_are_not_findings():
 
 def test_digits_inside_the_integer_of_a_uuid_derived_uid_are_not_findings():
     # A UID under the 2.25 root holds an integer derived from a UUID (PS3.5
-    # B.2), as every UID the engine writes does, so a date at the start of
+    # B.2), as every keyed replacement UID does, so a date at the start of
     # its digits is chance.
     datetime = _source("(0008,002A)", "DT", "20240517101500")
     data = _private(

@@ -194,7 +194,9 @@ def _marker_strings(found):
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
 def test_each_preset_adds_exactly_its_markers(preset):
     composed = policy.compose_policy(preset)
-    digest = method_digest.method_digest(composed, vocabulary=None)
+    digest = method_digest.method_digest(
+        composed, vocabulary=None, reviewed_roi_names=None
+    )
     claim, code_values, temporal = EXPECTED[preset]
     version = _version.__version__
 
@@ -335,7 +337,9 @@ def test_patient_identity_removed_is_never_no(preset):
 @pytest.mark.deid_requirement("PS3.15-E.1.1-05", "MIDI-BP-18")
 def test_the_first_method_value_is_exactly_the_method_digest():
     composed = policy.compose_policy("basic")
-    digest = method_digest.method_digest(composed, vocabulary=None)
+    digest = method_digest.method_digest(
+        composed, vocabulary=None, reviewed_roi_names=None
+    )
 
     found = markers.markers_for(composed, digest, satisfied=())
 
@@ -597,7 +601,9 @@ def test_python_and_library_versions_change_software_versions_not_the_digest(
         # pylint: disable = protected-access
         method_digest._file_digests.cache_clear()
         method_digest._table_digests.cache_clear()
-        digest = method_digest.method_digest(composed, vocabulary=None)
+        digest = method_digest.method_digest(
+            composed, vocabulary=None, reviewed_roi_names=None
+        )
         found = markers.markers_for(composed, digest, satisfied=())
         return markers.apply_markers(dataset, found)
 

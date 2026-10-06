@@ -14,6 +14,10 @@
 
 """Indicators of risk in pixel data, read from an instance's attributes."""
 
+# The tests share the synthetic data sets and their helpers below, so they
+# stay in one module.
+# pylint: disable = too-many-lines
+
 import io
 import struct
 
@@ -427,6 +431,57 @@ def test_a_sequence_whose_items_cannot_be_read_is_unreadable_evidence():
     assert [(f.indicator, f.risk) for f in assessment.findings] == [
         (Indicator.UNREADABLE, Risk.RECONSTRUCTABLE_FACE)
     ]
+
+
+def _implicit(tag: int, value: bytes) -> bytes:
+    return struct.pack("<HHI", tag >> 16, tag & 0xFFFF, len(value)) + value
+
+
+def _item(content: bytes, length=None) -> bytes:
+    length = len(content) if length is None else length
+    return struct.pack("<HHI", 0xFFFE, 0xE000, length) + content
+
+
+# An outline's observation, in Implicit VR Little Endian.
+_OUTLINE = _implicit(0x30060084, b"7 ") + _implicit(0x300600A4, b"EXTERNAL")
+
+
+@pytest.mark.parametrize("vr", [None, "UN"])
+@pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param(_implicit(0x30060084, b"7 "), id="element-for-item"),
+        pytest.param(_item(_OUTLINE, len(_OUTLINE) + 2), id="item-runs-past-value"),
+        pytest.param(_item(_OUTLINE, len(_OUTLINE) - 2), id="item-ends-in-element"),
+        pytest.param(_item(_OUTLINE) + _OUTLINE, id="element-after-item"),
+    ],
+)
+def test_a_sequence_that_is_not_only_items_is_unreadable_evidence(vr, value):
+    # pydicom reads each of these, keeping what it finds, so the indicator an
+    # outline gives must not depend on how it does.
+    dataset = _with_raw(_structure_set([], [_contour(7, 1)]), 0x30060080, vr, value)
+    assert _found(pixel_risk.assess_pixel_risk(dataset)) == {
+        (Indicator.UNREADABLE, "(3006,0080)")
+    }
+
+
+def test_an_explicit_vr_item_with_an_unknown_vr_is_unreadable_evidence():
+    element = struct.pack("<HH2sH", 0x3006, 0x00A4, b"ZZ", 8) + b"EXTERNAL"
+    dataset = _with_raw(
+        _structure_set([], [_contour(7, 1)]), 0x30060080, "SQ", _item(element)
+    )
+    assert _found(pixel_risk.assess_pixel_risk(dataset)) == {
+        (Indicator.UNREADABLE, "(3006,0080)")
+    }
+
+
+def test_a_sequence_of_only_items_read_as_un_is_assessed():
+    dataset = _with_raw(
+        _structure_set([], [_contour(7, 1)]), 0x30060080, "UN", _item(_OUTLINE)
+    )
+    assert _found(pixel_risk.assess_pixel_risk(dataset)) == {
+        (Indicator.PATIENT_SURFACE_CONTOUR, "(3006,0039)[0] > (3006,0040)")
+    }
 
 
 def test_an_unreadable_item_element_is_located_in_its_item():

@@ -19,7 +19,9 @@ Every value is encoded here by hand, little endian (PS3.5 Sections 7.1 and
 ``SENTINEL``.
 """
 
+import ast
 import logging
+import pathlib
 import struct
 import warnings
 
@@ -216,3 +218,39 @@ def test_pydicom_diagnostics_while_decoding_are_redacted(monkeypatch, caplog):
     assert caught and caplog.records
     assert sentinel not in " ".join(str(each.message) for each in caught)
     assert sentinel not in caplog.text
+
+
+def _sequence_decoders(path: pathlib.Path) -> list[str]:
+    """Return each call in a module that has pydicom decode a sequence's items."""
+    found = []
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if not isinstance(node, ast.Call):
+            continue
+        name = getattr(node.func, "attr", getattr(node.func, "id", None))
+        if name in ("convert_SQ", "read_sequence", "read_sequence_item"):
+            found.append(name)
+        elif name == "convert_value" and (
+            not node.args
+            or not isinstance(node.args[0], ast.Constant)
+            or node.args[0].value == "SQ"
+        ):
+            # A VR that is not a constant may be SQ, unless the caller
+            # decodes SQ by this module first; such a call is listed below.
+            found.append(f"{name}:{node.lineno}")
+    return found
+
+
+def test_only_this_module_has_pydicom_decode_items():
+    # A caller that decoded items itself would skip the check that they fill
+    # the value, which pydicom does not make.
+    package = pathlib.Path(sequences.__file__).parent
+    decoders = {
+        path.name: _sequence_decoders(path)
+        for path in sorted(package.glob("*.py"))
+        if _sequence_decoders(path)
+    }
+    assert set(decoders) <= {"sequences.py", "elements.py"}
+    assert decoders["sequences.py"] == ["convert_SQ"]
+    # elements decodes SQ by decode_items before either call, which is for a
+    # value of another VR.
+    assert all(call.startswith("convert_value:") for call in decoders["elements.py"])

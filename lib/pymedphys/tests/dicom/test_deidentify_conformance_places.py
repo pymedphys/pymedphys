@@ -191,7 +191,7 @@ def test_a_plain_z_on_a_type_1_attribute_gives_d(preset):
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_plain_actions_by_type_are_no_longer_pending(preset):
-    assert not conformance.PENDING
+    assert not any("D-020" in item for item in conformance.PENDING)
     pending = _statement(preset).pending
     assert not any("D-020" in item for item in pending)
     section = _section(
