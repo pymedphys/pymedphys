@@ -226,6 +226,7 @@ def _with_trailing_padding(dataset):
     return data
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize(
@@ -261,6 +262,7 @@ def _undefined_lengths(dataset):
     return dataset
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_copies_in_implicit_and_explicit_vr_have_different_digests():
@@ -378,6 +380,7 @@ def _changed_private_vr(dataset):
     _private(dataset, 0x02).VR = "SS"
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize(
@@ -439,6 +442,7 @@ def _without_transfer_syntax(data):
     return data[:132] + length + meta + data[_data_set_start(data) :]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize(
@@ -458,6 +462,7 @@ def test_a_file_whose_bytes_cannot_be_shown_sound_has_no_digest(unsound):
     assert record.sop_instance == synthetic.PLAN
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize(
@@ -480,6 +485,7 @@ def test_a_file_whose_sequence_cannot_be_read_as_items_has_no_record(unsound, ta
     assert str(raised.value.path) == tag
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_the_digest_is_of_the_transfer_syntax_and_the_data_set_bytes():
     # A data set with a group length and Data Set Trailing Padding, both of
@@ -530,6 +536,7 @@ PATIENT_ID = _element(0x00100020, "LO", b"SYNTHETIC ")
 IMPLICIT_PATIENT_ID = _implicit_element(0x00100020, b"SYNTHETIC ")
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.parametrize(
     "transfer_syntax, appended",
@@ -550,6 +557,7 @@ def test_a_left_out_element_that_holds_items_gives_no_digest(transfer_syntax, ap
     assert _digest(data) is None
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_padding_in_an_item_changes_the_digest():
     # Data Set Trailing Padding can end an item (PS3.10 Section 7.2), and is
@@ -576,6 +584,7 @@ def _findings(*files):
     return reference_graph.build_reference_graph(records).findings
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_copies_whose_bytes_cannot_be_shown_sound_conflict_each_alone():
     # The same file without a digest twice, a copy in another transfer
@@ -637,6 +646,7 @@ def _pixels(data):
     return decoder.as_array(dataset)[0].ravel().tolist()
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize(
@@ -652,6 +662,7 @@ def test_a_copy_whose_pixel_data_is_encoded_otherwise_conflicts(copy):
     assert _findings(native, other) == (CONFLICTING,)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_the_same_bytes_in_another_byte_order_conflict():
@@ -693,6 +704,7 @@ def test_8_bit_pixel_data_in_implicit_and_explicit_vr_conflicts():
     assert _findings(implicit, explicit) == (CONFLICTING,)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 def test_a_private_number_in_another_vr_with_the_same_bytes_conflicts():
@@ -719,6 +731,7 @@ def test_a_private_number_in_another_vr_with_the_same_bytes_conflicts():
 UNLISTED = 0x00080002
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.filterwarnings("ignore:VR lookup failed:UserWarning")

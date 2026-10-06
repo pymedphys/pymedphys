@@ -97,6 +97,7 @@ def _source_for(vr):
     return SOURCES.get(vr, ["FIXTURE"])[:1]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 @pytest.mark.usefixtures("pydicom_behaviour")
 @pytest.mark.parametrize("vr", sorted(standard.VRS))
 def test_z_writes_a_zero_length_value(vr):
@@ -116,6 +117,7 @@ def test_z_writes_a_zero_length_value(vr):
     assert pydicom.dcmread(buffer, force=True)[0x00091010].is_empty
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 @pytest.mark.parametrize("vr", sorted(CONSTANTS))
 def test_d_writes_its_vrs_constant(vr):
     first, _ = CONSTANTS[vr]
@@ -125,6 +127,7 @@ def test_d_writes_its_vrs_constant(vr):
     assert dummy_values.values_for_d(vr, "1", [], KEY) == (first,)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 @pytest.mark.parametrize(
     "vr, source",
     [
@@ -192,6 +195,7 @@ def test_the_vrs_with_a_generic_dummy_value_are_those_the_design_lists():
     assert dict(dummy_values.CONSTANTS) == CONSTANTS
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 @hypothesis.given(
     st.sampled_from(TEXT_VRS),
     st.lists(
@@ -211,6 +215,7 @@ def test_different_source_values_give_the_same_dummy_value(vr, sources):
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_every_dummy_value_is_valid_for_its_vr_and_the_attributes_vm():
     problems = {}
     for attribute in _attributes_that_can_take_d():
@@ -248,6 +253,7 @@ def test_d_writes_the_fewest_values_the_vm_allows(vr, vm, written):
     assert values.values_problem(vr, vm, written) is None
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 def test_ui_takes_the_keyed_replacement():
     source = ["1.2.840.99999.4.5", "1.2.840.99999.4.6\x00"]
 
@@ -268,6 +274,7 @@ def test_ui_without_a_source_uid_has_no_dummy_value(source):
     assert raised.value.vr == "UI"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 @pytest.mark.parametrize("vr", sorted(standard.VRS - set(CONSTANTS) - {"UI"}))
 def test_a_vr_without_a_generic_dummy_value_is_refused(vr):
     with pytest.raises(dummy_values.NoDummyValueError) as raised:
@@ -284,6 +291,7 @@ def test_a_refusal_is_not_an_invalid_argument():
     assert not issubclass(dummy_values.NoDummyValueError, TypeError)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_table_e1_1_attributes_without_a_generic_dummy_value_are_refused():
     refused = set()
     for attribute in _attributes_that_can_take_d():
@@ -357,6 +365,7 @@ SECOND_PERSON_IDENTIFICATION_ITEM = (
 )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 @pytest.mark.parametrize(
     "source",
     [
@@ -373,6 +382,7 @@ def test_d_on_person_identification_code_sequence_writes_one_item(source):
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 @pytest.mark.parametrize(
     "source",
     [
@@ -394,6 +404,7 @@ def test_d_on_person_identification_code_sequence_takes_the_second_constants(sou
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.parametrize(
     "item", [PERSON_IDENTIFICATION_ITEM, SECOND_PERSON_IDENTIFICATION_ITEM]
 )
@@ -433,6 +444,7 @@ def test_the_person_identification_item_is_written_as_dicom():
     assert read[0].CodeMeaning == "DEIDENTIFIED^DEIDENTIFIED"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 def test_d_on_any_other_sequence_is_refused():
     sequences = [
         attribute

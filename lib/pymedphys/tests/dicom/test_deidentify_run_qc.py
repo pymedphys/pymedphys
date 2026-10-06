@@ -49,6 +49,7 @@ def _pack(result):
     return json.loads(result.qc_pack.read_text(encoding="utf-8"))
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.pydicom
 def test_the_qc_pack_lists_every_input_with_labels_for_the_sequestered(tmp_path):
     datasets = synthetic.collection()
@@ -93,6 +94,7 @@ def test_the_qc_pack_lists_every_input_with_labels_for_the_sequestered(tmp_path)
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.pydicom
 def test_the_qc_pack_holds_the_transforms_and_gates_material_by_position(tmp_path):
     datasets = synthetic.collection()[:2]
@@ -165,6 +167,7 @@ def test_material_of_an_unknown_type_publishes_nothing(tmp_path):
     assert _listing(tmp_path) == ["source"]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.pydicom
 @pytest.mark.parametrize(
     "destination", ["release/qc", ".release.staging/qc", "source/qc"]
@@ -201,6 +204,7 @@ def test_a_qc_destination_that_is_not_empty_is_refused(tmp_path):
     assert not os.path.lexists(tmp_path / ".release.staging")
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.pydicom
 def test_a_pack_that_cannot_be_written_publishes_nothing(tmp_path, monkeypatch):
     _write(tmp_path / "source", synthetic.collection()[:1])
@@ -240,6 +244,7 @@ def test_a_release_that_appears_before_the_pack_is_written_gets_no_pack(
     assert not os.listdir(tmp_path / "release")
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
 @pytest.mark.pydicom
 def test_a_pack_is_withdrawn_when_its_release_is_not_published(tmp_path, monkeypatch):
     _write(tmp_path / "source", synthetic.collection()[:1])

@@ -145,6 +145,7 @@ def test_the_generated_iods_without_a_storage_sop_class_are_known():
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.pydicom
 def test_the_first_supported_release_sop_classes_find_their_iods():
     # pydicom's UID dictionary is an independent transcription of PS3.6.
@@ -197,6 +198,7 @@ def test_the_sop_classes_of_later_releases_find_their_iods():
     } == expected
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 @pytest.mark.parametrize(
     "sop_class",
     [
@@ -215,6 +217,7 @@ def test_an_unlisted_sop_class_has_no_iod(sop_class):
     assert sop_classes.iod_for_sop_class(sop_class) is None
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_every_storage_sop_class_finds_its_iod():
     # Every IOD of Table B.5-1 has generated Types in 2026d, including those
     # whose modules include Functional Group Macros.

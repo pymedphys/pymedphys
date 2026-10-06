@@ -264,6 +264,7 @@ def _every_policy():
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06")
 def test_every_person_name_that_table_e1_1_omits_has_an_action():
     listed = _table_e1_1()
     omitted = {
@@ -277,6 +278,7 @@ def test_every_person_name_that_table_e1_1_omits_has_an_action():
     assert omitted <= set(supplementary_actions.load_supplementary_actions().rules)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-05")
 def test_the_basic_profile_keeps_no_person_name():
     # Table E.1-1 and the supplementary actions together give every person
     # name in the dictionary an action that removes or replaces it.
@@ -292,6 +294,7 @@ def test_the_basic_profile_keeps_no_person_name():
     assert set(basic.values()) <= REMOVING_ACTIONS
 
 
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
 def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule():
     omitted = _omitted_text()
 
@@ -301,6 +304,7 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
     rules = _rules()
     groups = collections.Counter(
@@ -339,6 +343,7 @@ def test_names_identifiers_and_overlay_text_are_removed_under_every_option():
             )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 @pytest.mark.parametrize(
     "options, operator_text, accessory_identifier",
     [
@@ -378,6 +383,7 @@ def test_each_preset_gives_each_group_its_action(
     assert {composed[tag] for tag in ACCESSORY_IDENTIFIERS} == {accessory_identifier}
 
 
+@pytest.mark.deid_requirement("MIDI-BP-11")
 def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
     # Every text attribute of the supported IODs, whether Table E.1-1 lists
     # it or a supplementary rule covers it.
@@ -392,6 +398,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
 
+@pytest.mark.deid_requirement("MIDI-BP-05")
 def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
     rules = _rules()
     device_identity = {
@@ -430,6 +437,7 @@ def test_deidentification_method_keeps_earlier_values_for_the_engine_to_add_to()
         assert composed.supplementary_actions[DEIDENTIFICATION_METHOD] == "K"
 
 
+@pytest.mark.deid_requirement("MIDI-BP-05")
 def test_the_urls_that_name_coding_concepts_and_schemes_are_kept():
     rules = _rules()
     listed = _table_e1_1()
@@ -468,6 +476,7 @@ def test_the_declared_default_for_text_without_a_rule_removes_by_type():
     assert supplementary_actions.UNCOVERED_TEXT_ACTION == "X/Z/D"
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 def test_every_date_and_time_that_table_e1_1_omits_has_a_rule():
     # Derived here independently of the loader: Table E.1-1 lists no date or
     # time by a masked tag, so an exact comparison of tags suffices.
@@ -536,6 +545,7 @@ def test_the_omitted_dates_take_the_date_option_actions_of_the_dates_the_table_l
         assert dict(_rules()[tag].options) == DATE_OPTIONS, tag
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 @pytest.mark.parametrize(
     "options, action",
     [
@@ -1016,6 +1026,7 @@ def _with_definition(tmp_path, iod_name, tag):
     return iods.load_iod_tables(*paths)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 @pytest.mark.parametrize(
     "iod_name, required",
     [
@@ -1076,6 +1087,7 @@ def _with_dictionary_attribute(tmp_path, vr):
     return standard.load_data_dictionary(path)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
 @pytest.mark.parametrize(
     "vr, required",
     [

@@ -482,6 +482,7 @@ def test_no_warning_or_log_record_shows_a_marker(preset_run):
             assert signature not in message
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_every_released_instance_claims_the_presets_options(preset_run):
     released = preset_run.released
     clean_descriptors = preset_run.preset == CLEAN_DESCRIPTORS
@@ -493,6 +494,7 @@ def test_every_released_instance_claims_the_presets_options(preset_run):
         assert (CLEAN_DESCRIPTORS_CODE in codes) == clean_descriptors
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05", "PS3.15-E.2-01")
 def test_every_released_instance_carries_the_profiles_markers(preset_run):
     # E.1.1: Patient Identity Removed is YES and De-identification Method
     # holds the method digest first; E.2: without the Retain Longitudinal
@@ -509,6 +511,7 @@ def test_every_released_instance_carries_the_profiles_markers(preset_run):
         assert dataset.LongitudinalTemporalInformationModified == "REMOVED"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_roi_names_take_the_vocabulary_spelling_or_the_reviewed_decision(
     preset_run,
 ):
@@ -529,6 +532,7 @@ def test_roi_names_take_the_vocabulary_spelling_or_the_reviewed_decision(
         assert names == [""]
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_without_a_reviewed_decision_the_structure_set_is_held(unreviewed_run):
     corpus, result = unreviewed_run.corpus, unreviewed_run.result
     released, published = unreviewed_run.released, unreviewed_run.published

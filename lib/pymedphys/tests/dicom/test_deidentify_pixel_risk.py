@@ -148,6 +148,7 @@ def test_float_pixel_data_counts_as_pixel_data(keyword):
     assert pixel_risk.assess_pixel_risk(dataset).pixel_data
 
 
+@pytest.mark.deid_requirement("MIDI-BP-10")
 @TRANSFER_SYNTAXES
 def test_a_declared_burned_in_annotation_is_an_indicator(transfer_syntax):
     assessment = _assess(_ct(BurnedInAnnotation="YES"), transfer_syntax)
@@ -155,6 +156,7 @@ def test_a_declared_burned_in_annotation_is_an_indicator(transfer_syntax):
     assert assessment.risks == {Risk.BURNED_IN_TEXT}
 
 
+@pytest.mark.deid_requirement("MIDI-BP-10")
 @TRANSFER_SYNTAXES
 @pytest.mark.parametrize(
     "attribute", ["BurnedInAnnotation", "RecognizableVisualFeatures"]
@@ -165,6 +167,7 @@ def test_a_received_no_is_no_evidence_of_safety(transfer_syntax, attribute):
     assert said_no == said_nothing
 
 
+@pytest.mark.deid_requirement("MIDI-BP-15")
 @TRANSFER_SYNTAXES
 def test_declared_recognizable_visual_features_are_an_indicator(transfer_syntax):
     assessment = _assess(_ct(RecognizableVisualFeatures="YES"), transfer_syntax)
@@ -174,6 +177,7 @@ def test_declared_recognizable_visual_features_are_an_indicator(transfer_syntax)
     assert assessment.risks == {Risk.RECONSTRUCTABLE_FACE}
 
 
+@pytest.mark.deid_requirement("MIDI-BP-10")
 @TRANSFER_SYNTAXES
 @pytest.mark.parametrize(
     "image_type",
@@ -193,6 +197,7 @@ def test_only_the_second_value_of_image_type_marks_a_secondary_image(image_type)
     assert not assessment.findings
 
 
+@pytest.mark.deid_requirement("MIDI-BP-10")
 @TRANSFER_SYNTAXES
 def test_a_converted_image_is_an_indicator(transfer_syntax):
     assessment = _assess(_ct(ConversionType="WSD"), transfer_syntax)
@@ -205,6 +210,7 @@ def test_an_empty_conversion_type_is_still_an_indicator():
     assert _found(assessment) == {(Indicator.CONVERTED_IMAGE, "(0008,0064)")}
 
 
+@pytest.mark.deid_requirement("MIDI-BP-10")
 @TRANSFER_SYNTAXES
 def test_an_overlay_without_overlay_data_may_be_in_the_pixel_data(transfer_syntax):
     dataset = _ct()
@@ -232,6 +238,7 @@ def test_odd_and_out_of_range_groups_are_not_overlays():
     assert not pixel_risk.assess_pixel_risk(dataset).findings
 
 
+@pytest.mark.deid_requirement("MIDI-BP-15")
 @TRANSFER_SYNTAXES
 def test_an_external_roi_with_contours_is_a_patient_surface(transfer_syntax):
     dataset = _structure_set(
@@ -280,6 +287,7 @@ def test_body_and_skin_interpreted_types_mark_a_patient_surface(
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-15")
 @TRANSFER_SYNTAXES
 @pytest.mark.parametrize(
     "name", ["EXTERNAL", "External", "BODY", "Body", "body", "SKIN", "sKiN", " Skin "]
@@ -375,6 +383,7 @@ def test_a_sequence_read_as_un_is_read_as_implicit_vr_items():
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-10")
 @pytest.mark.parametrize(
     "tag, vr, value, risk",
     [
@@ -636,6 +645,7 @@ def _series_found(findings) -> set[tuple[Indicator, tuple[int, ...], str | None]
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-15")
 @TRANSFER_SYNTAXES
 def test_every_ct_volume_may_hold_a_reconstructable_face(transfer_syntax):
     series = [_slice(n) for n in range(3)]
@@ -670,6 +680,7 @@ def test_a_ct_image_without_image_type_counts_towards_a_volume():
     assert _series_found(findings) == {(Indicator.CT_VOLUME, (0, 1), None)}
 
 
+@pytest.mark.deid_requirement("MIDI-BP-15")
 @TRANSFER_SYNTAXES
 @pytest.mark.parametrize("body_part", ["HEAD", "HEADNECK", "NECKCHEST", "WHOLEBODY"])
 def test_a_volume_that_names_the_head_or_neck_says_so(transfer_syntax, body_part):
@@ -699,6 +710,7 @@ def _region(code: str, scheme: str) -> "pydicom.Dataset":
     return item
 
 
+@pytest.mark.deid_requirement("MIDI-BP-15")
 @TRANSFER_SYNTAXES
 @pytest.mark.parametrize("code, scheme", [("69536005", "SCT"), ("T-D1100", "SRT")])
 def test_an_anatomic_region_code_can_name_the_head(transfer_syntax, code, scheme):
@@ -755,6 +767,7 @@ def _multi_frame(number: int, sop_class: str, **attributes) -> "pydicom.Dataset"
     return dataset
 
 
+@pytest.mark.deid_requirement("MIDI-BP-15")
 @TRANSFER_SYNTAXES
 @pytest.mark.parametrize("sop_class", MULTI_FRAME_CT)
 def test_one_multi_frame_ct_image_can_be_a_volume(transfer_syntax, sop_class):
@@ -780,6 +793,7 @@ def _frame_anatomy(*regions) -> "pydicom.Dataset":
 SHARED_HEAD = "(5200,9229)[0] > (0020,9071)[0] > (0008,2218)[0] > (0008,0100)"
 
 
+@pytest.mark.deid_requirement("MIDI-BP-15")
 @TRANSFER_SYNTAXES
 @pytest.mark.parametrize("sop_class", MULTI_FRAME_CT)
 def test_shared_frame_anatomy_can_name_the_head(transfer_syntax, sop_class):
@@ -797,6 +811,7 @@ def test_shared_frame_anatomy_can_name_the_head(transfer_syntax, sop_class):
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-15")
 @TRANSFER_SYNTAXES
 def test_per_frame_anatomy_can_name_the_head(transfer_syntax):
     series = [_multi_frame(0, MULTI_FRAME_CT[0], NumberOfFrames=3)]
@@ -923,6 +938,7 @@ def test_an_unreadable_number_of_frames_may_hide_a_volume(value):
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-15")
 def test_unreadable_evidence_is_reported_without_a_volume():
     lone = _slice(0)
     _with_raw(lone, 0x00080016, "UI", b"1.2.\xff")
