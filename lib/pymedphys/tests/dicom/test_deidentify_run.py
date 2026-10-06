@@ -472,15 +472,15 @@ def test_an_instance_whose_references_cannot_be_followed_is_sequestered(
 ):
     datasets = synthetic.collection()
     _write(tmp_path / "source", datasets)
-    from_file = InstanceRecord.from_file.__func__
+    from_file = InstanceRecord.from_file
     unreadable = synthetic.written(synthetic.collection()[PLAN])
 
-    def refuse_the_plan(cls, data):
+    def refuse_the_plan(data):
         if bytes(data) == unreadable:
             raise UnreadableSequence(ElementPath((), "(300C,0080)"))
-        return from_file(cls, data)
+        return from_file(data)
 
-    monkeypatch.setattr(InstanceRecord, "from_file", classmethod(refuse_the_plan))
+    monkeypatch.setattr(InstanceRecord, "from_file", staticmethod(refuse_the_plan))
 
     _, result = _run(tmp_path)
 

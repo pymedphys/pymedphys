@@ -38,9 +38,10 @@ element as the bytes encode it, and decodes no value:
   implicit VR, the same header length and length form, and the same Value
   Field, byte for byte; one of undefined length, whose value is fragments
   rather than one field, cannot be verified;
-- a kept private element (gggg,xxyy), with xx from 10 to FF, has a Private
-  Creator (gggg,00xx) in its own data set with the same bytes in both
-  files, or none in either (PS3.5 Section 7.8.1);
+- a kept private element (gggg,xxyy), with xx from 10 to FF, including one
+  that holds items, has a Private Creator (gggg,00xx) in its own data set
+  with the same bytes in both files, or none in either (PS3.5 Section
+  7.8.1);
 - kept text whose VR the Specific Character Set governs, or whose VR is not
   known, is in the same character set: the Specific Character Set
   (0008,0005) of its own data set, or of the nearest item or data set that
@@ -217,17 +218,18 @@ def _check_kept(
         raise PreservationFailed(PreservationReason.VR, path)
     if before.items != after.items:
         raise PreservationFailed(PreservationReason.STRUCTURE, path)
-    if before.items is not None:  # a container, whose items are checked by path
-        return
-    if _length_form(before) != _length_form(after):
-        raise PreservationFailed(PreservationReason.LENGTH, path)
-    if before.undefined_length:
-        raise PreservationFailed(PreservationReason.UNVERIFIABLE, path)
-    if source.value_field(path) != output.value_field(path):
-        raise PreservationFailed(PreservationReason.VALUE, path)
+    if before.items is None:  # a container's items are checked by their paths
+        if _length_form(before) != _length_form(after):
+            raise PreservationFailed(PreservationReason.LENGTH, path)
+        if before.undefined_length:
+            raise PreservationFailed(PreservationReason.UNVERIFIABLE, path)
+        if source.value_field(path) != output.value_field(path):
+            raise PreservationFailed(PreservationReason.VALUE, path)
     creator = _private_creator(path)
     if creator and _field(source, creator, path) != _field(output, creator, path):
         raise PreservationFailed(PreservationReason.PRIVATE_CREATOR, path)
+    if before.items is not None:
+        return
     if before.location.vr in TEXT_VRS and _character_set(
         source, path
     ) != _character_set(output, path):

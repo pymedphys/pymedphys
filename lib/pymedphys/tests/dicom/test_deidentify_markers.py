@@ -28,6 +28,7 @@ import dataclasses
 import importlib
 import io
 import itertools
+import logging
 import platform
 import struct
 import traceback
@@ -190,7 +191,9 @@ def _marker_strings(found):
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
 def test_each_preset_adds_exactly_its_markers(preset):
     composed = policy.compose_policy(preset)
-    digest = method_digest.method_digest(composed, vocabulary=None)
+    digest = method_digest.method_digest(
+        composed, vocabulary=None, reviewed_roi_names=None
+    )
     claim, code_values, temporal = EXPECTED[preset]
     version = _version.__version__
 
@@ -325,7 +328,9 @@ def test_patient_identity_removed_is_never_no(preset):
 
 def test_the_first_method_value_is_exactly_the_method_digest():
     composed = policy.compose_policy("basic")
-    digest = method_digest.method_digest(composed, vocabulary=None)
+    digest = method_digest.method_digest(
+        composed, vocabulary=None, reviewed_roi_names=None
+    )
 
     found = markers.markers_for(composed, digest, satisfied=())
 
@@ -579,7 +584,9 @@ def test_python_and_library_versions_change_software_versions_not_the_digest(
         # pylint: disable = protected-access
         method_digest._file_digests.cache_clear()
         method_digest._table_digests.cache_clear()
-        digest = method_digest.method_digest(composed, vocabulary=None)
+        digest = method_digest.method_digest(
+            composed, vocabulary=None, reviewed_roi_names=None
+        )
         found = markers.markers_for(composed, digest, satisfied=())
         return markers.apply_markers(dataset, found)
 
@@ -1808,3 +1815,25 @@ def test_a_code_missing_from_the_pinned_context_group_is_refused(
         standard.StandardTableError, match=f"CID {cid} has no code DCM {code_value}"
     ):
         markers.markers_for(policy.compose_policy("basic"), DIGEST, satisfied=())
+
+
+def test_pydicom_diagnostics_while_marking_are_redacted(monkeypatch, caplog):
+    # pydicom converts an element read from a file when it is first accessed,
+    # and validates a value as it is set; a warning or log record of either
+    # can quote a value already present. No caller need redact.
+    sentinel = "ZZSENTINELZZ"
+    add_new = pydicom.Dataset.add_new
+
+    def warn_and_add(*args, **kwargs):
+        pydicom.misc.warn_and_log(f"bad value {sentinel}")
+        return add_new(*args, **kwargs)
+
+    monkeypatch.setattr(pydicom.Dataset, "add_new", warn_and_add)
+    caplog.set_level(logging.DEBUG, logger="pydicom")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        markers.apply_markers(_identifying_dataset(), _found())
+
+    assert caught and caplog.records
+    assert sentinel not in " ".join(str(each.message) for each in caught)
+    assert sentinel not in caplog.text

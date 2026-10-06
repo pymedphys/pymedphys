@@ -59,7 +59,9 @@ it preserved. Only Implicit and Explicit VR Little Endian, which
 :func:`.source.read_source` admits, are written. :func:`write_file_bytes`
 puts the preamble and the File Meta Information that :mod:`.file_meta`
 builds before the data set. Each refusal is raised outside any handler, so
-it carries no exception from pydicom, whose message can quote a value.
+it carries no exception from pydicom, whose message can quote a value, and
+pydicom's warnings and log records while either function writes are
+redacted by :func:`.diagnostics.redacted_diagnostics`.
 """
 
 from __future__ import annotations
@@ -70,9 +72,8 @@ from collections.abc import Mapping, Sequence
 
 from pymedphys._imports import pydicom
 
-from pymedphys._dicom.anonymise.diagnostics import redacted_pydicom_diagnostics
-
 from . import file_meta
+from .diagnostics import redacted_diagnostics
 from .elements import (
     CHARACTER_SET_VRS,
     DEFAULT_CODECS,
@@ -179,8 +180,9 @@ def write_data_set(
     if source.transfer_syntax not in SUPPORTED_TRANSFER_SYNTAXES:
         raise WriteRefused(WriteReason.TRANSFER_SYNTAX)
     plan = Expectations(kept=kept, changed=frozenset(replacements), removed=removed)
-    writer = _Writer(source, plan, replacements)
-    data = writer.data_set((), source.transfer_syntax != _IMPLICIT)
+    with redacted_diagnostics():
+        writer = _Writer(source, plan, replacements)
+        data = writer.data_set((), source.transfer_syntax != _IMPLICIT)
     writer.check_placed()
     return data
 
@@ -204,7 +206,8 @@ def write_file_bytes(
         transfer_syntax_uid=transfer_syntax_uid,
     )
     buffer = _buffer(explicit=True)
-    pydicom.filewriter.write_file_meta_info(buffer, meta, enforce_standard=False)
+    with redacted_diagnostics():
+        pydicom.filewriter.write_file_meta_info(buffer, meta, enforce_standard=False)
     return file_meta.PREAMBLE + b"DICM" + buffer.getvalue() + data_set
 
 
@@ -389,7 +392,7 @@ def _encode(
         raise WriteRefused(WriteReason.ENCODING, path)
     buffer = _buffer(explicit)
     try:
-        with redacted_pydicom_diagnostics():
+        with redacted_diagnostics():
             pydicom.filewriter.write_data_element(buffer, element, list(codecs))
     # pydicom raises many types for a value it cannot encode, and its
     # message can quote the value.

@@ -34,9 +34,10 @@ that do not depend on the instances of a run:
 as text; each first checks that every field has the form of a digest, a
 version, a known edition, preset, or option, or a file name or path within
 the engine's package. Every field is built from the policy, the engine's own
-files, and the versions that run it, never from DICOM data, and the check is
-a backstop: a field of another form, which could be a source value or a path
-outside the package, is refused. A field that fails is named, never quoted.
+files, the versions that run it, and the keyed digest of the reviewed-names
+list, never from DICOM data directly, and the check is a backstop: a field
+of another form, which could be a source value or a path outside the
+package, is refused. A field that fails is named, never quoted.
 
 Two sections describe a run's instances, by attribute tags and reason codes
 that the engine defines, never by a value or a path:
@@ -306,8 +307,8 @@ def search_coverage(
     reason, however many of its forms or spellings that reason left out,
     since a :class:`~pymedphys._dicom.deidentify.residuals.NotSearched`
     names one form of a value at its place, and an
-    :class:`~pymedphys._dicom.deidentify.residuals.Unsearched` a whole
-    value. Values at the same place in different instances count apart.
+    :class:`~pymedphys._dicom.deidentify.residuals.Unsearched` a value
+    left out in whole or, for a written constant, in part. Values at the same place in different instances count apart.
     The counts are in the order of their attributes and reasons.
 
     >>> from pymedphys._dicom.deidentify.residuals import (
@@ -338,6 +339,7 @@ def release_report(
     policy: Policy,
     *,
     vocabulary: tg263.Nomenclature | None,
+    reviewed_roi_names: str | None,
     sequestered: Iterable[SequesteredInstance] = (),
     coverage: Iterable[SearchCoverage] = (),
 ) -> ReleaseReport:
@@ -353,6 +355,11 @@ def release_report(
         against, or None without one. It must be given by name, and has no
         default, so that every caller states whether there is one. The
         report records only its content digest.
+    reviewed_roi_names : str or None
+        The keyed digest of the reviewed-names list whose decisions
+        descriptor cleaning applies to ROI Names, or None without a list. It
+        must be given by name, and has no default, so that every caller
+        states whether there is one. The report records only this digest.
     sequestered : iterable of SequesteredInstance, optional
         The run's sequestered instances.
     coverage : iterable of SearchCoverage, optional
@@ -373,7 +380,9 @@ def release_report(
     Examples
     --------
     >>> from pymedphys._dicom.deidentify.policy import compose_policy
-    >>> report = release_report(compose_policy("basic"), vocabulary=None)
+    >>> report = release_report(
+    ...     compose_policy("basic"), vocabulary=None, reviewed_roi_names=None
+    ... )
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
@@ -388,7 +397,9 @@ def release_report(
             options=tuple(policy.options),
             claims_conformance=policy.claims_conformance,
         ),
-        method=method_digest.method_digest_components(policy, vocabulary=vocabulary),
+        method=method_digest.method_digest_components(
+            policy, vocabulary=vocabulary, reviewed_roi_names=reviewed_roi_names
+        ),
         runtime=runtime_environment(),
         sequestered=tuple(sequestered),
         search_coverage=tuple(coverage),
@@ -468,6 +479,9 @@ def _method_section(method: MethodDigestComponents) -> dict:
         "l3_rules": _optional_digest("l3_rules", method.l3_rules),
         "vocabulary_digest": _optional_digest(
             "vocabulary_digest", method.vocabulary_digest
+        ),
+        "reviewed_roi_names": _optional_digest(
+            "reviewed_roi_names", method.reviewed_roi_names
         ),
         "generated_values_digest": _digest(
             "generated_values_digest", method.generated_values_digest
