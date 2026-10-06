@@ -59,12 +59,12 @@ from __future__ import annotations
 import dataclasses
 import re
 import types
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 
 from pymedphys import _version
 from pymedphys._nomenclature import tg263
 
-from . import compound_actions, markers
+from . import compound_actions, markers, roi_names
 from .codes import load_context_group
 from .element_rules import (
     _ENGINE_GROUPS,
@@ -163,10 +163,16 @@ PENDING_REFUSED = (
 )
 # Pending only for a policy that gives an attribute C.
 PENDING_CLEANING = (
-    "The manner of cleaning each attribute to which the policy gives C, "
-    "including how dates and times are modified and how retained patient "
-    "characteristics are cleaned (PS3.15 E.3.5, E.3.6, and E.3.7; D-007, "
-    "D-009)."
+    "The manner of cleaning each attribute other than ROI Name (3006,0026) "
+    "to which the policy gives C, including how dates and times are modified "
+    "and how retained patient characteristics are cleaned (PS3.15 E.3.5, "
+    "E.3.6, and E.3.7; D-007, D-009)."
+)
+# Pending only for a policy that gives ROI Name C.
+PENDING_ROI_NAMES = (
+    "Cleaning each ROI Name (3006,0026) in a run as the section Cleaning "
+    "ROI names describes: no run yet writes the cleaned names, holds an instance in the "
+    "staging area, or empties held names where it is told to (D-009)."
 )
 # Pending only for a policy that selects Retain Safe Private.
 PENDING_SAFE_PRIVATE = (
@@ -180,6 +186,7 @@ PENDING_BIRTH_DATES = (
 )
 _TPS_IMPORT = "tps-import"
 _FULL_DATES = "retain_longitudinal_full_dates"
+_ROI_NAME = "(3006,0026)"
 _CLEAN_DESCRIPTORS = "clean_descriptors"
 # The Retain Longitudinal Temporal Information Options, and the VRs of a date,
 # time, or datetime.
@@ -360,6 +367,24 @@ class InsertedMarkers:
 
 
 @dataclasses.dataclass(frozen=True)
+class RoiNameCleaning:
+    """How ROI Name (3006,0026) is cleaned, where the policy gives it C (D-009).
+
+    Attributes
+    ----------
+    edition : str or None
+        The published edition of the TG-263 Structure Spreadsheet, by its
+        worksheet name in
+        :data:`~pymedphys._dicom.deidentify.roi_names.PUBLISHED_TG263`,
+        whose names ROI Names are renamed to automatically, or None where no
+        ROI Name is renamed automatically: without a vocabulary, or with one
+        that is not a published edition.
+    """
+
+    edition: str | None
+
+
+@dataclasses.dataclass(frozen=True)
 class ConformanceStatement:
     """What the conformance statement of a policy describes.
 
@@ -391,6 +416,9 @@ class ConformanceStatement:
     other_elements : OtherElements or None
         The rules for every other element, or None for a policy whose
         element rules the engine refuses.
+    roi_names : RoiNameCleaning or None
+        How ROI Names are cleaned, or None where the policy does not give
+        ROI Name C.
     markers : InsertedMarkers
         The parts of the markers that the policy decides.
     temporal : TemporalHandling
@@ -414,6 +442,7 @@ class ConformanceStatement:
     transfer_syntaxes: tuple[TransferSyntax, ...]
     attributes: tuple[AttributeAction, ...]
     other_elements: OtherElements | None
+    roi_names: RoiNameCleaning | None
     markers: InsertedMarkers
     temporal: TemporalHandling
     pending: tuple[str, ...]
@@ -618,6 +647,25 @@ def _temporal(
     )
 
 
+def _roi_names(
+    attributes: Iterable[AttributeAction], vocabulary: tg263.Nomenclature | None
+) -> RoiNameCleaning | None:
+    """Return how ROI Names are cleaned, where the policy gives ROI Name C."""
+    if next(e for e in attributes if e.tag == _ROI_NAME).action != "C":
+        return None
+    if vocabulary is None:
+        return RoiNameCleaning(None)
+    try:
+        roi_names.RoiNameVocabulary(vocabulary)
+    except ValueError:
+        # Not a published edition, so the automatic tier renames nothing.
+        return RoiNameCleaning(None)
+    entries = [dataclasses.asdict(s) for s in vocabulary.structures]
+    digest = tg263.content_sha256(entries)
+    edition = next(n for n, d in roi_names.PUBLISHED_TG263.items() if d == digest)
+    return RoiNameCleaning(edition)
+
+
 def _markers(policy: Policy, digest: str) -> InsertedMarkers:
     """Return the parts of the markers that the policy decides.
 
@@ -708,12 +756,14 @@ def conformance_statement(
     except PolicyError:
         rules = None
     attributes = tuple(_attributes(policy, rules))
-    actions = {entry.action for entry in attributes}
+    actions = {entry.action for entry in attributes if entry.tag != _ROI_NAME}
+    roi_name_actions = {e.action for e in attributes if e.tag == _ROI_NAME}
     pending = PENDING + tuple(
         item
         for item, applies in (
             (PENDING_REFUSED, rules is None),
             (PENDING_CLEANING, "C" in actions),
+            (PENDING_ROI_NAMES, "C" in roi_name_actions),
             (PENDING_SAFE_PRIVATE, "retain_safe_private" in policy.options),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
         )
@@ -747,6 +797,7 @@ def conformance_statement(
         transfer_syntaxes=syntaxes,
         attributes=attributes,
         other_elements=None if rules is None else _other_elements(),
+        roi_names=_roi_names(attributes, vocabulary),
         markers=_markers(policy, digest),
         temporal=_temporal(policy, attributes),
         pending=pending,
