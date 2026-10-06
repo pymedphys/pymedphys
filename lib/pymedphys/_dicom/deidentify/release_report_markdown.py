@@ -87,6 +87,7 @@ _SECTIONS = (
     "roi_names",
     "reference_findings",
     "search_coverage",
+    "source_gaps",
 )
 _NONE = "None."
 
@@ -147,6 +148,7 @@ def to_markdown(report: str) -> str:
         *_roi_names(document["roi_names"]),
         *_reference_findings(document["reference_findings"]),
         *_coverage(document["search_coverage"]),
+        *_gaps(document["source_gaps"]),
     ]
     return "\n\n".join("\n".join(block) for block in blocks) + "\n"
 
@@ -433,6 +435,29 @@ def _coverage(section: object) -> list[Block]:
             "pack lists each by instance and place."
         ],
         _table(("Attribute", "Reason", "Values"), rows) if rows else [_NONE],
+    ]
+
+
+def _gaps(section: object) -> list[Block]:
+    rows = []
+    for entry in _list("source_gaps", section):
+        entry = _fields("source_gaps", entry, ("attribute", "type", "count"))
+        rows.append(
+            (
+                _code("source_gaps attribute", entry["attribute"]),
+                _code("source_gaps type", entry["type"]),
+                _count("source_gaps count", entry["count"]),
+            )
+        )
+    return [
+        ["## Required attributes missing from the source"],
+        [
+            "How many instances' source files lack each attribute that their "
+            "IOD unconditionally requires, by its Type. The run reports these "
+            "and does not act on them: an instance is never withheld for what "
+            "its source lacked. The QC pack lists each by instance and place."
+        ],
+        _table(("Attribute", "Type", "Instances"), rows) if rows else [_NONE],
     ]
 
 
