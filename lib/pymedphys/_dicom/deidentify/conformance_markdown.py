@@ -30,11 +30,13 @@ from collections.abc import Callable, Iterable, Mapping
 from . import compound_actions, conformance_values, keys, markers
 from .codes import load_context_group
 from .conformance import (
+    CLEAN_DESCRIPTORS_FALLBACK,
     ENGINE_REMOVAL,
     FILE_META_WRITTEN,
     OPTION_CODES,
     OVERLAY_GROUP,
     PIXEL_OPTION_CODES,
+    SEQUENCE_NOT_CLEANED,
     SEQUESTER,
     AttributeAction,
     ConformanceStatement,
@@ -245,7 +247,7 @@ def _superseded(statement: ConformanceStatement) -> list[str]:
         if e.superseded_by:
             key = (e.superseded_by, e.policy_action)
             found.setdefault(key, []).append(f"{e.name} {e.tag}")
-    order = (ENGINE_REMOVAL, FILE_META_WRITTEN)
+    order = (ENGINE_REMOVAL, FILE_META_WRITTEN, SEQUENCE_NOT_CLEANED)
     lines = []
     for (reason, given), names in sorted(
         found.items(),
@@ -270,6 +272,20 @@ def _superseded(statement: ConformanceStatement) -> list[str]:
                 "replacement SOP Instance UID, Transfer Syntax UID (0002,0010), "
                 "and PyMedPhys's Implementation Class UID (0002,0012) and "
                 "Implementation Version Name (0002,0013) (D-025)."
+            )
+        elif reason == CLEAN_DESCRIPTORS_FALLBACK:
+            text = (
+                f"Under Clean Descriptors, each attribute other than "
+                f"{_ROI_NAME_NAMED} to which the policy gives {_code(given)} "
+                "takes the action that the policy gives it without Clean "
+                "Descriptors, at each place, which the maintainer decided on "
+                "6 October 2026 (D-009); the table gives that action for each "
+                f"of these {len(names)} attributes. Where that action removes "
+                "or replaces the attribute, the instance still meets the "
+                "option, since PS3.15 E.3.5 specifies what the option removes, "
+                "and Table E.1-1 gives the minimum actions; where it keeps the "
+                "attribute, the instance does not gain the option's code, as "
+                "Attributes inserted describes."
             )
         else:
             text = (
@@ -422,8 +438,8 @@ def _inserted(
                 f"instance in which every {_ROI_NAME_NAMED} was renamed by "
                 "the automatic tier, was empty, or took a reviewer's "
                 "decision. Every other attribute given C takes the action "
-                "that the policy gives it without Clean Descriptors, since how "
-                "it is cleaned is not yet described; where that action removes "
+                "that the policy gives it without Clean Descriptors, as the "
+                "Actions table shows (D-009); where that action removes "
                 "or replaces it, the instance still meets the option, since "
                 "PS3.15 E.3.5 specifies what the option removes, and Table "
                 "E.1-1 gives the minimum actions. An instance with a held "

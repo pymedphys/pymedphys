@@ -155,8 +155,58 @@ def test_every_reviewer_decision_and_outcome_is_described():
 
 def test_the_manner_of_cleaning_roi_names_is_described_not_pending():
     statement = _statement("basic-clean-descriptors")
-    assert conformance.PENDING_CLEANING in statement.pending
+    assert conformance.PENDING_CLEANING not in statement.pending
     assert "other than ROI Name (3006,0026)" in conformance.PENDING_CLEANING
+
+
+@pytest.mark.parametrize("preset", list(policy.PRESETS))
+def test_each_other_attribute_given_c_is_described_by_its_fallback_action(preset):
+    statement = _statement(preset)
+    composed = policy.compose_policy(preset)
+    fallen_back = {
+        e.tag: e
+        for e in statement.attributes
+        if e.superseded_by == conformance.CLEAN_DESCRIPTORS_FALLBACK
+    }
+    if preset == "basic-clean-descriptors":
+        fallback = _statement("basic")
+        given_c = [
+            tag
+            for tag, action in composed.actions.items()
+            if action == "C" and tag != ROI_NAME
+        ]
+        assert given_c
+        for tag in given_c:
+            entry = _entry(statement, tag)
+            if entry.superseded_by == conformance.SEQUENCE_NOT_CLEANED:
+                continue
+            assert entry.superseded_by == conformance.CLEAN_DESCRIPTORS_FALLBACK
+            assert entry.policy_action == "C"
+            expected = _entry(fallback, tag)
+            assert (entry.action, entry.places, entry.elsewhere) == (
+                expected.action,
+                expected.places,
+                expected.elsewhere,
+            )
+        # Every attribute other than ROI Name now has an action described.
+        assert not {e.tag for e in statement.attributes if e.action == "C"} - {ROI_NAME}
+        assert conformance.PENDING_CLEANING not in statement.pending
+    elif "clean_descriptors" not in composed.options:
+        assert not fallen_back
+    if "C" in {e.action for e in statement.attributes if e.tag != ROI_NAME}:
+        assert conformance.PENDING_CLEANING in statement.pending
+    assert all(e.action != "C" and e.policy_action == "C" for e in fallen_back.values())
+
+
+def test_the_described_fallback_is_the_maintainers_decision():
+    text = conformance_markdown.render_markdown(_statement("basic-clean-descriptors"))
+    actions = _section(text, "Actions")
+    assert (
+        "takes the action that the policy gives it without Clean Descriptors"
+    ) in actions
+    assert "decided on 6 October 2026 (D-009)" in actions
+    inserted = _section(text, "Attributes inserted")
+    assert "not yet described" not in inserted
 
 
 def _cleaning_published(monkeypatch):

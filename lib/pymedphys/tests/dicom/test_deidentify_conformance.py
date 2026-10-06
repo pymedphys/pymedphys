@@ -25,6 +25,7 @@ from pymedphys._dicom.deidentify import (
     compound_actions,
     conformance,
     conformance_markdown,
+    descriptor_cleaning,
     dummy_values,
     element_rules,
     file_meta,
@@ -504,7 +505,14 @@ def test_cleaning_is_pending_only_for_a_policy_that_cleans(preset, statement_for
         *composed.supplementary_actions.values(),
     }
     assert cleans == (preset != "basic")
-    assert (conformance.PENDING_CLEANING in statement.pending) == cleans
+    # Under Clean Descriptors, an attribute other than ROI Name given C whose
+    # fallback action is not C takes that action (D-009), so only what keeps
+    # C there is pending.
+    undescribed = "C" in {
+        e.action for e in statement.attributes if e.tag != "(3006,0026)"
+    }
+    assert undescribed == (cleans and preset != "basic-clean-descriptors")
+    assert (conformance.PENDING_CLEANING in statement.pending) == undescribed
     assert set(conformance.PENDING) <= set(statement.pending)
 
 
@@ -702,6 +710,16 @@ def test_every_listed_action_is_the_one_the_engine_applies(name):
     given = {**composed.actions, **composed.supplementary_actions}
     for entry in statement.attributes:
         rule = rules.rule(_concrete(entry.tag))
+        if entry.superseded_by == conformance.CLEAN_DESCRIPTORS_FALLBACK:
+            # The element rules give C; cleaning then takes the fallback's
+            # action for it (D-009).
+            fallback = descriptor_cleaning.fallback_policy(composed)
+            fallen_back = element_rules.ElementRules(fallback).rule(
+                _concrete(entry.tag)
+            )
+            assert (rule.action, entry.policy_action) == ("C", "C"), entry.tag
+            assert entry.action == fallen_back.action, entry.tag
+            continue
         assert entry.action == rule.action, entry.tag
         policy_action = given.get(entry.tag, "U")
         if policy_action == rule.action:

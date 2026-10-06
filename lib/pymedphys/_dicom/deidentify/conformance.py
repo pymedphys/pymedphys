@@ -135,6 +135,9 @@ _PLAIN_ELSEWHERE = types.MappingProxyType({"X": "X", "Z": "Z", "D": "X"})
 ENGINE_REMOVAL = "engine removal"
 FILE_META_WRITTEN = "file meta written"
 SEQUENCE_NOT_CLEANED = "sequence not cleaned"
+# Under Clean Descriptors, an attribute other than ROI Name given C takes the
+# action that the policy gives it without that option (D-009).
+CLEAN_DESCRIPTORS_FALLBACK = "clean descriptors fallback"
 
 
 # What the statement cannot yet describe from the engine. Each is to be
@@ -152,7 +155,8 @@ PENDING_REFUSED = (
     "the actions above are those that the policy gives, and the rules for "
     "elements that no row covers are not listed."
 )
-# Pending only for a policy that gives an attribute C.
+# Pending only for a policy that gives an attribute other than ROI Name C that
+# Clean Descriptors' fallback does not settle (D-009).
 PENDING_CLEANING = (
     "The manner of cleaning each attribute other than ROI Name (3006,0026) "
     "to which the policy gives C, including how dates and times are modified "
@@ -256,7 +260,8 @@ class AttributeAction:
     superseded_by : str
         Why the engine applies ``action`` in place of ``policy_action``:
         :data:`ENGINE_REMOVAL`, :data:`FILE_META_WRITTEN`, or
-        :data:`SEQUENCE_NOT_CLEANED`; otherwise
+        :data:`SEQUENCE_NOT_CLEANED`, or :data:`CLEAN_DESCRIPTORS_FALLBACK`;
+        otherwise
         ``""``.
     """
 
@@ -623,6 +628,43 @@ def _attributes(
             yield _attribute(tag, names[tag], role, "U", rules, sequence_action)
 
 
+def _fallen_back(
+    policy: Policy, rules: ElementRules | None, attributes: Iterable[AttributeAction]
+) -> Iterator[AttributeAction]:
+    """Give each attribute other than ROI Name that keeps C its fallback action.
+
+    Under Clean Descriptors, the engine gives such an attribute the action
+    that the policy gives it without that option, at each place, as the
+    maintainer decided on 6 October 2026 (D-009). One to which that policy
+    also gives C keeps it, as does each attribute of a policy that the engine
+    refuses or whose fallback cannot be composed.
+    """
+    fallback: dict[str, AttributeAction] = {}
+    if rules is not None and _CLEAN_DESCRIPTORS in policy.options:
+        try:
+            composed = fallback_policy(policy)
+            fallback = {e.tag: e for e in _attributes(composed, ElementRules(composed))}
+        except PolicyError:
+            fallback = {}
+    for entry in attributes:
+        other = fallback.get(entry.tag)
+        if (
+            entry.action != "C"
+            or entry.tag == _ROI_NAME
+            or other is None
+            or other.action == "C"
+        ):
+            yield entry
+            continue
+        yield dataclasses.replace(
+            other,
+            name=entry.name,
+            rule=entry.rule,
+            policy_action="C",
+            superseded_by=CLEAN_DESCRIPTORS_FALLBACK,
+        )
+
+
 def _other_elements() -> OtherElements:
     return OtherElements(
         engine_groups=tuple(sorted(_ENGINE_GROUPS)),
@@ -764,7 +806,7 @@ def conformance_statement(
         rules: ElementRules | None = ElementRules(policy)
     except PolicyError:
         rules = None
-    attributes = tuple(_attributes(policy, rules))
+    attributes = tuple(_fallen_back(policy, rules, _attributes(policy, rules)))
     actions = {entry.action for entry in attributes if entry.tag != _ROI_NAME}
     pending = PENDING + tuple(
         item
