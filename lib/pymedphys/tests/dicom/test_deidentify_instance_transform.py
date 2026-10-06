@@ -304,7 +304,8 @@ def test_an_instance_the_release_does_not_support_is_sequestered_by_its_disposit
 
     assert isinstance(result, run.Sequestered)
     assert result.reasons == (Disposition.UNSUPPORTED_IOD,)
-    assert result.evidence is None
+    # Its values are collected for its subject's search, never written (D-027).
+    assert isinstance(result.evidence, Coverage)
 
 
 def test_a_source_file_that_is_not_ps3_10_is_sequestered_by_the_source_reason():
@@ -346,7 +347,9 @@ def test_the_walkers_sequestrations_are_its_reasons_and_keep_the_evidence():
     assert "SENTINEL" not in repr(result)
 
 
-_MR_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.4"
+# A SOP Class that PS3.4 Table B.5-1 does not list, as of a private one, so
+# that no IOD gives a plan to collect its values by.
+_UNLISTED_SOP_CLASS = "2.25.999"
 _SHARED = "QUIMBYZELDA7"
 
 
@@ -361,14 +364,14 @@ def _plan_label_kept_in_a_dose(tmp_path, plan_class=None):
     return _source(tmp_path, [plan, dose])
 
 
-@pytest.mark.parametrize("cause", ["out-of-scope", "raises", "changed"])
+@pytest.mark.parametrize("cause", ["no-iod", "raises", "changed"])
 def test_a_sibling_that_gives_no_evidence_withholds_its_subject(
     tmp_path, monkeypatch, cause
 ):
     # Without the plan's coverage, the dose's search could not look for the
     # plan's label, which the dose keeps (D-027).
-    out_of_scope = _MR_IMAGE_STORAGE if cause == "out-of-scope" else None
-    discovery = _plan_label_kept_in_a_dose(tmp_path, out_of_scope)
+    no_iod = _UNLISTED_SOP_CLASS if cause == "no-iod" else None
+    discovery = _plan_label_kept_in_a_dose(tmp_path, no_iod)
     transform = _transform()
     if cause == "raises":
         calls = []
