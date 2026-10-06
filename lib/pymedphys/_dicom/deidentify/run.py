@@ -32,7 +32,7 @@ A run has five steps:
    several studies, and every instance without its SOP Instance, Series
    Instance, or Study Instance UID is sequestered; identical copies are
    processed once, from the first copy that reads unchanged; and a dangling
-   reference is reported only.
+   reference or a frame of reference mismatch is reported only.
 3. The second pass reads each file again, sequesters it if it is no longer
    the file that discovery found or its bytes differ from the first pass's,
    and gives it to the run's :class:`Transform`. A transform returns the
