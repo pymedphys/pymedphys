@@ -301,6 +301,16 @@ def test_the_release_report_counts_roi_names_by_outcome(preset):
         assert f"`{outcome.value}`" in counted, outcome
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-18")
+def test_the_release_report_counts_reported_reference_findings_by_kind(preset):
+    section = _section(preset, "Release report")
+    counted = section.split("reference finding that the run reports", 1)[1]
+    counted = counted.split("\n\n", 1)[0]
+    assert "naming none of them (D-026)" in counted
+    for kind in release_report.REPORTED_FINDINGS:
+        assert f"`{kind.value}`" in counted, kind
+
+
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
 def test_every_reason_that_the_release_report_counts_is_described(preset):
     reasons = [*residuals.Omission, *residuals.UnsearchedReason]

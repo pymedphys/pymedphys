@@ -43,6 +43,10 @@ A pack holds, for one run:
 - ``roi_names``: what descriptor cleaning wrote for each ROI Name, for the
   audit of every name renamed, kept, or mapped, and each name held for
   review, with why (D-009);
+- ``reference_findings``: each reference finding that the run reports
+  without acting on it, such as a dangling reference, at each instance it
+  names, with the attribute's tags and its count; the release report gives
+  only how many instances have each kind;
 - ``pixel_risks``: each instance in a high-risk category, with the
   indicators of risk in its pixel data that put it there (D-017);
 - ``previews``: each image preview, by its file in the previews directory
@@ -74,7 +78,8 @@ from collections.abc import Iterable
 from pathlib import PurePosixPath
 
 from . import pixel_risk, residuals, roi_names
-from .file_layout import ElementPath, Location
+from .file_layout import TAG_PATTERN, ElementPath, Location
+from .reference_graph import FindingKind
 from .labels import LABEL_PATTERN
 from .residuals import UnsearchedReason
 from .reviewed_roi_names import Outcome
@@ -416,6 +421,47 @@ class DropEntry:
 
 
 @dataclasses.dataclass(frozen=True)
+class ReferenceFindingEntry:
+    """A reference finding at an instance that the run reports only.
+
+    Attributes
+    ----------
+    position : int
+        The instance's run position.
+    kind : ~pymedphys._dicom.deidentify.reference_graph.FindingKind
+    attribute : tuple of str
+        The tags from the outermost sequence to the attribute concerned.
+    count : int
+        The finding's count, as
+        :class:`~pymedphys._dicom.deidentify.reference_graph.Finding` gives
+        it, such as how many distinct values of a dangling reference name
+        nothing; otherwise 0.
+    """
+
+    position: int
+    kind: FindingKind
+    attribute: tuple[str, ...]
+    count: int = 0
+
+    def __post_init__(self) -> None:
+        _check_position("a reference finding", self.position)
+        tags = isinstance(self.attribute, tuple) and all(
+            isinstance(tag, str) and TAG_PATTERN.fullmatch(tag)
+            for tag in self.attribute
+        )
+        if (
+            not isinstance(self.kind, FindingKind)
+            or not (tags and self.attribute)
+            or type(self.count) is not int  # pylint: disable = unidiomatic-typecheck
+            or self.count < 0
+        ):
+            raise QcPackError(
+                f"a reference finding of instance {self.position} needs a "
+                "FindingKind, its tags, and a count from 0"
+            )
+
+
+@dataclasses.dataclass(frozen=True)
 class NotSearchedEntry:
     """A form of a source value that an instance's residual search did not search.
 
@@ -720,6 +766,7 @@ class QcPack:
     retained_strings : tuple of RetainedString
         Each value once.
     roi_names : tuple of RoiNameEntry
+    reference_findings : tuple of ReferenceFindingEntry
     pixel_risks : tuple of PixelRiskEntry
         Each high-risk instance once, in run position order.
     previews : tuple of Preview
@@ -749,6 +796,7 @@ class QcPack:
     not_searched: tuple[NotSearchedEntry, ...] = ()
     retained_strings: tuple[RetainedString, ...] = ()
     roi_names: tuple[RoiNameEntry, ...] = ()
+    reference_findings: tuple[ReferenceFindingEntry, ...] = ()
     pixel_risks: tuple[PixelRiskEntry, ...] = ()
     previews: tuple[Preview, ...] = ()
     not_previewed: tuple[NotPreviewedEntry, ...] = ()
@@ -765,6 +813,7 @@ class QcPack:
             "not_searched": NotSearchedEntry,
             "retained_strings": RetainedString,
             "roi_names": RoiNameEntry,
+            "reference_findings": ReferenceFindingEntry,
             "pixel_risks": PixelRiskEntry,
             "previews": Preview,
             "not_previewed": NotPreviewedEntry,
@@ -786,6 +835,7 @@ class QcPack:
             "drops",
             "not_searched",
             "roi_names",
+            "reference_findings",
             "pixel_risks",
             "not_previewed",
         ):
@@ -854,6 +904,7 @@ class QcPack:
             f"drops={len(self.drops)}, not_searched={len(self.not_searched)}, "
             f"retained_strings={len(self.retained_strings)}, "
             f"roi_names={len(self.roi_names)}, "
+            f"reference_findings={len(self.reference_findings)}, "
             f"pixel_risks={len(self.pixel_risks)}, previews={len(self.previews)}, "
             f"not_previewed={len(self.not_previewed)})"
         )
@@ -955,6 +1006,15 @@ def pack_document(pack: QcPack) -> dict:
                 "written": entry.written,
             }
             for entry in pack.roi_names
+        ],
+        "reference_findings": [
+            {
+                "position": entry.position,
+                "kind": entry.kind.value,
+                "attribute": " > ".join(entry.attribute),
+                "count": entry.count,
+            }
+            for entry in pack.reference_findings
         ],
         "pixel_risks": [
             {
