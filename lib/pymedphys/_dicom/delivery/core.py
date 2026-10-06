@@ -47,6 +47,10 @@ def _check_for_supported_collimation_device(
     """Validate whether or not the beam limiting devices in use are
     supported for use by ``pymedphys.Delivery.from_dicom``.
 
+    Currently supports the following collimation configurations:
+    - MLCX with ASYMY (traditional linac setup)
+    - MLCY with ASYMX (e.g., MR-Linac setup)
+
     Parameters
     ----------
     beam_limiting_device_sequence
@@ -57,14 +61,18 @@ def _check_for_supported_collimation_device(
     ------
     ValueError
         If the device types are not contained within the supported
-        configrations.
+        configurations.
 
     """
-    rt_beam_limiting_device_types = {
+    rt_beam_limiting_device_types = frozenset(
         item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
-    }
+    )
 
-    supported_configurations = [{"MLCX", "ASYMY"}]
+    # Use frozensets for immutability and faster membership checks
+    supported_configurations = frozenset([
+        frozenset(["MLCX", "ASYMY"]),
+        frozenset(["MLCY", "ASYMX"])
+    ])
 
     if rt_beam_limiting_device_types not in supported_configurations:
         raise ValueError(
@@ -97,9 +105,9 @@ def _check_for_supported_collimation_device(
                 """
             ).format(
                 supported_configurations="\n* ".join(
-                    [str(item) for item in supported_configurations]
+                    [str(set(item)) for item in supported_configurations]
                 ),
-                rt_beam_limiting_device_types=rt_beam_limiting_device_types,
+                rt_beam_limiting_device_types=set(rt_beam_limiting_device_types),
             )
         )
 
@@ -109,6 +117,10 @@ class DeliveryDicom(DeliveryBase):
     def from_dicom(cls, rtplan: dicom_path_or_dataset, fraction_group_number=None):
         """Create a ``pymedphys.Delivery`` object from an RT Plan DICOM
         dataset.
+
+        Supports the following collimation configurations:
+        - MLCX with ASYMY (traditional linac setup)
+        - MLCY with ASYMX (e.g., MR-Linac setup)
 
         Parameters
         ----------
@@ -233,13 +245,18 @@ class DeliveryDicom(DeliveryBase):
         mlc_sequence = [
             item
             for item in beam_limiting_device_sequence
-            if item.RTBeamLimitingDeviceType == "MLCX"
+            if item.RTBeamLimitingDeviceType in ["MLCX", "MLCY"]
         ]
 
         if len(mlc_sequence) != 1:
-            raise ValueError("Expected there to be only one device labelled as MLCX")
+            raise ValueError(
+                "Expected there to be only one device labelled as MLCX or MLCY. "
+                "MLCX is used for traditional linacs, MLCY for MR-Linac systems."
+            )
 
         mlc_limiting_device = mlc_sequence[0]
+
+        mlc_device_type = mlc_limiting_device.RTBeamLimitingDeviceType
 
         leaf_boundaries = mlc_limiting_device.LeafPositionBoundaries
         leaf_widths = np.diff(leaf_boundaries)
@@ -261,7 +278,7 @@ class DeliveryDicom(DeliveryBase):
         )
 
         dicom_mlcs = _pmp_rtplan.get_leaf_jaw_positions_for_type(
-            beam_limiting_device_position_sequences, "MLCX"
+            beam_limiting_device_position_sequences, mlc_device_type
         )
 
         mlcs = [
@@ -273,8 +290,19 @@ class DeliveryDicom(DeliveryBase):
             for mlc in dicom_mlcs
         ]
 
+        # Determine jaw type based on MLC orientation
+        # MLCX (standard linac): MLC leaves move in X direction, jaws in Y direction (ASYMY)
+        # MLCY (e.g., MR-Linac): MLC leaves move in Y direction, jaws in X direction (ASYMX)
+        jaw_type = "ASYMY"  # Default for MLCX
+        
+        if mlc_device_type == "MLCY":
+            # For MLCY devices, leaf banks need to be swapped
+            # This is based on the MR-Linac configuration where the MLC orientation is rotated
+            mlcs[:, :, [0, 1]] = mlcs[:, :, [1, 0]]
+            jaw_type = "ASYMX"
+
         dicom_jaw = _pmp_rtplan.get_leaf_jaw_positions_for_type(
-            beam_limiting_device_position_sequences, "ASYMY"
+            beam_limiting_device_position_sequences, jaw_type
         )
 
         jaw = np.array(dicom_jaw)
