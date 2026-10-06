@@ -24,11 +24,10 @@ the engine's parameters, never a value from an instance.
 
 from __future__ import annotations
 
-import base64
 import types
 from collections.abc import Callable, Iterable, Mapping
 
-from . import compound_actions, dummy_values, keys, markers, pseudonyms, uids
+from . import compound_actions, conformance_values, keys, markers
 from .codes import load_context_group
 from .conformance import (
     ENGINE_REMOVAL,
@@ -40,6 +39,8 @@ from .conformance import (
     AttributeAction,
     ConformanceStatement,
 )
+from .conformance_values import code as _code
+from .conformance_values import join as _join
 from .markers import PROFILE_CODE
 from .policy import TARGET_OPTIONS
 from .standard import (
@@ -70,14 +71,6 @@ _CONTRIBUTING_EQUIPMENT = "(0018,A001)"
 _MANUFACTURER = "(0008,0070)"
 _SOFTWARE_VERSIONS = "(0018,1020)"
 _PURPOSE_OF_REFERENCE = "(0040,A170)"
-
-
-def _join(values: Iterable[str], conjunction: str = "and") -> str:
-    """Join ``values`` as prose: ``"a"``, ``"a and b"``, or ``"a, b, and c"``."""
-    values = list(values)
-    if len(values) <= 2:
-        return f" {conjunction} ".join(values)
-    return ", ".join(values[:-1]) + f", {conjunction} " + values[-1]
 
 
 def _cell(text: str) -> str:
@@ -150,10 +143,6 @@ def _table(header: Iterable[str], rows: Iterable[Iterable[str]]) -> list[str]:
     for row in rows:
         lines.append("| " + " | ".join(_cell(c) for c in row) + " |")
     return [line.replace("|  |", "| |") for line in lines]
-
-
-def _code(action: str) -> str:
-    return f"`{action}`"
 
 
 def _claim(
@@ -403,7 +392,6 @@ def render_markdown(statement: ConformanceStatement) -> str:
         f"`{statement.vocabulary_digest}`"
     )
     bits = keys.KEY_BYTES * 8
-    code_length = len(base64.b32encode(bytes(pseudonyms.CODE_BYTES)).rstrip(b"="))
     lines = [
         f"# DICOM PS3.15 conformance statement for {preset}",
         "",
@@ -517,48 +505,9 @@ def render_markdown(statement: ConformanceStatement) -> str:
         *_superseded(statement),
         "",
         *_other(statement, named),
-        "## Values written",
+        *conformance_values.values_written(named),
         "",
-        "Z writes a zero-length value, except where this statement says "
-        "otherwise. D writes one constant for each VR, "
-        "valid for that VR, whatever the source value. Where any source value "
-        "equals the first constant, as the VR defines equality, D writes the "
-        "second, so the value always changes. It writes the fewest values that "
-        "the attribute's VM allows (D-021).",
-        "",
-        *_table(
-            ("VR", "Value", "Value where the source equals the first"),
-            (
-                (vr, f"`{first}`", f"`{second}`")
-                for vr, (first, second) in dummy_values.CONSTANTS.items()
-            ),
-        ),
-        "",
-        "D on a UI attribute writes the keyed replacement of each source UID. "
-        "D on an attribute of any other VR, such as CS or SQ, needs a reviewed "
-        "rule for that attribute; without one, the instance is sequestered "
-        "(D-021).",
-        "",
-        "Patient ID (0010,0020) and Patient's Name (0010,0010) take the "
-        "subject's keyed pseudonyms wherever Z or D applies to them (D-005): "
-        f"`{pseudonyms.PATIENT_ID_PREFIX}` followed by the subject's code, and "
-        f"`{pseudonyms.FAMILY_NAME}^` followed by the same code. The code is "
-        f"the {code_length} characters of the base32 form (RFC 4648) of the "
-        f"first {pseudonyms.CODE_BYTES * 8} bits of the key's `patient` "
-        "derivation of the subject's identity: a Patient ID with its issuer, "
-        "or a curated subject identifier.",
-        "",
-        f"U replaces a UID with `{uids.UID_ROOT}` followed by the decimal form "
-        "of a name-based (version 5) UUID, at most 44 characters in all. The "
-        f"UUID's namespace is `{uids.UID_NAMESPACE}`, and its name is the "
-        "HMAC-SHA256 of the unpadded source UID under the key (D-003). A UID "
-        "that the pinned tables of PS3.6 Annex A and PS3.16 register, such as "
-        "a well-known frame of reference, is retained, because it names a "
-        "public definition rather than an instance; this interprets U for "
-        "such values. A replaced value of a UI attribute of the definition "
-        "role is also reported.",
-        "",
-        "No value that Z, D, or U writes names PyMedPhys.",
+        *conformance_values.dates_and_times(statement, named, option),
         "",
         "## Attributes inserted",
         "",
@@ -585,6 +534,10 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "be recovered (D-013). No transfer syntax therefore encodes such a "
         "data set, and no key is selected to encrypt one. The engine uses no "
         f"public keys; its only key is the run's {bits}-bit key.",
+        "",
+        *conformance_values.residual_search(named),
+        "",
+        *conformance_values.release_report(),
     ]
     if statement.pending:
         lines += ["", "## Not yet described", ""]
