@@ -18,22 +18,38 @@
 that contains "shall", and each best practice of the MIDI Task Group report,
 with its status and what satisfies it. It is curated by hand, so this loader
 checks its structure; the tests check that the decisions and paths it cites
-exist and that pytest collects the tests it cites. The design document's
+exist and that pytest collects the tests that cite it. The design document's
 "Requirements register" section describes the fields and statuses.
+
+A test cites the requirements it shows are met with a marker,
+``@pytest.mark.deid_requirement("PS3.15-E.1.1-01")``, on the test function
+or on its ``Test`` class, rather than the register listing the test, so that
+pull requests that add tests to the same requirement change different files.
+:func:`cited_tests` reads these markers from the tests' source without
+importing them. A note may be written one sentence per line, and its lines
+are joined with spaces, for the same reason.
 """
 
 from __future__ import annotations
 
+import ast
+import collections
 import dataclasses
 import pathlib
 import re
+from collections.abc import Iterator, Mapping, Sequence
 from typing import TypeGuard
 
 from pymedphys._imports import tomlkit
 
-SCHEMA = "pymedphys-deid-requirements/1"
+SCHEMA = "pymedphys-deid-requirements/2"
 
 REGISTER_PATH = pathlib.Path(__file__).resolve().parent / "requirements.toml"
+# The pymedphys package, whose tests directory holds the citing tests, and
+# relative to which a test's node id is given.
+LIBRARY_ROOT = pathlib.Path(__file__).resolve().parents[2]
+# The pytest marker with which a test cites requirements.
+MARKER = "deid_requirement"
 
 # In the order work progresses, then the two kinds of exclusion.
 STATUSES = ("planned", "partial", "implemented", "out-of-scope", "not-applicable")
@@ -66,7 +82,6 @@ _FIELDS = _REQUIRED | {
     "milestone",
     "decisions",
     "implementation",
-    "tests",
     "note",
 }
 
@@ -107,11 +122,14 @@ class Requirement:
         it, relative to the pymedphys package.
     tests : tuple of str
         For partial and implemented requirements, the pytest node ids of the
-        tests that show it is met, relative to the pymedphys package, such as
-        ``tests/x/test_y.py::test_z`` or ``tests/x/test_y.py::TestZ::test_z``.
-        An id for a parametrised test covers each of its cases.
+        tests that cite it with the ``deid_requirement`` marker and so show
+        it is met, relative to the pymedphys package, such as
+        ``tests/x/test_y.py::test_z`` or ``tests/x/test_y.py::TestZ::test_z``,
+        in the order of their files and then of their definitions. An id for
+        a parametrised test covers each of its cases.
     note : str or None
-        Context for the status. Required for exclusions, to say why.
+        Context for the status, its lines joined with spaces. Required for
+        exclusions, to say why.
     """
 
     id: str
@@ -236,7 +254,14 @@ def _requirement_problem(entry: dict, source: str) -> str | None:
     return None
 
 
-def _requirements(name: str, entries: list) -> tuple[Requirement, ...]:
+def _note(note: str) -> str:
+    """Return a note written one sentence per line as one line."""
+    return " ".join(line.strip() for line in note.splitlines() if line.strip())
+
+
+def _requirements(
+    name: str, entries: list, tests: Mapping[str, Sequence[str]]
+) -> tuple[Requirement, ...]:
     """Return the checked requirements of a register."""
     parsed = []
     ids: set[str] = set()
@@ -249,6 +274,11 @@ def _requirements(name: str, entries: list) -> tuple[Requirement, ...]:
             _ID_PATTERN.fullmatch(identifier) if isinstance(identifier, str) else None
         )
         label = identifier if match else f"#{number}"
+        if "tests" in entry:
+            raise RequirementsError(
+                f"{name} requirement {label} lists tests; cite it from each test "
+                f"with @pytest.mark.{MARKER} instead"
+            )
         if not entry.keys() <= _FIELDS:
             raise RequirementsError(
                 f"{name} requirement {label} does not have only the fields "
@@ -265,6 +295,7 @@ def _requirements(name: str, entries: list) -> tuple[Requirement, ...]:
             )
         identifier = match.group(0)
         source = "MIDI" if match.group("section") is None else "PS3.15"
+        entry = {**entry, "tests": list(tests.get(identifier, ()))}
         issue = _requirement_problem(entry, source)
         if issue:
             raise RequirementsError(f"{name} requirement {label} {issue}")
@@ -288,19 +319,30 @@ def _requirements(name: str, entries: list) -> tuple[Requirement, ...]:
                 decisions=tuple(entry.get("decisions", [])),
                 implementation=tuple(entry.get("implementation", [])),
                 tests=tuple(entry.get("tests", [])),
-                note=None if note is None else note.strip(),
+                note=None if note is None else _note(note),
             )
+        )
+    unknown = sorted(tests.keys() - ids)
+    if unknown:
+        raise RequirementsError(
+            f"a test cites {unknown[0]}, which {name} does not record"
         )
     return tuple(parsed)
 
 
-def load_requirements(path: pathlib.Path | None = None) -> RequirementsRegister:
+def load_requirements(
+    path: pathlib.Path | None = None,
+    tests: Mapping[str, Sequence[str]] | None = None,
+) -> RequirementsRegister:
     """Load and check the requirements register.
 
     Parameters
     ----------
     path : pathlib.Path, optional
         The register. Defaults to the one shipped with PyMedPhys.
+    tests : mapping of str to sequence of str, optional
+        The node ids of the tests that cite each requirement, by its id.
+        Defaults to :func:`cited_tests` of PyMedPhys's own tests.
 
     Returns
     -------
@@ -311,7 +353,8 @@ def load_requirements(path: pathlib.Path | None = None) -> RequirementsRegister:
     RequirementsError
         If the register cannot be read or parsed, or an entry has missing,
         unknown, or inconsistent fields, such as an implemented requirement
-        without tests or an exclusion without a note.
+        without tests or an exclusion without a note, or if a test cites a
+        requirement that the register does not record.
     """
     path = path or REGISTER_PATH
     try:
@@ -336,5 +379,138 @@ def load_requirements(path: pathlib.Path | None = None) -> RequirementsRegister:
         edition=edition,
         acknowledgement=acknowledgement,
         midi_report=midi_report,
-        requirements=_requirements(path.name, entries),
+        requirements=_requirements(
+            path.name, entries, cited_tests() if tests is None else tests
+        ),
     )
+
+
+def cited_tests(root: pathlib.Path | None = None) -> dict[str, tuple[str, ...]]:
+    """Return the tests that cite each requirement with the marker.
+
+    Reads each ``test_*.py`` file under ``root``'s ``tests`` directory, at any
+    depth, without importing it. A citation is a ``deid_requirement`` marker,
+    ``@pytest.mark.deid_requirement("MIDI-BP-01", ...)``, decorating a
+    function whose name starts with ``test`` at the top level of the file,
+    or a class whose name starts with ``Test`` there, which cites the
+    requirements for each of its methods whose name starts with ``test``.
+    Methods that a class inherits, and classes nested in it, are not read;
+    the marker must be spelt ``pytest.mark.deid_requirement``.
+
+    Parameters
+    ----------
+    root : pathlib.Path, optional
+        The directory that node ids are relative to. Defaults to the pymedphys
+        package.
+
+    Returns
+    -------
+    dict of str to tuple of str
+        For each cited requirement id, the node ids of the tests that cite
+        it, such as ``tests/x/test_y.py::test_z``, in the order of their
+        files' paths and then of their definitions.
+
+    Raises
+    ------
+    RequirementsError
+        If a test file cannot be read or parsed, a marker is used other than
+        to decorate such a function or class, its arguments are not one or
+        more string literals, the marker is spelt otherwise, or a test cites
+        a requirement twice.
+    """
+    root = root or LIBRARY_ROOT
+    cited: dict[str, list[tuple[str, int, str]]] = collections.defaultdict(list)
+    for path in sorted((root / "tests").rglob("test_*.py")):
+        module = path.relative_to(root).as_posix()
+        try:
+            tree = ast.parse(path.read_bytes(), filename=module)
+        except (OSError, SyntaxError, ValueError) as error:
+            raise RequirementsError(f"{module} could not be read") from error
+        nodes = [node for node in ast.walk(tree) if _is_marker(node)]
+        if any(
+            isinstance(node, ast.Attribute)
+            and node.attr == MARKER
+            and not _is_marker(node)
+            for node in ast.walk(tree)
+        ):
+            raise RequirementsError(
+                f"{module} spells the {MARKER} marker other than as "
+                f"pytest.mark.{MARKER}"
+            )
+        # A called marker's attribute is part of the call.
+        called = {id(node.func) for node in nodes if isinstance(node, ast.Call)}
+        markers = {id(node) for node in nodes} - called
+        used: set[int] = set()
+        for name, line, decorators in _tests(tree):
+            ids: list[str] = []
+            for decorator in decorators:
+                if not _is_marker(decorator):
+                    continue
+                used.add(id(decorator))
+                ids.extend(_marker_ids(decorator, module))
+            if len(set(ids)) != len(ids):
+                raise RequirementsError(
+                    f"{module}::{name} cites a requirement more than once"
+                )
+            for identifier in ids:
+                cited[identifier].append((module, line, f"{module}::{name}"))
+        if markers - used:
+            raise RequirementsError(
+                f"{module} uses the {MARKER} marker other than to decorate a "
+                "test function or Test class"
+            )
+    return {
+        identifier: tuple(node_id for _, _, node_id in sorted(entries))
+        for identifier, entries in sorted(cited.items())
+    }
+
+
+def _is_marker(node: ast.AST) -> bool:
+    """Return whether ``node`` is ``pytest.mark.deid_requirement``, called or not."""
+    if isinstance(node, ast.Call):
+        node = node.func
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == MARKER
+        and isinstance(node.value, ast.Attribute)
+        and node.value.attr == "mark"
+        and isinstance(node.value.value, ast.Name)
+        and node.value.value.id == "pytest"
+    )
+
+
+def _marker_ids(decorator: ast.expr, module: str) -> list[str]:
+    """Return the requirement ids that a marker decorator cites."""
+    arguments = decorator.args if isinstance(decorator, ast.Call) else []
+    if (
+        not isinstance(decorator, ast.Call)
+        or decorator.keywords
+        or not arguments
+        or not all(
+            isinstance(argument, ast.Constant) and isinstance(argument.value, str)
+            for argument in arguments
+        )
+    ):
+        raise RequirementsError(
+            f"{module} line {decorator.lineno} cites requirements other than "
+            "as one or more string literals"
+        )
+    return [argument.value for argument in arguments]  # type: ignore[attr-defined]
+
+
+def _tests(tree: ast.Module) -> Iterator[tuple[str, int, list[ast.expr]]]:
+    """Yield each test's name, line, and the decorators that apply to it."""
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name.startswith("test"):
+                yield node.name, node.lineno, list(node.decorator_list)
+        elif isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
+            for child in node.body:
+                if isinstance(
+                    child, (ast.FunctionDef, ast.AsyncFunctionDef)
+                ) and child.name.startswith("test"):
+                    yield (
+                        f"{node.name}::{child.name}",
+                        child.lineno,
+                        [*node.decorator_list, *child.decorator_list],
+                    )

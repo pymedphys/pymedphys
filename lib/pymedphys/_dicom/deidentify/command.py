@@ -139,7 +139,8 @@ def deidentify_directory(
         The run's release report, as
         :func:`~pymedphys._dicom.deidentify.run.run` takes it, such as an
         :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`'s
-        ``reporter``. Without one, the release has no report.
+        ``reporter``. Without one, the release has no report or conformance
+        statement.
     stdout, stderr : text file, optional
         Where to print the summary, and the reason the run failed or left
         its staging area behind. By default, :data:`sys.stdout` and

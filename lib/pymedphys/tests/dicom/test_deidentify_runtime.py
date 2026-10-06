@@ -70,6 +70,7 @@ def test_software_versions_give_pymedphys_then_python_pydicom_and_tomlkit():
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.parametrize(
     "module, attribute, value, field",
     [

@@ -60,6 +60,7 @@ def test_the_plain_actions_are_those_of_table_e1_1a():
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 def test_a_plain_d_on_an_attribute_the_iod_does_not_define_there_removes_it(tables):
     ct = tables.iods["CT Image"]
     rt_plan = tables.iods["RT Plan"]
@@ -80,6 +81,7 @@ def test_a_plain_d_on_an_attribute_the_iod_does_not_define_there_removes_it(tabl
     assert resolve_plain_in_iod(ct, PATIENT_ID, ("(0008,1140)",), "D") == "X"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize(
     "iod, tag, path, attribute_type",
     [
@@ -113,6 +115,7 @@ def test_a_plain_d_on_a_type_3_attribute_stays_d(tmp_path):
     assert resolve_plain_in_iod(iod, INSTITUTION_NAME, (), "D") == "D"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 def test_a_plain_z_on_an_attribute_the_iod_does_not_define_there_empties_it(tables):
     ct = tables.iods["CT Image"]
 
@@ -121,6 +124,7 @@ def test_a_plain_z_on_an_attribute_the_iod_does_not_define_there_empties_it(tabl
     assert resolve_plain_in_iod(ct, RT_ACCESSORY_HOLDER_SLOT_ID, (), "Z") == "Z"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize("attribute_type", ["1", "1C"])
 def test_a_plain_z_on_a_type_1_attribute_writes_the_dummy_value(
     tmp_path, attribute_type
@@ -136,6 +140,7 @@ def test_a_plain_z_on_a_type_1_attribute_writes_the_dummy_value(
     assert resolve_plain_in_iod(nested, INSTITUTION_NAME, path, "Z") == "D"
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize(
     "iod, tag, path, attribute_type",
     [
@@ -161,6 +166,7 @@ def test_a_plain_z_on_a_type_2_or_3_attribute_stays_z(
     assert resolve_plain_in_iod(tables.iods[iod], tag, path, "Z") == "Z"
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated_iods(
     tables,
 ):
@@ -229,6 +235,7 @@ SEQUESTER = ("SEQUESTER",)
 OVERLAY_GROUP = ("OVERLAY_GROUP",)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize(
     "iod, tag, path",
     [
@@ -248,6 +255,7 @@ def test_a_plain_x_on_an_optional_attribute_removes_it_alone(tables, iod, tag, p
     assert resolve_plain_x_in_iod(tables.iods[iod], tag, path) == _removal(*ALONE)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize(
     "iod, tag, path, sequence",
     [
@@ -310,6 +318,7 @@ def test_a_plain_x_on_a_required_attribute_removes_the_innermost_type_3_sequence
     assert resolve_plain_x_in_iod(iod, tag, path) == _removal("SEQUENCE", sequence)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09", "MIDI-BP-03")
 @pytest.mark.parametrize(
     "sequence_types, attribute_type, expected",
     [
@@ -334,6 +343,7 @@ def test_a_plain_x_skips_each_enclosing_sequence_that_is_required(
     assert resolve_plain_x_in_iod(iod, INSTITUTION_NAME, path) == _removal(*expected)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09", "MIDI-BP-03")
 @pytest.mark.parametrize("iod", FIRST_RELEASE_IODS)
 @pytest.mark.parametrize("tag", [RESPONSIBLE_PERSON, RESPONSIBLE_ORGANIZATION])
 def test_a_plain_x_on_a_required_attribute_outside_a_type_3_sequence_sequesters(
@@ -346,6 +356,7 @@ def test_a_plain_x_on_a_required_attribute_outside_a_type_3_sequence_sequesters(
     assert resolve_plain_x_in_iod(tables.iods[iod], tag, ()) == _removal(*SEQUESTER)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize("iod", FIRST_RELEASE_IODS)
 @pytest.mark.parametrize("tag", ["(6000,3000)", "(6002,3000)", "(601E,3000)"])
 def test_a_plain_x_on_overlay_data_removes_its_repeating_group(tables, iod, tag):
@@ -358,6 +369,7 @@ def test_a_plain_x_on_overlay_data_removes_its_repeating_group(tables, iod, tag)
     assert resolve_plain_x_in_iod(tables.iods[iod], tag, ()) == _removal(*OVERLAY_GROUP)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_overlay_data_is_type_1_only_at_the_top_level_of_a_user_optional_module(
     tables,
 ):
@@ -382,6 +394,7 @@ CONDITIONAL_OVERLAY_IODS = {
 }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_the_overlay_plane_module_is_conditional_only_in_the_known_iods(tables):
     # Removing an overlay's group keeps the output valid only where the
     # Overlay Plane Module is user-optional. A new edition that makes it
@@ -396,6 +409,7 @@ def test_the_overlay_plane_module_is_conditional_only_in_the_known_iods(tables):
     assert conditional == CONDITIONAL_OVERLAY_IODS
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize("name", sorted(CONDITIONAL_OVERLAY_IODS))
 def test_a_plain_x_on_overlay_data_in_a_conditional_overlay_module_sequesters(
     tables, name
@@ -416,6 +430,7 @@ def test_a_plain_x_on_an_attribute_outside_an_overlay_group_removes_it_alone(
     assert resolve_plain_x_in_iod(tables.iods["CT Image"], tag, ()) == _removal(*ALONE)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09", "MIDI-BP-03")
 def test_a_plain_x_on_roi_interpreter_sequence_removes_it_alone(tables):
     # ROI Interpreter Sequence is Type 1C in RT ROI Observations Sequence,
     # required only if ROI Creator Sequence is present, which Table E.1-1
@@ -441,6 +456,7 @@ def _basic_profile_removes(iod, tag, path, basic):
     return False
 
 
+@pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
     # Each place in the first supported release's IODs where Table E.1-1
     # gives a plain X to an attribute that the IOD requires, and no sequence
