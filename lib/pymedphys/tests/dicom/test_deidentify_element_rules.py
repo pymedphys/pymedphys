@@ -193,7 +193,8 @@ CLEANED_SEQUENCES = {
 # The reviewed rules for attributes of other VRs that Table E.1-1 omits:
 # ten of the 12 URI and URL attributes, seven sequences whose content can identify
 # an institution or other patients or say something about the patient, ICC
-# Profile, and MAC Parameters Sequence.
+# Profile, MAC Parameters Sequence, and Private Data Element Characteristics
+# Sequence.
 URIS = {
     "(0008,0407)": "StoredInstanceBaseURI",
     "(0008,0408)": "FolderAccessURI",
@@ -216,6 +217,7 @@ SEQUENCES = {
     "(0040,1012)": "ReasonForPerformedProcedureCodeSequence",
 }
 OTHER_REMOVED = {
+    "(0008,0300)": "PrivateDataElementCharacteristicsSequence",
     "(0028,2000)": "ICCProfile",
     "(4FFE,0001)": "MACParametersSequence",
 }
