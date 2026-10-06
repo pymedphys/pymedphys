@@ -45,7 +45,6 @@ from collections.abc import Callable, Iterable, Mapping
 
 from . import dummy_values, pseudonyms, residuals, uids
 from . import release_report as report
-from . import run_report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
 from .qc_retained import _NOT_REVIEWED_TAGS, RETAINED_TEXT_VRS
@@ -403,6 +402,15 @@ def _held_by(stage: str, codes: Iterable[str]) -> list[str]:
     return list(codes)
 
 
+# The names under which a run writes its release report, the report's
+# human-readable form, and this statement, as ``run_report`` gives them; the
+# statement's tests check that they agree. ``run_report`` imports the
+# statement, so it is not imported here.
+_RELEASE_REPORT = "release-report.json"
+_RELEASE_REPORT_MARKDOWN = "release-report.md"
+_CONFORMANCE_STATEMENT = "conformance-statement.md"
+
+
 def qc_pack(named: Callable[[str], str]) -> list[str]:
     """Return the lines of the section on what the QC pack lists for review."""
     vrs = join(sorted(RETAINED_TEXT_VRS), "or")
@@ -509,12 +517,12 @@ def release_report() -> list[str]:
         "that it can read, such as a symbolic link, a DICOMDIR, or a file not "
         "readable as DICOM, is neither labelled nor counted in the report; "
         "only the QC pack lists it. A run writes the report at the root of "
-        f"the release as `{run_report.RELEASE_REPORT}` and, beside it, its "
-        f"human-readable form as `{run_report.RELEASE_REPORT_MARKDOWN}`, "
+        f"the release as `{_RELEASE_REPORT}` and, beside it, its "
+        f"human-readable form as `{_RELEASE_REPORT_MARKDOWN}`, "
         "generated from the report's text alone, which shows every value of "
         "the report and draws nothing else from it. Beside them, it writes "
         "this statement of its policy, which holds no instance value, as "
-        f"`{run_report.CONFORMANCE_STATEMENT}`.",
+        f"`{_CONFORMANCE_STATEMENT}`.",
         "",
         "The report holds no source value or original path: each field is a "
         "digest, a version, a known edition, preset, or option, a file name "
