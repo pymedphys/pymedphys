@@ -26,9 +26,10 @@ before it is decoded, and requires:
   process that the transfer syntax names: SOF0 for JPEG Baseline, SOF0 or
   SOF1 for JPEG Extended, since the baseline process is a restricted case
   of the extended one and lossy like it, and SOF3 for JPEG Lossless and
-  JPEG Lossless SV1.
+  JPEG Lossless SV1, with every scan's point transform 0, since a point
+  transform drops low-order bits before coding.
 - JPEG-LS (ITU-T T.87): one SOF55 frame header, and, for JPEG-LS Lossless,
-  every scan lossless (NEAR 0).
+  every scan lossless: NEAR 0 and point transform 0.
 - JPEG 2000 and HTJ2K (ITU-T T.800 and T.814): the SIZ marker segment after
   SOC, with every component of the same precision and signedness and none
   subsampled; for a syntax that is lossless only, every COD and COC marker
@@ -36,7 +37,13 @@ before it is decoded, and requires:
   reversible 5-3 wavelet; and the multiple component transformation, of
   every COD marker segment, as Photometric Interpretation (0028,0004)
   says: YBR_RCT for the reversible one, YBR_ICT for the irreversible one,
-  and neither without one (PS3.5 Section 8.2.4).
+  and neither without one (PS3.5 Section 8.2.4). The reversible wavelet is
+  needed for lossless coding but does not show it: a codestream that uses
+  it can still be truncated, a lossy process (PS3.5 Section A.4.4), and
+  whether every coding pass was kept is recorded only in packet headers,
+  which are not read here. So a JPEG 2000 or HTJ2K frame coded lossily
+  with the reversible wavelet passes under a lossless syntax, and its bytes
+  and transfer syntax are kept as the source has them.
 
 Each must also give the same Rows, Columns, and Samples per Pixel
 (0028,0002) as the attributes, a sample precision equal to Bits Stored
@@ -75,7 +82,9 @@ _JPEG_FRAME_MARKERS = {
     "1.2.840.10008.1.2.4.81": frozenset({0xF7}),
 }
 _JPEG_LS = frozenset({"1.2.840.10008.1.2.4.80", "1.2.840.10008.1.2.4.81"})
-_JPEG_LS_LOSSLESS = "1.2.840.10008.1.2.4.80"
+_JPEG_LOSSLESS = frozenset(
+    {"1.2.840.10008.1.2.4.57", "1.2.840.10008.1.2.4.70", "1.2.840.10008.1.2.4.80"}
+)
 _JPEG_2000 = frozenset(
     {
         "1.2.840.10008.1.2.4.90",
@@ -119,9 +128,11 @@ class _Header:
     columns: int
     samples: int
     precisions: frozenset[int]
-    # JPEG and JPEG-LS: the frame header marker, and each scan's NEAR.
+    # JPEG and JPEG-LS: the frame header marker, each scan's NEAR in
+    # JPEG-LS, and each scan's point transform.
     frame_marker: int | None = None
     near: frozenset[int] = frozenset()
+    point_transforms: frozenset[int] = frozenset()
     # JPEG 2000 and HTJ2K: each component's signedness, whether any is
     # subsampled, each wavelet transformation, and each multiple component
     # transformation.
@@ -171,7 +182,10 @@ def _matches(transfer_syntax: str, header: _Header, declared: Declared) -> bool:
     if transfer_syntax not in _JPEG_2000:
         return header.frame_marker in _JPEG_FRAME_MARKERS.get(
             transfer_syntax, frozenset()
-        ) and (transfer_syntax != _JPEG_LS_LOSSLESS or header.near == {0})
+        ) and (
+            transfer_syntax not in _JPEG_LOSSLESS
+            or (header.point_transforms == {0} and header.near.issubset({0}))
+        )
     lossless = header.transformations == {_REVERSIBLE}
     colour = {
         frozenset({0}): declared.photometric_interpretation
@@ -189,52 +203,73 @@ def _matches(transfer_syntax: str, header: _Header, declared: Declared) -> bool:
 
 
 def _jpeg(codestream: bytes, ls: bool) -> _Header | None:
-    """Return the frame header and each scan's NEAR of a JPEG or JPEG-LS
-    codestream, or ``None`` where its marker segments do not hold together,
-    a scan has no entropy-coded data, it has no EOI marker, or it has no
+    """Return the frame header and scans of a JPEG or JPEG-LS codestream, or
+    ``None`` where :func:`_jpeg_segments` gives none, or it has no scan, no
     frame header before its first scan, or more than one."""
-    if codestream[:2] != b"\xff\xd8":
+    segments = _jpeg_segments(codestream, ls)
+    if segments is None:
         return None
-    frame: tuple[int, ...] | None = None
-    near: set[int] = set()
-    position, end = 2, len(codestream)
-    while position + 2 <= end and codestream[position] == 0xFF:
-        marker = codestream[position + 1]
-        if marker == _END_OF_IMAGE:
-            break
-        if marker == 0xFF or marker in _STANDALONE:
-            position += 1 if marker == 0xFF else 2
-            continue
-        payload = _payload(codestream, position)
-        if payload is None:
-            return None
-        position += 2 + 2 + len(payload)
-        if marker in _FRAME_MARKERS:
-            if frame is not None or len(payload) < 6:
-                return None
-            frame = (marker, *struct.unpack_from(">BHHB", payload))
-        elif marker == _START_OF_SCAN:
-            if frame is None or not payload or len(payload) < 2 + 2 * payload[0]:
-                return None
-            # Ns, then Ns of Csj and Tdj or Tmj, then Ss, NEAR in JPEG-LS.
-            near.add(payload[1 + 2 * payload[0]])
-            scan = position
-            position = _scan_end(codestream, position, ls)
-            if position == scan:
-                return None
-    else:
+    frames = [
+        (index, marker, payload)
+        for index, (marker, payload) in enumerate(segments)
+        if marker in _FRAME_MARKERS
+    ]
+    # Ns, then Ns of Csj and Tdj or Tmj, then Ss or NEAR, Se or ILV, and Ah
+    # and Al, whose low four bits are a lossless scan's point transform.
+    scans = [
+        (index, payload)
+        for index, (marker, payload) in enumerate(segments)
+        if marker == _START_OF_SCAN
+    ]
+    if (
+        len(frames) != 1
+        or len(frames[0][2]) < 6
+        or not scans
+        or scans[0][0] < frames[0][0]
+        or any(not scan or len(scan) < 4 + 2 * scan[0] for _, scan in scans)
+    ):
         return None
-    if frame is None:
-        return None
-    marker, precision, rows, columns, samples = frame
+    _, marker, payload = frames[0]
+    precision, rows, columns, samples = struct.unpack_from(">BHHB", payload)
     return _Header(
         rows,
         columns,
         samples,
         frozenset({precision}),
         frame_marker=marker,
-        near=frozenset(near) if ls else frozenset(),
+        near=frozenset(scan[1 + 2 * scan[0]] for _, scan in scans)
+        if ls
+        else frozenset(),
+        point_transforms=frozenset(scan[3 + 2 * scan[0]] & 0x0F for _, scan in scans),
     )
+
+
+def _jpeg_segments(codestream: bytes, ls: bool) -> list[tuple[int, bytes]] | None:
+    """Return the marker and payload of each marker segment of a JPEG or
+    JPEG-LS codestream, from SOI to EOI, or ``None`` where they do not hold
+    together, a scan has no entropy-coded data, or there is no EOI."""
+    if codestream[:2] != b"\xff\xd8":
+        return None
+    segments: list[tuple[int, bytes]] = []
+    position, end = 2, len(codestream)
+    while position + 2 <= end and codestream[position] == 0xFF:
+        marker = codestream[position + 1]
+        if marker == _END_OF_IMAGE:
+            return segments
+        if marker == 0xFF or marker in _STANDALONE:
+            position += 1 if marker == 0xFF else 2
+            continue
+        payload = _payload(codestream, position)
+        if payload is None:
+            return None
+        segments.append((marker, payload))
+        position += 2 + 2 + len(payload)
+        if marker == _START_OF_SCAN:
+            scan = position
+            position = _scan_end(codestream, position, ls)
+            if position == scan:
+                return None
+    return None
 
 
 def _scan_end(codestream: bytes, position: int, ls: bool) -> int:

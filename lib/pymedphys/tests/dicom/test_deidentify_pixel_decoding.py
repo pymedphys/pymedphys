@@ -290,13 +290,16 @@ def test_a_jpeg_frame_header_of_0_lines_is_refused():
     assert frames_problem(read_source(data)) is TransformReason.FRAME_MISMATCH
 
 
-def _jpeg_ls(marker=0xFFF7, rows=ROWS, columns=COLUMNS, near=0, data=b"\x00"):
+def _jpeg_ls(
+    marker=0xFFF7, rows=ROWS, columns=COLUMNS, near=0, point_transform=0, data=b"\x00"
+):
     """Return a JPEG-LS codestream: SOI, a frame header for one 8-bit
     component, SOS, ``data`` as its scan's entropy-coded data, and EOI. Only
     its marker segments are meant to be read."""
     frame = struct.pack(">HHBHHBBBB", marker, 11, 8, rows, columns, 1, 1, 0x11, 0)
-    # Ns 1, then component 1 with no mapping table, NEAR, ILV 0, and Al 0.
-    scan = struct.pack(">HHBBBBBB", 0xFFDA, 8, 1, 1, 0, near, 0, 0)
+    # Ns 1, then component 1 with no mapping table, NEAR, ILV 0, Ah 0, and
+    # the point transform as Al.
+    scan = struct.pack(">HHBBBBBB", 0xFFDA, 8, 1, 1, 0, near, 0, point_transform)
     return b"\xff\xd8" + frame + scan + data + b"\xff\xd9"
 
 
@@ -331,18 +334,46 @@ def test_a_jpeg_ls_codestream_is_checked_against_its_attributes_and_syntax(
 
 
 @pytest.mark.parametrize(
-    "syntax, near, problem",
+    "syntax, near, point_transform, problem",
     [
-        (compressed.JPEG_LS_LOSSLESS, 0, None),
-        (compressed.JPEG_LS_NEAR_LOSSLESS, 0, None),
-        (compressed.JPEG_LS_NEAR_LOSSLESS, 2, None),
-        (compressed.JPEG_LS_LOSSLESS, 2, TransformReason.FRAME_MISMATCH),
+        (compressed.JPEG_LS_LOSSLESS, 0, 0, None),
+        (compressed.JPEG_LS_NEAR_LOSSLESS, 0, 0, None),
+        (compressed.JPEG_LS_NEAR_LOSSLESS, 2, 0, None),
+        (compressed.JPEG_LS_NEAR_LOSSLESS, 0, 1, None),
+        (compressed.JPEG_LS_LOSSLESS, 2, 0, TransformReason.FRAME_MISMATCH),
+        (compressed.JPEG_LS_LOSSLESS, 0, 1, TransformReason.FRAME_MISMATCH),
     ],
 )
-def test_only_jpeg_ls_near_lossless_allows_a_lossy_scan(syntax, near, problem):
+def test_only_jpeg_ls_near_lossless_allows_a_lossy_scan(
+    syntax, near, point_transform, problem
+):
     declared = Declared(ROWS, COLUMNS, 1, 8, False, "MONOCHROME2")
+    codestream = _jpeg_ls(near=near, point_transform=point_transform)
 
-    assert header_problem(syntax, _jpeg_ls(near=near), declared) is problem
+    assert header_problem(syntax, codestream, declared) is problem
+
+
+@pytest.mark.parametrize(
+    "syntax", [compressed.JPEG_LOSSLESS, compressed.JPEG_LOSSLESS_SV1]
+)
+def test_a_jpeg_lossless_scan_with_a_point_transform_is_refused(syntax):
+    # A point transform drops low-order bits before coding, so the frame is
+    # not lossless.
+    _needs(syntax)
+    codestream = bytearray(compressed.jpeg_lossless(_frames(1)[0]))
+    scan = codestream.index(b"\xff\xda")
+    approximation = scan + 4 + 3 + 2 * codestream[scan + 4]
+    assert codestream[approximation] == 0
+
+    def problem(point_transform):
+        codestream[approximation] = point_transform
+        image = compressed.ct_image(
+            syntax, [bytes(codestream)], rows=ROWS, columns=COLUMNS
+        )
+        return frames_problem(read_source(image))
+
+    assert problem(0) is None
+    assert problem(1) is TransformReason.FRAME_MISMATCH
 
 
 def test_a_jpeg_ls_scan_without_data_is_undecodable():
@@ -473,6 +504,47 @@ def test_an_irreversible_jpeg_2000_frame_passes_only_under_a_lossy_syntax():
 
     assert frames_problem(lossy) is None
     assert frames_problem(lossless) is TransformReason.FRAME_MISMATCH
+
+
+def _rate_limited_jpeg_2000(frame):
+    """Return ``frame`` as a JPEG 2000 codestream with the reversible
+    wavelet, truncated to a rate of 12 by Pillow's OpenJPEG encoder."""
+    image = pytest.importorskip("PIL.Image")
+    features = pytest.importorskip("PIL.features")
+    if not features.check("jpg_2000"):
+        pytest.skip("Pillow was built without OpenJPEG")
+    buffer = io.BytesIO()
+    image.fromarray(frame).save(
+        buffer,
+        "JPEG2000",
+        no_jp2=True,
+        irreversible=False,
+        quality_mode="rates",
+        quality_layers=[12],
+    )
+    return buffer.getvalue()
+
+
+def test_a_truncated_reversible_jpeg_2000_frame_is_not_detected():
+    # The reversible wavelet is needed for lossless coding but does not show
+    # it: a truncated codestream is lossy (PS3.5 Section A.4.4), and whether
+    # every coding pass was kept is recorded only in packet headers, which
+    # are not read. This records that limit; it is not a requirement.
+    _needs_openjpeg()
+    _needs(compressed.JPEG_2000)
+    openjpeg = pytest.importorskip("openjpeg")
+    frame = np.random.default_rng(0).integers(0, 256, (48, 64), dtype=np.uint8)
+    exact = compressed.jpeg_2000(frame, precision=8)
+    truncated = _rate_limited_jpeg_2000(frame)
+    _, cod = _segment_at(truncated, b"\xff\x52")
+    assert cod[13] == 1  # the reversible 5-3 wavelet
+    assert np.array_equal(openjpeg.decode(exact), frame)
+    assert not np.array_equal(openjpeg.decode(truncated), frame)
+
+    assert frames_problem(_jpeg_2000_image(exact, bits=8)) is None
+    lossy = _jpeg_2000_image(truncated, syntax=compressed.JPEG_2000, bits=8)
+    assert frames_problem(lossy) is None
+    assert frames_problem(_jpeg_2000_image(truncated, bits=8)) is None
 
 
 def _segment_at(codestream, marker):
