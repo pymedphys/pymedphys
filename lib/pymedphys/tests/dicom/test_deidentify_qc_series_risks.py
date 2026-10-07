@@ -376,7 +376,7 @@ def test_the_transform_gives_each_source_series_evidence():
 
 
 @pytest.mark.deid_requirement("MIDI-BP-15", "MIDI-BP-17")
-def test_a_run_over_the_synthetic_corpus_lists_its_ct_volume(tmp_path):
+def test_a_run_over_the_synthetic_corpus_lists_its_ct_volumes(tmp_path):
     corpus = corpus_module.build_corpus()
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.
@@ -408,26 +408,37 @@ def test_a_run_over_the_synthetic_corpus_lists_its_ct_volume(tmp_path):
     text = result.qc_pack.read_text(encoding="utf-8")
     pack = json.loads(text)
     iods = {file.manifest.name: file.manifest.iod for file in corpus.files}
-    released_ct = [
-        entry["position"]
-        for entry in pack["instances"]
-        if iods[Path(entry["source"]).name] == "CT Image"
-        and entry["disposition"] == "released"
+
+    def released(iod):
+        return [
+            entry["position"]
+            for entry in pack["instances"]
+            if iods[Path(entry["source"]).name] == iod
+            and entry["disposition"] == "released"
+        ]
+
+    # The third slice is sequestered, and the other two are a volume; the
+    # Enhanced CT Image and Legacy Converted Enhanced CT Image instances, of
+    # two frames each, are a volume each.
+    volumes = [
+        released("CT Image"),
+        released("Enhanced CT Image"),
+        released("Legacy Converted Enhanced CT Image"),
     ]
-    # The third slice is sequestered, and the other two are a volume.
-    assert len(released_ct) == 2
+    assert [len(positions) for positions in volumes] == [2, 1, 1]
     assert pack["series_risks"] == [
         {
-            "positions": released_ct,
+            "positions": positions,
             "findings": [
                 {
                     "indicator": "ct-volume",
                     "risk": "reconstructable-face",
                     "element": None,
-                    "positions": released_ct,
+                    "positions": positions,
                 }
             ],
         }
+        for positions in volumes
     ]
     # The pack groups by the source's Series Instance UID but never writes it.
     assert all(uid and uid not in text for uid in series)
