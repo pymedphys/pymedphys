@@ -104,8 +104,8 @@ def test_the_series_evidence_is_assessed_as_the_instances_are(transfer_syntax):
 
     evidence = [pixel_risk.series_evidence(each) for each in series]
 
-    found = pixel_risk.assess_ct_series(evidence)
-    assert found == pixel_risk.assess_ct_series(series)
+    found = pixel_risk.assess_series(evidence)
+    assert found == pixel_risk.assess_series(series)
     assert {finding.indicator for finding in found} == {
         Indicator.CT_VOLUME,
         Indicator.HEAD_OR_NECK,
@@ -128,8 +128,8 @@ def test_unreadable_series_evidence_is_assessed_as_the_instance_is():
 
     evidence = [pixel_risk.series_evidence(each) for each in series]
 
-    found = pixel_risk.assess_ct_series(evidence)
-    assert found == pixel_risk.assess_ct_series(series)
+    found = pixel_risk.assess_series(evidence)
+    assert found == pixel_risk.assess_series(series)
     assert {
         str(finding.path)
         for finding in found
