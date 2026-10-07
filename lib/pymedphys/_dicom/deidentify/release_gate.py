@@ -79,6 +79,7 @@ withhold: the file: unreadable-file
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import enum
 import functools
@@ -285,6 +286,11 @@ class Coverage:
 
     def not_reported(self) -> tuple[ElementPath, ...]:
         """Return the planned paths neither collected nor uncollected."""
+        return self._not_reported
+
+    @functools.cached_property
+    def _not_reported(self) -> tuple[ElementPath, ...]:
+        # Kept, since a coverage is merged into each file of its subject.
         reported = {value.source for value in self.collected}
         reported |= {gap.path for gap in self.uncollected}
         return tuple(sorted(self.planned - reported, key=str))
@@ -295,6 +301,10 @@ class Coverage:
         A path takes the first of these that applies: not collected, not
         reported, read only as bytes, or collected under another VR.
         """
+        return self._gaps
+
+    @functools.cached_property
+    def _gaps(self) -> tuple[tuple[ElementPath, ReasonCode], ...]:
         found = [(gap.path, _gap_code(gap.reason)) for gap in self.uncollected]
         found += [(path, ReasonCode.NOT_REPORTED) for path in self.not_reported()]
         found += [
@@ -324,6 +334,70 @@ class Coverage:
             f"uncollected={len(self.uncollected)}, "
             f"decoded_as_bytes={len(self.decoded_as_bytes)})"
         )
+
+
+class SubjectCoverages:
+    """Merge the coverages of each file of a subject, the subject's once.
+
+    Every file of a subject is gated with the same coverages, its own first
+    and the others in the run's order. :meth:`merge` merges them all once,
+    at the subject's first file, and then each file's own coverage with
+    that, which gives what :meth:`Coverage.merge` of the file's coverages
+    gives: the own coverage's values and gaps come first either way, the
+    rest in the order in which they first appear among the others, and what
+    each coverage planned but did not report is already a gap in the
+    subject's merge. So a subject of *n* files costs *n* small merges, not
+    *n* merges of *n* coverages.
+
+    It keeps the merges of the ``kept`` subjects merged most recently, with
+    their coverages, by the coverages' identities. Holding the coverages
+    means that no other object can take one of those identities while they
+    are kept.
+
+    Parameters
+    ----------
+    kept : int, optional
+        The number of subjects to keep, at least 1.
+    """
+
+    def __init__(self, kept: int = 64) -> None:
+        if not isinstance(kept, int) or kept < 1:
+            raise ValueError("at least one subject must be kept")
+        self._kept = kept
+        self._subjects: collections.OrderedDict[
+            frozenset[int], tuple[tuple[Coverage, ...], Coverage]
+        ] = collections.OrderedDict()
+
+    def __repr__(self) -> str:
+        return f"SubjectCoverages(kept={self._kept})"
+
+    def merge(self, coverages: tuple[Coverage, ...]) -> Coverage:
+        """Return ``Coverage.merge(*coverages)``, the file's own coverage first.
+
+        Coverages in another order than the subject's first file gave them
+        are merged as given.
+
+        Raises
+        ------
+        TypeError
+            If any is not a :class:`Coverage`.
+        """
+        if not coverages:
+            return Coverage.merge()
+        own, others = coverages[0], coverages[1:]
+        key = frozenset(map(id, coverages))
+        subject = self._subjects.get(key)
+        if subject is None:
+            subject = self._subjects[key] = (coverages, Coverage.merge(*coverages))
+            if len(self._subjects) > self._kept:
+                self._subjects.popitem(last=False)
+        else:
+            self._subjects.move_to_end(key)
+        order, merged = subject
+        rest = [each for each in order if each is not own]
+        if len(rest) != len(others) or any(a is not b for a, b in zip(rest, others)):
+            return Coverage.merge(*coverages)
+        return Coverage.merge(own, merged)
 
 
 def _gap_code(reason: str) -> ReasonCode:

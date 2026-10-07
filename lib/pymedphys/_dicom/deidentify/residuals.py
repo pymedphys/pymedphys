@@ -125,6 +125,7 @@ import mmap
 import re
 import string
 import unicodedata
+import weakref
 from collections.abc import Iterable, Iterator
 
 from . import markers
@@ -426,7 +427,9 @@ def find_residuals(
         The values that had to be removed or replaced, such as the
         instance's own and its subject's from the run's other instances.
         Repeated values are searched once, and values equal to a constant
-        that the engine writes are not searched.
+        that the engine writes are not searched. Each value's forms are
+        derived once, and kept for later searches while a value equal to
+        it exists.
 
     Returns
     -------
@@ -448,16 +451,14 @@ def find_residuals(
     after the last readable element at byte 3
     """
     layout = read_file_layout(data)
-    derived: list[_Needle | NotSearched | Unsearched] = []
+    needles: list[_Needle] = []
+    omitted: list[NotSearched] = []
+    unsearched: list[Unsearched] = []
     for value in dict.fromkeys(values):
-        rest = _without_constants(value)
-        if rest is not value:
-            derived.append(Unsearched(value.source, UnsearchedReason.WRITTEN_CONSTANT))
-        if rest is not None:
-            derived += _derive(rest)
-    needles = [item for item in derived if isinstance(item, _Needle)]
-    omitted = [item for item in derived if isinstance(item, NotSearched)]
-    unsearched = [item for item in derived if isinstance(item, Unsearched)]
+        prepared = _prepared(value)
+        needles += prepared.needles
+        omitted += prepared.omitted
+        unsearched += prepared.unsearched
     with memoryview(data) as view, view.cast("B") as octets:
         found = _search(octets, layout.spans, layout.size, needles)
     order = sorted(
@@ -544,9 +545,7 @@ def not_searched_of(values: Iterable[SourceValue]) -> tuple[NotSearched, ...]:
     """
     omitted: list[NotSearched] = []
     for value in dict.fromkeys(values):
-        rest = _without_constants(value)
-        if rest is not None:
-            omitted += [item for item in _derive(rest) if isinstance(item, NotSearched)]
+        omitted += _prepared(value).omitted
     return tuple(dict.fromkeys(omitted))
 
 
@@ -579,6 +578,49 @@ class _Needle:
     before: frozenset[int]  # the characters that reject a match before it
     after: frozenset[int]  # and after it
     digits: bool  # whether the form is digits alone
+
+
+@dataclasses.dataclass(frozen=True)
+class _Prepared:
+    """What a value adds to a search, each in the order that it is derived."""
+
+    needles: tuple[_Needle, ...]
+    omitted: tuple[NotSearched, ...]
+    unsearched: tuple[Unsearched, ...]
+
+
+# Each value's preparation, kept for as long as a value equal to it is: a
+# subject's values are searched for in every one of its files, so each is
+# derived once, not once for each file.
+_PREPARED: weakref.WeakKeyDictionary[SourceValue, _Prepared] = (
+    weakref.WeakKeyDictionary()
+)
+
+
+def _prepared(value: SourceValue) -> _Prepared:
+    """Return the needles, omissions, and unsearched records of a value.
+
+    It is derived the first time, and taken from :data:`_PREPARED` after,
+    since it depends on the value alone.
+    """
+    if not isinstance(value, SourceValue):
+        raise TypeError("each value to search for must be a SourceValue")
+    prepared = _PREPARED.get(value)
+    if prepared is not None:
+        return prepared
+    rest = _without_constants(value)
+    derived: list[_Needle | NotSearched | Unsearched] = []
+    if rest is not value:
+        derived.append(Unsearched(value.source, UnsearchedReason.WRITTEN_CONSTANT))
+    if rest is not None:
+        derived += _derive(rest)
+    prepared = _Prepared(
+        tuple(item for item in derived if isinstance(item, _Needle)),
+        tuple(item for item in derived if isinstance(item, NotSearched)),
+        tuple(item for item in derived if isinstance(item, Unsearched)),
+    )
+    _PREPARED[value] = prepared
+    return prepared
 
 
 @functools.cache
