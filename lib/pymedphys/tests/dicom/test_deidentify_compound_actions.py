@@ -18,7 +18,13 @@ import json
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import compound_actions, dummy_values, iods, standard
+from pymedphys._dicom.deidentify import (
+    compound_actions,
+    dummy_values,
+    iods,
+    scope,
+    standard,
+)
 
 resolve = compound_actions.resolve
 resolve_in_iod = compound_actions.resolve_in_iod
@@ -44,7 +50,7 @@ CASES = [
     for attribute_type, expected in by_type.items()
 ]
 
-FIRST_RELEASE_IODS = ("CT Image", "RT Structure Set", "RT Plan", "RT Dose")
+FIRST_RELEASE_IODS = tuple(sorted(scope.SUPPORTED_IODS))
 REQUIRED = frozenset({"1", "1C", "2", "2C"})
 
 # A synthetic value standing in for a source attribute value, which no

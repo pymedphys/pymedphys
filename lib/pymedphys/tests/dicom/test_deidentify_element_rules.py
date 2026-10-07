@@ -34,6 +34,7 @@ from pymedphys._dicom.deidentify import (
     iods,
     policy,
     private_attributes,
+    scope,
     standard,
     supplementary_actions,
     uid_roles,
@@ -58,7 +59,7 @@ NOT_IN_DICTIONARY = RuleSource.NOT_IN_DICTIONARY
 PRIVATE_ROW = standard.PRIVATE_ATTRIBUTES_TAG
 RETAIN_SAFE_PRIVATE = "retain_safe_private"
 CLEAN_DESCRIPTORS = "clean_descriptors"
-SUPPORTED_IODS = ("CT Image", "RT Dose", "RT Plan", "RT Structure Set")
+SUPPORTED_IODS = tuple(sorted(scope.SUPPORTED_IODS))
 TEXT_VRS = {"LO", "SH", "LT", "ST", "UC", "UT"}
 # The VRs whose attributes each have a reviewed rule or role, so that none
 # reaches the rule for attributes that no rule covers.
@@ -235,6 +236,7 @@ KEPT_URIS = {"(0008,010E)": "CodingSchemeURL", "(0008,0120)": "URNCodeValue"}
 # The UR attribute that the first supported release's IODs require at a
 # place that no removed sequence encloses, so that X/Z/D resolves to D there.
 REQUIRED_URIS = {"(0028,7FE0)"}
+ICC_PROFILE = "(0028,2000)"
 
 
 @functools.cache
@@ -547,14 +549,17 @@ def test_the_urls_that_name_coding_concepts_and_schemes_are_kept(tag, keyword):
 
 @pytest.mark.deid_requirement("MIDI-BP-14")
 def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
-    # The sequences, ICC Profile, MAC Parameters Sequence, and the three
-    # measures of the patient are Type 3 wherever the first supported release's IODs define them, so they are
-    # removed. Retrieve URL and Retrieve URI are required only in sequences
+    # The sequences, MAC Parameters Sequence, and the three measures of the
+    # patient are Type 3 wherever the first supported release's IODs define
+    # them, so they are removed, and so is ICC Profile, except at the top
+    # level of three enhanced IODs, where it is Type 1 and needs a dummy
+    # value. Retrieve URL and Retrieve URI are required only in sequences
     # that the table removes, and three UR attributes are required at places
     # where removal by Type needs a dummy value.
     tables = iods.load_iod_tables()
     basic = _rules()
     required = set()
+    icc_required = set()
     for name in SUPPORTED_IODS:
         iod = tables.iods[name]
         for definition in iod.definitions:
@@ -563,7 +568,10 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
             resolved = compound_actions.resolve_in_iod(
                 iod, definition.tag, definition.path, "X/Z/D"
             )
-            if definition.tag not in URIS:
+            if definition.tag == ICC_PROFILE and resolved != "X":
+                icc_required.add((name, definition.path))
+                assert resolved == "D", (name, definition)
+            elif definition.tag not in URIS:
                 assert resolved == "X", (name, definition)
             elif resolved != "X":
                 removed = any(
@@ -575,6 +583,14 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
                     assert resolved == "D", (name, definition)
 
     assert required == REQUIRED_URIS
+    assert icc_required == {
+        (name, ())
+        for name in (
+            "Enhanced CT Image",
+            "Enhanced MR Image",
+            "Enhanced MR Color Image",
+        )
+    }
 
 
 def test_patient_size_code_sequence_is_removed_under_retain_patient_characteristics():

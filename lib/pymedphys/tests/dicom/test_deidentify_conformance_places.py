@@ -130,7 +130,7 @@ def test_a_plain_x_on_a_required_attribute_removes_its_sequence():
     assert (
         "| X with the enclosing Referenced Patient Setup Photo Sequence "
         "(300A,078C) within Patient Treatment Preparation Sequence (300A,079F) "
-        "in CT Image;" in row
+        "in CT Image, Enhanced CT Image," in row
     )
 
 

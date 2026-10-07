@@ -674,7 +674,7 @@ implementation = [
 note = '''
 The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written.
 Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C, and a plain Z on a Type 1 or 1C attribute gives D's dummy value too.
-A plain X on an attribute that the IOD requires at its place removes with it the innermost enclosing sequence that the IOD makes Type 3 at its own place, or sequesters the instance where none encloses it, so it never leaves the output without an attribute that the IOD requires; Overlay Data takes its whole repeating group, whose module is user-optional in the CT Image IOD, and ROI Interpreter Sequence, whose condition lapses once ROI Creator Sequence is removed, goes alone (D-020).
+A plain X on an attribute that the IOD requires at its place removes with it the innermost enclosing sequence that the IOD makes Type 3 at its own place, or sequesters the instance where none encloses it, so it never leaves the output without an attribute that the IOD requires; Overlay Data takes its whole repeating group, whose module is user-optional in the CT Image, MR Image, and Positron Emission Tomography Image IODs, and ROI Interpreter Sequence, whose condition lapses once ROI Creator Sequence is removed, goes alone (D-020).
 Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, as is each element of the dummy item of Person Identification Code Sequence, and an attribute whose VR has no generic dummy value and no reviewed rule is refused rather than given an invalid value.
 Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID.
 It also reports instances that share a SOP Instance UID, as identical copies only where their source bytes, the transfer syntax and the data set as the file encodes it, are shown to be the same, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, each a Patient ID with its issuer, with the instances without a Patient ID as one more.
@@ -902,7 +902,7 @@ implementation = [
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
-ICC Profile (0028,2000), an embedded file whose contents the engine does not parse, is removed by Type under every option, which removes it wherever the first supported release's IODs define it (D-022).
+ICC Profile (0028,2000), an embedded file whose contents the engine does not parse, is removed by Type under every option, which removes it wherever the first supported release's IODs make it Type 3 (D-022); an Enhanced CT Image, Enhanced MR Image, or Enhanced MR Color Image instance with an ICC Profile at the top level, where it is Type 1, is sequestered until a reviewed rule gives it a dummy value (D-021).
 The engine reads sources whose transfer syntax encapsulates Pixel Data, so that their values reach the residual search, but the first supported release de-identifies only Implicit and Explicit VR Little Endian instances and sequesters any other, so it writes no compressed bitstream.
 Remaining: removing metadata in compressed pixel data without recompression (M3).
 '''
@@ -925,7 +925,7 @@ implementation = [
 note = '''
 Recognizable Visual Features of YES, an RT Structure Set's contours of an ROI whose interpreted type or name is EXTERNAL, BODY, or SKIN, the patient's outline, and every CT volume, whatever its slice spacing, are reported as indicators of a reconstructable face, and a volume that names a region of the head or neck as showing it.
 Each run lists each instance's indicators and each series' indicators, assessed over its released and held instances, in its QC pack for review.
-Remaining: the `public-release` assessment and face review (M4).
+Remaining: the volume indicator for MR and PET volumes, which the first supported release now supports, and the indicator of PET series from which body weight can be recovered (D-015); and the `public-release` assessment and face review (M4).
 '''
 
 [[requirement]]
