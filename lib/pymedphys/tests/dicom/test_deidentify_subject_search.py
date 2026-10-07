@@ -177,16 +177,17 @@ def test_each_value_is_derived_once_for_every_file_searched():
     assert results[1:] == results[:1] * 2
 
 
-def test_a_values_forms_are_kept_only_while_an_equal_value_is():
+def test_a_values_forms_are_kept_only_while_the_value_first_derived_is():
     prepared = residuals._PREPARED  # pylint: disable = protected-access
     value = _source("(0010,0010)", "PN", "OKAPI^XENOCRATES")
     find_residuals(b"", [value])
-    assert _source("(0010,0010)", "PN", "OKAPI^XENOCRATES") in prepared
+    copy = dataclasses.replace(value)
+    assert copy in prepared  # an equal value reuses the entry
 
     del value
     gc.collect()
 
-    assert _source("(0010,0010)", "PN", "OKAPI^XENOCRATES") not in prepared
+    assert copy not in prepared  # but does not keep it
 
 
 def test_anything_but_a_source_value_is_still_refused():

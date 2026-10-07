@@ -428,8 +428,8 @@ def find_residuals(
         instance's own and its subject's from the run's other instances.
         Repeated values are searched once, and values equal to a constant
         that the engine writes are not searched. Each value's forms are
-        derived once, and kept for later searches while a value equal to
-        it exists.
+        reused while the cached SourceValue object remains alive; an equal
+        object can reuse that entry, but does not extend its lifetime.
 
     Returns
     -------
@@ -589,9 +589,10 @@ class _Prepared:
     unsearched: tuple[Unsearched, ...]
 
 
-# Each value's preparation, kept for as long as a value equal to it is: a
-# subject's values are searched for in every one of its files, so each is
-# derived once, not once for each file.
+# Each value's preparation, kept for as long as the value it was first
+# derived for is: a subject's values are searched for in every one of its
+# files, so each is derived once, not once for each file. An equal value
+# reuses the entry, but does not keep it.
 _PREPARED: weakref.WeakKeyDictionary[SourceValue, _Prepared] = (
     weakref.WeakKeyDictionary()
 )
