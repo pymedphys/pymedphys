@@ -457,13 +457,10 @@ def qc_pack(named: Callable[[str], str]) -> list[str]:
     vrs = join(sorted(RETAINED_TEXT_VRS), "or")
     exempt = join(named(tag) for tag in sorted(_NOT_REVIEWED_TAGS))
     unreviewable = code(TransformReason.UNREVIEWABLE_RETAINED_TEXT.value)
-    volume, head, unreadable = (
+    volume = join((code(each.value) for each in pixel_risk.VOLUME_INDICATORS), "or")
+    head, unreadable = (
         code(indicator.value)
-        for indicator in (
-            Indicator.CT_VOLUME,
-            Indicator.HEAD_OR_NECK,
-            Indicator.UNREADABLE,
-        )
+        for indicator in (Indicator.HEAD_OR_NECK, Indicator.UNREADABLE)
     )
     return [
         "## QC pack",
@@ -480,34 +477,31 @@ def qc_pack(named: Callable[[str], str]) -> list[str]:
         "The engine writes Pixel Data (7FE0,0010) unchanged and claims "
         "neither Clean Pixel Data nor Clean Recognizable Visual Features. "
         "The QC pack lists each instance whose source's attributes show an "
-        "indicator of text burned into its pixel data or of a face that "
-        "could be reconstructed, with those indicators, and, where the "
+        "indicator of text burned into its pixel data, of a face that could "
+        "be reconstructed, or of values that may disclose the patient's body "
+        "weight, with those indicators, and, where the "
         "instance is released or held for review, previews its written file "
         "at full resolution or records why it could not. The engine reads "
         "these indicators from the "
         "instance's attributes, never from its pixel data, so the absence "
         "of an indicator is not evidence that the risk is absent (D-015).",
         "",
-        "The QC pack also lists each CT volume among the instances that are "
+        "The QC pack also lists each CT, MR, and PET volume among the "
+        "instances that are "
         "released or held for review, as one that may hold a face that could "
         f"be reconstructed, by {volume}, whether or not it covers the face, "
         "since the engine cannot tell without inspecting its pixel data; "
         "where the volume's attributes name a region of the head or neck in "
         f"a reviewed list from PS3.16 Annex L, by {head}; and where such "
         f"evidence cannot be read, by {unreadable}; each with the instances "
-        "that show it. A CT volume is a series whose CT images hold at least "
-        "two frames that are not localizers, or an Enhanced or Legacy "
-        "Converted Enhanced CT image whose Number of Frames cannot be read. "
+        "that show it. A volume is a series whose images of one of those "
+        "modalities hold at least two frames that are not localizers, or an "
+        "Enhanced or Legacy Converted Enhanced image whose Number of Frames "
+        "cannot be read. "
         "The run groups instances into series by their source's "
         f"{named(_SERIES_INSTANCE_UID)}, which it never writes, and assesses "
         "only the released and held instances, so a series with just one "
-        "single-frame CT image among them is not a volume (D-015).",
-        "",
-        "MR and PET volumes are not yet listed as volumes, so an MR or PET "
-        "series is listed as one that may hold a face only where an "
-        f"instance's {named('(0028,0302)')} is YES, and no PET series is yet "
-        "listed as one from which the patient's body weight could be "
-        "recovered (D-015).",
+        "single-frame image among them is not a volume (D-015).",
     ]
 
 
@@ -589,7 +583,7 @@ def release_report() -> list[str]:
         + join((code(indicator.value) for indicator in pixel_risk.Indicator), "or")
         + ", each instance once for each, an identical copy counting as the "
         "instance it copies, and names none of them (D-015). The indicators "
-        "are read from the instances' attributes, and a CT volume's from its "
+        "are read from the instances' attributes, and a volume's from its "
         "series; the pixel data are not inspected, so an instance without an "
         "indicator may still show the risk.",
         "",
