@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module joins the engine's per-instance steps, so it is long.
+
 """De-identify one instance of a run: the run's concrete transform.
 
 :class:`InstanceTransform` is the
@@ -128,6 +131,7 @@ from .release_gate import (
     ReasonCode,
     ReleaseCondition,
     ReleaseReason,
+    SubjectCoverages,
     Uncollected,
     release_condition,
 )
@@ -956,10 +960,15 @@ class ReleaseGate:
     in the file, with the file. What the search leaves out of the instance's
     own values is the transform's material (:func:`omissions_of`), since the
     search covers the subject's other instances' values too.
+
+    A gate merges each subject's coverages once
+    (:class:`~.release_gate.SubjectCoverages`), so one gate is made for each
+    run.
     """
 
     def __init__(self, condition: _Condition = release_condition) -> None:
         self._condition = condition
+        self._subjects = SubjectCoverages()
 
     def __repr__(self) -> str:
         return "ReleaseGate()"
@@ -969,7 +978,7 @@ class ReleaseGate:
     ) -> Release | HoldForReview | Sequestered:
         given = tuple(each for each in subject if each is not NO_EVIDENCE)
         coverages = tuple(_coverage(each) for each in (evidence, *given))
-        condition = self._condition(Coverage.merge(*coverages[1:]), written)
+        condition = self._condition(self._subjects.merge(coverages[1:]), written)
         held = evidence.held if isinstance(evidence, HeldEvidence) else ()
         # Each value's omissions are its own instance's material, from the
         # transform, so the pooled search's are left out here.
