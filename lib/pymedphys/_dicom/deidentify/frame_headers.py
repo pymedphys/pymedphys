@@ -47,6 +47,11 @@ match. JPEG and JPEG-LS samples are always unsigned, so Pixel
 Representation is not compared for them. RLE Lossless (PS3.5 Annex G)
 holds none of these, and is not read here.
 
+A JPEG or JPEG-LS codestream must also reach its EOI marker, and each of
+its scans must hold entropy-coded data, since pylibjpeg decodes a frame
+whose scan is empty, or that stops before EOI, without an error. Damaged
+entropy-coded data that is still followed by EOI is not detected here.
+
 A frame without such a header, or whose marker segments do not hold
 together, gives :attr:`~.reasons.TransformReason.UNDECODABLE_PIXEL_DATA`;
 one whose header does not match gives
@@ -185,8 +190,9 @@ def _matches(transfer_syntax: str, header: _Header, declared: Declared) -> bool:
 
 def _jpeg(codestream: bytes, ls: bool) -> _Header | None:
     """Return the frame header and each scan's NEAR of a JPEG or JPEG-LS
-    codestream, or ``None`` where its marker segments do not hold together
-    or it has no frame header before its first scan, or more than one."""
+    codestream, or ``None`` where its marker segments do not hold together,
+    a scan has no entropy-coded data, it has no EOI marker, or it has no
+    frame header before its first scan, or more than one."""
     if codestream[:2] != b"\xff\xd8":
         return None
     frame: tuple[int, ...] | None = None
@@ -212,10 +218,12 @@ def _jpeg(codestream: bytes, ls: bool) -> _Header | None:
                 return None
             # Ns, then Ns of Csj and Tdj or Tmj, then Ss, NEAR in JPEG-LS.
             near.add(payload[1 + 2 * payload[0]])
+            scan = position
             position = _scan_end(codestream, position, ls)
+            if position == scan:
+                return None
     else:
-        if position < end:
-            return None
+        return None
     if frame is None:
         return None
     marker, precision, rows, columns, samples = frame
