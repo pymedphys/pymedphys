@@ -215,21 +215,108 @@ def test_nesting_deeper_than_the_limit_is_refused():
             source.SourceReason.TRANSFER_SYNTAX,
         ),
         (
-            _file("1.2.840.10008.1.2.5", _explicit(0x00100010, "PN", NAME)),
-            source.SourceReason.TRANSFER_SYNTAX,
-        ),
-        (
             _file("1.2.840.10008.1.2.1.99", _explicit(0x00100010, "PN", NAME)),
             source.SourceReason.TRANSFER_SYNTAX,
         ),
+        (
+            _file("1.2.840.10008.1.2.4.92", _explicit(0x00100010, "PN", NAME)),
+            source.SourceReason.TRANSFER_SYNTAX,
+        ),
+        (
+            _file("1.2.840.10008.1.2.4.94", _explicit(0x00100010, "PN", NAME)),
+            source.SourceReason.TRANSFER_SYNTAX,
+        ),
+        (
+            _file("1.2.840.10008.1.2.4.100", _explicit(0x00100010, "PN", NAME)),
+            source.SourceReason.TRANSFER_SYNTAX,
+        ),
+        (
+            _file("1.2.840.99999.1", _explicit(0x00100010, "PN", NAME)),
+            source.SourceReason.TRANSFER_SYNTAX,
+        ),
     ],
-    ids=["no-dicm", "big-endian", "rle", "deflated"],
+    ids=[
+        "no-dicm",
+        "big-endian",
+        "deflated",
+        "jpeg-2000-part-2",
+        "jpip",
+        "mpeg2",
+        "private",
+    ],
 )
 def test_a_file_outside_the_supported_encodings_is_refused(data, reason):
     with pytest.raises(source.SourceRefused) as raised:
         source.read_source(data)
 
     assert raised.value.reason is reason
+
+
+def test_the_supported_syntaxes_are_native_or_encapsulate_pixel_data():
+    assert source.NATIVE_TRANSFER_SYNTAXES == {IMPLICIT, EXPLICIT}
+    assert source.SUPPORTED_TRANSFER_SYNTAXES == (
+        source.NATIVE_TRANSFER_SYNTAXES | source.ENCAPSULATED_TRANSFER_SYNTAXES
+    )
+    for uid in source.SUPPORTED_TRANSFER_SYNTAXES:
+        syntax = pydicom.uid.UID(uid)
+        assert syntax.is_transfer_syntax
+        assert syntax.is_little_endian
+        assert not syntax.is_deflated
+        assert syntax.is_encapsulated is (uid in source.ENCAPSULATED_TRANSFER_SYNTAXES)
+    # PS3.5 Section A.4 numbers the JPEG, RLE, JPEG-LS, JPEG 2000, and HTJ2K
+    # syntaxes; JPEG 2000 Part 2, JPIP, and video are not among them.
+    assert source.ENCAPSULATED_TRANSFER_SYNTAXES == {
+        *(f"1.2.840.10008.1.2.4.{n}" for n in (50, 51, 57, 70, 80, 81, 90, 91)),
+        *(f"1.2.840.10008.1.2.4.{n}" for n in (201, 202, 203)),
+        "1.2.840.10008.1.2.5",
+    }
+
+
+@pytest.mark.parametrize("syntax", sorted(source.ENCAPSULATED_TRANSFER_SYNTAXES))
+def test_a_file_that_encapsulates_pixel_data_is_admitted(syntax):
+    pixel_data = (
+        _explicit(0x7FE00010, "OB", length=UNDEFINED)
+        + _item()
+        + _item(b"\xff\xd8FRAME\xff\xd9\x00")
+        + SEQUENCE_END
+    )
+    data = _file(syntax, _explicit(0x00100010, "PN", NAME) + pixel_data)
+
+    evidence = source.read_source(data)
+
+    path = ElementPath((), "(7FE0,0010)")
+    assert evidence.transfer_syntax == syntax
+    assert evidence.encoded(path) == pixel_data
+    assert source.encapsulated_pixel_data(evidence, path)
+    assert not source.encapsulated_pixel_data(evidence, ElementPath((), "(0010,0010)"))
+
+
+@pytest.mark.parametrize(
+    "pixel_data",
+    [
+        _explicit(0x7FE00010, "OW", length=UNDEFINED) + _item() + SEQUENCE_END,
+        _explicit(0x7FE00010, "OB", length=UNDEFINED) + SEQUENCE_END,
+    ],
+    ids=["ow", "no-items"],
+)
+def test_pixel_data_that_section_a_4_does_not_allow_is_not_encapsulated(pixel_data):
+    # Encapsulated Pixel Data is OB, and its first item is the Basic Offset
+    # Table, empty or not (PS3.5 Section A.4).
+    evidence = source.read_source(_file("1.2.840.10008.1.2.4.70", pixel_data))
+
+    assert not source.encapsulated_pixel_data(evidence, ElementPath((), "(7FE0,0010)"))
+
+
+def test_pixel_data_fragments_in_a_native_syntax_are_not_encapsulated_pixel_data():
+    pixel_data = (
+        _explicit(0x7FE00010, "OB", length=UNDEFINED)
+        + _item()
+        + _item(b"FRAGMENT")
+        + SEQUENCE_END
+    )
+    evidence = source.read_source(_file(EXPLICIT, pixel_data))
+
+    assert not source.encapsulated_pixel_data(evidence, ElementPath((), "(7FE0,0010)"))
 
 
 def test_evidence_does_not_change_with_its_input_or_its_data_sets():

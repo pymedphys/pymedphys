@@ -50,7 +50,7 @@ note = '''
 Reviewed rules add the text attributes, dates, and times that Table E.1-1 omits to those protected (D-022, D-023).
 A policy keeps (K) each attribute that its selected options retain, and an option set that gives an attribute to be retained another action as well is rejected.
 The one exception is `tps-import`, which modifies eleven device and beam hold dates and times that Retain Device Identity would keep and claims no PS3.15 conformance (D-007).
-A written file can be verified against the plan for its instance: every source element is kept, changed, or removed; nothing else is written; the file has its source's transfer syntax; every change is written; and each kept element has the same VR as written, length form, and Value Field bytes as in the source, a kept private element the same Private Creator, and kept text the same Specific Character Set in force, so a VR resolved again or text decoded and encoded again is refused.
+A written file can be verified against the plan for its instance: every source element is kept, changed, or removed; nothing else is written; the file has its source's transfer syntax; every change is written; and each kept element has the same VR as written, length form, and Value Field bytes as in the source, encapsulated Pixel Data the same bytes as a whole, a kept private element the same Private Creator, and kept text the same Specific Character Set in force, so a VR resolved again or text decoded and encoded again is refused.
 A data set is written from its source's bytes: each kept element is copied byte for byte, including a sequence with no change in it; a kept sequence with a change in it is written with undefined lengths, keeping every item; and only replacements and introduced elements are encoded, each refused unless its text can be written in the character set in force at its place and its VR is the one written, so pydicom never re-encodes a kept value or resolves its VR again.
 A plan that keeps an element inside a removed or replaced sequence, keeps a group length, or changes the character set of kept text is refused.
 The run's instance transform plans each instance's data set from its policy, writes it this way, verifies it, and sequesters an instance whose output fails verification.
@@ -904,7 +904,7 @@ implementation = [
 ]
 note = '''
 ICC Profile (0028,2000), an embedded file whose contents the engine does not parse, is removed by Type under every option, which removes it wherever the first supported release's IODs define it (D-022).
-The first supported release reads only Implicit and Explicit VR Little Endian sources and sequesters an instance in any other transfer syntax, so it writes no compressed bitstream.
+The engine reads sources whose transfer syntax encapsulates Pixel Data, so that their values reach the residual search, but the first supported release de-identifies only Implicit and Explicit VR Little Endian instances and sequesters any other, so it writes no compressed bitstream.
 Remaining: removing metadata in compressed pixel data without recompression (M3).
 '''
 
