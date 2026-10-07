@@ -252,8 +252,7 @@ The Conformance Statement of an application that claims conformance to the Basic
 - which Options are supported;
 - any additional restrictions (e. g. key sizes for public keys).
 '''
-status = "partial"
-milestone = "M6"
+status = "implemented"
 decisions = ["D-003", "D-004", "D-005", "D-006", "D-007", "D-012", "D-013", "D-016", "D-020", "D-021", "D-022", "D-023", "D-025", "D-026", "D-027"]
 implementation = [
   "_dicom/deidentify/conformance.py",
@@ -270,7 +269,8 @@ Plain X, Z, and D are resolved by Type at every place too (D-020), except within
 Where an IOD requires an attribute given a plain X, the statement names the enclosing sequence or overlay group that D-020 removes with it, or that the instance is sequestered, and each is checked against the walker's plan of a synthetic instance.
 Under Clean Descriptors, it describes how ROI Name is cleaned in two tiers: automatic renaming against a published TG-263 edition, which it names, and reviewers' decisions, with every reason a name is held, what is written for each, and the condition on which an instance gains the Clean Descriptors code, each checked against the engine (D-009).
 Each run with a release reporter writes the statement of its policy, as `conformance-statement.md` beside the release report at the root of the release, since it holds no instance value; it describes the policy and vocabulary that the report records, and the report gives the run's own method digest and reviewed-names digest.
-Remaining: the manner of cleaning an attribute to which the policy gives C other than under Clean Descriptors alone, including how Modified Dates modifies dates and times; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; the safe private attributes retained, for a policy that selects Retain Safe Private; and the synthetic birth date of `tps-import`.
+The statements of `basic` and `basic-clean-descriptors`, the presets of the first supported release, list nothing as pending.
+A statement still lists as pending, and so claims nothing for, the manner of cleaning an attribute to which the policy gives C other than under Clean Descriptors alone, including how Modified Dates modifies dates and times; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; the safe private attributes retained, for a policy that selects Retain Safe Private; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset (PS3.15-E.3.6-04, PS3.15-E.3.7-02, PS3.15-E.3.10-04).
 '''
 
 [[requirement]]
@@ -400,8 +400,7 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The manner of cleaning shall be described in the Conformance Statement.
 '''
-status = "partial"
-milestone = "M6"
+status = "implemented"
 decisions = ["D-009"]
 implementation = [
   "_dicom/deidentify/conformance.py",
@@ -411,7 +410,7 @@ note = '''
 The conformance statement describes how ROI Name (3006,0026) is cleaned under Clean Descriptors: automatic renaming against the published TG-263 edition that it names, or none without such a vocabulary, the reasons a name goes to review, the reviewers' decisions, the checks of what a reviewed decision would write, that a run's method digest covers its reviewed list (D-024), and what cleaning writes for each name, including that a held name holds its instance for review.
 It also says that a run can be given an institutional list of ROI names, which renames nothing and only shows the reviewer of a held name the list's names it matched.
 Every other attribute given C under Clean Descriptors takes the action that the policy gives it without that option, as the maintainer decided on 6 October 2026 (D-009); the statement lists that action for each, at each place, as the one the engine applies, so for `basic-clean-descriptors` it lists no manner of cleaning as pending.
-Remaining: the manner of cleaning an attribute to which the policy gives C without Clean Descriptors too, such as the dates and times under Modified Dates (E.3.6) and the patient characteristics under Retain Patient Characteristics (E.3.7), which no M6 preset selects.
+The manner of cleaning an attribute to which the policy gives C without Clean Descriptors too, such as the dates and times under Modified Dates (E.3.6) and the patient characteristics under Retain Patient Characteristics (E.3.7), which no preset of the first supported release selects, is listed as pending until those options are implemented (PS3.15-E.3.6-04, PS3.15-E.3.7-02).
 '''
 
 [[requirement]]
@@ -983,8 +982,7 @@ id = "MIDI-BP-18"
 text = '''
 Document the de-identification process in detail, including the release of PS3.15 and the Options used, and publish the documentation, or a reference to it, with the collection.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-009", "D-011", "D-012", "D-016", "D-024", "D-026", "D-027", "D-029"]
 implementation = [
   "_dicom/deidentify/conformance.py",
@@ -1006,5 +1004,5 @@ A run given a reporter writes the report as `release-report.json` at the root of
 Beside the report, the run writes its human-readable form as `release-report.md`: CommonMark, with GitHub Flavored Markdown tables, generated from the JSON text alone, which shows every value of the document, and each file name that keys a digest, as a code span as often as the document holds it, and draws nothing else from the report; the same text always gives the same form, and a report whose form cannot be generated publishes nothing.
 Every reason that sequesters or holds an instance in a run, from the run's own checks, the transform, the writer, the preservation check, and the release gate, has a stage and code in the report, and the codes within each stage are distinct.
 Each run given a release reporter publishes the conformance statement of its policy with its release, beside the release report.
-Remaining: writing it in every run, which `run.run` does only when given a reporter, as the command always gives one (M4).
+Both supported entry points, `pymedphys._dicom.deidentify.api.deidentify` and the command's `main`, always give the run a reporter, unless a test supplies the command's transform, so every run they start publishes the release report and the conformance statement; `run.run` and `command.deidentify_directory`, which are private, write them only when given one.
 '''
