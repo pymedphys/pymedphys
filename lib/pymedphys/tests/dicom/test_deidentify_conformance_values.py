@@ -615,22 +615,39 @@ def test_the_qc_pack_lists_what_the_run_keeps_for_review(preset):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
-def test_the_qc_pack_lists_each_ct_volume(preset):
+def test_the_qc_pack_lists_each_ct_mr_and_pet_volume(preset):
     section = _section(preset, "QC pack")
     for indicator in (
-        pixel_risk.Indicator.CT_VOLUME,
+        *pixel_risk.VOLUME_INDICATORS,
         pixel_risk.Indicator.HEAD_OR_NECK,
         pixel_risk.Indicator.UNREADABLE,
     ):
         assert f"`{indicator.value}`" in section
-    assert "each CT volume among the instances that are released or held" in section
+    assert "`ct-volume`, `mr-volume`, or `pet-volume`" in section
+    assert (
+        "each CT, MR, and PET volume among the instances that are released or held"
+        in section
+    )
     assert "PS3.16 Annex L" in section
     assert "Series Instance UID (0020,000E), which it never writes" in section
     assert "assesses only the released and held instances" in section
     assert (
-        "a series with just one single-frame CT image among them is not a volume"
+        "a series with just one single-frame image among them is not a volume"
         in section
     )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_the_qc_pack_and_report_describe_a_disclosed_body_weight(preset):
+    assert "or of values that may disclose the patient's body weight" in _section(
+        preset, "QC pack"
+    )
+    for value in (
+        pixel_risk.Risk.BODY_WEIGHT.value,
+        pixel_risk.Indicator.SUV_UNITS.value,
+        pixel_risk.Indicator.SUV_MAPPING.value,
+    ):
+        assert f"`{value}`" in _section(preset, "Release report")
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")

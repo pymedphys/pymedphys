@@ -455,7 +455,7 @@ def _pixel_risks(section: object) -> list[Block]:
             "How many released instances, and how many held for review, show "
             "each risk in their pixel data, and each indicator of it, each "
             "instance once for each. The indicators are read from the "
-            "instances' attributes, and a CT volume's from its series; the "
+            "instances' attributes, and a volume's from its series; the "
             "pixel data are not inspected or changed, so an instance without "
             "an indicator may still show the risk. Only the confidential QC "
             "pack lists the instances."

@@ -534,6 +534,7 @@ def test_each_indicator_bears_on_one_risk_except_unreadable_evidence():
     assert {indicator.risk for indicator in Indicator} == {
         Risk.BURNED_IN_TEXT,
         Risk.RECONSTRUCTABLE_FACE,
+        Risk.BODY_WEIGHT,
         None,
     }
     assert Indicator.UNREADABLE.risk is None
@@ -651,14 +652,14 @@ def test_every_ct_volume_may_hold_a_reconstructable_face(transfer_syntax):
     series = [_slice(n) for n in range(3)]
     if transfer_syntax is not None:
         series = [_read_back(each, transfer_syntax) for each in series]
-    findings = pixel_risk.assess_ct_series(series)
+    findings = pixel_risk.assess_series(series)
     assert _series_found(findings) == {(Indicator.CT_VOLUME, (0, 1, 2), None)}
     assert {f.risk for f in findings} == {Risk.RECONSTRUCTABLE_FACE}
 
 
 def test_one_ct_image_is_no_volume():
-    assert not pixel_risk.assess_ct_series([_slice(0)])
-    assert not pixel_risk.assess_ct_series([])
+    assert not pixel_risk.assess_series([_slice(0)])
+    assert not pixel_risk.assess_series([])
 
 
 def test_localizers_and_other_iods_are_not_part_of_a_volume():
@@ -666,17 +667,17 @@ def test_localizers_and_other_iods_are_not_part_of_a_volume():
     dose = _slice(2)
     dose.SOPClassUID = RT_DOSE
     series = [_slice(0), _slice(1, ImageType=localizer), dose]
-    assert not pixel_risk.assess_ct_series(series)
+    assert not pixel_risk.assess_series(series)
     for_processing = _slice(3)
     for_processing.SOPClassUID = CT_FOR_PROCESSING
-    findings = pixel_risk.assess_ct_series([*series, for_processing])
+    findings = pixel_risk.assess_series([*series, for_processing])
     assert _series_found(findings) == {(Indicator.CT_VOLUME, (0, 3), None)}
 
 
 def test_a_ct_image_without_image_type_counts_towards_a_volume():
     series = [_slice(0), _slice(1)]
     del series[1].ImageType
-    findings = pixel_risk.assess_ct_series(series)
+    findings = pixel_risk.assess_series(series)
     assert _series_found(findings) == {(Indicator.CT_VOLUME, (0, 1), None)}
 
 
@@ -688,7 +689,7 @@ def test_a_volume_that_names_the_head_or_neck_says_so(transfer_syntax, body_part
     series[2].BodyPartExamined = body_part
     if transfer_syntax is not None:
         series = [_read_back(each, transfer_syntax) for each in series]
-    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+    assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.CT_VOLUME, (0, 1, 2), None),
         (Indicator.HEAD_OR_NECK, (1, 2), "(0018,0015)"),
     }
@@ -697,7 +698,7 @@ def test_a_volume_that_names_the_head_or_neck_says_so(transfer_syntax, body_part
 @pytest.mark.parametrize("body_part", ["CHEST", "PELVIS", "ABDOMEN", ""])
 def test_a_volume_elsewhere_is_only_a_volume(body_part):
     series = [_slice(n, BodyPartExamined=body_part) for n in range(2)]
-    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+    assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.CT_VOLUME, (0, 1), None)
     }
 
@@ -721,7 +722,7 @@ def test_an_anatomic_region_code_can_name_the_head(transfer_syntax, code, scheme
     ]
     if transfer_syntax is not None:
         series = [_read_back(each, transfer_syntax) for each in series]
-    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+    assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.CT_VOLUME, (0, 1), None),
         (Indicator.HEAD_OR_NECK, (0,), "(0008,2218)[1] > (0008,0100)"),
     }
@@ -730,13 +731,13 @@ def test_an_anatomic_region_code_can_name_the_head(transfer_syntax, code, scheme
 def test_a_code_of_another_scheme_names_nothing():
     series = [_slice(0), _slice(1)]
     series[0].AnatomicRegionSequence = [_region("69536005", "SRT")]
-    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+    assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.CT_VOLUME, (0, 1), None)
     }
 
 
 def test_one_ct_image_of_the_head_is_no_volume():
-    assert not pixel_risk.assess_ct_series([_slice(0, BodyPartExamined="HEAD")])
+    assert not pixel_risk.assess_series([_slice(0, BodyPartExamined="HEAD")])
 
 
 @pytest.mark.parametrize(
@@ -753,7 +754,7 @@ def test_an_unreadable_attribute_of_a_ct_series_is_unreadable_evidence(
 ):
     series = [_slice(0), _slice(1)]
     _with_raw(series[1], tag, vr, value)
-    findings = pixel_risk.assess_ct_series(series)
+    findings = pixel_risk.assess_series(series)
     assert (Indicator.UNREADABLE, (1,), path) in _series_found(findings)
     # An instance whose SOP Class cannot be read may still be a CT image.
     assert (Indicator.CT_VOLUME, (0, 1), None) in _series_found(findings)
@@ -774,7 +775,7 @@ def test_one_multi_frame_ct_image_can_be_a_volume(transfer_syntax, sop_class):
     series = [_multi_frame(0, sop_class, NumberOfFrames=3, BodyPartExamined="HEAD")]
     if transfer_syntax is not None:
         series = [_read_back(each, transfer_syntax) for each in series]
-    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+    assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.CT_VOLUME, (0,), None),
         (Indicator.HEAD_OR_NECK, (0,), "(0018,0015)"),
     }
@@ -805,7 +806,7 @@ def test_shared_frame_anatomy_can_name_the_head(transfer_syntax, sop_class):
     ]
     if transfer_syntax is not None:
         series = [_read_back(each, transfer_syntax) for each in series]
-    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+    assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.CT_VOLUME, (0,), None),
         (Indicator.HEAD_OR_NECK, (0,), SHARED_HEAD),
     }
@@ -822,7 +823,7 @@ def test_per_frame_anatomy_can_name_the_head(transfer_syntax):
     ]
     if transfer_syntax is not None:
         series = [_read_back(each, transfer_syntax) for each in series]
-    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+    assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.CT_VOLUME, (0,), None),
         (
             Indicator.HEAD_OR_NECK,
@@ -843,7 +844,7 @@ def test_frame_anatomy_elsewhere_is_only_a_volume():
         _frame_anatomy(_region("51185008", "SCT"))
     ]
     series[0].PerFrameFunctionalGroupsSequence = [pydicom.Dataset()] * 3
-    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+    assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.CT_VOLUME, (0,), None)
     }
 
@@ -890,7 +891,7 @@ def test_unreadable_frame_anatomy_is_unreadable_evidence(where, tag, vr, value, 
         "region": anatomy.AnatomicRegionSequence[0],
     }[where]
     _with_raw(held, tag, vr, value)
-    findings = pixel_risk.assess_ct_series([image])
+    findings = pixel_risk.assess_series([image])
     found = _series_found(findings)
     assert (Indicator.UNREADABLE, (0,), path) in found
     assert (Indicator.CT_VOLUME, (0,), None) in found
@@ -905,7 +906,7 @@ def test_assessing_frame_anatomy_leaves_the_instance_as_it_was_read():
     image.SharedFunctionalGroupsSequence = [_frame_anatomy(_region("69536005", "SCT"))]
     image = _read_back(image, EXPLICIT_LE)
     before = {tag: image.get_item(tag, keep_deferred=True) for tag in image.keys()}
-    assert _series_found(pixel_risk.assess_ct_series([image])) == {
+    assert _series_found(pixel_risk.assess_series([image])) == {
         (Indicator.CT_VOLUME, (0,), None),
         (Indicator.HEAD_OR_NECK, (0,), SHARED_HEAD),
     }
@@ -916,23 +917,23 @@ def test_assessing_frame_anatomy_leaves_the_instance_as_it_was_read():
 @pytest.mark.parametrize("sop_class", MULTI_FRAME_CT)
 def test_single_frames_of_multi_frame_ct_images_add_up_to_a_volume(sop_class):
     one = _multi_frame(0, sop_class, NumberOfFrames=1)
-    assert not pixel_risk.assess_ct_series([one])
+    assert not pixel_risk.assess_series([one])
     # Number of Frames is Type 1, but one missing must not hide a volume.
     other = _multi_frame(1, sop_class)
-    assert _series_found(pixel_risk.assess_ct_series([one, other])) == {
+    assert _series_found(pixel_risk.assess_series([one, other])) == {
         (Indicator.CT_VOLUME, (0, 1), None)
     }
     localizer = _multi_frame(
         2, sop_class, NumberOfFrames=5, ImageType=["ORIGINAL", "PRIMARY", "LOCALIZER"]
     )
-    assert not pixel_risk.assess_ct_series([one, localizer])
+    assert not pixel_risk.assess_series([one, localizer])
 
 
 @pytest.mark.parametrize("value", [b"0 ", b"-3", b"2\\3", b"many"])
 def test_an_unreadable_number_of_frames_may_hide_a_volume(value):
     series = [_multi_frame(0, MULTI_FRAME_CT[0])]
     _with_raw(series[0], 0x00280008, "IS", value)
-    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+    assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.CT_VOLUME, (0,), None),
         (Indicator.UNREADABLE, (0,), "(0028,0008)"),
     }
@@ -942,12 +943,12 @@ def test_an_unreadable_number_of_frames_may_hide_a_volume(value):
 def test_unreadable_evidence_is_reported_without_a_volume():
     lone = _slice(0)
     _with_raw(lone, 0x00080016, "UI", b"1.2.\xff")
-    assert _series_found(pixel_risk.assess_ct_series([lone])) == {
+    assert _series_found(pixel_risk.assess_series([lone])) == {
         (Indicator.UNREADABLE, (0,), "(0008,0016)")
     }
     lone = _slice(0)
     _with_raw(lone, 0x00180015, "US", b"\x01\x00")
-    assert _series_found(pixel_risk.assess_ct_series([lone])) == {
+    assert _series_found(pixel_risk.assess_series([lone])) == {
         (Indicator.UNREADABLE, (0,), "(0018,0015)")
     }
 
@@ -956,7 +957,7 @@ def test_more_than_one_sop_class_is_unreadable():
     series = [_slice(0), _slice(1)]
     _with_raw(series[1], 0x00080016, "UI", b"1.2.840.10008.5.1.4.1.1.2\\1.2.3")
     assert (Indicator.UNREADABLE, (1,), "(0008,0016)") in _series_found(
-        pixel_risk.assess_ct_series(series)
+        pixel_risk.assess_series(series)
     )
 
 
@@ -966,7 +967,7 @@ def test_more_than_one_sop_class_is_unreadable():
 def test_a_legacy_or_lower_case_code_names_the_head(code, scheme):
     series = [_slice(0), _slice(1)]
     series[0].AnatomicRegionSequence = [_region(code, scheme)]
-    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+    assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.CT_VOLUME, (0, 1), None),
         (Indicator.HEAD_OR_NECK, (0,), "(0008,2218)[0] > (0008,0100)"),
     }
@@ -987,7 +988,7 @@ def test_an_unreadable_code_is_located_by_its_element(tag, vr, value, path):
     _with_raw(item, tag, vr, value)
     series = [_slice(0), _slice(1)]
     series[0].AnatomicRegionSequence = [item]
-    assert _series_found(pixel_risk.assess_ct_series(series)) == {
+    assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.CT_VOLUME, (0, 1), None),
         (Indicator.UNREADABLE, (0,), path),
     }
@@ -1002,7 +1003,7 @@ def test_assessing_a_series_leaves_its_instances_as_they_were_read():
         {tag: each.get_item(tag, keep_deferred=True) for tag in each.keys()}
         for each in series
     ]
-    pixel_risk.assess_ct_series(series)
+    pixel_risk.assess_series(series)
     for each, elements in zip(series, before):
         for tag, element in elements.items():
             assert each.get_item(tag, keep_deferred=True) is element
