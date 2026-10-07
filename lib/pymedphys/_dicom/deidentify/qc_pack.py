@@ -637,6 +637,7 @@ class PreviewKind(enum.Enum):
 class NotPreviewedReason(enum.Enum):
     """Why an instance has no image preview."""
 
+    # compressed pixel data that no installed plugin is pinned to decode
     COMPRESSED = "compressed-pixel-data"
     UNSUPPORTED = "unsupported-pixel-data"
     UNREADABLE = "unreadable-pixel-data"
