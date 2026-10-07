@@ -327,6 +327,89 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
     }
 
 
+# The CT, MR, and PET IODs that the first supported release is to add.
+ADDED_IODS = (
+    "Enhanced CT Image",
+    "Legacy Converted Enhanced CT Image",
+    "MR Image",
+    "Enhanced MR Image",
+    "Enhanced MR Color Image",
+    "Legacy Converted Enhanced MR Image",
+    "MR Spectroscopy",
+    "Positron Emission Tomography Image",
+    "Enhanced PET Image",
+    "Legacy Converted Enhanced PET Image",
+)
+# The text attributes that those IODs use and that neither Table E.1-1 nor
+# the IODs of SUPPORTED_IODS cover, by group, checked by hand against the
+# 2026d PS3.3.
+ADDED_OPERATOR_TEXT = {
+    "(0018,0024)",  # Sequence Name
+    "(0018,0031)",  # Radiopharmaceutical
+    "(0018,0034)",  # Intervention Drug Name
+    "(0018,003A)",  # Intervention Description
+    "(0018,1070)",  # Radiopharmaceutical Route
+    "(0018,1085)",  # PVC Rejection
+    "(0018,9046)",  # Multi-Coil Configuration
+    "(0018,9080)",  # Metabolite Map Description
+    "(0018,9252)",  # ASL Technique Description
+    "(0018,925B)",  # ASL Crusher Description
+    "(0018,925E)",  # ASL Bolus Cut-off Technique
+    "(0020,9421)",  # Dimension Description Label
+    "(0054,1101)",  # Attenuation Correction Method
+    "(0054,1103)",  # Reconstruction Method
+    "(0054,1104)",  # Detector Lines of Response Used
+    "(0054,1105)",  # Scatter Correction Method
+}
+ADDED_DEVICE_IDENTITY = {
+    "(0018,1250)",  # Receive Coil Name
+    "(0018,1251)",  # Transmit Coil Name
+    "(0018,9041)",  # Receive Coil Manufacturer Name
+    "(0018,9047)",  # Multi-Coil Element Name
+    "(0018,9050)",  # Transmit Coil Manufacturer Name
+}
+ADDED_KEPT_TEXT = {
+    "(0018,0085)",  # Imaged Nucleus
+    "(0018,1064)",  # Cardiac Framing Type
+    "(0018,1180)",  # Collimator/Grid Name
+    "(0018,9005)",  # Pulse Sequence Name
+    "(0018,9175)",  # Applicable Safety Standard Description
+    "(0018,9320)",  # Image Filter
+    "(0020,9056)",  # Stack ID
+    "(0020,9213)",  # Dimension Index Private Creator
+    "(0020,9238)",  # Functional Group Private Creator
+    "(0020,9453)",  # Frame Label
+}
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_of_the_ct_mr_and_pet_iods_to_be_added_has_reviewed_rules():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    added = {
+        definition.tag
+        for name in ADDED_IODS
+        for definition in tables.iods[name].definitions
+        if TEXT_VRS.intersection(dictionary[definition.tag].vrs)
+    } - set(_table_e1_1())
+    rules = _rules()
+
+    assert added - _omitted_text() == (
+        ADDED_OPERATOR_TEXT | ADDED_DEVICE_IDENTITY | ADDED_KEPT_TEXT
+    )
+    assert len(added - _omitted_text()) == 31
+    for tags, action, options in (
+        (ADDED_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
+        (ADDED_DEVICE_IDENTITY, "X/Z/D", {DEVICE_IDENTITY: "K"}),
+        (ADDED_KEPT_TEXT, "K", {}),
+    ):
+        for tag in tags:
+            assert (rules[tag].action, dict(rules[tag].options)) == (
+                action,
+                options,
+            ), tag
+
+
 def test_names_identifiers_and_overlay_text_are_removed_under_every_option():
     rules = _rules()
 
@@ -470,8 +553,8 @@ def test_the_declared_default_for_text_without_a_rule_removes_by_type():
         and tag not in rules
     }
 
-    # Such as Pulse Sequence Name, an MR attribute that no supported IOD uses.
-    assert "(0018,9005)" in uncovered
+    # Such as Stage Name, an ultrasound attribute that no supported IOD uses.
+    assert "(0008,2120)" in uncovered
     assert not uncovered & _omitted_text()
     assert supplementary_actions.UNCOVERED_TEXT_ACTION == "X/Z/D"
 
@@ -1030,8 +1113,8 @@ def _with_definition(tmp_path, iod_name, tag):
 @pytest.mark.parametrize(
     "iod_name, required",
     [
-        # A supported IOD that comes to use Pulse Sequence Name, which has no
-        # rule, at any depth, needs a rule for it.
+        # A supported IOD that comes to use Stage Name, which has no rule, at
+        # any depth, needs a rule for it.
         ("RT Plan", True),
         # An IOD that is not supported does not, even once its Types are
         # generated.
@@ -1041,19 +1124,19 @@ def _with_definition(tmp_path, iod_name, tag):
 def test_only_the_text_of_the_supported_iods_needs_rules(
     tmp_path, monkeypatch, iod_name, required
 ):
-    tables = _with_definition(tmp_path, iod_name, "(0018,9005)")
-    assert tables.iods[iod_name].lookup("(0018,9005)", ["(300A,00B0)"])
+    tables = _with_definition(tmp_path, iod_name, "(0008,2120)")
+    assert tables.iods[iod_name].lookup("(0008,2120)", ["(300A,00B0)"])
     monkeypatch.setattr(supplementary_actions, "load_iod_tables", lambda: tables)
     path = _write(tmp_path / "supplementary_actions.toml", _document())
 
     if required:
         with pytest.raises(
             supplementary_actions.SupplementaryActionError,
-            match=re.escape("has no action for (0018,9005)"),
+            match=re.escape("has no action for (0008,2120)"),
         ):
             supplementary_actions.load_supplementary_actions(path)
     else:
-        assert "(0018,9005)" not in (
+        assert "(0008,2120)" not in (
             supplementary_actions.load_supplementary_actions(path).rules
         )
 

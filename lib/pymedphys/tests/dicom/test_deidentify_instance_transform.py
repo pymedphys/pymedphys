@@ -82,7 +82,7 @@ from pymedphys._dicom.deidentify.residuals import (
     written_constants,
 )
 from pymedphys._dicom.deidentify.run_qc import Dropped, SearchMaterial, SeriesEvidence
-from pymedphys._dicom.deidentify.scope import Disposition
+from pymedphys._dicom.deidentify.scope import UnsupportedIod
 from pymedphys._dicom.deidentify.source import SourceReason, read_source
 from pymedphys._dicom.deidentify.uids import UIDOutcome, replacement_uid
 from pymedphys._dicom.deidentify.walker import (
@@ -343,14 +343,15 @@ def test_the_evidence_holds_the_removed_values_and_shows_only_counts():
 
 
 @pytest.mark.deid_requirement("MIDI-BP-06")
-def test_an_instance_the_release_does_not_support_is_sequestered_by_its_disposition():
+def test_an_instance_the_release_does_not_support_is_sequestered_with_its_iod():
     mr = synthetic.instance(
         synthetic.MR_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
     )
     result = _transformed(mr)
 
     assert isinstance(result, run.Sequestered)
-    assert result.reasons == (Disposition.UNSUPPORTED_IOD,)
+    # The IOD comes from PS3.4 Table B.5-1, for the release report (D-010).
+    assert result.reasons == (UnsupportedIod("MR Image"),)
     # Its values are collected for its subject's search, never written (D-027).
     assert isinstance(result.evidence, Coverage)
 
