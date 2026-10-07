@@ -55,10 +55,12 @@ a value.
 
 from __future__ import annotations
 
+import itertools
 import struct
 import types
 from collections.abc import Mapping
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
 from .diagnostics import redacted_diagnostics
@@ -168,7 +170,7 @@ def _offsets_match(source: SourceEvidence, frames: int) -> bool:
     """
     if not encapsulated_pixel_data(source, _PIXEL_DATA):
         return True
-    table, fragments = _fragments(source)
+    table, fragments = fragment_positions(source)
     starts = [start for start, _ in fragments]
     if _EXTENDED_OFFSET_TABLE in source or _EXTENDED_OFFSET_TABLE_LENGTHS in source:
         if table or _EXTENDED_OFFSET_TABLE not in source:
@@ -199,7 +201,7 @@ def _offsets_match(source: SourceEvidence, frames: int) -> bool:
     )
 
 
-def _fragments(source: SourceEvidence) -> tuple[bytes, list[tuple[int, int]]]:
+def fragment_positions(source: SourceEvidence) -> tuple[bytes, list[tuple[int, int]]]:
     """Return the Basic Offset Table, and where each fragment's Item Tag is
     and how long its value is.
 
@@ -227,3 +229,38 @@ def _unsigned(value: bytes, code: str) -> list[int] | None:
     if len(value) % size:
         return None
     return list(struct.unpack(f"<{len(value) // size}{code}", value))
+
+
+def same_pixels(source: SourceEvidence, output: SourceEvidence) -> bool:
+    """Return whether every frame of ``output`` decodes to the same pixels as
+    the frame of ``source`` at the same index, as stored, by the plugin
+    pinned to their transfer syntax.
+
+    Frames are decoded one pair at a time. A frame that does not decode,
+    another number of frames, or another transfer syntax gives ``False``.
+    """
+    plugin = DECODING_PLUGINS.get(source.transfer_syntax)
+    if plugin is None or output.transfer_syntax != source.transfer_syntax:
+        return False
+    sentinel = object()
+    try:
+        with redacted_diagnostics():
+            pairs = itertools.zip_longest(
+                pydicom.pixels.iter_pixels(
+                    source.dataset(), raw=True, decoding_plugin=plugin
+                ),
+                pydicom.pixels.iter_pixels(
+                    output.dataset(), raw=True, decoding_plugin=plugin
+                ),
+                fillvalue=sentinel,
+            )
+            for before, after in pairs:
+                if before is sentinel or after is sentinel:
+                    return False
+                if before.dtype != after.dtype or not np.array_equal(before, after):
+                    return False
+    # pydicom and its plugins raise many types for pixel data they cannot
+    # decode, and a message can quote a value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return False
+    return True
