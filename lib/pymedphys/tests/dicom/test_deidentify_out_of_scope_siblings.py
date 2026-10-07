@@ -14,10 +14,10 @@
 
 """A run collects the values of a patient's instances that are out of scope.
 
-An instance out of scope whose IOD the pinned tables define, such as an MR
-image, is planned and edited only so that its values are searched for in its
-subject's released files; it is never written (D-027). Every file is
-synthetic.
+An instance out of scope whose IOD the pinned tables define, such as a
+nuclear medicine image, is planned and edited only so that its values are
+searched for in its subject's released files; it is never written (D-027).
+Every file is synthetic.
 """
 
 from pymedphys._imports import pydicom, pytest
@@ -42,9 +42,9 @@ _NOT_REPORTED = ReasonCode.NOT_REPORTED
 _REFERRING_PHYSICIANS_NAME = 0x00080090
 
 
-def _mr():
+def _nm():
     return synthetic.instance(
-        synthetic.MR_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
+        synthetic.NM_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
     )
 
 
@@ -65,24 +65,24 @@ def _released(tmp_path):
 
 @pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.3-01")
 def test_an_out_of_scope_sibling_no_longer_withholds_its_subject(tmp_path):
-    result = _run(tmp_path, [_mr(), synthetic.rt_dose()])
+    result = _run(tmp_path, [_nm(), synthetic.rt_dose()])
 
-    mr, dose = result.outcomes
-    assert mr.status is run.Status.SEQUESTERED
-    assert mr.reasons == (Disposition.UNSUPPORTED_IOD,)
+    nm, dose = result.outcomes
+    assert nm.status is run.Status.SEQUESTERED
+    assert nm.reasons == (Disposition.UNSUPPORTED_IOD,)
     assert dose.status is run.Status.RELEASED
-    # Only the dose is written: the MR image was read for its values alone.
+    # Only the dose is written: the NM image was read for its values alone.
     assert len(_released(tmp_path)) == 1
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_value_of_an_out_of_scope_sibling_is_searched_for(tmp_path):
-    mr = _mr()
-    mr.InstitutionName = _SHARED  # removed (X), so collected
+    nm = _nm()
+    nm.InstitutionName = _SHARED  # removed (X), so collected
     dose = synthetic.rt_dose()
     dose.DoseUnits = _SHARED  # kept as it is (K)
 
-    result = _run(tmp_path, [mr, dose])
+    result = _run(tmp_path, [nm, dose])
 
     written = result.outcomes[1]
     assert written.status is not run.Status.RELEASED
@@ -98,12 +98,12 @@ def test_an_out_of_scope_sibling_whose_values_are_not_all_collected_withholds(
 ):
     # Outside ISO 646 with no Specific Character Set, so the name is read only
     # as bytes, and copies of it in another encoding could not be found.
-    mr = _mr()
-    mr[_REFERRING_PHYSICIANS_NAME] = pydicom.DataElement(
+    nm = _nm()
+    nm[_REFERRING_PHYSICIANS_NAME] = pydicom.DataElement(
         _REFERRING_PHYSICIANS_NAME, "PN", b"Synth\xe9tic^Name"
     )
 
-    result = _run(tmp_path, [mr, synthetic.rt_dose()])
+    result = _run(tmp_path, [nm, synthetic.rt_dose()])
 
     dose = result.outcomes[1]
     assert dose.status is run.Status.SEQUESTERED
@@ -116,7 +116,7 @@ def test_an_out_of_scope_sibling_whose_values_are_not_all_collected_withholds(
 @pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.3-01")
 def test_an_unlisted_sop_class_still_withholds_its_subject(tmp_path):
     # No IOD of the pinned tables gives a plan by which to collect its values.
-    unlisted = _mr()
+    unlisted = _nm()
     unlisted.SOPClassUID = "2.25.999"
 
     result = _run(tmp_path, [unlisted, synthetic.rt_dose()])

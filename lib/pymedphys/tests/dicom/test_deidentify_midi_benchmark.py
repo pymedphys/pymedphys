@@ -56,9 +56,9 @@ STUDY_DESCRIPTION = "SYNTHETIC BENCHMARK STUDY"
 STUDY_DATE = "20210304"
 PIXELS = bytes(range(8))
 OTHER_PATIENT = "SYNTHETIC-OTHER-PATIENT"
-MR_STUDY = "2.25.702"
-MR_SERIES = "2.25.703"
-MR_INSTANCE = "2.25.704"
+NM_STUDY = "2.25.702"
+NM_SERIES = "2.25.703"
+NM_INSTANCE = "2.25.704"
 ABSENT_INSTANCE = "2.25.705"
 CT_IOD = "CT Image"
 
@@ -558,12 +558,12 @@ def _source(tmp_path):
     ct.SamplesPerPixel = 1
     ct.PhotometricInterpretation = "MONOCHROME2"
     ct.PixelData = PIXELS
-    mr = synthetic.instance(synthetic.MR_IMAGE_STORAGE, MR_INSTANCE, MR_SERIES)
-    mr.PatientID = OTHER_PATIENT
-    mr.StudyInstanceUID = MR_STUDY
+    nm = synthetic.instance(synthetic.NM_IMAGE_STORAGE, NM_INSTANCE, NM_SERIES)
+    nm.PatientID = OTHER_PATIENT
+    nm.StudyInstanceUID = NM_STUDY
     source = tmp_path / "source"
     source.mkdir()
-    for position, dataset in enumerate([*datasets, mr]):
+    for position, dataset in enumerate([*datasets, nm]):
         (source / f"{position}.dcm").write_bytes(synthetic.written(dataset))
     return source
 
@@ -597,13 +597,13 @@ def _benchmark_key(tmp_path):
             modality="RTDOSE",
         ),
         _row(
-            MR_INSTANCE,
+            NM_INSTANCE,
             [_check("tag_retained", "<(0008,0060)>", dicom_iod="TEST-IOD")],
             patient=OTHER_PATIENT,
-            study=MR_STUDY,
-            series=MR_SERIES,
-            sop_class=synthetic.MR_IMAGE_STORAGE,
-            modality="MR",
+            study=NM_STUDY,
+            series=NM_SERIES,
+            sop_class=synthetic.NM_IMAGE_STORAGE,
+            modality="NM",
         ),
         _row(
             ABSENT_INSTANCE,
@@ -645,7 +645,7 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
         "outside-coverage": 1,
         "not-in-input": 1,
     }
-    assert document["coverage"]["by_modality"]["MR"]["outside-coverage"] == 1
+    assert document["coverage"]["by_modality"]["NM"]["outside-coverage"] == 1
     assert _category(document, "tcia", "TEST-RETAIN-DESCRIPTION")["deliberate"] == 1
     assert _category(document, "hipaa", "HIPAA-C") == {
         "family": "hipaa",
@@ -711,8 +711,8 @@ def test_the_mapping_files_name_what_the_run_wrote(tmp_path):
     assert f"{mapped[synthetic.CT_SERIES]}/{mapped[synthetic.CT_SLICES[0]]}.dcm" in (
         "/".join(name.split("/")[2:]) for name in released
     )
-    # The sequestered MR instance is not mapped.
-    assert MR_INSTANCE not in mapped
+    # The sequestered NM instance is not mapped.
+    assert NM_INSTANCE not in mapped
     assert OTHER_PATIENT not in dict(patients[1:])
 
 
@@ -749,7 +749,7 @@ def test_the_results_hold_no_value_from_the_test_data_set(tmp_path):
             STUDY_DATE,
             synthetic.STUDY,
             synthetic.CT_SLICES[0],
-            MR_INSTANCE,
+            NM_INSTANCE,
             str(tmp_path),
         ):
             assert value not in text

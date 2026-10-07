@@ -15,8 +15,8 @@
 """A synthetic collection with a conspicuous marker in each attribute to protect.
 
 :func:`build_corpus` builds, in memory and the same way every time, one
-linked collection of the first supported release's IODs: three CT Image
-slices, an RT Structure Set that references the CT series and slices, an RT
+linked collection of the first supported release's CT and RT IODs: three CT
+Image slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, and an RT Dose that
 references the plan, all of one fictitious patient and study, with one Frame
 of Reference, and a second RT Dose of the plan for review (below). It is
@@ -74,8 +74,8 @@ deepest references of an RT Structure Set, its Contour Image Sequence in the
 RT Referenced Series Sequence, lie at that depth; the deeper places, such as
 the Code Sequence Macros nested in the Request Attributes Sequence, repeat
 macros already planted at shallower places. A repeating group is planted in
-its first group only: Overlay Data (60xx,3000), which only the CT Image IOD
-defines, is planted in group 6000 with VR OW, of the OB or OW that PS3.6
+its first group only: Overlay Data (60xx,3000), which of the collection's IODs
+only CT Image defines, is planted in group 6000 with VR OW, of the OB or OW that PS3.6
 allows, so it is written in Explicit VR only. An attribute that the pinned
 dictionary gives no single VR, and a tag whose element number is masked,
 are not planted. Each placement not planted is recorded with a

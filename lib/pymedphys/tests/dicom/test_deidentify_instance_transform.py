@@ -339,10 +339,10 @@ def test_the_evidence_holds_the_removed_values_and_shows_only_counts():
 
 @pytest.mark.deid_requirement("MIDI-BP-06")
 def test_an_instance_the_release_does_not_support_is_sequestered_by_its_disposition():
-    mr = synthetic.instance(
-        synthetic.MR_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
+    nm = synthetic.instance(
+        synthetic.NM_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
     )
-    result = _transformed(mr)
+    result = _transformed(nm)
 
     assert isinstance(result, run.Sequestered)
     assert result.reasons == (Disposition.UNSUPPORTED_IOD,)

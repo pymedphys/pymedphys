@@ -14,10 +14,12 @@
 
 """Tell an instance the engine de-identifies from one it sequesters.
 
-The first supported release de-identifies uncompressed instances of the CT
-Image, RT Structure Set, RT Plan, and RT Dose IODs. Every other instance is
-sequestered: neither de-identified nor written, and listed in the run report
-by opaque identifiers only. That includes Structured Reports, Key Object
+The first supported release de-identifies uncompressed instances of the CT,
+MR, and PET image IODs, including their Enhanced, Legacy Converted Enhanced,
+and colour variants, of MR Spectroscopy, and of the RT Structure Set, RT
+Plan, and RT Dose IODs. Every other instance is sequestered: neither
+de-identified nor written, and listed in the run report by opaque
+identifiers only. That includes Structured Reports, Key Object
 Selection documents, Presentation States, and instances of Private SOP
 Classes, which the design always sequesters.
 
@@ -40,7 +42,24 @@ from .uids import normalise_uid
 
 # The IODs of the first supported release, by the names Table B.5-1 gives
 # them without "IOD".
-SUPPORTED_IODS = frozenset({"CT Image", "RT Dose", "RT Plan", "RT Structure Set"})
+SUPPORTED_IODS = frozenset(
+    {
+        "CT Image",
+        "Enhanced CT Image",
+        "Legacy Converted Enhanced CT Image",
+        "MR Image",
+        "Enhanced MR Image",
+        "Enhanced MR Color Image",
+        "Legacy Converted Enhanced MR Image",
+        "MR Spectroscopy",
+        "Positron Emission Tomography Image",
+        "Enhanced PET Image",
+        "Legacy Converted Enhanced PET Image",
+        "RT Dose",
+        "RT Plan",
+        "RT Structure Set",
+    }
+)
 # The uncompressed transfer syntaxes the first release reads: Implicit VR
 # Little Endian and Explicit VR Little Endian.
 SUPPORTED_TRANSFER_SYNTAXES = frozenset({"1.2.840.10008.1.2", "1.2.840.10008.1.2.1"})

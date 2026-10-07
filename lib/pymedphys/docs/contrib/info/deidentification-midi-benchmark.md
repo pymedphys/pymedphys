@@ -98,7 +98,7 @@ Inside the work directory:
 | `qc/` | The confidential QC pack. | No |
 | `validation-script/` | `uid_mapping.csv` and `patid_mapping.csv`, mapping the test data's UIDs and Patient IDs to their replacements, for the NCI script. | No |
 
-In `benchmark.md`, read the findings first. The deliberate differences are where TCIA's curation differs from the Basic Profile. Checks of instances outside the release's coverage (an MR, say) and of instances the run withheld are counted apart and not scored. A withheld instance withholds all of its patient's files.
+In `benchmark.md`, read the findings first. The deliberate differences are where TCIA's curation differs from the Basic Profile. Checks of instances outside the release's coverage (a nuclear medicine image, say) and of instances the run withheld are counted apart and not scored. A withheld instance withholds all of its patient's files.
 
 ## 6. Share the results
 

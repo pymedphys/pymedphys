@@ -42,7 +42,22 @@ REMOVING_ACTIONS = {"X", "Z", "D", "X/Z", "Z/D", "X/D", "X/Z/D"}
 TEXT_VRS = {"LO", "SH", "LT", "ST", "UC", "UT"}
 TEMPORAL_VRS = {"DA", "DT", "TM"}
 # The IODs of the first supported release.
-SUPPORTED_IODS = ("CT Image", "RT Dose", "RT Plan", "RT Structure Set")
+# The CT and RT IODs that the first supported release has always supported,
+# and the CT, MR, and PET IODs that it adds.
+CT_AND_RT_IODS = ("CT Image", "RT Dose", "RT Plan", "RT Structure Set")
+ADDED_IODS = (
+    "Enhanced CT Image",
+    "Legacy Converted Enhanced CT Image",
+    "MR Image",
+    "Enhanced MR Image",
+    "Enhanced MR Color Image",
+    "Legacy Converted Enhanced MR Image",
+    "MR Spectroscopy",
+    "Positron Emission Tomography Image",
+    "Enhanced PET Image",
+    "Legacy Converted Enhanced PET Image",
+)
+SUPPORTED_IODS = CT_AND_RT_IODS + ADDED_IODS
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -143,9 +158,10 @@ REMOVED_UNDER_EVERY_OPTION = {
     "(60xx,0022)",  # Overlay Description
     "(60xx,1500)",  # Overlay Label
 }
-# Every text attribute that the supported IODs use, Table E.1-1 omits, and
+# Every text attribute that the CT and RT IODs use, Table E.1-1 omits, and
 # the Basic Profile keeps, checked by hand against the 2026d PS3.3: coded
-# values, and technical values that the equipment or software writes.
+# values, and technical values that the equipment or software writes. The
+# added IODs keep ADDED_KEPT_TEXT too.
 KEPT_TEXT = {
     "(0008,0070)",  # Manufacturer
     "(0008,0100)",  # Code Value
@@ -299,7 +315,7 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     omitted = _omitted_text()
 
     # Checked by hand against the 2026d PS3.3, PS3.6, and PS3.15.
-    assert len(omitted) == 110
+    assert len(omitted) == 141
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -314,11 +330,11 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 46,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 62,
         # Accessory and equipment identifiers.
-        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 19,
+        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 24,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 28,
+        ("K", ()): 38,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 15,
@@ -327,22 +343,9 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
     }
 
 
-# The CT, MR, and PET IODs that the first supported release is to add.
-ADDED_IODS = (
-    "Enhanced CT Image",
-    "Legacy Converted Enhanced CT Image",
-    "MR Image",
-    "Enhanced MR Image",
-    "Enhanced MR Color Image",
-    "Legacy Converted Enhanced MR Image",
-    "MR Spectroscopy",
-    "Positron Emission Tomography Image",
-    "Enhanced PET Image",
-    "Legacy Converted Enhanced PET Image",
-)
-# The text attributes that those IODs use and that neither Table E.1-1 nor
-# the IODs of SUPPORTED_IODS cover, by group, checked by hand against the
-# 2026d PS3.3.
+# The text attributes that the added IODs use and that neither Table E.1-1
+# nor the CT and RT IODs cover, by group, checked by hand against the 2026d
+# PS3.3.
 ADDED_OPERATOR_TEXT = {
     "(0018,0024)",  # Sequence Name
     "(0018,0031)",  # Radiopharmaceutical
@@ -383,21 +386,23 @@ ADDED_KEPT_TEXT = {
 
 
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
-def test_the_text_of_the_ct_mr_and_pet_iods_to_be_added_has_reviewed_rules():
+def test_the_text_that_only_the_added_ct_mr_and_pet_iods_use_has_reviewed_rules():
     dictionary = _dictionary()
     tables = iods.load_iod_tables()
-    added = {
-        definition.tag
-        for name in ADDED_IODS
-        for definition in tables.iods[name].definitions
-        if TEXT_VRS.intersection(dictionary[definition.tag].vrs)
-    } - set(_table_e1_1())
+
+    def text_of(names):
+        return {
+            definition.tag
+            for name in names
+            for definition in tables.iods[name].definitions
+            if TEXT_VRS.intersection(dictionary[definition.tag].vrs)
+        } - set(_table_e1_1())
+
+    added = text_of(ADDED_IODS) - text_of(CT_AND_RT_IODS)
     rules = _rules()
 
-    assert added - _omitted_text() == (
-        ADDED_OPERATOR_TEXT | ADDED_DEVICE_IDENTITY | ADDED_KEPT_TEXT
-    )
-    assert len(added - _omitted_text()) == 31
+    assert added == ADDED_OPERATOR_TEXT | ADDED_DEVICE_IDENTITY | ADDED_KEPT_TEXT
+    assert len(added) == 31
     for tags, action, options in (
         (ADDED_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
         (ADDED_DEVICE_IDENTITY, "X/Z/D", {DEVICE_IDENTITY: "K"}),
@@ -445,7 +450,7 @@ def test_each_group_takes_the_action_of_its_option(
         assert composed[tag] == operator_text, tag
     for tag in ACCESSORY_IDENTIFIERS:
         assert composed[tag] == accessory_identifier, tag
-    for tag in KEPT_TEXT:
+    for tag in KEPT_TEXT | ADDED_KEPT_TEXT:
         assert composed[tag] == "K", tag
 
 
@@ -476,8 +481,10 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 228
-    assert {tag for tag, action in basic.items() if action == "K"} == KEPT_TEXT
+    assert len(basic) == 261
+    assert {tag for tag, action in basic.items() if action == "K"} == (
+        KEPT_TEXT | ADDED_KEPT_TEXT
+    )
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
 
@@ -491,7 +498,7 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
         kept = {
             tag for tag in _omitted_text() if composed.supplementary_actions[tag] == "K"
         }
-        expected = KEPT_TEXT | (
+        expected = KEPT_TEXT | ADDED_KEPT_TEXT | (
             device_identity if DEVICE_IDENTITY in composed.options else set()
         )
         assert kept == expected, composed.options
@@ -1118,7 +1125,7 @@ def _with_definition(tmp_path, iod_name, tag):
         ("RT Plan", True),
         # An IOD that is not supported does not, even once its Types are
         # generated.
-        ("MR Image", False),
+        ("Nuclear Medicine Image", False),
     ],
 )
 def test_only_the_text_of_the_supported_iods_needs_rules(
