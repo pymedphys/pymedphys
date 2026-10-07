@@ -41,7 +41,9 @@ each instance it may process. It joins the engine's per-instance steps:
    file from its replacement Patient ID and UIDs alone (D-016).
 
 Any step that refuses the instance sequesters it with that step's own
-value-free reason: a :class:`~.scope.Disposition`, a
+value-free reason: a :class:`~.scope.Disposition`, or an
+:class:`~.scope.UnsupportedIod` that names the IOD of an instance of an
+unsupported IOD (D-010), a
 :class:`~.source.SourceReason`, the walker's
 :class:`~.walker.Sequestration` objects, a
 :class:`~.preserving_writer.WriteReason`, a
@@ -689,7 +691,7 @@ class InstanceTransform:
         if classification.iod is None or (
             classification.sequestered and classification.iod not in self._iods.iods
         ):
-            return Sequestered((classification.disposition,))
+            return Sequestered((classification.reason,))
         iod = self._iods.iods[classification.iod]
         risk: tuple[object, ...] = _pixel_risk(dataset, record)
         if not classification.sequestered:
@@ -701,7 +703,7 @@ class InstanceTransform:
             # An instance out of scope is planned and edited only so that
             # its identifiers are collected for its subject's search (D-027).
             return Sequestered(
-                (classification.disposition,)
+                (classification.reason,)
                 if classification.sequestered
                 else edits.sequestrations,
                 evidence,

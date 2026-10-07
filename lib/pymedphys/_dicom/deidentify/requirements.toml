@@ -739,8 +739,7 @@ id = "MIDI-BP-06"
 text = '''
 Use the release of PS3.15 current at the time of de-identification as the reference for which data elements to de-identify, augmented by knowledge of other unsafe attributes, including private ones. Categorise retained elements by the PS3.15 Options, and apply the approach to any DICOM object, whether or not its IOD is recognised.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-001", "D-010", "D-022", "D-023"]
 implementation = [
   "_dev/deid_tables/annex_e.py",
@@ -753,6 +752,8 @@ implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/private_attributes.py",
+  "_dicom/deidentify/release_report.py",
+  "_dicom/deidentify/release_report_markdown.py",
   "_dicom/deidentify/run.py",
   "_dicom/deidentify/scope.py",
   "_dicom/deidentify/sop_classes.py",
@@ -767,7 +768,7 @@ Every element, whether or not the pinned dictionary lists its attribute, has one
 `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and `.github/workflows/deid-edition-check.yml` runs it monthly.
 The run's instance transform removes private attributes from, and applies each element's rule to, each instance it de-identifies, and the run sequesters the instances so classified and lists them in the release report with their reasons.
 An object of any other SOP Class is handled by classifying and sequestering it, not by de-identifying it.
-Remaining: naming the IOD of an unsupported instance in the release report, as D-010 says (M4).
+The release report names the IOD of each instance of an unsupported IOD, as PS3.4 Table B.5-1 names it, never from a value of the instance (D-010).
 Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
 
