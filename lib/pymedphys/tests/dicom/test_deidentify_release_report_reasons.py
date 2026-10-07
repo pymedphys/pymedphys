@@ -105,7 +105,9 @@ def test_each_stage_that_sequesters_gives_its_reason_code(basic, cause, stage):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-06", "MIDI-BP-18")
-@pytest.mark.parametrize("iod", ["Comprehensive SR", "MR Image", "12-Lead ECG"])
+@pytest.mark.parametrize(
+    "iod", ["Comprehensive SR", "Nuclear Medicine Image", "12-Lead ECG"]
+)
 def test_an_unsupported_iod_is_named_with_its_reason(basic, iod):
     reason = release_report.sequestration_reason(scope.UnsupportedIod(iod))
 
@@ -132,7 +134,7 @@ def test_each_iod_that_can_be_named_is_one_that_table_b_5_1_names_unsupported():
 
 
 def _with_code(code):
-    cause = scope.UnsupportedIod("MR Image")
+    cause = scope.UnsupportedIod("Nuclear Medicine Image")
     object.__setattr__(cause, "code", code)
     return cause
 
@@ -144,7 +146,7 @@ def _with_code(code):
         scope.Disposition.UNSUPPORTED_IOD,
         scope.UnsupportedIod("CT Image"),
         scope.UnsupportedIod("SENTINEL"),
-        scope.UnsupportedIod("MR Image IOD"),
+        scope.UnsupportedIod("Nuclear Medicine Image IOD"),
         scope.UnsupportedIod(None),  # type: ignore[arg-type]
         _with_code(scope.Disposition.UNLISTED_SOP_CLASS),
         _with_code("unsupported-iod"),
@@ -163,14 +165,16 @@ def test_an_unsupported_iod_without_an_iod_that_table_b_5_1_names_is_refused(cau
         release_report.SequestrationReason("scope", "unsupported-iod"),
         release_report.SequestrationReason("scope", "unsupported-iod", iod="SENTINEL"),
         release_report.SequestrationReason(
-            "scope", "unsupported-iod", iod=_Text("MR Image")
+            "scope", "unsupported-iod", iod=_Text("Nuclear Medicine Image")
         ),
         release_report.SequestrationReason(
-            "scope", "unsupported-iod", "(0010,0010)", iod="MR Image"
+            "scope", "unsupported-iod", "(0010,0010)", iod="Nuclear Medicine Image"
         ),
-        release_report.SequestrationReason("scope", "no-sop-class", iod="MR Image"),
         release_report.SequestrationReason(
-            "release", "residual-person-name", iod="MR Image"
+            "scope", "no-sop-class", iod="Nuclear Medicine Image"
+        ),
+        release_report.SequestrationReason(
+            "release", "residual-person-name", iod="Nuclear Medicine Image"
         ),
     ],
 )

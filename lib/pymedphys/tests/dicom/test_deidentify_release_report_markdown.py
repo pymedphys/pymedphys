@@ -99,7 +99,7 @@ def _full_report():
                 "S-0003",
                 (
                     release_report.sequestration_reason(
-                        scope.UnsupportedIod("MR Image")
+                        scope.UnsupportedIod("Nuclear Medicine Image")
                     ),
                 ),
             ),
@@ -252,7 +252,7 @@ def test_each_sequestered_reason_is_a_row_under_its_label():
         "| `S-0001` | `references` | `conflicting-instance` | | | | |",
         "| | `walker` | `no-dummy-value` | `(0010,1002) > (0010,0020)` | `D` | `SQ` | |",
         "| `S-0002` | `release` | `residual-person-name` | `(0008,103E)` | | | |",
-        "| `S-0003` | `scope` | `unsupported-iod` | | | | `MR Image` |",
+        "| `S-0003` | `scope` | `unsupported-iod` | | | | `Nuclear Medicine Image` |",
     ]
 
 
@@ -394,7 +394,9 @@ def _changed(change):
         lambda d: d["sequestered"][0]["reasons"][0].update(action="K"),
         lambda d: d["sequestered"][0]["reasons"][1].pop("vr"),
         lambda d: d["sequestered"][1]["reasons"][0].update(vr="SQ"),
-        lambda d: d["sequestered"][1]["reasons"][0].update(iod="MR Image"),
+        lambda d: d["sequestered"][1]["reasons"][0].update(
+            iod="Nuclear Medicine Image"
+        ),
         lambda d: d["sequestered"][2]["reasons"][0].pop("iod"),
         lambda d: d["sequestered"][2]["reasons"][0].update(attribute="(0010,0010)"),
         lambda d: d["sequestered"][2]["reasons"][0].update(iod="MR `SENTINEL`"),
