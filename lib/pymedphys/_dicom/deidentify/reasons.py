@@ -91,6 +91,16 @@ class TransformReason(enum.Enum):
     # not match Number of Frames, Rows, Columns, Samples per Pixel, or Bits
     # Stored
     FRAME_MISMATCH = "frame-mismatch"
+    # compressed pixel data with a frame that cannot be found or parsed, or
+    # that holds bytes outside its codestream other than padding
+    UNPARSABLE_CODESTREAM = "unparsable-codestream"
+    # compressed pixel data with a metadata segment that could be cut only by
+    # changing other values, such as a tile-part's length or an Extended
+    # Offset Table
+    UNCUTTABLE_METADATA = "uncuttable-metadata"
+    # compressed pixel data whose frames, with metadata segments cut, do not
+    # decode to the same pixels as before
+    CUT_CHANGED_PIXELS = "cut-changed-pixels"
 
 
 class DescriptorReason(enum.Enum):

@@ -46,6 +46,8 @@ from pymedphys._dicom.deidentify.residuals import (
 )
 from pymedphys._dicom.deidentify.values import CHECKED_VRS
 
+from . import _synthetic_compressed as compressed
+
 st = hypothesis.strategies
 
 EXPLICIT = "1.2.840.10008.1.2.1"
@@ -1240,6 +1242,68 @@ def test_encapsulated_fragments_are_searched_for_every_form():
         ("item 1 of data set element (7FE0,0010) (OB)", "utf-16-le"),
     ]
     assert result.readable
+
+
+def _encapsulated_file(transfer_syntax, *fragments):
+    return _file(
+        _element(0x7FE00010, "OB", b"")[:-4]
+        + struct.pack("<I", UNDEFINED)
+        + _element_item()
+        + b"".join(_element_item(f + b"\x00" * (len(f) % 2)) for f in fragments)
+        + SEQUENCE_END,
+        transfer_syntax,
+    )
+
+
+def _jpeg_lossless(scan_text=b"", comment=b""):
+    """A JPEG Lossless codestream with text in its entropy-coded data and in
+    a comment (COM) segment, which parses though it does not decode."""
+    codestream = compressed.jpeg_lossless(np.zeros((2, 3), dtype=np.uint16))
+    scan = codestream.index(b"\xff\xda")
+    (length,) = struct.unpack_from(">H", codestream, scan + 2)
+    data = scan + 2 + length
+    com = struct.pack(">HH", 0xFFFE, len(comment) + 2) + comment if comment else b""
+    return codestream[:2] + com + codestream[2:data] + scan_text + codestream[data:]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize("split", [False, True], ids=["one-fragment", "two-fragments"])
+def test_entropy_coded_data_hold_numbers_and_marker_segments_are_text(split):
+    codestream = _jpeg_lossless(b"MARY" + PATIENT_ID.encode(), b"QUILLON")
+    middle = codestream.index(b"MARY") + 2
+    fragments = (codestream[:middle], codestream[middle:]) if split else (codestream,)
+    data = _encapsulated_file(compressed.JPEG_LOSSLESS_SV1, *fragments)
+    name = _source("(0010,0010)", "PN", "MARY^QUILLON")
+
+    result = find_residuals(data, [name, ID_SOURCE])
+
+    # The short form in the entropy-coded data is not found; the Patient ID,
+    # of 9 bytes, is, and so is the family name in the comment.
+    assert [(f.source.tag, f.offset) for f in result.findings] == [
+        ("(0010,0010)", data.index(b"QUILLON")),
+        ("(0010,0020)", data.index(PATIENT_ID.encode())),
+    ]
+
+
+def test_fragments_whose_codestreams_do_not_parse_are_searched_for_every_form():
+    codestream = _jpeg_lossless(b"MARY")
+    data = _encapsulated_file(compressed.JPEG_LOSSLESS_SV1, codestream + b"MORE")
+    name = _source("(0010,0010)", "PN", "MARY^QUILLON")
+
+    result = find_residuals(data, [name])
+
+    assert [f.offset for f in result.findings] == [data.index(b"MARY")]
+
+
+def test_rle_lossless_fragments_hold_numbers():
+    data = _encapsulated_file(
+        "1.2.840.10008.1.2.5", bytes(64) + b"MARY" + PATIENT_ID.encode()
+    )
+    name = _source("(0010,0010)", "PN", "MARY^QUILLON")
+
+    result = find_residuals(data, [name, ID_SOURCE])
+
+    assert [f.source.tag for f in result.findings] == ["(0010,0020)"]
 
 
 def test_each_location_is_reported_once_by_its_widest_form():

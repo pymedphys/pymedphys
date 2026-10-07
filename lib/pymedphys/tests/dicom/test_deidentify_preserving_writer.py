@@ -517,6 +517,59 @@ def test_pixel_data_that_section_a_4_does_not_allow_is_refused(pixel_data):
     ) == (WriteReason.FRAGMENTS, PIXEL_DATA_PATH)
 
 
+def _pixel_data_replaced(value, vr="OB", undefined=True):
+    def edit(source):
+        kept, removed, replacements = _ct_edit(source)
+        element = pydicom.DataElement(
+            0x7FE00010, vr, value, is_undefined_length=undefined
+        )
+        return (
+            kept - {PIXEL_DATA_PATH},
+            removed,
+            {**replacements, PIXEL_DATA_PATH: element},
+        )
+
+    return edit
+
+
+@pytest.mark.parametrize("table", [b"", struct.pack("<I", 0)], ids=["empty", "offset"])
+def test_a_replacement_of_encapsulated_pixel_data_is_written_with_its_items(table):
+    # As codestreams.without_metadata gives it: a Basic Offset Table and
+    # one fragment for each frame, without the delimiter.
+    data = _compressed_ct("1.2.840.10008.1.2.4.70", _encapsulated())
+    value = _item(table) + _item(b"\xff\xd8NEW\xff\xd9\x00")
+
+    output, written = _written_and_verified(data, _pixel_data_replaced(value))
+
+    expected = _explicit(0x7FE00010, "OB", length=UNDEFINED) + value + SEQUENCE_END
+    assert output.encoded(PIXEL_DATA_PATH) == expected
+    assert written.endswith(expected)
+
+
+@pytest.mark.parametrize(
+    "value, vr, undefined",
+    [
+        (_item() + _item(b"\xff\xd8\xff\xd9\x00"), "OB", True),
+        (_item() + b"\xff\xd8\xff\xd9", "OB", True),
+        (_item()[:6], "OB", True),
+        (b"", "OB", True),
+        (_item() + _item(b"\xff\xd8\xff\xd9"), "OW", True),
+        (_item() + _item(b"\xff\xd8\xff\xd9"), "OB", False),
+    ],
+    ids=["odd-item", "not-an-item", "part-of-an-item", "empty", "ow", "defined-length"],
+)
+def test_a_replacement_of_encapsulated_pixel_data_that_is_not_items_is_refused(
+    value, vr, undefined
+):
+    source = read_source(_compressed_ct("1.2.840.10008.1.2.4.70", _encapsulated()))
+    kept, removed, replacements = _pixel_data_replaced(value, vr, undefined)(source)
+
+    assert _refused(source, kept=kept, removed=removed, replacements=replacements) == (
+        WriteReason.FRAGMENTS,
+        PIXEL_DATA_PATH,
+    )
+
+
 def test_pixel_data_fragments_in_a_native_syntax_are_refused():
     # PS3.5 Section A.4 encapsulates Pixel Data only in the syntaxes that it
     # defines; in Explicit VR Little Endian, Pixel Data is native.
