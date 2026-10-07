@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+
 """Read an instance's indicators of risk in its pixel data.
 
 The engine does not change pixel data and never claims the Clean Pixel Data
 or Clean Recognizable Visual Features Options. It reports indicators of risk
-for review instead: of text burned into the pixel data, and of a face that
-could be reconstructed and recognised. :func:`assess_pixel_risk` reads them
+for review instead: of text burned into the pixel data, of a face that
+could be reconstructed and recognised, and of values from which the
+patient's body weight can be recovered. :func:`assess_pixel_risk` reads them
 from one instance's attributes; it never inspects the pixel data, so the
 absence of an indicator is not evidence that the risk is absent.
 
@@ -43,6 +46,16 @@ The indicators are:
   or SKIN, the patient's outline: the outline of the head can be
   reconstructed into a face (MIDI report Section 1.20.4). The whole name is
   compared, whatever its case, so a name such as "Skin 5mm" is not one.
+- Units (0054,1001) of GML or CM2ML, values scaled to a standardised uptake
+  value (SUV), or a Real World Value Mapping Sequence (0040,9096) item, at
+  the top level or in a shared or per-frame functional group, whose
+  Measurement Units Code Sequence (0040,08EA) gives a Code Value or Long
+  Code Value that contains ``{SUV``, as each SUV unit of PS3.16 CID 85
+  does, such as ``g/ml{SUVbw}``. The Basic Profile removes Patient's Weight
+  (0010,1030) but keeps these and Radionuclide Total Dose (0018,1074), so
+  a mapping's slope and the dose give the weight, and so do images scaled
+  to an SUV released with attenuation-corrected images of the same
+  acquisition (MIDI report Section 1.20.2).
 
 Values are compared whatever their case, though CS is upper case, so that a
 writer's lower-case "yes" does not hide an indicator. An ROI Name is
@@ -53,11 +66,11 @@ number that is not an integer, is itself reported, as unreadable evidence
 of the risk that it bears on, since reading it could otherwise hide an
 indicator. Findings name attribute paths, never values.
 
-:func:`assess_ct_series` reads the indicators that need a whole series:
-every CT volume may hold a reconstructable face, and one whose attributes
-name a region of the head or neck in a reviewed list from PS3.16 Annex L
-says that it does. :func:`series_evidence` gives the part of an instance
-that it reads.
+:func:`assess_series` reads the indicators that need a whole series:
+every CT, MR, and PET volume may hold a reconstructable face, and one
+whose attributes name a region of the head or neck in a reviewed list from
+PS3.16 Annex L says that it does. :func:`series_evidence` gives the part
+of an instance that it reads.
 
 Reading leaves the data set as it was: pydicom converts an element read from
 a file on first access, in place, and under strict reading its errors can
@@ -92,6 +105,8 @@ class Risk(enum.Enum):
 
     BURNED_IN_TEXT = "burned-in-text"
     RECONSTRUCTABLE_FACE = "reconstructable-face"
+    # The patient's body weight, from values scaled by it and the dose.
+    BODY_WEIGHT = "body-weight"
 
 
 class Indicator(enum.Enum):
@@ -104,7 +119,11 @@ class Indicator(enum.Enum):
     EMBEDDED_OVERLAY = "embedded-overlay"
     PATIENT_SURFACE_CONTOUR = "patient-surface-contour"
     CT_VOLUME = "ct-volume"
+    MR_VOLUME = "mr-volume"
+    PET_VOLUME = "pet-volume"
     HEAD_OR_NECK = "head-or-neck"
+    SUV_UNITS = "suv-units"
+    SUV_MAPPING = "suv-mapping"
     # An attribute that bears on a risk could not be read.
     UNREADABLE = "unreadable"
 
@@ -122,7 +141,11 @@ _RISKS = {
     Indicator.EMBEDDED_OVERLAY: Risk.BURNED_IN_TEXT,
     Indicator.PATIENT_SURFACE_CONTOUR: Risk.RECONSTRUCTABLE_FACE,
     Indicator.CT_VOLUME: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.MR_VOLUME: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.PET_VOLUME: Risk.RECONSTRUCTABLE_FACE,
     Indicator.HEAD_OR_NECK: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.SUV_UNITS: Risk.BODY_WEIGHT,
+    Indicator.SUV_MAPPING: Risk.BODY_WEIGHT,
     Indicator.UNREADABLE: None,
 }
 
@@ -218,6 +241,10 @@ _NUMBER_OF_FRAMES = "(0028,0008)"
 _STRUCTURE_SET_ROI_SEQUENCE = "(3006,0020)"
 _ROI_NUMBER = "(3006,0022)"
 _ROI_NAME = "(3006,0026)"
+_UNITS = "(0054,1001)"
+_REAL_WORLD_VALUE_MAPPING_SEQUENCE = "(0040,9096)"
+_MEASUREMENT_UNITS_CODE_SEQUENCE = "(0040,08EA)"
+_LONG_CODE_VALUE = "(0008,0119)"
 # The interpreted types and ROI names of the patient's outline.
 _SURFACE_TERMS = frozenset({"EXTERNAL", "BODY", "SKIN"})
 
@@ -245,6 +272,10 @@ READ_VRS = {
     _STRUCTURE_SET_ROI_SEQUENCE: "SQ",
     _ROI_NUMBER: "IS",
     _ROI_NAME: "LO",
+    _UNITS: "CS",
+    _REAL_WORLD_VALUE_MAPPING_SEQUENCE: "SQ",
+    _MEASUREMENT_UNITS_CODE_SEQUENCE: "SQ",
+    _LONG_CODE_VALUE: "UC",
 }
 
 _PIXEL_DATA_TAGS = (0x7FE00008, 0x7FE00009, 0x7FE00010)
@@ -294,7 +325,9 @@ def _decoded(vr: str, value: bytes, stored) -> object:
     """Decode a stored value; CS, IS, and UI are ASCII (PS3.5 Section 6.2).
 
     SH is decoded as ASCII too, which every code value of the coding
-    schemes compared is; a value with other bytes is unreadable.
+    schemes compared is; a value with other bytes is unreadable. A UC
+    value, a Long Code Value, is searched only for ASCII text, so its other
+    bytes are replaced.
     """
     if vr == "SQ":
         # A UN value is in Implicit VR Little Endian (PS3.5 Section 6.2.2).
@@ -312,8 +345,9 @@ def _decoded(vr: str, value: bytes, stored) -> object:
             )
         except UnreadableItems:
             raise _Unreadable from None
-    if vr == "LO":
-        # Only an ASCII name is compared, and any other is no outline's name.
+    if vr in ("LO", "UC"):
+        # Only an ASCII name is compared, and any other is no outline's name;
+        # a long code is searched only for ASCII text.
         text = value.decode("ascii", errors="replace")
     else:
         try:
@@ -328,7 +362,7 @@ def _decoded(vr: str, value: bytes, stored) -> object:
     if vr == "CS":
         # CS is upper case, but a lower-case value must not hide an indicator.
         return [value.upper() for value in values]
-    if vr in ("SH", "UI"):
+    if vr in ("SH", "UI", "UC"):
         return values
     if not values:
         return None
@@ -400,6 +434,7 @@ def assess_pixel_risk(dataset: pydicom.Dataset) -> PixelRiskAssessment:
     """
     findings = [*_image_findings(dataset), *_overlay_findings(dataset)]
     findings.extend(_surface_findings(dataset))
+    findings.extend(_body_weight_findings(dataset))
     return PixelRiskAssessment(
         pixel_data=any(tag in dataset for tag in _PIXEL_DATA_TAGS),
         findings=tuple(sorted(findings, key=_order)),
@@ -526,6 +561,87 @@ def _surface_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
             )
 
 
+# The Units (0054,1001) of values scaled to an SUV: g/ml, of SUVbw, SUVlbm,
+# and SUVibw, and cm2/ml, of SUVbsa (PS3.3 Section C.8.9.1.1.3).
+_SUV_UNITS = frozenset({"GML", "CM2ML"})
+# Each SUV unit of PS3.16 CID 85 is a UCUM code annotated by the kind of
+# SUV, such as g/ml{SUVbw}; some, such as g/ml{SUVlbm(James128)}, are too
+# long for Code Value and are in Long Code Value.
+_SUV_ANNOTATION = "{SUV"
+
+
+def _body_weight_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
+    """Find the values scaled to an SUV, and the mappings of values to one.
+
+    An SUV is an activity concentration divided by the injected activity per
+    unit of the patient's body weight, or of a measure derived from it, such
+    as lean body mass or body surface area. The Basic
+    Profile removes Patient's Weight (0010,1030) but keeps Units (0054,1001),
+    Real World Value Mapping Sequence (0040,9096), and Radionuclide Total
+    Dose (0018,1074). So the weight can be recovered from a mapping's slope
+    to an SUV and the dose, or from images scaled to an SUV released with
+    attenuation-corrected images of the same acquisition.
+    """
+    risk = Risk.BODY_WEIGHT
+    path = ElementPath((), _UNITS)
+    try:
+        units = _read(dataset, _UNITS) or []
+        assert isinstance(units, list)
+        if len(units) > 1:
+            raise _Unreadable
+    except _Unreadable:
+        yield Finding(Indicator.UNREADABLE, path, risk)
+    else:
+        if _SUV_UNITS.intersection(units):
+            yield Finding(Indicator.SUV_UNITS, path)
+    unreadable: list[ElementPath] = []
+    mapping = _REAL_WORLD_VALUE_MAPPING_SEQUENCE
+    mappings = _sequence_items(dataset, (), mapping, unreadable)
+    # An enhanced image maps its values in the Real World Value Mapping
+    # functional group, shared or per frame (PS3.3 Section C.7.6.16.2.11).
+    for group in (
+        _SHARED_FUNCTIONAL_GROUPS_SEQUENCE,
+        _PER_FRAME_FUNCTIONAL_GROUPS_SEQUENCE,
+    ):
+        for item, within in _sequence_items(dataset, (), group, unreadable):
+            mappings.extend(_sequence_items(item, within, mapping, unreadable))
+    for item, within in mappings:
+        for unit, nested in _sequence_items(
+            item, within, _MEASUREMENT_UNITS_CODE_SEQUENCE, unreadable
+        ):
+            for tag in (_CODE_VALUE, _LONG_CODE_VALUE):
+                try:
+                    values = _read(unit, tag) or []
+                    assert isinstance(values, list)
+                    if len(values) > 1:
+                        raise _Unreadable
+                except _Unreadable:
+                    unreadable.append(ElementPath(nested, tag))
+                    continue
+                # UCUM is case sensitive, but a lower-case code must not hide
+                # an SUV.
+                if any(_SUV_ANNOTATION in value.upper() for value in values):
+                    yield Finding(Indicator.SUV_MAPPING, ElementPath(nested, tag))
+    for where in unreadable:
+        yield Finding(Indicator.UNREADABLE, where, risk)
+
+
+def _sequence_items(
+    dataset: pydicom.Dataset,
+    within: tuple[tuple[str, int], ...],
+    tag: str,
+    unreadable: list[ElementPath],
+) -> list[tuple[pydicom.Dataset, tuple[tuple[str, int], ...]]]:
+    """Return a sequence's items with their paths, noting it if unreadable."""
+    try:
+        items = _read(dataset, tag) or []
+    except _Unreadable:
+        unreadable.append(ElementPath(within, tag))
+        return []
+    assert isinstance(items, list)
+    return [(item, (*within, (tag, number))) for number, item in enumerate(items)]
+
+
 def _failing(item: pydicom.Dataset, within) -> ElementPath:
     """Return the path of the first element of ``item`` that cannot be read."""
     for tag in (
@@ -547,21 +663,34 @@ HEAD_AND_NECK_REGIONS_PATH = (
 )
 _REGIONS_SCHEMA = "pymedphys-deid-head-and-neck-regions/1"
 _REGION_FIELDS = {"meaning", "sct"}
-# CT Image Storage, and CT Image Storage - For Processing, each instance of
-# which is one frame.
-_SINGLE_FRAME_CT_SOP_CLASSES = frozenset(
-    {"1.2.840.10008.5.1.4.1.1.2", "1.2.840.10008.5.1.4.1.1.2.3"}
-)
-# Enhanced CT Image Storage and Legacy Converted Enhanced CT Image Storage,
-# and their For Processing classes, whose instances hold Number of Frames.
-_MULTI_FRAME_CT_SOP_CLASSES = frozenset(
-    {
-        "1.2.840.10008.5.1.4.1.1.2.1",
-        "1.2.840.10008.5.1.4.1.1.2.4",
-        "1.2.840.10008.5.1.4.1.1.2.2",
-        "1.2.840.10008.5.1.4.1.1.2.5",
-    }
-)
+# The image Storage SOP Classes of CT, MR, and PET (PS3.4 Table B.5-1), each
+# with the indicator of its modality's volume and whether its instances hold
+# Number of Frames; an instance of any other is one frame. MR Spectroscopy
+# holds spectra, not images, so it is none of them.
+_VOLUME_SOP_CLASSES = {
+    # CT Image, and CT Image - For Processing.
+    "1.2.840.10008.5.1.4.1.1.2": (Indicator.CT_VOLUME, False),
+    "1.2.840.10008.5.1.4.1.1.2.3": (Indicator.CT_VOLUME, False),
+    # Enhanced CT Image and Legacy Converted Enhanced CT Image, and their
+    # For Processing classes.
+    "1.2.840.10008.5.1.4.1.1.2.1": (Indicator.CT_VOLUME, True),
+    "1.2.840.10008.5.1.4.1.1.2.4": (Indicator.CT_VOLUME, True),
+    "1.2.840.10008.5.1.4.1.1.2.2": (Indicator.CT_VOLUME, True),
+    "1.2.840.10008.5.1.4.1.1.2.5": (Indicator.CT_VOLUME, True),
+    # MR Image.
+    "1.2.840.10008.5.1.4.1.1.4": (Indicator.MR_VOLUME, False),
+    # Enhanced MR Image, Enhanced MR Color Image, and Legacy Converted
+    # Enhanced MR Image.
+    "1.2.840.10008.5.1.4.1.1.4.1": (Indicator.MR_VOLUME, True),
+    "1.2.840.10008.5.1.4.1.1.4.3": (Indicator.MR_VOLUME, True),
+    "1.2.840.10008.5.1.4.1.1.4.4": (Indicator.MR_VOLUME, True),
+    # Positron Emission Tomography Image.
+    "1.2.840.10008.5.1.4.1.1.128": (Indicator.PET_VOLUME, False),
+    # Enhanced PET Image and Legacy Converted Enhanced PET Image.
+    "1.2.840.10008.5.1.4.1.1.130": (Indicator.PET_VOLUME, True),
+    "1.2.840.10008.5.1.4.1.1.128.1": (Indicator.PET_VOLUME, True),
+}
+VOLUME_INDICATORS = (Indicator.CT_VOLUME, Indicator.MR_VOLUME, Indicator.PET_VOLUME)
 _TERM = re.compile(r"[A-Z0-9_ ]{1,16}")
 
 
@@ -662,7 +791,7 @@ class SeriesFinding:
         The positions, counting from 0, of the instances that show it, in
         the order given.
     path : ElementPath, optional
-        The attribute that shows it; ``None`` for a CT volume, which no one
+        The attribute that shows it; ``None`` for a volume, which no one
         attribute shows.
     risk : Risk, optional
         As for :class:`Finding`.
@@ -677,25 +806,27 @@ class SeriesFinding:
         object.__setattr__(self, "risk", _checked_risk(self.indicator, self.risk))
 
 
-def assess_ct_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, ...]:
+def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, ...]:
     """Read a series' indicators of a reconstructable face.
 
     Without inspecting pixel data, the engine cannot tell whether a series
-    covers the face, so every CT volume is reported: a series whose CT
-    images, of any CT Image Storage SOP Class, hold at least two frames that
-    are not localizers, whose Image Type (0008,0008) has a third value of
-    LOCALIZER (PS3.3 Sections C.8.2.1.1.1 and C.8.16.1.3). A single-frame CT
-    image is one frame; an Enhanced or Legacy Converted Enhanced CT image
-    holds its Number of Frames (0028,0008), one if it is absent, and is a
-    volume by itself if that cannot be read. An instance whose SOP Class
-    UID (0008,0016) cannot be read counts as a frame. A volume whose Body
-    Part Examined (0018,0015) or Anatomic Region Sequence (0008,2218),
-    at the top level or in a Frame Anatomy Sequence (0020,9071) of the
-    shared or a per-frame functional group, names a region in
-    :func:`load_head_and_neck_regions` is also reported as showing the head
-    or neck. How finely a series samples the face changes
-    how readily it can be recognised (MIDI report Section 1.18.3.2), but no
-    spacing makes it safe, so spacing decides nothing here.
+    covers the face, so every CT, MR, and PET volume is reported: a series
+    whose images of one of those modalities, of any of its image Storage SOP
+    Classes, hold at least two frames that are not localizers, whose Image
+    Type (0008,0008) has a third value of LOCALIZER (PS3.3 Sections
+    C.8.2.1.1.1 and C.8.16.1.3). A single-frame image is one frame; an
+    Enhanced or Legacy Converted Enhanced image holds its Number of Frames
+    (0028,0008), one if it is absent, and is a volume by itself if that
+    cannot be read. An instance whose SOP Class UID (0008,0016) cannot be
+    read counts as a frame of each modality's volume that the series' other
+    images make. A volume whose Body Part Examined (0018,0015) or Anatomic
+    Region Sequence (0008,2218), at the top level or in a Frame Anatomy
+    Sequence (0020,9071) of the shared or a per-frame functional group,
+    names a region in :func:`load_head_and_neck_regions` is also reported
+    as showing the head or neck. How finely a series samples the face
+    changes how readily it can be recognised (MIDI report Section
+    1.18.3.2), but no spacing makes it safe, so spacing decides nothing
+    here.
 
     Parameters
     ----------
@@ -705,23 +836,24 @@ def assess_ct_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFindin
     Returns
     -------
     tuple of SeriesFinding
-        The CT volume first, then the head or neck by attribute, then
-        unreadable evidence by instance, which is reported whether or not
-        the series is a CT volume.
+        The CT, MR, and PET volumes first, in that order, then the head or
+        neck by attribute, then unreadable evidence by instance, which is
+        reported whether or not the series is a volume.
     """
     regions = load_head_and_neck_regions()
-    volume: list[int] = []
-    frames = 0
-    head: dict[ElementPath, list[int]] = {}
+    members: dict[Indicator, list[int]] = {}
+    frames: dict[Indicator, int] = {}
+    unknown: list[int] = []
+    head: dict[int, list[ElementPath]] = {}
     unreadable: list[SeriesFinding] = []
     for index, dataset in enumerate(instances):
         try:
-            multi_frame = _multi_frame_ct(dataset)
+            volume_class = _volume_class(dataset)
         except _Unreadable:
             unreadable.append(_unreadable_in(index, ElementPath((), _SOP_CLASS_UID)))
-            multi_frame = False
+            volume_class = None
         else:
-            if multi_frame is None:
+            if volume_class is None:
                 continue
         try:
             image_type = _read(dataset, _IMAGE_TYPE) or []
@@ -730,23 +862,37 @@ def assess_ct_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFindin
         assert isinstance(image_type, list)
         if image_type[2:3] == ["LOCALIZER"]:
             continue
-        frames += _frames(dataset, index, unreadable) if multi_frame else 1
-        volume.append(index)
-        for path in _head_or_neck(dataset, regions, index, unreadable):
-            head.setdefault(path, []).append(index)
-    if frames < 2:
-        return tuple(unreadable)
+        if volume_class is None:
+            unknown.append(index)
+        else:
+            indicator, multi_frame = volume_class
+            members.setdefault(indicator, []).append(index)
+            frames[indicator] = frames.get(indicator, 0) + (
+                _frames(dataset, index, unreadable) if multi_frame else 1
+            )
+        head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
+    volumes = [
+        SeriesFinding(indicator, tuple(sorted([*members[indicator], *unknown])))
+        for indicator in VOLUME_INDICATORS
+        if indicator in members and frames[indicator] + len(unknown) >= 2
+    ]
+    shown = {index for volume in volumes for index in volume.instances}
+    named: dict[ElementPath, list[int]] = {}
+    for index, paths in head.items():
+        if index in shown:
+            for path in paths:
+                named.setdefault(path, []).append(index)
     return (
-        SeriesFinding(Indicator.CT_VOLUME, tuple(volume)),
+        *volumes,
         *(
             SeriesFinding(Indicator.HEAD_OR_NECK, tuple(where), path)
-            for path, where in sorted(head.items(), key=lambda item: str(item[0]))
+            for path, where in sorted(named.items(), key=lambda item: str(item[0]))
         ),
         *unreadable,
     )
 
 
-# The top-level elements that assess_ct_series reads; nested ones are read
+# The top-level elements that assess_series reads; nested ones are read
 # within these.
 _SERIES_EVIDENCE = (
     _SOP_CLASS_UID,
@@ -760,13 +906,13 @@ _SERIES_EVIDENCE = (
 
 
 def series_evidence(dataset: pydicom.Dataset) -> pydicom.Dataset:
-    """Return the part of an instance that :func:`assess_ct_series` reads.
+    """Return the part of an instance that :func:`assess_series` reads.
 
     A run keeps this, not the whole instance, until it has every instance of
     a series. Each element is copied as it was stored, so the series is
     assessed, with the same findings at the same paths, as if from the
     instances themselves, and the data set is left as it was. An Enhanced or
-    Legacy Converted Enhanced CT image's Per-frame Functional Groups
+    Legacy Converted Enhanced image's Per-frame Functional Groups
     Sequence holds an item for each frame, so its evidence can be much of
     its header. The copied elements share the instance's stored values.
 
@@ -796,22 +942,20 @@ def _unreadable_in(index: int, path: ElementPath) -> SeriesFinding:
     )
 
 
-def _multi_frame_ct(dataset: pydicom.Dataset) -> bool | None:
-    """Return whether a CT image is multi-frame, or ``None`` for another class."""
+def _volume_class(dataset: pydicom.Dataset) -> tuple[Indicator, bool] | None:
+    """Return an image's volume indicator and whether it is multi-frame.
+
+    ``None`` is returned for an instance of a class that makes no volume.
+    """
     uids = _read(dataset, _SOP_CLASS_UID) or []
     assert isinstance(uids, list)
     if len(uids) > 1:
         raise _Unreadable
-    uid = normalise_uid(uids[0]) if uids else None
-    if uid in _SINGLE_FRAME_CT_SOP_CLASSES:
-        return False
-    if uid in _MULTI_FRAME_CT_SOP_CLASSES:
-        return True
-    return None
+    return _VOLUME_SOP_CLASSES.get(normalise_uid(uids[0])) if uids else None
 
 
 def _frames(dataset: pydicom.Dataset, index: int, unreadable: list) -> int:
-    """Return how many frames a multi-frame CT image holds, for a volume."""
+    """Return how many frames a multi-frame image holds, for a volume."""
     try:
         frames = _read(dataset, _NUMBER_OF_FRAMES)
         if frames is None:
@@ -842,7 +986,7 @@ def _head_or_neck(
     if regions.body_parts.intersection(body_parts):
         yield path
     yield from _coded_head_or_neck(dataset, (), regions, index, unreadable)
-    # An Enhanced or Legacy Converted Enhanced CT image codes its anatomy in
+    # An Enhanced or Legacy Converted Enhanced image codes its anatomy in
     # the Frame Anatomy functional group, shared or per frame, whose General
     # Anatomy macro holds an Anatomic Region Sequence (PS3.3 Sections A.38
     # and C.7.6.16.2.8), with no copy at the top level required.
@@ -867,13 +1011,10 @@ def _items(
     unreadable: list[SeriesFinding],
 ) -> list[tuple[pydicom.Dataset, tuple[tuple[str, int], ...]]]:
     """Return a sequence's items with their paths, reporting it if unreadable."""
-    try:
-        items = _read(dataset, tag) or []
-    except _Unreadable:
-        unreadable.append(_unreadable_in(index, ElementPath(within, tag)))
-        return []
-    assert isinstance(items, list)
-    return [(item, (*within, (tag, number))) for number, item in enumerate(items)]
+    paths: list[ElementPath] = []
+    items = _sequence_items(dataset, within, tag, paths)
+    unreadable.extend(_unreadable_in(index, path) for path in paths)
+    return items
 
 
 def _coded_head_or_neck(

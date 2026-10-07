@@ -52,9 +52,9 @@ A pack holds, for one run:
 - ``pixel_risks``: each instance in a high-risk category, with the
   indicators of risk in its pixel data that put it there (D-017); and
   ``series_risks``: each series of released or held instances with
-  findings of its series assessment, a CT volume, the head or neck, or
-  unreadable evidence of either, with the instances that show each (D-015,
-  D-017);
+  findings of its series assessment, a CT, MR, or PET volume, the head or
+  neck, or unreadable evidence of either, with the instances that show each
+  (D-015, D-017);
 - ``previews``: each image preview, by its file in the previews directory
   beside the pack, with what it shows and the file's SHA-256, so that an
   attestation of the pack covers them; and ``not_previewed``: each instance
@@ -816,7 +816,7 @@ class SeriesRiskEntry:
         The run positions of the series' instances that were assessed, in
         order, each once.
     findings : tuple of ~pymedphys._dicom.deidentify.pixel_risk.SeriesFinding
-        At least one, as :func:`~.pixel_risk.assess_ct_series` gave them for
+        At least one, as :func:`~.pixel_risk.assess_series` gave them for
         those instances, so that each finding's ``instances`` count from 0
         in ``positions``, each once, in order; each names an indicator, its risk, and an
         attribute path or none, never a value.

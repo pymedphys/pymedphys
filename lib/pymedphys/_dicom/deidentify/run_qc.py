@@ -257,7 +257,7 @@ def qc_pack_of(
 
     The released and held instances that give :class:`SeriesEvidence` are
     grouped by series, in run position order, and each series is assessed
-    with :func:`~.pixel_risk.assess_ct_series`; one with any finding is
+    with :func:`~.pixel_risk.assess_series`; one with any finding is
     listed in ``series_risks``. Only these instances are assessed, since
     only they reach a recipient, so a series of which one image was
     released is not a volume.
@@ -385,7 +385,7 @@ def assessed_series(
 
     The instances at ``positions`` that give :class:`SeriesEvidence` are
     grouped by series, in run position order, and each series is assessed
-    with :func:`~.pixel_risk.assess_ct_series`. Each series with a finding
+    with :func:`~.pixel_risk.assess_series`. Each series with a finding
     is returned, by first position, as the run positions of its instances
     and its findings, whose ``instances`` count from 0 within those
     positions.
@@ -395,7 +395,7 @@ def assessed_series(
         groups.setdefault(evidence[position].series, []).append(position)
     assessed = []
     for grouped in groups.values():
-        found = pixel_risk.assess_ct_series(
+        found = pixel_risk.assess_series(
             [evidence[position].evidence for position in grouped]
         )
         if found:

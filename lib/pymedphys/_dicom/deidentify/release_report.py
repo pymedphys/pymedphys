@@ -141,7 +141,7 @@ from .standard import OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/10"
+FORMAT = "pymedphys-deid-release-report/11"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -403,7 +403,7 @@ class PixelRiskCount:
     """How many instances of one disposition show one risk in their pixel data.
 
     The engine reads indicators of each risk from an instance's attributes,
-    and those of a CT volume from its series, and never inspects the pixel
+    and those of a volume from its series, and never inspects the pixel
     data, so an instance without one may still show the risk (D-015).
 
     Attributes
