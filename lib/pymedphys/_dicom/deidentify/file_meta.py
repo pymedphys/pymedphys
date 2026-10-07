@@ -54,7 +54,7 @@ from pymedphys._imports import pydicom
 from pymedphys._dicom.uid import PYMEDPHYS_FIXED_UID_ARC
 from pymedphys._version import __version__
 
-from . import scope, values
+from . import source, values
 from .diagnostics import redacted_diagnostics
 
 # The first UID of the arc 1.2.826.0.1.3680043.10.188.1, which PyMedPhys
@@ -148,8 +148,8 @@ def file_meta_information(
         The instance's replacement SOP Instance UID (0008,0018).
     transfer_syntax_uid : str
         The transfer syntax that the instance's data set is written in, one
-        of :data:`~pymedphys._dicom.deidentify.scope.SUPPORTED_TRANSFER_SYNTAXES`:
-        Implicit VR Little Endian or Explicit VR Little Endian.
+        of :data:`~pymedphys._dicom.deidentify.source.SUPPORTED_TRANSFER_SYNTAXES`,
+        which the engine reads and writes.
 
     Returns
     -------
@@ -181,7 +181,7 @@ def file_meta_information(
     sop_class_uid = _checked_uid(sop_class_uid, "SOP Class UID")
     sop_instance_uid = _checked_uid(sop_instance_uid, "SOP Instance UID")
     transfer_syntax_uid = _checked_uid(transfer_syntax_uid, "Transfer Syntax UID")
-    if transfer_syntax_uid not in scope.SUPPORTED_TRANSFER_SYNTAXES:
+    if transfer_syntax_uid not in source.SUPPORTED_TRANSFER_SYNTAXES:
         raise ValueError("the Transfer Syntax UID is not one the engine supports")
     elements = (
         ("FileMetaInformationVersion", "OB", FILE_META_INFORMATION_VERSION),

@@ -305,6 +305,67 @@ def test_a_kept_value_of_undefined_length_cannot_be_verified():
     )
 
 
+JPEG_LOSSLESS = "1.2.840.10008.1.2.4.70"
+PIXEL_DATA = _path("(7FE0,0010)")
+
+
+def _pixel_data(table=b"", fragments=(b"SENTINEL FRAME 1", b"SENTINEL FRAME 2")):
+    """Encapsulated Pixel Data: a Basic Offset Table, fragments, and a delimiter."""
+    return (
+        _explicit(0x7FE00010, "OB", length=UNDEFINED)
+        + _item(table)
+        + b"".join(_item(fragment) for fragment in fragments)
+        + SEQUENCE_END
+    )
+
+
+def _compressed(transfer_syntax=JPEG_LOSSLESS, **pixel_data):
+    return read_source(
+        _file(
+            transfer_syntax,
+            _explicit(0x00100010, "PN", NAME) + _pixel_data(**pixel_data),
+        )
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
+def test_encapsulated_pixel_data_with_the_same_bytes_is_preserved():
+    source = _compressed()
+
+    verify_preservation(
+        source, _compressed(), Expectations(kept=frozenset(source.paths()))
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
+@pytest.mark.parametrize(
+    "pixel_data",
+    [
+        {"table": struct.pack("<2I", 0, 24)},
+        {"fragments": (b"SENTINEL FRAME 1", b"SENTINEL FRAME 3")},
+        {"fragments": (b"SENTINEL FRAME 1SENTINEL FRAME 2",)},
+        {"fragments": (b"SENTINEL FRAME 1",)},
+    ],
+    ids=["offset-table", "fragment", "fragments-joined", "fragment-dropped"],
+)
+def test_encapsulated_pixel_data_with_other_bytes_is_refused(pixel_data):
+    source = _compressed()
+
+    assert _refused(
+        _compressed(**pixel_data),
+        Expectations(kept=frozenset(source.paths())),
+        source,
+    ) == (PreservationReason.VALUE, PIXEL_DATA)
+
+
+def test_pixel_data_fragments_in_a_native_syntax_cannot_be_verified():
+    source = _compressed(EXPLICIT)
+
+    assert _refused(
+        _compressed(EXPLICIT), Expectations(kept=frozenset(source.paths())), source
+    ) == (PreservationReason.UNVERIFIABLE, PIXEL_DATA)
+
+
 @pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.parametrize(
     "changes, path",

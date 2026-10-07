@@ -53,15 +53,19 @@ The elements of each data set are written in ascending order of tag (PS3.5
 Section 7.1). :func:`.preservation.verify_preservation` then checks the
 file written from the result against its source and the same plan.
 
-A kept element of undefined length that holds no items, which can only be
-fragments of OB, is refused rather than copied: verification could not show
-it preserved. Only Implicit and Explicit VR Little Endian, which
-:func:`.source.read_source` admits, are written. :func:`write_file_bytes`
-puts the preamble and the File Meta Information that :mod:`.file_meta`
-builds before the data set. Each refusal is raised outside any handler, so
-it carries no exception from pydicom, whose message can quote a value, and
-pydicom's warnings and log records while either function writes are
-redacted by :func:`.diagnostics.redacted_diagnostics`.
+Encapsulated Pixel Data (7FE0,0010) of the top-level data set, in a
+transfer syntax that encapsulates it (PS3.5 Section A.4), is kept as any
+other element is: copied byte for byte, with its Basic Offset Table,
+fragments, and delimiter. Any other kept element of undefined length that
+holds no items, which can only be fragments of OB, is refused rather than
+copied, since verification could not show it preserved. Only the transfer
+syntaxes that :func:`.source.read_source` admits are written, and the data
+set is written in the source's. :func:`write_file_bytes` puts the preamble
+and the File Meta Information that :mod:`.file_meta` builds before the data
+set. Each refusal is raised outside any handler, so it carries no exception
+from pydicom, whose message can quote a value, and pydicom's warnings and
+log records while either function writes are redacted by
+:func:`.diagnostics.redacted_diagnostics`.
 """
 
 from __future__ import annotations
@@ -83,7 +87,11 @@ from .elements import (
 )
 from .file_layout import ElementPath
 from .preservation import TEXT_VRS, Expectations
-from .source import SUPPORTED_TRANSFER_SYNTAXES, SourceEvidence
+from .source import (
+    SUPPORTED_TRANSFER_SYNTAXES,
+    SourceEvidence,
+    encapsulated_pixel_data,
+)
 from .standard import VRS, dictionary_attribute
 
 _IMPLICIT = "1.2.840.10008.1.2"
@@ -104,7 +112,7 @@ _Terms = tuple[str, ...]
 class WriteReason(enum.Enum):
     """Why a data set is not written, as a stable code."""
 
-    TRANSFER_SYNTAX = "transfer-syntax"  # not Implicit or Explicit VR Little Endian
+    TRANSFER_SYNTAX = "transfer-syntax"  # not one that read_source admits
     UNPLANNED = "unplanned"  # a source element neither kept, replaced, nor removed
     UNPLACED = "unplaced"  # kept or replaced in a data set that is not written
     FRAGMENTS = "fragments"  # a kept value of undefined length without items
@@ -267,7 +275,11 @@ class _Writer:
 
     def kept(self, path: ElementPath) -> bytes:
         extent = self.source.element(path)
-        if extent.items is None and extent.undefined_length:
+        if (
+            extent.items is None
+            and extent.undefined_length
+            and not encapsulated_pixel_data(self.source, path)
+        ):
             raise WriteRefused(WriteReason.FRAGMENTS, path)
         if path not in self.edited:
             self.copied.add(path)
