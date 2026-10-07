@@ -19,6 +19,7 @@ Every image is synthetic, encoded by ``_synthetic_compressed``.
 
 import io
 import logging
+import struct
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
@@ -157,10 +158,183 @@ def test_frames_that_do_not_match_number_of_frames_are_refused(count, image):
     "image", [{"rows": ROWS + 1}, {"columns": COLUMNS + 1}, {"columns": COLUMNS - 1}]
 )
 def test_frames_of_another_size_are_refused(image):
-    assert frames_problem(read_source(_lossless(**image))) in (
-        TransformReason.FRAME_MISMATCH,
-        TransformReason.UNDECODABLE_PIXEL_DATA,
+    assert frames_problem(read_source(_lossless(**image))) is (
+        TransformReason.FRAME_MISMATCH
     )
+
+
+def test_a_frame_whose_codestream_has_the_rows_and_columns_swapped_is_refused():
+    # pydicom shapes the 35 decoded samples by the attributes, so only the
+    # codestream header shows that the frame is 5 rows of 7, not 7 of 5.
+    assert ROWS != COLUMNS
+    data = _lossless(rows=COLUMNS, columns=ROWS)
+
+    assert frames_problem(read_source(data)) is TransformReason.FRAME_MISMATCH
+
+
+def test_a_jpeg_2000_frame_with_the_rows_and_columns_swapped_is_refused():
+    _needs(compressed.JPEG_2000_LOSSLESS)
+    pytest.importorskip("openjpeg")
+    frame = np.arange(48 * 64, dtype=np.uint16).reshape(48, 64) % 4096
+    codestream = compressed.jpeg_2000(frame, precision=12)
+
+    def image(rows, columns):
+        return read_source(
+            compressed.ct_image(
+                compressed.JPEG_2000_LOSSLESS,
+                [codestream],
+                rows=rows,
+                columns=columns,
+                bits=12,
+            )
+        )
+
+    assert frames_problem(image(48, 64)) is None
+    assert frames_problem(image(64, 48)) is TransformReason.FRAME_MISMATCH
+
+
+@pytest.mark.parametrize("precision, bits", [(16, 12), (12, 16), (12, 11)])
+def test_a_jpeg_precision_other_than_bits_stored_is_refused(precision, bits):
+    _needs(compressed.JPEG_LOSSLESS_SV1)
+    frame = _frames(1, bits=min(precision, bits))[0]
+    data = compressed.ct_image(
+        compressed.JPEG_LOSSLESS_SV1,
+        [compressed.jpeg_lossless(frame, precision=precision)],
+        rows=ROWS,
+        columns=COLUMNS,
+        bits=bits,
+    )
+
+    assert frames_problem(read_source(data)) is TransformReason.FRAME_MISMATCH
+
+
+def test_an_8_bit_jpeg_baseline_frame_declared_as_7_bits_is_refused():
+    _needs(compressed.JPEG_BASELINE)
+    pytest.importorskip("PIL")
+    frame = np.arange(256, dtype=np.uint8).reshape(16, 16) // 2
+    codestream = compressed.jpeg_baseline(frame)
+
+    def image(bits):
+        return read_source(
+            compressed.ct_image(
+                compressed.JPEG_BASELINE, [codestream], rows=16, columns=16, bits=bits
+            )
+        )
+
+    assert frames_problem(image(8)) is None
+    assert frames_problem(image(7)) is TransformReason.FRAME_MISMATCH
+
+
+def test_a_jpeg_2000_precision_other_than_bits_stored_is_refused():
+    _needs(compressed.JPEG_2000_LOSSLESS)
+    pytest.importorskip("openjpeg")
+    frame = np.arange(48 * 64, dtype=np.uint16).reshape(48, 64) % 4096
+    data = compressed.ct_image(
+        compressed.JPEG_2000_LOSSLESS,
+        [compressed.jpeg_2000(frame, precision=13)],
+        rows=48,
+        columns=64,
+        bits=12,
+    )
+
+    assert frames_problem(read_source(data)) is TransformReason.FRAME_MISMATCH
+
+
+def test_a_subsampled_jpeg_2000_component_is_refused():
+    _needs(compressed.JPEG_2000_LOSSLESS)
+    pytest.importorskip("openjpeg")
+    frame = np.arange(48 * 64, dtype=np.uint16).reshape(48, 64) % 4096
+    codestream = bytearray(compressed.jpeg_2000(frame, precision=12))
+    # SOC, then SIZ, whose first component's XRsiz follows its Ssiz.
+    assert codestream[:4] == b"\xff\x4f\xff\x51"
+    codestream[43] = 2
+    data = compressed.ct_image(
+        compressed.JPEG_2000_LOSSLESS, [bytes(codestream)], rows=48, columns=64, bits=12
+    )
+
+    assert frames_problem(read_source(data)) is TransformReason.FRAME_MISMATCH
+
+
+def test_one_frame_of_several_whose_header_differs_is_refused():
+    _needs(compressed.JPEG_LOSSLESS_SV1)
+    frames = _frames(3, bits=12)
+    codestreams = [
+        compressed.jpeg_lossless(frame, precision=12 if i != 1 else 13)
+        for i, frame in enumerate(frames)
+    ]
+    data = compressed.ct_image(
+        compressed.JPEG_LOSSLESS_SV1,
+        codestreams,
+        rows=ROWS,
+        columns=COLUMNS,
+        bits=12,
+        number_of_frames=3,
+    )
+
+    assert frames_problem(read_source(data)) is TransformReason.FRAME_MISMATCH
+
+
+def test_a_jpeg_frame_header_of_0_lines_is_refused():
+    # Its height would be given by a DNL marker segment after the first scan.
+    _needs(compressed.JPEG_LOSSLESS_SV1)
+    codestream = bytearray(compressed.jpeg_lossless(_frames(1)[0]))
+    header = codestream.index(b"\xff\xc3")
+    codestream[header + 5 : header + 7] = b"\x00\x00"
+    data = compressed.ct_image(
+        compressed.JPEG_LOSSLESS_SV1,
+        [bytes(codestream)],
+        rows=ROWS,
+        columns=COLUMNS,
+    )
+
+    assert frames_problem(read_source(data)) is TransformReason.FRAME_MISMATCH
+
+
+def _jpeg_ls(marker, rows, columns):
+    """Return the start of a JPEG-LS codestream: SOI, then a frame header
+    for one 8-bit component, then SOS. Nothing after it is ever decoded."""
+    frame = struct.pack(">HHBHHBBBB", marker, 11, 8, rows, columns, 1, 1, 0x11, 0)
+    return b"\xff\xd8" + frame + b"\xff\xda\x00\x08\x01\x01\x00\x00\x00\x00"
+
+
+@pytest.mark.parametrize(
+    "marker, rows, columns, problem",
+    [
+        (0xFFF7, COLUMNS, ROWS, TransformReason.FRAME_MISMATCH),
+        (0xFFC3, ROWS, COLUMNS, TransformReason.UNDECODABLE_PIXEL_DATA),
+    ],
+    ids=["dimensions-swapped", "t81-frame-header"],
+)
+def test_a_jpeg_ls_frame_header_that_does_not_match_is_refused(
+    marker, rows, columns, problem
+):
+    _needs(compressed.JPEG_LS_LOSSLESS)
+    data = compressed.ct_image(
+        compressed.JPEG_LS_LOSSLESS,
+        [_jpeg_ls(marker, rows, columns)],
+        rows=ROWS,
+        columns=COLUMNS,
+        bits=8,
+    )
+
+    assert frames_problem(read_source(data)) is problem
+
+
+@pytest.mark.parametrize("value", [0, None], ids=["zero", "empty"])
+def test_number_of_frames_of_zero_or_empty_is_refused(value):
+    data = _lossless()
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    dataset.NumberOfFrames = value
+    data = synthetic.written(dataset, compressed.JPEG_LOSSLESS_SV1)
+
+    assert frames_problem(read_source(data)) is TransformReason.FRAME_MISMATCH
+
+
+def test_without_number_of_frames_an_image_has_one_frame():
+    data = _lossless()
+
+    assert "NumberOfFrames" not in pydicom.dcmread(io.BytesIO(data))
+    assert frames_problem(read_source(data)) is None
 
 
 def test_a_frame_that_does_not_decode_is_refused_without_quoting_anything(caplog):

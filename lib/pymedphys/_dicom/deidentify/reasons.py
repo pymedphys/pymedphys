@@ -84,10 +84,12 @@ class TransformReason(enum.Enum):
     # compressed pixel data whose Basic or Extended Offset Table does not give
     # where its frames start (PS3.5 Section A.4)
     OFFSET_TABLE_MISMATCH = "offset-table-mismatch"
-    # compressed pixel data with a frame that does not decode
+    # compressed pixel data with a frame that does not decode, or whose
+    # codestream has no header that its transfer syntax allows
     UNDECODABLE_PIXEL_DATA = "undecodable-pixel-data"
-    # compressed pixel data whose frames do not match Number of Frames,
-    # Rows, Columns, or Samples per Pixel
+    # compressed pixel data whose frames, or their codestream headers, do
+    # not match Number of Frames, Rows, Columns, Samples per Pixel, or Bits
+    # Stored
     FRAME_MISMATCH = "frame-mismatch"
     # compressed pixel data with a frame that cannot be found or parsed, or
     # that holds bytes outside its codestream other than padding
