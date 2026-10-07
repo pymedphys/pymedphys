@@ -107,6 +107,10 @@ _RESTART = range(0xD0, 0xD8)
 
 # T.800 Table A.2, with T.814's CAP and CPF.
 _SOC, _SOT, _SOD, _EOC = 0xFF4F, 0xFF90, 0xFF93, 0xFFD9
+_SOP, _EPH = 0xFF91, 0xFF92
+# Bit stuffing keeps every two bytes of a tile-part's data below 0xFF90,
+# but for SOP and EPH (T.800 Section B.10.1 and Annexes C and D, and T.814).
+_IN_DATA = 0xFF90
 _J2K_COM = 0xFF64
 _SIZ = 0xFF51
 _J2K_MAIN = frozenset(
@@ -484,12 +488,6 @@ def _jpeg_2000(data: bytes) -> _Parsed:
             raise _Unparsable
         (tile_part_length,) = struct.unpack_from(">I", data, position + 6)
         tile_part_end = position + tile_part_length
-        if tile_part_length == 0:
-            # The last tile-part, running to the EOC marker (T.800 A.4.2).
-            last = len(data) - (2 if data.endswith(b"\xff\xd9") else 3)
-            if _marker(data, last) != _EOC:
-                raise _Unparsable
-            tile_part_end = last
         position = end
         while True:
             marker = _marker(data, position)
@@ -500,10 +498,35 @@ def _jpeg_2000(data: bytes) -> _Parsed:
             if marker not in _J2K_TILE_PART:
                 raise _Unparsable
             position = _segment_end(data, position)
+        if tile_part_length == 0:
+            # The last tile-part, running to this codestream's EOC marker
+            # (T.800 Section A.4.2), which another frame may follow.
+            tile_part_end = _eoc(data, position + 2)
         if not position + 2 <= tile_part_end <= len(data):
             raise _Unparsable
         entropy.append((position + 2, tile_part_end))
         position = tile_part_end
+
+
+def _eoc(data: bytes, position: int) -> int:
+    """Return where the EOC marker after the tile-part data at ``position``
+    is, stepping over SOP marker segments and EPH markers (T.800 Sections
+    A.8.1 and A.8.2), whose parameters may hold any bytes."""
+    while True:
+        position = data.find(b"\xff", position)
+        if position < 0:
+            raise _Unparsable
+        marker = _marker(data, position)
+        if marker < _IN_DATA:
+            position += 1
+        elif marker == _SOP:
+            position = _segment_end(data, position)
+        elif marker == _EPH:
+            position += 2
+        elif marker == _EOC:
+            return position
+        else:
+            raise _Unparsable
 
 
 def _marker(data: bytes, position: int) -> int:
