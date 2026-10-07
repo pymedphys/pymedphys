@@ -498,8 +498,10 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
         kept = {
             tag for tag in _omitted_text() if composed.supplementary_actions[tag] == "K"
         }
-        expected = KEPT_TEXT | ADDED_KEPT_TEXT | (
-            device_identity if DEVICE_IDENTITY in composed.options else set()
+        expected = (
+            KEPT_TEXT
+            | ADDED_KEPT_TEXT
+            | (device_identity if DEVICE_IDENTITY in composed.options else set())
         )
         assert kept == expected, composed.options
 

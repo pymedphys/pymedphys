@@ -221,7 +221,9 @@ def test_the_table_can_be_given():
 
     found = scope.classify(plan.uid, EXPLICIT_LE, sop_classes=altered)
 
-    assert found == scope.Classification(Disposition.UNSUPPORTED_IOD, "Nuclear Medicine Image")
+    assert found == scope.Classification(
+        Disposition.UNSUPPORTED_IOD, "Nuclear Medicine Image"
+    )
     # CT Image Storage is not in the altered table.
     ct = scope.classify("1.2.840.10008.5.1.4.1.1.2", EXPLICIT_LE, sop_classes=altered)
     assert ct.disposition is Disposition.UNLISTED_SOP_CLASS
