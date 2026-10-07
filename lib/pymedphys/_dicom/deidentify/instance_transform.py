@@ -41,15 +41,15 @@ each instance it may process. It joins the engine's per-instance steps:
    file from its replacement Patient ID and UIDs alone (D-016).
 
 Any step that refuses the instance sequesters it with that step's own
-value-free reason: a :class:`~.scope.Disposition`, a
-:class:`~.source.SourceReason`, the walker's
+value-free reason: a :class:`~.scope.Disposition`, or an
+:class:`~.scope.UnsupportedIod` that names the IOD of an instance of an
+unsupported IOD (D-010), a :class:`~.source.SourceReason`, the walker's
 :class:`~.walker.Sequestration` objects, a
 :class:`~.preserving_writer.WriteReason`, a
 :class:`~.preservation.PreservationReason`, or a :class:`TransformReason`,
 such as :attr:`TransformReason.PENDING_EDIT` for the edits still to come
-that :func:`writer_plan` names by :class:`PendingEdit`.
-No exception message is kept, since some come from pydicom and can quote a
-value.
+that :func:`writer_plan` names by :class:`PendingEdit`. No exception
+message is kept, since some come from pydicom and can quote a value.
 
 Whatever the outcome, once the instance has been planned and edited, its
 :class:`~.release_gate.Coverage` goes with it as the transform's evidence:
@@ -61,9 +61,9 @@ file's subject, sequestered instances included, and asks
 Where the edits sequester an instance, the values that they did not reach
 are uncollected. An instance out of scope whose IOD the pinned tables
 define, such as a nuclear medicine image or a spatial registration, is
-planned and edited too when its source is readable, only so that its values are
-collected for its subject's search; it is never written. Where
-an instance of the subject gives no coverage at all, because its source is
+planned and edited too when its source is readable, only so that its values
+are collected for its subject's search; it is never written. Where an
+instance of the subject gives no coverage at all, because its source is
 refused, its SOP Class names no IOD of the tables, the transform raises, or
 it changed during the run, the gate withholds the file, since its values
 could be there unsearched for.
@@ -700,7 +700,7 @@ class InstanceTransform:
         if classification.iod is None or (
             classification.sequestered and classification.iod not in self._iods.iods
         ):
-            return Sequestered((classification.disposition,))
+            return Sequestered((classification.reason,))
         iod = self._iods.iods[classification.iod]
         risk: tuple[object, ...] = _pixel_risk(dataset, record)
         if not classification.sequestered:
@@ -712,7 +712,7 @@ class InstanceTransform:
             # An instance out of scope is planned and edited only so that
             # its identifiers are collected for its subject's search (D-027).
             return Sequestered(
-                (classification.disposition,)
+                (classification.reason,)
                 if classification.sequestered
                 else edits.sequestrations,
                 evidence,

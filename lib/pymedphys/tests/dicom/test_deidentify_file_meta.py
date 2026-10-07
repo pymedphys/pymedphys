@@ -28,6 +28,7 @@ import pymedphys
 from pymedphys import _version
 from pymedphys._dicom import uid as pymedphys_uid
 from pymedphys._dicom.deidentify import file_meta, keys, uid_registry, uids, values
+from pymedphys._dicom.deidentify.source import ENCAPSULATED_TRANSFER_SYNTAXES
 
 st = hypothesis.strategies
 
@@ -530,14 +531,23 @@ def test_a_malformed_uid_is_rejected_without_quoting_it(attribute, name, value):
         assert repr(value) not in message
 
 
+@pytest.mark.parametrize("transfer_syntax_uid", sorted(ENCAPSULATED_TRANSFER_SYNTAXES))
+def test_a_syntax_that_encapsulates_pixel_data_is_described(transfer_syntax_uid):
+    # The engine writes an instance in its source's transfer syntax, which
+    # may encapsulate Pixel Data (PS3.5 Section A.4).
+    assert _meta(transfer_syntax_uid=transfer_syntax_uid).TransferSyntaxUID == (
+        transfer_syntax_uid
+    )
+
+
 @pytest.mark.parametrize(
     "transfer_syntax_uid",
     [
         pytest.param("1.2.840.10008.1.2.2", id="explicit-big-endian"),
         pytest.param("1.2.840.10008.1.2.1.99", id="deflated"),
-        pytest.param("1.2.840.10008.1.2.4.50", id="jpeg-baseline"),
-        pytest.param("1.2.840.10008.1.2.4.90", id="jpeg-2000-lossless"),
-        pytest.param("1.2.840.10008.1.2.5", id="rle"),
+        pytest.param("1.2.840.10008.1.2.4.92", id="jpeg-2000-part-2"),
+        pytest.param("1.2.840.10008.1.2.4.94", id="jpip"),
+        pytest.param("1.2.840.10008.1.2.4.100", id="mpeg2"),
         pytest.param("1.2.840.99999.1.2.1", id="private"),
         pytest.param(RT_PLAN_STORAGE, id="sop-class"),
     ],

@@ -25,7 +25,7 @@ from pymedphys._imports import pydicom, pytest
 from pymedphys._dicom.deidentify import run
 from pymedphys._dicom.deidentify.instance_transform import ReleaseGate
 from pymedphys._dicom.deidentify.release_gate import Decision, ReasonCode
-from pymedphys._dicom.deidentify.scope import Disposition
+from pymedphys._dicom.deidentify.scope import Disposition, UnsupportedIod
 
 from . import _synthetic_references as synthetic
 from .test_deidentify_instance_transform import _source, _transform
@@ -69,7 +69,7 @@ def test_an_out_of_scope_sibling_no_longer_withholds_its_subject(tmp_path):
 
     nm, dose = result.outcomes
     assert nm.status is run.Status.SEQUESTERED
-    assert nm.reasons == (Disposition.UNSUPPORTED_IOD,)
+    assert nm.reasons == (UnsupportedIod("Nuclear Medicine Image"),)
     assert dose.status is run.Status.RELEASED
     # Only the dose is written: the NM image was read for its values alone.
     assert len(_released(tmp_path)) == 1
