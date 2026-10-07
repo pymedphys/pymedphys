@@ -29,6 +29,7 @@ from pymedphys._dicom.deidentify.codestreams import (
     CodestreamRefused,
     cut_codestream,
     encapsulated,
+    entropy_coded,
     without_metadata,
 )
 from pymedphys._dicom.deidentify.pixel_decoding import decoder_available
@@ -218,11 +219,11 @@ def test_one_padding_byte_of_0_after_a_codestream_is_kept():
     )
 
 
-def _j2k():
+def _j2k(seed=1):
     if not decoder_available(J2K):
         pytest.skip("no JPEG 2000 decoder is installed")
     pytest.importorskip("openjpeg")
-    rng = np.random.default_rng(1)
+    rng = np.random.default_rng(seed)
     frame = rng.integers(0, 2**12, size=(64, 64)).astype(np.uint16)
     codestream = compressed.jpeg_2000(frame, precision=12)
     return frame, codestream
@@ -281,6 +282,91 @@ def test_a_jpeg_2000_frame_with_bytes_outside_its_codestream_is_refused(frame):
     _, codestream = _j2k()
 
     _refused(UNPARSABLE, J2K, frame(codestream))
+
+
+def _last_tile_part_to_eoc(codestream):
+    """Return a one-tile codestream with its tile-part's Psot set to 0, so
+    that it runs to the EOC marker (T.800 Section A.4.2)."""
+    sot = dict(_j2k_markers(codestream))[0xFF90]
+    zeroed = bytearray(codestream)
+    struct.pack_into(">I", zeroed, sot + 6, 0)
+    return bytes(zeroed)
+
+
+def _tile_data(codestream):
+    """Return where a one-tile codestream's tile-part data are."""
+    return dict(_j2k_markers(codestream))[0xFF93] + 2, len(codestream) - 2
+
+
+@pytest.mark.parametrize("to_eoc", [False, True], ids=["psot", "psot-0"])
+def test_jpeg_2000_frames_split_across_fragments_are_found(to_eoc):
+    codestreams = [_j2k(seed)[1] for seed in (1, 2)]
+    if to_eoc:
+        codestreams = [_last_tile_part_to_eoc(c) for c in codestreams]
+    sot = dict(_j2k_markers(codestreams[0]))[0xFF90]
+    comment = _segment(0xFF64, b"\x00\x01" + SENTINEL)
+    first = codestreams[0][:sot] + comment + codestreams[0][sot:]
+    first += b"\x00" * (len(first) % 2)
+    middle = len(first) // 2
+    middle -= middle % 2
+    source = read_source(
+        compressed.ct_image(
+            J2K,
+            [first[:middle], first[middle:], codestreams[1]],
+            rows=64,
+            columns=64,
+            bits=12,
+            number_of_frames=2,
+        )
+    )
+
+    _, fragments = _fragments(without_metadata(source))
+
+    # OpenJPEG writes a comment of its own, which is cut too.
+    assert [f.rstrip(b"\x00") for f in fragments] == [
+        cut_codestream(J2K, c) or c for c in codestreams
+    ]
+    assert SENTINEL not in b"".join(fragments)
+
+
+@pytest.mark.parametrize("to_eoc", [False, True], ids=["psot", "psot-0"])
+def test_the_tile_part_data_of_each_jpeg_2000_frame_are_entropy_coded(to_eoc):
+    codestreams = [_j2k(seed)[1] for seed in (1, 2)]
+    if to_eoc:
+        codestreams = [_last_tile_part_to_eoc(c) for c in codestreams]
+    first = codestreams[0] + b"\x00" * (len(codestreams[0]) % 2)
+    start, end = _tile_data(codestreams[1])
+
+    assert entropy_coded(J2K, first + codestreams[1]) == [
+        _tile_data(codestreams[0]),
+        (len(first) + start, len(first) + end),
+    ]
+
+
+def test_sop_and_eph_markers_in_a_tile_part_to_eoc_are_stepped_over():
+    # An SOP marker segment's Nsop may be 0xFFD9, the EOC marker.
+    codestream = _last_tile_part_to_eoc(_j2k()[1])
+    start, end = _tile_data(codestream)
+    marked = (
+        codestream[:start]
+        + _segment(0xFF91, b"\xff\xd9")
+        + b"\xff\x92"
+        + codestream[start:]
+    )
+
+    assert entropy_coded(J2K, marked + codestream) == [
+        (start, end + 8),
+        (len(marked) + start, len(marked) + end),
+    ]
+
+
+def test_another_marker_in_a_tile_part_to_eoc_is_refused():
+    codestream = _last_tile_part_to_eoc(_j2k()[1])
+    start, _ = _tile_data(codestream)
+    marked = codestream[:start] + b"\xff\x90" + codestream[start:]
+
+    assert entropy_coded(J2K, marked) is None
+    _refused(UNPARSABLE, J2K, marked)
 
 
 def _rle(frame):
