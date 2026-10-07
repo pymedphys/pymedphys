@@ -904,7 +904,7 @@ implementation = [
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
-ICC Profile (0028,2000), an embedded file whose contents the engine does not parse, is removed by Type under every option, which removes it wherever the first supported release's IODs make it Type 3 (D-022); at the top level of an Enhanced CT Image, Enhanced MR Image, or Enhanced MR Color Image instance, where it is Type 1, D replaces it with a fixed sRGB or grey profile, of the source profile's data colour space, which nothing else of the source profile is written to, and sequesters an instance whose profile is of any other colour space (D-021).
+ICC Profile (0028,2000), an embedded file whose contents the engine does not parse, is removed by Type under every option, which removes it wherever the first supported release's IODs make it Type 3 (D-022); at the top level of an Enhanced CT Image, Enhanced MR Image, or Enhanced MR Color Image instance, where it is Type 1, D replaces an RGB profile with a fixed sRGB profile, which nothing of the source profile is written to, and sequesters an instance whose profile is of any other colour space, since PS3.3 Section C.11.15.1.1 requires RGB (D-021).
 The engine reads sources whose transfer syntax encapsulates Pixel Data, so that their values reach the residual search, but the first supported release de-identifies only Implicit and Explicit VR Little Endian instances and sequesters any other, so it writes no compressed bitstream.
 Remaining: removing metadata in compressed pixel data without recompression (M3).
 '''

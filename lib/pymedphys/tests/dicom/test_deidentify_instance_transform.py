@@ -364,6 +364,11 @@ def _cmyk_profile(dataset):
     _icc_profile(dataset, profile[:16] + b"CMYK" + profile[20:])
 
 
+def _grey_profile(dataset):
+    profile = icc_profiles.srgb_profile("A scanner's profile")
+    _icc_profile(dataset, profile[:16] + b"GRAY" + profile[20:])
+
+
 def _radiopharmaceutical(dataset):
     item = pydicom.Dataset()
     item.RadiopharmaceuticalStartDateTime = "20260101120000"
@@ -383,11 +388,21 @@ def _radiopharmaceutical(dataset):
             "D",
             SequesterReason.NO_DUMMY_VALUE,
         ),
-        # Type 1 in the mandatory ICC Profile Module; the reviewed profiles
-        # are RGB and grey only (D-021).
+        # Type 1 in the mandatory ICC Profile Module; PS3.3 Section
+        # C.11.15.1.1 requires an RGB profile, so the reviewed profile is RGB
+        # only (D-021).
         (
             "1.2.840.10008.5.1.4.1.1.4.3",  # Enhanced MR Color Image Storage
             _cmyk_profile,
+            ElementPath((), "(0028,2000)"),
+            "D",
+            SequesterReason.NO_DUMMY_VALUE,
+        ),
+        # Type 1 in the user-optional ICC Profile Module of Enhanced MR; a
+        # grey source profile does not conform, and has no dummy value.
+        (
+            "1.2.840.10008.5.1.4.1.1.4.1",  # Enhanced MR Image Storage
+            _grey_profile,
             ElementPath((), "(0028,2000)"),
             "D",
             SequesterReason.NO_DUMMY_VALUE,
@@ -446,7 +461,7 @@ def test_d_writes_the_reviewed_procedure_step_and_icc_profile_in_an_added_iod():
 
 
 @pytest.mark.deid_requirement("MIDI-BP-14")
-def test_d_writes_an_item_for_each_procedure_step_and_a_grey_profile():
+def test_d_writes_an_item_for_each_procedure_step_and_the_second_profile():
     dataset = synthetic.instance(
         "1.2.840.10008.5.1.4.1.1.4.1",  # Enhanced MR Image Storage
         synthetic.OTHER,
@@ -457,7 +472,7 @@ def test_d_writes_an_item_for_each_procedure_step_and_a_grey_profile():
     second.ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.3"
     second.ReferencedSOPInstanceUID = "2.25.1000"
     dataset.ReferencedPerformedProcedureStepSequence.append(second)
-    _icc_profile(dataset, icc_profiles.grey_profile("DEIDENTIFIED grey"))
+    _icc_profile(dataset, icc_profiles.srgb_profile("DEIDENTIFIED sRGB"))
 
     result = _transformed(dataset)
 
@@ -468,8 +483,8 @@ def test_d_writes_an_item_for_each_procedure_step_and_a_grey_profile():
         replacement_uid(KEY, PROCEDURE_STEP),
         replacement_uid(KEY, "2.25.1000"),
     ]
-    # The source equals the first grey profile, so the second is written.
-    assert written[0x00282000].value == icc_profiles.grey_profile("DE-IDENTIFIED grey")
+    # The source equals the first profile, so the second is written.
+    assert written[0x00282000].value == icc_profiles.srgb_profile("DE-IDENTIFIED sRGB")
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-01")

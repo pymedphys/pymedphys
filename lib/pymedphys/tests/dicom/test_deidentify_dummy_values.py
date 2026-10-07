@@ -583,33 +583,26 @@ def test_a_procedure_step_uid_that_is_not_text_is_rejected():
         )
 
 
-ICC_SOURCES = {
-    icc_profiles.RGB: icc_profiles.srgb_profile("A scanner's own profile"),
-    icc_profiles.GREY: icc_profiles.grey_profile("A scanner's own profile"),
-}
+RGB_SOURCE = icc_profiles.srgb_profile("A scanner's own profile")
+
+
+def _with_colour_space(profile, colour_space):
+    """Return ``profile`` with another data colour space in its header."""
+    return profile[:16] + colour_space + profile[20:]
 
 
 @pytest.mark.deid_requirement("MIDI-BP-14")
-@pytest.mark.parametrize(
-    "colour_space, build, name",
-    [
-        (icc_profiles.RGB, icc_profiles.srgb_profile, "sRGB"),
-        (icc_profiles.GREY, icc_profiles.grey_profile, "grey"),
-    ],
-)
-def test_d_on_icc_profile_writes_a_fixed_profile_of_the_same_colour_space(
-    colour_space, build, name
-):
-    source = ICC_SOURCES[colour_space]
+def test_d_on_icc_profile_writes_the_fixed_srgb_profile():
+    written = dummy_values.icc_profile_for_d(RGB_SOURCE)
 
-    written = dummy_values.icc_profile_for_d(source)
-
-    assert written == build(f"DEIDENTIFIED {name}")
-    assert icc_profiles.data_colour_space(written) == colour_space
+    assert written == icc_profiles.srgb_profile("DEIDENTIFIED sRGB")
+    assert icc_profiles.data_colour_space(written) == icc_profiles.RGB
     assert b"scanner" not in written
     # A source equal to the first profile takes the second, so D always
     # changes the value.
-    assert dummy_values.icc_profile_for_d(written) == build(f"DE-IDENTIFIED {name}")
+    assert dummy_values.icc_profile_for_d(written) == icc_profiles.srgb_profile(
+        "DE-IDENTIFIED sRGB"
+    )
 
 
 @pytest.mark.deid_requirement("MIDI-BP-14")
@@ -619,13 +612,13 @@ def test_d_on_icc_profile_writes_a_fixed_profile_of_the_same_colour_space(
         b"",
         b"not an ICC profile",
         bytes(128),
-        # A CMYK profile's header.
-        ICC_SOURCES[icc_profiles.RGB][:16]
-        + b"CMYK"
-        + ICC_SOURCES[icc_profiles.RGB][20:],
+        # PS3.3 Section C.11.15.1.1 requires an RGB profile, so neither a grey
+        # nor a CMYK one has a dummy value.
+        _with_colour_space(RGB_SOURCE, b"GRAY"),
+        _with_colour_space(RGB_SOURCE, b"CMYK"),
     ],
 )
-def test_an_icc_profile_neither_rgb_nor_grey_is_refused(source):
+def test_an_icc_profile_that_is_not_rgb_is_refused(source):
     with pytest.raises(dummy_values.NoDummyValueError) as raised:
         dummy_values.icc_profile_for_d(source)
 

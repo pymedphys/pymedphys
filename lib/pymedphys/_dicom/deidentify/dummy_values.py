@@ -36,8 +36,8 @@ item in Person Identification Code Sequence (0040,1101), with Code Value
 Sequence (0008,1111), it writes, for each source item, an item that refers
 to a Modality Performed Procedure Step by the keyed replacement of the
 source item's Referenced SOP Instance UID. ICC Profile (0028,2000), of VR
-OB, has a rule too (:func:`icc_profile_for_d`): D writes a fixed profile of
-the source profile's data colour space
+OB, has a rule too (:func:`icc_profile_for_d`): D writes a fixed sRGB
+profile in place of an RGB one
 (:mod:`~pymedphys._dicom.deidentify.icc_profiles`).
 
 Where an attribute is Type 1 or 1C at its place in the data set, Z writes
@@ -112,12 +112,6 @@ _REFERENCED_SOP_INSTANCE_UID = "(0008,1155)"
 # The Modality Performed Procedure Step SOP Class (PS3.4 Annex F), which the
 # items written in Referenced Performed Procedure Step Sequence refer to.
 MODALITY_PERFORMED_PROCEDURE_STEP = "1.2.840.10008.3.1.2.3.3"
-# The descriptions of the profiles that D writes in place of ICC Profile, by
-# data colour space; the second is written where the source equals the first.
-_ICC_DESCRIPTIONS = {
-    icc_profiles.RGB: (icc_profiles.srgb_profile, "sRGB"),
-    icc_profiles.GREY: (icc_profiles.grey_profile, "grey"),
-}
 _CODE_VALUE = "(0008,0100)"
 _CODING_SCHEME_DESIGNATOR = "(0008,0102)"
 _CODE_MEANING = "(0008,0104)"
@@ -461,20 +455,18 @@ def _procedure_step_items(
 def icc_profile_for_d(source: bytes) -> bytes:
     """Return the profile that D writes in place of ICC Profile (0028,2000).
 
-    The profile is fixed for the source profile's data colour space, which
-    its header gives: the sRGB profile of
-    :func:`~pymedphys._dicom.deidentify.icc_profiles.srgb_profile` for RGB,
-    described ``DEIDENTIFIED sRGB``, or the grey profile of
-    :func:`~pymedphys._dicom.deidentify.icc_profiles.grey_profile` for grey,
-    described ``DEIDENTIFIED grey``. Where the source has the same bytes,
-    the profile is described with ``DE-IDENTIFIED`` instead, so the value
-    always changes.
+    The profile is the fixed sRGB profile of
+    :func:`~pymedphys._dicom.deidentify.icc_profiles.srgb_profile`, described
+    ``DEIDENTIFIED sRGB``, or ``DE-IDENTIFIED sRGB`` where the source has the
+    same bytes, so the value always changes. PS3.3 Section C.11.15.1.1
+    requires the profile's data colour space to be RGB, which its header
+    gives, so only an RGB source profile is replaced.
 
     Raises
     ------
     NoDummyValueError
-        If the source is not an ICC profile, or its data colour space is
-        neither RGB nor grey.
+        If the source is not an ICC profile, or its data colour space is not
+        RGB.
     TypeError
         If ``source`` is not bytes.
 
@@ -487,11 +479,9 @@ def icc_profile_for_d(source: bytes) -> bytes:
     """
     if not isinstance(source, (bytes, bytearray)):
         raise TypeError("the source ICC Profile must be bytes")
-    colour_space = icc_profiles.data_colour_space(bytes(source))
-    if colour_space not in _ICC_DESCRIPTIONS:
-        raise NoDummyValueError(
-            "OB", "the source ICC Profile is neither an RGB nor a grey profile"
-        )
-    build, name = _ICC_DESCRIPTIONS[colour_space]
-    first = build(f"{_TEXT[0]} {name}")
-    return build(f"{_TEXT[1]} {name}") if bytes(source) == first else first
+    if icc_profiles.data_colour_space(bytes(source)) != icc_profiles.RGB:
+        raise NoDummyValueError("OB", "the source ICC Profile is not an RGB profile")
+    first = icc_profiles.srgb_profile(f"{_TEXT[0]} sRGB")
+    if bytes(source) == first:
+        return icc_profiles.srgb_profile(f"{_TEXT[1]} sRGB")
+    return first
