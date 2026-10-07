@@ -80,9 +80,15 @@ roots, are still found. Values that hold numbers (native
 Pixel Data, Float Pixel Data, and Double Float Pixel Data of the top-level
 data set, and values of VR OD, OF, OL, OV, and OW) are searched only for
 forms of at least :data:`MIN_BYTES_IN_NUMBERS` bytes that are not UTF-16LE,
-since shorter forms and UTF-16LE text match sample values by chance. Every
-other byte, including encapsulated fragments and bytes that could not be read
-as elements, is searched for every form. ASCII case is folded byte by byte,
+since shorter forms and UTF-16LE text match sample values by chance. So
+are the entropy-coded data of encapsulated Pixel Data of the top-level data
+set, with its Basic Offset Table, where every codestream of its fragments
+parses (:func:`.codestreams.entropy_coded`), since compressed samples match
+short forms by chance as often as random bytes do or more: in synthetic
+images, each 4-letter form about once in every 30 to 200 MB. Every other byte,
+including the marker segments of those codestreams, fragments that do not
+parse, and bytes that could not be read as elements, is searched for every
+form. ASCII case is folded byte by byte,
 so a byte from 0x41 to 0x5A inside a character of several bytes, as in
 UTF-16LE, Shift_JIS, or GBK, is folded too, and some text outside ASCII
 matches a form by chance: in UTF-16LE, "屑" (U+5C51) folds as "山" (U+5C71)
@@ -125,9 +131,11 @@ import mmap
 import re
 import string
 import unicodedata
-from collections.abc import Iterable, Iterator
+import weakref
+from collections.abc import Iterable, Iterator, Sequence
 
 from . import markers
+from .codestreams import entropy_coded
 from .codes import load_context_group
 from .dummy_values import (
     CONSTANTS,
@@ -135,7 +143,14 @@ from .dummy_values import (
     comparison_key,
     items_for_d,
 )
-from .file_layout import ElementPath, Location, Region, Span, read_file_layout
+from .file_layout import (
+    ElementPath,
+    FileLayout,
+    Location,
+    Region,
+    Span,
+    read_file_layout,
+)
 from .values import CHECKED_VRS
 
 MIN_CHARACTERS = 4  # the shortest form searched
@@ -149,6 +164,7 @@ _BINARY = frozenset({"OB", "OD", "OF", "OL", "OV", "OW", "UN"})
 _SINGLE_VALUED = frozenset({"LT", "ST", "UR", "UT"})
 _NUMBERS = frozenset({"OD", "OF", "OL", "OV", "OW"})
 _PIXEL_DATA = frozenset({"(7FE0,0008)", "(7FE0,0009)", "(7FE0,0010)"})
+_ENCAPSULATED = ElementPath((), "(7FE0,0010)")
 _DIGITS = frozenset(string.digits.encode())
 _LETTERS = frozenset(string.ascii_letters.encode())
 _UUID_ROOT = b"2.25."  # PS3.5 B.2
@@ -426,7 +442,9 @@ def find_residuals(
         The values that had to be removed or replaced, such as the
         instance's own and its subject's from the run's other instances.
         Repeated values are searched once, and values equal to a constant
-        that the engine writes are not searched.
+        that the engine writes are not searched. Each value's forms are
+        reused while the cached SourceValue object remains alive; an equal
+        object can reuse that entry, but does not extend its lifetime.
 
     Returns
     -------
@@ -448,18 +466,18 @@ def find_residuals(
     after the last readable element at byte 3
     """
     layout = read_file_layout(data)
-    derived: list[_Needle | NotSearched | Unsearched] = []
+    needles: list[_Needle] = []
+    omitted: list[NotSearched] = []
+    unsearched: list[Unsearched] = []
     for value in dict.fromkeys(values):
-        rest = _without_constants(value)
-        if rest is not value:
-            derived.append(Unsearched(value.source, UnsearchedReason.WRITTEN_CONSTANT))
-        if rest is not None:
-            derived += _derive(rest)
-    needles = [item for item in derived if isinstance(item, _Needle)]
-    omitted = [item for item in derived if isinstance(item, NotSearched)]
-    unsearched = [item for item in derived if isinstance(item, Unsearched)]
+        prepared = _prepared(value)
+        needles += prepared.needles
+        omitted += prepared.omitted
+        unsearched += prepared.unsearched
     with memoryview(data) as view, view.cast("B") as octets:
-        found = _search(octets, layout.spans, layout.size, needles)
+        found = _search(
+            octets, layout.spans, layout.size, needles, _coded(octets, layout)
+        )
     order = sorted(
         found.values(), key=lambda f: (f.offset, str(f.source), f.kind.value)
     )
@@ -544,9 +562,7 @@ def not_searched_of(values: Iterable[SourceValue]) -> tuple[NotSearched, ...]:
     """
     omitted: list[NotSearched] = []
     for value in dict.fromkeys(values):
-        rest = _without_constants(value)
-        if rest is not None:
-            omitted += [item for item in _derive(rest) if isinstance(item, NotSearched)]
+        omitted += _prepared(value).omitted
     return tuple(dict.fromkeys(omitted))
 
 
@@ -579,6 +595,50 @@ class _Needle:
     before: frozenset[int]  # the characters that reject a match before it
     after: frozenset[int]  # and after it
     digits: bool  # whether the form is digits alone
+
+
+@dataclasses.dataclass(frozen=True)
+class _Prepared:
+    """What a value adds to a search, each in the order that it is derived."""
+
+    needles: tuple[_Needle, ...]
+    omitted: tuple[NotSearched, ...]
+    unsearched: tuple[Unsearched, ...]
+
+
+# Each value's preparation, kept for as long as the value it was first
+# derived for is: a subject's values are searched for in every one of its
+# files, so each is derived once, not once for each file. An equal value
+# reuses the entry, but does not keep it.
+_PREPARED: weakref.WeakKeyDictionary[SourceValue, _Prepared] = (
+    weakref.WeakKeyDictionary()
+)
+
+
+def _prepared(value: SourceValue) -> _Prepared:
+    """Return the needles, omissions, and unsearched records of a value.
+
+    It is derived the first time, and taken from :data:`_PREPARED` after,
+    since it depends on the value alone.
+    """
+    if not isinstance(value, SourceValue):
+        raise TypeError("each value to search for must be a SourceValue")
+    prepared = _PREPARED.get(value)
+    if prepared is not None:
+        return prepared
+    rest = _without_constants(value)
+    derived: list[_Needle | NotSearched | Unsearched] = []
+    if rest is not value:
+        derived.append(Unsearched(value.source, UnsearchedReason.WRITTEN_CONSTANT))
+    if rest is not None:
+        derived += _derive(rest)
+    prepared = _Prepared(
+        tuple(item for item in derived if isinstance(item, _Needle)),
+        tuple(item for item in derived if isinstance(item, NotSearched)),
+        tuple(item for item in derived if isinstance(item, Unsearched)),
+    )
+    _PREPARED[value] = prepared
+    return prepared
 
 
 @functools.cache
@@ -729,8 +789,43 @@ def _holds_numbers(span: Span) -> bool:
 _Found = dict[tuple[ElementPath, ValueKind, Location], Finding]
 
 
+def _coded(octets: memoryview, layout: FileLayout) -> list[tuple[int, int]]:
+    """Return where the Basic Offset Table and entropy-coded data of the
+    top-level data set's encapsulated Pixel Data are, or nothing where its
+    codestreams do not all parse."""
+    pieces = [
+        span
+        for span in layout.spans
+        if span.value_start is not None
+        and span.location.region is Region.DATA_SET
+        and span.location.item is not None
+        and span.location.element == _ENCAPSULATED
+    ]
+    fragments = [span for span in pieces if span.location.item]
+    joined = b"".join(bytes(octets[span.value_start : span.end]) for span in fragments)
+    coded = entropy_coded(layout.transfer_syntax or "", joined)
+    if coded is None:
+        return []
+    ranges = [(span.value_start, span.end) for span in pieces if not span.location.item]
+    starts, position = [], 0
+    for span in fragments:
+        starts.append(position)
+        position += span.end - span.value_start
+    for low, high in coded:
+        for start, span in zip(starts, fragments):
+            stop = start + span.end - span.value_start
+            if low < stop and start < high:
+                offset = span.value_start - start
+                ranges.append((max(low, start) + offset, min(high, stop) + offset))
+    return sorted(range_ for range_ in ranges if range_[0] < range_[1])
+
+
 def _search(
-    octets: memoryview, spans: tuple[Span, ...], size: int, needles: list[_Needle]
+    octets: memoryview,
+    spans: tuple[Span, ...],
+    size: int,
+    needles: list[_Needle],
+    coded: Sequence[tuple[int, int]],
 ) -> _Found:
     """Return the first finding of the widest form of each source in each place.
 
@@ -738,12 +833,16 @@ def _search(
     of those bytes, the bytes of each of their lengths are looked up.
     """
     starts = [span.start for span in spans]
+    numbers = [
+        (span.value_start, span.end)
+        for span in spans
+        if span.value_start is not None and _holds_numbers(span)
+    ]
     text: list[tuple[int, int]] = []  # the ranges outside values that hold numbers
     position = 0
-    for span in spans:
-        if span.value_start is not None and _holds_numbers(span):
-            text.append((position, span.value_start))
-            position = span.end
+    for low, high in sorted([*numbers, *coded]):
+        text.append((position, low))
+        position = high
     text.append((position, size))
     groups: dict[tuple[bytes, bool], dict[bytes, list[int]]] = {}
     for index, needle in enumerate(needles):

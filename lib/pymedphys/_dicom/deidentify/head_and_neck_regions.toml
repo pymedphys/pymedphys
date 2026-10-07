@@ -6,10 +6,10 @@
 # arch, Mandibular incisor teeth, Maxillary dental arch, and Maxillary
 # incisor teeth.
 #
-# A CT series whose Body Part Examined (0018,0015) is one of these terms, or
-# whose Anatomic Region Sequence (0008,2218) gives one of these codes,
-# declares that it shows the head or neck, which raises its indicator of a
-# reconstructable face (MIDI report Section 1.18.3).
+# A CT, MR, or PET series whose Body Part Examined (0018,0015) is one of
+# these terms, or whose Anatomic Region Sequence (0008,2218) gives one of
+# these codes, declares that it shows the head or neck, which raises its
+# indicator of a reconstructable face (MIDI report Section 1.18.3).
 #
 # The list takes every region that lies wholly or partly in the head or
 # neck: the head, face, skull, brain and its ventricles, the eyes, ears,

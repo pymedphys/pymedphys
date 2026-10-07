@@ -30,6 +30,7 @@ from pymedphys._dicom.deidentify.pixel_decoding import (
     DECODING_PLUGINS,
     decoder_available,
     frames_problem,
+    same_pixels,
 )
 from pymedphys._dicom.deidentify.reasons import TransformReason
 from pymedphys._dicom.deidentify.source import (
@@ -795,3 +796,46 @@ def test_an_instance_without_pixel_data_has_nothing_to_decode():
     data = synthetic.written(dataset, compressed.JPEG_LOSSLESS_SV1)
 
     assert frames_problem(read_source(data)) is None
+
+
+def test_frames_that_decode_to_the_same_pixels_are_the_same():
+    frames = _frames(2)
+    codestreams = [compressed.jpeg_lossless(f) for f in frames]
+    other = [compressed.jpeg_lossless(f, predictor=7) for f in frames]
+    _needs(compressed.JPEG_LOSSLESS_SV1)
+    image = {"rows": ROWS, "columns": COLUMNS, "number_of_frames": 2}
+
+    before = read_source(
+        compressed.ct_image(compressed.JPEG_LOSSLESS_SV1, codestreams, **image)
+    )
+    after = read_source(
+        compressed.ct_image(compressed.JPEG_LOSSLESS_SV1, other, **image)
+    )
+
+    assert other != codestreams
+    assert same_pixels(before, after)
+
+
+@pytest.mark.parametrize(
+    "change", ["another-frame", "fewer-frames", "undecodable", "another-syntax"]
+)
+def test_frames_that_differ_are_not_the_same(change):
+    _needs(compressed.JPEG_LOSSLESS_SV1)
+    frames = _frames(2)
+    codestreams = [compressed.jpeg_lossless(f) for f in frames]
+    image = {"rows": ROWS, "columns": COLUMNS, "number_of_frames": 2}
+    before = read_source(
+        compressed.ct_image(compressed.JPEG_LOSSLESS_SV1, codestreams, **image)
+    )
+    syntax = compressed.JPEG_LOSSLESS_SV1
+    if change == "another-frame":
+        changed = [codestreams[0], compressed.jpeg_lossless(_frames(1, seed=9)[0])]
+    elif change == "fewer-frames":
+        changed = codestreams[:1]
+    elif change == "undecodable":
+        changed = [codestreams[0], codestreams[1][:20]]
+    else:
+        changed, syntax = codestreams, compressed.JPEG_LOSSLESS
+    after = read_source(compressed.ct_image(syntax, changed, **image))
+
+    assert not same_pixels(before, after)

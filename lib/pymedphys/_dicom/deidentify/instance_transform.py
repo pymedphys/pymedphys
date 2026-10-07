@@ -28,7 +28,11 @@ each instance it may process. It joins the engine's per-instance steps:
    for one it de-identifies whose Pixel Data is compressed,
    :func:`~pymedphys._dicom.deidentify.pixel_decoding.frames_problem`
    decodes each frame once, after the plan and edits below, so that its
-   values are collected for the residual search either way;
+   values are collected for the residual search either way, and
+   :func:`~pymedphys._dicom.deidentify.codestreams.without_metadata` parses
+   each frame's codestream and cuts its metadata segments, without
+   recompression, before it is written, after which every frame must
+   decode to the same pixels;
 3. :func:`~pymedphys._dicom.deidentify.walker.plan_instance` gives each
    element its action under the run's policy and the instance's IOD;
 4. :func:`~pymedphys._dicom.deidentify.edits.edit_instance` works out what
@@ -130,12 +134,14 @@ from .release_gate import (
     ReasonCode,
     ReleaseCondition,
     ReleaseReason,
+    SubjectCoverages,
     Uncollected,
     release_condition,
 )
 from .residuals import NotSearched, has_written_constant, not_searched_of
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
-from .pixel_decoding import frames_problem
+from .codestreams import CodestreamRefused, without_metadata
+from .pixel_decoding import frames_problem, same_pixels
 from .pixel_risk import assess_pixel_risk, series_evidence
 from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial, SeriesEvidence
 from .run_report import ReleaseReporter
@@ -150,6 +156,7 @@ _SOP_INSTANCE = ElementPath((), "(0008,0018)")
 _STUDY = ElementPath((), "(0020,000D)")
 _SERIES = ElementPath((), "(0020,000E)")
 _PATIENT_ID = ElementPath((), "(0010,0020)")
+_PIXEL_DATA = ElementPath((), "(7FE0,0010)")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -772,6 +779,7 @@ class InstanceTransform:
                 dataset,
                 self._markers[satisfied],
             )
+            writing = _without_bitstream_metadata(writing, source)
             return Transformed(*_written(source, writing, iod), evidence, qc)
         except _Refused as refused:
             reasons = tuple(
@@ -888,7 +896,41 @@ def _written(
         raise _Refused(failed.reason) from None
     if lost_requirements(source, output, iod, frozenset(writing.replacements)):
         raise _Refused(TransformReason.REQUIRED_ATTRIBUTE_LOST)
+    if _PIXEL_DATA in writing.replacements and not same_pixels(source, output):
+        raise _Refused(TransformReason.CUT_CHANGED_PIXELS)
     return path, data
+
+
+def _without_bitstream_metadata(
+    writing: WriterPlan, source: SourceEvidence
+) -> WriterPlan:
+    """Return the writer's plan with kept compressed Pixel Data's metadata
+    segments cut, without recompression (Architecture item 7, MIDI-BP-14).
+
+    Where :func:`~.codestreams.without_metadata` cuts something, Pixel Data
+    is written as a replacement, and :func:`_written` then shows that every
+    frame decodes to the same pixels as its source's. Otherwise it is kept
+    byte for byte.
+
+    Raises
+    ------
+    _Refused
+        With the reason of :class:`~.codestreams.CodestreamRefused`.
+    """
+    if _PIXEL_DATA not in writing.kept:
+        return writing
+    try:
+        value = without_metadata(source)
+    except CodestreamRefused as refused:
+        raise _Refused(refused.reason) from None
+    if value is None:
+        return writing
+    element = pydicom.DataElement(0x7FE00010, "OB", value, is_undefined_length=True)
+    return dataclasses.replace(
+        writing,
+        kept=writing.kept - {_PIXEL_DATA},
+        replacements={**writing.replacements, _PIXEL_DATA: element},
+    )
 
 
 def _output_path(
@@ -968,10 +1010,15 @@ class ReleaseGate:
     in the file, with the file. What the search leaves out of the instance's
     own values is the transform's material (:func:`omissions_of`), since the
     search covers the subject's other instances' values too.
+
+    A gate merges each subject's coverages once
+    (:class:`~.release_gate.SubjectCoverages`), so one gate is made for each
+    run.
     """
 
     def __init__(self, condition: _Condition = release_condition) -> None:
         self._condition = condition
+        self._subjects = SubjectCoverages()
 
     def __repr__(self) -> str:
         return "ReleaseGate()"
@@ -981,7 +1028,7 @@ class ReleaseGate:
     ) -> Release | HoldForReview | Sequestered:
         given = tuple(each for each in subject if each is not NO_EVIDENCE)
         coverages = tuple(_coverage(each) for each in (evidence, *given))
-        condition = self._condition(Coverage.merge(*coverages[1:]), written)
+        condition = self._condition(self._subjects.merge(coverages[1:]), written)
         held = evidence.held if isinstance(evidence, HeldEvidence) else ()
         # Each value's omissions are its own instance's material, from the
         # transform, so the pooled search's are left out here.

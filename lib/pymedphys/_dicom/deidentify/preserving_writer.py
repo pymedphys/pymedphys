@@ -56,7 +56,10 @@ file written from the result against its source and the same plan.
 Encapsulated Pixel Data (7FE0,0010) of the top-level data set, in a
 transfer syntax that encapsulates it (PS3.5 Section A.4), is kept as any
 other element is: copied byte for byte, with its Basic Offset Table,
-fragments, and delimiter. Any other kept element of undefined length that
+fragments, and delimiter. A replacement of it, with metadata segments cut
+from its codestreams (:mod:`.codestreams`), is written with VR OB, an
+undefined length, its items as given, and the Sequence Delimitation Item,
+each item checked to be of an even, defined length. Any other kept element of undefined length that
 holds no items, which can only be fragments of OB, is refused rather than
 copied, since verification could not show it preserved. Only the transfer
 syntaxes that :func:`.source.read_source` admits are written, and the data
@@ -262,7 +265,13 @@ class _Writer:
         """Return the data set or item that ``items`` names, encoded."""
         encoded = []
         for path in self.children.get(items, ()):
-            if path in self.replacements:
+            if (
+                path in self.replacements
+                and path in self.source
+                and encapsulated_pixel_data(self.source, path)
+            ):
+                encoded.append((path.tag, _encapsulated(path, self.replacements[path])))
+            elif path in self.replacements:
                 codecs = _codecs(self.terms(items, True), path)
                 element = self.replacements[path]
                 encoded.append((path.tag, _encode(path, element, explicit, codecs)))
@@ -417,6 +426,39 @@ def _encode(
     if explicit and encoded[4:6] != element.VR.encode():
         raise WriteRefused(WriteReason.ELEMENT, path)
     return encoded
+
+
+def _encapsulated(path: ElementPath, element: object) -> bytes:
+    """Return a replacement of encapsulated Pixel Data encoded: with VR OB and
+    an undefined length, its items as pydicom holds them, the first being the
+    Basic Offset Table, each of an even, defined length, and the Sequence
+    Delimitation Item (PS3.5 Section A.4)."""
+    if not (
+        isinstance(element, pydicom.DataElement)
+        and _tag(element.tag) == path.tag
+        and element.VR == "OB"
+        and element.is_undefined_length
+        and isinstance(element.value, bytes)
+    ):
+        raise WriteRefused(WriteReason.FRAGMENTS, path)
+    value = element.value
+    position = 0
+    while position < len(value):
+        if value[position : position + 4] != _ITEM[:4] or position + 8 > len(value):
+            raise WriteRefused(WriteReason.FRAGMENTS, path)
+        (length,) = struct.unpack_from("<I", value, position + 4)
+        if length % 2:  # which the undefined length also is
+            raise WriteRefused(WriteReason.FRAGMENTS, path)
+        position += 8 + length
+    if not value or position != len(value):
+        raise WriteRefused(WriteReason.FRAGMENTS, path)
+    return (
+        struct.pack("<HH", element.tag.group, element.tag.elem)
+        + b"OB\x00\x00"
+        + _UNDEFINED
+        + value
+        + _SEQUENCE_END
+    )
 
 
 def _encode_sequence(
