@@ -381,7 +381,7 @@ def test_a_compressed_instance_is_sequestered_after_its_values_are_collected():
     result = _transform()(data, InstanceRecord.from_file(data))
 
     assert isinstance(result, run.Sequestered)
-    assert result.reasons == (Disposition.UNSUPPORTED_TRANSFER_SYNTAX,)
+    assert result.reasons == (scope.Disposition.UNSUPPORTED_TRANSFER_SYNTAX,)
     # Read and planned, so its values reach its subject's search (D-027).
     evidence = result.evidence
     assert isinstance(evidence, Coverage)
