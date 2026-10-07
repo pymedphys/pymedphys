@@ -120,6 +120,34 @@ options = { clean_descriptors = "C" }
 note = "A non-human subject's breed, typed as text, which can carry other text, such as an animal's name; Patient Breed Code Sequence carries the breed as a code. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(0018,0024)"
+keyword = "SequenceName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined name for the combination of Scanning Sequence and Sequence Variant (PS3.3 Table C.8-4), which the operator can set in the scanner's protocol. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,0031)"
+keyword = "Radiopharmaceutical"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The name of the radiopharmaceutical, as text; Radiopharmaceutical Code Sequence carries the agent as a code. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,0034)"
+keyword = "InterventionDrugName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The name of an intervention drug, as text; Intervention Drug Code Sequence carries the drug as a code. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,003A)"
+keyword = "InterventionDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Free text describing a therapy or other intervention, which can say something about the patient. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(0018,1040)"
 keyword = "ContrastBolusRoute"
 action = "X/Z/D"
@@ -127,11 +155,67 @@ options = { clean_descriptors = "C" }
 note = "The route by which contrast was given, typed as free text; Contrast/Bolus Administration Route Sequence carries it as a code. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Contrast/Bolus Agent."
 
 [[attribute]]
+tag = "(0018,1070)"
+keyword = "RadiopharmaceuticalRoute"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The route by which a radiopharmaceutical was given, as text; Administration Route Code Sequence carries the route as a code. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,1085)"
+keyword = "PVCRejection"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A description of the criteria for rejecting premature ventricular contractions or other arrhythmic beats during cardiac gating, as text. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,9046)"
+keyword = "MultiCoilConfiguration"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A textual description of the configuration of the coil elements used in an MR acquisition. Free text is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,9080)"
+keyword = "MetaboliteMapDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Text describing a metabolite map. It is removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,9252)"
+keyword = "ASLTechniqueDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Text describing an arterial spin labelling technique. It is removed by Type, which empties it where it is Type 2, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,925B)"
+keyword = "ASLCrusherDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A description of an arterial spin labelling crusher method, as text. It is removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,925E)"
+keyword = "ASLBolusCutoffTechnique"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Text describing an arterial spin labelling bolus cut-off technique. It is removed by Type, which empties it where it is Type 2, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(0020,1040)"
 keyword = "PositionReferenceIndicator"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "The anatomical landmark or fiducial that serves as the reference point of the frame of reference, typed by an operator for annotation only (PS3.3 C.7.4.1.1.2). It is removed by Type, which empties it where it is Type 2, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0020,9421)"
+keyword = "DimensionDescriptionLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Free text that explains the meaning of a dimension of a multi-frame image. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
 tag = "(0028,1055)"
@@ -174,6 +258,34 @@ keyword = "ContainerComponentDescription"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "A free-text description of a specimen container component. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Container Description."
+
+[[attribute]]
+tag = "(0054,1101)"
+keyword = "AttenuationCorrectionMethod"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A textual description of a PET image's attenuation correction. The scanner usually writes it, but PS3.3 defines it as free text, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0054,1103)"
+keyword = "ReconstructionMethod"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A textual description of a PET image's reconstruction. The scanner usually writes it, but PS3.3 defines it as free text, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0054,1104)"
+keyword = "DetectorLinesOfResponseUsed"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A textual description of the detector lines of response used in a PET reconstruction. The scanner usually writes it, but PS3.3 defines it as free text, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0054,1105)"
+keyword = "ScatterCorrectionMethod"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A textual description of a PET image's scatter correction. The scanner usually writes it, but PS3.3 defines it as free text, so it is removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
 tag = "(0066,0032)"
@@ -403,11 +515,46 @@ options = { retain_device_identity = "K" }
 note = "The equipment identifier of the source of a trigger, or the type of trigger. As an equipment identifier it is device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
 
 [[attribute]]
+tag = "(0018,1250)"
+keyword = "ReceiveCoilName"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The name of the MR receive coil, as the scanner's configuration names it, which a site can choose for its own coils. A coil is equipment, so its name is device identity: removed by Type, which replaces it with a dummy value where it is required, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
+
+[[attribute]]
+tag = "(0018,1251)"
+keyword = "TransmitCoilName"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The name of the MR transmit coil, as the scanner's configuration names it, which a site can choose for its own coils. A coil is equipment, so its name is device identity: removed by Type, which replaces it with a dummy value where it is required, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
+
+[[attribute]]
 tag = "(0018,1801)"
 keyword = "TimeSource"
 action = "X/Z/D"
 options = { retain_device_identity = "K" }
 note = "The identifier of the equipment or system that provides the time reference. It is device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Station Name."
+
+[[attribute]]
+tag = "(0018,9041)"
+keyword = "ReceiveCoilManufacturerName"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer of the MR receive coil, which can be a site that builds its own coils. It is device identity: removed by Type, which empties it where it is Type 2, and kept under Retain Device Identity, as Table E.1-1 does for Source Manufacturer."
+
+[[attribute]]
+tag = "(0018,9047)"
+keyword = "MultiCoilElementName"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The name of an element of a multi-element MR coil, which a site can choose for its own coils, as it can the coil's name. It is removed by Type, which replaces it with a dummy value where it is Type 1, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
+
+[[attribute]]
+tag = "(0018,9050)"
+keyword = "TransmitCoilManufacturerName"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer of the MR transmit coil, which can be a site that builds its own coils. It is device identity: removed by Type, which empties it where it is Type 2, and kept under Retain Device Identity, as Table E.1-1 does for Source Manufacturer."
 
 [[attribute]]
 tag = "(0018,9186)"
@@ -608,10 +755,22 @@ action = "K"
 note = "The nomenclature of Genetic Modifications Description, a Defined Term such as MGI_2013 (PS3.3 C.7.1.1.1.4). It names a published nomenclature and identifies no one, so it is kept."
 
 [[attribute]]
+tag = "(0018,0085)"
+keyword = "ImagedNucleus"
+action = "K"
+note = "The nucleus that is resonant at the imaging frequency, such as 1H or 31P (PS3.3 Table C.8-4), which the scanner writes. It names a nucleus, identifies no one, and is needed to interpret the image, so it is kept."
+
+[[attribute]]
 tag = "(0018,1020)"
 keyword = "SoftwareVersions"
 action = "K"
 note = "The manufacturer's designation of the versions of the equipment's software, which the equipment itself writes. It identifies software releases shared by every site that runs them, and is needed to interpret how the data were produced, so it is kept."
+
+[[attribute]]
+tag = "(0018,1064)"
+keyword = "CardiacFramingType"
+action = "K"
+note = "How frames were selected within a cardiac interval, a Defined Term such as FORW (PS3.3 C.7.6.18.1.1.1) that the equipment writes. It is a coded value that identifies no one, so it is kept."
 
 [[attribute]]
 tag = "(0018,1160)"
@@ -620,10 +779,58 @@ action = "K"
 note = "The type of filter in the X-ray beam, which the CT scanner writes from its configuration, with Defined Terms such as FLAT or WEDGE in some modules. It is a technical value that identifies no one, so it is kept."
 
 [[attribute]]
+tag = "(0018,1180)"
+keyword = "CollimatorGridName"
+action = "K"
+note = "A label for the collimator used, which the PET scanner writes from its configuration, like Filter Type. It is a technical value that identifies no one, so it is kept."
+
+[[attribute]]
 tag = "(0018,1210)"
 keyword = "ConvolutionKernel"
 action = "K"
 note = "A label for the kernel or algorithm used to reconstruct the image, which the scanner writes from its configuration. It is a technical value that identifies no one, and is needed to interpret image noise and resolution, so it is kept."
+
+[[attribute]]
+tag = "(0018,9005)"
+keyword = "PulseSequenceName"
+action = "K"
+note = "The name of the MR pulse sequence, for annotation, which PS3.3 says may be specific to the vendor, whereas it calls Sequence Name user-defined. It names a sequence, not a person, and is needed to interpret the image, so it is kept, accepting the residual risk that a site names an in-house sequence after a person."
+
+[[attribute]]
+tag = "(0018,9175)"
+keyword = "ApplicableSafetyStandardDescription"
+action = "K"
+note = "The name and version of the safety standard that applies to the acquisition, such as an IEC standard. It names a published standard and identifies no one, so it is kept."
+
+[[attribute]]
+tag = "(0018,9320)"
+keyword = "ImageFilter"
+action = "K"
+note = "A label for the filter applied to an image after its reconstruction, which the scanner writes, like Convolution Kernel. It is a technical value that identifies no one, and is needed to interpret image noise and resolution, so it is kept."
+
+[[attribute]]
+tag = "(0020,9056)"
+keyword = "StackID"
+action = "K"
+note = "A descriptive name for a group of frames, unique only within the image's dimension organisation (PS3.3 C.7.6.16.2.2.4). It is Type 1C, required in Enhanced PET and functional MR, and C.7.6.16.2.2.6 makes it a dimension of dynamic PET images, so it cannot be removed where it is required, and one dummy value would merge distinct stacks. It names frames, not a person, so it is kept, accepting the residual risk that the name identifies a site."
+
+[[attribute]]
+tag = "(0020,9213)"
+keyword = "DimensionIndexPrivateCreator"
+action = "K"
+note = "The private creator of a private attribute that a dimension index points to, a fixed string written by software, like Private Creator Reference, so it is kept."
+
+[[attribute]]
+tag = "(0020,9238)"
+keyword = "FunctionalGroupPrivateCreator"
+action = "K"
+note = "The private creator of a private attribute that a functional group points to, a fixed string written by software, like Private Creator Reference, so it is kept."
+
+[[attribute]]
+tag = "(0020,9453)"
+keyword = "FrameLabel"
+action = "K"
+note = "A label for frames that an application handles as a group, from a set of values that the application defines, which Dimension Index Pointer can name as the base of a dimension (PS3.3 C.7.6.16.2.2.5). It is not free text about the patient, and changing it would change how frames are indexed, so it is kept, accepting the residual risk that an application lets a site define the set."
 
 [[attribute]]
 tag = "(0028,1054)"

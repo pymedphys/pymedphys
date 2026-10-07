@@ -500,7 +500,10 @@ def release_report() -> list[str]:
         "A reason from the walker also gives the attribute's tags from the "
         "outermost sequence, without items, the action, and the VR where it "
         "is known, and one from the release gate gives the attribute's tags "
-        "in the same way where it names an attribute.",
+        "in the same way where it names an attribute. A reason of scope "
+        "`unsupported-iod` also gives the instance's IOD by its name in "
+        "PS3.4 Table B.5-1, such as `Comprehensive SR` for the Comprehensive "
+        "SR IOD (D-010).",
         "",
         "An instance outside the supported scope whose IOD the pinned tables "
         "define, such as an MR image or a spatial registration, is planned "

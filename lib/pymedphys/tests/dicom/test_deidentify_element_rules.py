@@ -137,8 +137,8 @@ BASIC_RULES = [
     ("(0008,1150)", UID_ROLE, "U", "(0008,1150)"),  # Referenced SOP Class UID
     ("(0018,991E)", UID_ROLE, "U", "(0018,991E)"),  # an instance UID
     ("(0400,0510)", UID_ROLE, "U", "(0400,0510)"),
-    # Text that no rule covers, such as Pulse Sequence Name, an MR attribute.
-    ("(0018,9005)", UNCOVERED_TEXT, "X/Z/D", "(0018,9005)"),
+    # Text that no rule covers, such as Stage Name, an ultrasound attribute.
+    ("(0008,2120)", UNCOVERED_TEXT, "X/Z/D", "(0008,2120)"),
     # The rule for attributes that no rule covers.
     ("(0008,0060)", DEFAULT, "K", "(0008,0060)"),  # Modality, CS
     ("(0028,0009)", DEFAULT, "K", "(0028,0009)"),  # Frame Increment Pointer, AT
