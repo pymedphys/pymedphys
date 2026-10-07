@@ -47,12 +47,16 @@ and how many frames its series or instance has.
 Monochrome pixel data are rescaled by Rescale Slope and Rescale Intercept,
 where both can be read, and windowed from the 0.5th to the 99.5th percentile
 of what the preview shows, leaving out the stored values that Pixel Padding
-Value and Pixel Padding Range Limit name, which are shown black; MONOCHROME1 is inverted so that higher values are darker. RGB
-pixel data with 8 bits allocated are shown as they are. An instance whose
-pixel data cannot be previewed is reported with why, rather than left out:
-pixel data in a compressed transfer syntax, which the engine does not support
-yet; a photometric interpretation other than MONOCHROME1, MONOCHROME2, or
-RGB, or float pixel data; or pixel data that cannot be decoded. A high-risk
+Value and Pixel Padding Range Limit name, which are shown black; MONOCHROME1 is inverted so that higher values are darker. Colour
+pixel data with 8 bits allocated are shown as RGB: as they are, or converted
+from YBR_FULL or YBR_FULL_422 by pydicom, while JPEG 2000's YBR_ICT and
+YBR_RCT are decoded to RGB. Compressed pixel data are decoded by the plugin
+that :data:`.pixel_decoding.DECODING_PLUGINS` pins for its transfer syntax.
+An instance whose pixel data cannot be previewed is reported with why,
+rather than left out: pixel data in a compressed transfer syntax that no
+installed plugin is pinned to decode; a photometric interpretation other
+than those above, or float pixel data; or pixel data that cannot be
+decoded. A high-risk
 instance without pixel data, such as an RT Structure Set with the patient's
 outline, is reported too, so that the reviewer knows there is nothing to see
 of it here. Only the frames that a preview shows are decoded, one at a
@@ -74,6 +78,7 @@ from collections.abc import Collection, Iterator, Mapping, Sequence
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
+from .pixel_decoding import DECODING_PLUGINS, decoder_available
 from .qc_pack import NotPreviewedEntry, NotPreviewedReason, Preview, PreviewKind
 
 CINE_FRAMES = 16
@@ -84,6 +89,8 @@ VOLUME_SLICES = 3
 
 _PERCENTILES = (0.5, 99.5)
 _MONOCHROME = frozenset({"MONOCHROME1", "MONOCHROME2"})
+# Shown as RGB, which pydicom gives for each of them by default.
+_COLOUR = frozenset({"RGB", "YBR_FULL", "YBR_FULL_422", "YBR_ICT", "YBR_RCT"})
 _FLOAT_PIXEL_DATA = ("FloatPixelData", "DoubleFloatPixelData")
 # An axis lies along a patient axis when its other two direction cosines are
 # each at most this; a projection along an oblique axis would superimpose
@@ -112,6 +119,7 @@ class _Instance:
 
     position: int
     data: bytes = dataclasses.field(repr=False)
+    plugin: str  # the pydicom decoding plugin, or "" for native pixel data
     series: str | None
     shape: tuple[int, int]
     padding: tuple[int, int] | None  # stored values, inclusive, not shown
@@ -215,8 +223,12 @@ def _described(
 ) -> _Instance | NotPreviewedReason:
     """Describe an image whose pixel data a preview can show, or say why not."""
     try:
+        syntax = str(dataset.file_meta.TransferSyntaxUID)
+        plugin = ""
         if dataset.file_meta.TransferSyntaxUID.is_compressed:
-            return NotPreviewedReason.COMPRESSED
+            plugin = DECODING_PLUGINS.get(syntax, "")
+            if not plugin or not decoder_available(syntax):
+                return NotPreviewedReason.COMPRESSED
         photometric = str(dataset.PhotometricInterpretation).strip()
         samples = int(dataset.SamplesPerPixel)
         allocated = int(dataset.BitsAllocated)
@@ -235,7 +247,7 @@ def _described(
     )
     number = _number(dataset, "InstanceNumber", int)
     number = None if number is None else int(number)
-    colour = photometric == "RGB" and samples == 3 and allocated == 8
+    colour = photometric in _COLOUR and samples == 3 and allocated == 8
     if not colour and not (photometric in _MONOCHROME and samples == 1):
         return NotPreviewedReason.UNSUPPORTED
     if frames < 1 or rows < 1 or columns < 1:
@@ -245,6 +257,7 @@ def _described(
     return _Instance(
         position=position,
         data=data,
+        plugin=plugin,
         series=str(uid) if uid else None,
         shape=(rows, columns),
         padding=None if colour else _padding(dataset),
@@ -336,7 +349,11 @@ class _Decoder:
             return None
         try:
             pixels = np.asarray(
-                pydicom.pixels.pixel_array(io.BytesIO(instance.data), index=index)
+                pydicom.pixels.pixel_array(
+                    io.BytesIO(instance.data),
+                    index=index,
+                    decoding_plugin=instance.plugin,
+                )
             )
         except Exception:  # pylint: disable = broad-exception-caught
             self._refused[instance.position] = NotPreviewedReason.UNREADABLE
