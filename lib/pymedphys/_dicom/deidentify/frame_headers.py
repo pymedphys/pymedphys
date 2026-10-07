@@ -39,11 +39,10 @@ before it is decoded, and requires:
   says: YBR_RCT for the reversible one, YBR_ICT for the irreversible one,
   and neither without one (PS3.5 Section 8.2.4). The reversible wavelet is
   needed for lossless coding but does not show it: a codestream that uses
-  it can still be truncated, a lossy process (PS3.5 Section A.4.4), and
-  whether every coding pass was kept is recorded only in packet headers,
-  which are not read here. So a JPEG 2000 or HTJ2K frame coded lossily
-  with the reversible wavelet passes under a lossless syntax, and its bytes
-  and transfer syntax are kept as the source has them.
+  it can still be truncated, a lossy process (PS3.5 Section A.4.4). So,
+  for a syntax that is lossless only, every packet header is also read, by
+  :func:`.jpeg_2000_packets.coding_passes_kept`, and every code-block that
+  the packets include must hold every coding pass.
 
 Each must also give the same Rows, Columns, and Samples per Pixel
 (0028,0002) as the attributes, a sample precision equal to Bits Stored
@@ -55,13 +54,16 @@ Representation is not compared for them. RLE Lossless (PS3.5 Annex G)
 holds none of these, and is not read here.
 
 A JPEG or JPEG-LS codestream must also reach its EOI marker, and each of
-its scans must hold entropy-coded data, since pylibjpeg decodes a frame
-whose scan is empty, or that stops before EOI, without an error. Damaged
-entropy-coded data that is still followed by EOI is not detected here.
+its scans must hold entropy-coded data, since GDCM decodes a frame whose
+scan is empty, or that lacks only its EOI, without an error, and pylibjpeg
+also one cut short within its scan. Damaged entropy-coded data that is
+still followed by EOI is not detected here.
 
-A frame without such a header, or whose marker segments do not hold
-together, gives :attr:`~.reasons.TransformReason.UNDECODABLE_PIXEL_DATA`;
-one whose header does not match gives
+A frame without such a header, whose marker segments do not hold
+together, or, for a JPEG 2000 or HTJ2K syntax that is lossless only, whose
+packet headers cannot be read, gives
+:attr:`~.reasons.TransformReason.UNDECODABLE_PIXEL_DATA`; one whose header
+does not match, or one of whose code-blocks lacks coding passes, gives
 :attr:`~.reasons.TransformReason.FRAME_MISMATCH`. Each frame is only read
 here; its bytes are kept as they are.
 """
@@ -71,6 +73,7 @@ from __future__ import annotations
 import dataclasses
 import struct
 
+from .jpeg_2000_packets import coding_passes_kept
 from .reasons import TransformReason
 
 _JPEG_FRAME_MARKERS = {
@@ -166,9 +169,15 @@ def header_problem(
         header = _jpeg(codestream, transfer_syntax in _JPEG_LS)
     if header is None:
         return TransformReason.UNDECODABLE_PIXEL_DATA
-    if _matches(transfer_syntax, header, declared):
-        return None
-    return TransformReason.FRAME_MISMATCH
+    if not _matches(transfer_syntax, header, declared):
+        return TransformReason.FRAME_MISMATCH
+    if transfer_syntax in _JPEG_2000_LOSSLESS_ONLY:
+        kept = coding_passes_kept(codestream)
+        if kept is None:
+            return TransformReason.UNDECODABLE_PIXEL_DATA
+        if not kept:
+            return TransformReason.FRAME_MISMATCH
+    return None
 
 
 def _matches(transfer_syntax: str, header: _Header, declared: Declared) -> bool:

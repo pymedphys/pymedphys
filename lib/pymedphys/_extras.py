@@ -32,7 +32,7 @@ from pymedphys._version import __version__
 DISTRIBUTION_FOR_IMPORT = {
     "attr": "attrs",
     "dateutil": "python-dateutil",
-    "libjpeg": "pylibjpeg-libjpeg",
+    "gdcm": "python-gdcm",
     "mpl_toolkits": "matplotlib",
     "PIL": "Pillow",
     "sklearn": "scikit-learn",
