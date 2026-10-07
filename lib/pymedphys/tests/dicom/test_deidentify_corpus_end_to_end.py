@@ -19,8 +19,9 @@ conspicuous marker in each attribute of Table E.1-1 that its IODs define.
 Under the Basic Profile every one of them is removed or replaced, so no
 released file may hold any of them. The search here is independent of the
 engine's own residual search: it looks for each recorded value as bytes,
-a value of digits alone only where no digit or full stop is before it, so
-that the digits of a replacement UID do not match it by chance, and checks
+a value of digits and full stops alone, such as a date, a decimal, or a
+UID, only where no digit or full stop is before it, so that the digits of
+a replacement UID do not match it by chance, and checks
 numeric values, which cannot be searched for, at their place.
 
 Under ``basic-clean-descriptors`` every marker is removed or replaced as
@@ -95,9 +96,9 @@ NUMERIC_VRS = frozenset(
 NUMBERS_AS_TEXT = frozenset({"DS", "IS"})
 # Shorter forms would match by chance.
 SHORTEST_FORM = 4
-# A form of digits alone, such as a date, could match by chance within the
-# digits of a replacement UID, so it is found only where no digit or full
-# stop is before it.
+# A form of digits and full stops alone, such as a date, a decimal, or a
+# UID, could match by chance within the digits of a replacement UID, so it
+# is found only where no digit or full stop is before it.
 DIGITS_ONLY = re.compile(r"[0-9.]+")
 DATE_DIGITS = 8
 # The generic parts of every marker.
@@ -174,7 +175,7 @@ def fixture_unreviewed_run(published):  # pylint: disable = unused-argument
 
 
 def _ct_and_rt(corpus):
-    """Return the corpus's CT Image and RT instances, which hold its ROI names.
+    """Return the corpus's CT Image and RT instances, with its structure set.
 
     The residual search of each output looks for the values of every
     instance of its patient, so a run's time grows with the square of the
@@ -577,7 +578,7 @@ def test_every_released_instance_carries_the_profiles_markers(preset_run):
 @pytest.mark.deid_requirement("PS3.15-E.1.1-01", "MIDI-BP-14")
 def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(preset_run):
     # Referenced Performed Procedure Step Sequence, which the multi-frame
-    # IODs require, refers to the procedure step by its keyed replacement,
+    # IODs conditionally require (Type 1C), refers to the procedure step by its keyed replacement,
     # the same in each instance, and the colour image's ICC Profile is the
     # fixed sRGB profile (D-021).
     corpus, released = preset_run.corpus, preset_run.released

@@ -419,7 +419,8 @@ def test_a_run_over_the_synthetic_corpus_lists_its_ct_volumes(tmp_path):
 
     # The third slice is sequestered, and the other two are a volume; the
     # Enhanced CT Image and Legacy Converted Enhanced CT Image instances, of
-    # two frames each, are a volume each.
+    # two frames each, are a volume each. The indicator covers CT volumes
+    # only, so the MR and PET instances are not listed until it covers them.
     volumes = [
         released("CT Image"),
         released("Enhanced CT Image"),

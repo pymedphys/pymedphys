@@ -80,9 +80,9 @@ RT Referenced Series Sequence, lie at that depth; the deeper places, such as
 the Code Sequence Macros nested in the Request Attributes Sequence, repeat
 macros already planted at shallower places. A repeating group is planted in
 its first group only: Overlay Data (60xx,3000), which of the collection's IODs
-CT Image, MR Image, and PET Image define, is planted in group 6000 with VR OW, of the OB or OW
-that PS3.6 allows, so it is written in Explicit VR only. An attribute that the pinned
-dictionary gives no single VR, and a tag whose element number is masked,
+CT Image, MR Image, and PET Image define, is planted in group 6000 with VR
+OW, of the OB or OW that PS3.6 allows, the VR that Implicit VR gives it. An
+attribute that the pinned dictionary gives no single VR, and a tag whose element number is masked,
 are not planted. Each placement not planted is recorded with a
 :class:`NotPlantedReason`. Pixel Data is not an attribute of Table E.1-1 and
 holds only a few synthetic samples: 2 by 2 pixels, in two frames in a
@@ -662,9 +662,9 @@ _SPECS = (
         # Manufacturer's Model Name keeps the plan's RT Plan Label.
         review_copy=("(0008,1090)", "05-rtplan.dcm", "(300A,0002)"),
     ),
-    # A legacy converted enhanced instance references the single-frame
-    # instance of its modality that it was converted from, and every other
-    # MR or PET instance the single-frame one, which references the CT.
+    # The MR and PET Images reference the first CT slice, and each enhanced,
+    # legacy converted enhanced, or MR Spectroscopy instance the
+    # single-frame instance of its modality.
     _Spec(
         "08-ct-enhanced.dcm",
         ENHANCED_CT_IMAGE_STORAGE,
