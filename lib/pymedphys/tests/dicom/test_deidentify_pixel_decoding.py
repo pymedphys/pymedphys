@@ -25,6 +25,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import pixel_decoding
+from pymedphys._dicom.deidentify.frame_headers import Declared, header_problem
 from pymedphys._dicom.deidentify.pixel_decoding import (
     DECODING_PLUGINS,
     decoder_available,
@@ -290,34 +291,216 @@ def test_a_jpeg_frame_header_of_0_lines_is_refused():
     assert frames_problem(read_source(data)) is TransformReason.FRAME_MISMATCH
 
 
-def _jpeg_ls(marker, rows, columns):
+def _jpeg_ls(marker=0xFFF7, rows=ROWS, columns=COLUMNS, near=0):
     """Return the start of a JPEG-LS codestream: SOI, then a frame header
-    for one 8-bit component, then SOS. Nothing after it is ever decoded."""
+    for one 8-bit component, then SOS. Its scan holds no data, so it never
+    decodes."""
     frame = struct.pack(">HHBHHBBBB", marker, 11, 8, rows, columns, 1, 1, 0x11, 0)
-    return b"\xff\xd8" + frame + b"\xff\xda\x00\x08\x01\x01\x00\x00\x00\x00"
+    # Ns 1, then component 1 with no mapping table, NEAR, ILV 0, and Al 0.
+    scan = struct.pack(">HHBBBBBB", 0xFFDA, 8, 1, 1, 0, near, 0, 0)
+    return b"\xff\xd8" + frame + scan
 
 
 @pytest.mark.parametrize(
-    "marker, rows, columns, problem",
+    "syntax, codestream, problem",
     [
-        (0xFFF7, COLUMNS, ROWS, TransformReason.FRAME_MISMATCH),
-        (0xFFC3, ROWS, COLUMNS, TransformReason.UNDECODABLE_PIXEL_DATA),
+        (
+            compressed.JPEG_LS_LOSSLESS,
+            _jpeg_ls(rows=COLUMNS, columns=ROWS),
+            TransformReason.FRAME_MISMATCH,
+        ),
+        (
+            compressed.JPEG_LS_LOSSLESS,
+            _jpeg_ls(marker=0xFFC3),
+            TransformReason.FRAME_MISMATCH,
+        ),
+        (
+            compressed.JPEG_LS_LOSSLESS,
+            _jpeg_ls(near=2),
+            TransformReason.FRAME_MISMATCH,
+        ),
     ],
-    ids=["dimensions-swapped", "t81-frame-header"],
+    ids=["dimensions-swapped", "t81-frame-header", "near-lossless"],
 )
-def test_a_jpeg_ls_frame_header_that_does_not_match_is_refused(
-    marker, rows, columns, problem
+def test_a_jpeg_ls_codestream_is_checked_against_its_attributes_and_syntax(
+    syntax, codestream, problem
 ):
-    _needs(compressed.JPEG_LS_LOSSLESS)
-    data = compressed.ct_image(
-        compressed.JPEG_LS_LOSSLESS,
-        [_jpeg_ls(marker, rows, columns)],
-        rows=ROWS,
-        columns=COLUMNS,
-        bits=8,
-    )
+    _needs(syntax)
+    data = compressed.ct_image(syntax, [codestream], rows=ROWS, columns=COLUMNS, bits=8)
 
     assert frames_problem(read_source(data)) is problem
+
+
+@pytest.mark.parametrize(
+    "syntax, near, problem",
+    [
+        (compressed.JPEG_LS_LOSSLESS, 0, None),
+        (compressed.JPEG_LS_NEAR_LOSSLESS, 0, None),
+        (compressed.JPEG_LS_NEAR_LOSSLESS, 2, None),
+        (compressed.JPEG_LS_LOSSLESS, 2, TransformReason.FRAME_MISMATCH),
+    ],
+)
+def test_only_jpeg_ls_near_lossless_allows_a_lossy_scan(syntax, near, problem):
+    declared = Declared(ROWS, COLUMNS, 1, 8, False, "MONOCHROME2")
+
+    assert header_problem(syntax, _jpeg_ls(near=near), declared) is problem
+
+
+def _baseline():
+    pytest.importorskip("PIL")
+    frame = np.arange(256, dtype=np.uint8).reshape(16, 16)
+    return compressed.jpeg_baseline(frame)
+
+
+@pytest.mark.parametrize(
+    "syntax, problem",
+    [
+        (compressed.JPEG_BASELINE, None),
+        (compressed.JPEG_EXTENDED, None),
+        (compressed.JPEG_LOSSLESS, TransformReason.FRAME_MISMATCH),
+        (compressed.JPEG_LOSSLESS_SV1, TransformReason.FRAME_MISMATCH),
+    ],
+)
+def test_a_jpeg_baseline_frame_passes_only_under_a_lossy_syntax(syntax, problem):
+    _needs(syntax)
+    data = compressed.ct_image(syntax, [_baseline()], rows=16, columns=16, bits=8)
+
+    assert frames_problem(read_source(data)) is problem
+
+
+@pytest.mark.parametrize(
+    "syntax, problem",
+    [
+        (compressed.JPEG_LOSSLESS, None),
+        (compressed.JPEG_LOSSLESS_SV1, None),
+        (compressed.JPEG_BASELINE, TransformReason.FRAME_MISMATCH),
+        (compressed.JPEG_EXTENDED, TransformReason.FRAME_MISMATCH),
+    ],
+)
+def test_a_jpeg_lossless_frame_passes_only_under_a_lossless_syntax(syntax, problem):
+    _needs(syntax)
+    codestream = compressed.jpeg_lossless(_frames(1)[0])
+    data = compressed.ct_image(syntax, [codestream], rows=ROWS, columns=COLUMNS)
+
+    assert frames_problem(read_source(data)) is problem
+
+
+def _with(data, syntax, **attributes):
+    """Return ``data`` with ``attributes`` set, written in ``syntax``."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    for keyword, value in attributes.items():
+        setattr(dataset, keyword, value)
+    return synthetic.written(dataset, syntax)
+
+
+def _needs_openjpeg(syntax=compressed.JPEG_2000_LOSSLESS):
+    _needs(syntax)
+    pytest.importorskip("openjpeg")
+
+
+def _jpeg_2000_image(
+    codestream, *, syntax=compressed.JPEG_2000_LOSSLESS, bits=12, **attributes
+):
+    """Return a 48 by 64 image of ``codestream``, with ``attributes`` set."""
+    data = compressed.ct_image(syntax, [codestream], rows=48, columns=64, bits=bits)
+    return read_source(_with(data, syntax, **attributes))
+
+
+_UNSIGNED = np.arange(48 * 64, dtype=np.uint16).reshape(48, 64) % 4096
+_SIGNED = (_UNSIGNED.astype(np.int16) - 2048).astype(np.int16)
+
+
+@pytest.mark.parametrize(
+    "frame, representation, problem",
+    [
+        (_UNSIGNED, 0, None),
+        (_SIGNED, 1, None),
+        (_UNSIGNED, 1, TransformReason.FRAME_MISMATCH),
+        (_SIGNED, 0, TransformReason.FRAME_MISMATCH),
+    ],
+    ids=["unsigned", "signed", "unsigned-declared-signed", "signed-declared-unsigned"],
+)
+def test_jpeg_2000_signedness_must_match_pixel_representation(
+    frame, representation, problem
+):
+    _needs_openjpeg()
+    codestream = compressed.jpeg_2000(frame, precision=12)
+    image = _jpeg_2000_image(codestream, PixelRepresentation=representation)
+
+    assert frames_problem(image) is problem
+
+
+def test_an_irreversible_jpeg_2000_frame_passes_only_under_a_lossy_syntax():
+    _needs_openjpeg(compressed.JPEG_2000)
+    codestream = compressed.jpeg_2000(_UNSIGNED, precision=12, compression_ratios=[20])
+    lossy = _jpeg_2000_image(codestream, syntax=compressed.JPEG_2000)
+    lossless = _jpeg_2000_image(codestream)
+
+    assert frames_problem(lossy) is None
+    assert frames_problem(lossless) is TransformReason.FRAME_MISMATCH
+
+
+def _segment_at(codestream, marker):
+    """Return where the first ``marker`` segment is, and the segment."""
+    start = codestream.index(marker)
+    (length,) = struct.unpack_from(">H", codestream, start + 2)
+    return start, codestream[start : start + 2 + length]
+
+
+def test_an_irreversible_tile_part_under_a_lossless_syntax_is_refused():
+    _needs_openjpeg()
+    codestream = compressed.jpeg_2000(_UNSIGNED, precision=12)
+    _, cod = _segment_at(codestream, b"\xff\x52")
+    # The same COD in the first tile-part header, with the 9-7 wavelet: the
+    # marker and Lcod, then Scod, SGcod's 4 bytes, and SPcod's 4 bytes
+    # before its transformation.
+    irreversible = bytearray(cod)
+    assert irreversible[13] == 1
+    irreversible[13] = 0
+    tile_part, _ = _segment_at(codestream, b"\xff\x90")
+    (length,) = struct.unpack_from(">I", codestream, tile_part + 6)
+    changed = bytearray(codestream)
+    struct.pack_into(">I", changed, tile_part + 6, length + len(irreversible))
+    changed[tile_part + 12 : tile_part + 12] = irreversible
+
+    assert frames_problem(_jpeg_2000_image(codestream)) is None
+    assert frames_problem(_jpeg_2000_image(bytes(changed))) is (
+        TransformReason.FRAME_MISMATCH
+    )
+
+
+_RGB = np.stack([_UNSIGNED % 256, _UNSIGNED // 16 % 256, _UNSIGNED % 7 * 30], axis=-1)
+
+
+@pytest.mark.parametrize(
+    "transformed, photometric, problem",
+    [
+        (True, "YBR_RCT", None),
+        (False, "RGB", None),
+        (True, "RGB", TransformReason.FRAME_MISMATCH),
+        (True, "YBR_ICT", TransformReason.FRAME_MISMATCH),
+        (False, "YBR_RCT", TransformReason.FRAME_MISMATCH),
+    ],
+)
+def test_the_jpeg_2000_component_transformation_must_match_photometric_interpretation(
+    transformed, photometric, problem
+):
+    _needs_openjpeg()
+    codestream = compressed.jpeg_2000(
+        _RGB.astype(np.uint8),
+        precision=8,
+        photometric_interpretation=1,
+        use_mct=transformed,
+    )
+    image = _jpeg_2000_image(
+        codestream,
+        bits=8,
+        SamplesPerPixel=3,
+        PhotometricInterpretation=photometric,
+        PlanarConfiguration=0,
+    )
+
+    assert frames_problem(image) is problem
 
 
 @pytest.mark.parametrize("value", [0, None], ids=["zero", "empty"])

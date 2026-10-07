@@ -32,10 +32,13 @@ from pymedphys._imports import pydicom
 from . import _synthetic_references as synthetic
 
 JPEG_BASELINE = "1.2.840.10008.1.2.4.50"
+JPEG_EXTENDED = "1.2.840.10008.1.2.4.51"
 JPEG_LOSSLESS = "1.2.840.10008.1.2.4.57"
 JPEG_LOSSLESS_SV1 = "1.2.840.10008.1.2.4.70"
 JPEG_LS_LOSSLESS = "1.2.840.10008.1.2.4.80"
+JPEG_LS_NEAR_LOSSLESS = "1.2.840.10008.1.2.4.81"
 JPEG_2000_LOSSLESS = "1.2.840.10008.1.2.4.90"
+JPEG_2000 = "1.2.840.10008.1.2.4.91"
 RLE_LOSSLESS = "1.2.840.10008.1.2.5"
 
 # Difference categories 0 to 16 (T.81 Table H.2), each with a 5-bit code.
@@ -130,13 +133,13 @@ def jpeg_baseline(frame) -> bytes:
     return buffer.getvalue()
 
 
-def jpeg_2000(frame, *, precision: int = 16) -> bytes:
-    """Return one frame as a reversible JPEG 2000 codestream, by pylibjpeg-openjpeg."""
+def jpeg_2000(frame, *, precision: int = 16, **options) -> bytes:
+    """Return one frame as a JPEG 2000 codestream, by pylibjpeg-openjpeg:
+    reversible and monochrome unless ``options`` say otherwise."""
     import openjpeg  # pylint: disable = import-outside-toplevel, import-error
 
-    return openjpeg.encode(
-        np.asarray(frame), bits_stored=precision, photometric_interpretation=2
-    )
+    options = {"photometric_interpretation": 2, **options}
+    return openjpeg.encode(np.asarray(frame), bits_stored=precision, **options)
 
 
 def ct_image(
