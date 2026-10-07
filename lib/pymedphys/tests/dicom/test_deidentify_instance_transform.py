@@ -426,6 +426,7 @@ def test_d_writes_the_reviewed_procedure_step_and_icc_profile_in_an_added_iod():
     )
     _procedure_step(dataset)
     _icc_profile(dataset)
+    dataset.ColorSpace = "ADOBERGB"
 
     result = _transformed(dataset)
 
@@ -436,7 +437,37 @@ def test_d_writes_the_reviewed_procedure_step_and_icc_profile_in_an_added_iod():
     assert step.ReferencedSOPInstanceUID == replacement_uid(KEY, PROCEDURE_STEP)
     assert written[0x00282000].VR == "OB"
     assert written[0x00282000].value == icc_profiles.srgb_profile("DEIDENTIFIED sRGB")
+    # Color Space named the source profile's colour space, which the profile
+    # written may contradict, so it is removed (D-022).
+    assert "ColorSpace" not in written
     assert b"scanner" not in result.data
+
+
+@pytest.mark.deid_requirement("MIDI-BP-14")
+def test_d_writes_an_item_for_each_procedure_step_and_a_grey_profile():
+    dataset = synthetic.instance(
+        "1.2.840.10008.5.1.4.1.1.4.1",  # Enhanced MR Image Storage
+        synthetic.OTHER,
+        synthetic.OTHER_SERIES,
+    )
+    _procedure_step(dataset)
+    second = pydicom.Dataset()
+    second.ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.3"
+    second.ReferencedSOPInstanceUID = "2.25.1000"
+    dataset.ReferencedPerformedProcedureStepSequence.append(second)
+    _icc_profile(dataset, icc_profiles.grey_profile("DEIDENTIFIED grey"))
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    steps = written.ReferencedPerformedProcedureStepSequence
+    assert [step.ReferencedSOPInstanceUID for step in steps] == [
+        replacement_uid(KEY, PROCEDURE_STEP),
+        replacement_uid(KEY, "2.25.1000"),
+    ]
+    # The source equals the first grey profile, so the second is written.
+    assert written[0x00282000].value == icc_profiles.grey_profile("DE-IDENTIFIED grey")
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-01")

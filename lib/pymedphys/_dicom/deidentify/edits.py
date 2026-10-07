@@ -26,10 +26,13 @@ each element of the data set, in file order, an :class:`Edit`:
 - D replaces it with its VR's dummy value, or the second one where the
   source value equals the first, or, for a UI value, its keyed replacement
   (:func:`~pymedphys._dicom.deidentify.dummy_values.values_for_d`); D
-  replaces Person Identification Code Sequence (0040,1101), whose source
-  items are removed with it, with its reviewed dummy item, compared with
-  each source item's Code Value (0008,0100) and Code Meaning (0008,0104)
-  (:func:`~pymedphys._dicom.deidentify.dummy_values.items_for_d`, D-021);
+  replaces Person Identification Code Sequence (0040,1101) and Referenced
+  Performed Procedure Step Sequence (0008,1111), whose source items are
+  removed with them, with their reviewed dummy items, built from each source
+  item's compared values
+  (:func:`~pymedphys._dicom.deidentify.dummy_values.items_for_d`, D-021),
+  and ICC Profile (0028,2000) with a fixed profile of its colour space
+  (:func:`~pymedphys._dicom.deidentify.dummy_values.icc_profile_for_d`);
 - U replaces each UID that the pinned tables do not register with its keyed
   replacement, and keeps each that they do
   (:func:`~pymedphys._dicom.deidentify.uids.transform_uid`).
@@ -133,7 +136,7 @@ class Edit:
     action : str
         The plan's action, such as ``"D"``.
     kind : EditKind
-    values : tuple of str, int, or float
+    values : tuple of str, int, float, or bytes
         The values that replace the element's, for :attr:`EditKind.REPLACE`
         of an element other than a sequence; otherwise ``()``.
     uid_outcomes : tuple of UIDOutcome

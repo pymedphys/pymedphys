@@ -220,6 +220,7 @@ SEQUENCES = {
 OTHER_REMOVED = {
     "(0008,0300)": "PrivateDataElementCharacteristicsSequence",
     "(0028,2000)": "ICCProfile",
+    "(0028,2002)": "ColorSpace",
     "(4FFE,0001)": "MACParametersSequence",
 }
 # Measures of the patient's body that say something about the patient as

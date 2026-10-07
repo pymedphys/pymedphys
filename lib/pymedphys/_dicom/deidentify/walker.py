@@ -62,7 +62,8 @@ Sequence (0040,1101), whose items' Code Value (0008,0100) and Code Meaning
 (0008,0104) are compared, for Referenced Performed Procedure Step Sequence
 (0008,1111), whose items' Referenced SOP Instance UID (0008,1155) is read
 for its keyed replacement, and for ICC Profile (0028,2000) of VR OB
-(D-021). A dummy value on any other element, such as another sequence, adds a :class:`Sequestration` to the plan, as
+(D-021). A dummy value on any other element, such as another sequence, adds
+a :class:`Sequestration` to the plan, as
 :func:`~pymedphys._dicom.deidentify.dummy_values.values_for_d` would refuse
 it. So does an attribute of the pinned data dictionary that is not removed
 but whose value the source evidence holds in a form that the dictionary does

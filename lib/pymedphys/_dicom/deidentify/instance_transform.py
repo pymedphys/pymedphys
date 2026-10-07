@@ -383,7 +383,10 @@ def writer_plan(
             removed.add(edit.path)
         else:
             replacements[edit.path] = _element(edit, vrs.get(edit.path), codecs)
-            introduced |= new_items(edit.path, edit.items, codecs)[1]
+            if edit.items:
+                introduced.update(
+                    _paths_within(replacements[edit.path], edit.path.items)
+                )
     return WriterPlan(
         frozenset(kept), frozenset(removed), replacements, frozenset(introduced)
     )
@@ -553,7 +556,7 @@ def _element(
         raise _Refused(TransformReason.UNWRITABLE_ELEMENT)
     try:
         if edit.items:
-            values = new_items(edit.path, edit.items, codecs)[0]
+            values = new_items(edit.path, edit.items, codecs)
         return new_element(edit.path, vr, values, codecs)
     except ValueError:
         pass

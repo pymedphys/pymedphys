@@ -1507,23 +1507,18 @@ def test_text_that_the_writer_keeps_is_built_and_read_back(
     assert _read(read, _path("(0008,103E)"), codecs).values == (value,)
 
 
-def test_new_items_builds_each_item_and_gives_the_paths_of_its_elements():
+def test_new_items_builds_each_item():
     sequence = ElementPath((("(0044,0110)", 0),), "(0040,1101)")
     items = [
         [("(0008,0100)", "SH", "A"), ("(0008,0104)", "LO", "B^C")],
         [("(0008,0100)", "SH", "D")],
     ]
 
-    built, paths = elements.new_items(sequence, items, elements.DEFAULT_CODECS)
+    built = elements.new_items(sequence, items, elements.DEFAULT_CODECS)
 
     assert [item.CodeValue for item in built] == ["A", "D"]
     assert built[0].CodeMeaning == "B^C"
-    held = (("(0044,0110)", 0), ("(0040,1101)", 0))
-    assert paths == {
-        ElementPath(held, "(0008,0100)"),
-        ElementPath(held, "(0008,0104)"),
-        ElementPath((("(0044,0110)", 0), ("(0040,1101)", 1)), "(0008,0100)"),
-    }
+    assert "CodeMeaning" not in built[1]
 
 
 def test_new_items_refuses_an_element_new_element_refuses():

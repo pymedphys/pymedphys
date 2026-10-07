@@ -437,7 +437,7 @@ def items_for_d(
 def _procedure_step_items(
     source: Sequence[Mapping[str, str]], key: DeidKey
 ) -> tuple[tuple[DummyElement, ...], ...]:
-    """Return the items that D writes in Referenced Performed Procedure Step Sequence."""
+    """Return D's items for Referenced Performed Procedure Step Sequence."""
     uids = [item.get(_REFERENCED_SOP_INSTANCE_UID) for item in source]
     if not all(isinstance(uid, str) or uid is None for uid in uids):
         raise TypeError("each source Referenced SOP Instance UID must be text")

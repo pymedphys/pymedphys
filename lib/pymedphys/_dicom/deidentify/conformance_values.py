@@ -255,7 +255,7 @@ def _icc_profile(named: Callable[[str], str]) -> str:
     first, second = dummy_values.CONSTANTS["LO"]
     return (
         f"D on {named(dummy_values.ICC_PROFILE)} writes a fixed ICC version "
-        "2.1 input profile of the source profile's data colour space: the "
+        "2.4 input profile of the source profile's data colour space: the "
         f"sRGB colour space of IEC 61966-2.1, described `{first} sRGB`, for "
         "an RGB profile, or a grey profile with the sRGB tone curve, "
         f"described `{first} grey`, for a grey one. Where the source has the "

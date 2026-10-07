@@ -19,8 +19,9 @@ Where D replaces one, it writes a fixed profile of the same data colour
 space, built here the same way every time: :func:`srgb_profile` for an RGB
 source profile, the sRGB colour space of IEC 61966-2.1, and
 :func:`grey_profile` for a grey one, with the sRGB tone curve. Each is an
-ICC version 2.1 input profile of the matrix and tone curve model (ICC.1:2001-04
-Section 6.3.1.2), whose PCS is CIE XYZ under the D50 illuminant.
+ICC version 2.4 input profile (ICC.1:2001-04), of the matrix and tone curve
+model (Section 6.3.1.2) or the monochrome one (Section 6.3.1.1), whose PCS
+is CIE XYZ under the D50 illuminant and whose media white point is D50.
 
 Nothing of the source profile is written. Its header gives only its data
 colour space, which decides the profile written; its contents are not
@@ -129,7 +130,7 @@ def _profile(colour_space: bytes, tags: list[tuple[bytes, bytes]]) -> bytes:
     header = (
         struct.pack(">I", size)
         + b"\0" * 4  # preferred CMM: none
-        + struct.pack(">I", 0x02100000)  # version 2.1
+        + struct.pack(">I", 0x02400000)  # version 2.4
         + b"scnr"  # an input device profile
         + colour_space
         + b"XYZ "

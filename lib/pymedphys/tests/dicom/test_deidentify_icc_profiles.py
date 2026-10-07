@@ -63,7 +63,7 @@ def _xyz(element):
 
 @pytest.mark.deid_requirement("MIDI-BP-14")
 @pytest.mark.parametrize("name", sorted(PROFILES))
-def test_each_profile_is_a_version_2_input_profile(name):
+def test_each_profile_is_a_version_2_4_input_profile(name):
     build, colour_space = PROFILES[name]
 
     profile = build("DEIDENTIFIED")
@@ -71,7 +71,7 @@ def test_each_profile_is_a_version_2_input_profile(name):
     assert int.from_bytes(profile[:4], "big") == len(profile)
     # OB values have even length (PS3.5 Section 6.2).
     assert len(profile) % 2 == 0
-    assert profile[8:12] == bytes([2, 0x10, 0, 0])
+    assert profile[8:12] == bytes([2, 0x40, 0, 0])
     assert profile[12:16] == b"scnr"
     assert profile[16:20] == colour_space
     assert profile[20:24] == b"XYZ "
