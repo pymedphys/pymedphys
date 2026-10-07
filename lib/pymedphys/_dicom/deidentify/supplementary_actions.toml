@@ -547,7 +547,7 @@ tag = "(0018,9047)"
 keyword = "MultiCoilElementName"
 action = "X/Z/D"
 options = { retain_device_identity = "K" }
-note = "The name of an element of a multi-element MR coil, which identifies part of a device. It is removed by Type, which replaces it with a dummy value where it is Type 1, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
+note = "The name of an element of a multi-element MR coil, which a site can choose for its own coils, as it can the coil's name. It is removed by Type, which replaces it with a dummy value where it is Type 1, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
 
 [[attribute]]
 tag = "(0018,9050)"
@@ -794,7 +794,7 @@ note = "A label for the kernel or algorithm used to reconstruct the image, which
 tag = "(0018,9005)"
 keyword = "PulseSequenceName"
 action = "K"
-note = "The name of the MR pulse sequence, for annotation, which PS3.3 says may be specific to the vendor: the scanner writes it from the sequence it runs, whereas the operator defines Sequence Name. It is a technical value that identifies no one, needed to interpret the image, so it is kept."
+note = "The name of the MR pulse sequence, for annotation, which PS3.3 says may be specific to the vendor, whereas it calls Sequence Name user-defined. It names a sequence, not a person, and is needed to interpret the image, so it is kept, accepting the residual risk that a site names an in-house sequence after a person."
 
 [[attribute]]
 tag = "(0018,9175)"
@@ -812,7 +812,7 @@ note = "A label for the filter applied to an image after its reconstruction, whi
 tag = "(0020,9056)"
 keyword = "StackID"
 action = "K"
-note = "Identifies a group of frames within an image's dimension organisation, a value that the equipment assigns, such as 1. PS3.3 C.7.6.16.2.2.6 makes it a dimension of dynamic PET images, so changing it would break how their frames are organised; it identifies frames, not a person, so it is kept."
+note = "A descriptive name for a group of frames, unique only within the image's dimension organisation (PS3.3 C.7.6.16.2.2.4). It is Type 1C, required in Enhanced PET and functional MR, and C.7.6.16.2.2.6 makes it a dimension of dynamic PET images, so it cannot be removed where it is required, and one dummy value would merge distinct stacks. It names frames, not a person, so it is kept, accepting the residual risk that the name identifies a site."
 
 [[attribute]]
 tag = "(0020,9213)"
@@ -830,7 +830,7 @@ note = "The private creator of a private attribute that a functional group point
 tag = "(0020,9453)"
 keyword = "FrameLabel"
 action = "K"
-note = "A label for frames that an application handles as a group, from a set of values that the application defines, which Dimension Index Pointer can name as the base of a dimension (PS3.3 C.7.6.16.2.2.5). Software, not a person, chooses it, and changing it would change how frames are indexed, so it is kept."
+note = "A label for frames that an application handles as a group, from a set of values that the application defines, which Dimension Index Pointer can name as the base of a dimension (PS3.3 C.7.6.16.2.2.5). It is not free text about the patient, and changing it would change how frames are indexed, so it is kept, accepting the residual risk that an application lets a site define the set."
 
 [[attribute]]
 tag = "(0028,1054)"
