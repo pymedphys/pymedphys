@@ -54,7 +54,9 @@ user = [
   "pandas>=2.0",
   "plotly",
   "pydicom>=3.0.2",
-  "pylibjpeg-libjpeg>=1.3.2",
+  "pylibjpeg>=2.0",  # pydicom decodes JPEG Lossless, JPEG-LS, and HTJ2K through it
+  "pylibjpeg-libjpeg>=2.1",
+  "pylibjpeg-openjpeg>=2.0",
   "pymssql",
   "pynetdicom",
   "python-dateutil",

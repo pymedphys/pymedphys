@@ -44,6 +44,7 @@ from pymedphys._dicom.deidentify import (
     method_digest,
     policy,
     runtime,
+    scope,
     standard,
     values,
 )
@@ -90,7 +91,7 @@ MARKER_KEYWORDS = (
     "LongitudinalTemporalInformationModified",
     "ContributingEquipmentSequence",
 )
-FIRST_RELEASE_IODS = ("CT Image", "RT Dose", "RT Structure Set", "RT Plan")
+FIRST_RELEASE_IODS = tuple(sorted(scope.SUPPORTED_IODS))
 CONTRIBUTING_EQUIPMENT = "(0018,A001)"
 PURPOSE_OF_REFERENCE = "(0040,A170)"
 

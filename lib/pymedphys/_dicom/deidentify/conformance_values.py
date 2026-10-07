@@ -464,6 +464,12 @@ def qc_pack(named: Callable[[str], str]) -> list[str]:
         f"{named(_SERIES_INSTANCE_UID)}, which it never writes, and assesses "
         "only the released and held instances, so a series with just one "
         "single-frame CT image among them is not a volume (D-015).",
+        "",
+        "MR and PET volumes are not yet listed as volumes, so an MR or PET "
+        "series is listed as one that may hold a face only where an "
+        f"instance's {named('(0028,0302)')} is YES, and no PET series is yet "
+        "listed as one from which the patient's body weight could be "
+        "recovered (D-015).",
     ]
 
 
@@ -506,10 +512,10 @@ def release_report() -> list[str]:
         "SR IOD (D-010).",
         "",
         "An instance outside the supported scope whose IOD the pinned tables "
-        "define, such as an MR image or a spatial registration, is planned "
-        "and edited, where its source can be read, only so that its values "
-        "are collected for its subject's search; it is never written. An "
-        "instance that the first pass read but whose values were not "
+        "define, such as a nuclear medicine image or a spatial registration, "
+        "is planned and edited, where its source can be read, only so that its "
+        "values are collected for its subject's search; it is never written. "
+        "An instance that the first pass read but whose values were not "
         "collected at all, since its source file was refused on its second "
         "read, its SOP Class names no IOD of the pinned tables, its transform "
         "raised an error, or its source file changed during the run, makes "

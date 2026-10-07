@@ -339,16 +339,81 @@ def test_the_evidence_holds_the_removed_values_and_shows_only_counts():
     assert b"SENTINEL" not in result.data
 
 
+def _procedure_step(dataset):
+    step = pydicom.Dataset()
+    step.ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.3"
+    step.ReferencedSOPInstanceUID = "2.25.999"
+    dataset.ReferencedPerformedProcedureStepSequence = [step]
+
+
+def _icc_profile(dataset):
+    dataset.add_new(0x00282000, "OB", bytes(128))
+
+
+def _radiopharmaceutical(dataset):
+    item = pydicom.Dataset()
+    item.RadiopharmaceuticalStartDateTime = "20260101120000"
+    dataset.RadiopharmaceuticalInformationSequence = [item]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+@pytest.mark.parametrize(
+    "sop_class, add, place, action, reason",
+    [
+        # Type 1C in the series module of each multi-frame IOD; SQ has no
+        # dummy value (D-021).
+        (
+            "1.2.840.10008.5.1.4.1.1.2.1",  # Enhanced CT Image Storage
+            _procedure_step,
+            ElementPath((), "(0008,1111)"),
+            "D",
+            SequesterReason.NO_DUMMY_VALUE,
+        ),
+        # Type 1 in the mandatory ICC Profile Module; OB has no dummy value.
+        (
+            "1.2.840.10008.5.1.4.1.1.4.3",  # Enhanced MR Color Image Storage
+            _icc_profile,
+            ElementPath((), "(0028,2000)"),
+            "D",
+            SequesterReason.NO_DUMMY_VALUE,
+        ),
+        # A plain X, Type 1 in a Type 1 sequence (D-020).
+        (
+            "1.2.840.10008.5.1.4.1.1.130",  # Enhanced PET Image Storage
+            _radiopharmaceutical,
+            ElementPath((("(0054,0016)", 0),), "(0018,1078)"),
+            "X",
+            SequesterReason.REQUIRED_BY_IOD,
+        ),
+    ],
+)
+def test_a_required_attribute_without_a_value_to_write_sequesters_an_added_iod(
+    sop_class, add, place, action, reason
+):
+    dataset = synthetic.instance(sop_class, synthetic.OTHER, synthetic.OTHER_SERIES)
+    add(dataset)
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Sequestered)
+    (sequestration,) = result.reasons
+    assert (sequestration.path, sequestration.action, sequestration.reason) == (
+        place,
+        action,
+        reason,
+    )
+
+
 @pytest.mark.deid_requirement("MIDI-BP-06")
 def test_an_instance_the_release_does_not_support_is_sequestered_with_its_iod():
-    mr = synthetic.instance(
-        synthetic.MR_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
+    nm = synthetic.instance(
+        synthetic.NM_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
     )
-    result = _transformed(mr)
+    result = _transformed(nm)
 
     assert isinstance(result, run.Sequestered)
     # The IOD comes from PS3.4 Table B.5-1, for the release report (D-010).
-    assert result.reasons == (UnsupportedIod("MR Image"),)
+    assert result.reasons == (UnsupportedIod("Nuclear Medicine Image"),)
     # Its values are collected for its subject's search, never written (D-027).
     assert isinstance(result.evidence, Coverage)
 
@@ -414,6 +479,44 @@ def test_a_compressed_instance_in_scope_keeps_its_pixel_data_byte_for_byte(
     pixels = pydicom.pixels.pixel_array(io.BytesIO(result.data))
     assert pixels.tolist() == [[0, 1, 2], [300, 4000, 65535]]
     assert b"SENTINEL" not in result.data
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        TransformReason.NO_DECODER,
+        TransformReason.OFFSET_TABLE_MISMATCH,
+        TransformReason.UNDECODABLE_PIXEL_DATA,
+        TransformReason.FRAME_MISMATCH,
+    ],
+)
+def test_a_compressed_instance_whose_frames_cannot_be_shown_sound_is_sequestered(
+    monkeypatch, reason
+):
+    monkeypatch.setattr(
+        scope,
+        "SUPPORTED_TRANSFER_SYNTAXES",
+        scope.SUPPORTED_TRANSFER_SYNTAXES | {pydicom.uid.RLELossless},
+    )
+    seen = []
+
+    def frames_problem(source):
+        seen.append(source.transfer_syntax)
+        return reason
+
+    monkeypatch.setattr(instance_transform, "frames_problem", frames_problem)
+    data = _rle_ct_slice()
+
+    result = _transform()(data, InstanceRecord.from_file(data))
+
+    assert seen == [pydicom.uid.RLELossless]
+    assert isinstance(result, run.Sequestered)
+    assert result.reasons == (reason,)
+    # Planned first, so its values still reach its subject's search (D-027).
+    evidence = result.evidence
+    assert isinstance(evidence, Coverage)
+    values = evidence.collected  # pylint: disable=no-member
+    assert SENTINEL_NAME in {str(value.value) for value in values}
 
 
 def test_a_source_file_that_is_not_ps3_10_is_sequestered_by_the_source_reason():

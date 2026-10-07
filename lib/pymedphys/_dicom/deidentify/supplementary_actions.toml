@@ -983,7 +983,7 @@ note = "The identifier of a referenced HL7 document, a UID with an optional exte
 tag = "(0088,0130)"
 keyword = "StorageMediaFileSetID"
 action = "X/Z/D"
-note = "A human-readable identifier of the storage media that hold a referenced instance, which can be typed with a patient's name or a date. It is removed by Type under every option, like other identifiers of records; in the supported IODs it occurs only within Referenced Patient Photo Sequence, which Table E.1-1 removes."
+note = "A human-readable identifier of the storage media that hold a referenced instance, which can be typed with a patient's name or a date. It is removed by Type under every option, like other identifiers of records. In the supported IODs it is Type 2 only within Referenced Patient Photo Sequence, which Table E.1-1 removes, and Type 3 elsewhere, in the referenced series of the multi-frame IODs' reference sequences."
 
 [[attribute]]
 tag = "(300A,00F9)"
@@ -1273,7 +1273,7 @@ note = "Codes for why the procedure was performed, which can record a diagnosis 
 tag = "(0028,2000)"
 keyword = "ICCProfile"
 action = "X/Z/D"
-note = "An ICC colour profile, a file in another format embedded in the instance, which can carry text, such as a description or copyright naming the device or institution, that the engine does not parse. It is removed by Type under every option. It is Type 3 wherever the IODs of the first supported release define it."
+note = "An ICC colour profile, a file in another format embedded in the instance, which can carry text, such as a description or copyright naming the device or institution, that the engine does not parse. It is removed by Type under every option. It is Type 1 in the ICC Profile Module, which Enhanced CT Image, Enhanced MR Image, and Enhanced MR Color Image use, where removal by Type needs a dummy value, which the OB VR does not have, so the instance is sequestered; elsewhere in the IODs of the first supported release it is Type 3."
 
 [[attribute]]
 tag = "(4FFE,0001)"
