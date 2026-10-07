@@ -18,11 +18,31 @@ The engine writes encapsulated Pixel Data (7FE0,0010) back byte for byte,
 without decoding it (:mod:`.preserving_writer`). Before such an instance is
 released, :func:`frames_problem` shows that its pixel data are what its
 attributes say they are: each frame decodes, there are as many frames as
-Number of Frames (0028,0008) gives, or one without it, and each has Rows
-(0028,0010) by Columns (0028,0011), with Samples per Pixel (0028,0002)
+Number of Frames (0028,0008) gives, or one where it is absent, and each has
+Rows (0028,0010) by Columns (0028,0011), with Samples per Pixel (0028,0002)
 samples where there are several. A frame that does not decode, or does not
 match, sequesters the instance, since pixel data that cannot be read
 cannot be checked or reviewed. Native pixel data are not decoded here.
+
+Number of Frames must be greater than zero (PS3.3 Section C.7.6.6.1.1): an
+explicit zero, or a value that is empty or cannot be read, is a mismatch,
+never one frame.
+
+A decoder shapes what it decodes by these attributes, so a frame of 5 rows
+of 7 decodes to an array of 7 rows of 5 where the attributes say so. Each
+frame's codestream header is therefore read too, before decoding, and must
+give the same Rows, Columns, and Samples per Pixel, and a sample precision
+equal to Bits Stored (0028,0101), since the attributes must be consistent
+with the compressed data stream (PS3.5 Sections 8.2.1, 8.2.3, 8.2.4, and
+8.2.14): the frame header (SOFn) of JPEG (ITU-T T.81), the frame header
+(SOF55) of JPEG-LS (ITU-T T.87), and the image and tile size (SIZ) marker
+segment of JPEG 2000 and HTJ2K (ITU-T T.800 and T.814), whose image area
+less its offset gives Columns and Rows and whose every component must have
+that precision and no subsampling. A JPEG frame header of 0 lines, whose
+height a later DNL marker segment gives, does not match. RLE Lossless
+(PS3.5 Annex G) holds none of these in its header; pydicom refuses a frame
+whose number of segments is not Samples per Pixel times the bytes of each
+sample.
 
 Before decoding, its offset tables are checked, since a decoder uses them to
 find where each frame starts (PS3.5 Section A.4). A Basic Offset Table that
@@ -55,6 +75,7 @@ a value.
 
 from __future__ import annotations
 
+import dataclasses
 import struct
 import types
 from collections.abc import Mapping
@@ -74,6 +95,21 @@ _PYLIBJPEG = "pylibjpeg"
 _PIXEL_DATA = ElementPath((), "(7FE0,0010)")
 _EXTENDED_OFFSET_TABLE = ElementPath((), "(7FE0,0001)")
 _EXTENDED_OFFSET_TABLE_LENGTHS = ElementPath((), "(7FE0,0002)")
+_RLE_LOSSLESS = "1.2.840.10008.1.2.5"
+_JPEG_LS = frozenset({"1.2.840.10008.1.2.4.80", "1.2.840.10008.1.2.4.81"})
+_JPEG_2000 = frozenset(
+    {
+        "1.2.840.10008.1.2.4.90",
+        "1.2.840.10008.1.2.4.91",
+        "1.2.840.10008.1.2.4.201",
+        "1.2.840.10008.1.2.4.202",
+        "1.2.840.10008.1.2.4.203",
+    }
+)
+# The frame header markers SOF0 to SOF15 of ITU-T T.81 Table B.1, which
+# leave out DHT (C4), JPG (C8), and DAC (CC), and SOF55 of ITU-T T.87.
+_JPEG_FRAME_MARKERS = frozenset(range(0xC0, 0xD0)) - {0xC4, 0xC8, 0xCC}
+_JPEG_LS_FRAME_MARKER = 0xF7
 DECODING_PLUGINS: Mapping[str, str] = types.MappingProxyType(
     {
         **dict.fromkeys(
@@ -125,38 +161,159 @@ def frames_problem(source: SourceEvidence) -> TransformReason | None:
         return TransformReason.NO_DECODER
     try:
         with redacted_diagnostics():
-            dataset = source.dataset()
-            frames, shape = _expected(dataset)
-            if not _offsets_match(source, frames):
-                return TransformReason.OFFSET_TABLE_MISMATCH
-            decoded = 0
-            for frame in pydicom.pixels.iter_pixels(
-                dataset, raw=True, decoding_plugin=plugin
-            ):
-                if decoded == frames or frame.shape != shape:
-                    return TransformReason.FRAME_MISMATCH
-                decoded += 1
+            return _decoded_problem(source, plugin)
     # pydicom and its plugins raise many types for pixel data they cannot
     # decode, and a message can quote a value.
     except Exception:  # pylint: disable = broad-exception-caught
         return TransformReason.UNDECODABLE_PIXEL_DATA
-    return None if decoded == frames else TransformReason.FRAME_MISMATCH
 
 
-def _expected(dataset: pydicom.Dataset) -> tuple[int, tuple[int, ...]]:
-    """Return how many frames the attributes give, and each frame's shape.
+def _decoded_problem(source: SourceEvidence, plugin: str) -> TransformReason | None:
+    """Return why the frames do not match the attributes, if they do not,
+    having checked the offset tables and each frame's codestream header and
+    decoded each frame with ``plugin``.
 
     Raises
     ------
-    ValueError
-        If an attribute is absent, cannot be read, or is not positive.
+    Exception
+        Whatever pydicom or the plugin raises for a frame it cannot decode.
     """
-    frames = int(dataset.get("NumberOfFrames") or 1)
-    rows, columns = int(dataset.Rows), int(dataset.Columns)
-    samples = int(dataset.SamplesPerPixel)
+    dataset = source.dataset()
+    expected = _expected(dataset)
+    if expected is None:
+        return TransformReason.FRAME_MISMATCH
+    frames, shape = expected
+    if not _offsets_match(source, frames):
+        return TransformReason.OFFSET_TABLE_MISMATCH
+    headers = _headers_problem(source, dataset, frames)
+    if headers is not None:
+        return headers
+    decoded = 0
+    for frame in pydicom.pixels.iter_pixels(dataset, raw=True, decoding_plugin=plugin):
+        if decoded == frames or frame.shape != shape:
+            return TransformReason.FRAME_MISMATCH
+        decoded += 1
+    return None if decoded == frames else TransformReason.FRAME_MISMATCH
+
+
+def _expected(dataset: pydicom.Dataset) -> tuple[int, tuple[int, ...]] | None:
+    """Return how many frames the attributes give, and each frame's shape,
+    or ``None`` where an attribute is absent, other than Number of Frames,
+    or is empty, cannot be read, or is not positive."""
+    try:
+        frames = int(dataset.NumberOfFrames) if "NumberOfFrames" in dataset else 1
+        rows, columns = int(dataset.Rows), int(dataset.Columns)
+        samples = int(dataset.SamplesPerPixel)
+    except (AttributeError, TypeError, ValueError):
+        return None
     if min(frames, rows, columns, samples) < 1:
-        raise ValueError("an image attribute is not positive")
+        return None
     return frames, ((rows, columns) if samples == 1 else (rows, columns, samples))
+
+
+@dataclasses.dataclass(frozen=True)
+class _Header:
+    """What a frame's codestream header, or the attributes, say of a frame."""
+
+    rows: int
+    columns: int
+    samples: int
+    precisions: frozenset[int]
+    subsampled: bool = False
+
+
+def _headers_problem(
+    source: SourceEvidence, dataset: pydicom.Dataset, frames: int
+) -> TransformReason | None:
+    """Return why a frame's codestream header does not match the attributes,
+    if one does not, as above.
+
+    Frames are found as pydicom finds them to decode them, by
+    :func:`pydicom.encaps.generate_frames`, after the offset tables are
+    shown sound.
+    """
+    if source.transfer_syntax == _RLE_LOSSLESS or not encapsulated_pixel_data(
+        source, _PIXEL_DATA
+    ):
+        return None
+    expected = _Header(
+        int(dataset.Rows),
+        int(dataset.Columns),
+        int(dataset.SamplesPerPixel),
+        frozenset({int(dataset.BitsStored)}),
+    )
+    extended = None
+    if _EXTENDED_OFFSET_TABLE in source:
+        extended = (
+            source.value_field(_EXTENDED_OFFSET_TABLE),
+            source.value_field(_EXTENDED_OFFSET_TABLE_LENGTHS),
+        )
+    for codestream in pydicom.encaps.generate_frames(
+        _value(source), number_of_frames=frames, extended_offsets=extended
+    ):
+        header = _header(source.transfer_syntax, codestream)
+        if header is None:
+            return TransformReason.UNDECODABLE_PIXEL_DATA
+        if header != expected:
+            return TransformReason.FRAME_MISMATCH
+    return None
+
+
+def _header(transfer_syntax: str, codestream: bytes) -> _Header | None:
+    """Return what a frame's codestream header says of it, or ``None`` where
+    it has none that its transfer syntax allows."""
+    if transfer_syntax in _JPEG_2000:
+        return _image_and_tile_size(codestream)
+    if transfer_syntax in _JPEG_LS:
+        return _frame_header(codestream, frozenset({_JPEG_LS_FRAME_MARKER}))
+    return _frame_header(codestream, _JPEG_FRAME_MARKERS)
+
+
+def _frame_header(codestream: bytes, markers: frozenset[int]) -> _Header | None:
+    """Return the frame header of a JPEG or JPEG-LS codestream: after Start of
+    Image, the first frame header marker, before any scan, must be one of
+    ``markers``. Each marker segment before it is skipped by its length."""
+    position = 2 if codestream[:2] == b"\xff\xd8" else len(codestream)
+    while position + 4 <= len(codestream) and codestream[position] == 0xFF:
+        marker = codestream[position + 1]
+        if marker == 0xFF:  # a fill byte
+            position += 1
+            continue
+        if marker in markers and position + 10 <= len(codestream):
+            precision, rows, columns, samples = struct.unpack_from(
+                ">BHHB", codestream, position + 4
+            )
+            return _Header(rows, columns, samples, frozenset({precision}))
+        (length,) = struct.unpack_from(">H", codestream, position + 2)
+        if (
+            marker in _JPEG_FRAME_MARKERS | {_JPEG_LS_FRAME_MARKER, 0xDA}
+            or 0xD0 <= marker <= 0xD9
+            or length < 2
+        ):
+            break
+        position += 2 + length
+    return None
+
+
+def _image_and_tile_size(codestream: bytes) -> _Header | None:
+    """Return the SIZ marker segment of a JPEG 2000 or HTJ2K codestream, which
+    must follow Start of Codestream (ITU-T T.800 Section A.5.1)."""
+    if codestream[:4] != b"\xff\x4f\xff\x51" or len(codestream) < 42:
+        return None
+    (length,) = struct.unpack_from(">H", codestream, 4)
+    width, height, left, top = struct.unpack_from(">4I", codestream, 8)
+    (samples,) = struct.unpack_from(">H", codestream, 40)
+    if length != 38 + 3 * samples or len(codestream) < 4 + length:
+        return None
+    components = [codestream[42 + 3 * i : 45 + 3 * i] for i in range(samples)]
+    return _Header(
+        height - top,
+        width - left,
+        samples,
+        # Ssiz: the sign in its high bit, and the precision less one.
+        frozenset((size & 0x7F) + 1 for size, _, _ in components),
+        subsampled=any((across, down) != (1, 1) for _, across, down in components),
+    )
 
 
 def _offsets_match(source: SourceEvidence, frames: int) -> bool:
@@ -207,8 +364,7 @@ def _fragments(source: SourceEvidence) -> tuple[bytes, list[tuple[int, int]]]:
     Basic Offset Table item, as offset tables count them. The reader has
     already shown the items sound (:mod:`.file_layout`).
     """
-    extent = source.element(_PIXEL_DATA)
-    value = source.encoded(_PIXEL_DATA)[extent.value_start - extent.start :]
+    value = _value(source)
     (length,) = struct.unpack_from("<I", value, 4)
     table = value[8 : 8 + length]
     base = position = 8 + length
@@ -218,6 +374,13 @@ def _fragments(source: SourceEvidence) -> tuple[bytes, list[tuple[int, int]]]:
         fragments.append((position - base, length))
         position += 8 + length
     return table, fragments
+
+
+def _value(source: SourceEvidence) -> bytes:
+    """Return the Value Field of encapsulated Pixel Data, from its Basic Offset
+    Table's Item Tag to its Sequence Delimitation Item."""
+    extent = source.element(_PIXEL_DATA)
+    return source.encoded(_PIXEL_DATA)[extent.value_start - extent.start :]
 
 
 def _unsigned(value: bytes, code: str) -> list[int] | None:
