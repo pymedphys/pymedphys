@@ -820,13 +820,20 @@ def _contribution(
     first = not block.included
     block.included = True
     block.packets += 1
-    block.passes += passes
     if style & _HT:
         # The HT cleanup pass in one codeword segment, and the significance
         # propagation and magnitude refinement passes in another (T.814).
         if block.packets > 1 or passes > 3:
             raise _Unreadable
-        return sum(_length(bits, block, count) for count in (1, passes - 1) if count)
+        cleanup = _length(bits, block, 1)
+        refinement = _length(bits, block, passes - 1) if passes > 1 else 0
+        if not cleanup:
+            raise _Unreadable
+        # Refinement passes with no bytes are not coded: the cleanup pass
+        # alone is (T.814 Annex B.3).
+        block.passes = passes if refinement else 1
+        return cleanup + refinement
+    block.passes += passes
     if first or block.segment_passes == block.segment_limit:
         _new_segment(block, style, first)
     total = 0

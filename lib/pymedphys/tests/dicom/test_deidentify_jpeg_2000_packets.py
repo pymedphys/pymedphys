@@ -143,6 +143,34 @@ def test_an_ht_code_block_must_reach_bit_plane_0(passes, zero_bit_planes, kept):
     assert coding_passes_kept(codestream) is kept
 
 
+@pytest.mark.parametrize(
+    "passes, zero_bit_planes, kept",
+    [
+        # Refinement passes with no bytes leave the cleanup pass alone.
+        (3, BIT_PLANES - 1, True),
+        (3, BIT_PLANES - 2, False),
+        (2, BIT_PLANES - 1, True),
+        (2, BIT_PLANES - 2, False),
+    ],
+)
+def test_ht_refinement_passes_without_bytes_are_not_counted(
+    passes, zero_bit_planes, kept
+):
+    codestream = synthetic.codestream(
+        [[contribution((1, 30), (passes - 1, 0))]],
+        [zero_bit_planes],
+        style=synthetic.HT,
+    )
+    assert coding_passes_kept(codestream) is kept
+
+
+def test_an_ht_cleanup_pass_without_bytes_cannot_be_read():
+    codestream = synthetic.codestream(
+        [[contribution((1, 0), (2, 4))]], [BIT_PLANES - 2], style=synthetic.HT
+    )
+    assert coding_passes_kept(codestream) is None
+
+
 def test_an_ht_code_block_in_more_than_one_packet_cannot_be_read():
     codestream = synthetic.codestream(
         [[contribution((1, 30))], [contribution((2, 4))]],
