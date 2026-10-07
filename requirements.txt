@@ -107,7 +107,6 @@ numpy==2.4.6 ; python_full_version < '3.12'
     #   pandas
     #   pydeck
     #   pylibjpeg
-    #   pylibjpeg-libjpeg
     #   pylibjpeg-openjpeg
     #   pymedphys
     #   scikit-learn
@@ -124,7 +123,6 @@ numpy==2.5.3 ; python_full_version >= '3.12'
     #   pandas
     #   pydeck
     #   pylibjpeg
-    #   pylibjpeg-libjpeg
     #   pylibjpeg-openjpeg
     #   pymedphys
     #   scikit-learn
@@ -164,8 +162,6 @@ pydicom==3.0.2
     #   pynetdicom
 pylibjpeg==2.1.0
     # via pymedphys
-pylibjpeg-libjpeg==2.4.0
-    # via pymedphys
 pylibjpeg-openjpeg==2.6.0
     # via pymedphys
 pymssql==2.4.2
@@ -179,6 +175,8 @@ python-dateutil==2.9.0.post0
     #   matplotlib
     #   pandas
     #   pymedphys
+python-gdcm==3.2.6
+    # via pymedphys
 python-multipart==0.0.32
     # via streamlit
 pywin32==312 ; sys_platform == 'win32'

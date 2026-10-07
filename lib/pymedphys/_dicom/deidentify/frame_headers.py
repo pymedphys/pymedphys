@@ -55,9 +55,10 @@ Representation is not compared for them. RLE Lossless (PS3.5 Annex G)
 holds none of these, and is not read here.
 
 A JPEG or JPEG-LS codestream must also reach its EOI marker, and each of
-its scans must hold entropy-coded data, since pylibjpeg decodes a frame
-whose scan is empty, or that stops before EOI, without an error. Damaged
-entropy-coded data that is still followed by EOI is not detected here.
+its scans must hold entropy-coded data, since GDCM decodes a frame whose
+scan is empty, or that lacks only its EOI, without an error, and pylibjpeg
+also one cut short within its scan. Damaged entropy-coded data that is
+still followed by EOI is not detected here.
 
 A frame without such a header, or whose marker segments do not hold
 together, gives :attr:`~.reasons.TransformReason.UNDECODABLE_PIXEL_DATA`;
