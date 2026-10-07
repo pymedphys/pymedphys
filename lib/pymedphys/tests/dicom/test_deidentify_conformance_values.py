@@ -15,6 +15,7 @@
 """The values, dates, residual search, and release report that the statement describes."""
 
 import collections
+import dataclasses
 import functools
 import struct
 
@@ -30,6 +31,7 @@ from pymedphys._dicom.deidentify import (
     pixel_risk,
     policy,
     pseudonyms,
+    qc_attestation,
     qc_retained,
     release_gate,
     release_report,
@@ -86,13 +88,68 @@ def test_kept_local_codes_are_said_to_be_listed_in_the_qc_pack(preset):
     codes = ("(0008,0100)", "(0008,0102)", "(0008,0104)")
     assert {rules[tag].action for tag in codes} == {"K"}
 
-    section = _section(preset, "Codes of local coding schemes")
+    section = _section(preset, "Values that can name an institution")
 
     for tag in codes:
         assert _named(tag) in section
     assert 'begins with "99" or is "L"' in section
     assert "the institution's name or abbreviation" in section
     assert "retained strings of the run's confidential QC pack" in section
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_a_kept_manufacturer_and_coding_scheme_url_are_said_to_name_an_institution(
+    preset,
+):
+    rules = supplementary_actions.load_supplementary_actions().rules
+    manufacturer, url = "(0008,0070)", "(0008,010E)"
+    assert rules[manufacturer].action == rules[url].action == "K"
+    # Each is a string that the QC pack lists among the retained strings.
+    for tag in (manufacturer, url):
+        assert standard.dictionary_attribute(tag).vr in qc_retained.RETAINED_TEXT_VRS
+
+    section = _section(preset, "Values that can name an institution")
+
+    assert f"such a scheme's {_named(url)}" in section
+    assert "can name the institution's host" in section
+    assert _named(manufacturer) in section
+    assert "a device made in-house can carry the institution's name" in section
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-17")
+def test_the_releaser_accepts_the_residual_risk_of_these_values(preset):
+    section = _section(preset, "Values that can name an institution")
+
+    assert "The engine does not itself assess the residual risk" in section
+    assert "names an institution, not a patient" in section
+    assert "`public-release` preset has a person review every distinct" in section
+    assert (
+        "the residual risk of the output, these values included, is for "
+        "whoever releases the data to accept, which they may confirm, yes or "
+        "no, in the attestation of the run's QC pack"
+    ) in section
+    # The attestation holds that confirmation, which is optional.
+    defaults = {
+        field.name: field.default
+        for field in dataclasses.fields(qc_attestation.Attestation)
+    }
+    assert defaults["residual_risk_accepted"] is None
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_an_unkept_coding_scheme_url_is_not_said_to_be_kept(monkeypatch):
+    actions = {"(0008,010E)": "X/Z/D"}
+    original = conformance_markdown._rule_action  # pylint: disable=protected-access
+    monkeypatch.setattr(
+        conformance_markdown,
+        "_rule_action",
+        lambda tag: actions.get(tag, original(tag)),
+    )
+
+    text = " ".join(conformance_markdown._local_codes(_named))  # pylint: disable=protected-access
+
+    assert "Coding Scheme URL (0008,010E), also kept" not in text
+    assert "in those values. Manufacturer (0008,0070)" in text
 
 
 @pytest.mark.deid_requirement("MIDI-BP-05")

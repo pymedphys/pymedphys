@@ -257,6 +257,38 @@ def test_each_string_the_plan_keeps_is_given_to_the_qc_pack():
     assert [item.path for item in retained] == list(paths)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-17")
+def test_kept_values_that_can_name_an_institution_are_given_to_the_qc_pack():
+    resource = pydicom.Dataset()
+    resource.CodingSchemeURL = "https://sentinel.example/codes"
+    scheme = pydicom.Dataset()
+    scheme.CodingSchemeDesignator = "99SENTINEL"
+    scheme.CodingSchemeResourcesSequence = pydicom.Sequence([resource])
+    equipment = pydicom.Dataset()
+    equipment.Manufacturer = "SENTINEL WORKSHOP"
+    dataset = synthetic.rt_dose()
+    dataset.Manufacturer = "SENTINEL MAKER"
+    dataset.CodingSchemeIdentificationSequence = pydicom.Sequence([scheme])
+    dataset.ContributingEquipmentSequence = pydicom.Sequence([equipment])
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Transformed)
+    values = {item.value for item in result.qc if isinstance(item, RetainedText)}
+    assert {
+        "SENTINEL MAKER",
+        "99SENTINEL",
+        "https://sentinel.example/codes",
+        "SENTINEL WORKSHOP",
+    } <= values
+    # The Manufacturer that the engine writes in its own Contributing
+    # Equipment item is not a retained string.
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    engine = written.ContributingEquipmentSequence[-1].Manufacturer
+    assert not engine.startswith("SENTINEL")
+    assert engine not in values
+
+
 @pytest.mark.deid_requirement("MIDI-BP-17", "PS3.15-E.1.3-01")
 def test_a_kept_string_that_cannot_be_decoded_sequesters_the_instance():
     dataset = synthetic.rt_dose()
