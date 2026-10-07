@@ -638,10 +638,9 @@ def test_the_qc_pack_lists_each_ct_mr_and_pet_volume(preset):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
-def test_the_qc_pack_and_report_describe_a_recoverable_body_weight(preset):
-    assert (
-        "or of values from which the patient's body weight can be recovered"
-        in _section(preset, "QC pack")
+def test_the_qc_pack_and_report_describe_a_disclosed_body_weight(preset):
+    assert "or of values that may disclose the patient's body weight" in _section(
+        preset, "QC pack"
     )
     for value in (
         pixel_risk.Risk.BODY_WEIGHT.value,

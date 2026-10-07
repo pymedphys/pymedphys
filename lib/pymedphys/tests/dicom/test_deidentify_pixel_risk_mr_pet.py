@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""MR and PET volumes, and PET from which body weight can be recovered."""
+"""MR and PET volumes, and PET values that may disclose body weight."""
 
 from pymedphys._imports import pydicom, pytest
 

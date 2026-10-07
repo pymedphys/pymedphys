@@ -19,8 +19,8 @@
 The engine does not change pixel data and never claims the Clean Pixel Data
 or Clean Recognizable Visual Features Options. It reports indicators of risk
 for review instead: of text burned into the pixel data, of a face that
-could be reconstructed and recognised, and of values from which the
-patient's body weight can be recovered. :func:`assess_pixel_risk` reads them
+could be reconstructed and recognised, and of values that may disclose the
+patient's body weight. :func:`assess_pixel_risk` reads them
 from one instance's attributes; it never inspects the pixel data, so the
 absence of an indicator is not evidence that the risk is absent.
 
@@ -105,7 +105,8 @@ class Risk(enum.Enum):
 
     BURNED_IN_TEXT = "burned-in-text"
     RECONSTRUCTABLE_FACE = "reconstructable-face"
-    # The patient's body weight, from values scaled by it and the dose.
+    # The patient's body weight, or another measure of their size, from
+    # values normalised by it.
     BODY_WEIGHT = "body-weight"
 
 
@@ -574,13 +575,20 @@ def _body_weight_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
     """Find the values scaled to an SUV, and the mappings of values to one.
 
     An SUV is an activity concentration divided by the injected activity per
-    unit of the patient's body weight, or of a measure derived from it, such
-    as lean body mass or body surface area. The Basic
-    Profile removes Patient's Weight (0010,1030) but keeps Units (0054,1001),
-    Real World Value Mapping Sequence (0040,9096), and Radionuclide Total
-    Dose (0018,1074). So the weight can be recovered from a mapping's slope
-    to an SUV and the dose, or from images scaled to an SUV released with
-    attenuation-corrected images of the same acquisition.
+    unit of a measure of the patient's size: body weight, lean body mass, or
+    body surface area, or, for SUVibw, an ideal body weight from height and
+    sex (PS3.16 CID 85). The Basic Profile removes Patient's Weight
+    (0010,1030) but keeps Units (0054,1001), Real World Value Mapping
+    Sequence (0040,9096), and Radionuclide Total Dose (0018,1074).
+
+    These are conservative disclosure indicators, not demonstrated recovery:
+    weight recovery depends on the SUV normalisation, activity calibration,
+    and compatible dose timing, possibly using a paired activity image. A
+    mapping to an SUV is independent of the activity concentration mapping
+    (PS3.3 C.7.6.16.2.11), so its slope times the dose is not in general a
+    weight. For zero-offset linear mappings of the same stored values to
+    SUVbw and to activity concentration, the weight is the ratio of the SUV
+    slope to the activity slope times the dose at a compatible time.
     """
     risk = Risk.BODY_WEIGHT
     path = ElementPath((), _UNITS)
