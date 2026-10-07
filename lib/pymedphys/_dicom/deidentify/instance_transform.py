@@ -99,6 +99,7 @@ from .elements import (
     UndecodableElement,
     dataset_codecs,
     new_element,
+    new_items,
     read_element,
 )
 from .file_layout import ElementPath
@@ -373,6 +374,8 @@ def writer_plan(
     kept: set[ElementPath] = set()
     removed: set[ElementPath] = set()
     replacements: dict[ElementPath, pydicom.DataElement] = {}
+    # The elements of the items that D writes in a reviewed dummy sequence.
+    introduced: set[ElementPath] = set()
     for edit in edits.edits:
         if edit.kind is EditKind.KEEP:
             kept.add(edit.path)
@@ -380,7 +383,10 @@ def writer_plan(
             removed.add(edit.path)
         else:
             replacements[edit.path] = _element(edit, vrs.get(edit.path), codecs)
-    return WriterPlan(frozenset(kept), frozenset(removed), replacements)
+            introduced |= new_items(edit.path, edit.items, codecs)[1]
+    return WriterPlan(
+        frozenset(kept), frozenset(removed), replacements, frozenset(introduced)
+    )
 
 
 # The attributes that PS3.15 E.1.1, E.2, and E.3.6 have a de-identifier add
@@ -542,10 +548,12 @@ def satisfied_options(policy: Policy) -> tuple[str, ...]:
 def _element(
     edit: Edit, vr: str | None, codecs: tuple[str, ...]
 ) -> pydicom.DataElement:
-    values = () if edit.kind is EditKind.EMPTY else edit.values
+    values: tuple[object, ...] = () if edit.kind is EditKind.EMPTY else edit.values
     if vr is None:
         raise _Refused(TransformReason.UNWRITABLE_ELEMENT)
     try:
+        if edit.items:
+            values = new_items(edit.path, edit.items, codecs)[0]
         return new_element(edit.path, vr, values, codecs)
     except ValueError:
         pass

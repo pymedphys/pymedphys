@@ -895,13 +895,15 @@ Consider identifying information embedded in compressed bitstreams, such as JPEG
 '''
 status = "partial"
 milestone = "M3"
-decisions = ["D-022"]
+decisions = ["D-021", "D-022"]
 implementation = [
+  "_dicom/deidentify/dummy_values.py",
   "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/icc_profiles.py",
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
-ICC Profile (0028,2000), an embedded file whose contents the engine does not parse, is removed by Type under every option, which removes it wherever the first supported release's IODs make it Type 3 (D-022); an Enhanced CT Image, Enhanced MR Image, or Enhanced MR Color Image instance with an ICC Profile at the top level, where it is Type 1, is sequestered until a reviewed rule gives it a dummy value (D-021).
+ICC Profile (0028,2000), an embedded file whose contents the engine does not parse, is removed by Type under every option, which removes it wherever the first supported release's IODs make it Type 3 (D-022); at the top level of an Enhanced CT Image, Enhanced MR Image, or Enhanced MR Color Image instance, where it is Type 1, D replaces it with a fixed sRGB or grey profile, of the source profile's data colour space, which nothing else of the source profile is written to, and sequesters an instance whose profile is of any other colour space (D-021).
 The first supported release reads only Implicit and Explicit VR Little Endian sources and sequesters an instance in any other transfer syntax, so it writes no compressed bitstream.
 Remaining: removing metadata in compressed pixel data without recompression (M3).
 '''

@@ -19,7 +19,15 @@ import io
 
 from pymedphys._imports import hypothesis, pydicom, pytest
 
-from pymedphys._dicom.deidentify import dummy_values, keys, standard, uids, values
+from pymedphys._dicom.deidentify import (
+    dummy_values,
+    icc_profiles,
+    keys,
+    standard,
+    uid_registry,
+    uids,
+    values,
+)
 
 st = hypothesis.strategies
 
@@ -449,7 +457,12 @@ def test_d_on_any_other_sequence_is_refused():
     sequences = [
         attribute
         for attribute in _attributes_that_can_take_d()
-        if attribute.vr == "SQ" and attribute.tag != PERSON_IDENTIFICATION_CODE_SEQUENCE
+        if attribute.vr == "SQ"
+        and attribute.tag
+        not in {
+            PERSON_IDENTIFICATION_CODE_SEQUENCE,
+            dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+        }
     ]
 
     assert {attribute.keyword for attribute in sequences} >= {
@@ -459,11 +472,11 @@ def test_d_on_any_other_sequence_is_refused():
     }
     for attribute in sequences:
         with pytest.raises(dummy_values.NoDummyValueError) as raised:
-            dummy_values.items_for_d(attribute.tag, [{CODE_VALUE: "SECRET"}])
+            dummy_values.items_for_d(attribute.tag, [{CODE_VALUE: "SECRET"}], KEY)
         assert raised.value.vr == "SQ"
         assert "SECRET" not in str(raised.value)
-    # D's generic dummy values still refuse SQ, Person Identification Code
-    # Sequence among them.
+    # D's generic dummy values still refuse SQ, the two sequences with reviewed
+    # items among them.
     with pytest.raises(dummy_values.NoDummyValueError):
         dummy_values.values_for_d("SQ", "1", [], KEY)
 
@@ -489,3 +502,137 @@ def test_a_malformed_sequence_tag_is_rejected(tag):
 def test_a_source_item_of_another_form_is_refused(source):
     with pytest.raises(TypeError, match="source"):
         dummy_values.items_for_d(PERSON_IDENTIFICATION_CODE_SEQUENCE, source)
+
+
+PROCEDURE_STEP_SEQUENCE = dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE
+REFERENCED_SOP_CLASS_UID = "(0008,1150)"
+REFERENCED_SOP_INSTANCE_UID = "(0008,1155)"
+# Invented UIDs of performed procedure steps.
+PROCEDURE_STEPS = ["1.2.826.0.1.3680043.10.1.1", "1.2.826.0.1.3680043.10.1.2"]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.parametrize("count", [1, 2])
+def test_d_on_referenced_performed_procedure_step_sequence_replaces_each_item(count):
+    source = [
+        {REFERENCED_SOP_CLASS_UID: "1.2.3", REFERENCED_SOP_INSTANCE_UID: uid}
+        for uid in PROCEDURE_STEPS[:count]
+    ]
+
+    items = dummy_values.items_for_d(PROCEDURE_STEP_SEQUENCE, source, KEY)
+
+    assert items == tuple(
+        (
+            dummy_values.DummyElement(
+                REFERENCED_SOP_CLASS_UID,
+                "UI",
+                dummy_values.MODALITY_PERFORMED_PROCEDURE_STEP,
+            ),
+            dummy_values.DummyElement(
+                REFERENCED_SOP_INSTANCE_UID, "UI", uids.replacement_uid(KEY, uid)
+            ),
+        )
+        for uid in PROCEDURE_STEPS[:count]
+    )
+    # The same source step gets the same replacement as every other reference
+    # to it, and no source UID is written.
+    assert items == dummy_values.items_for_d(PROCEDURE_STEP_SEQUENCE, source, KEY)
+    written = {element.value for item in items for element in item}
+    assert not written & set(PROCEDURE_STEPS)
+
+
+def test_the_procedure_step_item_names_the_modality_performed_procedure_step():
+    registry = {row.uid: row for row in uid_registry.load_uid_values().rows}
+    row = registry[dummy_values.MODALITY_PERFORMED_PROCEDURE_STEP]
+
+    assert (row.keyword, row.uid_type) == (
+        "ModalityPerformedProcedureStep",
+        "SOP Class",
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.parametrize(
+    "source",
+    [
+        [],
+        [{}],
+        [{REFERENCED_SOP_INSTANCE_UID: ""}],
+        [{REFERENCED_SOP_INSTANCE_UID: PROCEDURE_STEPS[0]}, {}],
+    ],
+)
+def test_a_procedure_step_sequence_without_a_uid_to_replace_is_refused(source):
+    with pytest.raises(dummy_values.NoDummyValueError) as raised:
+        dummy_values.items_for_d(PROCEDURE_STEP_SEQUENCE, source, KEY)
+
+    assert raised.value.vr == "SQ"
+    assert PROCEDURE_STEPS[0] not in str(raised.value)
+
+
+def test_a_procedure_step_sequence_needs_the_key():
+    source = [{REFERENCED_SOP_INSTANCE_UID: PROCEDURE_STEPS[0]}]
+
+    with pytest.raises(TypeError, match="key"):
+        dummy_values.items_for_d(PROCEDURE_STEP_SEQUENCE, source)
+
+
+def test_a_procedure_step_uid_that_is_not_text_is_rejected():
+    with pytest.raises(TypeError, match="text"):
+        dummy_values.items_for_d(
+            PROCEDURE_STEP_SEQUENCE, [{REFERENCED_SOP_INSTANCE_UID: 1}], KEY
+        )
+
+
+ICC_SOURCES = {
+    icc_profiles.RGB: icc_profiles.srgb_profile("A scanner's own profile"),
+    icc_profiles.GREY: icc_profiles.grey_profile("A scanner's own profile"),
+}
+
+
+@pytest.mark.deid_requirement("MIDI-BP-14")
+@pytest.mark.parametrize(
+    "colour_space, build, name",
+    [
+        (icc_profiles.RGB, icc_profiles.srgb_profile, "sRGB"),
+        (icc_profiles.GREY, icc_profiles.grey_profile, "grey"),
+    ],
+)
+def test_d_on_icc_profile_writes_a_fixed_profile_of_the_same_colour_space(
+    colour_space, build, name
+):
+    source = ICC_SOURCES[colour_space]
+
+    written = dummy_values.icc_profile_for_d(source)
+
+    assert written == build(f"DEIDENTIFIED {name}")
+    assert icc_profiles.data_colour_space(written) == colour_space
+    assert b"scanner" not in written
+    # A source equal to the first profile takes the second, so D always
+    # changes the value.
+    assert dummy_values.icc_profile_for_d(written) == build(f"DE-IDENTIFIED {name}")
+
+
+@pytest.mark.deid_requirement("MIDI-BP-14")
+@pytest.mark.parametrize(
+    "source",
+    [
+        b"",
+        b"not an ICC profile",
+        bytes(128),
+        # A CMYK profile's header.
+        ICC_SOURCES[icc_profiles.RGB][:16]
+        + b"CMYK"
+        + ICC_SOURCES[icc_profiles.RGB][20:],
+    ],
+)
+def test_an_icc_profile_neither_rgb_nor_grey_is_refused(source):
+    with pytest.raises(dummy_values.NoDummyValueError) as raised:
+        dummy_values.icc_profile_for_d(source)
+
+    assert raised.value.vr == "OB"
+
+
+@pytest.mark.parametrize("source", ["RGB ", None, [b"RGB "]])
+def test_an_icc_profile_that_is_not_bytes_is_rejected(source):
+    with pytest.raises(TypeError, match="bytes"):
+        dummy_values.icc_profile_for_d(source)

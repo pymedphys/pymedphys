@@ -29,10 +29,16 @@ Every other VR, such as CS, SQ, AE, AS, AT, OB, OW, UN, and UR, has no
 generic dummy value. D on an attribute of such a VR raises
 :class:`NoDummyValueError`: the attribute needs a reviewed rule of its own,
 and without one its instance is sequestered rather than given an invalid
-value. One sequence has such a rule (:func:`items_for_d`): D writes one item
-in Person Identification Code Sequence (0040,1101), with Code Value
+value. Two sequences have such a rule (:func:`items_for_d`). D writes one
+item in Person Identification Code Sequence (0040,1101), with Code Value
 ``DEIDENTIFIED``, Coding Scheme Designator ``99PYMEDPHYS``, and Code Meaning
-``DEIDENTIFIED^DEIDENTIFIED``.
+``DEIDENTIFIED^DEIDENTIFIED``. In Referenced Performed Procedure Step
+Sequence (0008,1111), it writes, for each source item, an item that refers
+to a Modality Performed Procedure Step by the keyed replacement of the
+source item's Referenced SOP Instance UID. ICC Profile (0028,2000), of VR
+OB, has a rule too (:func:`icc_profile_for_d`): D writes a fixed profile of
+the source profile's data colour space
+(:mod:`~pymedphys._dicom.deidentify.icc_profiles`).
 
 Where an attribute is Type 1 or 1C at its place in the data set, Z writes
 D's dummy value, from :func:`values_for_d`, since a zero-length value would
@@ -58,6 +64,7 @@ import types
 from collections.abc import Mapping, Sequence
 from typing import NamedTuple
 
+from . import icc_profiles
 from .keys import DeidKey
 from .standard import VRS
 from .uids import normalise_uid, replacement_uid
@@ -98,6 +105,19 @@ _MAX_COUNT = 64
 _TAG_PATTERN = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
 
 PERSON_IDENTIFICATION_CODE_SEQUENCE = "(0040,1101)"
+REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE = "(0008,1111)"
+ICC_PROFILE = "(0028,2000)"
+_REFERENCED_SOP_CLASS_UID = "(0008,1150)"
+_REFERENCED_SOP_INSTANCE_UID = "(0008,1155)"
+# The Modality Performed Procedure Step SOP Class (PS3.4 Annex F), which the
+# items written in Referenced Performed Procedure Step Sequence refer to.
+MODALITY_PERFORMED_PROCEDURE_STEP = "1.2.840.10008.3.1.2.3.3"
+# The descriptions of the profiles that D writes in place of ICC Profile, by
+# data colour space; the second is written where the source equals the first.
+_ICC_DESCRIPTIONS = {
+    icc_profiles.RGB: (icc_profiles.srgb_profile, "sRGB"),
+    icc_profiles.GREY: (icc_profiles.grey_profile, "grey"),
+}
 _CODE_VALUE = "(0008,0100)"
 _CODING_SCHEME_DESIGNATOR = "(0008,0102)"
 _CODE_MEANING = "(0008,0104)"
@@ -311,18 +331,29 @@ def values_for_d(
 
 
 def items_for_d(
-    tag: str, source: Sequence[Mapping[str, str]]
+    tag: str,
+    source: Sequence[Mapping[str, str]],
+    key: DeidKey | None = None,
 ) -> tuple[tuple[DummyElement, ...], ...]:
     """Return the items that D writes in a sequence with a reviewed rule.
 
-    Only Person Identification Code Sequence (0040,1101) has one. D writes
-    one item, with Code Value (0008,0100) ``DEIDENTIFIED``, Coding Scheme
-    Designator (0008,0102) ``99PYMEDPHYS``, and Code Meaning (0008,0104)
-    ``DEIDENTIFIED^DEIDENTIFIED``. Where any source item's Code Value equals
-    ``DEIDENTIFIED`` as SH text, or its Code Meaning equals
-    ``DEIDENTIFIED^DEIDENTIFIED`` as a PN, as :func:`values_for_d` compares
-    them, the item takes ``DE-IDENTIFIED`` and
-    ``DE-IDENTIFIED^DE-IDENTIFIED`` instead, with the same designator.
+    Two sequences have one:
+
+    - Person Identification Code Sequence (0040,1101): one item, with Code
+      Value (0008,0100) ``DEIDENTIFIED``, Coding Scheme Designator
+      (0008,0102) ``99PYMEDPHYS``, and Code Meaning (0008,0104)
+      ``DEIDENTIFIED^DEIDENTIFIED``. Where any source item's Code Value
+      equals ``DEIDENTIFIED`` as SH text, or its Code Meaning equals
+      ``DEIDENTIFIED^DEIDENTIFIED`` as a PN, as :func:`values_for_d` compares
+      them, the item takes ``DE-IDENTIFIED`` and
+      ``DE-IDENTIFIED^DE-IDENTIFIED`` instead, with the same designator.
+    - Referenced Performed Procedure Step Sequence (0008,1111): for each
+      source item, one item, with Referenced SOP Class UID (0008,1150) the
+      Modality Performed Procedure Step SOP Class,
+      :data:`MODALITY_PERFORMED_PROCEDURE_STEP`, and Referenced SOP Instance
+      UID (0008,1155) the keyed replacement of the source item's, as D
+      replaces a UI value. A sequence without items, or with an item
+      without a Referenced SOP Instance UID, has no dummy value.
 
     Parameters
     ----------
@@ -331,8 +362,11 @@ def items_for_d(
         hexadecimal digits.
     source : sequence of mapping
         The source items, each mapping a tag, such as ``"(0008,0100)"``, to
-        that element's value as text. Only Code Value and Code Meaning are
-        read.
+        that element's value as text. Only Code Value and Code Meaning, or
+        Referenced SOP Instance UID, are read.
+    key : DeidKey, optional
+        The run's key, which Referenced Performed Procedure Step Sequence
+        needs.
 
     Returns
     -------
@@ -342,10 +376,11 @@ def items_for_d(
     Raises
     ------
     NoDummyValueError
-        If no reviewed rule gives the sequence items.
+        If no reviewed rule gives the sequence items, or the source has no
+        UID for its rule to replace.
     TypeError
-        If ``source`` is not a sequence of mappings, or a Code Value or Code
-        Meaning in it is not text.
+        If ``source`` is not a sequence of mappings, a value it reads is not
+        text, or Referenced Performed Procedure Step Sequence is given no key.
     ValueError
         If ``tag`` is not of the form ``(gggg,eeee)`` with upper-case
         hexadecimal digits.
@@ -355,6 +390,10 @@ def items_for_d(
     >>> (item,) = items_for_d("(0040,1101)", [])
     >>> [element.value for element in item]
     ['DEIDENTIFIED', '99PYMEDPHYS', 'DEIDENTIFIED^DEIDENTIFIED']
+    >>> source = [{"(0008,1155)": "1.2.3.4"}]
+    >>> (item,) = items_for_d("(0008,1111)", source, DeidKey(bytes(32)))
+    >>> item[0].value
+    '1.2.840.10008.3.1.2.3.3'
     """
     if not isinstance(tag, str) or not _TAG_PATTERN.fullmatch(tag):
         raise ValueError(
@@ -366,6 +405,10 @@ def items_for_d(
         or not all(isinstance(item, Mapping) for item in source)
     ):
         raise TypeError("source must be a sequence of items, each a mapping")
+    if tag == REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE:
+        if key is None:
+            raise TypeError("a key is needed to replace a Referenced SOP Instance UID")
+        return _procedure_step_items(source, key)
     if tag != PERSON_IDENTIFICATION_CODE_SEQUENCE:
         raise NoDummyValueError("SQ", "no reviewed rule gives this sequence items")
     # Each source value with the VR as which it is compared, and its constant.
@@ -389,3 +432,66 @@ def items_for_d(
             DummyElement(_CODE_MEANING, "LO", _MEANINGS[index]),
         ),
     )
+
+
+def _procedure_step_items(
+    source: Sequence[Mapping[str, str]], key: DeidKey
+) -> tuple[tuple[DummyElement, ...], ...]:
+    """Return the items that D writes in Referenced Performed Procedure Step Sequence."""
+    uids = [item.get(_REFERENCED_SOP_INSTANCE_UID) for item in source]
+    if not all(isinstance(uid, str) or uid is None for uid in uids):
+        raise TypeError("each source Referenced SOP Instance UID must be text")
+    if not uids or not all(uid is not None and normalise_uid(uid) for uid in uids):
+        raise NoDummyValueError(
+            "SQ", "a source item has no Referenced SOP Instance UID to replace"
+        )
+    return tuple(
+        (
+            DummyElement(
+                _REFERENCED_SOP_CLASS_UID, "UI", MODALITY_PERFORMED_PROCEDURE_STEP
+            ),
+            DummyElement(
+                _REFERENCED_SOP_INSTANCE_UID, "UI", replacement_uid(key, str(uid))
+            ),
+        )
+        for uid in uids
+    )
+
+
+def icc_profile_for_d(source: bytes) -> bytes:
+    """Return the profile that D writes in place of ICC Profile (0028,2000).
+
+    The profile is fixed for the source profile's data colour space, which
+    its header gives: the sRGB profile of
+    :func:`~pymedphys._dicom.deidentify.icc_profiles.srgb_profile` for RGB,
+    described ``DEIDENTIFIED sRGB``, or the grey profile of
+    :func:`~pymedphys._dicom.deidentify.icc_profiles.grey_profile` for grey,
+    described ``DEIDENTIFIED grey``. Where the source has the same bytes,
+    the profile is described with ``DE-IDENTIFIED`` instead, so the value
+    always changes.
+
+    Raises
+    ------
+    NoDummyValueError
+        If the source is not an ICC profile, or its data colour space is
+        neither RGB nor grey.
+    TypeError
+        If ``source`` is not bytes.
+
+    Examples
+    --------
+    >>> from pymedphys._dicom.deidentify import icc_profiles
+    >>> source = icc_profiles.srgb_profile("A scanner's profile")
+    >>> icc_profiles.data_colour_space(icc_profile_for_d(source))
+    b'RGB '
+    """
+    if not isinstance(source, (bytes, bytearray)):
+        raise TypeError("the source ICC Profile must be bytes")
+    colour_space = icc_profiles.data_colour_space(bytes(source))
+    if colour_space not in _ICC_DESCRIPTIONS:
+        raise NoDummyValueError(
+            "OB", "the source ICC Profile is neither an RGB nor a grey profile"
+        )
+    build, name = _ICC_DESCRIPTIONS[colour_space]
+    first = build(f"{_TEXT[0]} {name}")
+    return build(f"{_TEXT[1]} {name}") if bytes(source) == first else first

@@ -57,10 +57,12 @@ can be collected.
 D writes a dummy value, which must differ from the source value, so the
 source value is read to compare (D-021). Only the VRs of
 :data:`~pymedphys._dicom.deidentify.dummy_values.DUMMY_VRS` have a generic
-dummy value, and only Person Identification Code Sequence (0040,1101) has a
-reviewed one besides, whose items' Code Value (0008,0100) and Code Meaning
-(0008,0104) are compared (D-021). A dummy value on any other element, such
-as another sequence, adds a :class:`Sequestration` to the plan, as
+dummy value. Reviewed ones exist besides for Person Identification Code
+Sequence (0040,1101), whose items' Code Value (0008,0100) and Code Meaning
+(0008,0104) are compared, for Referenced Performed Procedure Step Sequence
+(0008,1111), whose items' Referenced SOP Instance UID (0008,1155) is read
+for its keyed replacement, and for ICC Profile (0028,2000) of VR OB
+(D-021). A dummy value on any other element, such as another sequence, adds a :class:`Sequestration` to the plan, as
 :func:`~pymedphys._dicom.deidentify.dummy_values.values_for_d` would refuse
 it. So does an attribute of the pinned data dictionary that is not removed
 but whose value the source evidence holds in a form that the dictionary does
@@ -121,7 +123,7 @@ from .compound_actions import (
     resolve_plain_in_iod,
     resolve_plain_x_in_iod,
 )
-from .dummy_values import DUMMY_VRS
+from .dummy_values import DUMMY_VRS, ICC_PROFILE
 from .element_rules import ElementRule, ElementRules, RuleSource
 from .file_layout import ElementPath
 from .iods import IOD
@@ -136,6 +138,7 @@ _REMOVED = "X"
 # of their items that are compared with it (D-021).
 REVIEWED_DUMMY_SEQUENCES = {
     "(0040,1101)": frozenset({"(0008,0100)", "(0008,0104)"}),
+    "(0008,1111)": frozenset({"(0008,1155)"}),
 }
 
 
@@ -306,7 +309,7 @@ def _has_dummy(tag: str, vr: str | None, container: bool, action: str) -> bool:
     """Whether a generic or reviewed dummy value exists for the element."""
     if container:
         return action == "D" and tag in REVIEWED_DUMMY_SEQUENCES
-    return vr in DUMMY_VRS
+    return vr in DUMMY_VRS or (tag == ICC_PROFILE and vr == "OB")
 
 
 def _removing_ancestor(

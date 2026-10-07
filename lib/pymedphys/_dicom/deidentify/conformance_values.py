@@ -207,9 +207,12 @@ HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
 
 
 def _reviewed_items(named: Callable[[str], str]) -> list[str]:
-    """Describe the item that D writes in each sequence with a reviewed rule."""
+    """Describe what D writes where a reviewed rule gives the value (D-021)."""
     lines = []
     for tag, compared in REVIEWED_DUMMY_SEQUENCES.items():
+        if tag == dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE:
+            lines.append(_procedure_step_items(named, tag, compared))
+            continue
         (first,) = dummy_values.items_for_d(tag, [])
         source = {e.tag: e.value for e in first if e.tag in compared}
         (second,) = dummy_values.items_for_d(tag, [source])
@@ -227,7 +230,39 @@ def _reviewed_items(named: Callable[[str], str]) -> list[str]:
             + join(changed)
             + " instead (D-021)."
         )
+    lines.append(_icc_profile(named))
     return lines
+
+
+def _procedure_step_items(
+    named: Callable[[str], str], tag: str, compared: frozenset[str]
+) -> str:
+    """Describe the items that D writes in Referenced Performed Procedure Step Sequence."""
+    (uid,) = compared
+    return (
+        f"D on {named(tag)} writes, for each source item, one item, with "
+        f"{named('(0008,1150)')} "
+        f"`{dummy_values.MODALITY_PERFORMED_PROCEDURE_STEP}`, the Modality "
+        f"Performed Procedure Step SOP Class, and {named(uid)} the keyed "
+        "replacement of the source item's, as D writes for a UI attribute. "
+        f"Where the sequence has no item, or an item has no {named(uid)}, "
+        "the instance is sequestered (D-021)."
+    )
+
+
+def _icc_profile(named: Callable[[str], str]) -> str:
+    """Describe the profile that D writes in place of ICC Profile."""
+    first, second = dummy_values.CONSTANTS["LO"]
+    return (
+        f"D on {named(dummy_values.ICC_PROFILE)} writes a fixed ICC version "
+        "2.1 input profile of the source profile's data colour space: the "
+        f"sRGB colour space of IEC 61966-2.1, described `{first} sRGB`, for "
+        "an RGB profile, or a grey profile with the sRGB tone curve, "
+        f"described `{first} grey`, for a grey one. Where the source has the "
+        f"same bytes, the description is `{second} sRGB` or `{second} grey`. "
+        "Where the source is not an RGB or grey profile, the instance is "
+        "sequestered (D-021)."
+    )
 
 
 def _naming_pymedphys(named: Callable[[str], str]) -> list[str]:
@@ -235,6 +270,8 @@ def _naming_pymedphys(named: Callable[[str], str]) -> list[str]:
     return [
         f"{named(element.tag)} `{element.value}`"
         for tag in REVIEWED_DUMMY_SEQUENCES
+        # The procedure step's items hold only UIDs, written for the source.
+        if tag != dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE
         for item in dummy_values.items_for_d(tag, [])
         for element in item
         if "PYMEDPHYS" in element.value.upper()
@@ -301,8 +338,9 @@ def values_written(named: Callable[[str], str]) -> list[str]:
         "",
         "No value that Z, D, or U writes names PyMedPhys"
         + (
-            f", except the {join(exceptions)} of the item above, which names "
-            "who defines its code (D-021)."
+            f", except the {join(exceptions)} of the item that D writes in "
+            f"{named(dummy_values.PERSON_IDENTIFICATION_CODE_SEQUENCE)}, which "
+            "names who defines its code (D-021)."
             if exceptions
             else "."
         ),
