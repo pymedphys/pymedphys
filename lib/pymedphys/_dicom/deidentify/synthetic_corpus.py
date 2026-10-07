@@ -75,8 +75,8 @@ RT Referenced Series Sequence, lie at that depth; the deeper places, such as
 the Code Sequence Macros nested in the Request Attributes Sequence, repeat
 macros already planted at shallower places. A repeating group is planted in
 its first group only: Overlay Data (60xx,3000), which of the collection's IODs
-only CT Image defines, is planted in group 6000 with VR OW, of the OB or OW that PS3.6
-allows, so it is written in Explicit VR only. An attribute that the pinned
+only CT Image defines, is planted in group 6000 with VR OW, of the OB or OW
+that PS3.6 allows, so it is written in Explicit VR only. An attribute that the pinned
 dictionary gives no single VR, and a tag whose element number is masked,
 are not planted. Each placement not planted is recorded with a
 :class:`NotPlantedReason`. Pixel Data is not an attribute of Table E.1-1 and

@@ -22,7 +22,7 @@ import warnings
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import iods, references, uid_roles
+from pymedphys._dicom.deidentify import iods, references, scope, uid_roles
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 
 from . import _synthetic_references as synthetic
@@ -31,7 +31,7 @@ Level = references.Level
 InstanceRecord = references.InstanceRecord
 ReferenceSite = references.ReferenceSite
 
-FIRST_RELEASE_IODS = ("CT Image", "RT Dose", "RT Plan", "RT Structure Set")
+FIRST_RELEASE_IODS = tuple(sorted(scope.SUPPORTED_IODS))
 # Paths from the module tables of the 2026d PS3.3, checked against its text.
 RT_REFERENCES = [
     # RT Structure Set: the contour images of each referenced frame, their
@@ -117,9 +117,13 @@ OTHER_SEQUENCES = {
 # first release IOD defines inside a sequence, with why it is not followed.
 NOT_FOLLOWED = {
     "(0008,010D)": "identifies the organisation that extended a context group",
+    "(0008,3010)": "identifies an irradiation event",
+    "(0008,3012)": "identifies a radiopharmaceutical administration event",
     "(0018,1002)": "identifies a device",
+    "(0020,9164)": "identifies a dimension organisation",
     "(0040,0554)": "identifies a specimen",
     "(0040,A124)": "is the value of a content item",
+    "(0040,E011)": "identifies a location from which instances can be retrieved",
     "(0040,E030)": "identifies a document repository",
     "(0040,E031)": "identifies a community of repositories",
     "(0044,0102)": "identifies an assertion within a plan",

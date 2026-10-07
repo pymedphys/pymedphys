@@ -17,7 +17,10 @@
 The first supported release de-identifies uncompressed instances of the CT,
 MR, and PET image IODs, including their Enhanced, Legacy Converted Enhanced,
 and colour variants, of MR Spectroscopy, and of the RT Structure Set, RT
-Plan, and RT Dose IODs. Every other instance is sequestered: neither
+Plan, and RT Dose IODs. Supporting an IOD does not release every instance
+of it: the element rules still sequester some, such as every Enhanced PET
+Image instance that conforms to its IOD, under both presets of the first
+supported release. Every other instance is sequestered: neither
 de-identified nor written, and listed in the run report by opaque
 identifiers only. That includes Structured Reports, Key Object
 Selection documents, Presentation States, and instances of Private SOP

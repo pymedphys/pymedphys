@@ -924,7 +924,7 @@ implementation = [
 note = '''
 Recognizable Visual Features of YES, an RT Structure Set's contours of an ROI whose interpreted type or name is EXTERNAL, BODY, or SKIN, the patient's outline, and every CT volume, whatever its slice spacing, are reported as indicators of a reconstructable face, and a volume that names a region of the head or neck as showing it.
 Each run lists each instance's indicators and each series' indicators, assessed over its released and held instances, in its QC pack for review.
-Remaining: the `public-release` assessment and face review (M4).
+Remaining: the volume indicator for MR and PET volumes, which the first supported release now supports, and the indicator of PET series from which body weight can be recovered (D-015); and the `public-release` assessment and face review (M4).
 '''
 
 [[requirement]]

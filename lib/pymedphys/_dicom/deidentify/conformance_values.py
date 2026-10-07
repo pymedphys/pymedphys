@@ -464,6 +464,12 @@ def qc_pack(named: Callable[[str], str]) -> list[str]:
         f"{named(_SERIES_INSTANCE_UID)}, which it never writes, and assesses "
         "only the released and held instances, so a series with just one "
         "single-frame CT image among them is not a volume (D-015).",
+        "",
+        "MR and PET volumes are not yet listed as volumes, so an MR or PET "
+        "series is listed as one that may hold a face only where an "
+        f"instance's {named('(0028,0302)')} is YES, and no PET series is yet "
+        "listed as one from which the patient's body weight could be "
+        "recovered (D-015).",
     ]
 
 

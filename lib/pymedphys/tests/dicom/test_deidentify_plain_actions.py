@@ -45,6 +45,25 @@ PROCEDURE_PARAMETER_DESCRIPTION = "(300A,078E)"
 PATIENT_TREATMENT_PREPARATION_PROCEDURE = "(300A,0790)"
 PATIENT_SETUP_PHOTO_DESCRIPTION = "(300A,0794)"
 PATIENT_TREATMENT_PREPARATION = "(300A,079F)"
+RADIOPHARMACEUTICAL_START_DATETIME = "(0018,1078)"
+RADIOPHARMACEUTICAL_INFORMATION = "(0054,0016)"
+# The first supported release's IODs that include the Overlay Plane Module.
+OVERLAY_IODS = ("CT Image", "MR Image", "Positron Emission Tomography Image")
+# Its image IODs, all but MR Spectroscopy.
+IMAGE_IODS = frozenset(
+    {
+        "CT Image",
+        "Enhanced CT Image",
+        "Legacy Converted Enhanced CT Image",
+        "MR Image",
+        "Enhanced MR Image",
+        "Enhanced MR Color Image",
+        "Legacy Converted Enhanced MR Image",
+        "Positron Emission Tomography Image",
+        "Enhanced PET Image",
+        "Legacy Converted Enhanced PET Image",
+    }
+)
 
 
 @pytest.fixture(name="tables", scope="module")
@@ -360,10 +379,11 @@ def test_a_plain_x_on_a_required_attribute_outside_a_type_3_sequence_sequesters(
 @pytest.mark.parametrize("iod", FIRST_RELEASE_IODS)
 @pytest.mark.parametrize("tag", ["(6000,3000)", "(6002,3000)", "(601E,3000)"])
 def test_a_plain_x_on_overlay_data_removes_its_repeating_group(tables, iod, tag):
-    # Overlay Data is Type 1 in the Overlay Plane Module, which the CT Image
-    # IOD includes as user-optional, so removing the whole group leaves a
-    # valid instance. The other IODs do not define it.
-    expected_type = "1" if iod == "CT Image" else "3"
+    # Overlay Data is Type 1 in the Overlay Plane Module, which the CT Image,
+    # MR Image, and Positron Emission Tomography Image IODs include as
+    # user-optional, so removing the whole group leaves a valid instance. The
+    # other IODs do not define it.
+    expected_type = "1" if iod in OVERLAY_IODS else "3"
 
     assert strictest_type(tables.iods[iod], tag) == expected_type
     assert resolve_plain_x_in_iod(tables.iods[iod], tag, ()) == _removal(*OVERLAY_GROUP)
@@ -493,11 +513,17 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
         for name in FIRST_RELEASE_IODS
         for tag in (RESPONSIBLE_PERSON, RESPONSIBLE_ORGANIZATION)
     }
+    # At the top level of each image IOD but MR Spectroscopy, and within
+    # Patient Setup Sequence of the RT Plan IOD.
+    preparation_places = [
+        *((name, ()) for name in FIRST_RELEASE_IODS if name in IMAGE_IODS),
+        ("RT Plan", (PATIENT_SETUP,)),
+    ]
     preparation = {
         (name, (*outer, PATIENT_TREATMENT_PREPARATION, inner), tag): _removal(
             "SEQUENCE", len(outer) + (inner == REFERENCED_PATIENT_SETUP_PHOTO)
         )
-        for name, outer in (("CT Image", ()), ("RT Plan", (PATIENT_SETUP,)))
+        for name, outer in preparation_places
         for inner, tag in (
             (REFERENCED_PATIENT_SETUP_PHOTO, PATIENT_SETUP_PHOTO_DESCRIPTION),
             (PATIENT_TREATMENT_PREPARATION_PROCEDURE, PROCEDURE_PARAMETER_DESCRIPTION),
@@ -516,10 +542,19 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             (RT_ROI_OBSERVATIONS,),
             ROI_INTERPRETER_SEQUENCE,
         ): _removal(*ALONE),
-        ("CT Image", (), "(60xx,3000)"): _removal(*OVERLAY_GROUP),
+        **{
+            (name, (), "(60xx,3000)"): _removal(*OVERLAY_GROUP) for name in OVERLAY_IODS
+        },
+        # Type 1 in the Type 1 Radiopharmaceutical Information Sequence, so
+        # every conforming instance is sequestered.
+        (
+            "Enhanced PET Image",
+            (RADIOPHARMACEUTICAL_INFORMATION,),
+            RADIOPHARMACEUTICAL_START_DATETIME,
+        ): _removal(*SEQUESTER),
     }
-    # Seven attributes in all.
-    assert len({tag for _, _, tag in found}) == 7
+    # Eight attributes in all.
+    assert len({tag for _, _, tag in found}) == 8
 
 
 @pytest.mark.parametrize(
