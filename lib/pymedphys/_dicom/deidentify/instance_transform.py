@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module joins the engine's per-instance steps, so it is long.
+
 """De-identify one instance of a run: the run's concrete transform.
 
 :class:`InstanceTransform` is the
