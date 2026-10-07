@@ -22,6 +22,10 @@ each instance it may process. It joins the engine's per-instance steps:
    source file, whose every byte must be accounted for;
 2. :func:`~pymedphys._dicom.deidentify.scope.classify` decides from its SOP
    Class and transfer syntax whether the release de-identifies it at all;
+   for one it de-identifies whose Pixel Data is compressed,
+   :func:`~pymedphys._dicom.deidentify.pixel_decoding.frames_problem`
+   decodes each frame once, after the plan and edits below, so that its
+   values are collected for the residual search either way;
 3. :func:`~pymedphys._dicom.deidentify.walker.plan_instance` gives each
    element its action under the run's policy and the instance's IOD;
 4. :func:`~pymedphys._dicom.deidentify.edits.edit_instance` works out what
@@ -127,6 +131,7 @@ from .release_gate import (
 )
 from .residuals import NotSearched, has_written_constant, not_searched_of
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
+from .pixel_decoding import frames_problem
 from .pixel_risk import assess_pixel_risk, series_evidence
 from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial, SeriesEvidence
 from .run_report import ReleaseReporter
@@ -704,6 +709,13 @@ class InstanceTransform:
                 (classification.disposition,)
                 if classification.sequestered
                 else edits.sequestrations,
+                evidence,
+                (*risk, *dropped_of(edits), *omissions_of(evidence)),
+            )
+        undecoded = frames_problem(source)
+        if undecoded is not None:
+            return Sequestered(
+                (undecoded,),
                 evidence,
                 (*risk, *dropped_of(edits), *omissions_of(evidence)),
             )

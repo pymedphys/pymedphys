@@ -32,11 +32,14 @@ from pymedphys._dicom.deidentify.qc_pack import (
     PreviewKind,
 )
 
+from . import _synthetic_compressed as compressed
+
 CT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.2"
 SECONDARY_CAPTURE = "1.2.840.10008.5.1.4.1.1.7"
 RT_STRUCTURE_SET = "1.2.840.10008.5.1.4.1.1.481.3"
 EXPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2.1"
 RLE_LOSSLESS = "1.2.840.10008.1.2.5"
+JPEG_2000_PART_2 = "1.2.840.10008.1.2.4.92"
 SERIES = "2.25.7001"
 AXIAL = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 CORONAL = (1.0, 0.0, 0.0, 0.0, 0.0, -1.0)
@@ -404,11 +407,26 @@ def test_an_rgb_capture_is_shown_in_colour():
     assert (image[..., 0] == 200).all() and not image[..., 1:].any()
 
 
-def _encapsulated():
+def _encapsulated(transfer_syntax=JPEG_2000_PART_2):
+    # No plugin is pinned to decode JPEG 2000 Part 2 (.pixel_decoding).
     dataset = pydicom.dcmread(io.BytesIO(_image(np.ones((4, 4)), series=None)))
     dataset.PixelData = pydicom.encaps.encapsulate([b"\x00" * 32])
     dataset["PixelData"].VR = "OB"
-    return _file(dataset, RLE_LOSSLESS)
+    return _file(dataset, transfer_syntax)
+
+
+def _compressed(data, codestreams=None, transfer_syntax=RLE_LOSSLESS):
+    """``data`` with its pixel data compressed: by pydicom's RLE Lossless
+    encoder, or as ``codestreams``, one fragment for each frame."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    if codestreams is None:
+        dataset.compress(
+            RLE_LOSSLESS, encoding_plugin="pydicom", generate_instance_uid=False
+        )
+    else:
+        dataset.PixelData = pydicom.encaps.encapsulate(codestreams)
+        dataset["PixelData"].VR = "OB"
+    return _file(dataset, transfer_syntax)
 
 
 def _palette():
@@ -461,6 +479,54 @@ def test_an_instance_that_cannot_be_previewed_is_listed_with_why():
         NotPreviewedEntry(4, NotPreviewedReason.UNREADABLE),
         NotPreviewedEntry(5, NotPreviewedReason.NO_PIXEL_DATA),
     )
+
+
+def _pngs(written, high_risk=()):
+    previews = qc_previews.previews_of(written, set(high_risk))
+    assert previews.previews
+    assert not previews.not_previewed
+    return [
+        (p.name, p.kind, p.frames, p.total_frames, p.png) for p in previews.previews
+    ]
+
+
+@pytest.mark.pydicom
+def test_an_rle_lossless_series_is_previewed_as_its_native_copy_is():
+    native = _slices(4)
+    rle = {position: _compressed(data) for position, data in native.items()}
+
+    assert _pngs(rle, {1}) == _pngs(native, {1})
+
+
+@pytest.mark.pydicom
+def test_a_jpeg_lossless_multi_frame_image_is_previewed_as_its_native_copy_is():
+    if not qc_previews.decoder_available(compressed.JPEG_LOSSLESS_SV1):
+        pytest.skip("no JPEG Lossless decoder is installed")
+    frames = np.arange(3 * 6 * 7).reshape(3, 6, 7) * 37 - 500
+    native = _image(frames)
+    codestreams = [
+        compressed.jpeg_lossless(frame.astype("<i2").view("<u2")) for frame in frames
+    ]
+    jpeg = _compressed(native, codestreams, compressed.JPEG_LOSSLESS_SV1)
+
+    assert _pngs({0: jpeg}, {0}) == _pngs({0: native}, {0})
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("photometric", ["RGB", "YBR_FULL"])
+def test_rle_lossless_colour_is_previewed_as_its_native_copy_is(photometric):
+    rgb = np.arange(2 * 3 * 4 * 3).reshape(2, 3, 4, 3) * 9 % 256
+    dataset = pydicom.dcmread(io.BytesIO(_image(rgb, photometric="RGB")))
+    if photometric != "RGB":
+        dataset.PixelData = (
+            pydicom.pixels.convert_color_space(rgb.astype(np.uint8), "RGB", photometric)
+            .astype(np.uint8)
+            .tobytes()
+        )
+        dataset.PhotometricInterpretation = photometric
+    native = _file(dataset)
+
+    assert _pngs({0: _compressed(native)}, {0}) == _pngs({0: native}, {0})
 
 
 @pytest.mark.pydicom

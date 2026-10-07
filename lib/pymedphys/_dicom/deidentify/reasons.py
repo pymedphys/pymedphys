@@ -78,6 +78,17 @@ class TransformReason(enum.Enum):
     # the output no longer holds, or holds empty, an attribute that the IOD
     # requires where its source held it (MIDI-BP-03)
     REQUIRED_ATTRIBUTE_LOST = "required-attribute-lost"
+    # compressed pixel data whose decoder is not installed, so its frames
+    # cannot be checked
+    NO_DECODER = "no-decoder"
+    # compressed pixel data whose Basic or Extended Offset Table does not give
+    # where its frames start (PS3.5 Section A.4)
+    OFFSET_TABLE_MISMATCH = "offset-table-mismatch"
+    # compressed pixel data with a frame that does not decode
+    UNDECODABLE_PIXEL_DATA = "undecodable-pixel-data"
+    # compressed pixel data whose frames do not match Number of Frames,
+    # Rows, Columns, or Samples per Pixel
+    FRAME_MISMATCH = "frame-mismatch"
 
 
 class DescriptorReason(enum.Enum):
