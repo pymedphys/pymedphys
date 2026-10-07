@@ -546,6 +546,19 @@ def release_report() -> list[str]:
         "series; the pixel data are not inspected, so an instance without an "
         "indicator may still show the risk.",
         "",
+        "The report summarises the engine's structural checks of the "
+        "release, as "
+        + join((code(check) for check in report.STRUCTURAL_CHECKS), "and")
+        + ": how the inputs refer to each other, whether each written "
+        "instance keeps the attributes that its IOD requires where its source "
+        "had them, and whether what was written refers to itself as the "
+        "inputs did. For each, it counts the instances that the check "
+        "sequestered and those it reported without acting on them, each "
+        "instance once, an identical copy counting as the instance it "
+        "copies, naming none of them. The checks show that the release is consistent "
+        "and well formed, not that it suits a particular use, which the "
+        "person releasing the data confirms (D-016).",
+        "",
         "The report counts the source values that the residual search did "
         "not search, in full or in part, by attribute, as tags from the "
         "outermost sequence without items, and by reason, each value once for "
@@ -584,7 +597,7 @@ def release_report() -> list[str]:
         "or path within the engine's package, a QC pack's reference or an "
         "attestation outcome, an output name listed once, one of the run's "
         "labels, a path of tags, a code that the engine defines, a positive "
-        "count, true or "
+        "count, a structural check's count from 0, true or "
         "false, the report's or the method digest's format label, or none, and "
         "the report refuses any other. Only the confidential QC pack maps "
         "labels to source instances and lists each value not searched by "

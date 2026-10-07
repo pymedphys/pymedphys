@@ -942,8 +942,7 @@ id = "MIDI-BP-17"
 text = '''
 Use human quality control to confirm that de-identification both removed what it should and preserved utility. Guide the proportion and type of records inspected by a documented risk assessment that sets the threshold of residual risk before and after quality control, taking account of what is removed or replaced and how reliably. Cover structured and unstructured text, pixel data, overlays, and metadata embedded in compressed bitstreams.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-016", "D-017", "D-026", "D-027"]
 implementation = [
   "_dicom/deidentify/attestation_command.py",
@@ -958,6 +957,7 @@ implementation = [
   "_dicom/deidentify/release_report_markdown.py",
   "_dicom/deidentify/run.py",
   "_dicom/deidentify/run_qc.py",
+  "_dicom/deidentify/run_report.py",
   "_dicom/deidentify/run_results.py",
 ]
 note = '''
@@ -973,7 +973,7 @@ The retained strings of an instance are the values that its plan keeps as they a
 The pack previews each series released or held for review, by a cine strip and, for a volume, a frontal maximum intensity projection, and each instance whose source shows an indicator of risk in its pixel data at full resolution, with those indicators, and lists each series whose released and held instances are a CT volume or name the head or neck, with the instances that show each; it lists each instance it could not preview, with why, and records each preview's SHA-256, so that an attestation covers the previews too (D-017).
 A reviewer records an attestation of a pack with a command, which refuses a directory that holds no QC pack and quotes neither the reviewer nor a path; the release report published with the run keeps the record it was written with.
 The person releasing the data may confirm in the attestation, yes or no, that the output was checked for its intended use and that its residual risk was accepted under the institution's governance, and the record that a release report takes carries those outcomes alone; the report's QC review gives each as true, false, or not stated, and refuses one without an attestation.
-Remaining: the release report's summary of the engine's structural checks (M4).
+Each run's release report summarises the engine's structural checks of its output, the first pass's references, the IOD requirements, and the written references: for each, how many instances it sequestered and how many it reported without acting on them, naming none, so that a recipient sees the output is consistent, though not that it suits a use (decided 6 October 2026).
 '''
 
 [[requirement]]
@@ -999,7 +999,7 @@ Each instance's markers record the process in the instance itself: De-identifica
 The validated policy records the edition, preset, and options.
 The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers and without a reviewed-names list, and the markers that each instance gains, and the same policy and engine always give the same text.
 The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016).
-Its sections on a run give the QC pack's opaque reference with its attestation's outcome (D-016), list each released instance by its output name, name each sequestered instance by a random label for the run, with each reason's stage and code, and the attribute, action, and VR where the walker sequestered it, or the attribute where the release gate's reason names one (D-026); count the instances held for review by stage and reason, naming none (D-009); count the ROI Names that descriptor cleaning cleaned by outcome, and the distinct names sent for review by reason, naming none (D-009); count the instances with each kind of reference finding that the run reports without acting on it, naming none (D-026); count the released and held instances that show each risk in their pixel data, and each indicator of it, naming none (D-015); and count the source values that the residual search did not search, in full or in part, by attribute and reason (D-027); the conformance statement describes them, generated from the report's format, labels, and reason codes.
+Its sections on a run give the QC pack's opaque reference with its attestation's outcome (D-016), list each released instance by its output name, name each sequestered instance by a random label for the run, with each reason's stage and code, and the attribute, action, and VR where the walker sequestered it, or the attribute where the release gate's reason names one (D-026); count the instances held for review by stage and reason, naming none (D-009); count the ROI Names that descriptor cleaning cleaned by outcome, and the distinct names sent for review by reason, naming none (D-009); count the instances with each kind of reference finding that the run reports without acting on it, naming none (D-026); count the released and held instances that show each risk in their pixel data, and each indicator of it, naming none (D-015); count the source values that the residual search did not search, in full or in part, by attribute and reason (D-027); and summarise the engine's structural checks, each with how many instances it sequestered and how many it reported, naming none; the conformance statement describes them, generated from the report's format, labels, and reason codes.
 A run given a reporter writes the report as `release-report.json` at the root of the release before it publishes it, with its QC pack by reference, not yet attested, its released instances by output name, its sequestered instances by label, its held instances by reason, an identical copy counting as the instance it copies, and the values that the residual searches did not search, each counted once at the instance that holds it, and a report that cannot be built publishes nothing and leaves no QC pack; an input whose reasons the report cannot give is sequestered for an invalid reason instead, which the report gives alone and the QC pack lists before its own reasons, so that it never stops the release.
 Beside the report, the run writes its human-readable form as `release-report.md`: CommonMark, with GitHub Flavored Markdown tables, generated from the JSON text alone, which shows every value of the document, and each file name that keys a digest, as a code span as often as the document holds it, and draws nothing else from the report; the same text always gives the same form, and a report whose form cannot be generated publishes nothing.
 Every reason that sequesters or holds an instance in a run, from the run's own checks, the transform, the writer, the preservation check, and the release gate, has a stage and code in the report, and the codes within each stage are distinct.

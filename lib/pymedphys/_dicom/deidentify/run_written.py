@@ -47,8 +47,8 @@ from .references import InstanceRecord
 from .run_results import WrittenCheck
 from .written_references import WrittenFinding, WrittenFindingKind
 
-# The findings that are reported only.
-_REPORTED_ONLY = frozenset({WrittenFindingKind.UNWRITTEN_TARGET})
+REPORTED_ONLY = frozenset({WrittenFindingKind.UNWRITTEN_TARGET})
+"""The second pass's findings that the run reports without acting on them."""
 
 
 class ReleaseWithheld(Exception):
@@ -138,7 +138,7 @@ def second_pass(
         # value, so none is kept, and nothing is published.
         except Exception:  # pylint: disable = broad-exception-caught
             raise ReleaseWithheld() from None
-        faults = [finding for finding in findings if finding.kind not in _REPORTED_ONLY]
+        faults = [finding for finding in findings if finding.kind not in REPORTED_ONLY]
         if not faults:
             found.update(dict.fromkeys(findings))
             return tuple(found), withheld
