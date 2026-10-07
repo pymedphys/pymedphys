@@ -77,12 +77,9 @@ from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
 from .frame_headers import Declared, header_problem
 from .reasons import TransformReason
-from .source import (
-    ENCAPSULATED_TRANSFER_SYNTAXES,
-    SourceEvidence,
-    encapsulated_pixel_data,
-)
+from .source import SourceEvidence, encapsulated_pixel_data
 
+_GDCM = "gdcm"
 _PYLIBJPEG = "pylibjpeg"
 _PIXEL_DATA = ElementPath((), "(7FE0,0010)")
 _EXTENDED_OFFSET_TABLE = ElementPath((), "(7FE0,0001)")
@@ -90,18 +87,26 @@ _EXTENDED_OFFSET_TABLE_LENGTHS = ElementPath((), "(7FE0,0002)")
 _RLE_LOSSLESS = "1.2.840.10008.1.2.5"
 DECODING_PLUGINS: Mapping[str, str] = types.MappingProxyType(
     {
-        **dict.fromkeys(
-            sorted(ENCAPSULATED_TRANSFER_SYNTAXES - {"1.2.840.10008.1.2.5"}),
-            _PYLIBJPEG,
-        ),
-        # RLE Lossless, which pydicom decodes itself.
-        "1.2.840.10008.1.2.5": "pydicom",
+        "1.2.840.10008.1.2.4.50": _GDCM,  # JPEG Baseline (Process 1)
+        "1.2.840.10008.1.2.4.51": _GDCM,  # JPEG Extended (Process 2 and 4)
+        "1.2.840.10008.1.2.4.57": _GDCM,  # JPEG Lossless (Process 14)
+        "1.2.840.10008.1.2.4.70": _GDCM,  # JPEG Lossless, First-Order Prediction
+        "1.2.840.10008.1.2.4.80": _GDCM,  # JPEG-LS Lossless
+        "1.2.840.10008.1.2.4.81": _GDCM,  # JPEG-LS Near-Lossless
+        "1.2.840.10008.1.2.4.90": _PYLIBJPEG,  # JPEG 2000 Lossless Only
+        "1.2.840.10008.1.2.4.91": _PYLIBJPEG,  # JPEG 2000
+        "1.2.840.10008.1.2.4.201": _PYLIBJPEG,  # HTJ2K Lossless Only
+        "1.2.840.10008.1.2.4.202": _PYLIBJPEG,  # HTJ2K with RPCL, Lossless Only
+        "1.2.840.10008.1.2.4.203": _PYLIBJPEG,  # HTJ2K
+        _RLE_LOSSLESS: "pydicom",  # which pydicom decodes itself
     }
 )
 """The pydicom decoding plugin for each transfer syntax that encapsulates
-Pixel Data: pylibjpeg, with pylibjpeg-libjpeg for JPEG and JPEG-LS and
-pylibjpeg-openjpeg for JPEG 2000 and HTJ2K, and pydicom's own for RLE
-Lossless."""
+Pixel Data: GDCM, through python-gdcm, for JPEG and JPEG-LS; pylibjpeg, with
+pylibjpeg-openjpeg, for JPEG 2000 and HTJ2K; and pydicom's own for RLE
+Lossless. Each is licensed at least as permissively as PyMedPhys's Apache
+License 2.0, which is why JPEG and JPEG-LS are not decoded by
+pylibjpeg-libjpeg, under the GNU GPL version 3."""
 
 
 def decoder_available(transfer_syntax: str) -> bool:

@@ -14,7 +14,6 @@ import hypothesis
 import hypothesis.strategies
 import imageio.v2 as imageio
 import keyring
-import libjpeg
 import matplotlib
 import matplotlib.image
 import matplotlib.patches

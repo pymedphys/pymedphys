@@ -71,13 +71,24 @@ def _lossless(count=1, syntax=compressed.JPEG_LOSSLESS_SV1, **image):
 def test_each_encapsulated_syntax_has_one_decoder():
     assert set(DECODING_PLUGINS) == ENCAPSULATED_TRANSFER_SYNTAXES
     assert DECODING_PLUGINS[compressed.RLE_LOSSLESS] == "pydicom"
-    assert set(DECODING_PLUGINS.values()) == {"pydicom", "pylibjpeg"}
+    assert set(DECODING_PLUGINS.values()) == {"gdcm", "pydicom", "pylibjpeg"}
+    # JPEG and JPEG-LS by GDCM, not by pylibjpeg-libjpeg, under the GPL.
+    assert {
+        syntax for syntax, plugin in DECODING_PLUGINS.items() if plugin == "gdcm"
+    } == {
+        compressed.JPEG_BASELINE,
+        compressed.JPEG_EXTENDED,
+        compressed.JPEG_LOSSLESS,
+        compressed.JPEG_LOSSLESS_SV1,
+        compressed.JPEG_LS_LOSSLESS,
+        compressed.JPEG_LS_NEAR_LOSSLESS,
+    }
 
 
 def test_with_the_user_extra_every_encapsulated_syntax_has_its_decoder():
-    # The ``user`` extra declares pylibjpeg with its libjpeg and openjpeg
-    # plugins; the ``dicom`` extra alone declares none of them.
-    for module in ("pylibjpeg", "libjpeg", "openjpeg"):
+    # The ``user`` extra declares python-gdcm, and pylibjpeg with its
+    # openjpeg plugin; the ``dicom`` extra alone declares none of them.
+    for module in ("gdcm", "pylibjpeg", "openjpeg"):
         pytest.importorskip(module)
 
     assert all(decoder_available(ts) for ts in ENCAPSULATED_TRANSFER_SYNTAXES)
@@ -398,8 +409,8 @@ def _cut_short(codestream, cut):
 
 @pytest.mark.parametrize("cut", ["without-eoi", "halfway", "empty-scan"])
 def test_a_jpeg_frame_cut_short_is_undecodable(cut):
-    # pylibjpeg decodes each of these without an error, filling the rest of
-    # the frame.
+    # GDCM decodes a frame without its EOI, or whose scan is empty, without
+    # an error, filling the rest of the frame.
     _needs(compressed.JPEG_LOSSLESS_SV1)
     codestream = compressed.jpeg_lossless(_frames(1)[0])
     data = compressed.ct_image(
@@ -668,7 +679,7 @@ def test_the_pinned_decoder_is_used_whatever_else_is_installed(monkeypatch):
     monkeypatch.setattr(pydicom.pixels, "iter_pixels", recording)
 
     assert frames_problem(read_source(data)) is None
-    assert plugins == ["pylibjpeg"]
+    assert plugins == ["gdcm"]
 
 
 def _codestreams(count=3):
