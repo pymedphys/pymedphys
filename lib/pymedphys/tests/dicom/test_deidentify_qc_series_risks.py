@@ -376,7 +376,7 @@ def test_the_transform_gives_each_source_series_evidence():
 
 
 @pytest.mark.deid_requirement("MIDI-BP-15", "MIDI-BP-17")
-def test_a_run_over_the_synthetic_corpus_lists_its_ct_volumes(tmp_path):
+def test_a_run_over_the_synthetic_corpus_lists_its_volumes(tmp_path):
     corpus = corpus_module.build_corpus()
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.
@@ -417,29 +417,35 @@ def test_a_run_over_the_synthetic_corpus_lists_its_ct_volumes(tmp_path):
             and entry["disposition"] == "released"
         ]
 
-    # The third slice is sequestered, and the other two are a volume; the
-    # Enhanced CT Image and Legacy Converted Enhanced CT Image instances, of
-    # two frames each, are a volume each. The indicator covers CT volumes
-    # only, so the MR and PET instances are not listed until it covers them.
+    # The third slice is sequestered, and the other two are a volume. Each
+    # enhanced or legacy converted enhanced CT, MR, and PET instance, of two
+    # frames, is a volume too; the MR Image and PET Image instances are one
+    # slice each, so not volumes, and MR Spectroscopy has no pixels. None of
+    # the PET instances is SUV-scaled, so none shows the body weight.
     volumes = [
-        released("CT Image"),
-        released("Enhanced CT Image"),
-        released("Legacy Converted Enhanced CT Image"),
+        ("ct-volume", released("CT Image")),
+        ("ct-volume", released("Enhanced CT Image")),
+        ("ct-volume", released("Legacy Converted Enhanced CT Image")),
+        ("mr-volume", released("Enhanced MR Image")),
+        ("mr-volume", released("Enhanced MR Color Image")),
+        ("mr-volume", released("Legacy Converted Enhanced MR Image")),
+        ("pet-volume", released("Enhanced PET Image")),
+        ("pet-volume", released("Legacy Converted Enhanced PET Image")),
     ]
-    assert [len(positions) for positions in volumes] == [2, 1, 1]
+    assert [len(positions) for _, positions in volumes] == [2, 1, 1, 1, 1, 1, 1, 1]
     assert pack["series_risks"] == [
         {
             "positions": positions,
             "findings": [
                 {
-                    "indicator": "ct-volume",
+                    "indicator": indicator,
                     "risk": "reconstructable-face",
                     "element": None,
                     "positions": positions,
                 }
             ],
         }
-        for positions in volumes
+        for indicator, positions in volumes
     ]
     # The pack groups by the source's Series Instance UID but never writes it.
     assert all(uid and uid not in text for uid in series)
