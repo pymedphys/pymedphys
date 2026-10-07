@@ -210,13 +210,9 @@ def test_the_reviewed_icc_profile_is_described():
     section = _section("basic", "Values written")
 
     assert f"D on {_named(dummy_values.ICC_PROFILE)} writes a fixed ICC" in section
-    for description in (
-        "DEIDENTIFIED sRGB",
-        "DEIDENTIFIED grey",
-        "DE-IDENTIFIED sRGB",
-        "DE-IDENTIFIED grey",
-    ):
+    for description in ("DEIDENTIFIED sRGB", "DE-IDENTIFIED sRGB"):
         assert f"`{description}`" in section
+    assert "grey" not in section
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
@@ -239,17 +235,14 @@ def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
         for pair in dummy_values.CONSTANTS.values()
         for value in pair
     )
-    # The procedure step's items hold only UIDs, and the ICC profiles' only
-    # text is their descriptions and copyright.
+    # The procedure step's items hold only UIDs, and the ICC profile's only
+    # text is its description and copyright.
     assert set(walker.REVIEWED_DUMMY_SEQUENCES) == {
         tag,
         dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
     }
-    for profile in (
-        icc_profiles.srgb_profile("DEIDENTIFIED sRGB"),
-        icc_profiles.grey_profile("DEIDENTIFIED grey"),
-    ):
-        assert b"PYMEDPHYS" not in profile.upper()
+    for description in ("DEIDENTIFIED sRGB", "DE-IDENTIFIED sRGB"):
+        assert b"PYMEDPHYS" not in icc_profiles.srgb_profile(description).upper()
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")

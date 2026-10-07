@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The ICC profiles that D writes in place of ICC Profile (0028,2000) (D-021).
+"""The ICC profile that D writes in place of ICC Profile (0028,2000) (D-021).
 
-PS3.3 Section C.11.15.1.1 makes ICC Profile an ICC Input Device Profile.
-Where D replaces one, it writes a fixed profile of the same data colour
-space, built here the same way every time: :func:`srgb_profile` for an RGB
-source profile, the sRGB colour space of IEC 61966-2.1, and
-:func:`grey_profile` for a grey one, with the sRGB tone curve. Each is an
-ICC version 2.4 input profile (ICC.1:2001-04), of the matrix and tone curve
-model (Section 6.3.1.2) or the monochrome one (Section 6.3.1.1), whose PCS
+PS3.3 Section C.11.15.1.1 makes ICC Profile an ICC Input Device Profile whose
+input colour space is RGB, whatever the image's Photometric Interpretation,
+with a PCS of CIEXYZ or CIELab. Where D replaces one, it writes the fixed
+profile of :func:`srgb_profile`, the sRGB colour space of IEC 61966-2.1, built
+here the same way every time. It is an ICC version 2.4 input profile
+(ICC.1:2001-04) of the matrix and tone curve model (Section 6.3.1.2), whose PCS
 is CIE XYZ under the D50 illuminant and whose media white point is D50.
 
-Nothing of the source profile is written. Its header gives only its data
-colour space, which decides the profile written; its contents are not
-otherwise read.
+Nothing of the source profile is written. Only its header's data colour space
+is read, which must be RGB for the profile to be replaced; its contents are
+not otherwise read.
 """
 
 from __future__ import annotations
@@ -36,7 +35,6 @@ _HEADER_LENGTH = 128
 # The profile file signature, at bytes 36 to 39 of the header.
 _SIGNATURE = b"acsp"
 RGB = b"RGB "
-GREY = b"GRAY"
 # s15Fixed16Number encodings, as the sRGB profiles of IEC 61966-2.1 give
 # them: the D50 illuminant, and the red, green, and blue colorants adapted to
 # it, whose sum is the D50 white point to within 0.0002.
@@ -89,31 +87,13 @@ def srgb_profile(description: str) -> bytes:
         (b"gTRC", curve),
         (b"bTRC", curve),
     ]
-    return _profile(RGB, tags)
+    return _profile(tags)
 
 
-def grey_profile(description: str) -> bytes:
-    """Return a grey input profile with the sRGB tone curve.
-
-    Examples
-    --------
-    >>> data_colour_space(grey_profile("DEIDENTIFIED grey"))
-    b'GRAY'
-    """
-    tags = [
-        (b"desc", _description(description)),
-        (b"cprt", _text(_COPYRIGHT)),
-        (b"wtpt", _xyz(_D50)),
-        (b"kTRC", _curve()),
-    ]
-    return _profile(GREY, tags)
-
-
-def _profile(colour_space: bytes, tags: list[tuple[bytes, bytes]]) -> bytes:
+def _profile(tags: list[tuple[bytes, bytes]]) -> bytes:
     """Return a profile's bytes: its header, tag table, and tag data.
 
-    Tags with the same data share it, as the three tone curves of an RGB
-    profile do, and each tag's data starts on a four-byte boundary.
+    Tags with the same data share it, as the three tone curves do, and each tag's data starts on a four-byte boundary.
     """
     table_length = 4 + 12 * len(tags)
     offset = _HEADER_LENGTH + table_length
@@ -132,7 +112,7 @@ def _profile(colour_space: bytes, tags: list[tuple[bytes, bytes]]) -> bytes:
         + b"\0" * 4  # preferred CMM: none
         + struct.pack(">I", 0x02400000)  # version 2.4
         + b"scnr"  # an input device profile
-        + colour_space
+        + RGB
         + b"XYZ "
         + struct.pack(">6H", *_CREATED)
         + _SIGNATURE

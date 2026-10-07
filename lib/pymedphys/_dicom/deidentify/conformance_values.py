@@ -255,13 +255,13 @@ def _icc_profile(named: Callable[[str], str]) -> str:
     first, second = dummy_values.CONSTANTS["LO"]
     return (
         f"D on {named(dummy_values.ICC_PROFILE)} writes a fixed ICC version "
-        "2.4 input profile of the source profile's data colour space: the "
-        f"sRGB colour space of IEC 61966-2.1, described `{first} sRGB`, for "
-        "an RGB profile, or a grey profile with the sRGB tone curve, "
-        f"described `{first} grey`, for a grey one. Where the source has the "
-        f"same bytes, the description is `{second} sRGB` or `{second} grey`. "
-        "Where the source is not an RGB or grey profile, the instance is "
-        "sequestered (D-021)."
+        "2.4 input profile of the sRGB colour space of IEC 61966-2.1, "
+        f"described `{first} sRGB`, or `{second} sRGB` where the source has "
+        "the same bytes. PS3.3 Section C.11.15.1.1 requires the profile's "
+        "data colour space to be RGB, so where the source is not an RGB "
+        "profile, the instance is sequestered. Pixel values are preserved, "
+        "but the source profile's colorants and tone curves are not, so colour "
+        "rendering can change substantially (D-021)."
     )
 
 
