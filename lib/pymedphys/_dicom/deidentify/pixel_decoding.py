@@ -30,19 +30,11 @@ never one frame.
 
 A decoder shapes what it decodes by these attributes, so a frame of 5 rows
 of 7 decodes to an array of 7 rows of 5 where the attributes say so. Each
-frame's codestream header is therefore read too, before decoding, and must
-give the same Rows, Columns, and Samples per Pixel, and a sample precision
-equal to Bits Stored (0028,0101), since the attributes must be consistent
-with the compressed data stream (PS3.5 Sections 8.2.1, 8.2.3, 8.2.4, and
-8.2.14): the frame header (SOFn) of JPEG (ITU-T T.81), the frame header
-(SOF55) of JPEG-LS (ITU-T T.87), and the image and tile size (SIZ) marker
-segment of JPEG 2000 and HTJ2K (ITU-T T.800 and T.814), whose image area
-less its offset gives Columns and Rows and whose every component must have
-that precision and no subsampling. A JPEG frame header of 0 lines, whose
-height a later DNL marker segment gives, does not match. RLE Lossless
-(PS3.5 Annex G) holds none of these in its header; pydicom refuses a frame
-whose number of segments is not Samples per Pixel times the bytes of each
-sample.
+frame's codestream header is therefore read too, before decoding, by
+:func:`.frame_headers.header_problem`, which also requires the transfer
+syntax to describe its coding process. RLE Lossless (PS3.5 Annex G) holds
+none of what it compares; pydicom refuses a frame whose number of segments
+is not Samples per Pixel times the bytes of each sample.
 
 Before decoding, its offset tables are checked, since a decoder uses them to
 find where each frame starts (PS3.5 Section A.4). A Basic Offset Table that
@@ -75,7 +67,6 @@ a value.
 
 from __future__ import annotations
 
-import dataclasses
 import struct
 import types
 from collections.abc import Mapping
@@ -84,6 +75,7 @@ from pymedphys._imports import pydicom
 
 from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
+from .frame_headers import Declared, header_problem
 from .reasons import TransformReason
 from .source import (
     ENCAPSULATED_TRANSFER_SYNTAXES,
@@ -96,20 +88,6 @@ _PIXEL_DATA = ElementPath((), "(7FE0,0010)")
 _EXTENDED_OFFSET_TABLE = ElementPath((), "(7FE0,0001)")
 _EXTENDED_OFFSET_TABLE_LENGTHS = ElementPath((), "(7FE0,0002)")
 _RLE_LOSSLESS = "1.2.840.10008.1.2.5"
-_JPEG_LS = frozenset({"1.2.840.10008.1.2.4.80", "1.2.840.10008.1.2.4.81"})
-_JPEG_2000 = frozenset(
-    {
-        "1.2.840.10008.1.2.4.90",
-        "1.2.840.10008.1.2.4.91",
-        "1.2.840.10008.1.2.4.201",
-        "1.2.840.10008.1.2.4.202",
-        "1.2.840.10008.1.2.4.203",
-    }
-)
-# The frame header markers SOF0 to SOF15 of ITU-T T.81 Table B.1, which
-# leave out DHT (C4), JPG (C8), and DAC (CC), and SOF55 of ITU-T T.87.
-_JPEG_FRAME_MARKERS = frozenset(range(0xC0, 0xD0)) - {0xC4, 0xC8, 0xCC}
-_JPEG_LS_FRAME_MARKER = 0xF7
 DECODING_PLUGINS: Mapping[str, str] = types.MappingProxyType(
     {
         **dict.fromkeys(
@@ -211,17 +189,6 @@ def _expected(dataset: pydicom.Dataset) -> tuple[int, tuple[int, ...]] | None:
     return frames, ((rows, columns) if samples == 1 else (rows, columns, samples))
 
 
-@dataclasses.dataclass(frozen=True)
-class _Header:
-    """What a frame's codestream header, or the attributes, say of a frame."""
-
-    rows: int
-    columns: int
-    samples: int
-    precisions: frozenset[int]
-    subsampled: bool = False
-
-
 def _headers_problem(
     source: SourceEvidence, dataset: pydicom.Dataset, frames: int
 ) -> TransformReason | None:
@@ -236,11 +203,13 @@ def _headers_problem(
         source, _PIXEL_DATA
     ):
         return None
-    expected = _Header(
+    declared = Declared(
         int(dataset.Rows),
         int(dataset.Columns),
         int(dataset.SamplesPerPixel),
-        frozenset({int(dataset.BitsStored)}),
+        int(dataset.BitsStored),
+        int(dataset.PixelRepresentation) == 1,
+        str(dataset.PhotometricInterpretation),
     )
     extended = None
     if _EXTENDED_OFFSET_TABLE in source:
@@ -251,69 +220,10 @@ def _headers_problem(
     for codestream in pydicom.encaps.generate_frames(
         _value(source), number_of_frames=frames, extended_offsets=extended
     ):
-        header = _header(source.transfer_syntax, codestream)
-        if header is None:
-            return TransformReason.UNDECODABLE_PIXEL_DATA
-        if header != expected:
-            return TransformReason.FRAME_MISMATCH
+        problem = header_problem(source.transfer_syntax, codestream, declared)
+        if problem is not None:
+            return problem
     return None
-
-
-def _header(transfer_syntax: str, codestream: bytes) -> _Header | None:
-    """Return what a frame's codestream header says of it, or ``None`` where
-    it has none that its transfer syntax allows."""
-    if transfer_syntax in _JPEG_2000:
-        return _image_and_tile_size(codestream)
-    if transfer_syntax in _JPEG_LS:
-        return _frame_header(codestream, frozenset({_JPEG_LS_FRAME_MARKER}))
-    return _frame_header(codestream, _JPEG_FRAME_MARKERS)
-
-
-def _frame_header(codestream: bytes, markers: frozenset[int]) -> _Header | None:
-    """Return the frame header of a JPEG or JPEG-LS codestream: after Start of
-    Image, the first frame header marker, before any scan, must be one of
-    ``markers``. Each marker segment before it is skipped by its length."""
-    position = 2 if codestream[:2] == b"\xff\xd8" else len(codestream)
-    while position + 4 <= len(codestream) and codestream[position] == 0xFF:
-        marker = codestream[position + 1]
-        if marker == 0xFF:  # a fill byte
-            position += 1
-            continue
-        if marker in markers and position + 10 <= len(codestream):
-            precision, rows, columns, samples = struct.unpack_from(
-                ">BHHB", codestream, position + 4
-            )
-            return _Header(rows, columns, samples, frozenset({precision}))
-        (length,) = struct.unpack_from(">H", codestream, position + 2)
-        if (
-            marker in _JPEG_FRAME_MARKERS | {_JPEG_LS_FRAME_MARKER, 0xDA}
-            or 0xD0 <= marker <= 0xD9
-            or length < 2
-        ):
-            break
-        position += 2 + length
-    return None
-
-
-def _image_and_tile_size(codestream: bytes) -> _Header | None:
-    """Return the SIZ marker segment of a JPEG 2000 or HTJ2K codestream, which
-    must follow Start of Codestream (ITU-T T.800 Section A.5.1)."""
-    if codestream[:4] != b"\xff\x4f\xff\x51" or len(codestream) < 42:
-        return None
-    (length,) = struct.unpack_from(">H", codestream, 4)
-    width, height, left, top = struct.unpack_from(">4I", codestream, 8)
-    (samples,) = struct.unpack_from(">H", codestream, 40)
-    if length != 38 + 3 * samples or len(codestream) < 4 + length:
-        return None
-    components = [codestream[42 + 3 * i : 45 + 3 * i] for i in range(samples)]
-    return _Header(
-        height - top,
-        width - left,
-        samples,
-        # Ssiz: the sign in its high bit, and the precision less one.
-        frozenset((size & 0x7F) + 1 for size, _, _ in components),
-        subsampled=any((across, down) != (1, 1) for _, across, down in components),
-    )
 
 
 def _offsets_match(source: SourceEvidence, frames: int) -> bool:
