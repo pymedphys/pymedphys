@@ -702,22 +702,18 @@ class InstanceTransform:
         plan = plan_instance(source, self._rules, iod)
         edits = edit_instance(source, plan, self._key, record.patient)
         evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
-        if classification.sequestered or edits.sequestrations:
+        if classification.sequestered:
+            reasons: tuple[object, ...] = (classification.disposition,)
+        else:
+            undecoded = None if edits.sequestrations else frames_problem(source)
+            reasons = edits.sequestrations or (
+                () if undecoded is None else (undecoded,)
+            )
+        if reasons:
             # An instance out of scope is planned and edited only so that
             # its identifiers are collected for its subject's search (D-027).
             return Sequestered(
-                (classification.disposition,)
-                if classification.sequestered
-                else edits.sequestrations,
-                evidence,
-                (*risk, *dropped_of(edits), *omissions_of(evidence)),
-            )
-        undecoded = frames_problem(source)
-        if undecoded is not None:
-            return Sequestered(
-                (undecoded,),
-                evidence,
-                (*risk, *dropped_of(edits), *omissions_of(evidence)),
+                reasons, evidence, (*risk, *dropped_of(edits), *omissions_of(evidence))
             )
         satisfied = False
         retained: frozenset[ElementPath] = frozenset()
