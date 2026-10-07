@@ -33,6 +33,7 @@ from pymedphys._dicom.deidentify import (
     release_report,
     reviewed_roi_names,
     roi_names,
+    scope,
     walker,
 )
 from pymedphys._dicom.deidentify.file_layout import ElementPath
@@ -93,6 +94,14 @@ def _full_report():
             ),
             release_report.SequesteredInstance(
                 "S-0002", (release_report.sequestration_reason(gate),)
+            ),
+            release_report.SequesteredInstance(
+                "S-0003",
+                (
+                    release_report.sequestration_reason(
+                        scope.UnsupportedIod("MR Image")
+                    ),
+                ),
             ),
         ),
         held=(release_report.HeldForReview("release", "read-as-latin-1", 2),),
@@ -238,10 +247,12 @@ def test_each_sequestered_reason_is_a_row_under_its_label():
     markdown = to_markdown(release_report.to_json(_full_report()))
     section = markdown.split("## Sequestered instances", 1)[1].split("\n## ", 1)[0]
     rows = [line for line in section.splitlines() if line.startswith("| ")]
+    assert rows[0] == "| Label | Stage | Code | Attribute | Action | VR | IOD |"
     assert rows[2:] == [
-        "| `S-0001` | `references` | `conflicting-instance` | | | |",
-        "| | `walker` | `no-dummy-value` | `(0010,1002) > (0010,0020)` | `D` | `SQ` |",
-        "| `S-0002` | `release` | `residual-person-name` | `(0008,103E)` | | |",
+        "| `S-0001` | `references` | `conflicting-instance` | | | | |",
+        "| | `walker` | `no-dummy-value` | `(0010,1002) > (0010,0020)` | `D` | `SQ` | |",
+        "| `S-0002` | `release` | `residual-person-name` | `(0008,103E)` | | | |",
+        "| `S-0003` | `scope` | `unsupported-iod` | | | | `MR Image` |",
     ]
 
 
@@ -383,6 +394,10 @@ def _changed(change):
         lambda d: d["sequestered"][0]["reasons"][0].update(action="K"),
         lambda d: d["sequestered"][0]["reasons"][1].pop("vr"),
         lambda d: d["sequestered"][1]["reasons"][0].update(vr="SQ"),
+        lambda d: d["sequestered"][1]["reasons"][0].update(iod="MR Image"),
+        lambda d: d["sequestered"][2]["reasons"][0].pop("iod"),
+        lambda d: d["sequestered"][2]["reasons"][0].update(attribute="(0010,0010)"),
+        lambda d: d["sequestered"][2]["reasons"][0].update(iod="MR `SENTINEL`"),
         lambda d: d["method"].update(method_digest=None),
         lambda d: d["released"].append(""),
         lambda d: d["released"].append(" SENTINEL "),
