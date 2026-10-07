@@ -48,6 +48,7 @@ from pymedphys._dicom.deidentify.policy import compose_policy
 from pymedphys._dicom.deidentify.reasons import RunReason, TransformReason
 from pymedphys._dicom.deidentify.reviewed_roi_names import Outcome, RoiNameCounts
 from pymedphys._dicom.deidentify.roi_names import Reason
+from pymedphys._dicom.deidentify.scope import Disposition, UnsupportedIod
 from pymedphys._dicom.deidentify.reference_graph import Finding, FindingKind
 from pymedphys._dicom.deidentify.residuals import (
     Form,
@@ -206,6 +207,41 @@ def test_the_report_names_each_sequestered_input_by_its_label(tmp_path):
     )
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06", "MIDI-BP-18")
+@pytest.mark.pydicom
+def test_the_report_names_the_iod_of_an_input_the_release_does_not_support(tmp_path):
+    nm = synthetic.instance(
+        synthetic.NM_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
+    )
+    _write(tmp_path / "source", [*synthetic.collection(), nm])
+    transform = InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
+
+    result = _run(tmp_path, transform, ReleaseGate(), transform.reporter)
+
+    withheld = [o for o in result.outcomes if o.status is not run.Status.RELEASED]
+    assert [(o.status, o.reasons) for o in withheld] == [
+        (run.Status.SEQUESTERED, (UnsupportedIod("Nuclear Medicine Image"),))
+    ]
+    document = json.loads((tmp_path / "release" / RELEASE_REPORT).read_text())
+    assert document["sequestered"] == [
+        {
+            "label": "S-0001",
+            "reasons": [
+                {
+                    "stage": "scope",
+                    "code": "unsupported-iod",
+                    "iod": "Nuclear Medicine Image",
+                }
+            ],
+        }
+    ]
+    markdown = (tmp_path / "release" / RELEASE_REPORT_MARKDOWN).read_text()
+    assert (
+        "| `S-0001` | `scope` | `unsupported-iod` | | | | `Nuclear Medicine Image` |"
+        in markdown
+    )
+
+
 class _FailingReporter:
     def admits(self, status, reasons):  # pylint: disable = unused-argument
         return True
@@ -303,6 +339,10 @@ def test_the_reporter_admits_only_reasons_it_can_report():
     assert reporter.admits(HELD_FOR_REVIEW, (review,))
     assert not reporter.admits(HELD_FOR_REVIEW, (_WITHHOLD,))
     assert not reporter.admits(SEQUESTERED, (RunReason.SYMBOLIC_LINK,))
+    # An unsupported IOD is reported with the IOD, never without it.
+    assert reporter.admits(SEQUESTERED, (UnsupportedIod("Comprehensive SR"),))
+    assert not reporter.admits(SEQUESTERED, (Disposition.UNSUPPORTED_IOD,))
+    assert not reporter.admits(SEQUESTERED, (UnsupportedIod("RT Plan"),))
     assert not reporter.admits(SEQUESTERED, ())
     assert not reporter.admits(SEQUESTERED, [_WITHHOLD])
     assert not reporter.admits("released", (_WITHHOLD,))

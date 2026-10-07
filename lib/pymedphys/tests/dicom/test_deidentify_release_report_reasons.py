@@ -32,6 +32,7 @@ from pymedphys._dicom.deidentify import (
     reviewed_roi_names,
     roi_names,
     scope,
+    sop_classes,
     source,
     walker,
 )
@@ -68,7 +69,8 @@ _SEQUESTERING = [
     *(
         (each, "scope")
         for each in scope.Disposition
-        if each is not scope.Disposition.SUPPORTED
+        # An unsupported IOD's reason is given with the IOD, below.
+        if each not in (scope.Disposition.SUPPORTED, scope.Disposition.UNSUPPORTED_IOD)
     ),
     *((each, "admission") for each in source.SourceReason),
     (reference_graph.FindingKind.MISSING_IDENTIFIER, "references"),
@@ -100,6 +102,93 @@ def test_each_stage_that_sequesters_gives_its_reason_code(basic, cause, stage):
     assert release_report.report_document(report)["sequestered"][0]["reasons"] == [
         {"stage": stage, "code": cause.value}
     ]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06", "MIDI-BP-18")
+@pytest.mark.parametrize(
+    "iod", ["Comprehensive SR", "Nuclear Medicine Image", "12-Lead ECG"]
+)
+def test_an_unsupported_iod_is_named_with_its_reason(basic, iod):
+    reason = release_report.sequestration_reason(scope.UnsupportedIod(iod))
+
+    assert reason == release_report.SequestrationReason(
+        "scope", "unsupported-iod", iod=iod
+    )
+    report = release_report.release_report(
+        basic,
+        vocabulary=None,
+        reviewed_roi_names=None,
+        sequestered=(release_report.SequesteredInstance("S-0001", (reason,)),),
+    )
+    assert release_report.report_document(report)["sequestered"][0]["reasons"] == [
+        {"stage": "scope", "code": "unsupported-iod", "iod": iod}
+    ]
+
+
+def test_each_iod_that_can_be_named_is_one_that_table_b_5_1_names_unsupported():
+    named = scope.unsupported_iods()
+    table = {row.iod_name for row in sop_classes.load_storage_sop_classes().rows}
+
+    assert named == table - scope.SUPPORTED_IODS
+    assert not named & {"CT Image", "RT Dose", "RT Plan", "RT Structure Set"}
+
+
+def _with_code(code):
+    cause = scope.UnsupportedIod("Nuclear Medicine Image")
+    object.__setattr__(cause, "code", code)
+    return cause
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        # A report gives an unsupported IOD's reason only with the IOD.
+        scope.Disposition.UNSUPPORTED_IOD,
+        scope.UnsupportedIod("CT Image"),
+        scope.UnsupportedIod("SENTINEL"),
+        scope.UnsupportedIod("Nuclear Medicine Image IOD"),
+        scope.UnsupportedIod(None),  # type: ignore[arg-type]
+        _with_code(scope.Disposition.UNLISTED_SOP_CLASS),
+        _with_code("unsupported-iod"),
+    ],
+)
+def test_an_unsupported_iod_without_an_iod_that_table_b_5_1_names_is_refused(cause):
+    with pytest.raises((TypeError, ValueError)) as raised:
+        release_report.sequestration_reason(cause)
+
+    assert "SENTINEL" not in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        release_report.SequestrationReason("scope", "unsupported-iod"),
+        release_report.SequestrationReason("scope", "unsupported-iod", iod="SENTINEL"),
+        release_report.SequestrationReason(
+            "scope", "unsupported-iod", iod=_Text("Nuclear Medicine Image")
+        ),
+        release_report.SequestrationReason(
+            "scope", "unsupported-iod", "(0010,0010)", iod="Nuclear Medicine Image"
+        ),
+        release_report.SequestrationReason(
+            "scope", "no-sop-class", iod="Nuclear Medicine Image"
+        ),
+        release_report.SequestrationReason(
+            "release", "residual-person-name", iod="Nuclear Medicine Image"
+        ),
+    ],
+)
+def test_a_report_gives_an_iod_only_for_an_unsupported_iod(basic, reason):
+    report = release_report.release_report(
+        basic,
+        vocabulary=None,
+        reviewed_roi_names=None,
+        sequestered=(release_report.SequesteredInstance("S-0001", (reason,)),),
+    )
+    with pytest.raises(release_report.ReleaseReportError) as raised:
+        release_report.to_json(report)
+
+    assert "SENTINEL" not in str(raised.value)
 
 
 @pytest.mark.parametrize("reason", list(walker.SequesterReason))
