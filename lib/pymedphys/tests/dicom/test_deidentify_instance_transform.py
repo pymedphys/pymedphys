@@ -578,6 +578,44 @@ def test_a_compressed_instance_in_scope_keeps_its_pixel_data_byte_for_byte(
     assert b"SENTINEL" not in result.data
 
 
+@pytest.mark.parametrize(
+    "reason",
+    [
+        TransformReason.NO_DECODER,
+        TransformReason.OFFSET_TABLE_MISMATCH,
+        TransformReason.UNDECODABLE_PIXEL_DATA,
+        TransformReason.FRAME_MISMATCH,
+    ],
+)
+def test_a_compressed_instance_whose_frames_cannot_be_shown_sound_is_sequestered(
+    monkeypatch, reason
+):
+    monkeypatch.setattr(
+        scope,
+        "SUPPORTED_TRANSFER_SYNTAXES",
+        scope.SUPPORTED_TRANSFER_SYNTAXES | {pydicom.uid.RLELossless},
+    )
+    seen = []
+
+    def frames_problem(source):
+        seen.append(source.transfer_syntax)
+        return reason
+
+    monkeypatch.setattr(instance_transform, "frames_problem", frames_problem)
+    data = _rle_ct_slice()
+
+    result = _transform()(data, InstanceRecord.from_file(data))
+
+    assert seen == [pydicom.uid.RLELossless]
+    assert isinstance(result, run.Sequestered)
+    assert result.reasons == (reason,)
+    # Planned first, so its values still reach its subject's search (D-027).
+    evidence = result.evidence
+    assert isinstance(evidence, Coverage)
+    values = evidence.collected  # pylint: disable=no-member
+    assert SENTINEL_NAME in {str(value.value) for value in values}
+
+
 def test_a_source_file_that_is_not_ps3_10_is_sequestered_by_the_source_reason():
     data = synthetic.written(synthetic.rt_plan())
     record = InstanceRecord.from_file(data)
