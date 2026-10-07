@@ -40,7 +40,6 @@ from pymedphys._dicom.deidentify import (
     preserving_writer,
     release_report,
     run,
-    scope,
 )
 from pymedphys._dicom.deidentify.edits import EditKind, InstanceEdits, edit_instance
 from pymedphys._dicom.deidentify.element_rules import ElementRules
@@ -443,31 +442,8 @@ def _rle_ct_slice():
     return synthetic.written(dataset, pydicom.uid.RLELossless)
 
 
-@pytest.mark.deid_requirement("MIDI-BP-06")
-def test_a_compressed_instance_is_sequestered_after_its_values_are_collected():
-    data = _rle_ct_slice()
-
-    result = _transform()(data, InstanceRecord.from_file(data))
-
-    assert isinstance(result, run.Sequestered)
-    assert result.reasons == (scope.Disposition.UNSUPPORTED_TRANSFER_SYNTAX,)
-    # Read and planned, so its values reach its subject's search (D-027).
-    evidence = result.evidence
-    assert isinstance(evidence, Coverage)
-    values = evidence.collected  # pylint: disable=no-member
-    assert SENTINEL_NAME in {str(value.value) for value in values}
-    assert "SENTINEL" not in repr(result)
-
-
 @pytest.mark.deid_requirement("PS3.15-E.1.1-02")
-def test_a_compressed_instance_in_scope_keeps_its_pixel_data_byte_for_byte(
-    monkeypatch,
-):
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_TRANSFER_SYNTAXES",
-        scope.SUPPORTED_TRANSFER_SYNTAXES | {pydicom.uid.RLELossless},
-    )
+def test_a_compressed_instance_keeps_its_pixel_data_byte_for_byte():
     data = _rle_ct_slice()
 
     result = _transform()(data, InstanceRecord.from_file(data))
@@ -496,11 +472,6 @@ def test_a_compressed_instance_in_scope_keeps_its_pixel_data_byte_for_byte(
 def test_a_compressed_instance_whose_frames_cannot_be_shown_sound_is_sequestered(
     monkeypatch, reason
 ):
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_TRANSFER_SYNTAXES",
-        scope.SUPPORTED_TRANSFER_SYNTAXES | {pydicom.uid.RLELossless},
-    )
     seen = []
 
     def frames_problem(source):
@@ -543,12 +514,7 @@ def _comment(text):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-14")
-def test_a_jpeg_comment_is_cut_without_recompression(monkeypatch):
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_TRANSFER_SYNTAXES",
-        scope.SUPPORTED_TRANSFER_SYNTAXES | {compressed.JPEG_LOSSLESS_SV1},
-    )
+def test_a_jpeg_comment_is_cut_without_recompression():
     data, frame = _jpeg_lossless_ct_slice(_comment(b"SENTINEL^COMMENT"))
 
     result = _transform()(data, InstanceRecord.from_file(data))
@@ -562,16 +528,11 @@ def test_a_jpeg_comment_is_cut_without_recompression(monkeypatch):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-14")
-def test_openjpegs_comment_is_cut_from_a_jpeg_2000_image(monkeypatch):
+def test_openjpegs_comment_is_cut_from_a_jpeg_2000_image():
     syntax = "1.2.840.10008.1.2.4.90"
     if not pixel_decoding.decoder_available(syntax):
         pytest.skip("no JPEG 2000 decoder is installed")
     pytest.importorskip("openjpeg")
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_TRANSFER_SYNTAXES",
-        scope.SUPPORTED_TRANSFER_SYNTAXES | {syntax},
-    )
     frame = (np.arange(64 * 64, dtype=np.uint16).reshape(64, 64) * 7) % 4096
     codestream = compressed.jpeg_2000(frame, precision=12)
     # pylibjpeg-openjpeg's encoder writes a comment (COM) in the main header.
@@ -590,11 +551,6 @@ def test_openjpegs_comment_is_cut_from_a_jpeg_2000_image(monkeypatch):
 
 
 def test_a_cut_that_changes_the_pixels_sequesters_the_instance(monkeypatch):
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_TRANSFER_SYNTAXES",
-        scope.SUPPORTED_TRANSFER_SYNTAXES | {compressed.JPEG_LOSSLESS_SV1},
-    )
     monkeypatch.setattr(instance_transform, "same_pixels", lambda source, output: False)
     data, _ = _jpeg_lossless_ct_slice(_comment(b"SENTINEL^COMMENT"))
 
@@ -607,11 +563,6 @@ def test_a_cut_that_changes_the_pixels_sequesters_the_instance(monkeypatch):
 def test_compressed_pixel_data_with_nothing_to_cut_is_kept_byte_for_byte(
     monkeypatch,
 ):
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_TRANSFER_SYNTAXES",
-        scope.SUPPORTED_TRANSFER_SYNTAXES | {compressed.JPEG_LOSSLESS_SV1},
-    )
     compared = []
     monkeypatch.setattr(
         instance_transform,
@@ -631,12 +582,7 @@ def test_compressed_pixel_data_with_nothing_to_cut_is_kept_byte_for_byte(
     assert not compared
 
 
-def test_a_codestream_that_does_not_parse_sequesters_the_instance(monkeypatch):
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_TRANSFER_SYNTAXES",
-        scope.SUPPORTED_TRANSFER_SYNTAXES | {compressed.JPEG_LOSSLESS_SV1},
-    )
+def test_a_codestream_that_does_not_parse_sequesters_the_instance():
     data, _ = _jpeg_lossless_ct_slice()
     # Text after the end of the frame's codestream, which pydicom's decoders
     # do not read, so that the frame still decodes.

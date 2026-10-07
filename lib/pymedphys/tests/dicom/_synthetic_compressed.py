@@ -19,9 +19,11 @@ no encoder in pydicom or its plugins, so :func:`jpeg_lossless` encodes one
 here, with a single Huffman table in which every difference category has
 a 5-bit code. The other syntaxes are encoded by pydicom (RLE Lossless),
 Pillow (JPEG Baseline), or pylibjpeg-openjpeg (JPEG 2000), which a test
-skips without.
+skips without. :func:`compressed_corpus` writes the synthetic corpus's
+images again in these syntaxes, with text planted in their codestreams.
 """
 
+import dataclasses
 import io
 import struct
 from collections.abc import Sequence
@@ -221,3 +223,160 @@ def rle_ct_image(frame, *, name: str = "FICTITIOUS^PERSON") -> bytes:
         pydicom.uid.RLELossless, encoding_plugin="pydicom", generate_instance_uid=False
     )
     return synthetic.written(dataset, RLE_LOSSLESS)
+
+
+# The text planted in the comment and application segments of each
+# codestream of :func:`compressed_corpus`; the corpus's end-to-end tests
+# search every published file for its prefix.
+CODESTREAM_TEXT = "SYNMK-CODESTREAM"
+# The syntaxes of :func:`compressed_corpus`, taken in turn by its images.
+CORPUS_SYNTAXES = (
+    JPEG_LOSSLESS,
+    JPEG_LOSSLESS_SV1,
+    JPEG_2000_LOSSLESS,
+    JPEG_2000,
+    RLE_LOSSLESS,
+)
+_SOT = 0xFF90
+_MAX_PRECISION = 16
+# pylibjpeg-openjpeg encodes with six resolution levels, so neither side of
+# an image it encodes may be under 2 ** 5 samples.
+_SMALLEST_JPEG_2000 = 32
+
+
+def compressed_corpus(corpus):
+    """Return the synthetic corpus with each image written again, compressed.
+
+    The images, the instances with Pixel Data, take :data:`CORPUS_SYNTAXES`
+    in turn, each the next that can encode it, so that RLE Lossless takes
+    any that the others cannot, such as 32-bit samples, and JPEG 2000 none
+    smaller than 32 by 32. Each frame of a JPEG
+    codestream gets a comment and an Exif APP1 segment after its SOI marker,
+    and each of a JPEG 2000 codestream a comment at the end of its main
+    header, holding :data:`CODESTREAM_TEXT` and the file's name. Every other
+    element is written as pydicom reads it, in Explicit VR Little Endian, so
+    the planted attributes and their places are unchanged.
+
+    Parameters
+    ----------
+    corpus : SyntheticCorpus
+        From :func:`~pymedphys._dicom.deidentify.synthetic_corpus.build_corpus`.
+
+    Returns
+    -------
+    SyntheticCorpus
+        The corpus, with each image's file and manifest's transfer syntax
+        replaced.
+    """
+    files, images = [], 0
+    for file in corpus.files:
+        dataset = pydicom.dcmread(io.BytesIO(file.data))
+        if "PixelData" not in dataset:
+            files.append(file)
+            continue
+        syntax = next(
+            each
+            for each in (*CORPUS_SYNTAXES[images:], *CORPUS_SYNTAXES[:images])
+            if _encodes(each, dataset)
+        )
+        images += 1
+        data = _compressed(dataset, syntax, f"{CODESTREAM_TEXT}-{file.name}")
+        manifest = dataclasses.replace(file.manifest, transfer_syntax=syntax)
+        files.append(dataclasses.replace(file, manifest=manifest, data=data))
+    return dataclasses.replace(corpus, files=tuple(files))
+
+
+def _encodes(syntax, dataset) -> bool:
+    """Return whether an encoder here writes the image in ``syntax``."""
+    if syntax == RLE_LOSSLESS:
+        return True
+    if syntax in (JPEG_2000_LOSSLESS, JPEG_2000) and (
+        min(dataset.Rows, dataset.Columns) < _SMALLEST_JPEG_2000
+    ):
+        return False
+    return dataset.SamplesPerPixel == 1 and dataset.BitsStored <= _MAX_PRECISION
+
+
+def _compressed(dataset, syntax, text) -> bytes:
+    """Return the image written in ``syntax``, with ``text`` in its codestreams."""
+    bits = dataset.BitsStored
+    pixels = dataset.pixel_array
+    frames = pixels if pixels.ndim == 3 else pixels[np.newaxis]
+    if syntax == RLE_LOSSLESS:
+        # RLE Lossless has no segment that could hold text.
+        codestreams = [rle_lossless(frame) for frame in frames]
+    else:
+        if syntax in (JPEG_LOSSLESS, JPEG_LOSSLESS_SV1):
+            # T.81 codes samples as unsigned; signed ones keep their bits.
+            mask = (1 << bits) - 1
+            codestreams = [
+                _with_jpeg_text(
+                    jpeg_lossless(
+                        np.asarray(frame, dtype=np.int64) & mask,
+                        precision=bits,
+                        predictor=1 if syntax == JPEG_LOSSLESS_SV1 else 7,
+                    ),
+                    text,
+                )
+                for frame in frames
+            ]
+        else:
+            codestreams = [
+                _with_jpeg_2000_text(jpeg_2000(frame, precision=bits), text)
+                for frame in frames
+            ]
+    offsets = frame_starts(codestreams) if len(codestreams) > 1 else ()
+    dataset.PixelData = encapsulated(codestreams, offsets)
+    dataset["PixelData"].VR = "OB"
+    dataset.file_meta.TransferSyntaxUID = syntax
+    buffer = io.BytesIO()
+    pydicom.dcmwrite(buffer, dataset, enforce_file_format=True)
+    return buffer.getvalue()
+
+
+def rle_lossless(frame) -> bytes:
+    """Return one monochrome frame as an RLE Lossless frame (PS3.5 Annex G).
+
+    pydicom's encoder takes samples of at most 16 bits, so this one, for any
+    width, writes each byte plane, most significant first, as literal runs
+    of at most 128 bytes, one more run where that makes a segment's length
+    even.
+    """
+    frame = np.asarray(frame)
+    planes = frame.astype(frame.dtype.newbyteorder(">")).view(np.uint8)
+    planes = planes.reshape(*frame.shape, frame.dtype.itemsize)
+    segments = []
+    for plane in np.moveaxis(planes, -1, 0):
+        data = plane.tobytes()
+        runs = [data[i : i + 128] for i in range(0, len(data), 128)]
+        if sum(1 + len(run) for run in runs) % 2:
+            # A run of one byte takes two, so the odd length has a longer one.
+            longer = next(i for i, run in enumerate(runs) if len(run) > 1)
+            runs[longer : longer + 1] = [runs[longer][:1], runs[longer][1:]]
+        segments.append(b"".join(bytes([len(run) - 1]) + run for run in runs))
+    offsets, position = [], 64
+    for segment in segments:
+        offsets.append(position)
+        position += len(segment)
+    header = struct.pack("<16I", len(segments), *offsets, *([0] * (15 - len(offsets))))
+    return header + b"".join(segments)
+
+
+def _with_jpeg_text(codestream: bytes, text: str) -> bytes:
+    """Return a JPEG codestream with a COM and an Exif APP1 segment of ``text``
+    after its SOI marker."""
+    planted = _segment(0xFE, text.encode("ascii"))
+    planted += _segment(0xE1, b"Exif\0\0" + text.encode("ascii"))
+    return codestream[:2] + planted + codestream[2:]
+
+
+def _with_jpeg_2000_text(codestream: bytes, text: str) -> bytes:
+    """Return a JPEG 2000 codestream with a COM segment of ``text``, in Latin
+    characters, before its first SOT marker (ITU-T T.800 Section A.9.2)."""
+    position = 2  # after SOC
+    while struct.unpack_from(">H", codestream, position)[0] != _SOT:
+        (length,) = struct.unpack_from(">H", codestream, position + 2)
+        position += 2 + length
+    comment = struct.pack(">H", 1) + text.encode("ascii")
+    planted = struct.pack(">HH", 0xFF64, len(comment) + 2) + comment
+    return codestream[:position] + planted + codestream[position:]

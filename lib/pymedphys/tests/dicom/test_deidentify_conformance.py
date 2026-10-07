@@ -36,6 +36,7 @@ from pymedphys._dicom.deidentify import (
     pseudonyms,
     scope,
     sop_classes,
+    source,
     standard,
     uid_roles,
     uids,
@@ -336,6 +337,30 @@ def test_the_scope_is_what_the_classifier_supports(statement_for):
         assert f"| {sop_class.uid} | {sop_class.name} | {sop_class.iod} |" in text
     for syntax in statement.transfer_syntaxes:
         assert f"| {syntax.uid} | {syntax.name} |" in text
+
+
+@pytest.mark.deid_requirement("MIDI-BP-14")
+def test_the_statement_says_how_compressed_instances_are_written(statement_for):
+    statement = statement_for("basic")
+    section = _section(
+        conformance_markdown.render_markdown(statement), "Supported instances"
+    )
+
+    assert "1.2.840.10008.1.2.4.70" in {s.uid for s in statement.transfer_syntaxes}
+    assert "without decoding and re-encoding" in section
+    assert "comment and application segments" in section
+    assert "to the same pixels as its source's frame" in section
+    assert "truncated to a rate is not detected" in section
+
+    native = dataclasses.replace(
+        statement,
+        transfer_syntaxes=tuple(
+            s for s in statement.transfer_syntaxes if s.uid in source.NATIVE_TRANSFER_SYNTAXES
+        ),
+    )
+    assert "re-encoding" not in _section(
+        conformance_markdown.render_markdown(native), "Supported instances"
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")

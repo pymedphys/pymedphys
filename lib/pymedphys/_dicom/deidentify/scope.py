@@ -14,11 +14,16 @@
 
 """Tell an instance the engine de-identifies from one it sequesters.
 
-The first supported release de-identifies uncompressed instances of the CT,
-MR, and PET image IODs, including their Enhanced, Legacy Converted Enhanced,
-and colour variants, of MR Spectroscopy, and of the RT Structure Set, RT
-Plan, and RT Dose IODs. Supporting an IOD does not release every instance
-of it: the element rules still sequester some, such as every Enhanced PET
+The first supported release de-identifies instances of the CT, MR, and
+PET image IODs, including their Enhanced, Legacy Converted Enhanced, and
+colour variants, of MR Spectroscopy, and of the RT Structure Set, RT Plan,
+and RT Dose IODs, uncompressed or in a transfer syntax that encapsulates
+Pixel Data that pydicom's decoding plugins decode. Supporting an IOD or a
+transfer syntax does not release every instance in it: a compressed
+instance is still sequestered where the plugin pinned to its transfer
+syntax is not installed, or where its frames or codestreams fail the
+engine's checks (:mod:`~pymedphys._dicom.deidentify.instance_transform`),
+and the element rules still sequester some, such as every Enhanced PET
 Image instance that conforms to its IOD, under both presets of the first
 supported release. Every other instance is sequestered: neither
 de-identified nor written, and listed in the run report by opaque
@@ -40,6 +45,7 @@ import enum
 import functools
 
 from .sop_classes import StorageSOPClass, load_storage_sop_classes
+from .source import ENCAPSULATED_TRANSFER_SYNTAXES, NATIVE_TRANSFER_SYNTAXES
 from .uid_registry import RegistryTable
 from .uids import normalise_uid
 
@@ -63,9 +69,12 @@ SUPPORTED_IODS = frozenset(
         "RT Structure Set",
     }
 )
-# The uncompressed transfer syntaxes the first release reads: Implicit VR
-# Little Endian and Explicit VR Little Endian.
-SUPPORTED_TRANSFER_SYNTAXES = frozenset({"1.2.840.10008.1.2", "1.2.840.10008.1.2.1"})
+# Every transfer syntax whose files the engine reads: Implicit VR Little
+# Endian and Explicit VR Little Endian, and those that encapsulate Pixel Data
+# that pydicom 3.0.2's decoding plugins decode, whose transfer syntax and
+# coded pixel data are kept, without recompression, once their codestreams'
+# metadata segments are cut (design Architecture items 2 and 7).
+SUPPORTED_TRANSFER_SYNTAXES = NATIVE_TRANSFER_SYNTAXES | ENCAPSULATED_TRANSFER_SYNTAXES
 
 
 class Disposition(enum.Enum):
