@@ -40,7 +40,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence
 
-from .release_report import FORMAT
+from .release_report import FORMAT, STRUCTURAL_CHECKS
 
 # The name of each field of a section, as a reader sees it, in the order of
 # the document.
@@ -71,6 +71,10 @@ _RUNTIME = {
     "pydicom_version": "pydicom",
     "tomlkit_version": "tomlkit",
 }
+_CONFIRMATIONS = {
+    "intended_use_checked": "Intended use checked",
+    "residual_risk_accepted": "Residual risk accepted",
+}
 _SECTIONS = (
     "format",
     "policy",
@@ -85,6 +89,7 @@ _SECTIONS = (
     "pixel_risks",
     "search_coverage",
     "source_gaps",
+    "structural_checks",
 )
 _NONE = "None."
 
@@ -147,6 +152,7 @@ def to_markdown(report: str) -> str:
         *_pixel_risks(document["pixel_risks"]),
         *_coverage(document["search_coverage"]),
         *_gaps(document["source_gaps"]),
+        *_structural_checks(document["structural_checks"]),
     ]
     return "\n\n".join("\n".join(block) for block in blocks) + "\n"
 
@@ -239,18 +245,29 @@ def _qc_review(section: object) -> list[Block]:
     heading = ["## QC review"]
     if section is None:
         return [heading, ["No QC pack was written for this run."]]
-    section = _fields("qc_review", section, ("reference", "outcome"))
+    section = _fields("qc_review", section, ("reference", "outcome", *_CONFIRMATIONS))
     return [
         heading,
         [
-            "The run's confidential QC pack, by its opaque reference, and the "
-            "outcome of a reviewer's attestation of it."
+            "The run's confidential QC pack, by its opaque reference, the "
+            "outcome of a reviewer's attestation of it, and whether the person "
+            "releasing the data confirmed in it that the output was checked "
+            "for its intended use and that its residual risk was accepted."
         ],
         _table(
             ("Field", "Value"),
             [
                 ("Reference", _code("qc_review reference", section["reference"])),
                 ("Attestation", _code("qc_review outcome", section["outcome"])),
+                *(
+                    (
+                        label,
+                        "not stated"
+                        if section[name] is None
+                        else _boolean(f"qc_review {name}", section[name]),
+                    )
+                    for name, label in _CONFIRMATIONS.items()
+                ),
             ],
         ),
     ]
@@ -495,6 +512,39 @@ def _gaps(section: object) -> list[Block]:
     ]
 
 
+def _structural_checks(section: object) -> list[Block]:
+    entries = [
+        _fields("structural_checks", entry, ("check", "sequestered", "reported"))
+        for entry in _list("structural_checks", section)
+    ]
+    if [entry["check"] for entry in entries] != list(STRUCTURAL_CHECKS):
+        raise _refuse("structural_checks")
+    return [
+        ["## Structural checks"],
+        [
+            "The engine's checks that the release is well formed and refers to "
+            "itself as the source did: how the inputs refer to each other, "
+            "whether each written instance keeps the attributes that its IOD "
+            "requires, and whether what was written refers to itself as the "
+            "inputs did. For each, how many instances it sequestered and how "
+            "many it reported without acting on them, each instance once. The "
+            "confidential QC pack names them. These checks show that the "
+            "release is consistent, not that it suits a particular use."
+        ],
+        _table(
+            ("Check", "Sequestered", "Reported"),
+            [
+                (
+                    _code("structural_checks check", entry["check"]),
+                    _tally("structural_checks sequestered", entry["sequestered"]),
+                    _tally("structural_checks reported", entry["reported"]),
+                )
+                for entry in entries
+            ],
+        ),
+    ]
+
+
 def _table(header: Sequence[str], rows: Sequence[Sequence[str]]) -> Block:
     def line(cells: Sequence[str]) -> str:
         return "|" + "".join(f" {cell} |" if cell else " |" for cell in cells)
@@ -546,6 +596,12 @@ def _code(field: str, value: object) -> str:
 
 def _count(field: str, value: object) -> str:
     if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        raise _refuse(field)
+    return f"`{value}`"
+
+
+def _tally(field: str, value: object) -> str:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
         raise _refuse(field)
     return f"`{value}`"
 

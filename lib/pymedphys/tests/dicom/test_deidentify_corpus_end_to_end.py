@@ -405,6 +405,7 @@ def test_each_preset_releases_all_but_the_instances_it_must_hold(
     "PS3.15-E.1.1-06",
     "PS3.15-E.1.1-09",
     "PS3.15-E.3.10-02",
+    "MIDI-BP-05",
     "MIDI-BP-11",
     "MIDI-BP-13",
 )

@@ -16,6 +16,7 @@
 
 import functools
 import io
+import json
 import os
 import shutil
 import tempfile
@@ -30,6 +31,7 @@ from pymedphys._dicom.deidentify import (
     pseudonyms,
     release_report,
     run,
+    run_report,
     run_written,
     uid_roles,
     uids,
@@ -229,6 +231,40 @@ def test_a_reference_written_wrongly_sequesters_only_its_instance(tmp_path):
     ]
     assert result.written_findings[0].instances == ((DOSE,),)
     assert result.written_findings[1].instances == ((PLAN,),)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-17")
+def test_the_report_counts_what_the_check_withheld_and_reported(tmp_path):
+    def wrong_reference(dataset):
+        dataset.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID = "2.25.999"
+
+    reporter = run_report.ReleaseReporter(
+        compose_policy("basic"), vocabulary=None, reviewed_roi_names=None
+    )
+    result = run.run(
+        run.discover(_source(tmp_path)),
+        tmp_path / "release",
+        Transform({synthetic.DOSE: wrong_reference}),
+        _gate,
+        qc_destination=tmp_path / "qc",
+        written_check=functools.partial(
+            written_references.verify_written_references, KEY
+        ),
+        reporter=reporter,
+    )
+
+    text = (result.release / run_report.RELEASE_REPORT).read_text(encoding="utf-8")
+    assert json.loads(text)["structural_checks"][-1] == {
+        "check": "written-references",
+        "sequestered": 1,
+        "reported": 1,
+    }
+    assert "2.25.999" not in text
+    # The pack lists the plan's reference to the withheld dose by position.
+    pack = json.loads(result.qc_pack.read_text(encoding="utf-8"))
+    assert [
+        (entry["position"], entry["kind"]) for entry in pack["reference_findings"]
+    ] == [(PLAN, "unwritten-target")]
 
 
 def test_instances_written_with_one_sop_instance_uid_are_all_sequestered(tmp_path):

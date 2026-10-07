@@ -28,7 +28,9 @@ them for one instance:
   which is not released (D-027); the user may instead choose to empty such
   names so that the run proceeds. The identifiers checked are the decoded
   source values of every person name, Patient ID, Issuer of Patient ID, and
-  Other Patient IDs that the edits collected.
+  Other Patient IDs that the edits collected. An institutional list, if
+  the run has one, renames nothing: a held name is given the list's names
+  that it matches, for its reviewer.
 - Every other attribute given C, which D-009 does not yet clean, takes its
   action under the policy without Clean Descriptors. Where that action
   removes or replaces it, the instance still satisfies the option, since
@@ -48,9 +50,10 @@ reviewer's replacement need not resemble it.
 from __future__ import annotations
 
 import dataclasses
+import functools
 from collections.abc import Callable, Mapping, Sequence
 
-from pymedphys._nomenclature import tg263
+from pymedphys._nomenclature import roi_list, tg263
 
 from .edits import Edit, EditKind, InstanceEdits
 from .file_layout import ElementPath
@@ -64,7 +67,7 @@ from .reviewed_roi_names import (
     ReviewQueue,
     clean_roi_names,
 )
-from .roi_names import RoiNameVocabulary
+from .roi_names import InstitutionalNames, RoiNameVocabulary
 from .run_qc import RetainedText, RoiNameMaterial
 
 CLEAN_DESCRIPTORS = "clean_descriptors"
@@ -99,6 +102,12 @@ class DescriptorCleaning:
     empty_held : bool
         Whether to empty a ROI Name that would be held for review, as the
         user may choose explicitly so that the run proceeds.
+    institutional : ~pymedphys._nomenclature.roi_list.RoiList or None
+        An institutional list of ROI names, converted from CSV, or None. It
+        renames nothing: a held name that matches one of its names is still
+        held, and the QC pack shows its reviewer the names it matched
+        (D-009). Since it changes no value written, the method digest does
+        not cover it.
 
     Raises
     ------
@@ -112,12 +121,17 @@ class DescriptorCleaning:
     nomenclature: tg263.Nomenclature | None = dataclasses.field(repr=False)
     reviewed: ReviewedNames = dataclasses.field(repr=False)
     empty_held: bool = False
+    institutional: roi_list.RoiList | None = dataclasses.field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.reviewed, ReviewedNames):
             raise TypeError("reviewed must be ReviewedNames")
         if not isinstance(self.empty_held, bool):
             raise TypeError("empty_held must be True or False")
+        if self.institutional is not None and not isinstance(
+            self.institutional, roi_list.RoiList
+        ):
+            raise TypeError("institutional must be a converted institutional list")
         if self.nomenclature is not None:
             RoiNameVocabulary(self.nomenclature)  # checks it is published
 
@@ -127,6 +141,13 @@ class DescriptorCleaning:
         if self.nomenclature is None:
             return None
         return RoiNameVocabulary(self.nomenclature)
+
+    @functools.cached_property
+    def institutional_names(self) -> InstitutionalNames | None:
+        """The institutional list's names, indexed once, for held names to match."""
+        if self.institutional is None:
+            return None
+        return InstitutionalNames(self.institutional)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -279,6 +300,7 @@ def _material(
         RoiNameOutcome(result.outcome.value),
         result.held_because,
         result.value,
+        result.institutional_matches,
     )
     if result.outcome is Outcome.KEPT and result.value:
         return (material, RetainedText(result.value, path))
@@ -326,6 +348,7 @@ def _cleaned_names(
         cleaning.reviewed,
         identifiers=identifiers,
         empty_held=cleaning.empty_held,
+        institutional=cleaning.institutional_names,
     )
     return texts, results
 

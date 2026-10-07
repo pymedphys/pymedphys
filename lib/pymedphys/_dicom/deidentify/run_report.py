@@ -68,6 +68,7 @@ from .run_qc import (
     RoiNameMaterial,
     SearchMaterial,
     SeriesEvidence,
+    WrittenFindingMaterial,
     assessed_series,
 )
 
@@ -194,6 +195,7 @@ class ReleaseReporter:
                 [item for item in material[position] if isinstance(item, SourceGap)]
                 for position in sorted(material)
             ),
+            checks=structural_checks(outcomes, material),
         )
         return release_report.to_json(report)
 
@@ -397,6 +399,55 @@ def pixel_risks(
         (statuses[position], found[position])
         for position in sorted(found)
         if position in statuses and position not in copies
+    )
+
+
+# The material by which each structural check reports an instance.
+_REPORTED_BY_CHECK = {
+    "references": ReferenceFindingMaterial,
+    "iod-requirements": SourceGap,
+    "written-references": WrittenFindingMaterial,
+}
+
+
+def structural_checks(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> tuple[release_report.StructuralCheck, ...]:
+    """Count the instances that each structural check sequestered and reported.
+
+    An instance is sequestered by a check for the reasons that
+    :func:`~pymedphys._dicom.deidentify.release_report.sequestering_checks`
+    gives it for. It is reported by the first pass's references for a
+    :class:`~pymedphys._dicom.deidentify.run_qc.ReferenceFindingMaterial`,
+    by the IOD requirements for a gap in its source, a
+    :class:`~pymedphys._dicom.deidentify.iod_conformance.SourceGap`, and by
+    the written references for a
+    :class:`~pymedphys._dicom.deidentify.run_qc.WrittenFindingMaterial`.
+    Each is counted once however many it has, and an identical copy of an
+    input is the same instance, so it is not counted again.
+    """
+    copies = {
+        getattr(outcome, "position")
+        for outcome in outcomes
+        if getattr(outcome, "duplicate_of") is not None
+    }
+    sequestered = [
+        release_report.sequestering_checks(_reasons_given(getattr(outcome, "reasons")))
+        for outcome in outcomes
+        if getattr(outcome, "label") is not None
+        and getattr(outcome, "duplicate_of") is None
+    ]
+    return tuple(
+        release_report.StructuralCheck(
+            check,
+            sum(check in checks for checks in sequestered),
+            sum(
+                any(isinstance(item, kind) for item in material[position])
+                for position in material
+                if position not in copies
+            ),
+        )
+        for check, kind in _REPORTED_BY_CHECK.items()
     )
 
 

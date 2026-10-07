@@ -41,7 +41,9 @@ from .file_layout import ElementPath
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .reference_graph import Finding, FindingKind
 from .release_report import REPORTED_FINDINGS
+from .run_written import REPORTED_ONLY
 from .roi_names import Reason
+from .written_references import WrittenFinding, WrittenFindingKind
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -88,6 +90,7 @@ class RoiNameMaterial:
     outcome: RoiNameOutcome
     held_because: Reason | None = None
     written: str | None = None
+    institutional_matches: tuple[str, ...] = ()
 
     def __repr__(self) -> str:
         return (
@@ -151,6 +154,43 @@ def with_reported_findings(
         if finding.kind not in REPORTED_FINDINGS:
             continue
         item = ReferenceFindingMaterial(finding.kind, finding.attribute, finding.count)
+        for position in sorted({p for group in finding.instances for p in group}):
+            added[position] = (*added.get(position, ()), item)
+    return added
+
+
+@dataclasses.dataclass(frozen=True)
+class WrittenFindingMaterial:
+    """A second-pass finding at an input that the run reports without acting on it.
+
+    The run gives one to each input that a finding of a kind in
+    :data:`~pymedphys._dicom.deidentify.run_written.REPORTED_ONLY` names,
+    such as a written reference to an instance that was not written. Its
+    attributes are those of
+    :class:`~pymedphys._dicom.deidentify.written_references.WrittenFinding`
+    but its positions, and hold no value.
+    """
+
+    kind: WrittenFindingKind
+    attribute: tuple[str, ...]
+    count: int = 0
+
+
+def with_written_findings(
+    material: Mapping[int, Sequence[object]], findings: Sequence[WrittenFinding]
+) -> dict[int, tuple[object, ...]]:
+    """Return a run's material with the second pass's findings that it reports only.
+
+    Each distinct finding of a kind in
+    :data:`~pymedphys._dicom.deidentify.run_written.REPORTED_ONLY` is added
+    as a :class:`WrittenFindingMaterial` to the material of each input, by
+    run position, in its groups, once.
+    """
+    added = {position: tuple(items) for position, items in material.items()}
+    for finding in dict.fromkeys(findings):
+        if finding.kind not in REPORTED_ONLY:
+            continue
+        item = WrittenFindingMaterial(finding.kind, finding.attribute, finding.count)
         for position in sorted({p for group in finding.instances for p in group}):
             added[position] = (*added.get(position, ()), item)
     return added
@@ -272,9 +312,10 @@ def qc_pack_of(
                         item.outcome,
                         item.held_because,
                         item.written,
+                        item.institutional_matches,
                     )
                 )
-            elif isinstance(item, ReferenceFindingMaterial):
+            elif isinstance(item, (ReferenceFindingMaterial, WrittenFindingMaterial)):
                 reference_findings.append(
                     qc_pack.ReferenceFindingEntry(
                         position, item.kind, item.attribute, item.count

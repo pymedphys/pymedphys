@@ -79,7 +79,7 @@ def _full_report():
     )
     return _report(
         qc_review=qc_attestation.AttestationRecord(
-            _REFERENCE, qc_attestation.Outcome.NOT_ATTESTED
+            _REFERENCE, qc_attestation.Outcome.ATTESTED, True, None
         ),
         released=(_output_name("one"), _output_name("two")),
         sequestered=(
@@ -238,6 +238,7 @@ def test_the_sections_follow_the_documents_order():
         "## Pixel data risks",
         "## Values not searched",
         "## Required attributes missing from the source",
+        "## Structural checks",
     ]
     assert markdown.splitlines()[0] == "# De-identification release report"
 
@@ -283,6 +284,14 @@ def test_the_reference_findings_are_counted_by_kind():
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-17")
+def test_the_releasers_confirmations_are_shown_or_said_to_be_absent():
+    markdown = to_markdown(release_report.to_json(_full_report()))
+    review = markdown.split("## QC review", 1)[1].split("\n## ", 1)[0]
+    assert "| Intended use checked | `true` |" in review
+    assert "| Residual risk accepted | not stated |" in review
+
+
 @pytest.mark.deid_requirement("MIDI-BP-10", "MIDI-BP-18")
 def test_the_pixel_risks_are_counted_by_disposition_risk_and_indicator():
     markdown = to_markdown(release_report.to_json(_full_report()))
@@ -306,7 +315,8 @@ def test_an_empty_run_says_so_in_each_run_section():
     markdown = to_markdown(release_report.to_json(_report()))
     assert "No QC pack was written for this run." in markdown
     assert markdown.count("None.") == 10
-    assert "|" not in markdown.split("## QC review", 1)[1]
+    run = markdown.split("## QC review", 1)[1].split("## Structural checks", 1)[0]
+    assert "|" not in run
 
 
 def test_a_custom_option_set_and_absent_digests_are_named_in_words():
@@ -362,6 +372,9 @@ def _changed(change):
         lambda d: d["roi_names"]["outcomes"][0].update(reason="renamed"),
         lambda d: d["roi_names"]["held"][0].update(count=0),
         lambda d: d["roi_names"]["held"].append({"reason": "`SENTINEL`", "count": 1}),
+        lambda d: d["qc_review"].pop("residual_risk_accepted"),
+        lambda d: d["qc_review"].update(intended_use_checked="yes"),
+        lambda d: d["qc_review"].update(residual_risk_accepted=1),
         lambda d: d.pop("reference_findings"),
         lambda d: d["reference_findings"][0].update(count=0),
         lambda d: d["reference_findings"][0].update(extra="x"),
@@ -445,6 +458,7 @@ def test_text_that_is_not_json_is_refused():
 def test_each_source_gap_is_a_row_with_its_type_and_count():
     markdown = to_markdown(release_report.to_json(_full_report()))
     section = markdown.split("## Required attributes missing from the source", 1)[1]
+    section = section.split("\n## ", 1)[0]
     rows = [line for line in section.splitlines() if line.startswith("| ")]
     assert rows == [
         "| Attribute | Type | Instances |",

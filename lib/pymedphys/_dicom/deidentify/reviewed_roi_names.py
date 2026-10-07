@@ -395,11 +395,17 @@ class CleanedRoiName:
     value : str or None
         The value written, which is None where the name is held. It is left
         out of the ``repr``, since a kept name is a source value.
+    institutional_matches : tuple of str
+        Where the name is ``HELD`` or ``EMPTIED_UNREVIEWED``, the names of the
+        institutional list that it matches, sorted, to show its reviewer;
+        otherwise empty. Left out of the ``repr``, since a list's name can
+        identify a site or a person.
     """
 
     outcome: Outcome
     held_because: Reason | None
     value: str | None = dataclasses.field(repr=False)
+    institutional_matches: tuple[str, ...] = dataclasses.field(default=(), repr=False)
 
 
 def clean_roi_names(
@@ -409,6 +415,7 @@ def clean_roi_names(
     *,
     identifiers: Iterable[str],
     empty_held: bool = False,
+    institutional: roi_names.InstitutionalNames | None = None,
 ) -> tuple[CleanedRoiName, ...]:
     """Decide what is written for each ROI Name of one structure set.
 
@@ -427,6 +434,10 @@ def clean_roi_names(
     empty_held : bool, optional
         Whether to empty a held name rather than hold it, as the user may
         choose explicitly so that the run proceeds.
+    institutional : InstitutionalNames, optional
+        An institutional list, whose names that a held or emptied unreviewed
+        name matches are given with it for its reviewer. It renames nothing,
+        and changes no other outcome or value.
 
     Returns
     -------
@@ -475,6 +486,13 @@ def clean_roi_names(
             if r.outcome is Outcome.HELD
             else r
             for r in results
+        ]
+    if institutional is not None:
+        results = [
+            dataclasses.replace(r, institutional_matches=institutional.matches(name))
+            if r.outcome in (Outcome.HELD, Outcome.EMPTIED_UNREVIEWED)
+            else r
+            for name, r in zip(stripped, results)
         ]
     return tuple(results)
 

@@ -24,7 +24,7 @@ from pathlib import Path
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._nomenclature import tg263
+from pymedphys._nomenclature import roi_list, tg263
 
 from pymedphys._dicom.deidentify import (
     descriptor_cleaning,
@@ -110,11 +110,12 @@ def _reviewed(**decisions):
     return names
 
 
-def _transform(reviewed=None, empty_held=False):
+def _transform(reviewed=None, empty_held=False, institutional=None):
     cleaning = DescriptorCleaning(
         _NOMENCLATURE,
         ReviewedNames.empty() if reviewed is None else reviewed,
         empty_held=empty_held,
+        institutional=institutional,
     )
     return InstanceTransform(
         compose_policy("basic-clean-descriptors"),
@@ -586,3 +587,76 @@ def test_cleaning_refuses_a_vocabulary_that_is_not_published(monkeypatch):
 
     with pytest.raises(ValueError):
         DescriptorCleaning(_NOMENCLATURE, ReviewedNames.empty())
+
+
+def _institutional(*names):
+    return roi_list.RoiList(
+        source=roi_list.Source(
+            kind=roi_list.KIND, file="invented.csv", sha256="0" * 64, version="1"
+        ),
+        entries=tuple(roi_list.Entry(name, "") for name in names),
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+def test_a_run_shows_the_reviewer_the_institutional_names_a_held_name_matched(
+    tmp_path,
+):
+    datasets = [
+        _structure_set("clinicx lung", "lung l", "SURGEONS ROI")
+        if index == 3
+        else dataset
+        for index, dataset in enumerate(synthetic.collection())
+    ]
+    source = tmp_path / "source"
+    source.mkdir()
+    for position, dataset in enumerate(datasets):
+        (source / f"{position}.dcm").write_bytes(synthetic.written(dataset))
+
+    result = run.run(
+        run.discover(source),
+        tmp_path / "release",
+        _transform(institutional=_institutional("ClinicX_Lung", "Lung_L")),
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+    )
+
+    # A match against the institutional list is held for review, never
+    # written, and the QC pack shows its reviewer the list's names.
+    assert result.outcomes[3].status is run.Status.HELD_FOR_REVIEW
+    pack = json.loads(result.qc_pack.read_text(encoding="utf-8"))
+    assert [
+        (name["source"], name["outcome"], name["institutional_matches"])
+        for name in pack["roi_names"]
+    ] == [
+        ("clinicx lung", "held", ["ClinicX_Lung"]),
+        ("lung l", "renamed", []),
+        ("SURGEONS ROI", "held", []),
+    ]
+    assert not list((tmp_path / "release").rglob("*clinicx*"))
+
+
+def test_an_institutional_list_changes_no_written_value_or_method_digest():
+    plain = _transform()
+    institutional = _transform(institutional=_institutional("ClinicX_Lung"))
+    dataset = _structure_set("lung l", "clinicx lung")
+
+    written = [
+        _transformed(transform, dataset).data for transform in (plain, institutional)
+    ]
+
+    assert written[0] == written[1]
+
+
+def test_cleaning_shows_no_institutional_name_and_takes_only_a_converted_list():
+    cleaning = DescriptorCleaning(
+        _NOMENCLATURE,
+        ReviewedNames.empty(),
+        institutional=_institutional("SENTINEL_Lung"),
+    )
+
+    assert "SENTINEL" not in repr(cleaning)
+    with pytest.raises(TypeError, match="institutional"):
+        DescriptorCleaning(
+            _NOMENCLATURE, ReviewedNames.empty(), institutional=_NOMENCLATURE
+        )

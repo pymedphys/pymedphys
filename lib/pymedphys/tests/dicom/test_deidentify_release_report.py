@@ -183,8 +183,9 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "pixel_risks",
         "search_coverage",
         "source_gaps",
+        "structural_checks",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/9"
+    assert document["format"] == "pymedphys-deid-release-report/11"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
@@ -857,6 +858,33 @@ def test_the_qc_review_is_recorded_by_the_packs_reference_and_outcome(basic, out
     assert release_report.report_document(report)["qc_review"] == {
         "reference": _REFERENCE,
         "outcome": outcome.value,
+        "intended_use_checked": None,
+        "residual_risk_accepted": None,
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-17")
+@pytest.mark.parametrize(
+    "outcome", [qc_attestation.Outcome.ATTESTED, qc_attestation.Outcome.REJECTED]
+)
+@pytest.mark.parametrize(
+    "intended_use, residual_risk", [(True, True), (False, None), (None, False)]
+)
+def test_the_qc_review_records_the_releasers_confirmations(
+    basic, outcome, intended_use, residual_risk
+):
+    record = qc_attestation.AttestationRecord(
+        _REFERENCE, outcome, intended_use, residual_risk
+    )
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None, qc_review=record
+    )
+
+    assert release_report.report_document(report)["qc_review"] == {
+        "reference": _REFERENCE,
+        "outcome": outcome.value,
+        "intended_use_checked": intended_use,
+        "residual_risk_accepted": residual_risk,
     }
 
 
@@ -896,6 +924,23 @@ def _record(**changes):
         ({"qc_review": _record(reference="A-SENTINEL")}, "qc_review reference"),
         ({"qc_review": _record(reference=_Text(_REFERENCE))}, "qc_review reference"),
         ({"qc_review": _record(outcome="attested")}, "qc_review outcome"),
+        (
+            {"qc_review": _record(intended_use_checked="SENTINEL")},
+            "qc_review intended_use_checked",
+        ),
+        (
+            {"qc_review": _record(residual_risk_accepted=1)},
+            "qc_review residual_risk_accepted",
+        ),
+        (
+            {
+                "qc_review": _record(
+                    outcome=qc_attestation.Outcome.NOT_ATTESTED,
+                    intended_use_checked=True,
+                )
+            },
+            "qc_review intended_use_checked",
+        ),
     ],
     ids=[
         "not-a-path",
@@ -907,6 +952,9 @@ def _record(**changes):
         "reference",
         "reference-subclass",
         "outcome-text",
+        "intended-use-text",
+        "residual-risk-number",
+        "confirmed-without-attestation",
     ],
 )
 def test_a_release_or_review_field_that_could_hold_a_value_is_refused(

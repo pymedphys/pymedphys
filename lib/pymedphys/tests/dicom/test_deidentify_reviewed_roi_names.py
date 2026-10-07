@@ -35,7 +35,7 @@ from pymedphys._dicom.deidentify.reviewed_roi_names import (
     ReviewedName,
 )
 from pymedphys._dicom.deidentify.roi_names import Reason
-from pymedphys._nomenclature import tg263
+from pymedphys._nomenclature import roi_list, tg263
 
 posix_only = pytest.mark.skipif(os.name != "posix", reason="POSIX file modes")
 
@@ -663,3 +663,76 @@ def test_the_report_counts_hold_only_positive_counts_and_are_read_only():
     assert reviewed.RoiNameCounts(
         {Reason.UNMATCHED: 0}, {Outcome.HELD: 0, Outcome.KEPT: 2}
     ) == reviewed.RoiNameCounts({}, {Outcome.KEPT: 2})
+
+
+def _institutional(*names):
+    return roi_names.InstitutionalNames(
+        roi_list.RoiList(
+            source=roi_list.Source(
+                kind=roi_list.KIND, file="invented.csv", sha256="0" * 64, version="1"
+            ),
+            entries=tuple(roi_list.Entry(name, "") for name in names),
+        )
+    )
+
+
+def _held(results):
+    return [
+        (r.outcome, r.held_because, r.value, r.institutional_matches) for r in results
+    ]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+def test_a_held_name_shows_the_reviewer_the_institutional_names_it_matches():
+    institutional = _institutional("ClinicX_Lung", "Heart_Old", "Smith_Lung")
+    names = _list(Heart_old=KEEP, Smith_lung=KEEP)
+
+    results = _clean(
+        ["clinicx lung", "Heart", "PRV cord", "Heart old", "Smith lung"],
+        names,
+        identifiers=["SMITH^JO"],
+        institutional=institutional,
+    )
+
+    # Every match goes to review: the list renames nothing, and a held name
+    # keeps the reason it was held for, whatever it matches.
+    assert _held(results) == [
+        (Outcome.HELD, Reason.UNMATCHED, None, ("ClinicX_Lung",)),
+        (Outcome.RENAMED, None, "Heart", ()),
+        (Outcome.HELD, Reason.UNMATCHED, None, ()),
+        (Outcome.KEPT, None, "Heart old", ()),
+        (Outcome.HELD, Reason.ECHOES_IDENTIFIER, None, ("Smith_Lung",)),
+    ]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+def test_an_exact_match_of_an_institutional_name_is_never_written_unreviewed():
+    institutional = _institutional("ClinicX_Lung", "Heart")
+
+    held = _clean(["ClinicX_Lung", "HEART"], _list(), institutional=institutional)
+    emptied = _clean(
+        ["ClinicX_Lung"], _list(), institutional=institutional, empty_held=True
+    )
+
+    # TG-263's published spelling still renames a name that the list holds.
+    assert _held(held) == [
+        (Outcome.HELD, Reason.UNMATCHED, None, ("ClinicX_Lung",)),
+        (Outcome.RENAMED, None, "Heart", ()),
+    ]
+    assert _held(emptied) == [
+        (Outcome.EMPTIED_UNREVIEWED, Reason.UNMATCHED, "", ("ClinicX_Lung",))
+    ]
+
+
+def test_without_an_institutional_list_a_held_name_matches_nothing():
+    (result,) = _clean(["clinicx lung"], _list())
+
+    assert result.institutional_matches == ()
+
+
+def test_the_institutional_names_a_name_matched_are_never_shown():
+    (result,) = _clean(
+        ["clinicx lung"], _list(), institutional=_institutional("ClinicX_Lung")
+    )
+
+    assert "ClinicX" not in repr(result) and "Lung" not in repr(result)

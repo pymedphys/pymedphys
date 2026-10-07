@@ -371,8 +371,7 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information that is embedded in text or string Attributes corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-009", "D-022"]
 implementation = [
   "_dicom/deidentify/descriptor_cleaning.py",
@@ -391,7 +390,7 @@ The list's keyed digest, an HMAC under the key in a domain of its own, which rev
 In a run, descriptor cleaning applies these decisions to the ROI Names of each instance, holds an instance with a held name for review, or empties the name where the user chooses so and then does not claim the Option for it; gives every other attribute given C its action without the Option, and still claims the Option where that action removes or replaces each, since this Option specifies what is removed, not what is retained; and gives the QC pack what it wrote for each ROI Name, or why it held it; the run's method digest and release report take the keyed digest, under the de-identification key, of the list's decisions as they stood when the run's transform was made, which are the decisions it applies, and the report counts the instances held for review by reason.
 A private command records a reviewer's decisions from a CSV file in the list, all or nothing, refusing a decision that differs from the list's unless told to replace it.
 The release report counts the ROI Names of the structure sets that descriptor cleaning cleaned, each by its outcome, and the distinct names sent for review by reason, whether then held or emptied unreviewed, without a name.
-Remaining: vocabularies converted from an institutional list, every match against which goes to review.
+A run can also be given an institutional list converted from CSV, as the maintainer decided on 6 October 2026; it renames nothing, and the QC pack shows the reviewer of a held name the list's names it matched.
 A ROI Name kept or mapped by a reviewer's decision in the reviewed-names list has passed pooled human review, since each distinct name is reviewed once for the collection.
 '''
 
@@ -410,6 +409,7 @@ implementation = [
 ]
 note = '''
 The conformance statement describes how ROI Name (3006,0026) is cleaned under Clean Descriptors: automatic renaming against the published TG-263 edition that it names, or none without such a vocabulary, the reasons a name goes to review, the reviewers' decisions, the checks of what a reviewed decision would write, that a run's method digest covers its reviewed list (D-024), and what cleaning writes for each name, including that a held name holds its instance for review.
+It also says that a run can be given an institutional list of ROI names, which renames nothing and only shows the reviewer of a held name the list's names it matched.
 Every other attribute given C under Clean Descriptors takes the action that the policy gives it without that option, as the maintainer decided on 6 October 2026 (D-009); the statement lists that action for each, at each place, as the one the engine applies, so for `basic-clean-descriptors` it lists no manner of cleaning as pending.
 Remaining: the manner of cleaning an attribute to which the policy gives C without Clean Descriptors too, such as the dates and times under Modified Dates (E.3.6) and the patient characteristics under Retain Patient Characteristics (E.3.7), which no M6 preset selects.
 '''
@@ -478,8 +478,11 @@ text = '''
 The manner of date modification shall be described in the Conformance Statement.
 '''
 status = "planned"
-milestone = "M6"
+milestone = "M3"
 decisions = ["D-006", "D-007"]
+note = '''
+No preset of the first supported release selects Modified Dates, so the conformance statement describes how dates are modified once the Option is implemented (PS3.15-E.3.6-02).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.7-01"
@@ -498,7 +501,10 @@ text = '''
 The manner of cleaning of retained Attributes shall be described in the Conformance Statement.
 '''
 status = "planned"
-milestone = "M6"
+milestone = "M3"
+note = '''
+No preset of the first supported release selects Retain Patient Characteristics, so the conformance statement describes how retained attributes are cleaned once the Option is implemented (PS3.15-E.3.7-01).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.8-01"
@@ -576,7 +582,10 @@ text = '''
 The safe Private Attributes that are retained shall be described in the Conformance Statement.
 '''
 status = "planned"
-milestone = "M6"
+milestone = "M3"
+note = '''
+No preset of the first supported release selects Retain Safe Private, so the conformance statement describes the safe private attributes retained once the Option is implemented (PS3.15-E.3.10-01).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.11-01"
@@ -636,14 +645,15 @@ id = "MIDI-BP-03"
 text = '''
 Do not let de-identification compromise conformance with the standards that define the content or reduce functionality. DICOM output should still conform to its original IOD, with dummy values synthesised where needed and replacement values consistent across files within a defined scope, such as replaced UIDs that keep references intact. This covers optional attributes critical to functionality as well as required ones.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-026"]
 implementation = [
   "_dicom/deidentify/compound_actions.py",
   "_dicom/deidentify/dummy_values.py",
+  "_dicom/deidentify/edits.py",
   "_dicom/deidentify/elements.py",
   "_dicom/deidentify/file_layout.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/iod_conformance.py",
   "_dicom/deidentify/iods.py",
   "_dicom/deidentify/preserving_writer.py",
@@ -659,6 +669,7 @@ implementation = [
   "_dicom/deidentify/sequences.py",
   "_dicom/deidentify/sop_classes.py",
   "_dicom/deidentify/values.py",
+  "_dicom/deidentify/walker.py",
   "_dicom/deidentify/written_references.py",
 ]
 note = '''
@@ -678,7 +689,7 @@ A second pass checks what was written against the first: that each written insta
 A run makes that check of every file that its gate releases, before anything is published: each instance that a finding names is sequestered, and what is left is checked again, a reference to an instance that was withheld being reported only, while a check that fails, or a finding that no sequestration can isolate, publishes nothing.
 Each written instance is checked against its IOD before it can be released: every attribute that its source holds where the IOD requires it, by the same strictest Type, must still be there where the item that held it is, and a Type 1 or 1C one must not have been emptied, or the instance is sequestered, since the engine caused it; the removals that a plain X allows on their own are not findings, and what the source already lacks is not acted on.
 Instead, each attribute that the IOD unconditionally requires, a Type 1 or 2 attribute of a mandatory module at the top level or of an item that the source holds, and that the source lacks, is reported: the release report counts the instances by attribute and Type, and the QC pack lists each by instance and place.
-Remaining: writing the dummy values that the resolved compound actions call for (M3).
+The walker gives D's dummy value wherever a compound action, or a plain Z, resolves to it on a Type 1 or 1C attribute, and the run's instance transform writes it, so a written instance keeps a valid value wherever its IOD requires one (D-020, D-021).
 '''
 
 [[requirement]]
@@ -700,10 +711,11 @@ text = '''
 Remove or replace the identities of other persons, departments, institutions, and organisations, except where they are needed for utility and a residual risk assessment supports keeping them.
 '''
 status = "partial"
-milestone = "M3"
+milestone = "M4"
 decisions = ["D-001", "D-022"]
 implementation = [
   "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
@@ -713,8 +725,11 @@ URN Code Value and Coding Scheme URL, which name coding concepts and schemes, ar
 Every other URI and URL attribute that Table E.1-1 omits is removed by Type under every option, as are seven sequences that it omits whose content can identify an institution or other patients or say something about the patient, such as Requesting Service Code Sequence (0032,1034), Issuer of Patient ID Qualifiers Sequence (0010,0024), and Group of Patients Identification Sequence (0010,0027), and three measures of the patient's body, Patient's Body Mass Index (0010,1022), Measured AP Dimension (0010,1023), and Measured Lateral Dimension (0010,1024) (D-022).
 Private Data Element Characteristics Sequence (0008,0300) is removed by Type under every option, since no policy keeps a private attribute, so the private creators of removed private blocks do not survive in its items (D-028). The conformance statement says that the kept codes of local coding schemes can carry an institution's name or abbreviation, and that each kept value is listed among the QC pack's retained strings.
 The maintainer decided on 6 October 2026 that the kept codes of local coding schemes need no further rule beyond that disclosure (D-022).
-Also remaining: applying the actions to each data set (M3).
+Manufacturer, Manufacturer's Model Name, and Software Versions are kept because they identify products, not devices; an in-house device can carry the hospital as its Manufacturer, a residual risk that D-022 accepts because the value names an institution, not a patient.
+The run's instance transform applies these actions to each instance it de-identifies.
+As for MIDI-BP-01, an end-to-end test of `basic` and `basic-clean-descriptors` over the synthetic collection, which plants markers in the names of other persons, institutions, departments, and stations, finds none of them in the published files; the removals of D-022's other attributes, such as Requesting Service Code Sequence, rest on the tests of the element and supplementary rules.
 The Retain Institution Identity Option is not supported.
+Remaining: a residual risk assessment of the institutional identity that the first supported release keeps without one, in an in-house device's Manufacturer and in the codes and Coding Scheme URLs of local coding schemes, which D-022 accepts and the QC pack lists among its retained strings; for the first release, whoever releases the data confirms that the residual risk is acceptable (MIDI-BP-17) (M4).
 '''
 
 [[requirement]]
@@ -928,8 +943,7 @@ id = "MIDI-BP-17"
 text = '''
 Use human quality control to confirm that de-identification both removed what it should and preserved utility. Guide the proportion and type of records inspected by a documented risk assessment that sets the threshold of residual risk before and after quality control, taking account of what is removed or replaced and how reliably. Cover structured and unstructured text, pixel data, overlays, and metadata embedded in compressed bitstreams.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-016", "D-017", "D-026", "D-027"]
 implementation = [
   "_dicom/deidentify/attestation_command.py",
@@ -940,8 +954,11 @@ implementation = [
   "_dicom/deidentify/qc_previews.py",
   "_dicom/deidentify/qc_retained.py",
   "_dicom/deidentify/qc_store.py",
+  "_dicom/deidentify/release_report.py",
+  "_dicom/deidentify/release_report_markdown.py",
   "_dicom/deidentify/run.py",
   "_dicom/deidentify/run_qc.py",
+  "_dicom/deidentify/run_report.py",
   "_dicom/deidentify/run_results.py",
 ]
 note = '''
@@ -956,8 +973,8 @@ The pack lists every input from its outcome, each sequestered one by the random 
 The retained strings of an instance are the values that its plan keeps as they are, in elements with a text VR other than UI, outside any removed sequence, and other than Specific Character Set, and a value that was not read for review, or could not be decoded, is refused rather than left out, and the run's transform sequesters an instance with such a value.
 The pack previews each series released or held for review, by a cine strip and, for a volume, a frontal maximum intensity projection, and each instance whose source shows an indicator of risk in its pixel data at full resolution, with those indicators, and lists each series whose released and held instances are a CT volume or name the head or neck, with the instances that show each; it lists each instance it could not preview, with why, and records each preview's SHA-256, so that an attestation covers the previews too (D-017).
 A reviewer records an attestation of a pack with a command, which refuses a directory that holds no QC pack and quotes neither the reviewer nor a path; the release report published with the run keeps the record it was written with.
-The person releasing the data may confirm in the attestation, yes or no, that the output was checked for its intended use and that its residual risk was accepted under the institution's governance, and the record that a release report takes carries those outcomes alone.
-Remaining: the attestation's record in the release report (M4).
+The person releasing the data may confirm in the attestation, yes or no, that the output was checked for its intended use and that its residual risk was accepted under the institution's governance, and the record that a release report takes carries those outcomes alone; the report's QC review gives each as true, false, or not stated, and refuses one without an attestation.
+Each run's release report summarises the engine's structural checks of its output, the first pass's references, the IOD requirements, and the written references: for each, how many instances it sequestered and how many it reported without acting on them, naming none, so that a recipient sees the output is consistent, though not that it suits a use (decided 6 October 2026).
 '''
 
 [[requirement]]
@@ -983,7 +1000,7 @@ Each instance's markers record the process in the instance itself: De-identifica
 The validated policy records the edition, preset, and options.
 The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers and without a reviewed-names list, and the markers that each instance gains, and the same policy and engine always give the same text.
 The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016).
-Its sections on a run give the QC pack's opaque reference with its attestation's outcome (D-016), list each released instance by its output name, name each sequestered instance by a random label for the run, with each reason's stage and code, and the attribute, action, and VR where the walker sequestered it, or the attribute where the release gate's reason names one (D-026); count the instances held for review by stage and reason, naming none (D-009); count the ROI Names that descriptor cleaning cleaned by outcome, and the distinct names sent for review by reason, naming none (D-009); count the instances with each kind of reference finding that the run reports without acting on it, naming none (D-026); count the released and held instances that show each risk in their pixel data, and each indicator of it, naming none (D-015); and count the source values that the residual search did not search, in full or in part, by attribute and reason (D-027); the conformance statement describes them, generated from the report's format, labels, and reason codes.
+Its sections on a run give the QC pack's opaque reference with its attestation's outcome (D-016), list each released instance by its output name, name each sequestered instance by a random label for the run, with each reason's stage and code, and the attribute, action, and VR where the walker sequestered it, or the attribute where the release gate's reason names one (D-026); count the instances held for review by stage and reason, naming none (D-009); count the ROI Names that descriptor cleaning cleaned by outcome, and the distinct names sent for review by reason, naming none (D-009); count the instances with each kind of reference finding that the run reports without acting on it, naming none (D-026); count the released and held instances that show each risk in their pixel data, and each indicator of it, naming none (D-015); count the source values that the residual search did not search, in full or in part, by attribute and reason (D-027); and summarise the engine's structural checks, each with how many instances it sequestered and how many it reported, naming none; the conformance statement describes them, generated from the report's format, labels, and reason codes.
 A run given a reporter writes the report as `release-report.json` at the root of the release before it publishes it, with its QC pack by reference, not yet attested, its released instances by output name, its sequestered instances by label, its held instances by reason, an identical copy counting as the instance it copies, and the values that the residual searches did not search, each counted once at the instance that holds it, and a report that cannot be built publishes nothing and leaves no QC pack; an input whose reasons the report cannot give is sequestered for an invalid reason instead, which the report gives alone and the QC pack lists before its own reasons, so that it never stops the release.
 Beside the report, the run writes its human-readable form as `release-report.md`: CommonMark, with GitHub Flavored Markdown tables, generated from the JSON text alone, which shows every value of the document, and each file name that keys a digest, as a code span as often as the document holds it, and draws nothing else from the report; the same text always gives the same form, and a report whose form cannot be generated publishes nothing.
 Every reason that sequesters or holds an instance in a run, from the run's own checks, the transform, the writer, the preservation check, and the release gate, has a stage and code in the report, and the codes within each stage are distinct.
