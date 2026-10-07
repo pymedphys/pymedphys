@@ -136,6 +136,21 @@ def test_jpeg_baseline_frames_pass():
     assert frames_problem(read_source(data)) is None
 
 
+def test_a_twelve_bit_jpeg_extended_frame_is_set_aside_by_its_pinned_decoder():
+    # The frame is valid: every sample decodes to 2048. pydicom 3.0.2's GDCM
+    # plugin refuses JPEG Extended at 12 bits, which pylibjpeg-libjpeg, under
+    # the GNU GPL, decoded, so such a frame is never released.
+    _needs(compressed.JPEG_EXTENDED)
+    codestream = compressed.jpeg_extended_mid_grey(16, 24)
+    declared = Declared(16, 24, 1, 12, False, "MONOCHROME2")
+    data = compressed.ct_image(
+        compressed.JPEG_EXTENDED, [codestream], rows=16, columns=24, bits=12
+    )
+
+    assert header_problem(compressed.JPEG_EXTENDED, codestream, declared) is None
+    assert frames_problem(read_source(data)) is TransformReason.UNDECODABLE_PIXEL_DATA
+
+
 def test_jpeg_2000_frames_pass():
     _needs(compressed.JPEG_2000_LOSSLESS)
     pytest.importorskip("openjpeg")

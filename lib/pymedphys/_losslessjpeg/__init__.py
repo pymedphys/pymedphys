@@ -29,7 +29,12 @@ def _frame_header(data: bytes) -> tuple[int, int, int, int]:
     if not data.startswith(_SOI):
         raise ValueError("the file is not a JPEG codestream")
     position = len(_SOI)
-    while position + 4 <= len(data):
+    while True:
+        # Any number of 0xFF fill bytes may precede a marker (T.81 B.1.1.2).
+        while data[position : position + 2] == b"\xff\xff":
+            position += 1
+        if position + 4 > len(data):
+            break
         marker, length = struct.unpack_from(">HH", data, position)
         if marker == _SOF3:
             return struct.unpack_from(">BHHB", data, position + 4)
