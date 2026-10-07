@@ -17,9 +17,10 @@
 No real image is used. JPEG Lossless (ITU-T T.81 Process 14, Annex H) has
 no encoder in pydicom or its plugins, so :func:`jpeg_lossless` encodes one
 here, with a single Huffman table in which every difference category has
-a 5-bit code. The other syntaxes are encoded by pydicom (RLE Lossless),
-Pillow (JPEG Baseline), or pylibjpeg-openjpeg (JPEG 2000), which a test
-skips without.
+a 5-bit code, and :func:`jpeg_extended_mid_grey` writes a 12-bit JPEG
+Extended image of one value. The other syntaxes are encoded by pydicom
+(RLE Lossless), Pillow (JPEG Baseline), or pylibjpeg-openjpeg (JPEG 2000),
+which a test skips without.
 """
 
 import io
@@ -120,6 +121,36 @@ def jpeg_lossless(frame, precision: int = 16, predictor: int = 1) -> bytes:
         if byte == 0xFF:
             entropy.append(0x00)
     return header + bytes(entropy) + b"\xff\xd9"
+
+
+def jpeg_extended_mid_grey(rows: int, columns: int) -> bytes:
+    """Return a 12-bit JPEG Extended (SOF1) codestream whose every sample
+    is 2048.
+
+    After the level shift of 2048 (T.81 Section A.3.1), every coefficient
+    of every 8 by 8 block is zero, so each block codes as a DC difference
+    of category 0 then an end of block, each with the one 1-bit code of
+    its table.
+    """
+    blocks = -(-rows // 8) * -(-columns // 8)
+    only_code = bytes([1]) + bytes(15)
+    stream = "00" * blocks
+    stream += "1" * (-len(stream) % 8)
+    entropy = bytearray()
+    for start in range(0, len(stream), 8):
+        entropy.append(int(stream[start : start + 8], 2))
+        if entropy[-1] == 0xFF:
+            entropy.append(0x00)
+    return (
+        b"\xff\xd8"
+        + _segment(0xDB, bytes([0]) + bytes([1]) * 64)
+        + _segment(0xC1, struct.pack(">BHHB3B", 12, rows, columns, 1, 1, 0x11, 0))
+        + _segment(0xC4, bytes([0x00]) + only_code + bytes([0]))
+        + _segment(0xC4, bytes([0x10]) + only_code + bytes([0x00]))
+        + _segment(0xDA, bytes([1, 1, 0x00, 0, 63, 0]))
+        + bytes(entropy)
+        + b"\xff\xd9"
+    )
 
 
 def jpeg_baseline(frame) -> bytes:
