@@ -36,8 +36,12 @@ element as the bytes encode it, and decodes no value:
   in the other;
 - any other kept element has the same VR as written, which is ``None`` in
   implicit VR, the same header length and length form, and the same Value
-  Field, byte for byte; one of undefined length, whose value is fragments
-  rather than one field, cannot be verified;
+  Field, byte for byte. Encapsulated Pixel Data (7FE0,0010) of the
+  top-level data set, in a transfer syntax that encapsulates it (PS3.5
+  Section A.4), has no single Value Field, so it must have the same bytes
+  as a whole: its Basic Offset Table, every fragment with its item header,
+  and its delimiter. Any other kept element of undefined length, whose value
+  is fragments rather than one field, cannot be verified;
 - a kept private element (gggg,xxyy), with xx from 10 to FF, including one
   that holds items, has a Private Creator (gggg,00xx) in its own data set
   with the same bytes in both files, or none in either (PS3.5 Section
@@ -72,7 +76,7 @@ import enum
 
 from .elements import CHARACTER_SET_VRS
 from .file_layout import ElementPath, Extent
-from .source import SourceEvidence
+from .source import SourceEvidence, encapsulated_pixel_data
 
 _CHARACTER_SET = "(0008,0005)"
 # Without a VR as written or in the dictionary, text cannot be ruled out.
@@ -90,8 +94,10 @@ class PreservationReason(enum.Enum):
     VR = "vr"  # a kept element whose VR as written differs
     STRUCTURE = "structure"  # items in one file and not the other, or more items
     LENGTH = "length"  # another header length, or defined and undefined length
-    UNVERIFIABLE = "unverifiable"  # a kept value of undefined length without items
-    VALUE = "value"  # a kept Value Field with other bytes
+    # a kept value of undefined length without items, other than
+    # encapsulated Pixel Data
+    UNVERIFIABLE = "unverifiable"
+    VALUE = "value"  # a kept Value Field, or encapsulated Pixel Data, with other bytes
     PRIVATE_CREATOR = "private-creator"  # a kept private element's creator differs
     CHARACTER_SET = "character-set"  # kept text in another Specific Character Set
 
@@ -221,9 +227,12 @@ def _check_kept(
     if before.items is None:  # a container's items are checked by their paths
         if _length_form(before) != _length_form(after):
             raise PreservationFailed(PreservationReason.LENGTH, path)
-        if before.undefined_length:
+        if not before.undefined_length:
+            if source.value_field(path) != output.value_field(path):
+                raise PreservationFailed(PreservationReason.VALUE, path)
+        elif not encapsulated_pixel_data(source, path):
             raise PreservationFailed(PreservationReason.UNVERIFIABLE, path)
-        if source.value_field(path) != output.value_field(path):
+        elif source.encoded(path) != output.encoded(path):
             raise PreservationFailed(PreservationReason.VALUE, path)
     creator = _private_creator(path)
     if creator and _field(source, creator, path) != _field(output, creator, path):

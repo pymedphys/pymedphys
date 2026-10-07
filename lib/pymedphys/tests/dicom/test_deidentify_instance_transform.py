@@ -25,6 +25,7 @@ import io
 import json
 import os
 import shutil
+import struct
 import tempfile
 from pathlib import Path
 
@@ -37,6 +38,7 @@ from pymedphys._dicom.deidentify import (
     preserving_writer,
     release_report,
     run,
+    scope,
 )
 from pymedphys._dicom.deidentify.edits import EditKind, InstanceEdits, edit_instance
 from pymedphys._dicom.deidentify.element_rules import ElementRules
@@ -349,6 +351,69 @@ def test_an_instance_the_release_does_not_support_is_sequestered_with_its_iod():
     assert result.reasons == (UnsupportedIod("MR Image"),)
     # Its values are collected for its subject's search, never written (D-027).
     assert isinstance(result.evidence, Coverage)
+
+
+def _rle_ct_slice():
+    """A CT slice of 2 by 3 pixels in RLE Lossless, with a sentinel name.
+
+    pydicom's own RLE Lossless encoder needs no optional package, and
+    encapsulates Pixel Data (PS3.5 Section A.4).
+    """
+    dataset = synthetic.ct_slice(0)
+    dataset.PatientName = SENTINEL_NAME
+    dataset.SamplesPerPixel = 1
+    dataset.PhotometricInterpretation = "MONOCHROME2"
+    dataset.Rows, dataset.Columns = 2, 3
+    dataset.BitsAllocated = dataset.BitsStored = 16
+    dataset.HighBit = 15
+    dataset.PixelRepresentation = 0
+    dataset.PixelData = struct.pack("<6H", 0, 1, 2, 300, 4000, 65535)
+    dataset = pydicom.dcmread(io.BytesIO(synthetic.written(dataset)))
+    dataset.compress(
+        pydicom.uid.RLELossless, encoding_plugin="pydicom", generate_instance_uid=False
+    )
+    return synthetic.written(dataset, pydicom.uid.RLELossless)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+def test_a_compressed_instance_is_sequestered_after_its_values_are_collected():
+    data = _rle_ct_slice()
+
+    result = _transform()(data, InstanceRecord.from_file(data))
+
+    assert isinstance(result, run.Sequestered)
+    assert result.reasons == (scope.Disposition.UNSUPPORTED_TRANSFER_SYNTAX,)
+    # Read and planned, so its values reach its subject's search (D-027).
+    evidence = result.evidence
+    assert isinstance(evidence, Coverage)
+    values = evidence.collected  # pylint: disable=no-member
+    assert SENTINEL_NAME in {str(value.value) for value in values}
+    assert "SENTINEL" not in repr(result)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
+def test_a_compressed_instance_in_scope_keeps_its_pixel_data_byte_for_byte(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        scope,
+        "SUPPORTED_TRANSFER_SYNTAXES",
+        scope.SUPPORTED_TRANSFER_SYNTAXES | {pydicom.uid.RLELossless},
+    )
+    data = _rle_ct_slice()
+
+    result = _transform()(data, InstanceRecord.from_file(data))
+
+    assert isinstance(result, run.Transformed)
+    source, output = read_source(data), read_source(result.data)
+    pixel_data = ElementPath((), "(7FE0,0010)")
+    assert output.transfer_syntax == pydicom.uid.RLELossless
+    assert output.encoded(pixel_data) == source.encoded(pixel_data)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written.PatientName != SENTINEL_NAME
+    pixels = pydicom.pixels.pixel_array(io.BytesIO(result.data))
+    assert pixels.tolist() == [[0, 1, 2], [300, 4000, 65535]]
+    assert b"SENTINEL" not in result.data
 
 
 def test_a_source_file_that_is_not_ps3_10_is_sequestered_by_the_source_reason():

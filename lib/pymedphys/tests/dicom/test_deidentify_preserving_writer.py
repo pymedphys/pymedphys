@@ -39,7 +39,10 @@ from pymedphys._dicom.deidentify.preserving_writer import (
     write_data_set,
     write_file_bytes,
 )
-from pymedphys._dicom.deidentify.source import read_source
+from pymedphys._dicom.deidentify.source import (
+    ENCAPSULATED_TRANSFER_SYNTAXES,
+    read_source,
+)
 
 from .test_deidentify_file_layout import (
     EXPLICIT,
@@ -446,6 +449,101 @@ def test_a_kept_value_of_fragments_is_refused():
     assert _refused(
         source, kept=frozenset(source.paths()), removed=frozenset(), replacements={}
     ) == (WriteReason.FRAGMENTS, _path("(0042,0011)"))
+
+
+PIXEL_DATA_PATH = _path("(7FE0,0010)")
+# Invented bytes standing in for two compressed frames; the writer never
+# decodes them.
+FRAMES = (b"\xff\xd8FRAME-ONE\xff\xd9\x00", b"\xff\xd8FRAME-TWO-LONGER\xff\xd9")
+
+
+def _encapsulated(offsets=True):
+    """Pixel Data of two frames, each in a fragment, after a Basic Offset Table.
+
+    PS3.5 Section A.4: an Item of offsets, or an empty one, then an Item for
+    each fragment, then the Sequence Delimitation Item.
+    """
+    table = struct.pack("<2I", 0, 8 + len(FRAMES[0])) if offsets else b""
+    return (
+        _explicit(0x7FE00010, "OB", length=UNDEFINED)
+        + _item(table)
+        + b"".join(_item(frame) for frame in FRAMES)
+        + SEQUENCE_END
+    )
+
+
+def _compressed_ct(transfer_syntax, pixel_data):
+    return _file(
+        transfer_syntax,
+        _explicit(0x00080016, "UI", CT_IMAGE)
+        + _explicit(0x00080018, "UI", INSTANCE)
+        + _explicit(0x00100010, "PN", NAME)
+        + _explicit(0x00280008, "IS", b"2 ")
+        + pixel_data,
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-02")
+@pytest.mark.parametrize("transfer_syntax", sorted(ENCAPSULATED_TRANSFER_SYNTAXES))
+@pytest.mark.parametrize("offsets", [True, False], ids=["offsets", "no-offsets"])
+def test_encapsulated_pixel_data_is_copied_and_verified_byte_for_byte(
+    transfer_syntax, offsets
+):
+    data = _compressed_ct(transfer_syntax, _encapsulated(offsets))
+
+    output, written = _written_and_verified(data, _ct_edit)
+
+    assert output.transfer_syntax == transfer_syntax
+    assert output.encoded(PIXEL_DATA_PATH) == _encapsulated(offsets)
+    assert written.endswith(_encapsulated(offsets))
+    assert b"SENTINEL" not in written
+
+
+@pytest.mark.parametrize(
+    "pixel_data",
+    [
+        _explicit(0x7FE00010, "OW", length=UNDEFINED) + _item() + SEQUENCE_END,
+        _explicit(0x7FE00010, "OB", length=UNDEFINED) + SEQUENCE_END,
+    ],
+    ids=["ow", "no-items"],
+)
+def test_pixel_data_that_section_a_4_does_not_allow_is_refused(pixel_data):
+    # Encapsulated Pixel Data is OB, and its first item is the Basic Offset
+    # Table (PS3.5 Section A.4).
+    source = read_source(_compressed_ct("1.2.840.10008.1.2.4.70", pixel_data))
+
+    assert _refused(
+        source, kept=frozenset(source.paths()), removed=frozenset(), replacements={}
+    ) == (WriteReason.FRAGMENTS, PIXEL_DATA_PATH)
+
+
+def test_pixel_data_fragments_in_a_native_syntax_are_refused():
+    # PS3.5 Section A.4 encapsulates Pixel Data only in the syntaxes that it
+    # defines; in Explicit VR Little Endian, Pixel Data is native.
+    source = read_source(_compressed_ct(EXPLICIT, _encapsulated()))
+
+    assert _refused(
+        source, kept=frozenset(source.paths()), removed=frozenset(), replacements={}
+    ) == (WriteReason.FRAGMENTS, PIXEL_DATA_PATH)
+
+
+def test_nested_pixel_data_fragments_are_never_verified():
+    # Pixel Data in an item of Icon Image Sequence, copied with its
+    # sequence, which holds no change, is not the Pixel Data of the
+    # top-level data set, so verification cannot show it preserved.
+    icon = (
+        _explicit(0x00880200, "SQ", length=UNDEFINED)
+        + _item(_encapsulated(), length=UNDEFINED)
+        + ITEM_END
+        + SEQUENCE_END
+    )
+    data = _compressed_ct("1.2.840.10008.1.2.4.70", icon)
+
+    with pytest.raises(PreservationFailed) as raised:
+        _written_and_verified(data, _ct_edit)
+
+    assert raised.value.reason is PreservationReason.UNVERIFIABLE
+    assert raised.value.path == _path(("(0088,0200)", 0), "(7FE0,0010)")
 
 
 VOI_LUT_ITEM = ("(0028,3010)", 0)

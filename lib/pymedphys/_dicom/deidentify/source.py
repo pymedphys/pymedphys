@@ -17,16 +17,18 @@
 :func:`read_source` admits a DICOM PS3.10 file only if
 :func:`.file_layout.read_file_layout` reads every byte of it, from the
 preamble and File Meta Information to the end of its data set, in Implicit
-or Explicit VR Little Endian, the transfer syntaxes of the first supported
-release (D-010). Reading checks each element's header and length, that its
-value fits what holds it, that tags rise through each data set and item, so
-that none repeats, each item's tag, length, and delimiter, each sequence's
-delimiter, and a bound on nesting; Data Set Trailing Padding is accounted
-for, and nothing may follow the last element. Every Value Length and Item
-Length but the undefined length must then be even (PS3.5 Sections 7.1.1 and
-7.5), in the File Meta Information and in the data set, at every depth.
-Anything else is refused with a :class:`SourceReason` and the offset where
-reading stopped or the odd length starts, never a value.
+or Explicit VR Little Endian, or in one of the transfer syntaxes of
+:data:`ENCAPSULATED_TRANSFER_SYNTAXES`, which encapsulate Pixel Data in an
+Explicit VR Little Endian data set (PS3.5 Section A.4). Reading checks each
+element's header and length, that its value fits what holds it, that tags
+rise through each data set and item, so that none repeats, each item's tag,
+length, and delimiter, each sequence's delimiter, and a bound on nesting;
+Data Set Trailing Padding is accounted for, and nothing may follow the last
+element. Every Value Length and Item Length but the undefined length must
+then be even (PS3.5 Sections 7.1.1 and 7.5), in the File Meta Information
+and in the data set, at every depth. Anything else is refused with a
+:class:`SourceReason` and the offset where reading stopped or the odd
+length starts, never a value.
 
 The layout reader itself reads an odd length, so that a written file can be
 searched for residual values whatever its lengths; only admitting a source
@@ -61,9 +63,35 @@ from .file_layout import (
 )
 
 # Implicit VR Little Endian and Explicit VR Little Endian (PS3.5 Sections
-# A.1 and A.2), the transfer syntaxes of the first supported release.
-SUPPORTED_TRANSFER_SYNTAXES = frozenset({"1.2.840.10008.1.2", "1.2.840.10008.1.2.1"})
+# A.1 and A.2), whose Pixel Data is native.
+NATIVE_TRANSFER_SYNTAXES = frozenset({"1.2.840.10008.1.2", "1.2.840.10008.1.2.1"})
+# The transfer syntaxes that encapsulate Pixel Data in an Explicit VR Little
+# Endian data set (PS3.5 Section A.4) and that pydicom 3.0.2, the minimum
+# (D-002), has decoders for: JPEG (Section A.4.1), RLE (Section A.4.2),
+# JPEG-LS (Section A.4.3), and JPEG 2000 Part 1 and HTJ2K (Section A.4.4).
+# Those whose pixel data is outside the file (JPIP), that deflate the data
+# set, or that hold video or JPEG 2000 Part 2 are not among them.
+ENCAPSULATED_TRANSFER_SYNTAXES = frozenset(
+    {
+        "1.2.840.10008.1.2.4.50",  # JPEG Baseline (Process 1)
+        "1.2.840.10008.1.2.4.51",  # JPEG Extended (Process 2 and 4)
+        "1.2.840.10008.1.2.4.57",  # JPEG Lossless (Process 14)
+        "1.2.840.10008.1.2.4.70",  # JPEG Lossless, First-Order Prediction
+        "1.2.840.10008.1.2.4.80",  # JPEG-LS Lossless
+        "1.2.840.10008.1.2.4.81",  # JPEG-LS Near-Lossless
+        "1.2.840.10008.1.2.4.90",  # JPEG 2000 Lossless Only
+        "1.2.840.10008.1.2.4.91",  # JPEG 2000
+        "1.2.840.10008.1.2.4.201",  # HTJ2K Lossless Only
+        "1.2.840.10008.1.2.4.202",  # HTJ2K with RPCL Options, Lossless Only
+        "1.2.840.10008.1.2.4.203",  # HTJ2K
+        "1.2.840.10008.1.2.5",  # RLE Lossless
+    }
+)
+# The transfer syntaxes whose files the engine reads and writes. Which of
+# them a release de-identifies is for :mod:`.scope` to decide.
+SUPPORTED_TRANSFER_SYNTAXES = NATIVE_TRANSFER_SYNTAXES | ENCAPSULATED_TRANSFER_SYNTAXES
 _DATA_SET_REGIONS = (Region.DATA_SET, Region.TRAILING_PADDING)
+_PIXEL_DATA = ElementPath((), "(7FE0,0010)")
 _ITEM_TAG = b"\xfe\xff\x00\xe0"  # (FFFE,E000), little endian
 _UNDEFINED_LENGTH = 0xFFFFFFFF
 
@@ -216,8 +244,8 @@ def read_source(data: bytes | bytearray | memoryview) -> SourceEvidence:
     ------
     SourceRefused
         If the file is not a DICOM PS3.10 file, its transfer syntax is not
-        Implicit or Explicit VR Little Endian, its structure cannot be read
-        to its end, or an element or item has an odd length.
+        one of :data:`SUPPORTED_TRANSFER_SYNTAXES`, its structure cannot be
+        read to its end, or an element or item has an odd length.
     """
     data = bytes(data)
     if data[128:132] != b"DICM":
@@ -244,6 +272,33 @@ def read_source(data: bytes | bytearray | memoryview) -> SourceEvidence:
         if extent.location.region in _DATA_SET_REGIONS
     )
     return SourceEvidence(data, syntax, elements)
+
+
+def encapsulated_pixel_data(evidence: SourceEvidence, path: ElementPath) -> bool:
+    """Return whether ``path`` is Pixel Data that the file's syntax encapsulates.
+
+    That is Pixel Data (7FE0,0010) of the top-level data set, in one of
+    :data:`ENCAPSULATED_TRANSFER_SYNTAXES`, of VR OB and undefined length,
+    whose value holds at least one item, the first of which is its Basic
+    Offset Table, then its fragments (PS3.5 Section A.4). Pixel Data of
+    another VR, or with no item at all, is not.
+
+    Raises
+    ------
+    KeyError
+        If the data set has no element at ``path``.
+    """
+    extent = evidence.element(path)
+    value = extent.value_start - extent.start
+    first = evidence.encoded(path)[value : value + 4]
+    return (
+        path == _PIXEL_DATA
+        and evidence.transfer_syntax in ENCAPSULATED_TRANSFER_SYNTAXES
+        and extent.vr == "OB"
+        and extent.undefined_length
+        and extent.items is None
+        and first == _ITEM_TAG
+    )
 
 
 def _first_odd_length(data: bytes, layout: FileLayout) -> int | None:
