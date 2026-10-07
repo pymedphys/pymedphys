@@ -277,9 +277,11 @@ def read_source(data: bytes | bytearray | memoryview) -> SourceEvidence:
 def encapsulated_pixel_data(evidence: SourceEvidence, path: ElementPath) -> bool:
     """Return whether ``path`` is Pixel Data that the file's syntax encapsulates.
 
-    That is Pixel Data (7FE0,0010) of the top-level data set, of undefined
-    length, in one of :data:`ENCAPSULATED_TRANSFER_SYNTAXES`, so that its
-    value is a Basic Offset Table and fragments (PS3.5 Section A.4).
+    That is Pixel Data (7FE0,0010) of the top-level data set, in one of
+    :data:`ENCAPSULATED_TRANSFER_SYNTAXES`, of VR OB and undefined length,
+    whose value holds at least one item, the first of which is its Basic
+    Offset Table, then its fragments (PS3.5 Section A.4). Pixel Data of
+    another VR, or with no item at all, is not.
 
     Raises
     ------
@@ -287,11 +289,15 @@ def encapsulated_pixel_data(evidence: SourceEvidence, path: ElementPath) -> bool
         If the data set has no element at ``path``.
     """
     extent = evidence.element(path)
+    value = extent.value_start - extent.start
+    first = evidence.encoded(path)[value : value + 4]
     return (
         path == _PIXEL_DATA
         and evidence.transfer_syntax in ENCAPSULATED_TRANSFER_SYNTAXES
+        and extent.vr == "OB"
         and extent.undefined_length
         and extent.items is None
+        and first == _ITEM_TAG
     )
 
 

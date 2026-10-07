@@ -291,6 +291,22 @@ def test_a_file_that_encapsulates_pixel_data_is_admitted(syntax):
     assert not source.encapsulated_pixel_data(evidence, ElementPath((), "(0010,0010)"))
 
 
+@pytest.mark.parametrize(
+    "pixel_data",
+    [
+        _explicit(0x7FE00010, "OW", length=UNDEFINED) + _item() + SEQUENCE_END,
+        _explicit(0x7FE00010, "OB", length=UNDEFINED) + SEQUENCE_END,
+    ],
+    ids=["ow", "no-items"],
+)
+def test_pixel_data_that_section_a_4_does_not_allow_is_not_encapsulated(pixel_data):
+    # Encapsulated Pixel Data is OB, and its first item is the Basic Offset
+    # Table, empty or not (PS3.5 Section A.4).
+    evidence = source.read_source(_file("1.2.840.10008.1.2.4.70", pixel_data))
+
+    assert not source.encapsulated_pixel_data(evidence, ElementPath((), "(7FE0,0010)"))
+
+
 def test_pixel_data_fragments_in_a_native_syntax_are_not_encapsulated_pixel_data():
     pixel_data = (
         _explicit(0x7FE00010, "OB", length=UNDEFINED)

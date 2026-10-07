@@ -383,9 +383,10 @@ def test_a_compressed_instance_is_sequestered_after_its_values_are_collected():
     assert isinstance(result, run.Sequestered)
     assert result.reasons == (Disposition.UNSUPPORTED_TRANSFER_SYNTAX,)
     # Read and planned, so its values reach its subject's search (D-027).
-    assert isinstance(result.evidence, Coverage)
-    collected = {str(value.value) for value in result.evidence.collected}
-    assert SENTINEL_NAME in collected
+    evidence = result.evidence
+    assert isinstance(evidence, Coverage)
+    values = evidence.collected  # pylint: disable=no-member
+    assert SENTINEL_NAME in {str(value.value) for value in values}
     assert "SENTINEL" not in repr(result)
 
 

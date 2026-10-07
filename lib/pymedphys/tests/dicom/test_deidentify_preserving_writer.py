@@ -499,6 +499,24 @@ def test_encapsulated_pixel_data_is_copied_and_verified_byte_for_byte(
     assert b"SENTINEL" not in written
 
 
+@pytest.mark.parametrize(
+    "pixel_data",
+    [
+        _explicit(0x7FE00010, "OW", length=UNDEFINED) + _item() + SEQUENCE_END,
+        _explicit(0x7FE00010, "OB", length=UNDEFINED) + SEQUENCE_END,
+    ],
+    ids=["ow", "no-items"],
+)
+def test_pixel_data_that_section_a_4_does_not_allow_is_refused(pixel_data):
+    # Encapsulated Pixel Data is OB, and its first item is the Basic Offset
+    # Table (PS3.5 Section A.4).
+    source = read_source(_compressed_ct("1.2.840.10008.1.2.4.70", pixel_data))
+
+    assert _refused(
+        source, kept=frozenset(source.paths()), removed=frozenset(), replacements={}
+    ) == (WriteReason.FRAGMENTS, PIXEL_DATA_PATH)
+
+
 def test_pixel_data_fragments_in_a_native_syntax_are_refused():
     # PS3.5 Section A.4 encapsulates Pixel Data only in the syntaxes that it
     # defines; in Explicit VR Little Endian, Pixel Data is native.
