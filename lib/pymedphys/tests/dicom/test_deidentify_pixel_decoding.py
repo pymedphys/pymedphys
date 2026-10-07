@@ -291,14 +291,14 @@ def test_a_jpeg_frame_header_of_0_lines_is_refused():
     assert frames_problem(read_source(data)) is TransformReason.FRAME_MISMATCH
 
 
-def _jpeg_ls(marker=0xFFF7, rows=ROWS, columns=COLUMNS, near=0):
-    """Return the start of a JPEG-LS codestream: SOI, then a frame header
-    for one 8-bit component, then SOS. Its scan holds no data, so it never
-    decodes."""
+def _jpeg_ls(marker=0xFFF7, rows=ROWS, columns=COLUMNS, near=0, data=b"\x00"):
+    """Return a JPEG-LS codestream: SOI, a frame header for one 8-bit
+    component, SOS, ``data`` as its scan's entropy-coded data, and EOI. Only
+    its marker segments are meant to be read."""
     frame = struct.pack(">HHBHHBBBB", marker, 11, 8, rows, columns, 1, 1, 0x11, 0)
     # Ns 1, then component 1 with no mapping table, NEAR, ILV 0, and Al 0.
     scan = struct.pack(">HHBBBBBB", 0xFFDA, 8, 1, 1, 0, near, 0, 0)
-    return b"\xff\xd8" + frame + scan
+    return b"\xff\xd8" + frame + scan + data + b"\xff\xd9"
 
 
 @pytest.mark.parametrize(
@@ -344,6 +344,42 @@ def test_only_jpeg_ls_near_lossless_allows_a_lossy_scan(syntax, near, problem):
     declared = Declared(ROWS, COLUMNS, 1, 8, False, "MONOCHROME2")
 
     assert header_problem(syntax, _jpeg_ls(near=near), declared) is problem
+
+
+def test_a_jpeg_ls_scan_without_data_is_undecodable():
+    declared = Declared(ROWS, COLUMNS, 1, 8, False, "MONOCHROME2")
+
+    assert header_problem(compressed.JPEG_LS_LOSSLESS, _jpeg_ls(), declared) is None
+    assert (
+        header_problem(compressed.JPEG_LS_LOSSLESS, _jpeg_ls(data=b""), declared)
+        is TransformReason.UNDECODABLE_PIXEL_DATA
+    )
+
+
+def _cut_short(codestream, cut):
+    scan = codestream.index(b"\xff\xda")
+    data = scan + 2 + int.from_bytes(codestream[scan + 2 : scan + 4], "big")
+    if cut == "without-eoi":
+        return codestream[:-2]
+    if cut == "halfway":
+        return codestream[: (data + len(codestream) - 2) // 2]
+    return codestream[:data] + b"\xff\xd9"
+
+
+@pytest.mark.parametrize("cut", ["without-eoi", "halfway", "empty-scan"])
+def test_a_jpeg_frame_cut_short_is_undecodable(cut):
+    # pylibjpeg decodes each of these without an error, filling the rest of
+    # the frame.
+    _needs(compressed.JPEG_LOSSLESS_SV1)
+    codestream = compressed.jpeg_lossless(_frames(1)[0])
+    data = compressed.ct_image(
+        compressed.JPEG_LOSSLESS_SV1,
+        [_cut_short(codestream, cut)],
+        rows=ROWS,
+        columns=COLUMNS,
+    )
+
+    assert frames_problem(read_source(data)) is TransformReason.UNDECODABLE_PIXEL_DATA
 
 
 def _baseline():
