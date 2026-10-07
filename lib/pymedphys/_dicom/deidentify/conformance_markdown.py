@@ -255,6 +255,7 @@ def _private(statement: ConformanceStatement) -> list[str]:
 _PRIVATE_CHARACTERISTICS = "(0008,0300)"
 # Code Value, Coding Scheme Designator, and Code Meaning.
 _CODE_TAGS = ("(0008,0100)", "(0008,0102)", "(0008,0104)")
+_CODING_SCHEME_URL = "(0008,010E)"
 
 
 def _rule_action(tag: str) -> str | None:
@@ -264,20 +265,49 @@ def _rule_action(tag: str) -> str | None:
 
 
 def _local_codes(named: Callable[[str], str]) -> list[str]:
-    """Say that the codes of local coding schemes are kept, where they are."""
+    """Say which kept values can name an institution, and who accepts that."""
     if any(_rule_action(tag) != "K" for tag in _CODE_TAGS):
         return []
+    url = (
+        f", and such a scheme's {named(_CODING_SCHEME_URL)}, also kept, can name "
+        "the institution's host"
+        if _rule_action(_CODING_SCHEME_URL) == "K"
+        else ""
+    )
+    manufacturer = (
+        [
+            f"{named(_MANUFACTURER)} is kept ({_code('K')}) too, since it names "
+            "the maker of a product that many sites share, but a device made "
+            "in-house can carry the institution's name as its Manufacturer "
+            "(D-022). "
+        ]
+        if _rule_action(_MANUFACTURER) == "K"
+        else []
+    )
     return [
-        "## Codes of local coding schemes",
+        "## Values that can name an institution",
         "",
         f"{_join(named(tag) for tag in _CODE_TAGS)} are kept ({_code('K')}) by "
         "their supplementary rules, whatever the coding scheme, so that coded "
         "meaning survives (D-022). A code of a local coding scheme, whose "
         'Coding Scheme Designator begins with "99" or is "L" (PS3.3 Section '
         "8.2), can carry the institution's name or abbreviation in those "
-        "values. Each such value, like every other string that the engine "
-        "keeps, is listed among the retained strings of the run's "
-        "confidential QC pack, where a reviewer can find it (D-017).",
+        f"values{url}. "
+        + "".join(manufacturer)
+        + "Each such value, like every other string that the engine keeps, is "
+        "listed among the retained strings of the run's confidential QC pack, "
+        "where a reviewer can find it (D-017).",
+        "",
+        "The engine does not itself assess the residual risk of these values. "
+        "The design accepts it for Manufacturer and Coding Scheme URL because "
+        "such a value names an institution, not a patient, and for the codes "
+        "of local coding schemes requires this disclosure (D-022). The "
+        "`public-release` preset has a person review every distinct retained "
+        "string (D-017); the other presets keep these values without review. "
+        "For the first release, the residual risk of the output, these values "
+        "included, is for whoever releases the data to accept, which they may "
+        "confirm, yes or no, in the attestation of the run's QC pack, under "
+        "the institution's governance (D-016).",
         "",
     ]
 
