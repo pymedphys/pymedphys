@@ -1273,7 +1273,13 @@ note = "Codes for why the procedure was performed, which can record a diagnosis 
 tag = "(0028,2000)"
 keyword = "ICCProfile"
 action = "X/Z/D"
-note = "An ICC colour profile, a file in another format embedded in the instance, which can carry text, such as a description or copyright naming the device or institution, that the engine does not parse. It is removed by Type under every option. It is Type 1 in the ICC Profile Module, which Enhanced CT Image, Enhanced MR Image, and Enhanced MR Color Image use, where removal by Type needs a dummy value, which the OB VR does not have, so the instance is sequestered; elsewhere in the IODs of the first supported release it is Type 3."
+note = "An ICC colour profile, a file in another format embedded in the instance, which can carry text, such as a description or copyright naming the device or institution, that the engine does not parse. It is removed by Type under every option. It is Type 1 in the ICC Profile Module, which Enhanced CT Image, Enhanced MR Image, and Enhanced MR Color Image use, where removal by Type replaces an RGB profile with a fixed sRGB profile, which nothing of the source profile is written to, and sequesters an instance with any other; elsewhere in the IODs of the first supported release it is Type 3."
+
+[[attribute]]
+tag = "(0028,2002)"
+keyword = "ColorSpace"
+action = "X/Z/D"
+note = "Names the colour space that ICC Profile (0028,2000) describes, such as SRGB or ADOBERGB. ICC Profile is removed, or replaced with a fixed sRGB profile, under every option, so a kept Color Space could name a colour space other than that of the profile written, and a viewer that trusts it would show the wrong colours. It is removed by Type under every option. It is Type 3 wherever the IODs of the first supported release define it."
 
 [[attribute]]
 tag = "(4FFE,0001)"

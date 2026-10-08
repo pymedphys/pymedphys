@@ -33,6 +33,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
+    icc_profiles,
     instance_transform,
     output_names,
     pixel_decoding,
@@ -342,15 +343,33 @@ def test_the_evidence_holds_the_removed_values_and_shows_only_counts():
     assert b"SENTINEL" not in result.data
 
 
-def _procedure_step(dataset):
+PROCEDURE_STEP = "2.25.999"
+
+
+def _procedure_step(dataset, uid=PROCEDURE_STEP):
     step = pydicom.Dataset()
     step.ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.3"
-    step.ReferencedSOPInstanceUID = "2.25.999"
+    if uid is not None:
+        step.ReferencedSOPInstanceUID = uid
     dataset.ReferencedPerformedProcedureStepSequence = [step]
 
 
-def _icc_profile(dataset):
-    dataset.add_new(0x00282000, "OB", bytes(128))
+def _procedure_step_without_uid(dataset):
+    _procedure_step(dataset, uid=None)
+
+
+def _icc_profile(dataset, profile=icc_profiles.srgb_profile("A scanner's profile")):
+    dataset.add_new(0x00282000, "OB", profile)
+
+
+def _cmyk_profile(dataset):
+    profile = icc_profiles.srgb_profile("A scanner's profile")
+    _icc_profile(dataset, profile[:16] + b"CMYK" + profile[20:])
+
+
+def _grey_profile(dataset):
+    profile = icc_profiles.srgb_profile("A scanner's profile")
+    _icc_profile(dataset, profile[:16] + b"GRAY" + profile[20:])
 
 
 def _radiopharmaceutical(dataset):
@@ -363,19 +382,30 @@ def _radiopharmaceutical(dataset):
 @pytest.mark.parametrize(
     "sop_class, add, place, action, reason",
     [
-        # Type 1C in the series module of each multi-frame IOD; SQ has no
-        # dummy value (D-021).
+        # Type 1C in the series module of each multi-frame IOD; its reviewed
+        # items need each source item's UID (D-021).
         (
             "1.2.840.10008.5.1.4.1.1.2.1",  # Enhanced CT Image Storage
-            _procedure_step,
+            _procedure_step_without_uid,
             ElementPath((), "(0008,1111)"),
             "D",
             SequesterReason.NO_DUMMY_VALUE,
         ),
-        # Type 1 in the mandatory ICC Profile Module; OB has no dummy value.
+        # Type 1 in the mandatory ICC Profile Module; PS3.3 Section
+        # C.11.15.1.1 requires an RGB profile, so the reviewed profile is RGB
+        # only (D-021).
         (
             "1.2.840.10008.5.1.4.1.1.4.3",  # Enhanced MR Color Image Storage
-            _icc_profile,
+            _cmyk_profile,
+            ElementPath((), "(0028,2000)"),
+            "D",
+            SequesterReason.NO_DUMMY_VALUE,
+        ),
+        # Type 1 in the user-optional ICC Profile Module of Enhanced MR; a
+        # grey source profile does not conform, and has no dummy value.
+        (
+            "1.2.840.10008.5.1.4.1.1.4.1",  # Enhanced MR Image Storage
+            _grey_profile,
             ElementPath((), "(0028,2000)"),
             "D",
             SequesterReason.NO_DUMMY_VALUE,
@@ -405,6 +435,88 @@ def test_a_required_attribute_without_a_value_to_write_sequesters_an_added_iod(
         action,
         reason,
     )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-14")
+def test_d_writes_the_reviewed_procedure_step_and_icc_profile_in_an_added_iod():
+    dataset = synthetic.instance(
+        "1.2.840.10008.5.1.4.1.1.4.3",  # Enhanced MR Color Image Storage
+        synthetic.OTHER,
+        synthetic.OTHER_SERIES,
+    )
+    _procedure_step(dataset)
+    _icc_profile(dataset)
+    dataset.ColorSpace = "ADOBERGB"
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    (step,) = written.ReferencedPerformedProcedureStepSequence
+    assert step.ReferencedSOPClassUID == "1.2.840.10008.3.1.2.3.3"
+    assert step.ReferencedSOPInstanceUID == replacement_uid(KEY, PROCEDURE_STEP)
+    assert written[0x00282000].VR == "OB"
+    assert written[0x00282000].value == icc_profiles.srgb_profile("DEIDENTIFIED sRGB")
+    # Color Space named the source profile's colour space, which the profile
+    # written may contradict, so it is removed (D-022).
+    assert "ColorSpace" not in written
+    assert b"scanner" not in result.data
+
+
+@pytest.mark.deid_requirement("MIDI-BP-14")
+def test_d_writes_an_item_for_each_procedure_step_and_the_second_profile():
+    dataset = synthetic.instance(
+        "1.2.840.10008.5.1.4.1.1.4.1",  # Enhanced MR Image Storage
+        synthetic.OTHER,
+        synthetic.OTHER_SERIES,
+    )
+    _procedure_step(dataset)
+    second = pydicom.Dataset()
+    second.ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.3"
+    second.ReferencedSOPInstanceUID = "2.25.1000"
+    dataset.ReferencedPerformedProcedureStepSequence.append(second)
+    _icc_profile(dataset, icc_profiles.srgb_profile("DEIDENTIFIED sRGB"))
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    steps = written.ReferencedPerformedProcedureStepSequence
+    assert [step.ReferencedSOPInstanceUID for step in steps] == [
+        replacement_uid(KEY, PROCEDURE_STEP),
+        replacement_uid(KEY, "2.25.1000"),
+    ]
+    # The source equals the first profile, so the second is written.
+    assert written[0x00282000].value == icc_profiles.srgb_profile("DE-IDENTIFIED sRGB")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+def test_d_writes_the_person_identification_item():
+    plan = synthetic.rt_plan()
+    code = pydicom.Dataset()
+    code.CodeValue = "SENTINEL"
+    code.CodingSchemeDesignator = "99LOCAL"
+    code.CodeMeaning = "SENTINEL^NAME"
+    asserter = pydicom.Dataset()
+    asserter.PersonIdentificationCodeSequence = [code]
+    assertion = pydicom.Dataset()
+    # RT Assertions Sequence and Asserter Identification Sequence are kept,
+    # so D applies to the codes (D-021).
+    assertion.add_new(0x00440103, "SQ", [asserter])
+    plan.add_new(0x00440110, "SQ", [assertion])
+
+    result = _transformed(plan)
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    (asserter,) = written[0x00440110].value[0][0x00440103].value
+    (item,) = asserter.PersonIdentificationCodeSequence
+    assert (item.CodeValue, item.CodingSchemeDesignator, item.CodeMeaning) == (
+        "DEIDENTIFIED",
+        "99PYMEDPHYS",
+        "DEIDENTIFIED^DEIDENTIFIED",
+    )
+    assert b"SENTINEL" not in result.data
 
 
 @pytest.mark.deid_requirement("MIDI-BP-06")

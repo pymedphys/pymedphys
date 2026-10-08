@@ -26,10 +26,13 @@ each element of the data set, in file order, an :class:`Edit`:
 - D replaces it with its VR's dummy value, or the second one where the
   source value equals the first, or, for a UI value, its keyed replacement
   (:func:`~pymedphys._dicom.deidentify.dummy_values.values_for_d`); D
-  replaces Person Identification Code Sequence (0040,1101), whose source
-  items are removed with it, with its reviewed dummy item, compared with
-  each source item's Code Value (0008,0100) and Code Meaning (0008,0104)
-  (:func:`~pymedphys._dicom.deidentify.dummy_values.items_for_d`, D-021);
+  replaces Person Identification Code Sequence (0040,1101) and Referenced
+  Performed Procedure Step Sequence (0008,1111), whose source items are
+  removed with them, with their reviewed dummy items, built from each source
+  item's compared values
+  (:func:`~pymedphys._dicom.deidentify.dummy_values.items_for_d`, D-021),
+  and ICC Profile (0028,2000) with a fixed profile of its colour space
+  (:func:`~pymedphys._dicom.deidentify.dummy_values.icc_profile_for_d`);
 - U replaces each UID that the pinned tables do not register with its keyed
   replacement, and keeps each that they do
   (:func:`~pymedphys._dicom.deidentify.uids.transform_uid`).
@@ -78,7 +81,14 @@ import dataclasses
 import enum
 
 from . import elements
-from .dummy_values import DummyElement, NoDummyValueError, items_for_d, values_for_d
+from .dummy_values import (
+    ICC_PROFILE,
+    DummyElement,
+    NoDummyValueError,
+    icc_profile_for_d,
+    items_for_d,
+    values_for_d,
+)
 from .elements import ElementValue, OutsideDefaultRepertoire, UndecodableElement
 from .file_layout import ElementPath
 from .keys import DeidKey
@@ -126,7 +136,7 @@ class Edit:
     action : str
         The plan's action, such as ``"D"``.
     kind : EditKind
-    values : tuple of str, int, or float
+    values : tuple of str, int, float, or bytes
         The values that replace the element's, for :attr:`EditKind.REPLACE`
         of an element other than a sequence; otherwise ``()``.
     uid_outcomes : tuple of UIDOutcome
@@ -145,7 +155,7 @@ class Edit:
     path: ElementPath
     action: str
     kind: EditKind
-    values: tuple[str | int | float, ...] = ()
+    values: tuple[str | int | float | bytes, ...] = ()
     uid_outcomes: tuple[UIDOutcome, ...] = ()
     removed_with: ElementPath | None = None
     items: tuple[tuple[DummyElement, ...], ...] = ()
@@ -434,7 +444,14 @@ def _dummy(path: ElementPath, value: ElementValue, key: DeidKey) -> Edit:
     attribute = dictionary_attribute(path.tag)
     vm = attribute.vm if attribute is not None else "1"
     try:
-        values = values_for_d(value.vr, vm, value.values, key)
+        if path.tag == ICC_PROFILE and value.vr == "OB":
+            if len(value.values) != 1 or not isinstance(value.values[0], bytes):
+                raise NoDummyValueError(value.vr, "ICC Profile is not one value")
+            values: tuple[str | int | float | bytes, ...] = (
+                icc_profile_for_d(value.values[0]),
+            )
+        else:
+            values = values_for_d(value.vr, vm, value.values, key)
     except NoDummyValueError:
         raise _Sequester(
             Sequestration(path, "D", value.vr, SequesterReason.NO_DUMMY_VALUE)
@@ -504,11 +521,22 @@ def _compared_text(element: ElementPlan, value: ElementValue) -> str:
     return "\\".join(str(each) for each in value.values)
 
 
-def _with_items(edit: Edit, compared: dict[int, dict[str, str]]) -> Edit:
-    """Give a reviewed dummy sequence's edit its items (D-021)."""
-    source_items = [compared[index] for index in sorted(compared)]
-    items = items_for_d(edit.path.tag, source_items)
-    return dataclasses.replace(edit, items=items)
+def _with_items(
+    edit: Edit, compared: dict[int, dict[str, str]], items: int, key: DeidKey
+) -> Edit:
+    """Give a reviewed dummy sequence's edit its items (D-021).
+
+    ``items`` is the number of the source sequence's items, each of which
+    ``compared`` holds the compared values of, if any.
+    """
+    source_items = [compared.get(index, {}) for index in range(items)]
+    try:
+        written = items_for_d(edit.path.tag, source_items, key)
+    except NoDummyValueError:
+        raise _Sequester(
+            Sequestration(edit.path, "D", "SQ", SequesterReason.NO_DUMMY_VALUE)
+        ) from None
+    return dataclasses.replace(edit, items=written)
 
 
 class _Gathered:
@@ -598,17 +626,25 @@ class _Gathered:
     def result(
         self,
         found: list[Edit],
-        reviewed: dict[ElementPath, int],
+        reviewed: dict[ElementPath, tuple[int, int]],
         sequestrations: list[Sequestration],
+        key: DeidKey,
     ) -> InstanceEdits:
         """Return the edits, each reviewed dummy sequence's with its items.
 
-        There are none if the instance must be sequestered.
+        ``reviewed`` gives each reviewed dummy sequence's position in
+        ``found`` and its number of source items. There are no edits if the
+        instance must be sequestered.
         """
+        for path, (position, items) in reviewed.items() if not sequestrations else ():
+            try:
+                found[position] = _with_items(
+                    found[position], self.compared.get(path, {}), items, key
+                )
+            except _Sequester as raised:
+                _record(sequestrations, raised)
         if sequestrations:
             found = []
-        for path, position in reviewed.items() if found else ():
-            found[position] = _with_items(found[position], self.compared.get(path, {}))
         return InstanceEdits(
             tuple(found),
             tuple(self.collected),
@@ -655,8 +691,9 @@ def edit_instance(
     sequestrations = list(plan.sequestrations)
     found: list[Edit] = []
     gathered = _Gathered()
-    # Each reviewed dummy sequence's edit, by its position in ``found``.
-    reviewed: dict[ElementPath, int] = {}
+    # Each reviewed dummy sequence's edit, by its position in ``found``, with
+    # its number of source items.
+    reviewed: dict[ElementPath, tuple[int, int]] = {}
     reader = _Reader(source, plan)
     try:
         reader.check_character_set()
@@ -670,17 +707,18 @@ def edit_instance(
                 if Consumer.RESIDUAL_COLLECTION in element.consumers:
                     gathered.read(reader, element, compare=False)
                 continue
-            container = source.element(element.path).items is not None
+            items = source.element(element.path).items
+            container = items is not None
             if _kept_container(element, container):
                 _check_items(reader, element)
             value = gathered.read(reader, element) if element.consumers else None
             edit = _edit(element, container, value, key, identity)
             if container and edit.kind is EditKind.REPLACE:
-                reviewed[edit.path] = len(found)
+                reviewed[edit.path] = (len(found), items or 0)
             found.append(edit)
         except _Sequester as raised:
             _record(sequestrations, raised)
-    return gathered.result(found, reviewed, sequestrations)
+    return gathered.result(found, reviewed, sequestrations, key)
 
 
 def read_values(

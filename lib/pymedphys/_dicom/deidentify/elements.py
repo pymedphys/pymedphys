@@ -870,3 +870,24 @@ def new_element(
         return pydicom.DataElement(
             _number(path.tag), vr, value, validation_mode=pydicom.config.IGNORE
         )
+
+
+def new_items(
+    sequence: ElementPath,
+    items: Sequence[Sequence[tuple[str, str, object]]],
+    codecs: Sequence[str],
+) -> tuple[pydicom.Dataset, ...]:
+    """Build the items of a sequence to write.
+
+    Each item is given as its elements' tags, VRs, and single values, such as
+    the items of a reviewed dummy sequence (D-021), and each element is built
+    by :func:`new_element`, which raises :class:`ValueError` for any problem.
+    """
+    built = []
+    for index, item in enumerate(items):
+        held = (*sequence.items, (sequence.tag, index))
+        dataset = pydicom.Dataset()
+        for tag, vr, value in item:
+            dataset.add(new_element(ElementPath(held, tag), vr, (value,), codecs))
+        built.append(dataset)
+    return tuple(built)
