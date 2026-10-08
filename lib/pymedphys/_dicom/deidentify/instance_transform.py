@@ -54,15 +54,13 @@ each instance it may process. It joins the engine's per-instance steps:
 Any step that refuses the instance sequesters it with that step's own
 value-free reason: a :class:`~.scope.Disposition`, or an
 :class:`~.scope.UnsupportedIod` that names the IOD of an instance of an
-unsupported IOD (D-010), a
-:class:`~.source.SourceReason`, the walker's
+unsupported IOD (D-010), a :class:`~.source.SourceReason`, the walker's
 :class:`~.walker.Sequestration` objects, a
 :class:`~.preserving_writer.WriteReason`, a
 :class:`~.preservation.PreservationReason`, or a :class:`TransformReason`,
 such as :attr:`TransformReason.PENDING_EDIT` for the edits still to come
-that :func:`writer_plan` names by :class:`PendingEdit`.
-No exception message is kept, since some come from pydicom and can quote a
-value.
+that :func:`writer_plan` names by :class:`PendingEdit`. No exception
+message is kept, since some come from pydicom and can quote a value.
 
 Whatever the outcome, once the instance has been planned and edited, its
 :class:`~.release_gate.Coverage` goes with it as the transform's evidence:
@@ -74,9 +72,9 @@ file's subject, sequestered instances included, and asks
 Where the edits sequester an instance, the values that they did not reach
 are uncollected. An instance out of scope whose IOD the pinned tables
 define, such as a nuclear medicine image or a spatial registration, is
-planned and edited too when its source is readable, only so that its values are
-collected for its subject's search; it is never written. Where
-an instance of the subject gives no coverage at all, because its source is
+planned and edited too when its source is readable, only so that its values
+are collected for its subject's search; it is never written. Where an
+instance of the subject gives no coverage at all, because its source is
 refused, its SOP Class names no IOD of the tables, the transform raises, or
 it changed during the run, the gate withholds the file, since its values
 could be there unsearched for.
@@ -112,6 +110,7 @@ from .elements import (
     UndecodableElement,
     dataset_codecs,
     new_element,
+    new_items,
     read_element,
 )
 from .file_layout import ElementPath
@@ -390,6 +389,8 @@ def writer_plan(
     kept: set[ElementPath] = set()
     removed: set[ElementPath] = set()
     replacements: dict[ElementPath, pydicom.DataElement] = {}
+    # The elements of the items that D writes in a reviewed dummy sequence.
+    introduced: set[ElementPath] = set()
     for edit in edits.edits:
         if edit.kind is EditKind.KEEP:
             kept.add(edit.path)
@@ -397,7 +398,13 @@ def writer_plan(
             removed.add(edit.path)
         else:
             replacements[edit.path] = _element(edit, vrs.get(edit.path), codecs)
-    return WriterPlan(frozenset(kept), frozenset(removed), replacements)
+            if edit.items:
+                introduced.update(
+                    _paths_within(replacements[edit.path], edit.path.items)
+                )
+    return WriterPlan(
+        frozenset(kept), frozenset(removed), replacements, frozenset(introduced)
+    )
 
 
 # The attributes that PS3.15 E.1.1, E.2, and E.3.6 have a de-identifier add
@@ -559,10 +566,12 @@ def satisfied_options(policy: Policy) -> tuple[str, ...]:
 def _element(
     edit: Edit, vr: str | None, codecs: tuple[str, ...]
 ) -> pydicom.DataElement:
-    values = () if edit.kind is EditKind.EMPTY else edit.values
+    values: tuple[object, ...] = () if edit.kind is EditKind.EMPTY else edit.values
     if vr is None:
         raise _Refused(TransformReason.UNWRITABLE_ELEMENT)
     try:
+        if edit.items:
+            values = new_items(edit.path, edit.items, codecs)
         return new_element(edit.path, vr, values, codecs)
     except ValueError:
         pass

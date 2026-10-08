@@ -27,6 +27,7 @@ from pymedphys._dicom.deidentify import (
     conformance_values,
     dummy_values,
     edits,
+    icc_profiles,
     instance_transform,
     pixel_risk,
     policy,
@@ -172,29 +173,54 @@ def test_the_removed_private_creators_description_is_described(preset):
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_reviewed_dummy_item_is_described():
     section = _section("basic", "Values written")
-    assert walker.REVIEWED_DUMMY_SEQUENCES
-    for tag, compared in walker.REVIEWED_DUMMY_SEQUENCES.items():
-        assert f"D on {_named(tag)} writes one item" in section
-        (first,) = dummy_values.items_for_d(tag, [])
-        for element in first:
-            assert f"{_named(element.tag)} `{element.value}`" in section
-        # A source item that holds the first item's values takes the second.
-        source = {e.tag: e.value for e in first if e.tag in compared}
-        (second,) = dummy_values.items_for_d(tag, [source])
-        changed = [e for e, f in zip(second, first) if e.value != f.value]
-        assert changed
-        for element in changed:
-            assert f"`{element.value}`" in section
-        for compared_tag in compared:
-            assert _named(compared_tag) in section
+    tag = dummy_values.PERSON_IDENTIFICATION_CODE_SEQUENCE
+    compared = walker.REVIEWED_DUMMY_SEQUENCES[tag]
+
+    assert f"D on {_named(tag)} writes one item" in section
+    (first,) = dummy_values.items_for_d(tag, [])
+    for element in first:
+        assert f"{_named(element.tag)} `{element.value}`" in section
+    # A source item that holds the first item's values takes the second.
+    source = {e.tag: e.value for e in first if e.tag in compared}
+    (second,) = dummy_values.items_for_d(tag, [source])
+    changed = [e for e, f in zip(second, first) if e.value != f.value]
+    assert changed
+    for element in changed:
+        assert f"`{element.value}`" in section
+    for compared_tag in compared:
+        assert _named(compared_tag) in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_reviewed_procedure_step_items_are_described():
+    section = _section("basic", "Values written")
+    tag = dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE
+    (uid,) = walker.REVIEWED_DUMMY_SEQUENCES[tag]
+
+    assert (
+        f"D on {_named(tag)} writes, for each source item, one item, with "
+        f"{_named('(0008,1150)')} "
+        f"`{dummy_values.MODALITY_PERFORMED_PROCEDURE_STEP}`"
+    ) in section
+    assert f"{_named(uid)} the keyed replacement of the source item's" in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_reviewed_icc_profile_is_described():
+    section = _section("basic", "Values written")
+
+    assert f"D on {_named(dummy_values.ICC_PROFILE)} writes a fixed ICC" in section
+    for description in ("DEIDENTIFIED sRGB", "DE-IDENTIFIED sRGB"):
+        assert f"`{description}`" in section
+    assert "grey" not in section
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
     section = _section("basic", "Values written")
+    tag = dummy_values.PERSON_IDENTIFICATION_CODE_SEQUENCE
     named = [
         element
-        for tag in walker.REVIEWED_DUMMY_SEQUENCES
         for item in dummy_values.items_for_d(tag, [])
         for element in item
         if "PYMEDPHYS" in element.value.upper()
@@ -209,6 +235,14 @@ def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
         for pair in dummy_values.CONSTANTS.values()
         for value in pair
     )
+    # The procedure step's items hold only UIDs, and the ICC profile's only
+    # text is its description and copyright.
+    assert set(walker.REVIEWED_DUMMY_SEQUENCES) == {
+        tag,
+        dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+    }
+    for description in ("DEIDENTIFIED sRGB", "DE-IDENTIFIED sRGB"):
+        assert b"PYMEDPHYS" not in icc_profiles.srgb_profile(description).upper()
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
