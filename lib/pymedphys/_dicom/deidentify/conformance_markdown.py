@@ -580,9 +580,12 @@ def _compressed(statement: ConformanceStatement) -> list[str]:
         "frame decodes, by the decoding plugin pinned to its transfer syntax, "
         "to the same pixels as its source's frame. One whose plugin is not "
         "installed, or whose frames or codestreams fail those checks, is "
-        "sequestered. A reversible JPEG 2000 or HTJ2K frame truncated to a "
-        "rate is not detected under a lossless transfer syntax, and is "
-        "written as its source labels it.",
+        "sequestered. Under JPEG 2000 Lossless, HTJ2K Lossless, or HTJ2K "
+        "Lossless RPCL, a frame is also written only where its packet headers "
+        "show every coding pass of every code-block they include; a "
+        "code-block that no packet includes is decoded as all zero, so a "
+        "frame truncated so far that it drops only whole code-blocks is not "
+        "detected.",
         "",
     ]
 

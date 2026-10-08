@@ -350,7 +350,8 @@ def test_the_statement_says_how_compressed_instances_are_written(statement_for):
     assert "without decoding and re-encoding" in section
     assert "comment and application segments" in section
     assert "to the same pixels as its source's frame" in section
-    assert "truncated to a rate is not detected" in section
+    assert "every coding pass of every code-block" in section
+    assert "drops only whole code-blocks is not detected" in section
 
     native = dataclasses.replace(
         statement,
