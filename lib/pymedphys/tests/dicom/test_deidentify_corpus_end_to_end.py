@@ -478,7 +478,10 @@ def test_released_images_keep_their_transfer_syntax_and_pixels(preset_run):
             assert text not in data
             cut += 1
     assert images
-    if preset_run.corpus.files[0].manifest.transfer_syntax in compressed.CORPUS_SYNTAXES:
+    if (
+        preset_run.corpus.files[0].manifest.transfer_syntax
+        in compressed.CORPUS_SYNTAXES
+    ):
         assert cut
 
 

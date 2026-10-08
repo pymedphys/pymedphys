@@ -356,7 +356,9 @@ def test_the_statement_says_how_compressed_instances_are_written(statement_for):
     native = dataclasses.replace(
         statement,
         transfer_syntaxes=tuple(
-            s for s in statement.transfer_syntaxes if s.uid in source.NATIVE_TRANSFER_SYNTAXES
+            s
+            for s in statement.transfer_syntaxes
+            if s.uid in source.NATIVE_TRANSFER_SYNTAXES
         ),
     )
     assert "re-encoding" not in _section(
