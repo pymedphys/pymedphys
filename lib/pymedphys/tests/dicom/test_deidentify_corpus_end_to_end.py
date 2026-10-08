@@ -19,7 +19,10 @@ conspicuous marker in each attribute of Table E.1-1 that its IODs define.
 Under the Basic Profile every one of them is removed or replaced, so no
 released file may hold any of them. The search here is independent of the
 engine's own residual search: it looks for each recorded value as bytes,
-and checks numeric values, which cannot be searched for, at their place.
+a value of digits and full stops alone, such as a date, a decimal, or a
+UID, only where no digit or full stop is before it, so that the digits of
+a replacement UID do not match it by chance, and checks
+numeric values, which cannot be searched for, at their place.
 
 Under ``basic-clean-descriptors`` every marker is removed or replaced as
 under ``basic``: each attribute given C other than ROI Name takes its Basic
@@ -42,6 +45,7 @@ neither GDCM nor pylibjpeg-openjpeg; the engine then sequesters the images as
 
 import dataclasses
 import logging
+import re
 import shutil
 import tempfile
 import warnings
@@ -51,7 +55,13 @@ from pymedphys._imports import pydicom, pytest
 
 from pymedphys._nomenclature import tg263
 
-from pymedphys._dicom.deidentify import pixel_decoding, roi_names, run, standard
+from pymedphys._dicom.deidentify import (
+    dummy_values,
+    pixel_decoding,
+    roi_names,
+    run,
+    standard,
+)
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.file_layout import ElementPath
@@ -104,6 +114,10 @@ NUMERIC_VRS = frozenset(
 NUMBERS_AS_TEXT = frozenset({"DS", "IS"})
 # Shorter forms would match by chance.
 SHORTEST_FORM = 4
+# A form of digits and full stops alone, such as a date, a decimal, or a
+# UID, could match by chance within the digits of a replacement UID, so it
+# is found only where no digit or full stop is before it.
+DIGITS_ONLY = re.compile(r"[0-9.]+")
 DATE_DIGITS = 8
 # The generic parts of every marker.
 MARKER_SIGNATURES = (
@@ -194,9 +208,27 @@ def fixture_preset_run(request, published):  # pylint: disable = unused-argument
 @pytest.fixture(name="unreviewed_run", scope="module")
 def fixture_unreviewed_run(published):  # pylint: disable = unused-argument
     yield _run(
-        _with_a_second_roi(corpus_module.build_corpus()),
+        _with_a_second_roi(_ct_and_rt(corpus_module.build_corpus())),
         CLEAN_DESCRIPTORS,
         ReviewedNames.empty(),
+    )
+
+
+def _ct_and_rt(corpus):
+    """Return the corpus's CT Image and RT instances, with its structure set.
+
+    The residual search of each output looks for the values of every
+    instance of its patient, so a run's time grows with the square of the
+    number of instances; the other instances are run in ``preset_run``.
+    """
+    return dataclasses.replace(
+        corpus,
+        files=tuple(
+            file
+            for file in corpus.files
+            if file.manifest.iod
+            in ("CT Image", "RT Structure Set", "RT Plan", "RT Dose")
+        ),
     )
 
 
@@ -375,6 +407,17 @@ def _encodings(form):
     }
 
 
+def _holds(data, form):
+    """Return whether a file's bytes hold a form of a placement's values."""
+    if DIGITS_ONLY.fullmatch(form):
+        encoded = form.encode("ascii")
+        # The search for the bytes alone is the quicker, and rarely finds them.
+        if encoded in data and re.search(rb"(?<![0-9.])" + re.escape(encoded), data):
+            return True
+        return form.encode("utf-16-le") in data
+    return any(encoded in data for encoded in _encodings(form))
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01", "MIDI-BP-03", "PS3.15-E.1.1-09")
 def test_each_preset_releases_all_but_the_instances_it_must_hold(
     preset_run,
@@ -473,8 +516,7 @@ def test_no_published_file_holds_a_marker(preset_run):
             assert forms, (file.name, placement.path)
             for form in forms:
                 for name, data in published.items():
-                    for encoded in _encodings(form):
-                        assert encoded not in data, (name, file.name, placement.path)
+                    assert not _holds(data, form), (name, file.name, placement.path)
 
 
 @pytest.mark.deid_requirement("MIDI-BP-14", "PS3.15-E.1.1-02")
@@ -597,6 +639,53 @@ def test_every_released_instance_carries_the_profiles_markers(preset_run):
             preset_run.method_digest
         ]
         assert dataset.LongitudinalTemporalInformationModified == "REMOVED"
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01", "MIDI-BP-14")
+def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(preset_run):
+    # Referenced Performed Procedure Step Sequence, which the multi-frame
+    # IODs conditionally require (Type 1C), refers to the procedure step by its keyed replacement,
+    # the same in each instance, and the colour image's ICC Profile is the
+    # fixed sRGB profile (D-021).
+    corpus, released = preset_run.corpus, preset_run.released
+    procedure_step = "ReferencedPerformedProcedureStepSequence"
+    multi_frame = {
+        "Enhanced CT Image",
+        "Legacy Converted Enhanced CT Image",
+        "Enhanced MR Image",
+        "Enhanced MR Color Image",
+        "Legacy Converted Enhanced MR Image",
+        "MR Spectroscopy",
+        "Enhanced PET Image",
+        "Legacy Converted Enhanced PET Image",
+    }
+    steps = set()
+
+    for position, data in released.items():
+        file = corpus.files[position]
+        source, written = _read(file.data), _read(data)
+        if file.manifest.iod not in multi_frame:
+            assert procedure_step not in written, file.name
+            continue
+        assert procedure_step in source
+        (item,) = written[procedure_step].value
+        assert item.ReferencedSOPClassUID == (
+            corpus_module.MODALITY_PERFORMED_PROCEDURE_STEP
+        )
+        steps.add(item.ReferencedSOPInstanceUID)
+        if file.manifest.iod == "Enhanced MR Color Image":
+            assert written.ICCProfile == dummy_values.icc_profile_for_d(
+                source.ICCProfile
+            )
+            assert written.ICCProfile != source.ICCProfile
+        else:
+            assert "ICCProfile" not in written
+
+    (step,) = steps
+    assert step != corpus_module.PROCEDURE_STEP
+    assert {corpus.files[position].manifest.iod for position in released} >= (
+        multi_frame
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")

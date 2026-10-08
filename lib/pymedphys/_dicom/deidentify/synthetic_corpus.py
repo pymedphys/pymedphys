@@ -15,12 +15,17 @@
 """A synthetic collection with a conspicuous marker in each attribute to protect.
 
 :func:`build_corpus` builds, in memory and the same way every time, one
-linked collection of the first supported release's CT and RT IODs: three CT
-Image slices, an RT Structure Set that references the CT series and slices, an RT
-Plan that references the structure set and the dose, and an RT Dose that
-references the plan, all of one fictitious patient and study, with one Frame
-of Reference, and a second RT Dose of the plan for review (below). It is
-the input for validating each preset end to end: once the engine has
+linked collection of the first supported release's IODs, all of one
+fictitious patient and study, with one Frame of Reference: three CT Image
+slices, an RT Structure Set that references the CT series and slices, an RT
+Plan that references the structure set and the dose, an RT Dose that
+references the plan, a second RT Dose of the plan for review (below), and
+one instance of each of the other ten IODs, each in a series of its own.
+The MR Image and PET Image instances reference the first CT slice, and each
+enhanced, legacy converted enhanced, or MR Spectroscopy instance references
+the single-frame instance of its modality: the first CT slice, the MR
+Image, or the PET Image. It is the input for validating each preset end to
+end: once the engine has
 written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
 markers that had to be removed or replaced.
@@ -75,12 +80,21 @@ RT Referenced Series Sequence, lie at that depth; the deeper places, such as
 the Code Sequence Macros nested in the Request Attributes Sequence, repeat
 macros already planted at shallower places. A repeating group is planted in
 its first group only: Overlay Data (60xx,3000), which of the collection's IODs
-only CT Image defines, is planted in group 6000 with VR OW, of the OB or OW
-that PS3.6 allows, so it is written in Explicit VR only. An attribute that the pinned
-dictionary gives no single VR, and a tag whose element number is masked,
+CT Image, MR Image, and PET Image define, is planted in group 6000 with VR
+OW, of the OB or OW that PS3.6 allows, the VR that Implicit VR gives it. An
+attribute that the pinned dictionary gives no single VR, and a tag whose element number is masked,
 are not planted. Each placement not planted is recorded with a
 :class:`NotPlantedReason`. Pixel Data is not an attribute of Table E.1-1 and
-holds only a few synthetic samples.
+holds only a few synthetic samples: 2 by 2 pixels, in two frames in a
+multi-frame IOD, monochrome but for the Enhanced MR Color instance, whose RGB
+pixels come with the ICC Profile (0028,2000) its IOD requires: an sRGB
+profile (:mod:`~pymedphys._dicom.deidentify.icc_profiles`) whose description,
+:data:`SOURCE_ICC_DESCRIPTION`, begins with the marker prefix, so that a kept
+profile would be found. The MR Spectroscopy instance holds two values of
+Spectroscopy Data (5600,0020) and no Pixel Data. A functional group sequence
+has the one item that its markers need, not one for each frame; like every
+instance of the corpus, the multi-frame instances do not hold every
+attribute their IODs require.
 
 **Sequestering attributes.** An attribute whose Basic Profile action is a
 plain X, and whose removal sequesters the instance because the IOD requires
@@ -90,22 +104,29 @@ is planted only in :data:`SEQUESTERED_FILE`, the third CT slice, and
 recorded in the other files with
 :attr:`NotPlantedReason.SEQUESTERS_INSTANCE`. Of the corpus's IODs these
 are Responsible Person (0010,2297) and Responsible Organization (0010,2299)
-at the top level. Planted in every file, they would sequester every
+at the top level, and Radiopharmaceutical Start DateTime (0018,1078) in the
+Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
+Image. Planted in every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other five check each preset's output.
+the other fifteen check each preset's output. Radiopharmaceutical Start
+DateTime, which CT Image does not define, is planted in no file, so the
+Enhanced PET instance, which lacks an attribute of Type 1, is released and
+its other markers are checked; an instance that conforms to the IOD is
+sequestered under both presets of the first supported release.
 
-**Edge cases.** Each file except the first RT Dose, ``06-rtdose.dcm``, is
-written in Explicit VR Little Endian, and that RT Dose in Implicit VR
-Little Endian. pydicom 3.0.2 does not know some newer attributes, such as
-(0008,001D), and reads them from that RT Dose as UN; the engine reads them
+**Edge cases.** Each file except the first RT Dose, ``06-rtdose.dcm``, and
+the MR Image, ``10-mr.dcm``, is written in Explicit VR Little Endian, and
+those two in Implicit VR Little Endian. pydicom 3.0.2 does not know some
+newer attributes, such as (0008,001D), and reads them from those files as
+UN; the engine reads them
 with the pinned dictionary. The first CT slice holds Patient Comments
 (0010,4000) encoded with VR UN.
 The RT Structure Set declares Specific Character Set ``ISO_IR 100`` and its
 Patient's Name holds a Latin-1 letter. Every file has a private block of a
 synthetic private creator at the top level, and another in the item of
 Procedure Code Sequence (0008,1032), which pydicom knows; in the Implicit VR
-file neither has a VR in the file. Every file is admitted by the engine's
+files neither has a VR in the file. Every file is admitted by the engine's
 strict source reader
 (:func:`~pymedphys._dicom.deidentify.source.read_source`); none is
 deliberately outside admission.
@@ -122,7 +143,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other five files stay releasable.
+CT slice remains sequestered; the other fifteen files stay releasable.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
 placement: its element path, VR, values, kind, the Table E.1-1 row it
@@ -154,6 +175,7 @@ from collections.abc import Sequence
 
 from pymedphys._imports import pydicom
 
+from . import icc_profiles
 from .compound_actions import RemovalExtent, resolve_plain_x_in_iod
 from .elements import dataset_codecs, new_element
 from .file_layout import ElementPath
@@ -177,6 +199,16 @@ IMPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2"
 EXPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2.1"
 
 CT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.2"
+ENHANCED_CT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.2.1"
+LEGACY_CONVERTED_ENHANCED_CT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.2.2"
+MR_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.4"
+ENHANCED_MR_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.4.1"
+MR_SPECTROSCOPY_STORAGE = "1.2.840.10008.5.1.4.1.1.4.2"
+ENHANCED_MR_COLOR_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.4.3"
+LEGACY_CONVERTED_ENHANCED_MR_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.4.4"
+PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.128"
+LEGACY_CONVERTED_ENHANCED_PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.128.1"
+ENHANCED_PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.130"
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
 RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
@@ -211,6 +243,28 @@ PLAN = f"{LINKED_UID_ROOT}00301"
 DOSE_SERIES = f"{LINKED_UID_ROOT}00400"
 DOSE = f"{LINKED_UID_ROOT}00401"
 REVIEW_DOSE = f"{LINKED_UID_ROOT}00402"
+# One instance, in a series of its own, of each IOD of the first supported
+# release that is not CT Image or an RT IOD.
+ENHANCED_CT_SERIES = f"{LINKED_UID_ROOT}00500"
+ENHANCED_CT = f"{LINKED_UID_ROOT}00501"
+LEGACY_CT_SERIES = f"{LINKED_UID_ROOT}00600"
+LEGACY_CT = f"{LINKED_UID_ROOT}00601"
+MR_SERIES = f"{LINKED_UID_ROOT}00700"
+MR = f"{LINKED_UID_ROOT}00701"
+ENHANCED_MR_SERIES = f"{LINKED_UID_ROOT}00800"
+ENHANCED_MR = f"{LINKED_UID_ROOT}00801"
+MR_COLOR_SERIES = f"{LINKED_UID_ROOT}00900"
+MR_COLOR = f"{LINKED_UID_ROOT}00901"
+LEGACY_MR_SERIES = f"{LINKED_UID_ROOT}01000"
+LEGACY_MR = f"{LINKED_UID_ROOT}01001"
+SPECTROSCOPY_SERIES = f"{LINKED_UID_ROOT}01100"
+SPECTROSCOPY = f"{LINKED_UID_ROOT}01101"
+PET_SERIES = f"{LINKED_UID_ROOT}01200"
+PET = f"{LINKED_UID_ROOT}01201"
+ENHANCED_PET_SERIES = f"{LINKED_UID_ROOT}01300"
+ENHANCED_PET = f"{LINKED_UID_ROOT}01301"
+LEGACY_PET_SERIES = f"{LINKED_UID_ROOT}01400"
+LEGACY_PET = f"{LINKED_UID_ROOT}01401"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -252,6 +306,16 @@ _SOP_CLASSES = types.MappingProxyType(
         PLAN: RT_PLAN_STORAGE,
         DOSE: RT_DOSE_STORAGE,
         REVIEW_DOSE: RT_DOSE_STORAGE,
+        ENHANCED_CT: ENHANCED_CT_IMAGE_STORAGE,
+        LEGACY_CT: LEGACY_CONVERTED_ENHANCED_CT_IMAGE_STORAGE,
+        MR: MR_IMAGE_STORAGE,
+        ENHANCED_MR: ENHANCED_MR_IMAGE_STORAGE,
+        MR_COLOR: ENHANCED_MR_COLOR_IMAGE_STORAGE,
+        LEGACY_MR: LEGACY_CONVERTED_ENHANCED_MR_IMAGE_STORAGE,
+        SPECTROSCOPY: MR_SPECTROSCOPY_STORAGE,
+        PET: PET_IMAGE_STORAGE,
+        ENHANCED_PET: ENHANCED_PET_IMAGE_STORAGE,
+        LEGACY_PET: LEGACY_CONVERTED_ENHANCED_PET_IMAGE_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -490,6 +554,34 @@ class SyntheticCorpus:
 
 
 @dataclasses.dataclass(frozen=True)
+class _Image:
+    """The image of an instance other than a CT slice or an RT Dose."""
+
+    modality: str
+    # Its Number of Frames, or 0 for a single-frame IOD, which has none.
+    frames: int = 0
+    colour: bool = False
+
+
+_IMAGES = types.MappingProxyType(
+    {
+        ENHANCED_CT_IMAGE_STORAGE: _Image("CT", 2),
+        LEGACY_CONVERTED_ENHANCED_CT_IMAGE_STORAGE: _Image("CT", 2),
+        MR_IMAGE_STORAGE: _Image("MR"),
+        ENHANCED_MR_IMAGE_STORAGE: _Image("MR", 2),
+        ENHANCED_MR_COLOR_IMAGE_STORAGE: _Image("MR", 2, colour=True),
+        LEGACY_CONVERTED_ENHANCED_MR_IMAGE_STORAGE: _Image("MR", 2),
+        PET_IMAGE_STORAGE: _Image("PT"),
+        ENHANCED_PET_IMAGE_STORAGE: _Image("PT", 2),
+        LEGACY_CONVERTED_ENHANCED_PET_IMAGE_STORAGE: _Image("PT", 2),
+    }
+)
+# The description of the Enhanced MR Color instance's ICC profile, which D
+# replaces, so that the search for the markers' signatures finds it if kept.
+SOURCE_ICC_DESCRIPTION = f"{MARKER_PREFIX} SOURCE ICC PROFILE"
+
+
+@dataclasses.dataclass(frozen=True)
 class _Spec:
     """An instance of the corpus, before its markers are planted."""
 
@@ -570,6 +662,80 @@ _SPECS = (
         # Manufacturer's Model Name keeps the plan's RT Plan Label.
         review_copy=("(0008,1090)", "05-rtplan.dcm", "(300A,0002)"),
     ),
+    # The MR and PET Images reference the first CT slice, and each enhanced,
+    # legacy converted enhanced, or MR Spectroscopy instance the
+    # single-frame instance of its modality.
+    _Spec(
+        "08-ct-enhanced.dcm",
+        ENHANCED_CT_IMAGE_STORAGE,
+        ENHANCED_CT,
+        ENHANCED_CT_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        "09-ct-legacy-enhanced.dcm",
+        LEGACY_CONVERTED_ENHANCED_CT_IMAGE_STORAGE,
+        LEGACY_CT,
+        LEGACY_CT_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        "10-mr.dcm",
+        MR_IMAGE_STORAGE,
+        MR,
+        MR_SERIES,
+        CT_SLICES[0],
+        transfer_syntax=IMPLICIT_VR_LITTLE_ENDIAN,
+    ),
+    _Spec(
+        "11-mr-enhanced.dcm",
+        ENHANCED_MR_IMAGE_STORAGE,
+        ENHANCED_MR,
+        ENHANCED_MR_SERIES,
+        MR,
+    ),
+    _Spec(
+        "12-mr-enhanced-color.dcm",
+        ENHANCED_MR_COLOR_IMAGE_STORAGE,
+        MR_COLOR,
+        MR_COLOR_SERIES,
+        MR,
+    ),
+    _Spec(
+        "13-mr-legacy-enhanced.dcm",
+        LEGACY_CONVERTED_ENHANCED_MR_IMAGE_STORAGE,
+        LEGACY_MR,
+        LEGACY_MR_SERIES,
+        MR,
+    ),
+    _Spec(
+        "14-mr-spectroscopy.dcm",
+        MR_SPECTROSCOPY_STORAGE,
+        SPECTROSCOPY,
+        SPECTROSCOPY_SERIES,
+        MR,
+    ),
+    _Spec(
+        "15-pet.dcm",
+        PET_IMAGE_STORAGE,
+        PET,
+        PET_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        "16-pet-enhanced.dcm",
+        ENHANCED_PET_IMAGE_STORAGE,
+        ENHANCED_PET,
+        ENHANCED_PET_SERIES,
+        PET,
+    ),
+    _Spec(
+        "17-pet-legacy-enhanced.dcm",
+        LEGACY_CONVERTED_ENHANCED_PET_IMAGE_STORAGE,
+        LEGACY_PET,
+        LEGACY_PET_SERIES,
+        PET,
+    ),
 )
 
 
@@ -579,9 +745,13 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Seven files: three CT slices, then the RT Structure Set, RT Plan, RT
-        Dose, and the RT Dose for review. Two builds give the same bytes and
-        the same manifest.
+        Seventeen files: three CT slices; the RT Structure Set, RT Plan, RT
+        Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
+        Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
+        Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
+        Spectroscopy; and the PET Image, Enhanced PET Image, and Legacy
+        Converted Enhanced PET Image. Two builds give the same bytes and the
+        same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -1104,6 +1274,19 @@ class _Instance:
         elif self.spec.sop_class == RT_PLAN_STORAGE:
             put((), "(0008,0060)", ["RTPLAN"])
             put((), "(300A,000C)", ["PATIENT"])
+        elif self.spec.sop_class == MR_SPECTROSCOPY_STORAGE:
+            put((), "(0008,0060)", ["MR"])
+            put((), "(0008,0008)", ["ORIGINAL", "PRIMARY", "SPECTROSCOPY", "NONE"])
+            put((), "(0028,0008)", ["1"])
+            put((), "(0028,0010)", [1])
+            put((), "(0028,0011)", [1])
+            put((), "(0028,9001)", [1])
+            put((), "(0028,9002)", [2])
+            put((), "(0028,9003)", ["FREQUENCY"])
+            put((), "(0028,9108)", ["REAL"])
+            put((), "(5600,0020)", [struct.pack("<2f", 1.0, 2.0)])
+        elif self.spec.sop_class in _IMAGES:
+            self._add_image(_IMAGES[self.spec.sop_class])
         else:
             put((), "(0008,0060)", ["RTDOSE"])
             put((), "(0020,0032)", ["-1", "-1", "0"])
@@ -1117,11 +1300,45 @@ class _Instance:
             put((), "(3004,000E)", ["0.001"])
             self._add_pixels(32, 0, struct.pack("<8I", *range(0, 8000, 1000)))
 
-    def _add_pixels(self, bits: int, representation: int, data: bytes) -> None:
-        """Add a 2 by 2 monochrome image of ``bits``-bit samples."""
+    def _add_image(self, image: _Image) -> None:
+        """Add the attributes that make the instance an MR, PET, or CT image."""
         put = self._set
-        put((), "(0028,0002)", [1])
-        put((), "(0028,0004)", ["MONOCHROME2"])
+        put((), "(0008,0060)", [image.modality])
+        if image.frames:
+            put((), "(0008,0008)", ["ORIGINAL", "PRIMARY", "AXIAL", "NONE"])
+            put((), "(0028,0008)", [str(image.frames)])
+        else:
+            put((), "(0008,0008)", ["ORIGINAL", "PRIMARY", "AXIAL"])
+            put((), "(0020,0032)", ["-1", "-1", "0"])
+            put((), "(0020,0037)", ["1", "0", "0", "0", "1", "0"])
+        if image.modality == "PT" and not image.frames:
+            put((), "(0028,1052)", ["0"])
+            put((), "(0028,1053)", ["1"])
+            put((), "(0054,1001)", ["BQML"])
+        frames = max(1, image.frames)
+        if image.colour:
+            put((), "(0028,2000)", [icc_profiles.srgb_profile(SOURCE_ICC_DESCRIPTION)])
+            self._add_pixels(8, 0, bytes(range(12 * frames)), colour=True)
+        else:
+            samples = range(0, 400 * frames, 100)
+            self._add_pixels(
+                16,
+                int(image.modality == "CT"),
+                struct.pack(f"<{4 * frames}H", *samples),
+            )
+
+    def _add_pixels(
+        self, bits: int, representation: int, data: bytes, *, colour: bool = False
+    ) -> None:
+        """Add 2 by 2 monochrome, or RGB, frames of ``bits``-bit samples."""
+        put = self._set
+        if colour:
+            put((), "(0028,0002)", [3])
+            put((), "(0028,0004)", ["RGB"])
+            put((), "(0028,0006)", [0])
+        else:
+            put((), "(0028,0002)", [1])
+            put((), "(0028,0004)", ["MONOCHROME2"])
         put((), "(0028,0010)", [2])
         put((), "(0028,0011)", [2])
         put((), "(0028,0030)", ["1", "1"])
