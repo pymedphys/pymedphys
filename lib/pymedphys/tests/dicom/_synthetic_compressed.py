@@ -306,9 +306,10 @@ def compressed_corpus(corpus):
         if "PixelData" not in dataset:
             files.append(file)
             continue
+        start = images % len(CORPUS_SYNTAXES)
         syntax = next(
             each
-            for each in (*CORPUS_SYNTAXES[images:], *CORPUS_SYNTAXES[:images])
+            for each in (*CORPUS_SYNTAXES[start:], *CORPUS_SYNTAXES[:start])
             if _encodes(each, dataset)
         )
         images += 1
@@ -333,7 +334,9 @@ def _compressed(dataset, syntax, text) -> bytes:
     """Return the image written in ``syntax``, with ``text`` in its codestreams."""
     bits = dataset.BitsStored
     pixels = dataset.pixel_array
-    frames = pixels if pixels.ndim == 3 else pixels[np.newaxis]
+    frames = (
+        pixels if int(dataset.get("NumberOfFrames") or 1) > 1 else pixels[np.newaxis]
+    )
     if syntax == RLE_LOSSLESS:
         # RLE Lossless has no segment that could hold text.
         codestreams = [rle_lossless(frame) for frame in frames]
@@ -367,16 +370,20 @@ def _compressed(dataset, syntax, text) -> bytes:
 
 
 def rle_lossless(frame) -> bytes:
-    """Return one monochrome frame as an RLE Lossless frame (PS3.5 Annex G).
+    """Return one frame as an RLE Lossless frame (PS3.5 Annex G).
 
-    pydicom's encoder takes samples of at most 16 bits, so this one, for any
-    width, writes each byte plane, most significant first, as literal runs
-    of at most 128 bytes, one more run where that makes a segment's length
-    even.
+    A frame of rows and columns has one sample per pixel; one of rows,
+    columns, and samples has as many as its last axis. pydicom's encoder
+    takes samples of at most 16 bits, so this one, for any width, writes
+    each sample's byte planes, most significant first, as literal runs of at
+    most 128 bytes, one more run where that makes a segment's length even.
     """
     frame = np.asarray(frame)
-    planes = frame.astype(frame.dtype.newbyteorder(">")).view(np.uint8)
-    planes = planes.reshape(*frame.shape, frame.dtype.itemsize)
+    samples = frame if frame.ndim == 3 else frame[..., np.newaxis]
+    planes = samples.astype(samples.dtype.newbyteorder(">")).view(np.uint8)
+    planes = planes.reshape(*samples.shape, samples.dtype.itemsize)
+    # Segments by sample, then by byte, most significant first (Section G.2).
+    planes = planes.reshape(*samples.shape[:2], -1)
     segments = []
     for plane in np.moveaxis(planes, -1, 0):
         data = plane.tobytes()
