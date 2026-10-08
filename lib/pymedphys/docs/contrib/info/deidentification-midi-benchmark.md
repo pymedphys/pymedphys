@@ -43,7 +43,7 @@ uv run --no-dev --extra user python -c "import gdcm, openjpeg, pylibjpeg"
 
 The `--help` command should list two subcommands, `run` and `script-results`, and the last command should print nothing.
 
-The `user` extra installs the decoders that the engine pins for compressed Pixel Data: python-gdcm for JPEG and JPEG-LS, and pylibjpeg with pylibjpeg-openjpeg for JPEG 2000 and HTJ2K. The `dicom` extra installs none of them, so a run with it alone would sequester every compressed instance but RLE Lossless as `no-decoder`, withholding its patient's files from the score. python-gdcm publishes wheels for 64-bit Windows, macOS, and Linux with glibc 2.27 or later; elsewhere uv tries to build it from source.
+The `user` extra installs the decoders that the engine pins for compressed Pixel Data: python-gdcm for JPEG and JPEG-LS, and pylibjpeg with pylibjpeg-openjpeg for JPEG 2000 and HTJ2K. The `dicom` extra installs none of them, so a run with it alone would sequester every instance in one of those syntaxes as `no-decoder`, withholding its patient's files from the score. Either way, an instance in a compressed transfer syntax that the release does not support, such as JPEG 2000 Part 2 or a video syntax, is outside the release's coverage whatever is installed, and its checks are counted apart as outside coverage. python-gdcm publishes wheels for 64-bit Windows, macOS, and Linux with glibc 2.27 or later; elsewhere uv tries to build it from source.
 
 To benchmark a later engine, run `git pull` and `uv sync --no-dev --extra user` again.
 
