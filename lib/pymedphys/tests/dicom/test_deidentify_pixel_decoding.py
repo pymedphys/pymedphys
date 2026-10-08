@@ -552,11 +552,10 @@ def _rate_limited_jpeg_2000(frame):
     return buffer.getvalue()
 
 
-def test_a_truncated_reversible_jpeg_2000_frame_is_not_detected():
+def test_a_truncated_reversible_jpeg_2000_frame_passes_only_under_a_lossy_syntax():
     # The reversible wavelet is needed for lossless coding but does not show
-    # it: a truncated codestream is lossy (PS3.5 Section A.4.4), and whether
-    # every coding pass was kept is recorded only in packet headers, which
-    # are not read. This records that limit; it is not a requirement.
+    # it: a truncated codestream is lossy (PS3.5 Section A.4.4), and only its
+    # packet headers show that coding passes were dropped.
     _needs_openjpeg()
     _needs(compressed.JPEG_2000)
     openjpeg = pytest.importorskip("openjpeg")
@@ -571,7 +570,9 @@ def test_a_truncated_reversible_jpeg_2000_frame_is_not_detected():
     assert frames_problem(_jpeg_2000_image(exact, bits=8)) is None
     lossy = _jpeg_2000_image(truncated, syntax=compressed.JPEG_2000, bits=8)
     assert frames_problem(lossy) is None
-    assert frames_problem(_jpeg_2000_image(truncated, bits=8)) is None
+    assert frames_problem(_jpeg_2000_image(truncated, bits=8)) is (
+        TransformReason.FRAME_MISMATCH
+    )
 
 
 def _segment_at(codestream, marker):
