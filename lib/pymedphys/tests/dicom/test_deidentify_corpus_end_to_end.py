@@ -31,6 +31,16 @@ a reviewer's decision in the reviewed-names list. The run's structure set
 also has a second ROI, added here, whose name the automatic tier writes in
 the vocabulary's spelling. The vocabulary is invented and treated as a
 published edition for these tests, so nothing is downloaded.
+
+Under ``basic`` the corpus also runs with its images compressed, each in a
+transfer syntax that encapsulates Pixel Data, with a marker planted in the
+comment and application segments of its codestreams
+(:func:`~pymedphys.tests.dicom._synthetic_compressed.compressed_corpus`): the
+same instances are released, with their transfer syntax and pixels kept and
+none of those markers. That run is skipped where a decoding plugin of those
+syntaxes is not installed, as with the ``dicom`` extra alone, which installs
+neither GDCM nor pylibjpeg-openjpeg; the engine then sequesters the images as
+``no-decoder``, which the instance transform tests cover.
 """
 
 import dataclasses
@@ -45,7 +55,13 @@ from pymedphys._imports import pydicom, pytest
 
 from pymedphys._nomenclature import tg263
 
-from pymedphys._dicom.deidentify import dummy_values, roi_names, run, standard
+from pymedphys._dicom.deidentify import (
+    dummy_values,
+    pixel_decoding,
+    roi_names,
+    run,
+    standard,
+)
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.file_layout import ElementPath
@@ -75,6 +91,8 @@ from pymedphys._dicom.deidentify.run_report import (
 )
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 from pymedphys._dicom.deidentify.written_references import WrittenFindingKind
+
+from . import _synthetic_compressed as compressed
 
 pytestmark = pytest.mark.pydicom
 
@@ -113,6 +131,9 @@ MARKER_SIGNATURES = (
 
 
 CLEAN_DESCRIPTORS = "basic-clean-descriptors"
+# The basic preset over the corpus with its images compressed, and text
+# planted in their codestreams' metadata segments.
+COMPRESSED = "basic-compressed"
 BASIC_PROFILE_CODE = ("113100", "DCM")
 CLEAN_DESCRIPTORS_CODE = ("113105", "DCM")
 ROI_SEQUENCE = "(3006,0020)"
@@ -151,10 +172,29 @@ def fixture_published():
         yield
 
 
-@pytest.fixture(name="preset_run", scope="module", params=["basic", CLEAN_DESCRIPTORS])
+@pytest.fixture(
+    name="preset_run",
+    scope="module",
+    params=[
+        "basic",
+        CLEAN_DESCRIPTORS,
+        pytest.param(
+            COMPRESSED,
+            marks=pytest.mark.skipif(
+                not all(
+                    pixel_decoding.decoder_available(syntax)
+                    for syntax in compressed.CORPUS_SYNTAXES
+                ),
+                reason="a decoding plugin of the compressed corpus is not installed",
+            ),
+        ),
+    ],
+)
 def fixture_preset_run(request, published):  # pylint: disable = unused-argument
     corpus = corpus_module.build_corpus()
-    if request.param == CLEAN_DESCRIPTORS:
+    if request.param == COMPRESSED:
+        yield _run(compressed.compressed_corpus(corpus), "basic")
+    elif request.param == CLEAN_DESCRIPTORS:
         corpus = _with_a_second_roi(corpus)
         reviewed = ReviewedNames.empty()
         reviewed.record(
@@ -477,6 +517,32 @@ def test_no_published_file_holds_a_marker(preset_run):
             for form in forms:
                 for name, data in published.items():
                     assert not _holds(data, form), (name, file.name, placement.path)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-14", "PS3.15-E.1.1-02")
+def test_released_images_keep_their_transfer_syntax_and_pixels(preset_run):
+    corpus, released = preset_run.corpus, preset_run.released
+    text = compressed.CODESTREAM_TEXT.encode("ascii")
+    images = cut = 0
+
+    for position, data in released.items():
+        file = corpus.files[position]
+        source, dataset = _read(file.data), _read(data)
+        assert dataset.file_meta.TransferSyntaxUID == file.manifest.transfer_syntax
+        if "PixelData" not in source:
+            continue
+        images += 1
+        assert (dataset.pixel_array == source.pixel_array).all(), file.name
+        if text in file.data:
+            # Cut from the codestreams, which were not recompressed.
+            assert text not in data
+            cut += 1
+    assert images
+    if (
+        preset_run.corpus.files[0].manifest.transfer_syntax
+        in compressed.CORPUS_SYNTAXES
+    ):
+        assert cut
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.1-01", "PS3.15-E.1.1-09")

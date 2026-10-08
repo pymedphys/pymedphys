@@ -47,6 +47,7 @@ from .markers import PROFILE_CODE
 from .policy import TARGET_OPTIONS
 from .reviewed_roi_names import Outcome, Review
 from .roi_names import Reason
+from .source import ENCAPSULATED_TRANSFER_SYNTAXES
 from .standard import (
     _RESERVED_ODD_GROUPS,
     OPTIONS,
@@ -565,6 +566,30 @@ def _inserted(
     ]
 
 
+def _compressed(statement: ConformanceStatement) -> list[str]:
+    """Say how instances in a compressed transfer syntax are written."""
+    if not any(
+        t.uid in ENCAPSULATED_TRANSFER_SYNTAXES for t in statement.transfer_syntaxes
+    ):
+        return []
+    return [
+        "An instance in a transfer syntax that encapsulates Pixel Data keeps "
+        "that transfer syntax and its coded pixel data, without decoding and "
+        "re-encoding: the comment and application segments of each frame's "
+        "codestream are cut, and the instance is written only where every "
+        "frame decodes, by the decoding plugin pinned to its transfer syntax, "
+        "to the same pixels as its source's frame. One whose plugin is not "
+        "installed, or whose frames or codestreams fail those checks, is "
+        "sequestered. Under JPEG 2000 Lossless, HTJ2K Lossless, or HTJ2K "
+        "Lossless RPCL, a frame is also written only where its packet headers "
+        "show every coding pass of every code-block they include; a "
+        "code-block that no packet includes is decoded as all zero, so a "
+        "frame truncated so far that it drops only whole code-blocks is not "
+        "detected.",
+        "",
+    ]
+
+
 def render_markdown(statement: ConformanceStatement) -> str:
     """Write a conformance statement as CommonMark.
 
@@ -656,6 +681,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
             ((t.uid, t.name) for t in statement.transfer_syntaxes),
         ),
         "",
+        *_compressed(statement),
         "## Actions",
         "",
         "Each attribute takes the action that Table E.1-1 gives it under the "

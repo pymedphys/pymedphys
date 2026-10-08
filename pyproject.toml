@@ -6,7 +6,9 @@ readme = "README.rst"
 requires-python = ">=3.11.4"
 # PEP 639 SPDX expression. The package bundles MIT-licensed code alongside its
 # own Apache-2.0 code: the Pinnacle exporter (LICENSE-MIT), a copy of pydicom's
-# DICOM dictionary, and the vendored apipkg and deprecated modules.
+# DICOM dictionary, and the vendored apipkg and deprecated modules. The JPEG 2000
+# packet reader is derived in part from OpenJPEG, under BSD-2-Clause
+# (LICENSE-BSD-2-Clause).
 license = "Apache-2.0 AND MIT AND BSD-2-Clause"
 license-files = [
   "LICENSE",

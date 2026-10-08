@@ -24,6 +24,27 @@ Disposition = scope.Disposition
 
 IMPLICIT_LE = "1.2.840.10008.1.2"
 EXPLICIT_LE = "1.2.840.10008.1.2.1"
+# The transfer syntaxes that encapsulate Pixel Data and that pydicom 3.0.2's
+# decoding plugins decode (PS3.5 Section A.4).
+COMPRESSED = {
+    "1.2.840.10008.1.2.4.50": "JPEG Baseline (Process 1)",
+    "1.2.840.10008.1.2.4.51": "JPEG Extended (Process 2 & 4)",
+    "1.2.840.10008.1.2.4.57": "JPEG Lossless, Non-Hierarchical (Process 14)",
+    "1.2.840.10008.1.2.4.70": (
+        "JPEG Lossless, Non-Hierarchical, First-Order Prediction "
+        "(Process 14 [Selection Value 1])"
+    ),
+    "1.2.840.10008.1.2.4.80": "JPEG-LS Lossless Image Compression",
+    "1.2.840.10008.1.2.4.81": "JPEG-LS Lossy (Near-Lossless) Image Compression",
+    "1.2.840.10008.1.2.4.90": "JPEG 2000 Image Compression (Lossless Only)",
+    "1.2.840.10008.1.2.4.91": "JPEG 2000 Image Compression",
+    "1.2.840.10008.1.2.4.201": "High-Throughput JPEG 2000 Image Compression (Lossless Only)",
+    "1.2.840.10008.1.2.4.202": (
+        "High-Throughput JPEG 2000 with RPCL Options Image Compression (Lossless Only)"
+    ),
+    "1.2.840.10008.1.2.4.203": "High-Throughput JPEG 2000 Image Compression",
+    "1.2.840.10008.1.2.5": "RLE Lossless",
+}
 
 # The Storage SOP Classes of the first release's IODs, from Table B.5-1 of the
 # 2026d PS3.4.
@@ -48,7 +69,7 @@ SUPPORTED = {
 }
 
 
-def test_the_first_release_supports_uncompressed_ct_mr_pet_and_rt_objects():
+def test_the_first_release_supports_ct_mr_pet_and_rt_objects():
     assert scope.SUPPORTED_IODS == {
         "CT Image",
         "Enhanced CT Image",
@@ -65,7 +86,7 @@ def test_the_first_release_supports_uncompressed_ct_mr_pet_and_rt_objects():
         "RT Plan",
         "RT Structure Set",
     }
-    assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE}
+    assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
 
 
 def test_every_supported_iod_has_generated_types():
@@ -81,6 +102,8 @@ def test_the_supported_transfer_syntaxes_are_current_in_ps3_6():
 
     assert registered[IMPLICIT_LE].name.startswith("Implicit VR Little Endian")
     assert registered[EXPLICIT_LE].name == "Explicit VR Little Endian"
+    for uid, name in COMPRESSED.items():
+        assert registered[uid].name.startswith(name), uid
     assert not any(registered[uid].retired for uid in scope.SUPPORTED_TRANSFER_SYNTAXES)
 
 
@@ -190,8 +213,10 @@ def test_an_instance_without_a_sop_class_is_sequestered(sop_class):
         "1.2.840.10008.1.2.2",  # Explicit VR Big Endian, retired
         "1.2.840.10008.1.2.1.98",  # Encapsulated Uncompressed Explicit VR LE
         "1.2.840.10008.1.2.1.99",  # Deflated Explicit VR Little Endian
-        "1.2.840.10008.1.2.4.50",  # JPEG Baseline
-        "1.2.840.10008.1.2.5",  # RLE Lossless
+        "1.2.840.10008.1.2.4.92",  # JPEG 2000 Part 2 Multi-component, Lossless
+        "1.2.840.10008.1.2.4.94",  # JPIP Referenced
+        "1.2.840.10008.1.2.4.100",  # MPEG2 Main Profile / Main Level
+        "1.2.840.10008.1.2.4.110",  # JPEG XL Lossless
         "1.2.3.4.5",  # a private transfer syntax under an invented root
         "",
         None,
@@ -217,7 +242,7 @@ def test_a_supported_sop_class_in_another_transfer_syntax_is_sequestered(
         ("1.2.3.4.5", EXPLICIT_LE, Disposition.UNLISTED_SOP_CLASS),
         (
             "1.2.840.10008.5.1.4.1.1.2",
-            "1.2.840.10008.1.2.4.50",
+            "1.2.840.10008.1.2.4.92",
             Disposition.UNSUPPORTED_TRANSFER_SYNTAX,
         ),
         ("1.2.840.10008.5.1.4.1.1.2", EXPLICIT_LE, Disposition.SUPPORTED),
@@ -265,12 +290,31 @@ def test_the_table_can_be_given():
 @pytest.mark.pydicom
 def test_pydicom_names_the_same_uids():
     # pydicom's UID dictionary is an independent transcription of PS3.6.
-    from pydicom import uid
+    from pydicom import pixels, uid
 
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {
         uid.ImplicitVRLittleEndian,
         uid.ExplicitVRLittleEndian,
+        uid.JPEGBaseline8Bit,
+        uid.JPEGExtended12Bit,
+        uid.JPEGLossless,
+        uid.JPEGLosslessSV1,
+        uid.JPEGLSLossless,
+        uid.JPEGLSNearLossless,
+        uid.JPEG2000Lossless,
+        uid.JPEG2000,
+        uid.HTJ2KLossless,
+        uid.HTJ2KLosslessRPCL,
+        uid.HTJ2K,
+        uid.RLELossless,
     }
+    # pydicom has a decoder for each compressed one.
+    for syntax in scope.SUPPORTED_TRANSFER_SYNTAXES - {
+        uid.ImplicitVRLittleEndian,
+        uid.ExplicitVRLittleEndian,
+    }:
+        assert uid.UID(syntax).is_compressed, syntax
+        assert pixels.get_decoder(syntax).UID == syntax
     for sop_class in (
         uid.CTImageStorage,
         uid.EnhancedCTImageStorage,
