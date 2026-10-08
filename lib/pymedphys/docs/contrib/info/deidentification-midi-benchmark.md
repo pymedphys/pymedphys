@@ -19,15 +19,16 @@ Commands are given for bash (macOS, Linux, Git Bash) and PowerShell (Windows). T
 
 Open a new terminal so that `uv` is on your path, and check with `uv --version`.
 
-## 2. Get PyMedPhys with its DICOM dependencies
+## 2. Get PyMedPhys with its DICOM dependencies and decoders
 
 bash:
 
 ```bash
 git clone https://github.com/pymedphys/pymedphys.git
 cd pymedphys
-uv sync --no-dev --extra dicom
-uv run --no-dev --extra dicom python -m pymedphys._dicom.deidentify.midi_benchmark_command --help
+uv sync --no-dev --extra user
+uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmark_command --help
+uv run --no-dev --extra user python -c "import gdcm, openjpeg, pylibjpeg"
 ```
 
 PowerShell:
@@ -35,13 +36,16 @@ PowerShell:
 ```powershell
 git clone https://github.com/pymedphys/pymedphys.git
 Set-Location pymedphys
-uv sync --no-dev --extra dicom
-uv run --no-dev --extra dicom python -m pymedphys._dicom.deidentify.midi_benchmark_command --help
+uv sync --no-dev --extra user
+uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmark_command --help
+uv run --no-dev --extra user python -c "import gdcm, openjpeg, pylibjpeg"
 ```
 
-The last command should list two subcommands, `run` and `script-results`.
+The `--help` command should list two subcommands, `run` and `script-results`, and the last command should print nothing.
 
-To benchmark a later engine, run `git pull` and `uv sync --no-dev --extra dicom` again.
+The `user` extra installs the decoders that the engine pins for compressed Pixel Data: python-gdcm for JPEG and JPEG-LS, and pylibjpeg with pylibjpeg-openjpeg for JPEG 2000 and HTJ2K. The `dicom` extra installs none of them, so a run with it alone would sequester every compressed instance but RLE Lossless as `no-decoder`, withholding its patient's files from the score. python-gdcm publishes wheels for 64-bit Windows, macOS, and Linux with glibc 2.27 or later; elsewhere uv tries to build it from source.
+
+To benchmark a later engine, run `git pull` and `uv sync --no-dev --extra user` again.
 
 ## 3. Download MIDI-B
 
@@ -62,7 +66,7 @@ bash:
 
 ```bash
 mkdir -p /data/midi-b/runs
-uv run --no-dev --extra dicom python -m pymedphys._dicom.deidentify.midi_benchmark_command run \
+uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmark_command run \
   --source /data/midi-b/validation/synthetic \
   --answer-key "/data/midi-b/validation/<answer key>.db" \
   --work /data/midi-b/runs/validation-basic-1 \
@@ -73,7 +77,7 @@ PowerShell:
 
 ```powershell
 New-Item -ItemType Directory -Force D:\midi-b\runs | Out-Null
-uv run --no-dev --extra dicom python -m pymedphys._dicom.deidentify.midi_benchmark_command run `
+uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmark_command run `
   --source D:\midi-b\validation\synthetic `
   --answer-key "D:\midi-b\validation\<answer key>.db" `
   --work D:\midi-b\runs\validation-basic-1 `
@@ -158,7 +162,7 @@ python run_reports.py midi-validation-basic-1.json
 Then count its results by the harness's categories, back in the PyMedPhys checkout:
 
 ```bash
-uv run --no-dev --extra dicom python -m pymedphys._dicom.deidentify.midi_benchmark_command script-results \
+uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmark_command script-results \
   /data/midi-b/nci-results/validation-basic-1/validation_results.db
 ```
 
