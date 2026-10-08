@@ -376,7 +376,7 @@ def test_the_transform_gives_each_source_series_evidence():
 
 
 @pytest.mark.deid_requirement("MIDI-BP-15", "MIDI-BP-17")
-def test_a_run_over_the_synthetic_corpus_lists_its_ct_volume(tmp_path):
+def test_a_run_over_the_synthetic_corpus_lists_its_volumes(tmp_path):
     corpus = corpus_module.build_corpus()
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.
@@ -408,26 +408,44 @@ def test_a_run_over_the_synthetic_corpus_lists_its_ct_volume(tmp_path):
     text = result.qc_pack.read_text(encoding="utf-8")
     pack = json.loads(text)
     iods = {file.manifest.name: file.manifest.iod for file in corpus.files}
-    released_ct = [
-        entry["position"]
-        for entry in pack["instances"]
-        if iods[Path(entry["source"]).name] == "CT Image"
-        and entry["disposition"] == "released"
+
+    def released(iod):
+        return [
+            entry["position"]
+            for entry in pack["instances"]
+            if iods[Path(entry["source"]).name] == iod
+            and entry["disposition"] == "released"
+        ]
+
+    # The third slice is sequestered, and the other two are a volume. Each
+    # enhanced or legacy converted enhanced CT, MR, and PET instance, of two
+    # frames, is a volume too; the MR Image and PET Image instances are one
+    # slice each, so not volumes, and MR Spectroscopy has no pixels. None of
+    # the PET instances is SUV-scaled, so none shows the body weight.
+    volumes = [
+        ("ct-volume", released("CT Image")),
+        ("ct-volume", released("Enhanced CT Image")),
+        ("ct-volume", released("Legacy Converted Enhanced CT Image")),
+        ("mr-volume", released("Enhanced MR Image")),
+        ("mr-volume", released("Enhanced MR Color Image")),
+        ("mr-volume", released("Legacy Converted Enhanced MR Image")),
+        ("pet-volume", released("Enhanced PET Image")),
+        ("pet-volume", released("Legacy Converted Enhanced PET Image")),
     ]
-    # The third slice is sequestered, and the other two are a volume.
-    assert len(released_ct) == 2
+    assert [len(positions) for _, positions in volumes] == [2, 1, 1, 1, 1, 1, 1, 1]
     assert pack["series_risks"] == [
         {
-            "positions": released_ct,
+            "positions": positions,
             "findings": [
                 {
-                    "indicator": "ct-volume",
+                    "indicator": indicator,
                     "risk": "reconstructable-face",
                     "element": None,
-                    "positions": released_ct,
+                    "positions": positions,
                 }
             ],
         }
+        for indicator, positions in volumes
     ]
     # The pack groups by the source's Series Instance UID but never writes it.
     assert all(uid and uid not in text for uid in series)

@@ -21,7 +21,13 @@ import warnings
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import compound_actions, elements, standard
+from pymedphys._dicom.deidentify import (
+    compound_actions,
+    elements,
+    icc_profiles,
+    scope,
+    standard,
+)
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.file_layout import (
     ElementPath,
@@ -172,6 +178,16 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "05-rtplan.dcm",
         "06-rtdose.dcm",
         "07-rtdose-review.dcm",
+        "08-ct-enhanced.dcm",
+        "09-ct-legacy-enhanced.dcm",
+        "10-mr.dcm",
+        "11-mr-enhanced.dcm",
+        "12-mr-enhanced-color.dcm",
+        "13-mr-legacy-enhanced.dcm",
+        "14-mr-spectroscopy.dcm",
+        "15-pet.dcm",
+        "16-pet-enhanced.dcm",
+        "17-pet-legacy-enhanced.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -181,7 +197,19 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Plan",
         "RT Dose",
         "RT Dose",
+        "Enhanced CT Image",
+        "Legacy Converted Enhanced CT Image",
+        "MR Image",
+        "Enhanced MR Image",
+        "Enhanced MR Color Image",
+        "Legacy Converted Enhanced MR Image",
+        "MR Spectroscopy",
+        "Positron Emission Tomography Image",
+        "Enhanced PET Image",
+        "Legacy Converted Enhanced PET Image",
     ]
+    # Every IOD of the first supported release.
+    assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
 
 def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
@@ -256,12 +284,17 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
             planted[file.name].add(placement.path.tag)
 
     # Responsible Person and Responsible Organization (D-020), only in the
-    # third slice, so that the other five instances can be released.
+    # third slice, so that the other instances can be released; and the
+    # Enhanced PET Image's Radiopharmaceutical Start DateTime, in no file.
     both = {"(0010,2297)", "(0010,2299)"}
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
     assert withheld == {
-        file.name: both
+        file.name: (
+            both | {"(0018,1078)"}
+            if file.manifest.iod == "Enhanced PET Image"
+            else both
+        )
         for file in corpus.files
         if file.name != corpus_module.SEQUESTERED_FILE
     }
@@ -355,9 +388,28 @@ def test_the_reference_graph_has_no_findings(corpus):
     # The structure set references every slice, the plan the structure set
     # and the dose, and each dose the plan.
     assert {(3, 0), (3, 1), (3, 2), (4, 3), (4, 5), (5, 4), (6, 4)} <= targets
+    # The MR and PET Images reference the first slice, and each other
+    # instance the single-frame one of its modality.
+    names = [file.name for file in corpus.files]
+    position = names.index
+    sources = {
+        "08-ct-enhanced.dcm": "01-ct-1.dcm",
+        "09-ct-legacy-enhanced.dcm": "01-ct-1.dcm",
+        "10-mr.dcm": "01-ct-1.dcm",
+        "11-mr-enhanced.dcm": "10-mr.dcm",
+        "12-mr-enhanced-color.dcm": "10-mr.dcm",
+        "13-mr-legacy-enhanced.dcm": "10-mr.dcm",
+        "14-mr-spectroscopy.dcm": "10-mr.dcm",
+        "15-pet.dcm": "01-ct-1.dcm",
+        "16-pet-enhanced.dcm": "15-pet.dcm",
+        "17-pet-legacy-enhanced.dcm": "15-pet.dcm",
+    }
+    assert {
+        (position(source), position(target)) for source, target in sources.items()
+    } <= targets
 
 
-def test_one_instance_is_in_implicit_vr_and_the_rest_explicit(corpus):
+def test_two_instances_are_in_implicit_vr_and_the_rest_explicit(corpus):
     syntaxes = {
         file.name: read_source(file.data).transfer_syntax for file in corpus.files
     }
@@ -366,7 +418,8 @@ def test_one_instance_is_in_implicit_vr_and_the_rest_explicit(corpus):
         file.name: file.manifest.transfer_syntax for file in corpus.files
     }
     assert [name for name, syntax in syntaxes.items() if syntax == IMPLICIT] == [
-        "06-rtdose.dcm"
+        "06-rtdose.dcm",
+        "10-mr.dcm",
     ]
     assert set(syntaxes.values()) == {IMPLICIT, EXPLICIT}
 
@@ -696,3 +749,49 @@ def test_building_emits_no_warning():
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         corpus_module.build_corpus()
+
+
+def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
+    frames = {}
+    for file in corpus.files:
+        dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(file.data))
+        if "PixelData" not in dataset:
+            continue
+        count = int(dataset.get("NumberOfFrames", 1))
+        frames[file.manifest.iod] = count
+        size = dataset.Rows * dataset.Columns * dataset.SamplesPerPixel
+        assert len(dataset.PixelData) == count * size * dataset.BitsAllocated // 8
+
+        if file.manifest.iod == "Enhanced MR Color Image":
+            assert dataset.PhotometricInterpretation == "RGB"
+            assert dataset.ICCProfile == icc_profiles.srgb_profile(
+                corpus_module.SOURCE_ICC_DESCRIPTION
+            )
+            assert corpus_module.MARKER_PREFIX.encode() in dataset.ICCProfile
+        else:
+            assert dataset.PhotometricInterpretation == "MONOCHROME2"
+            assert "ICCProfile" not in dataset
+
+    # Every image but those of the single-frame IODs has two frames.
+    assert {iod for iod, count in frames.items() if count == 1} == {
+        "CT Image",
+        "MR Image",
+        "Positron Emission Tomography Image",
+    }
+    assert set(frames.values()) == {1, 2}
+
+
+def test_the_spectroscopy_instance_holds_spectroscopy_data_only(corpus):
+    (file,) = [f for f in corpus.files if f.manifest.iod == "MR Spectroscopy"]
+    dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(file.data))
+    points = (
+        dataset.Rows
+        * dataset.Columns
+        * int(dataset.NumberOfFrames)
+        * dataset.DataPointRows
+        * dataset.DataPointColumns
+    )
+
+    assert "PixelData" not in dataset
+    assert dataset.DataRepresentation == "REAL"
+    assert len(dataset.SpectroscopyData) == 4 * points
