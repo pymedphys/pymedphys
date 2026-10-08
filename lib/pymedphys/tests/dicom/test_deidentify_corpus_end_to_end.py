@@ -34,7 +34,10 @@ transfer syntax that encapsulates Pixel Data, with a marker planted in the
 comment and application segments of its codestreams
 (:func:`~pymedphys.tests.dicom._synthetic_compressed.compressed_corpus`): the
 same instances are released, with their transfer syntax and pixels kept and
-none of those markers.
+none of those markers. That run is skipped where a decoding plugin of those
+syntaxes is not installed, as with the ``dicom`` extra alone, which installs
+neither GDCM nor pylibjpeg-openjpeg; the engine then sequesters the images as
+``no-decoder``, which the instance transform tests cover.
 """
 
 import dataclasses
@@ -48,7 +51,7 @@ from pymedphys._imports import pydicom, pytest
 
 from pymedphys._nomenclature import tg263
 
-from pymedphys._dicom.deidentify import roi_names, run, standard
+from pymedphys._dicom.deidentify import pixel_decoding, roi_names, run, standard
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.file_layout import ElementPath
@@ -156,7 +159,22 @@ def fixture_published():
 
 
 @pytest.fixture(
-    name="preset_run", scope="module", params=["basic", CLEAN_DESCRIPTORS, COMPRESSED]
+    name="preset_run",
+    scope="module",
+    params=[
+        "basic",
+        CLEAN_DESCRIPTORS,
+        pytest.param(
+            COMPRESSED,
+            marks=pytest.mark.skipif(
+                not all(
+                    pixel_decoding.decoder_available(syntax)
+                    for syntax in compressed.CORPUS_SYNTAXES
+                ),
+                reason="a decoding plugin of the compressed corpus is not installed",
+            ),
+        ),
+    ],
 )
 def fixture_preset_run(request, published):  # pylint: disable = unused-argument
     corpus = corpus_module.build_corpus()
