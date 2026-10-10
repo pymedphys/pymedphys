@@ -293,17 +293,32 @@ def _pydicom_read(path: Path) -> tuple[str, str, str, str]:
 
 
 def _character_set(dataset: pydicom.Dataset) -> str:
-    """Return a Specific Character Set's Defined Terms, without other text."""
+    """Return a Specific Character Set's Defined Terms, without other text.
+
+    A value that is not a Defined Term is ``other``, or ``other like <term>``
+    where it differs from one only in case, spaces, hyphens, and
+    underscores, as a misspelt term does.
+    """
     element = dataset.get((0x0008, 0x0005))
     if element is None:
         return "absent"
     raw = element.value
     values = list(raw) if isinstance(raw, pydicom.multival.MultiValue) else [raw]
-    return "\\".join(
-        "empty"
-        if not str(value).strip()
-        else str(value).strip()
-        if str(value).strip() in pydicom.charset.python_encoding
-        else "other"
-        for value in values
-    )
+    return "\\".join(_term(str(value).strip()) for value in values)
+
+
+def _term(value: str) -> str:
+    if not value:
+        return "empty"
+    if value in pydicom.charset.python_encoding:
+        return value
+    like = [
+        term
+        for term in sorted(pydicom.charset.python_encoding)
+        if term and _squeezed(term) == _squeezed(value)
+    ]
+    return f"other like {like[0]}" if like else "other"
+
+
+def _squeezed(text: str) -> str:
+    return "".join(c for c in text.upper() if c not in " -_")

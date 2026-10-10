@@ -122,6 +122,9 @@ def test_no_sop_class_is_described_by_where_reading_stopped(tmp_path):
     def unsupported(dataset):
         dataset.SpecificCharacterSet = "SYNTHETIC TERM"
 
+    def misspelt(dataset):
+        dataset.SpecificCharacterSet = ["iso-ir100", "SYNTHETIC TERM"]
+
     ct = "CT Image Storage"
     # The writer copies a single SOP Class UID into the File Meta
     # Information, and leaves its placeholder otherwise.
@@ -137,6 +140,13 @@ def test_no_sop_class_is_described_by_where_reading_stopped(tmp_path):
             ct,
             ct,
             "other",
+        ),
+        (
+            misspelt,
+            "character set: is not a supported Specific Character Set",
+            ct,
+            ct,
+            "other like ISO_IR 100\\other",
         ),
     ):
         with warnings.catch_warnings():
