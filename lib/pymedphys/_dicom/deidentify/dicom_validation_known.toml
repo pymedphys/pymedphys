@@ -83,6 +83,8 @@ Sequence (0018,990C), or Conversion Source Attributes Sequence (0020,9172).
 Adding one Referenced Image Sequence item to such an output clears the
 finding. The entry applies only to an output that still references, outside
 the module, an instance that the sequence lists, where the condition is met.
+Where no reference to an instance survives outside the module, the engine
+removes both of the module's sequences.
 """
 
 [[difference]]
@@ -99,4 +101,6 @@ required if the instance references instances in other studies from any of
 its modules, and dciodvfy's condition counts only a few sequences. The entry
 applies only to an output that still references, outside the module, an
 instance that the sequence lists.
+Where no reference to an instance survives outside the module, the engine
+removes both of the module's sequences.
 """

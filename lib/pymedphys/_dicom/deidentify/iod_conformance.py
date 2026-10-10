@@ -35,9 +35,13 @@ group was removed, and the attributes whose Type 1C condition lapses once
 Table E.1-1 removes what it needs, such as ROI Interpreter Sequence
 (3006,004E) with ROI Creator Sequence (3006,004D)
 (:data:`~pymedphys._dicom.deidentify.compound_actions.LAPSED_CONDITIONS`).
-Nor are the items of a sequence
-that the engine replaced, such as the dummy item that D writes, compared with
-the source's.
+Nor are the Common Instance Reference Module's Type 1C sequences, Referenced
+Series Sequence (0008,1115) and Studies Containing Other Referenced Instances
+Sequence (0008,1200), where the output holds no other reference to an
+instance, so that neither condition holds
+(:mod:`~pymedphys._dicom.deidentify.common_instance_reference`). Nor are the
+items of a sequence that the engine replaced, such as the dummy item that D
+writes, compared with the source's.
 
 What the source lacks is reported instead, by :func:`source_gaps`, and never
 acted on. Since no condition is evaluated, only an unconditional requirement
@@ -57,6 +61,10 @@ import dataclasses
 import re
 from collections.abc import Collection
 
+from .common_instance_reference import (
+    is_common_instance_reference,
+    is_instance_reference,
+)
 from .compound_actions import RemovalExtent, resolve_plain_x_in_iod, strictest_type
 from .file_layout import ElementPath
 from .iods import IOD
@@ -229,12 +237,18 @@ def _empty(evidence: SourceEvidence, path: ElementPath) -> bool:
 
 
 def _allowed_removal(iod: IOD, path: ElementPath, output: SourceEvidence) -> bool:
-    """Return whether a plain X may remove the required attribute on its own.
+    """Return whether the required attribute may be removed on its own.
 
     An attribute of an overlay group may go only with its whole group, so
     none of the group's attributes may remain in the data set, or item, that
-    held it.
+    held it. A sequence of the Common Instance Reference Module may go only
+    where the output holds no other reference to an instance with a value.
     """
+    if is_common_instance_reference(path):
+        return not any(
+            is_instance_reference(kept) and not _empty(output, kept)
+            for kept in output.paths()
+        )
     tag = path.tag
     tags = tuple(each for each, _ in path.items)
     overlay = _OVERLAY_GROUP.fullmatch(tag)

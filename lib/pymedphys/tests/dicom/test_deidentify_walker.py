@@ -498,6 +498,139 @@ def test_the_engine_removes_its_attributes_alone_whatever_their_type():
     assert _by_path(_plan())[ENCRYPTED_ATTRIBUTES].removed_for is None
 
 
+def _reference(uid=INSTANCE_UID):
+    """An item that references an RT Plan instance."""
+    return _item(
+        _explicit(0x00081150, "UI", RT_PLAN) + _explicit(0x00081155, "UI", uid)
+    )
+
+
+def _common_instance_reference(within=b"", before=b""):
+    """A data set whose Common Instance Reference Module lists one instance.
+
+    ``within`` goes between Referenced Series Sequence (0008,1115) and
+    Studies Containing Other Referenced Instances Sequence (0008,1200), and
+    ``before`` before them both, in file order.
+    """
+    series = _explicit(0x0008114A, "SQ", _reference())
+    series += _explicit(0x0020000E, "UI", INSTANCE_UID)
+    study = _explicit(0x00081115, "SQ", _item(series))
+    study += _explicit(0x0020000D, "UI", INSTANCE_UID)
+    return (
+        before
+        + _explicit(0x00081115, "SQ", _item(series))
+        + within
+        + _explicit(0x00081200, "SQ", _item(study))
+    )
+
+
+REFERENCED_SERIES = _path("(0008,1115)")
+OTHER_STUDIES = _path("(0008,1200)")
+# Referenced Image Sequence (0008,1140), which X/Z/U* removes where it is
+# Type 3, as at the top level of the RT Plan IOD.
+REFERENCED_IMAGES = _explicit(0x00081140, "SQ", _reference())
+# Referenced Structure Set Sequence (300C,0060), Type 3 in the RT Plan IOD,
+# whose Referenced SOP Instance UID U replaces.
+REFERENCED_STRUCTURE_SET = 0x300C0060
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_the_common_instance_reference_goes_where_no_other_reference_is_kept():
+    # Both sequences are Type 1C, required only where the instance
+    # references instances, so they lapse once Referenced Image Sequence,
+    # the only other reference, is removed.
+    plan = _plan(_common_instance_reference(REFERENCED_IMAGES))
+    elements = _by_path(plan)
+
+    assert not plan.sequestrations
+    assert elements[_path("(0008,1140)")].action == "X"
+    for sequence in (REFERENCED_SERIES, OTHER_STUDIES):
+        assert elements[sequence].rule.action in walker.DESCENDED
+        assert (elements[sequence].action, elements[sequence].lapsed) == ("X", True)
+        assert elements[sequence].removed_for is None
+        assert elements[sequence].consumers == frozenset()
+    within = [
+        e for e in plan.elements if e.removed_with in (REFERENCED_SERIES, OTHER_STUDIES)
+    ]
+    assert len(within) == 10
+    for element in within:
+        assert (element.rule, element.action, element.lapsed) == (None, "X", False)
+    listed = _path(("(0008,1115)", 0), ("(0008,114A)", 0), "(0008,1155)")
+    assert elements[listed].consumers == COLLECTION
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_the_common_instance_reference_stays_while_another_reference_is_kept():
+    data_set = _common_instance_reference(REFERENCED_IMAGES) + _explicit(
+        REFERENCED_STRUCTURE_SET, "SQ", _reference()
+    )
+    elements = _by_path(_plan(data_set))
+    listed = _path(("(0008,1115)", 0), ("(0008,114A)", 0), "(0008,1155)")
+    kept = _path(("(300C,0060)", 0), "(0008,1155)")
+
+    for sequence in (REFERENCED_SERIES, OTHER_STUDIES):
+        assert elements[sequence].action in walker.DESCENDED
+        assert not elements[sequence].lapsed
+    assert (elements[listed].action, elements[kept].action) == ("U", "U")
+
+
+def test_an_empty_reference_keeps_no_common_instance_reference():
+    # A reference without a value names no instance.
+    empty = _item(
+        _explicit(0x00081150, "UI", RT_PLAN) + _explicit(0x00081155, "UI", b"")
+    )
+    data_set = _common_instance_reference() + _explicit(
+        REFERENCED_STRUCTURE_SET, "SQ", empty
+    )
+    elements = _by_path(_plan(data_set))
+
+    assert elements[REFERENCED_SERIES].lapsed
+    assert elements[OTHER_STUDIES].lapsed
+
+
+def test_a_reference_in_a_nested_referenced_series_sequence_is_kept():
+    # Referenced Series Sequence within another sequence's items, as in the
+    # Hierarchical SOP Instance Reference Macro of Referenced Image Evidence
+    # Sequence (0008,9092), is not the module's, and what it references keeps
+    # the module.
+    series = _explicit(0x00081199, "SQ", _reference())
+    series += _explicit(0x0020000E, "UI", INSTANCE_UID)
+    evidence = _explicit(0x00081115, "SQ", _item(series))
+    evidence += _explicit(0x0020000D, "UI", INSTANCE_UID)
+    data_set = _common_instance_reference() + _explicit(
+        0x00089092, "SQ", _item(evidence)
+    )
+    evidence_source = source.read_source(_file(EXPLICIT, data_set))
+    enhanced_ct = load_iod_tables().iods["Enhanced CT Image"]
+    elements = _by_path(walker.plan_instance(evidence_source, _rules(), enhanced_ct))
+    nested = _path(
+        ("(0008,9092)", 0), ("(0008,1115)", 0), ("(0008,1199)", 0), "(0008,1155)"
+    )
+
+    assert elements[nested].action == "U"
+    assert not elements[REFERENCED_SERIES].lapsed
+    assert not elements[OTHER_STUDIES].lapsed
+
+
+def test_a_dummy_referenced_performed_procedure_step_keeps_the_module():
+    # D writes a dummy item for Referenced Performed Procedure Step Sequence
+    # (0008,1111) with a replacement Referenced SOP Instance UID.
+    data_set = _common_instance_reference(
+        before=_explicit(0x00081111, "SQ", _reference())
+    )
+    elements = _by_path(_plan(data_set, _Overridden({"(0008,1111)": "D"})))
+
+    assert elements[_path("(0008,1111)")].action == "D"
+    assert not elements[REFERENCED_SERIES].lapsed
+
+
+def test_the_common_instance_reference_alone_lapses():
+    elements = _by_path(_plan(_common_instance_reference()))
+
+    assert elements[REFERENCED_SERIES].lapsed
+    assert elements[OTHER_STUDIES].lapsed
+
+
 def test_a_value_in_a_form_that_the_dictionary_does_not_allow_sequesters():
     # Rows (0028,0010) written as LO, and Beam Sequence (300A,00B0) written
     # as OB, whose bytes are kept opaque rather than read as items, would
