@@ -352,3 +352,50 @@ def test_the_command_refuses_without_a_traceback(tmp_path):
             ["--subset", "validation", "--dest", str(tmp_path)],
             subsets={"validation": _subset()},
         )
+
+
+def test_a_copy_however_fetched_verifies_against_the_pins(tmp_path):
+    # Folder names and file names as another tool might write them, with a
+    # non-DICOM file among them.
+    for index, data in enumerate(FILES):
+        folder = tmp_path / "copy" / f"collection-{index % 2}" / "series"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"1-{index:03d}.dcm").write_bytes(data)
+    (tmp_path / "copy" / "LICENSE").write_text("not DICOM")
+    record = midi_download.verify(_subset(), tmp_path / "copy")
+    assert record["files"] == record["expected_files"] == 3
+    assert record["skipped_files_not_dicom"] == 1
+    assert record["content"] == {"sha256": _content(), "pin": "matched"}
+    assert "collection-" not in json.dumps(record)
+
+
+def test_a_copy_that_differs_is_reported(tmp_path, capsys):
+    (tmp_path / "copy").mkdir()
+    (tmp_path / "copy" / "a.dcm").write_bytes(FILES[0])
+    subsets = {"validation": _subset()}
+    status = midi_download.main(
+        ["--subset", "validation", "--verify", str(tmp_path / "copy")],
+        subsets=subsets,
+    )
+    record = json.loads(capsys.readouterr().out)
+    assert status == 1
+    assert record["files"] == 1
+    assert record["content"]["pin"] == "differs"
+
+
+def test_a_complete_copy_verifies_from_the_command(tmp_path, capsys):
+    midi_download.download(_subset(), tmp_path / "midi", opener=Server())
+    status = midi_download.main(
+        ["--subset", "validation", "--verify", str(tmp_path / "midi" / "images")],
+        subsets={"validation": _subset()},
+    )
+    assert status == 0
+    assert json.loads(capsys.readouterr().out)["content"]["pin"] == "matched"
+
+
+def test_verifying_needs_a_directory(tmp_path):
+    with pytest.raises(SystemExit, match="not a directory"):
+        midi_download.main(
+            ["--subset", "validation", "--verify", str(tmp_path / "missing")],
+            subsets={"validation": _subset()},
+        )

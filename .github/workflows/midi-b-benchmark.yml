@@ -29,12 +29,20 @@ on:
         description: That answer key's SHA-256
         type: string
         default: ''
+      answer-keys-from:
+        description: >-
+          Where the answer key comes from: the pinned copy, or TCIA's own
+          Aspera package, checked against the pin
+        type: choice
+        options: [pinned, tcia]
+        default: pinned
   # Temporary, for the first runs before this workflow is on the default
   # branch; removed before review.
   push:
     branches: [claude/deid-midi-b-ci-ko3ghq]
     paths:
       - .github/workflows/midi-b-benchmark.yml
+      - .github/scripts/midi_b_tcia_answer_keys.py
       - lib/pymedphys/_dicom/deidentify/midi_data.toml
       - lib/pymedphys/_dicom/deidentify/midi_download.py
 
@@ -62,6 +70,13 @@ jobs:
       contents: read
     env:
       SUBSET: ${{ matrix.subset }}
+      CHOSEN: ${{ inputs.subset }}
+      # A push (temporary, above) has no inputs, and checks TCIA's packages.
+      ANSWER_KEYS_FROM: ${{ inputs.answer-keys-from || 'tcia' }}
+      # IBM's Aspera command line client, Apache-2.0; it installs IBM's
+      # transfer daemon, which carries IBM's own licence, on the runner only.
+      ASCLI_VERSION: 4.27.2
+      ASCLI_SHA256: 562eb4214e8910b03b6618eb862ef8065362b501504bf35a270aa514279b3f6c
       ANSWER_KEY_URL: ${{ inputs.answer-key-url }}
       ANSWER_KEY_SHA256: ${{ inputs.answer-key-sha256 }}
     steps:
@@ -87,11 +102,32 @@ jobs:
           umask 077
           mkdir -p "${RUNNER_TEMP}/midi-b/private" "${RUNNER_TEMP}/midi-b/results"
 
+      # TCIA publishes the answer keys only as Faspex packages. Fetch them
+      # with IBM's client, and list their files' names, sizes, and digests.
+      - name: Fetch the answer keys from TCIA
+        if: env.ANSWER_KEYS_FROM == 'tcia'
+        run: |
+          private="${RUNNER_TEMP}/midi-b/private"
+          gem_file="${RUNNER_TEMP}/aspera-cli-${ASCLI_VERSION}.gem"
+          curl -sSfL -o "${gem_file}" "https://rubygems.org/downloads/aspera-cli-${ASCLI_VERSION}.gem"
+          echo "${ASCLI_SHA256}  ${gem_file}" | sha256sum --check --strict -
+          gem install --user-install --no-document "${gem_file}" > "${private}/gem.log" 2>&1
+          PATH="$(ruby -e 'print Gem.user_dir')/bin:${PATH}"
+          export PATH
+          ascli config transferd install > "${private}/transferd.log" 2>&1
+          python3 -I .github/scripts/midi_b_tcia_answer_keys.py fetch "${RUNNER_TEMP}/midi-b/tcia"
+          python3 -I .github/scripts/midi_b_tcia_answer_keys.py list "${RUNNER_TEMP}/midi-b/tcia" \
+            | tee "${RUNNER_TEMP}/midi-b/results/tcia-answer-keys.txt"
+
       # The downloader prints only counts, digests, and positions.
       - name: Download the subset from TCIA
         run: |
           args=(--subset "${SUBSET}" --dest "${RUNNER_TEMP}/midi-b/data")
           if [[ -n "${ANSWER_KEY_URL}" ]]; then
+            if [[ "${CHOSEN}" == both ]]; then
+              echo "An answer key belongs to one subset: choose validation or test to give one."
+              exit 1
+            fi
             args+=(--answer-key-url "${ANSWER_KEY_URL}" --answer-key-sha256 "${ANSWER_KEY_SHA256}")
           fi
           uv run --no-sync python .github/scripts/run_redacted.py \

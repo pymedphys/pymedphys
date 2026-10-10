@@ -424,10 +424,75 @@ def download(  # pylint: disable = too-many-locals
     return record
 
 
+def _file_digest(path: Path) -> str | None:
+    """The SHA-256 of a Part 10 file, or None for any other file."""
+    with path.open("rb") as file:
+        head = file.read(_PREAMBLE + len(_MAGIC))
+        if head[_PREAMBLE:] != _MAGIC:
+            return None
+        digest = hashlib.sha256(head)
+        while chunk := file.read(CHUNK):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def verify(subset: Subset, directory: str | Path) -> dict[str, object]:
+    """Check a copy of ``subset``, however it was downloaded, against its pins.
+
+    Every Part 10 file below ``directory`` counts, whatever its name or
+    folder, so a copy fetched with NBIA Data Retriever checks as well as one
+    fetched by :func:`download`. Other files are counted and skipped.
+
+    Returns
+    -------
+    dict
+        Counts, the content digest, and ``"matched"``, ``"not pinned"``, or
+        ``"differs"``, beside whether the file count matched. Nothing in it
+        names a file.
+
+    Raises
+    ------
+    DownloadError
+        If ``directory`` is not a directory.
+    """
+    directory = Path(directory)
+    if not directory.is_dir():
+        raise DownloadError("the folder to verify is not a directory")
+    digests: list[str] = []
+    size = skipped = 0
+    for path in sorted(directory.rglob("*")):
+        if path.is_symlink() or not path.is_file():
+            continue
+        file_digest = _file_digest(path)
+        if file_digest is None:
+            skipped += 1
+            continue
+        digests.append(file_digest)
+        size += path.stat().st_size
+    content = content_digest(digests)
+    if not subset.content_sha256:
+        status = "not pinned"
+    else:
+        status = "matched" if content == subset.content_sha256 else "differs"
+    return {
+        "format": FORMAT,
+        "subset": subset.key,
+        "collection": subset.collection,
+        "files": len(digests),
+        "expected_files": subset.instances,
+        "bytes": size,
+        "skipped_files_not_dicom": skipped,
+        "content": {"sha256": content, "pin": status},
+    }
+
+
 def main(
     argv: Sequence[str] | None = None, subsets: Mapping[str, Subset] | None = None
 ) -> int:
-    """Download a MIDI-B subset and print ``download.json``.
+    """Download a MIDI-B subset and print ``download.json``, or verify a copy.
+
+    With ``--verify``, print :func:`verify`'s record and return 1 when the
+    copy's file count or content digest differs from the pins.
 
     Raises
     ------
@@ -446,8 +511,16 @@ def main(
         ),
     )
     parser.add_argument("--subset", required=True, choices=sorted(subsets))
-    parser.add_argument(
-        "--dest", required=True, help="A directory, which must not exist."
+    where = parser.add_mutually_exclusive_group(required=True)
+    where.add_argument(
+        "--dest", help="Download into this directory, which must not exist."
+    )
+    where.add_argument(
+        "--verify",
+        help=(
+            "Instead of downloading, check the DICOM files below this "
+            "directory, however they were downloaded, against the pins."
+        ),
     )
     parser.add_argument(
         "--answer-key-url", help="An answer key to fetch in place of the pinned one."
@@ -455,6 +528,14 @@ def main(
     parser.add_argument("--answer-key-sha256", help="The given answer key's SHA-256.")
     parser.add_argument("--workers", type=int, default=8)
     arguments = parser.parse_args(argv)
+    if arguments.verify is not None:
+        try:
+            checked = verify(subsets[arguments.subset], arguments.verify)
+        except DownloadError as error:
+            raise SystemExit(str(error)) from None
+        sys.stdout.write(json.dumps(checked, indent=2) + "\n")
+        differs = checked["content"]["pin"] == "differs"  # type: ignore[index]
+        return 1 if differs or checked["files"] != checked["expected_files"] else 0
     try:
         record = download(
             subsets[arguments.subset],

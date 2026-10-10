@@ -79,6 +79,13 @@ When no answer key is pinned for the subset, download it from TCIA's page (an SQ
 
 If you prefer TCIA's own tool, open the subset's `.tcia` manifest from the page in NBIA Data Retriever and point it at an empty `images` folder. The Retriever's folder layout inside it does not matter: the harness reads every file below the folder you give it.
 
+To check that a copy holds exactly the pinned files, however you downloaded it, run the downloader with `--verify` and the folder in place of `--dest`. It counts and fingerprints every DICOM file below the folder, whatever its name, and exits with status 1 when the count or the fingerprint differs from the pin. The fingerprint (`content_sha256` in `midi_data.toml`) is the SHA-256 of the sorted, newline-joined SHA-256 digests of the files, so it depends only on the files' bytes.
+
+```bash
+uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_download \
+  --subset validation --verify /data/midi-b/validation/images
+```
+
 ## 4. Run the benchmark
 
 The work directory must not exist yet, but its parent must. The command creates the work directory, readable by you alone.

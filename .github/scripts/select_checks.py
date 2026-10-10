@@ -135,6 +135,7 @@ INTEGRATION_SCRIPT_FILES = frozenset(
     {
         ".github/scripts/check_distributions.py",
         ".github/scripts/check_workflow_status.py",
+        ".github/scripts/midi_b_tcia_answer_keys.py",
         ".github/scripts/notebook_cache_key.py",
         ".github/scripts/run_redacted.py",
         ".github/scripts/select_checks.py",
