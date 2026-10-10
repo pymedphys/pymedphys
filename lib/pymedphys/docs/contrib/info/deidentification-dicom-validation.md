@@ -39,11 +39,11 @@ The results hold no value and no path. Every validator quotes values, and dicom3
 
 ### Known differences
 
-At present the synthetic corpus needs six known differences, each listed with its reason in every report:
+At present the synthetic corpus needs five known differences, each listed with its reason in every report:
 
 - `profile`: Study Date, Study Time, and Study ID, which the Basic Profile empties (action Z), are needed to build a DICOMDIR, so `dciodvfy` warns.
 - `validator`: `dciodvfy` warns about every Person Name without a component delimiter, such as the dummy value `DEIDENTIFIED`, as a retired form; and its dictionary predates RT Assertions Sequence (0044,0110).
-- `engine`: three Type 1C attributes are kept after the Basic Profile removed what met their conditions, which PS3.5 Section 7.4.2 does not allow. Clinical Trial Protocol Ethics Committee Name (0012,0081) is kept with a dummy value once Clinical Trial Protocol Ethics Committee Approval Number (0012,0082) is removed; and the Common Instance Reference Module's Referenced Series Sequence (0008,1115) and Studies Containing Other Referenced Instances Sequence (0008,1200) are kept once the references they describe are removed from the functional groups of enhanced images. Their entries go when the engine is fixed.
+- `engine`: the Common Instance Reference Module's Referenced Series Sequence (0008,1115) and Studies Containing Other Referenced Instances Sequence (0008,1200), both Type 1C, are kept once the Basic Profile has removed the references they describe from the functional groups of enhanced images, which PS3.5 Section 7.4.2 does not allow. Their entries go when the engine is fixed.
 
 ## Run it on the synthetic corpus
 

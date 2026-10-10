@@ -59,22 +59,6 @@ pinned edition, finds nothing there.
 [[difference]]
 validator = "dciodvfy"
 severity = "error"
-message = "Attribute present when condition unsatisfied (which may not be present otherwise) for Type 1C Conditional"
-paths = ["(0012,0081)"]
-category = "engine"
-reason = """
-The Basic Profile removes Clinical Trial Protocol Ethics Committee Approval
-Number (0012,0082), action X, and gives Clinical Trial Protocol Ethics
-Committee Name (0012,0081) a dummy value, action D. The name is Type 1C,
-required if the approval number is present, so once that is removed its
-condition is not met, and PS3.5 Section 7.4.2 then does not allow it. The
-engine does not yet remove an attribute whose condition lapses, as it does
-for ROI Interpreter Sequence (3006,004E).
-"""
-
-[[difference]]
-validator = "dciodvfy"
-severity = "error"
 message = "ReferencedSeriesSequence present but Instance does not reference Instances"
 paths = ["(0008,1115)"]
 category = "engine"

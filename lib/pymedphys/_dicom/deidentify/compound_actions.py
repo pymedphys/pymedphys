@@ -55,7 +55,13 @@ ROI Creator Sequence (3006,004D) within Structure Set ROI Sequence
 The Type also decides what three plain actions do. A plain D on an
 attribute that the IOD does not define at that place gives X, following Note
 13 after Table E.1-1a, and a plain Z on a Type 1 or 1C attribute gives D, as
-X/Z does there (:func:`resolve_plain_in_iod`). A plain X always removes the
+X/Z does there (:func:`resolve_plain_in_iod`). Two Type 1C attributes are
+removed, whatever their plain action, since their conditions need an
+attribute that Table E.1-1 removes under the Basic Profile and every option
+(:data:`LAPSED_CONDITIONS`): ROI Interpreter Sequence (3006,004E), and
+Clinical Trial Protocol Ethics Committee Name (0012,0081), which PS3.5
+Section 7.4.2 does not allow once its condition is not met, so that D, its
+action in the table, would leave the output invalid. A plain X always removes the
 attribute, as Table E.1-1a defines X, whatever its Type
 (:func:`resolve_plain_x_in_iod`). Where the IOD requires the attribute at
 that place, by its strictest Type, the innermost enclosing sequence that the
@@ -63,8 +69,10 @@ IOD makes Type 3 at its own place is removed with it, with everything in
 that sequence, so that the output stays valid; where no such sequence
 encloses it, the instance is sequestered. Two attributes need neither:
 removing Overlay Data (60xx,3000) removes every attribute of its repeating
-group where the IOD's Overlay Plane Module is user-optional, and ROI Interpreter Sequence (3006,004E), whose condition lapses once
-ROI Creator Sequence (3006,004D) is removed, is removed alone.
+group where the IOD's Overlay Plane Module is user-optional, and an
+attribute of :data:`LAPSED_CONDITIONS`, such as ROI Interpreter Sequence
+(3006,004E), whose condition lapses once ROI Creator Sequence (3006,004D) is
+removed, is removed alone.
 
 For example, the RT Structure Set IOD makes Series Description (0008,103E),
 which Table E.1-1 gives X, Type 1 in Source Series Information Sequence
@@ -82,6 +90,7 @@ from __future__ import annotations
 import dataclasses
 import enum
 import re
+import types
 from collections.abc import Mapping, Sequence
 
 from .iods import IOD, AttributeDefinition
@@ -114,9 +123,22 @@ _TAG_PATTERN = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
 # Overlay Data (60xx,3000) in each overlay group, the even groups 6000 to
 # 601E (PS3.5 Section 7.6). Odd groups, such as 6001, are private.
 _OVERLAY_DATA = re.compile(r"\(60[01][02468ACE],3000\)")
-# ROI Interpreter Sequence, Type 1C only while ROI Creator Sequence, which
-# Table E.1-1 also removes, is present.
-_ROI_INTERPRETER_SEQUENCE = "(3006,004E)"
+# Each Type 1C attribute whose condition needs another attribute's presence,
+# mapped to that attribute, where Table E.1-1 gives the other attribute X
+# under the Basic Profile and every option. The condition then never holds in
+# the output, so the IOD never requires the attribute there, and it is
+# removed, alone, whatever its own action.
+LAPSED_CONDITIONS: Mapping[str, str] = types.MappingProxyType(
+    {
+        # Clinical Trial Protocol Ethics Committee Name, "Required if Clinical
+        # Trial Protocol Ethics Committee Approval Number (0012,0082) is
+        # present", and so not allowed otherwise (PS3.5 Section 7.4.2).
+        "(0012,0081)": "(0012,0082)",
+        # ROI Interpreter Sequence, required only while ROI Creator Sequence
+        # is present.
+        "(3006,004E)": "(3006,004D)",
+    }
+)
 
 
 class RemovalExtent(enum.Enum):
@@ -327,9 +349,13 @@ def resolve_plain_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -
     because an IOD requires it, "if encountered in an image instance, it
     should simply be removed (treated as X)". A plain Z on an attribute that
     is Type 1 or 1C there, by :func:`strictest_type`, gives D, the
-    non-zero-length dummy value that Table E.1-1a allows Z. Every other plain
-    action, and D and Z elsewhere, is returned unchanged; a plain Z on an
-    attribute that the IOD does not define there stays Z.
+    non-zero-length dummy value that Table E.1-1a allows Z. Every plain action
+    on an attribute of :data:`LAPSED_CONDITIONS` gives X, wherever it is:
+    its Type 1C condition never holds in the output, and Clinical Trial
+    Protocol Ethics Committee Name (0012,0081), which Table E.1-1 gives D, is
+    not allowed without it (PS3.5 Section 7.4.2). Every other plain action,
+    and D and Z elsewhere, is returned unchanged; a plain Z on an attribute
+    that the IOD does not define there stays Z.
 
     Parameters
     ----------
@@ -366,6 +392,12 @@ def resolve_plain_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -
     'X'
     >>> resolve_plain_in_iod(iods["Comprehensive SR"], "(0040,A073)", (), "D")
     'D'
+
+    Clinical Trial Protocol Ethics Committee Name (0012,0081), which Table
+    E.1-1 gives D, is Type 1C in the Clinical Trial Subject Module:
+
+    >>> resolve_plain_in_iod(iods["CT Image"], "(0012,0081)", (), "D")
+    'X'
     """
     definitions = iod.lookup(tag, _checked_path(tag, path))
     if not isinstance(action, str) or action not in PLAIN_ACTIONS:
@@ -373,6 +405,8 @@ def resolve_plain_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -
             "action is not a plain action of Table E.1-1a: "
             + ", ".join(sorted(PLAIN_ACTIONS))
         )
+    if tag in LAPSED_CONDITIONS:
+        return "X"
     if action == "D" and not definitions:
         return "X"
     if action == "Z" and _strictest(definitions) == "1":
@@ -412,9 +446,10 @@ def resolve_plain_x_in_iod(iod: IOD, tag: str, path: Sequence[str]) -> PlainRemo
     only CT Image, MR Image, and Positron Emission Tomography Image include
     the Overlay Plane Module, each as user-optional.
     Where the module is conditional, the general rule applies.
-    ROI Interpreter Sequence (3006,004E) is removed alone, since its Type 1C
-    condition needs ROI Creator Sequence (3006,004D), which Table E.1-1
-    removes too.
+    An attribute of :data:`LAPSED_CONDITIONS`, such as ROI Interpreter
+    Sequence (3006,004E), is removed alone, since its Type 1C condition needs
+    an attribute that Table E.1-1 removes too, here ROI Creator Sequence
+    (3006,004D).
 
     This decides from the IOD's Types alone; it changes no data set.
 
@@ -458,7 +493,7 @@ def resolve_plain_x_in_iod(iod: IOD, tag: str, path: Sequence[str]) -> PlainRemo
     checked = _checked_path(tag, path)
     if _OVERLAY_DATA.fullmatch(tag) and _overlay_plane_is_user_optional(iod):
         return PlainRemoval(RemovalExtent.OVERLAY_GROUP)
-    if tag == _ROI_INTERPRETER_SEQUENCE:
+    if tag in LAPSED_CONDITIONS:
         return PlainRemoval(RemovalExtent.ATTRIBUTE)
     if _strictest(iod.lookup(tag, checked)) == "3":
         return PlainRemoval(RemovalExtent.ATTRIBUTE)
