@@ -42,8 +42,7 @@ The results hold no value and no path. Every validator quotes values, and dicom3
 At present the synthetic corpus needs five known differences, each listed with its reason in every report:
 
 - `profile`: Study Date, Study Time, and Study ID, which the Basic Profile empties (action Z), are needed to build a DICOMDIR, so `dciodvfy` warns.
-- `validator`: `dciodvfy` warns about every Person Name without a component delimiter, such as the dummy value `DEIDENTIFIED`, as a retired form; and its dictionary predates RT Assertions Sequence (0044,0110).
-- `engine`: the Common Instance Reference Module's Referenced Series Sequence (0008,1115) and Studies Containing Other Referenced Instances Sequence (0008,1200), both Type 1C, are kept once the Basic Profile has removed the references they describe from the functional groups of enhanced images, which PS3.5 Section 7.4.2 does not allow. Their entries go when the engine is fixed.
+- `validator`: `dciodvfy` warns about every Person Name without a component delimiter, such as the dummy value `DEIDENTIFIED`, as a retired form; its dictionary predates RT Assertions Sequence (0044,0110); and its condition for the Common Instance Reference Module's Referenced Series Sequence (0008,1115) and Studies Containing Other Referenced Instances Sequence (0008,1200) counts references from only a few sequences, so it reports both as present without need once the Basic Profile removes Referenced Image Sequence and Source Image Sequence from the functional groups of enhanced images. PS3.3 Section C.12.2 counts references from any module, and each instance they list is still referenced elsewhere in the output, for example from Referenced Image Evidence Sequence (0008,9092), so their condition is met.
 
 ## Run it on the synthetic corpus
 
@@ -92,7 +91,7 @@ uv run --no-dev --extra tests python -m pymedphys._dicom.deidentify.dicom_valida
 ```
 
 - `--out` must not exist; its parent must. The command writes `dicom-validation.md` and `dicom-validation.json` there, and prints the Markdown.
-- It exits with status 0 when the comparison passed, 1 when it found unexplained findings, and 2 when it could not compare, for example because a validator is missing.
+- It exits with status 0 when the comparison passed, 1 when it found unexplained findings or compared no released instance, and 2 when it could not compare, for example because a validator is missing or the release cannot be paired unambiguously: the mapping lacks a column or maps an input to two outputs, two outputs share a name, or an output has no input.
 - `--workers` sets how many processes run the per-file validators; it defaults to the number of CPUs.
 - Both result files hold no value or path, so they are safe to share. The inputs, the release, and the mapping file are not.
 

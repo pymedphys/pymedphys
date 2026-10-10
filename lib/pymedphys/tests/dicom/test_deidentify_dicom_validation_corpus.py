@@ -60,6 +60,7 @@ from pymedphys._dicom.deidentify.dicom_validation_command import (
 )
 from pymedphys._dicom.deidentify.dicom_validators import (
     DCENTVFY,
+    DCIODVFY,
     DICOM_VALIDATOR,
     VALIDATORS,
     ValidatorUnavailable,
@@ -94,6 +95,7 @@ pytestmark = [pytest.mark.pydicom, pytest.mark.dicom_validators]
 REQUIRE_VARIABLE = "PYMEDPHYS_DICOM_VALIDATORS"
 REPORT_VARIABLE = "PYMEDPHYS_DICOM_VALIDATION_REPORT"
 BOTH_VALIDATED = "input validated, output validated"
+BOTH_FAILED = "input failed, output failed"
 
 
 @pytest.fixture(name="toolset", scope="module")
@@ -201,6 +203,12 @@ def test_every_validator_ran_over_every_released_instance(comparison):
     assert comparison.tallies[DICOM_VALIDATOR]["statuses"] == {
         BOTH_VALIDATED: comparison.pairs
     }
+    # dciodvfy checks every input and output but the corpus's RT Dose in
+    # Implicit VR, whose 32-bit pixels abort it on both.
+    statuses = dict(comparison.tallies[DCIODVFY]["statuses"])
+    failed = statuses.pop(BOTH_FAILED, 0)
+    assert failed <= 1
+    assert statuses == {BOTH_VALIDATED: comparison.pairs - failed}
 
 
 def test_each_patients_outputs_are_consistent(comparison):

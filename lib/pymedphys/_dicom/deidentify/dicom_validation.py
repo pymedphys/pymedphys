@@ -107,6 +107,13 @@ class KnownDifferencesError(Exception):
     """The known differences cannot be read."""
 
 
+class PairingError(ValueError):
+    """A release cannot be paired with its inputs unambiguously.
+
+    The message names no path or UID.
+    """
+
+
 @dataclasses.dataclass(frozen=True)
 class KnownDifference:
     """An introduced finding that is explained, and why.
@@ -230,12 +237,26 @@ def pairs_from_uid_mapping(
     such as the MIDI benchmark's UID mapping file, and each output is named
     by its SOP Instance UID with the suffix ``.dcm``, as a run names it.
     Returns the pairs and the number of inputs without an output.
+
+    Raises
+    ------
+    PairingError
+        If the mapping lacks either column or maps an input UID to two
+        outputs, if two outputs share a name, or if an output is paired with
+        no input, since it would not be validated.
     """
+    replacements: dict[str, str] = {}
     with open(mapping, encoding="utf-8", newline="") as file:
-        replacements = {row["id_old"]: row["id_new"] for row in csv.DictReader(file)}
-    outputs = {
-        path.stem: path for path in Path(release).rglob("*.dcm") if path.is_file()
-    }
+        reader = csv.DictReader(file)
+        if not {"id_old", "id_new"} <= set(reader.fieldnames or ()):
+            raise PairingError("the UID mapping needs the columns id_old and id_new")
+        for row in reader:
+            if replacements.setdefault(row["id_old"], row["id_new"]) != row["id_new"]:
+                raise PairingError("the UID mapping maps an input UID to two outputs")
+    outputs: dict[str, Path] = {}
+    for path in Path(release).rglob("*.dcm"):
+        if path.is_file() and outputs.setdefault(path.stem, path) != path:
+            raise PairingError("two outputs in the release share a file name")
     discovery = run.discover(source)
     pairs = []
     unpaired = 0
@@ -246,17 +267,26 @@ def pairs_from_uid_mapping(
             unpaired += 1
         else:
             pairs.append(Pair(path, output))
+    if len({pair.output for pair in pairs}) < len(outputs):
+        raise PairingError(
+            "the release has outputs that the UID mapping pairs with no input"
+        )
     return tuple(pairs), unpaired
 
 
 def _header(path: Path) -> dict[str, str]:
-    """Return a file's SOP Instance and SOP Class UIDs and Patient ID."""
+    """Return a file's SOP Instance and SOP Class UIDs, and its patient."""
     try:
         with redacted_diagnostics():
             dataset = pydicom.dcmread(
                 path,
                 stop_before_pixels=True,
-                specific_tags=["SOPInstanceUID", "SOPClassUID", "PatientID"],
+                specific_tags=[
+                    "SOPInstanceUID",
+                    "SOPClassUID",
+                    "PatientID",
+                    "IssuerOfPatientID",
+                ],
             )
     except Exception:  # pylint: disable = broad-exception-caught
         return {}
@@ -264,7 +294,10 @@ def _header(path: Path) -> dict[str, str]:
     header = {
         key: str(dataset.get(keyword, "")).strip() for key, keyword in keywords.items()
     }
-    header["patient"] = str(dataset.get("PatientID", "")).strip(" \x00")
+    patient = str(dataset.get("PatientID", "")).strip(" \x00")
+    issuer = str(dataset.get("IssuerOfPatientID", "")).strip(" \x00")
+    # A file without a Patient ID names no patient to compare it with.
+    header["patient"] = f"{patient}\\{issuer}" if patient else ""
     return header
 
 
@@ -494,8 +527,11 @@ class Comparison:
 
     @property
     def passed(self) -> bool:
-        """Whether nothing introduced is unexplained."""
-        return not any(i.outcome is Outcome.UNEXPLAINED for i in self.introduced)
+        """Whether a released instance was compared, and nothing introduced is
+        unexplained."""
+        return self.pairs > 0 and not any(
+            i.outcome is Outcome.UNEXPLAINED for i in self.introduced
+        )
 
     def json(self) -> str:
         """Return the comparison as JSON text."""
@@ -607,11 +643,15 @@ def _validate_files(
 def _patients(
     headers: Sequence[Mapping[str, str]], left_out: Collection[int]
 ) -> list[list[int]]:
-    """Group the pairs by their inputs' Patient ID, for those of two or more."""
+    """Group the pairs by their inputs' patient, for those of two or more.
+
+    A patient is a Patient ID with its issuer; inputs without a Patient ID
+    are left out.
+    """
     groups: dict[str, list[int]] = collections.defaultdict(list)
     for index, header in enumerate(headers):
-        if index not in left_out:
-            groups[header.get("patient", "")].append(index)
+        if index not in left_out and header.get("patient"):
+            groups[header["patient"]].append(index)
     return [group for group in groups.values() if len(group) > 1]
 
 

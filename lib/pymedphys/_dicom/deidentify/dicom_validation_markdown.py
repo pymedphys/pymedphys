@@ -41,12 +41,15 @@ def render_markdown(document: Mapping[str, object]) -> str:
     introduced = document["introduced"]
     assert isinstance(versions, Mapping) and isinstance(tallies, Mapping)
     assert isinstance(introduced, list)
-    verdict = (
-        "**Passed**: the de-identification introduced no unexplained finding."
-        if document["passed"]
-        else "**Failed**: the de-identification introduced unexplained findings, "
-        "listed below."
-    )
+    if document["passed"]:
+        verdict = "**Passed**: the de-identification introduced no unexplained finding."
+    elif not document["pairs"]:
+        verdict = "**Failed**: no released instance was compared."
+    else:
+        verdict = (
+            "**Failed**: the de-identification introduced unexplained findings, "
+            "listed below."
+        )
     lines = [
         "# DICOM validation of a de-identified release",
         "",
