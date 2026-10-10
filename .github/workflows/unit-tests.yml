@@ -6,7 +6,7 @@ on:
       python-matrix:
         required: false
         type: string
-        default: '["3.10", "3.12"]'
+        default: '["3.11", "3.12", "3.13", "3.14"]'
       extra-pytest-args:
         required: false
         type: string
@@ -19,43 +19,298 @@ on:
 permissions:
   contents: read
 
+# Two pytest workers share the runner. Keep Numba's parallel kernels exercised
+# with two threads each, and keep other numerical thread pools to one thread.
+env:
+  NUMBA_NUM_THREADS: '2'
+  OPENBLAS_NUM_THREADS: '1'
+  OMP_NUM_THREADS: '1'
+  MKL_NUM_THREADS: '1'
+  VECLIB_MAXIMUM_THREADS: '1'
+
 jobs:
   test:
     name: ${{ matrix.os }} - py${{ matrix.python-version }}
-    timeout-minutes: 30
+    # Allow for setup and the full suite on slower Windows runners.
+    timeout-minutes: ${{ matrix.os == 'windows-latest' && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:
         os: ${{ inputs.quick && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') }}
-        python-version: ${{ inputs.quick && fromJSON('["3.12"]') || fromJSON(inputs.python-matrix) }}
+        python-version: ${{ inputs.quick && fromJSON('["3.14"]') || fromJSON(inputs.python-matrix) }}
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-project
         with:
+          cache-data: 'true'
           python-version: ${{ matrix.python-version }}
-          extras: 'dev tests mosaiq'
+          # user is a superset of mosaiq and provides the Streamlit GUI tests
+          # with the app dependencies.
+          extras: 'tests'
 
       - name: Run unit tests
+        id: tests
         shell: bash
         env:
           PYTEST_ADDOPTS: ${{ inputs.extra-pytest-args }}
+          MATRIX_OS: ${{ matrix.os }}
+          MATRIX_PYTHON: ${{ matrix.python-version }}
         run: |
           set -euxo pipefail
           mkdir -p test-results
 
           # Always exclude slow tests in unit test runs.
           # Extra pytest options come from PYTEST_ADDOPTS, which pytest parses.
-          uv run pytest -m "not slow" \
-            --junitxml=test-results/junit-${{ matrix.os }}-${{ matrix.python-version }}.xml
+          # `pymedphys dev tests` changes directory to lib/pymedphys before
+          # invoking pytest, so the JUnit path must be absolute for the
+          # upload step (which looks in the workspace root) to find it.
+          uv run -- pymedphys dev tests -m "not slow" \
+            -n 2 --dist worksteal --durations=15 \
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-${MATRIX_OS}-${MATRIX_PYTHON}.xml"
+
+      - name: Record the locked pydicom test evidence
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
+        env:
+          CI_COMMIT: ${{ github.sha }}
+        run: uv run -- python .github/scripts/pydicom_coverage.py baseline
 
       - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # 7.0.0
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: junit-${{ matrix.os }}-${{ matrix.python-version }}
+          path: test-results/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # Each narrow extra, such as dicom, must list every package its feature uses.
+  # Install one extra alone, with only the test runner, and run that feature's
+  # tests: a missing package fails them. Tests of other features that sit in
+  # the same folders skip themselves when their packages are missing.
+  narrow-extras:
+    name: Extra ${{ matrix.extra }} alone
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Tests marked pydicom compare DICOM files, so they need dicom too.
+          - extra: gamma
+            marks: not slow and not pydicom
+            paths: tests/gamma tests/interp
+          - extra: dicom
+            marks: not slow
+            paths: tests/dicom
+          - extra: mosaiq
+            marks: not slow
+            paths: tests/mosaiq
+          - extra: icom
+            marks: not slow
+            paths: tests/icom
+          - extra: trf
+            marks: not slow
+            paths: tests/trf tests/logfiles
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          cache-data: 'true'
+          extras: ${{ matrix.extra }}
+          groups: 'test-runner'
+
+      - name: Run the feature's tests
+        id: tests
+        shell: bash
+        env:
+          PYTEST_ADDOPTS: ${{ inputs.extra-pytest-args }}
+          EXTRA: ${{ matrix.extra }}
+          MARKS: ${{ matrix.marks }}
+          TEST_PATHS: ${{ matrix.paths }}
+          # DICOM has thousands of cases; the smaller feature suites cost
+          # less to run directly than to start and collect two workers.
+          TEST_WORKERS: ${{ matrix.extra == 'dicom' && '2' || '0' }}
+        run: |
+          set -euxo pipefail
+          mkdir -p test-results
+          read -ra paths <<< "${TEST_PATHS}"
+          # --no-sync keeps uv from installing anything beyond the extra.
+          uv run --no-sync -- pymedphys dev tests -m "${MARKS}" "${paths[@]}" \
+            -n "${TEST_WORKERS}" --dist worksteal --durations=15 \
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-extra-${EXTRA}.xml"
+
+      - name: Upload test results
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: junit-extra-${{ matrix.extra }}
           path: test-results/*.xml
-          if-no-files-found: ignore
+          if-no-files-found: error
+          retention-days: 30
+
+  # The declared minimum versions of NumPy (1.26) and pandas (2.0) are checked
+  # together, whichever matrix runs. Python 3.11 is the only supported version
+  # with wheels for both: NumPy 1.26 has none for Python 3.13 or later, and
+  # pandas 2.0 none for 3.12 or later or built against NumPy 2.
+  dependency-floors:
+    name: NumPy and pandas minimum versions
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          cache-data: 'true'
+          python-version: '3.11'
+          extras: 'tests'
+
+      - name: Run unit tests at the minimum NumPy and pandas versions
+        id: tests
+        shell: bash
+        env:
+          NUMPY_FLOOR: '1.26.4'
+          PANDAS_FLOOR: '2.0.3'
+        run: |
+          set -euxo pipefail
+          mkdir -p test-results
+          # Reuse the locked environment and overlay only NumPy and pandas.
+          # Invoke Python so it imports them from uv's overlay environment,
+          # and fail if the overlay did not take effect.
+          overlay=(uv run --no-sync --with "numpy==${NUMPY_FLOOR}" --with "pandas==${PANDAS_FLOOR}" --)
+          "${overlay[@]}" python -c 'import os, numpy, pandas; assert (numpy.__version__, pandas.__version__) == (os.environ["NUMPY_FLOOR"], os.environ["PANDAS_FLOOR"]), (numpy.__version__, pandas.__version__)'
+          "${overlay[@]}" python -m pymedphys dev tests -m "not slow" \
+            -n 2 --dist worksteal --durations=15 \
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-dependency-floors.xml"
+
+      - name: Upload test results
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: junit-dependency-floors
+          path: test-results/*.xml
+          if-no-files-found: error
+          retention-days: 30
+
+  # Cover the declared minimum and the latest release of pydicom. When a role
+  # exactly matches the locked version, the normal Ubuntu/Python 3.14 suite
+  # covers it. Every role records its source, and success of this reusable
+  # workflow requires both the source job and its evidence upload to succeed.
+  # pydicom reads and writes every file the engine handles, and its data
+  # dictionary decides how an attribute of an Implicit VR file is read.
+  pydicom-versions:
+    name: De-identification with ${{ matrix.pydicom }} pydicom
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        pydicom: [minimum, latest]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The de-identification tests read no downloaded data.
+      - uses: ./.github/actions/setup-project
+        with:
+          python-version: '3.14'
+          install-project: 'false'
+
+      - name: Select evidence for ${{ matrix.pydicom }} pydicom
+        id: coverage
+        shell: bash
+        env:
+          PYDICOM: ${{ matrix.pydicom }}
+          # Keep this minimum in step with pyproject.toml.
+          PYDICOM_MINIMUM: '3.0.2'
+          QUICK: ${{ inputs.quick }}
+          PYTHON_MATRIX: ${{ inputs.python-matrix }}
+          EXTRA_PYTEST_ARGS: ${{ inputs.extra-pytest-args }}
+          CI_COMMIT: ${{ github.sha }}
+        run: |
+          set -euxo pipefail
+          minimum=$(python .github/scripts/pydicom_coverage.py minimum)
+          if [[ "${PYDICOM}" == minimum ]]; then
+            version="${minimum}"
+          else
+            # Resolve afresh: uv run --with retains a satisfying locked version.
+            pinned=$(uv pip compile --python-version 3.14 --no-deps --no-header --no-annotate --quiet - <<< "pydicom>=${minimum}")
+            version="${pinned#pydicom==}"
+          fi
+          PYDICOM_VERSION="${version}" python .github/scripts/pydicom_coverage.py plan
+
+      - uses: ./.github/actions/setup-project
+        # Missing outputs select execution; malformed plans fail their step.
+        if: steps.coverage.outputs.reuse != 'true'
+        with:
+          python-version: '3.14'
+          extras: 'tests'
+
+      - name: Run the de-identification tests with ${{ matrix.pydicom }} pydicom
+        id: tests
+        if: steps.coverage.outputs.reuse != 'true'
+        shell: bash
+        env:
+          PYDICOM: ${{ matrix.pydicom }}
+          PYDICOM_VERSION: ${{ steps.coverage.outputs.version }}
+        run: |
+          set -euxo pipefail
+          mkdir -p test-results
+          # Reuse the locked environment and overlay only pydicom. Invoke
+          # Python so it imports pydicom from uv's overlay environment, print
+          # the version tested, and fail if the overlay did not take effect.
+          overlay=(uv run --no-sync --with "pydicom==${PYDICOM_VERSION}" --)
+          "${overlay[@]}" python -c 'import os, pydicom; print("pydicom", pydicom.__version__); assert pydicom.__version__ == os.environ["PYDICOM_VERSION"], pydicom.__version__'
+          "${overlay[@]}" python -m pymedphys dev tests -m "not slow" \
+            lib/pymedphys/tests/dicom/test_deidentify_*.py \
+            lib/pymedphys/tests/dev/test_deid_tables.py \
+            -n 2 --dist worksteal --durations=15 \
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-pydicom-${PYDICOM}.xml"
+
+      - name: Record pydicom coverage
+        id: evidence
+        shell: bash
+        env:
+          PYDICOM: ${{ matrix.pydicom }}
+          PYDICOM_VERSION: ${{ steps.coverage.outputs.version }}
+          REUSE: ${{ steps.coverage.outputs.reuse }}
+        run: |
+          set -euxo pipefail
+          if [[ "${REUSE}" == true ]]; then
+            python .github/scripts/pydicom_coverage.py record
+          else
+            uv run --no-sync --with "pydicom==${PYDICOM_VERSION}" -- \
+              python .github/scripts/pydicom_coverage.py record
+          fi
+
+      - name: Upload test results
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: junit-pydicom-${{ matrix.pydicom }}
+          path: test-results/*.xml
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload pydicom coverage
+        if: ${{ !cancelled() && steps.evidence.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pydicom-coverage-${{ matrix.pydicom }}
+          path: test-results/pydicom-coverage-${{ matrix.pydicom }}.json
+          if-no-files-found: error
           retention-days: 30

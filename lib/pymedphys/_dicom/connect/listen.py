@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 University of New South Wales & Ingham Institute
 # Copyright (C) 2020 Stuart Swerdloff and Simon Biggs
 
@@ -24,13 +25,23 @@ from pymedphys._imports import pydicom, pynetdicom
 
 from pymedphys._dicom.connect.base import DicomConnectBase
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
+from pymedphys._utilities.filesystem import encode_file_name
 
 
 def hierarchical_dicom_storage_directory(
     storage_directory, ds: "pydicom.dataset.Dataset"
 ) -> pathlib.Path:
+    """Return the folder for a received object: Patient ID, then Study
+    Instance UID, then Series Instance UID, inside ``storage_directory``.
+
+    Each value becomes a single folder name (see ``encode_file_name`` in
+    ``pymedphys._utilities.filesystem``), so no value can place the folder
+    outside ``storage_directory``.
+    """
     series_path = pathlib.Path(storage_directory).joinpath(
-        ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID
+        encode_file_name(ds.PatientID),
+        encode_file_name(ds.StudyInstanceUID),
+        encode_file_name(ds.SeriesInstanceUID),
     )
     return series_path
 
@@ -72,7 +83,12 @@ class DicomListener(DicomConnectBase):
         logging.debug("Will store files received in: %s", self.storage_directory)
 
     def start(self):
-        """Start the DICOM listener"""
+        """Start the listener.
+
+        With ``port=0``, the operating system reserves an available port and
+        ``self.port`` exposes it after startup. An unavailable explicit port
+        raises ``OSError``.
+        """
 
         # Initialise the Application Entity
         self.ae = pynetdicom.AE(ae_title=self.ae_title)
@@ -98,7 +114,10 @@ class DicomListener(DicomConnectBase):
         ]
 
         # Start listening for incoming association requests
-        self.ae.start_server((self.host, self.port), evt_handlers=handlers, block=False)
+        server = self.ae.start_server(
+            (self.host, self.port), evt_handlers=handlers, block=False
+        )
+        self.port = server.server_address[1]
 
     def stop(self):
         """Stop the DICOM listener"""
@@ -133,7 +152,9 @@ class DicomListener(DicomConnectBase):
         self.association_directory = series_dir
 
         filename = pathlib.Path(
-            "{!s}.{!s}.dcm".format(mode_prefix, dataset.SOPInstanceUID)
+            "{!s}.{!s}.dcm".format(
+                mode_prefix, encode_file_name(dataset.SOPInstanceUID)
+            )
         )
         filepath = series_dir.joinpath(filename)
 
@@ -167,17 +188,22 @@ class DicomListener(DicomConnectBase):
 
         # The following is not mandatory, set for convenience
         meta.ImplementationVersionName = pynetdicom.PYNETDICOM_IMPLEMENTATION_VERSION
+        # The encoding given here must match the transfer syntax: save_as
+        # refuses to convert between little and big endian.
         file_ds = pydicom.FileDataset(
-            filepath, {}, file_meta=meta, preamble=b"\0" * 128
+            filepath,
+            {},
+            file_meta=meta,
+            preamble=b"\0" * 128,
+            is_implicit_VR=context.transfer_syntax.is_implicit_VR,
+            is_little_endian=context.transfer_syntax.is_little_endian,
         )
         file_ds.update(dataset)
-        file_ds.is_little_endian = context.transfer_syntax.is_little_endian
-        file_ds.is_implicit_VR = context.transfer_syntax.is_implicit_VR
 
         try:
-            # We use `write_like_original=False` to ensure that a compliant
-            # File Meta Information Header is written
-            file_ds.save_as(filepath, write_like_original=False)
+            # `enforce_file_format` ensures that a compliant File Meta
+            # Information Header is written
+            file_ds.save_as(filepath, enforce_file_format=True)
             status_ds.Status = 0x0000  # Success
 
             logging.info("DICOM object received: %s", filepath)
@@ -210,7 +236,7 @@ def listen_cli(args):
     logging.info("Port: %s", args.port)
     logging.info("AE Title: %s", args.aetitle)
     dicom_listener.start()
-    logging.info("Listener Ready")
+    logging.info("Listener Ready on port %s", dicom_listener.port)
 
     # Run until the process is stopped
     def handler_stop_signals(*_):

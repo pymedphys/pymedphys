@@ -51,7 +51,7 @@ class DeliveryBase(DeliveryNamedTuple):
     def merge(self: DeliveryGeneric, *args: DeliveryGeneric) -> DeliveryGeneric:
         cls = type(self)
         separate: List[DeliveryGeneric] = [self] + [*args]
-        collection: Dict[str, Tuple] = {}
+        collection: Dict[str, Union[Tuple, np.ndarray]] = {}
 
         for delivery_data in separate:
             for field in delivery_data._fields:  # pylint: disable=no-member
@@ -160,14 +160,14 @@ class DeliveryBase(DeliveryNamedTuple):
 
         try:
             assert np.all(np.sum(masks, axis=0) == 1), (
-                "Not all beams were captured by the gantry tolerance of " " {}".format(
+                "Not all beams were captured by the gantry tolerance of  {}".format(
                     gantry_tol
                 )
             )
         except AssertionError:
             if not allow_missing_angles:
                 print("Allowable gantry angles = {}".format(gantry_angles))
-                gantry = np.array(self.gantry, copy=False)
+                gantry = np.asarray(self.gantry)
                 out_of_tolerance = np.unique(
                     gantry[np.sum(masks, axis=0) == 0]
                 ).tolist()
@@ -201,7 +201,7 @@ class DeliveryBase(DeliveryNamedTuple):
             return cls(*new_delivery_data)
 
         new_delivery_data[0] = np.round(
-            np.array(new_delivery_data[0], copy=False) - first_monitor_unit_item,
+            np.asarray(new_delivery_data[0]) - first_monitor_unit_item,
             decimals=7,
         )
 

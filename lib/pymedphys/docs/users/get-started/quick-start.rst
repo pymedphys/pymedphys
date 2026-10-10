@@ -14,7 +14,10 @@ For most users, the recommended install is:
     uv venv --python 3.12
     uv pip install "pymedphys[user]"
 
-PyMedPhys currently supports Python 3.10, 3.11, and 3.12.
+PyMedPhys currently supports Python 3.11, 3.12, 3.13, and 3.14.
+
+Check the platform prerequisites in :doc:`Installation options
+<installation-options>` before choosing a different Python version.
 
 We recommend using ``uv`` for this guide. It can install Python, create a
 virtual environment, and install packages with one tool.
@@ -80,16 +83,13 @@ For most users:
 
     uv pip install "pymedphys[user]"
 
-Other common installs
----------------------
+Other installs
+--------------
 
-If you need a narrower install, here are some common patterns:
-
-.. code:: bash
-
-    uv pip install "pymedphys[dicom,cli]"
-    uv pip install "pymedphys[mosaiq,cli]"
-    uv pip install "pymedphys[user,icom]"
+For a smaller install that covers one feature, use its extra instead:
+``gamma``, ``dicom``, ``mosaiq``, ``icom``, or ``trf``. Combine them with
+commas, for example ``"pymedphys[gamma,dicom]"``. The optional ``ai`` extra
+adds the experimental AI chat app.
 
 Because ``.venv`` exists in the current folder, ``uv pip install`` will
 install into that environment automatically.
@@ -108,7 +108,7 @@ Windows
 
 .. code:: powershell
 
-    .venv\Scripts\activate
+    .\.venv\Scripts\Activate.ps1
 
 Linux or macOS
 --------------
@@ -129,6 +129,16 @@ Then confirm that the command line entry point is available:
 
     pymedphys --help
 
+To launch the graphical apps from a ``user`` installation, run:
+
+.. code:: bash
+
+    pymedphys gui
+
+Only this computer can connect to the apps. See
+:doc:`Graphical apps <../ref/cli/gui>` for the available CLI options,
+including serving the apps to other computers.
+
 If you plan to use command line workflows, continue to
 :doc:`Using the CLI <cli>`.
 
@@ -139,14 +149,17 @@ TLS or certificate issues
 -------------------------
 
 Some healthcare networks use a corporate trust root or HTTPS interception.
-In that case, try telling uv to use the operating system certificate store.
+In that case, tell uv to use the operating system certificate store with
+``UV_SYSTEM_CERTS`` (older uv releases called this ``UV_NATIVE_TLS``).
+See `uv's certificate documentation
+<https://docs.astral.sh/uv/concepts/authentication/certificates/>`_.
 
 Windows
 ^^^^^^^
 
 .. code:: powershell
 
-    $env:UV_NATIVE_TLS = "true"
+    $env:UV_SYSTEM_CERTS = "true"
     uv pip install "pymedphys[user]"
 
 Linux or macOS
@@ -154,7 +167,7 @@ Linux or macOS
 
 .. code:: bash
 
-    UV_NATIVE_TLS=true uv pip install "pymedphys[user]"
+    UV_SYSTEM_CERTS=true uv pip install "pymedphys[user]"
 
 Proxy issues
 ------------
@@ -197,7 +210,7 @@ Windows
 .. code:: powershell
 
     python -m venv .venv
-    .venv\Scripts\activate
+    .\.venv\Scripts\Activate.ps1
     python -m pip install --upgrade pip
     python -m pip install "pymedphys[user]"
 

@@ -1,0 +1,70 @@
+name: Bug report
+description: Report something in PyMedPhys that does not work as documented.
+type: Bug
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Thank you for reporting a problem. Please do not report a suspected
+        security vulnerability here; follow the
+        [security policy](https://github.com/pymedphys/pymedphys/blob/main/SECURITY.md)
+        instead, so that it can be fixed before it is made public.
+  - type: checkboxes
+    id: patient-data
+    attributes:
+      label: Patient data
+      description: "Issues are public. Share only anonymised or synthetic data."
+      options:
+        - label: "Nothing in this report identifies a patient. It includes no clinical DICOM files, and no screenshots, logs, or file names that show a patient's name, ID, or date of birth."
+          required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What went wrong
+      description: "In a sentence or two, what were you trying to do, and what went wrong?"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: "The shortest code or commands that show the problem, using anonymised or synthetic data."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: "Include the full error message and traceback, if there is one."
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: pymedphys-version
+    attributes:
+      label: PyMedPhys version
+      description: "The output of `pymedphys --version`."
+      placeholder: "pymedphys 0.41.0"
+    validations:
+      required: true
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      description: "The output of `python --version`."
+      placeholder: "Python 3.12.4"
+    validations:
+      required: true
+  - type: input
+    id: operating-system
+    attributes:
+      label: Operating system
+      placeholder: "Windows 11"
+    validations:
+      required: true

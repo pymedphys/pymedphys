@@ -1,0 +1,25 @@
+name: Cache PyMedPhys Data
+description: Restore and save the PyMedPhys data cache for the current manifest
+
+runs:
+  using: composite
+  steps:
+    - name: Cache PyMedPhys data
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.pymedphys
+        # The exact key is per job, so the first job to finish cannot claim a
+        # shared key with an empty cache. A cold job first restores any
+        # populated cache for the same manifest on the same OS, so only the
+        # first run after a manifest change contacts Zenodo, and data_path
+        # verifies hashes on restored files. Never restore across manifest
+        # hashes: zip_data_paths preserves existing extracted files even when
+        # it replaces an outdated archive.
+        #
+        # Name the manifest exactly. This step runs after uv sync, so a
+        # **/hashes.json glob would walk every file in .venv (tens of seconds
+        # on Windows) and would also hash pydicom's own data manifest, tying
+        # the key to the installed pydicom version.
+        key: pymedphys-data-v4-${{ runner.os }}-${{ hashFiles('lib/pymedphys/_data/hashes.json') }}-${{ github.job }}
+        restore-keys: |
+          pymedphys-data-v4-${{ runner.os }}-${{ hashFiles('lib/pymedphys/_data/hashes.json') }}-

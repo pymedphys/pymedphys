@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 University of New South Wales & Ingham Institute
 # Copyright (C) 2020 Stuart Swerdloff and Simon Biggs
 
@@ -16,9 +17,12 @@
 # pylint: disable=redefined-outer-name, no-member
 
 import pathlib
+import re
 import shutil
+import socket
 import subprocess
 import tempfile
+import types
 from contextlib import contextmanager
 from unittest.mock import Mock
 
@@ -31,9 +35,7 @@ from pymedphys._dicom.connect.listen import (
 )
 from pymedphys._dicom.connect.send import DicomSender
 from pymedphys._dicom.create import dicom_dataset_from_dict
-
-# TODO How to determine an appropriate port for testing?
-TEST_PORT = 9988
+from pymedphys.cli import define_parser
 
 METHOD_MOCK = Mock()
 
@@ -102,17 +104,33 @@ def listener_process(port, receive_directory, ae_title):
 
     try:
         stream_output = b""
-        for b in iter(lambda: proc.stdout.read(1), b""):
-            stream_output += b
-            if b"Listener Ready" in stream_output:
+        for line in proc.stdout:
+            stream_output += line
+            ready = re.search(rb"Listener Ready on port (\d+)\s*$", line)
+            if ready:
                 break
+        else:
+            raise RuntimeError(
+                "The DICOM listener exited before it was ready:\n"
+                + stream_output.decode(errors="replace")
+            )
 
-        yield proc
+        yield proc, int(ready[1])
 
     finally:
-        for child in psutil.Process(proc.pid).children(recursive=True):
-            child.kill()
+        # A listener that failed to start has already exited, and on some
+        # platforms, such as Windows, psutil can no longer find it.
+        try:
+            children = psutil.Process(proc.pid).children(recursive=True)
+        except psutil.NoSuchProcess:
+            children = []
+        for child in children:
+            try:
+                child.kill()
+            except psutil.NoSuchProcess:
+                pass
         proc.kill()
+        proc.wait()
 
 
 @pytest.fixture()
@@ -126,9 +144,7 @@ def listener():
     pymedphys._dicom.connect.listen.DicomListener
         reference to the DICOM SCP object
     """
-    dicom_listener = DicomListener(
-        port=TEST_PORT, on_released_callback=METHOD_MOCK.method
-    )
+    dicom_listener = DicomListener(port=0, on_released_callback=METHOD_MOCK.method)
     dicom_listener.start()
 
     yield dicom_listener
@@ -157,6 +173,35 @@ def test_dicom_listener_echo(listener):
 
     # Check we got a valid result
     assert result == 0
+
+
+@pytest.mark.pydicom
+def test_dicom_listeners_reserve_distinct_ports():
+    """Overlapping listeners keep their own operating-system-assigned ports."""
+    listeners = [DicomListener(host="127.0.0.1", port=0) for _ in range(2)]
+    try:
+        for dicom_listener in listeners:
+            dicom_listener.start()
+        ports = {dicom_listener.port for dicom_listener in listeners}
+        assert len(ports) == 2
+        assert all(0 < port < 65536 for port in ports)
+    finally:
+        for dicom_listener in listeners:
+            dicom_listener.stop()
+
+
+@pytest.mark.pydicom
+def test_dicom_listener_rejects_an_occupied_port():
+    """An explicit port conflict fails instead of choosing a different port."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        sock.listen()
+        dicom_listener = DicomListener(host="127.0.0.1", port=sock.getsockname()[1])
+        try:
+            with pytest.raises(OSError):
+                dicom_listener.start()
+        finally:
+            dicom_listener.stop()
 
 
 @pytest.fixture()
@@ -201,8 +246,9 @@ def test_dataset():
     )
 
     test_dataset.file_meta = file_meta
-    test_dataset.is_implicit_VR = True
-    test_dataset.is_little_endian = True
+    # pynetdicom 3.0 reads the legacy encoding flags, which pydicom 4 removes,
+    # of a dataset that has no original encoding.
+    test_dataset.set_original_encoding(is_implicit_vr=True, is_little_endian=True)
 
     return test_dataset
 
@@ -220,6 +266,104 @@ def test_hierarchical_dicom_storage_directory(test_dataset):
     )
     created_directory = hierarchical_dicom_storage_directory(test_dir, test_dataset)
     assert created_directory == expected_directory
+
+
+@pytest.mark.pydicom
+# The UID values are deliberately invalid, so pydicom warns when they are set.
+@pytest.mark.filterwarnings("ignore:Invalid value for VR UI:UserWarning")
+@pytest.mark.parametrize(
+    "keyword, value",
+    [
+        ("PatientID", "../outside"),
+        ("PatientID", "/outside"),
+        ("PatientID", ".."),
+        ("StudyInstanceUID", ".."),
+        ("SeriesInstanceUID", "../../outside"),
+    ],
+)
+def test_hierarchical_dicom_storage_directory_stays_inside_storage(
+    tmp_path, test_dataset, keyword, value
+):
+    """Each identifier names one folder inside the storage directory,
+    whatever value the sender gives it."""
+    setattr(test_dataset, keyword, value)
+
+    series_directory = hierarchical_dicom_storage_directory(tmp_path, test_dataset)
+
+    assert series_directory.parent.parent.parent == tmp_path
+    assert ".." not in series_directory.parts
+
+
+def test_listen_help_describes_stored_names(capsys, monkeypatch):
+    """The storage folder's help text renders, with its literal % signs."""
+    # A wide terminal keeps argparse from wrapping inside "two-digit".
+    monkeypatch.setenv("COLUMNS", "500")
+    with pytest.raises(SystemExit) as exit_info:
+        define_parser().parse_args(["dicom", "listen", "--help"])
+
+    assert exit_info.value.code == 0
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "written as % and their two-digit hexadecimal code" in help_text
+    assert "as %2E and %2E%2E." in help_text
+
+
+@pytest.mark.pydicom
+def test_dicom_listener_stores_inside_storage_directory(tmp_path, test_dataset):
+    """An object whose PatientID points outside the storage directory is
+    stored inside it."""
+    storage_directory = tmp_path / "storage"
+    storage_directory.mkdir()
+    test_dataset.PatientID = "../outside"
+    dicom_listener = DicomListener(storage_directory=storage_directory)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        ),
+    )
+
+    status = dicom_listener.on_c_store(event)
+
+    assert status.Status == 0x0000
+    (stored_path,) = tmp_path.rglob("*.dcm")
+    assert stored_path.is_relative_to(storage_directory)
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "transfer_syntax",
+    [
+        pydicom.uid.ImplicitVRLittleEndian,
+        pydicom.uid.ExplicitVRLittleEndian,
+        pydicom.uid.DeflatedExplicitVRLittleEndian,
+        pydicom.uid.ExplicitVRBigEndian,
+    ],
+    ids=lambda uid: uid.name,
+)
+def test_dicom_listener_stores_the_received_transfer_syntax(
+    tmp_path, test_dataset, transfer_syntax
+):
+    """A received object is stored in the DICOM File Format, encoded with
+    the transfer syntax of the presentation context it arrived on."""
+    dicom_listener = DicomListener(storage_directory=tmp_path)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(transfer_syntax=transfer_syntax),
+    )
+
+    status = dicom_listener.on_c_store(event)
+
+    assert status.Status == 0x0000
+    (stored_path,) = tmp_path.rglob("*.dcm")
+    stored = pydicom.dcmread(stored_path)
+    assert stored.preamble == b"\0" * 128
+    assert stored.file_meta.TransferSyntaxUID == transfer_syntax
+    assert stored.original_encoding == (
+        transfer_syntax.is_implicit_VR,
+        transfer_syntax.is_little_endian,
+    )
+    check_dicom_agrees(stored, test_dataset)
 
 
 @pytest.mark.pydicom
@@ -291,7 +435,7 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
     )
     ds = pydicom.dcmread(file_path)
     ds.Manufacturer = "PyMedPhysModified"
-    ds.save_as(file_path, write_like_original=False)
+    ds.save_as(file_path, enforce_file_format=True)
 
     # Send again, should save the file in the orphan directory
     ae = pynetdicom.AE()
@@ -325,11 +469,11 @@ def test_dicom_listener_cli(test_dataset):
     with tempfile.TemporaryDirectory() as tmp_directory:
         test_directory = pathlib.Path(tmp_directory)
 
-        with listener_process(TEST_PORT, test_directory, scp_ae_title):
+        with listener_process(0, test_directory, scp_ae_title) as (_, port):
             # Send the data to the listener
             ae = pynetdicom.AE()
             ae.add_requested_context(pynetdicom.sop_class.RTPlanStorage)
-            assoc = ae.associate("127.0.0.1", TEST_PORT, ae_title=scp_ae_title)
+            assoc = ae.associate("127.0.0.1", port, ae_title=scp_ae_title)
             assert assoc.is_established
             status = assoc.send_c_store(test_dataset)
             assert status.Status == 0
@@ -338,6 +482,30 @@ def test_dicom_listener_cli(test_dataset):
         file_path = _build_hierarchical_path_to_plan(test_directory, test_dataset)
         read_dataset = pydicom.dcmread(file_path)
         assert read_dataset.SeriesInstanceUID == test_dataset.SeriesInstanceUID
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "exited_listener_visible", [True, False], ids=["visible", "not visible"]
+)
+def test_listener_process_reports_a_listener_that_fails_to_start(
+    tmp_path, monkeypatch, exited_listener_visible
+):
+    """A listener that exits during startup raises with its own output, even
+    where the exited process can no longer be found during cleanup."""
+    if not exited_listener_visible:
+        # As on Windows, where psutil cannot find the exited listener.
+        def exited(pid):
+            raise psutil.NoSuchProcess(pid)
+
+        monkeypatch.setattr(psutil, "Process", exited)
+
+    # No socket can bind port -1, so the listener fails on every platform.
+    with pytest.raises(RuntimeError, match="exited before it was ready") as caught:
+        with listener_process(-1, tmp_path, "PYMEDPHYSTEST"):
+            pass
+
+    assert "OverflowError" in str(caught.value)
 
 
 @pytest.mark.pydicom
@@ -351,9 +519,9 @@ def test_dicom_sender(test_dataset):
         receive_directory = test_directory.joinpath("receive")
         receive_directory.mkdir()
 
-        with listener_process(TEST_PORT, receive_directory, scp_ae_title):
+        with listener_process(0, receive_directory, scp_ae_title) as (_, port):
             dicom_sender = DicomSender(
-                host="127.0.0.1", port=TEST_PORT, ae_title=scp_ae_title
+                host="127.0.0.1", port=port, ae_title=scp_ae_title
             )
 
             assert dicom_sender.verify()
@@ -376,14 +544,13 @@ def test_dicom_sender_cli(test_dataset):
         send_directory = test_directory.joinpath("send")
         send_directory.mkdir()
         send_file = send_directory.joinpath("test.dcm")
-        test_dataset.save_as(send_file, write_like_original=False)
+        test_dataset.save_as(send_file, enforce_file_format=True)
 
         receive_directory = test_directory.joinpath("receive")
         receive_directory.mkdir()
 
-        sender_command = prepare_send_command(TEST_PORT, scp_ae_title, send_file)
-
-        with listener_process(TEST_PORT, receive_directory, scp_ae_title) as lp:
+        with listener_process(0, receive_directory, scp_ae_title) as (lp, port):
+            sender_command = prepare_send_command(port, scp_ae_title, send_file)
             subprocess.call(sender_command)
 
             stream_output = b""

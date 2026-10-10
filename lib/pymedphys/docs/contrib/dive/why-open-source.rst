@@ -48,7 +48,7 @@ This iterative process with the community makes it so that the software has a
 more seamless interaction with the range of systems in use.
 
 An example of this is the `Pylinac quality assurance tool
-<http://pylinac.readthedocs.io/en/latest/index.html>`_. It was built by a
+<https://pylinac.readthedocs.io/en/latest/index.html>`_. It was built by a
 physicist who works at a Varian site. Another physicist `submitted code
 improvements <https://github.com/jrkerns/pylinac/pull/67>`_ to make the software
 tool compatible with Elekta.

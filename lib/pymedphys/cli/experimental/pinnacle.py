@@ -21,7 +21,7 @@
 
 import warnings
 
-from pymedphys.experimental.pinnacle import export_cli
+from pymedphys.pinnacle import export_cli
 
 
 def pinnacle_cli(subparsers):
@@ -90,15 +90,14 @@ def export_pinnacle(pinnacle_subparsers):
         "--modality",
         action="append",
         default=[],
-        help=("Modalities to export (CT exports the plans primary " "planning CT)."),
+        help=("Modalities to export (CT exports the plans primary planning CT)."),
     )
 
     parser.add_argument(
         "-p",
         "--plan",
         help=(
-            "The name of the plan to export (first plan will be "
-            "exported by default)."
+            "The name of the plan to export (first plan will be exported by default)."
         ),
     )
 
@@ -106,8 +105,7 @@ def export_pinnacle(pinnacle_subparsers):
         "-t",
         "--trial",
         help=(
-            "The name of the trial to export (first trial will be "
-            "exported by default)."
+            "The name of the trial to export (first trial will be exported by default)."
         ),
     )
 

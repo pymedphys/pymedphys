@@ -1,5 +1,9 @@
 # SAMBA SSH Tunnelling
 
+```{note}
+This page is a historical record of a site-specific deployment at Cancer Care Associates, kept as originally written. Commands, versions, hostnames, paths, and external links have not been updated or verified against current PyMedPhys or third-party software.
+```
+
 ## Background
 
 We need to access file shares across a range of sites. We do not yet have the
@@ -50,7 +54,7 @@ This approach has been reliable.
   clients will connect as the non-administrator `pexit` user. The config
   is the following:
 
-```config
+```text
 Port 38471
 PubkeyAuthentication yes
 PasswordAuthentication no
@@ -177,7 +181,7 @@ our case this full command was:
 Then, once it has been verified that the above command worked as expected,
 the following file was created at `/etc/systemd/system/autossh-samba-tunnel.service`:
 
-```service
+```text
 [Unit]
 Description=AutoSSH samba port forwarding
 After=network.target

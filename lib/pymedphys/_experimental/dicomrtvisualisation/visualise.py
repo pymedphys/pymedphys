@@ -1,3 +1,17 @@
+# Copyright (C) 2024 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import pathlib
 from dataclasses import dataclass
@@ -34,12 +48,12 @@ class CTSlice:
     def __post_init__(self):
         assert self.Rows > 0, "Rows must be positive."
         assert self.Columns > 0, "Columns must be positive."
-        assert (
-            len(self.ImagePositionPatient) == 3
-        ), "ImagePositionPatient must be a 3-tuple."
-        assert (
-            len(self.ImageOrientationPatient) == 6
-        ), "ImageOrientationPatient must be a 6-tuple."
+        assert len(self.ImagePositionPatient) == 3, (
+            "ImagePositionPatient must be a 3-tuple."
+        )
+        assert len(self.ImageOrientationPatient) == 6, (
+            "ImageOrientationPatient must be a 6-tuple."
+        )
         assert len(self.PixelSpacing) == 2, "PixelSpacing must be a 2-tuple."
 
 
@@ -589,7 +603,8 @@ def window_image(img: np.ndarray, ww: float, wl: float) -> np.ndarray:
     """
     img_min = wl - (ww / 2)
     img_max = wl + (ww / 2)
-    return np.clip(img, img_min, img_max)
+    windowed: np.ndarray = np.clip(img, img_min, img_max)
+    return windowed
 
 
 def create_structure_legend(structures: Dict[str, Dict[str, Any]]) -> str:

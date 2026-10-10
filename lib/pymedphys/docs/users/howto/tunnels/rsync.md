@@ -1,5 +1,9 @@
 # Backups using rsync
 
+```{note}
+This page is a historical record of a site-specific deployment at Cancer Care Associates, kept as originally written. Commands, versions, hostnames, paths, and external links have not been updated or verified against current PyMedPhys or third-party software.
+```
+
 ## Background
 
 We want all data to have a "single source of truth". As such, important data
@@ -71,7 +75,7 @@ chmod 600 .smbcredentials
 
 Next, the contents of `/etc/fstab` was updated to include the following:
 
-```fstab
+```text
 //rccc-ssh/Physics  /media/tunnel-nbcc-pdc/Physics  cifs  user,uid=pexit,credentials=/home/pexit/.smbcredentials,domain=nbccc,iocharset=utf8,port=44448  0  0
 //rccc-ssh/D        /media/rccc-ssh/D               cifs  user,uid=pexit,credentials=/home/pexit/.smbcredentials,domain=rccc,iocharset=utf8              0  0
 ```
@@ -87,7 +91,7 @@ These instructions for setting up `rsync` are adapted from
 To set up the `crontab` run `crontab -e`, then append the following to the
 bottom of that file:
 
-```crontab
+```text
 0 1 * * * mount /media/rccc-ssh/D ; mount /media/tunnel-nbcc-pdc/Physics ; timeout 4h rsync -av --delete /media/tunnel-nbcc-pdc/Physics/Physics/ /media/rccc-ssh/D/PhysicsDriveBackup/
 ```
 

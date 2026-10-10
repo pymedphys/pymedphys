@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
-  workflow_call:
+    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review, converted_to_draft]
+  merge_group:
 
 # Default to read-only. Jobs that need more override at the job level.
 permissions:
@@ -12,29 +13,75 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # New commits supersede obsolete PR/main runs; label changes still queue.
+  cancel-in-progress: >-
+    ${{ (github.event_name == 'pull_request' &&
+        github.event.action != 'labeled' &&
+        github.event.action != 'unlabeled') ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
 
 jobs:
+  # Draft PRs run no jobs: every job needs this one or carries its condition.
+  # Marking a PR ready for review starts a full run, and converting it to a
+  # draft cancels an in-flight one. A skipped required check counts as passing,
+  # but a draft can neither merge nor enter the merge queue.
   changes:
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
-      mosaiq: ${{ steps.filter.outputs.mosaiq }}
-      docs: ${{ steps.filter.outputs.docs }}
+      run-python: ${{ steps.select.outputs.run-python }}
+      run-integration: ${{ steps.select.outputs.run-integration }}
+      run-doctests: ${{ steps.select.outputs.run-doctests }}
+      run-slow: ${{ steps.select.outputs.run-slow }}
+      run-integration-scripts: ${{ steps.select.outputs.run-integration-scripts }}
+      run-packaging: ${{ steps.select.outputs.run-packaging }}
+      run-database: ${{ steps.select.outputs.run-database }}
+      run-docs: ${{ steps.select.outputs.run-docs }}
+      run-scripts: ${{ steps.select.outputs.run-scripts }}
+      run-full-matrix: ${{ steps.select.outputs.run-full-matrix }}
     steps:
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
-        id: filter
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          filters: |
-            mosaiq:
-              - 'lib/pymedphys/**/*mosaiq*'
-              - 'lib/pymedphys/**/*database*'
-            docs:
-              - 'docs/**'
-              - 'lib/pymedphys/docs/**'
-              - '*.md'
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Test selection and summary policy
+        run: |
+          python -m unittest discover -s .github/scripts -p 'test_select_checks.py'
+          python -m unittest discover -s .github/scripts -p 'test_check_workflow_status.py'
+          python -m unittest discover -s .github/scripts -p 'test_workflow_contracts.py'
+      - name: Select affected checks
+        id: select
+        run: python .github/scripts/select_checks.py
 
-  # Pre-commit always runs. Needs write access for auto-fix pushes on PRs.
+  script-tests:
+    needs: [changes]
+    if: needs.changes.outputs.run-scripts == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Selection tests scan the package for slow markers and doctests.
+          sparse-checkout: |
+            .github
+            lib/pymedphys
+      - uses: ./.github/actions/setup-project
+        with:
+          install-project: 'false'
+      # The test runner only, hash-checked from uv.lock, in its own step.
+      - name: Install the script-tests group
+        run: uv sync --frozen --only-group script-tests
+      # Most of the time goes on tests that build and install distributions
+      # into fresh virtual environments, which are independent of each other.
+      - name: Test distribution and workflow tooling
+        run: uv run --no-sync pytest -n auto .github/scripts
+
+  # Pre-commit runs unless the PR is a draft. Needs write access for auto-fix
+  # pushes on PRs.
   pre-commit:
+    if: github.event.pull_request.draft != true
     uses: ./.github/workflows/pre-commit.yml
     permissions:
       contents: write
@@ -42,145 +89,105 @@ jobs:
       PYMEDPHYS_CI_BOT_ID: ${{ secrets.PYMEDPHYS_CI_BOT_ID }}
       PYMEDPHYS_CI_BOT_TOKEN: ${{ secrets.PYMEDPHYS_CI_BOT_TOKEN }}
 
-  # Linting — skip if pre-commit pushed an auto-fix (a fresh run is coming).
+  # Selected checks start as soon as the selection is known, alongside
+  # pre-commit, and run whatever its result. An auto-fix pushed with the bot's
+  # token starts a new run, which cancels this one.
   lint:
-    needs: [pre-commit]
-    if: |
-      (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true'
+    needs: [changes]
+    if: needs.changes.outputs.run-python == 'true'
     uses: ./.github/workflows/lint.yml
 
-  # Type checking — skip if auto-fix pushed.
   type-check:
-    needs: [pre-commit]
-    if: |
-      (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true'
+    needs: [changes]
+    if: needs.changes.outputs.run-python == 'true'
     uses: ./.github/workflows/type-check.yml
 
-  # Unit tests — skip if auto-fix pushed.
   unit-tests:
-    needs: [pre-commit]
-    if: |
-      (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true'
+    needs: [changes]
+    if: needs.changes.outputs.run-python == 'true'
     uses: ./.github/workflows/unit-tests.yml
     with:
-      quick: ${{ github.event_name == 'pull_request' }}
+      # The selector owns the full-test label. Only an explicit false keeps the
+      # quick matrix, so a missing or invalid output runs the full matrix.
+      quick: ${{ needs.changes.outputs.run-full-matrix == 'false' }}
 
-  # Integration tests on main or when labeled — skip if auto-fix pushed.
+  # Extended checks share selection outputs with the required summary.
   integration-tests:
-    needs: [pre-commit, unit-tests]
-    if: |
-      needs.pre-commit.outputs.autofix-pushed != 'true' && (
-        github.event_name == 'push' ||
-        contains(github.event.pull_request.labels.*.name, 'full-test')
-      )
+    needs: [changes]
+    if: needs.changes.outputs.run-integration == 'true'
     uses: ./.github/workflows/integration-tests.yml
     with:
-      run-slow: ${{ github.event_name == 'push' }}
+      # Only explicit false skips a component; absent outputs keep coverage.
+      run-doctests: ${{ needs.changes.outputs.run-doctests != 'false' }}
+      run-slow: ${{ needs.changes.outputs.run-slow != 'false' }}
+      run-scripts: ${{ needs.changes.outputs.run-integration-scripts != 'false' }}
+      run-packaging: ${{ needs.changes.outputs.run-packaging != 'false' }}
 
-  # Database tests based on changes or labels — skip if auto-fix pushed.
   mosaiq-db-tests:
-    needs: [pre-commit, changes]
-    if: |
-      (success() || failure()) &&
-      needs.pre-commit.outputs.autofix-pushed != 'true' && (
-        github.event_name == 'push' ||
-        contains(github.event.pull_request.labels.*.name, 'database') ||
-        needs.changes.outputs.mosaiq == 'true'
-      )
+    needs: [changes]
+    if: needs.changes.outputs.run-database == 'true'
     uses: ./.github/workflows/mosaiq-db-tests.yml
 
-  # Docs check for PRs with doc changes — skip if auto-fix pushed.
   docs-check:
-    needs: [pre-commit, changes]
-    if: |
-      needs.pre-commit.outputs.autofix-pushed != 'true' &&
-      github.event_name == 'pull_request' &&
-      needs.changes.outputs.docs == 'true'
+    needs: [changes]
+    if: needs.changes.outputs.run-docs == 'true'
     uses: ./.github/workflows/docs.yml
-    with:
-      publish: false
     permissions:
       contents: read
-      pages: write
-      id-token: write
 
-  # Docs publish on main — gated on the full core CI set.
-  docs-publish:
-    needs: [lint, type-check, unit-tests]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/docs.yml
-    with:
-      publish: true
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
-
-  # Summary job provides overall status.
+  # main-integrity requires the exact check name "CI Summary".
+  # See the contributor workflow guide before changing this name or its needs.
+  # The summary must fail when a required check fails or never runs.
   summary:
-    needs: [pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check, docs-publish]
-    if: always()
+    name: CI Summary
+    needs: [changes, pre-commit, lint, type-check, unit-tests, integration-tests, mosaiq-db-tests, docs-check, script-tests]
+    if: always() && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
-      - name: Generate Summary
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check required status and generate summary
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: >-
+          python .github/scripts/check_workflow_status.py
+          --title 'CI Results'
+          --conditional lint=run-python
+          --conditional type-check=run-python
+          --conditional unit-tests=run-python
+          --conditional script-tests=run-scripts
+          --conditional integration-tests=run-integration
+          --conditional mosaiq-db-tests=run-database
+          --conditional docs-check=run-docs
+
+  # Merge groups use the quick unit matrix, so a push to main can be the first
+  # run to show a platform failure from the full matrix.
+  # Record it in an issue rather than only in the Actions tab.
+  report-main-failure:
+    needs: [summary]
+    if: failure() && !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          COMMIT: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [[ "${{ needs.pre-commit.outputs.autofix-pushed }}" == "true" ]]; then
-            cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
-          ## CI Results
-
-          Pre-commit pushed an auto-fix commit. A fresh CI run will validate the fixes.
-          All other checks were skipped for this run.
-          EOF
-            exit 0
+          title="CI failed on main"
+          body="CI failed on main at $COMMIT: $RUN_URL"
+          number=$(gh issue list --state open --search "\"$title\" in:title" \
+            --json number,title --jq "map(select(.title == \"$title\")) | first | .number // empty")
+          if [[ -n "$number" ]]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
           fi
-
-          cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
-          ## CI Results
-
-          ### Core Checks (Always Run)
-          | Check | Status |
-          |-------|--------|
-          | Pre-commit | ${{ needs.pre-commit.result }} |
-          | Lint | ${{ needs.lint.result }} |
-          | Type Check | ${{ needs.type-check.result }} |
-          | Unit Tests | ${{ needs.unit-tests.result }} |
-
-          ### Extended Checks
-          | Check | Status |
-          |-------|--------|
-          | Integration Tests | ${{ needs.integration-tests.result || 'skipped' }} |
-          | Database Tests | ${{ needs.mosaiq-db-tests.result || 'skipped' }} |
-          | Documentation | ${{ needs.docs-check.result || needs.docs-publish.result || 'skipped' }} |
-
-          **Workflow:** ${{ github.workflow }}
-          **Triggered by:** ${{ github.actor }}
-          **Event:** ${{ github.event_name }}
-          **Branch:** ${{ github.ref_name }}
-          EOF
-
-      - name: Check Required Status
-        if: always() && needs.pre-commit.outputs.autofix-pushed != 'true'
-        run: |
-          # These must pass for PRs
-          if [[ "${{ needs.pre-commit.result }}" != "success" && "${{ needs.pre-commit.result }}" != "skipped" ]]; then
-            echo "::error::Pre-commit failed"
-            exit 1
-          fi
-          if [[ "${{ needs.lint.result }}" != "success" && "${{ needs.lint.result }}" != "skipped" ]]; then
-            echo "::error::Linting failed"
-            exit 1
-          fi
-          if [[ "${{ needs.type-check.result }}" != "success" && "${{ needs.type-check.result }}" != "skipped" ]]; then
-            echo "::error::Type checking failed"
-            exit 1
-          fi
-          if [[ "${{ needs.unit-tests.result }}" != "success" && "${{ needs.unit-tests.result }}" != "skipped" ]]; then
-            echo "::error::Unit tests failed"
-            exit 1
-          fi
-          echo "All required checks passed"

@@ -1,4 +1,4 @@
-# Copyright (C) 2024 Matthew Jennings
+# Copyright (C) 2024-2026 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -52,7 +52,6 @@ def plot_interp_comparison_heatmap(
     - The function creates a figure with two subplots side by side.
     - The left subplot shows the slice from the original data.
     - The right subplot shows the slice from the interpolated data.
-    - It is up to the user to ensure that
     - Both heatmaps use the same color scale, determined by the minimum and
       maximum values across both datasets.
     - A shared colorbar is displayed on the right side of the figure.
@@ -352,6 +351,22 @@ def interp_linear_scipy(
 
 
 # pylint: disable=invalid-name
+def _check_axes_structure(axes_known):
+    for i, axis in enumerate(axes_known):
+        axis = np.asarray(axis)
+        if axis.ndim != 1 or not np.all(np.isfinite(axis)):
+            raise ValueError(f"axes_known[{i}] must be a finite 1D array")
+        if axis.size < 2:
+            raise ValueError(
+                f"axes_known[{i}] must have at least two points to interpolate"
+            )
+        diff = np.diff(axis)
+        if not np.all(diff > 0):
+            raise ValueError(f"axes_known[{i}] must be strictly ascending")
+        if not np.allclose(diff, diff[0]):
+            raise ValueError(f"axes_known[{i}] must be evenly spaced")
+
+
 def interp(
     axes_known: Sequence["np.ndarray"],
     values: "np.ndarray",
@@ -392,8 +407,9 @@ def interp(
         The value to use for points outside the bounds of the input data when
         `bounds_error` is False. Default is None, which results in using np.nan.
     skip_checks : bool, optional
-        If True, skip input validation checks. Skipping these checks can produce a
-        significant improve in performance for some applications. Default is False.
+        If True, skip shape, dtype and bounds checks. Axis length, order,
+        finiteness and spacing are still validated because the interpolation
+        kernels require them. Default is False.
 
     Returns
     -------
@@ -434,44 +450,17 @@ def interp(
             axes_known, values, points_interp, bounds_error
         )
 
-        axes_known_diffs = [np.diff(axis) for axis in axes_known]
-
-        # Handle ascending vs. descending vs. bad order.
-        for i, diff in enumerate(axes_known_diffs):
-            if not np.all(diff > 0):
-                raise ValueError(
-                    f"axes_known[{i}] is not monotonically ascending or descending"
-                )
-            if not np.allclose(diff, diff[0]):
-                raise ValueError(f"axis_known[{i}] must be evenly spaced")
+    # Always checked, even with skip_checks: it is O(n) per axis, and the
+    # kernels assume it, silently returning fill values or wrong weights
+    # (or reading out of bounds) when it does not hold.
+    _check_axes_structure(axes_known)
 
     if extrap_fill_value is None:
         extrap_fill_value = np.nan
 
-    if len(axes_known) == 1:
-        # keep_dims has no effect for 1D interpolation
-        result: np.ndarray = interp_linear_1d(
-            axes_known[0],
-            values,
-            points_interp,
-            extrap_fill_value,
-        )
-        return result
-
-    elif len(axes_known) == 2:
-        values_interp = interp_linear_2d(
-            axes_known,
-            values,
-            points_interp,
-            extrap_fill_value,
-        )
-    else:
-        values_interp = interp_linear_3d(
-            axes_known,
-            values,
-            points_interp,
-            extrap_fill_value,
-        )
+    values_interp = _interp_validated(
+        axes_known, values, points_interp, extrap_fill_value
+    )
 
     if keep_dims:
         if axes_interp is None:
@@ -482,3 +471,18 @@ def interp(
 
     final_result: np.ndarray = values_interp
     return final_result
+
+
+def _interp_validated(axes_known, values, points_interp, extrap_fill_value):
+    """Interpolate a grid already validated and converted by the caller.
+
+    Private reuse path for repeated interpolation of a fixed grid, such as
+    gamma's search shells. Axes must be finite, ascending, evenly spaced
+    float64 arrays with at least two values. Grid shape and point dimensions
+    must agree, and values must be float64. Public calls use ``interp``.
+    """
+    if len(axes_known) == 1:
+        return interp_linear_1d(axes_known[0], values, points_interp, extrap_fill_value)
+    if len(axes_known) == 2:
+        return interp_linear_2d(axes_known, values, points_interp, extrap_fill_value)
+    return interp_linear_3d(axes_known, values, points_interp, extrap_fill_value)

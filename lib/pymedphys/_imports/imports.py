@@ -7,21 +7,13 @@ import tkinter.filedialog
 import altair
 import anthropic
 import attr
-import black
-import dash
 import dateutil
 import dateutil.relativedelta
 import dbfread
-import dicompylercore
-import dicompylercore.dicomparser as dicomparser
-import dicompylercore.dvh as dvh
-import dicompylercore.dvhcalc as dvhcalc
-import github
+import hypothesis
+import hypothesis.strategies
 import imageio.v2 as imageio
-import interpolation
-import interpolation.splines
 import keyring
-import libjpeg
 import matplotlib
 import matplotlib.image
 import matplotlib.patches
@@ -36,7 +28,6 @@ import numba
 import numba as nb
 import numpy
 import numpy as np
-import packaging
 import pandas
 import PIL
 import plotly
@@ -85,16 +76,12 @@ import tabulate
 import timeago
 import toml
 import tomlkit
-import tornado
-import tornado.routing
-import tornado.web
 import tqdm
 import trio
 import watchdog
 import watchdog.events
 import watchdog.observers
 import watchdog.observers.polling
-import xlsxwriter
-import xlsxwriter.worksheet
+import xlrd
 import xmltodict
 import yaml

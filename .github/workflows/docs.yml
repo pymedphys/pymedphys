@@ -2,59 +2,91 @@ name: Documentation
 
 on:
   workflow_call:
-    inputs:
-      publish:
-        type: boolean
-        default: true
-        required: false
   workflow_dispatch:
-    inputs:
-      publish:
-        type: boolean
-        default: true
-        required: false
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'docs'
+          cache-data: 'true'
+          groups: 'docs'
 
-      - name: Download required data
-        run: |
-          uv run python -c "
-          import pymedphys
-          pymedphys.data_path('original_dose_beam_4.dcm')
-          pymedphys.data_path('logfile_dose_beam_4.dcm')
-          "
+      # Executing the notebooks is most of the build. jupyter-cache keeps the
+      # outputs of each notebook whose code is unchanged, and this cache keeps
+      # its store between runs, but only for an exact key over everything
+      # execution can read. See .github/scripts/notebook_cache_key.py.
+      - name: Key the executed-notebook cache
+        id: notebook-key
+        run: uv run --no-sync python .github/scripts/notebook_cache_key.py >> "$GITHUB_OUTPUT"
+
+      - name: Cache executed notebooks
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: lib/pymedphys/docs/_build/.jupyter_cache
+          key: docs-notebooks-v1-${{ runner.os }}-${{ steps.notebook-key.outputs.hash }}
 
       - name: Build documentation
-        run: |
-          uv run pymedphys dev docs
+        run: uv run pymedphys dev docs
 
-          # External linkcheck is advisory — external sites go down.
-          uv run python -m sphinx.ext.linkcheck lib/pymedphys/docs || true
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # 4.0.0
+      - name: Upload documentation HTML
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          name: docs-html
           path: lib/pymedphys/docs/_build/html
+          if-no-files-found: error
 
-  deploy:
-    needs: [build]
-    if: ${{ inputs.publish }}
+  # Runs alongside the HTML build. It reads the sources without executing
+  # notebooks, so it needs no data and finishes first.
+  linkcheck:
+    name: Check external links
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - name: Deploy to GitHub Pages
-        if: github.ref == 'refs/heads/main'
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # 4.0.5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          groups: 'docs'
+
+      - name: Check external links
+        id: linkcheck
+        continue-on-error: true
+        timeout-minutes: 10
+        # Link-check settings live in _config.yml.
+        run: uv run pymedphys dev docs --linkcheck
+
+      - name: Validate link-check report
+        if: ${{ !cancelled() && steps.linkcheck.outcome != 'skipped' }}
+        env:
+          LINKCHECK_OUTCOME: ${{ steps.linkcheck.outcome }}
+        run: |
+          if [[ ! -f lib/pymedphys/docs/_build/linkcheck/output.json ]]; then
+            echo "::error::The link checker did not produce a report."
+            exit 1
+          fi
+          if [[ "$LINKCHECK_OUTCOME" == "failure" ]]; then
+            echo "::warning::External link checking failed. See the docs-linkcheck artifact."
+          fi
+
+      - name: Upload link-check report
+        if: ${{ !cancelled() && steps.linkcheck.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docs-linkcheck
+          path: lib/pymedphys/docs/_build/linkcheck
+          if-no-files-found: error

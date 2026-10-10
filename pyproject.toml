@@ -1,10 +1,20 @@
 [project]
 name = "pymedphys"
-version = "0.42.0-dev0"
+version = "0.42.0.dev1"
 description = "Medical Physics library"
 readme = "README.rst"
-requires-python = ">=3.10,<3.13"
-license = { file = "LICENSE" }
+requires-python = ">=3.11.4"
+# PEP 639 SPDX expression. The package bundles MIT-licensed code alongside its
+# own Apache-2.0 code: the Pinnacle exporter (LICENSE-MIT), a copy of pydicom's
+# DICOM dictionary, and the vendored apipkg and deprecated modules. The JPEG 2000
+# packet reader is derived in part from OpenJPEG, under BSD-2-Clause
+# (LICENSE-BSD-2-Clause).
+license = "Apache-2.0 AND MIT AND BSD-2-Clause"
+license-files = [
+  "LICENSE",
+  "lib/pymedphys/_pinnacle/LICENSE-MIT",
+  "lib/pymedphys/_dicom/deidentify/LICENSE-BSD-2-Clause",
+]
 authors = [
   { name = "PyMedPhys Contributors", email = "developers@pymedphys.com" }
 ]
@@ -14,10 +24,14 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Healthcare Industry",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "typing-extensions",
-  "setuptools",
   "tomlkit",
 ]
 
@@ -30,218 +44,226 @@ Documentation = "https://docs.pymedphys.com"
 pymedphys = "pymedphys.__main__:main"
 
 [project.optional-dependencies]
+# Extras are published with the package, for people who install it.
 user = [
   "Pillow",
   "PyYAML",
-  "anthropic",
-  "anyio",
+  "altair>=6.0.0; python_version >= '3.14'",  # Altair 5.5 cannot import on 3.14
   "attrs",
-  "dash",
   "dbfread",
-  "dicompyler-core",
   "imageio[tifffile]",
   "keyring",
   "matplotlib",
   "natsort",
   "numba",
   "numpy>=1.26",
-  "packaging",
-  "pandas>=1.0.0",
+  "pandas>=2.0",
   "plotly",
-  "pydicom>=2.0.0",
-  "pylibjpeg-libjpeg>=1.3.2",
+  "pydicom>=3.0.2",
+  "pylibjpeg>=2.0",  # pydicom decodes JPEG 2000 and HTJ2K through it
+  "pylibjpeg-openjpeg>=2.0",
   "pymssql",
   "pynetdicom",
   "python-dateutil",
-  "pywin32; sys_platform == 'win32' and python_version >= '3.10' and python_version < '3.13'",
+  "python-gdcm>=3.0.10",  # pydicom decodes JPEG and JPEG-LS through it
+  "pywin32; sys_platform == 'win32'",
   "requests",
   "scikit-learn",
   "scipy",
   "shapely>=1.7.0",
   "sqlalchemy",
-  "streamlit~=1.34.0",
+  "streamlit>=1.61",
   "timeago",
   "toml",
   "tqdm",
-  "trio",
-  "trio-asyncio",
   "watchdog",
+  "xlrd",
   "xmltodict",
 ]
 
-dev = [
-  "doc8",
-  "pre-commit",
-  "pyright",
-  "readme-renderer",
-  "rope",
-  "ruff",
-  "tabulate",
-]
-
-lint = [
-  "astroid",
-  "pylint",
-  "ruff",
-]
-
-tests = [
+# The Mosaiq chat app and its SQL agent. They send queries and results to
+# Anthropic's API, so users opt in to them separately from ``user``.
+ai = [
   "anthropic",
-  "astroid",
-  "imageio",
-  "matplotlib",
-  "numba",
-  "pandas>=1.0.0",
-  "Pillow",
+  "httpx2",
+  "trio",
+]
+
+# What running the installed test suite needs, on top of ``user``: install
+# "pymedphys[tests]", then run ``pymedphys dev tests``. The release checks do
+# this with each published version.
+tests = [
+  "pymedphys[user]",
+  "hypothesis",
   "psutil",
-  "pydicom>=2.0.0",
-  "pynetdicom",
-  "PyGithub",
-  "pylibjpeg-libjpeg>=1.3.2",
-  "pylint",
   "pytest",
   "pytest-rerunfailures",
   "pytest-sugar",
-  "python-dateutil",
-  "shapely",
-  "tqdm",
+  "pytest-timeout",
+  "pytest-xdist",
+  "tabulate",  # pymedphys dev imports, which the test suite exercises
 ]
 
+# Everything that can be installed from PyPI.
+all = ["pymedphys[user,ai,tests]"]
+
+# Smaller installs for one feature each. Each lists every package its feature
+# uses, and a CI job installs it alone and runs that feature's tests. Combine
+# them as needed, for example "pymedphys[gamma,dicom]" for gamma on DICOM files.
+# Gamma: pymedphys.gamma and gamma_pass_rate. numba runs the default
+# interpolation; SciPy the "scipy" option and unevenly spaced axes.
+gamma = [
+  "numba",
+  "numpy>=1.26",
+  "scipy",
+]
+# DICOM: pymedphys.dicom and the pymedphys dicom commands, including listen and
+# send. toml reads ~/.pymedphys/config.toml, which every command reads when it
+# exists.
+dicom = [
+  "numpy>=1.26",
+  "pydicom>=3.0.2",
+  "pynetdicom",
+  "scipy",
+  "shapely>=1.7.0",
+  "toml",
+]
+# Mosaiq: pymedphys.mosaiq and Delivery.from_mosaiq. keyring stores the
+# credentials that connect() asks for when none are given.
+mosaiq = [
+  "keyring",
+  "numpy>=1.26",
+  "pandas>=2.0",
+  "pymssql",
+]
+
+# iCOM: pymedphys icom listen and Delivery.from_icom.
+icom = [
+  "numpy>=1.26",
+  "toml",
+]
+# TRF: pymedphys.trf.read, Delivery.from_trf, and the trf to-csv and detect
+# commands. pymedphys.trf.identify and trf orchestrate also look up Mosaiq, so
+# they need "pymedphys[trf,mosaiq]".
+trf = [
+  "attrs",
+  "numpy>=1.26",
+  "pandas>=2.0",
+  "python-dateutil",
+  "toml",
+]
+
+# The command line spans every feature, so it installs what user installs.
+cli = ["pymedphys[user]"]
+
+# Dependency groups are for working on PyMedPhys from a source checkout. They
+# are not published to PyPI, and uv.lock pins them together with the extras.
+# CI installs only the groups each job needs, with ``--no-default-groups``.
+[dependency-groups]
+# Everything a contributor needs. ``uv sync`` installs this group by default, so
+# a plain ``uv sync`` gives a complete development environment.
+dev = [
+  "pymedphys[all]",
+  {include-group = "docs"},
+  {include-group = "lint"},
+  {include-group = "pre-commit"},
+  "rope",
+]
+# The documentation build, including the packages its executed notebooks use.
+# Read the Docs and the documentation CI job install only this group.
 docs = [
   "ipython>=7.31.1",
   "jupyter-book>=0.12.0,<2.0.0",
   "matplotlib",
-  "networkx",
   "numba",
-  "numpy",
-  "pydicom",
+  "numpy>=1.26",
+  "pydicom>=3.0.2",
   "scipy",
   "sphinx-argparse",
   "sphinx-book-theme",
+  "sphinx-external-toc>=1.0.1",
   "toml",
   "tqdm",
 ]
-
-doctests = [
-  "pytest",
+# Linters, type checkers, and their type stubs.
+lint = [
+  "doc8",
+  "mypy",
+  "pylint",
+  "pyright",
+  "readme-renderer",
+  "types-PyYAML",
+  "types-python-dateutil",
+  "types-requests",
+  "types-tabulate",
+  "types-toml",
+]
+# CI installs only this group, hash-checked from uv.lock, to run pre-commit
+# without the project or its scientific dependencies.
+pre-commit = [
+  "pre-commit",
   "ruff",
-  "sphinx-book-theme",
-  "tabulate",
-  "toml"
+]
+# The test runner and the packages the tests themselves use, without any
+# feature's packages. CI installs it with one narrow extra to check that the
+# extra holds everything its feature's tests need. tqdm shows progress when
+# test data is downloaded.
+test-runner = [
+  "hypothesis",
+  "psutil",
+  "pytest",
+  "pytest-timeout",
+  "pytest-xdist",
+  "tqdm",
+]
+# The mock Mosaiq database that the Mosaiq database tests load, used with the
+# mosaiq extra and test-runner to test that extra against SQL Server.
+mosaiq-db-fixtures = [
+  "sqlalchemy",
+  "toml",
+]
+# CI installs only this group, hash-checked from uv.lock, to run the
+# .github/scripts tests in parallel without the project.
+script-tests = [
+  "pytest",
+  "pytest-timeout",
+  "pytest-xdist",
 ]
 
-# comparables = [
-#     "flashgamma",
-# ]
-
-cli = [
-    "toml",
-]
-
-dicom = [
-    "pydicom>=2.0.0",
-    "pynetdicom",
-]
-
-icom = [
-    "numpy>=1.26",
-]
-
-mosaiq = [
-    "attrs",
-    "pandas>=1.0.0",
-    "pymssql",
-    "scikit-learn",
-    "sqlalchemy",
-    "toml",
-]
-
-propagate = [
-    "ruff",
-]
-
-all = [
-    "Pillow",
-    "PyYAML",
-    "anthropic",
-    "anyio",
-    "astroid",
-    "attrs",
-    "dash",
-    "dbfread",
-    "dicompyler-core",
-    "doc8",
-    "imageio[tifffile]",
-    "ipython>=7.31.1",
-    "jupyter-book>=0.12.0,<2.0.0",
-    "keyring",
-    "matplotlib",
-    "natsort",
-    "networkx",
-    "numba",
-    "numpy>=1.26",
-    "packaging",
-    "pandas>=1.0.0",
-    "plotly",
-    "pre-commit",
-    "psutil",
-    "pydicom>=2.0.0",
-    "PyGithub",
-    "pylibjpeg-libjpeg>=1.3.2",
-    "pylint",
-    "pymssql",
-    "pynetdicom",
-    "pyright",
-    "pytest",
-    "pytest-rerunfailures",
-    "pytest-sugar",
-    "python-dateutil",
-    "pywin32; sys_platform == 'win32' and python_version >= '3.10' and python_version < '3.13'",
-    "readme-renderer",
-    "requests",
-    "rope",
-    "ruff",
-    "scikit-learn",
-    "scipy",
-    "shapely>=1.7.0",
-    "sphinx-argparse",
-    "sphinx-book-theme",
-    "sqlalchemy",
-    "streamlit~=1.34.0",
-    "tabulate",
-    "timeago",
-    "toml",
-    "tqdm",
-    "trio",
-    "trio-asyncio",
-    "watchdog",
-    "xmltodict",
-]
-
-[tool.pymedphys.extra-groups]
-# Groups are consumed by propagate_extras(); this table is authoritative.
-# Each value lists EXTRA NAMES defined under [project.optional-dependencies].
-dev   = ["tests", "docs", "cli", "propagate"]
-docs  = ["docs"]
-user  = ["user"]
-
-# Optional aggregations if you want “full” exports in CI, etc.
-full  = ["user", "tests", "docs", "doctests", "cli", "dicom", "icom", "mosaiq"]
-
-[dependency-groups]
-dev = [
-  "sphinx-external-toc>=1.0.1",
-]
-
-[tool.hatch.build]
-include = ["lib/pymedphys/docs/_build/html/**/*"]
+# Each target lists its own contents: a build-wide include is an allow-list
+# that would also decide what the sdist holds. only-include walks just these
+# paths. A full-tree walk would reach the repository's docs symlink before
+# lib/pymedphys/docs, and hatchling skips a directory it has already seen, so
+# the docs would silently drop out of the sdist and of wheels built from it.
+[tool.hatch.build.targets.sdist]
+only-include = ["lib/pymedphys", "CHANGELOG.md", "CONTRIBUTING.md"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["lib/pymedphys"]
 
-# Existing tool config stays as-is
+[tool.pytest.ini_options]
+# Markers are registered by lib/pymedphys/conftest.py, which also defines the
+# opt-in flags that select them. A misspelt marker is an error, an xfail that
+# starts passing fails, and a hung test is stopped with a stack dump well
+# within the CI job timeouts (override per run with --timeout).
+minversion = "8.0"
+addopts = ["--strict-markers"]
+xfail_strict = true
+timeout = 900
+# pydicom 4 removes every API whose pydicom 3 deprecation warning says it
+# "will be removed in v4", so using one fails the test.
+filterwarnings = ["error:.*removed in v4:DeprecationWarning"]
+
+[tool.ruff]
+# Python sources only: `ruff check .` and `ruff format .` then cover the same
+# files as the pre-commit hooks, and leave notebooks and Markdown alone.
+include = ["*.py", "*.pyi", "**/pyproject.toml"]
+
 [tool.ruff.lint]
-extend-ignore = ["E741", "E722", "F401"]  # example: match your current settings
+# An explicit rule set, so that upgrading ruff through uv.lock does not change
+# which rules apply.
+select = ["E4", "E7", "E9", "F"]
+extend-ignore = ["E741", "E722", "F401"]
 
 [tool.ruff.lint.isort]
 known-third-party = ["pymedphys._imports"]
@@ -249,13 +271,16 @@ known-first-party = ["pymedphys"]
 
 
 [tool.pyright]
-include = ["lib/pymedphys"]
+include = ["lib/pymedphys", ".github/scripts"]
+# Setting exclude replaces pyright's defaults, which skip every dot-directory.
+exclude = ["**/node_modules", "**/__pycache__"]
 
 # These have been set to False in order to be able to utilise pyright, but
 # future work would be to iteratively set these to true and fix the code base.
 reportMissingImports = false
 reportGeneralTypeIssues = false
-reportUnboundVariable = false
+reportUnboundVariable = "error"
+reportPossiblyUnboundVariable = "warning"
 reportOptionalMemberAccess = false
 reportOptionalSubscript = false
 reportOptionalOperand = false
@@ -272,6 +297,16 @@ reportReturnType = false
 reportMissingModuleSource = false
 reportTypedDictNotRequiredAccess = false
 
+[tool.bandit]
+# The security workflow runs Bandit with this configuration and blocks on any
+# finding. Tests are excluded (they use assert by design). The skipped checks
+# were reviewed as non-security noise for this code base: B101 assert, B404,
+# B603, and B607 subprocess use without a shell, B105 password key names and
+# empty defaults, B311 non-cryptographic random, B110 try/except/pass that
+# pylint already annotates. Anything else needs a fix or a justified "nosec".
+exclude_dirs = ["lib/pymedphys/tests"]
+skips = ["B101", "B404", "B603", "B607", "B105", "B311", "B110"]
+
 [build-system]
-requires = ["hatchling>=1.26"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"

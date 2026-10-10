@@ -1,0 +1,716 @@
+# Copyright (C) 2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""The values, dates, residual search, and release report that the statement describes."""
+
+import collections
+import dataclasses
+import functools
+import struct
+
+from pymedphys._imports import pytest
+
+from pymedphys._dicom.deidentify import (
+    conformance,
+    conformance_markdown,
+    conformance_values,
+    dummy_values,
+    edits,
+    icc_profiles,
+    instance_transform,
+    pixel_risk,
+    policy,
+    pseudonyms,
+    qc_attestation,
+    qc_retained,
+    release_gate,
+    release_report,
+    residuals,
+    reviewed_roi_names,
+    run,
+    run_report,
+    standard,
+    supplementary_actions,
+    temporal_roles,
+    uids,
+    walker,
+)
+from pymedphys._dicom.deidentify.pixel_risk import Indicator, Risk
+from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.reasons import TransformReason
+
+TEMPORAL_VRS = frozenset({"DA", "DT", "TM"})
+TIMEZONE_OFFSET = "(0008,0201)"
+
+
+@pytest.fixture(name="preset", scope="module", params=list(policy.PRESETS))
+def _preset(request):
+    return request.param
+
+
+@functools.cache
+def _statement(preset):
+    """Return a preset's statement, built once: no test here patches its inputs."""
+    return conformance.conformance_statement(
+        policy.compose_policy(preset), vocabulary=None
+    )
+
+
+def _section(preset, heading):
+    """Return one second-level section of a preset's rendered statement."""
+    lines = conformance_markdown.render_markdown(_statement(preset)).splitlines()
+    start = lines.index(f"## {heading}") + 1
+    end = next(
+        (i for i in range(start, len(lines)) if lines[i].startswith("## ")),
+        len(lines),
+    )
+    return " ".join(lines[start:end])
+
+
+def _named(tag):
+    return f"{standard.dictionary_attribute(tag).name} {tag}"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_kept_local_codes_are_said_to_be_listed_in_the_qc_pack(preset):
+    rules = supplementary_actions.load_supplementary_actions().rules
+    codes = ("(0008,0100)", "(0008,0102)", "(0008,0104)")
+    assert {rules[tag].action for tag in codes} == {"K"}
+
+    section = _section(preset, "Values that can name an institution")
+
+    for tag in codes:
+        assert _named(tag) in section
+    assert 'begins with "99" or is "L"' in section
+    assert "the institution's name or abbreviation" in section
+    assert "retained strings of the run's confidential QC pack" in section
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_a_kept_manufacturer_and_coding_scheme_url_are_said_to_name_an_institution(
+    preset,
+):
+    rules = supplementary_actions.load_supplementary_actions().rules
+    manufacturer, url = "(0008,0070)", "(0008,010E)"
+    assert rules[manufacturer].action == rules[url].action == "K"
+    # Each is a string that the QC pack lists among the retained strings.
+    for tag in (manufacturer, url):
+        assert standard.dictionary_attribute(tag).vr in qc_retained.RETAINED_TEXT_VRS
+
+    section = _section(preset, "Values that can name an institution")
+
+    assert f"such a scheme's {_named(url)}" in section
+    assert "can name the institution's host" in section
+    assert _named(manufacturer) in section
+    assert "a device made in-house can carry the institution's name" in section
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-17")
+def test_the_releaser_accepts_the_residual_risk_of_these_values(preset):
+    section = _section(preset, "Values that can name an institution")
+
+    assert "The engine does not itself assess the residual risk" in section
+    assert "names an institution, not a patient" in section
+    assert "`public-release` preset has a person review every distinct" in section
+    assert (
+        "the residual risk of the output, these values included, is for "
+        "whoever releases the data to accept, which they may confirm, yes or "
+        "no, in the attestation of the run's QC pack"
+    ) in section
+    # The attestation holds that confirmation, which is optional.
+    defaults = {
+        field.name: field.default
+        for field in dataclasses.fields(qc_attestation.Attestation)
+    }
+    assert defaults["residual_risk_accepted"] is None
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_an_unkept_coding_scheme_url_is_not_said_to_be_kept(monkeypatch):
+    actions = {"(0008,010E)": "X/Z/D"}
+    original = conformance_markdown._rule_action  # pylint: disable=protected-access
+    monkeypatch.setattr(
+        conformance_markdown,
+        "_rule_action",
+        lambda tag: actions.get(tag, original(tag)),
+    )
+
+    text = " ".join(conformance_markdown._local_codes(_named))  # pylint: disable=protected-access
+
+    assert "Coding Scheme URL (0008,010E), also kept" not in text
+    assert "in those values. Manufacturer (0008,0070)" in text
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_the_removed_private_creators_description_is_described(preset):
+    statement = _statement(preset)
+    private = next(
+        e
+        for e in statement.attributes
+        if e.tag == conformance_markdown.PRIVATE_ATTRIBUTES_TAG
+    )
+    sentence = (
+        "Private Data Element Characteristics Sequence (0008,0300), which "
+        "describes the private blocks by their private creators, is removed by "
+        "its supplementary rule"
+    )
+
+    assert (sentence in _section(preset, "Actions")) == (private.action == "X")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_reviewed_dummy_item_is_described():
+    section = _section("basic", "Values written")
+    tag = dummy_values.PERSON_IDENTIFICATION_CODE_SEQUENCE
+    compared = walker.REVIEWED_DUMMY_SEQUENCES[tag]
+
+    assert f"D on {_named(tag)} writes one item" in section
+    (first,) = dummy_values.items_for_d(tag, [])
+    for element in first:
+        assert f"{_named(element.tag)} `{element.value}`" in section
+    # A source item that holds the first item's values takes the second.
+    source = {e.tag: e.value for e in first if e.tag in compared}
+    (second,) = dummy_values.items_for_d(tag, [source])
+    changed = [e for e, f in zip(second, first) if e.value != f.value]
+    assert changed
+    for element in changed:
+        assert f"`{element.value}`" in section
+    for compared_tag in compared:
+        assert _named(compared_tag) in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_reviewed_procedure_step_items_are_described():
+    section = _section("basic", "Values written")
+    tag = dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE
+    (uid,) = walker.REVIEWED_DUMMY_SEQUENCES[tag]
+
+    assert (
+        f"D on {_named(tag)} writes, for each source item, one item, with "
+        f"{_named('(0008,1150)')} "
+        f"`{dummy_values.MODALITY_PERFORMED_PROCEDURE_STEP}`"
+    ) in section
+    assert f"{_named(uid)} the keyed replacement of the source item's" in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_reviewed_icc_profile_is_described():
+    section = _section("basic", "Values written")
+
+    assert f"D on {_named(dummy_values.ICC_PROFILE)} writes a fixed ICC" in section
+    for description in ("DEIDENTIFIED sRGB", "DE-IDENTIFIED sRGB"):
+        assert f"`{description}`" in section
+    assert "grey" not in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
+    section = _section("basic", "Values written")
+    tag = dummy_values.PERSON_IDENTIFICATION_CODE_SEQUENCE
+    named = [
+        element
+        for item in dummy_values.items_for_d(tag, [])
+        for element in item
+        if "PYMEDPHYS" in element.value.upper()
+    ]
+    assert [e.tag for e in named] == ["(0008,0102)"]
+    assert (
+        "No value that Z, D, or U writes names PyMedPhys, except the "
+        f"{_named('(0008,0102)')} `{named[0].value}`"
+    ) in section
+    assert not any(
+        "PYMEDPHYS" in str(value).upper()
+        for pair in dummy_values.CONSTANTS.values()
+        for value in pair
+    )
+    # The procedure step's items hold only UIDs, and the ICC profile's only
+    # text is its description and copyright.
+    assert set(walker.REVIEWED_DUMMY_SEQUENCES) == {
+        tag,
+        dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+    }
+    for description in ("DEIDENTIFIED sRGB", "DE-IDENTIFIED sRGB"):
+        assert b"PYMEDPHYS" not in icc_profiles.srgb_profile(description).upper()
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_pseudonyms_are_described_where_the_engine_writes_them():
+    section = _section("basic", "Values written")
+    names = " and ".join(_named(tag) for tag in sorted(edits.PSEUDONYM_TAGS))
+    assert f"At the top level of the data set, {names} take" in section
+    assert "elsewhere, as in an item of a sequence, Z and D write" in section
+    pseudonym = pseudonyms.patient_pseudonym(
+        DeidKey(bytes(32)), pseudonyms.SubjectIdentity.curated("SUBJECT-0001")
+    )
+    code = pseudonym.patient_id.removeprefix(pseudonyms.PATIENT_ID_PREFIX)
+    assert f"{len(pseudonym.patient_id)} characters in all" in section
+    assert f"the {len(code)} characters of the base32 form" in section
+    assert pseudonym.patients_name == f"{pseudonyms.FAMILY_NAME}^{code}"
+    assert _named("(0010,0021)") in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_longest_replacement_uid_is_described():
+    section = _section("basic", "Values written")
+    key = DeidKey(bytes(range(32)))
+    longest = max(
+        len(uids.replacement_uid(key, f"1.2.826.0.1.3680043.2.1125.{i}"))
+        for i in range(2000)
+    )
+    limit = len(uids.UID_ROOT) + len(str(2**128 - 1))
+    assert longest <= limit <= 64
+    assert f"at most {limit} characters in all" in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize("preset", ["basic", "basic-clean-descriptors"])
+def test_dates_take_their_listed_actions_without_a_temporal_option(preset):
+    statement = _statement(preset)
+    assert statement.temporal.option == ""
+    section = _section(preset, "Dates and times")
+    assert "no date or time is shifted or otherwise modified" in section
+    actions = {e.tag: e.action for e in statement.attributes}
+    assert f"{_named(TIMEZONE_OFFSET)} takes `{actions[TIMEZONE_OFFSET]}`" in section
+    assert f"`{statement.markers.temporal}`" in section
+    for vr in sorted(TEMPORAL_VRS):
+        first, second = dummy_values.CONSTANTS[vr]
+        assert f"`{first}`" in section and f"`{second}`" in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize("preset", ["tps-import", "public-release"])
+def test_dates_under_modified_dates_are_cleaned_and_their_manner_is_pending(preset):
+    statement = _statement(preset)
+    assert statement.temporal.option == policy.MODIFIED_DATES
+    assert conformance.PENDING_CLEANING in statement.pending
+    section = _section(preset, "Dates and times")
+    assert "Retain Longitudinal Temporal Information with Modified Dates" in section
+    assert "is not yet described" in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_temporal_attributes_are_counted_by_their_listed_action(preset):
+    statement = _statement(preset)
+    roles = temporal_roles.load_temporal_roles().rules
+    actions = {e.tag: e.action for e in statement.attributes}
+    counts = collections.Counter(actions[tag] for tag in roles)
+    assert dict(statement.temporal.actions) == dict(counts)
+    assert statement.temporal.attributes == len(roles)
+    others = sorted(
+        tag
+        for tag in roles
+        if not set(standard.dictionary_attribute(tag).vrs) <= TEMPORAL_VRS
+    )
+    assert list(statement.temporal.other_attributes) == others
+    assert TIMEZONE_OFFSET in others
+    section = _section(preset, "Dates and times")
+    assert f"The temporal roles cover {len(roles)} attributes" in section
+    for action, count in counts.items():
+        assert f"`{action}` for {count}" in section
+    for tag in others:
+        assert _named(tag) in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_residual_search_coverage_is_described(preset):
+    section = _section(preset, "Residual search")
+    assert f"fewer than {residuals.MIN_CHARACTERS} characters" in section
+    assert f"at least {residuals.MIN_BYTES_IN_NUMBERS} bytes" in section
+    assert f"first {residuals.MAX_CHARACTERS} characters" in section
+    for codec in residuals.CODECS:
+        assert conformance_values.CODEC_NAMES[codec] in section
+    searched = sorted(residuals._KINDS)  # pylint: disable = protected-access
+    assert f"Values of VR {conformance_values.join(searched)} are searched" in section
+    pixel_data = residuals._PIXEL_DATA  # pylint: disable = protected-access
+    assert conformance_values.join(_named(tag) for tag in sorted(pixel_data)) in section
+    numbers = residuals._NUMBERS  # pylint: disable = protected-access
+    assert f"values of VR {conformance_values.join(sorted(numbers), 'or')}," in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_every_reason_a_value_is_not_searched_is_described():
+    assert set(conformance_values.OMISSIONS) == set(residuals.Omission)
+    assert set(conformance_values.CODEC_NAMES) == set(residuals.CODECS)
+    section = _section("basic", "Residual search")
+    for reason in residuals.Omission:
+        assert conformance_values.OMISSIONS[reason] in section
+
+
+def test_a_value_equal_to_a_written_constant_as_d_compares_is_not_searched():
+    # D compares an LO value without regard to case or padding, and the
+    # search drops only the values of a multi-valued attribute that match.
+    source = ElementPath((), "(0008,1040)")
+    assert ("LO", "DEIDENTIFIED") in residuals.written_constants()
+    whole = residuals.SourceValue(source, "LO", "deidentified ")
+    result = residuals.find_residuals(b"deidentified", [whole])
+    assert not result.findings
+    (unsearched,) = result.unsearched
+    assert unsearched.reason is residuals.UnsearchedReason.WRITTEN_CONSTANT
+    part = residuals.SourceValue(source, "LO", "QUILLON\\deidentified")
+    result = residuals.find_residuals(b"QUILLON", [part])
+    assert result.findings
+    (unsearched,) = result.unsearched
+    assert unsearched.reason is residuals.UnsearchedReason.WRITTEN_CONSTANT
+    name = ElementPath((), "(0010,1001)")
+    form = residuals.SourceValue(name, "PN", "DEIDENTIFIED^ZEBEDEE")
+    result = residuals.find_residuals(b"ZEBEDEE", [form])
+    assert result.findings
+    (unsearched,) = result.unsearched
+    assert unsearched.reason is residuals.UnsearchedReason.WRITTEN_CONSTANT
+    described = conformance_values.UNSEARCHED_REASONS[unsearched.reason]
+    assert "one of its values, or a form of a value" in described
+    assert "as D compares values" in described
+    assert "other values and forms are still searched" in described
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_each_vr_described_as_not_searched_is_not_searched():
+    described = conformance_values.unsearched_vrs()
+    assert described[residuals.Omission.BINARY]
+    assert described[residuals.Omission.NOT_DISTINCTIVE]
+    source = ElementPath((), "(0009,1001)")
+    for reason, vrs in described.items():
+        for vr in vrs:
+            value = residuals.SourceValue(source, vr, "SEARCHABLE VALUE 12345")
+            (omitted,) = residuals.find_residuals(b"", [value]).not_searched
+            assert omitted.reason is reason, vr
+    searched = set(residuals._KINDS)  # pylint: disable = protected-access
+    unsearched = set().union(*described.values())
+    assert searched.isdisjoint(unsearched)
+    assert searched | unsearched == set(standard.VRS) - {"SQ"}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
+def test_the_release_report_names_sequestered_instances_by_label(preset):
+    section = _section(preset, "Release report")
+    assert f"`{release_report.FORMAT}`" in section
+    (first,) = release_report.sequestration_labels(1)
+    assert release_report.LABEL_PATTERN.fullmatch(first)
+    assert f"from `{first}` to `S-n`" in section
+    assert "order drawn at random" in section
+    assert "(D-026)" in section
+    stages = release_report._SEQUESTERING  # pylint: disable = protected-access
+    assert set(conformance_values.STAGES) == set(stages)
+    for stage, codes in stages.items():
+        line = section.split(f"- `{stage}`: ", 1)[1].split(" - ", 1)[0]
+        assert line.startswith(conformance_values.STAGES[stage])
+        for reason in codes:
+            assert f"`{reason}`" in line, (stage, reason)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
+def test_the_release_report_counts_held_instances_by_stage(preset):
+    section = _section(preset, "Release report")
+    held = section.split("counts the instances held for review", 1)[1]
+    stages = release_report._HOLDING  # pylint: disable = protected-access
+    assert set(conformance_values.HOLDING_STAGES) == set(stages)
+    assert "(D-009)" in held
+    for stage, codes in stages.items():
+        line = held.split(f"- `{stage}`: ", 1)[1].split(" - ", 1)[0]
+        assert line.startswith(conformance_values.HOLDING_STAGES[stage])
+        for reason in codes:
+            holds = stage != "release" or reason in conformance_values.REVIEW_CODES
+            assert (f"`{reason}`" in line) == holds, (stage, reason)
+
+
+def _gate_written():
+    """A written file whose data set holds only an emptied Study Description."""
+    meta = struct.pack("<HH2sH", 0x0002, 0x0010, b"UI", 20) + b"1.2.840.10008.1.2.1\x00"
+    data_set = struct.pack("<HH2sH", 0x0008, 0x1030, b"LO", 0)
+    return bytes(128) + b"DICM" + meta + data_set
+
+
+def _gate_reasons(code):
+    """The release condition's reasons where ``code`` is all that is wrong."""
+    path = ElementPath((), "(0008,1030)")  # Study Description, LO
+    written = _gate_written()
+    collected = ()
+    coverage = {"planned": frozenset({path}), "collected": collected}
+    if code is release_gate.ReasonCode.UNCOLLECTED:
+        coverage["uncollected"] = (release_gate.Uncollected(path, "undecodable"),)
+    elif code is release_gate.ReasonCode.READ_AS_LATIN_1:
+        coverage["collected"] = (residuals.SourceValue(path, "LO", "ZARQUON"),)
+        coverage["decoded_as_bytes"] = frozenset({path})
+    elif code is release_gate.ReasonCode.COLLECTED_AS_OTHER_VR:
+        coverage["collected"] = (residuals.SourceValue(path, "UT", "ZARQUON"),)
+    elif code is release_gate.ReasonCode.RESIDUAL_TEXT:
+        coverage["collected"] = (residuals.SourceValue(path, "LO", "ZARQUON"),)
+        text = b"ZARQUON "
+        written += struct.pack("<HH2sH", 0x0008, 0x103E, b"LO", len(text)) + text
+    elif code is release_gate.ReasonCode.RESIDUAL_PERSON_NAME:
+        name = ElementPath((), "(0010,0010)")
+        coverage["planned"] = frozenset({name})
+        coverage["collected"] = (residuals.SourceValue(name, "PN", "ZEBEDEE^QUILLON"),)
+        text = b"ZEBEDEE^QUILLON "
+        written += struct.pack("<HH2sH", 0x0008, 0x103E, b"LO", len(text)) + text
+    elif code is release_gate.ReasonCode.RESIDUAL_OUTSIDE_DATA_SET:
+        coverage["collected"] = (residuals.SourceValue(path, "LO", "ZARQUON"),)
+        written += b"\xff\xff\xff\xffZARQUON STUDY"
+    elif code is release_gate.ReasonCode.UNREADABLE_FILE:
+        coverage["collected"] = ()
+        written += struct.pack("<HH2sH", 0x0008, 0x103E, b"LO", 40) + b"SHORT"
+    return release_gate.release_condition(release_gate.Coverage(**coverage), written)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize("code", sorted(conformance_values.REVIEW_CODES))
+def test_each_code_described_as_holding_holds_an_instance(code):
+    condition = _gate_reasons(release_gate.ReasonCode(code))
+    assert condition.decision is release_gate.Decision.QC_REVIEW
+    assert [r.code.value for r in condition.reasons] == [code]
+
+
+@pytest.mark.parametrize(
+    "code", ["residual-person-name", "residual-outside-data-set", "unreadable-file"]
+)
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_a_code_not_described_as_holding_withholds(code):
+    condition = _gate_reasons(release_gate.ReasonCode(code))
+    assert condition.decision is release_gate.Decision.WITHHOLD
+    assert code in [r.code.value for r in condition.reasons]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_every_other_release_code_withholds():
+    # Each reason with another code is given only with WITHHOLD (D-027).
+    withholding = {c.value for c in release_gate.ReasonCode}
+    withholding -= conformance_values.REVIEW_CODES
+    assert withholding == {
+        "unreadable-file",
+        "residual-person-name",
+        "residual-uid",
+        "residual-date",
+        "residual-datetime",
+        "residual-direct-identifier",
+        "residual-outside-data-set",
+    }
+    assert conformance_values.REVIEW_CODES <= release_report._HOLDING["release"]  # pylint: disable = protected-access
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_one_instance_without_collected_values_withholds_its_subject(preset):
+    section = _section(preset, "Release report")
+    assert "withhold every other file of its subject, by `not-reported`" in section
+    assert "has no known subject and withholds no other file" in section
+    assert "only so that its values are collected for its subject's search" in (section)
+    assert "as for its scope" not in section
+    gate = instance_transform.ReleaseGate()
+    released = gate(_gate_written(), _empty_coverage(), (_empty_coverage(),))
+    assert isinstance(released, run.Release)
+    withheld = gate(
+        _gate_written(), _empty_coverage(), (_empty_coverage(), run.NO_EVIDENCE)
+    )
+    assert isinstance(withheld, run.Sequestered)
+    assert [r.code.value for r in withheld.reasons] == ["not-reported"]
+
+
+def _empty_coverage():
+    return release_gate.Coverage(planned=frozenset(), collected=())
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_the_release_report_counts_roi_names_by_outcome(preset):
+    section = _section(preset, "Release report")
+    counted = section.split("counts the ROI Names", 1)[1].split("\n\n", 1)[0]
+    assert "(D-009)" in counted
+    assert "naming none of them" in counted
+    for outcome in reviewed_roi_names.Outcome:
+        assert f"`{outcome.value}`" in counted, outcome
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-18")
+def test_the_release_report_counts_reported_reference_findings_by_kind(preset):
+    section = _section(preset, "Release report")
+    counted = section.split("reference finding that the run reports", 1)[1]
+    counted = counted.split("\n\n", 1)[0]
+    assert "naming none of them (D-026)" in counted
+    for kind in release_report.REPORTED_FINDINGS:
+        assert f"`{kind.value}`" in counted, kind
+
+
+@pytest.mark.deid_requirement("MIDI-BP-17", "MIDI-BP-18")
+def test_the_release_report_summarises_the_structural_checks(preset):
+    section = _section(preset, "Release report")
+    summary = section.split("structural checks", 1)[1].split("\n\n", 1)[0]
+    for check in release_report.STRUCTURAL_CHECKS:
+        assert f"`{check}`" in summary, check
+    assert "sequestered" in summary
+    assert "naming none of them" in summary
+    assert "not that it suits a particular use" in summary
+
+
+@pytest.mark.deid_requirement("MIDI-BP-17", "MIDI-BP-18")
+def test_the_release_report_records_the_releasers_confirmations(preset):
+    section = _section(preset, "Release report")
+    review = section.split("outcome of its attestation", 1)[1].split("\n\n", 1)[0]
+    assert "checked for its intended use" in review
+    assert "residual risk" in review
+    assert "not stated" in review
+
+
+@pytest.mark.deid_requirement("MIDI-BP-10", "MIDI-BP-18")
+def test_the_release_report_counts_pixel_risks_by_risk_and_indicator(preset):
+    section = _section(preset, "Release report")
+    counted = section.split("that show each risk in their pixel data", 1)[1]
+    counted = counted.split("\n\n", 1)[0]
+    assert "names none of them (D-015)" in counted
+    assert "the pixel data are not inspected" in counted
+    for code in (*Risk, *Indicator):
+        assert f"`{code.value}`" in counted, code
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
+def test_every_reason_that_the_release_report_counts_is_described(preset):
+    reasons = [*residuals.Omission, *residuals.UnsearchedReason]
+    assert set(conformance_values.UNSEARCHED_REASONS) == set(residuals.UnsearchedReason)
+    section = _section(preset, "Release report")
+    assert "by attribute" in section
+    assert "(D-027)" in section
+    for reason in residuals.UnsearchedReason:
+        assert (
+            f"- `{reason.value}`: {conformance_values.UNSEARCHED_REASONS[reason]}."
+            in section
+        )
+    # Each reason described is one that the release report accepts.
+    coverage = release_report.search_coverage(
+        [
+            [residuals.Unsearched(ElementPath((), "(0010,0020)"), r)]
+            for r in residuals.UnsearchedReason
+        ]
+    )
+    counted = release_report.release_report(
+        policy.compose_policy(preset),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        coverage=coverage,
+    )
+    document = release_report.report_document(counted)
+    assert {e["reason"] for e in document["search_coverage"]} == {
+        r.value for r in residuals.UnsearchedReason
+    }
+    for reason in reasons:
+        assert f"`{reason.value}`" in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_per_instance_detail_is_only_in_the_qc_pack(preset):
+    section = _section(preset, "Release report")
+    assert "no source value or original path" in section
+    assert (
+        "Only the confidential QC pack maps labels to source instances and lists "
+        "each value not searched by instance and place (D-016)." in section
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_nothing_of_the_run_is_pending(preset):
+    statement = _statement(preset)
+    # Each run now writes its report, QC pack, and this statement, searches
+    # each written file, acts on what the search finds, lists each retained
+    # string, assesses each instance's indicators of risk in its pixel data,
+    # and lists each CT volume in the QC pack.
+    assert not conformance.PENDING
+    for done in (
+        "search each written file",
+        "the run itself sequesters",
+        "D-015",
+        "D-017",
+        "CT volume",
+        "write this statement",
+    ):
+        assert not any(done in item for item in statement.pending)
+    # No preset is enabled, so none claims conformance, complete or not.
+    assert not statement.enabled
+    assert not statement.claims_conformance
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_qc_pack_lists_what_the_run_keeps_for_review(preset):
+    section = _section(preset, "QC pack")
+    assert (
+        "of VR " + conformance_values.join(sorted(qc_retained.RETAINED_TEXT_VRS), "or")
+    ) in section
+    assert "other than Specific Character Set (0008,0005)" in section
+    assert f"`{TransformReason.UNREVIEWABLE_RETAINED_TEXT.value}`" in section
+    assert "Pixel Data (7FE0,0010) unchanged" in section
+    assert "never from its pixel data" in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_qc_pack_lists_each_ct_mr_and_pet_volume(preset):
+    section = _section(preset, "QC pack")
+    for indicator in (
+        *pixel_risk.VOLUME_INDICATORS,
+        pixel_risk.Indicator.HEAD_OR_NECK,
+        pixel_risk.Indicator.UNREADABLE,
+    ):
+        assert f"`{indicator.value}`" in section
+    assert "`ct-volume`, `mr-volume`, or `pet-volume`" in section
+    assert (
+        "each CT, MR, and PET volume among the instances that are released or held"
+        in section
+    )
+    assert "PS3.16 Annex L" in section
+    assert "Series Instance UID (0020,000E), which it never writes" in section
+    assert "assesses only the released and held instances" in section
+    assert (
+        "a series with just one single-frame image among them is not a volume"
+        in section
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_the_qc_pack_and_report_describe_a_disclosed_body_weight(preset):
+    assert "or of values that may disclose the patient's body weight" in _section(
+        preset, "QC pack"
+    )
+    for value in (
+        pixel_risk.Risk.BODY_WEIGHT.value,
+        pixel_risk.Indicator.SUV_UNITS.value,
+        pixel_risk.Indicator.SUV_MAPPING.value,
+    ):
+        assert f"`{value}`" in _section(preset, "Release report")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_described_reason_for_an_undecodable_kept_string_sequesters():
+    assert (
+        TransformReason.UNREVIEWABLE_RETAINED_TEXT.value
+        in release_report._SEQUESTERING["transform"]  # pylint: disable = protected-access
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_residual_search_is_described_as_part_of_each_release(preset):
+    section = _section(preset, "Residual search")
+    assert "before the file is released" in section
+    assert "once the engine applies it" not in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_report_describes_what_a_run_always_writes(preset):
+    section = _section(preset, "Release report")
+    assert "a run without a QC pack" not in section
+    assert "Every run writes a QC pack" in section
+    assert "neither labelled nor counted in the report" in section
+    assert "one from the release gate gives the attribute's tags" in section
+    assert (
+        f"`{run_report.RELEASE_REPORT}` and, beside it, its human-readable "
+        f"form as `{run_report.RELEASE_REPORT_MARKDOWN}`"
+    ) in section
+    assert (
+        "this statement of its policy, which holds no instance value, as "
+        f"`{run_report.CONFORMANCE_STATEMENT}`"
+    ) in section

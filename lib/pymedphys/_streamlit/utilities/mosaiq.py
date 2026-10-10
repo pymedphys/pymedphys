@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import pathlib
-from typing import Any, Dict, Optional, Tuple, cast
+from typing import Any, Dict, Literal, Optional, Tuple, cast
 
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import toml
-from typing_extensions import Literal
 
 from pymedphys._config import get_config_dir
 from pymedphys._mosaiq import connect as _connect

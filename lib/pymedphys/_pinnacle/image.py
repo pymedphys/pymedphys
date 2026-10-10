@@ -91,7 +91,7 @@ def create_image_files(image, export_path):
         dateofscan = image_set["scan_date"]
         timeofscan = image_set["scan_time"]
 
-        file_meta = pydicom.dataset.Dataset()
+        file_meta = pydicom.dataset.FileMetaDataset()
         file_meta.MediaStorageSOPClassUID = classuid
         file_meta.MediaStorageSOPInstanceUID = instuid
         file_meta.TransferSyntaxUID = GTransferSyntaxUID
@@ -176,7 +176,7 @@ def create_image_files(image, export_path):
             float(image_header["y_pixdim"]) * 10,
         ]
 
-        ds.PixelData = allframeslist[curframe].tostring()
+        ds.PixelData = allframeslist[curframe].tobytes()
 
         output_file = os.path.join(export_path, image_file_name)
         image.logger.info("Creating image: %s", output_file)
@@ -221,5 +221,5 @@ def convert_image(image, export_path):
             export_path, f"{image.image['Modality']}.{imageds.SOPInstanceUID}.dcm"
         )
 
-        imageds.save_as(output_file, write_like_original=False)
+        imageds.save_as(output_file, enforce_file_format=True)
         image.logger.info("Exported: %s to %s", file, output_file)

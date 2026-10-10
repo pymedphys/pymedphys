@@ -1,0 +1,1294 @@
+# Supplementary (L2) actions for attributes of the pinned PS3.6 data
+# dictionary that Table E.1-1 of PS3.15 omits, curated by hand. Each action is
+# a code of Table E.1-1a, and each rule says why the attribute has it.
+#
+# Every person name (PN) attribute that Table E.1-1 omits has a rule, so that
+# no person's name is kept merely because the table does not list it. So does
+# every text attribute (VR LO, SH, LT, ST, UC, or UT) that Table E.1-1 omits
+# and an IOD of the supported scope uses, at any depth, so that no
+# operator-typed text is kept merely because the table does not list it. So
+# does every date, time, and datetime (DA, DT, or TM) attribute that Table
+# E.1-1 omits, besides the role that the temporal roles file gives it. Other
+# attributes that the table omits have a rule only where one has been
+# reviewed, such as the two URLs below that name coding concepts and schemes.
+# A rule never covers an attribute that Table E.1-1 lists, or a UI attribute,
+# which the UID roles file gives a role.
+#
+# "action" is the Basic Profile action. As in Table E.1-1, "options" can give
+# an action under an option, which overrides it when that option is selected:
+# for a text attribute, only C under clean_descriptors and K under
+# retain_device_identity; for a date, time, or datetime, only K under
+# retain_longitudinal_full_dates and C under
+# retain_longitudinal_modified_dates; and only over an action that removes or
+# replaces the value.
+
+schema = "pymedphys-deid-supplementary-actions/1"
+edition = "2026d"
+acknowledgement = "DICOM PS3.6 2026d, © NEMA"
+
+# Person names, and the pixel data flags that the engine keeps as received.
+
+[[attribute]]
+tag = "(0014,0104)"
+keyword = "SecondaryReviewerName"
+action = "X/Z/D"
+note = "A person's name. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so the action suits whatever Type an IOD gives it, as for Operators' Name in Table E.1-1."
+
+[[attribute]]
+tag = "(0014,2006)"
+keyword = "EvaluatorName"
+action = "X/Z/D"
+note = "A person's name. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so the action suits whatever Type an IOD gives it, as for Operators' Name in Table E.1-1."
+
+[[attribute]]
+tag = "(0028,0301)"
+keyword = "BurnedInAnnotation"
+action = "K"
+note = "The engine does not change pixel data, so the value is kept as received and never set to NO, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under the Clean Pixel Data Option."
+
+[[attribute]]
+tag = "(0028,0302)"
+keyword = "RecognizableVisualFeatures"
+action = "K"
+note = "The engine does not change pixel data, so the value is kept as received and never set to NO, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under the Clean Recognizable Visual Features Option."
+
+[[attribute]]
+tag = "(0040,A067)"
+keyword = "DocumentAuthorTrial"
+action = "X"
+note = "A person's name, retired in 2009 with the other (Trial) attributes of Structured Reporting; Table E.1-1 removes the others that name a person, Current Observer (Trial) and Verbal Source (Trial)."
+
+# Text attributes that Table E.1-1 omits and the supported IODs use.
+#
+# Operator-typed labels and text: removed by Type, and cleaned as
+# descriptors under Clean Descriptors.
+
+[[attribute]]
+tag = "(0008,0115)"
+keyword = "CodingSchemeName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The full name of a coding scheme. A local scheme's name is typed by whoever defines the scheme and can name the institution, and the codes do not need it, since Coding Scheme Designator identifies the scheme. It is therefore treated as typed text: removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0008,030E)"
+keyword = "PrivateDataElementDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Free text on the purpose or use of a private data element, written by whoever defines the element, which can be the institution's own software. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0008,030F)"
+keyword = "PrivateDataElementEncoding"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Free text on how a private data element's value is encoded, written by whoever defines the element, like Private Data Element Description. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0010,0212)"
+keyword = "StrainDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The strain of a non-human subject, typed in a nomenclature, which can also carry other text, such as a colony or project name; Strain Code Sequence carries the strain as a code. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0010,0218)"
+keyword = "StrainAdditionalInformation"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Free text about a non-human subject's strain that its nomenclature does not encode. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Patient Comments."
+
+[[attribute]]
+tag = "(0010,0222)"
+keyword = "GeneticModificationsDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A non-human subject's genetic modifications, typed in a nomenclature, which can also carry other text; Genetic Modifications Code Sequence carries them as codes. It is removed by Type, which replaces it with a dummy value where it is Type 1, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0010,2201)"
+keyword = "PatientSpeciesDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A non-human subject's species, typed as text where Patient Species Code Sequence does not code it, and so able to carry other text, such as an animal's name. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0010,2292)"
+keyword = "PatientBreedDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A non-human subject's breed, typed as text, which can carry other text, such as an animal's name; Patient Breed Code Sequence carries the breed as a code. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,0024)"
+keyword = "SequenceName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined name for the combination of Scanning Sequence and Sequence Variant (PS3.3 Table C.8-4), which the operator can set in the scanner's protocol. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,0031)"
+keyword = "Radiopharmaceutical"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The name of the radiopharmaceutical, as text; Radiopharmaceutical Code Sequence carries the agent as a code. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,0034)"
+keyword = "InterventionDrugName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The name of an intervention drug, as text; Intervention Drug Code Sequence carries the drug as a code. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,003A)"
+keyword = "InterventionDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Free text describing a therapy or other intervention, which can say something about the patient. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,1040)"
+keyword = "ContrastBolusRoute"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The route by which contrast was given, typed as free text; Contrast/Bolus Administration Route Sequence carries it as a code. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Contrast/Bolus Agent."
+
+[[attribute]]
+tag = "(0018,1070)"
+keyword = "RadiopharmaceuticalRoute"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The route by which a radiopharmaceutical was given, as text; Administration Route Code Sequence carries the route as a code. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,1085)"
+keyword = "PVCRejection"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A description of the criteria for rejecting premature ventricular contractions or other arrhythmic beats during cardiac gating, as text. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,9046)"
+keyword = "MultiCoilConfiguration"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A textual description of the configuration of the coil elements used in an MR acquisition. Free text is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,9080)"
+keyword = "MetaboliteMapDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Text describing a metabolite map. It is removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,9252)"
+keyword = "ASLTechniqueDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Text describing an arterial spin labelling technique. It is removed by Type, which empties it where it is Type 2, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,925B)"
+keyword = "ASLCrusherDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A description of an arterial spin labelling crusher method, as text. It is removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0018,925E)"
+keyword = "ASLBolusCutoffTechnique"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Text describing an arterial spin labelling bolus cut-off technique. It is removed by Type, which empties it where it is Type 2, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0020,1040)"
+keyword = "PositionReferenceIndicator"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The anatomical landmark or fiducial that serves as the reference point of the frame of reference, typed by an operator for annotation only (PS3.3 C.7.4.1.1.2). It is removed by Type, which empties it where it is Type 2, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0020,9421)"
+keyword = "DimensionDescriptionLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Free text that explains the meaning of a dimension of a multi-frame image. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0028,1055)"
+keyword = "WindowCenterWidthExplanation"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-form explanation of each window, such as the name of a window preset, which an operator can type. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0028,3003)"
+keyword = "LUTExplanation"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-form explanation of a LUT or of a real world value mapping, which an operator can type. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0040,9210)"
+keyword = "LUTLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A label for a real world value mapping, which an operator can type. It is removed by Type, which replaces it with a dummy value where it is Type 1, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for other labels, such as Structure Set Label."
+
+[[attribute]]
+tag = "(0040,A160)"
+keyword = "TextValue"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The free text of a TEXT content item, which can hold anything a person writes, including names and dates. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0044,0106)"
+keyword = "AssertionComments"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Comments on an RT assertion, typed by the person who makes it, which can name people or carry dates. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0050,001E)"
+keyword = "ContainerComponentDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-text description of a specimen container component. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Container Description."
+
+[[attribute]]
+tag = "(0054,1101)"
+keyword = "AttenuationCorrectionMethod"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A textual description of a PET image's attenuation correction. The scanner usually writes it, but PS3.3 defines it as free text, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0054,1103)"
+keyword = "ReconstructionMethod"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A textual description of a PET image's reconstruction. The scanner usually writes it, but PS3.3 defines it as free text, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0054,1104)"
+keyword = "DetectorLinesOfResponseUsed"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A textual description of the detector lines of response used in a PET reconstruction. The scanner usually writes it, but PS3.3 defines it as free text, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0054,1105)"
+keyword = "ScatterCorrectionMethod"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A textual description of a PET image's scatter correction. The scanner usually writes it, but PS3.3 defines it as free text, so it is removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0066,0032)"
+keyword = "AlgorithmParameters"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The parameters that configured an algorithm, as free text, which can include file paths, user names, or site settings. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0066,0036)"
+keyword = "AlgorithmName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The name of a software algorithm, such as a dose calculation or contouring algorithm. An in-house algorithm's name is typed and can name a person or the institution, and Table E.1-1 removes Dose Calculation Model Name and cleans it under Clean Descriptors, so this name is treated the same way; Algorithm Family Code Sequence keeps the algorithm's family as a code. It is replaced with a dummy value where it is Type 1."
+
+[[attribute]]
+tag = "(0100,0424)"
+keyword = "SOPAuthorizationComment"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Comments on authorising an instance for use, typed by the person who authorised it. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(3004,0006)"
+keyword = "DoseComment"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "User-defined comments on dose data, which can name the patient or the planner, or carry a date. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for other RT comments and descriptions, such as Beam Description."
+
+[[attribute]]
+tag = "(300A,0009)"
+keyword = "TreatmentProtocols"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The planned treatment protocols, typed by planners, such as a local protocol or a trial's name. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Protocol Name."
+
+[[attribute]]
+tag = "(300A,0043)"
+keyword = "ToleranceTableLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined label for a tolerance table. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for RT Tolerance Set Label."
+
+[[attribute]]
+tag = "(300A,00C2)"
+keyword = "BeamName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined name for a beam, which planners can type with the patient's name, a site, or a date. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Beam Description."
+
+[[attribute]]
+tag = "(300A,00CC)"
+keyword = "ImagingDeviceSpecificAcquisitionParameters"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Parameters that a user specifies for the imager of a planned verification image, as free text. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,00E1)"
+keyword = "MaterialID"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-supplied identifier for the material of a block, compensator, source capsule, brachytherapy accessory, or ROI. It names a material rather than a device, so it is treated as typed text: removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,00FE)"
+keyword = "BlockName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined name for a block, which is made for one patient and can be named after them. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,010A)"
+keyword = "ApplicatorDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined description of an applicator. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Bolus Description and Compensator Description."
+
+[[attribute]]
+tag = "(300A,0183)"
+keyword = "PatientSetupLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined label for a patient setup, which can carry the patient's name or a date. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,0184)"
+keyword = "PatientAdditionalPosition"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined description of the patient's position, typed where Patient Position (0018,5100) is absent. It is removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,0194)"
+keyword = "FixationDeviceLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined label for a fixation device, such as an immobilisation mask made for one patient, which can carry the patient's name. It is removed by Type, which empties it where it is Type 2, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Fixation Device Description."
+
+[[attribute]]
+tag = "(300A,0198)"
+keyword = "FixationDevicePosition"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The position or notch of a fixation device, typed as free text, like the device's label. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,01A4)"
+keyword = "ShieldingDeviceLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined label for a shielding device, which can be made for one patient. It is removed by Type, which empties it where it is Type 2, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Shielding Device Description."
+
+[[attribute]]
+tag = "(300A,01A8)"
+keyword = "ShieldingDevicePosition"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The position or notch of a shielding device, typed as free text, like the device's label. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,01B8)"
+keyword = "SetupDeviceLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined label for a device used to align the patient. It is removed by Type, which empties it where it is Type 2, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,01BA)"
+keyword = "SetupDeviceDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined description of a device used to align the patient. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Setup Technique Description."
+
+[[attribute]]
+tag = "(300A,01D0)"
+keyword = "SetupReferenceDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined description of the setup reference used to align the patient, such as a skin mark. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,021C)"
+keyword = "SourceDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-text description of a brachytherapy source. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,0236)"
+keyword = "ApplicationSetupName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined name for a brachytherapy application setup, which is made for one patient and can carry their name or a date. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,0242)"
+keyword = "TemplateType"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined type for a brachytherapy template, typed as free text. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,0244)"
+keyword = "TemplateName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined name for a brachytherapy template. Names of accessories are treated as typed text, like Block Name, while their identifiers are device identity: removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,0266)"
+keyword = "BrachyAccessoryDeviceName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined name for a brachytherapy accessory device. Names of accessories are treated as typed text, like Block Name, while their identifiers, such as Brachy Accessory Device ID, are device identity: removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,0294)"
+keyword = "SourceApplicatorName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined name for a source applicator. Names of accessories are treated as typed text, like Block Name, while their identifiers, such as Source Applicator ID, are device identity: removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,02B4)"
+keyword = "ChannelShieldName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined name for a channel shield. Names of accessories are treated as typed text, like Block Name, while their identifiers, such as Channel Shield ID, are device identity: removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,0402)"
+keyword = "SetupImageComment"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A comment on a setup image, typed by an operator, which can name people or carry dates. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(300A,0422)"
+keyword = "GeneralAccessoryDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-supplied description of a general accessory. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(3010,0005)"
+keyword = "EffectiveDoseCalculationMethodDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-text description of how an effective dose was calculated; Effective Dose Calculation Method Code Sequence carries the method as a code. It is removed by Type, which empties it where it is required, and cleaned as a descriptor under Clean Descriptors."
+
+# Accessory and equipment identifiers, treated as device identity: removed
+# by Type, and kept under Retain Device Identity.
+
+[[attribute]]
+tag = "(0018,1003)"
+keyword = "DeviceID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user-supplied identifier for a device used in the acquisition. Device identifiers can identify the institution and, with dates, individual examinations, so it is removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
+
+[[attribute]]
+tag = "(0018,1061)"
+keyword = "TriggerSourceOrType"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The equipment identifier of the source of a trigger, or the type of trigger. As an equipment identifier it is device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
+
+[[attribute]]
+tag = "(0018,1250)"
+keyword = "ReceiveCoilName"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The name of the MR receive coil, as the scanner's configuration names it, which a site can choose for its own coils. A coil is equipment, so its name is device identity: removed by Type, which replaces it with a dummy value where it is required, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
+
+[[attribute]]
+tag = "(0018,1251)"
+keyword = "TransmitCoilName"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The name of the MR transmit coil, as the scanner's configuration names it, which a site can choose for its own coils. A coil is equipment, so its name is device identity: removed by Type, which replaces it with a dummy value where it is required, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
+
+[[attribute]]
+tag = "(0018,1801)"
+keyword = "TimeSource"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The identifier of the equipment or system that provides the time reference. It is device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Station Name."
+
+[[attribute]]
+tag = "(0018,9041)"
+keyword = "ReceiveCoilManufacturerName"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer of the MR receive coil, which can be a site that builds its own coils. It is device identity: removed by Type, which empties it where it is Type 2, and kept under Retain Device Identity, as Table E.1-1 does for Source Manufacturer."
+
+[[attribute]]
+tag = "(0018,9047)"
+keyword = "MultiCoilElementName"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The name of an element of a multi-element MR coil, which a site can choose for its own coils, as it can the coil's name. It is removed by Type, which replaces it with a dummy value where it is Type 1, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
+
+[[attribute]]
+tag = "(0018,9050)"
+keyword = "TransmitCoilManufacturerName"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer of the MR transmit coil, which can be a site that builds its own coils. It is device identity: removed by Type, which empties it where it is Type 2, and kept under Retain Device Identity, as Table E.1-1 does for Source Manufacturer."
+
+[[attribute]]
+tag = "(0018,9186)"
+keyword = "RespiratorySignalSourceID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "Identifies the device that provides the respiratory signal. It is device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
+
+[[attribute]]
+tag = "(0100,0426)"
+keyword = "AuthorizationEquipmentCertificationNumber"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The certification number issued to the system that authorised the instance for use, which identifies one installation. It is device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
+
+[[attribute]]
+tag = "(300A,00D4)"
+keyword = "WedgeID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user-supplied identifier for a wedge, an accessory of one treatment machine, so it can identify the machine and through it the institution. It is removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+[[attribute]]
+tag = "(300A,00DC)"
+keyword = "BolusID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user-supplied identifier for a bolus, as PS3.3 Table C.8-50 calls it, an accessory often made for one patient, so it can carry the patient's name. Accessory identifiers are device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name. So `tps-import`, which keeps device identity, keeps it as typed."
+
+[[attribute]]
+tag = "(300A,00E5)"
+keyword = "CompensatorID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user-supplied identifier for a compensator, as PS3.3 Table C.8-50 calls it, an accessory usually made for one patient, so it can carry the patient's name. Accessory identifiers are device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name. So `tps-import`, which keeps device identity, keeps it as typed."
+
+[[attribute]]
+tag = "(300A,00EF)"
+keyword = "CompensatorTrayID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user-supplied identifier for a compensator tray, an accessory of one treatment machine. Accessory identifiers are device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+[[attribute]]
+tag = "(300A,00F5)"
+keyword = "BlockTrayID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user-supplied identifier for a block tray, an accessory of one treatment machine. Accessory identifiers are device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+[[attribute]]
+tag = "(300A,0108)"
+keyword = "ApplicatorID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user or machine supplied identifier for an applicator, an accessory of one treatment machine. Accessory identifiers are device identity: removed by Type, which replaces it with a dummy value where it is Type 1, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+[[attribute]]
+tag = "(300A,021B)"
+keyword = "SourceModelID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "Identifies the model of a brachytherapy source. Table E.1-1 removes Source Manufacturer and Source Serial Number, and keeps them under Retain Device Identity, so the model is treated the same way: removed by Type, and kept under Retain Device Identity."
+
+[[attribute]]
+tag = "(300A,0238)"
+keyword = "ApplicationSetupManufacturer"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer of a brachytherapy application setup, typed in the planning system. Table E.1-1 removes Source Manufacturer, and keeps it under Retain Device Identity, so this manufacturer is treated the same way: removed by Type, and kept under Retain Device Identity."
+
+[[attribute]]
+tag = "(300A,0263)"
+keyword = "BrachyAccessoryDeviceID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user or machine supplied identifier for a brachytherapy accessory device. Accessory identifiers are device identity: removed by Type, which empties it where it is Type 2, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+[[attribute]]
+tag = "(300A,0273)"
+keyword = "AfterloaderChannelID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The socket on the afterloader to which a channel connects, as the afterloader names it, so it identifies part of a device. It is removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+[[attribute]]
+tag = "(300A,0291)"
+keyword = "SourceApplicatorID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user or machine supplied identifier for a source applicator. Accessory identifiers are device identity: removed by Type, which empties it where it is Type 2, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+[[attribute]]
+tag = "(300A,0298)"
+keyword = "SourceApplicatorManufacturer"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer of a source applicator, typed in the planning system. Table E.1-1 removes Source Manufacturer, and keeps it under Retain Device Identity, so this manufacturer is treated the same way: removed by Type, and kept under Retain Device Identity."
+
+[[attribute]]
+tag = "(300A,02B3)"
+keyword = "ChannelShieldID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user or machine supplied identifier for a channel shield. Accessory identifiers are device identity: removed by Type, which empties it where it is Type 2, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+[[attribute]]
+tag = "(300A,0421)"
+keyword = "GeneralAccessoryID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user or machine supplied identifier for a general accessory. Accessory identifiers are device identity: removed by Type, which replaces it with a dummy value where it is Type 1, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+# Coded and technical values: kept under every option.
+
+[[attribute]]
+tag = "(0008,0070)"
+keyword = "Manufacturer"
+action = "K"
+note = "The name of the company that made the equipment or device, which the equipment itself writes in the General Equipment Module. It is kept because it is Type 1 in Contributing Equipment Sequence (PS3.3 Table C.12-1), so it cannot be removed there, and because Table E.1-1 omits it deliberately while listing the identifiers of single devices, such as Device Serial Number; for equipment that a company makes, it names the maker of a product that many sites share. A device made in-house, as Patient Treatment Preparation Device Sequence (Table 10.35-1, Type 2), Device Sequence, or Container Component Sequence can record, can carry the hospital as its Manufacturer. That residual risk is accepted because the value names an institution, not a patient: the `public-release` preset has a person review every distinct retained string, but under the presets of the first supported release an in-house device's Manufacturer is kept without review."
+
+[[attribute]]
+tag = "(0008,0100)"
+keyword = "CodeValue"
+action = "K"
+note = "The value of a coded entry in the coding scheme that Coding Scheme Designator names: vocabulary, not text a person types. It is kept, since replacing it, where it is Type 1C in the Basic Code Sequence Macro, would destroy the code's meaning. Table E.1-1 acts whole on code sequences whose codes identify a person or an institution, or record a diagnosis, such as Person Identification Code Sequence, Institution Code Sequence, and Admitting Diagnoses Code Sequence."
+
+[[attribute]]
+tag = "(0008,0102)"
+keyword = "CodingSchemeDesignator"
+action = "K"
+note = "Identifies the coding scheme of a coded entry, such as DCM or SCT. It qualifies the code value and is kept with it, for the same reasons."
+
+[[attribute]]
+tag = "(0008,0103)"
+keyword = "CodingSchemeVersion"
+action = "K"
+note = "The version of a coding scheme, which the scheme's publisher assigns. It qualifies the code value and is kept with it, for the same reasons."
+
+[[attribute]]
+tag = "(0008,0104)"
+keyword = "CodeMeaning"
+action = "K"
+note = "The text that conveys a code's meaning, which the coding scheme gives it. It is kept with the code value, for the same reasons, and Table E.1-1 acts whole on code sequences whose codes identify someone, such as Person Identification Code Sequence."
+
+[[attribute]]
+tag = "(0008,0112)"
+keyword = "CodingSchemeRegistry"
+action = "K"
+note = "The external registry of a coding scheme, a Defined Term such as HL7. It names a public registry and identifies no one, so it is kept."
+
+[[attribute]]
+tag = "(0008,0114)"
+keyword = "CodingSchemeExternalID"
+action = "K"
+note = "The identifier that an external registry, such as HL7's, gives a registered coding scheme. It names a published scheme and identifies no one, so it is kept."
+
+[[attribute]]
+tag = "(0008,0119)"
+keyword = "LongCodeValue"
+action = "K"
+note = "A code value longer than 16 characters, used in place of Code Value. It is kept for the same reasons as Code Value."
+
+[[attribute]]
+tag = "(0008,0302)"
+keyword = "PrivateCreatorReference"
+action = "K"
+note = "The private creator that reserves a block of private data elements, a fixed string, such as a vendor's and product's name, that the software defining the block writes in every instance. It identifies software, not a device, person, or patient, so it is kept, which lets the block's description be read."
+
+[[attribute]]
+tag = "(0008,030C)"
+keyword = "PrivateDataElementName"
+action = "K"
+note = "The name by which the software that defines a private data element refers to it, a fixed string written in every instance alike. It describes the element, not its value, and identifies no one, so it is kept."
+
+[[attribute]]
+tag = "(0008,030D)"
+keyword = "PrivateDataElementKeyword"
+action = "K"
+note = "A keyword for a private data element, in the form of the keywords of PS3.6, fixed by the software that defines the element. It describes the element, not its value, and identifies no one, so it is kept."
+
+[[attribute]]
+tag = "(0008,1090)"
+keyword = "ManufacturerModelName"
+action = "K"
+note = "The manufacturer's name for the model of the equipment or device, the same for every unit of a commercial model. It identifies a product rather than one device, and Table E.1-1 omits it while listing Device Serial Number, which identifies one device. It is kept, as information about the acquisition. A device made in-house for one patient, such as a bolus that Patient Treatment Preparation Device Sequence (PS3.3 Table 10.35-1, Type 2) records, can have a model name typed by hand that names the hospital; as for Manufacturer, that residual risk is accepted under the first release's presets, and only the `public-release` preset has a person review every distinct retained string."
+
+[[attribute]]
+tag = "(0010,0213)"
+keyword = "StrainNomenclature"
+action = "K"
+note = "The nomenclature of Strain Description, a Defined Term such as MGI_2013 (PS3.3 C.7.1.1.1.4). It names a published nomenclature and identifies no one, so it is kept."
+
+[[attribute]]
+tag = "(0010,0223)"
+keyword = "GeneticModificationsNomenclature"
+action = "K"
+note = "The nomenclature of Genetic Modifications Description, a Defined Term such as MGI_2013 (PS3.3 C.7.1.1.1.4). It names a published nomenclature and identifies no one, so it is kept."
+
+[[attribute]]
+tag = "(0018,0085)"
+keyword = "ImagedNucleus"
+action = "K"
+note = "The nucleus that is resonant at the imaging frequency, such as 1H or 31P (PS3.3 Table C.8-4), which the scanner writes. It names a nucleus, identifies no one, and is needed to interpret the image, so it is kept."
+
+[[attribute]]
+tag = "(0018,1020)"
+keyword = "SoftwareVersions"
+action = "K"
+note = "The manufacturer's designation of the versions of the equipment's software, which the equipment itself writes. It identifies software releases shared by every site that runs them, and is needed to interpret how the data were produced, so it is kept."
+
+[[attribute]]
+tag = "(0018,1064)"
+keyword = "CardiacFramingType"
+action = "K"
+note = "How frames were selected within a cardiac interval, a Defined Term such as FORW (PS3.3 C.7.6.18.1.1.1) that the equipment writes. It is a coded value that identifies no one, so it is kept."
+
+[[attribute]]
+tag = "(0018,1160)"
+keyword = "FilterType"
+action = "K"
+note = "The type of filter in the X-ray beam, which the CT scanner writes from its configuration, with Defined Terms such as FLAT or WEDGE in some modules. It is a technical value that identifies no one, so it is kept."
+
+[[attribute]]
+tag = "(0018,1180)"
+keyword = "CollimatorGridName"
+action = "K"
+note = "A label for the collimator used, which the PET scanner writes from its configuration, like Filter Type. It is a technical value that identifies no one, so it is kept."
+
+[[attribute]]
+tag = "(0018,1210)"
+keyword = "ConvolutionKernel"
+action = "K"
+note = "A label for the kernel or algorithm used to reconstruct the image, which the scanner writes from its configuration. It is a technical value that identifies no one, and is needed to interpret image noise and resolution, so it is kept."
+
+[[attribute]]
+tag = "(0018,9005)"
+keyword = "PulseSequenceName"
+action = "K"
+note = "The name of the MR pulse sequence, for annotation, which PS3.3 says may be specific to the vendor, whereas it calls Sequence Name user-defined. It names a sequence, not a person, and is needed to interpret the image, so it is kept, accepting the residual risk that a site names an in-house sequence after a person."
+
+[[attribute]]
+tag = "(0018,9175)"
+keyword = "ApplicableSafetyStandardDescription"
+action = "K"
+note = "The name and version of the safety standard that applies to the acquisition, such as an IEC standard. It names a published standard and identifies no one, so it is kept."
+
+[[attribute]]
+tag = "(0018,9320)"
+keyword = "ImageFilter"
+action = "K"
+note = "A label for the filter applied to an image after its reconstruction, which the scanner writes, like Convolution Kernel. It is a technical value that identifies no one, and is needed to interpret image noise and resolution, so it is kept."
+
+[[attribute]]
+tag = "(0020,9056)"
+keyword = "StackID"
+action = "K"
+note = "A descriptive name for a group of frames, unique only within the image's dimension organisation (PS3.3 C.7.6.16.2.2.4). It is Type 1C, required in Enhanced PET and functional MR, and C.7.6.16.2.2.6 makes it a dimension of dynamic PET images, so it cannot be removed where it is required, and one dummy value would merge distinct stacks. It names frames, not a person, so it is kept, accepting the residual risk that the name identifies a site."
+
+[[attribute]]
+tag = "(0020,9213)"
+keyword = "DimensionIndexPrivateCreator"
+action = "K"
+note = "The private creator of a private attribute that a dimension index points to, a fixed string written by software, like Private Creator Reference, so it is kept."
+
+[[attribute]]
+tag = "(0020,9238)"
+keyword = "FunctionalGroupPrivateCreator"
+action = "K"
+note = "The private creator of a private attribute that a functional group points to, a fixed string written by software, like Private Creator Reference, so it is kept."
+
+[[attribute]]
+tag = "(0020,9453)"
+keyword = "FrameLabel"
+action = "K"
+note = "A label for frames that an application handles as a group, from a set of values that the application defines, which Dimension Index Pointer can name as the base of a dimension (PS3.3 C.7.6.16.2.2.5). It is not free text about the patient, and changing it would change how frames are indexed, so it is kept, accepting the residual risk that an application lets a site define the set."
+
+[[attribute]]
+tag = "(0028,1054)"
+keyword = "RescaleType"
+action = "K"
+note = "The units of the rescaled pixel values, a Defined Term such as HU (PS3.3 C.11.1.1.2) that the equipment writes. It identifies no one, and replacing it would change how the pixel values are read, so it is kept."
+
+[[attribute]]
+tag = "(0066,0031)"
+keyword = "AlgorithmVersion"
+action = "K"
+note = "The version that a manufacturer assigns a software algorithm, like Software Versions. It is a technical value that identifies no one, so it is kept."
+
+[[attribute]]
+tag = "(0072,0054)"
+keyword = "SelectorSequencePointerPrivateCreator"
+action = "K"
+note = "The private creators of the sequences that lead to a modified private attribute, fixed strings written by software, like Private Creator Reference, so it is kept. In the supported IODs it occurs only within Original Attributes Sequence, which Table E.1-1 removes under every option."
+
+[[attribute]]
+tag = "(0072,0056)"
+keyword = "SelectorAttributePrivateCreator"
+action = "K"
+note = "The private creator of a modified private attribute, a fixed string written by software, like Private Creator Reference, so it is kept. In the supported IODs it occurs only within Original Attributes Sequence, which Table E.1-1 removes under every option."
+
+[[attribute]]
+tag = "(3002,0052)"
+keyword = "FluenceModeID"
+action = "K"
+note = "Identifies a non-standard fluence mode, such as FFF, as the treatment machine's configuration names it. It is a technical value that identifies no one, and is needed to reproduce the beam, so it is kept."
+
+[[attribute]]
+tag = "(300A,007B)"
+keyword = "FractionPattern"
+action = "K"
+note = "A string of 0s and 1s giving the weekly pattern of fractions, starting on a Monday. It holds no dates or text, only the pattern, and is needed to reproduce the treatment course, so it is kept."
+
+[[attribute]]
+tag = "(300A,0226)"
+keyword = "SourceIsotopeName"
+action = "K"
+note = "The name of a brachytherapy source's isotope, such as Ir-192, from the planning system's source library. It names an isotope and identifies no one, and it is Type 1, so replacing it would lose the source's physics; it is kept."
+
+[[attribute]]
+tag = "(3010,001A)"
+keyword = "ManufacturerModelVersion"
+action = "K"
+note = "The version of the manufacturer's model of a device, which identifies a product rather than one device, like Manufacturer's Model Name, so it is kept, with the same accepted residual risk for a device made in-house for one patient."
+
+[[attribute]]
+tag = "(3010,001D)"
+keyword = "DeviceAlternateIdentifierFormat"
+action = "K"
+note = "The format of a device's alternate identifier, such as an RFID or bar code format (PS3.3 10.36.1.1). It names a format, not a device, and Table E.1-1 empties the identifier itself, Device Alternate Identifier (3010,001B), so it is kept."
+
+[[attribute]]
+tag = "(60xx,0045)"
+keyword = "OverlaySubtype"
+action = "K"
+note = "A Defined Term for the purpose of an overlay (PS3.3 C.9.2.1.3). It is a coded value that identifies no one, so it is kept."
+
+# De-identification Method: kept, and added to by the engine.
+
+[[attribute]]
+tag = "(0012,0063)"
+keyword = "DeidentificationMethod"
+action = "K"
+note = "A description of each de-identification already applied. PS3.15 E.1.1 has a de-identifier add its own description to this attribute, so the engine keeps the values already present and adds two of its own: the method digest, and then a readable value naming PyMedPhys, its version, the preset, and the PS3.15 edition it claims, or that it claims none."
+
+# URLs that name coding concepts and schemes: kept under every option, like
+# the codes they qualify.
+
+[[attribute]]
+tag = "(0008,010E)"
+keyword = "CodingSchemeURL"
+action = "K"
+note = "The URL of the resource that defines a coding scheme, which names the scheme like Coding Scheme Designator, so it is kept. A local scheme's URL can name an institution's host; that residual risk is accepted because it names an institution, not a patient, as for Manufacturer."
+
+[[attribute]]
+tag = "(0008,0120)"
+keyword = "URNCodeValue"
+action = "K"
+note = "The value of a coded entry written as a URN or URL, used instead of Code Value where the code is one, so it is kept like Code Value. A code of a local scheme can name an institution's host; that residual risk is accepted because it names an institution, not a patient, as for Manufacturer."
+
+# Names and identifiers of people, organisations, records, and networks,
+# identifiers that a device reads, and the text of overlays: removed by Type
+# under every option.
+
+[[attribute]]
+tag = "(0008,0116)"
+keyword = "CodingSchemeResponsibleOrganization"
+action = "X/Z/D"
+note = "The organisation responsible for a coding scheme, which PS3.3 says may include contact information, so for a local scheme it names the institution and can name a person. Table E.1-1 removes names of people and organisations, such as Operators' Name, Institution Name, and Clinical Trial Sponsor Name, under every supported option, so it is removed by Type under every option too."
+
+[[attribute]]
+tag = "(0008,0122)"
+keyword = "MappingResourceName"
+action = "X/Z/D"
+note = "The name of the mapping resource that defines a context group, such as DICOM Content Mapping Resource. PS3.3 Section 8.4 says that its value may denote the institution or organisation that specified the value set, so it can name the institution, and the codes do not need it, since Mapping Resource (0008,0105) identifies the resource. Like Coding Scheme Responsible Organization, it is removed by Type under every option."
+
+[[attribute]]
+tag = "(0010,0214)"
+keyword = "StrainStockNumber"
+action = "X/Z/D"
+note = "The stock number of a non-human subject's strain, issued by the organisation in Strain Source, which can be the institution's own colony. Table E.1-1 removes comparable identifiers, such as Accession Number and Container Identifier, under every option, so it is removed by Type under every option too."
+
+[[attribute]]
+tag = "(0010,0217)"
+keyword = "StrainSource"
+action = "X/Z/D"
+note = "The organisation that supplied a non-human subject, which can be the institution's own colony. Table E.1-1 removes names of organisations, such as Institution Name and Clinical Trial Sponsor Name, under every supported option, so it is removed by Type under every option too."
+
+[[attribute]]
+tag = "(0010,2295)"
+keyword = "BreedRegistrationNumber"
+action = "X/Z/D"
+note = "The number of a non-human subject in a breed registry, which identifies one animal and, through the registry, its owner. It is removed by Type under every option, as Table E.1-1 removes the patient's other identifiers, such as Other Patient IDs Sequence."
+
+[[attribute]]
+tag = "(0018,1803)"
+keyword = "NTPSourceAddress"
+action = "X/Z/D"
+note = "The IP address of the time server, which identifies a network and so usually the institution. Table E.1-1 at most cleans network identities, such as Station AE Title, even under Retain Device Identity, and a supplementary rule can only keep a value under that option, so it is removed by Type under every option."
+
+[[attribute]]
+tag = "(0024,0202)"
+keyword = "AlgorithmSource"
+action = "X/Z/D"
+note = "The source of an algorithm, which PS3.3 says can be a manufacturer, researcher, or university, so it can name a person or the institution. Table E.1-1 removes names of people and organisations, such as Operators' Name and Institution Name, under every supported option, so it is removed by Type under every option too."
+
+[[attribute]]
+tag = "(0040,0031)"
+keyword = "LocalNamespaceEntityID"
+action = "X/Z/D"
+note = "Identifies, in a local namespace, an issuer of identifiers, such as of patient IDs or accession numbers, and so names the institution or one of its departments. It is removed by Type under every option, as Table E.1-1 removes Issuer of Patient ID."
+
+[[attribute]]
+tag = "(0040,0032)"
+keyword = "UniversalEntityID"
+action = "X/Z/D"
+note = "A universal identifier, such as an ISO object identifier, of an issuer of identifiers, such as the authority that assigns patient IDs, and so identifies the institution. It is removed by Type under every option, as Table E.1-1 removes Issuer of Patient ID."
+
+[[attribute]]
+tag = "(0040,E001)"
+keyword = "HL7InstanceIdentifier"
+action = "X/Z/D"
+note = "The identifier of a referenced HL7 document, a UID with an optional extension, which identifies one document about the patient. Table E.1-1 replaces the UIDs of instances, but this is text, which takes no keyed UID replacement, so it is removed by Type under every option."
+
+[[attribute]]
+tag = "(0088,0130)"
+keyword = "StorageMediaFileSetID"
+action = "X/Z/D"
+note = "A human-readable identifier of the storage media that hold a referenced instance, which can be typed with a patient's name or a date. It is removed by Type under every option, like other identifiers of records. In the supported IODs it is Type 2 only within Referenced Patient Photo Sequence, which Table E.1-1 removes, and Type 3 elsewhere, in the referenced series of the multi-frame IODs' reference sequences."
+
+[[attribute]]
+tag = "(300A,00F9)"
+keyword = "AccessoryCode"
+action = "X/Z/D"
+note = "A machine-readable identifier for an accessory, block, or compensator, which PS3.3 Tables C.8-48 and C.8-50 describe as 'intended to be read by a device such as a bar-code reader', nearly the words in which Table 10.36-1 describes Device Alternate Identifier (3010,001B). Table E.1-1 empties that attribute (Z) and gives it no action under Retain Device Identity. A block or compensator is usually made for one patient, so its code can refer to them, and the labels of such items are cleaned rather than kept, so it is removed by Type under every option."
+
+[[attribute]]
+tag = "(300A,0355)"
+keyword = "TrayAccessoryCode"
+action = "X/Z/D"
+note = "A machine-readable identifier for the tray of a block or compensator, which PS3.3 Table C.8-50 describes as 'intended to be read by a device such as a bar-code reader', nearly the words in which Table 10.36-1 describes Device Alternate Identifier (3010,001B). Table E.1-1 empties that attribute (Z) and gives it no action under Retain Device Identity. The tray carries a block or compensator, which is usually made for one patient, and the labels of such items are cleaned rather than kept, so it is removed by Type under every option, like Accessory Code."
+
+[[attribute]]
+tag = "(60xx,0022)"
+keyword = "OverlayDescription"
+action = "X/Z/D"
+note = "User-defined comments about an overlay. Table E.1-1 removes Overlay Comments under every option except Clean Graphics, which is not supported, so this is removed by Type under every option rather than cleaned as a descriptor."
+
+[[attribute]]
+tag = "(60xx,1500)"
+keyword = "OverlayLabel"
+action = "X/Z/D"
+note = "A user-defined label or name for an overlay. Like Overlay Description, it is removed by Type under every option, as Table E.1-1 removes Overlay Comments under every option except Clean Graphics, which is not supported."
+
+# Dates in a text VR: removed under every option.
+
+[[attribute]]
+tag = "(0010,0033)"
+keyword = "PatientBirthDateInAlternativeCalendar"
+action = "X"
+note = "The patient's date of birth in an alternative calendar. Its VR is LO, but it holds a date in no specified format, so it could be neither shifted nor checked; it is removed under every option, as no supported option keeps Patient's Birth Date. It is Type 3 in the Patient Module."
+
+[[attribute]]
+tag = "(0010,0034)"
+keyword = "PatientDeathDateInAlternativeCalendar"
+action = "X"
+note = "The patient's date of death in an alternative calendar. Its VR is LO, but it holds a date in no specified format, so it could be neither shifted nor checked; it is removed under every option, like the alternative calendar date of birth. It is Type 3 in the Patient Module."
+
+# Dates, times, and datetimes that Table E.1-1 omits: removed by Type, as the
+# Basic Profile removes or replaces every date and time that the table lists;
+# and, as the table gives nearly all of those, kept under Retain Longitudinal
+# Temporal Information with Full Dates and cleaned under Retain Longitudinal
+# Temporal Information with Modified Dates, which modifies each by its
+# temporal role. Full Dates and Modified Dates are mutually exclusive, so
+# their actions never conflict.
+
+[[attribute]]
+tag = "(0008,0404)"
+keyword = "ItemInventoryDateTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When the inventory information for a study was created, which PS3.3 requires to be at or after the inventory's Content Date and Content Time. PS3.3 defines it only in the Inventory Module, as Type 1 in Inventoried Studies Sequence. Only the Inventory IOD uses the Inventory Module, and no IOD of the first supported release uses it. It is removed by Type, which gives it a dummy value where it is Type 1, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+
+[[attribute]]
+tag = "(0008,0416)"
+keyword = "ExpirationDateTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When a storage system expects an instance, or an inventory, to stop being available. PS3.3 defines it only in the Inventory Module, as Type 3 in File Access Sequence within the items of inventoried studies, series, and instances, and in the Inventory Creation Module, which describes an Inventory Creation request or response rather than a stored instance. Only the Inventory IOD uses the Inventory Module, and no IOD of the first supported release uses it. It is removed by Type, which removes it where it is Type 3, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
+
+[[attribute]]
+tag = "(0008,041F)"
+keyword = "StudyUpdateDateTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When a storage system last updated a study's instances or metadata, first set when the system received the study. PS3.3 defines it only in the Inventory Module, as Type 2 in Inventoried Studies Sequence. Only the Inventory IOD uses the Inventory Module, and no IOD of the first supported release uses it. It is removed by Type, which empties it where it is Type 2, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+
+[[attribute]]
+tag = "(0014,0102)"
+keyword = "SecondaryReviewDate"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "The date of a secondary review of an inspected object's data. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+
+[[attribute]]
+tag = "(0014,0103)"
+keyword = "SecondaryReviewTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "The time of a secondary review of an inspected object's data. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role; a shift of whole weeks leaves a time of day as it is, so the value is kept as received, as Study Time is."
+
+[[attribute]]
+tag = "(0014,1020)"
+keyword = "ExpiryDate"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "An expiry date that DICONDE defines outside PS3.3. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
+
+[[attribute]]
+tag = "(0014,3076)"
+keyword = "DateOfGainCalibration"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "The date on which the equipment's gain was calibrated. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role. Unlike the calibration dates that Table E.1-1 lists, it is not kept under Retain Device Identity: that option does not require it, since the table omits it, and keeping it would conflict with Modified Dates."
+
+[[attribute]]
+tag = "(0014,3077)"
+keyword = "TimeOfGainCalibration"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "The time at which the equipment's gain was calibrated. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role. Unlike the calibration times that Table E.1-1 lists, it is not kept under Retain Device Identity: that option does not require it, since the table omits it, and keeping it would conflict with Modified Dates."
+
+[[attribute]]
+tag = "(0014,4076)"
+keyword = "ProcedureCreationDate"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When an inspection procedure, which applies to many inspected objects, was created. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
+
+[[attribute]]
+tag = "(0014,4078)"
+keyword = "ProcedureExpirationDate"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When an inspection procedure, which applies to many inspected objects, expires. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
+
+[[attribute]]
+tag = "(0014,407A)"
+keyword = "ProcedureLastModifiedDate"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When an inspection procedure, which applies to many inspected objects, was last modified. PS3.6 marks it DICONDE, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
+
+[[attribute]]
+tag = "(4010,1025)"
+keyword = "RouteSegmentStartTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When an inspected object began a segment of its route. PS3.6 marks it DICOS, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+
+[[attribute]]
+tag = "(4010,1026)"
+keyword = "RouteSegmentEndTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When an inspected object ended a segment of its route. PS3.6 marks it DICOS, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+
+[[attribute]]
+tag = "(4010,102B)"
+keyword = "AlarmDecisionTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "When an alarm decision was made about an inspected object. PS3.6 marks it DICOS, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which shifts it with the subject's other dates, by its temporal role."
+
+[[attribute]]
+tag = "(4010,1041)"
+keyword = "OOIOwnerCreationTime"
+action = "X/Z/D"
+options = { retain_longitudinal_full_dates = "K", retain_longitudinal_modified_dates = "C" }
+note = "A time about the owner of an object of inspection that DICOS defines outside PS3.3, whose relationship to the inspection PS3.3 does not document. PS3.6 marks it DICOS, and none of the IODs whose Types are generated uses it, so removal by Type suits whatever Type an IOD gives it, as the Basic Profile removes or replaces every date and time that Table E.1-1 lists. As the table does for nearly all of those, it is kept (K) under Full Dates and cleaned (C) under Modified Dates, which replaces it with a fixed dummy value, by its temporal role."
+
+# Attributes of other VRs that Table E.1-1 omits and whose content can
+# identify the institution, the patient, or other patients: removed by Type
+# under every option.
+#
+# URIs and URLs, which can carry host names and file paths, other than the
+# two above that name coding concepts and schemes.
+
+[[attribute]]
+tag = "(0008,0407)"
+keyword = "StoredInstanceBaseURI"
+action = "X/Z/D"
+note = "The base URI of the storage system that holds an inventory's studies, series, or instances. It names a host, which identifies the institution, and can carry a path, so it is removed by Type under every option, as the Basic Profile removes or replaces the URI attributes that Table E.1-1 lists, such as Display URI (0040,E012). Only the Inventory Module defines it, and no IOD of the first supported release uses it."
+
+[[attribute]]
+tag = "(0008,0408)"
+keyword = "FolderAccessURI"
+action = "X/Z/D"
+note = "The URI of a folder that holds an inventory's studies or series. It can carry a host name and a file path, which can hold a patient's name or identifier, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Inventory Module defines it, and no IOD of the first supported release uses it."
+
+[[attribute]]
+tag = "(0008,0409)"
+keyword = "FileAccessURI"
+action = "X/Z/D"
+note = "The URI of a file that holds an inventoried instance. It can carry a host name and a file path, which can hold a patient's name or identifier, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Inventory Module defines it, and no IOD of the first supported release uses it."
+
+[[attribute]]
+tag = "(0008,040B)"
+keyword = "FilenameInContainer"
+action = "X/Z/D"
+note = "The name of an inventoried instance's file within a container file, such as an archive. A file name can hold a patient's name or identifier, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Inventory Module defines it, and no IOD of the first supported release uses it."
+
+[[attribute]]
+tag = "(0008,1190)"
+keyword = "RetrieveURL"
+action = "X/Z/D"
+note = "The URL from which a referenced study, series, or instance can be retrieved. It names a host, which identifies the institution, and can carry identifiers in its path, so it is removed by Type under every option, as the Basic Profile removes or replaces the URI attributes that Table E.1-1 lists, such as Display URI (0040,E012). The IODs of the first supported release require it only in Referenced Patient Photo Sequence (0010,1100), which Table E.1-1 removes."
+
+[[attribute]]
+tag = "(0028,7FE0)"
+keyword = "PixelDataProviderURL"
+action = "X/Z/D"
+note = "The URL of a JPIP server that provides an image's pixel data. It names a host, which identifies the institution, and can carry identifiers in its path, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. The Image Pixel Module makes it Type 1C, required only with the JPIP Referenced transfer syntaxes, which the first supported release does not read; where it is required, removal by Type needs a dummy value, which the UR VR does not have, so the instance is sequestered."
+
+[[attribute]]
+tag = "(0040,4073)"
+keyword = "StorageURL"
+action = "X/Z/D"
+note = "The URL of the service to which a performed procedure stored its output. It names a host, which identifies the institution, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Performed Storage Module defines it, and no IOD of the first supported release uses it."
+
+[[attribute]]
+tag = "(0040,E010)"
+keyword = "RetrieveURI"
+action = "X/Z/D"
+note = "The URI from which a referenced document or instance can be retrieved. It names a host, which identifies the institution, and can carry identifiers in its path, so it is removed by Type under every option, like Retrieve URL. The IODs of the first supported release require it only in Referenced Patient Photo Sequence (0010,1100), which Table E.1-1 removes, and make it Type 3 elsewhere."
+
+[[attribute]]
+tag = "(0068,7005)"
+keyword = "RelativeURIReferenceWithinEncapsulatedDocument"
+action = "X/Z/D"
+note = "A URI reference, relative to an encapsulated document, to an instance that the document refers to. It can carry file paths and identifiers, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Encapsulated Document Module defines it, and no IOD of the first supported release uses it."
+
+[[attribute]]
+tag = "(0074,100A)"
+keyword = "ContactURI"
+action = "X/Z/D"
+note = "A URI by which to communicate about a procedure step, such as a telephone number or email address. It can identify a person or the institution, so it is removed by Type under every option, as Table E.1-1 removes Person's Telephone Numbers (0040,1103), and none of the IODs whose Types are generated uses it."
+
+# Sequences whose codes or identifiers can identify the institution or other
+# patients, or say something about the patient, as attributes that Table
+# E.1-1 removes or empties do.
+
+[[attribute]]
+tag = "(0008,0051)"
+keyword = "IssuerOfAccessionNumberSequence"
+action = "X/Z/D"
+note = "Identifies the system or organisation that issued the Accession Number, which Table E.1-1 empties (Z), so it names the institution or one of its departments. It is removed by Type under every option, as Table E.1-1 removes Issuer of Patient ID (0010,0021). It is Type 3 wherever the IODs of the first supported release define it."
+
+[[attribute]]
+tag = "(0010,0024)"
+keyword = "IssuerOfPatientIDQualifiersSequence"
+action = "X/Z/D"
+note = "Qualifies the issuer of the Patient ID, with the facility, jurisdiction, and agency or department that assigned it, so it names the institution or its region. It is removed by Type under every option, as Table E.1-1 removes Issuer of Patient ID (0010,0021). It is Type 3 wherever the IODs of the first supported release define it."
+
+[[attribute]]
+tag = "(0010,0026)"
+keyword = "SourcePatientGroupIdentificationSequence"
+action = "X/Z/D"
+note = "The Patient ID, and its issuer, of the group of subjects from whose instance this one was extracted, so it identifies patients other than the instance's own subject. It is removed by Type under every option, as Table E.1-1 removes Other Patient IDs Sequence (0010,1002), rather than giving pseudonyms to patients outside the export. It is Type 3 in the Patient Module."
+
+[[attribute]]
+tag = "(0010,0027)"
+keyword = "GroupOfPatientsIdentificationSequence"
+action = "X/Z/D"
+note = "The Patient IDs, and their issuers, of the subjects in an instance that holds a group of subjects acquired together, so it identifies patients other than the instance's own subject. It is removed by Type under every option, as Table E.1-1 removes Other Patient IDs Sequence (0010,1002), rather than giving pseudonyms to patients outside the export. It is Type 3 in the Patient Module."
+
+[[attribute]]
+tag = "(0010,1021)"
+keyword = "PatientSizeCodeSequence"
+action = "X/Z/D"
+note = "The patient's size as a code, such as a size category, which says something about the patient as Patient's Size (0010,1020) does, which Table E.1-1 removes (X). It is removed by Type under every option, including Retain Patient Characteristics: that option keeps the characteristics that Table E.1-1 lists, and a rule for an attribute that the table omits may give an action under an option only to text, dates, and times. It is Type 3 in the Patient Study Module."
+
+[[attribute]]
+tag = "(0010,1022)"
+keyword = "PatientBodyMassIndex"
+action = "X/Z/D"
+note = "The patient's body mass index, a number derived from Patient's Size (0010,1020) and Patient's Weight (0010,1030), which Table E.1-1 removes (X), and which says as much about the patient as they do. It is removed by Type under every option, including Retain Patient Characteristics: that option keeps the characteristics that Table E.1-1 lists, and a rule for an attribute that the table omits may give an action under an option only to text, dates, and times. It is Type 3 in the Patient Study Module."
+
+[[attribute]]
+tag = "(0010,1023)"
+keyword = "MeasuredAPDimension"
+action = "X/Z/D"
+note = "The patient's measured anterior-posterior thickness, a measure of the body that says something about the patient as Patient's Size (0010,1020) and Patient's Weight (0010,1030) do, which Table E.1-1 removes (X). It is removed by Type under every option, including Retain Patient Characteristics: that option keeps the characteristics that Table E.1-1 lists, and a rule for an attribute that the table omits may give an action under an option only to text, dates, and times. It is Type 3 in the Patient Study Module."
+
+[[attribute]]
+tag = "(0010,1024)"
+keyword = "MeasuredLateralDimension"
+action = "X/Z/D"
+note = "The patient's measured lateral width, a measure of the body that says something about the patient as Patient's Size (0010,1020) and Patient's Weight (0010,1030) do, which Table E.1-1 removes (X). It is removed by Type under every option, including Retain Patient Characteristics: that option keeps the characteristics that Table E.1-1 lists, and a rule for an attribute that the table omits may give an action under an option only to text, dates, and times. It is Type 3 in the Patient Study Module."
+
+[[attribute]]
+tag = "(0032,1034)"
+keyword = "RequestingServiceCodeSequence"
+action = "X/Z/D"
+note = "The institutional department, unit, or service where the request initiated, as a code, which identifies the institution as Requesting Service (0032,1033) does, which Table E.1-1 removes (X). It is removed by Type under every option, since cleaning a sequence's contents is not designed. It is Type 3 in the General Study Module."
+
+[[attribute]]
+tag = "(0040,1012)"
+keyword = "ReasonForPerformedProcedureCodeSequence"
+action = "X/Z/D"
+note = "Codes for why the procedure was performed, which can record a diagnosis or symptom, as do Reason for Visit Code Sequence (0032,1067) and the other reason and diagnosis code sequences, which Table E.1-1 removes (X). It is removed by Type under every option. It is Type 3 in the General Study Module."
+
+# Other attributes whose content the engine cannot check.
+
+[[attribute]]
+tag = "(0028,2000)"
+keyword = "ICCProfile"
+action = "X/Z/D"
+note = "An ICC colour profile, a file in another format embedded in the instance, which can carry text, such as a description or copyright naming the device or institution, that the engine does not parse. It is removed by Type under every option. It is Type 1 in the ICC Profile Module, which Enhanced CT Image, Enhanced MR Image, and Enhanced MR Color Image use, where removal by Type replaces an RGB profile with a fixed sRGB profile, which nothing of the source profile is written to, and sequesters an instance with any other; elsewhere in the IODs of the first supported release it is Type 3."
+
+[[attribute]]
+tag = "(0028,2002)"
+keyword = "ColorSpace"
+action = "X/Z/D"
+note = "Names the colour space that ICC Profile (0028,2000) describes, such as SRGB or ADOBERGB. ICC Profile is removed, or replaced with a fixed sRGB profile, under every option, so a kept Color Space could name a colour space other than that of the profile written, and a viewer that trusts it would show the wrong colours. It is removed by Type under every option. It is Type 3 wherever the IODs of the first supported release define it."
+
+[[attribute]]
+tag = "(4FFE,0001)"
+keyword = "MACParametersSequence"
+action = "X/Z/D"
+note = "Describes how the Message Authentication Codes of digital signatures were computed. It belongs to the digital signatures that Table E.1-1 removes with Digital Signatures Sequence (FFFA,FFFA), which de-identification would invalidate, so it is removed by Type under every option. It is Type 3 in the SOP Common Module."
+
+[[attribute]]
+tag = "(0008,0300)"
+keyword = "PrivateDataElementCharacteristicsSequence"
+action = "X/Z/D"
+note = "Describes the instance's private blocks, by their private creators, and how to de-identify them. Without the Retain Safe Private Option, which every policy refuses until reviewed rules say which private attributes are safe, every private attribute is removed, so the sequence describes only blocks that are gone, and its Private Creator Reference values can name the institution's own software. It is removed by Type under every option. It is Type 3 in the SOP Common Module."

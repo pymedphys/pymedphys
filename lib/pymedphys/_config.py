@@ -20,8 +20,13 @@ from pymedphys._imports import toml
 is_cli = False
 
 
+def config_dir_path() -> pathlib.Path:
+    """Return the path of the PyMedPhys configuration directory, without creating it."""
+    return pathlib.Path.home().joinpath(".pymedphys")
+
+
 def get_config_dir() -> pathlib.Path:
-    config_dir = pathlib.Path.home().joinpath(".pymedphys")
+    config_dir = config_dir_path()
     config_dir.mkdir(exist_ok=True)
 
     return config_dir
@@ -34,14 +39,26 @@ def get_config(path=None):
     path = pathlib.Path(path)
 
     config_path = path.joinpath("config.toml")
+    visited = set()
 
     while True:
+        resolved = config_path.resolve()
+        if resolved in visited:
+            raise ValueError(
+                f"Config redirect loop: {config_path} was already visited."
+            )
+        visited.add(resolved)
+
         with open(config_path) as f:
             results = toml.load(f)
 
         try:
-            config_path = pathlib.Path(results["redirect"])
+            redirect = results["redirect"]
         except KeyError:
             break
+
+        # A relative redirect is relative to the file that contains it, not
+        # to the directory PyMedPhys happened to be started from.
+        config_path = config_path.parent.joinpath(redirect)
 
     return results

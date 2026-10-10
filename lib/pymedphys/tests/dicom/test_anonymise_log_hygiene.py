@@ -1,0 +1,528 @@
+# Copyright (C) 2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""The legacy de-identification code must not disclose values or paths.
+
+``pymedphys.dicom.anonymise`` and experimental pseudonymisation are being
+replaced, but until they are removed they must not write source DICOM values
+or original file paths to logs or the standard streams, as the design in
+``docs/contrib/info/deidentification-design.md`` requires. Each test plants canary
+strings in DICOM values and in file and directory names, captures stdout,
+stderr, and the log records that reach the root logger with its level set to
+DEBUG, and checks that no canary appears. A logger with its own level
+contributes only records at or above it: pydicom's logger stays at WARNING.
+
+The commands and the pseudonymisation app report errors by type and redact
+values from pydicom's messages. The library functions still pass pydicom's and
+Python's exceptions and warnings through unchanged; one strict expected
+failure documents that channel.
+"""
+
+import io
+import logging
+import pathlib
+import struct
+import sys
+import warnings
+
+from pymedphys._imports import pydicom, pytest
+
+from pymedphys._dicom.anonymise import api as anonymise_api
+from pymedphys._dicom.anonymise import core as anonymise_core
+from pymedphys._dicom.anonymise import diagnostics
+from pymedphys._experimental import pseudonymisation
+from pymedphys._experimental.pseudonymisation import strategy as pseudo_strategy
+from pymedphys.cli import define_parser
+
+RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
+
+CANARY_NAME = "ZZCANARYFAMILY^ZZCANARYGIVEN"
+CANARY_ID = "ZZCANARYID0451"
+# The legacy tools keep UIDs and name their output files after the SOP
+# Instance UID, so printing an output path would disclose this value.
+CANARY_UID = "1.2.826.0.1.3680043.10.1234.987654321987"
+CANARY_DIR = "ZZCANARYDIR"
+CANARY_OUTPUT_DIR = "ZZCANARYOUTPUT"
+CANARIES = ("ZZCANARY", CANARY_UID)
+
+
+def _canary_dataset(sop_instance_uid=CANARY_UID):
+    ds = pydicom.Dataset()
+    ds.PatientName = CANARY_NAME
+    ds.PatientID = CANARY_ID
+    ds.SOPClassUID = RT_PLAN_STORAGE
+    ds.SOPInstanceUID = sop_instance_uid
+    ds.StudyInstanceUID = "1.2.826.0.1.3680043.10.1234.1"
+    ds.SeriesInstanceUID = "1.2.826.0.1.3680043.10.1234.2"
+    ds.Modality = "RTPLAN"
+
+    ds.file_meta = pydicom.dataset.FileMetaDataset()
+    ds.file_meta.MediaStorageSOPClassUID = ds.SOPClassUID
+    ds.file_meta.MediaStorageSOPInstanceUID = ds.SOPInstanceUID
+    ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+    return ds
+
+
+def _write_canary_file(path, sop_instance_uid=CANARY_UID):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pydicom.dcmwrite(path, _canary_dataset(sop_instance_uid), enforce_file_format=True)
+    return path
+
+
+def _write_raw_canary_file(path, keyword, raw_value, character_set=None):
+    """Write a file whose ``keyword`` holds ``raw_value`` exactly, even if invalid."""
+    ds = _canary_dataset()
+    if character_set:
+        ds.SpecificCharacterSet = character_set
+    tag = pydicom.tag.Tag(pydicom.datadict.tag_for_keyword(keyword))
+    raw = raw_value.encode("utf-8")
+    if len(raw) % 2:
+        raw += b" "
+    ds[tag] = pydicom.dataelem.RawDataElement(
+        tag, pydicom.datadict.dictionary_VR(tag), len(raw), raw, 0, False, True
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pydicom.dcmwrite(path, ds, enforce_file_format=True)
+    return path
+
+
+def _write_undelimited_canary_file(path):
+    """Write a file ending in an undefined-length element with no delimiter.
+
+    pydicom reports it with a warning, from ``pydicom.filereader``, and a log
+    record that both end with the file's name, unquoted.
+    """
+    buffer = io.BytesIO()
+    pydicom.dcmwrite(buffer, _canary_dataset(), enforce_file_format=True)
+    undelimited = (
+        struct.pack("<HH", 0x0009, 0x1010)
+        + b"OB\0\0"
+        + struct.pack("<I", 0xFFFFFFFF)
+        + b"\0" * 16
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(buffer.getvalue() + undelimited)
+    return path
+
+
+class _NamedUpload(io.BytesIO):
+    """An upload named like a Streamlit ``UploadedFile``."""
+
+    name = "ZZCANARYUPLOAD.dcm"
+
+
+def _run_cli(command, input_path, output_path):
+    args = define_parser().parse_args(
+        [*command, str(input_path), "-o", str(output_path), "-u"]
+    )
+    args.func(args)
+
+
+COMMANDS = [["dicom", "anonymise"], ["experimental", "dicom", "pseudonymise"]]
+
+
+def _assert_no_canaries(capsys, caplog):
+    captured = capsys.readouterr()
+    record_messages = "\n".join(record.getMessage() for record in caplog.records)
+    for stream_name, text in (
+        ("stdout", captured.out),
+        ("stderr", captured.err),
+        ("log records", record_messages),
+    ):
+        for canary in CANARIES:
+            assert canary not in text, f"A canary value reached {stream_name}"
+    return captured
+
+
+@pytest.mark.pydicom
+def test_failed_replacement_does_not_log_value(capsys, caplog):
+    caplog.set_level(logging.DEBUG)
+
+    with pytest.raises(KeyError):
+        anonymise_core.get_anonymous_replacement_value(
+            "PatientName", current_value=CANARY_NAME, replacement_strategy={}
+        )
+
+    _assert_no_canaries(capsys, caplog)
+    assert "PatientName" in caplog.text
+
+
+@pytest.mark.pydicom
+def test_anonymise_file_does_not_print_paths(tmp_path, capsys, caplog):
+    caplog.set_level(logging.DEBUG)
+    input_path = _write_canary_file(tmp_path / CANARY_DIR / "ZZCANARYFILE.dcm")
+
+    anon_path = anonymise_api.anonymise_file(
+        input_path,
+        output_filepath=str(tmp_path / CANARY_OUTPUT_DIR / "plan.dcm"),
+        delete_unknown_tags=True,
+    )
+
+    assert pathlib.Path(anon_path).exists()
+    _assert_no_canaries(capsys, caplog)
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("fail_fast", [True, False])
+def test_anonymise_directory_failure_logs_no_paths_or_error_text(
+    tmp_path, monkeypatch, capsys, caplog, fail_fast
+):
+    caplog.set_level(logging.DEBUG)
+    input_dir = tmp_path / CANARY_DIR
+    _write_canary_file(input_dir / "ZZCANARYBAD.dcm")
+    _write_canary_file(
+        input_dir / "ZZCANARYGOOD.dcm",
+        sop_instance_uid="1.2.826.0.1.3680043.10.1234.3",
+    )
+
+    real_anonymise_file = anonymise_api.anonymise_file
+
+    def _fail_for_bad_file(dicom_filepath, **kwargs):
+        # Real errors, such as OSError, carry the path, and pydicom errors can
+        # carry values; this reproduces both.
+        if "BAD" in pathlib.Path(dicom_filepath).name:
+            raise ValueError(f"Cannot read {dicom_filepath} for {CANARY_NAME}")
+        return real_anonymise_file(dicom_filepath, **kwargs)
+
+    monkeypatch.setattr(anonymise_api, "anonymise_file", _fail_for_bad_file)
+
+    with pytest.raises(ValueError):
+        anonymise_api.anonymise_directory(
+            input_dir,
+            output_dirpath=str(tmp_path / "output"),
+            delete_unknown_tags=True,
+            fail_fast=fail_fast,
+        )
+
+    _assert_no_canaries(capsys, caplog)
+    warning_records = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warning_records) == 1
+    assert "file 1 of 2" in warning_records[0].getMessage()
+    assert "ValueError" in warning_records[0].getMessage()
+
+
+@pytest.mark.pydicom
+def test_pseudonymise_sequence_warning_does_not_log_value(capsys, caplog):
+    caplog.set_level(logging.DEBUG)
+    item = pydicom.Dataset()
+    item.PatientName = CANARY_NAME
+
+    pseudo_strategy.pseudonymisation_dispatch["SQ"](pydicom.Sequence([item]))
+
+    _assert_no_canaries(capsys, caplog)
+    assert "Sequence" in caplog.text
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "command", [["dicom", "anonymise"], ["experimental", "dicom", "pseudonymise"]]
+)
+def test_cli_prints_file_count_not_paths(tmp_path, capsys, caplog, command):
+    caplog.set_level(logging.DEBUG)
+    input_dir = tmp_path / CANARY_DIR
+    _write_canary_file(input_dir / "ZZCANARYFILE1.dcm")
+    _write_canary_file(
+        input_dir / "ZZCANARYFILE2.dcm",
+        sop_instance_uid="1.2.826.0.1.3680043.10.1234.4",
+    )
+
+    args = define_parser().parse_args(
+        [*command, str(input_dir), "-o", str(tmp_path / "output"), "-u"]
+    )
+    args.func(args)
+
+    captured = _assert_no_canaries(capsys, caplog)
+    assert "Wrote 2 file(s)" in captured.out
+    assert len(list((tmp_path / "output").glob("*.dcm"))) == 2
+
+
+@pytest.mark.pydicom
+def test_streamlit_pseudonymise_failure_does_not_print_file_name(
+    monkeypatch, capsys, caplog
+):
+    pytest.importorskip("streamlit")  # the GUI app, not in the dicom extra
+    from pymedphys._streamlit.apps import pseudonymise as pseudonymise_app
+
+    caplog.set_level(logging.DEBUG)
+    uploaded = io.BytesIO()
+    pydicom.dcmwrite(uploaded, _canary_dataset(), enforce_file_format=True)
+    uploaded.seek(0)
+    # Streamlit's UploadedFile is a BytesIO with the uploaded file's name.
+    uploaded.name = "ZZCANARYFILE.dcm"
+
+    def _raise_with_value(*args, **kwargs):
+        raise ValueError(f"Cannot pseudonymise {CANARY_NAME}")
+
+    monkeypatch.setattr(pseudonymise_app, "anonymise_dataset", _raise_with_value)
+
+    # The buffer is the first of a later 50 MB batch, so it is reported by its
+    # position among all uploads rather than within its batch.
+    bad_data = pseudonymise_app._zip_pseudo_fifty_mbytes(  # pylint: disable = protected-access
+        [uploaded], io.BytesIO(), first_file_number=4
+    )
+
+    assert bad_data
+    _assert_no_canaries(capsys, caplog)
+    assert "uploaded file 4 " in caplog.text
+    assert "ValueError" in caplog.text
+
+
+@pytest.mark.pydicom
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "The library functions pass pydicom's validation messages, which quote "
+        "invalid values, through unchanged as a Python warning and a 'pydicom' "
+        "log record. The commands and the app redact them; see "
+        "pymedphys/pymedphys#2075."
+    ),
+)
+def test_pseudonymise_invalid_value_is_not_quoted(tmp_path, capsys, caplog):
+    caplog.set_level(logging.DEBUG)
+    ds = _canary_dataset()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        ds.StudyTime = "ZZCANARYTIME"
+        input_path = tmp_path / "input.dcm"
+        pydicom.dcmwrite(input_path, ds, enforce_file_format=True)
+    capsys.readouterr()
+    caplog.clear()
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        anonymise_api.anonymise_file(
+            input_path,
+            output_filepath=str(tmp_path / "output.dcm"),
+            delete_unknown_tags=True,
+            replacement_strategy=pseudo_strategy.pseudonymisation_dispatch,
+            identifying_keywords=(
+                pseudonymisation.get_default_pseudonymisation_keywords()
+            ),
+        )
+
+    assert not [w for w in caught if "ZZCANARY" in str(w.message)]
+    _assert_no_canaries(capsys, caplog)
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("command", COMMANDS)
+def test_cli_reports_errors_without_paths(tmp_path, capsys, caplog, command):
+    caplog.set_level(logging.DEBUG)
+    # The *.dcm glob picks up a directory, so reading it raises an OSError
+    # whose message quotes its path.
+    input_dir = tmp_path / CANARY_DIR
+    (input_dir / "ZZCANARYSERIES.dcm").mkdir(parents=True)
+
+    with pytest.raises(SystemExit) as exit_info:
+        _run_cli(command, input_dir, tmp_path / CANARY_OUTPUT_DIR)
+
+    assert exit_info.value.code == 1
+    captured = _assert_no_canaries(capsys, caplog)
+    # Opening a directory as a file raises PermissionError on Windows.
+    expected = "PermissionError" if sys.platform == "win32" else "IsADirectoryError"
+    assert f"Error: {expected}." in captured.err
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "keyword, raw_value, character_set, quoted",
+    [
+        # pydicom quotes the value it cannot convert to a date.
+        ("StudyDate", "ZZCANARYDATE", None, "ZZCANARY"),
+        # The ASCII encoder quotes the character it cannot encode.
+        ("PatientName", "ZZCANARY^J\u00e9r\u00f4me", "ISO_IR 192", "\\xe9"),
+    ],
+    ids=["malformed-date", "non-ascii-name"],
+)
+def test_pseudonymise_cli_reports_value_errors_without_values(
+    tmp_path, capsys, caplog, keyword, raw_value, character_set, quoted
+):
+    caplog.set_level(logging.DEBUG)
+    input_path = _write_raw_canary_file(
+        tmp_path / "input.dcm", keyword, raw_value, character_set
+    )
+
+    with pytest.raises(SystemExit) as exit_info:
+        _run_cli(COMMANDS[1], input_path, tmp_path / "output" / "output.dcm")
+
+    assert exit_info.value.code == 1
+    captured = _assert_no_canaries(capsys, caplog)
+    assert quoted not in captured.err
+    assert "Error:" in captured.err
+
+
+@pytest.mark.pydicom
+def test_pseudonymise_cli_redacts_pydicom_value_messages(tmp_path, capsys, caplog):
+    caplog.set_level(logging.DEBUG)
+    input_path = _write_raw_canary_file(
+        tmp_path / "input.dcm", "StudyTime", "ZZCANARYTIME"
+    )
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _run_cli(COMMANDS[1], input_path, tmp_path / "output" / "output.dcm")
+
+    assert not [w for w in caught if "ZZCANARY" in str(w.message)]
+    captured = _assert_no_canaries(capsys, caplog)
+    assert "Wrote 1 file(s)" in captured.out
+    # The problem is still reported, without the value.
+    assert "Invalid value for VR TM: <value not shown>" in caplog.text
+
+
+@pytest.mark.pydicom
+def test_streamlit_pseudonymise_reports_any_error_by_type(monkeypatch, capsys, caplog):
+    pytest.importorskip("streamlit")  # the GUI app, not in the dicom extra
+    from pymedphys._streamlit.apps import pseudonymise as pseudonymise_app
+
+    caplog.set_level(logging.DEBUG)
+    uploaded = io.BytesIO()
+    pydicom.dcmwrite(uploaded, _canary_dataset(), enforce_file_format=True)
+    uploaded.seek(0)
+
+    def _raise_unexpected(*args, **kwargs):
+        raise RuntimeError(f"Unexpected failure for {CANARY_NAME}")
+
+    monkeypatch.setattr(pseudonymise_app, "anonymise_dataset", _raise_unexpected)
+
+    bad_data = pseudonymise_app._zip_pseudo_fifty_mbytes(  # pylint: disable = protected-access
+        [uploaded], io.BytesIO()
+    )
+
+    assert bad_data
+    _assert_no_canaries(capsys, caplog)
+    assert "RuntimeError" in caplog.text
+
+
+@pytest.mark.pydicom
+def test_streamlit_pseudonymise_redacts_pydicom_value_messages(
+    tmp_path, capsys, caplog
+):
+    pytest.importorskip("streamlit")  # the GUI app, not in the dicom extra
+    from pymedphys._streamlit.apps import pseudonymise as pseudonymise_app
+
+    caplog.set_level(logging.DEBUG)
+    input_path = _write_raw_canary_file(
+        tmp_path / "input.dcm", "StudyTime", "ZZCANARYTIME"
+    )
+    uploaded = io.BytesIO(input_path.read_bytes())
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        bad_data = pseudonymise_app._zip_pseudo_fifty_mbytes(  # pylint: disable = protected-access
+            [uploaded], io.BytesIO()
+        )
+
+    assert not bad_data
+    assert not [w for w in caught if "ZZCANARY" in str(w.message)]
+    _assert_no_canaries(capsys, caplog)
+
+
+@pytest.mark.parametrize(
+    "message, summary",
+    [
+        (
+            "Invalid value for VR TM: 'ZZCANARYTIME'",
+            "Invalid value for VR TM: <value not shown>.",
+        ),
+        # Only a VR that PS3.5 defines is shown.
+        ("Invalid value for VR ZZ: 'ZZCANARY'", diagnostics.SUMMARY),
+        (
+            "End of file reached before delimiter (FFFE,E0DD) found in file "
+            "ZZCANARYDIR/input.dcm",
+            diagnostics.SUMMARY,
+        ),
+        ("ZZCANARY", diagnostics.SUMMARY),
+    ],
+)
+def test_only_recognised_pydicom_messages_keep_any_detail(message, summary):
+    assert diagnostics.safe_summary(message) == summary
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("command", COMMANDS)
+def test_commands_keep_paths_out_of_pydicom_reading_diagnostics(
+    tmp_path, capsys, caplog, command
+):
+    caplog.set_level(logging.DEBUG)
+    input_dir = tmp_path / CANARY_DIR
+    _write_undelimited_canary_file(input_dir / "input.dcm")
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        try:
+            _run_cli(command, input_dir, tmp_path / CANARY_OUTPUT_DIR)
+        except SystemExit:
+            pass
+
+    assert not [w for w in caught if "ZZCANARY" in str(w.message)]
+    _assert_no_canaries(capsys, caplog)
+    # The problem is still reported, without its details.
+    assert diagnostics.SUMMARY in caplog.text
+
+
+@pytest.mark.pydicom
+def test_streamlit_pseudonymise_keeps_upload_names_out_of_pydicom_diagnostics(
+    tmp_path, capsys, caplog
+):
+    pytest.importorskip("streamlit")  # the GUI app, not in the dicom extra
+    from pymedphys._streamlit.apps import pseudonymise as pseudonymise_app
+
+    caplog.set_level(logging.DEBUG)
+    input_path = _write_undelimited_canary_file(tmp_path / "input.dcm")
+    uploaded = _NamedUpload(input_path.read_bytes())
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        pseudonymise_app._zip_pseudo_fifty_mbytes(  # pylint: disable = protected-access
+            [uploaded], io.BytesIO()
+        )
+
+    assert not [w for w in caught if "ZZCANARY" in str(w.message)]
+    _assert_no_canaries(capsys, caplog)
+    assert diagnostics.SUMMARY in caplog.text
+
+
+@pytest.mark.pydicom
+def test_records_of_loggers_below_pydicom_are_summarised(caplog):
+    # pydicom's pixel handling logs to loggers such as
+    # pydicom.pixels.decoders.base, whose records a filter on the pydicom
+    # logger itself never sees.
+    caplog.set_level(logging.DEBUG)
+    with diagnostics.redacted_pydicom_diagnostics():
+        logging.getLogger("pydicom.pixels.decoders.base").warning(
+            "failed on %s", CANARY_NAME
+        )
+    assert [record.getMessage() for record in caplog.records] == [diagnostics.SUMMARY]
+
+
+@pytest.mark.pydicom
+def test_pydicom_warnings_attributed_to_the_caller_are_summarised():
+    # pydicom can attribute its warnings to the caller's frame, so they do
+    # not appear to come from pydicom's modules.
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with diagnostics.redacted_pydicom_diagnostics():
+            pydicom.misc.warn_and_log(f"bad value {CANARY_NAME}", stacklevel=1)
+    assert caught
+    assert not [w for w in caught if "ZZCANARY" in str(w.message)]
+
+
+@pytest.mark.pydicom
+def test_redaction_adds_no_process_wide_warning_filter():
+    with warnings.catch_warnings():
+        before = list(warnings.filters)
+        with diagnostics.redacted_pydicom_diagnostics():
+            pass
+        assert warnings.filters == before

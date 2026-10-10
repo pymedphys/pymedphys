@@ -8,44 +8,32 @@ permissions:
   contents: read
 
 jobs:
-  pyright:
-    name: Pyright
+  # Both checkers use the same environment, so one job runs them in turn.
+  type-check:
+    name: Pyright and MyPy (optional)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'dev tests'
+          extras: 'tests ai'
+          groups: 'lint'
 
       - name: Run pyright
         run: |
           uv run -- pyright
 
-  mypy:
-    name: MyPy (optional)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # continue-on-error lets the workflow succeed even if mypy fails,
-    # but the step and job will show as failed (yellow warning) so
-    # issues are visible. Do NOT also add || true on the command —
-    # that would hide failures entirely.
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
-
-      - uses: ./.github/actions/setup-project
-        with:
-          extras: 'dev tests'
-
-      - name: Run mypy
-        run: |
-          uv run \
-            --with mypy \
-            --with types-PyYAML \
-            --with types-python-dateutil \
-            --with types-requests \
-            --with types-tabulate \
-            --with types-toml \
-            mypy lib/pymedphys
+      # mypy and its stub packages are in the dev extra, so the result does
+      # not drift with whatever version happens to be current. It is
+      # advisory: continue-on-error keeps the job green, while the failed step
+      # stays marked and GitHub lists its error in the run's annotations. It
+      # runs even when pyright fails. Do NOT also add || true on the command;
+      # that would hide failures entirely.
+      - name: Run mypy (optional)
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: uv run mypy lib/pymedphys

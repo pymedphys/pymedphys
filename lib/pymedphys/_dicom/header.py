@@ -1,4 +1,4 @@
-# Copyright (C) 2021 Matthew Jennings
+# Copyright (C) 2021-2026 Matthew Jennings
 # Copyright (C) 2019 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,8 +19,6 @@ from copy import deepcopy
 from typing import Sequence
 
 from pymedphys._imports import pydicom
-
-from .create import dicom_dataset_from_dict
 
 
 def adjust_machine_name(dicom_dataset, new_machine_name):
@@ -91,14 +89,12 @@ def adjust_rel_elec_density(
             physical_properties, "ROIPhysicalProperty", "REL_ELEC_DENSITY"
         )
 
-        physical_properties.append(
-            dicom_dataset_from_dict(
-                {
-                    "ROIPhysicalProperty": "REL_ELEC_DENSITY",
-                    "ROIPhysicalPropertyValue": new_red,
-                }
-            )
-        )
+        # A plain Dataset rather than ``dicom_dataset_from_dict``: this is a
+        # sequence item, not a file, so it must not carry file meta information.
+        physical_property = pydicom.Dataset()
+        physical_property.ROIPhysicalProperty = "REL_ELEC_DENSITY"
+        physical_property.ROIPhysicalPropertyValue = new_red
+        physical_properties.append(physical_property)
 
         observation.ROIPhysicalPropertiesSequence = physical_properties
 

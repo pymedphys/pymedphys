@@ -1,0 +1,169 @@
+---
+myst:
+  heading_anchors: 2
+---
+
+# Run the MIDI-B de-identification benchmark
+
+The de-identification engine's MIDI benchmark (D-018 in the [de-identification design](deidentification-design.md)) scores a run of the engine against the NCI MIDI-B synthetic test data and its answer key. This page runs it on your own machine, from installing the tools to the two result files, `benchmark.md` and `benchmark.json`. The harness is the development module `pymedphys._dicom.deidentify.midi_benchmark_command`. It is not part of the `pymedphys` command line, because nothing de-identification related joins the public command line before the first supported release.
+
+MIDI-B's images carry synthetic PHI, not real patients' data, but the harness treats them as real: the QC pack and the mapping files it writes hold the test data's identifiers, so they stay on your machine.
+
+Commands are given for bash (macOS, Linux, Git Bash) and PowerShell (Windows). The paths are examples; use your own.
+
+## 1. Install Git and uv
+
+- Git: <https://git-scm.com/downloads>.
+- uv, bash: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- uv, PowerShell: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+
+Open a new terminal so that `uv` is on your path, and check with `uv --version`.
+
+## 2. Get PyMedPhys with its DICOM dependencies
+
+bash:
+
+```bash
+git clone https://github.com/pymedphys/pymedphys.git
+cd pymedphys
+uv sync --no-dev --extra dicom
+uv run --no-dev --extra dicom python -m pymedphys._dicom.deidentify.midi_benchmark_command --help
+```
+
+PowerShell:
+
+```powershell
+git clone https://github.com/pymedphys/pymedphys.git
+Set-Location pymedphys
+uv sync --no-dev --extra dicom
+uv run --no-dev --extra dicom python -m pymedphys._dicom.deidentify.midi_benchmark_command --help
+```
+
+The last command should list two subcommands, `run` and `script-results`.
+
+To benchmark a later engine, run `git pull` and `uv sync --no-dev --extra dicom` again.
+
+## 3. Download MIDI-B
+
+The collection's DOI is <https://doi.org/10.7937/cf2p-aw56>, which leads to TCIA's MIDI-B-Test / MIDI-B-Validation page. It has a Validation subset (216 patients) and a Test subset (322 patients). Start with Validation, which is smaller.
+
+For that subset, download:
+
+1. **The synthetic DICOM images**, the set carrying synthetic PHI, not the TCIA-curated set. TCIA delivers images as a `.tcia` manifest that you open in NBIA Data Retriever (TCIA's download tool, linked from the page). Point it at an empty folder, for example `/data/midi-b/validation/synthetic` or `D:\midi-b\validation\synthetic`. The Retriever's folder layout inside it does not matter: the harness reads every file below the folder you give it.
+2. **The subset's answer key**, an SQLite `.db` file, saved for example in `/data/midi-b/validation/`.
+
+The commands below use placeholders for the file names; use the names that the page gives you.
+
+## 4. Run the benchmark
+
+The work directory must not exist yet, but its parent must. The command creates the work directory, readable by you alone.
+
+bash:
+
+```bash
+mkdir -p /data/midi-b/runs
+uv run --no-dev --extra dicom python -m pymedphys._dicom.deidentify.midi_benchmark_command run \
+  --source /data/midi-b/validation/synthetic \
+  --answer-key "/data/midi-b/validation/<answer key>.db" \
+  --work /data/midi-b/runs/validation-basic-1 \
+  --collection "MIDI-B Validation (TCIA 10.7937/cf2p-aw56)"
+```
+
+PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force D:\midi-b\runs | Out-Null
+uv run --no-dev --extra dicom python -m pymedphys._dicom.deidentify.midi_benchmark_command run `
+  --source D:\midi-b\validation\synthetic `
+  --answer-key "D:\midi-b\validation\<answer key>.db" `
+  --work D:\midi-b\runs\validation-basic-1 `
+  --collection "MIDI-B Validation (TCIA 10.7937/cf2p-aw56)"
+```
+
+- `--preset` defaults to `basic`, the run to do first. The preset need not be enabled, since this is a validation run.
+- It refuses `basic-clean-descriptors`, which needs a reviewed ROI-names list that the harness does not take yet.
+- It refuses a work directory that already exists. For another run, use a new name such as `validation-basic-2`.
+- At the end it prints the results as Markdown, the same text as `benchmark.md`.
+- If it stops with an error, the message quotes no value from the files, so it is safe to share in an issue.
+
+## 5. What it writes
+
+Inside the work directory:
+
+| Path | What it is | Safe to share? |
+| --- | --- | --- |
+| `benchmark.md` | The results to read: counts by answer-key category, coverage, deliberate differences (by category, tag, and the action the engine selected), and findings. | Yes |
+| `benchmark.json` | The same results as JSON, with versions and digests. | Yes |
+| `release/` | The de-identified release, with its release report. | No |
+| `qc/` | The confidential QC pack. | No |
+| `validation-script/` | `uid_mapping.csv` and `patid_mapping.csv`, mapping the test data's UIDs and Patient IDs to their replacements, for the NCI script. | No |
+
+In `benchmark.md`, read the findings first. The deliberate differences are where TCIA's curation differs from the Basic Profile. Checks of instances outside the release's coverage (a nuclear medicine image, say) and of instances the run withheld are counted apart and not scored. A withheld instance withholds all of its patient's files.
+
+## 6. Share the results
+
+`benchmark.md` and `benchmark.json` hold counts, codes, versions, and digests, and no value from the files, so they can be attached to an issue or pull request. Keep `release/`, `qc/`, and `validation-script/` on your machine.
+
+## 7. Optional: score the same release with the NCI script
+
+The NCI validation script (<https://github.com/CBIIT/midi_validation_script>) pins `pydicom==2.2.1` and other old versions in its `requirements.txt`, so clone it outside the PyMedPhys checkout and give it a virtual environment of its own. Its manual, `manual/midi_validation_manual.docx` in the clone, describes the script in full.
+
+bash:
+
+```bash
+git clone https://github.com/CBIIT/midi_validation_script.git
+cd midi_validation_script
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
+
+PowerShell:
+
+```powershell
+git clone https://github.com/CBIIT/midi_validation_script.git
+Set-Location midi_validation_script
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+Write its config, for example `midi-validation-basic-1.json`, naming the release and the mapping files from step 5:
+
+```json
+{
+  "run_name": "validation-basic-1",
+  "input_data_path": "/data/midi-b/runs/validation-basic-1/release",
+  "output_data_path": "/data/midi-b/nci-results",
+  "answer_db_file": "/data/midi-b/validation/<answer key>.db",
+  "uid_mapping_file": "/data/midi-b/runs/validation-basic-1/validation-script/uid_mapping.csv",
+  "patid_mapping_file": "/data/midi-b/runs/validation-basic-1/validation-script/patid_mapping.csv",
+  "multiprocessing": "True",
+  "multiprocessing_cpus": "4",
+  "log_path": "/data/midi-b/nci-logs",
+  "log_level": "info",
+  "report_series": "False"
+}
+```
+
+On Windows, write the JSON paths with forward slashes (`D:/midi-b/...`), since a single backslash is not valid in JSON.
+
+In the script's clone and environment:
+
+```bash
+python run_validation.py midi-validation-basic-1.json
+python run_reports.py midi-validation-basic-1.json
+```
+
+Then count its results by the harness's categories, back in the PyMedPhys checkout:
+
+```bash
+uv run --no-dev --extra dicom python -m pymedphys._dicom.deidentify.midi_benchmark_command script-results \
+  /data/midi-b/nci-results/validation-basic-1/validation_results.db
+```
+
+That prints JSON with counts and no values, which is safe to share too. The script counts per instance, and its figures will not match `benchmark.md` exactly, for the reasons given in the module docstring of `lib/pymedphys/_dicom/deidentify/midi_benchmark.py`. For example, the script fails a consistent-UID check that the mapping files do not cover, which the harness reports as not evaluated.
+
+## 8. The Test subset
+
+Repeat steps 3 to 7 with the Test subset's images and answer key, a new work directory such as `test-basic-1`, and `--collection "MIDI-B Test (TCIA 10.7937/cf2p-aw56)"`.

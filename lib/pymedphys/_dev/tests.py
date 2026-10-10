@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2021 Cancer Care Associates, Simon Biggs
 # Copyright (C) 2020 Simon Biggs
 
@@ -23,7 +24,8 @@ import tempfile
 from pymedphys._imports import pytest, tabulate, tqdm
 
 import pymedphys._utilities.test as pmp_test_utils
-import pymedphys.tests.e2e.utilities as cypress_test_utilities
+
+from . import import_policy
 
 LIBRARY_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 REPO_ROOT = LIBRARY_ROOT.parent.parent
@@ -34,71 +36,59 @@ def run_tests(_, remaining):
     _call_pytest(remaining, "pytest")
 
 
-def _is_within_scopes(import_path, scopes):
-    for scope in scopes:
-        if import_path.startswith(scope):
-            return True
-
-    return False
-
-
 def run_clean_imports(_):
-    ignore_scopes = [
-        "pymedphys.docs",
-        "pymedphys._imports",
-        # TODO: Remove the following modules if they aren't being maintained
-        # see <https://github.com/pymedphys/pymedphys/issues/1382>
-        "pymedphys._experimental.pedromartinez",
-        "pymedphys._experimental.paulking",
+    """Import every module in a real install, with only the extras it needs.
+
+    ``pymedphys._dev.import_policy`` says which modules need an extra at import
+    time. The unit tests check the same policy against a simulated base
+    install; this command checks it against real, non-editable installs.
+    """
+    module_names = import_policy.module_names()
+    base_import_paths = [
+        name for name in module_names if import_policy.required_extra(name) is None
     ]
-    tests_scopes = ["pymedphys.conftest", "pymedphys.tests"]
-
-    relative_paths = [
-        path.relative_to(LIBRARY_ROOT.parent)
-        for path in LIBRARY_ROOT.parent.rglob("**/*.py")
+    extra_import_paths = [
+        name for name in module_names if import_policy.required_extra(name) is not None
     ]
-
-    all_import_paths = [
-        ".".join(path.with_suffix("").parts).replace("-", "_")
-        for path in relative_paths
-    ]
-
-    clean_import_paths = []
-    tests_import_paths = []
-    for import_path in all_import_paths:
-        if _is_within_scopes(import_path, ignore_scopes):
-            continue
-
-        if _is_within_scopes(import_path, tests_scopes):
-            tests_import_paths.append(import_path)
-            continue
-
-        clean_import_paths.append(import_path)
 
     python_executable = pmp_test_utils.get_executable_even_when_embedded()
 
     with tempfile.TemporaryDirectory() as temp_dir:
         subprocess.check_call([python_executable, "-m", "venv", temp_dir])
-        new_python_executable = str(pathlib.Path(temp_dir).joinpath("bin", "python"))
+        new_python_executable = str(_venv_python(pathlib.Path(temp_dir)))
 
         print("Installing PyMedPhys with minimal dependencies...\n")
         subprocess.check_call(
             [new_python_executable, "-m", "pip", "install", "."], cwd=REPO_ROOT
         )
 
-        print("\nImporting all modules that should be able to handle a clean import...")
-        _import_and_print(new_python_executable, clean_import_paths)
+        print("\nImporting the modules that need no extra...")
+        failures = _import_and_print(new_python_executable, base_import_paths)
 
-        print("Installing PyMedPhys with tests dependencies...\n")
+        print("Installing PyMedPhys with the user, ai, and tests extras...\n")
         subprocess.check_call(
-            [new_python_executable, "-m", "pip", "install", ".[tests]"], cwd=REPO_ROOT
+            [new_python_executable, "-m", "pip", "install", ".[user,ai,tests]"],
+            cwd=REPO_ROOT,
         )
 
-        print("\nImporting all modules that should be able to handle a tests import...")
-        _import_and_print(new_python_executable, tests_import_paths)
+        print("\nImporting the modules that need an extra...")
+        failures += _import_and_print(new_python_executable, extra_import_paths)
+
+    if failures:
+        print(f"{failures} module(s) failed to import.")
+        sys.exit(1)
+
+
+def _venv_python(venv_dir, windows=sys.platform == "win32"):
+    if windows:
+        return venv_dir.joinpath("Scripts", "python.exe")
+
+    return venv_dir.joinpath("bin", "python")
 
 
 def _import_and_print(python_executable, import_paths):
+    """Import each module in its own interpreter; return the failure count."""
+    failures = 0
     issues = set()
     for import_path in tqdm.tqdm(import_paths):
         try:
@@ -118,6 +108,13 @@ def _import_and_print(python_executable, import_paths):
         except subprocess.CalledProcessError as e:
             error_text = e.output.decode()
 
+            # A test module that calls pytest.importorskip opts out this way
+            # when an optional dependency is missing.
+            if re.search(r"^Skipped: ", error_text, re.MULTILINE):
+                continue
+
+            failures += 1
+
             match = re.search("ModuleNotFoundError: No module named '(.*)'", error_text)
             try:
                 module, line = _get_problem_module_and_line_number(error_text)
@@ -125,13 +122,15 @@ def _import_and_print(python_executable, import_paths):
 
                 issues.add((module, line, dependency))
 
-            except (AttributeError, ValueError):
+            except (AttributeError, IndexError, ValueError):
                 print(f"When importing {import_path} the following error occurred:")
                 print(error_text)
 
     print("")
     print(tabulate.tabulate(issues, headers=["Module", "Line", "Dependency"]))
     print("\n")
+
+    return failures
 
 
 def _get_problem_module_and_line_number(error_text):
@@ -159,17 +158,49 @@ def run_doctests(_, remaining):
     _call_pytest(remaining, "doctests")
 
 
+def resolve_test_paths(paths, original_cwd, *, pyargs=False):
+    """Resolve pytest's parsed test paths relative to the caller or library.
+
+    Only positional paths reach this function; pytest and plugin option
+    values are left untouched. Missing paths are kept so pytest reports the
+    collection error. Explicit --pyargs arguments keep their module names.
+    """
+    if not paths:
+        return [str(LIBRARY_ROOT)]
+
+    if pyargs:
+        return list(paths)
+
+    original_cwd = pathlib.Path(original_cwd)
+    resolved = []
+    for path in paths:
+        path_part, separator, selector = path.partition("::")
+        candidate = original_cwd.joinpath(path_part)
+        if path_part and candidate.exists():
+            resolved.append(f"{candidate.resolve()}{separator}{selector}")
+        else:
+            resolved.append(path)
+
+    return resolved
+
+
+# The plugin that resolves caller-relative test paths in the controller and
+# in every pytest-xdist worker, and the variable it reads the caller's
+# directory from. Only pytest imports the plugin, so that it can rewrite its
+# assertions.
+PATH_PLUGIN = "pymedphys._dev.pytest_paths"
+CALLER_DIRECTORY_VARIABLE = "PYMEDPHYS_DEV_TESTS_CALLER_DIRECTORY"
+
+
 def _call_pytest(remaining, label):
     original_cwd = os.getcwd()
 
     os.chdir(LIBRARY_ROOT)
     print(f"Running {label} with cwd set to:\n    {os.getcwd()}\n")
 
-    if "--cypress" in remaining:
-        remaining += ["--reruns", "5", "-v", "-s"]
-
+    os.environ[CALLER_DIRECTORY_VARIABLE] = original_cwd
     try:
-        retcode = pytest.main(["--pyargs", "pymedphys"] + remaining)
+        retcode = pytest.main(["-p", PATH_PLUGIN, *remaining])
     finally:
         os.chdir(original_cwd)
 
@@ -202,22 +233,16 @@ def run_pylint(_, remaining):
         os.chdir(original_cwd)
 
 
-def run_cypress(_):
-    cypress_test_utilities.run_test_commands_with_gui_process(
-        ["yarn", "yarn cypress open"]
-    )
-
-
 def start_mssql_docker(args):
     CWD = REPO_ROOT.joinpath("docker", "mosaiq")
 
     if args.daemon:
         if args.stop:
             raise ValueError("Can't call stop and daemon flag together")
-        command = "docker-compose up -d"
+        command = ["docker-compose", "up", "-d"]
     elif args.stop:
-        command = "docker-compose down"
+        command = ["docker-compose", "down"]
     else:
-        command = "docker-compose up"
+        command = ["docker-compose", "up"]
 
-    subprocess.check_output(command, cwd=CWD, shell=True)
+    subprocess.check_output(command, cwd=CWD)

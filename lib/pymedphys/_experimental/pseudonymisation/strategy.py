@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2020 Stuart Swerdloff, Simon Biggs
 # Copyright (C) 2018 Matthew Jennings, Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -181,7 +182,7 @@ def _pseudonymise_plaintext(value):
     # eliminate trailing '='
     pseudonym_length = len(text_pseudonym)
     if text_pseudonym[pseudonym_length - 1] == "=":
-        text_pseudonym = text_pseudonym[0 : pseudonym_length - 1]
+        text_pseudonym = text_pseudonym[: pseudonym_length - 1]
     return text_pseudonym
 
 
@@ -193,7 +194,7 @@ def _strip_plus_slash_from_base64(value):
 
 def _pseudonymise_AE(value):
     my_pseudonym = _pseudonymise_plaintext(value)
-    my_sliced_pseudonym = my_pseudonym[0:16]
+    my_sliced_pseudonym = my_pseudonym[:16]
     return my_sliced_pseudonym
 
 
@@ -248,7 +249,7 @@ def _pseudonymise_CS(value):
     # In addition to changing to upper case, remove or replace base64 characters that
     # are not in: alphanumeric, the space character, or the underscore character
     my_upper_pseudonym = str(my_pseudonym.upper().replace("+", "").replace("/", "_"))
-    my_sliced_pseudonym = my_upper_pseudonym[0:15]
+    my_sliced_pseudonym = my_upper_pseudonym[:15]
     return my_sliced_pseudonym
 
 
@@ -320,7 +321,7 @@ def _pseudonymise_DS(value):
 
     my_hex_digest = my_hash_func.hexdigest()
 
-    sliced_digest = my_hex_digest[0:count_digits]
+    sliced_digest = my_hex_digest[:count_digits]
     # convert the hex digest values to a base ten integer
     my_integer = int(sliced_digest, 16)
     my_integer_string = str(my_integer)
@@ -340,13 +341,13 @@ def _pseudonymize_DT(value):
 
 def _pseudonymise_LO(value):
     my_pseudonym = _pseudonymise_plaintext(value)
-    my_sliced_pseudonym = my_pseudonym[0:64]
+    my_sliced_pseudonym = my_pseudonym[:64]
     return my_sliced_pseudonym
 
 
 def _pseudonymise_LT(value):
     my_pseudonym = _pseudonymise_plaintext(value)
-    my_sliced_pseudonym = my_pseudonym[0:10240]
+    my_sliced_pseudonym = my_pseudonym[:10240]
     return my_sliced_pseudonym
 
 
@@ -366,72 +367,86 @@ def _pseudonymise_OB_or_OW(value):
     return _pseudonymise_unchanged(value)
 
 
+# DICOM PS3.5 Table 6.2-1 allows at most 64 characters per PN component group,
+# delimiters included.
+_PN_COMPONENT_GROUP_MAX_LENGTH = 64
+# The family, given, and middle names and the four "^" delimiters must fit.
+_PN_NAME_MAX_LENGTH = (_PN_COMPONENT_GROUP_MAX_LENGTH - 4) // 3
+
+
 def _pseudonymise_PN(
-    value, max_component_length=64, strip_name_prefix=True, strip_name_suffix=True
+    value, max_component_length=20, strip_name_prefix=True, strip_name_suffix=True
 ):
-    """
-    create a pseudonym from a person's name.
-    Break in to surname, given name, and middle name, as well as title and honorifics
-    doesn't deal with Unicode (yet)
+    """Create a pseudonym from a person's name.
+
+    The family, given, and middle names of the alphabetic component group are
+    each replaced with the start of a hash, and empty ones stay empty. Other
+    component groups are dropped. Names containing non-ASCII characters are
+    not supported.
 
     Parameters
     ----------
-    value : string representation of Persons Name
-        DESCRIPTION.
-    max_component_length : integer, optional
-        DESCRIPTION. The default is 64.
-    strip_name_prefix : Boolean, optional
-        DESCRIPTION. The default is True.
-    strip_name_suffix : Boolean, optional
-        DESCRIPTION. The default is True.
+    value : str
+        The Person Name (PN) value.
+    max_component_length : int, optional
+        Number of hash characters kept for each non-empty family, given, and
+        middle name, from 1 to 20. The default of 20 keeps the three names and
+        the four ``^`` delimiters within the 64 characters that DICOM PS3.5
+        Table 6.2-1 allows per PN component group. Earlier versions wrote each
+        name as the whole hash, so their output can be linked by truncating
+        its non-empty names to this length.
+    strip_name_prefix : bool, optional
+        Empty the name prefix. The default is True. If False, the original
+        prefix is kept, cut to the room left in the component group.
+    strip_name_suffix : bool, optional
+        Empty the name suffix. The default is True. If False, the original
+        suffix is kept, cut to the room left after the prefix.
 
     Returns
     -------
-    string conforming to DICOM PN format
-        A pseudonym, but doesn't deal with Unicode (yet)
+    str
+        The pseudonymised value, ``family^given^middle^prefix^suffix``, of at
+        most 64 characters.
 
+    Raises
+    ------
+    ValueError
+        If ``max_component_length`` is not between 1 and 20.
     """
+    if not 1 <= max_component_length <= _PN_NAME_MAX_LENGTH:
+        raise ValueError(
+            f"max_component_length must be between 1 and {_PN_NAME_MAX_LENGTH}, "
+            "so that the name fits one PN component group"
+        )
     persons_name_three = pydicom.valuerep.PersonName(value)
-    family_name = persons_name_three.family_name
-    given_name = persons_name_three.given_name
-    middle_name = persons_name_three.middle_name
-    base64_pseudo_family = _pseudonymise_plaintext(family_name)
-    pseudo_family = _strip_plus_slash_from_base64(base64_pseudo_family)
-    if pseudo_family is not None:
-        pseudo_family = pseudo_family[0:max_component_length]
-    else:
-        pseudo_family = ""
 
-    pseudo_given = _strip_plus_slash_from_base64(_pseudonymise_plaintext(given_name))
-    if pseudo_given is not None:
-        pseudo_given = pseudo_given[0:max_component_length]
-    else:
-        pseudo_given = ""
+    pseudo_names = []
+    for name in (
+        persons_name_three.family_name,
+        persons_name_three.given_name,
+        persons_name_three.middle_name,
+    ):
+        # An empty name stays empty.
+        pseudo_name = (
+            _strip_plus_slash_from_base64(_pseudonymise_plaintext(name))
+            if name
+            else None
+        )
+        pseudo_names.append((pseudo_name or "")[:max_component_length])
 
-    pseudo_middle = _strip_plus_slash_from_base64(_pseudonymise_plaintext(middle_name))
-    if pseudo_middle is not None:
-        pseudo_middle = pseudo_middle[0:max_component_length]
-    else:
-        pseudo_middle = ""
+    room = _PN_COMPONENT_GROUP_MAX_LENGTH - 4 - sum(map(len, pseudo_names))
+    prefix = "" if strip_name_prefix else persons_name_three.name_prefix[:room]
+    room -= len(prefix)
+    suffix = "" if strip_name_suffix else persons_name_three.name_suffix[:room]
 
-    prefix = persons_name_three.name_prefix
-    suffix = persons_name_three.name_suffix
-    if strip_name_prefix:
-        prefix = ""
-    if strip_name_suffix:
-        suffix = ""
-
-    pseudonym = "{}^{}^{}^{}^{}".format(
-        pseudo_family, pseudo_given, pseudo_middle, prefix, suffix
-    )
-    return pseudonym
+    return "^".join([*pseudo_names, prefix, suffix])
 
 
 def _pseudonymise_SH(value):
-    return _pseudonymise_plaintext(value)[0:16]
+    return _pseudonymise_plaintext(value)[:16]
 
 
-def _pseudonymise_SQ(value):
+def _pseudonymise_SQ(_value):
     # returning an empty sequence addresses issue #1034,
     # should the programmer choose to include a sequence
     # in the list of identifying keywords.
@@ -439,15 +454,15 @@ def _pseudonymise_SQ(value):
     # pseudonymisation has had sequences removed
     # so that the contents will be pseudonymised rather
     # than the sequences themselves
+    # The value is not logged because it may identify the patient.
     logging.warning(
-        "Recommend against using identifying keywords that are Sequences in pseudonymisation: %s",
-        value,
+        "Recommend against using identifying keywords that are Sequences in pseudonymisation"
     )
     return [pydicom.Dataset()]
 
 
 def _pseudonymise_ST(value):
-    return _pseudonymise_plaintext(value)[0:1024]
+    return _pseudonymise_plaintext(value)[:1024]
 
 
 def _pseudonymise_TM(value):
@@ -461,8 +476,8 @@ def _pseudonymise_UI(value):
     # my_digest = HASH3_256.digest()
     my_hex_digest = my_hash_func.hexdigest()
     chars_available = 63 - len(PYMEDPHYS_ROOT_UID)  # 64 less '.'
-    big_int = int(my_hex_digest[0:chars_available], 16)
-    pseudonymous_ui = PYMEDPHYS_ROOT_UID + "." + str(big_int)[0:chars_available]
+    big_int = int(my_hex_digest[:chars_available], 16)
+    pseudonymous_ui = PYMEDPHYS_ROOT_UID + "." + str(big_int)[:chars_available]
     return pseudonymous_ui
 
 

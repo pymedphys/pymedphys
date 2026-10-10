@@ -1,5 +1,11 @@
 [MASTER]
 init-hook = "import sys; sys.setrecursionlimit(2000)"
+# Lint modules in parallel, one process per CPU. Parallel runs report the same
+# messages as serial ones, including cross-module ones such as cyclic imports.
+jobs = 0
+# Every documentation build generates docs/conf.py (gitignored) inside the
+# package, so keep it out of the lint run.
+ignore-paths = ^.*/docs/conf[.]py$
 
 [MESSAGES CONTROL]
 disable =

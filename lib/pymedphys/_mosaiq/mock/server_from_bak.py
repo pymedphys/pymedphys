@@ -16,7 +16,7 @@ import pathlib
 import subprocess
 import time
 
-import pymssql
+from pymedphys._imports import pymssql
 
 DATA_DIR_IN_DOCKER_IMAGE = pathlib.Path("/mosaiq-data")
 

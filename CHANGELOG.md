@@ -2,17 +2,564 @@
 
 # Release Notes
 
-All notable changes to are documented here.
+All notable changes are documented here. Older entries describe the project
+at the time of that release; references to former hosted apps, discussion
+forums, and CI services may no longer be available. For current setup and
+usage, see the [documentation](https://docs.pymedphys.com/en/latest/).
 
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Corrected DICOM RT Dose coordinates
+
+Corrected patient coordinates and dose ordering for non-HFS orientations and
+absolute slice offsets. **Review earlier calculations that used affected
+coordinates and recalculate where necessary.** Standard HFS grids with increasing
+relative slice offsets retain their geometry. Returned dose arrays may be
+reordered; always use their matching returned axes.
+
+For decubitus (HFDL, HFDR, FFDL, FFDR) grids, the private structure-mask
+helpers in `pymedphys._dicom.dose` and `DicomDose.coords` swapped rows and
+columns. On square grids they returned transposed masks, doses, DVHs and
+coordinates without an error. **Recalculate any such results**; see the bug
+fix below.
+
+The [illustrated guide](https://docs.pymedphys.com/en/latest/contrib/info/dicom-coordinates-illustrated.html)
+explains affected cases, retrospective checks and plotting. The
+[validation record](https://docs.pymedphys.com/en/latest/contrib/info/dicom-coordinate-validation.html)
+documents the independent evidence and remaining limitations.
+[PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+
+### Gamma with single-slice evaluation doses
+
+`pymedphys.gamma` and `gamma_dicom` gave wrong, origin-dependent results when an evaluation axis had a single value: a single-slice evaluation dose such as a single-frame RT Dose read by `pymedphys.dicom.zyx_and_dose_from_dataset` (shape `(1, rows, columns)`), or any evaluation grid that is a plane, line or point. The search met such a zero-thickness grid only where rounding happened to land on it. For the same comparison, gamma could be 3.0 with the plane at z = 0 mm and 0.3 at z = 300 mm, where 0.3 is correct. **Recalculate gamma and pass rates for single-slice evaluation doses** computed with `interp_algo="scipy"`; the default interpolator rejected these grids. Gamma now searches within the plane, line or point and adds each reference point's perpendicular distance from it, so separated-plane and volume-to-plane comparisons also give correct values. Results for evaluation grids without single-value axes are unchanged. [PR #2126](https://github.com/pymedphys/pymedphys/pull/2126)
+
+### Faster gamma calculations
+
+Gamma avoids repeated coordinate copies and interpolator setup. The
+[completed workstation audit](https://docs.pymedphys.com/en/latest/contrib/info/gamma-uncertainty-workstation/index.html)
+measured 22–26% lower warmed runtime with the PyMedPhys interpolator on two
+synthetic SABR-like and prostate/nodal volumes, with unchanged numerical results.
+The report includes absolute comparisons with SciPy, runtime-model limitations
+and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/contrib/info/gamma-performance-study.html).
+[PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+
+### Gamma no longer drops points it cannot reach
+
+`pymedphys.gamma` returned NaN, which pass rates exclude, for analysed reference points whose search never sampled the evaluation grid. This happened for points more than `max_gamma` times the distance threshold from the evaluation grid, for evaluation grids narrower than one search step (the distance threshold divided by `interp_fraction`), and for points beside a singleton evaluation plane. So setting `max_gamma` could raise a pass rate. Each analysed reference point is now also compared with the nearest point of the evaluation grid's extent, so it always gets a value, and `max_gamma` only caps values that already fail. NaN now means only that a point is below the lower dose cutoff or was not selected by `random_subset`.
+
+**Pass rates fall where the reference grid extends beyond the evaluation grid and `max_gamma` was set**, for example a planning-system plane compared with a smaller measured array. A new warning gives the number of analysed reference points more than one search step outside the evaluation grid; crop the reference grid to the region the evaluation grid covers to analyse that region alone. Results for points inside the evaluation grid are unchanged, and points outside it that the search did reach can now get a slightly lower, more accurate value. [PR #2119](https://github.com/pymedphys/pymedphys/pull/2119)
+
+### New features and enhancements
+
+- A reusable gamma benchmark in `examples/gamma_benchmark` compares PyMedPhys versions and branches, or the SciPy and PyMedPhys interpolators in one checkout. Saved workload plans cover grid size, above-cutoff fraction, search settings and resource budgets, with numerical verification and illustrated offline reports. Follow the [comparison guide](https://docs.pymedphys.com/en/latest/contrib/info/gamma-benchmark.html) to prepare a study and run it when ready to measure. [PR #2183](https://github.com/pymedphys/pymedphys/pull/2183)
+- `pymedphys.gamma` has a new `exclude_nan_reference` option. When set, reference points whose dose is NaN are left out of the analysis, for example unmeasured detector positions or points outside a region of interest. They are reported as NaN, and the default normalisation ignores them. Without it, a NaN reference dose still raises `ValueError`, whose message now names the option, so that NaN from an upstream error is not silently dropped. NaN in the evaluation dose, and infinite doses in either grid, still raise; the evaluation message recommends cropping the evaluation grid, or using the measurement as the reference with the new option. [PR #2124](https://github.com/pymedphys/pymedphys/pull/2124)
+- New `pymedphys.gamma_pass_rate` gives the percentage of analysed reference points in a `pymedphys.gamma` result that pass (gamma at most 1), leaving out the NaN points that were not analysed and any masked values of a masked array. It raises `ValueError` if no point was analysed or any gamma value is negative, and `TypeError` for the dict of results that `pymedphys.gamma` returns for several thresholds. Gamma from other software, or from earlier versions of `pymedphys.gamma`, can be NaN at analysed points, which the pass rate would leave out; recalculate such gamma with `pymedphys.gamma` first. It replaces a private helper that counted only gamma below 1 and divided by zero when there were no points; the "Gamma from DICOM" and 1D how-to guides now use it. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120), [PR #2127](https://github.com/pymedphys/pymedphys/pull/2127)
+- `pymedphys.gamma` has a `random_state` argument, an integer seed or `numpy.random.Generator`, that selects the `random_subset` reproducibly without seeding NumPy's global random state. Without it, the subset still comes from NumPy's global random state, so earlier analyses that called `numpy.random.seed` select the same points. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
+- PyMedPhys now supports Python 3.13 and 3.14, and CI tests Python 3.11 to 3.14. v0.41.0 required Python 3.12 or earlier. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
+- The interpolation comparison notebook compares PyMedPhys with SciPy's `RegularGridInterpolator`, and the documentation dependencies no longer include EconForge's `interpolation`. The reference page keeps the earlier benchmark image, labelled as a historical result, and links to the executable comparison. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
+- New documentation page,
+  [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html),
+  explaining de-identification, pseudonymisation, and anonymisation, what a
+  DICOM conformance claim does and does not establish, and the known
+  limitations of `pymedphys.dicom.anonymise` and experimental
+  pseudonymisation. Neither tool implements a DICOM confidentiality profile:
+  for example, `anonymise` leaves UIDs unchanged, and experimental
+  pseudonymisation hashes UIDs without a secret key.
+  [PR #2061](https://github.com/pymedphys/pymedphys/pull/2061)
+- Data downloads (`pymedphys.data_path`, `pymedphys.zip_data_paths`) now time
+  out after 60 seconds without data, and are written to a temporary file that
+  is moved into place only once complete, so an interrupted download no longer
+  leaves a truncated file in the cache. Network errors, timeouts, and transient
+  HTTP statuses (408, 425, 429, and 5xx) are retried; other HTTP errors such as
+  404 are raised at once instead of after 21 seconds of retries.
+  [PR #2042](https://github.com/pymedphys/pymedphys/pull/2042)
+- The `PYMEDPHYS_DATA_DIR` environment variable overrides the location of the
+  downloaded data cache, which defaults to `~/.pymedphys/data`.
+  [PR #2042](https://github.com/pymedphys/pymedphys/pull/2042)
+- `pymedphys --version` prints the installed version. Previously the option
+  was not recognised and the help text was printed instead.
+  [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060)
+- **[Security]** Experimental pseudonymisation now warns about its security
+  limitations. It hashes UIDs and some numeric values without a secret key,
+  so anyone who holds the original UIDs can re-link records, and anyone can
+  recover small-range values such as patient weight from the output alone by
+  hashing every plausible value; it shifts every patient's dates by the same
+  offset; and its output keeps the original file preamble and the original SOP
+  Instance UID in the File Meta Information.
+  `pymedphys.experimental.pseudonymisation.pseudonymise`,
+  `get_default_pseudonymisation_keywords`, and
+  `is_valid_strategy_for_keywords` emit a `PseudonymisationLimitationWarning`
+  (a `UserWarning`); `pymedphys experimental dicom pseudonymise` prints the
+  notice on standard error; and the DICOM Pseudonymisation app shows it as a
+  banner. This is not a deprecation: neither legacy tool will be deprecated
+  until a replacement is released. Until then, both are changed only to stop
+  them disclosing identifying information or to prevent harm to data, and
+  their other defects are documented rather than fixed. See
+  [DICOM de-identification](https://docs.pymedphys.com/en/latest/users/background/dicom-deidentification.html).
+  [PR #2065](https://github.com/pymedphys/pymedphys/pull/2065), [PR #2105](https://github.com/pymedphys/pymedphys/pull/2105)
+- **[Security]** `pymedphys.dicom.anonymise` now warns about its limitations.
+  It replaces only a list of attributes; its default list keeps every UID and
+  most RT attributes, such as plan, structure set, ROI, and beam labels and
+  names; it does not rebuild the file preamble or File Meta Information; and
+  `pymedphys dicom anonymise` names its output files after the original SOP
+  Instance UID. `pymedphys.dicom.anonymise` emits an
+  `AnonymisationLimitationWarning` (a `UserWarning`), and the command prints
+  the notice on standard error. The docstrings and help text no longer claim
+  that output file names contain no identifying information or that
+  `is_anonymised_*` confirms anonymisation, and they state which files and
+  attributes are processed. This is not a deprecation.
+  [PR #2078](https://github.com/pymedphys/pymedphys/pull/2078), [PR #2086](https://github.com/pymedphys/pymedphys/pull/2086)
+- An experimental DICOM RT viewer displays a CT series with its RT Structure Set and, optionally, its RT Dose, with controls for slice, window level, and window width, and a toggle for each structure. It reads the files from paths on the local file system and skips, with a warning, CT slices that it cannot read. It is not part of `pymedphys gui`: run `streamlit run` on `pymedphys/_experimental/dicomrtvisualisation/visualise.py` in the installed package. [PR #1885](https://github.com/pymedphys/pymedphys/pull/1885), [PR #1907](https://github.com/pymedphys/pymedphys/pull/1907)
+
+### Bug fixes
+
+- `pymedphys trf detect` works again. Since the TRF decoder began reading each file's row layout from its header, in v0.40.0, the command has failed with `TypeError` before decoding anything. It now prints the header, any item parts that have no column name, and which of the known row layouts fit the file's table, and exits with an error when none do. An item part with no name does not hide the layouts that fit, so the command can show when a file from a newer linac software version needs only a new column name. [PR #2155](https://github.com/pymedphys/pymedphys/pull/2155)
+
+- **[Security]** The experimental Monaco anonymisation app now refuses a patient ID that would place the zip file it creates, and offers to delete, or the anonymised demographic file outside their folders, for example an ID containing `../`. Previously it used the patient ID in these paths without checking it. [PR #2146](https://github.com/pymedphys/pymedphys/pull/2146)
+- When PyMedPhys needs an optional dependency that is not installed, its error now names the extra that provides it and a command that works. It used to suggest the smallest extra whose list contained the name the code imported the package under, which was usually wrong: `pymedphys.gamma` suggested `[icom]`, which installs only NumPy, so the next missing package failed straight after, and `pymedphys gui` suggested `[cli]`. It now suggests `user`, which has the dependencies of every feature except the AI app, or `ai` or `tests` for a package only one of those has; for a development tool, it says to run `uv sync` in a source checkout. The command is quoted, so shells such as zsh do not expand the brackets, and it pins the installed release; a development version is told to install the extra from its source checkout instead of from PyPI. The error's `name` is now the missing package. `pymedphys gui` gives the same message when Streamlit is missing, instead of failing in the Streamlit subprocess. The [installation guide](https://docs.pymedphys.com/en/latest/users/get-started/installation-options.html) now explains these messages, and a new contributor page, *Lazy imports and optional dependencies*, describes how optional imports work and the rules for adding them. [PR #2143](https://github.com/pymedphys/pymedphys/pull/2143), [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
+- `inspect`, doctest, and `hasattr` checks of dunder attributes such as `__wrapped__` no longer raise `ModuleNotFoundError` on PyMedPhys modules when an optional dependency is missing; the attribute is reported as absent. Using the missing package still raises `ModuleNotFoundError` with the install instructions. The Mosaiq mock database modules now import `pandas` and `pymssql` only when used, so they can be imported without the `user` extra. [PR #2143](https://github.com/pymedphys/pymedphys/pull/2143)
+- Reading a Monaco file, or an iCOM file watched by the iCOM observer, now raises the error from opening the file when it cannot be opened, for example `FileNotFoundError`. The helper that opens these files without locking them replaced that error with `UnboundLocalError`. On Windows with pywin32 installed, a missing file was already reported by pywin32 before this point. [PR #2135](https://github.com/pymedphys/pymedphys/pull/2135)
+- `pymedphys.gamma` no longer prints a `--- Logging error ---` traceback on every call when INFO logging is enabled. Its dose-threshold message formatted the threshold arrays as single numbers, which NumPy 2 rejects. `ram_available=None` now means the default budget; it raised `TypeError` when a reference point lay outside the evaluation grid. [PR #2125](https://github.com/pymedphys/pymedphys/pull/2125)
+- The experimental iView/iCOM alignment utility again makes iCOM gantry and collimator angles continuous where they cross ±180° when used with pandas 3. It adjusted the angles in place in arrays that pandas 3 makes read-only, so it raised `ValueError: assignment destination is read-only`; it now works on a copy and leaves its input unchanged. [PR #2107](https://github.com/pymedphys/pymedphys/pull/2107)
+- `pymedphys.electronfactors.plot_model` and the experimental Electrons app work with pandas 3. They called `Series.ravel`, which pandas 3 removed, so with pandas 3 they failed when given DataFrame columns, as the app does. [PR #2107](https://github.com/pymedphys/pymedphys/pull/2107)
+- `pymedphys dicom listen` now stores objects received with the Explicit VR Big Endian transfer syntax, which it accepts by default. Previously writing the file raised an error, so the sender received a failure status. The listener also no longer logs three pydicom deprecation warnings for every object it receives. [PR #2106](https://github.com/pymedphys/pymedphys/pull/2106)
+- `pymedphys dicom listen` now keeps every object it receives inside its storage folder. It names each object's folders and file after its Patient ID and its Study, Series, and SOP Instance UIDs, and previously used these values unchanged, so a value such as `../other` or `/other` stored the file outside the storage folder. In these names, the characters `% / \ : * ? " < > |` and control characters are now written as `%` and their two-digit hexadecimal code, and the names `.` and `..` as `%2E` and `%2E%2E`. `pymedphys dicom listen --help` now describes the folder layout. [PR #2152](https://github.com/pymedphys/pymedphys/pull/2152)
+- `pymedphys icom listen` no longer stops recording when it cannot save a delivery to its patient archive. Previously the error ended the connection to the linac, and the listener waited 15 minutes before reconnecting, so nothing from that linac was recorded in that time. On Windows this happened after every delivery for a patient whose ID or name contains a double quote, which Windows does not allow in folder names. The listener now writes a double quote in the archive folder's name as `%22`, and logs any delivery it cannot archive and keeps recording. [PR #2154](https://github.com/pymedphys/pymedphys/pull/2154)
+- **[Security]** `pymedphys pinnacle export` given a TAR archive now checks the whole archive before extracting anything, and refuses it if any member is a link or special file, or would be extracted outside its temporary extraction directory, such as a `../` path. Pinnacle archives contain only files and directories. Previously, on Python 3.11 to 3.13, such a member was written wherever it pointed. A leading `/` on a member name is stripped, so the member is extracted inside the directory. The members are then extracted with tarfile's `data` filter, which relies on a Python with CPython's June 2025 tarfile security fixes (3.11.13, 3.12.11, 3.13.4, or later, or a distribution build that includes them); refusing links does not depend on those fixes. A regression test imports an original Pinnacle 16.0 TAR from Zenodo and checks its DICOM export against the reference plan and dose. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
+- PyMedPhys now works with NumPy 2. v0.41.0 allowed NumPy 2 to be installed, but several functions could fail under it: Pinnacle DICOM export called `ndarray.tostring()`, which NumPy 2 removed; building a structure mask on a dose grid called `int()` on a one-element array, which NumPy 2 rejects; `pymedphys.electronfactors.parameterise_insert` passed a one-element array as SciPy's basin-hopping temperature and step size, which fails under NumPy 2.4 and later; and delivery, MetersetMap, dose, and mock-profile helpers called `np.array(..., copy=False)`, which NumPy 2 rejects whenever a copy is needed, for example for list input. `Delivery.to_dicom` now writes gantry and beam limiting device rotation directions as plain strings rather than NumPy strings, which NumPy 2 prints as `np.str_('NONE')` when a dataset is displayed. Converting delivery gantry and collimator angles to DICOM also no longer replaces negative angles in a NumPy array passed in. [PR #2097](https://github.com/pymedphys/pymedphys/pull/2097)
+- `pymedphys.zip_data_paths` now extracts an archive into the data cache again when the downloaded archive has changed since it was extracted, or when an extracted file is missing or has the wrong size. Previously, files already extracted were never refreshed, so they could keep stale or incomplete contents. Archives extracted by earlier versions are extracted again on first use. Edits that leave a file the same size are not detected. A caller-specified `extract_directory` still only gains missing files, so edits there are kept. [PR #2092](https://github.com/pymedphys/pymedphys/pull/2092)
+- Processes that share the data cache, such as parallel test workers, can
+  now call `pymedphys.data_path` and `pymedphys.zip_data_paths` for the same
+  file at the same time. Previously they could each download or repair it,
+  which fails on Windows when another process has the file open, and could
+  read or return files that another process was still extracting.
+  `data_path` now holds an exclusive lock, on a hidden file beside each
+  cached file, while it checks, downloads, or repairs that file; a valid file
+  is never modified, so the returned path stays safe to use.
+  `zip_data_paths` also holds a lock, beside the archive's extraction
+  directory, from checking or downloading the archive until its extraction
+  is complete, including when the caller extracts into its own directory.
+  The operating system releases each lock when the process ends, so neither
+  can be left stale.
+  [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099)
+- A `redirect` in `~/.pymedphys/config.toml` that leads back to a file already
+  read, including itself, now raises `ValueError` instead of hanging every
+  command and GUI app that reads the configuration.
+  [PR #2094](https://github.com/pymedphys/pymedphys/pull/2094)
+- Importing `pymedphys.experimental.pinnacle` no longer changes the names of
+  public Pinnacle classes and `export_cli`. This restores class signatures
+  and members in the API documentation while retaining legacy deprecation
+  warnings, which now name the legacy import path alongside its replacement.
+  The deprecated `pymedphys experimental pinnacle export` command calls the
+  public `export_cli` directly, so it emits only its existing deprecation
+  warning.
+  [PR #2059](https://github.com/pymedphys/pymedphys/pull/2059)
+- The experimental `pymedphys.experimental.pseudonymisation.pseudonymise`
+  now leaves `PatientSex` unchanged, as documented. Previously it replaced the
+  value with a hash, which is not a valid value for this attribute, so outputs
+  from earlier versions differ in `PatientSex`.
+  [PR #2050](https://github.com/pymedphys/pymedphys/pull/2050)
+- **[Security]** Explicit application logging and progress output in legacy
+  DICOM anonymisation and experimental pseudonymisation now exclude DICOM
+  values and file paths. Previously the `pymedphys dicom anonymise` and
+  `pymedphys experimental dicom pseudonymise` commands printed every input and
+  output path (output file names contain the original SOP Instance UID),
+  directory runs logged the path and error message of each failed file and
+  the paths of all successful files, the pseudonymisation Streamlit app printed
+  the failing file's name and error, and `pymedphys.dicom.anonymise` logged the
+  value being replaced when no replacement was defined for its value
+  representation. The commands now print only the number of files written
+  on standard output, and failures are logged by file number and exception
+  type. A failed command prints a one-line error naming only the exception
+  type and exits with status 1, instead of a traceback whose messages could
+  contain a path or a value, and the app reports any failed file by its
+  number and exception type. pydicom issues each of its warnings as a Python
+  warning and logs it through the `pydicom` logger, and these messages can
+  quote values (for example a malformed time during pseudonymisation) or name
+  the file being read. While the commands and the app run, each such log
+  record, including those of loggers below `pydicom` such as its pixel
+  decoders, is replaced by a fixed summary; a report of an invalid value keeps
+  only its VR, as in `Invalid value for VR TM: <value not shown>.`. Each
+  warning is shown as Python's warning filters decide, with a fixed summary in
+  place of its message and `<pydicom>:0` in place of its location, so a run
+  can print such a line on standard error besides the log record. The
+  redaction applies only in the thread running the command or the app's
+  pseudonymisation, and only while it runs, so other apps in the same process
+  see pydicom's warnings unchanged. The library
+  functions still raise exceptions unchanged and pass pydicom's messages
+  through unchanged.
+  [PR #2062](https://github.com/pymedphys/pymedphys/pull/2062), [PR #2082](https://github.com/pymedphys/pymedphys/pull/2082), [PR #2221](https://github.com/pymedphys/pymedphys/pull/2221)
+- `pymedphys gui --port` now takes effect. Previously the port was ignored and
+  the GUI always used Streamlit's default port. A port that is not an integer
+  is now rejected.
+  [PR #2080](https://github.com/pymedphys/pymedphys/pull/2080)
+- Pinnacle RTDOSE export no longer fails when a beam dose file is empty: empty and zero-filled beam dose files are skipped, and the dose from the other beams is exported. A missing beam dose file still stops RTDOSE export rather than exporting an incomplete sum. [PR #1960](https://github.com/pymedphys/pymedphys/pull/1960), [PR #2057](https://github.com/pymedphys/pymedphys/pull/2057)
+- Pinnacle RTPLAN, RTDOSE, and RTSTRUCT exports no longer fail with a `KeyError` when the plan has no `ToolType`; Manufacturer's Model Name is then left empty. RTPLAN and RTSTRUCT exports now write Manufacturer's Model Name, which a misspelt attribute name had left out of them. [PR #1956](https://github.com/pymedphys/pymedphys/pull/1956)
+- PyMedPhys now works with pydicom 3. With pydicom 3, v0.41.0 failed in code that called the removed `pydicom.read_file` and `pydicom.write_file`, including the `pymedphys dicom adjust-machine-name`, `adjust-RED`, `adjust-RED-by-structure-name`, `merge-contours`, `listen`, and `send` commands, Pinnacle image export, and DICOM input in the MetersetMap app. Datasets that PyMedPhys constructs now declare a Transfer Syntax UID, defaulting to Implicit VR Little Endian, because pydicom 3 needs one to decode pixel data and uses it to choose the encoding when writing. `pymedphys.dicom.zyx_and_dose_from_dataset` no longer overwrites a dataset's Transfer Syntax UID with Implicit VR Little Endian; it sets one only when none is present. [PR #1959](https://github.com/pymedphys/pymedphys/pull/1959), [PR #1964](https://github.com/pymedphys/pymedphys/pull/1964)
+- RT Dose conversion accepts rounded cardinal orientations and valid single-slice files, and rejects inconsistent geometry. See the illustrated guide above. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- Gamma handles descending evaluation axes, uses SciPy for uneven spacing with a warning, and bounds its search so disjoint-grid comparisons terminate. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- The experimental Sum Coincident DICOM Doses app, and `sum_doses_in_datasets`, which it uses, check corresponding voxel positions before adding raw arrays. They reject grids whose voxel centres differ by more than 0.1 mm and sum those within it without resampling; above 0.01 mm the app shows a warning. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- For decubitus RT Dose grids, whose pixel rows run along x, the private
+  `get_dose_grid_structure_mask`, `find_dose_within_structure` and
+  `create_dvh` in `pymedphys._dicom.dose`, and `DicomDose.coords` in
+  `pymedphys._dicom.collection`, now follow the pixel array's
+  `(slice, row, column)` order. Previously they treated rows as y and columns
+  as x: rectangular grids received a transposed mask, so
+  `find_dose_within_structure` raised `IndexError`, and square grids selected
+  the voxels at transposed row and column indices, which can lie anywhere in
+  the slice. Supine and prone results are unchanged.
+  [PR #2110](https://github.com/pymedphys/pymedphys/pull/2110)
+- The private `get_dose_grid_structure_mask` in `pymedphys._dicom.dose`
+  applies each contour to the dose slice at its own z. Previously a structure
+  whose contours were not listed in ascending z raised `ValueError`, even when
+  every contour lay on a dose slice. `find_dose_within_structure` and
+  `create_dvh` also accept single-slice RT Dose files, which previously raised
+  `IndexError`. Two contours on one slice, or contours beyond the dose grid, now
+  raise `ValueError` with the check's own message instead of a NumPy broadcast
+  error or `IndexError`.
+  [PR #2111](https://github.com/pymedphys/pymedphys/pull/2111)
+
+### Dependency changes
+
+- The extras are reorganised. `user` is unchanged and remains the recommended install. `tests` is now `user` plus the test runner, so `pymedphys[tests]` is enough to run `pymedphys dev tests`. `all` is now `user`, `ai`, and `tests`, without development tools. Development tools move to dependency groups, which are not published to PyPI; in a source checkout, `uv sync` installs every extra and tool. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
+- The feature extras now each install everything their feature uses, and CI installs each one alone and runs its feature's tests. Before, each lacked packages its own feature needed: for example, `pymedphys[dicom]` could not anonymise because it had no NumPy. Combine them as needed, for example `pymedphys[gamma,dicom]` for gamma on DICOM files. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
+  - New `gamma`: `pymedphys.gamma` and `pymedphys.gamma_pass_rate`, with NumPy, Numba, and SciPy.
+  - `dicom`: `pymedphys.dicom` and the `pymedphys dicom` commands. It adds NumPy, SciPy, Shapely, and toml to pydicom and pynetdicom.
+  - `mosaiq`: `pymedphys.mosaiq` and `Delivery.from_mosaiq`. It adds keyring and NumPy, and drops attrs, scikit-learn, SQLAlchemy, and toml, which only TRF identification, private session clustering, and the test database used.
+  - `icom`: `pymedphys icom listen` and `Delivery.from_icom`. It adds toml to NumPy.
+  - New `trf`: `pymedphys.trf.read`, `Delivery.from_trf`, and the `trf to-csv` and `trf detect` commands. `pymedphys.trf.identify` and `trf orchestrate` also look up Mosaiq, so they need `pymedphys[trf,mosaiq]`.
+  - `cli` now installs what `user` installs, because the command line spans every feature.
+- `pandas` is now required at `>=2.0` instead of `>=1.0.0`. The Mosaiq mock database loader uses `pandas.to_datetime(..., format="mixed")`, which pandas 2.0 introduced, so earlier pandas versions already failed there. The locked development environment moves from pandas 2.3.3 to pandas 3.0.6, so CI tests PyMedPhys with pandas 3; pandas 3 no longer installs `pytz`, which PyMedPhys does not use. [PR #2107](https://github.com/pymedphys/pymedphys/pull/2107)
+- The `user`, `tests`, and `all` extras now install `xlrd`, which reads the Excel 97-2003 workbook in which AAPM publishes the TG-263 structure names. [PR #2108](https://github.com/pymedphys/pymedphys/pull/2108)
+- PyMedPhys no longer uses the pydicom APIs that pydicom 3 deprecates for removal in pydicom 4. It writes files with `enforce_file_format` instead of `write_like_original`, and takes a dataset's encoding from its Transfer Syntax UID or `original_encoding` instead of the `is_implicit_VR` and `is_little_endian` attributes. With pydicom 4, the functions that add a missing Transfer Syntax UID, such as the dose functions in `pymedphys.dicom`, would otherwise have labelled a file read without file meta information as Implicit VR Little Endian whatever its encoding, so the dose in a big endian RT Dose file would have been decoded with the wrong byte order. pydicom 4 is not yet released, so this was checked with pydicom 3.0.2's future behaviour, which imitates it. pynetdicom 3.0 still reads the removed attributes when it sends a dataset that was not read from a file, so passing such a dataset to `DicomSender.send` will need a pynetdicom release that supports pydicom 4. [PR #2106](https://github.com/pymedphys/pymedphys/pull/2106)
+- For Python 3.13 and 3.14 support: the Windows `pywin32` requirement no longer excludes Python 3.13 and later; the locked environment moves to `pylibjpeg-libjpeg` 2.4.0, which has wheels for 3.13 and 3.14; on Python 3.14 the `user` and `all` extras require `altair>=6` (locked at 6.3.0), because altair 5.5.0 cannot be imported on Python 3.14 and Streamlit imports it while rendering GUI apps; and on macOS with Python 3.14, `watchdog` has no wheel, so installing either extra builds it from source and needs Apple's Command Line Tools, as the [installation guide](https://docs.pymedphys.com/en/latest/users/get-started/installation-options.html#macos-with-python-3-14) describes. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
+- The locked development environment moves from NumPy 1.26 to NumPy 2 (2.4 on Python 3.11, and 2.5 on 3.12 and later). NumPy 1.26 remains the minimum supported version, and CI runs the unit tests with NumPy 1.26.4. [PR #2097](https://github.com/pymedphys/pymedphys/pull/2097), [PR #2114](https://github.com/pymedphys/pymedphys/pull/2114)
+- `streamlit` is now constrained to `>=1.61` instead of `~=1.34.0`. Newer Streamlit releases no longer depend on GitPython, and 1.61 is the first release with the `server.allowedHosts` setting that `pymedphys gui` uses. The locked development environment moves to Pillow 12, protobuf 7, and pyarrow 25, and to a fixed release of every dependency that had a security fix available at the time; the security workflow explicitly ignores PYSEC-2025-183, a disputed PyJWT advisory with no fix. [PR #2036](https://github.com/pymedphys/pymedphys/pull/2036), [PR #2039](https://github.com/pymedphys/pymedphys/pull/2039), [PR #2041](https://github.com/pymedphys/pymedphys/pull/2041), [PR #2166](https://github.com/pymedphys/pymedphys/pull/2166)
+- The `user` and `all` extras now install `plotly`, which draws the experimental DICOM RT viewer. [PR #1885](https://github.com/pymedphys/pymedphys/pull/1885), [PR #2138](https://github.com/pymedphys/pymedphys/pull/2138)
+- `pydicom` is now required at `>=3.0.2` instead of `>=3.0`, in every extra that installs it and in the `docs` dependency group. pydicom 3.0.0 and 3.0.1 are affected by CVE-2026-32711, a path-traversal flaw in reading DICOMDIR files that 3.0.2 fixes. The locked development environment already uses 3.0.2, and CI runs the de-identification tests with the new minimum. [PR #2195](https://github.com/pymedphys/pymedphys/pull/2195)
+
+### Contributor facing changes
+
+- **[Contributor facing only]** The de-identification tests use short,
+  resolved temporary paths on Windows and compact case names for large
+  residual-search inputs. Nested CLI tests collect within their own temporary
+  directories, avoiding races with other workers' directory cleanup.
+  The electron-factor baseline comparison allows
+  floating-point round-off across platforms with a tight absolute tolerance.
+  These changes restore portable CI checks while retaining the production
+  path limits and numerical baseline. [PR #2308](https://github.com/pymedphys/pymedphys/pull/2308)
+- **[Contributor facing only]** CI and the security scan run no jobs on draft pull requests. Marking a pull request ready for review starts both on its current commit, and converting it back to a draft cancels any run in progress, so work in progress uses no Actions runners. The merge queue still runs every check before a change reaches `main`. [PR #2269](https://github.com/pymedphys/pymedphys/pull/2269)
+- **[Contributor facing only]** Merge-queue validation uses the quick Ubuntu/Python 3.14 unit matrix while retaining every integration, database and security check. Main, releases and PRs labelled `full-test` retain the full OS/Python matrix. This avoids repeating all 12 environments immediately before and after each merge; platform failures discovered on main are corrected or reverted there. [PR #2249](https://github.com/pymedphys/pymedphys/pull/2249)
+- **[Contributor facing only]** De-identification tests reuse immutable conformance setup and file/table digest caches for ordinary assertions, while mutation and cold-read tests retain fresh inputs. Requirements traceability reuses actual pytest collection, and minimum/latest pydicom coverage can reuse the matching locked Ubuntu/Python 3.14 run with recorded evidence. All test cases and the existing matrix policy remain in place. [PR #2243](https://github.com/pymedphys/pymedphys/pull/2243)
+- **[Contributor facing only]** CI runs its larger unit-test suites on two
+  workers with bounded numerical thread pools and reports the slowest tests.
+  Pull requests select integration components by their inputs, CI reuses the
+  frozen dependency environment between commands, and newer main pushes
+  supersede obsolete CI runs. DICOM test listeners reserve their assigned ports
+  before clients connect; the listener exposes the actual port when started
+  with port 0. Full OS/Python, dependency and release validation
+  remains in place. [PR #2241](https://github.com/pymedphys/pymedphys/pull/2241)
+- Corrected the documentation dependency-group terminology, the weekly dependency update branch name and the current status of the historical coordinate expected failures. [PR #2246](https://github.com/pymedphys/pymedphys/pull/2246)
+
+- **[Contributor facing only]** CI and security workflows now validate
+  `merge_group` commits comprehensively while ordinary pull request checks
+  remain selective. The dependency audit stays advisory for queued merges;
+  Bandit and zizmor remain blocking. Once the `main-integrity` ruleset enables
+  the queue, approved pull requests can enter without merging the latest
+  `main` after an unrelated pull request lands. GitHub then validates the
+  prospective integrated state and merges each pull request individually.
+  [PR #2182](https://github.com/pymedphys/pymedphys/pull/2182)
+- **[Contributor facing only]** A stable release pull request has its own template, `.github/PULL_REQUEST_TEMPLATE/release.md`, opened with the `template` and `labels` parameters on the pull request URL. It records the release and next development versions, the preparation steps, a changelog review, and the steps after merging. The release guide has a new "Review the changelog" section with the review criteria and a check that no pull request link was lost in a rewrite, and the default pull request template points to the release template. [PR #2177](https://github.com/pymedphys/pymedphys/pull/2177)
+- **[Contributor facing only]** New bug reports use the organisation's `Bug` issue type instead of the `bug` label. Dependabot's GitHub Actions update pull requests carry `dependencies` without the old `CI / CD` label. [PR #2157](https://github.com/pymedphys/pymedphys/pull/2157)
+- **[Contributor facing only]** `SECURITY.md`, the workflow guide, and `AGENTS.md` describe the security checks configured in the repository's settings rather than in workflows: CodeQL code scanning through GitHub's default setup for Python and GitHub Actions, secret scanning with push protection, and Dependabot alerts, malware alerts, and security updates. `AGENTS.md` asks for each CodeQL finding to be fixed, or dismissed as won't fix with the reason. [PR #2148](https://github.com/pymedphys/pymedphys/pull/2148)
+- **[Contributor facing only]** The contributor guide asks for pull request descriptions, issues, and reviews that readers who are not full-time software developers can follow: a plain summary and concrete examples first, with the technical detail in a labelled later section. It also asks reviewers to rely on CI's results for the reviewed commit instead of repeating its checks. [PR #2144](https://github.com/pymedphys/pymedphys/pull/2144)
+- **[Contributor facing only]** The pull request template asks for the parts of a description that the contributor guide requires: a plain summary, a concrete example of the problem, the scope and what is deferred, and the detail reviewers need; its checklist includes the changelog entry. A bug report form asks for the steps to reproduce, the expected and actual results, and the PyMedPhys, Python, and operating system versions, and asks the reporter to confirm that nothing in the report identifies a patient. The new-issue page links questions to Discussions and suspected vulnerabilities to the security policy. [PR #2149](https://github.com/pymedphys/pymedphys/pull/2149)
+- **[Contributor facing only]** The mock Mosaiq database that the database tests load keeps the decimal places of its CSV data. SQL Server had stored every decimal column as a whole number, so control-point indices, meterset weights, angles, and jaw and couch positions were rounded before any test read them. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
+- **[Contributor facing only]** A new unit-test job installs each feature extra alone, with only the new `test-runner` dependency group, and runs that feature's tests, so a package missing from an extra fails CI. The Mosaiq database workflow also runs its tests with only the `mosaiq` extra and the new `mosaiq-db-fixtures` group, which loads the test database. Tests of another feature that share a folder skip themselves when that feature's packages are missing; `AGENTS.md` gives the rule. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
+- **[Contributor facing only]** `uv sync --python 3.14 --locked` now sets up a complete development environment, through the default `dev` dependency group. CI jobs install only the extras and dependency groups they need, never the default group, through the setup action's new `groups` input; the documentation build and Read the Docs use the `docs` group, the lint and type-check jobs the `lint` group, and the security audit covers every extra and group. `pymedphys dev propagate` expands extras that name other extras. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
+- **[Contributor facing only]** The unit tests check, on every platform, that every module outside the Streamlit apps, the AI modules, and the tests imports when only the standard library and the base dependencies can be imported; that the Streamlit and AI modules import with their extras; and that every package in the lazy-import registry comes from a declared dependency. `pymedphys._dev.import_policy` lists the modules that need an extra at import time, `pymedphys dev imports` checks the same policy with real installs, and `AGENTS.md` describes the rules. [PR #2143](https://github.com/pymedphys/pymedphys/pull/2143)
+- **[Contributor facing only]** The weekly dependency update keeps one pull request up to date on the `deps/weekly-update` branch, runs only on `main` and one run at a time, labels its pull request `full-test`, creates its app token just before opening the pull request, and opens or comments on an issue when a scheduled run fails. When CI fails on a push to `main`, a job opens or comments on an issue, so a failure in the slow or database tests, which pull requests run only for their own inputs or the `full-test` label, does not go unnoticed. [PR #2137](https://github.com/pymedphys/pymedphys/pull/2137)
+- **[Contributor facing only]** The unused `[tool.pymedphys.extra-groups]` table, the code in `pymedphys dev propagate` that could read it, the lazy-import entries for packages PyMedPhys does not use (`black`, `dash`, `dicompylercore`, `packaging`, `tornado`, and `xlsxwriter`), and `.dockerignore`, left from a Dockerfile removed in 2023, have been removed. [PR #2138](https://github.com/pymedphys/pymedphys/pull/2138)
+- **[Contributor facing only]** Pre-commit runs the ruff version pinned in `uv.lock` (0.16.8) instead of ruff 0.4.1 from the `ruff-pre-commit` hook, with the rules that applied before (`E4`, `E7`, `E9`, `F`) selected explicitly and on Python files only. One commit reformats 17 files with it, and `.git-blame-ignore-revs` lists that commit. Pyright reports variables that are certainly unbound as errors and possibly unbound ones as warnings; both were silenced. `pymedphys dev imports` exits with status 1 when a module fails to import, finds the virtual environment's interpreter on Windows, and does not count test modules that skip themselves with `pytest.importorskip`. [PR #2135](https://github.com/pymedphys/pymedphys/pull/2135)
+- Gamma logs to its module logger, `pymedphys._gamma.implementation.shell`, instead of the root logger. The speed-up and effect-of-noise gamma how-to notebooks use `pymedphys.gamma_pass_rate`. [PR #2125](https://github.com/pymedphys/pymedphys/pull/2125)
+- **[Contributor facing only]** CI's documentation build is the only documentation check on pull requests, and its `docs-html` artefact holds the built pages. Read the Docs builds a hosted preview only of a pull request labelled `rtd-preview`, so routine pull requests no longer take its build slots, and it still builds and publishes `main`. Automation rules in the Read the Docs dashboard make this choice; the workflow guide lists them. The documentation guide explains how to download `docs-html` and how to run the `Documentation` workflow on a branch. [PR #2121](https://github.com/pymedphys/pymedphys/pull/2121)
+- The private gamma filter implementation (`pymedphys._gamma.implementation.filter`), `gamma_percent_pass`, `convert_to_ravel_index` and `create_point_combination` are removed; nothing in PyMedPhys called them. The MetersetMap app and the delivery tests now use `pymedphys.gamma_pass_rate` instead of their own pass-rate calculations. [PR #2120](https://github.com/pymedphys/pymedphys/pull/2120)
+- **[Contributor facing only]** CI now tests the declared minimum versions of
+  both NumPy and pandas. The NumPy 1.26 compatibility job becomes
+  `dependency-floors`, which runs on Python 3.11 with NumPy 1.26.4 and
+  pandas 2.0.3 overlaid on the locked environment. It runs the whole unit test
+  suite, apart from the slow tests, with the cached test data, instead of a
+  hand-picked list of synthetic tests, so code that only data-backed tests
+  reach is also checked at the minimum versions. Python 3.11 is the only
+  supported version with wheels for both. AGENTS.md asks for a declared minimum
+  to be raised, rather than this job worked around, when a change needs a
+  newer version. [PR #2114](https://github.com/pymedphys/pymedphys/pull/2114)
+- **[Contributor facing only]** Tests now fail on pydicom's "will be removed in v4" deprecation warnings, and the new `pydicom_behaviour` fixture in `tests/dicom/conftest.py` runs a test with pydicom's current behaviour and with its future behaviour, which imitates pydicom 4. The implicit versus explicit VR example notebook now sets the Transfer Syntax UID; with pydicom 3 its explicit VR example was written as implicit VR. [PR #2106](https://github.com/pymedphys/pymedphys/pull/2106)
+- **[Contributor facing only]** CI defaults to Python 3.14. The quick
+  unit-test run uses it, as do every job that does not choose a version, the
+  release workflow's checks of the published files, and Read the Docs builds.
+  NumPy 1.26 has no wheels for Python 3.13 or later, so its compatibility
+  check moves to its own job, which runs alongside both the quick and full
+  matrices. The contributor setup guides install Python 3.14.
+  [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
+- **[Contributor facing only]** CI finishes sooner without dropping a check.
+  Selected checks start alongside pre-commit instead of waiting for it. The
+  `.github/scripts` tests, Pylint, and the slow tests run in parallel; the
+  database tests load their mock tables once per module; and the
+  documentation link check runs in its own job without executing notebooks,
+  as `pymedphys dev docs --linkcheck` now does locally. The documentation
+  build reuses executed notebook outputs when nothing but prose has changed.
+  The data cache key hashes `lib/pymedphys/_data/hashes.json` by name: its
+  `**/hashes.json` pattern also walked the virtual environment, costing up to
+  13 seconds a step on Windows, and matched pydicom's own manifest, so a
+  pydicom upgrade discarded every data cache. MyPy runs in the Pyright job,
+  and the wheel build in the generated-files job. `pymedphys dev tests -n
+  auto` runs tests in parallel with `pytest-xdist`, now in the `tests` and
+  `all` extras, and resolves caller-relative test paths in every worker. The
+  DICOM networking tests each listen on a port the operating system reports as
+  free, so parallel workers no longer collide on one fixed port.
+  ReadTheDocs installs the documentation environment with `uv sync` from
+  `uv.lock`, as CI does, instead of with pip from `requirements-docs.txt`,
+  which `pymedphys dev propagate` no longer generates.
+  [PR #2099](https://github.com/pymedphys/pymedphys/pull/2099), [PR #2115](https://github.com/pymedphys/pymedphys/pull/2115)
+- **[Contributor facing only]** Removed unmaintained experimental code that
+  nothing imports: the `serviceplans` module (with the service plan
+  templates), and from `paulking` a second copy of the Profiler
+  reader, an unused narrow-PNG reader duplicating `Profile.from_narrow_png`, a
+  sinogram-to-PDF script with its sample CSV, and an editor scratch file. The
+  clean-imports check no longer ignores the long-removed `pedromartinez`
+  module.
+  [PR #2089](https://github.com/pymedphys/pymedphys/pull/2089)
+- **[Contributor facing only]** The maintainer helper that uploads test data to Zenodo (`pymedphys._data.upload`) now sends its access token in an `Authorization` header rather than in the request URL, which server logs and exception messages can record. When Zenodo rejects a token, the request is retried with a new one, up to three times; previously the retry always failed with a `TypeError`, and a retried file upload would have sent an empty file. [PR #2094](https://github.com/pymedphys/pymedphys/pull/2094)
+- **[Contributor facing only]** Coding agents have repository guidance. `AGENTS.md` gives every agent the development commands, architecture, conventions, and workflow rules, and points to the pull request rules in `CONTRIBUTING.md`. `CLAUDE.md` points Claude Code to it and adds how the `@claude` workflow runs and how to handle workflow files, which it stages in `claude_created_workflows_preview/` when a push lacks the `workflows` permission. Maintainers' personal preferences stay in their own agent settings, not in the repository. [PR #1928](https://github.com/pymedphys/pymedphys/pull/1928), [PR #2071](https://github.com/pymedphys/pymedphys/pull/2071), [PR #2087](https://github.com/pymedphys/pymedphys/pull/2087)
+- **[Contributor facing only]** A development command,
+  `pymedphys dev deid-tables`, generates Tables E.1-1, E.1-1a, and E.3.10-1
+  of DICOM PS3.15, Tables 6-1 and A-1 to A-4 of PS3.6, Tables 8-1 and 8-2
+  and context groups CID 7050 and CID 7005 of PS3.16, Table B.5-1 of PS3.4,
+  and the modules of the composite IODs of PS3.3 Annex A with the attribute
+  tables of those modules and their macros, as JSON from NEMA's
+  HTML publication of the pinned edition, 2026d, the first step towards the
+  de-identification rule tables: the attribute confidentiality profile, its
+  action codes, the safe private attributes, the data dictionary, the
+  registries of UIDs, well-known frames of reference, and the UIDs of context
+  groups and templates, the coding schemes and their UIDs, the codes that
+  record a de-identification method, the purposes of reference for
+  contributing equipment, the IOD of each Storage SOP Class, and each
+  attribute's Type in each module and sequence of an IOD. Types are
+  generated for 171 of the 174 composite IODs in 2026d, ahead of the
+  releases that support them, including 30 of the 33 whose modules include
+  Functional Group Macros, such as Enhanced CT Image and Segmentation: each
+  such IOD's macros, with their usage, come from the Functional Group Macros
+  table that PS3.3 gives it, and their Types apply within both the Shared and
+  the Per-Frame Functional Groups Sequences. The pin leaves out the three
+  real-time IODs, whose Current Frame Functional Groups Sequence (0006,0001)
+  PS3.6 defines outside its data dictionary, and generation fails if an IOD
+  it does not leave out cannot be generated, or one it leaves out can be, or
+  fails for an attribute other than the one the pin records for it. It
+  downloads each source
+  page, or reads it from `--source-dir`, and parses it only after checking its
+  SHA-256 digest against the pin. The parsers map columns by their header
+  text and reject unknown or missing columns, merged cells outside PS3.3, empty or
+  otherwise inconsistent rows, a table with no rows, unrecognised tags,
+  keywords, VRs, VMs, statuses, UIDs, UID types, parts, and coding scheme
+  designators, code values and meanings that are too long for their VRs or
+  contain characters those VRs exclude, actions not defined in Table E.1-1a, and repeated tags, UIDs, keywords, context group
+  identifiers, designators, or codes. Table E.1-1a must define exactly the action
+  codes PyMedPhys implements, so a new edition that adds or removes one fails
+  until the engine handles it. Likewise, a UID type in Table A-1 that
+  PyMedPhys does not list fails generation until it is reviewed. The PS3.3
+  parser reads the published layouts of the composite IODs: section numbers
+  with a letter, such as C.7.6.4b; rows nested below an included macro whose
+  only attribute is a sequence; a macro that includes itself within one
+  of its sequences, such as the Document Relationship Macro; and the row of
+  a module, such as the Multi-frame Functional Groups Module, that includes
+  the IOD's Functional Group Macros. Errors in the
+  published 2026d tables, such as a usage separated from its condition by an
+  en dash, a module table whose title differs from the module's name, and a
+  module listed with the wrong section, are corrected by named corrections in
+  the pin, each of which fails generation once it no longer applies. Each generated file records the edition, its
+  source page's digest, a digest of its rows, and the copyright attribution
+  of its part, such as "DICOM PS3.15 2026d, © NEMA", and the same input always
+  produces the same bytes. The generated tables ship in the package, in
+  `pymedphys/_dicom/deidentify/_standard/`, with loaders in
+  `pymedphys._dicom.deidentify.standard` (`load_table_e1_1`,
+  `load_table_e1_1a`, `load_table_e3_10_1`, and `load_data_dictionary`),
+  `pymedphys._dicom.deidentify.uid_registry` (`load_uid_values`,
+  `load_frames_of_reference`, `load_context_group_uids`, and
+  `load_template_uids`), `pymedphys._dicom.deidentify.codes`
+  (`load_coding_schemes`, `load_hl7v3_coding_schemes`, and
+  `load_context_group`), `pymedphys._dicom.deidentify.iods`
+  (`load_iod_tables`), and `pymedphys._dicom.deidentify.sop_classes`
+  (`load_storage_sop_classes`) that
+  check each row's fields, types, and values and reject a table whose rows no
+  longer match their recorded digest. PS3.3's tables are kept as published,
+  and its loader expands an IOD's modules when its Types are first needed,
+  following every included macro, into each attribute's Type at each place in
+  the data set, at any depth of a macro that includes itself.
+  `iod_for_sop_class` finds an instance's IOD, with those Types, from its SOP
+  Class UID, for every SOP Class of Table B.5-1, and finds none for a UID
+  that the table does not list, such as a retired or Private SOP Class.
+  `--check` exits with status 1 when the
+  committed tables are missing or out of date. `--check-current` generates
+  the tables from NEMA's current edition instead, with the same parsers and
+  the pin's corrections, and compares each table's rows with the committed
+  table's recorded digest without writing anything: it names the edition the
+  pages give, the tables that would change, and the pages that could not be
+  fetched or parsed, without quoting them, and exits with status 1 when a
+  table would change and 3 when a page failed; `--json` also writes the
+  result as JSON. The `deid-edition-check.yml` workflow runs it monthly and
+  opens or updates one issue when a table would change, a page fails, or the
+  check stops without a result.
+  `pymedphys._dicom.deidentify.scope` uses Table B.5-1 to classify an
+  instance as de-identified or sequestered: the first supported release
+  de-identifies CT Image, RT Structure Set, RT Plan, and RT Dose instances in
+  Implicit or Explicit VR Little Endian, and gives the reason for
+  sequestering any other.
+  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112), [PR #2130](https://github.com/pymedphys/pymedphys/pull/2130), [PR #2158](https://github.com/pymedphys/pymedphys/pull/2158), [PR #2163](https://github.com/pymedphys/pymedphys/pull/2163), [PR #2173](https://github.com/pymedphys/pymedphys/pull/2173), [PR #2181](https://github.com/pymedphys/pymedphys/pull/2181), [PR #2188](https://github.com/pymedphys/pymedphys/pull/2188)
+- **[Contributor facing only]** A private module,
+  `pymedphys._nomenclature.tg263`, converts a copy of AAPM's TG-263 Structure
+  Spreadsheet to JSON, the first step towards descriptor cleaning
+  and checks of structure names against TG-263. PyMedPhys
+  does not include the spreadsheet. The converter maps columns by their header
+  text; rejects unknown or missing columns, empty required values, numbers
+  where text is expected, names containing whitespace, FMA identifiers that
+  are not positive integers, and repeated names; and records the spreadsheet's
+  file name, worksheet version, SHA-256, and AAPM's attribution. Its loader
+  rejects a file edited without updating its content digest.
+  [PR #2108](https://github.com/pymedphys/pymedphys/pull/2108)
+- **[Contributor facing only]** Private modules `pymedphys._dicom.deidentify.keys` and `pymedphys._dicom.deidentify.uids` hold the keys and replacement UIDs of the de-identification engine. A key is 256 bits from the operating system's secure generator, with a non-secret identifier for reports, and derives each value as a domain-separated HMAC-SHA256. A key file is created exclusively, readable only by its owner where the platform enforces file modes, and never inside the PyMedPhys configuration directory or a protected output directory. A replacement UID is the `2.25.` form of a version 5 UUID whose name is the keyed hash of the source UID, so the same key replaces a UID the same way in every file and run without a stored map. Patient ID and Patient's Name are replaced by keyed pseudonyms, `DEID-<code>` and `DEIDENTIFIED^<code>`, derived from the Patient ID and its issuer, or from a curated subject identifier, in `pymedphys._dicom.deidentify.pseudonyms`. Each subject's date offset, 52 to 520 whole weeks backwards and never zero, is derived at first export and persisted in a subject profile, a custodian-held store tied to one key that records subjects under keyed tokens rather than identifiers; `pymedphys._dicom.deidentify.dates` shifts DA values and the dates of DT values by it, keeping times. Reviewed supplementary rules give every UI attribute of the pinned data dictionary a role, `instance` or `definition`, and every date, time, and datetime attribute a role that decides whether Modified Dates shifts it (subject events and radiation sources) or replaces it with a fixed dummy value (device, vocabulary version, and other); Modified Dates writes every time zone offset as `+0000` once each DT value with its own offset is in the instance's local time, which keeps every interval and hides the season that daylight saving would reveal, and shifts the IEEE 1588 seconds of Frame Origin Timestamp; a UID that the pinned tables register is retained whatever the role, and any other UID is replaced. `pymedphys._dicom.deidentify.actions` gives each attribute of Table E.1-1 its action under the Basic Profile and the selected options, an option's action overriding the profile's; it reports each attribute to which two selected options give different actions, such as the calibration dates that Retain Device Identity keeps and Retain Longitudinal Temporal Information with Modified Dates cleans, and rejects a selection of both Modified Dates and Full Dates, which PS3.15 makes mutually exclusive. `pymedphys._dicom.deidentify.policy` defines the `basic`, `basic-clean-descriptors`, `tps-import`, and `public-release` presets as their target option sets and validates each policy before processing, rejecting options outside the supported scope, a Table E.1-1 of another edition than the data dictionary, and every conflict between options except the eleven device and beam hold dates and times that `tps-import` deliberately modifies by their temporal role, for which it claims no PS3.15 conformance. No preset is enabled yet, and a custom option set is validated but not enabled. `pymedphys._dicom.deidentify.values` checks a value against the definition of its VR in PS3.5 Table 6.2-1, and a number of values against a VM from PS3.6, and says what is wrong without quoting the value, so that replacement and dummy values can be checked before they are written. `pymedphys._dicom.deidentify.dummy_values` gives the values that the Z and D actions write: Z writes a zero-length value, and D one conspicuous constant for each VR, the same whatever the source value, such as `DEIDENTIFIED` for text and person names, `19000101` for dates, `000000` for times, and zero for numbers, repeated where the attribute's VM needs several values. Where a source value equals the constant in any form, such as a padded, lower-case, or reduced-precision form, or `0.0` for zero, D writes a second constant, such as `DE-IDENTIFIED`, `19000102`, or one, so the value always changes. A UI value takes its keyed replacement, and D on an attribute of any other VR, such as CS or SQ, is refused, so that the attribute gets a reviewed rule or its instance is sequestered. `pymedphys._dicom.deidentify.supplementary_actions` gives reviewed actions to attributes that Table E.1-1 omits, so that every person name the table omits is removed or replaced, and Burned In Annotation and Recognizable Visual Features are kept as received rather than set to NO. It also gives one, with a note giving its reason, to each of the 110 text attributes that the CT Image, RT Dose, RT Structure Set, and RT Plan IODs use and the table omits, and refuses to load until every such attribute has one: operator-typed labels and text, such as Beam Name and Dose Comment, are removed by Type and cleaned under Clean Descriptors; accessory and equipment identifiers, such as Wedge ID, are removed, but kept under Retain Device Identity; coded and technical values, such as Code Value, Manufacturer, and Convolution Kernel, are kept; names and identifiers of people, organisations, records, and networks, accessory codes that a device reads, overlay text, and the patient's dates in an alternative calendar are removed under every option; and De-identification Method is kept for the engine to add to. Each of the 15 date, time, and datetime attributes that the table omits, such as Study Update DateTime and dates that PS3.6 marks DICONDE or DICOS, is removed by Type under the Basic Profile, kept under Retain Longitudinal Temporal Information with Full Dates, and cleaned under Modified Dates by its temporal role, and the rules refuse to load until every such attribute has one. Like a row of Table E.1-1, a rule can give an action under an option: only C under Clean Descriptors or K under Retain Device Identity to a text attribute, and only K under Full Dates or C under Modified Dates to a date or time. Each composed policy carries every rule's action under its options. `pymedphys._dicom.deidentify.output_names` gives each instance its path below the output directory, `<Patient ID>/<Study Instance UID>/<Series Instance UID>/<SOP Instance UID>.dcm`, from its replacement values, so no output name contains a source path, file name, or value; it refuses any value that is not a replacement, and reports instances that share a SOP Instance UID rather than renaming them. `pymedphys._dicom.deidentify.file_layout` reads a written file's structure independently of the library that wrote it, and maps each byte to the preamble, a File Meta Information element, a data set element by its path, Data Set Trailing Padding, or the bytes after the last element it could read, so that later checks can say where in the file they find something. `pymedphys._dicom.deidentify.private_attributes` lists, by their paths, the private attributes that a policy without Retain Safe Private removes, and gives a copy of a data set without them: every element of an odd group, including private creators, whether or not they reserve any elements, and the elements that PS3.5 does not allow in private groups, at the top level and in the items of every standard sequence, including a sequence that pydicom reads as UN from an Implicit VR Little Endian file, which is decoded in the character set of the data set that holds it. A private sequence is removed with everything in it, and no private value is decoded. A standard sequence that cannot be decoded exactly, that a file stores with a VR other than SQ or UN, or whose items have a Specific Character Set that pydicom does not map as given or that is stored with another VR, is refused by its path, as is such a character set at the top level, so that it is removed where a rule removes it or a sequence that holds it, and otherwise its instance is sequestered, and a policy that selects Retain Safe Private is refused until reviewed rules say which private attributes are safe. `pymedphys._dicom.deidentify.compound_actions` resolves each compound action of Table E.1-1a, such as X/Z/D, from the strictest Type that the instance's IOD gives the attribute at its place in the data set, in modules of every usage and with 1C counted as 1 and 2C as 2: Type 1 gives a dummy value (D), Type 2 an empty value (Z), and Type 3 removal (X), or else the next of these that the compound action offers, with U in place of D in X/Z/U*. An attribute that the IOD does not define there counts as Type 3, and X/Z on a Type 1 attribute raises an exception requiring the instance to be sequestered, so a compound action never removes an attribute that the IOD requires. `pymedphys._dicom.deidentify.method_digest` gives the de-identification method digest, which identifies a policy and the PyMedPhys implementation that applies it, and which every de-identified instance is to record in De-identification Method as 64 lowercase hexadecimal digits. It is the SHA-256 of a documented canonical JSON form, labelled `pymedphys-deid-method-digest/1`, of the policy and of everything the engine could apply, whether or not the policy's options use it: PyMedPhys's version, the content digest of every generated table, every reviewed supplementary rule, the entries of the TG-263 vocabulary or the absence of one, the parameters of generated values, such as the dummy values and the range of date offsets, and the engine's own source and rule files, read once per process with LF line endings, so that a change to any of these changes the digest, even between development builds that share a version. The digest stays the same across runtime environments: an unmodified release gives a policy the same digest under any version of Python, pydicom, or tomlkit, and those versions are to be recorded separately, as provenance of each run, in Software Versions of the de-identifying equipment and in the release report. Equal digests identify equal policies and implementations; reproducing a run also needs its recorded runtime environment. Continuous integration runs the de-identification tests with pydicom 3.0.2, the lowest release that `pydicom>=3.0.2` allows, and with the latest pydicom release, which it resolves from PyPI each time, as well as with the locked version. `pymedphys._dicom.deidentify.markers` gives the markers that each de-identified instance is to carry, from its policy, the method digest, and the options the instance satisfies, and adds them to a copy of a data set without changing anything else: Patient Identity Removed set to YES; two values added to De-identification Method after any already there, the method digest and then a readable value such as `PyMedPhys 0.42.0; PS3.15 2026d; basic`; the CID 7050 codes of the Basic Profile and of each satisfied option, added to De-identification Method Code Sequence; Longitudinal Temporal Information Modified set to MODIFIED where Modified Dates is applied, and to REMOVED otherwise; and a Contributing Equipment Sequence item that names PyMedPhys as Manufacturer, gives in Software Versions its full version and then the Python implementation and version, pydicom's version, and tomlkit's version, such as `CPython 3.14.0`, `pydicom 3.0.2`, and `tomlkit 0.15.1`, read when the markers are computed, and has the purpose DCM 109104 "De-identifying Equipment". `tps-import`, which claims no PS3.15 conformance, adds no code and writes `PyMedPhys <version>; no PS3.15 claim; tps-import`. Under every other policy, each selected option must be satisfied except Clean Descriptors, which output whose descriptors receive the Basic Profile's actions does not satisfy, so that the codes name every option whose actions the instance carries. Every value is checked against its VR and VM when the markers are computed and again before they are written, and a readable value longer than 63 characters is refused rather than shortened. The readable value comes last and leaves room for the padding space that can follow it, and the markers are refused where an attribute they write would end in a value of its VR's maximum length with that padding, so that output reads cleanly with pydicom's strict reading. On output that already carries markers, the digest and readable value are added only where that pair is not already present as two consecutive values, and a code or Contributing Equipment Sequence item only where no equal one is present, so output de-identified twice by the same release and policy carries the markers of one run, apart from a Contributing Equipment Sequence item for each other runtime environment; Longitudinal Temporal Information Modified becomes the stricter of the value already present and the new one, in the order UNMODIFIED, MODIFIED, REMOVED, and a present value that is none of these is refused. `pymedphys._dicom.deidentify.elements` reads each element with the VR that the pinned data dictionary gives its attribute, not pydicom's: an element that pydicom reads as UN, such as an RT Plan's RT Assertions Sequence from an Implicit VR file, is decoded as Implicit VR Little Endian, and as a sequence only if, as `file_layout` reads it, items fill it; US or SS follows Pixel Representation, except in a VOI LUT Descriptor, which follows the input to the VOI LUT as PS3.3 Section C.11.2.1.1 gives it, and in a Presentation LUT Descriptor, which is always US, and a LUT Descriptor's first and third values are unsigned even where its VR is SS; OB or OW follows the transfer syntax and Bits Allocated; and text is decoded in the Specific Character Set of its data set, or of the sequence item that has its own. An element whose VR conflicts with the dictionary or with the one the standard decides, that pydicom has already decoded, whose value does not decode exactly, such as a DS that is not a number or text outside ISO 646 where the Default Character Repertoire is the only character set, whose text could not be written back in its character set, as a whole value that pydicom's writer encodes and reads back unchanged, or whose Specific Character Set is neither a Defined Term that pydicom can decode nor `ISO_IR 6` alone, which real data commonly uses for the Default Character Repertoire, is refused with its path and the reason but never its value, and pydicom's warnings and log records while it decodes are redacted. The module also builds each element to be written with a VR from the dictionary and pydicom's own checks off, once its values have been checked against that VR and the attribute's VM, the data set's character set, and the repertoire of a person name's first component group. `pymedphys._dicom.deidentify.source` admits a source file only once `file_layout` has read every byte of it, from the preamble to the end of its data set, in Implicit or Explicit VR Little Endian, with nothing after its last element, and keeps an immutable copy of its bytes with where each element's header and Value Field are and its VR as written, so that the engine reads source values from the file's own bytes even after pydicom has decoded a data set read from it, decodes their text in the character set the source declares, and refuses an element still encoded whose bytes or VR differ from them, an element set in memory, and a decoded sequence with another number of items; a refused file is reported by a reason code and an offset, never a value. `pymedphys._dicom.deidentify.residuals` searches every byte of a written file, from the preamble to any bytes after its last readable element, for the source values that had to be removed or replaced: person names whole and by their parts and words, dates also as YYYY-MM-DD, YYYY:MM:DD, DD/MM/YYYY, MM/DD/YYYY, and DD.MM.YYYY, and UIDs and other text as they are, each as given, composed, decomposed, and with half-width and full-width characters in their other width, in UTF-8, ISO 8859-1, UTF-16LE, and the source's character set, with ASCII letters in either case and other letters in upper, lower, and title case. It reports each value it finds by its kind, source attribute, form, encoding, and place in the file, never by the value itself, and lists what it did not search, such as forms shorter than four characters, and spellings with ISO 2022 escape sequences other than those the character set's codec writes; whether the file may be released is for its caller to decide. `pymedphys._dicom.deidentify.file_meta` builds the File Meta Information that replaces a source file's, as PS3.15 E.1.1 requires: only the six elements that PS3.10 requires and Implementation Version Name, which name the de-identifier by a fixed Implementation Class UID under the PyMedPhys root and by `PYMEDPHYS` with the version where that fits 16 characters, and no Application Entity Title, Presentation Address, or private element. It writes a data set with that File Meta Information and a preamble of 128 zero bytes, whatever the source file held. Hypothesis joins the `tests` and `all` extras for their property tests. [PR #2113](https://github.com/pymedphys/pymedphys/pull/2113), [PR #2116](https://github.com/pymedphys/pymedphys/pull/2116), [PR #2117](https://github.com/pymedphys/pymedphys/pull/2117), [PR #2118](https://github.com/pymedphys/pymedphys/pull/2118), [PR #2123](https://github.com/pymedphys/pymedphys/pull/2123), [PR #2159](https://github.com/pymedphys/pymedphys/pull/2159), [PR #2160](https://github.com/pymedphys/pymedphys/pull/2160), [PR #2161](https://github.com/pymedphys/pymedphys/pull/2161), [PR #2165](https://github.com/pymedphys/pymedphys/pull/2165), [PR #2168](https://github.com/pymedphys/pymedphys/pull/2168), [PR #2171](https://github.com/pymedphys/pymedphys/pull/2171), [PR #2172](https://github.com/pymedphys/pymedphys/pull/2172), [PR #2174](https://github.com/pymedphys/pymedphys/pull/2174), [PR #2175](https://github.com/pymedphys/pymedphys/pull/2175), [PR #2176](https://github.com/pymedphys/pymedphys/pull/2176), [PR #2179](https://github.com/pymedphys/pymedphys/pull/2179), [PR #2180](https://github.com/pymedphys/pymedphys/pull/2180), [PR #2185](https://github.com/pymedphys/pymedphys/pull/2185), [PR #2186](https://github.com/pymedphys/pymedphys/pull/2186), [PR #2187](https://github.com/pymedphys/pymedphys/pull/2187), [PR #2191](https://github.com/pymedphys/pymedphys/pull/2191), [PR #2193](https://github.com/pymedphys/pymedphys/pull/2193), [PR #2195](https://github.com/pymedphys/pymedphys/pull/2195), [PR #2199](https://github.com/pymedphys/pymedphys/pull/2199)
+- **[Contributor facing only]** Private modules `pymedphys._dicom.deidentify.references` and `pymedphys._dicom.deidentify.reference_graph` hold the first pass of the de-identification engine, which builds a graph of a collection's instances and the references between them before anything is written. It follows each reference that PS3.3 defines inside a sequence of an instance of any IOD whose Types are generated, such as CT Image, RT Plan, or MR Image, finding the places from the generated module tables, and reports each reference that names no instance, series, or study in the collection and each instance without a single SOP Instance UID, Series Instance UID, or Study Instance UID. Referenced SOP Instance UID in a Referenced Study Sequence or RT Referenced Study Sequence names a study, and resolves against the collection's Study Instance UIDs whatever its Referenced SOP Class UID. Elsewhere, a reference whose Referenced SOP Class UID is not a Standard Storage SOP Class of PS3.4 Table B.5-1, such as a Private or retired SOP Class, resolves if it names an instance in the collection; otherwise it is not reported, because such a class may name something that is not a stored instance, such as a performed procedure step, or a patient through a retired or private management class. A UID that the pinned tables register is never reported as dangling, and an empty value where PS3.3 makes the reference optional (Type 3) counts as absent. Sequences that pydicom does not know, which it reads from Implicit VR Little Endian files as UN, are decoded with their VR in the pinned data dictionary, so that references inside them, such as in an RT Plan's RT Assertions Sequence, are found. The first pass also reports an inconsistent hierarchy: instances that share a SOP Instance UID, as identical duplicates where their decoded data sets are equal without the File Meta Information and the preamble, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, where a patient is a Patient ID with its Issuer of Patient ID (0010,0021), and the instances without a Patient ID together count as one more patient. Copies of an instance are identical only when their data sets, read in full, decode to the same elements with the same VRs and values, without group lengths, so copies in Implicit VR and Explicit VR Little Endian files, or with sequences of defined and undefined length, are identical when a data dictionary gives every element's VR. Copies whose equality cannot be shown are reported as conflicting: any changed value or VR, added or removed element, or changed private element makes copies conflict, as do a private element that pydicom reads from an Implicit VR file as UN, without its VR, the same bytes in another byte order, and compressed and uncompressed Pixel Data. Findings are typed data that name inputs by their position and attributes by their tags, and contain no values. [PR #2169](https://github.com/pymedphys/pymedphys/pull/2169), [PR #2184](https://github.com/pymedphys/pymedphys/pull/2184)
+- **[Contributor facing only]** A private module, `pymedphys._dicom.deidentify.conformance`, generates the DICOM PS3.15 conformance statement of a de-identification policy as Markdown, from the policy, the pinned tables, and the engine's parameters, so that the same inputs always give the same text. It names the PS3.15 edition, the preset, its options with their CID 7050 codes, the options that are not supported, and the policy's method digest; lists the supported IODs, their Storage SOP Classes, and their transfer syntaxes; gives the action of every attribute of Table E.1-1, of every supplementary rule, and of every UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute; and describes the values that Z, D, and U write, referential integrity within a run, and the absence of Encrypted Attributes. Until the engine decides the markers it inserts and the action for every other element, each statement lists them as not yet described and claims no conformance. [PR #2202](https://github.com/pymedphys/pymedphys/pull/2202)
+- **[Contributor facing only]** Private module `pymedphys._dicom.deidentify.pixel_risk` reads an instance's indicators of risk in its pixel data from its attributes, for review, since the engine never inspects or changes pixel data and claims neither the Clean Pixel Data nor the Clean Recognizable Visual Features Option. Indicators of burned-in text are Burned In Annotation of YES, an Image Type whose second value is SECONDARY, any Conversion Type, and an overlay group without Overlay Data, whose overlay may lie in unused bits of the pixel data; indicators of a reconstructable face are Recognizable Visual Features of YES and the contours of an RT Structure Set ROI whose RT ROI Interpreted Type or ROI Name is EXTERNAL, BODY, or SKIN, whatever its case. A received NO counts for nothing, the absence of an indicator is not evidence that the risk is absent, and an attribute that cannot be read as its VR in the pinned data dictionary is reported as unreadable evidence. Findings name attribute paths, never values, and reading leaves the data set as it was read. [PR #2197](https://github.com/pymedphys/pymedphys/pull/2197)
+- **[Contributor facing only]** `CONTRIBUTING.md` now sets out the rules
+  every pull request follows: single-concern scope, tests and documentation
+  with each change, consolidated changelog entries that describe changes since the last stable release and link their pull requests, descriptions of the state
+  being merged, stacked pull requests, no deprecation before a replacement is
+  released, dependencies added with their first consumer, and design documents
+  and tracking issues for work spanning many pull requests.
+  [PR #2076](https://github.com/pymedphys/pymedphys/pull/2076), [PR #2095](https://github.com/pymedphys/pymedphys/pull/2095)
+- **[Contributor facing only]** CI now selects Python, documentation, tooling, and security checks from the complete tested pull request diff. Unknown inputs select every standard check; symlinks, submodules, or an unverifiable diff select every check; and the required summaries reject unexpected skips. Integration and database tests are cost-gated: besides running on `main` and on pull requests that carry their labels, they run only for inputs that no standard check validates, such as dependency metadata, CI configuration, packaging filters, slow tests, doctests, shared test data, and the release tooling. Policy tests keep the lists of slow-test and doctest modules equal to what a scan of the package finds. The step summary names the reason for each selected check, including the path behind any fallback. Jobs that need only tools, such as pre-commit, no longer install the scientific stack, and only jobs that use the downloaded test data restore its cache. [PR #2077](https://github.com/pymedphys/pymedphys/pull/2077)
+- **[Contributor facing only]** Added the design document for the DICOM
+  de-identification engine that will replace `pymedphys.dicom.anonymise` and
+  experimental pseudonymisation
+  (`lib/pymedphys/docs/contrib/info/deidentification-design.md`), covering its
+  scope, conformance claims, architecture, target presets, decisions, and
+  roadmap. Its requirements register,
+  `pymedphys/_dicom/deidentify/requirements.toml`, records each "shall"
+  paragraph of DICOM PS3.15 Annex E (2026d) verbatim and each best practice
+  of the MIDI Task Group report in summary, with its status and the
+  decisions, code, and tests that satisfy it. Its loader checks each entry's
+  fields and statuses, and tests check that the decisions and code it cites
+  exist, that pytest collects the tests it cites, and that it follows the
+  edition of the generated tables. `pymedphys dev deid-matrix` generates the
+  requirements-to-tests matrix from the register as Markdown, with the
+  exclusions and the reason for each, and with each traced test's outcome
+  when given pytest JUnit XML reports. The design document sets the scope of the
+  first supported release: the Basic Profile, alone and with the Clean
+  Descriptors Option, for uncompressed CT Image, RT Structure Set, RT Plan,
+  and RT Dose instances, through the library and the command line.
+  [PR #2061](https://github.com/pymedphys/pymedphys/pull/2061), [PR #2101](https://github.com/pymedphys/pymedphys/pull/2101), [PR #2170](https://github.com/pymedphys/pymedphys/pull/2170), [PR #2192](https://github.com/pymedphys/pymedphys/pull/2192), [PR #2200](https://github.com/pymedphys/pymedphys/pull/2200)
+- **[Contributor facing only]** DICOM coordinate and dose tests use local synthetic fixtures; the validation record above retains the historical fixture provenance. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- **[Contributor facing only]** `examples/` contains the gamma benchmark tooling behind the performance audit. The integration Doctests job runs its unit tests whenever `examples/` changes. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- **[Contributor facing only]** The test suite now runs with `HOME` and
+  `USERPROFILE` pointed at a temporary directory, so running the tests no
+  longer rewrites the real `~/.pymedphys/config.toml` (the pseudonymisation
+  tests previously stored their secret there) or reads `~/.streamlit`. The
+  downloaded data cache is still shared, through `PYMEDPHYS_DATA_DIR`. Tests
+  that wrote their outputs beside the cached data files now write to a
+  temporary directory. `dev tests` and `dev doctests` bypass user logging
+  configuration at startup, so a configured log file is not opened before
+  pytest isolates the home directory.
+  [PR #2042](https://github.com/pymedphys/pymedphys/pull/2042)
+- **[Contributor facing only]** `--include-slow`, `--include-mosaiqdb`, and `--include-anthropic` add their tests to the default selection. `--slow`, `--mosaiqdb`, `--pydicom`, and the new `--anthropic` (for tests that need an Anthropic API key) run only the marked tests, and combining several of them selects the union instead of skipping every test. [PR #1843](https://github.com/pymedphys/pymedphys/pull/1843), [PR #2042](https://github.com/pymedphys/pymedphys/pull/2042)
+- **[Contributor facing only]** `pymedphys dev tests <path>` now runs only the
+  given file, directory, or test ID, relative to `lib/pymedphys` or the current
+  directory. Previously the whole suite ran whatever path was given. Values of
+  pytest options, including options that plugins register, are not mistaken
+  for paths.
+  [PR #2042](https://github.com/pymedphys/pymedphys/pull/2042)
+- **[Contributor facing only]** `pyproject.toml` now configures pytest with
+  strict markers, strict xfail, and a 900 second per-test timeout
+  (`pytest-timeout`, added to the `tests` and `all` extras). The repository
+  root is now the pytest rootdir, so test IDs in reports start with
+  `lib/pymedphys/`.
+  [PR #2042](https://github.com/pymedphys/pymedphys/pull/2042)
+- **[Contributor facing only]** The Cypress end-to-end scaffolding under
+  `lib/pymedphys/tests/e2e`, the `--cypress` option of `pymedphys dev tests`,
+  and the `pymedphys dev cypress` command have been removed. The Streamlit GUI
+  is now tested headlessly with `streamlit.testing.v1.AppTest` as part of the
+  normal `pymedphys dev tests` run (`lib/pymedphys/tests/streamlit`).
+  [PR #2035](https://github.com/pymedphys/pymedphys/pull/2035)
+- **[Contributor facing only]** The package metadata declares its licence as the SPDX expression `Apache-2.0 AND MIT` (PEP 639) and names both licence files; v0.41.0 declared only `Apache-2.0`. The MIT part covers bundled third-party code: the Pinnacle exporter, a copy of pydicom's DICOM dictionary, and the vendored `apipkg` and `deprecated` modules. Building requires hatchling 1.27 or later. The distribution check rejects incorrect or missing licence expressions, missing or unexpected licence-file declarations, and missing licence files, including matching omissions in both archives. The vendored logging back-port for Python 3.7 and earlier has been removed. [PR #2063](https://github.com/pymedphys/pymedphys/pull/2063)
+- **[Contributor facing only]** Publishing a GitHub release runs the Release workflow, which is the only way to publish to PyPI. It builds the wheel from the sdist, checks both archives, installs the wheel into a fresh virtual environment to check its imports and `pymedphys --version`, and fails unless the tag is `v` followed by the package version; integration builds run the same distribution check. Release validation runs in parallel with that single build, and publishing waits for every quality gate. After publishing, the workflow checks on Linux, Windows, and macOS that the files PyPI serves match the build and install cleanly, with the sdist built afresh; runs the test suite against the published wheel with dependencies resolved afresh from PyPI; uploads the GitHub release assets once the published files are verified, and reads them back; and fails its `Release Summary` unless every job succeeded. `check_distributions.py` runs the distribution checks locally, and its `--published` mode runs the post-publication checks, with `--tests` to run the test suite and `--summary` to write a report. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060), [PR #2064](https://github.com/pymedphys/pymedphys/pull/2064), [PR #2074](https://github.com/pymedphys/pymedphys/pull/2074), [PR #2077](https://github.com/pymedphys/pymedphys/pull/2077)
+- **[Contributor facing only]** The `pymedphys dev build` command has been
+  removed. It drove a PyOxidizer and Electron desktop build whose Electron
+  app, PyOxidizer configuration, and `build` extra had already been removed,
+  so it could only fail.
+  [PR #2053](https://github.com/pymedphys/pymedphys/pull/2053)
+- **[Contributor facing only]** Mentioning `@claude` in an issue, a pull request comment, or a review, as someone with write access, runs `anthropics/claude-code-action` with Claude Opus 5.5. It replaces the Claude Assistant workflow, which replied through Claude 3 Opus to any issue comment containing "claude". The workflow uses the action's default tools: it cannot run repository code or change `.github/workflows/`, and CI tests the commits it pushes. [PR #1928](https://github.com/pymedphys/pymedphys/pull/1928), [PR #1997](https://github.com/pymedphys/pymedphys/pull/1997), [PR #2071](https://github.com/pymedphys/pymedphys/pull/2071)
+- **[Contributor facing only]** Development uses uv instead of Poetry: `uv.lock` pins the development environment, `pymedphys dev propagate` exports the requirements files from it, and hatchling builds the package. Separate GitHub Actions workflows for unit and integration tests, linting, type checking, pre-commit, documentation, security scanning with pip-audit, Bandit, and zizmor, dependency updates, and releases replace the single `Library` workflow. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2034](https://github.com/pymedphys/pymedphys/pull/2034)
+- **[Contributor facing only]** The `tests` extra adds `anthropic`, `imageio`, `matplotlib`, `pandas`, `Pillow`, `pydicom`, `pylibjpeg-libjpeg`, `pynetdicom`, `shapely`, and `toml`. The `doctests` extra adds `pytest` and `toml`. A new `lint` extra installs `astroid`, `pylint`, and `ruff`, and the `comparables` extra, which installed only `flashgamma`, has been removed. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2009](https://github.com/pymedphys/pymedphys/pull/2009), [PR #2013](https://github.com/pymedphys/pymedphys/pull/2013)
+- **[Contributor facing only]** The `lint` dependency group includes `mypy` and the `types-python-dateutil`, `types-PyYAML`, `types-requests`, `types-tabulate`, and `types-toml` stubs, so CI's advisory mypy check uses locked versions. The full unit-test matrix covers Python 3.10, 3.11, and 3.12 on Ubuntu, macOS, and Windows. Dependabot proposes grouped weekly updates of the GitHub Actions, and the weekly Python dependency-update workflow regenerates the derived files and runs the non-slow tests, the documentation build, and the wheel checks before opening its pull request. `SECURITY.md` says how to report a vulnerability. [PR #2037](https://github.com/pymedphys/pymedphys/pull/2037), [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
+
 ### News around this release
 
 - PyMedPhys no longer has a Discourse group. Forum-like conversation and
-  collaboration has moved to [GitHub Discussions](https://github.com/pymedphys/pymedphys/discussions).
+  collaboration have moved to [GitHub Discussions](https://github.com/pymedphys/pymedphys/discussions).
+  [PR #1896](https://github.com/pymedphys/pymedphys/pull/1896)
+
+### (Potentially) breaking changes
+
+- `pymedphys gui` now serves only the computer that runs it. It listens on `127.0.0.1` instead of every network interface, and accepts the WebSocket connections that run the apps only when they are addressed to `localhost` or `127.0.0.1`, which protects those connections against DNS rebinding. To serve other computers, for example from a department server, pass the address to listen on with the new `--address` option, such as `pymedphys gui --address 0.0.0.0`. The apps have no login and handle patient data, so anyone who can reach that address and port can use them, over unencrypted HTTP. The GUI also turns off Streamlit's usage statistics. It passes these settings to Streamlit on the command line, so they override Streamlit's configuration files and environment variables: a `server.address` set there no longer takes effect; use `--address` instead. See [Graphical apps](https://docs.pymedphys.com/en/latest/users/ref/cli/gui.html). [PR #2166](https://github.com/pymedphys/pymedphys/pull/2166), [PR #2167](https://github.com/pymedphys/pymedphys/pull/2167)
+- `pymedphys[mosaiq]` no longer installs attrs, scikit-learn, SQLAlchemy, or toml. Install `pymedphys[trf,mosaiq]` to identify TRF files against Mosaiq, and `pymedphys[user]` for everything else. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
+- The `dev` and `docs` extras are removed, and `pymedphys[all]` no longer installs linters, type checkers, or the documentation toolchain. Contributors get these from dependency groups with `uv sync` in a source checkout. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
+- The unused `lint`, `doctests`, and `propagate` extras have been removed. Install `pymedphys[tests]` to run the test suite; development tools, such as ruff and pylint, come from dependency groups with `uv sync` in a source checkout. PyMedPhys no longer directly requires `setuptools` or `typing-extensions`; its typing imports now use the standard library. The `user` and `all` extras drop direct requirements for `anyio`, `dicompyler-core`, `packaging`, and `trio-asyncio`, PyMedPhys no longer lists `networkx` for its documentation build, and relies on pylint to install `astroid`. Other dependencies still install some of these packages transitively; applications that use them must declare their own requirements. The lockfile loses ten packages, including Flask and Werkzeug, following removal of the unused `dash` dependency. [PR #2138](https://github.com/pymedphys/pymedphys/pull/2138), [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
+- `pymedphys.gamma` results change for evaluation grids with a single-value axis, such as single-slice evaluation doses; see "Gamma with single-slice evaluation doses" above. The earlier values depended on the coordinate origin and could be several times too high. The default `interp_algo="pymedphys"` now accepts such grids instead of raising `ValueError`. [PR #2126](https://github.com/pymedphys/pymedphys/pull/2126)
+- `pymedphys.gamma` now raises `ValueError` for inputs that gave silently wrong or missing results. NaN or infinite values in either dose grid: a NaN in the reference made every result NaN, and one in the evaluation made results NaN near it. A `max_gamma` of 1 or less, which could report failing points as passing. A `global_normalisation` that is not finite and positive, including the default for an all-zero reference. Local gamma where an analysed reference point has zero dose, which was reported as NaN and so excluded; raise `lower_percent_dose_cutoff` above zero to exclude such points explicitly. [PR #2119](https://github.com/pymedphys/pymedphys/pull/2119)
+- PyMedPhys now requires Python 3.11.4 or later; v0.41.0 supported Python 3.10 to 3.12. Python 3.10 reaches end of life in October 2026, and NumPy 2.3 and SciPy 1.16 already require Python 3.11. Python 3.11.4 is the first 3.11 release with the tarfile extraction filters that Pinnacle TAR import now uses. [PR #2098](https://github.com/pymedphys/pymedphys/pull/2098)
+- `pymedphys.data_path`, `pymedphys.zip_data_paths`, and
+  `pymedphys.zenodo_data_paths` now raise `NoHashFound` before downloading a
+  file without a recorded hash when `check_hash=True` (the default). Downloads
+  no longer add hashes to the installed package's `hashes.json`. For custom
+  data, pass a maintained hash manifest through `hash_filepath` to
+  `data_path` or `zip_data_paths`, or explicitly pass `check_hash=False` to
+  accept unverified data. Four download aliases without recorded hashes have
+  been removed: `RD.TBB_water_feet_first.dcm`, `RD.TBC_water_feet_first.dcm`,
+  `dicomorient_doses_only.zip`, and `plan-tel-monaco-upgrade.zip`. Calls using
+  these aliases must supply `url=` as well as a hash manifest or the explicit
+  opt-out.
+  [PR #2092](https://github.com/pymedphys/pymedphys/pull/2092)
+- The `user` extra no longer installs `anthropic` or lists `trio` as a direct dependency. Both are now in a new `ai` extra, with `httpx2`. Only the experimental Mosaiq chat app in the GUI needs them; install them with `pip install "pymedphys[user,ai]"`. The app sends questions and query results to Anthropic's API, so it is now opt-in. Without the extra the rest of the GUI still loads, and the chat app says how to install it; before, a missing AI package stopped the whole GUI from loading. The `all` extra includes the `ai` packages. `anthropic` is no longer pinned to 0.29.0. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2091](https://github.com/pymedphys/pymedphys/pull/2091)
+- The `all`, `dicom`, `tests`, and `user` extras and the `docs` dependency group now require `pydicom>=3.0`. In v0.41.0, extras that depended on pydicom required `>=2.0.0`. Continuous integration tests only pydicom 3, and the planned de-identification engine uses `dcmwrite(..., enforce_file_format=True)`, which pydicom 3.0 added. Installations using these extras must upgrade any pydicom 2 pin. [PR #2067](https://github.com/pymedphys/pymedphys/pull/2067)
+- Pinnacle RTPLAN, RTDOSE, and RTSTRUCT exports now raise `MissingCTImageError` when the plan has no primary CT image. RTPLAN and RTDOSE exports raise `MissingTrialBeamsError` when the trial has no beams, and RTDOSE export raises `MissingBeamDoseError` when every beam dose file is empty or zero-filled. Previously a plan without a primary CT image or a trial without beams was logged and skipped, and `pymedphys pinnacle export` went on with its other exports; it now stops at the first of these failures. The exceptions are not yet exported from `pymedphys.pinnacle`; they are defined in the private module `pymedphys._pinnacle.pinnacle_exceptions`. Code that must continue a batch export past these failures needs to catch them. [PR #1960](https://github.com/pymedphys/pymedphys/pull/1960), [PR #2057](https://github.com/pymedphys/pymedphys/pull/2057)
+- The `url` argument of `pymedphys.data_path` and `pymedphys.zip_data_paths`
+  now accepts only `http`, `https`, and `file` URLs and raises `ValueError` for
+  any other scheme. Previously every scheme that `urllib` supports, including
+  `ftp`, was passed through unchecked.
+  [PR #2034](https://github.com/pymedphys/pymedphys/pull/2034)
+- A relative `redirect` in `~/.pymedphys/config.toml` is now resolved against
+  the directory of the config file that contains it. Previously it was
+  resolved against the directory PyMedPhys was started from, so the same
+  configuration could find different files. A configuration that relied on
+  the old behaviour can stop loading, or load a different file, after
+  upgrading. To migrate, make the `redirect` an absolute path, or rewrite it
+  relative to the config file that contains it.
+  [PR #2094](https://github.com/pymedphys/pymedphys/pull/2094)
+- The wheel and sdist no longer include the built HTML documentation, which v0.41.0 bundled under `pymedphys/docs/_build/html` and which made up most of its 7.5 MB wheel. The documentation remains at <https://docs.pymedphys.com/en/latest/>. [PR #1961](https://github.com/pymedphys/pymedphys/pull/1961), [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060)
+- RT Dose conversion returns ascending patient `(z, y, x)` axes with the dose reordered to match. Its shape or index order can differ from `pixel_array`; index and plot dose/gamma with the returned axes. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- Gamma and interpolation reject invalid axis structures, including when interpolation uses `skip_checks=True`. Evaluation grids with a single-value axis are searched directly; see [PR #2126](https://github.com/pymedphys/pymedphys/pull/2126). [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- The private `xyz_axes_from_dataset` option for IEC patient coordinates (`'patient'`, `'IEC patient'` or `'p'`) now raises `NotImplementedError`, because its previous output was incorrect. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
+- For decubitus grids, the private `get_dose_grid_structure_mask` returns
+  `(slices, rows, columns)` instead of `(slices, columns, rows)`, and
+  `DicomDose.coords` returns `(3, slices, rows, columns)` instead of
+  `(3, slices, columns, rows)`, matching `pixel_array`.
+  [PR #2110](https://github.com/pymedphys/pymedphys/pull/2110)
+- Experimental pseudonymisation now writes Person Name values within DICOM's limit of 64 characters per component group (PS3.5 Table 6.2-1). Previously the family, given, and middle names were each replaced with a hash of about 40 characters, even when empty, so every pseudonymised name was about 126 characters long and pydicom warned about it. Each non-empty name is now the first 20 characters of the same hash, and empty names stay empty. A retained name prefix or suffix is cut to the room left in the 64 characters. Pseudonymised names therefore differ from those written by earlier versions. To link earlier output to new output, truncate each of its family, given, and middle names to 20 characters, and treat the hash an empty name produced as empty. This applies to `pymedphys.experimental.pseudonymisation`, the `pymedphys experimental dicom pseudonymise` command, and the DICOM Pseudonymisation app. [PR #1944](https://github.com/pymedphys/pymedphys/pull/1944)
+- `pymedphys dicom listen` stores objects whose Patient ID contains `% / \ : * ? " < > |` or a control character in a folder with those characters encoded, for example `AB%2F123` for the Patient ID `AB/123`, which earlier versions stored in the nested folders `AB/123`. Objects stored before upgrading stay where they are, so move them, or allow for both layouts, if your workflow finds a patient's files by folder name. [PR #2152](https://github.com/pymedphys/pymedphys/pull/2152)
+- On Linux and macOS, `pymedphys icom listen` now names the archive folder of a patient whose ID or name contains a double quote with `%22` in its place, for example `123456_SMITH, JOHN %22JACK%22`, so later deliveries for such a patient go to a new folder. Earlier versions kept the double quote, which Windows does not allow. [PR #2154](https://github.com/pymedphys/pymedphys/pull/2154)
 
 ## [0.41.0]
 
@@ -20,7 +567,7 @@ This project adheres to
 
 - PyMedPhys now includes its own custom, `numba`-accelerated implementation of
   multilinear interpolation. You can find the technical reference
-  [here](https://docs.pymedphys.com/lib/ref/interp.html).
+  [here](https://docs.pymedphys.com/en/latest/users/ref/lib/interp.html).
   This was implemented for the following reasons:
     - The PyMedPhys implementation gives a 5-8x speed boost over EconForge's
      `interplation` and 10-70x over Scipy's `RegularGridInterpolator`. See
@@ -316,7 +863,7 @@ this in the future should be considered a breaking change.
     [Thebe](https://thebelab.readthedocs.io/)
   - Discourse commenting now available directly within the hosted documentation
   - The ability to utilise the expanded
-    [MyST](https://jupyterbook.org/content/myst.html) Documentation formatting.
+    [MyST](https://jupyterbook.org/v1/content/myst.html) Documentation formatting.
 - Increased docstring coverage of public functions
 - Installation on MacOS (Intel) has been simplified and is now the same as for
   other platforms, thanks to [@termim](https://github.com/termim) who has taken
@@ -384,7 +931,7 @@ this in the future should be considered a breaking change.
   - The online demo GUI should not have sensitive information submitted to it.
 - [@matthewdeancooper](https://github.com/matthewdeancooper) uploaded his
   Masters thesis on deep learning auto-segmentation to
-  [the docs](https://docs.pymedphys.com/background/autocontouring.html#details).
+  [the docs](https://docs.pymedphys.com/en/latest/users/background/autocontouring.html#details).
 - PyMedPhys was featured in a talk at the ACPSEM 2020 Summer School. Both the
   [video](https://simonbiggs.net/acpsem-summer-school-2020-video) and
   [slides](https://simonbiggs.net/acpsem-summer-school-2020-slides) are
@@ -500,7 +1047,7 @@ this in the future should be considered a breaking change.
 
 - Within `pymedphys.experimental.pseudonymisation` both `pseudonymise` and
   `is_valid_strategy_for_keywords` were added. `pseudonymise` provides
-  a convenient simple API for pseudonymisation. See [the API docs](https://docs.pymedphys.com/ref/lib/experimental/pseudonymisation.html#api)
+  a convenient simple API for pseudonymisation. See [the API docs](https://docs.pymedphys.com/en/latest/users/ref/lib/experimental/pseudonymisation.html#api)
   for more information. Credit to [@sjswerdloff](https://github.com/sjswerdloff)
   for all his work here.
 
@@ -1233,9 +1780,9 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 - Pinnacle module providing a tool to export raw Pinnacle data to DICOM
   objects.
   - A CLI is provided: See
-    [the Pinnacle CLI docs](https://docs.pymedphys.com/user/interfaces/cli/pinnacle.html).
+    [the Pinnacle CLI docs](https://docs.pymedphys.com/en/latest/users/ref/cli/pinnacle.html).
   - As well as an API: See
-    [the Pinnacle library docs](https://docs.pymedphys.com/user/library/pinnacle.html).
+    [the Pinnacle library docs](https://docs.pymedphys.com/en/latest/users/ref/lib/experimental/pinnacle.html).
 
 ## [0.9.0] -- 2019/06/06
 
@@ -1311,7 +1858,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 ### New Features
 
 - A DICOM anonymisation CLI! See
-  [the DICOM Files CLI docs](../user/ref/cli/dicom.rst).
+  [the DICOM Files CLI docs](https://docs.pymedphys.com/users/ref/cli/dicom.html).
 - `anonymise_file()` and `anonymise_directory()`:
   - two new DICOM anonymisation
     wrapper functions that take a DICOM file and a directory as respective

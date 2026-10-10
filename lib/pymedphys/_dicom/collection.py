@@ -15,10 +15,11 @@
 
 from copy import deepcopy
 
-from packaging import version
 from pymedphys._imports import pydicom
 
 from . import anonymise, coords, create
+from .compat import ensure_transfer_syntax
+from .coords import _DoseGridGeometry
 
 # pylint: disable=W0201
 
@@ -28,7 +29,7 @@ class DicomBase:
         if copy:
             dataset = deepcopy(dataset)
 
-        create.set_default_transfer_syntax(dataset)
+        ensure_transfer_syntax(dataset)
 
         self.dataset = dataset
 
@@ -63,12 +64,6 @@ class DicomBase:
         return self.dataset.__repr__()
 
     def __eq__(self, other):
-        if version.parse(pydicom.__version__) <= version.parse("1.2.1"):
-            self_elems = sorted(list(self.dataset.iterall()), key=lambda x: x.tag)
-            other_elems = sorted(list(other.dataset.iterall()), key=lambda x: x.tag)
-            return self_elems == other_elems
-
-        # TODO: Change for pydicom>=1.2.2?
         self_elems = sorted(list(self.dataset.iterall()), key=lambda x: x.tag)
         other_elems = sorted(list(other.dataset.iterall()), key=lambda x: x.tag)
         return self_elems == other_elems
@@ -119,8 +114,12 @@ class DicomDose(DicomBase):
 
     @property
     def coords(self):
-        x, y, z = coords.xyz_axes_from_dataset(self.dataset, "DICOM")
-        return coords.coords_from_xyz_axes((x, y, z))
+        """DICOM (x, y, z) of every voxel, indexed [xyz, slice, row, column]."""
+        # Decubitus rows run along x, so follow the dataset's own mapping.
+        geometry = _DoseGridGeometry.from_dataset(self.dataset)
+        return coords.coords_from_xyz_axes(
+            geometry.dicom_axes(), geometry.xyz_to_pixel_dimensions
+        )
 
 
 class DicomImage(DicomBase):

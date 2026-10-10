@@ -1,4 +1,4 @@
-# Copyright (C) 2022-2024 Matthew Jennings
+# Copyright (C) 2022-2026 Matthew Jennings
 # Copyright (C) 2015-2018 Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,18 +17,21 @@
 
 import logging
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any, Optional
 from warnings import warn
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
-from pymedphys import interpolate as pmp_interp
 import pymedphys._utilities.createshells
+from pymedphys._interp.interp import _interp_validated
 
 from ..utilities import run_input_checks
 
 DEFAULT_RAM = int(2**30 * 1.5)  # 1.5 GB
+
+logger = logging.getLogger(__name__)
 
 
 def gamma_shell(
@@ -48,23 +51,34 @@ def gamma_shell(
     ram_available=DEFAULT_RAM,
     quiet=None,
     interp_algo="pymedphys",
+    random_state=None,
+    exclude_nan_reference=False,
 ):
     """Compare two dose grids with the gamma index.
 
-    It computes 1, 2, or 3 dimensional gamma with arbitrary gird sizes while
+    It computes 1, 2, or 3 dimensional gamma with arbitrary grid sizes while
     interpolating on the fly. This function makes use of some of the ideas
     presented within <http://dx.doi.org/10.1118/1.2721657>.
 
     Parameters
     ----------
     axes_reference : tuple
-        The reference coordinates.
+        The reference coordinates, in the same order as the dose dimensions.
+        Ascending or descending axes retain their supplied order in the output.
     dose_reference : np.array
         The reference dose grid. Each point in the reference grid becomes the
         centre of a Gamma ellipsoid. For each point of the reference, nearby
         evaluation points are searched at increasing distances.
     axes_evaluation : tuple
-        The evaluation coordinates.
+        The evaluation coordinates. Axes may be ascending or descending.
+        Descending axes and their dose values are reversed together internally;
+        this does not change the reference grid or the output order.
+        Uneven spacing uses the SciPy interpolator with a warning. An axis
+        with a single value makes the evaluation grid a plane, line or point
+        with no thickness, such as a single-frame RT Dose. Gamma then searches
+        within that plane, line or point only, and adds each reference
+        point's perpendicular distance from it, so results do not depend on
+        the coordinate origin.
     dose_evaluation : np.array
         The evaluation dose grid. Evaluation here is defined as the grid which
         is interpolated and searched over at increasing distances away from
@@ -84,21 +98,29 @@ def gamma_shell(
         this default value would mean that the evaluation grid is interpolated at
         a step size of 0.3 mm.
     max_gamma : float, optional
-        The maximum gamma searched for. This can be used to speed up
-        calculation, once a search distance is reached that would give gamma
-        values larger than this parameter, the search stops. Defaults to :obj:`np.inf`
+        The largest gamma value reported. This can be used to speed up
+        calculation: once a search distance is reached that would give gamma
+        values larger than this parameter, the search stops, and larger
+        values are reported as ``max_gamma``. It must be greater than 1, so
+        that it never changes whether a point passes (gamma <= 1). Defaults to
+        :obj:`np.inf`. The search also stops when shells can no longer reach
+        the evaluation grid.
     local_gamma
         Designates local gamma should be used instead of global. Defaults to
-        False.
+        False. Local gamma is undefined where the reference dose is zero, so a
+        ``ValueError`` is raised if any analysed reference point is zero.
     global_normalisation : float, optional
         The dose normalisation value that the percent inputs calculate from.
-        Defaults to the maximum value of :obj:`dose_reference`.
+        Defaults to the maximum value of :obj:`dose_reference`. It must be
+        finite and positive.
     random_subset : int, optional
-        Used to only calculate a random subset of the reference grid. The
-        number chosen is how many random points to calculate.
+        Number of reference points to sample from those at or above the lower dose
+        cutoff. This is a count, not a fraction. If it exceeds the number of
+        eligible points, all eligible points are used.
     ram_available : int, optional
-        The number of bytes of RAM available for use by this function. Defaults
-        to 0.8 times your total RAM as determined by psutil.
+        RAM budget in bytes used to split interpolation work into chunks.
+        Defaults to 1.5 GiB (1610612736 bytes), also used when None is
+        passed. This is not a limit on total process memory.
     quiet : bool, optional
         Deprecated but maintained for now for backwards compatibility.
         `pymedphys.gamma` now utilises the `logging` module. You can set
@@ -107,11 +129,54 @@ def gamma_shell(
         Additional information using for benchmarking or troubleshooting
         performance is provided for the `debug` level.
 
+    interp_algo : {"pymedphys", "scipy"}, optional
+        Interpolation implementation. Defaults to "pymedphys". The "scipy"
+        option uses scipy.interpolate.RegularGridInterpolator.
+    random_state : int or numpy.random.Generator, optional
+        Seed or generator that selects the ``random_subset``, so the subset
+        can be reproduced. Defaults to None, which uses NumPy's global random
+        state as before, so :func:`numpy.random.seed` still applies.
+    exclude_nan_reference : bool, optional
+        Leave reference points whose dose is NaN out of the analysis, for
+        example unmeasured detector positions or points outside a region of
+        interest. They are reported as NaN, and the default
+        ``global_normalisation`` ignores them. Defaults to False, which
+        raises ``ValueError`` if ``dose_reference`` contains NaN, so that
+        NaN from an upstream error is not silently dropped. Infinite
+        reference doses, and NaN or infinite evaluation doses, always raise.
+
     Returns
     -------
     gamma
-        The array of gamma values the same shape as that
-        given by the reference coordinates and dose.
+        Each returned gamma array has the same shape and index order as
+        ``dose_reference``. Its values belong to ``axes_reference``; use those
+        coordinates when plotting. If the reference was obtained from
+        :func:`pymedphys.dicom.zyx_and_dose_from_dataset`, its order can differ
+        from the DICOM dataset's raw ``pixel_array``.
+
+        A reference point is analysed when its dose is at or above the lower
+        dose cutoff (so NaN, excluded with ``exclude_nan_reference``, is not)
+        and, if ``random_subset`` is set, it was selected. Every
+        analysed reference point has a value; NaN marks only the reference
+        points that were not analysed. :func:`pymedphys.gamma_pass_rate`
+        gives the percentage of analysed reference points that pass.
+
+        An analysed reference point outside the evaluation grid is compared
+        with the evaluation data up to the grid's edge, so it may fail. A
+        warning gives the number of such points more than one search step
+        (the smallest distance threshold divided by ``interp_fraction``)
+        outside the grid. Crop the reference grid to the region the
+        evaluation grid covers if only that region should be analysed.
+
+    Raises
+    ------
+    ValueError
+        If either dose grid contains infinite values, ``dose_evaluation``
+        contains NaN, ``dose_reference`` contains NaN (unless
+        ``exclude_nan_reference=True``) or no finite values, ``max_gamma`` is
+        not greater than 1, ``global_normalisation`` is not finite and
+        positive, or local gamma is requested and an analysed reference
+        point has zero dose.
     """
 
     if quiet is not None:
@@ -123,6 +188,9 @@ def gamma_shell(
 
     if max_gamma is None:
         max_gamma = np.inf
+
+    if ram_available is None:
+        ram_available = DEFAULT_RAM
 
     options = GammaInternalFixedOptions.from_user_inputs(
         axes_reference,
@@ -141,22 +209,24 @@ def gamma_shell(
         ram_available,
         quiet,
         interp_algo,
+        random_state,
+        exclude_nan_reference,
     )
 
     if options.local_gamma:
-        logging.info("Computing the gamma using local normalisation point")
+        logger.info("Computing the gamma using local normalisation point")
     else:
-        logging.info("Computing the gamma using global normalisation point")
+        logger.info("Computing the gamma using global normalisation point")
 
-    logging.info("Global normalisation set to %.3f", options.global_normalisation)
-    logging.info(
-        "Global dose threshold set to %.3f (%.2f%% of normalisation)",
+    logger.info("Global normalisation set to %.3f", options.global_normalisation)
+    logger.info(
+        "Global dose threshold set to %s (%s%% of normalisation)",
         options.global_dose_threshold,
         options.dose_percent_threshold,
     )
 
-    logging.info("Distance threshold set to %s", options.distance_mm_threshold)
-    logging.info(
+    logger.info("Distance threshold set to %s", options.distance_mm_threshold)
+    logger.info(
         "Lower dose cutoff set to %.3f (%.1f%% of normalisation)",
         options.lower_dose_cutoff,
         lower_percent_dose_cutoff,
@@ -171,6 +241,7 @@ def gamma_shell(
 
             gamma_temp = current_gamma[:, i, j]
             gamma_temp = np.reshape(gamma_temp, np.shape(dose_reference))
+            # Only points that were not analysed are still infinite.
             gamma_temp[np.isinf(gamma_temp)] = np.nan
 
             with np.errstate(invalid="ignore"):
@@ -179,7 +250,7 @@ def gamma_shell(
 
             gamma[key] = gamma_temp
 
-    logging.info("Complete!")
+    logger.info("Complete!")
 
     if len(gamma.keys()) == 1:
         gamma = next(iter(gamma.values()))
@@ -198,6 +269,169 @@ def expand_dims_to_1d(array):
         return array
 
     raise ValueError("Expected a 0-d or 1-d array")
+
+
+def _prepare_evaluation_grid(axes_evaluation, dose_evaluation, interp_algo):
+    """Return the evaluation grid as the interpolators require it.
+
+    Each axis becomes a contiguous, strictly ascending float64 array, with
+    the dose flipped along any axis that was descending, so that grids
+    stored in either order (as DICOM data often is) give the same gamma.
+    The reference grid is left as given, because gamma is returned on it.
+    """
+    axes = [np.asarray(axis, dtype=np.float64) for axis in axes_evaluation]
+    dose = np.asarray(dose_evaluation, dtype=np.float64)
+
+    for dimension, axis in enumerate(axes):
+        if axis.ndim != 1 or axis.size == 0 or not np.all(np.isfinite(axis)):
+            raise ValueError(
+                f"Evaluation axis {dimension} must be a non-empty finite 1D array"
+            )
+        if axis.size == 1:
+            # A fixed coordinate: the grid is a plane, line or point there.
+            continue
+        diff = np.diff(axis)
+        if np.all(diff < 0):
+            axes[dimension] = axis[::-1]
+            dose = np.flip(dose, axis=dimension)
+        elif not np.all(diff > 0):
+            raise ValueError(
+                f"Evaluation axis {dimension} must be strictly ascending or "
+                "strictly descending"
+            )
+
+    is_uneven = any(
+        axis.size > 1 and not np.allclose(np.diff(axis), axis[1] - axis[0])
+        for axis in axes
+    )
+    if is_uneven and interp_algo.lower() == "pymedphys":
+        warn(
+            "The evaluation axes are not evenly spaced, which the 'pymedphys' "
+            "interpolator requires. Falling back to interp_algo='scipy'.",
+            UserWarning,
+            stacklevel=4,
+        )
+        interp_algo = "scipy"
+
+    axes = tuple(np.ascontiguousarray(axis) for axis in axes)
+
+    return axes, np.ascontiguousarray(dose), interp_algo
+
+
+def _grid_distance_bounds(axes_reference, axes_evaluation):
+    """Bounds on distances between reference and evaluation points.
+
+    Disjoint grids can have valid gamma values. Shells below the lower bound
+    or above the upper bound cannot intersect the evaluation grid. The upper
+    bound also ensures termination when no finite candidate is sampled.
+    """
+    nearest, farthest = [], []
+    for dimension, (reference, evaluation) in enumerate(
+        zip(axes_reference, axes_evaluation)
+    ):
+        reference = np.asarray(reference)
+        if (
+            reference.ndim != 1
+            or reference.size == 0
+            or not np.all(np.isfinite(reference))
+        ):
+            raise ValueError(
+                f"Reference axis {dimension} must be a non-empty finite 1D array"
+            )
+        reference_min, reference_max = np.min(reference), np.max(reference)
+        nearest.append(
+            max(evaluation[0] - reference_max, reference_min - evaluation[-1], 0)
+        )
+        farthest.append(
+            max(
+                abs(reference_min - evaluation[-1]),
+                abs(reference_max - evaluation[0]),
+            )
+        )
+
+    return np.linalg.norm(nearest), np.linalg.norm(farthest)
+
+
+def _nearest_grid_points(flat_mesh_axes_reference, index, axes_evaluation):
+    """The nearest point of the evaluation grid's extent to each reference point.
+
+    Returns the points that ``index`` selects, clipped to the grid's extent,
+    with shape ``(points, dimensions)``.
+    """
+    return np.stack(
+        [
+            np.clip(coords[index], axis[0], axis[-1])
+            for coords, axis in zip(flat_mesh_axes_reference, axes_evaluation)
+        ],
+        axis=-1,
+    )
+
+
+def _distance_outside_grid(flat_mesh_axes_reference, index, axes_evaluation):
+    """Distance from each reference point that ``index`` selects to the
+    evaluation grid's extent, zero inside it.
+
+    Summed one dimension at a time to limit memory on large grids.
+    """
+    squared_distance = np.zeros(len(index))
+    for coords, axis in zip(flat_mesh_axes_reference, axes_evaluation):
+        coords = coords[index]
+        squared_distance += (coords - np.clip(coords, axis[0], axis[-1])) ** 2
+    return np.sqrt(squared_distance)
+
+
+def _check_finite_doses(dose_reference, dose_evaluation, exclude_nan_reference):
+    """Reject doses gamma cannot use, saying how to express the intent."""
+    if np.any(np.isinf(dose_reference)):
+        raise ValueError("dose_reference must be finite, but contains infinite values.")
+
+    if not exclude_nan_reference and np.any(np.isnan(dose_reference)):
+        raise ValueError(
+            "dose_reference must be finite, but contains NaN values. To leave "
+            "those reference points out of the analysis, pass "
+            "exclude_nan_reference=True; they are then reported as NaN."
+        )
+
+    if np.all(np.isnan(dose_reference)):
+        raise ValueError("dose_reference has no finite values to analyse.")
+
+    if not np.all(np.isfinite(dose_evaluation)):
+        raise ValueError(
+            "dose_evaluation must be finite, but contains NaN or infinite "
+            "values. Gamma searches the evaluation dose between grid points, "
+            "so it cannot skip missing values. Crop the evaluation grid to "
+            "the region with valid dose. If the missing values are "
+            "unmeasured points, use the measurement as the reference instead, "
+            "with exclude_nan_reference=True."
+        )
+
+
+def _warn_about_points_outside_the_grid(
+    flat_mesh_axes_reference, reference_points_to_calc, axes_evaluation, resolution
+):
+    analysed = np.count_nonzero(reference_points_to_calc)
+    if analysed == 0:
+        return
+
+    distance = _distance_outside_grid(
+        flat_mesh_axes_reference,
+        np.flatnonzero(reference_points_to_calc),
+        axes_evaluation,
+    )
+    outside = np.count_nonzero(distance > resolution)
+    if outside == 0:
+        return
+
+    warn(
+        f"{outside} of {analysed} analysed reference points "
+        f"({100 * outside / analysed:.1f}%) lie more than one search step "
+        f"({resolution:.3g}) outside the evaluation grid. Each is compared "
+        "with the evaluation data up to the grid's edge, so these points may "
+        "fail. To analyse only the region the evaluation grid covers, crop "
+        "the reference grid to it.",
+        UserWarning,
+        stacklevel=4,
+    )
 
 
 @dataclass(frozen=True)
@@ -219,11 +453,23 @@ class GammaInternalFixedOptions:
     ram_available: Optional[int] = DEFAULT_RAM
     quiet: Any = None
     interp_algo: str = "pymedphys"
+    minimum_test_distance: float = 0.0
+    # Evaluation axes with more than one value. The search runs over these
+    # only; singleton axes fix a coordinate of a plane, line or point.
+    free_axes: Optional[tuple] = None
+    # Each reference point's distance from the fixed coordinates, or None
+    # when every evaluation axis is free.
+    flat_perpendicular_distance: Any = None
 
     def __post_init__(self):
         self.set_defaults()
 
     def set_defaults(self):
+        if self.free_axes is None:
+            object.__setattr__(
+                self, "free_axes", tuple(range(len(self.axes_evaluation)))
+            )
+
         if self.maximum_test_distance == -1:
             object.__setattr__(self, "maximum_test_distance", np.inf)
 
@@ -235,6 +481,29 @@ class GammaInternalFixedOptions:
     @property
     def global_dose_threshold(self):
         return self.dose_percent_threshold / 100 * self.global_normalisation
+
+    @property
+    def free_axes_evaluation(self):
+        return tuple(self.axes_evaluation[axis] for axis in self.free_axes)
+
+    @cached_property
+    def free_dose_evaluation(self):
+        """The evaluation dose over the free axes alone.
+
+        Singleton axes have one value each, so dropping them is a reshape.
+        """
+        shape = tuple(axis.size for axis in self.free_axes_evaluation)
+        return np.ascontiguousarray(np.reshape(self.dose_evaluation, shape))
+
+    @cached_property
+    def scipy_interpolator(self):
+        """Reuse the fixed evaluation grid across every shell and RAM chunk."""
+        return scipy.interpolate.RegularGridInterpolator(
+            self.free_axes_evaluation,
+            self.free_dose_evaluation,
+            bounds_error=False,
+            fill_value=np.inf,
+        )
 
     @classmethod
     def from_user_inputs(
@@ -255,23 +524,57 @@ class GammaInternalFixedOptions:
         ram_available=None,
         quiet=None,
         interp_algo="pymedphys",
+        random_state=None,
+        exclude_nan_reference=False,
     ):
         if max_gamma is None:
             max_gamma = np.inf
 
+        if ram_available is None:
+            ram_available = DEFAULT_RAM
+
+        if np.isnan(max_gamma) or max_gamma <= 1:
+            raise ValueError(
+                "max_gamma must be greater than 1. Gamma values above it are "
+                "reported as max_gamma, so a smaller cap would report failing "
+                "points as passing."
+            )
+
         axes_reference, axes_evaluation = run_input_checks(
             axes_reference, dose_reference, axes_evaluation, dose_evaluation
+        )
+        _check_finite_doses(dose_reference, dose_evaluation, exclude_nan_reference)
+        axes_evaluation, dose_evaluation, interp_algo = _prepare_evaluation_grid(
+            axes_evaluation, dose_evaluation, interp_algo
         )
 
         dose_percent_threshold = expand_dims_to_1d(dose_percent_threshold)
         distance_mm_threshold = expand_dims_to_1d(distance_mm_threshold)
 
         if global_normalisation is None:
-            global_normalisation = np.max(dose_reference)
+            global_normalisation = np.nanmax(dose_reference)
+
+        if not (np.isfinite(global_normalisation) and global_normalisation > 0):
+            raise ValueError(
+                "global_normalisation must be finite and positive. It defaults "
+                "to the maximum reference dose."
+            )
 
         lower_dose_cutoff = lower_percent_dose_cutoff / 100 * global_normalisation
 
-        maximum_test_distance = np.max(distance_mm_threshold) * max_gamma
+        # Validates every reference axis; the search itself only moves
+        # within the free evaluation axes.
+        _grid_distance_bounds(axes_reference, axes_evaluation)
+        free_axes = tuple(
+            axis for axis, values in enumerate(axes_evaluation) if values.size > 1
+        )
+        minimum_test_distance, spatial_limit = _grid_distance_bounds(
+            [axes_reference[axis] for axis in free_axes],
+            [axes_evaluation[axis] for axis in free_axes],
+        )
+        maximum_test_distance = min(
+            np.max(distance_mm_threshold) * max_gamma, spatial_limit
+        )
 
         dose_reference = np.array(dose_reference)
         reference_dose_above_threshold = dose_reference >= lower_dose_cutoff
@@ -281,13 +584,28 @@ class GammaInternalFixedOptions:
             [np.ravel(item) for item in mesh_axes_reference]
         )
 
+        flat_perpendicular_distance = None
+        if len(free_axes) < len(axes_evaluation):
+            squared_distance = np.zeros(flat_mesh_axes_reference.shape[1])
+            for axis, values in enumerate(axes_evaluation):
+                if axis not in free_axes:
+                    squared_distance += (
+                        flat_mesh_axes_reference[axis] - values[0]
+                    ) ** 2
+            flat_perpendicular_distance = np.sqrt(squared_distance)
+
         reference_points_to_calc = reference_dose_above_threshold
         reference_points_to_calc = np.ravel(reference_points_to_calc)
 
         if random_subset is not None:
             to_calc_index = np.where(reference_points_to_calc)[0]
 
-            np.random.shuffle(to_calc_index)
+            if random_state is None:
+                np.random.shuffle(to_calc_index)
+            else:
+                to_calc_index = np.random.default_rng(random_state).permutation(
+                    to_calc_index
+                )
             random_subset_to_calc = np.full_like(
                 reference_points_to_calc, False, dtype=bool
             )
@@ -299,9 +617,23 @@ class GammaInternalFixedOptions:
 
         flat_dose_reference = np.ravel(dose_reference)
 
+        if local_gamma and np.any(flat_dose_reference[reference_points_to_calc] == 0):
+            raise ValueError(
+                "Local gamma is undefined where the reference dose is zero, and "
+                "some analysed reference points have zero dose. Raise "
+                "lower_percent_dose_cutoff above zero to exclude them."
+            )
+
+        _warn_about_points_outside_the_grid(
+            flat_mesh_axes_reference,
+            reference_points_to_calc,
+            axes_evaluation,
+            resolution=np.min(distance_mm_threshold) / interp_fraction,
+        )
+
         return cls(
             axes_evaluation,
-            np.array(dose_evaluation),
+            dose_evaluation,
             flat_mesh_axes_reference,
             flat_dose_reference,
             reference_points_to_calc,
@@ -317,6 +649,9 @@ class GammaInternalFixedOptions:
             ram_available,
             quiet,
             interp_algo,
+            minimum_test_distance=minimum_test_distance,
+            free_axes=free_axes,
+            flat_perpendicular_distance=flat_perpendicular_distance,
         )
 
 
@@ -332,17 +667,27 @@ def gamma_loop(options: GammaInternalFixedOptions):
             len(options.distance_mm_threshold),
         )
     )
+    current_gamma = gamma_at_nearest_grid_points(options, current_gamma)
+
+    if not options.free_axes:
+        # A single evaluation point: its gamma is the only candidate.
+        return current_gamma
 
     distance_step_size = np.min(options.distance_mm_threshold) / options.interp_fraction
 
     to_be_checked = options.reference_points_to_calc & still_searching_for_gamma
 
-    distance = 0.0
+    distance = options.minimum_test_distance
 
-    force_search_distances = np.sort(options.distance_mm_threshold)
+    # Include the spatial endpoint even when it is not a multiple of the
+    # interpolation step; it can be the only sampled evaluation point.
+    force_search_distances = np.unique(
+        np.append(options.distance_mm_threshold, options.maximum_test_distance)
+    )
+    force_search_distances = force_search_distances[force_search_distances > distance]
     while distance <= options.maximum_test_distance:
-        logging.debug(
-            "Current distance: %.2f mm | " "Number of reference points remaining: %i",
+        logger.debug(
+            "Current distance: %.2f mm | Number of reference points remaining: %i",
             distance,
             np.sum(to_be_checked),
         )
@@ -391,6 +736,63 @@ def gamma_loop(options: GammaInternalFixedOptions):
                 distance = force_search_distances[0]
                 force_search_distances = np.delete(force_search_distances, 0)
 
+    if not np.all(np.isfinite(current_gamma[options.reference_points_to_calc])):
+        raise RuntimeError("Gamma was not found for every analysed reference point")
+
+    return current_gamma
+
+
+def gamma_at_nearest_grid_points(options: GammaInternalFixedOptions, current_gamma):
+    """Bound gamma at points outside the evaluation grid.
+
+    The nearest point of the evaluation grid's extent is always a candidate,
+    so every analysed reference point gets a gamma value, even where the search
+    shells cannot sample the grid: a grid narrower than one search step, a
+    singleton plane, or a grid more than ``max_gamma`` times the distance
+    threshold away. The shells then search for any lower value. Points inside
+    the grid are their own nearest point, which the zero-distance shell
+    samples, so they are left to the search.
+    """
+    analysed = np.where(options.reference_points_to_calc)[0]
+    distance = _distance_outside_grid(
+        options.flat_mesh_axes_reference, analysed, options.axes_evaluation
+    )
+    # Points inside the grid are sampled by the zero-radius shell, unless
+    # the grid is a single point, which has no shells.
+    outside = distance > 0 if options.free_axes else np.full(distance.shape, True)
+    analysed, distance = analysed[outside], distance[outside]
+    if analysed.size == 0:
+        return current_gamma
+
+    num_dimensions = len(options.axes_evaluation)
+    estimated_ram_needed = analysed.size * 32 * num_dimensions * 2
+    num_slices = int(estimated_ram_needed // options.ram_available) + 1
+
+    for current_slice in np.array_split(np.arange(analysed.size), num_slices):
+        indices = analysed[current_slice]
+        nearest = _nearest_grid_points(
+            options.flat_mesh_axes_reference, indices, options.axes_evaluation
+        )
+        evaluation_dose = interpolate_evaluation_dose(
+            options, nearest[None][..., list(options.free_axes or ())]
+        )
+        relative_dose_difference = np.abs(
+            calculate_relative_dose_difference(options, evaluation_dose, indices)[0]
+        )
+        gamma_at_edge = np.sqrt(
+            (
+                relative_dose_difference[:, None, None]
+                / (options.dose_percent_threshold[None, :, None] / 100)
+            )
+            ** 2
+            + (
+                distance[current_slice, None, None]
+                / options.distance_mm_threshold[None, None, :]
+            )
+            ** 2
+        )
+        current_gamma[indices] = np.minimum(current_gamma[indices], gamma_at_edge)
+
     return current_gamma
 
 
@@ -401,13 +803,23 @@ def multi_thresholds_gamma_calc(
     distance,
     to_be_checked,
 ):
+    # The shell radius lies within the free axes. Off a plane, line or
+    # point, the perpendicular distance adds in quadrature; hypot(r, 0) is
+    # exactly r, so free-only grids are unaffected.
+    if options.flat_perpendicular_distance is None:
+        total_distance = np.full(len(options.flat_dose_reference), distance)
+    else:
+        total_distance = np.hypot(distance, options.flat_perpendicular_distance)
+    total_distance = total_distance[:, None, None]
+
     gamma_at_distance = np.sqrt(
         (
             min_relative_dose_difference[:, None, None]
             / (options.dose_percent_threshold[None, :, None] / 100)
         )
         ** 2
-        + (distance / options.distance_mm_threshold[None, None, :]) ** 2
+        + (total_distance[to_be_checked] / options.distance_mm_threshold[None, None, :])
+        ** 2
     )
 
     current_gamma[to_be_checked, :, :] = np.min(
@@ -422,7 +834,7 @@ def multi_thresholds_gamma_calc(
     )
 
     still_searching_for_gamma = current_gamma > (
-        distance / options.distance_mm_threshold[None, None, :]
+        total_distance / options.distance_mm_threshold[None, None, :]
     )
 
     if options.skip_once_passed:
@@ -441,7 +853,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
         options.flat_dose_reference[to_be_checked]
     )
 
-    num_dimensions = np.shape(options.flat_mesh_axes_reference)[0]
+    num_dimensions = len(options.free_axes)
 
     coordinates_at_distance_shell = (
         pymedphys._utilities.createshells.calculate_coordinates_shell(  # pylint: disable = protected-access
@@ -461,7 +873,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
 
     num_slices = np.floor(estimated_ram_needed / options.ram_available).astype(int) + 1
 
-    logging.debug(
+    logger.debug(
         "Points tested per reference point: %i | RAM split count: %i",
         num_points_in_shell,
         num_slices,
@@ -482,7 +894,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
         assert np.all(to_be_checked[to_be_checked_sliced])
 
         axes_reference_to_be_checked = options.flat_mesh_axes_reference[
-            :, to_be_checked_sliced
+            np.ix_(options.free_axes, to_be_checked_sliced)
         ]
 
         evaluation_dose = interpolate_evaluation_dose_at_distance(
@@ -490,24 +902,30 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
             axes_reference_to_be_checked,
             coordinates_at_distance_shell,
         )
-
-        if options.local_gamma:
-            with np.errstate(divide="ignore"):
-                relative_dose_difference = (
-                    evaluation_dose
-                    - options.flat_dose_reference[to_be_checked_sliced][None, :]
-                ) / (options.flat_dose_reference[to_be_checked_sliced][None, :])
-        else:
-            relative_dose_difference = (
-                evaluation_dose
-                - options.flat_dose_reference[to_be_checked_sliced][None, :]
-            ) / options.global_normalisation
+        relative_dose_difference = calculate_relative_dose_difference(
+            options, evaluation_dose, to_be_checked_sliced
+        )
 
         min_relative_dose_difference[current_slice] = np.min(
             np.abs(relative_dose_difference), axis=0
         )
 
     return min_relative_dose_difference
+
+
+def calculate_relative_dose_difference(options, evaluation_dose, reference_index):
+    """Dose differences relative to the global or local normalisation.
+
+    ``evaluation_dose`` has a trailing axis over the reference points that
+    ``reference_index`` selects. Local gamma inputs were checked for zero
+    reference dose, and evaluation dose outside the grid is infinite.
+    """
+    reference_dose = options.flat_dose_reference[reference_index][None, :]
+    normalisation = (
+        reference_dose if options.local_gamma else options.global_normalisation
+    )
+
+    return (evaluation_dose - reference_dose) / normalisation
 
 
 def interpolate_evaluation_dose_at_distance(
@@ -522,6 +940,18 @@ def interpolate_evaluation_dose_at_distance(
         axes_reference_to_be_checked, coordinates_at_distance_shell
     )
 
+    return interpolate_evaluation_dose(options, all_points)
+
+
+def interpolate_evaluation_dose(options, all_points):
+    """Interpolate the evaluation dose at points shaped ``(..., free axes)``.
+
+    Points give coordinates on the free evaluation axes only. Points outside
+    the evaluation grid are given infinite dose.
+    """
+    if not options.free_axes:
+        return np.full(all_points.shape[:-1], options.dose_evaluation.item())
+
     if options.interp_algo.lower() == "pymedphys":
         evaluation_dose = _run_custom_interp(options, all_points)
     elif options.interp_algo.lower() == "scipy":
@@ -534,31 +964,21 @@ def interpolate_evaluation_dose_at_distance(
 
 
 def _run_custom_interp(options, all_points):
-    points = np.column_stack(
-        [all_points[..., i].ravel() for i in range(all_points.shape[-1])]
-    )
+    # add_shells_to_ref_coords returns contiguous points, so this is a view.
+    points = all_points.reshape(-1, all_points.shape[-1])
 
-    return pmp_interp.interp(
-        axes_known=options.axes_evaluation,
-        values=options.dose_evaluation,
+    # _prepare_evaluation_grid has already validated and normalised these
+    # arrays. Reuse that guarantee throughout the shell/chunk loop.
+    return _interp_validated(
+        axes_known=options.free_axes_evaluation,
+        values=options.free_dose_evaluation,
         points_interp=points,
-        bounds_error=False,
         extrap_fill_value=np.inf,
-        skip_checks=True,
     ).reshape(all_points.shape[:-1])
 
 
 def _run_interp_with_scipy(options, all_points):
-    evaluation_interpolation = scipy.interpolate.RegularGridInterpolator(
-        options.axes_evaluation,
-        options.dose_evaluation,
-        bounds_error=False,
-        fill_value=np.inf,
-    )
-
-    evaluation_dose = evaluation_interpolation(all_points)
-
-    return evaluation_dose
+    return options.scipy_interpolator(all_points)
 
 
 def add_shells_to_ref_coords(

@@ -3,12 +3,46 @@ name: Integration Tests
 on:
   workflow_call:
     inputs:
+      run-doctests:
+        type: boolean
+        default: true
+        required: false
+      run-scripts:
+        type: boolean
+        default: true
+        required: false
+      run-packaging:
+        type: boolean
+        default: true
+        required: false
+      run-wheel-build:
+        description: Build and smoke-test distributions (the release builds its own)
+        type: boolean
+        default: true
+        required: false
       run-slow:
         type: boolean
         default: false
         required: false
   workflow_dispatch:
     inputs:
+      run-doctests:
+        type: boolean
+        default: true
+        required: false
+      run-scripts:
+        type: boolean
+        default: true
+        required: false
+      run-packaging:
+        type: boolean
+        default: true
+        required: false
+      run-wheel-build:
+        description: Build and smoke-test distributions (the release builds its own)
+        type: boolean
+        default: true
+        required: false
       run-slow:
         type: boolean
         default: true
@@ -20,18 +54,33 @@ permissions:
 jobs:
   doctests:
     name: Doctests
+    if: ${{ inputs.run-doctests }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-project
         with:
           extras: 'all'
+          cache-data: 'true'
 
       - name: Run doctests
         run: |
           uv run pymedphys dev doctests -v
+
+      - name: Run the StackOverflow example
+        run: uv run python examples/stackoverflow/gamma.py
+
+      # The gamma benchmark tooling in examples/ is not part of the package,
+      # so the unit-test jobs do not collect its tests.
+      - name: Run the gamma benchmark tooling tests
+        run: uv run python -m unittest discover -s examples -p 'test_gamma_*.py'
+
+      - name: Run the gamma comparison harness mock tests
+        run: uv run --no-sync pytest examples/gamma_benchmark/tests
 
   slow-tests:
     name: Slow Tests
@@ -39,67 +88,93 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'dev tests'
+          extras: 'tests'
+          cache-data: 'true'
 
+      # The slow tests are independent, and processes that share the data
+      # cache take turns with each archive, from download to extraction.
       - name: Run slow tests
         run: |
-          uv run pytest -m slow -q
+          uv run -- pymedphys dev tests --slow -v -n auto --durations=15
 
-  stackoverflow:
-    name: StackOverflow Examples
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+  # The distribution checks create venvs, run console scripts, and build from
+  # file:// indexes, which differ on Windows and macOS. Ubuntu runs these
+  # tests in ci.yml whenever the tooling checks are selected.
+  script-tests:
+    name: Script Tests (${{ matrix.os }})
+    if: ${{ inputs.run-scripts }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Selection tests scan the package for slow markers and doctests.
+          sparse-checkout: |
+            .github
+            lib/pymedphys
 
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'user'
+          install-project: 'false'
 
-      - name: Run stackoverflow examples
-        run: |
-          if [[ -x scripts/stackoverflow.sh ]]; then
-            bash scripts/stackoverflow.sh
-          fi
-          if [[ -f examples/stackoverflow/gamma.py ]]; then
-            uv run python examples/stackoverflow/gamma.py
-          fi
+      # The test runner only, hash-checked from uv.lock, in its own step.
+      - name: Install the script-tests group
+        run: uv sync --frozen --only-group script-tests
 
-  wheel-build:
-    name: Wheel Build Test
+      - name: Run the script tests
+        run: uv run --no-sync pytest -n auto .github/scripts
+
+  # One job for the packaging checks, which each take seconds.
+  #
+  # The wheel build makes the sdist and then the wheel from it, so a file
+  # missing from the sdist fails here, then installs the wheel into a fresh
+  # venv outside the project's environment. See
+  # .github/scripts/check_distributions.py. It runs first, on the checkout as
+  # committed.
+  #
+  # The exported requirements.txt, dependency-extra.txt, pyproject.hash, and
+  # _version.py are generated from pyproject.toml and uv.lock; a commit that
+  # changes the sources without regenerating them fails the drift check, which
+  # reports even when the wheel checks fail.
+  packaging:
+    name: Packaging and Generated Files
+    if: ${{ inputs.run-packaging }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
+      # Building needs only the project and uv; propagation also formats the
+      # generated version file with Ruff, from the pre-commit group.
       - uses: ./.github/actions/setup-project
+        with:
+          groups: 'pre-commit'
 
-      - name: Build and test wheel
+      - name: Build the sdist, then the wheel from it
+        if: inputs.run-wheel-build
+        run: uv build
+
+      - name: Check the distributions
+        if: inputs.run-wheel-build
+        run: python .github/scripts/check_distributions.py dist
+
+      - name: Regenerate the propagated files and check for drift
+        if: ${{ !cancelled() }}
         run: |
-          uv build --wheel
-          uv pip install dist/*.whl
-          uv run pymedphys --help
-          uv run python -c "import pymedphys"
-
-  propagate:
-    name: Propagate Scripts
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
-
-      - uses: ./.github/actions/setup-project
-
-      - name: Run propagate scripts
-        run: |
-          if [[ -x scripts/propagate.sh ]]; then
-            bash scripts/propagate.sh
-          elif [[ -x tools/propagate.sh ]]; then
-            bash tools/propagate.sh
-          else
-            echo "No propagate script found, skipping."
-          fi
+          uv run pymedphys dev propagate
+          git diff --exit-code -- \
+            requirements.txt pyproject.hash \
+            lib/pymedphys/dependency-extra.txt lib/pymedphys/_version.py

@@ -11,8 +11,8 @@ and open source distribution. Open code is better science.**
 
 |build| |pypi| |python| |license|
 
-.. |build| image:: https://img.shields.io/github/actions/workflow/status/pymedphys/pymedphys/library.yml?branch=main
-    :target: https://github.com/pymedphys/pymedphys/actions?query=branch%3Amain
+.. |build| image:: https://github.com/pymedphys/pymedphys/actions/workflows/ci.yml/badge.svg?branch=main
+   :target: https://github.com/pymedphys/pymedphys/actions/workflows/ci.yml
 
 .. |pypi| image:: https://img.shields.io/pypi/v/pymedphys
     :target: https://pypi.org/project/pymedphys/
@@ -73,7 +73,7 @@ PyMedPhys is often used to:
 Install PyMedPhys
 *****************
 
-PyMedPhys currently supports Python 3.10, 3.11, and 3.12.
+PyMedPhys currently supports Python 3.11, 3.12, 3.13, and 3.14.
 
 For most users, we recommend using ``uv`` to create an environment and install
 PyMedPhys:
@@ -143,14 +143,16 @@ Source Software, 7(78), 4555, https://doi.org/10.21105/joss.04555*
 Development
 ===========
 
-PyMedPhys uses `uv`_ for package and project management.
+PyMedPhys uses `uv`_ for package and project management and Hatchling to build
+distributions. See the `Contributors Guide`_ for the complete setup and PR
+workflow.
 
 After cloning the repository, install the PyMedPhys dependencies and set up
 pre-commit by running:
 
 .. code:: bash
 
-    uv sync --extra all --group dev
+    uv sync --python 3.14 --locked
     uv run -- pre-commit install
 
 Run automated tests with:
@@ -232,6 +234,11 @@ Active contributors
 
 .. _`Marcus Fisk`: https://github.com/laser47-hue
 
+* `Vishu`_
+    * Hansraj College, India
+
+.. _`Vishu`: https://github.com/httpsVishu
+
 |uth| |ccr|
 
 Past contributors
@@ -301,11 +308,13 @@ Past contributors
 
 .. _`Cancer Care Riverina`: https://cancercare.com.au/clinics/cancer-care-riverina/
 
+.. _`Hansraj College`: https://hansrajcollege.ac.in/
+
 .. _`Astropy Project`: https://www.astropy.org/
 .. _`PyPI`: https://pypi.org/project/pymedphys/
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
 
-.. _`Release Notes`: ./CHANGELOG.md
+.. _`Release Notes`: https://github.com/pymedphys/pymedphys/blob/main/CHANGELOG.md
 
 .. _`Statement of Need`: https://docs.pymedphys.com/en/latest/statement-of-need.html
 .. _`What PyMedPhys can do`: https://docs.pymedphys.com/en/latest/users/get-started/what-pymedphys-can-do.html

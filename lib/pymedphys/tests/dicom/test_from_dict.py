@@ -1,3 +1,4 @@
+# Copyright (C) 2025-2026 Matthew Jennings
 # Copyright (C) 2019 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+import io
 
 from pymedphys._imports import pydicom, pytest
 
@@ -31,3 +34,141 @@ def test_dicom_from_dict():
     )
 
     assert created_dataset == baseline_dataset
+
+
+def _template(is_implicit_VR=None, is_little_endian=None, transfer_syntax_uid=None):
+    """Create a template dataset that carries only the given encoding hints."""
+    template = pydicom.Dataset()
+    if is_implicit_VR is not None:
+        template.is_implicit_VR = is_implicit_VR
+    if is_little_endian is not None:
+        template.is_little_endian = is_little_endian
+    if transfer_syntax_uid is not None:
+        template.file_meta = pydicom.dataset.FileMetaDataset()
+        template.file_meta.TransferSyntaxUID = transfer_syntax_uid
+    return template
+
+
+@pytest.mark.pydicom
+# pydicom 3 deprecates the legacy flags that some of these templates set.
+@pytest.mark.filterwarnings(
+    "ignore:.*is_(implicit_VR|little_endian)' will be removed in v4:DeprecationWarning"
+)
+@pytest.mark.parametrize(
+    ("template_flags", "expected_transfer_syntax_uid"),
+    [
+        pytest.param(None, pydicom.uid.ImplicitVRLittleEndian, id="no template"),
+        pytest.param(
+            {},
+            pydicom.uid.ImplicitVRLittleEndian,
+            id="template without encoding hints",
+        ),
+        pytest.param(
+            {"is_implicit_VR": True, "is_little_endian": True},
+            pydicom.uid.ImplicitVRLittleEndian,
+            id="implicit VR little endian flags",
+        ),
+        pytest.param(
+            {"is_implicit_VR": False, "is_little_endian": True},
+            pydicom.uid.ExplicitVRLittleEndian,
+            id="explicit VR little endian flags",
+        ),
+        pytest.param(
+            {"is_implicit_VR": False, "is_little_endian": False},
+            pydicom.uid.ExplicitVRBigEndian,
+            id="explicit VR big endian flags",
+        ),
+        pytest.param(
+            {"is_implicit_VR": False},
+            pydicom.uid.ExplicitVRLittleEndian,
+            id="only is_implicit_VR set",
+        ),
+    ],
+)
+def test_dicom_from_dict_sets_transfer_syntax(
+    template_flags, expected_transfer_syntax_uid
+):
+    """Datasets built from a dictionary always declare a transfer syntax.
+
+    Implicit VR Little Endian is used unless the template's encoding flags
+    say otherwise.
+    """
+    # The template is built here, not at collection, so that the filter above
+    # applies to the flags' deprecation warnings.
+    template = None if template_flags is None else _template(**template_flags)
+
+    dataset = dicom_dataset_from_dict(
+        {"PatientName": "Test^Patient"}, template_ds=template
+    )
+
+    assert dataset.file_meta.TransferSyntaxUID == expected_transfer_syntax_uid
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_dicom_from_dict_keeps_the_encoding_of_a_template_read_from_file():
+    """A template read from a file without file meta keeps that file's encoding.
+
+    pydicom 4 has no legacy encoding flags, so the template's original
+    encoding decides.
+    """
+    source = pydicom.Dataset()
+    source.PatientName = "Test^Patient"
+    buffer = io.BytesIO()
+    pydicom.dcmwrite(buffer, source, implicit_vr=False, little_endian=True)
+    buffer.seek(0)
+    template = pydicom.dcmread(buffer, force=True)
+
+    dataset = dicom_dataset_from_dict({"PatientID": "PMP-001"}, template_ds=template)
+
+    assert dataset.file_meta.TransferSyntaxUID == pydicom.uid.ExplicitVRLittleEndian
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "transfer_syntax_uid",
+    [pydicom.uid.ExplicitVRBigEndian, pydicom.uid.JPEGBaseline8Bit],
+)
+def test_dicom_from_dict_keeps_template_transfer_syntax(transfer_syntax_uid):
+    """A transfer syntax declared by the template is never overridden."""
+    template = _template(transfer_syntax_uid=transfer_syntax_uid)
+
+    dataset = dicom_dataset_from_dict(
+        {"PatientName": "Test^Patient"}, template_ds=template
+    )
+
+    assert dataset.file_meta.TransferSyntaxUID == transfer_syntax_uid
+
+
+@pytest.mark.pydicom
+def test_dicom_from_dict_only_top_level_dataset_gets_file_meta():
+    """Sequence items are not files and must not carry file meta information."""
+    dataset = dicom_dataset_from_dict(
+        {
+            "Manufacturer": "PyMedPhys",
+            "BeamSequence": [{"BeamNumber": 1}, {"BeamNumber": 2}],
+            "ReferencedRTPlanSequence": [
+                {"ReferencedBeamSequence": [{"ReferencedBeamNumber": 1}]}
+            ],
+        }
+    )
+
+    assert dataset.file_meta.TransferSyntaxUID == pydicom.uid.ImplicitVRLittleEndian
+    assert not hasattr(dataset.BeamSequence[0], "file_meta")
+    assert not hasattr(dataset.BeamSequence[1], "file_meta")
+    assert not hasattr(
+        dataset.ReferencedRTPlanSequence[0].ReferencedBeamSequence[0], "file_meta"
+    )
+
+
+@pytest.mark.pydicom
+def test_dicom_from_dict_round_trips_through_pydicom(tmp_path):
+    """The declared transfer syntax is sufficient for pydicom to write and read."""
+    dataset = dicom_dataset_from_dict({"PatientName": "Test^Patient"})
+    filepath = tmp_path / "from_dict.dcm"
+
+    dataset.save_as(filepath)
+    reloaded = pydicom.dcmread(filepath, force=True)
+
+    assert reloaded.file_meta.TransferSyntaxUID == pydicom.uid.ImplicitVRLittleEndian
+    assert reloaded.PatientName == "Test^Patient"
