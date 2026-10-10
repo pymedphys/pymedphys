@@ -30,10 +30,13 @@ decides it (PS3.3 Section C.11.2.1.1): Pixel Representation without a
 Modality LUT or rescale, US after a Modality LUT, and after rescale SS where
 the rescaled range can be negative, as Hounsfield Units always can, and US
 otherwise. There, in explicit VR, either applies, since the standard has the
-VR follow what the second value needs; in Presentation LUT Sequence
-(2050,0010) it is always US (Section C.11.4.1). The first and third values
-of a LUT Descriptor of VR SS are decoded and written as unsigned (Sections
-C.11.1.1.1 and C.11.2.1.1), so a table of 40000 entries keeps its count. Real World Value First Value Mapped
+VR follow what the second value needs, as it does for the Red, Green, and
+Blue Palette Color Lookup Table Descriptors (0028,1101-1103) (Section
+C.7.6.3.1.5), whose VR Pixel Representation decides only without a VR in the
+file; in Presentation LUT Sequence (2050,0010) it is always US (Section
+C.11.4.1). The first and third values of these descriptors of VR SS are
+decoded and written as unsigned (Sections C.7.6.3.1.5, C.11.1.1.1, and
+C.11.2.1.1), so a table of 40000 entries keeps its count. Real World Value First Value Mapped
 (0040,9216) and Last Value Mapped (0040,9211) are SS for floating point
 pixel data (PS3.3 Section C.7.6.16.2.11.1.1), which the first supported
 release's IODs do not have, so without a VR in the file they are refused
@@ -112,6 +115,10 @@ _BITS_STORED = "(0028,0101)"
 _PIXEL_REPRESENTATION = "(0028,0103)"
 _SIGNEDNESS = {0: "US", 1: "SS"}
 _LUT_DESCRIPTOR = "(0028,3002)"
+# Red, Green, and Blue Palette Color Lookup Table Descriptor.
+_PALETTE_DESCRIPTORS = frozenset({"(0028,1101)", "(0028,1102)", "(0028,1103)"})
+# The descriptors whose first and third values are always unsigned.
+_DESCRIPTORS = frozenset({_LUT_DESCRIPTOR, *_PALETTE_DESCRIPTORS})
 _VOI_LUT_SEQUENCE = "(0028,3010)"
 _MODALITY_LUT_SEQUENCE = "(0028,3000)"
 _PRESENTATION_LUT_SEQUENCE = "(2050,0010)"
@@ -316,7 +323,7 @@ def read_element(
         elif value is None or value in ("", b""):
             values = []
         plain = tuple(_plain(path, vr, each) for each in values)
-        if path.tag == _LUT_DESCRIPTOR and vr == "SS":
+        if path.tag in _DESCRIPTORS and vr == "SS":
             plain = _unsigned_descriptor(plain)
         # pydicom reads the Default Character Repertoire as ISO 8859-1, but it
         # is ISO 646 (PS3.5 Section 6.1.2.1).
@@ -497,6 +504,11 @@ def _signedness(
         # C.11.2.1.1), so the file's VR applies, whichever it is.
         decided = None if stated else _voi_lut_input_vr(chain)
         return decided, "PS3.3 Section C.11.2.1.1"
+    if path.tag in _PALETTE_DESCRIPTORS and stated:
+        # So too for these (PS3.3 Section C.7.6.3.1.5): the explicit VR
+        # "will be consistent with Pixel Representation", but the file's VR
+        # is the one the second value is written in.
+        return None, "PS3.3 Section C.7.6.3.1.5"
     representation = _deciding(chain, _PIXEL_REPRESENTATION)
     return _SIGNEDNESS.get(representation), "Pixel Representation (0028,0103)"
 
@@ -665,8 +677,8 @@ def _unsigned_descriptor(values: tuple) -> tuple:
     """Return SS LUT Descriptor values with the first and third unsigned.
 
     "the first and third values are always by definition interpreted as
-    unsigned", whichever VR the second needs (PS3.3 Sections C.11.1.1.1 and
-    C.11.2.1.1); pydicom decodes all three as SS.
+    unsigned", whichever VR the second needs (PS3.3 Sections C.7.6.3.1.5,
+    C.11.1.1.1, and C.11.2.1.1); pydicom decodes all three as SS.
     """
     return tuple(
         value + 0x10000
@@ -820,8 +832,8 @@ def _descriptor_problem(vm: str, values: Sequence[object]) -> str | None:
     """Return what is wrong with the values of an SS LUT Descriptor, or None.
 
     Its first and third values are unsigned whichever VR its second needs
-    (PS3.3 Sections C.11.1.1.1 and C.11.2.1.1), so they must be valid US,
-    and only its second a valid SS.
+    (PS3.3 Sections C.7.6.3.1.5, C.11.1.1.1, and C.11.2.1.1), so they must be
+    valid US, and only its second a valid SS.
     """
     if len(values) != 3:  # which the VM, 3, does not allow
         return values_problem("US", vm, values)
@@ -841,9 +853,10 @@ def new_element(
     :class:`ElementValue`, or a sequence's items; and ``codecs`` are those of
     the data set it is written in. It raises :class:`ValueError` without the
     value for any other VR, an item that is not a data set, or a problem that
-    :func:`written_value_problem` finds. A LUT Descriptor (0028,3002) of VR
-    SS takes its first and third values as US, as :func:`read_element` gives
-    them.
+    :func:`written_value_problem` finds. A LUT Descriptor (0028,3002) or Red,
+    Green, or Blue Palette Color Lookup Table Descriptor (0028,1101-1103) of
+    VR SS takes its first and third values as US, as :func:`read_element`
+    gives them.
     """
     attribute = dictionary_attribute(path.tag)
     if attribute is None or vr not in attribute.vrs:
@@ -855,12 +868,12 @@ def new_element(
         value = pydicom.Sequence(cast(Sequence[pydicom.Dataset], values))
     elif problem := (
         _descriptor_problem(attribute.vm, values)
-        if path.tag == _LUT_DESCRIPTOR and vr == "SS"
+        if path.tag in _DESCRIPTORS and vr == "SS"
         else written_value_problem(vr, attribute.vm, values, codecs)
     ):
         raise ValueError(f"{path} {problem}")
     else:
-        if path.tag == _LUT_DESCRIPTOR and vr == "SS":
+        if path.tag in _DESCRIPTORS and vr == "SS":
             # pydicom writes the first value as US and the others as SS, so
             # the bytes of an unsigned third value above 32767 are those of
             # its negative counterpart.
