@@ -217,6 +217,13 @@ def _referencing(dataset, listed=True, referenced=synthetic.CT_SLICES[1]):
     return dataset
 
 
+def _with_ethics_committee(dataset, approval_number=True):
+    dataset.ClinicalTrialProtocolEthicsCommitteeName = "FICTITIOUS COMMITTEE"
+    if approval_number:
+        dataset.ClinicalTrialProtocolEthicsCommitteeApprovalNumber = "FICTITIOUS-1"
+    return dataset
+
+
 @pytest.mark.deid_requirement("MIDI-BP-03")
 def test_the_common_instance_reference_may_go_once_no_other_reference_remains():
     # Its two sequences are Type 1C, required only where the instance
@@ -239,6 +246,42 @@ def test_an_empty_reference_does_not_keep_the_common_instance_reference():
     output = _referencing(_ct(), listed=False, referenced="")
 
     assert not _found(source, output, "CT Image")
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_clinical_trial_protocol_ethics_committee_name_may_go_alone():
+    # Type 1C, required only while the approval number is present, which
+    # the Basic Profile removes.
+    output = _without(
+        _with_ethics_committee(_ct()),
+        "ClinicalTrialProtocolEthicsCommitteeName",
+        "ClinicalTrialProtocolEthicsCommitteeApprovalNumber",
+    )
+
+    assert not _found(_with_ethics_committee(_ct()), output, "CT Image")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09", "MIDI-BP-03")
+@pytest.mark.parametrize("approval_number", [True, False])
+def test_an_instance_loses_its_ethics_committee_name_with_its_approval_number(
+    approval_number,
+):
+    # PS3.5 Section 7.4.2 does not allow the Type 1C name once the Basic
+    # Profile removes the approval number that its condition needs, so the
+    # name goes too, rather than taking Table E.1-1's dummy value. A source
+    # that has the name without the number loses it as well.
+    source = _with_ethics_committee(_ct(), approval_number)
+    result = _transformed(source)
+
+    assert isinstance(result, run.Transformed)
+    written = synthetic.read(result.data)
+    assert "ClinicalTrialProtocolEthicsCommitteeName" not in written
+    assert "ClinicalTrialProtocolEthicsCommitteeApprovalNumber" not in written
+    assert not lost_requirements(
+        read_source(synthetic.written(source)),
+        read_source(result.data),
+        _iods()["CT Image"],
+    )
 
 
 def test_a_user_optional_overlay_group_may_go():

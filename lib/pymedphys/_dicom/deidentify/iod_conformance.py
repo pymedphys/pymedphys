@@ -31,14 +31,17 @@ evaluated, as for the compound actions. The two removals that
 :func:`~pymedphys._dicom.deidentify.compound_actions.resolve_plain_x_in_iod`
 allows without an enclosing sequence are not findings: the attributes of an
 overlay group whose Overlay Plane Module is user-optional, where the whole
-group was removed, and ROI Interpreter Sequence (3006,004E), whose condition
-lapses with ROI Creator Sequence (3006,004D). Nor are the Common Instance
-Reference Module's Type 1C sequences, Referenced Series Sequence (0008,1115)
-and Studies Containing Other Referenced Instances Sequence (0008,1200), where
-the output holds no other reference to an instance, so that neither condition
-holds (:mod:`~pymedphys._dicom.deidentify.common_instance_reference`). Nor
-are the items of a sequence that the engine replaced, such as the dummy item
-that D writes, compared with the source's.
+group was removed, and the attributes whose Type 1C condition lapses once
+Table E.1-1 removes what it needs, such as ROI Interpreter Sequence
+(3006,004E) with ROI Creator Sequence (3006,004D)
+(:data:`~pymedphys._dicom.deidentify.compound_actions.LAPSED_CONDITIONS`).
+Nor are the Common Instance Reference Module's Type 1C sequences, Referenced
+Series Sequence (0008,1115) and Studies Containing Other Referenced Instances
+Sequence (0008,1200), where the output holds no other reference to an
+instance, so that neither condition holds
+(:mod:`~pymedphys._dicom.deidentify.common_instance_reference`). Nor are the
+items of a sequence that the engine replaced, such as the dummy item that D
+writes, compared with the source's.
 
 What the source lacks is reported instead, by :func:`source_gaps`, and never
 acted on. Since no condition is evaluated, only an unconditional requirement
