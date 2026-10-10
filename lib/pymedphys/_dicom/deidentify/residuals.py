@@ -76,7 +76,11 @@ a digit follows, inside the integer of a UI value under the ``2.25.`` root
 at the start of a keyed replacement UID is not a finding. That rule recognises
 the root, not who wrote the UID, so it applies to a source UID kept under
 that root too; digits that make up the whole integer, and UIDs under other
-roots, are still found. Values that hold numbers (native
+roots, are still found. These rules are for text: a match wholly in a
+value that holds numbers, below, or in the fragments of encapsulated Pixel
+Data whose codestreams all parse counts whatever bytes adjoin it, since
+they are samples and coding parameters, not letters or digits of a longer
+word or number. Values that hold numbers (native
 Pixel Data, Float Pixel Data, and Double Float Pixel Data of the top-level
 data set, and values of VR OD, OF, OL, OV, and OW) are searched only for
 forms of at least :data:`MIN_BYTES_IN_NUMBERS` bytes that are not UTF-16LE,
@@ -476,7 +480,7 @@ def find_residuals(
         unsearched += prepared.unsearched
     with memoryview(data) as view, view.cast("B") as octets:
         found = _search(
-            octets, layout.spans, layout.size, needles, _coded(octets, layout)
+            octets, layout.spans, layout.size, needles, *_coded(octets, layout)
         )
     order = sorted(
         found.values(), key=lambda f: (f.offset, str(f.source), f.kind.value)
@@ -789,10 +793,12 @@ def _holds_numbers(span: Span) -> bool:
 _Found = dict[tuple[ElementPath, ValueKind, Location], Finding]
 
 
-def _coded(octets: memoryview, layout: FileLayout) -> list[tuple[int, int]]:
+def _coded(
+    octets: memoryview, layout: FileLayout
+) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
     """Return where the Basic Offset Table and entropy-coded data of the
-    top-level data set's encapsulated Pixel Data are, or nothing where its
-    codestreams do not all parse."""
+    top-level data set's encapsulated Pixel Data are, and where the values
+    of its items are, or nothing where its codestreams do not all parse."""
     pieces = [
         span
         for span in layout.spans
@@ -805,7 +811,8 @@ def _coded(octets: memoryview, layout: FileLayout) -> list[tuple[int, int]]:
     joined = b"".join(bytes(octets[span.value_start : span.end]) for span in fragments)
     coded = entropy_coded(layout.transfer_syntax or "", joined)
     if coded is None:
-        return []
+        return [], []
+    values = [(span.value_start, span.end) for span in pieces]
     ranges = [(span.value_start, span.end) for span in pieces if not span.location.item]
     starts, position = [], 0
     for span in fragments:
@@ -817,20 +824,27 @@ def _coded(octets: memoryview, layout: FileLayout) -> list[tuple[int, int]]:
             if low < stop and start < high:
                 offset = span.value_start - start
                 ranges.append((max(low, start) + offset, min(high, stop) + offset))
-    return sorted(range_ for range_ in ranges if range_[0] < range_[1])
+    return (
+        sorted(range_ for range_ in ranges if range_[0] < range_[1]),
+        sorted(range_ for range_ in values if range_[0] < range_[1]),
+    )
 
 
-def _search(
+def _search(  # pylint: disable = too-many-arguments, too-many-positional-arguments
     octets: memoryview,
     spans: tuple[Span, ...],
     size: int,
     needles: list[_Needle],
     coded: Sequence[tuple[int, int]],
+    codestreams: Sequence[tuple[int, int]],
 ) -> _Found:
     """Return the first finding of the widest form of each source in each place.
 
     Needles that start with the same bytes are found together: at each match
-    of those bytes, the bytes of each of their lengths are looked up.
+    of those bytes, the bytes of each of their lengths are looked up. Forms
+    shorter than :data:`MIN_BYTES_IN_NUMBERS` are not searched in values
+    that hold numbers or in ``coded``, and a match wholly in those values or
+    in ``codestreams`` is judged as binary.
     """
     starts = [span.start for span in spans]
     numbers = [
@@ -844,6 +858,8 @@ def _search(
         text.append((position, low))
         position = high
     text.append((position, size))
+    binary = sorted([*numbers, *codestreams])
+    lows = [low for low, _ in binary]
     groups: dict[tuple[bytes, bool], dict[bytes, list[int]]] = {}
     for index, needle in enumerate(needles):
         everywhere = not needle.wide and len(needle.folded) >= MIN_BYTES_IN_NUMBERS
@@ -871,25 +887,37 @@ def _search(
                 for index in [index for hit in hits for index in group.get(hit, ())]:
                     if resume[index] <= offset:
                         span = spans[bisect.bisect_right(starts, offset) - 1]
+                        within = bisect.bisect_right(lows, offset) - 1
+                        inside = (
+                            within >= 0
+                            and offset + len(needles[index].folded) <= binary[within][1]
+                        )
                         resume[index] = _judge(
-                            octets, needles[index], offset, span, found
+                            octets, needles[index], offset, span, found, inside
                         )
                 position = block.find(prefix, position + 1, end)
     return found
 
 
-def _judge(
-    octets: memoryview, needle: _Needle, offset: int, span: Span, found: _Found
+def _judge(  # pylint: disable = too-many-arguments, too-many-positional-arguments
+    octets: memoryview,
+    needle: _Needle,
+    offset: int,
+    span: Span,
+    found: _Found,
+    binary: bool,
 ) -> int:
     """Record a match at ``offset`` if it counts; return where to search next.
 
     After a match that counts, or one of digits alone in a DS or IS value,
-    the needle's search moves on to the end of the element.
+    the needle's search moves on to the end of the element. A match wholly
+    in a value that holds numbers or in a codestream that parses,
+    ``binary``, counts whatever bytes adjoin it, since they are not text.
     """
     if needle.digits and span.location.vr in ("DS", "IS"):
         return span.end
     width = 2 if needle.wide else 1
-    if (
+    if not binary and (
         _character(octets, offset - width, width) in needle.before
         or _character(octets, offset + len(needle.folded), width) in needle.after
         or (needle.digits and _inside_uuid_integer(octets, offset, needle, span))

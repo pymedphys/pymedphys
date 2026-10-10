@@ -1199,6 +1199,33 @@ def test_values_in_numeric_values_need_long_single_byte_forms(tag, vr):
     ]
 
 
+@pytest.mark.parametrize(
+    "form, before, after",
+    [
+        (b"ZEBEDEEQUILLON", b"K", b"\x00"),
+        (b"ZEBEDEEQUILLON", b"\x00", b"t"),
+        (BIRTH_DATE.encode(), b"7", b"\x00"),
+    ],
+)
+def test_a_long_form_in_numbers_is_found_whatever_bytes_adjoin_it(form, before, after):
+    # Found by the fuzz campaign (test_deidentify_malformed_input.py): a name
+    # in sample values was not found where a sample's byte that is a letter
+    # adjoined it, as a name inside a longer word is not, and so was
+    # released.
+    sources = [_source("(0010,0010)", "PN", "ZEBEDEE^QUILLON"), BIRTH_SOURCE]
+    samples = b"\x00\x02" + before + form + after + b"\x00\x02"
+    numeric = _file(_element(0x7FE00010, "OW", samples))
+    text = _file(_element(0x00191001, "OB", samples))
+
+    in_numbers = find_residuals(numeric, sources)
+    in_text = find_residuals(text, sources)
+
+    assert [f.offset for f in in_numbers.findings] == [numeric.index(form)]
+    # In other values, which can hold text, a longer word or number is still
+    # not a finding.
+    assert not in_text.findings
+
+
 def test_in_an_item_only_values_of_numeric_vrs_hold_numbers():
     # Pixel Data in an item, such as an icon's, is searched for every form.
     item = _element(0x00191001, "OW", IN_NUMBERS) + _element(0x7FE00010, "OB", b"MARY")
@@ -1282,6 +1309,24 @@ def test_entropy_coded_data_hold_numbers_and_marker_segments_are_text(split):
     assert [(f.source.tag, f.offset) for f in result.findings] == [
         ("(0010,0010)", data.index(b"QUILLON")),
         ("(0010,0020)", data.index(PATIENT_ID.encode())),
+    ]
+
+
+def test_a_form_in_a_codestream_is_found_whatever_bytes_adjoin_it():
+    # Found by the fuzz campaign, in JPEG 2000 entropy-coded data and in a
+    # QCD marker segment: as in sample values above. A kept marker segment
+    # holds coding parameters, so its short forms are found too.
+    table = struct.pack(">HH", 0xFFDB, 8) + b"KMARYt"
+    codestream = _jpeg_lossless(b"KZEBEDEEQUILLONt")
+    codestream = codestream[:2] + table + codestream[2:]
+    data = _encapsulated_file(compressed.JPEG_LOSSLESS_SV1, codestream)
+    name = _source("(0010,0010)", "PN", "MARY^ZEBEDEEQUILLON")
+
+    result = find_residuals(data, [name])
+
+    assert [f.offset for f in result.findings] == [data.index(b"MARY")]
+    assert [f.offset for f in find_residuals(data, [NAME_SOURCE]).findings] == [
+        data.index(b"ZEBEDEEQUILLON")
     ]
 
 
