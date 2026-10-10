@@ -156,11 +156,12 @@ Use this list wherever metadata needs the maintainers.
   do not maintain a list of value-taking options, since plugins can add more.
   The `pymedphys._dev.pytest_paths` plugin does this in the controller and in
   every pytest-xdist worker, which parse the original arguments again.
-- Tests marked `slow` (and `mosaiqdb`, `anthropic_key`) are skipped by
-  `conftest.py` unless requested. `--include-slow` (and `--include-mosaiqdb`,
-  `--include-anthropic`) adds them to the default selection. `--slow` (and
-  `--mosaiqdb`, `--anthropic`, `--pydicom`) runs only the tests with that
-  marker; several of these select the union. `--all` runs everything.
+- Tests marked `slow` (and `mosaiqdb`, `anthropic_key`, `dicom_validators`)
+  are skipped by `conftest.py` unless requested. `--include-slow` (and
+  `--include-mosaiqdb`, `--include-anthropic`, `--include-dicom-validators`)
+  adds them to the default selection. `--slow` (and `--mosaiqdb`,
+  `--anthropic`, `--dicom-validators`, `--pydicom`) runs only the tests with
+  that marker; several of these select the union. `--all` runs everything.
   `pytest -m slow` alone selects the slow tests but still skips every one.
 - CI runs the slow tests in parallel (`-n auto`), so keep every test
   independent of the others: no shared output paths or ordering assumptions.

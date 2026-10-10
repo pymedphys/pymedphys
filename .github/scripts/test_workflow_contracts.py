@@ -404,7 +404,13 @@ class WorkflowContractTests(unittest.TestCase):
         # Reuse saves suite executions without adding a serial runner job.
         self.assertEqual(
             set(workflow),
-            {"test", "narrow-extras", "dependency-floors", "pydicom-versions"},
+            {
+                "test",
+                "narrow-extras",
+                "dependency-floors",
+                "pydicom-versions",
+                "dicom-validators",
+            },
         )
         baseline = workflow["test"]
         self.assertIn(
@@ -437,6 +443,16 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("if-no-files-found: error", versions)
         self.assertIn("unit-tests", needs(jobs("ci.yml")["summary"]))
         self.assertIn("unit-tests", needs(jobs("release.yml")["publish-pypi"]))
+
+    def test_the_dicom_validators_must_run(self):
+        job = jobs("unit-tests.yml")["dicom-validators"]
+        # The corpus tests skip without the validators unless required.
+        self.assertIn("          PYMEDPHYS_DICOM_VALIDATORS: required\n", job)
+        self.assertIn("pymedphys dev tests --dicom-validators", job)
+        self.assertIn("uses: ./.github/actions/setup-dicom-validators", job)
+        # Only the snapshot listing may fail without failing the job.
+        self.assertEqual(job.count("continue-on-error: true"), 1)
+        self.assertIn("unit-tests", needs(jobs("ci.yml")["summary"]))
 
 
 if __name__ == "__main__":
