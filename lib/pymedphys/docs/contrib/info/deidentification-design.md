@@ -621,6 +621,6 @@ On 10 October 2026 the maintainer postponed the first supported release until th
 - the fuzz testing of the engine's parsers of untrusted bytes has merged; and
 - the maintainer's pilot on a representative local export is summarised by reason counts.
 
-The pilot stays a criterion because the MIDI-B collection holds no RT Structure Set, RT Plan, or RT Dose, and synthetic collections cannot show how often real exports meet the conditions that withhold a whole subject (D-027) or stop a run (D-026).
+The pilot stays a criterion because the MIDI-B collection holds no RT Structure Set, RT Plan, or RT Dose, and a curated benchmark, whose clinical images carry injected synthetic identifiers, cannot show how often a department's own exports meet the conditions that withhold a whole subject (D-027) or stop a run (D-026).
 
 Later work needs its own design, tests, and conformance review: Clean Structured Content, accompanying spreadsheets pseudonymised with the same key, the Encrypted Attributes Sequence for controlled sharing (D-013), keeping a source ICC profile's colorimetry with its identifying content removed (D-021), and the unsupported objects and options listed under Scope. Generating a table in M1 does not enable the corresponding option or support the corresponding IOD.
