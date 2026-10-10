@@ -487,3 +487,63 @@ def test_the_command_refuses_a_missing_mapping(tmp_path, capsys):
 
     assert status == dicom_validation_command.USAGE_ERROR
     assert str(tmp_path) not in capsys.readouterr().err
+
+
+def test_a_comparison_of_no_pair_fails():
+    comparison = dicom_validation.Comparison(NO_VERSIONS, (), 0, 3, {}, {}, ())
+
+    assert not comparison.passed
+    assert "no released instance was compared" in comparison.markdown()
+
+
+def _release(tmp_path, mapping_text):
+    _instance(tmp_path / "source" / "a.dcm", "1.2.3.1")
+    _instance(tmp_path / "release" / "2.25.1.dcm", "2.25.1")
+    mapping = tmp_path / "uid_mapping.csv"
+    mapping.write_text(mapping_text, encoding="utf-8")
+    return tmp_path / "source", tmp_path / "release", mapping
+
+
+@pytest.mark.parametrize(
+    "mapping_text",
+    [
+        "old,new\n1.2.3.1,2.25.1\n",
+        "id_old,id_new\n1.2.3.1,2.25.1\n1.2.3.1,2.25.2\n",
+    ],
+)
+def test_an_ambiguous_mapping_is_refused(tmp_path, mapping_text):
+    with pytest.raises(dicom_validation.PairingError):
+        dicom_validation.pairs_from_uid_mapping(*_release(tmp_path, mapping_text))
+
+
+def test_outputs_that_share_a_name_are_refused(tmp_path):
+    source, release, mapping = _release(tmp_path, "id_old,id_new\n1.2.3.1,2.25.1\n")
+    _instance(release / "x" / "2.25.1.dcm", "2.25.1")
+
+    with pytest.raises(dicom_validation.PairingError):
+        dicom_validation.pairs_from_uid_mapping(source, release, mapping)
+
+
+def test_an_output_without_an_input_is_refused(tmp_path):
+    source, release, mapping = _release(tmp_path, "id_old,id_new\n1.2.3.1,2.25.1\n")
+    _instance(release / "2.25.9.dcm", "2.25.9")
+
+    with pytest.raises(dicom_validation.PairingError):
+        dicom_validation.pairs_from_uid_mapping(source, release, mapping)
+
+
+def test_patients_are_grouped_by_patient_id_and_issuer():
+    headers = [
+        {"patient": "a\\x"},
+        {"patient": "a\\x"},
+        {"patient": "a\\y"},
+        {"patient": ""},
+        {"patient": ""},
+        {"patient": "a\\x"},
+    ]
+
+    groups = dicom_validation._patients(  # pylint: disable = protected-access
+        headers, left_out={5}
+    )
+
+    assert groups == [[0, 1]]

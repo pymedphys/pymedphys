@@ -92,7 +92,7 @@ uv run --no-dev --extra tests python -m pymedphys._dicom.deidentify.dicom_valida
 ```
 
 - `--out` must not exist; its parent must. The command writes `dicom-validation.md` and `dicom-validation.json` there, and prints the Markdown.
-- It exits with status 0 when the comparison passed, 1 when it found unexplained findings, and 2 when it could not compare, for example because a validator is missing.
+- It exits with status 0 when the comparison passed, 1 when it found unexplained findings or compared no released instance, and 2 when it could not compare, for example because a validator is missing or the release cannot be paired unambiguously: the mapping lacks a column or maps an input to two outputs, two outputs share a name, or an output has no input.
 - `--workers` sets how many processes run the per-file validators; it defaults to the number of CPUs.
 - Both result files hold no value or path, so they are safe to share. The inputs, the release, and the mapping file are not.
 
