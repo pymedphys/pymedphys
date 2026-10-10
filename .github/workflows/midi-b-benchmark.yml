@@ -107,14 +107,17 @@ jobs:
       - name: Fetch the answer keys from TCIA
         if: env.ANSWER_KEYS_FROM == 'tcia'
         run: |
-          private="${RUNNER_TEMP}/midi-b/private"
           gem_file="${RUNNER_TEMP}/aspera-cli-${ASCLI_VERSION}.gem"
           curl -sSfL -o "${gem_file}" "https://rubygems.org/downloads/aspera-cli-${ASCLI_VERSION}.gem"
           echo "${ASCLI_SHA256}  ${gem_file}" | sha256sum --check --strict -
-          gem install --user-install --no-document "${gem_file}" > "${private}/gem.log" 2>&1
+          # These two logs hold no MIDI-B data, so show them on a failure.
+          ruby --version
+          gem install --user-install --no-document "${gem_file}" > "${RUNNER_TEMP}/gem.log" 2>&1 \
+            || { tail -n 40 "${RUNNER_TEMP}/gem.log"; exit 1; }
           PATH="$(ruby -e 'print Gem.user_dir')/bin:${PATH}"
           export PATH
-          ascli config transferd install > "${private}/transferd.log" 2>&1
+          ascli config transferd install > "${RUNNER_TEMP}/transferd.log" 2>&1 \
+            || { tail -n 40 "${RUNNER_TEMP}/transferd.log"; exit 1; }
           python3 -I .github/scripts/midi_b_tcia_answer_keys.py fetch "${RUNNER_TEMP}/midi-b/tcia"
           python3 -I .github/scripts/midi_b_tcia_answer_keys.py list "${RUNNER_TEMP}/midi-b/tcia" \
             | tee "${RUNNER_TEMP}/midi-b/results/tcia-answer-keys.txt"
