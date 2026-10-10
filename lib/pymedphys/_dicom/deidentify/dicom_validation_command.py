@@ -21,8 +21,9 @@ supported release.
 
 It exits with status 0 when the release passed
 (:attr:`~pymedphys._dicom.deidentify.dicom_validation.Comparison.passed`), 1
-when it introduced unexplained findings, and 2 when it could not compare,
-for example because a validator is missing.
+when it introduced unexplained findings or no released instance was
+compared, and 2 when it could not compare, for example because a validator
+is missing or the release cannot be paired with its inputs unambiguously.
 """
 
 from __future__ import annotations
@@ -138,7 +139,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         comparison = dicom_validation.compare(
             pairs, toolset, unpaired=unpaired, workers=arguments.workers
         )
-    except (ValidatorUnavailable, run.RunError) as error:
+    except (ValidatorUnavailable, run.RunError, dicom_validation.PairingError) as error:
         print(str(error), file=sys.stderr)
         return USAGE_ERROR
     dicom_validation.write_results(comparison, out)
