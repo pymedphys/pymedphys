@@ -1,0 +1,40 @@
+name: Set up DICOM validators
+description: >-
+  Install dicom3tools, and restore the DocBook source and tables that
+  dicom-validator reads, for the DICOM edition of the engine's tables. Run it
+  after setup-project with the tests extra, which installs dicom-validator.
+
+outputs:
+  standard-path:
+    description: dicom-validator's directory of DocBook source and tables
+    value: ${{ steps.tables.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    # Ubuntu 24.04 packages this dicom3tools snapshot, of January 2024.
+    - name: Install dicom3tools
+      shell: bash
+      env:
+        DICOM3TOOLS: '1.00~20240118131615-1'
+      run: |
+        set -euxo pipefail
+        sudo apt-get update
+        sudo apt-get install --yes --no-install-recommends "dicom3tools=${DICOM3TOOLS}"
+        dciodvfy -version 2>&1 || true
+
+    - name: Name dicom-validator's tables
+      id: tables
+      shell: bash
+      run: |
+        set -euxo pipefail
+        uv run -- python -c 'import importlib.metadata as m; from pymedphys._dicom.deidentify import standard; print("edition=" + standard.load_data_dictionary().edition); print("version=" + m.version("dicom-validator"))' >> "$GITHUB_OUTPUT"
+        echo "path=${RUNNER_TEMP}/dicom-validator" >> "$GITHUB_OUTPUT"
+
+    # dicom-validator downloads an edition's DocBook source from NEMA the
+    # first time it reads it, and writes its tables beside it.
+    - name: Cache dicom-validator's tables
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.tables.outputs.path }}
+        key: dicom-validator-v1-${{ steps.tables.outputs.version }}-${{ steps.tables.outputs.edition }}

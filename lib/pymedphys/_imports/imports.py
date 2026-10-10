@@ -10,6 +10,10 @@ import attr
 import dateutil
 import dateutil.relativedelta
 import dbfread
+import dicom_validator.spec_reader.edition_reader as dicom_validator_editions
+import dicom_validator.validator.dicom_file_validator as dicom_validator_files
+import dicom_validator.validator.error_handler as dicom_validator_handlers
+import dicom_validator.validator.validation_result as dicom_validator_results
 import hypothesis
 import hypothesis.strategies
 import imageio.v2 as imageio

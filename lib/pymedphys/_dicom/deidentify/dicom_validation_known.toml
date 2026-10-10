@@ -1,0 +1,106 @@
+# Validator findings that de-identification introduces, and why each is not
+# an unexplained conformance failure of the output. dicom_validation.py reads
+# this file; a finding that no entry matches fails the comparison.
+#
+# Each entry matches a finding by validator, severity, and message type
+# exactly, and by its attribute path against any of the fnmatch patterns in
+# paths. The category is one of:
+#
+# - profile: the action that PS3.15 Table E.1-1 names for the attribute
+#   gives the finding, and the engine applies that action as the profile
+#   requires;
+# - validator: a limitation or heuristic of the validator, where the output
+#   conforms;
+# - engine: a defect of the engine's output, recorded here until it is
+#   fixed, when its entry is removed.
+#
+# An entry whose explanation rests on a property of the output names it in
+# requires, one of dicom_validation.PREMISES, and explains the finding only
+# in an output that has it.
+#
+# Keep entries narrow: a pattern of "*" is for findings that do not depend
+# on the attribute's place.
+
+[[difference]]
+validator = "dciodvfy"
+severity = "warning"
+message = "Missing attribute or value that would be needed to build DICOMDIR"
+paths = ["(0008,0020)", "(0008,0030)", "(0020,0010)"]
+category = "profile"
+reason = """
+The Basic Profile gives Study Date, Study Time, and Study ID the action Z,
+which leaves these Type 2 attributes present and empty, as their IODs allow.
+A DICOMDIR's study record needs values for them, so dciodvfy warns.
+"""
+
+[[difference]]
+validator = "dciodvfy"
+severity = "warning"
+message = "Value dubious for this VR [PN] = <value> - Retired Person Name form"
+paths = ["*"]
+category = "validator"
+reason = """
+dciodvfy warns about every Person Name without a component delimiter, as a
+retired form. The engine's dummy Person Name, DEIDENTIFIED, is
+a family name component alone, which PS3.5 Section 6.2 allows, since trailing
+empty components and their delimiters may be omitted.
+"""
+
+[[difference]]
+validator = "dciodvfy"
+severity = "warning"
+message = "Attribute is not present in standard DICOM IOD"
+paths = ["(0044,0110)/*"]
+category = "validator"
+reason = """
+RT Assertions Sequence (0044,0110) is newer than the dicom3tools snapshot,
+which therefore knows no attribute below it. The findings are the elements
+of the dummy Person Identification Code Sequence (0040,1101) item that the
+Basic Profile's action D writes there; dicom-validator, which reads the
+pinned edition, finds nothing there.
+"""
+
+[[difference]]
+validator = "dciodvfy"
+severity = "error"
+message = "ReferencedSeriesSequence present but Instance does not reference Instances"
+paths = ["(0008,1115)"]
+category = "validator"
+requires = "instances-of-this-study-referenced-elsewhere"
+reason = """
+The Common Instance Reference Module's Referenced Series Sequence is Type 1C,
+required if the instance references instances in its study, from any of its
+modules (PS3.3 Section C.12.2). The Basic Profile's action X/Z/U* removes
+Referenced Image Sequence (0008,1140) and Source Image Sequence (0008,2112),
+or empties them where they are Type 2, as in the Functional Group Macros of
+the enhanced and legacy converted enhanced images. dciodvfy's condition
+counts references from only a few sequences, among them Source Image, Source
+Instance, Referenced Image, and Referenced Instance Sequences, so it reports
+the sequence wherever those no longer reference anything, even where the
+output references the instances that it lists elsewhere, such as from
+Referenced Image Evidence Sequence (0008,9092), Referenced Defined Protocol
+Sequence (0018,990C), or Conversion Source Attributes Sequence (0020,9172).
+Adding one Referenced Image Sequence item to such an output clears the
+finding. The entry applies only to an output that still references, outside
+the module, an instance that the sequence lists, where the condition is met.
+Where no reference to an instance survives outside the module, the engine
+removes both of the module's sequences.
+"""
+
+[[difference]]
+validator = "dciodvfy"
+severity = "error"
+message = "StudiesContainingOtherReferencedInstancesSequence present but Instance does not reference Instances"
+paths = ["(0008,1200)"]
+category = "validator"
+requires = "instances-of-other-studies-referenced-elsewhere"
+reason = """
+As for Referenced Series Sequence (0008,1115): the Common Instance Reference
+Module's Studies Containing Other Referenced Instances Sequence is Type 1C,
+required if the instance references instances in other studies from any of
+its modules, and dciodvfy's condition counts only a few sequences. The entry
+applies only to an output that still references, outside the module, an
+instance that the sequence lists.
+Where no reference to an instance survives outside the module, the engine
+removes both of the module's sequences.
+"""

@@ -94,6 +94,8 @@ ai = [
 # this with each published version.
 tests = [
   "pymedphys[user]",
+  # Checks de-identified output against its IOD, independently of the engine.
+  "dicom-validator==0.9.0",
   "hypothesis",
   "psutil",
   "pytest",

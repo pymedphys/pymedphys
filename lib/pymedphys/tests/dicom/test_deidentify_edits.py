@@ -31,7 +31,14 @@ from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.pseudonyms import SubjectIdentity, patient_pseudonym
 from pymedphys._dicom.deidentify.uids import UIDOutcome, replacement_uid
 
-from .test_deidentify_file_layout import EXPLICIT, _explicit, _file, _item
+from .test_deidentify_file_layout import (
+    EXPLICIT,
+    IMPLICIT,
+    _explicit,
+    _file,
+    _implicit,
+    _item,
+)
 from .test_deidentify_walker import (
     BEAM_SEQUENCE,
     OTHER_IDS,
@@ -161,6 +168,43 @@ def test_d_writes_the_dummy_value_and_the_second_where_the_source_equals_it():
     _, result = _edits(_explicit(0x300A0002, "SH", b"deidentified"))
     (label,) = result.edits
     assert label.values == ("DE-IDENTIFIED",)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.parametrize(
+    "transfer_syntax, element",
+    [
+        (IMPLICIT, lambda tag, vr, value=b"": _implicit(tag, value)),
+        (EXPLICIT, _explicit),
+    ],
+    ids=["implicit-vr", "explicit-vr"],
+)
+def test_an_empty_value_is_edited_and_collected_whatever_the_transfer_syntax(
+    transfer_syntax, element
+):
+    # pydicom reads a zero-length value as None, not b"", where it has no VR
+    # for it, as in Implicit VR Little Endian, and for a VR such as DS; that
+    # is still the source's empty Value Field, so it is read, not refused as
+    # not matching it, which would withhold the subject's files.
+    data_set = (
+        element(0x00080016, "UI", RT_PLAN_CLASS.encode() + b"\x00")
+        + element(0x00080018, "UI", INSTANCE_UID.encode())
+        + element(0x00080050, "SH")  # Accession Number, Z
+        + element(0x00080090, "PN")  # Referring Physician's Name, Z
+        + element(0x00101030, "DS")  # Patient's Weight, X
+        + element(0x300A0002, "SH")  # RT Plan Label, D
+    )
+    evidence = source.read_source(_file(transfer_syntax, data_set))
+    plan = walker.plan_instance(evidence, _rules(), _rt_plan())
+    result = edits.edit_instance(evidence, plan, KEY)
+
+    assert not result.sequestrations
+    assert not result.not_collected
+    found = {edit.path: edit for edit in result.edits}
+    assert found[_path("(0008,0050)")].kind is EditKind.EMPTY
+    assert found[_path("(0008,0090)")].kind is EditKind.EMPTY
+    assert found[_path("(0010,1030)")].kind is EditKind.REMOVE
+    assert found[_path("(300A,0002)")].values == ("DEIDENTIFIED",)
 
 
 def test_patients_name_and_id_wait_for_their_pseudonyms():
