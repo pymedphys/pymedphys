@@ -33,12 +33,15 @@ from .policy import PolicyError
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the benchmark, or count the validation script's results.
+    """Run the benchmark, or prepare or count the validation script's run.
 
     ``run`` takes ``--source``, ``--answer-key``, ``--work``, and optionally
     ``--preset``, ``--collection``, ``--tg263``, and ``--watch``, as :func:`~pymedphys._dicom.deidentify.midi_benchmark.run_benchmark` does, and
-    prints the results as CommonMark. ``script-results`` takes the script's
-    ``validation_results.db`` and prints :func:`~pymedphys._dicom.deidentify.midi_script_results.summarise_script_results`'s
+    prints the results as CommonMark. ``released-answer-key`` takes the
+    answer key, ``--release``, ``--uid-mapping``, and ``--out``, writes :func:`~pymedphys._dicom.deidentify.midi_script_results.write_released_answer_key`'s
+    answer key for the script, and prints its counts as JSON.
+    ``script-results`` takes the script's ``validation_results.db`` and
+    prints :func:`~pymedphys._dicom.deidentify.midi_script_results.summarise_script_results`'s
     counts as JSON.
 
     Raises
@@ -106,6 +109,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             "by where it ended up. May be repeated."
         ),
     )
+    released = commands.add_parser(
+        "released-answer-key",
+        help=(
+            "Copy the answer key's rows for the released instances, for the "
+            "NCI validation script, and print the counts as JSON."
+        ),
+    )
+    released.add_argument("answer_key", help="The answer key, an SQLite database.")
+    released.add_argument("--release", required=True, help="The run's release.")
+    released.add_argument(
+        "--uid-mapping", required=True, help="The run's UID mapping file."
+    )
+    released.add_argument(
+        "--out", required=True, help="The new answer key, which must not exist."
+    )
     results = commands.add_parser(
         "script-results",
         help=(
@@ -125,6 +143,19 @@ def main(argv: Sequence[str] | None = None) -> int:
                 tg263_spreadsheet=arguments.tg263,
                 watched=arguments.watch,
             ).markdown()
+        elif arguments.command == "released-answer-key":
+            text = (
+                json.dumps(
+                    midi_script_results.write_released_answer_key(
+                        arguments.answer_key,
+                        arguments.release,
+                        arguments.uid_mapping,
+                        arguments.out,
+                    ),
+                    indent=2,
+                )
+                + "\n"
+            )
         else:
             text = (
                 json.dumps(

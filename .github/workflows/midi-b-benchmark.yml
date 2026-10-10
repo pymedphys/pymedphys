@@ -325,10 +325,21 @@ jobs:
             echo "NCI validation script commit ${NCI_SCRIPT_COMMIT}"
             uv pip freeze --python "${RUNNER_TEMP}/nci-venv/bin/python"
           } > "${results}/nci-script-environment.txt"
+          # The script scores each withheld instance as missing and holds
+          # every result in memory, which ran a 16 GB runner out on the Test
+          # subset, so it is given the released instances' rows alone. It
+          # scores the released files as it would with the whole key.
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            pymedphys._dicom.deidentify.midi_benchmark_command released-answer-key \
+            "${RUNNER_TEMP}/midi-b/data/answer-key.db" \
+            --release "${work}/release" \
+            --uid-mapping "${work}/validation-script/uid_mapping.csv" \
+            --out "${private}/nci-answer-key.db" \
+            | tee "${results}/nci-answer-key.json"
           jq -n \
             --arg release "${work}/release" \
             --arg output "${private}/nci-output" \
-            --arg key "${RUNNER_TEMP}/midi-b/data/answer-key.db" \
+            --arg key "${private}/nci-answer-key.db" \
             --arg uids "${work}/validation-script/uid_mapping.csv" \
             --arg patients "${work}/validation-script/patid_mapping.csv" \
             --arg logs "${private}/nci-logs" \
@@ -403,6 +414,14 @@ jobs:
               if [[ -f "${results}/${file}" ]]; then
                 echo "## NCI validation script"
                 echo
+                if [[ -f "${results}/nci-answer-key.json" ]]; then
+                  echo "The answer key it was given, the released instances' rows:"
+                  echo
+                  echo '```json'
+                  cat "${results}/nci-answer-key.json"
+                  echo '```'
+                  echo
+                fi
                 if [[ "${file}" == *.json ]]; then echo '```json'; fi
                 cat "${results}/${file}"
                 if [[ "${file}" == *.json ]]; then echo '```'; fi

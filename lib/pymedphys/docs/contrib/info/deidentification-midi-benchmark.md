@@ -169,6 +169,18 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
+The script scores each answer-key instance that has no file in the release as missing, and holds every check's result in memory until it writes them all. Where a run withholds most instances, that can take more memory than the machine has: on the Test subset it exhausted 16 GB. The harness can copy the answer key's rows for the released instances alone, which the script scores just as it would with the whole key, since it looks up each file's rows by its SOP Instance UID:
+
+```bash
+uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmark_command released-answer-key \
+  /data/midi-b/validation/answer-key.db \
+  --release /data/midi-b/runs/validation-basic-1/release \
+  --uid-mapping /data/midi-b/runs/validation-basic-1/validation-script/uid_mapping.csv \
+  --out /data/midi-b/runs/validation-basic-1-released-answer-key.db
+```
+
+It prints how many files the release holds, how many of them the answer key has rows for, and how many rows it copied. Give the script that file as its `answer_db_file`. The script then reports no missing instances; `benchmark.md` counts the withheld ones.
+
 Write its config, for example `midi-validation-basic-1.json`, naming the release and the mapping files from step 5:
 
 ```json
@@ -223,10 +235,10 @@ The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchm
    - `download.json`, `benchmark.md`, and `benchmark.json`;
    - `script-results.json`, the script's results counted by answer-key category as step 7's `script-results` counts them, or `script-results.txt` saying why there are none;
    - `dicom-validation.json` and `dicom-validation.md`, the validators' comparison of the release with its inputs, and `dicom-validation-status.txt`, its exit status;
-   - `nci-script-environment.txt`, the script's commit and the versions of the packages it ran with;
+   - `nci-script-environment.txt`, the script's commit and the versions of the packages it ran with, and `nci-answer-key.json`, the counts of the answer key it was given, which holds the released instances' rows alone, as step 7 describes;
    - with `tcia`, `tcia-answer-keys.txt`, the names, sizes, and SHA-256 digests of the files in TCIA's packages.
 
-Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, the mapping files, and the NCI script's logs and results database, which quote values from the files. The standard error and standard output of the benchmark and of the DICOM validation, where libraries log, go to files on the runner, and the job prints the result files instead. A crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.
+Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, the mapping files, and the NCI script's logs and results database, which quote values from the files. The standard error and standard output of the benchmark and of the DICOM validation, where libraries log, go to files on the runner, and the job prints the result files instead. It prints the benchmark's and the DICOM validation's results before NCI's script starts, as well as at the end, so that a runner lost in the script, which takes longest, still leaves them in the log. A crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.
 
 ## 10. Where the data come from, and how to check them
 
