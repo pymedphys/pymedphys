@@ -151,6 +151,7 @@ from .midi_answer_key import (
     read_answer_key,
 )
 from .midi_benchmark_errors import ErrorRecorder, uid_name
+from .midi_benchmark_exemptions import exemption_rows, would_release
 from .midi_benchmark_markdown import render_markdown
 from .midi_benchmark_sources import (
     WATCHED,
@@ -562,6 +563,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     )
     withheld_reasons: collections.Counter = collections.Counter()
     places: collections.Counter = collections.Counter()
+    exempt: collections.Counter = collections.Counter()
     watching: collections.Counter = collections.Counter()
     not_released: dict[tuple[str, str | None, str, str], list[int]] = (
         collections.defaultdict(lambda: [0, 0])
@@ -577,6 +579,11 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 for reason in outcomes[position].reasons:
                     withheld_reasons[reason_code(reason)] += 1
                 places.update(reason_places(outcomes[position].reasons))
+                path = sources[position] if position < len(sources) else None
+                exempt.update(
+                    (name, _modality(answer.modality))
+                    for name in would_release(outcomes[position].reasons, path)
+                )
             if dataset is None and position is not None:
                 kind = _not_released(context, headers[position], outcomes[position])
                 not_released[kind][0] += 1
@@ -668,6 +675,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
             },
             "withheld_reasons": dict(sorted(withheld_reasons.items())),
             "withheld_places": place_rows(places),
+            "would_release": exemption_rows(exempt),
             "internal_errors": [dict(error) for error in internal_errors],
             "not_released": [
                 {

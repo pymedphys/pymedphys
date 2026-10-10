@@ -98,6 +98,23 @@ def render_markdown(document: Mapping[str, object]) -> str:
             ),
             "",
         ]
+    exempt = coverage.get("would_release", [])
+    if exempt:
+        lines += [
+            "Withheld instances that each candidate exemption from the text "
+            "search would release, because every reason that withheld them is "
+            "a text finding that it covers. The engine applies none of them; "
+            "`midi_benchmark_exemptions.py` defines them:",
+            "",
+            _table(
+                ("Exemption", "Modality", "Instances"),
+                [
+                    (row["exemption"], row["modality"], row["instances"])
+                    for row in exempt
+                ],
+            ),
+            "",
+        ]
     errors = coverage.get("internal_errors", [])
     if errors:
         lines += [
