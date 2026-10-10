@@ -181,9 +181,7 @@ def render_markdown(document: Mapping[str, object]) -> str:
         "## Deliberate differences",
         "",
         "Checks that asked for an attribute to be kept, where the policy "
-        "removes or replaces it or a PS3.15 marker replaces it (`marker`), "
-        "and checks under a TCIA category that asked for a text to be "
-        "removed, where the policy keeps it (`K`):",
+        "removes or replaces it, or a PS3.15 marker replaces it (`marker`):",
         "",
     ]
     lines += _rows_or_none(
@@ -222,7 +220,57 @@ def render_markdown(document: Mapping[str, object]) -> str:
             for row in document["findings"]
         ],
     )
+    lines += _at_source(document["failed_at_source"])
     return "\n".join(lines) + "\n"
+
+
+def _at_source(explained: Mapping[str, Sequence[Mapping[str, object]]]) -> list[str]:
+    """Render what the source instances of failed checks hold, without a value."""
+    lines = [
+        "",
+        "## Failed checks at their source",
+        "",
+        "Each failed check, apart from deliberate differences, that asked for "
+        "an attribute or a value to be present, by what its source instance "
+        "holds there:",
+        "",
+    ]
+    lines += _rows_or_none(
+        ("Category", "Action", "Attribute", "Source", "Checks"),
+        [
+            (
+                row["category"],
+                row["action"],
+                row["attribute"],
+                row["source"],
+                row["checks"],
+            )
+            for row in explained["present"]
+        ],
+    )
+    lines += [
+        "",
+        "Each failed check that asked for a text to be removed, by the source "
+        "value's VR, its shape where it is an Integer String, and whether the "
+        "answer key's text is the whole value:",
+        "",
+    ]
+    lines += _rows_or_none(
+        ("Category", "Action", "Attribute", "VR", "Shape", "Whole value", "Checks"),
+        [
+            (
+                row["category"],
+                row["action"],
+                row["attribute"],
+                row["vr"],
+                row["shape"],
+                "yes" if row["whole_value"] else "no",
+                row["checks"],
+            )
+            for row in explained["removed"]
+        ],
+    )
+    return lines
 
 
 # The fields of CategoryCounts, in their order, with their headline names.

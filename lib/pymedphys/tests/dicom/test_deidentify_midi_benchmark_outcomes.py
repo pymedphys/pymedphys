@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Score MIDI checks that markers, curation, or the source explain (D-018)."""
+"""Score MIDI checks that the policy, the markers, or the source explain (D-018)."""
 
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import midi_benchmark as benchmark
+from pymedphys._dicom.deidentify import midi_benchmark_sources as sources
 from pymedphys._dicom.deidentify.element_rules import ElementRules
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.midi_answer_key import parse_check
@@ -26,10 +27,108 @@ from .test_deidentify_midi_benchmark import (
     CT_IOD,
     FAILED,
     MAPPING,
+    STUDY_DESCRIPTION,
     _check,
     _released_ct,
+    _score,
     read_answer_check,
 )
+
+
+def test_a_kept_check_on_what_the_policy_removes_is_a_deliberate_difference():
+    # Study Description is X under the Basic Profile, and a private
+    # attribute is removed whatever its creator.
+    assert _score(
+        "text_retained", "<(0008,1030)>", text=STUDY_DESCRIPTION
+    ) == benchmark.Scored(benchmark.Result.FAILED, "X", deliberate=True)
+    assert _score("tag_retained", '<(0019,"OTHER CREATOR",93)>') == benchmark.Scored(
+        benchmark.Result.FAILED, "X", deliberate=True
+    )
+
+
+def test_a_kept_check_in_a_sequence_that_the_policy_removes_is_deliberate():
+    # Referenced Study Sequence is X/Z under the Basic Profile and Type 3 in
+    # the CT Image IOD, so the walker removes it with what it holds, whatever
+    # the attribute's own action.
+    assert _score(
+        "tag_retained", "<(0008,1110)>[<0000>]<(0008,1150)>"
+    ) == benchmark.Scored(benchmark.Result.FAILED, "X", deliberate=True)
+
+
+@pytest.mark.parametrize("action", ["tag_retained", "text_notnull"])
+def test_a_compound_action_that_selects_removal_is_deliberate(action):
+    # Series Date is X/D and Type 3 in the CT Image IOD: the walker selects X.
+    assert _score(action, "<(0008,0021)>") == benchmark.Scored(
+        benchmark.Result.FAILED, "X", deliberate=True
+    )
+
+
+@pytest.mark.parametrize(
+    "action, place, iod",
+    [
+        # RT Plan Date is X/D and Type 2 in the RT Plan IOD: the walker
+        # selects D, so the attribute must be present with a dummy value.
+        ("tag_retained", "<(300A,0006)>", "RT Plan"),
+        ("text_notnull", "<(300A,0006)>", "RT Plan"),
+        # Patient Species Description is X/Z/D and Type 1C in the CT Image
+        # IOD: D, so neither its absence nor an empty value is deliberate.
+        ("tag_retained", "<(0010,2201)>", "CT Image"),
+        ("text_notnull", "<(0010,2201)>", "CT Image"),
+        # A plain Z on a Type 1 attribute selects D.
+        (
+            "text_notnull",
+            "<(300A,0614)>[<0000>]<(300A,0610)>[<0000>]<(300A,0611)>",
+            "C-Arm Photon-Electron Radiation",
+        ),
+        # Referenced Image Sequence is X/Z/U* and Type 1C inside Referenced
+        # Spatial Registration Sequence in the RT Dose IOD: the walker keeps
+        # it as a container (U), so it does not explain its items' absence.
+        (
+            "tag_retained",
+            "<(300C,0116)>[<0000>]<(0008,1140)>[<0000>]<(0008,1150)>",
+            "RT Dose",
+        ),
+    ],
+)
+def test_a_missing_attribute_that_the_selected_action_replaces_is_a_finding(
+    action, place, iod
+):
+    assert _score(action, place, iod=iod) == FAILED
+
+
+def test_a_kept_check_on_what_the_policy_keeps_is_a_finding():
+    # The Basic Profile keeps Rows, so its absence is not deliberate.
+    assert _score("tag_retained", "<(0028,0010)>") == FAILED
+
+
+@pytest.mark.parametrize(
+    "place",
+    [
+        # Patient's Name is Z and Study Instance UID is U: the policy
+        # replaces them, so a file without them breaks the policy.
+        "<(0010,0010)>",
+        "<(0020,000D)>",
+        # The CT Image IOD defines Derivation Code Sequence, which the
+        # Basic Profile therefore keeps; without the IOD it would be removed.
+        "<(0008,9215)>",
+    ],
+)
+def test_a_missing_attribute_that_the_policy_replaces_or_keeps_is_a_finding(place):
+    assert _score("tag_retained", place) == FAILED
+
+
+def test_without_the_iod_no_failure_is_deliberate():
+    # The walker selects no action without the IOD, so nothing explains a
+    # failure, even of an attribute that the policy removes.
+    assert _score("tag_retained", "<(0008,9215)>", iod=None) == FAILED
+    assert (
+        _score("text_retained", "<(0008,1030)>", text=STUDY_DESCRIPTION, iod=None)
+        == FAILED
+    )
+
+
+def test_changed_pixel_data_is_never_deliberate():
+    assert _score("pixels_retained", "<(7FE0,0010)>", text="0" * 32) == FAILED
 
 
 @pytest.mark.parametrize(
@@ -62,24 +161,12 @@ def test_a_kept_value_that_a_marker_replaces_is_a_deliberate_difference(
 
 
 @pytest.mark.parametrize(
-    "categories, expected",
-    [
-        (
-            {"tcia_rev": "TEST-REV"},
-            benchmark.Scored(benchmark.Result.FAILED, "K", deliberate=True),
-        ),
-        (
-            {"tcia_p15": "TEST-P15"},
-            benchmark.Scored(benchmark.Result.FAILED, "K", deliberate=True),
-        ),
-        ({"hipaa_z": "TEST-Z", "tcia_rev": "TEST-REV"}, FAILED),
-        ({}, FAILED),
-    ],
+    "categories",
+    [{"tcia_rev": "TEST-REV"}, {"tcia_p15": "TEST-P15"}, {"hipaa_z": "TEST-Z"}, {}],
 )
-def test_a_removed_text_that_the_policy_keeps_is_deliberate_only_for_tcia(
-    categories, expected
-):
-    # The Basic Profile keeps Modality; a check under HIPAA scores under it.
+def test_a_removed_text_that_the_policy_keeps_is_a_finding(categories):
+    # The Basic Profile keeps Modality. A kept value could still carry an
+    # identifier, so no category makes its failure deliberate.
     check = parse_check(
         _check("text_removed", "<(0008,0060)>", text="CT", **categories)
     )
@@ -92,33 +179,52 @@ def test_a_removed_text_that_the_policy_keeps_is_deliberate_only_for_tcia(
             ElementRules(compose_policy("basic")),
             load_iod_tables().iods[CT_IOD],
         )
-        == expected
-    )
-
-
-def test_a_removed_text_in_a_sequence_that_the_policy_removes_is_a_finding():
-    released = _released_ct()
-    released.ReferencedStudySequence = [pydicom.Dataset()]
-    released.ReferencedStudySequence[0].ReferencedSOPInstanceUID = "2.25.77"
-    check = parse_check(
-        _check(
-            "text_removed",
-            "<(0008,1110)>[<0000>]<(0008,1155)>",
-            text="2.25.77",
-            tcia_rev="TEST-REV",
-        )
-    )
-
-    assert (
-        benchmark.score_check(
-            check,
-            released,
-            MAPPING,
-            ElementRules(compose_policy("basic")),
-            load_iod_tables().iods[CT_IOD],
-        )
         == FAILED
     )
+
+
+@pytest.mark.parametrize(
+    "value, answer, expected",
+    [
+        ("3", "3", ("IS", "1 to 4 digits", True)),
+        ("20240131", "20240131", ("IS", "8 digits, a date", True)),
+        ("20241399", "2024", ("IS", "8 digits", False)),
+        ("123456789", "123456789", ("IS", "9 or more digits", True)),
+    ],
+)
+def test_a_removed_text_is_described_by_its_shape(value, answer, expected):
+    source = _released_ct()
+    source.SeriesNumber = value
+    check = read_answer_check("text_removed", "<(0020,0011)>", text=answer)
+
+    assert sources.removed_shape(source, check) == expected
+
+
+def test_a_removed_text_of_another_vr_is_described_by_its_vr():
+    check = read_answer_check("text_removed", "<(0008,0060)>", text="ct")
+
+    assert sources.removed_shape(_released_ct(), check) == ("CS", "not IS", False)
+    assert sources.removed_shape(pydicom.Dataset(), check) == (
+        "none",
+        "absent",
+        False,
+    )
+
+
+@pytest.mark.parametrize(
+    "place, expected",
+    [
+        ("<(0018,0060)>", "absent"),
+        ("<(0008,0020)>", "empty"),
+        ("<(0008,0060)>", "value"),
+    ],
+)
+def test_the_source_state_says_whether_the_attribute_and_a_value_are_there(
+    place, expected
+):
+    check = read_answer_check("tag_retained", place)
+
+    assert sources.source_state(_released_ct(), check) == expected
 
 
 @pytest.mark.parametrize(

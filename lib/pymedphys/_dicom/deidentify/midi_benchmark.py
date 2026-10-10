@@ -59,17 +59,21 @@ separately for each answer-key category rather than as one score:
   policy, for the attribute's Type in the instance's IOD, explains the
   failure (:func:`score_check`), such as a description
   that the Basic Profile removes but TCIA's curation of the source
-  collection kept; each such check of Patient Identity Removed or
+  collection kept; and each such check of Patient Identity Removed or
   Longitudinal Temporal Information Modified, whose values the PS3.15
-  markers replace; and each failed check under a TCIA category that asked
-  for a text to be removed, where the selected action keeps it. The
-  validation manual says that many answers follow that curation rather than
+  markers replace. The validation manual says that many answers follow that curation rather than
   the standard, so these are counted by category, attribute, and action,
   apart from failures;
 - the **source gaps**: each other failed check that asked for an attribute,
   or a value of it, to be present, and fails on the source instance too;
 - the **findings**: every other failed check, such as a value that should
-  have been removed and was not.
+  have been removed and was not, however the policy explains it. Each
+  failed check that asked for an attribute, or a value, to be present is
+  also counted by whether its source instance holds the attribute, empty
+  or with a value; and each failed check that asked for a text to be
+  removed by the value's VR, by its shape where it is an Integer String,
+  and by whether the answer key's text is the whole value
+  (:mod:`~pymedphys._dicom.deidentify.midi_benchmark_sources`).
 
 Under a preset with Clean Descriptors, ROI Names are cleaned with the
 pinned TG-263 edition and an empty reviewed-names list, since a benchmark
@@ -148,6 +152,16 @@ from .midi_answer_key import (
 )
 from .midi_benchmark_errors import ErrorRecorder, uid_name
 from .midi_benchmark_markdown import render_markdown
+from .midi_benchmark_sources import (
+    ABSENT,
+    EMPTY,
+    counted_order,
+    describe_source,
+    described_rows,
+    explained_rows,
+    read_source,
+    source_state,
+)
 from .midi_benchmark_values import (
     compare_text,
     element_text,
@@ -526,6 +540,9 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     differences: collections.Counter = collections.Counter()
     findings: collections.Counter = collections.Counter()
     gaps: collections.Counter = collections.Counter()
+    explained: dict[str, collections.Counter] = collections.defaultdict(
+        collections.Counter
+    )
     instances: collections.Counter = collections.Counter()
     modalities: dict[str, collections.Counter] = collections.defaultdict(
         collections.Counter
@@ -558,6 +575,11 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 scored = score_check(
                     check, dataset, mapping, rules, iod, fallback=fallback
                 )
+                described = (
+                    str(check.category or "unknown"),
+                    check.action_name,
+                    _attribute(check),
+                )
                 if (
                     scored.result is Result.FAILED
                     and not scored.deliberate
@@ -565,13 +587,9 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                     and position < len(sources)
                 ):
                     if not source:
-                        source.append(_source(sources[position]))
+                        source.append(read_source(sources[position]))
+                    describe_source(check, source[0], described, explained)
                     scored = source_gap(check, source[0], scored)
-                described = (
-                    str(check.category or "unknown"),
-                    check.action_name,
-                    _attribute(check),
-                )
                 if scored.result is Result.PASSED:
                     tally.passed += 1
                 elif scored.result is Result.NOT_EVALUATED:
@@ -633,7 +651,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                     "checks": number[1],
                 }
                 for (context, reasons, sop_class, transfer_syntax), number in sorted(
-                    not_released.items(), key=_counted_order
+                    not_released.items(), key=counted_order
                 )
             ],
         },
@@ -656,35 +674,14 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 "checks": number,
             }
             for (category, action, attribute, policy_action), number in sorted(
-                differences.items(), key=_counted_order
+                differences.items(), key=counted_order
             )
         ],
-        "source_gaps": _described(gaps),
-        "findings": _described(findings),
+        "source_gaps": described_rows(gaps),
+        "findings": described_rows(findings),
+        "failed_at_source": explained_rows(explained),
     }
     return Benchmark(document)
-
-
-def _described(counted: collections.Counter) -> list[dict[str, object]]:
-    return [
-        {"category": category, "action": action, "attribute": attribute, "checks": n}
-        for (category, action, attribute), n in sorted(
-            counted.items(), key=_counted_order
-        )
-    ]
-
-
-def _source(path: Path) -> pydicom.Dataset | None:
-    """Read a source instance, deferring large values, or return ``None``."""
-    try:
-        return pydicom.dcmread(path, defer_size=1024)
-    except Exception:  # pylint: disable = broad-exception-caught
-        return None
-
-
-def _counted_order(pair: tuple[tuple[str | None, ...], int]) -> tuple[str, ...]:
-    """Order counted descriptions by their text, a missing attribute first."""
-    return tuple("" if part is None else part for part in pair[0])
 
 
 def _attribute(check: Check) -> str | None:
@@ -788,10 +785,9 @@ def score_check(
     A check that asks for Patient Identity Removed or Longitudinal Temporal
     Information Modified to be kept, as the source holds it, fails on the
     value that the markers write in its place: where the value is present,
-    a deliberate difference noted ``marker``, with or without the IOD. A text that a check under a
-    TCIA category asks to be removed, where the selected action is K, is a
-    deliberate difference too; under any other category, such as HIPAA's,
-    it is a finding.
+    a deliberate difference noted ``marker``, with or without the IOD. A
+    text that a check asks to be removed is never a deliberate difference,
+    even where the policy keeps it.
 
     Under Clean Descriptors, ``fallback`` holds the rules of the policy
     without the option: an attribute given C other than a ROI Name takes
@@ -813,10 +809,6 @@ def _explanation(  # pylint: disable = too-many-arguments
     fallback: ElementRules | None,
 ) -> str | None:
     """Return what makes a failed check a deliberate difference, if anything."""
-    if check.action is Action.TEXT_REMOVED:
-        family = None if check.category is None else check.category.family
-        kept = _explaining_action(rules, path, iod, KEPT, fallback)
-        return KEEP if family == "tcia" and kept == KEEP else None
     if check.action not in _EXPLAINING:
         return None
     if (
@@ -848,7 +840,8 @@ def source_gap(check: Check, source: pydicom.Dataset | None, scored: Scored) -> 
         or check.action not in (Action.TAG_RETAINED, Action.TEXT_NOTNULL)
     ):
         return scored
-    if _score(check, source, IdentifierMapping({}, {})).result is not Result.FAILED:
+    state = source_state(source, check)
+    if state != ABSENT and (check.action is Action.TAG_RETAINED or state != EMPTY):
         return scored
     return Scored(Result.FAILED, "absent from the source", source_gap=True)
 
@@ -856,9 +849,6 @@ def source_gap(check: Check, source: pydicom.Dataset | None, scored: Scored) -> 
 # The markers that replace what the source holds (PS3.15 E.2 and E.3): a
 # check that asks for the source's own value fails on them by design.
 _MARKERS = frozenset({"(0012,0062)", "(0028,0303)"})
-# A text removed under a TCIA category, the curation's choice, that the
-# selected action keeps is a deliberate difference; under HIPAA, a finding.
-KEPT = frozenset({KEEP})
 
 
 # For each action that asks for something to be kept, the selected actions
