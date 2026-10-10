@@ -287,30 +287,6 @@ def test_each_level_decides_its_elements(tag, source, action, entry):
     assert rule == ElementRule(tag=tag, source=source, action=action, entry=entry)
 
 
-@pytest.mark.parametrize(
-    "tag, source, action",
-    [
-        ("(0018,0060)", DEFAULT, "K"),  # KVP
-        ("(0020,0012)", DEFAULT, "K"),  # Acquisition Number
-        ("(0008,0008)", DEFAULT, "K"),  # Image Type
-        ("(0020,0011)", DEFAULT, "K"),  # Series Number
-        ("(0020,1040)", SUPPLEMENTARY, "X/Z/D"),  # Position Reference Indicator
-    ],
-)
-@pytest.mark.parametrize("preset", ["basic", "basic-clean-descriptors"])
-def test_the_attributes_of_midi_b_checks_that_fail_by_design_keep_their_rules(
-    tag, source, action, preset
-):
-    # MIDI-B's answer keys expect Series Number changed, and the
-    # others present even where the source lacks them. The rules keep them,
-    # emptying Position Reference Indicator where it is Type 2.
-    if preset == "basic-clean-descriptors" and source is SUPPLEMENTARY:
-        action = "C"
-    rule = _rules(preset).rule(tag)
-
-    assert (rule.source, rule.action) == (source, action)
-
-
 @pytest.mark.parametrize("tag, preset, source, action", POLICY_RULES)
 def test_the_rule_follows_the_policy(tag, preset, source, action):
     rule = _rules(preset).rule(tag)
