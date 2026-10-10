@@ -51,7 +51,7 @@ def start_mssql_docker_image_with_bak_restore(
                 "localhost",
                 "sa",
                 password=sa_password,
-                port=1433,
+                port="1433",
                 autocommit=True,
             )
         except pymssql.exceptions.OperationalError as e:

@@ -20,12 +20,12 @@ from pymedphys._imports import toml
 is_cli = False
 
 
-def config_dir_path():
+def config_dir_path() -> pathlib.Path:
     """Return the path of the PyMedPhys configuration directory, without creating it."""
     return pathlib.Path.home().joinpath(".pymedphys")
 
 
-def get_config_dir():
+def get_config_dir() -> pathlib.Path:
     config_dir = config_dir_path()
     config_dir.mkdir(exist_ok=True)
 

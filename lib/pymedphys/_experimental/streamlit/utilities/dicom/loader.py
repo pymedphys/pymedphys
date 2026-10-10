@@ -68,7 +68,10 @@ def dicom_file_loader(
 
         # This is specifically not limited to .dcm extensions as
         # sometimes DICOM exports to file don't have any file extension.
-        files: UploadedFiles = st.file_uploader(
+        # The file_uploader overload is dispatched on a Literal[bool], but
+        # accept_multiple_files is a runtime value here, so the overload
+        # cannot be resolved statically.
+        files: UploadedFiles = st.file_uploader(  # type: ignore[call-overload]
             f"DICOM {file_string}", accept_multiple_files=accept_multiple_files
         )
 

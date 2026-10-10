@@ -1,0 +1,86 @@
+@startuml act_gamma_pipeline
+' SysML Activity Diagram
+' Compute pipeline of pymedphys.gamma. Shows the 4-phase decomposition:
+'   Phase 1: input validation + options construction
+'   Phase 2: per-voxel gamma loop (the big work)
+'   Phase 3: post-loop NaN / clamp / reshape
+'   Phase 4: dict-vs-array output dispatch
+
+title <<act>> pymedphys.gamma -- Compute Pipeline
+
+skinparam activityBackgroundColor #fff3e0
+skinparam activityBorderColor #e65100
+skinparam activityFontColor #bf360c
+skinparam activityDiamondBackgroundColor #fce4ec
+skinparam activityDiamondBorderColor #c62828
+skinparam shadowing false
+skinparam Padding 4
+
+|Phase 1: input validation + options|
+start
+:gamma_shell entry;
+note right
+    PY: lib/pymedphys/_gamma/implementation/shell.py:34
+end note
+:check quiet kwarg deprecation;
+note right
+    PY:117-122
+end note
+if (max_gamma is None?) then (yes)
+    :max_gamma := inf;
+    note right
+        PY:124-125
+    end note
+endif
+:GammaInternalFixedOptions.from_user_inputs(...);
+note right
+    PY:127-144
+    Runs run_input_checks (axes shape, monotonicity, dtype),
+    expand_dims_to_1d on pct + dist thresholds,
+    builds reference_points_to_calc (random_subset slicing if requested),
+    sets global_normalisation = max(dose_reference) if not provided.
+end note
+
+|Phase 2: per-voxel gamma loop|
+:gamma_loop(options);
+note right
+    PY:165
+    Calls into gamma_loop at PY:323-580; iterates over reference_points_to_calc
+    with concentric distance shells expanding until gamma <= 1 or distance
+    exceeds maximum_test_distance. interp_fraction subdivides each distance
+    step. skip_once_passed short-circuits when gamma <= 1 found.
+end note
+
+|Phase 3: post-loop processing|
+repeat
+    :extract per-(pct, dist) slice;
+    note right
+        PY:168-172
+    end note
+    :reshape to dose_reference.shape;
+    note right
+        PY:173 -- np.reshape(gamma_temp, np.shape(dose_reference))
+    end note
+    :inf -> NaN;
+    note right
+        PY:174 -- gamma_temp[np.isinf(gamma_temp)] = np.nan
+    end note
+    :clamp values > max_gamma;
+    note right
+        PY:177-178 -- gamma_temp[gamma > max_gamma] = max_gamma
+    end note
+    :store as gamma[(pct, dist)];
+repeat while (more (pct, dist) pairs?)
+
+|Phase 4: output dispatch|
+if (single (pct, dist) pair?) then (yes)
+    :return ndarray;
+    note right
+        PY:184-185 -- gamma = next(iter(gamma.values()))
+    end note
+else (no)
+    :return dict;
+endif
+stop
+
+@enduml

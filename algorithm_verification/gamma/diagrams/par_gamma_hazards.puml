@@ -1,0 +1,237 @@
+@startuml par_gamma_hazards
+' SysML Parametric Diagram (FDA MDDT artifact)
+' Hazard traceability for pymedphys.gamma. Each <<hazard>> block names a
+' clinical failure-mode chain; arrows from verification predicates point
+' INTO the hazards they discharge. Outgoing arrows from hazards point to
+' the test fixtures that exercise them.
+'
+' This diagram is the regulatory-narrative artifact: a regulator should
+' be able to ask "what predicates discharge hazard X?" and "what fixtures
+' exercise hazard X?" and answer from this diagram structure alone.
+
+title <<par>> pymedphys.gamma -- Hazard Traceability (FDA MDDT)
+
+top to bottom direction
+
+skinparam class {
+    BackgroundColor<<hazard>>     #ffcdd2
+    BorderColor<<hazard>>         #b71c1c
+    FontColor<<hazard>>           #b71c1c
+
+    BackgroundColor<<predicate>>  #f3e5f5
+    BorderColor<<predicate>>      #7b1fa2
+
+    BackgroundColor<<fixture>>    #e0f2f1
+    BorderColor<<fixture>>        #00695c
+
+    BackgroundColor<<publication>> #fce4ec
+    BorderColor<<publication>>    #c62828
+}
+
+hide circle
+hide empty methods
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam Padding 4
+
+' ============================================================
+' Hazard chains (FMEA form: failure mode -> intermediate effect -> harm)
+' ============================================================
+
+package "Clinical hazards (FMEA chains)" {
+
+    class "H1: false-negative QA" as H1 <<hazard>> {
+        gamma underestimates discrepancy
+        ----
+        -> uncaught delivery error
+        -> patient receives off-prescription dose
+        -> patient harm
+    }
+
+    class "H2: false-positive QA" as H2 <<hazard>> {
+        gamma overestimates discrepancy
+        ----
+        -> unnecessary plan rework
+        -> treatment delay
+        -> patient harm (delayed therapy)
+    }
+
+    class "H3: silent NaN propagation" as H3 <<hazard>> {
+        NaN values misinterpreted as pass
+        ----
+        -> uncaught failure
+        -> false-negative QA
+        -> patient harm (subsumes H1)
+    }
+
+    class "H4: numerical-stability loss" as H4 <<hazard>> {
+        gamma values diverge for similar inputs
+        ----
+        -> reproducibility loss
+        -> regulatory noncompliance
+        -> patient harm via process failure
+    }
+
+    class "H5: clamp masking" as H5 <<hazard>> {
+        max_gamma clamp hides large discrepancies
+        ----
+        -> failure regions reported as borderline
+        -> false-negative QA
+        -> patient harm (subsumes H1)
+    }
+
+    class "H6: shape mismatch" as H6 <<hazard>> {
+        gamma output shape disagrees with reference
+        ----
+        -> indexing errors in downstream tools
+        -> wrong voxel association
+        -> patient harm (wrong-region QA)
+    }
+
+    class "H7: nondeterministic subsetting" as H7 <<hazard>> {
+        random_subset gives different results per run
+        ----
+        -> reproducibility loss
+        -> regulatory noncompliance (audit failure)
+        -> indirect patient harm
+    }
+
+}
+
+' ============================================================
+' Discharging predicates (purple)
+' ============================================================
+
+package "Verification predicates" {
+    class "ok_gamma_range_nonneg" as P_nonneg <<predicate>>
+    class "ok_gamma_range_below_max" as P_below_max <<predicate>>
+    class "ok_gamma_no_inf" as P_no_inf <<predicate>>
+    class "ok_gamma_shape_matches_reference" as P_shape <<predicate>>
+    class "ok_gamma_nan_at_low_dose" as P_nan <<predicate>>
+    class "ok_gamma_reflexive" as P_reflexive <<predicate>>
+    class "ok_gamma_deterministic" as P_det <<predicate>>
+    class "ok_gamma_max_gamma_clamp" as P_clamp <<predicate>>
+    class "ok_gamma_pass_rate_monotonic_pct" as P_mono_pct <<predicate>>
+    class "ok_gamma_pass_rate_monotonic_dist" as P_mono_dist <<predicate>>
+    class "ok_gamma_equiv_pass_rate" as P_equiv <<predicate>>
+    class "ok_gamma_equiv_multi_criteria" as P_equiv_multi <<predicate>>
+    class "ok_gamma_local_normalisation_used" as P_local <<predicate>>
+    class "ok_gamma_global_normalisation_default" as P_global <<predicate>>
+}
+
+' ============================================================
+' Discharging arrows (predicate -> hazard discharged)
+' ============================================================
+
+P_nonneg     -down-> H1
+P_below_max  -down-> H5
+P_no_inf     -down-> H3
+P_shape      -down-> H6
+P_nan        -down-> H3
+P_reflexive  -down-> H4
+P_det        -down-> H4
+P_det        -down-> H7
+P_clamp      -down-> H5
+P_mono_pct   -down-> H1
+P_mono_pct   -down-> H2
+P_mono_dist  -down-> H1
+P_mono_dist  -down-> H2
+P_equiv      -down-> H1
+P_equiv      -down-> H2
+P_equiv_multi -down-> H1
+P_equiv_multi -down-> H2
+P_local      -down-> H1
+P_local      -down-> H2
+P_global     -down-> H4
+
+' ============================================================
+' Fixtures (cyan) -- exercise hazards via discharging predicates
+' ============================================================
+
+package "Reference test corpora" {
+    class "agnew_mcgarry_local_1mm" as F_1mm <<fixture>> {
+        Source: Agnew & McGarry 2016
+        H&N VMAT 1mm pixel; 93.6% baseline
+    }
+
+    class "agnew_mcgarry_local_0_25mm" as F_0_25mm <<fixture>> {
+        H&N VMAT 0.25mm pixel; 96.9% baseline
+    }
+
+    class "agnew_mcgarry_multi_criteria" as F_multi <<fixture>> {
+        Multi (pct, dist) tuples
+    }
+
+    class "agnew_mcgarry_local_1mm_max1p0001" as F_clamp <<fixture>> {
+        max_gamma=1.0001 -- exercises clamp
+    }
+
+    class "synthetic_reflexive_2d" as F_reflexive <<fixture>> {
+        gamma(D, D) -- self-comparison
+    }
+
+    class "synthetic_determinism" as F_det <<fixture>> {
+        Repeated invocation byte-identity
+    }
+}
+
+' Fixture <- predicate (which fixture exercises which predicate)
+F_1mm        -up-> P_equiv
+F_1mm        -up-> P_local
+F_1mm        -up-> P_mono_pct
+F_1mm        -up-> P_mono_dist
+F_0_25mm     -up-> P_equiv
+F_multi      -up-> P_equiv_multi
+F_clamp      -up-> P_clamp
+F_reflexive  -up-> P_reflexive
+F_det        -up-> P_det
+
+' Universal predicates exercised by EVERY fixture (drawn dashed where applicable)
+F_1mm        -up.> P_nonneg
+F_1mm        -up.> P_no_inf
+F_1mm        -up.> P_shape
+F_1mm        -up.> P_nan
+F_1mm        -up.> P_below_max
+
+' ============================================================
+' Publication anchor
+' ============================================================
+
+package "Publications" {
+    class "Agnew & McGarry 2016" as Pub_AM <<publication>> {
+        Radiother Oncol 2016;118(3):568-573.
+        DOI: 10.1016/j.radonc.2015.11.034
+    }
+    class "Low et al. 1998" as Pub_Low <<publication>> {
+        Med Phys 1998;25(5):656-661.
+        Original gamma definition
+    }
+}
+
+Pub_AM       -up-> F_1mm
+Pub_AM       -up-> F_0_25mm
+Pub_Low      -up-> P_nonneg
+Pub_Low      -up-> P_reflexive
+
+' ============================================================
+' Residual risks (call-out notes)
+' ============================================================
+
+note bottom of H1
+    Residual risk:
+      Predicates exercise 6MV photon datasets only.
+      Proton, electron, and carbon-ion modalities
+      are NOT covered by this deliverable.
+      Mitigation: separate verification deliverables
+      per modality (DEFERRED).
+end note
+
+note bottom of H4
+    Residual risk:
+      Determinism is verified for seeded random_subset.
+      Float-summation order dependency in numpy
+      reductions is NOT independently verified;
+      mitigation relies on numpy's documented stability.
+end note
+
+@enduml

@@ -1,0 +1,133 @@
+@startuml par_invariants
+' SysML Parametric Diagram
+' Constraints (validation-time gates) and invariants (state-time relations
+' preserved by every step//2 rule). Constraints are yellow; invariants are
+' purple.
+
+title <<par>> pseudonymise -- Constraints and Invariants
+
+top to bottom direction
+
+skinparam class {
+    BackgroundColor<<constraint>> #ffffcc
+    BorderColor<<constraint>>     #999900
+
+    BackgroundColor<<invariant>>  #f3e5f5
+    BorderColor<<invariant>>      #7b1fa2
+}
+
+hide circle
+hide empty methods
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam Padding 4
+
+' ============================================================
+' Constraints (validation-time)
+' ============================================================
+
+package "Constraints (validation-time)" {
+
+    class "files_present_gate" as files_present_gate <<constraint>> {
+        + len(widgets.dicom_uploader) > 0
+        + Predicate: browse_ops:files_present/1
+        + Anchor:    PY:163
+        + Effect on fail:
+        +   click(pseudonymise_button) is a no-op
+        +   tier preserved as idle_no_files
+    }
+
+    class "valid_dicom_file" as valid_dicom_file <<constraint>> {
+        + pydicom.dcmread(buffer, force=True) succeeds
+        + AND raises no KeyError | OSError | ValueError
+        +     during anonymise_dataset / dcmwrite
+        + Predicate: implicit in compute_ops:pseudonymise_one_file/4
+        + Anchor:    PY:114, PY:118-125, PY:129, PY:130-134
+        + Effect on fail:
+        +   compute.bad_data = true
+        +   inner loop break (PY:134)
+        +   chunk loop break (compute_ops:process_chunks_loop)
+        +   tier := error_bad_data
+        +   render_error_text emitted
+    }
+
+    class "chunk_size_under_threshold" as chunk_size_threshold <<constraint>> {
+        + sum of file sizes per chunk <= 50_000_000 +1 file overshoot
+        + Predicate: chunk_index_list:compute_chunks/2
+        + Anchor:    PY:222 (`if size > 50000000`)
+        + Effect on fail:
+        +   not actually a fail-mode -- the compute splits chunks
+        +   eagerly when the size accumulator exceeds the threshold,
+        +   resetting the accumulator (not the chunk position).
+        +   Single files > 50 MByte will exceed the data: URL limit
+        +   on download (PY:152-155 docstring) and may fail download.
+    }
+
+}
+
+' ============================================================
+' Invariants (state-time, preserved by every step//2 rule)
+' ============================================================
+
+package "Invariants (state-time)" {
+
+    class "tier_widget_consistency" as tier_widget_consistency <<invariant>> {
+        + state.tier in {idle_no_files} <=> widgets.dicom_uploader == []
+        + state.tier in {idle_files_uploaded, displaying_results,
+        +   error_bad_data, computing_*} <=> widgets.dicom_uploader != []
+        +   (or was non-empty at the start of the rerun;
+        +    Streamlit's runtime preserves widget state across reruns)
+        + Re-applied by: browse_ops:derive_idle_substate/2
+    }
+
+    class "compute_chunks_partition" as compute_chunks_partition <<invariant>> {
+        + sum of (slice [chunks[I-1]:chunks[I]] sizes for I in 0..len(chunks)-1)
+        +   == sum of (file.size for file in widgets.dicom_uploader)
+        + (every uploaded file is in exactly one chunk)
+        + Held by: chunk_index_list:compute_chunks/2 construction
+        + Anchor:  PY:217-228
+    }
+
+    class "sidebar_links_match_completed_chunks" as sidebar_invariant <<invariant>> {
+        + len(sidebar.links) == count(I : 0..chunk_count where compute_zip_assembled(I) succeeded)
+        + Held by: render_ops:render_download_link/4 (only called on success branch)
+        + Anchor:  PY:195-197
+    }
+
+    class "error_isolation" as error_isolation <<invariant>> {
+        + state.tier == error_bad_data
+        +   => main.error_text_rendered == true
+        +   AND no further compute or render mutates session/widgets
+        +       (until the next user widget event)
+        + Held by: compute_ops:process_chunks_loop/4 (early return on bad_data)
+        + Anchor:  PY:133-134, PY:187-193
+    }
+
+    class "edge_triggered_button" as edge_triggered_button <<invariant>> {
+        + Across two consecutive reruns:
+        +   widgets.pseudonymise_button transitions True -> False
+        +   exactly once between any two click events.
+        + (Streamlit's button widget is edge-triggered: returns True only
+        +  on the rerun immediately following the click, then False.)
+        + Held by: widget_ops:pseudonymise_button_click/2 (last clause)
+        + Anchor:  PY:239 (Streamlit semantics, not source code)
+    }
+
+    class "no_session_state_usage" as no_session_state_usage <<invariant>> {
+        + state.session == _{}
+        + (this app never writes st.session_state)
+        + Held by: every step//2 rule (none touch state.session)
+        + Anchor:  full source pseudonymise.py (grep for "session_state")
+    }
+
+}
+
+' ============================================================
+' Cross-references
+' ============================================================
+
+valid_dicom_file -down-> error_isolation : on fail, triggers
+files_present_gate -down-> tier_widget_consistency : tier consistent with widget state
+chunk_size_threshold -down-> compute_chunks_partition : threshold drives partition
+
+@enduml

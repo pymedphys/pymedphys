@@ -1,0 +1,171 @@
+@startuml par_gamma_invariants
+' SysML Parametric Diagram
+' Constraints (validation-time gates) and invariants (output-time relations)
+' for pymedphys.gamma. Constraints are yellow; invariants purple.
+
+title <<par>> pymedphys.gamma -- Constraints and Invariants
+
+top to bottom direction
+
+skinparam class {
+    BackgroundColor<<constraint>> #ffffcc
+    BorderColor<<constraint>>     #999900
+
+    BackgroundColor<<invariant>>  #f3e5f5
+    BorderColor<<invariant>>      #7b1fa2
+}
+
+hide circle
+hide empty methods
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam Padding 4
+
+' ============================================================
+' Constraints (input validation -- enforced by run_input_checks)
+' ============================================================
+
+package "Constraints (validation-time)" {
+
+    class "valid_pct_threshold" as valid_pct <<constraint>> {
+        + dose_percent_threshold > 0
+        + Anchor: PY:73-74 docstring contract
+        + Effect on fail: ValueError or division by zero in gamma_loop
+    }
+
+    class "valid_dist_threshold" as valid_dist <<constraint>> {
+        + distance_mm_threshold > 0
+        + Anchor: PY:75-76 docstring
+        + Effect on fail: ValueError or zero-radius shell -> infinite loop
+    }
+
+    class "monotonic_axes" as monotonic_axes <<constraint>> {
+        + each axis monotonic increasing
+        + Predicate: implicit in run_input_checks
+        + Anchor: lib/pymedphys/_gamma/utilities/core.py
+        + Effect on fail: ValueError; non-monotonic axes break interpolation
+    }
+
+    class "matched_axes_dose_shape" as matched_shape <<constraint>> {
+        + dose_reference.shape == cartesian product
+        +    of axes_reference lengths
+        + Anchor: implicit in run_input_checks
+        + Effect on fail: ValueError; reshape mismatch
+    }
+}
+
+' ============================================================
+' Invariants (output-time -- preserved by every gamma_shell invocation)
+' ============================================================
+
+package "Invariants (output-time)" {
+
+    class "range_nonneg" as inv_nonneg <<invariant>> {
+        + forall non-NaN g in Output: g >= 0
+        + Predicate: ok_gamma_range_nonneg/1
+        + Anchor: PY:165 (gamma_loop), Ref: Low 1998
+        + Hazard discharged: H1 (false-negative QA)
+    }
+
+    class "range_below_max" as inv_below_max <<invariant>> {
+        + forall non-NaN g: g <= max_gamma
+        + Predicate: ok_gamma_range_below_max/2 + ok_gamma_max_gamma_clamp/2
+        + Anchor: PY:177-178 (post-loop clamp)
+        + Hazard discharged: H5 (clamp masking)
+    }
+
+    class "no_inf" as inv_no_inf <<invariant>> {
+        + forall g: not isinf(g)
+        + Predicate: ok_gamma_no_inf/1
+        + Anchor: PY:174 (inf -> NaN conversion)
+        + Hazard discharged: H3 (silent NaN propagation)
+    }
+
+    class "shape_matches_reference" as inv_shape <<invariant>> {
+        + Output.shape == dose_reference.shape
+        + Predicate: ok_gamma_shape_matches_reference/2
+        + Anchor: PY:173 (np.reshape)
+        + Hazard discharged: H6 (shape mismatch)
+    }
+
+    class "nan_at_low_dose_biconditional" as inv_nan_biconditional <<invariant>> {
+        + forall i: ref_dose[i] < cutoff <=> isnan(out[i])
+        + Predicate: ok_gamma_nan_at_low_dose/3
+        + Anchor: gamma_loop per-voxel masking
+        + Hazard discharged: H3 (silent NaN propagation)
+        + Note: strong claim -- NaN appears IFF low-dose
+    }
+
+    class "reflexive" as inv_reflexive <<invariant>> {
+        + gamma(D, D) ~ 0 wherever defined
+        + Predicate: ok_gamma_reflexive/2
+        + Anchor: dose-distribution gamma definition
+        + Hazard discharged: H4 (numerical-stability loss)
+    }
+
+    class "deterministic" as inv_deterministic <<invariant>> {
+        + gamma(A, B, opts) == gamma(A, B, opts)
+        +   under same np.random.seed
+        + Predicate: ok_gamma_deterministic/2
+        + Anchor: pure-function semantics + seeded random_subset
+        + Hazard discharged: H4, H7
+    }
+
+    class "pass_rate_monotonic_pct" as inv_pct_monotonic <<invariant>> {
+        + Pct1 <= Pct2 -> pass_rate(Pct1) <= pass_rate(Pct2)
+        + Predicate: ok_gamma_pass_rate_monotonic_pct/4
+        + Anchor: pass_rate semantics + larger tolerance -> more passes
+        + Hazard discharged: H1 + H2
+    }
+
+    class "pass_rate_monotonic_dist" as inv_dist_monotonic <<invariant>> {
+        + Dist1 <= Dist2 -> pass_rate(Dist1) <= pass_rate(Dist2)
+        + Predicate: ok_gamma_pass_rate_monotonic_dist/4
+        + Anchor: pass_rate semantics + larger search radius -> more passes
+        + Hazard discharged: H1 + H2
+    }
+
+    class "agnew_mcgarry_baseline_match" as inv_agnew <<invariant>> {
+        + 1mm fixture: pass_rate(local 1%/1mm) == 93.6%
+        + 0.25mm fixture: pass_rate(local 1%/1mm) == 96.9%
+        + Predicate: ok_gamma_equiv_pass_rate/3
+        + Anchor: test_agnew_mcgarry.py:144, :149
+        + Ref: Agnew & McGarry 2016
+        + Hazard discharged: H1 + H2 (regression baselines)
+    }
+
+    class "local_global_distinct" as inv_local_global <<invariant>> {
+        + |pass_rate(local=True) - pass_rate(local=False)| >= 0.5%
+        +   on agnew-mcgarry fixtures
+        + Predicate: ok_gamma_local_normalisation_used/3
+        + Anchor: PY:127-144 (option propagation)
+        + Hazard discharged: H1 + H2 (silent option-ignore)
+    }
+
+    class "global_normalisation_default" as inv_global_default <<invariant>> {
+        + gamma(local=False, global_norm=None)
+        +   == gamma(local=False, global_norm=max(dose_ref))
+        + Predicate: ok_gamma_global_normalisation_default/3
+        + Anchor: PY:138 (global_normalisation default)
+        + Hazard discharged: H4 (default-handling stability)
+    }
+}
+
+' ============================================================
+' Cross-references
+' ============================================================
+
+valid_pct          -down-> inv_nonneg
+valid_dist         -down-> inv_no_inf
+monotonic_axes     -down-> inv_shape
+matched_shape      -down-> inv_shape
+
+inv_nonneg         -right-> inv_below_max
+inv_below_max      -right-> inv_pct_monotonic
+inv_no_inf         -down->  inv_nan_biconditional
+inv_reflexive      -down->  inv_deterministic
+inv_pct_monotonic  -right-> inv_dist_monotonic
+inv_pct_monotonic  -down->  inv_agnew
+inv_local_global   -down->  inv_global_default
+
+@enduml

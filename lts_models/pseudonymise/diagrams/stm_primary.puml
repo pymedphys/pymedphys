@@ -1,0 +1,109 @@
+@startuml stm_primary
+' SysML State Machine Diagram
+' Primary state machine for the pseudonymise.py Streamlit app.
+' Shows ONLY user-receptive states (init / idle_* / displaying_* / error_*).
+' Internal-trace states (computing_*) appear as notes on the click(button)
+' transition; their decomposition lives in act_compute_pipeline.svg.
+
+title <<stm>> pseudonymise -- Primary State Machine
+
+top to bottom direction
+
+skinparam state {
+    BackgroundColor<<init>>      #e8eaf6
+    BorderColor<<init>>          #283593
+    FontColor<<init>>            #1a237e
+
+    BackgroundColor<<idle>>      #e3f2fd
+    BorderColor<<idle>>          #1565c0
+    FontColor<<idle>>            #0d47a1
+
+    BackgroundColor<<displaying>> #f9fbe7
+    BorderColor<<displaying>>     #827717
+    FontColor<<displaying>>       #827717
+
+    BackgroundColor<<error>>     #fce4ec
+    BorderColor<<error>>         #c62828
+    FontColor<<error>>           #b71c1c
+}
+
+' ============================================================
+' States (user-receptive only)
+' ============================================================
+
+[*] --> init
+
+state "init" as init <<init>>
+init : First execution of main() at PY:232
+init : widgets.dicom_uploader = []
+init : widgets.pseudonymise_button = false
+
+state "Idle" as Idle <<idle>> {
+    state "idle_no_files" as idle_no_files <<idle>>
+    idle_no_files : files_absent(state)
+    idle_no_files : PY:163 length-guard would fail
+
+    state "idle_files_uploaded" as idle_files_uploaded <<idle>>
+    idle_files_uploaded : files_present(state)
+    idle_files_uploaded : ready to dispatch to compute pipeline
+}
+
+state "displaying_results" as displaying_results <<displaying>>
+displaying_results : sidebar.links populated
+displaying_results : main.chunk_indices_rendered = true
+
+state "error_bad_data" as error_bad_data <<error>>
+error_bad_data : main.error_text_rendered = true
+error_bad_data : compute.bad_data = true
+
+' ============================================================
+' Transitions
+' ============================================================
+
+init             -down->     idle_no_files            : (post-render)
+init             -down->     idle_files_uploaded      : upload(K, files)\nfiles != []
+
+idle_no_files    -right->    idle_files_uploaded      : upload(K, files)
+idle_files_uploaded -left->  idle_no_files            : clear_upload(K)
+
+idle_no_files    -down->     idle_no_files            : click(pseudonymise_button)\n[files_absent]\n(no-op; PY:163 guard fails)
+
+idle_files_uploaded -down->  displaying_results       : click(pseudonymise_button)\n[files_present, no exceptions]\n/ {gen_chunks, render_chunk_indices,\n  per chunk: chunk_start,\n   per file: dcmread, anonymise,\n             dcmwrite, zipfile_writestr,\n  chunk_complete, render_download_link}
+
+idle_files_uploaded -down->  error_bad_data           : click(pseudonymise_button)\n[files_present, exception in chunk loop]\n/ {gen_chunks, render_chunk_indices,\n  partial chunk: dcmread fails,\n  print_exception,\n  render_error_text}
+
+displaying_results -up->     idle_files_uploaded      : upload(K, more_files)
+displaying_results -up->     idle_no_files            : clear_upload(K)
+displaying_results -down->   displaying_results       : click(pseudonymise_button)\n[retry; same widget state]
+
+error_bad_data   -up->       idle_files_uploaded      : upload(K, files)
+error_bad_data   -up->       idle_no_files            : clear_upload(K)
+error_bad_data   -right->    displaying_results       : click(pseudonymise_button)\n[retry succeeds]
+error_bad_data   -right->    error_bad_data           : click(pseudonymise_button)\n[retry still fails]
+
+' ============================================================
+' Notes
+' ============================================================
+
+note right of idle_files_uploaded
+    The click(pseudonymise_button) transition from this state visits
+    INTERNAL-TRACE STATES sequentially during a single rerun:
+      computing_chunking
+      -> computing_per_chunk(I, N)
+         -> computing_per_file(I, J)  (per file in chunk I)
+         -> computing_zip_assembled(I)
+      -> displaying_results | error_bad_data
+    See act_compute_pipeline.svg for the decomposition.
+    Internal-trace states are NOT user-event-receptive.
+end note
+
+note left of init
+    [!] Source quirk preserved verbatim:
+      PY:241 uploaded_file_buffer_list.clear()
+    clears the local Python list, NOT the Streamlit widget state.
+    So post-click, the LTS goes to displaying_results | error_bad_data,
+    and the next legal event leaves us in idle_files_uploaded
+    (NOT idle_no_files) unless the user explicitly clicks the X.
+end note
+
+@enduml
