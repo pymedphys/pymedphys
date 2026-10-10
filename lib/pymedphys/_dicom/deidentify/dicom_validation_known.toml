@@ -14,6 +14,10 @@
 # - engine: a defect of the engine's output, recorded here until it is
 #   fixed, when its entry is removed.
 #
+# An entry whose explanation rests on a property of the output names it in
+# requires, one of dicom_validation.PREMISES, and explains the finding only
+# in an output that has it.
+#
 # Keep entries narrow: a pattern of "*" is for findings that do not depend
 # on the attribute's place.
 
@@ -62,20 +66,23 @@ severity = "error"
 message = "ReferencedSeriesSequence present but Instance does not reference Instances"
 paths = ["(0008,1115)"]
 category = "validator"
+requires = "instances-of-this-study-referenced-elsewhere"
 reason = """
 The Common Instance Reference Module's Referenced Series Sequence is Type 1C,
 required if the instance references instances in its study, from any of its
 modules (PS3.3 Section C.12.2). The Basic Profile's action X/Z/U* removes
-Referenced Image Sequence (0008,1140) and Source Image Sequence (0008,2112)
-where they are Type 3, as in the Functional Group Macros of the enhanced and
-legacy converted enhanced images, but each instance that the sequence lists
-is still referenced elsewhere in the output, such as from Referenced Image
-Evidence Sequence (0008,9092), Referenced Defined Protocol Sequence
-(0018,990C), or Conversion Source Attributes Sequence (0020,9172), so the
-condition is met. dciodvfy's condition counts references from only a few
-sequences, among them Source Image, Source Instance, Referenced Image, and
-Referenced Instance Sequences, and adding one Referenced Image Sequence item
-to the output clears the finding.
+Referenced Image Sequence (0008,1140) and Source Image Sequence (0008,2112),
+or empties them where they are Type 2, as in the Functional Group Macros of
+the enhanced and legacy converted enhanced images. dciodvfy's condition
+counts references from only a few sequences, among them Source Image, Source
+Instance, Referenced Image, and Referenced Instance Sequences, so it reports
+the sequence wherever those no longer reference anything, even where the
+output references the instances that it lists elsewhere, such as from
+Referenced Image Evidence Sequence (0008,9092), Referenced Defined Protocol
+Sequence (0018,990C), or Conversion Source Attributes Sequence (0020,9172).
+Adding one Referenced Image Sequence item to such an output clears the
+finding. The entry applies only to an output that still references, outside
+the module, an instance that the sequence lists, where the condition is met.
 """
 
 [[difference]]
@@ -84,10 +91,12 @@ severity = "error"
 message = "StudiesContainingOtherReferencedInstancesSequence present but Instance does not reference Instances"
 paths = ["(0008,1200)"]
 category = "validator"
+requires = "instances-of-other-studies-referenced-elsewhere"
 reason = """
 As for Referenced Series Sequence (0008,1115): the Common Instance Reference
 Module's Studies Containing Other Referenced Instances Sequence is Type 1C,
 required if the instance references instances in other studies from any of
-its modules, and the output still references them from modules whose
-sequences dciodvfy's condition does not count.
+its modules, and dciodvfy's condition counts only a few sequences. The entry
+applies only to an output that still references, outside the module, an
+instance that the sequence lists.
 """

@@ -174,7 +174,7 @@ def _introduced(
                     ),
                     default=0,
                 ),
-                difference["reason"],
+                _reason(difference),
             )
             for difference in sorted(
                 known, key=lambda d: (d["category"] != "engine", d["number"])
@@ -183,6 +183,13 @@ def _introduced(
     )
     lines.append("")
     return lines
+
+
+def _reason(difference: Mapping[str, object]) -> str:
+    """Return a known difference's reason, with the premise it requires."""
+    reason = str(difference["reason"])
+    requires = difference.get("requires")
+    return f"{reason} Only where {requires}." if requires else reason
 
 
 def attribute(path: str) -> str:

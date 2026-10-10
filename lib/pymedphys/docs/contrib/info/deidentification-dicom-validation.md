@@ -29,20 +29,20 @@ Each validator checks each released instance's input and its output; `dcentvfy` 
 
 Each introduced finding is then:
 
-- **explained**, by an entry in `dicom_validation_known.toml`, whose category says why: `profile`, where the action that PS3.15 Table E.1-1 gives the attribute causes it; `validator`, where it is a limitation or heuristic of the validator and the output conforms; or `engine`, a defect of the engine's output, recorded until it is fixed;
+- **explained**, by an entry in `dicom_validation_known.toml`, whose category says why: `profile`, where the action that PS3.15 Table E.1-1 gives the attribute causes it; `validator`, where it is a limitation or heuristic of the validator and the output conforms; or `engine`, a defect of the engine's output, recorded until it is fixed. An entry whose explanation rests on a property of the output names it, and explains the finding only in an output that has it;
 - **not comparable**, where it lies below an attribute whose contents the validator could not read in the input, because its dictionary lacks the attribute and the input is in Implicit VR or gives it the VR UN, while it could read them in the output; or
 - **unexplained**.
 
 The comparison passes when nothing introduced is unexplained, and a validator that checked an input but could not check its output gives an unexplained finding too.
 
-The results hold no value and no path. Every validator quotes values, and dicom3tools also prints file names, so each message is reduced to the validator, the severity, the attribute as tags without item numbers or private creators, the message's text before the first value it quotes, and the module or information entity it names. A reason that follows a value is kept only where it is text compiled into the validator itself, and a line in any other form is counted without its text.
+The results hold no value and no path. Every validator quotes values, and dicom3tools also prints file names, so each message is reduced to the validator, the severity, the attribute as tags without item numbers or private creators, the message's text before the first value it quotes, in angle brackets or quotation marks or after an equals sign, and the module or information entity it names. That text, and any reason that follows the value, is kept only where it is made of strings compiled into the validator's own executable, with VRs in brackets, a few short words between them, and counts, which read `<n>`. Any other message reads `message not shown`, and a line in any other form is counted without its text.
 
 ### Known differences
 
 At present the synthetic corpus needs five known differences, each listed with its reason in every report:
 
 - `profile`: Study Date, Study Time, and Study ID, which the Basic Profile empties (action Z), are needed to build a DICOMDIR, so `dciodvfy` warns.
-- `validator`: `dciodvfy` warns about every Person Name without a component delimiter, such as the dummy value `DEIDENTIFIED`, as a retired form; its dictionary predates RT Assertions Sequence (0044,0110); and its condition for the Common Instance Reference Module's Referenced Series Sequence (0008,1115) and Studies Containing Other Referenced Instances Sequence (0008,1200) counts references from only a few sequences, so it reports both as present without need once the Basic Profile removes Referenced Image Sequence and Source Image Sequence from the functional groups of enhanced images. PS3.3 Section C.12.2 counts references from any module, and each instance they list is still referenced elsewhere in the output, for example from Referenced Image Evidence Sequence (0008,9092), so their condition is met.
+- `validator`: `dciodvfy` warns about every Person Name without a component delimiter, such as the dummy value `DEIDENTIFIED`, as a retired form; its dictionary predates RT Assertions Sequence (0044,0110); and its condition for the Common Instance Reference Module's Referenced Series Sequence (0008,1115) and Studies Containing Other Referenced Instances Sequence (0008,1200) counts references from only a few sequences, so it reports both as present without need once the Basic Profile removes or empties Referenced Image Sequence and Source Image Sequence in the functional groups of enhanced images. PS3.3 Section C.12.2 counts references from any module, and the corpus's outputs still reference the instances they list elsewhere, for example from Referenced Image Evidence Sequence (0008,9092), so their condition is met. These two entries apply only to an output that still references, outside the module, an instance that the sequence lists; where the last such reference is gone, the finding is unexplained.
 
 ## Run it on the synthetic corpus
 
