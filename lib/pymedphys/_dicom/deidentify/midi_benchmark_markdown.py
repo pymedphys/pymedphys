@@ -120,8 +120,9 @@ def render_markdown(document: Mapping[str, object]) -> str:
         lines += [
             "Instances sequestered for having no SOP Class UID, by where the "
             "engine's reading of it stopped, and by the SOP Class UID that "
-            "pydicom reads, the Media Storage SOP Class UID, and the transfer "
-            "syntax, as the standard names them:",
+            "pydicom reads, the Media Storage SOP Class UID, the transfer "
+            "syntax, and the Specific Character Set, as the standard names "
+            "them:",
             "",
             _table(
                 (
@@ -129,6 +130,7 @@ def render_markdown(document: Mapping[str, object]) -> str:
                     "SOP Class",
                     "Media Storage SOP Class",
                     "Transfer syntax",
+                    "Character set",
                     "Instances",
                 ),
                 [tuple(row.values()) for row in causes],

@@ -116,13 +116,28 @@ def test_no_sop_class_is_described_by_where_reading_stopped(tmp_path):
             warnings.simplefilter("ignore", UserWarning)
             dataset.SOPClassUID = [synthetic.CT_IMAGE_STORAGE] * 2
 
+    def latin_1(dataset):
+        dataset.SpecificCharacterSet = "ISO_IR 100"
+
+    def unsupported(dataset):
+        dataset.SpecificCharacterSet = "SYNTHETIC TERM"
+
+    ct = "CT Image Storage"
     # The writer copies a single SOP Class UID into the File Meta
     # Information, and leaves its placeholder otherwise.
-    for change, read, sop_class, media_storage in (
-        (absent, "absent", "none", "other"),
-        (empty, "0 values", "none", "other"),
-        (two, "2 values", "other", "other"),
-        (lambda dataset: None, "read", "CT Image Storage", "CT Image Storage"),
+    for change, read, sop_class, media_storage, character_set in (
+        (absent, "absent", "none", "other", "absent"),
+        (empty, "0 values", "none", "other", "absent"),
+        (two, "2 values", "other", "other", "absent"),
+        (lambda dataset: None, "read", ct, ct, "absent"),
+        (latin_1, "read", ct, ct, "ISO_IR 100"),
+        (
+            unsupported,
+            "character set: is not a supported Specific Character Set",
+            ct,
+            ct,
+            "other",
+        ),
     ):
         with warnings.catch_warnings():
             # The writer copies several values into the File Meta Information
@@ -134,6 +149,7 @@ def test_no_sop_class_is_described_by_where_reading_stopped(tmp_path):
             sop_class,
             media_storage,
             "Explicit VR Little Endian",
+            character_set,
         )
     assert errors.no_sop_class_cause(tmp_path / "missing.dcm")[0] == "unreadable"
     refused = tmp_path / "refused.dcm"
@@ -156,9 +172,10 @@ def test_a_benchmark_describes_instances_without_a_sop_class(tmp_path, monkeypat
         "sop_class": "CT Image Storage",
         "media_storage_sop_class": "CT Image Storage",
         "transfer_syntax": "Explicit VR Little Endian",
+        "specific_character_set": "absent",
         "instances": 1,
     } in result.document["coverage"]["no_sop_class"]
     assert (
-        "| read | CT Image Storage | CT Image Storage | Explicit VR Little Endian | 1 |"
-        in (result.markdown())
+        "| read | CT Image Storage | CT Image Storage | Explicit VR Little Endian "
+        "| absent | 1 |" in result.markdown()
     )

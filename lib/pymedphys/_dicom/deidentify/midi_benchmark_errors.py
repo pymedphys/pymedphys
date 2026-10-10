@@ -37,7 +37,12 @@ from pathlib import Path, PurePath
 
 from pymedphys._imports import pydicom
 
-from .elements import DEFAULT_CODECS, UndecodableElement, read_element
+from .elements import (
+    DEFAULT_CODECS,
+    UndecodableElement,
+    dataset_codecs,
+    read_element,
+)
 from .file_layout import ElementPath
 from .references import InstanceRecord
 from .run_results import (
@@ -48,7 +53,7 @@ from .run_results import (
     Transform,
     Transformed,
 )
-from .source import SourceRefused, read_source
+from .source import SourceEvidence, SourceRefused, read_source
 
 # Directories below which a path names code, innermost root first.
 _ROOTS = ("site-packages", "dist-packages")
@@ -190,27 +195,30 @@ NO_SOP_CLASS_FIELDS = (
     "sop_class",
     "media_storage_sop_class",
     "transfer_syntax",
+    "specific_character_set",
 )
 _SOP_CLASS = ElementPath((), "(0008,0016)")
 
 
-def no_sop_class_cause(path: Path) -> tuple[str, str, str, str]:
+def no_sop_class_cause(path: Path) -> tuple[str, str, str, str, str]:
     """Say, without a value, why the run found no SOP Class UID in a file.
 
     Returns
     -------
     tuple of str
         Where the engine's reading of SOP Class UID (0008,0016) stopped:
-        ``refused: <reason>``, ``data set: <exception>``, ``absent``,
-        ``undecodable``, ``<n> values``, ``empty``, or ``read``; then the SOP Class
-        UID that pydicom reads in the data set, the Media Storage SOP Class
-        UID, and the Transfer Syntax UID of the File Meta Information, each
-        as :func:`uid_name` names it, so that no UID is quoted.
+        ``refused: <reason>``, ``data set: <exception>``, ``character set:
+        <reason>``, ``absent``, ``undecodable``, ``<n> values``,
+        ``empty``, or ``read``; then the SOP Class UID that pydicom reads in
+        the data set, the Media Storage SOP Class UID, and the Transfer
+        Syntax UID of the File Meta Information, each as :func:`uid_name`
+        names it, so that no UID is quoted; and the Specific Character Set,
+        each value as the Defined Term it is, or ``other``.
     """
     try:
         data = path.read_bytes()
     except OSError:
-        return ("unreadable", "none", "none", "none")
+        return ("unreadable", "none", "none", "none", "none")
     return (_engine_read(data), *_pydicom_read(path))
 
 
@@ -230,10 +238,9 @@ def _engine_read(data: bytes) -> str:
         source = read_source(data)
     except SourceRefused as refused:
         return f"refused: {getattr(refused.reason, 'value', refused.reason)}"
-    try:
-        dataset = source.dataset()
-    except (SourceRefused, UndecodableElement) as error:
-        return f"data set: {type(error).__name__}"
+    dataset = _data_set(source)
+    if isinstance(dataset, str):
+        return dataset
     if _SOP_CLASS not in source:
         return "absent"
     try:
@@ -246,13 +253,32 @@ def _engine_read(data: bytes) -> str:
     return "read" if isinstance(value, str) and value.strip(" \x00") else "empty"
 
 
-def _pydicom_read(path: Path) -> tuple[str, str, str]:
+def _data_set(source: SourceEvidence) -> pydicom.Dataset | str:
+    """Return the data set as the transform reads it, with its character set,
+    or say where reading stopped; the transform reads no SOP Class UID then."""
+    try:
+        dataset = source.dataset()
+    except (SourceRefused, UndecodableElement) as error:
+        return f"data set: {type(error).__name__}"
+    try:
+        dataset_codecs(dataset, source=source)
+    except UndecodableElement as error:
+        # Its reason quotes no value.
+        return f"character set: {error.reason}"
+    except SourceRefused as refused:
+        return f"character set: {getattr(refused.reason, 'value', refused.reason)}"
+    return dataset
+
+
+def _pydicom_read(path: Path) -> tuple[str, str, str, str]:
     try:
         dataset = pydicom.dcmread(
-            path, stop_before_pixels=True, specific_tags=["SOPClassUID"]
+            path,
+            stop_before_pixels=True,
+            specific_tags=["SOPClassUID", "SpecificCharacterSet"],
         )
     except Exception:  # pylint: disable = broad-exception-caught
-        return ("unreadable", "unreadable", "unreadable")
+        return ("unreadable", "unreadable", "unreadable", "unreadable")
     meta = getattr(dataset, "file_meta", None) or pydicom.Dataset()
     sop_class = dataset.get("SOPClassUID")
     return (
@@ -262,4 +288,22 @@ def _pydicom_read(path: Path) -> tuple[str, str, str]:
         else uid_name(sop_class),
         uid_name(meta.get("MediaStorageSOPClassUID")),
         uid_name(meta.get("TransferSyntaxUID")),
+        _character_set(dataset),
+    )
+
+
+def _character_set(dataset: pydicom.Dataset) -> str:
+    """Return a Specific Character Set's Defined Terms, without other text."""
+    element = dataset.get((0x0008, 0x0005))
+    if element is None:
+        return "absent"
+    raw = element.value
+    values = list(raw) if isinstance(raw, pydicom.multival.MultiValue) else [raw]
+    return "\\".join(
+        "empty"
+        if not str(value).strip()
+        else str(value).strip()
+        if str(value).strip() in pydicom.charset.python_encoding
+        else "other"
+        for value in values
     )
