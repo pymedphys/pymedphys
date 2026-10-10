@@ -644,16 +644,20 @@ def _attribute(check: Check) -> str | None:
 def _not_released(
     context: Context, header: _Header | None, outcome: run.Outcome
 ) -> tuple[str, str | None, str, str]:
-    """Describe an instance that the run did not release, without a value."""
-    reasons = (
-        ", ".join(sorted({reason_code(reason) for reason in outcome.reasons}))
-        if context is Context.WITHHELD
-        else None
-    )
+    """Describe an instance that the run did not release, without a value.
+
+    A withheld instance is described as held for review, sequestered, or
+    refused, with the run's reasons.
+    """
+    where = context.value
+    reasons = None
+    if context is Context.WITHHELD:
+        where = f"{where}: {outcome.status.value}"
+        reasons = ", ".join(sorted({reason_code(reason) for reason in outcome.reasons}))
     if header is None:
-        return context.value, reasons, "none", "none"
+        return where, reasons or None, "none", "none"
     return (
-        context.value,
+        where,
         reasons or None,
         uid_name(header.sop_class),
         uid_name(header.transfer_syntax),

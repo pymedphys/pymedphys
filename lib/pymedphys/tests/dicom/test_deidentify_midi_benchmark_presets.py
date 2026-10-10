@@ -19,11 +19,12 @@ file and answer key is synthetic, as in ``test_deidentify_midi_benchmark``.
 """
 
 import dataclasses
+import enum
 
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import midi_benchmark as benchmark
-from pymedphys._dicom.deidentify import midi_benchmark_command, roi_names
+from pymedphys._dicom.deidentify import midi_benchmark_command, roi_names, run
 from pymedphys._dicom.deidentify.element_rules import ElementRules
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.midi_answer_key import parse_check
@@ -152,3 +153,25 @@ def test_the_command_takes_a_tg263_spreadsheet(tmp_path, edition, capsys):
 
     assert edition == [((), {"spreadsheet": tmp_path / "edition.xls"})]
     assert "| roi_names | cleaned with " in capsys.readouterr().out
+
+
+def test_a_withheld_instance_is_described_by_status_and_reasons():
+    # pylint: disable = protected-access
+    class Reason(enum.Enum):
+        HELD = "test-held-reason"
+
+    header = benchmark._Header(
+        patient_id=None,
+        study=None,
+        series=None,
+        instance=None,
+        sop_class="1.2.840.10008.5.1.4.1.1.481.3",
+        transfer_syntax="1.2.3.4",
+    )
+    outcome = run.Outcome(0, run.Status.HELD_FOR_REVIEW, (Reason.HELD, Reason.HELD))
+    assert benchmark._not_released(benchmark.Context.WITHHELD, header, outcome) == (
+        "withheld: held-for-review",
+        "test-held-reason",
+        "RT Structure Set Storage",
+        "other",
+    )
