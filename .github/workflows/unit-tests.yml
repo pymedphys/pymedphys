@@ -314,3 +314,87 @@ jobs:
           path: test-results/pydicom-coverage-${{ matrix.pydicom }}.json
           if-no-files-found: error
           retention-days: 30
+
+  # Independent validators, dciodvfy and dcentvfy from dicom3tools and
+  # dicom-validator, check each instance that the engine releases from the
+  # synthetic corpus, and its input, under each preset. A finding that an
+  # output introduces must be explained in dicom_validation_known.toml. The
+  # reports go to the job summary and an artefact; they hold no value or path.
+  dicom-validators:
+    name: DICOM validation of de-identified output
+    timeout-minutes: 30
+    # The dicom3tools package that setup-dicom-validators pins is Ubuntu
+    # 24.04's.
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The corpus tests read no downloaded data.
+      - uses: ./.github/actions/setup-project
+        with:
+          python-version: '3.14'
+          extras: 'tests'
+
+      - uses: ./.github/actions/setup-dicom-validators
+        id: validators
+
+      - name: Validate the de-identified synthetic corpus
+        id: tests
+        shell: bash
+        env:
+          PYTEST_ADDOPTS: ${{ inputs.extra-pytest-args }}
+          PYMEDPHYS_DICOM_VALIDATORS: required
+          PYMEDPHYS_DICOM_VALIDATOR_STANDARD: ${{ steps.validators.outputs.standard-path }}
+        run: |
+          set -euxo pipefail
+          mkdir -p test-results
+          export PYMEDPHYS_DICOM_VALIDATION_REPORT="${GITHUB_WORKSPACE}/test-results/dicom-validation"
+          # One process: each preset's run and validation is a module-scoped
+          # fixture, which workers would each repeat.
+          uv run -- pymedphys dev tests --dicom-validators \
+            lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus.py \
+            --durations=15 \
+            --junitxml="${GITHUB_WORKSPACE}/test-results/dicom-validation.xml"
+
+      - name: Summarise the validation reports
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for report in test-results/dicom-validation/*/dicom-validation.md; do
+            [ -f "${report}" ] || continue
+            preset=$(basename "$(dirname "${report}")")
+            {
+              echo "## Preset ${preset}"
+              echo
+              # Each report's headings, one level down.
+              sed 's/^#/##/' "${report}"
+              echo
+            } >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      # Ubuntu packages an old dicom3tools snapshot, whose dictionary lacks
+      # attributes added to the standard since; this records how far behind it
+      # is, and never fails the job.
+      - name: List the newest dicom3tools snapshot
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          newest=$(curl -fsSL --max-time 60 https://www.dclunie.com/dicom3tools/workinprogress/index.html \
+            | grep -o 'dicom3tools_1\.00\.snapshot\.[0-9]\{14\}' | sort -u | tail -n 1)
+          installed=$(dciodvfy -version 2>&1 | sed -n 's/^dicom3tools Version: //p')
+          echo "dicom3tools: ${installed} installed; newest snapshot ${newest#dicom3tools_}." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the validation reports
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dicom-validation
+          path: test-results/*
+          if-no-files-found: error
+          retention-days: 30

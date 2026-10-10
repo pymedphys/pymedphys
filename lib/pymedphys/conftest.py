@@ -85,6 +85,12 @@ MARKER_CONFIG: dict[str, Marker] = {
         description="mark test as requiring an Anthropic API key",
         noun="the tests that use the Anthropic API",
     ),
+    "dicom_validators": Marker(
+        only_options=("--run-only-dicom-validators", "--dicom-validators"),
+        include_option="--include-dicom-validators",
+        description="mark test as running external DICOM validators",
+        noun="the tests that run external DICOM validators",
+    ),
 }
 
 OPT_IN_MARKERS = frozenset(

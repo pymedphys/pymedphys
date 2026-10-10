@@ -1,0 +1,489 @@
+# Copyright (C) 2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""The validators' output reduced to findings, and the comparison of findings.
+
+None of these tests runs a validator: each reads output written here in the
+form that dciodvfy and dcentvfy print, or validations made here. The corpus
+tests (``test_deidentify_dicom_validation_corpus.py``) run the validators.
+"""
+
+import collections
+import json
+import textwrap
+import types
+from pathlib import Path
+
+from pymedphys._imports import pydicom, pytest
+
+from pymedphys._dicom.deidentify import dicom_validation, dicom_validation_command
+from pymedphys._dicom.deidentify import dicom_validators as validators
+from pymedphys._dicom.deidentify.dicom_validation import (
+    Category,
+    KnownDifference,
+    KnownDifferencesError,
+    Outcome,
+    Pair,
+)
+from pymedphys._dicom.deidentify.dicom_validation_markdown import render_markdown
+from pymedphys._dicom.deidentify.dicom_validators import (
+    DCENTVFY,
+    DCIODVFY,
+    DICOM_VALIDATOR,
+    Finding,
+    Status,
+    Validation,
+)
+
+pytestmark = pytest.mark.pydicom
+
+# A value that each test plants in a validator's output, and that no
+# finding may hold.
+PLANTED = "PLANTEDVALUE"
+STRINGS = frozenset({"Retired Person Name form"})
+PN_DUBIOUS = "Value dubious for this VR [PN] = <value> - Retired Person Name form"
+EVEN_GROUP = validators._UNPARSED_IN_IMPLICIT_VR[0]  # pylint: disable = protected-access
+EXPLICIT_UN = validators._UNPARSED[0]  # pylint: disable = protected-access
+NO_VERSIONS = validators.Versions(None, None, None, {})
+
+
+def _dciodvfy(text):
+    return textwrap.dedent(text).lstrip("\n")
+
+
+def test_a_dciodvfy_message_keeps_its_type_and_not_its_value():
+    output = _dciodvfy(
+        f"""
+        CTImage
+        Warning - </PersonName(0040,a123)[1]> - Value dubious for this VR [PN] = <{PLANTED}> - Retired Person Name form
+        Error - </StudyDate(0008,0020)> - Missing attribute for Type 1 Required - Module=<GeneralStudy>
+        """
+    )
+
+    validation = validators.parse_dciodvfy(output, STRINGS)
+
+    assert validation.status is Status.VALIDATED
+    assert validation.iod == "CTImage"
+    assert validation.findings == {
+        Finding(DCIODVFY, "warning", "(0040,A123)", PN_DUBIOUS): 1,
+        Finding(
+            DCIODVFY,
+            "error",
+            "(0008,0020)",
+            "Missing attribute for Type 1 Required",
+            "GeneralStudy",
+        ): 1,
+    }
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        f"{PLANTED}> - Retired Person Name form",
+        f"<{PLANTED}",
+        f'"{PLANTED}"',
+        f"{PLANTED} - Module=<{PLANTED}>",
+    ],
+)
+def test_no_part_of_a_value_passes(value):
+    output = f"Warning - </PersonName(0040,a123)[1]> - Value dubious for this VR [PN] = <{value}> - {PLANTED}\n"
+
+    validation = validators.parse_dciodvfy(output, STRINGS)
+
+    assert PLANTED not in repr(validation)
+
+
+def test_a_reason_that_is_not_the_validators_own_is_dropped():
+    message, module = validators.message_type(
+        f"Unrecognized enumerated value = <A> - {PLANTED}", STRINGS
+    )
+
+    assert (message, module) == ("Unrecognized enumerated value = <value>", "")
+
+
+def test_a_module_that_is_not_a_name_is_dropped():
+    message, module = validators.message_type(
+        f"Missing attribute - Module=<{PLANTED} x>", STRINGS
+    )
+
+    assert PLANTED not in message + module
+
+
+def test_a_path_keeps_its_tags_and_not_its_private_creators_or_items():
+    output = (
+        f'Error - </(0019,1010,"{PLANTED}> - x")[2]/StudyDate(0008,0020)> - '
+        "Missing attribute for Type 1 Required\n"
+    )
+
+    (finding,) = validators.parse_dciodvfy(output, STRINGS).findings
+
+    assert finding.path == "(0019,1010)/(0008,0020)"
+    assert finding.message == "Missing attribute for Type 1 Required"
+
+
+def test_a_line_without_a_messages_form_is_counted_without_its_text():
+    output = f"CTImage\n = <{PLANTED}> - expected 1\n{PLANTED}\n"
+
+    validation = validators.parse_dciodvfy(output, STRINGS)
+
+    assert validation.findings == {
+        Finding(DCIODVFY, "unrecognised", "", "line not recognised"): 2
+    }
+    assert PLANTED not in repr(validation)
+
+
+def test_an_unknown_attribute_is_unparsed_in_implicit_vr_alone():
+    output = (
+        f"Error - </(0008,001d)> - {EVEN_GROUP}\n"
+        f"Warning - </(300a,07a0)> - {EXPLICIT_UN}\n"
+    )
+
+    implicit = validators.parse_dciodvfy(output, STRINGS, implicit_vr=True)
+    explicit = validators.parse_dciodvfy(output, STRINGS)
+
+    assert implicit.unparsed == {"(0008,001D)", "(300A,07A0)"}
+    # In Explicit VR dciodvfy reads an unknown attribute's contents by the VR
+    # the file gives, unless that is UN.
+    assert explicit.unparsed == {"(300A,07A0)"}
+
+
+def test_dcentvfy_keeps_the_attribute_and_entity_and_not_the_files_or_values():
+    output = (
+        "Error - String attribute has different value - Element=<PatientName> "
+        f"IE=<Patient> for file <{PLANTED}.dcm> versus <b.dcm> Value 1 "
+        f"<{PLANTED}> versus <{PLANTED}>\n"
+        "Error - String attribute has different value - Element=<NotAKeyword> "
+        "IE=<Study> for file <a> versus <b>\n"
+        f"{PLANTED}\n"
+    )
+
+    validation = validators.parse_dcentvfy(output)
+
+    assert validation.findings == {
+        Finding(
+            DCENTVFY,
+            "error",
+            "(0010,0010)",
+            "String attribute has different value",
+            "Patient",
+        ): 1,
+        Finding(
+            DCENTVFY,
+            "error",
+            "NotAKeyword",
+            "String attribute has different value",
+            "Study",
+        ): 1,
+        Finding(DCENTVFY, "unrecognised", "", "line not recognised"): 1,
+    }
+
+
+def test_a_dicom_validator_finding_has_no_context():
+    # The shape of dicom-validator's tag and error objects, without the
+    # package.
+    tag = types.SimpleNamespace(parents=[0x00081115], tag=0x00081150)
+    error = types.SimpleNamespace(
+        code=types.SimpleNamespace(name="TagMissing"),
+        type="1C",
+        scope=types.SimpleNamespace(name="General"),
+        context={"value": PLANTED},
+    )
+
+    finding = validators._dicom_validator_finding(  # pylint: disable = protected-access
+        "SOP Common", tag, error
+    )
+
+    assert finding == Finding(
+        DICOM_VALIDATOR,
+        "error",
+        "(0008,1115)/(0008,1150)",
+        "TagMissing (Type 1C)",
+        "SOP Common",
+    )
+
+
+def _known_file(tmp_path, body):
+    path = tmp_path / "known.toml"
+    path.write_text(textwrap.dedent(body), encoding="utf-8")
+    return path
+
+
+ENTRY = """
+    [[difference]]
+    validator = "dciodvfy"
+    severity = "warning"
+    message = "Attribute is not present in standard DICOM IOD"
+    paths = ["(0044,0110)/*"]
+    category = "validator"
+    reason = '''
+    A reason
+    over two lines.
+    '''
+"""
+
+
+def test_a_known_difference_matches_by_its_patterns(tmp_path):
+    (difference,) = dicom_validation.read_known_differences(
+        _known_file(tmp_path, ENTRY)
+    )
+    finding = Finding(
+        DCIODVFY,
+        "warning",
+        "(0044,0110)/(0040,1101)",
+        "Attribute is not present in standard DICOM IOD",
+    )
+
+    assert difference.category is Category.VALIDATOR
+    assert difference.reason == "A reason over two lines."
+    assert difference.matches(finding)
+    assert not difference.matches(
+        Finding(DCIODVFY, "warning", "(0044,0110)", finding.message)
+    )
+    assert not difference.matches(
+        Finding(DCIODVFY, "error", finding.path, finding.message)
+    )
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        ('category = "validator"', 'category = "other"'),
+        ('severity = "warning"', 'severity = "unrecognised"'),
+        ('validator = "dciodvfy"', 'validator = "dcmtk"'),
+        ('paths = ["(0044,0110)/*"]', "paths = []"),
+        ('paths = ["(0044,0110)/*"]', 'paths = ["*"]\nextra = 1'),
+    ],
+)
+def test_a_known_difference_must_be_well_formed(tmp_path, change):
+    with pytest.raises(KnownDifferencesError):
+        dicom_validation.read_known_differences(
+            _known_file(tmp_path, ENTRY.replace(*change))
+        )
+
+
+def test_the_known_differences_are_well_formed():
+    differences = dicom_validation.read_known_differences()
+
+    assert differences
+    assert all(difference.reason for difference in differences)
+
+
+def _validation(validator, findings, *, status=Status.VALIDATED, unparsed=()):
+    return Validation(validator, status, dict(findings), frozenset(unparsed))
+
+
+def _introduced(source, output, known=()):
+    tallies = collections.defaultdict(
+        dicom_validation._Tally  # pylint: disable = protected-access
+    )
+    found = dict(
+        dicom_validation._introduced(  # pylint: disable = protected-access
+            source, output, tallies, known
+        )
+    )
+    return found, tallies[source.validator]
+
+
+MISSING = Finding(DCIODVFY, "error", "(0008,0020)", "Missing attribute")
+BELOW = Finding(DCIODVFY, "warning", "(0008,001D)/(0008,0106)", "Not in IOD")
+
+
+def test_only_what_the_output_gives_more_often_is_introduced():
+    source = _validation(DCIODVFY, {MISSING: 2, BELOW: 1})
+    output = _validation(DCIODVFY, {MISSING: 3})
+
+    found, tally = _introduced(source, output)
+
+    assert found == {(MISSING, Outcome.UNEXPLAINED): 1}
+    assert tally.resolved == 1
+
+
+def test_a_finding_below_an_attribute_the_input_hid_is_not_comparable():
+    source = _validation(DCIODVFY, {}, unparsed={"(0008,001D)"})
+    output = _validation(DCIODVFY, {BELOW: 1, MISSING: 1})
+
+    found, _ = _introduced(source, output)
+
+    assert found == {
+        (BELOW, Outcome.NOT_COMPARABLE): 1,
+        (MISSING, Outcome.UNEXPLAINED): 1,
+    }
+
+
+def test_a_known_difference_explains_a_finding():
+    known = (
+        KnownDifference(
+            DCIODVFY,
+            "error",
+            "Missing attribute",
+            ("(0008,0020)",),
+            Category.ENGINE,
+            "",
+        ),
+    )
+
+    found, _ = _introduced(
+        _validation(DCIODVFY, {}), _validation(DCIODVFY, {MISSING: 1}), known
+    )
+
+    assert found == {(MISSING, Outcome.EXPLAINED): 1}
+
+
+def test_an_output_the_validator_could_not_check_is_unexplained():
+    found, tally = _introduced(
+        _validation(DCIODVFY, {MISSING: 1}),
+        _validation(DCIODVFY, {}, status=Status.FAILED),
+    )
+
+    ((finding, outcome),) = found
+    assert finding.message == dicom_validation.OUTPUT_FAILED
+    assert outcome is Outcome.UNEXPLAINED
+    assert tally.statuses == {"input validated, output failed": 1}
+
+
+def test_nothing_is_compared_with_an_input_the_validator_could_not_check():
+    found, tally = _introduced(
+        _validation(DCIODVFY, {}, status=Status.FAILED),
+        _validation(DCIODVFY, {MISSING: 1}),
+    )
+
+    assert not found
+    assert tally.statuses == {"input failed, output validated": 1}
+
+
+def _comparison(monkeypatch, source, output, known=()):
+    toolset = dicom_validation.Toolset(DCIODVFY, None, None, "2026d")
+    monkeypatch.setattr(
+        dicom_validation, "_validate_files", lambda paths, *_: [(source,), (output,)]
+    )
+    monkeypatch.setattr(dicom_validation, "_header", lambda path: {})
+    monkeypatch.setattr(dicom_validation.Toolset, "versions", lambda self: NO_VERSIONS)
+    return dicom_validation.compare(
+        [Pair(Path("a"), Path("b"))], toolset, unpaired=1, known=known
+    )
+
+
+def test_a_comparison_passes_when_nothing_introduced_is_unexplained(monkeypatch):
+    known = (
+        KnownDifference(
+            DCIODVFY, "error", "Missing attribute", ("*",), Category.PROFILE, "Why."
+        ),
+    )
+
+    comparison = _comparison(
+        monkeypatch,
+        _validation(DCIODVFY, {}),
+        _validation(DCIODVFY, {MISSING: 1}),
+        known,
+    )
+    document = json.loads(comparison.json())
+
+    assert comparison.passed
+    assert document["schema"] == dicom_validation.SCHEMA
+    assert document["pairs"] == 1 and document["unpaired"] == 1
+    assert document["introduced"][0]["difference"] == 1
+    assert document["known_differences"][0]["category"] == "profile"
+
+
+def test_a_comparison_fails_on_an_unexplained_finding(monkeypatch):
+    comparison = _comparison(
+        monkeypatch, _validation(DCIODVFY, {}), _validation(DCIODVFY, {MISSING: 1})
+    )
+
+    assert not comparison.passed
+    assert "**Failed**" in comparison.markdown()
+
+
+def test_the_markdown_escapes_what_could_break_a_table(monkeypatch):
+    odd = Finding(DCIODVFY, "error", "(0008,0020)", "a | b <value>")
+    comparison = _comparison(
+        monkeypatch, _validation(DCIODVFY, {}), _validation(DCIODVFY, {odd: 1})
+    )
+
+    text = render_markdown(json.loads(comparison.json()))
+
+    assert "a \\| b &lt;value&gt;" in text
+    assert "(0008,0020) StudyDate" in text
+
+
+def _instance(path, instance_uid):
+    dataset = pydicom.Dataset()
+    dataset.SOPClassUID = pydicom.uid.CTImageStorage
+    dataset.SOPInstanceUID = instance_uid
+    dataset.PatientID = "a"
+    dataset.file_meta = pydicom.dataset.FileMetaDataset()
+    dataset.file_meta.MediaStorageSOPClassUID = dataset.SOPClassUID
+    dataset.file_meta.MediaStorageSOPInstanceUID = instance_uid
+    dataset.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+    path.parent.mkdir(parents=True, exist_ok=True)
+    dataset.save_as(path, enforce_file_format=True)
+
+
+def test_pairs_follow_the_uid_mapping(tmp_path):
+    _instance(tmp_path / "source" / "a.dcm", "1.2.3.1")
+    _instance(tmp_path / "source" / "b.dcm", "1.2.3.2")
+    (tmp_path / "source" / "c.txt").write_text("not DICOM", encoding="utf-8")
+    _instance(tmp_path / "release" / "x" / "2.25.1.dcm", "2.25.1")
+    mapping = tmp_path / "uid_mapping.csv"
+    mapping.write_text(
+        "id_old,id_new\n1.2.3.1,2.25.1\n1.2.3.2,2.25.2\n", encoding="utf-8"
+    )
+
+    pairs, unpaired = dicom_validation.pairs_from_uid_mapping(
+        tmp_path / "source", tmp_path / "release", mapping
+    )
+
+    assert pairs == (
+        Pair(
+            (tmp_path / "source" / "a.dcm").resolve(),
+            tmp_path / "release" / "x" / "2.25.1.dcm",
+        ),
+    )
+    assert unpaired == 2
+
+
+def test_the_command_refuses_an_out_directory_that_exists(tmp_path, capsys):
+    status = dicom_validation_command.main(
+        [
+            "compare",
+            "--source",
+            str(tmp_path),
+            "--release",
+            str(tmp_path),
+            "--uid-mapping",
+            str(tmp_path / "missing.csv"),
+            "--out",
+            str(tmp_path),
+        ]
+    )
+
+    assert status == dicom_validation_command.USAGE_ERROR
+    assert str(tmp_path) not in capsys.readouterr().err
+
+
+def test_the_command_refuses_a_missing_mapping(tmp_path, capsys):
+    status = dicom_validation_command.main(
+        [
+            "midi",
+            "--source",
+            str(tmp_path),
+            "--work",
+            str(tmp_path / "work"),
+            "--out",
+            str(tmp_path / "out"),
+        ]
+    )
+
+    assert status == dicom_validation_command.USAGE_ERROR
+    assert str(tmp_path) not in capsys.readouterr().err
