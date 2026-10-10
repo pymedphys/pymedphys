@@ -40,11 +40,13 @@ its findings. None of that leaves this module. Each message is reduced to a
 :class:`Finding`: the validator, the severity, the attribute's path as tags
 alone, without item numbers or private creators, the message type, and the
 module or information entity that it names. A message type is the text of
-the message before the first value that it quotes, with any reason that
-follows the value kept only where it is a string compiled into the
-validator's own executable, so nothing passes that is not the validator's
-own text. A line that does not have the form of a message is counted as
-unrecognised, without its text. The diagnostics of pydicom's reads, for dicom-validator, are redacted
+the message before the first value that it quotes, in angle brackets or
+quotation marks or after an equals sign, with any reason that follows the
+value. Each part is kept only where it is made of strings compiled into the
+validator's own executable, with counts replaced and a few short words
+between them, so nothing passes that is not the validator's own text; any
+other message is counted without its text. A line that does not have the
+form of a message is counted as unrecognised, without its text. The diagnostics of pydicom's reads, for dicom-validator, are redacted
 as the engine's are (:func:`~pymedphys._dicom.deidentify.diagnostics.redacted_diagnostics`).
 """
 
@@ -85,6 +87,8 @@ WARNING = "warning"
 # its text.
 UNRECOGNISED = "unrecognised"
 UNRECOGNISED_MESSAGE = "line not recognised"
+# The message type of a message whose text is not the validator's own.
+UNPROVEN_MESSAGE = "message not shown"
 # What a finding that names no attribute gives as its path.
 NO_PATH = ""
 
@@ -106,6 +110,27 @@ _DCENTVFY_LINE = re.compile(
 )
 _MODULE = re.compile(r" - Module=<(?P<module>[A-Za-z0-9]+)>$")
 _IOD_NAME = re.compile(r"^[A-Za-z0-9]+$")
+# What starts a value in a dicom3tools message.
+_VALUE_START = re.compile(r"[<\"'=]")
+# The words, too short to be kept as strings of an executable, that
+# dicom3tools puts between the strings of a message.
+_CONNECTORS = frozenset(
+    {"a", "an", "and", "at", "but", "by", "for", "in", "is", "not", "of", "on"}
+    | {"or", "the", "to"}
+)
+# A word, between spaces or the ends of the text.
+_WORD = re.compile(r"(?<![^ ])[a-z]+(?![^ ])")
+_COUNT = re.compile(r"[0-9]+")
+_VR_CODE = re.compile(r"\[([A-Z]{2})\]")
+# The VRs of PS3.5 Table 6.2-1, which dicom3tools prints in brackets.
+_VRS = frozenset(
+    "AE AS AT CS DA DS DT FD FL IS LO LT OB OD OF OL OV OW PN SH SL SQ SS ST SV"
+    " TM UC UI UL UN UR US UT UV".split()
+)
+# The longest string of an executable that a message is matched against,
+# and the longest text that is matched at all.
+_LONGEST_PIECE = 200
+_LONGEST_TEXT = 500
 _QUOTED = re.compile(r'"[^"]*"')
 _TAG = re.compile(r"\(([0-9A-Fa-f]{4}),([0-9A-Fa-f]{4})")
 _VERSION = re.compile(r"^dicom3tools Version: (?P<version>[A-Za-z0-9._-]+)\s*$")
@@ -252,35 +277,101 @@ def _dciodvfy_path(text: str) -> str:
 def message_type(text: str, strings: frozenset[str]) -> tuple[str, str]:
     """Return a dicom3tools message's type and its module, without values.
 
-    The type is the message before the first value it quotes in angle
-    brackets, with ``<value>`` in place of the value, and the reason after
-    the last quoted value only where it is one of ``strings``, those
-    compiled into the validator. A module is kept only where it is a name of
+    The type is the message before the first value it quotes, in angle
+    brackets or quotation marks or after an equals sign, with ``<value>`` in
+    place of the value, and the reason after the last value. The text before
+    the value must be made of ``strings``, those compiled into the validator
+    (:func:`composed`), or the type is :data:`UNPROVEN_MESSAGE`; the reason is
+    kept only where it is too. A module is kept only where it is a name of
     letters and digits.
 
     >>> message_type(
     ...     "Value dubious for this VR [PN] = <ANY^VALUE> - Retired Person Name form",
-    ...     frozenset({"Retired Person Name form"}),
+    ...     frozenset({"Value dubious for this VR", "Retired Person Name form"}),
     ... )
     ('Value dubious for this VR [PN] = <value> - Retired Person Name form', '')
+    >>> message_type(
+    ...     'Orientation cannot be identical = "LE" and "LE"',
+    ...     frozenset({"Orientation cannot be identical"}),
+    ... )
+    ('Orientation cannot be identical = <value>', '')
     >>> message_type("Unrecognized enumerated value = <ANY - VALUE>", frozenset())
-    ('Unrecognized enumerated value = <value>', '')
+    ('message not shown', '')
     """
     module = ""
     found = _MODULE.search(text)
     if found:
         module = found["module"]
         text = text[: found.start()]
-    head, bracket, rest = text.partition("<")
-    if not bracket:
-        return text.strip(), module
-    kept = head.rstrip() + " <value>"
-    _, separator, reason = rest.rpartition("> - ")
-    if separator:
-        reason = reason.partition("<")[0].rstrip(" =")
-        if reason in strings:
-            kept += f" - {reason}"
+    start = _VALUE_START.search(text)
+    head = (text if start is None else text[: start.start()]).strip()
+    kept = composed(head, strings)
+    if kept is None:
+        return UNPROVEN_MESSAGE, module
+    if start is None:
+        return kept, module
+    kept += " = <value>" if start.group() == "=" else " <value>"
+    _, separator, reason = text[start.end() :].rpartition(" - ")
+    if separator and _VALUE_START.search(reason) is None:
+        proven = composed(reason.strip(), strings)
+        if proven:
+            kept += f" - {proven}"
     return kept, module
+
+
+@functools.lru_cache(maxsize=65536)
+def composed(text: str, strings: frozenset[str]) -> str | None:
+    """Return text made of an executable's strings, or ``None`` if it is not.
+
+    The text must be a sequence of ``strings``, separated by spaces or by the
+    short words that dicom3tools puts between them, with VRs in brackets and
+    counts, each of which reads ``<n>``.
+
+    >>> composed("Missing attribute for Type 1 Required",
+    ...          frozenset({"Missing attribute", "Type 1 Required"}))
+    'Missing attribute for Type 1 Required'
+    >>> composed("have 3 items", frozenset({"have", "items"}))
+    'have <n> items'
+    >>> composed("Missing attribute JOHN", frozenset({"Missing attribute"})) is None
+    True
+    """
+    failed: set[int] = set()
+
+    def rest(index: int) -> list[str] | None:
+        if index == len(text):
+            return []
+        if index not in failed:
+            for piece, end in _pieces(text, index, strings):
+                tail = rest(end)
+                if tail is not None:
+                    return [piece, *tail]
+            failed.add(index)
+        return None
+
+    if not text or len(text) > _LONGEST_TEXT:
+        return None
+    pieces = rest(0)
+    return None if pieces is None else "".join(pieces)
+
+
+def _pieces(
+    text: str, index: int, strings: frozenset[str]
+) -> Iterable[tuple[str, int]]:
+    """Yield each piece that text can begin with at an index, and its end."""
+    if text[index] in " -":
+        yield text[index], index + 1
+    for end in range(min(len(text), index + _LONGEST_PIECE), index, -1):
+        if text[index:end] in strings:
+            yield text[index:end], end
+    found = _WORD.match(text, index)
+    if found and found.group() in _CONNECTORS:
+        yield found.group(), found.end()
+    found = _VR_CODE.match(text, index)
+    if found and found[1] in _VRS:
+        yield found.group(), found.end()
+    found = _COUNT.match(text, index)
+    if found:
+        yield "<n>", found.end()
 
 
 @functools.cache
@@ -349,7 +440,7 @@ def parse_dciodvfy(
             continue
         found = _DCIODVFY_LINE.match(line)
         if found is None:
-            if not iod and _IOD_NAME.match(line):
+            if not iod and _IOD_NAME.match(line) and line in strings:
                 iod = line
             else:
                 findings[_unrecognised(DCIODVFY)] += 1
@@ -395,12 +486,14 @@ def _in_implicit_vr(path: Path) -> bool:
     return meta.get("TransferSyntaxUID") == pydicom.uid.ImplicitVRLittleEndian
 
 
-def parse_dcentvfy(output: str) -> Validation:
+def parse_dcentvfy(output: str, strings: frozenset[str]) -> Validation:
     """Reduce dcentvfy's output for a set of files to findings without values.
 
     Each finding names the attribute, by its tag where pydicom's dictionary
     has its keyword and otherwise by the keyword, and the information
-    entity; the files and values that dcentvfy compared are dropped.
+    entity; the files and values that dcentvfy compared are dropped. The
+    message is kept only where it is made of ``strings``, those compiled
+    into the executable that wrote it (:func:`composed`).
     """
     findings: collections.Counter[Finding] = collections.Counter()
     for line in output.splitlines():
@@ -418,7 +511,7 @@ def parse_dcentvfy(output: str) -> Validation:
                 DCENTVFY,
                 found["severity"].lower(),
                 path,
-                found["message"].strip(),
+                composed(found["message"].strip(), strings) or UNPROVEN_MESSAGE,
                 found["entity"],
             )
         ] += 1
@@ -430,7 +523,7 @@ def run_dcentvfy(executable: str, paths: Sequence[Path]) -> Validation:
     completed = _run([executable, *(os.fspath(path) for path in paths)])
     if completed is None or completed.returncode not in _COMPLETED:
         return Validation(DCENTVFY, Status.FAILED, {})
-    return parse_dcentvfy(completed.stdout + completed.stderr)
+    return parse_dcentvfy(completed.stdout + completed.stderr, _strings(executable))
 
 
 @dataclasses.dataclass(frozen=True)

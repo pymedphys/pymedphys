@@ -35,7 +35,9 @@ Each introduced finding is then:
   Each entry gives the reason, under one of three categories
   (:class:`Category`): a consequence of the profile's own actions, a
   limitation of the validator, or a defect of the engine that is recorded
-  until it is fixed;
+  until it is fixed. An entry whose reason rests on a property of the output
+  names it (:data:`PREMISES`), and explains a finding only in an output
+  that has it (:func:`output_premises`);
 - **not comparable**, where it lies below an attribute that the validator
   could not parse in the input, because its dictionary lacks it and the
   input is in Implicit VR or gives it the VR UN, while it could parse it in
@@ -83,6 +85,27 @@ RESULTS_MARKDOWN = "dicom-validation.md"
 OUTPUT_FAILED = "the validator did not run to the end on the output"
 OTHER_SOP_CLASS = "other"
 
+# The Common Instance Reference Module's sequences, which list the instances
+# that the rest of an instance references (PS3.3 Section C.12.2).
+_REFERENCED_SERIES = 0x00081115
+_OTHER_STUDIES = 0x00081200
+_REFERENCED_SOP_INSTANCE_UID = 0x00081155
+THIS_STUDY_REFERENCED = "instances-of-this-study-referenced-elsewhere"
+OTHER_STUDIES_REFERENCED = "instances-of-other-studies-referenced-elsewhere"
+# The properties of an output that a known difference can require, each
+# with what it means.
+PREMISES = {
+    THIS_STUDY_REFERENCED: (
+        "an instance that Referenced Series Sequence (0008,1115) lists is "
+        "referenced outside the Common Instance Reference Module"
+    ),
+    OTHER_STUDIES_REFERENCED: (
+        "an instance that Studies Containing Other Referenced Instances "
+        "Sequence (0008,1200) lists is referenced outside the Common Instance "
+        "Reference Module"
+    ),
+}
+
 
 class Category(enum.Enum):
     """Why a known difference is not a conformance failure of the output."""
@@ -129,6 +152,9 @@ class KnownDifference:
         Why it is not a conformance failure of the output.
     reason : str
         The explanation, in a sentence or two.
+    requires : str
+        One of :data:`PREMISES` that the output must have for this entry to
+        explain the finding, or ``""``.
     """
 
     validator: str
@@ -137,14 +163,19 @@ class KnownDifference:
     paths: tuple[str, ...]
     category: Category
     reason: str
+    requires: str = ""
 
-    def matches(self, finding: Finding) -> bool:
-        """Return whether this entry explains a finding."""
+    def matches(self, finding: Finding, premises: Collection[str] = ()) -> bool:
+        """Return whether this entry explains a finding in an output.
+
+        ``premises`` are those of :data:`PREMISES` that the output has.
+        """
         return (
             finding.validator == self.validator
             and finding.severity == self.severity
             and finding.message == self.message
             and any(fnmatch.fnmatchcase(finding.path, path) for path in self.paths)
+            and (not self.requires or self.requires in premises)
         )
 
 
@@ -154,24 +185,28 @@ def read_known_differences(
     """Read the known differences, a TOML file of ``[[difference]]`` tables.
 
     Each table has the keys ``validator``, ``severity``, ``message``,
-    ``paths``, ``category``, and ``reason``.
+    ``paths``, ``category``, and ``reason``, and may have ``requires``, one
+    of :data:`PREMISES`.
 
     Raises
     ------
     KnownDifferencesError
         If a table lacks a key, has another, or names an unknown validator,
-        severity, or category.
+        severity, category, or premise.
     """
     with open(path, "rb") as file:
         document = tomllib.load(file)
     keys = {"validator", "severity", "message", "paths", "category", "reason"}
     differences = []
     for number, table in enumerate(document.get("difference", []), start=1):
-        if set(table) != keys:
+        if not keys <= set(table) <= keys | {"requires"}:
             raise KnownDifferencesError(
                 f"known difference {number} must have exactly the keys "
                 + ", ".join(sorted(keys))
+                + ", and may have requires"
             )
+        if "requires" in table and table["requires"] not in PREMISES:
+            raise KnownDifferencesError(f"known difference {number}: unknown premise")
         if table["validator"] not in validators.VALIDATORS:
             raise KnownDifferencesError(f"known difference {number}: unknown validator")
         if table["severity"] not in (validators.ERROR, validators.WARNING):
@@ -194,6 +229,7 @@ def read_known_differences(
                 tuple(table["paths"]),
                 category,
                 " ".join(table["reason"].split()),
+                table.get("requires", ""),
             )
         )
     return tuple(differences)
@@ -299,6 +335,45 @@ def _header(path: Path) -> dict[str, str]:
     # A file without a Patient ID names no patient to compare it with.
     header["patient"] = f"{patient}\\{issuer}" if patient else ""
     return header
+
+
+def output_premises(path: Path) -> frozenset[str]:
+    """Return those of :data:`PREMISES` that an output has.
+
+    The UIDs are compared here and never leave this function. A file that
+    cannot be read has none.
+    """
+    try:
+        with redacted_diagnostics():
+            dataset = pydicom.dcmread(path, stop_before_pixels=True, force=True)
+    except Exception:  # pylint: disable = broad-exception-caught
+        return frozenset()
+    listed: dict[int, set[str]] = {_REFERENCED_SERIES: set(), _OTHER_STUDIES: set()}
+    elsewhere: set[str] = set()
+
+    def walk(items: pydicom.Dataset, into: set[str]) -> None:
+        for element in items:
+            if element.tag == _REFERENCED_SOP_INSTANCE_UID:
+                into.add(str(element.value).strip(" \x00"))
+            elif element.VR == "SQ":
+                for item in element.value or ():
+                    walk(item, into)
+
+    try:
+        for element in dataset:
+            if element.VR != "SQ":
+                continue
+            into = listed.get(int(element.tag), elsewhere)
+            for item in element.value or ():
+                walk(item, into)
+    except Exception:  # pylint: disable = broad-exception-caught
+        return frozenset()
+    premises = set()
+    if listed[_REFERENCED_SERIES] & elsewhere:
+        premises.add(THIS_STUDY_REFERENCED)
+    if listed[_OTHER_STUDIES] & elsewhere:
+        premises.add(OTHER_STUDIES_REFERENCED)
+    return frozenset(premises)
 
 
 def sop_class_name(uid: str) -> str:
@@ -554,6 +629,7 @@ class Comparison:
                     "paths": list(difference.paths),
                     "category": difference.category.value,
                     "reason": difference.reason,
+                    "requires": PREMISES.get(difference.requires),
                 }
                 for number, difference in enumerate(self.known, start=1)
             ],
@@ -586,13 +662,14 @@ def compare(  # pylint: disable = too-many-locals
     outputs = [pair.output for pair in pairs]
     checked = _validate_files([*sources, *outputs], toolset, workers)
     tallies: dict[str, _Tally] = collections.defaultdict(_Tally)
-    introduced: dict[tuple[Finding, Outcome], list[tuple[int, int, str]]] = (
-        collections.defaultdict(list)
-    )
+    introduced: dict[_Kind, list[tuple[int, int, str]]] = collections.defaultdict(list)
+    # Only an entry that requires a premise needs the output read again.
+    required = any(difference.requires for difference in known)
     for index, sop_class in enumerate(sop_classes):
+        premises = output_premises(outputs[index]) if required else frozenset()
         for source, output in zip(checked[index], checked[len(pairs) + index]):
-            for finding, count in _introduced(source, output, tallies, known):
-                introduced[finding].append((count, index, sop_class))
+            for kind, count in _introduced(source, output, tallies, known, premises):
+                introduced[kind].append((count, index, sop_class))
     if toolset.dcentvfy is not None:
         # dcentvfy stops at a file that dicom3tools cannot read, so the files
         # on which dciodvfy did not run to the end, input or output, are left
@@ -611,8 +688,8 @@ def compare(  # pylint: disable = too-many-locals
             output = validators.run_dcentvfy(
                 toolset.dcentvfy, [outputs[index] for index in group]
             )
-            for finding, count in _introduced(source, output, tallies, known):
-                introduced[finding].append((count, group[0], ""))
+            for kind, count in _introduced(source, output, tallies, known):
+                introduced[kind].append((count, group[0], ""))
     return Comparison(
         versions=toolset.versions(),
         validators=toolset.names(),
@@ -620,7 +697,7 @@ def compare(  # pylint: disable = too-many-locals
         unpaired=unpaired,
         sop_classes=dict(collections.Counter(sop_classes)),
         tallies={name: _tally_json(tallies[name]) for name in toolset.names()},
-        introduced=_ordered(introduced, known),
+        introduced=_ordered(introduced),
         known=known,
     )
 
@@ -659,13 +736,22 @@ def _status(validation: Validation) -> str:
     return validation.status.value
 
 
+# An introduced finding, its outcome, and the number of the known difference
+# that explains it, or None.
+_Kind = tuple[Finding, Outcome, "int | None"]
+
+
 def _introduced(
     source: Validation,
     output: Validation,
     tallies: Mapping[str, _Tally],
     known: Sequence[KnownDifference],
-) -> Iterable[tuple[tuple[Finding, Outcome], int]]:
-    """Tally one comparison, and yield what the output introduced."""
+    premises: Collection[str] = (),
+) -> Iterable[tuple[_Kind, int]]:
+    """Tally one comparison, and yield what the output introduced.
+
+    ``premises`` are those of :data:`PREMISES` that the output has.
+    """
     tally = tallies[source.validator]
     tally.statuses[f"input {_status(source)}, output {_status(output)}"] += 1
     for finding, count in source.findings.items():
@@ -680,27 +766,31 @@ def _introduced(
         failed = Finding(
             output.validator, validators.ERROR, validators.NO_PATH, OUTPUT_FAILED
         )
-        yield (failed, _outcome(failed, source, known)), 1
+        yield (failed, *_outcome(failed, source, known, premises)), 1
         return
     gained = collections.Counter(output.findings)
     gained.subtract(source.findings)
     for finding, count in sorted(gained.items()):
         if count > 0:
-            yield (finding, _outcome(finding, source, known)), count
+            yield (finding, *_outcome(finding, source, known, premises)), count
         else:
             tally.resolved -= count
 
 
 def _outcome(
-    finding: Finding, source: Validation, known: Sequence[KnownDifference]
-) -> Outcome:
-    if any(difference.matches(finding) for difference in known):
-        return Outcome.EXPLAINED
+    finding: Finding,
+    source: Validation,
+    known: Sequence[KnownDifference],
+    premises: Collection[str],
+) -> tuple[Outcome, int | None]:
+    for number, difference in enumerate(known, start=1):
+        if difference.matches(finding, premises):
+            return Outcome.EXPLAINED, number
     parts = PurePosixPath(finding.path).parts if finding.path else ()
     for depth in range(1, len(parts)):
         if "/".join(parts[:depth]) in source.unparsed:
-            return Outcome.NOT_COMPARABLE
-    return Outcome.UNEXPLAINED
+            return Outcome.NOT_COMPARABLE, None
+    return Outcome.UNEXPLAINED, None
 
 
 def _tally_json(tally: _Tally) -> dict[str, object]:
@@ -716,25 +806,23 @@ _ORDER = {Outcome.UNEXPLAINED: 0, Outcome.EXPLAINED: 1, Outcome.NOT_COMPARABLE: 
 
 
 def _ordered(
-    introduced: Mapping[tuple[Finding, Outcome], list[tuple[int, int, str]]],
-    known: Sequence[KnownDifference],
+    introduced: Mapping[_Kind, list[tuple[int, int, str]]],
 ) -> tuple[Introduced, ...]:
     kinds = []
-    for (finding, outcome), occurrences in introduced.items():
-        number = next(
-            (n for n, d in enumerate(known, start=1) if d.matches(finding)), None
-        )
+    for (finding, outcome, number), occurrences in introduced.items():
         kinds.append(
             Introduced(
                 finding=finding,
                 outcome=outcome,
-                difference=number if outcome is Outcome.EXPLAINED else None,
+                difference=number,
                 files=len({index for _, index, _ in occurrences}),
                 occurrences=sum(count for count, _, _ in occurrences),
                 sop_classes=tuple(sorted({name for _, _, name in occurrences if name})),
             )
         )
-    return tuple(sorted(kinds, key=lambda i: (_ORDER[i.outcome], i.finding)))
+    return tuple(
+        sorted(kinds, key=lambda i: (_ORDER[i.outcome], i.finding, i.difference or 0))
+    )
 
 
 def write_results(comparison: Comparison, directory: str | Path) -> None:
