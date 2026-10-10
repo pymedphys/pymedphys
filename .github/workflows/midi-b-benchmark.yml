@@ -249,17 +249,6 @@ jobs:
           echo "ran=true" >> "${GITHUB_OUTPUT}"
           df -h /
 
-      # Kept now, in case the runner is lost in a later step; the last step
-      # replaces it with every result.
-      - name: Upload the benchmark's results
-        if: steps.benchmark.outputs.ran == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: midi-b-${{ env.SUBSET }}-${{ env.PRESET }}-results
-          path: ${{ runner.temp }}/midi-b/results/
-          if-no-files-found: warn
-          retention-days: 90
-
       # dciodvfy, dcentvfy, and dicom-validator on each released file and its
       # input (D-030). The result files name no value or path. Standard error
       # and standard output, where a library's log records could quote a
@@ -290,6 +279,28 @@ jobs:
             fi
           done
           df -h /
+
+      # Kept and shown now, in case the runner is lost in NCI's script, which
+      # takes longest; the last steps replace them with every result.
+      - name: Upload the benchmark's results
+        if: ${{ !cancelled() && steps.benchmark.outputs.ran == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midi-b-${{ env.SUBSET }}-${{ env.PRESET }}-results
+          path: ${{ runner.temp }}/midi-b/results/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Show the benchmark's results
+        if: ${{ !cancelled() && steps.benchmark.outputs.ran == 'true' }}
+        run: |
+          results="${RUNNER_TEMP}/midi-b/results"
+          for file in benchmark.md dicom-validation-status.txt dicom-validation.md; do
+            if [[ -f "${results}/${file}" ]]; then
+              cat "${results}/${file}"
+              echo
+            fi
+          done
 
       # NCI's script scores the same release from the mapping files that the
       # harness wrote. It logs values from the files, so its logs and its
@@ -332,9 +343,17 @@ jobs:
           # out of memory with four; one process scores only the released
           # files, which are few.
           free -m
+          # Memory and swap every five minutes, as in the benchmark step.
+          (while sleep 300; do
+            free -m | awk '/^Mem:/ {m = $3} /^Swap:/ {s = $3} END {
+              print "Memory used " m " MB, swap used " s " MB" }'
+          done) &
+          sampler=$!
           status=0
           (cd "${nci}" && "${RUNNER_TEMP}/nci-venv/bin/python" run_validation.py \
             "${private}/nci-config.json") > "${private}/nci-script.log" 2>&1 || status=$?
+          kill "${sampler}"
+          free -m
           echo "NCI's validation script exited with ${status}."
           database="${private}/nci-output/release/validation_results.db"
           if [[ -f "${database}" ]]; then
