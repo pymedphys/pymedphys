@@ -1312,6 +1312,31 @@ def test_entropy_coded_data_hold_numbers_and_marker_segments_are_text(split):
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "transfer_syntax, coded",
+    [
+        (compressed.JPEG_LOSSLESS_SV1, _jpeg_lossless),
+        ("1.2.840.10008.1.2.5", lambda text: bytes(64) + text),
+    ],
+    ids=["jpeg-lossless", "rle-lossless"],
+)
+def test_entropy_coded_data_are_searched_for_forms_of_six_bytes(transfer_syntax, coded):
+    # Decoders skip bytes after the data they need, which may hold a name,
+    # so forms of six bytes are found in entropy-coded data, but not shorter
+    # ones, nor six-byte forms in values that hold numbers.
+    text = b"ZEBED\x01QUILLO\x01"
+    data = _encapsulated_file(transfer_syntax, coded(text))
+    numbers = _file(_element(0x7FE00010, "OW", text))
+    name = _source("(0010,0010)", "PN", "QUILLO^ZEBED")
+
+    assert residuals.MIN_BYTES_IN_CODED == 6
+    assert [f.offset for f in find_residuals(data, [name]).findings] == [
+        data.index(b"QUILLO")
+    ]
+    assert not find_residuals(numbers, [name]).findings
+
+
 def test_a_form_in_a_codestream_is_found_whatever_bytes_adjoin_it():
     # Found by the fuzz campaign, in JPEG 2000 entropy-coded data and in a
     # QCD marker segment: as in sample values above. A kept marker segment

@@ -84,12 +84,19 @@ word or number. Values that hold numbers (native
 Pixel Data, Float Pixel Data, and Double Float Pixel Data of the top-level
 data set, and values of VR OD, OF, OL, OV, and OW) are searched only for
 forms of at least :data:`MIN_BYTES_IN_NUMBERS` bytes that are not UTF-16LE,
-since shorter forms and UTF-16LE text match sample values by chance. So
-are the entropy-coded data of encapsulated Pixel Data of the top-level data
-set, with its Basic Offset Table, where every codestream of its fragments
-parses (:func:`.codestreams.entropy_coded`), since compressed samples match
-short forms by chance as often as random bytes do or more: in synthetic
-images, each 4-letter form about once in every 30 to 200 MB. Every other byte,
+since shorter forms and UTF-16LE text match sample values by chance. The
+entropy-coded data of encapsulated Pixel Data of the top-level data set,
+with its Basic Offset Table, where every codestream of its fragments parses
+(:func:`.codestreams.entropy_coded`), are searched only for forms of at
+least :data:`MIN_BYTES_IN_CODED` bytes that are not UTF-16LE, since
+compressed samples match shorter forms by chance as often as random bytes
+do or more: in synthetic images, each 4-letter form about once in every 30
+to 200 MB. Forms of 6 bytes are searched there, though they are not in
+sample values, because a decoder skips bytes after the data it needs, at
+the end of a JPEG or JPEG-LS scan or restart interval, of a JPEG 2000
+tile-part, or of a JPEG 2000 code-block's codeword segments, and those
+bytes can hold anything; forms of 4 and 5 bytes there are not found.
+Every other byte,
 including the marker segments of those codestreams, fragments that do not
 parse, and bytes that could not be read as elements, is searched for every
 form. ASCII case is folded byte by byte,
@@ -159,6 +166,7 @@ from .values import CHECKED_VRS
 
 MIN_CHARACTERS = 4  # the shortest form searched
 MIN_BYTES_IN_NUMBERS = 8  # the shortest form searched in values that hold numbers
+MIN_BYTES_IN_CODED = 6  # the shortest form searched in entropy-coded data
 MAX_CHARACTERS = 256  # longer values are searched by their first 256 characters
 CODECS = ("utf-8", "latin-1", "utf-16-le")
 CHUNK_BYTES = 64 * 2**20  # the bytes lower-cased at a time
@@ -843,8 +851,9 @@ def _search(  # pylint: disable = too-many-arguments, too-many-positional-argume
     Needles that start with the same bytes are found together: at each match
     of those bytes, the bytes of each of their lengths are looked up. Forms
     shorter than :data:`MIN_BYTES_IN_NUMBERS` are not searched in values
-    that hold numbers or in ``coded``, and a match wholly in those values or
-    in ``codestreams`` is judged as binary.
+    that hold numbers, nor forms shorter than :data:`MIN_BYTES_IN_CODED` in
+    ``coded``, nor UTF-16LE forms in either, and a match wholly in those
+    values or in ``codestreams`` is judged as binary.
     """
     starts = [span.start for span in spans]
     numbers = [
@@ -852,18 +861,24 @@ def _search(  # pylint: disable = too-many-arguments, too-many-positional-argume
         for span in spans
         if span.value_start is not None and _holds_numbers(span)
     ]
-    text: list[tuple[int, int]] = []  # the ranges outside values that hold numbers
-    position = 0
-    for low, high in sorted([*numbers, *coded]):
-        text.append((position, low))
-        position = high
-    text.append((position, size))
+    # The ranges that each needle is searched in, by the shortest form that
+    # each holds: everywhere, outside values that hold numbers, and outside
+    # those values and the entropy-coded data.
+    scopes = {
+        MIN_BYTES_IN_NUMBERS: [(0, size)],
+        MIN_BYTES_IN_CODED: _between(numbers, size),
+        0: _between([*numbers, *coded], size),
+    }
     binary = sorted([*numbers, *codestreams])
     lows = [low for low, _ in binary]
-    groups: dict[tuple[bytes, bool], dict[bytes, list[int]]] = {}
+    groups: dict[tuple[bytes, int], dict[bytes, list[int]]] = {}
     for index, needle in enumerate(needles):
-        everywhere = not needle.wide and len(needle.folded) >= MIN_BYTES_IN_NUMBERS
-        group = groups.setdefault((needle.folded[:_PREFIX_BYTES], everywhere), {})
+        scope = max(
+            shortest
+            for shortest in scopes
+            if not shortest or (not needle.wide and len(needle.folded) >= shortest)
+        )
+        group = groups.setdefault((needle.folded[:_PREFIX_BYTES], scope), {})
         group.setdefault(needle.folded, []).append(index)
     resume = [0] * len(needles)  # where each needle's next match can start
     found: _Found = {}
@@ -871,8 +886,14 @@ def _search(  # pylint: disable = too-many-arguments, too-many-positional-argume
     for chunk in range(0, size if needles else 0, CHUNK_BYTES):
         stop = min(chunk + CHUNK_BYTES, size)
         block = bytes(octets[chunk : stop + longest - 1]).lower()
-        clipped = [(max(low, chunk), min(high, stop)) for low, high in text]
-        ranges = {True: [(chunk, stop)], False: [(a, b) for a, b in clipped if a < b]}
+        ranges = {
+            shortest: [
+                (max(low, chunk), min(high, stop))
+                for low, high in where
+                if max(low, chunk) < min(high, stop)
+            ]
+            for shortest, where in scopes.items()
+        }
         searches = (
             (key[0], group, sorted(set(map(len, group))), low, high)
             for key, group in groups.items()
@@ -897,6 +918,16 @@ def _search(  # pylint: disable = too-many-arguments, too-many-positional-argume
                         )
                 position = block.find(prefix, position + 1, end)
     return found
+
+
+def _between(ranges: Sequence[tuple[int, int]], size: int) -> list[tuple[int, int]]:
+    """Return the ranges from 0 to ``size`` outside ``ranges``."""
+    gaps, position = [], 0
+    for low, high in sorted(ranges):
+        gaps.append((position, low))
+        position = max(position, high)
+    gaps.append((position, size))
+    return [(low, high) for low, high in gaps if low < high]
 
 
 def _judge(  # pylint: disable = too-many-arguments, too-many-positional-arguments
