@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import html
+import random
 import re
 import sqlite3
 import subprocess
@@ -38,9 +39,12 @@ _FASPEX = re.compile(r'href="(https://faspex\.cancerimagingarchive\.net/[^"]+)"'
 _SAFE_NAME = re.compile(r"[A-Za-z0-9 ._()+-]{1,200}")
 _SQLITE = b"SQLite format 3\x00"
 CHUNK = 1 << 20
-# TCIA's site sometimes times out: up to six tries, 15 s to 4 min apart.
-ATTEMPTS = 6
-PAUSE = 15.0
+# TCIA's site sometimes stops answering the runners for many minutes: up
+# to ten tries over about 40 minutes, 30 s to 5 min apart, with jitter, so
+# that the jobs of one run do not ask together.
+ATTEMPTS = 10
+PAUSE = 30.0
+LONGEST_PAUSE = 300.0
 
 
 def public_links(page: str) -> list[str]:
@@ -72,7 +76,8 @@ def _page(attempts: int = ATTEMPTS, pause: float = PAUSE) -> str:
                 f"Reading TCIA's MIDI-B page, attempt {attempt} of {attempts}: "
                 f"{type(error).__name__}; trying again."
             )
-            time.sleep(pause * 2 ** (attempt - 1))
+            wait = min(pause * 2 ** (attempt - 1), LONGEST_PAUSE)
+            time.sleep(wait * random.uniform(0.75, 1.25))  # nosec B311
     raise AssertionError("unreachable")
 
 

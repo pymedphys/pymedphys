@@ -130,6 +130,17 @@ jobs:
             /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost
           df -h /
 
+      # The Test subset's answer key and run outcomes approach the runner's
+      # 16 GB, and a runner out of memory is lost with its results. Swap on
+      # the freed disk gives headroom.
+      - name: Add swap
+        run: |
+          sudo fallocate -l 16G /midi-b-swapfile
+          sudo chmod 600 /midi-b-swapfile
+          sudo mkswap /midi-b-swapfile > /dev/null
+          sudo swapon /midi-b-swapfile
+          free -m
+
       # The user extra holds the decoders for compressed transfer syntaxes,
       # and the tests extra dicom-validator.
       - uses: ./.github/actions/setup-project
@@ -213,6 +224,13 @@ jobs:
             exit 0
           fi
           name="$(jq -r '.name' "${data}/download.json")"
+          # Memory and swap in use every five minutes, so that a lost runner
+          # shows whether memory ran out.
+          (while sleep 300; do
+            free -m | awk '/^Mem:/ {m = $3} /^Swap:/ {s = $3} END {
+              print "Memory used " m " MB, swap used " s " MB" }'
+          done) &
+          sampler=$!
           uv run --no-sync python .github/scripts/run_redacted.py \
             pymedphys._dicom.deidentify.midi_benchmark_command run \
             --source "${data}/images" \
@@ -221,6 +239,8 @@ jobs:
             --collection "${name}" \
             --preset "${PRESET}" \
             2> "${RUNNER_TEMP}/midi-b/private/benchmark-stderr.log"
+          kill "${sampler}"
+          free -m
           cp "${work}/benchmark.md" "${work}/benchmark.json" "${results}/"
           echo "ran=true" >> "${GITHUB_OUTPUT}"
           df -h /
