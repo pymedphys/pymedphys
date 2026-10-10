@@ -91,7 +91,11 @@ Evidence Sequence (0008,9092), Referenced Defined Protocol Sequence
 condition is met. dciodvfy's condition counts references from only a few
 sequences, among them Source Image, Source Instance, Referenced Image, and
 Referenced Instance Sequences, and adding one Referenced Image Sequence item
-to the output clears the finding.
+to the output clears the finding. The entry would also match a genuine lapse,
+but the engine removes both of the module's sequences when no reference to an
+instance survives outside the module. A partial lapse, where only references
+to instances of other studies survive, is not detected, because telling one
+from a reference within the study needs the UIDs' values.
 """
 
 [[difference]]
@@ -105,5 +109,7 @@ As for Referenced Series Sequence (0008,1115): the Common Instance Reference
 Module's Studies Containing Other Referenced Instances Sequence is Type 1C,
 required if the instance references instances in other studies from any of
 its modules, and the output still references them from modules whose
-sequences dciodvfy's condition does not count.
+sequences dciodvfy's condition does not count. As for that entry, the engine
+removes both of the module's sequences when no reference to an instance
+survives outside the module.
 """
