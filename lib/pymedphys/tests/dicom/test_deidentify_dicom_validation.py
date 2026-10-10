@@ -599,6 +599,40 @@ def test_a_comparison_fails_on_an_unexplained_finding(monkeypatch):
     assert "**Failed**" in comparison.markdown()
 
 
+def test_a_comparison_reports_no_invalid_sop_class(tmp_path, monkeypatch, caplog):
+    invalid = "1.2.840.10008.05.1"
+    source = tmp_path / "source.dcm"
+    # Setting and writing the value report it too.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dataset = pydicom.Dataset()
+        dataset.SOPClassUID = invalid
+        dataset.SOPInstanceUID = "1.2.3"
+        dataset.file_meta = pydicom.dataset.FileMetaDataset()
+        dataset.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+        dataset.save_as(source, enforce_file_format=True)
+    validation = _validation(DCIODVFY, {})
+    monkeypatch.setattr(
+        dicom_validation, "_validate_files", lambda *_: [(validation,), (validation,)]
+    )
+    monkeypatch.setattr(dicom_validation.Toolset, "versions", lambda self: NO_VERSIONS)
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        comparison = dicom_validation.compare(
+            [Pair(source, tmp_path / "output.dcm")],
+            dicom_validation.Toolset(DCIODVFY, None, None, "2026d"),
+            known=(),
+        )
+
+    assert comparison.sop_classes == {dicom_validation.OTHER_SOP_CLASS: 1}
+    assert caplog.records
+    assert invalid not in caplog.text
+    assert not [each for each in caught if invalid in str(each.message)]
+
+
 def test_the_markdown_escapes_what_could_break_a_table(monkeypatch):
     odd = Finding(DCIODVFY, "error", "(0008,0020)", "a | b <value>")
     comparison = _comparison(
