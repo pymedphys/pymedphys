@@ -28,8 +28,10 @@ each element of the data set, in file order:
    so that X/Z on a Type 1 or 1C attribute gives D, as the maintainer
    decided on 1 October 2026; a plain D on an attribute that the IOD does
    not define at that place gives X, following Note 13 after Table E.1-1a;
-   and a plain Z on an attribute that is Type 1 or 1C there gives D, the
-   dummy value that Table E.1-1a allows Z
+   a plain Z on an attribute that is Type 1 or 1C there gives D, the
+   dummy value that Table E.1-1a allows Z; and Clinical Trial Protocol
+   Ethics Committee Name (0012,0081), whose Type 1C condition lapses once its
+   approval number is removed, gives X
    (:func:`~pymedphys._dicom.deidentify.compound_actions.resolve_plain_in_iod`,
    D-020);
 3. its consumers: what must read its value to apply the action, or to
