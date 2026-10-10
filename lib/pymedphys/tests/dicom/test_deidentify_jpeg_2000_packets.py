@@ -403,3 +403,57 @@ def test_pillow_colour_codestreams_keep_every_pass_unless_truncated(progression,
     )
     assert coding_passes_kept(kept) is True
     assert coding_passes_kept(truncated) is False
+
+
+def _huge_geometry(columns, rows, body):
+    """A codestream of one tile, one component, no decomposition, and
+    code-blocks of 4 by 4, whose SIZ gives ``columns`` and ``rows``."""
+    tile_part = struct.pack(">HIBB", 0, 12 + 2 + len(body), 0, 1)
+    size = struct.pack(">H8IH", 0, columns, rows, 0, 0, columns, rows, 0, 0, 1)
+    return b"".join(
+        [
+            b"\xff\x4f",
+            synthetic.segment(0x51, size + bytes([7, 1, 1])),
+            synthetic.segment(0x52, bytes([0, 0, 0, 1, 0, 0, 0, 0, 0, 1])),
+            synthetic.segment(0x5C, bytes([2 << 5, 8 << 3])),
+            synthetic.segment(0x90, tile_part),
+            b"\xff\x93",
+            body,
+            b"\xff\xd9",
+        ]
+    )
+
+
+@pytest.mark.parametrize("side, precincts", [(4096, 1), (65535, 4)])
+def test_code_blocks_out_of_proportion_to_the_bytes_are_not_read(side, precincts):
+    # Found by the fuzz campaign (test_deidentify_malformed_input.py): fewer
+    # than 100 bytes, an empty packet of one byte for each precinct of
+    # 2 ** 15 by 2 ** 15, give a million code-blocks or more. Before the
+    # reading was bounded, 4,096 by 4,096 took 19 s to read as kept, and
+    # 65,535 by 65,535 exhausted memory.
+    codestream = _huge_geometry(side, side, bytes(precincts))
+    assert len(codestream) < 100
+    assert coding_passes_kept(codestream) is None
+
+
+# pylibjpeg-openjpeg 2.6.0's lossless codestream of a frame of 8,192 by
+# 8,192 samples of 8 bits, all zero: five decomposition levels and
+# code-blocks of 64 by 64, so 16,384 code-blocks, in 340 bytes.
+_BLANK_8192 = bytes.fromhex(
+    "ff4fff5100290000000020000000200000000000000000000000200000002000"
+    "00000000000000000001070101ff52000c00000001000504040001ff5c001340"
+    "40484850484850484850484850484850ff640025000143726561746564206279"
+    "204f70656e4a5045472076657273696f6e20322e352e32ff90000a0000000000"
+    "db0001ff93f7f8057f00aff8057f00afe015fc02bf8057f00aff402bf8057fc0"
+    "2bf8057f00afe015fc02bf8050115054afff7fe989607f115054afff7fe98960"
+    "7f115054afff7fe989607f115054afff7fe989607f115054afff7fe989607f11"
+    "5054afff7fe989607f115054afff7fe989607f115054afff7fe989607f115054"
+    "afff7fe989607f115054afff7fe989607f115054afff7fe989607f115054afff"
+    "7fe989607f115054afff7fe989607f115054afff7fe989607f115054afff7fe9"
+    "89607f115054afff7fe989607f8080808080ffd9"
+)
+
+
+def test_a_large_frame_almost_all_zero_is_still_read():
+    assert len(_BLANK_8192) == 340
+    assert coding_passes_kept(_BLANK_8192) is True

@@ -100,6 +100,19 @@ headers (PPM and PPT), progression order changes (POC), a region of
 interest (RGN), extensions of ITU-T T.801 (Part 2), mixed HT and Part 1
 code-blocks, and an HT code-block in more than one packet or with
 placeholder passes, which OpenJPEG 2.5 does not read as T.814 gives them.
+
+The time and memory that reading takes grow with the code-blocks of each
+precinct, which the SIZ and COD marker segments give, and with the
+packets whose headers are not empty, each of which visits every
+code-block of its precinct; a few bytes of headers can give billions of
+code-blocks. So ``None`` is also returned where the code-blocks of the
+precincts, and those visited, would exceed :data:`WORK_ALLOWANCE` and one
+for each byte of the codestream. A codestream coded losslessly holds
+far more bytes than code-blocks, but for a frame almost all zero, in which
+an encoder leaves out code-blocks. Even there the allowance is enough for
+a frame of 8,192 by 8,192 samples, all zero, as pylibjpeg-openjpeg codes
+it, in five decomposition levels and code-blocks of 64 by 64: its 16,384
+code-blocks, each visited once.
 """
 
 from __future__ import annotations
@@ -127,10 +140,25 @@ _PRECINCTS, _SOP, _EPH = 0x01, 0x02, 0x04
 _BYPASS, _TERMINATE_ALL, _HT, _HT_MIXED = 0x01, 0x04, 0x40, 0x80
 _PART_2 = 0x8000
 _LRCP, _RLCP, _RPCL, _PCRL, _CPRL = range(5)
+# The code-blocks that reading may make and visit, beyond one for each byte
+# of the codestream.
+WORK_ALLOWANCE = 1 << 15
 
 
 class _Unreadable(Exception):
     """The packets cannot be read here."""
+
+
+class _Budget:
+    """The code-blocks that reading may still make and visit."""
+
+    def __init__(self, allowance: int):
+        self.left = allowance
+
+    def spend(self, blocks: int) -> None:
+        self.left -= blocks
+        if self.left < 0:
+            raise _Unreadable
 
 
 def coding_passes_kept(codestream: bytes) -> bool | None:
@@ -147,10 +175,11 @@ def coding_passes_kept(codestream: bytes) -> bool | None:
     -------
     bool or None
     """
+    budget = _Budget(WORK_ALLOWANCE + len(codestream))
     try:
         image = _image(codestream)
         return all(
-            _tile_kept(image, tile, b"".join(bodies))
+            _tile_kept(image, tile, b"".join(bodies), budget)
             for tile, bodies in enumerate(image.bodies)
         )
     except _Unreadable:
@@ -469,7 +498,7 @@ class _Precinct:
     bands: tuple[tuple[list[_Block], _TagTree, _TagTree], ...]
 
 
-def _tile_kept(image: _Image, tile: int, body: bytes) -> bool:
+def _tile_kept(image: _Image, tile: int, body: bytes, budget: _Budget) -> bool:
     """Read every packet of one tile, and return whether every code-block
     that they include holds every coding pass."""
     defaults = image.tiles[tile]
@@ -505,9 +534,17 @@ def _tile_kept(image: _Image, tile: int, body: bytes) -> bool:
     ):
         key = (component, resolution, index)
         if layer == 0:
-            precincts[key] = _precinct(resolutions[component][resolution], index)
+            precincts[key] = _precinct(
+                resolutions[component][resolution], index, budget
+            )
         position = _packet(
-            body, position, defaults.scod, styles[component], layer, precincts[key]
+            body,
+            position,
+            defaults.scod,
+            styles[component],
+            layer,
+            precincts[key],
+            budget,
         )
     if position != len(body):
         raise _Unreadable
@@ -602,7 +639,7 @@ def _ceil_shift(value: int, shift: int) -> int:
     return -((-value) >> shift)
 
 
-def _precinct(resolution: _Resolution, index: int) -> _Precinct:
+def _precinct(resolution: _Resolution, index: int, budget: _Budget) -> _Precinct:
     """Return the code-blocks of one precinct in each sub-band that is not
     empty, as OpenJPEG's ``opj_tcd_init_tile`` sets them (T.800 Section
     B.7)."""
@@ -625,6 +662,7 @@ def _precinct(resolution: _Resolution, index: int) -> _Precinct:
         py1 = min(cell_y + (1 << (height - halved)), by1)
         across = max(_ceil_shift(px1, block_width) - (px0 >> block_width), 0)
         down = max(_ceil_shift(py1, block_height) - (py0 >> block_height), 0)
+        budget.spend(across * down)
         bands.append(
             (
                 [_Block(magnitude_bit_planes) for _ in range(across * down)],
@@ -762,8 +800,14 @@ class _Bits:
         return self.position
 
 
-def _packet(
-    body: bytes, position: int, scod: int, style: int, layer: int, precinct: _Precinct
+def _packet(  # pylint: disable = too-many-arguments, too-many-positional-arguments
+    body: bytes,
+    position: int,
+    scod: int,
+    style: int,
+    layer: int,
+    precinct: _Precinct,
+    budget: _Budget,
 ) -> int:
     """Read the packet at ``position`` (T.800 Section B.10), add what its
     header says to the precinct's code-blocks, and return where the next
@@ -775,6 +819,7 @@ def _packet(
     bits = _Bits(body, position)
     lengths = 0
     if bits.bit():
+        budget.spend(sum(len(blocks) for blocks, _, _ in precinct.bands))
         for blocks, inclusion, zero_bit_planes in precinct.bands:
             for leaf, block in enumerate(blocks):
                 lengths += _contribution(
