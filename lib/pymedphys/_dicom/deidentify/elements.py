@@ -399,9 +399,13 @@ def _from_source(element, path: ElementPath, source: SourceEvidence):
             raise UndecodableElement(path, "does not match its source")
         return element
     value = source.value_field(path)
-    if raw and (
-        element.value != value or (extent.vr is not None and element.VR != extent.vr)
-    ):
+    held = element.value if raw else None
+    if raw and held is None and not element.length:
+        # pydicom reads a zero-length value as None where it has no VR for
+        # it, as in Implicit VR Little Endian. A deferred value is None too,
+        # but with its length, and matches no Value Field.
+        held = b""
+    if raw and (held != value or (extent.vr is not None and element.VR != extent.vr)):
         raise UndecodableElement(path, "does not match its source")
     # pydicom records where in the file it read each value it decodes from
     # one, and nothing for a value set in memory.

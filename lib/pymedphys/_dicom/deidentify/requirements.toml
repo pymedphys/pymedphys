@@ -280,7 +280,7 @@ text = '''
 The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "REMOVED" if none of the Retain Longitudinal Temporal Information Options is applied.
 '''
 status = "implemented"
-decisions = ["D-012"]
+decisions = ["D-012", "D-031"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/markers.py",
@@ -289,6 +289,7 @@ note = '''
 Every policy that does not apply Modified Dates, the only Retain Longitudinal Temporal Information Option in scope, sets Longitudinal Temporal Information Modified to REMOVED in its markers, replacing any value already present, since REMOVED is the strictest, and refusing a present value that is not UNMODIFIED, MODIFIED, or REMOVED (D-012).
 The run's instance transform adds it to each instance it de-identifies.
 An end-to-end test runs `basic` and `basic-clean-descriptors`, neither of which applies Modified Dates, over the synthetic collection and finds REMOVED in every released instance (MIDI-BP-01).
+MIDI-B's answer keys expect another value here, under their TCIA review category, so every released instance fails that check by design (D-031).
 '''
 
 [[requirement]]
@@ -646,7 +647,7 @@ text = '''
 Do not let de-identification compromise conformance with the standards that define the content or reduce functionality. DICOM output should still conform to its original IOD, with dummy values synthesised where needed and replacement values consistent across files within a defined scope, such as replaced UIDs that keep references intact. This covers optional attributes critical to functionality as well as required ones.
 '''
 status = "implemented"
-decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-026"]
+decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-026", "D-031"]
 implementation = [
   "_dicom/deidentify/compound_actions.py",
   "_dicom/deidentify/dummy_values.py",
@@ -689,6 +690,7 @@ A second pass checks what was written against the first: that each written insta
 A run makes that check of every file that its gate releases, before anything is published: each instance that a finding names is sequestered, and what is left is checked again, a reference to an instance that was withheld being reported only, while a check that fails, or a finding that no sequestration can isolate, publishes nothing.
 Each written instance is checked against its IOD before it can be released: every attribute that its source holds where the IOD requires it, by the same strictest Type, must still be there where the item that held it is, and a Type 1 or 1C one must not have been emptied, or the instance is sequestered, since the engine caused it; the removals that a plain X allows on their own are not findings, and what the source already lacks is not acted on.
 Instead, each attribute that the IOD unconditionally requires, a Type 1 or 2 attribute of a mandatory module at the top level or of an item that the source holds, and that the source lacks, is reported: the release report counts the instances by attribute and Type, and the QC pack lists each by instance and place.
+A gap is never filled with a made-up value, so a released instance fails a MIDI-B check that an attribute its IOD requires is present, or has a value, only where its source lacks it (D-031).
 The walker gives D's dummy value wherever a compound action, or a plain Z, resolves to it on a Type 1 or 1C attribute, and the run's instance transform writes it, so a written instance keeps a valid value wherever its IOD requires one (D-020, D-021).
 '''
 
@@ -740,7 +742,7 @@ text = '''
 Use the release of PS3.15 current at the time of de-identification as the reference for which data elements to de-identify, augmented by knowledge of other unsafe attributes, including private ones. Categorise retained elements by the PS3.15 Options, and apply the approach to any DICOM object, whether or not its IOD is recognised.
 '''
 status = "implemented"
-decisions = ["D-001", "D-010", "D-022", "D-023"]
+decisions = ["D-001", "D-010", "D-022", "D-023", "D-031"]
 implementation = [
   "_dev/deid_tables/annex_e.py",
   "_dev/deid_tables/edition_check.py",
@@ -770,6 +772,7 @@ The run's instance transform removes private attributes from, and applies each e
 An object of any other SOP Class is handled by classifying and sequestering it, not by de-identifying it.
 The release report names the IOD of each instance of an unsupported IOD, as PS3.4 Table B.5-1 names it, never from a value of the instance (D-010).
 Sequestering those objects rather than processing them is a deliberate restriction (D-010).
+Series Number, which Table E.1-1 omits, is kept as a number, although MIDI-B's answer keys expect it changed under their TCIA review category alone (D-031).
 '''
 
 [[requirement]]
