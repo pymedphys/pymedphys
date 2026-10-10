@@ -70,6 +70,19 @@ def test_more_coding_passes_than_a_code_block_has_cannot_be_read():
     assert coding_passes_kept(_one_block(1, BIT_PLANES)) is None
 
 
+@pytest.mark.parametrize("unreadable_first", [False, True])
+def test_a_code_block_that_cannot_be_read_outweighs_one_lacking_passes(
+    unreadable_first,
+):
+    # Whichever comes first, a frame that both lacks coding passes and
+    # cannot be read is taken as unreadable.
+    lacking = contribution((_passes(2) - 1, 40))
+    unreadable = contribution((_passes(2) + 1, 40))
+    blocks = [unreadable, lacking] if unreadable_first else [lacking, unreadable]
+    codestream = synthetic.codestream([blocks], [2, 2], size=(16, 8))
+    assert coding_passes_kept(codestream) is None
+
+
 def test_coding_passes_add_up_over_the_layers():
     blocks = [
         [contribution((10, 5)), None, contribution((25, 300)), None],
