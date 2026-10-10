@@ -367,9 +367,9 @@ class InstanceRecord:
         The numbering of the Series Numbers (0020,0011) that the instance
         holds, at each place where its IOD defines one
         (:mod:`~pymedphys._dicom.deidentify.series_numbers`). The run gives
-        each instance its study's numbering instead. A value that cannot be
-        read as one number, or a sequence on the way to it that cannot be
-        read, is left out, so it takes no rank.
+        each instance its study's numbering instead. A value that is not one
+        number is left out, and so is every value at a place where a value,
+        or a sequence on the way to it, cannot be read, so they take no rank.
     """
 
     iod: str | None
@@ -518,20 +518,28 @@ def _series_number_paths(sop_class: str) -> tuple[tuple[str, ...], ...]:
 
 def _series_numbering(dataset: pydicom.Dataset, sop_class: str) -> SeriesNumbering:
     """Return the numbering of the Series Numbers where the IOD defines them."""
-    numbers = []
-    for path in _series_number_paths(sop_class):
-        try:
-            for item in _items(dataset, path):
-                element = _element(item, SERIES_NUMBER)
-                number = None if element is None else series_number(element.value)
-                if number is not None:
-                    numbers.append(number)
-        # A value that cannot be read takes no rank, which removes it or
-        # gives it a dummy value, so the record is still built. pydicom
-        # raises many types for a value that it cannot convert.
-        except Exception:  # pylint: disable = broad-exception-caught
-            continue
-    return SeriesNumbering.of(numbers)
+    return SeriesNumbering.of(
+        number
+        for path in _series_number_paths(sop_class)
+        for number in _series_numbers_at(dataset, path)
+    )
+
+
+def _series_numbers_at(dataset: pydicom.Dataset, path: tuple[str, ...]) -> list[int]:
+    """Return the Series Numbers at one place, or none if any cannot be read.
+
+    A value that cannot be read takes no rank, which removes it or gives it
+    a dummy value, so the record is still built. pydicom raises many types
+    for a value that it cannot convert.
+    """
+    try:
+        elements = [_element(item, SERIES_NUMBER) for item in _items(dataset, path)]
+        numbers = [
+            series_number(element.value) for element in elements if element is not None
+        ]
+    except Exception:  # pylint: disable = broad-exception-caught
+        return []
+    return [number for number in numbers if number is not None]
 
 
 def _element(dataset: pydicom.Dataset, tag: str) -> pydicom.DataElement | None:
