@@ -32,10 +32,13 @@ import collections
 import io
 import threading
 import traceback
-from pathlib import PurePath
+from collections.abc import Mapping
+from pathlib import Path, PurePath
 
 from pymedphys._imports import pydicom
 
+from .elements import DEFAULT_CODECS, UndecodableElement, read_element
+from .file_layout import ElementPath
 from .references import InstanceRecord
 from .run_results import (
     Gate,
@@ -45,6 +48,7 @@ from .run_results import (
     Transform,
     Transformed,
 )
+from .source import SourceRefused, read_source
 
 # Directories below which a path names code, innermost root first.
 _ROOTS = ("site-packages", "dist-packages")
@@ -179,3 +183,83 @@ class ErrorRecorder:
         with self._lock:
             counted = sorted(self._counts.items())
         return [{**dict(zip(fields, kind)), "times": times} for kind, times in counted]
+
+
+NO_SOP_CLASS_FIELDS = (
+    "engine_read",
+    "sop_class",
+    "media_storage_sop_class",
+    "transfer_syntax",
+)
+_SOP_CLASS = ElementPath((), "(0008,0016)")
+
+
+def no_sop_class_cause(path: Path) -> tuple[str, str, str, str]:
+    """Say, without a value, why the run found no SOP Class UID in a file.
+
+    Returns
+    -------
+    tuple of str
+        Where the engine's reading of SOP Class UID (0008,0016) stopped:
+        ``refused: <reason>``, ``data set: <exception>``, ``absent``,
+        ``undecodable``, ``<n> values``, ``empty``, or ``read``; then the SOP Class
+        UID that pydicom reads in the data set, the Media Storage SOP Class
+        UID, and the Transfer Syntax UID of the File Meta Information, each
+        as :func:`uid_name` names it, so that no UID is quoted.
+    """
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return ("unreadable", "none", "none", "none")
+    return (_engine_read(data), *_pydicom_read(path))
+
+
+def no_sop_class_rows(
+    counted: Mapping[tuple[str, ...], int],
+) -> list[dict[str, object]]:
+    """Return counted causes as rows of :data:`NO_SOP_CLASS_FIELDS`, most first."""
+    return [
+        {**dict(zip(NO_SOP_CLASS_FIELDS, cause)), "instances": n}
+        for cause, n in sorted(counted.items(), key=lambda pair: (-pair[1], pair[0]))
+    ]
+
+
+def _engine_read(data: bytes) -> str:
+    """Read SOP Class UID as the run's transform does, and say how far it got."""
+    try:
+        source = read_source(data)
+    except SourceRefused as refused:
+        return f"refused: {getattr(refused.reason, 'value', refused.reason)}"
+    try:
+        dataset = source.dataset()
+    except (SourceRefused, UndecodableElement) as error:
+        return f"data set: {type(error).__name__}"
+    if _SOP_CLASS not in source:
+        return "absent"
+    try:
+        values = read_element(dataset, _SOP_CLASS, DEFAULT_CODECS, source=source).values
+    except UndecodableElement:
+        return "undecodable"
+    if len(values) != 1:
+        return f"{len(values)} values"
+    value = values[0]
+    return "read" if isinstance(value, str) and value.strip(" \x00") else "empty"
+
+
+def _pydicom_read(path: Path) -> tuple[str, str, str]:
+    try:
+        dataset = pydicom.dcmread(
+            path, stop_before_pixels=True, specific_tags=["SOPClassUID"]
+        )
+    except Exception:  # pylint: disable = broad-exception-caught
+        return ("unreadable", "unreadable", "unreadable")
+    meta = getattr(dataset, "file_meta", None) or pydicom.Dataset()
+    sop_class = dataset.get("SOPClassUID")
+    return (
+        # Several values are not a UID, and are not named.
+        "other"
+        if isinstance(sop_class, pydicom.multival.MultiValue)
+        else uid_name(sop_class),
+        uid_name(meta.get("MediaStorageSOPClassUID")),
+        uid_name(meta.get("TransferSyntaxUID")),
+    )

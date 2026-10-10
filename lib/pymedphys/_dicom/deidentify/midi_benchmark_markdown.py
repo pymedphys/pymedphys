@@ -115,6 +115,26 @@ def render_markdown(document: Mapping[str, object]) -> str:
             ),
             "",
         ]
+    causes = coverage.get("no_sop_class", [])
+    if causes:
+        lines += [
+            "Instances sequestered for having no SOP Class UID, by where the "
+            "engine's reading of it stopped, and by the SOP Class UID that "
+            "pydicom reads, the Media Storage SOP Class UID, and the transfer "
+            "syntax, as the standard names them:",
+            "",
+            _table(
+                (
+                    "Engine read",
+                    "SOP Class",
+                    "Media Storage SOP Class",
+                    "Transfer syntax",
+                    "Instances",
+                ),
+                [tuple(row.values()) for row in causes],
+            ),
+            "",
+        ]
     errors = coverage.get("internal_errors", [])
     if errors:
         lines += [

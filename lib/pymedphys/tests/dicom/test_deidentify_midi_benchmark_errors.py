@@ -18,11 +18,14 @@ Every DICOM file is synthetic, and every error is raised by the tests.
 """
 
 import json
+import warnings
 
 from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import midi_benchmark as benchmark
 from pymedphys._dicom.deidentify import midi_benchmark_errors as errors
+from pymedphys._dicom.deidentify.run_results import Sequestered
+from pymedphys._dicom.deidentify.scope import Disposition
 
 from . import _synthetic_references as synthetic
 from .test_deidentify_midi_benchmark import _benchmark_key, _source
@@ -90,3 +93,72 @@ def test_a_benchmark_reports_its_internal_errors_without_a_value(tmp_path, monke
     markdown = result.markdown()
     assert "Internal errors, which withhold an instance" in markdown
     assert SECRET not in markdown + result.json()
+
+
+def _file(tmp_path, change):
+    dataset = synthetic.collection()[0]
+    change(dataset)
+    path = tmp_path / "instance.dcm"
+    path.write_bytes(synthetic.written(dataset))
+    return path
+
+
+def test_no_sop_class_is_described_by_where_reading_stopped(tmp_path):
+    def absent(dataset):
+        del dataset.SOPClassUID
+
+    def empty(dataset):
+        dataset.SOPClassUID = ""
+
+    def two(dataset):
+        with warnings.catch_warnings():
+            # Several values are not a valid UI value, which is the point.
+            warnings.simplefilter("ignore", UserWarning)
+            dataset.SOPClassUID = [synthetic.CT_IMAGE_STORAGE] * 2
+
+    # The writer copies a single SOP Class UID into the File Meta
+    # Information, and leaves its placeholder otherwise.
+    for change, read, sop_class, media_storage in (
+        (absent, "absent", "none", "other"),
+        (empty, "0 values", "none", "other"),
+        (two, "2 values", "other", "other"),
+        (lambda dataset: None, "read", "CT Image Storage", "CT Image Storage"),
+    ):
+        with warnings.catch_warnings():
+            # The writer copies several values into the File Meta Information
+            # as one invalid UID, which pydicom warns about when it is named.
+            warnings.simplefilter("ignore", UserWarning)
+            cause = errors.no_sop_class_cause(_file(tmp_path, change))
+        assert cause == (
+            read,
+            sop_class,
+            media_storage,
+            "Explicit VR Little Endian",
+        )
+    assert errors.no_sop_class_cause(tmp_path / "missing.dcm")[0] == "unreadable"
+    refused = tmp_path / "refused.dcm"
+    refused.write_bytes(b"not DICOM")
+    assert errors.no_sop_class_cause(refused)[0].startswith("refused: ")
+
+
+def test_a_benchmark_describes_instances_without_a_sop_class(tmp_path, monkeypatch):
+    # The run finds no SOP Class UID where pydicom reads one, as on MIDI-B.
+    def sequestering(*_):
+        return Sequestered((Disposition.NO_SOP_CLASS,))
+
+    monkeypatch.setattr(benchmark.InstanceTransform, "__call__", sequestering)
+    result = benchmark.run_benchmark(
+        _source(tmp_path), _benchmark_key(tmp_path), tmp_path / "work"
+    )
+
+    assert {
+        "engine_read": "read",
+        "sop_class": "CT Image Storage",
+        "media_storage_sop_class": "CT Image Storage",
+        "transfer_syntax": "Explicit VR Little Endian",
+        "instances": 1,
+    } in result.document["coverage"]["no_sop_class"]
+    assert (
+        "| read | CT Image Storage | CT Image Storage | Explicit VR Little Endian | 1 |"
+        in (result.markdown())
+    )

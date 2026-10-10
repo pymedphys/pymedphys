@@ -36,7 +36,10 @@ import collections
 import csv
 import dataclasses
 import hashlib
+import io
+import os
 import sqlite3
+from collections.abc import Mapping
 from pathlib import Path
 
 from .midi_answer_key import (
@@ -49,6 +52,8 @@ from .midi_answer_key import (
 )
 
 SCRIPT_RESULTS_TABLE = "validation_results"
+UID_MAPPING = "uid_mapping.csv"
+PATIENT_ID_MAPPING = "patid_mapping.csv"
 
 
 class ScriptResultsError(Exception):
@@ -140,6 +145,27 @@ def summarise_script_results(path: str | Path) -> dict[str, object]:
             )
         ],
     }
+
+
+def write_mapping_files(
+    directory: Path, uids: Mapping[str, str], patient_ids: Mapping[str, str]
+) -> None:
+    """Write the script's UID and Patient ID mapping files into a new directory.
+
+    Each maps the test data's identifiers to their replacements, with the
+    columns ``id_old`` and ``id_new``, and only its owner may read it.
+    """
+    directory.mkdir(mode=0o700)
+    for name, pairs in ((UID_MAPPING, uids), (PATIENT_ID_MAPPING, patient_ids)):
+        text = io.StringIO()
+        writer = csv.writer(text, lineterminator="\n")
+        writer.writerow(("id_old", "id_new"))
+        writer.writerows(pairs.items())
+        descriptor = os.open(
+            directory / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+        )
+        with open(descriptor, "w", encoding="utf-8", newline="") as file:
+            file.write(text.getvalue())
 
 
 def write_released_answer_key(

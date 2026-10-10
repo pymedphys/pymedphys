@@ -117,12 +117,9 @@ which counts a check once for each series.
 from __future__ import annotations
 
 import collections
-import csv
 import dataclasses
 import enum
 import hashlib
-import io
-import os
 import json
 import re
 from collections.abc import Collection, Mapping, Sequence
@@ -150,7 +147,12 @@ from .midi_answer_key import (
     category_order,
     read_answer_key,
 )
-from .midi_benchmark_errors import ErrorRecorder, uid_name
+from .midi_benchmark_errors import (
+    ErrorRecorder,
+    no_sop_class_cause,
+    no_sop_class_rows,
+    uid_name,
+)
 from .midi_benchmark_exemptions import exemption_rows, would_release
 from .midi_benchmark_markdown import render_markdown
 from .midi_benchmark_sources import (
@@ -174,6 +176,7 @@ from .midi_benchmark_values import (
     is_bulk_data,
     unbracketed,
 )
+from .midi_script_results import write_mapping_files
 from .policy import Policy, compose_policy
 from .reviewed_roi_names import ReviewedNames
 from .runtime import runtime_environment
@@ -184,8 +187,6 @@ FORMAT = "pymedphys-deid-midi-benchmark/2"
 RESULTS_JSON = "benchmark.json"
 RESULTS_MARKDOWN = "benchmark.md"
 SCRIPT_INPUTS = "validation-script"
-UID_MAPPING = "uid_mapping.csv"
-PATIENT_ID_MAPPING = "patid_mapping.csv"
 # The two levels of ROI Name, which Clean Descriptors cleans; every other
 # attribute given C takes its action under the policy without the option.
 _ROI_PATH = ("(3006,0020)", "(3006,0026)")
@@ -368,7 +369,7 @@ def run_benchmark(
     )
     headers = _headers(discovery)
     mapping = released_mapping(headers, result.outcomes)
-    write_mapping_files(work / SCRIPT_INPUTS, mapping)
+    write_mapping_files(work / SCRIPT_INPUTS, mapping.uids, mapping.patient_ids)
     benchmark = score(
         key,
         headers,
@@ -489,24 +490,6 @@ def released_mapping(
     return IdentifierMapping(uids, patient_ids)
 
 
-def write_mapping_files(directory: Path, mapping: IdentifierMapping) -> None:
-    """Write the validation script's UID and Patient ID mapping files."""
-    directory.mkdir(mode=0o700)
-    for name, pairs in (
-        (UID_MAPPING, mapping.uids),
-        (PATIENT_ID_MAPPING, mapping.patient_ids),
-    ):
-        text = io.StringIO()
-        writer = csv.writer(text, lineterminator="\n")
-        writer.writerow(("id_old", "id_new"))
-        writer.writerows(pairs.items())
-        descriptor = os.open(
-            directory / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
-        )
-        with open(descriptor, "w", encoding="utf-8", newline="") as file:
-            file.write(text.getvalue())
-
-
 def score(  # pylint: disable = too-many-arguments, too-many-locals
     key: AnswerKey,
     headers: Sequence[_Header | None],
@@ -564,6 +547,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     withheld_reasons: collections.Counter = collections.Counter()
     places: collections.Counter = collections.Counter()
     exempt: collections.Counter = collections.Counter()
+    no_sop_class: collections.Counter = collections.Counter()
     watching: collections.Counter = collections.Counter()
     not_released: dict[tuple[str, str | None, str, str], list[int]] = (
         collections.defaultdict(lambda: [0, 0])
@@ -588,6 +572,8 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 kind = _not_released(context, headers[position], outcomes[position])
                 not_released[kind][0] += 1
                 not_released[kind][1] += len(answer.checks)
+                if "no-sop-class" in (kind[1] or "") and position < len(sources):
+                    no_sop_class[no_sop_class_cause(sources[position])] += 1
             source: list[pydicom.Dataset | None] = []
             for check in answer.checks:
                 tally = counts[check.category]
@@ -676,6 +662,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
             "withheld_reasons": dict(sorted(withheld_reasons.items())),
             "withheld_places": place_rows(places),
             "would_release": exemption_rows(exempt),
+            "no_sop_class": no_sop_class_rows(no_sop_class),
             "internal_errors": [dict(error) for error in internal_errors],
             "not_released": [
                 {
