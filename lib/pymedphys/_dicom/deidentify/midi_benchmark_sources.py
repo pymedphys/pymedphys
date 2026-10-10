@@ -21,11 +21,14 @@ attribute at the check's place, and with a value. A text that a check asks
 to be removed, and the release keeps, is described by :func:`removed_shape`
 in coarse, value-free terms, such as the number of digits of an Integer
 String, so that a reviewer can judge whether it could carry an identifier.
+:func:`reason_places` says where the reasons that withheld an instance were
+found, by tag, so that the holds that cost the most can be traced.
 """
 
 from __future__ import annotations
 
 import collections
+import enum
 import re
 from collections.abc import Mapping
 from pathlib import Path
@@ -163,3 +166,54 @@ def explained_rows(
         ]
         for kind, fields in EXPLAINED.items()
     }
+
+
+def reason_places(reasons: tuple[object, ...]) -> set[tuple[str, str, str, str]]:
+    """Return where each reason with a place was found, by tag, without a value.
+
+    Each place is the reason's code; the source attribute, as its sequences'
+    and its own tags, without item numbers or private creators; the
+    attribute of the written file that the reason was found in, or the
+    region of the file; and the VR it was found as.
+    """
+    places = set()
+    for reason in reasons:
+        path = getattr(reason, "path", None)
+        if path is None or not hasattr(path, "tag"):
+            continue
+        location = getattr(reason, "location", None)
+        found = ""
+        if location is not None:
+            element = getattr(location, "element", None)
+            found = (
+                _tags(element)
+                if element is not None
+                else str(getattr(location.region, "value", location.region))
+            )
+        vr = "" if location is None else str(getattr(location, "vr", None) or "")
+        places.add((reason_code(reason), _tags(path), found, vr))
+    return places
+
+
+def place_rows(places: collections.Counter) -> list[dict[str, object]]:
+    """Return counted places as rows, the most instances first."""
+    fields = ("code", "source", "found_in", "vr")
+    return [
+        {**dict(zip(fields, place)), "instances": n}
+        for place, n in sorted(places.items(), key=lambda pair: (-pair[1], pair[0]))
+    ]
+
+
+def _tags(path: object) -> str:
+    items = getattr(path, "items", ())
+    return "/".join([*(tag for tag, _ in items), str(getattr(path, "tag", ""))])
+
+
+def reason_code(reason: object) -> str:
+    """Return a withheld input's reason as a code, without a value."""
+    code = getattr(reason, "code", None)
+    if isinstance(code, enum.Enum):
+        return str(code.value)
+    if isinstance(reason, enum.Enum):
+        return str(reason.value)
+    return type(reason).__name__

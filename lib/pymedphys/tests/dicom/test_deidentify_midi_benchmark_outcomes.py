@@ -14,14 +14,23 @@
 
 """Score MIDI checks that the policy, the markers, or the source explain (D-018)."""
 
+import collections
+
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import midi_benchmark as benchmark
 from pymedphys._dicom.deidentify import midi_benchmark_sources as sources
 from pymedphys._dicom.deidentify.element_rules import ElementRules
+from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.midi_answer_key import parse_check
 from pymedphys._dicom.deidentify.policy import compose_policy
+from pymedphys._dicom.deidentify.reasons import RunReason
+from pymedphys._dicom.deidentify.release_gate import (
+    Decision,
+    ReasonCode,
+    ReleaseReason,
+)
 
 from .test_deidentify_midi_benchmark import (
     CT_IOD,
@@ -280,3 +289,38 @@ def test_only_a_finding_of_a_present_check_can_be_a_source_gap():
         )
         == FAILED
     )
+
+
+def test_a_withheld_instance_is_counted_by_where_its_reasons_were_found():
+    beam = ElementPath(items=(("(300A,00B0)", 2),), tag="(300A,00C3)")
+    reasons = (
+        ReleaseReason(
+            Decision.QC_REVIEW,
+            ReasonCode.RESIDUAL_TEXT,
+            ElementPath(items=(), tag="(0010,0010)"),
+            Location(Region.DATA_SET, beam, "ST"),
+        ),
+        ReleaseReason(Decision.WITHHOLD, ReasonCode.UNCOLLECTED, beam),
+        ReleaseReason(
+            Decision.WITHHOLD,
+            ReasonCode.RESIDUAL_OUTSIDE_DATA_SET,
+            beam,
+            Location(Region.TRAILING),
+        ),
+        RunReason.INTERNAL_ERROR,
+    )
+
+    places = sources.reason_places(reasons)
+    rows = sources.place_rows(collections.Counter([*places, *places]))
+
+    assert places == {
+        ("residual-text", "(0010,0010)", "(300A,00B0)/(300A,00C3)", "ST"),
+        ("uncollected", "(300A,00B0)/(300A,00C3)", "", ""),
+        ("residual-outside-data-set", "(300A,00B0)/(300A,00C3)", "trailing-bytes", ""),
+    }
+    assert rows[0]["instances"] == 2
+    assert {row["code"] for row in rows} == {
+        "residual-text",
+        "uncollected",
+        "residual-outside-data-set",
+    }

@@ -73,6 +73,29 @@ def render_markdown(document: Mapping[str, object]) -> str:
             _table(("Reason", "Times given"), list(reasons.items())),
             "",
         ]
+    places = coverage.get("withheld_places", [])
+    if places:
+        lines += [
+            "Where the reasons with a place were found, by the source attribute, "
+            "the attribute or region of the written file, and its VR, as the "
+            f"number of withheld instances; the first {_PLACES} of "
+            f"{len(places)}, the rest in `benchmark.json`:",
+            "",
+            _table(
+                ("Reason", "Source", "Found in", "VR", "Instances"),
+                [
+                    (
+                        row["code"],
+                        row["source"],
+                        row["found_in"],
+                        row["vr"],
+                        row["instances"],
+                    )
+                    for row in places[:_PLACES]
+                ],
+            ),
+            "",
+        ]
     errors = coverage.get("internal_errors", [])
     if errors:
         lines += [
@@ -272,6 +295,9 @@ def _at_source(explained: Mapping[str, Sequence[Mapping[str, object]]]) -> list[
     )
     return lines
 
+
+# The places of withholding reasons that the Markdown lists.
+_PLACES = 40
 
 # The fields of CategoryCounts, in their order, with their headline names.
 _OUTCOMES = {

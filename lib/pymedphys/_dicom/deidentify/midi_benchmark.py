@@ -159,7 +159,10 @@ from .midi_benchmark_sources import (
     describe_source,
     described_rows,
     explained_rows,
+    place_rows,
     read_source,
+    reason_code,
+    reason_places,
     source_state,
 )
 from .midi_benchmark_values import (
@@ -548,6 +551,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
         collections.Counter
     )
     withheld_reasons: collections.Counter = collections.Counter()
+    places: collections.Counter = collections.Counter()
     not_released: dict[tuple[str, str | None, str, str], list[int]] = (
         collections.defaultdict(lambda: [0, 0])
     )
@@ -561,6 +565,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
             if context is Context.WITHHELD and position is not None:
                 for reason in outcomes[position].reasons:
                     withheld_reasons[reason_code(reason)] += 1
+                places.update(reason_places(outcomes[position].reasons))
             if dataset is None and position is not None:
                 kind = _not_released(context, headers[position], outcomes[position])
                 not_released[kind][0] += 1
@@ -640,6 +645,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 for modality, by in sorted(modalities.items())
             },
             "withheld_reasons": dict(sorted(withheld_reasons.items())),
+            "withheld_places": place_rows(places),
             "internal_errors": [dict(error) for error in internal_errors],
             "not_released": [
                 {
@@ -709,16 +715,6 @@ def _not_released(
         uid_name(header.sop_class),
         uid_name(header.transfer_syntax),
     )
-
-
-def reason_code(reason: object) -> str:
-    """Return a withheld input's reason as a code, without a value."""
-    code = getattr(reason, "code", None)
-    if isinstance(code, enum.Enum):
-        return str(code.value)
-    if isinstance(reason, enum.Enum):
-        return str(reason.value)
-    return type(reason).__name__
 
 
 def _context(
