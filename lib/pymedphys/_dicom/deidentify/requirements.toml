@@ -690,6 +690,7 @@ A run makes that check of every file that its gate releases, before anything is 
 Each written instance is checked against its IOD before it can be released: every attribute that its source holds where the IOD requires it, by the same strictest Type, must still be there where the item that held it is, and a Type 1 or 1C one must not have been emptied, or the instance is sequestered, since the engine caused it; the removals that a plain X allows on their own are not findings, and what the source already lacks is not acted on.
 Instead, each attribute that the IOD unconditionally requires, a Type 1 or 2 attribute of a mandatory module at the top level or of an item that the source holds, and that the source lacks, is reported: the release report counts the instances by attribute and Type, and the QC pack lists each by instance and place.
 The walker gives D's dummy value wherever a compound action, or a plain Z, resolves to it on a Type 1 or 1C attribute, and the run's instance transform writes it, so a written instance keeps a valid value wherever its IOD requires one (D-020, D-021).
+Independently of the engine, dciodvfy, dcentvfy, and dicom-validator check each instance that a run over the synthetic corpus releases, and its input, under each preset in continuous integration, and every finding that an output introduces must be explained by a reviewed known difference (D-030).
 '''
 
 [[requirement]]
