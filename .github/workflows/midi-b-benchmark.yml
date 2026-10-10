@@ -46,6 +46,7 @@ on:
       - .github/scripts/midi_b_tcia_answer_keys.py
       - lib/pymedphys/_dicom/deidentify/midi_data.toml
       - lib/pymedphys/_dicom/deidentify/midi_download.py
+      - lib/pymedphys/_dicom/deidentify/midi_benchmark*.py
 
 permissions:
   contents: read

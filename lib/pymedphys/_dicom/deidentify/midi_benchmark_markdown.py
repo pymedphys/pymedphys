@@ -73,6 +73,37 @@ def render_markdown(document: Mapping[str, object]) -> str:
             _table(("Reason", "Times given"), list(reasons.items())),
             "",
         ]
+    errors = coverage.get("internal_errors", [])
+    if errors:
+        lines += [
+            "Internal errors, which withhold an instance, by where they were "
+            "raised and the kind of instance they were raised for:",
+            "",
+            _table(
+                (
+                    "Stage",
+                    "Exception",
+                    "Raised at",
+                    "Last PyMedPhys frame",
+                    "SOP Class",
+                    "Transfer syntax",
+                    "Times",
+                ),
+                [
+                    (
+                        row["stage"],
+                        row["exception"],
+                        row["raised_at"],
+                        row["pymedphys_frame"],
+                        row["sop_class"],
+                        row["transfer_syntax"],
+                        row["times"],
+                    )
+                    for row in errors
+                ],
+            ),
+            "",
+        ]
     lines += [
         "Instances that the run did not release, by where they ended up, the "
         "reasons the run gave, their SOP Class, and their transfer syntax:",

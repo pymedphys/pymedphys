@@ -116,7 +116,7 @@ import io
 import os
 import json
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pydicom
@@ -141,6 +141,7 @@ from .midi_answer_key import (
     category_order,
     read_answer_key,
 )
+from .midi_benchmark_errors import ErrorRecorder, uid_name
 from .midi_benchmark_markdown import render_markdown
 from .policy import Policy, compose_policy
 from .reviewed_roi_names import ReviewedNames
@@ -316,11 +317,12 @@ def run_benchmark(
     # the test data set's identifiers: for its owner alone, as the QC store's.
     work.mkdir(mode=0o700)
     release = work / "release"
+    errors = ErrorRecorder()
     result = run.run(
         discovery,
         release,
-        transform,
-        ReleaseGate(),
+        errors.transform(transform),
+        errors.gate(ReleaseGate()),
         qc_destination=work / "qc",
         reporter=transform.reporter,
         written_check=transform.written_check,
@@ -339,6 +341,7 @@ def run_benchmark(
         collection=collection,
         method=digest,
         roi_names=None if cleaning is None else _roi_names_used(),
+        internal_errors=errors.records(),
     )
     (work / RESULTS_JSON).write_text(benchmark.json(), encoding="utf-8", newline="\n")
     (work / RESULTS_MARKDOWN).write_text(
@@ -475,12 +478,16 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     collection: str | None,
     method: str | None = None,
     roi_names: str | None = None,
+    internal_errors: Sequence[Mapping[str, object]] = (),
 ) -> Benchmark:
     """Score each check of the answer key against the run's outcome.
 
     ``method`` is the run's method digest, by default that of ``policy``
     without a vocabulary or reviewed-names list; ``roi_names``, given under
-    Clean Descriptors, says what ROI Names were cleaned with.
+    Clean Descriptors, says what ROI Names were cleaned with; and
+    ``internal_errors``, from
+    :meth:`~pymedphys._dicom.deidentify.midi_benchmark_errors.ErrorRecorder.records`,
+    where the run's transform and gate raised.
     """
     positions: dict[str, int] = {}
     for position, header in enumerate(headers):
@@ -581,6 +588,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 for modality, by in sorted(modalities.items())
             },
             "withheld_reasons": dict(sorted(withheld_reasons.items())),
+            "internal_errors": [dict(error) for error in internal_errors],
             "not_released": [
                 {
                     "context": context,
@@ -662,26 +670,6 @@ def _not_released(
         uid_name(header.sop_class),
         uid_name(header.transfer_syntax),
     )
-
-
-def uid_name(uid: object) -> str:
-    """Return the name the standard gives a UID, ``other``, or ``none``.
-
-    A UID that pydicom's dictionary of the standard's UIDs does not hold,
-    such as a private SOP Class, is ``other``, so no UID is quoted.
-
-    >>> uid_name("1.2.840.10008.5.1.4.1.1.2")
-    'CT Image Storage'
-    >>> uid_name("1.2.3.4")
-    'other'
-    """
-    if uid is None:
-        return "none"
-    text = str(uid).strip(" \x00")
-    if not text:
-        return "none"
-    name = pydicom.uid.UID(text).name
-    return name if name and name != text else "other"
 
 
 def reason_code(reason: object) -> str:
