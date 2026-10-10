@@ -21,8 +21,11 @@ tests (``test_deidentify_dicom_validation_corpus.py``) run the validators.
 
 import collections
 import json
+import logging
+import sys
 import textwrap
 import types
+import warnings
 from pathlib import Path
 
 from pymedphys._imports import pydicom, pytest
@@ -775,6 +778,66 @@ def test_a_premise_holds_where_a_listed_instance_is_referenced_elsewhere(tmp_pat
         dicom_validation.OTHER_STUDIES_REFERENCED
     }
     assert dicom_validation.output_premises(tmp_path / "missing.dcm") == set()
+
+
+INVALID_UID = "1.02.3"
+
+
+def test_reading_a_file_reports_no_invalid_value(tmp_path, caplog):
+    # pydicom validates a value as it converts it, on first reading, and
+    # reports an invalid one with the value.
+    dataset = pydicom.Dataset()
+    dataset.SOPClassUID = pydicom.uid.CTImageStorage
+    dataset.SOPInstanceUID = INVALID_UID
+    dataset.PatientID = "PATIENT"
+    dataset.file_meta = pydicom.dataset.FileMetaDataset()
+    dataset.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+    header = tmp_path / "header.dcm"
+    dataset.save_as(header, enforce_file_format=True)
+    premises = _referencing(
+        tmp_path / "premises.dcm", listed=[INVALID_UID], elsewhere=[INVALID_UID]
+    )
+    # Writing the files reports the value too.
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        header_read = dicom_validation._header(header)  # pylint: disable = protected-access
+        assert header_read["instance"] == INVALID_UID
+        assert dicom_validation.output_premises(premises) == {
+            dicom_validation.THIS_STUDY_REFERENCED
+        }
+
+    assert caplog.records
+    assert INVALID_UID not in caplog.text
+    assert not [each for each in caught if INVALID_UID in str(each.message)]
+
+
+def test_loading_dicom_validator_leaves_the_root_logger_as_it_was(
+    tmp_path, monkeypatch
+):
+    class Reader:
+        # As dicom-validator's EditionReader does.
+        def __init__(self, _path):
+            root = logging.getLogger()
+            root.addHandler(logging.StreamHandler(sys.stdout))
+            root.setLevel(logging.INFO)
+
+        def get_edition_path(self, _edition):
+            return tmp_path
+
+        def load_dicom_info(self, _edition):
+            return object()
+
+    monkeypatch.setattr(validators.dicom_validator_editions, "EditionReader", Reader)
+    root = logging.getLogger()
+    handlers, level = list(root.handlers), root.level
+
+    validators.DicomValidator.load(tmp_path, "2026d")
+
+    assert root.handlers == handlers
+    assert root.level == level
 
 
 def _requiring(tmp_path):

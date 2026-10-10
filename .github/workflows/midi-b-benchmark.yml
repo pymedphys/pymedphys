@@ -9,9 +9,11 @@ name: MIDI-B Benchmark
 # MIDI-B's files carry synthetic identifiers, which the project treats as
 # real, and this repository's logs and artefacts are public. So the logs and
 # the artefact hold only what the tools print by design (counts, codes,
-# digests, and versions): standard error of the benchmark, where libraries
-# log, goes to a file on the runner, and a crash is reported by
-# .github/scripts/run_redacted.py as its type and code locations alone. The
+# digests, and versions): the standard error and standard output of the
+# benchmark and of the DICOM validation, where libraries log, go to files on
+# the runner, the jobs print the result files instead, and a crash is
+# reported by .github/scripts/run_redacted.py as its type and code locations
+# alone. The
 # data, the release, the QC pack, and the mapping files never leave the
 # runner.
 on:
@@ -232,6 +234,7 @@ jobs:
           done) &
           sampler=$!
           uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/midi-b/private/benchmark-stdout.log" \
             pymedphys._dicom.deidentify.midi_benchmark_command run \
             --source "${data}/images" \
             --answer-key "${data}/answer-key.db" \
@@ -257,8 +260,10 @@ jobs:
           retention-days: 90
 
       # dciodvfy, dcentvfy, and dicom-validator on each released file and its
-      # input (D-030). The results name no value or path; standard error,
-      # which could name a path, stays on the runner. Findings do not fail
+      # input (D-030). The result files name no value or path. Standard error
+      # and standard output, where a library's log records could quote a
+      # value, stay on the runner; the log shows only the wrapper's report of
+      # a crash, and the summary the Markdown results. Findings do not fail
       # the job: they are results.
       - name: Validate the release against its inputs
         if: steps.benchmark.outputs.ran == 'true'
@@ -269,6 +274,7 @@ jobs:
           results="${RUNNER_TEMP}/midi-b/results"
           status=0
           uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/midi-b/private/dicom-validation-stdout.log" \
             pymedphys._dicom.deidentify.dicom_validation_command midi \
             --source "${RUNNER_TEMP}/midi-b/data/images" \
             --work "${RUNNER_TEMP}/midi-b/work" \
@@ -382,7 +388,7 @@ jobs:
                 if [[ "${file}" == *.json ]]; then echo '```'; fi
               fi
             done
-          } >> "${GITHUB_STEP_SUMMARY}"
+          } | tee -a "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload the results
         if: ${{ !cancelled() }}

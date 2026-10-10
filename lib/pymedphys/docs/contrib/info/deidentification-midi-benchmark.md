@@ -226,7 +226,7 @@ The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchm
    - `nci-script-environment.txt`, the script's commit and the versions of the packages it ran with;
    - with `tcia`, `tcia-answer-keys.txt`, the names, sizes, and SHA-256 digests of the files in TCIA's packages.
 
-Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, the mapping files, and the NCI script's logs and results database, which quote values from the files. The benchmark's standard error, where libraries log, goes to a file on the runner, and a crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.
+Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, the mapping files, and the NCI script's logs and results database, which quote values from the files. The standard error and standard output of the benchmark and of the DICOM validation, where libraries log, go to files on the runner, and the job prints the result files instead. A crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.
 
 ## 10. Where the data come from, and how to check them
 

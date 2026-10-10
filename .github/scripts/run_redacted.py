@@ -1,6 +1,7 @@
 """Run a module's ``main`` and report a crash without its message.
 
-Usage: ``python .github/scripts/run_redacted.py <module> [arguments...]``.
+Usage: ``python .github/scripts/run_redacted.py [--private-stdout <file>]
+<module> [arguments...]``.
 
 The MIDI-B benchmark workflow runs the de-identification tools over data
 whose synthetic identifiers the project treats as real, and the logs of a
@@ -13,16 +14,23 @@ inside an installed package or this checkout, a line number, and a function
 name, never a message or a value. The caller sends standard error, where
 libraries log, to a private file.
 
+A library can also log to standard output, so ``--private-stdout`` sends
+the module's standard output, and that of any process it starts, to a
+private file too, while this script's own report of a refusal or a crash
+still goes to the original standard output.
+
 Exit status: the module's own; 2 when its ``main`` raised.
 """
 
 from __future__ import annotations
 
 import importlib
+import os
 import sys
 import traceback
 from collections.abc import Callable, Sequence
 from pathlib import PurePath
+from typing import TextIO
 
 CRASHED = 2
 _ROOTS = ("site-packages", "lib")
@@ -73,23 +81,54 @@ def describe(error: BaseException) -> list[str]:
     return lines
 
 
-def run(main: Callable[[Sequence[str]], int | None], arguments: Sequence[str]) -> int:
-    """Call ``main(arguments)`` and return its exit status, redacting a crash."""
+def run(
+    main: Callable[[Sequence[str]], int | None],
+    arguments: Sequence[str],
+    report: TextIO | None = None,
+) -> int:
+    """Call ``main(arguments)`` and return its exit status, redacting a crash.
+
+    A refusal or a crash is reported to ``report``, by default standard
+    output.
+    """
     try:
         status = main(arguments)
     except SystemExit as error:
         # A tool's own refusal: its message quotes no value, by contract.
         if isinstance(error.code, str):
-            print(error.code, flush=True)
+            print(error.code, file=report or sys.stdout, flush=True)
             return 1
         return 0 if error.code is None else int(error.code)
     except BaseException as error:  # pylint: disable = broad-exception-caught
-        print("\n".join(describe(error)), flush=True)
+        print("\n".join(describe(error)), file=report or sys.stdout, flush=True)
         return CRASHED
     return 0 if status is None else int(status)
 
 
+def private_stdout(path: str) -> TextIO:
+    """Send standard output to ``path``, and return the original's stream.
+
+    The file descriptor is redirected, so processes started later write
+    there too.
+    """
+    sys.stdout.flush()
+    original = os.fdopen(os.dup(sys.stdout.fileno()), "w", encoding="utf-8")
+    with open(path, "w", encoding="utf-8") as private:
+        os.dup2(private.fileno(), sys.stdout.fileno())
+    return original
+
+
+def _main(argv: Sequence[str]) -> int:
+    report = None
+    if argv[:1] == ["--private-stdout"] and len(argv) >= 2:
+        report = private_stdout(argv[1])
+        argv = argv[2:]
+    if not argv:
+        raise SystemExit(
+            "usage: run_redacted.py [--private-stdout <file>] <module> [arguments...]"
+        )
+    return run(importlib.import_module(argv[0]).main, argv[1:], report)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        raise SystemExit("usage: run_redacted.py <module> [arguments...]")
-    sys.exit(run(importlib.import_module(sys.argv[1]).main, sys.argv[2:]))
+    sys.exit(_main(sys.argv[1:]))
