@@ -65,6 +65,11 @@ STRINGS = frozenset(
         "Type 1 Required",
         "Unrecognized enumerated value",
         "String attribute has different value",
+        "GeneralStudy",
+        "NotAKeyword",
+        # An entity's name, stored as the end of a longer string.
+        "InformationEntityPatient",
+        "Study",
         ORIENTATION,
         EVEN_GROUP,
         EXPLICIT_UN,
@@ -199,6 +204,72 @@ def test_a_report_holds_no_value_quoted_outside_angle_brackets(monkeypatch):
             f"{ORIENTATION} = &lt;value&gt;" in text
             or f"{ORIENTATION} = <value>" in text
         )
+
+
+# A value that spans lines: dciodvfy prints its line breaks, so its later
+# lines can have a message's form, with the value in the structural fields.
+SPANNING = (
+    f'Error - </PatientName(0010,0010)> - Value invalid for this VR [PN] = "{PLANTED}\n'
+    f"Error - </(0010,0010)> - Missing attribute - Module=<{PLANTED}>\n"
+    f'{PLANTED}"\n'
+)
+
+
+def test_a_value_that_spans_lines_leaves_no_structural_field():
+    validation = validators.parse_dciodvfy(SPANNING, STRINGS)
+
+    assert PLANTED not in repr(validation)
+    assert Finding(DCIODVFY, "error", "(0010,0010)", "Missing attribute") in (
+        validation.findings
+    )
+    assert validation.iod == ""
+
+
+def test_a_dcentvfy_line_keeps_only_names_the_validator_holds():
+    output = (
+        f"Error - String attribute has different value - Element=<{PLANTED}> "
+        f"IE=<{PLANTED}>\n"
+        "Error - String attribute has different value - Element=<PatientName> "
+        "IE=<Patient>\n"
+    )
+
+    validation = validators.parse_dcentvfy(output, STRINGS)
+
+    assert PLANTED not in repr(validation)
+    assert set(validation.findings) == {
+        Finding(DCENTVFY, "error", "", "String attribute has different value"),
+        Finding(
+            DCENTVFY,
+            "error",
+            "(0010,0010)",
+            "String attribute has different value",
+            "Patient",
+        ),
+    }
+
+
+def test_reports_hold_no_value_from_a_line_spanning_value(monkeypatch):
+    baseline = validators.parse_dciodvfy(
+        "Error - </StudyDate(0008,0020)> - Missing attribute for Type 1 Required"
+        " - Module=<GeneralStudy>\n",
+        STRINGS,
+    )
+    output = validators.parse_dciodvfy(
+        "Error - </StudyDate(0008,0020)> - Missing attribute for Type 1 Required"
+        " - Module=<GeneralStudy>\n" + SPANNING,
+        STRINGS,
+    )
+    spanned = validators.parse_dciodvfy(SPANNING, STRINGS)
+
+    introduced = _comparison(monkeypatch, baseline, output)
+    # The same lines in the input cancel.
+    control = _comparison(monkeypatch, spanned, spanned)
+
+    assert not introduced.passed
+    assert control.passed and not control.introduced
+    for comparison in (introduced, control):
+        for text in (comparison.json(), comparison.markdown()):
+            assert PLANTED not in text
 
 
 def test_a_reason_that_is_not_the_validators_own_is_dropped():
