@@ -852,7 +852,13 @@ def test_loading_dicom_validator_leaves_the_root_logger_as_it_was(
         def load_dicom_info(self, _edition):
             return object()
 
-    monkeypatch.setattr(validators.dicom_validator_editions, "EditionReader", Reader)
+    # The module is replaced, not its attribute, so that the test needs no
+    # dicom-validator.
+    monkeypatch.setattr(
+        validators,
+        "dicom_validator_editions",
+        types.SimpleNamespace(EditionReader=Reader),
+    )
     root = logging.getLogger()
     handlers, level = list(root.handlers), root.level
 
