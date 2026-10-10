@@ -2,8 +2,9 @@ name: MIDI-B Benchmark
 
 # On demand, download one subset of NCI's MIDI-B test data from TCIA
 # (https://doi.org/10.7937/cf2p-aw56, CC BY 4.0), de-identify it with the
-# development benchmark harness, and score the release against the subset's
-# answer key (D-018).
+# development benchmark harness under each preset, and score the release
+# against the subset's answer key, both with the harness and with NCI's own
+# validation script (D-018).
 #
 # MIDI-B's files carry synthetic identifiers, which the project treats as
 # real, and this repository's logs and artefacts are public. So the logs and
@@ -55,7 +56,7 @@ concurrency:
 
 jobs:
   benchmark:
-    name: MIDI-B ${{ matrix.subset }}
+    name: MIDI-B ${{ matrix.subset }} ${{ matrix.preset }}
     strategy:
       fail-fast: false
       matrix:
@@ -64,12 +65,14 @@ jobs:
           ${{ fromJSON(inputs.subset == 'validation' && '["validation"]'
           || inputs.subset == 'test' && '["test"]'
           || '["validation", "test"]') }}
+        preset: [basic, basic-clean-descriptors]
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 350
     permissions:
       contents: read
     env:
       SUBSET: ${{ matrix.subset }}
+      PRESET: ${{ matrix.preset }}
       CHOSEN: ${{ inputs.subset }}
       # A push (temporary, above) has no inputs, and checks TCIA's packages.
       ANSWER_KEYS_FROM: ${{ inputs.answer-keys-from || 'tcia' }}
@@ -80,6 +83,10 @@ jobs:
       ASPERA_GEM_SHA256: 562eb4214e8910b03b6618eb862ef8065362b501504bf35a270aa514279b3f6c
       ANSWER_KEY_URL: ${{ inputs.answer-key-url }}
       ANSWER_KEY_SHA256: ${{ inputs.answer-key-sha256 }}
+      # NCI's validation script (https://github.com/CBIIT/midi_validation_script,
+      # Apache-2.0) at a pinned commit. It pins pydicom 2.2.1, so it runs in
+      # an environment of its own, on Python 3.10.
+      NCI_SCRIPT_COMMIT: ccc0939317d5ffd14edda33bc04641490d6f2254
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -155,12 +162,11 @@ jobs:
           cp "${RUNNER_TEMP}/midi-b/data/download.json" "${RUNNER_TEMP}/midi-b/results/"
           df -h /
 
-      # Under each preset in turn, each in a work directory of its own,
-      # removed once its results are copied, to keep the disk free.
       - name: Run the benchmark
         id: benchmark
         run: |
           data="${RUNNER_TEMP}/midi-b/data"
+          work="${RUNNER_TEMP}/midi-b/work"
           results="${RUNNER_TEMP}/midi-b/results"
           if [[ ! -f "${data}/answer-key.db" ]]; then
             echo "No answer key is pinned for ${SUBSET} or given, so the benchmark did not run." \
@@ -169,29 +175,77 @@ jobs:
             exit 0
           fi
           name="$(jq -r '.name' "${data}/download.json")"
-          for preset in basic basic-clean-descriptors; do
-            work="${RUNNER_TEMP}/midi-b/work-${preset}"
-            uv run --no-sync python .github/scripts/run_redacted.py \
-              pymedphys._dicom.deidentify.midi_benchmark_command run \
-              --source "${data}/images" \
-              --answer-key "${data}/answer-key.db" \
-              --work "${work}" \
-              --collection "${name}" \
-              --preset "${preset}" \
-              2>> "${RUNNER_TEMP}/midi-b/private/benchmark-stderr.log"
-            cp "${work}/benchmark.md" "${results}/benchmark-${preset}.md"
-            cp "${work}/benchmark.json" "${results}/benchmark-${preset}.json"
-            df -h /
-            rm -rf "${work}"
-          done
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            pymedphys._dicom.deidentify.midi_benchmark_command run \
+            --source "${data}/images" \
+            --answer-key "${data}/answer-key.db" \
+            --work "${work}" \
+            --collection "${name}" \
+            --preset "${PRESET}" \
+            2> "${RUNNER_TEMP}/midi-b/private/benchmark-stderr.log"
+          cp "${work}/benchmark.md" "${work}/benchmark.json" "${results}/"
           echo "ran=true" >> "${GITHUB_OUTPUT}"
+          df -h /
+
+      # NCI's script scores the same release from the mapping files that the
+      # harness wrote. It logs values from the files, so its logs and its
+      # results database stay on the runner, and only the harness's count of
+      # its results, which holds none, is kept.
+      - name: Score the release with NCI's validation script
+        if: steps.benchmark.outputs.ran == 'true'
+        run: |
+          nci="${RUNNER_TEMP}/nci"
+          private="${RUNNER_TEMP}/midi-b/private"
+          work="${RUNNER_TEMP}/midi-b/work"
+          results="${RUNNER_TEMP}/midi-b/results"
+          git init -q "${nci}"
+          git -C "${nci}" fetch -q --depth 1 https://github.com/CBIIT/midi_validation_script.git \
+            "${NCI_SCRIPT_COMMIT}"
+          git -C "${nci}" checkout -q FETCH_HEAD
+          uv venv -q --python 3.10 "${RUNNER_TEMP}/nci-venv"
+          uv pip install -q --python "${RUNNER_TEMP}/nci-venv/bin/python" \
+            -r "${nci}/requirements.txt"
+          {
+            echo "NCI validation script commit ${NCI_SCRIPT_COMMIT}"
+            uv pip freeze --python "${RUNNER_TEMP}/nci-venv/bin/python"
+          } > "${results}/nci-script-environment.txt"
+          jq -n \
+            --arg release "${work}/release" \
+            --arg output "${private}/nci-output" \
+            --arg key "${RUNNER_TEMP}/midi-b/data/answer-key.db" \
+            --arg uids "${work}/validation-script/uid_mapping.csv" \
+            --arg patients "${work}/validation-script/patid_mapping.csv" \
+            --arg logs "${private}/nci-logs" \
+            --arg cpus "$(nproc)" \
+            '{run_name: "release", input_data_path: $release,
+              output_data_path: $output, answer_db_file: $key,
+              uid_mapping_file: $uids, patid_mapping_file: $patients,
+              multiprocessing: "True", multiprocessing_cpus: $cpus,
+              log_path: $logs, log_level: "info", report_series: "False"}' \
+            > "${private}/nci-config.json"
+          status=0
+          (cd "${nci}" && "${RUNNER_TEMP}/nci-venv/bin/python" run_validation.py \
+            "${private}/nci-config.json") > "${private}/nci-script.log" 2>&1 || status=$?
+          echo "NCI's validation script exited with ${status}."
+          database="${private}/nci-output/release/validation_results.db"
+          if [[ -f "${database}" ]]; then
+            uv run --no-sync python .github/scripts/run_redacted.py \
+              pymedphys._dicom.deidentify.midi_benchmark_command script-results \
+              "${database}" > "${results}/script-results.json" \
+              || echo "The script's results could not be counted." \
+                | tee "${results}/script-results.txt"
+          else
+            echo "NCI's validation script wrote no results (exit status ${status})." \
+              | tee "${results}/script-results.txt"
+          fi
+          df -h /
 
       - name: Summarise
         if: ${{ !cancelled() }}
         run: |
           results="${RUNNER_TEMP}/midi-b/results"
           {
-            echo "# MIDI-B ${SUBSET}"
+            echo "# MIDI-B ${SUBSET}, ${PRESET}"
             echo
             if [[ -f "${results}/download.json" ]]; then
               echo '```json'
@@ -199,10 +253,17 @@ jobs:
               echo '```'
               echo
             fi
-            for file in "${results}"/benchmark*.md; do
-              if [[ -f "${file}" ]]; then
-                cat "${file}"
+            if [[ -f "${results}/benchmark.md" ]]; then
+              cat "${results}/benchmark.md"
+              echo
+            fi
+            for file in script-results.json script-results.txt; do
+              if [[ -f "${results}/${file}" ]]; then
+                echo "## NCI validation script"
                 echo
+                if [[ "${file}" == *.json ]]; then echo '```json'; fi
+                cat "${results}/${file}"
+                if [[ "${file}" == *.json ]]; then echo '```'; fi
               fi
             done
           } >> "${GITHUB_STEP_SUMMARY}"
@@ -211,7 +272,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midi-b-${{ env.SUBSET }}-results
+          name: midi-b-${{ env.SUBSET }}-${{ env.PRESET }}-results
           path: ${{ runner.temp }}/midi-b/results/
           if-no-files-found: warn
           retention-days: 90

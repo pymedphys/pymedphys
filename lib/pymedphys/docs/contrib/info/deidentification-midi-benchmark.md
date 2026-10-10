@@ -211,16 +211,20 @@ Repeat steps 3 to 7 with `--subset test` and a destination such as `/data/midi-b
 
 ## 9. Run it on GitHub Actions instead
 
-The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchmark.yml`) does steps 2 to 6 on a GitHub-hosted runner, so you need neither the disk space nor the download time. It runs only when started by hand. A maintainer starts it on `pymedphys/pymedphys`; anyone can start it on their own fork, where it uses the fork's free runner minutes.
+The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchmark.yml`) does steps 2 to 7 on GitHub-hosted runners, so you need neither the disk space nor the download time. It runs only when started by hand. A maintainer starts it on `pymedphys/pymedphys`; anyone can start it on their own fork, where it uses the fork's free runner minutes.
 
 1. On GitHub, open the repository's (or your fork's) **Actions** tab, choose **MIDI-B Benchmark**, and choose **Run workflow**.
-2. Pick the branch, the subset (`validation`, `test`, or `both`, which runs each in a job of its own), and where the answer key comes from:
+2. Pick the branch, the subset (`validation`, `test`, or `both`), and where the answer key comes from. Each subset runs under `basic` and under `basic-clean-descriptors`, each in a job of its own.
    - `pinned`, the default: the copy at the address pinned in `midi_data.toml`. While no address is pinned, the run downloads and checks the images but cannot score them.
    - `tcia`: TCIA's own Aspera packages, fetched on the runner with IBM's `ascli` and checked against the pinned digest. This is the check from the source described in section 10.
    - Otherwise, give an HTTPS address for an answer key and its SHA-256, for one subset at a time.
-3. Each job benchmarks its subset under `basic` and then under `basic-clean-descriptors`. When the run finishes, its summary page shows `download.json` and both presets' results, and the `midi-b-<subset>-results` artefact holds `download.json`, `benchmark-basic.md` and `benchmark-basic.json`, `benchmark-basic-clean-descriptors.md` and `.json`, and, with `tcia`, `tcia-answer-keys.txt`, the names, sizes, and SHA-256 digests of the files in TCIA's packages.
+3. Each job benchmarks its subset under its preset, then scores the same release with NCI's validation script (step 7), at a pinned commit, in a Python 3.10 environment of its own. When the run finishes, its summary page shows each job's `download.json`, `benchmark.md`, and the script's counts, and each job's `midi-b-<subset>-<preset>-results` artefact holds:
+   - `download.json`, `benchmark.md`, and `benchmark.json`;
+   - `script-results.json`, the script's results counted by answer-key category as step 7's `script-results` counts them, or `script-results.txt` saying why there are none;
+   - `nci-script-environment.txt`, the script's commit and the versions of the packages it ran with;
+   - with `tcia`, `tcia-answer-keys.txt`, the names, sizes, and SHA-256 digests of the files in TCIA's packages.
 
-Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, and the mapping files. The benchmark's standard error, where libraries log, goes to a file on the runner, and a crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.
+Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, the mapping files, and the NCI script's logs and results database, which quote values from the files. The benchmark's standard error, where libraries log, goes to a file on the runner, and a crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.
 
 ## 10. Where the data come from, and how to check them
 
