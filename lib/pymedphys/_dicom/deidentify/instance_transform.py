@@ -721,7 +721,9 @@ class InstanceTransform:
         if not classification.sequestered:
             risk += source_gaps(source, iod)
         plan = plan_instance(source, self._rules, iod)
-        edits = edit_instance(source, plan, self._key, record.patient)
+        edits = edit_instance(
+            source, plan, self._key, record.patient, record.series_numbering
+        )
         evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
         if classification.sequestered:
             reasons: tuple[object, ...] = (classification.reason,)
@@ -748,6 +750,7 @@ class InstanceTransform:
                     plan_instance(source, fallback, iod),
                     self._key,
                     record.patient,
+                    record.series_numbering,
                 )
 
             try:

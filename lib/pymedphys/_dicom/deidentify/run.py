@@ -25,14 +25,18 @@ A run has five steps:
 2. The first pass reads each file once, builds its
    :class:`~pymedphys._dicom.deidentify.references.InstanceRecord`, and
    builds the :class:`~pymedphys._dicom.deidentify.reference_graph.ReferenceGraph`
-   of the inputs, before anything is written. Its findings take their
-   graded consequences: a study whose instances name several patients
-   stops the run with :class:`RunStopped` before any directory is created;
-   every copy of a conflicting instance, every instance of a series in
-   several studies, and every instance without its SOP Instance, Series
-   Instance, or Study Instance UID is sequestered; identical copies are
-   processed once, from the first copy that reads unchanged; and a dangling
-   reference or a frame of reference mismatch is reported only.
+   of the inputs, before anything is written. It gives each record the
+   numbering of all the Series Numbers of its study
+   (:func:`~pymedphys._dicom.deidentify.series_numbers.number_studies`),
+   so that every instance of a study renumbers its series alike. Its
+   findings take their graded consequences: a study whose instances name
+   several patients stops the run with :class:`RunStopped` before any
+   directory is created; every copy of a conflicting instance, every
+   instance of a series in several studies, and every instance without its
+   SOP Instance, Series Instance, or Study Instance UID is sequestered;
+   identical copies are processed once, from the first copy that reads
+   unchanged; and a dangling reference or a frame of reference mismatch is
+   reported only.
 3. The second pass reads each file again, sequesters it if it is no longer
    the file that discovery found or its bytes differ from the first pass's,
    and gives it to the run's :class:`Transform`. A transform returns the
@@ -139,6 +143,7 @@ from .run_results import (
     WrittenCheck,
 )
 from .run_written import ReleaseWithheld  # pylint: disable = unused-import
+from .series_numbers import number_studies
 from .written_references import WrittenFinding
 
 # Media Storage SOP Class UID of a DICOMDIR: the Media Storage Directory
@@ -581,6 +586,14 @@ def _first_pass(discovery: Discovery) -> _FirstPass:
                 position, Status.REFUSED, RunReason.NOT_READABLE_AS_DICOM
             )
 
+    numberings = number_studies(
+        {position: record.series_numbering for position, record in records.items()},
+        {position: record.study for position, record in records.items()},
+    )
+    records = {
+        position: dataclasses.replace(record, series_numbering=numberings[position])
+        for position, record in records.items()
+    }
     positions = tuple(records)
     graph = build_reference_graph([records[position] for position in positions])
     findings = tuple(

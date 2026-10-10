@@ -238,8 +238,8 @@ KEPT_URIS = {"(0008,010E)": "CodingSchemeURL", "(0008,0120)": "URNCodeValue"}
 # place that no removed sequence encloses, so that X/Z/D resolves to D there.
 REQUIRED_URIS = {"(0028,7FE0)"}
 ICC_PROFILE = "(0028,2000)"
-# A number that can hold anything, such as a date, emptied as Table E.1-1
-# empties Study ID (0020,0010).
+# A number that can hold anything, such as a date, which Z or D replaces
+# with its rank among its study's Series Numbers.
 SERIES_NUMBER = "(0020,0011)"
 
 
@@ -607,7 +607,7 @@ def test_patient_size_code_sequence_is_removed_under_retain_patient_characterist
 
 
 @pytest.mark.deid_requirement("MIDI-BP-06")
-def test_series_number_is_removed_by_type_under_every_option():
+def test_series_number_has_x_z_d_under_every_option():
     rule = supplementary_actions.load_supplementary_actions().rules[SERIES_NUMBER]
 
     assert (rule.keyword, rule.action, dict(rule.options)) == (
@@ -622,9 +622,11 @@ def test_series_number_is_removed_by_type_under_every_option():
 
 
 @pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-06")
-def test_series_number_is_emptied_in_the_supported_iods_but_where_type_1():
+def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
     # Type 2 in the General Series and RT Series Modules; Type 1 only in the
     # items of the Structure Set Module's Source Series Information Sequence.
+    # Either way it then takes its rank, or is emptied or given D's dummy
+    # value if it has none.
     tables = iods.load_iod_tables()
     resolved = {
         (
