@@ -139,7 +139,8 @@ def coding_passes_kept(codestream: bytes) -> bool | None:
     bool or None
         ``True`` where every included code-block holds every coding pass,
         ``False`` where one holds fewer, and ``None`` where the packets
-        cannot be read here. Never raises.
+        cannot be read here, even where a code-block holds fewer passes.
+        Never raises.
     """
     try:
         return _kept(codestream)
