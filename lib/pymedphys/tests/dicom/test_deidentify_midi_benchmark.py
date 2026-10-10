@@ -646,6 +646,31 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
         "not-in-input": 1,
     }
     assert document["coverage"]["by_modality"]["NM"]["outside-coverage"] == 1
+    assert document["coverage"]["not_released"] == [
+        {
+            "context": "outside-coverage",
+            "reasons": None,
+            "sop_class": "Nuclear Medicine Image Storage",
+            "transfer_syntax": "Explicit VR Little Endian",
+            "instances": 1,
+            "checks": 1,
+        }
+    ]
+    headline = document["headline"]
+    assert headline["checks"] == sum(
+        row[field]
+        for row in document["categories"]
+        for field in (
+            "passed",
+            "failed",
+            "deliberate",
+            "not_evaluated",
+            "withheld",
+            "outside_coverage",
+            "not_in_input",
+        )
+    )
+    assert (headline["outside_coverage"], headline["not_in_input"]) == (1, 1)
     assert _category(document, "tcia", "TEST-RETAIN-DESCRIPTION")["deliberate"] == 1
     assert _category(document, "hipaa", "HIPAA-C") == {
         "family": "hipaa",
@@ -763,6 +788,7 @@ def test_the_markdown_gives_each_section(tmp_path):
     for heading in (
         "# MIDI benchmark results",
         "## Versions",
+        "## Headline",
         "## Supported coverage",
         "## Results by answer-key category",
         "## Deliberate differences",
@@ -772,6 +798,11 @@ def test_the_markdown_gives_each_section(tmp_path):
     assert "| tcia TEST-RETAIN-DESCRIPTION | text_retained | (0008,1030) | X | 1 |" in (
         markdown
     )
+    assert "| Not released: outside coverage | 1 | " in markdown
+    assert (
+        "| outside-coverage | none | Nuclear Medicine Image Storage | "
+        "Explicit VR Little Endian | 1 | 1 |"
+    ) in markdown
 
 
 def test_an_existing_work_directory_is_refused(tmp_path):
@@ -781,17 +812,6 @@ def test_an_existing_work_directory_is_refused(tmp_path):
         benchmark.run_benchmark(
             _source(tmp_path), _benchmark_key(tmp_path), tmp_path / "work"
         )
-
-
-def test_a_preset_with_clean_descriptors_is_refused_for_now(tmp_path):
-    with pytest.raises(benchmark.BenchmarkError, match="reviewed-names list"):
-        benchmark.run_benchmark(
-            _source(tmp_path),
-            _benchmark_key(tmp_path),
-            tmp_path / "work",
-            preset="basic-clean-descriptors",
-        )
-    assert not (tmp_path / "work").exists()
 
 
 def _script_results(path, rows):

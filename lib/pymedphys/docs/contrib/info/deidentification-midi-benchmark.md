@@ -122,7 +122,7 @@ uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmar
 ```
 
 - `--preset` defaults to `basic`, the run to do first. The preset need not be enabled, since this is a validation run.
-- It refuses `basic-clean-descriptors`, which needs a reviewed ROI-names list that the harness does not take yet.
+- `--preset basic-clean-descriptors` runs the Clean Descriptors Option too. The harness cleans ROI Names with the pinned TG-263 edition, which it downloads to PyMedPhys's data directory on first use, or reads from a copy of the spreadsheet given with `--tg263`. No one reviews the names in a benchmark, so a name that would be held for review is emptied, as `--empty-held-roi-names` empties it, and its structure set is released and scored.
 - It refuses a work directory that already exists. For another run, use a new name such as `validation-basic-2`.
 - At the end it prints the results as Markdown, the same text as `benchmark.md`.
 - If it stops with an error, the message quotes no value from the files, so it is safe to share in an issue.
@@ -133,13 +133,13 @@ Inside the work directory:
 
 | Path | What it is | Safe to share? |
 | --- | --- | --- |
-| `benchmark.md` | The results to read: counts by answer-key category, coverage, deliberate differences (by category, tag, and the action the engine selected), and findings. | Yes |
+| `benchmark.md` | The results to read: a headline over every check, counts by answer-key category, coverage (with the unreleased instances by SOP Class and transfer syntax), deliberate differences (by category, tag, and the action the engine selected), and findings. | Yes |
 | `benchmark.json` | The same results as JSON, with versions and digests. | Yes |
 | `release/` | The de-identified release, with its release report. | No |
 | `qc/` | The confidential QC pack. | No |
 | `validation-script/` | `uid_mapping.csv` and `patid_mapping.csv`, mapping the test data's UIDs and Patient IDs to their replacements, for the NCI script. | No |
 
-In `benchmark.md`, read the findings first. The deliberate differences are where TCIA's curation differs from the Basic Profile. Checks of instances outside the release's coverage (a nuclear medicine image, say) and of instances the run withheld are counted apart and not scored. A withheld instance withholds all of its patient's files.
+In `benchmark.md`, the headline counts every check of the answer key. Checks of instances that the run did not release (withheld, or outside the release's coverage) and of instances the input lacked are outcomes of their own, so nothing drops out of the total, and the coverage section lists the unreleased instances by the run's reasons, SOP Class, and transfer syntax. Then read the findings. The deliberate differences are where TCIA's curation differs from the Basic Profile. Checks of instances outside the release's coverage (a nuclear medicine image, say) and of instances the run withheld are neither passed nor failed. A withheld instance withholds all of its patient's files.
 
 ## 6. Share the results
 
@@ -218,7 +218,7 @@ The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchm
    - `pinned`, the default: the copy at the address pinned in `midi_data.toml`. While no address is pinned, the run downloads and checks the images but cannot score them.
    - `tcia`: TCIA's own Aspera packages, fetched on the runner with IBM's `ascli` and checked against the pinned digest. This is the check from the source described in section 10.
    - Otherwise, give an HTTPS address for an answer key and its SHA-256, for one subset at a time.
-3. When the run finishes, its summary page shows `download.json` and `benchmark.md`, and the `midi-b-<subset>-results` artefact holds `download.json`, `benchmark.md`, `benchmark.json`, and, with `tcia`, `tcia-answer-keys.txt`, the names, sizes, and SHA-256 digests of the files in TCIA's packages.
+3. Each job benchmarks its subset under `basic` and then under `basic-clean-descriptors`. When the run finishes, its summary page shows `download.json` and both presets' results, and the `midi-b-<subset>-results` artefact holds `download.json`, `benchmark-basic.md` and `benchmark-basic.json`, `benchmark-basic-clean-descriptors.md` and `.json`, and, with `tcia`, `tcia-answer-keys.txt`, the names, sizes, and SHA-256 digests of the files in TCIA's packages.
 
 Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, and the mapping files. The benchmark's standard error, where libraries log, goes to a file on the runner, and a crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.
 

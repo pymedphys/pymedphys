@@ -155,28 +155,36 @@ jobs:
           cp "${RUNNER_TEMP}/midi-b/data/download.json" "${RUNNER_TEMP}/midi-b/results/"
           df -h /
 
+      # Under each preset in turn, each in a work directory of its own,
+      # removed once its results are copied, to keep the disk free.
       - name: Run the benchmark
         id: benchmark
         run: |
           data="${RUNNER_TEMP}/midi-b/data"
+          results="${RUNNER_TEMP}/midi-b/results"
           if [[ ! -f "${data}/answer-key.db" ]]; then
             echo "No answer key is pinned for ${SUBSET} or given, so the benchmark did not run." \
-              | tee "${RUNNER_TEMP}/midi-b/results/benchmark.md"
+              | tee "${results}/benchmark.md"
             echo "ran=false" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
           name="$(jq -r '.name' "${data}/download.json")"
-          uv run --no-sync python .github/scripts/run_redacted.py \
-            pymedphys._dicom.deidentify.midi_benchmark_command run \
-            --source "${data}/images" \
-            --answer-key "${data}/answer-key.db" \
-            --work "${RUNNER_TEMP}/midi-b/work" \
-            --collection "${name}" \
-            2> "${RUNNER_TEMP}/midi-b/private/benchmark-stderr.log"
-          cp "${RUNNER_TEMP}/midi-b/work/benchmark.md" "${RUNNER_TEMP}/midi-b/work/benchmark.json" \
-            "${RUNNER_TEMP}/midi-b/results/"
+          for preset in basic basic-clean-descriptors; do
+            work="${RUNNER_TEMP}/midi-b/work-${preset}"
+            uv run --no-sync python .github/scripts/run_redacted.py \
+              pymedphys._dicom.deidentify.midi_benchmark_command run \
+              --source "${data}/images" \
+              --answer-key "${data}/answer-key.db" \
+              --work "${work}" \
+              --collection "${name}" \
+              --preset "${preset}" \
+              2>> "${RUNNER_TEMP}/midi-b/private/benchmark-stderr.log"
+            cp "${work}/benchmark.md" "${results}/benchmark-${preset}.md"
+            cp "${work}/benchmark.json" "${results}/benchmark-${preset}.json"
+            df -h /
+            rm -rf "${work}"
+          done
           echo "ran=true" >> "${GITHUB_OUTPUT}"
-          df -h /
 
       - name: Summarise
         if: ${{ !cancelled() }}
@@ -191,9 +199,12 @@ jobs:
               echo '```'
               echo
             fi
-            if [[ -f "${results}/benchmark.md" ]]; then
-              cat "${results}/benchmark.md"
-            fi
+            for file in "${results}"/benchmark*.md; do
+              if [[ -f "${file}" ]]; then
+                cat "${file}"
+                echo
+              fi
+            done
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload the results
