@@ -36,11 +36,12 @@ from collections.abc import Callable, Mapping
 from pymedphys._data.download import download_with_progress
 from pymedphys._dicom.deidentify.codes import CODE_TABLES
 from pymedphys._dicom.deidentify.iods import IOD_MODULES_TABLE, MODULE_ATTRIBUTES_TABLE
+from pymedphys._dicom.deidentify.residual_exemptions import DEFINED_TERMS_TABLE
 from pymedphys._dicom.deidentify.sop_classes import STORAGE_SOP_CLASS_TABLE
 from pymedphys._dicom.deidentify.standard import SCHEMA, STANDARD_DIR, content_sha256
 from pymedphys._dicom.deidentify.uid_registry import UID_TABLES
 
-from . import annex_e, chtml, ps3_3, ps3_4, ps3_6, ps3_16
+from . import annex_e, chtml, ps3_3, ps3_3_terms, ps3_4, ps3_6, ps3_16
 from .sources import SourceDigestError, read_verified_source
 
 # NEMA serves the current edition only under "current". Superseded editions
@@ -405,6 +406,18 @@ def _module_attributes(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object
     )
 
 
+def _defined_terms(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    """Return the Enumerated Values and Defined Terms of the CS attributes."""
+    dictionary = {
+        attribute.tag: attribute.vr
+        for attribute in ps3_6.parse_table_6_1(
+            _select(pages, _CHAPTER_6, ps3_6.TABLE_6_1)
+        )
+    }
+    rows = ps3_3_terms.parse_terms(pages[_PS3_3].decode("utf-8"), dictionary)
+    return _document(pin, _PS3_3, ps3_3_terms.TERMS_LABEL, list(rows))
+
+
 def _registry_table(
     source: str, label: str, parse: Callable[[str, chtml.HtmlTable], tuple]
 ) -> Callable[[Pin, Mapping[str, bytes]], dict[str, object]]:
@@ -425,6 +438,7 @@ _OUTPUTS: dict[str, Callable[[Pin, Mapping[str, bytes]], dict[str, object]]] = {
     "data_dictionary.json": _data_dictionary,
     "iod_modules.json": _iod_modules,
     "module_attributes.json": _module_attributes,
+    DEFINED_TERMS_TABLE.file: _defined_terms,
     STORAGE_SOP_CLASS_TABLE.file: _storage_sop_classes,
     **{
         spec.file: _registry_table(_CHAPTER_A, label, ps3_6.parse_uid_table)

@@ -43,6 +43,7 @@ from pymedphys._dev.deid_tables import (
     edition_check,
     generate,
     ps3_3,
+    ps3_3_terms,
     ps3_4,
     ps3_6,
     ps3_16,
@@ -51,6 +52,7 @@ from pymedphys._dev.deid_tables import (
 from pymedphys._dicom.deidentify import (
     codes,
     iods,
+    residual_exemptions,
     sop_classes,
     standard,
     uid_registry,
@@ -1307,12 +1309,34 @@ PS3_3_PATIENT_MACRO = _spanning_table(
     ATTRIBUTE_HEADER,
     (("Fixture Scan", "(0998,0060)", "3", "Invented."),),
 )
+
+
+def _terms(title, *terms):
+    """Return a list of terms as PS3.3 marks one up."""
+    return (
+        f'<div class="variablelist"><p class="title"><strong>{title}</strong></p>'
+        '<dl class="variablelist compact">'
+        + "".join(
+            f'<dt><span class="term">{term}</span></dt><dd><p>Invented.</p></dd>'
+            for term in terms
+        )
+        + "</dl></div>"
+    )
+
+
 PS3_3_IMAGE = _spanning_table(
     "Table C.99-2. Fixture Image Module Attributes",
     ATTRIBUTE_HEADER,
     (
         ("Fixture Overlay Value", "(60xx,0998)", "1", "Invented."),
-        ("Fixture Scan", "(0998,0060)", "3", "Invented."),
+        (
+            "Fixture Scan",
+            "(0998,0060)",
+            "3",
+            "Invented.</p>"
+            + _terms("Defined Terms:", "FIXTURE SCAN")
+            + '<p>See <a class="xref" href="#sect_C.99.2.1">C.99.2.1</a>.',
+        ),
         _include(0, "Table 10-98", "Fixture Wildcard Macro Attributes"),
     ),
 )
@@ -1468,6 +1492,9 @@ PS3_3_TABLES = (
     _section("B.99.1", PS3_3_NORMALIZED_IOD),
     _section("C.99.1", PS3_3_PATIENT, PS3_3_PATIENT_MACRO),
     _section("C.99.2", PS3_3_IMAGE),
+    _section(
+        "C.99.2.1", "<p>Invented.</p>", _terms("Enumerated Values:", "SECTION_SCAN")
+    ),
     _section("C.99.3", PS3_3_OTHER),
     _section("C.99.4b", PS3_3_CONTRAST),
     _section("C.99.5", PS3_3_FUNCTIONAL_GROUPS),
@@ -2770,7 +2797,118 @@ def test_generate_writes_the_ps3_3_tables(source_dir, tmp_path, name, table, row
     assert document["content_sha256"] == standard.content_sha256(rows)
 
 
+def test_generate_writes_the_terms_of_the_cs_attributes(source_dir, tmp_path):
+    output_dir = tmp_path / "tables"
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    document = json.loads((output_dir / "defined_terms.json").read_text("utf-8"))
+    rows = [
+        {"tag": "(0998,0060)", "term": "FIXTURE SCAN"},
+        {"tag": "(0998,0060)", "term": "SECTION_SCAN"},
+    ]
+    assert document["table"] == residual_exemptions.DEFINED_TERMS_TABLE.table
+    assert document["acknowledgement"] == "DICOM PS3.3 2099a, \u00a9 NEMA"
+    assert document["rows"] == rows
+    assert document["content_sha256"] == standard.content_sha256(rows)
+    table = residual_exemptions.load_defined_terms(output_dir / "defined_terms.json")
+    assert [(row.tag, row.term) for row in table.rows] == [
+        (row["tag"], row["term"]) for row in rows
+    ]
+
+
+def _terms_page(*parts):
+    return "<html><body>" + "".join(parts) + "</body></html>"
+
+
+def _terms_row(tag, description):
+    return (
+        "<table><tr><td><p>Name</p></td>"
+        f"<td><p>{tag}</p></td><td><p>3</p></td><td><p>{description}</p></td></tr>"
+        "</table>"
+    )
+
+
+TERMS_DICTIONARY = {
+    "(0998,0060)": "CS",
+    "(0998,0061)": "CS",
+    "(0998,0050)": "DS",
+    "(60xx,0998)": "CS",
+}
+
+
+@pytest.mark.parametrize(
+    "parts, expected",
+    [
+        # A list in the attribute's row, keeping only values that CS can hold.
+        (
+            [
+                _terms_row(
+                    "(0998,0060)", _terms("Defined Terms:", "ONE", "Two", "X" * 17)
+                )
+            ],
+            [("(0998,0060)", "ONE")],
+        ),
+        # Every list in a section the row refers to, and retired terms.
+        (
+            [
+                _section(
+                    "C.1", "<p>Invented.</p>", _terms("Retired Defined Terms:", "OLD")
+                ),
+                _section(
+                    "C.2", "<p>Invented.</p>", _terms("Enumerated Values:", "OTHER")
+                ),
+                _terms_row(
+                    "(0998,0060)", 'See <a class="xref" href="#sect_C.1">C.1</a>'
+                ),
+            ],
+            [("(0998,0060)", "OLD")],
+        ),
+        # A title that names an attribute gives its terms to that attribute,
+        # and a tag after "when" is a condition.
+        (
+            [
+                _terms_row(
+                    "(0998,0060)",
+                    _terms(
+                        "Enumerated Values for Fixture (0998,0061) when Fixture "
+                        "(0998,0060) is ONE:",
+                        "NAMED",
+                    ),
+                )
+            ],
+            [("(0998,0061)", "NAMED")],
+        ),
+        # Lists with other titles, of attributes of other VRs, and of
+        # repeating groups are left out.
+        (
+            [
+                _terms_row("(0998,0060)", _terms("Recommended text:", "TEXT")),
+                _terms_row("(0998,0050)", _terms("Enumerated Values:", "1.5")),
+                _terms_row("(60xx,0998)", _terms("Enumerated Values:", "G")),
+                _terms_row("(0998,0061)", _terms("Defined Terms:", "KEPT")),
+            ],
+            [("(0998,0061)", "KEPT")],
+        ),
+    ],
+)
+def test_parse_terms(parts, expected):
+    rows = ps3_3_terms.parse_terms(_terms_page(*parts), TERMS_DICTIONARY)
+
+    assert [(row["tag"], row["term"]) for row in rows] == expected
+
+
+def test_a_page_without_terms_fails():
+    with pytest.raises(chtml.TableFormatError, match="Enumerated Values"):
+        ps3_3_terms.parse_terms(
+            _terms_page(_terms_row("(0998,0060)", "None.")), TERMS_DICTIONARY
+        )
+
+
 def test_the_ps3_3_tables_are_named_as_the_loader_expects():
+    assert residual_exemptions.DEFINED_TERMS_TABLE.table == (
+        f"PS3.3 {ps3_3_terms.TERMS_LABEL}"
+    )
     assert iods.IOD_MODULES_TABLE == "PS3.3 IOD Modules"
     assert iods.MODULE_ATTRIBUTES_TABLE == "PS3.3 Module Attributes"
 
@@ -3153,7 +3291,12 @@ def test_a_changed_cell_changes_exactly_its_table(tables_dir):
                 b"<p>Keyword</p>",
                 f"<p>{SECRET}</p>".encode("utf-8"),
             ),
-            ["data_dictionary.json", "iod_modules.json", "module_attributes.json"],
+            [
+                "data_dictionary.json",
+                "iod_modules.json",
+                "module_attributes.json",
+                "defined_terms.json",
+            ],
         ),
     ],
 )
