@@ -27,7 +27,10 @@ them all. Where a run withholds most instances, as on MIDI-B's Test subset,
 that ran a 16 GB runner out of memory. :func:`write_released_answer_key`
 gives it only the released instances' rows instead: it looks up each file's
 rows by the file's SOP Instance UID, so it scores the released files as it
-would have, and the harness reports the withheld instances itself.
+would have, and the harness reports the withheld instances itself. Where
+most instances are released, the results alone fill the memory, so the
+workflow scores the release in parts, each with its own answer key, and
+:func:`summarise_script_results` adds up the parts' results.
 """
 
 from __future__ import annotations
@@ -39,7 +42,7 @@ import hashlib
 import io
 import os
 import sqlite3
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from .midi_answer_key import (
@@ -61,27 +64,62 @@ class ScriptResultsError(Exception):
     for the script. The message quotes no value."""
 
 
-def summarise_script_results(path: str | Path) -> dict[str, object]:
+def summarise_script_results(
+    paths: str | Path | Sequence[str | Path],
+) -> dict[str, object]:
     """Count the validation script's results by answer-key category.
 
     Parameters
     ----------
-    path : str or Path
-        The script's ``validation_results.db``.
+    paths : str, Path, or sequence of them
+        The script's ``validation_results.db``, or one for each part of a
+        release that it scored in parts.
 
     Returns
     -------
     dict
         ``categories``: for each category, the checks that the script
-        passed, failed, and left blank, ordered as :func:`run_benchmark`
-        orders them; and ``results_sha256``, naming the file.
+        passed, failed, and left blank, over every file, ordered as
+        :func:`run_benchmark` orders them; and ``results_sha256``, naming
+        the file, or a list naming each file in the order given.
 
     Raises
     ------
     ScriptResultsError
-        If the file is not an SQLite database with the script's table.
+        If no file is given, or a file is not an SQLite database with the
+        script's table.
     """
-    path = Path(path)
+    if isinstance(paths, (str, Path)):
+        several, files = False, [Path(paths)]
+    else:
+        several, files = True, [Path(path) for path in paths]
+    if not files:
+        raise ScriptResultsError("no validation results were given")
+    counts: dict[Category | None, collections.Counter] = collections.defaultdict(
+        collections.Counter
+    )
+    digests = [_count_script_results(path, counts) for path in files]
+    return {
+        "results_sha256": digests if several else digests[0],
+        "categories": [
+            {
+                "family": None if category is None else category.family,
+                "code": None if category is None else category.code,
+                "passed": tally["passed"],
+                "failed": tally["failed"],
+                "blank": tally["blank"],
+            }
+            for category, tally in sorted(
+                counts.items(), key=lambda pair: category_order(pair[0])
+            )
+        ],
+    }
+
+
+def _count_script_results(
+    path: Path, counts: dict[Category | None, collections.Counter]
+) -> str:
+    """Add one results file's checks to ``counts``, and return its digest."""
     try:
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         connection = sqlite3.connect(f"{path.absolute().as_uri()}?mode=ro", uri=True)
@@ -111,9 +149,6 @@ def summarise_script_results(path: str | Path) -> dict[str, object]:
         ) from None
     finally:
         connection.close()
-    counts: dict[Category | None, collections.Counter] = collections.defaultdict(
-        collections.Counter
-    )
     for action_text, passed, *codes in rows:
         name = action_text.strip("<>") if isinstance(action_text, str) else ""
         try:
@@ -130,21 +165,7 @@ def summarise_script_results(path: str | Path) -> dict[str, object]:
             int(passed) if isinstance(passed, (int, float)) else -1, "blank"
         )
         counts[category_of(action, categories)][outcome] += 1
-    return {
-        "results_sha256": digest,
-        "categories": [
-            {
-                "family": None if category is None else category.family,
-                "code": None if category is None else category.code,
-                "passed": tally["passed"],
-                "failed": tally["failed"],
-                "blank": tally["blank"],
-            }
-            for category, tally in sorted(
-                counts.items(), key=lambda pair: category_order(pair[0])
-            )
-        ],
-    }
+    return digest
 
 
 def write_mapping_files(

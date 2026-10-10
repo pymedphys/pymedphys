@@ -116,6 +116,26 @@ def test_the_released_answer_key_matches_a_wrapped_uid(tmp_path):
     assert [row[1] for row in _rows(out)] == [f"<{WRAPPED}>"]
 
 
+def test_a_part_of_the_release_may_link_to_its_files(tmp_path):
+    # The workflow scores the release in parts, each a tree of links.
+    release = _release(tmp_path / "release", RELEASED, WITHHELD)
+    part = tmp_path / "part" / "nested"
+    part.mkdir(parents=True)
+    linked = f"{REPLACEMENTS[RELEASED]}.dcm"
+    (part / linked).symlink_to(release / linked)
+    out = tmp_path / "released.db"
+
+    counts = midi_script_results.write_released_answer_key(
+        _answer_key(tmp_path / "key.db", [RELEASED, WITHHELD]),
+        tmp_path / "part",
+        _mapping(tmp_path / "uids.csv"),
+        out,
+    )
+
+    assert counts == {"released_instances": 1, "answer_key_instances": 1, "rows": 1}
+    assert [row[1] for row in _rows(out)] == [RELEASED]
+
+
 def test_an_output_without_a_mapped_input_is_refused(tmp_path):
     release = _release(tmp_path / "release", RELEASED)
     (release / "2.25.999.dcm").write_bytes(b"")

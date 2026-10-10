@@ -105,6 +105,10 @@ jobs:
       # Apache-2.0) at a pinned commit. It pins pydicom 2.2.1, so it runs in
       # an environment of its own, on Python 3.10.
       NCI_SCRIPT_COMMIT: ccc0939317d5ffd14edda33bc04641490d6f2254
+      # Released files that NCI's script scores at a time. Test's 23,811
+      # released files in one part used about 15.7 GB of memory and 12.9 GB
+      # of swap.
+      NCI_PART_FILES: 5000
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -334,31 +338,22 @@ jobs:
           # The script scores each withheld instance as missing and holds
           # every result in memory, which ran a 16 GB runner out on the Test
           # subset, so it is given the released instances' rows alone. It
-          # scores the released files as it would with the whole key.
-          uv run --no-sync python .github/scripts/run_redacted.py \
-            pymedphys._dicom.deidentify.midi_benchmark_command released-answer-key \
-            "${RUNNER_TEMP}/midi-b/data/answer-key.db" \
-            --release "${work}/release" \
-            --uid-mapping "${work}/validation-script/uid_mapping.csv" \
-            --out "${private}/nci-answer-key.db" \
-            | tee "${results}/nci-answer-key.json"
-          jq -n \
-            --arg release "${work}/release" \
-            --arg output "${private}/nci-output" \
-            --arg key "${private}/nci-answer-key.db" \
-            --arg uids "${work}/validation-script/uid_mapping.csv" \
-            --arg patients "${work}/validation-script/patid_mapping.csv" \
-            --arg logs "${private}/nci-logs" \
-            '{run_name: "release", input_data_path: $release,
-              output_data_path: $output, answer_db_file: $key,
-              uid_mapping_file: $uids, patid_mapping_file: $patients,
-              multiprocessing: "False", multiprocessing_cpus: "1",
-              log_path: $logs, log_level: "info", report_series: "False"}' \
-            > "${private}/nci-config.json"
+          # scores the released files as it would with the whole key. Where
+          # most of the Test subset is released, the results alone nearly
+          # fill memory and swap, so it scores the release in parts of
+          # NCI_PART_FILES files, each with its own answer key; it scores
+          # each file on its own, so the parts' results add up to the
+          # whole's.
+          parts="${private}/nci-parts"
+          mkdir -p "${parts}"
+          find "${work}/release" -type f -name '*.dcm' | LC_ALL=C sort \
+            > "${parts}/files.txt"
+          split -l "${NCI_PART_FILES}" -d -a 3 "${parts}/files.txt" "${parts}/list-"
+          shopt -s nullglob
+          lists=("${parts}"/list-*)
           # Each of the script's worker processes holds its own copy of the
           # answer key and loads its own OCR model, which ran a 16 GB runner
-          # out of memory with four; one process scores only the released
-          # files, which are few.
+          # out of memory with four; one process scores each part.
           free -m
           # Memory and swap every five minutes, as in the benchmark step.
           (while sleep 300; do
@@ -367,20 +362,63 @@ jobs:
           done) &
           sampler=$!
           status=0
-          (cd "${nci}" && "${RUNNER_TEMP}/nci-venv/bin/python" run_validation.py \
-            "${private}/nci-config.json") > "${private}/nci-script.log" 2>&1 || status=$?
+          databases=()
+          for list in "${lists[@]}"; do
+            part="part-${list##*/list-}"
+            # Links to the part's files, which the script follows.
+            mkdir "${parts}/${part}"
+            xargs -d '\n' -a "${list}" cp -s --parents -t "${parts}/${part}"
+            uv run --no-sync python .github/scripts/run_redacted.py \
+              pymedphys._dicom.deidentify.midi_benchmark_command released-answer-key \
+              "${RUNNER_TEMP}/midi-b/data/answer-key.db" \
+              --release "${parts}/${part}" \
+              --uid-mapping "${work}/validation-script/uid_mapping.csv" \
+              --out "${parts}/${part}-answer-key.db" \
+              > "${parts}/${part}-answer-key.json"
+            jq -n \
+              --arg name "${part}" \
+              --arg release "${parts}/${part}" \
+              --arg output "${private}/nci-output" \
+              --arg key "${parts}/${part}-answer-key.db" \
+              --arg uids "${work}/validation-script/uid_mapping.csv" \
+              --arg patients "${work}/validation-script/patid_mapping.csv" \
+              --arg logs "${private}/nci-logs" \
+              '{run_name: $name, input_data_path: $release,
+                output_data_path: $output, answer_db_file: $key,
+                uid_mapping_file: $uids, patid_mapping_file: $patients,
+                multiprocessing: "False", multiprocessing_cpus: "1",
+                log_path: $logs, log_level: "info", report_series: "False"}' \
+              > "${parts}/${part}-config.json"
+            part_status=0
+            (cd "${nci}" && "${RUNNER_TEMP}/nci-venv/bin/python" run_validation.py \
+              "${parts}/${part}-config.json") >> "${private}/nci-script.log" 2>&1 \
+              || part_status=$?
+            echo "NCI's validation script exited with ${part_status} on ${part}."
+            if (( part_status != 0 )); then status=${part_status}; fi
+            databases+=("${private}/nci-output/${part}/validation_results.db")
+          done
           kill "${sampler}"
           free -m
+          # The answer keys' counts, added up over the parts.
+          cat /dev/null "${parts}"/part-*-answer-key.json \
+            | jq -s '{parts: length,
+                      released_instances: (map(.released_instances) | add // 0),
+                      answer_key_instances: (map(.answer_key_instances) | add // 0),
+                      rows: (map(.rows) | add // 0)}' \
+            | tee "${results}/nci-answer-key.json"
           echo "NCI's validation script exited with ${status}."
-          database="${private}/nci-output/release/validation_results.db"
-          if [[ -f "${database}" ]]; then
+          missing=0
+          for database in "${databases[@]}"; do
+            [[ -f "${database}" ]] || missing=$((missing + 1))
+          done
+          if (( ${#databases[@]} > 0 && missing == 0 )); then
             uv run --no-sync python .github/scripts/run_redacted.py \
               pymedphys._dicom.deidentify.midi_benchmark_command script-results \
-              "${database}" > "${results}/script-results.json" \
+              "${databases[@]}" > "${results}/script-results.json" \
               || echo "The script's results could not be counted." \
                 | tee "${results}/script-results.txt"
           else
-            echo "NCI's validation script wrote no results (exit status ${status})." \
+            echo "NCI's validation script wrote no results for ${missing} of ${#databases[@]} parts (exit status ${status})." \
               | tee "${results}/script-results.txt"
           fi
           df -h /

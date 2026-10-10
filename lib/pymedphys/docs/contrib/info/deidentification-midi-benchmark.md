@@ -41,7 +41,7 @@ uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmar
 uv run --no-dev --extra user python -c "import gdcm, openjpeg, pylibjpeg"
 ```
 
-The `--help` command should list two subcommands, `run` and `script-results`, and the last command should print nothing.
+The `--help` command should list three subcommands, `run`, `released-answer-key`, and `script-results`, and the last command should print nothing.
 
 The `user` extra installs the decoders that the engine pins for compressed Pixel Data: python-gdcm for JPEG and JPEG-LS, and pylibjpeg with pylibjpeg-openjpeg for JPEG 2000 and HTJ2K. The `dicom` extra installs none of them, so a run with it alone would sequester every instance in one of those syntaxes as `no-decoder`, withholding its patient's files from the score. Either way, an instance in a compressed transfer syntax that the release does not support, such as JPEG 2000 Part 2 or a video syntax, is outside the release's coverage whatever is installed, and its checks are counted apart as outside coverage. python-gdcm publishes wheels for 64-bit Windows, macOS, and Linux with glibc 2.27 or later; elsewhere uv tries to build it from source.
 
@@ -215,7 +215,9 @@ uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmar
   /data/midi-b/nci-results/validation-basic-1/validation_results.db
 ```
 
-That prints JSON with counts and no values, which is safe to share too. The script counts per instance, and its figures will not match `benchmark.md` exactly, for the reasons given in the module docstring of `lib/pymedphys/_dicom/deidentify/midi_benchmark.py`. For example, the script fails a consistent-UID check that the mapping files do not cover, which the harness reports as not evaluated.
+That prints JSON with counts and no values, which is safe to share too.
+
+Where most instances are released, the script's results alone can fill the memory: on the Test subset, about 24,000 released files took 15.7 GB and 13 GB of swap. Score the release in parts instead. Give each part a directory of the release's files, or of links to them, its own `released-answer-key` (with `--release` naming the part), and its own config and `run_name`. The script scores each file on its own, so the parts' results add up to the whole's; pass every part's `validation_results.db` to `script-results`, which adds them up and names each file's digest in `results_sha256`, in the order given. The script counts per instance, and its figures will not match `benchmark.md` exactly, for the reasons given in the module docstring of `lib/pymedphys/_dicom/deidentify/midi_benchmark.py`. For example, the script fails a consistent-UID check that the mapping files do not cover, which the harness reports as not evaluated.
 
 ## 8. The Test subset
 
@@ -235,7 +237,7 @@ The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchm
    - `download.json`, `benchmark.md`, and `benchmark.json`;
    - `script-results.json`, the script's results counted by answer-key category as step 7's `script-results` counts them, or `script-results.txt` saying why there are none;
    - `dicom-validation.json` and `dicom-validation.md`, the validators' comparison of the release with its inputs, and `dicom-validation-status.txt`, its exit status;
-   - `nci-script-environment.txt`, the script's commit and the versions of the packages it ran with, and `nci-answer-key.json`, the counts of the answer key it was given, which holds the released instances' rows alone, as step 7 describes;
+   - `nci-script-environment.txt`, the script's commit and the versions of the packages it ran with, and `nci-answer-key.json`, the counts of the answer keys it was given, which hold the released instances' rows alone, added up over the parts it scored the release in (5,000 files each), as step 7 describes;
    - with `tcia`, `tcia-answer-keys.txt`, the names, sizes, and SHA-256 digests of the files in TCIA's packages.
 
 Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, the mapping files, and the NCI script's logs and results database, which quote values from the files. The standard error and standard output of the benchmark and of the DICOM validation, where libraries log, go to files on the runner, and the job prints the result files instead. It prints the benchmark's and the DICOM validation's results before NCI's script starts, as well as at the end, so that a runner lost in the script, which takes longest, still leaves them in the log. A crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.

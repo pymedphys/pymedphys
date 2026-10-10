@@ -844,6 +844,30 @@ def test_the_scripts_results_are_counted_by_category(tmp_path):
     assert "SYNTHETIC VALUE" not in json.dumps(summary)
 
 
+def test_the_scripts_results_in_parts_are_added_up(tmp_path, capsys):
+    first = _script_results(
+        tmp_path / "first.db",
+        [("<date_shifted>", 1, {}), ("<text_removed>", 0, {"hipaa_z": "TEST-Z"})],
+    )
+    second = _script_results(
+        tmp_path / "second.db",
+        [("<date_shifted>", 0, {}), ("<text_removed>", 1, {"hipaa_z": "TEST-Z"})],
+    )
+
+    _command("script-results", str(first), str(second))
+
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["results_sha256"] == [
+        hashlib.sha256(path.read_bytes()).hexdigest() for path in (first, second)
+    ]
+    assert summary["categories"] == [
+        {"family": "hipaa", "code": "HIPAA-C", "passed": 1, "failed": 1, "blank": 0},
+        {"family": "hipaa", "code": "TEST-Z", "passed": 1, "failed": 1, "blank": 0},
+    ]
+    with pytest.raises(midi_script_results.ScriptResultsError, match="no validation"):
+        midi_script_results.summarise_script_results([])
+
+
 def test_the_scripts_results_need_only_the_category_columns_it_made(tmp_path):
     path = tmp_path / "validation_results.db"
     connection = sqlite3.connect(path)

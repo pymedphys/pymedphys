@@ -40,8 +40,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     prints the results as CommonMark. ``released-answer-key`` takes the
     answer key, ``--release``, ``--uid-mapping``, and ``--out``, writes :func:`~pymedphys._dicom.deidentify.midi_script_results.write_released_answer_key`'s
     answer key for the script, and prints its counts as JSON.
-    ``script-results`` takes the script's ``validation_results.db`` and
-    prints :func:`~pymedphys._dicom.deidentify.midi_script_results.summarise_script_results`'s
+    ``script-results`` takes the script's ``validation_results.db``, or one
+    for each part of a release that it scored in parts, and prints :func:`~pymedphys._dicom.deidentify.midi_script_results.summarise_script_results`'s
     counts as JSON.
 
     Raises
@@ -130,7 +130,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             "Count the NCI validation script's results by answer-key category, as JSON."
         ),
     )
-    results.add_argument("results", help="The script's validation_results.db.")
+    results.add_argument(
+        "results",
+        nargs="+",
+        help=(
+            "The script's validation_results.db, or one for each part of a "
+            "release that it scored in parts."
+        ),
+    )
     arguments = parser.parse_args(argv)
     try:
         if arguments.command == "run":
@@ -159,7 +166,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             text = (
                 json.dumps(
-                    midi_script_results.summarise_script_results(arguments.results),
+                    midi_script_results.summarise_script_results(
+                        # One file is named by one digest, as before.
+                        arguments.results
+                        if len(arguments.results) > 1
+                        else arguments.results[0]
+                    ),
                     indent=2,
                 )
                 + "\n"
