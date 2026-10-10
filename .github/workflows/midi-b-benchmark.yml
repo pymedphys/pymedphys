@@ -74,7 +74,9 @@ jobs:
           || inputs.subset == 'test' && '["test"]'
           || '["validation", "test"]') }}
         preset: [basic, basic-clean-descriptors]
-    runs-on: ubuntu-latest
+    # The dicom3tools package that setup-dicom-validators pins is Ubuntu
+    # 24.04's.
+    runs-on: ubuntu-24.04
     timeout-minutes: 350
     permissions:
       contents: read
@@ -128,10 +130,14 @@ jobs:
             /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost
           df -h /
 
-      # The user extra holds the decoders for compressed transfer syntaxes.
+      # The user extra holds the decoders for compressed transfer syntaxes,
+      # and the tests extra dicom-validator.
       - uses: ./.github/actions/setup-project
         with:
-          extras: 'user'
+          extras: 'user tests'
+
+      - uses: ./.github/actions/setup-dicom-validators
+        id: validators
 
       - name: Prepare private and result directories
         run: |
@@ -230,6 +236,34 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
 
+      # dciodvfy, dcentvfy, and dicom-validator on each released file and its
+      # input (D-030). The results name no value or path; standard error,
+      # which could name a path, stays on the runner. Findings do not fail
+      # the job: they are results.
+      - name: Validate the release against its inputs
+        if: steps.benchmark.outputs.ran == 'true'
+        timeout-minutes: 120
+        env:
+          PYMEDPHYS_DICOM_VALIDATOR_STANDARD: ${{ steps.validators.outputs.standard-path }}
+        run: |
+          results="${RUNNER_TEMP}/midi-b/results"
+          status=0
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            pymedphys._dicom.deidentify.dicom_validation_command midi \
+            --source "${RUNNER_TEMP}/midi-b/data/images" \
+            --work "${RUNNER_TEMP}/midi-b/work" \
+            --out "${RUNNER_TEMP}/midi-b/dicom-validation" \
+            2> "${RUNNER_TEMP}/midi-b/private/dicom-validation-stderr.log" \
+            || status=$?
+          echo "The DICOM validation comparison exited with ${status} (0 passed, 1 unexplained findings, 2 could not compare)." \
+            | tee "${results}/dicom-validation-status.txt"
+          for file in dicom-validation.json dicom-validation.md; do
+            if [[ -f "${RUNNER_TEMP}/midi-b/dicom-validation/${file}" ]]; then
+              cp "${RUNNER_TEMP}/midi-b/dicom-validation/${file}" "${results}/"
+            fi
+          done
+          df -h /
+
       # NCI's script scores the same release from the mapping files that the
       # harness wrote. It logs values from the files, so its logs and its
       # results database stay on the runner, and only the harness's count of
@@ -308,6 +342,16 @@ jobs:
             if [[ -f "${results}/benchmark.md" ]]; then
               cat "${results}/benchmark.md"
               echo
+            fi
+            if [[ -f "${results}/dicom-validation-status.txt" ]]; then
+              echo "## DICOM validation"
+              echo
+              cat "${results}/dicom-validation-status.txt"
+              echo
+              if [[ -f "${results}/dicom-validation.md" ]]; then
+                cat "${results}/dicom-validation.md"
+                echo
+              fi
             fi
             for file in script-results.json script-results.txt; do
               if [[ -f "${results}/${file}" ]]; then

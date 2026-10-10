@@ -81,6 +81,8 @@ uv run --no-dev --extra tests python -m pymedphys._dicom.deidentify.dicom_valida
   --out /data/midi-b/runs/validation-basic-1-dicom-validation
 ```
 
+The **MIDI-B Benchmark** workflow runs the same command in each of its jobs, after the benchmark, and keeps the results in the job's artefact (section 9 of the [MIDI-B benchmark guide](deidentification-midi-benchmark.md)).
+
 For another release, give the release and the mapping instead:
 
 ```bash

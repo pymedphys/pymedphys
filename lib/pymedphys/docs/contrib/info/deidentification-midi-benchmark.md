@@ -219,9 +219,10 @@ The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchm
    - `tcia`: TCIA's own Aspera packages, fetched on the runner with IBM's `ascli` and checked against the pinned digest. This is the check from the source described in section 10.
    - Otherwise, give an HTTPS address for an answer key and its SHA-256, for one subset at a time.
    - Optionally, give an engine ref, a pull request's head (`refs/pull/<n>/head`) or a branch (`refs/heads/<name>`), to merge into the chosen branch on the runner before the run. This benchmarks an engine change before it merges, and `engine.txt` in the artefact records both commits.
-3. Each job benchmarks its subset under its preset, then scores the same release with NCI's validation script (step 7), at a pinned commit, in a Python 3.10 environment of its own. When the run finishes, its summary page shows each job's `download.json`, `benchmark.md`, and the script's counts, and each job's `midi-b-<subset>-<preset>-results` artefact holds:
+3. Each job benchmarks its subset under its preset, then validates each released file against its input with dciodvfy, dcentvfy, and dicom-validator, as the [DICOM validation guide](deidentification-dicom-validation.md) describes, and scores the same release with NCI's validation script (step 7), at a pinned commit, in a Python 3.10 environment of its own. When the run finishes, its summary page shows each job's `download.json`, `benchmark.md`, DICOM validation results, and the script's counts, and each job's `midi-b-<subset>-<preset>-results` artefact holds:
    - `download.json`, `benchmark.md`, and `benchmark.json`;
    - `script-results.json`, the script's results counted by answer-key category as step 7's `script-results` counts them, or `script-results.txt` saying why there are none;
+   - `dicom-validation.json` and `dicom-validation.md`, the validators' comparison of the release with its inputs, and `dicom-validation-status.txt`, its exit status;
    - `nci-script-environment.txt`, the script's commit and the versions of the packages it ran with;
    - with `tcia`, `tcia-answer-keys.txt`, the names, sizes, and SHA-256 digests of the files in TCIA's packages.
 
