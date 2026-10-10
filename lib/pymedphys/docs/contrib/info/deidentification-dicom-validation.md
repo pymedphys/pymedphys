@@ -35,7 +35,7 @@ Each introduced finding is then:
 
 The comparison passes when nothing introduced is unexplained, and a validator that checked an input but could not check its output gives an unexplained finding too.
 
-The results hold no value and no path. Every validator quotes values, and dicom3tools also prints file names, so each message is reduced to the validator, the severity, the attribute as tags without item numbers or private creators, the message's text before the first value it quotes, in angle brackets or quotation marks or after an equals sign, and the module or information entity it names. That text, and any reason that follows the value, is kept only where it is made of strings compiled into the validator's own executable, with VRs in brackets, a few short words between them, and counts, which read `<n>`. Any other message reads `message not shown`, and a line in any other form is counted without its text.
+The results hold no value and no path. Every validator quotes values, and dicom3tools also prints file names, so each message is reduced to the validator, the severity, the attribute as tags without item numbers or private creators, the message's text before the first value it quotes, in angle brackets or quotation marks or after an equals sign, and the module or information entity it names. That text, and any reason that follows the value, is kept only where it is made of strings compiled into the validator's own executable, with VRs in brackets, a few short words between them, and counts, which read `<n>`. Any other message reads `message not shown`. A value can span lines, and its later lines can look like messages, so the module, the information entity, an attribute keyword that pydicom's dictionary lacks, and the IOD's name are kept only where the validator's executable holds them too. A line in any other form is counted without its text.
 
 ### Known differences
 
@@ -94,7 +94,7 @@ uv run --no-dev --extra tests python -m pymedphys._dicom.deidentify.dicom_valida
 - `--out` must not exist; its parent must. The command writes `dicom-validation.md` and `dicom-validation.json` there, and prints the Markdown.
 - It exits with status 0 when the comparison passed, 1 when it found unexplained findings or compared no released instance, and 2 when it could not compare, for example because a validator is missing or the release cannot be paired unambiguously: the mapping lacks a column or maps an input to two outputs, two outputs share a name, or an output has no input.
 - `--workers` sets how many processes run the per-file validators; it defaults to the number of CPUs.
-- Both result files hold no value or path, so they are safe to share. The inputs, the release, and the mapping file are not.
+- Both result files hold only versions, counts, SOP Class names, attribute tags and keywords, and text that the validators' own executables or tables hold, so they hold no value or path. The inputs, the release, and the mapping file must not be shared.
 
 ## Read a report
 

@@ -45,8 +45,12 @@ quotation marks or after an equals sign, with any reason that follows the
 value. Each part is kept only where it is made of strings compiled into the
 validator's own executable, with counts replaced and a few short words
 between them, so nothing passes that is not the validator's own text; any
-other message is counted without its text. A line that does not have the
-form of a message is counted as unrecognised, without its text. The diagnostics of pydicom's reads, for dicom-validator, are redacted
+other message is counted without its text. A module, an information
+entity, an attribute's keyword that pydicom's dictionary lacks, and an IOD
+name are kept only where the validator's executable holds them too, since a
+value that spans lines can print a line of a message's form. A line that
+does not have the form of a message is counted as unrecognised, without its
+text. The diagnostics of pydicom's reads, for dicom-validator, are redacted
 as the engine's are (:func:`~pymedphys._dicom.deidentify.diagnostics.redacted_diagnostics`).
 """
 
@@ -283,7 +287,7 @@ def message_type(text: str, strings: frozenset[str]) -> tuple[str, str]:
     the value must be made of ``strings``, those compiled into the validator
     (:func:`composed`), or the type is :data:`UNPROVEN_MESSAGE`; the reason is
     kept only where it is too. A module is kept only where it is a name of
-    letters and digits.
+    letters and digits that is the validator's own (:func:`own_name`).
 
     >>> message_type(
     ...     "Value dubious for this VR [PN] = <ANY^VALUE> - Retired Person Name form",
@@ -301,7 +305,7 @@ def message_type(text: str, strings: frozenset[str]) -> tuple[str, str]:
     module = ""
     found = _MODULE.search(text)
     if found:
-        module = found["module"]
+        module = found["module"] if own_name(found["module"], strings) else ""
         text = text[: found.start()]
     start = _VALUE_START.search(text)
     head = (text if start is None else text[: start.start()]).strip()
@@ -382,6 +386,21 @@ def _strings(executable: str) -> frozenset[str]:
     return frozenset(run.decode("ascii").strip() for run in re.findall(pattern, data))
 
 
+@functools.lru_cache(maxsize=4096)
+def own_name(name: str, strings: frozenset[str]) -> bool:
+    """Return whether a name is one of an executable's strings, or ends one.
+
+    A compiler may store a string as the end of a longer one that ends the
+    same way, so a module's name can be found only as such an end.
+
+    >>> own_name("Patient", frozenset({"ClinicalTrialPatient"}))
+    True
+    >>> own_name("Smith", frozenset({"ClinicalTrialPatient"}))
+    False
+    """
+    return name in strings or any(string.endswith(name) for string in strings)
+
+
 def find_executable(name: str) -> str | None:
     """Return the resolved path of a dicom3tools executable on the PATH."""
     found = shutil.which(name)
@@ -440,7 +459,7 @@ def parse_dciodvfy(
             continue
         found = _DCIODVFY_LINE.match(line)
         if found is None:
-            if not iod and _IOD_NAME.match(line) and line in strings:
+            if not iod and _IOD_NAME.match(line) and own_name(line, strings):
                 iod = line
             else:
                 findings[_unrecognised(DCIODVFY)] += 1
@@ -493,7 +512,8 @@ def parse_dcentvfy(output: str, strings: frozenset[str]) -> Validation:
     has its keyword and otherwise by the keyword, and the information
     entity; the files and values that dcentvfy compared are dropped. The
     message is kept only where it is made of ``strings``, those compiled
-    into the executable that wrote it (:func:`composed`).
+    into the executable that wrote it (:func:`composed`), and a keyword or
+    entity only where it is one of them (:func:`own_name`).
     """
     findings: collections.Counter[Finding] = collections.Counter()
     for line in output.splitlines():
@@ -505,14 +525,19 @@ def parse_dcentvfy(output: str, strings: frozenset[str]) -> Validation:
             findings[_unrecognised(DCENTVFY)] += 1
             continue
         tag = pydicom.datadict.tag_for_keyword(found["element"])
-        path = found["element"] if tag is None else tag_path([tag])
+        if tag is not None:
+            path = tag_path([tag])
+        elif own_name(found["element"], strings):
+            path = found["element"]
+        else:
+            path = NO_PATH
         findings[
             Finding(
                 DCENTVFY,
                 found["severity"].lower(),
                 path,
                 composed(found["message"].strip(), strings) or UNPROVEN_MESSAGE,
-                found["entity"],
+                found["entity"] if own_name(found["entity"], strings) else "",
             )
         ] += 1
     return Validation(DCENTVFY, Status.VALIDATED, dict(findings))
