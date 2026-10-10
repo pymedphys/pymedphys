@@ -578,12 +578,23 @@ class DicomValidator:
         """
         standard_path = Path(standard_path)
         standard_path.mkdir(parents=True, exist_ok=True)
-        reader = dicom_validator_editions.EditionReader(standard_path)
-        if reader.get_edition_path(edition) is None:
-            raise ValidatorUnavailable(
-                f"dicom-validator could not obtain DICOM edition {edition}"
-            )
-        return cls(edition, standard_path, reader.load_dicom_info(edition))
+        # dicom-validator's readers give the root logger a handler that
+        # writes to standard output, at level INFO, so that every later
+        # record of any logger, pydicom's among them, would be printed
+        # there. The root logger is restored.
+        root = logging.getLogger()
+        handlers, level = list(root.handlers), root.level
+        try:
+            reader = dicom_validator_editions.EditionReader(standard_path)
+            if reader.get_edition_path(edition) is None:
+                raise ValidatorUnavailable(
+                    f"dicom-validator could not obtain DICOM edition {edition}"
+                )
+            info = reader.load_dicom_info(edition)
+        finally:
+            root.handlers[:] = handlers
+            root.setLevel(level)
+        return cls(edition, standard_path, info)
 
     def docbook_sha256(self) -> dict[str, str]:
         """Return the SHA-256 of each DocBook file the tables were read from."""

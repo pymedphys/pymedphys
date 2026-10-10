@@ -36,7 +36,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the benchmark, or count the validation script's results.
 
     ``run`` takes ``--source``, ``--answer-key``, ``--work``, and optionally
-    ``--preset`` and ``--collection``, as :func:`~pymedphys._dicom.deidentify.midi_benchmark.run_benchmark` does, and
+    ``--preset``, ``--collection``, ``--tg263``, and ``--watch``, as :func:`~pymedphys._dicom.deidentify.midi_benchmark.run_benchmark` does, and
     prints the results as CommonMark. ``script-results`` takes the script's
     ``validation_results.db`` and prints :func:`~pymedphys._dicom.deidentify.midi_script_results.summarise_script_results`'s
     counts as JSON.
@@ -79,11 +79,32 @@ def main(argv: Sequence[str] | None = None) -> int:
     benchmark.add_argument(
         "--preset",
         default="basic",
-        help="A preset without Clean Descriptors. Defaults to basic.",
+        help=(
+            "The preset, enabled or not. Defaults to basic. Under "
+            "basic-clean-descriptors, ROI Names are cleaned with the pinned "
+            "TG-263 edition, and a name that would be held for review is emptied."
+        ),
     )
     benchmark.add_argument(
         "--collection",
         help="The test data set's name and version, recorded in the results.",
+    )
+    benchmark.add_argument(
+        "--tg263",
+        help=(
+            "A copy of the pinned TG-263 edition's spreadsheet, for a preset "
+            "with Clean Descriptors, in place of PyMedPhys's cached download."
+        ),
+    )
+    benchmark.add_argument(
+        "--watch",
+        action="append",
+        default=[],
+        metavar="TAG",
+        help=(
+            "An attribute, such as (0020,0011), each of whose checks is counted "
+            "by where it ended up. May be repeated."
+        ),
     )
     results = commands.add_parser(
         "script-results",
@@ -101,6 +122,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 arguments.work,
                 preset=arguments.preset,
                 collection=arguments.collection,
+                tg263_spreadsheet=arguments.tg263,
+                watched=arguments.watch,
             ).markdown()
         else:
             text = (

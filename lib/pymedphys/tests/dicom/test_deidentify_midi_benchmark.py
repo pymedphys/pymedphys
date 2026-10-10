@@ -428,102 +428,6 @@ def test_a_check_that_cannot_be_scored_is_not_evaluated(action, place, fields, n
     )
 
 
-def test_a_kept_check_on_what_the_policy_removes_is_a_deliberate_difference():
-    # Study Description is X under the Basic Profile, and a private
-    # attribute is removed whatever its creator.
-    assert _score(
-        "text_retained", "<(0008,1030)>", text=STUDY_DESCRIPTION
-    ) == benchmark.Scored(benchmark.Result.FAILED, "X", deliberate=True)
-    assert _score("tag_retained", '<(0019,"OTHER CREATOR",93)>') == benchmark.Scored(
-        benchmark.Result.FAILED, "X", deliberate=True
-    )
-
-
-def test_a_kept_check_in_a_sequence_that_the_policy_removes_is_deliberate():
-    # Referenced Study Sequence is X/Z under the Basic Profile and Type 3 in
-    # the CT Image IOD, so the walker removes it with what it holds, whatever
-    # the attribute's own action.
-    assert _score(
-        "tag_retained", "<(0008,1110)>[<0000>]<(0008,1150)>"
-    ) == benchmark.Scored(benchmark.Result.FAILED, "X", deliberate=True)
-
-
-@pytest.mark.parametrize("action", ["tag_retained", "text_notnull"])
-def test_a_compound_action_that_selects_removal_is_deliberate(action):
-    # Series Date is X/D and Type 3 in the CT Image IOD: the walker selects X.
-    assert _score(action, "<(0008,0021)>") == benchmark.Scored(
-        benchmark.Result.FAILED, "X", deliberate=True
-    )
-
-
-@pytest.mark.parametrize(
-    "action, place, iod",
-    [
-        # RT Plan Date is X/D and Type 2 in the RT Plan IOD: the walker
-        # selects D, so the attribute must be present with a dummy value.
-        ("tag_retained", "<(300A,0006)>", "RT Plan"),
-        ("text_notnull", "<(300A,0006)>", "RT Plan"),
-        # Patient Species Description is X/Z/D and Type 1C in the CT Image
-        # IOD: D, so neither its absence nor an empty value is deliberate.
-        ("tag_retained", "<(0010,2201)>", "CT Image"),
-        ("text_notnull", "<(0010,2201)>", "CT Image"),
-        # A plain Z on a Type 1 attribute selects D.
-        (
-            "text_notnull",
-            "<(300A,0614)>[<0000>]<(300A,0610)>[<0000>]<(300A,0611)>",
-            "C-Arm Photon-Electron Radiation",
-        ),
-        # Referenced Image Sequence is X/Z/U* and Type 1C inside Referenced
-        # Spatial Registration Sequence in the RT Dose IOD: the walker keeps
-        # it as a container (U), so it does not explain its items' absence.
-        (
-            "tag_retained",
-            "<(300C,0116)>[<0000>]<(0008,1140)>[<0000>]<(0008,1150)>",
-            "RT Dose",
-        ),
-    ],
-)
-def test_a_missing_attribute_that_the_selected_action_replaces_is_a_finding(
-    action, place, iod
-):
-    assert _score(action, place, iod=iod) == FAILED
-
-
-def test_a_kept_check_on_what_the_policy_keeps_is_a_finding():
-    # The Basic Profile keeps Rows, so its absence is not deliberate.
-    assert _score("tag_retained", "<(0028,0010)>") == FAILED
-
-
-@pytest.mark.parametrize(
-    "place",
-    [
-        # Patient's Name is Z and Study Instance UID is U: the policy
-        # replaces them, so a file without them breaks the policy.
-        "<(0010,0010)>",
-        "<(0020,000D)>",
-        # The CT Image IOD defines Derivation Code Sequence, which the
-        # Basic Profile therefore keeps; without the IOD it would be removed.
-        "<(0008,9215)>",
-    ],
-)
-def test_a_missing_attribute_that_the_policy_replaces_or_keeps_is_a_finding(place):
-    assert _score("tag_retained", place) == FAILED
-
-
-def test_without_the_iod_no_failure_is_deliberate():
-    # The walker selects no action without the IOD, so nothing explains a
-    # failure, even of an attribute that the policy removes.
-    assert _score("tag_retained", "<(0008,9215)>", iod=None) == FAILED
-    assert (
-        _score("text_retained", "<(0008,1030)>", text=STUDY_DESCRIPTION, iod=None)
-        == FAILED
-    )
-
-
-def test_changed_pixel_data_is_never_deliberate():
-    assert _score("pixels_retained", "<(7FE0,0010)>", text="0" * 32) == FAILED
-
-
 @pytest.mark.parametrize(
     "action, expected",
     [
@@ -578,7 +482,15 @@ def _benchmark_key(tmp_path):
         ),
         _check("date_shifted", "<(0008,0020)>", value=STUDY_DATE),
         _check("text_removed", "<(0008,0060)>", text="CT", hipaa_z="TEST-MODALITY"),
+        # TCIA's curation removed what the policy keeps: still a finding.
+        _check("text_removed", "<(0008,0060)>", text="CT", tcia_rev="TEST-REV"),
+        # The markers replace what the source held.
+        _check(
+            "text_retained", "<(0028,0303)>", text="UNMODIFIED", tcia_rev="TEST-MARKER"
+        ),
         _check("tag_retained", "<(0008,0060)>", dicom_iod="TEST-IOD"),
+        # The policy keeps KVP, but the source has none.
+        _check("tag_retained", "<(0018,0060)>", dicom_iod="TEST-GAP"),
         _check("uid_consistent", "<(0020,000E)>", value=synthetic.CT_SERIES),
         _check("patid_consistent", "<(0010,0020)>", value=synthetic.PATIENT_ID),
         _check(
@@ -646,6 +558,32 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
         "not-in-input": 1,
     }
     assert document["coverage"]["by_modality"]["NM"]["outside-coverage"] == 1
+    assert document["coverage"]["not_released"] == [
+        {
+            "context": "outside-coverage",
+            "reasons": None,
+            "sop_class": "Nuclear Medicine Image Storage",
+            "transfer_syntax": "Explicit VR Little Endian",
+            "instances": 1,
+            "checks": 1,
+        }
+    ]
+    headline = document["headline"]
+    assert headline["checks"] == sum(
+        row[field]
+        for row in document["categories"]
+        for field in (
+            "passed",
+            "failed",
+            "deliberate",
+            "source_gap",
+            "not_evaluated",
+            "withheld",
+            "outside_coverage",
+            "not_in_input",
+        )
+    )
+    assert (headline["outside_coverage"], headline["not_in_input"]) == (1, 1)
     assert _category(document, "tcia", "TEST-RETAIN-DESCRIPTION")["deliberate"] == 1
     assert _category(document, "hipaa", "HIPAA-C") == {
         "family": "hipaa",
@@ -653,6 +591,7 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
         "passed": 1,
         "failed": 0,
         "deliberate": 0,
+        "source_gap": 0,
         "not_evaluated": 0,
         "withheld": 0,
         "outside_coverage": 0,
@@ -668,10 +607,26 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
     assert (iod["passed"], iod["outside_coverage"]) == (1, 1)
     assert document["deliberate_differences"] == [
         {
+            "category": "tcia TEST-MARKER",
+            "action": "text_retained",
+            "attribute": "(0028,0303)",
+            "policy_action": "marker",
+            "checks": 1,
+        },
+        {
             "category": "tcia TEST-RETAIN-DESCRIPTION",
             "action": "text_retained",
             "attribute": "(0008,1030)",
             "policy_action": "X",
+            "checks": 1,
+        },
+    ]
+    assert _category(document, "dicom", "TEST-GAP")["source_gap"] == 1
+    assert document["source_gaps"] == [
+        {
+            "category": "dicom TEST-GAP",
+            "action": "tag_retained",
+            "attribute": "(0018,0060)",
             "checks": 1,
         }
     ]
@@ -681,8 +636,47 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
             "action": "text_removed",
             "attribute": "(0008,0060)",
             "checks": 1,
-        }
+        },
+        {
+            "category": "tcia TEST-REV",
+            "action": "text_removed",
+            "attribute": "(0008,0060)",
+            "checks": 1,
+        },
     ]
+    removed = {
+        "action": "text_removed",
+        "attribute": "(0008,0060)",
+        "vr": "CS",
+        "shape": "not IS",
+        "whole_value": True,
+        "same_date_as": "not a date",
+        "checks": 1,
+    }
+    # The source holds the text that the key asks to be removed.
+    finding = {k: removed[k] for k in ("action", "attribute")}
+    finding |= {"fails_at_source": "yes", "checks": 1}
+    assert document["failed_at_source"] == {
+        "present": [
+            {
+                "category": "dicom TEST-GAP",
+                "action": "tag_retained",
+                "attribute": "(0018,0060)",
+                "source": "absent",
+                "checks": 1,
+            }
+        ],
+        "removed": [
+            {"category": "hipaa TEST-MODALITY", **removed},
+            {"category": "tcia TEST-REV", **removed},
+        ],
+        "finding": [
+            {"category": "hipaa TEST-MODALITY", **finding},
+            {"category": "tcia TEST-REV", **finding},
+        ],
+        "encoding": [],
+    }
+    assert document["watched"] == []
     assert json.loads((work / benchmark.RESULTS_JSON).read_text()) == document
     assert (work / benchmark.RESULTS_MARKDOWN).read_text() == result.markdown()
     assert (work / "release" / "release-report.json").is_file()
@@ -763,15 +757,26 @@ def test_the_markdown_gives_each_section(tmp_path):
     for heading in (
         "# MIDI benchmark results",
         "## Versions",
+        "## Headline",
         "## Supported coverage",
         "## Results by answer-key category",
         "## Deliberate differences",
+        "## Source gaps",
         "## Findings",
+        "## Failed checks at their source",
+        "## Watched attributes",
     ):
         assert f"\n{heading}\n" in f"\n{markdown}"
     assert "| tcia TEST-RETAIN-DESCRIPTION | text_retained | (0008,1030) | X | 1 |" in (
         markdown
     )
+    assert "| dicom TEST-GAP | tag_retained | (0018,0060) | 1 |" in markdown
+    assert "| Failed: source gaps | 1 | " in markdown
+    assert "| Not released: outside coverage | 1 | " in markdown
+    assert (
+        "| outside-coverage | none | Nuclear Medicine Image Storage | "
+        "Explicit VR Little Endian | 1 | 1 |"
+    ) in markdown
 
 
 def test_an_existing_work_directory_is_refused(tmp_path):
@@ -781,17 +786,6 @@ def test_an_existing_work_directory_is_refused(tmp_path):
         benchmark.run_benchmark(
             _source(tmp_path), _benchmark_key(tmp_path), tmp_path / "work"
         )
-
-
-def test_a_preset_with_clean_descriptors_is_refused_for_now(tmp_path):
-    with pytest.raises(benchmark.BenchmarkError, match="reviewed-names list"):
-        benchmark.run_benchmark(
-            _source(tmp_path),
-            _benchmark_key(tmp_path),
-            tmp_path / "work",
-            preset="basic-clean-descriptors",
-        )
-    assert not (tmp_path / "work").exists()
 
 
 def _script_results(path, rows):

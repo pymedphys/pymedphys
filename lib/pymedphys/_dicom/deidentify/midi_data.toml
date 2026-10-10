@@ -1,0 +1,44 @@
+# The NCI MIDI-B test data sets that the MIDI benchmark (D-018) downloads.
+#
+# MIDI-B, https://doi.org/10.7937/cf2p-aw56, is published by The Cancer
+# Imaging Archive under the Creative Commons Attribution 4.0 licence. Each
+# subset is the collection carrying synthetic identifiers, fetched series by
+# series from TCIA's public NBIA API, as listed in TCIA's dated manifest for
+# it. :mod:`~pymedphys._dicom.deidentify.midi_download` refuses a manifest,
+# an image set, or an answer key whose digest differs from the one pinned
+# here. An empty digest is not checked: the download records what it found,
+# and says that it was not pinned.
+#
+# ``content_sha256`` is the SHA-256 of the sorted, newline-joined SHA-256
+# hexadecimal digests of every DICOM file in the subset, so it depends on the
+# files' bytes alone, not on their names or the order they arrive in.
+#
+# ``answer_key_sha256`` is the SHA-256 of the ZIP file holding the subset's
+# answer key as TCIA publishes it, in its Aspera (Faspex) package
+# ``MIDI-B-Answer-Key-Validation`` or ``MIDI-B-Answer-Key-Test``: the MIDI-B
+# Benchmark workflow received both from TCIA on 10 October 2026, and checks
+# them against these digests whenever it is run with ``answer-keys-from:
+# tcia``. ``answer_key_url`` is a copy of the same file on Zenodo, which the
+# downloader fetches for routine runs, since TCIA offers no HTTPS link to it.
+
+[validation]
+collection = "MIDI-B-Synthetic-Validation"
+name = "MIDI-B Validation (TCIA 10.7937/cf2p-aw56)"
+manifest_url = "https://www.cancerimagingarchive.net/wp-content/uploads/TCIA-MIDI-B-Synthetic-Validation_20250502.tcia"
+manifest_sha256 = "e6dceb5fcc354121049aee001333724fcc931ab214c9e78e9dbc406878f5a452"
+series = 280
+instances = 23921
+content_sha256 = "fc61a4fef81b8037d91b86a07079f82e9d732f8994455dd1d09bfe21353ee42e"
+answer_key_url = ""
+answer_key_sha256 = "29969c1eeab775aca65bbe5110dec578b9f4d2df0f9ce18b6c331dd4781748f3"
+
+[test]
+collection = "MIDI-B-Synthetic-Test"
+name = "MIDI-B Test (TCIA 10.7937/cf2p-aw56)"
+manifest_url = "https://www.cancerimagingarchive.net/wp-content/uploads/TCIA-MIDI-B-Synthetic-Test_20250502.tcia"
+manifest_sha256 = "7352096ef8fd7892898e465569487f15e0ac5894e2b9c01d045128c222eb3cee"
+series = 428
+instances = 29660
+content_sha256 = "aa8306c349891e75d3891334e9221abecc6b1c14a214edea45fecbc84c80750e"
+answer_key_url = ""
+answer_key_sha256 = "dfa352e47f99fb75407b6f09364370b87c9b63aeaaac7f8a428e83ed8f282deb"
