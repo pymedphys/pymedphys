@@ -289,7 +289,7 @@ note = '''
 Every policy that does not apply Modified Dates, the only Retain Longitudinal Temporal Information Option in scope, sets Longitudinal Temporal Information Modified to REMOVED in its markers, replacing any value already present, since REMOVED is the strictest, and refusing a present value that is not UNMODIFIED, MODIFIED, or REMOVED (D-012).
 The run's instance transform adds it to each instance it de-identifies.
 An end-to-end test runs `basic` and `basic-clean-descriptors`, neither of which applies Modified Dates, over the synthetic collection and finds REMOVED in every released instance (MIDI-BP-01).
-MIDI-B's answer keys expect another value here, under their TCIA review category, so every released instance fails that check by design (D-031).
+MIDI-B's answer keys expect another value here, under their TCIA review category, so every released instance that the key checks there fails that check by design (D-031).
 '''
 
 [[requirement]]
