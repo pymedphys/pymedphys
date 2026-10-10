@@ -41,9 +41,10 @@ on:
         default: pinned
       engine-ref:
         description: >-
-          Optionally, a pull request's head (refs/pull/<n>/head) or a branch
-          (refs/heads/<name>) to merge into the chosen branch on the runner,
-          to benchmark an engine change before it merges
+          Optionally, pull requests' heads (refs/pull/<n>/head) or branches
+          (refs/heads/<name>), separated by spaces, to merge in turn into the
+          chosen branch on the runner, to benchmark engine changes before
+          they merge
         type: string
         default: ''
   # Temporary, for the first runs before this workflow is on the default
@@ -115,14 +116,19 @@ jobs:
       - name: Merge the engine ref
         if: env.ENGINE_REF != ''
         run: |
-          if [[ ! "${ENGINE_REF}" =~ ^refs/(pull/[0-9]+/head|heads/[A-Za-z0-9._/-]+)$ ]]; then
-            echo "The engine ref must be refs/pull/<n>/head or refs/heads/<branch>."
-            exit 1
-          fi
-          git fetch --no-tags origin "${ENGINE_REF}"
-          git -c user.name="MIDI-B Benchmark" -c user.email="midi-b-benchmark@invalid" \
-            merge --no-edit --no-ff FETCH_HEAD
-          echo "ENGINE_SHA=$(git rev-parse FETCH_HEAD)" >> "${GITHUB_ENV}"
+          read -r -a refs <<< "${ENGINE_REF}"
+          merged=""
+          for ref in "${refs[@]}"; do
+            if [[ ! "${ref}" =~ ^refs/(pull/[0-9]+/head|heads/[A-Za-z0-9._/-]+)$ ]]; then
+              echo "Each engine ref must be refs/pull/<n>/head or refs/heads/<branch>."
+              exit 1
+            fi
+            git fetch --no-tags origin "${ref}"
+            git -c user.name="MIDI-B Benchmark" -c user.email="midi-b-benchmark@invalid" \
+              merge --no-edit --no-ff FETCH_HEAD
+            merged="${merged:+${merged}, then }${ref} at $(git rev-parse FETCH_HEAD)"
+          done
+          echo "ENGINE_MERGES=${merged}" >> "${GITHUB_ENV}"
 
       # The Test subset is 11 GB, and the release and QC pack about as much
       # again; remove toolchains this job does not use.
@@ -157,7 +163,7 @@ jobs:
           umask 077
           mkdir -p "${RUNNER_TEMP}/midi-b/private" "${RUNNER_TEMP}/midi-b/results"
           if [[ -n "${ENGINE_REF}" ]]; then
-            echo "${GITHUB_SHA} merged with ${ENGINE_REF} at ${ENGINE_SHA}" \
+            echo "${GITHUB_SHA} merged with ${ENGINE_MERGES}" \
               > "${RUNNER_TEMP}/midi-b/results/engine.txt"
           fi
 
