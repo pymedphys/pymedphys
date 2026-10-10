@@ -1,22 +1,142 @@
 name: MIDI-B Benchmark
 
-# Temporary discovery run: what TCIA serves for MIDI-B. Replaced by the
-# benchmark itself before review.
+# On demand, download one subset of NCI's MIDI-B test data from TCIA
+# (https://doi.org/10.7937/cf2p-aw56, CC BY 4.0), de-identify it with the
+# development benchmark harness, and score the release against the subset's
+# answer key (D-018).
+#
+# MIDI-B's files carry synthetic identifiers, which the project treats as
+# real, and this repository's logs and artefacts are public. So the logs and
+# the artefact hold only what the tools print by design (counts, codes,
+# digests, and versions): standard error of the benchmark, where libraries
+# log, goes to a file on the runner, and a crash is reported by
+# .github/scripts/run_redacted.py as its type and code locations alone. The
+# data, the release, the QC pack, and the mapping files never leave the
+# runner.
 on:
+  workflow_dispatch:
+    inputs:
+      subset:
+        description: MIDI-B subset
+        type: choice
+        options: [validation, test]
+        default: validation
+      answer-key-url:
+        description: An answer key to use in place of the pinned one (HTTPS)
+        type: string
+        default: ''
+      answer-key-sha256:
+        description: That answer key's SHA-256
+        type: string
+        default: ''
+  # Temporary, for the first runs before this workflow is on the default
+  # branch; removed before review.
   push:
     branches: [claude/deid-midi-b-ci-ko3ghq]
-    paths: [.github/workflows/midi-b-benchmark.yml, .github/scripts/midi_b_discover.py]
-  workflow_dispatch:
+    paths:
+      - .github/workflows/midi-b-benchmark.yml
+      - lib/pymedphys/_dicom/deidentify/midi_data.toml
+      - lib/pymedphys/_dicom/deidentify/midi_download.py
 
 permissions:
   contents: read
 
+concurrency:
+  group: midi-b-benchmark-${{ inputs.subset || 'validation' }}
+  cancel-in-progress: false
+
 jobs:
-  discover:
+  benchmark:
+    name: MIDI-B ${{ inputs.subset || 'validation' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 330
+    permissions:
+      contents: read
+    env:
+      SUBSET: ${{ inputs.subset || 'validation' }}
+      ANSWER_KEY_URL: ${{ inputs.answer-key-url }}
+      ANSWER_KEY_SHA256: ${{ inputs.answer-key-sha256 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: python3 -I .github/scripts/midi_b_discover.py
+
+      # The Test subset is 11 GB, and the release and QC pack about as much
+      # again; remove toolchains this job does not use.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          df -h /
+
+      # The user extra holds the decoders for compressed transfer syntaxes.
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user'
+
+      - name: Prepare private and result directories
+        run: |
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/midi-b/private" "${RUNNER_TEMP}/midi-b/results"
+
+      # The downloader prints only counts, digests, and positions.
+      - name: Download the subset from TCIA
+        run: |
+          args=(--subset "${SUBSET}" --dest "${RUNNER_TEMP}/midi-b/data")
+          if [[ -n "${ANSWER_KEY_URL}" ]]; then
+            args+=(--answer-key-url "${ANSWER_KEY_URL}" --answer-key-sha256 "${ANSWER_KEY_SHA256}")
+          fi
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            pymedphys._dicom.deidentify.midi_download "${args[@]}"
+          cp "${RUNNER_TEMP}/midi-b/data/download.json" "${RUNNER_TEMP}/midi-b/results/"
+          df -h /
+
+      - name: Run the benchmark
+        id: benchmark
+        run: |
+          data="${RUNNER_TEMP}/midi-b/data"
+          if [[ ! -f "${data}/answer-key.db" ]]; then
+            echo "No answer key is pinned for ${SUBSET} or given, so the benchmark did not run." \
+              | tee "${RUNNER_TEMP}/midi-b/results/benchmark.md"
+            echo "ran=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          name="$(jq -r '.name' "${data}/download.json")"
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            pymedphys._dicom.deidentify.midi_benchmark_command run \
+            --source "${data}/images" \
+            --answer-key "${data}/answer-key.db" \
+            --work "${RUNNER_TEMP}/midi-b/work" \
+            --collection "${name}" \
+            2> "${RUNNER_TEMP}/midi-b/private/benchmark-stderr.log"
+          cp "${RUNNER_TEMP}/midi-b/work/benchmark.md" "${RUNNER_TEMP}/midi-b/work/benchmark.json" \
+            "${RUNNER_TEMP}/midi-b/results/"
+          echo "ran=true" >> "${GITHUB_OUTPUT}"
+          df -h /
+
+      - name: Summarise
+        if: ${{ !cancelled() }}
+        run: |
+          results="${RUNNER_TEMP}/midi-b/results"
+          {
+            echo "# MIDI-B ${SUBSET}"
+            echo
+            if [[ -f "${results}/download.json" ]]; then
+              echo '```json'
+              cat "${results}/download.json"
+              echo '```'
+              echo
+            fi
+            if [[ -f "${results}/benchmark.md" ]]; then
+              cat "${results}/benchmark.md"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload the results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midi-b-${{ env.SUBSET }}-results
+          path: ${{ runner.temp }}/midi-b/results/
+          if-no-files-found: warn
+          retention-days: 90

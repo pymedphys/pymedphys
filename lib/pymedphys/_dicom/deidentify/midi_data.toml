@@ -1,0 +1,36 @@
+# The NCI MIDI-B test data sets that the MIDI benchmark (D-018) downloads.
+#
+# MIDI-B, https://doi.org/10.7937/cf2p-aw56, is published by The Cancer
+# Imaging Archive under the Creative Commons Attribution 4.0 licence. Each
+# subset is the collection carrying synthetic identifiers, fetched series by
+# series from TCIA's public NBIA API, as listed in TCIA's dated manifest for
+# it. :mod:`~pymedphys._dicom.deidentify.midi_download` refuses a manifest,
+# an image set, or an answer key whose digest differs from the one pinned
+# here. An empty digest is not checked: the download records what it found,
+# and says that it was not pinned.
+#
+# ``content_sha256`` is the SHA-256 of the sorted, newline-joined SHA-256
+# hexadecimal digests of every DICOM file in the subset, so it depends on the
+# files' bytes alone, not on their names or the order they arrive in.
+
+[validation]
+collection = "MIDI-B-Synthetic-Validation"
+name = "MIDI-B Validation (TCIA 10.7937/cf2p-aw56)"
+manifest_url = "https://www.cancerimagingarchive.net/wp-content/uploads/TCIA-MIDI-B-Synthetic-Validation_20250502.tcia"
+manifest_sha256 = ""
+series = 280
+instances = 23921
+content_sha256 = ""
+answer_key_url = ""
+answer_key_sha256 = ""
+
+[test]
+collection = "MIDI-B-Synthetic-Test"
+name = "MIDI-B Test (TCIA 10.7937/cf2p-aw56)"
+manifest_url = "https://www.cancerimagingarchive.net/wp-content/uploads/TCIA-MIDI-B-Synthetic-Test_20250502.tcia"
+manifest_sha256 = ""
+series = 428
+instances = 29660
+content_sha256 = ""
+answer_key_url = ""
+answer_key_sha256 = ""
