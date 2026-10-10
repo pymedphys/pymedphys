@@ -219,12 +219,24 @@ jobs:
           echo "ran=true" >> "${GITHUB_OUTPUT}"
           df -h /
 
+      # Kept now, in case the runner is lost in a later step; the last step
+      # replaces it with every result.
+      - name: Upload the benchmark's results
+        if: steps.benchmark.outputs.ran == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midi-b-${{ env.SUBSET }}-${{ env.PRESET }}-results
+          path: ${{ runner.temp }}/midi-b/results/
+          if-no-files-found: warn
+          retention-days: 90
+
       # NCI's script scores the same release from the mapping files that the
       # harness wrote. It logs values from the files, so its logs and its
       # results database stay on the runner, and only the harness's count of
       # its results, which holds none, is kept.
       - name: Score the release with NCI's validation script
         if: steps.benchmark.outputs.ran == 'true'
+        timeout-minutes: 150
         run: |
           nci="${RUNNER_TEMP}/nci"
           private="${RUNNER_TEMP}/midi-b/private"
@@ -248,13 +260,17 @@ jobs:
             --arg uids "${work}/validation-script/uid_mapping.csv" \
             --arg patients "${work}/validation-script/patid_mapping.csv" \
             --arg logs "${private}/nci-logs" \
-            --arg cpus "$(nproc)" \
             '{run_name: "release", input_data_path: $release,
               output_data_path: $output, answer_db_file: $key,
               uid_mapping_file: $uids, patid_mapping_file: $patients,
-              multiprocessing: "True", multiprocessing_cpus: $cpus,
+              multiprocessing: "False", multiprocessing_cpus: "1",
               log_path: $logs, log_level: "info", report_series: "False"}' \
             > "${private}/nci-config.json"
+          # Each of the script's worker processes holds its own copy of the
+          # answer key and loads its own OCR model, which ran a 16 GB runner
+          # out of memory with four; one process scores only the released
+          # files, which are few.
+          free -m
           status=0
           (cd "${nci}" && "${RUNNER_TEMP}/nci-venv/bin/python" run_validation.py \
             "${private}/nci-config.json") > "${private}/nci-script.log" 2>&1 || status=$?
@@ -312,3 +328,4 @@ jobs:
           path: ${{ runner.temp }}/midi-b/results/
           if-no-files-found: warn
           retention-days: 90
+          overwrite: true
