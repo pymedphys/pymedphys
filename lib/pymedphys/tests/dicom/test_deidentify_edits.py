@@ -29,6 +29,7 @@ from pymedphys._dicom.deidentify.element_rules import RuleSource
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.pseudonyms import SubjectIdentity, patient_pseudonym
+from pymedphys._dicom.deidentify.series_numbers import SeriesNumbering
 from pymedphys._dicom.deidentify.uids import UIDOutcome, replacement_uid
 
 from .test_deidentify_file_layout import (
@@ -205,6 +206,67 @@ def test_an_empty_value_is_edited_and_collected_whatever_the_transfer_syntax(
     assert found[_path("(0008,0090)")].kind is EditKind.EMPTY
     assert found[_path("(0010,1030)")].kind is EditKind.REMOVE
     assert found[_path("(300A,0002)")].values == ("DEIDENTIFIED",)
+
+
+SERIES_NUMBER = _path("(0020,0011)")
+# The numbers of three series of a study, two of them dates.
+NUMBERING = SeriesNumbering.of([20230601, 7, 20230512])
+
+
+def _series_number_edit(value, action=None, numbering=NUMBERING):
+    """Return the edit of an RT Plan's Series Number of ``value``.
+
+    Z applies to it, as it is Type 2 in the RT Series Module, unless
+    ``action`` replaces it.
+    """
+    data_set = (
+        _explicit(0x00080016, "UI", RT_PLAN_CLASS.encode() + b"\x00")
+        + _explicit(0x00080018, "UI", INSTANCE_UID.encode())
+        + _explicit(0x00200011, "IS", value)
+    )
+    evidence = source.read_source(_file(EXPLICIT, data_set))
+    rules = _rules() if action is None else _Overridden({"(0020,0011)": action})
+    plan = walker.plan_instance(evidence, rules, _rt_plan())
+    result = edits.edit_instance(evidence, plan, KEY, series_numbering=numbering)
+    assert not result.sequestrations
+    return {edit.path: edit for edit in result.edits}[SERIES_NUMBER]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-06")
+@pytest.mark.parametrize("action", ["Z", "D"])
+@pytest.mark.parametrize(
+    "value, rank", [(b"20230512", "2"), (b"7 ", "1"), (b"+0020230601 ", "3")]
+)
+def test_a_series_number_takes_its_rank_in_its_studys_numbering(value, rank, action):
+    edit = _series_number_edit(value, action)
+
+    assert (edit.action, edit.kind, edit.values) == (action, EditKind.REPLACE, (rank,))
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("value", [b"", b"7.0 ", b"20230513", b"12345678901234"])
+def test_a_series_number_that_takes_no_rank_is_emptied_under_z(value):
+    # Empty, not one Integer String, or not in the numbering.
+    edit = _series_number_edit(value)
+
+    assert (edit.action, edit.kind) == ("Z", EditKind.EMPTY)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("value", [b"7.0 ", b"20230513"])
+def test_a_series_number_that_takes_no_rank_takes_ds_dummy_value_under_d(value):
+    edit = _series_number_edit(value, "D")
+
+    # Never a rank, which starts from 1.
+    assert (edit.kind, edit.values) == (EditKind.REPLACE, ("0",))
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("action", ["Z", "D"])
+def test_without_a_numbering_a_series_numbers_edit_is_pending(action):
+    edit = _series_number_edit(b"20230512", action, numbering=None)
+
+    assert edit.kind is EditKind.PENDING
 
 
 def test_patients_name_and_id_wait_for_their_pseudonyms():

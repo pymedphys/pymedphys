@@ -97,6 +97,7 @@ from .file_layout import (
 from .iods import IOD
 from .pseudonyms import SubjectIdentity
 from .sequences import UnreadableItems, decode_items
+from .series_numbers import SERIES_NUMBER, SeriesNumbering, series_number
 from .sop_classes import iod_for_sop_class
 from .standard import load_data_dictionary
 from .uids import normalise_uid
@@ -362,6 +363,13 @@ class InstanceRecord:
         The Referenced Frame of Reference UID (3006,0024) of each item of the
         Structure Set ROI Sequence (3006,0020), where the IOD defines it, in
         order, without padding, or ``""`` for an item without one UID.
+    series_numbering : SeriesNumbering
+        The numbering of the Series Numbers (0020,0011) that the instance
+        holds, at each place where its IOD defines one
+        (:mod:`~pymedphys._dicom.deidentify.series_numbers`). The run gives
+        each instance its study's numbering instead. A value that is not one
+        number is left out, and so is every value at a place where a value,
+        or a sequence on the way to it, cannot be read, so they take no rank.
     """
 
     iod: str | None
@@ -374,6 +382,9 @@ class InstanceRecord:
     frame_of_reference: str | None = dataclasses.field(default=None, repr=False)
     frames: tuple[FrameUse, ...] = dataclasses.field(default=(), repr=False)
     roi_frames: tuple[str, ...] = dataclasses.field(default=(), repr=False)
+    series_numbering: SeriesNumbering = dataclasses.field(
+        default_factory=SeriesNumbering, repr=False
+    )
 
     @classmethod
     def from_file(cls, data: bytes | bytearray | memoryview) -> InstanceRecord:
@@ -429,6 +440,7 @@ class InstanceRecord:
                 _uid(dataset, FRAME_OF_REFERENCE_TAG),
                 frames,
                 roi_frames,
+                _series_numbering(dataset, sop_class) if iod else SeriesNumbering(),
             )
 
     def identifier(self, level: Level) -> str | None:
@@ -489,6 +501,47 @@ def _frames(
     return tuple(frames), roi_frames
 
 
+@functools.lru_cache(maxsize=128)
+def _series_number_paths(sop_class: str) -> tuple[tuple[str, ...], ...]:
+    """Return the paths of the sequences that hold the IOD's Series Numbers."""
+    iod = iod_for_sop_class(sop_class)
+    if iod is None:
+        return ()
+    return tuple(
+        dict.fromkeys(
+            definition.path
+            for definition in iod.definitions
+            if definition.tag == SERIES_NUMBER
+        )
+    )
+
+
+def _series_numbering(dataset: pydicom.Dataset, sop_class: str) -> SeriesNumbering:
+    """Return the numbering of the Series Numbers where the IOD defines them."""
+    return SeriesNumbering.of(
+        number
+        for path in _series_number_paths(sop_class)
+        for number in _series_numbers_at(dataset, path)
+    )
+
+
+def _series_numbers_at(dataset: pydicom.Dataset, path: tuple[str, ...]) -> list[int]:
+    """Return the Series Numbers at one place, or none if any cannot be read.
+
+    A value that cannot be read takes no rank, which removes it or gives it
+    a dummy value, so the record is still built. pydicom raises many types
+    for a value that it cannot convert.
+    """
+    try:
+        elements = [_element(item, SERIES_NUMBER) for item in _items(dataset, path)]
+        numbers = [
+            series_number(element.value) for element in elements if element is not None
+        ]
+    except Exception:  # pylint: disable = broad-exception-caught
+        return []
+    return [number for number in numbers if number is not None]
+
+
 def _element(dataset: pydicom.Dataset, tag: str) -> pydicom.DataElement | None:
     return dataset.get(int(tag[1:5] + tag[6:10], 16))
 
@@ -538,7 +591,8 @@ def _sequence(dataset: pydicom.Dataset, path: ElementPath) -> Sequence[pydicom.D
     nested in the items is left raw, to be decoded here by its own path.
     Items are decoded in pydicom's default character set, whatever the
     Specific Character Set (0008,0005) of the data set that holds them,
-    since only UIDs are read from them.
+    since only UIDs and Series Numbers, whose VRs use the Default Character
+    Repertoire alone, are read from them.
     """
     element = dataset.get_item(int(path.tag[1:5] + path.tag[6:10], 16))
     if not isinstance(element, pydicom.dataelem.RawDataElement):
