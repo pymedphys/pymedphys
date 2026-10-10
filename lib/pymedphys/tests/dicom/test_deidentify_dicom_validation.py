@@ -51,10 +51,25 @@ pytestmark = pytest.mark.pydicom
 # A value that each test plants in a validator's output, and that no
 # finding may hold.
 PLANTED = "PLANTEDVALUE"
-STRINGS = frozenset({"Retired Person Name form"})
 PN_DUBIOUS = "Value dubious for this VR [PN] = <value> - Retired Person Name form"
 EVEN_GROUP = validators._UNPARSED_IN_IMPLICIT_VR[0]  # pylint: disable = protected-access
 EXPLICIT_UN = validators._UNPARSED[0]  # pylint: disable = protected-access
+ORIENTATION = "PatientOrientation row and column directions cannot be identical"
+# Strings compiled into a dicom3tools executable, as dciodvfy's are.
+STRINGS = frozenset(
+    {
+        "CTImage",
+        "Value dubious for this VR",
+        "Retired Person Name form",
+        "Missing attribute",
+        "Type 1 Required",
+        "Unrecognized enumerated value",
+        "String attribute has different value",
+        ORIENTATION,
+        EVEN_GROUP,
+        EXPLICIT_UN,
+    }
+)
 NO_VERSIONS = validators.Versions(None, None, None, {})
 
 
@@ -102,6 +117,88 @@ def test_no_part_of_a_value_passes(value):
     validation = validators.parse_dciodvfy(output, STRINGS)
 
     assert PLANTED not in repr(validation)
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        f'{ORIENTATION} = "{PLANTED}" and "{PLANTED}"',
+        f"{ORIENTATION} = '{PLANTED}' and '{PLANTED}'",
+        f"{ORIENTATION} = <{PLANTED}> and <{PLANTED}>",
+        f"{ORIENTATION} = {PLANTED}",
+        f'{ORIENTATION} "{PLANTED}"',
+        f"{ORIENTATION} = <{PLANTED}",
+    ],
+)
+def test_a_value_outside_angle_brackets_is_redacted(message):
+    output = f"Error - </PatientOrientation(0020,0020)> - {message}\n{PLANTED}>\n"
+
+    validation = validators.parse_dciodvfy(output, STRINGS)
+
+    assert PLANTED not in repr(validation)
+    assert {finding.message for finding in validation.findings} == {
+        ORIENTATION + (" = <value>" if "= " in message else " <value>"),
+        "line not recognised",
+    }
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        f"Missing attribute {PLANTED}",
+        f"{PLANTED} Missing attribute",
+        f"Missing attribute for {PLANTED} Type 1 Required",
+        f"Missing attribute [{PLANTED}]",
+        f"Missing attribute - {PLANTED}",
+    ],
+)
+def test_a_message_that_is_not_the_validators_own_text_is_not_shown(message):
+    message_type, module = validators.message_type(message, STRINGS)
+
+    assert (message_type, module) == (validators.UNPROVEN_MESSAGE, "")
+
+
+def test_a_message_is_made_of_the_validators_strings_and_counts():
+    assert validators.composed("Missing attribute for Type 1 Required", STRINGS) == (
+        "Missing attribute for Type 1 Required"
+    )
+    assert validators.composed("Missing attribute [PN] 12", STRINGS) == (
+        "Missing attribute [PN] <n>"
+    )
+    assert validators.composed("Missing attribute [ZZ]", STRINGS) is None
+
+
+def test_an_iod_name_must_be_the_validators_own():
+    validation = validators.parse_dciodvfy(f"{PLANTED}\n", STRINGS)
+
+    assert validation.iod == ""
+    assert PLANTED not in repr(validation)
+
+
+def test_a_dcentvfy_message_that_is_not_its_own_text_is_not_shown():
+    output = f"Error - Different {PLANTED} value - Element=<PatientName> IE=<Patient>\n"
+
+    (finding,) = validators.parse_dcentvfy(output, STRINGS).findings
+
+    assert finding.message == validators.UNPROVEN_MESSAGE
+
+
+def test_a_report_holds_no_value_quoted_outside_angle_brackets(monkeypatch):
+    output = validators.parse_dciodvfy(
+        f'Error - </PatientOrientation(0020,0020)> - {ORIENTATION} = "{PLANTED}"'
+        f' and "{PLANTED}"\n',
+        STRINGS,
+    )
+
+    comparison = _comparison(monkeypatch, _validation(DCIODVFY, {}), output)
+
+    assert not comparison.passed
+    for text in (comparison.json(), comparison.markdown()):
+        assert PLANTED not in text
+        assert (
+            f"{ORIENTATION} = &lt;value&gt;" in text
+            or f"{ORIENTATION} = <value>" in text
+        )
 
 
 def test_a_reason_that_is_not_the_validators_own_is_dropped():
@@ -168,7 +265,7 @@ def test_dcentvfy_keeps_the_attribute_and_entity_and_not_the_files_or_values():
         f"{PLANTED}\n"
     )
 
-    validation = validators.parse_dcentvfy(output)
+    validation = validators.parse_dcentvfy(output, STRINGS)
 
     assert validation.findings == {
         Finding(
@@ -287,11 +384,12 @@ def _introduced(source, output, known=()):
     tallies = collections.defaultdict(
         dicom_validation._Tally  # pylint: disable = protected-access
     )
-    found = dict(
-        dicom_validation._introduced(  # pylint: disable = protected-access
+    found = {
+        (finding, outcome): count
+        for (finding, outcome, _), count in dicom_validation._introduced(  # pylint: disable = protected-access
             source, output, tallies, known
         )
-    )
+    }
     return found, tallies[source.validator]
 
 
@@ -547,3 +645,127 @@ def test_patients_are_grouped_by_patient_id_and_issuer():
     )
 
     assert groups == [[0, 1]]
+
+
+def _item(**elements):
+    item = pydicom.Dataset()
+    for keyword, value in elements.items():
+        setattr(item, keyword, value)
+    return item
+
+
+def _referencing(path, *, listed, elsewhere=(), other_study=()):
+    """Write an instance whose Common Instance Reference Module lists UIDs."""
+
+    def items(uids):
+        return [_item(ReferencedSOPInstanceUID=uid) for uid in uids]
+
+    dataset = pydicom.Dataset()
+    dataset.ReferencedSeriesSequence = [_item(ReferencedSOPSequence=items(listed))]
+    if other_study:
+        dataset.StudiesContainingOtherReferencedInstancesSequence = [
+            _item(
+                ReferencedSeriesSequence=[
+                    _item(ReferencedSOPSequence=items(other_study))
+                ]
+            )
+        ]
+    dataset.SharedFunctionalGroupsSequence = [
+        _item(DerivationImageSequence=[_item(SourceImageSequence=items(elsewhere))])
+    ]
+    dataset.file_meta = pydicom.dataset.FileMetaDataset()
+    dataset.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+    dataset.save_as(path, enforce_file_format=False)
+    return path
+
+
+def test_a_premise_holds_where_a_listed_instance_is_referenced_elsewhere(tmp_path):
+    kept = _referencing(
+        tmp_path / "kept.dcm",
+        listed=["1.2.3.1"],
+        elsewhere=["1.2.3.1", "1.2.9.1"],
+        other_study=["1.2.9.1"],
+    )
+    lost = _referencing(tmp_path / "lost.dcm", listed=["1.2.3.1"], elsewhere=[])
+    other = _referencing(
+        tmp_path / "other.dcm",
+        listed=["1.2.3.1"],
+        elsewhere=["1.2.9.1"],
+        other_study=["1.2.9.1"],
+    )
+
+    assert dicom_validation.output_premises(kept) == {
+        dicom_validation.THIS_STUDY_REFERENCED,
+        dicom_validation.OTHER_STUDIES_REFERENCED,
+    }
+    assert dicom_validation.output_premises(lost) == set()
+    # Only the reference to another study survives.
+    assert dicom_validation.output_premises(other) == {
+        dicom_validation.OTHER_STUDIES_REFERENCED
+    }
+    assert dicom_validation.output_premises(tmp_path / "missing.dcm") == set()
+
+
+def _requiring(tmp_path):
+    body = ENTRY.replace(
+        'category = "validator"',
+        f'category = "validator"\nrequires = "{dicom_validation.THIS_STUDY_REFERENCED}"',
+    )
+    (difference,) = dicom_validation.read_known_differences(_known_file(tmp_path, body))
+    return difference
+
+
+def test_a_known_difference_with_a_premise_needs_it(tmp_path):
+    difference = _requiring(tmp_path)
+    finding = Finding(
+        DCIODVFY, "warning", "(0044,0110)/(0040,1101)", difference.message
+    )
+
+    assert difference.requires == dicom_validation.THIS_STUDY_REFERENCED
+    assert difference.matches(finding, {dicom_validation.THIS_STUDY_REFERENCED})
+    assert not difference.matches(finding)
+    assert not difference.matches(finding, {dicom_validation.OTHER_STUDIES_REFERENCED})
+
+
+def test_an_unknown_premise_is_refused(tmp_path):
+    body = ENTRY.replace(
+        'category = "validator"', 'category = "validator"\nrequires = "anything"'
+    )
+
+    with pytest.raises(KnownDifferencesError):
+        dicom_validation.read_known_differences(_known_file(tmp_path, body))
+
+
+def test_lost_references_are_unexplained(monkeypatch, tmp_path):
+    # The output's last references outside the Common Instance Reference
+    # Module are gone, so the sequences it keeps are not allowed.
+    difference = _requiring(tmp_path)
+    lost = Finding(DCIODVFY, "warning", "(0044,0110)/(0040,1101)", difference.message)
+    source, output = _validation(DCIODVFY, {}), _validation(DCIODVFY, {lost: 1})
+
+    monkeypatch.setattr(dicom_validation, "output_premises", lambda path: frozenset())
+    failed = _comparison(monkeypatch, source, output, (difference,))
+    monkeypatch.setattr(
+        dicom_validation,
+        "output_premises",
+        lambda path: frozenset({dicom_validation.THIS_STUDY_REFERENCED}),
+    )
+    passed = _comparison(monkeypatch, source, output, (difference,))
+
+    assert not failed.passed
+    assert [i.outcome for i in failed.introduced] == [Outcome.UNEXPLAINED]
+    assert passed.passed
+    assert [(i.outcome, i.difference) for i in passed.introduced] == [
+        (Outcome.EXPLAINED, 1)
+    ]
+    assert "Only where an instance that Referenced Series Sequence" in passed.markdown()
+
+
+def test_the_common_instance_reference_entries_require_their_premises():
+    entries = {
+        difference.paths: difference.requires
+        for difference in dicom_validation.read_known_differences()
+    }
+
+    assert entries[("(0008,1115)",)] == dicom_validation.THIS_STUDY_REFERENCED
+    assert entries[("(0008,1200)",)] == dicom_validation.OTHER_STUDIES_REFERENCED
