@@ -12,159 +12,122 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Parts of this work are derived from OpenJPEG 2.5
-# (https://github.com/uclouvain/openjpeg), from src/lib/openjp2/tcd.c,
-# pi.c, and t2.c, which are released under the following license:
-
-# BSD License
-#
-# The copyright in this software is being made available under the 2-clauses
-# BSD License, included below. This software may be subject to other third
-# party and contributor rights, including patent rights, and no such rights
-# are granted under this license.
-#
-# Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
-# Copyright (c) 2002-2014, Professor Benoit Macq
-# Copyright (c) 2003-2014, Antonin Descampe
-# Copyright (c) 2003-2009, Francois-Olivier Devaux
-# Copyright (c) 2005, Herve Drolon, FreeImage Team
-# Copyright (c) 2002-2003, Yannick Verschueren
-# Copyright (c) 2001-2003, David Janssens
-# Copyright (c) 2011-2012, Centre National d'Etudes Spatiales (CNES), France
-# Copyright (c) 2012, CS Systemes d'Information, France
-#
-#  All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  1. Redistributions of source code must retain the above copyright
-#     notice, this list of conditions and the following disclaimer.
-#  2. Redistributions in binary form must reproduce the above copyright
-#     notice, this list of conditions and the following disclaimer in the
-#     documentation and/or other materials provided with the distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-
 """Read the packet headers of a JPEG 2000 or HTJ2K codestream, to tell
-whether every code-block kept every coding pass.
+whether every code-block they include holds every coding pass.
 
-A JPEG 2000 codestream with the reversible 5-3 wavelet is lossless only
-if each code-block holds every coding pass down to the least significant
-bit-plane. A codestream truncated to a rate keeps the reversible wavelet
-but drops trailing passes, a lossy process (PS3.5 Section A.4.4), and only
-the packet headers record how many passes each code-block holds (ITU-T
-T.800 Annex B). :func:`coding_passes_kept` reads every packet header of
-every tile, in the progression order that the COD marker segment gives,
-and compares what each code-block holds with what it must hold:
+A codestream that keeps the reversible 5-3 wavelet can still be truncated
+to a rate, a lossy process (PS3.5 Section A.4.4), and only its packet
+headers record how many coding passes each code-block holds.
+:func:`coding_passes_kept` reads every packet header of every tile, in the
+progression order that the coding style gives (ITU-T T.800 Annex B), and
+adds up each code-block's coding passes over all layers. It then requires,
+of each code-block that some packet includes:
 
-- A code-block of ITU-T T.800 (Part 1) coding, with ``M_b`` magnitude
-  bit-planes in its sub-band, ``G + epsilon_b - 1`` from the guard bits and
-  exponent of the QCD or QCC marker segment (T.800 Annex E), and ``P`` zero
-  bit-planes from its packet header, must hold ``3 (M_b - P) - 2`` coding
-  passes: a cleanup pass for its most significant bit-plane, then a
-  significance propagation, a magnitude refinement, and a cleanup pass for
-  each bit-plane below it.
-- A code-block of ITU-T T.814 (HTJ2K) coding holds one HT cleanup pass,
-  which codes down to bit-plane ``M_b - 1 - P``, and may hold a
-  significance propagation and a magnitude refinement pass, which code one
-  bit-plane further. It must reach bit-plane 0: a cleanup pass alone with
-  ``P = M_b - 1``, or with both refinement passes with ``P = M_b - 2``.
+- a Part 1 code-block (T.800 Annex D) with ``B`` magnitude bit-planes left
+  after its zero bit-planes: all ``3 B - 2`` coding passes;
+- an HT code-block (ITU-T T.814): its cleanup pass coded down to bit-plane
+  0, alone, or from bit-plane 1 with both refinement passes, where an HT
+  refinement segment of no bytes leaves the cleanup pass alone.
 
-The geometry of tiles, resolutions, sub-bands, precincts, and code-blocks,
-the progression orders, and the reading of each packet header follow
-T.800 Annex B as OpenJPEG 2.5 implements it, since pylibjpeg-openjpeg,
-which decodes these syntaxes here, is built on it.
+The magnitude bit-planes of a sub-band are ``G + epsilon_b - 1`` (T.800
+Annex E), from the guard bits and the exponent that the QCD or QCC marker
+segment in force gives.
 
-A code-block that no packet includes holds no pass, and is decoded as all
-zero. An encoder leaves out a code-block whose coefficients are all zero,
-but a codestream truncated so far that it drops whole code-blocks, and
-keeps every pass of each code-block it includes, cannot be told from one
-coded losslessly. It is not detected here.
+One limit remains. A code-block that no packet includes is decoded as all
+zero, which is how an encoder leaves out a code-block whose coefficients
+are all zero. So a codestream truncated so far that it drops only whole
+code-blocks, and keeps every coding pass of each code-block it includes,
+is taken as kept.
 
-Each packet must be where the one before it ends, every packet of every
-tile must be present, and the tile-part bodies must end with the last
-packet. Where they do not, or the codestream uses what is not read here,
-``None`` is returned, so the frame is not taken as lossless: packed packet
-headers (PPM and PPT), progression order changes (POC), a region of
-interest (RGN), extensions of ITU-T T.801 (Part 2), mixed HT and Part 1
-code-blocks, and an HT code-block in more than one packet or with
-placeholder passes, which OpenJPEG 2.5 does not read as T.814 gives them.
+``None`` means that the packets cannot be read here. That is so for a
+codestream that does not hold together: one that does not start with SOC
+and SIZ, does not end with EOC (or EOC and a single pad byte of 0), has a
+marker segment that runs past EOC, a tile-part out of order, a packet
+header that runs past its tile-part data, or packets that do not end
+exactly where the tile's data ends. It is also so for what is not read
+here: a Part 2 (T.801) codestream, subsampled components, more than 65,535
+tiles, POC, PPM, PPT, RGN, or any other marker segment not listed in
+:func:`coding_passes_kept`, mixed HT code-blocks, an HT code-block in more
+than one packet, with placeholder passes, or with an empty cleanup
+segment, and a code-block with no bit-plane left to code or with more
+coding passes than its bit-planes allow.
 
-The time and memory that reading takes grow with the code-blocks of each
-precinct, which the SIZ and COD marker segments give, and with the
-packets whose headers are not empty, each of which visits every
-code-block of its precinct; a few bytes of headers can give billions of
-code-blocks. So ``None`` is also returned where the code-blocks of the
-precincts, and those visited, would exceed :data:`WORK_ALLOWANCE` and one
-for each byte of the codestream. A codestream coded losslessly holds
-far more bytes than code-blocks, but for a frame almost all zero, in which
-an encoder leaves out code-blocks. Even there the allowance is enough for
-a frame of 8,192 by 8,192 samples, all zero, as pylibjpeg-openjpeg codes
-it, in five decomposition levels and code-blocks of 64 by 64: its 16,384
-code-blocks, each visited once.
+Reading is bounded. A tile whose layers and precincts give more packets
+than its tile-part data has bytes gives ``None`` before any packet is
+read, since each packet takes at least one byte. A few bytes of headers
+can still declare billions of code-blocks, so each call has a budget of
+:data:`WORK_ALLOWANCE` plus the codestream's length, in code-blocks. A
+precinct spends its number of code-blocks once when its first packet is
+read and again for each of its packets that is not empty, and the reading
+stops with ``None`` before the budget would go below 0. A lossless codestream has far more bytes than
+code-blocks, unless its frame is almost all zero; the allowance covers
+such a frame of 8,192 by 8,192 samples coded in code-blocks of 64 by 64.
 """
 
 from __future__ import annotations
 
 import dataclasses
-import itertools
 import struct
-from collections.abc import Iterator
 
-# Marker segments allowed in the main header, in a tile's first tile-part
-# header, and in its later ones; any other ends the reading. CAP and CPF
-# are of T.814.
-_COD, _COC, _QCD, _QCC = 0x52, 0x53, 0x5C, 0x5D
-_MAIN_HEADER = frozenset({_COD, _COC, _QCD, _QCC, 0x50, 0x55, 0x57, 0x59, 0x63, 0x64})
-_LATER_TILE_PART_HEADER = frozenset({0x58, 0x64})
-_FIRST_TILE_PART_HEADER = _LATER_TILE_PART_HEADER | {_COD, _COC, _QCD, _QCC}
-_START_OF_TILE_PART, _START_OF_DATA = b"\xff\x90", b"\xff\x93"
+WORK_ALLOWANCE: int = 1 << 15
+
+# Markers, by their second byte (T.800 Annex A).
+_COD = 0x52
+_COC = 0x53
+_QCD = 0x5C
+_QCC = 0x5D
+_SOT = 0x90
+_SOD = 0x93
+_CAP, _TLM, _PLM, _PLT, _CPF, _CRG, _COM = 0x50, 0x55, 0x57, 0x58, 0x59, 0x63, 0x64
+_MAIN_HEADER = frozenset({_COD, _COC, _QCD, _QCC, _CAP, _TLM, _PLM, _CPF, _CRG, _COM})
+_FIRST_TILE_PART_HEADER = frozenset({_COD, _COC, _QCD, _QCC, _PLT, _COM})
+_LATER_TILE_PART_HEADER = frozenset({_PLT, _COM})
+_START_OF_PACKET = b"\xff\x91"
+_END_OF_PACKET_HEADER = b"\xff\x92"
 _END_OF_CODESTREAM = b"\xff\xd9"
-_START_OF_PACKET, _END_OF_PACKET_HEADER = b"\xff\x91", b"\xff\x92"
 
-# Scod: precinct sizes given, SOP marker segments, EPH markers.
-_PRECINCTS, _SOP, _EPH = 0x01, 0x02, 0x04
-# Code-block style: selective arithmetic coding bypass, termination on
-# each coding pass, and, of T.814, HT code-blocks and mixed code-blocks.
-_BYPASS, _TERMINATE_ALL, _HT, _HT_MIXED = 0x01, 0x04, 0x40, 0x80
-_PART_2 = 0x8000
+_MAXIMUM_TILES = 65535
+_PART_2_CAPABILITIES = 0x8000
+
+# Progression orders, as COD gives them (T.800 Annex A).
 _LRCP, _RLCP, _RPCL, _PCRL, _CPRL = range(5)
-# The code-blocks that reading may make and visit, beyond one for each byte
-# of the codestream.
-WORK_ALLOWANCE = 1 << 15
+
+# Scod (T.800 Annex A).
+_PRECINCTS_GIVEN = 0x01
+_SOP_MAY_BE_USED = 0x02
+_EPH_USED = 0x04
+
+# Code-block style (T.800 Annex A, and T.814 for the HT bits).
+_BYPASS = 0x01
+_TERMINATE_EACH_PASS = 0x04
+_HT = 0x40
+_HT_MIXED = 0x80
+
+# Passes in a codeword segment without bypass or termination on each
+# pass: every pass of the most bit-planes a code-block can have.
+_PASSES_IN_ONE_SEGMENT = 109
+_MAXIMUM_LENGTH_BITS = 32
+_MAXIMUM_LEVELS = 32
+_MAXIMUM_BLOCK_EXPONENT = 10
+_MAXIMUM_BLOCK_AREA_EXPONENT = 12
+
+# Sub-band orientations above resolution 0: HL, LH, and HH, as (xob, yob)
+# of T.800 Equation B-15.
+_ORIENTATIONS = ((1, 0), (0, 1), (1, 1))
 
 
 class _Unreadable(Exception):
     """The packets cannot be read here."""
 
 
-class _Budget:
-    """The code-blocks that reading may still make and visit."""
-
-    def __init__(self, allowance: int):
-        self.left = allowance
-
-    def spend(self, blocks: int) -> None:
-        self.left -= blocks
-        if self.left < 0:
-            raise _Unreadable
-
-
 def coding_passes_kept(codestream: bytes) -> bool | None:
-    """Return whether every code-block of a JPEG 2000 or HTJ2K codestream
-    that its packets include holds every coding pass, as above, or ``None``
-    where its packets cannot be read here.
+    """Return whether every code-block that a JPEG 2000 or HTJ2K
+    codestream's packets include holds every coding pass, as above.
+
+    The main header may hold only COD, COC, QCD, QCC, CAP, TLM, PLM, CPF,
+    CRG, and COM marker segments, and a tile-part header only COD, COC,
+    QCD, QCC, PLT, and COM, the first four in a tile's first tile-part
+    only.
 
     Parameters
     ----------
@@ -174,755 +137,792 @@ def coding_passes_kept(codestream: bytes) -> bool | None:
     Returns
     -------
     bool or None
+        ``True`` where every included code-block holds every coding pass,
+        ``False`` where one holds fewer, and ``None`` where the packets
+        cannot be read here. Never raises.
     """
-    budget = _Budget(WORK_ALLOWANCE + len(codestream))
     try:
-        image = _image(codestream)
-        return all(
-            _tile_kept(image, tile, b"".join(bodies), budget)
-            for tile, bodies in enumerate(image.bodies)
-        )
+        return _kept(codestream)
     except _Unreadable:
         return None
 
 
 @dataclasses.dataclass(frozen=True)
+class _Size:
+    """The SIZ marker segment: the image area ``(x0, y0, x1, y1)``, the
+    tile size and the tile grid's origin, and the number of components."""
+
+    image: tuple[int, int, int, int]
+    tile_size: tuple[int, int]
+    tile_origin: tuple[int, int]
+    components: int
+
+    @property
+    def across(self) -> int:
+        return -(-(self.image[2] - self.tile_origin[0]) // self.tile_size[0])
+
+    @property
+    def tiles(self) -> int:
+        down = -(-(self.image[3] - self.tile_origin[1]) // self.tile_size[1])
+        return self.across * down
+
+    def tile_bounds(self, tile: int) -> tuple[int, int, int, int]:
+        """The tile's bounds, clipped to the image area (T.800 B.3)."""
+        column, row = tile % self.across, tile // self.across
+        x0 = self.tile_origin[0] + column * self.tile_size[0]
+        y0 = self.tile_origin[1] + row * self.tile_size[1]
+        return (
+            max(x0, self.image[0]),
+            max(y0, self.image[1]),
+            min(x0 + self.tile_size[0], self.image[2]),
+            min(y0 + self.tile_size[1], self.image[3]),
+        )
+
+
+@dataclasses.dataclass(frozen=True)
 class _Coding:
-    """SPcod or SPcoc, with each resolution's precinct size exponents."""
+    """SPcod or SPcoc: decomposition levels, code-block width and height
+    exponents, code-block style, and each resolution's precinct width and
+    height exponents."""
 
     levels: int
-    block_width: int
-    block_height: int
+    block: tuple[int, int]
     style: int
     precincts: tuple[tuple[int, int], ...]
 
 
 @dataclasses.dataclass(frozen=True)
-class _Quantisation:
-    """Sqcd and SPqcd, or Sqcc and SPqcc: the guard bits, and each
-    sub-band's exponent, or, for derived quantisation, the LL band's."""
-
-    guard_bits: int
-    exponents: tuple[int, ...]
-    derived: bool
-
-
-@dataclasses.dataclass(frozen=True)
 class _Defaults:
-    """What the main header, or a tile's first tile-part header over it,
-    sets for coding and quantisation."""
+    """The COD marker segment."""
 
     scod: int
     progression: int
     layers: int
     coding: _Coding
-    quantisation: _Quantisation
-    component_coding: dict[int, _Coding]
-    component_quantisation: dict[int, _Quantisation]
 
 
 @dataclasses.dataclass(frozen=True)
-class _Image:
-    """The SIZ marker segment, and each tile's headers and tile-part
-    bodies."""
+class _Quantisation:
+    """The QCD or QCC marker segment: guard bits, whether the exponents are
+    derived from the first (scalar derived), and the exponents."""
 
-    reference: tuple[int, int, int, int]
-    tiling: tuple[int, int, int, int]
-    across: int
-    components: int
-    tiles: list[_Defaults]
-    bodies: list[list[bytes]]
+    guard_bits: int
+    derived: bool
+    exponents: tuple[int, ...]
 
 
-def _image(codestream: bytes) -> _Image:
-    if codestream[:4] != b"\xff\x4f\xff\x51":
-        raise _Unreadable
-    # EOC ends the codestream, or comes before the byte that pads it to an
-    # even length.
-    end = len(codestream) - 2
-    if codestream[end:] != _END_OF_CODESTREAM:
-        end -= 1
-        if codestream[end:] != _END_OF_CODESTREAM + b"\x00":
-            raise _Unreadable
-    size = _payload(codestream, 2, end)
-    if len(size) < 38:
-        raise _Unreadable
-    rsiz, width, height, left, top, tile_width, tile_height, tile_left, tile_top = (
-        struct.unpack_from(">H8I", size)
-    )
-    (components,) = struct.unpack_from(">H", size, 34)
-    if rsiz & _PART_2 or not components or len(size) != 36 + 3 * components:
-        raise _Unreadable
-    # XRsiz and YRsiz: no component is subsampled.
-    if any(size[37 + 3 * i : 39 + 3 * i] != b"\x01\x01" for i in range(components)):
-        raise _Unreadable
-    # The image area starts in the first tile (T.800 Section B.3).
-    if not (tile_width and tile_height and tile_left <= left and tile_top <= top):
-        raise _Unreadable
-    if not (
-        left < min(width, tile_left + tile_width)
-        and top < min(height, tile_top + tile_height)
-    ):
-        raise _Unreadable
-    across = -(-(width - tile_left) // tile_width)
-    count = across * -(-(height - tile_top) // tile_height)
-    # Isot numbers at most 65,535 tiles.
-    if count > 65535:
-        raise _Unreadable
-    segments, position = _segments(codestream, 6 + len(size), end, _MAIN_HEADER)
-    main = _defaults(segments, components, None)
-    tiles: list[_Defaults | None] = [None] * count
-    bodies: list[list[bytes]] = [[] for _ in range(count)]
-    totals: list[set[int]] = [set() for _ in range(count)]
-    while position < end:
-        if codestream[position : position + 2] != _START_OF_TILE_PART:
-            raise _Unreadable
-        tile_part = _payload(codestream, position, end)
-        if len(tile_part) != 8:
-            raise _Unreadable
-        tile, length, index, total = struct.unpack(">HIBB", tile_part)
-        # Psot of 0: the last tile-part, which runs to EOC.
-        stop = end if length == 0 else position + length
-        if tile >= count or index != len(bodies[tile]) or stop > end:
-            raise _Unreadable
-        headers = _FIRST_TILE_PART_HEADER if index == 0 else _LATER_TILE_PART_HEADER
-        segments, data = _segments(codestream, position + 12, stop, headers)
-        if codestream[data : data + 2] != _START_OF_DATA:
-            raise _Unreadable
-        if index == 0:
-            tiles[tile] = _defaults(segments, components, main)
-        bodies[tile].append(codestream[data + 2 : stop])
-        totals[tile] |= {total} - {0}
-        position = stop
-    complete = [
-        defaults
-        for defaults, tile_bodies, total in zip(tiles, bodies, totals)
-        if defaults is not None and total <= {len(tile_bodies)}
-    ]
-    if len(complete) != count:
-        raise _Unreadable
-    return _Image(
-        (left, top, width, height),
-        (tile_left, tile_top, tile_width, tile_height),
-        across,
-        components,
-        complete,
-        bodies,
-    )
+@dataclasses.dataclass
+class _Markers:
+    """The coding and quantisation marker segments of one header."""
+
+    cod: _Defaults | None = None
+    coc: dict[int, _Coding] = dataclasses.field(default_factory=dict)
+    qcd: _Quantisation | None = None
+    qcc: dict[int, _Quantisation] = dataclasses.field(default_factory=dict)
 
 
-def _segments(
-    codestream: bytes, position: int, end: int, allowed: frozenset[int]
-) -> tuple[list[tuple[int, bytes]], int]:
-    """Return the marker and payload of each marker segment of a header
-    from ``position``, and where the SOT or SOD marker that ends it is."""
-    segments = []
-    while True:
-        if position + 2 > end or codestream[position] != 0xFF:
-            raise _Unreadable
-        marker = codestream[position : position + 2]
-        if marker in (_START_OF_TILE_PART, _START_OF_DATA):
-            return segments, position
-        if marker[1] not in allowed:
-            raise _Unreadable
-        payload = _payload(codestream, position, end)
-        segments.append((marker[1], payload))
-        position += 4 + len(payload)
+@dataclasses.dataclass(frozen=True)
+class _SubBand:
+    """A sub-band's bounds, ``(x0, y0, x1, y1)``, and magnitude bit-planes."""
 
-
-def _payload(codestream: bytes, position: int, end: int) -> bytes:
-    """Return the payload of the marker segment at ``position``, after its
-    marker and 16-bit length."""
-    if position + 4 > end:
-        raise _Unreadable
-    (length,) = struct.unpack_from(">H", codestream, position + 2)
-    if length < 2 or position + 2 + length > end:
-        raise _Unreadable
-    return codestream[position + 4 : position + 2 + length]
-
-
-def _defaults(
-    segments: list[tuple[int, bytes]], components: int, main: _Defaults | None
-) -> _Defaults:
-    """Return what a main header sets, or what a tile's first tile-part
-    header sets over ``main``: its COD and QCD marker segments over the main
-    header's and over its COC and QCC marker segments, and its own COC and
-    QCC marker segments over all of them (T.800 Section A.6)."""
-    by_marker: dict[int, list[bytes]] = {}
-    for marker, payload in segments:
-        by_marker.setdefault(marker, []).append(payload)
-    cod, qcd = by_marker.get(_COD, []), by_marker.get(_QCD, [])
-    if len(cod) > 1 or len(qcd) > 1 or (main is None and not (cod and qcd)):
-        raise _Unreadable
-    if cod:
-        # Scod, then SGcod: the progression order, the layers, and the
-        # multiple component transformation; then SPcod.
-        payload = cod[0]
-        if len(payload) < 5:
-            raise _Unreadable
-        scod, progression = payload[0], payload[1]
-        (layers,) = struct.unpack_from(">H", payload, 2)
-        if progression > _CPRL or not layers:
-            raise _Unreadable
-        coding = _coding(payload[5:], scod)
-        component_coding: dict[int, _Coding] = {}
-    else:
-        assert main is not None
-        scod, progression, layers = main.scod, main.progression, main.layers
-        coding = main.coding
-        component_coding = dict(main.component_coding)
-    if qcd:
-        quantisation = _quantisation(qcd[0])
-        component_quantisation: dict[int, _Quantisation] = {}
-    else:
-        assert main is not None
-        quantisation = main.quantisation
-        component_quantisation = dict(main.component_quantisation)
-    wide = components > 256
-    for payloads, read, into in (
-        (by_marker.get(_COC, []), _component_coding, component_coding),
-        (by_marker.get(_QCC, []), _component_quantisation, component_quantisation),
-    ):
-        seen = set()
-        for payload in payloads:
-            component, value = read(payload, wide, components)
-            if component in seen:
-                raise _Unreadable
-            seen.add(component)
-            into[component] = value
-    return _Defaults(
-        scod,
-        progression,
-        layers,
-        coding,
-        quantisation,
-        component_coding,
-        component_quantisation,
-    )
-
-
-def _component(payload: bytes, wide: bool, components: int) -> tuple[int, bytes]:
-    """Return a COC or QCC marker segment's component, of 1 byte, or 2
-    where there are more than 256 components, and the rest of it."""
-    width = 2 if wide else 1
-    if len(payload) <= width:
-        raise _Unreadable
-    component = int.from_bytes(payload[:width], "big")
-    if component >= components:
-        raise _Unreadable
-    return component, payload[width:]
-
-
-def _component_coding(
-    payload: bytes, wide: bool, components: int
-) -> tuple[int, _Coding]:
-    component, rest = _component(payload, wide, components)
-    return component, _coding(rest[1:], rest[0])
-
-
-def _component_quantisation(
-    payload: bytes, wide: bool, components: int
-) -> tuple[int, _Quantisation]:
-    component, rest = _component(payload, wide, components)
-    return component, _quantisation(rest)
-
-
-def _coding(spcod: bytes, scod: int) -> _Coding:
-    """Read SPcod or SPcoc: the decomposition levels, the code-block width
-    and height exponents less 2, the code-block style, the transformation,
-    and, where ``scod`` says, each resolution's precinct size exponents,
-    15 by 15 otherwise."""
-    if len(spcod) < 5:
-        raise _Unreadable
-    levels, width, height, style = spcod[0], spcod[1] + 2, spcod[2] + 2, spcod[3]
-    sizes = spcod[5:] if scod & _PRECINCTS else bytes([0xFF] * (levels + 1))
-    if levels > 32 or len(spcod) != 5 + (levels + 1 if scod & _PRECINCTS else 0):
-        raise _Unreadable
-    if max(width, height) > 10 or width + height > 12 or style & _HT_MIXED:
-        raise _Unreadable
-    precincts = tuple((size & 0x0F, size >> 4) for size in sizes)
-    if any(0 in precinct for precinct in precincts[1:]):
-        raise _Unreadable
-    return _Coding(levels, width, height, style, precincts)
-
-
-def _quantisation(payload: bytes) -> _Quantisation:
-    if not payload:
-        raise _Unreadable
-    style, rest = payload[0] & 0x1F, payload[1:]
-    if style == 0:
-        exponents = tuple(byte >> 3 for byte in rest)
-    elif style in (1, 2) and len(rest) % 2 == 0:
-        exponents = tuple(value >> 11 for (value,) in struct.iter_unpack(">H", rest))
-    else:
-        raise _Unreadable
-    if not exponents or (style == 1 and len(exponents) != 1):
-        raise _Unreadable
-    return _Quantisation(payload[0] >> 5, exponents, style == 1)
+    bounds: tuple[int, int, int, int]
+    magnitude_bit_planes: int
 
 
 @dataclasses.dataclass(frozen=True)
 class _Resolution:
-    """One resolution level of one tile-component."""
+    """Resolution ``index`` of a tile-component, at decomposition ``level``
+    (T.800 B.5 to B.7): its bounds, precinct width and height exponents,
+    precincts across and down, sub-bands, and coding style."""
 
+    index: int
     level: int
     bounds: tuple[int, int, int, int]
-    precinct_size: tuple[int, int]
+    precinct: tuple[int, int]
     precincts: tuple[int, int]
-    # Each sub-band's bounds and magnitude bit-planes, M_b.
-    bands: tuple[tuple[tuple[int, int, int, int], int], ...]
-    block_size: tuple[int, int]
+    sub_bands: tuple[_SubBand, ...]
+    coding: _Coding
+
+    @property
+    def precinct_count(self) -> int:
+        return self.precincts[0] * self.precincts[1]
 
 
 @dataclasses.dataclass(slots=True)
-class _Block:
-    """What the packet headers have said so far of one code-block."""
+class _CodeBlock:
+    """What the packet headers have given a code-block so far: its zero
+    bit-planes, coding passes, ``Lblock``, and the codeword segment in
+    progress, with the passes it holds and its capacity."""
 
-    magnitude_bit_planes: int
     included: bool = False
     zero_bit_planes: int = 0
-    length_bits: int = 3
     passes: int = 0
-    packets: int = 0
-    # The coding passes in its last codeword segment, and at most how many
-    # that segment holds.
+    lblock: int = 3
     segment_passes: int = 0
-    segment_limit: int = 0
+    segment_capacity: int = 0
 
 
-@dataclasses.dataclass(frozen=True)
-class _Precinct:
-    """The code-blocks of one precinct, in the order that its packets give
-    them, and each sub-band's inclusion and zero bit-plane tag trees."""
+class _TagTree:
+    """A tag tree's decoding state (T.800 B.10.2): each node's lower bound
+    and whether its value is known, level by level from the leaves."""
 
-    bands: tuple[tuple[list[_Block], _TagTree, _TagTree], ...]
+    def __init__(self, across: int, down: int):
+        self._sizes = [(across, down)]
+        while self._sizes[-1] != (1, 1):
+            across, down = self._sizes[-1]
+            self._sizes.append((-(-across // 2), -(-down // 2)))
+        self._bounds = [[0] * (across * down) for across, down in self._sizes]
+        self._known = [[False] * (across * down) for across, down in self._sizes]
+
+    def value_below(
+        self, bits: _Bits, column: int, row: int, threshold: int
+    ) -> int | None:
+        """Read whether the leaf's value is below ``threshold``, walking from
+        the root, and return the value where it is, otherwise ``None``."""
+        bound = 0
+        known = False
+        for level in reversed(range(len(self._sizes))):
+            index = (row >> level) * self._sizes[level][0] + (column >> level)
+            bound = max(bound, self._bounds[level][index])
+            known = self._known[level][index]
+            while not known and bound < threshold:
+                if bits.bit():
+                    known = True
+                else:
+                    bound += 1
+            self._bounds[level][index] = bound
+            self._known[level][index] = known
+        return bound if known and bound < threshold else None
 
 
-def _tile_kept(image: _Image, tile: int, body: bytes, budget: _Budget) -> bool:
-    """Read every packet of one tile, and return whether every code-block
-    that they include holds every coding pass."""
-    defaults = image.tiles[tile]
-    column, row = tile % image.across, tile // image.across
-    left, top, width, height = image.reference
-    tile_left, tile_top, tile_width, tile_height = image.tiling
-    bounds = (
-        max(tile_left + column * tile_width, left),
-        max(tile_top + row * tile_height, top),
-        min(tile_left + (column + 1) * tile_width, width),
-        min(tile_top + (row + 1) * tile_height, height),
-    )
-    resolutions = [
-        _resolutions(defaults, component, bounds)
-        for component in range(image.components)
-    ]
-    styles = [
-        defaults.component_coding.get(component, defaults.coding).style
-        for component in range(image.components)
-    ]
-    # Each packet has a byte at least, so a tile with more packets than
-    # bytes cannot hold together.
-    if defaults.layers * sum(
-        res.precincts[0] * res.precincts[1]
-        for component in resolutions
-        for res in component
-    ) > len(body):
+class _Bits:
+    """The bits of a packet header, most significant first, from
+    ``position``, where a byte after 0xFF holds only 7 bits (T.800
+    B.10.1)."""
+
+    def __init__(self, data: bytes, position: int):
+        self.data = data
+        self.position = position
+        self._byte = 0
+        self._left = 0
+
+    def bit(self) -> int:
+        if not self._left:
+            self._next_byte()
+        self._left -= 1
+        return (self._byte >> self._left) & 1
+
+    def bits(self, count: int) -> int:
+        value = 0
+        for _ in range(count):
+            value = (value << 1) | self.bit()
+        return value
+
+    def end(self) -> int:
+        """Return where the header ends: after its current byte, and after
+        the stuffed byte that follows where that byte is 0xFF."""
+        if self._byte == 0xFF:
+            self._next_byte()
+        return self.position
+
+    def _next_byte(self):
+        if self.position >= len(self.data):
+            raise _Unreadable
+        stuffed = self._byte == 0xFF
+        self._byte = self.data[self.position]
+        if stuffed and self._byte & 0x80:
+            raise _Unreadable
+        self._left = 7 if stuffed else 8
+        self.position += 1
+
+
+@dataclasses.dataclass
+class _PrecinctBand:
+    """A precinct's code-blocks in one sub-band, with its inclusion and zero
+    bit-plane tag trees."""
+
+    sub_band: _SubBand
+    style: int
+    across: int
+    blocks: list[_CodeBlock]
+    inclusion: _TagTree
+    zero_bit_planes: _TagTree
+
+    @property
+    def ht(self) -> bool:
+        return bool(self.style & _HT)
+
+
+class _Budget:
+    """The code-blocks that a call may still visit."""
+
+    def __init__(self, units: int):
+        self.units = units
+
+    def spend(self, units: int):
+        self.units -= units
+        if self.units < 0:
+            raise _Unreadable
+
+
+def _kept(codestream: bytes) -> bool:
+    if codestream[:4] != b"\xff\x4f\xff\x51":
         raise _Unreadable
-    precincts: dict[tuple[int, int, int], _Precinct] = {}
-    position = 0
-    for layer, resolution, component, index in _progression(
-        defaults, resolutions, bounds
+    if codestream[-2:] == _END_OF_CODESTREAM:
+        end = len(codestream) - 2
+    elif codestream[-3:] == _END_OF_CODESTREAM + b"\x00":
+        end = len(codestream) - 3
+    else:
+        raise _Unreadable
+    size, position = _read_size(codestream, end)
+    main, position = _read_header(codestream, position, end, _MAIN_HEADER, _SOT, size)
+    if main.cod is None or main.qcd is None:
+        raise _Unreadable
+    headers, bodies = _read_tile_parts(codestream, position, end, size)
+    budget = _Budget(WORK_ALLOWANCE + len(codestream))
+    kept = True
+    for tile, (header, body) in enumerate(zip(headers, bodies)):
+        kept = _read_tile(size, main, header, body, tile, budget) and kept
+    return kept
+
+
+def _marker_segment(data: bytes, position: int, limit: int) -> tuple[int, bytes]:
+    """Return the marker and payload of the marker segment at ``position``,
+    which must end by ``limit``."""
+    if position + 4 > limit or data[position] != 0xFF:
+        raise _Unreadable
+    (length,) = struct.unpack_from(">H", data, position + 2)
+    if length < 2 or position + 2 + length > limit:
+        raise _Unreadable
+    return data[position + 1], data[position + 4 : position + 2 + length]
+
+
+def _read_size(data: bytes, end: int) -> tuple[_Size, int]:
+    """Read SIZ, and return it with where the main header continues."""
+    _, payload = _marker_segment(data, 2, end)
+    if len(payload) < 36:
+        raise _Unreadable
+    rsiz, x1, y1, x0, y0, tile_width, tile_height, tile_x0, tile_y0, components = (
+        struct.unpack_from(">H8IH", payload)
+    )
+    if (
+        components < 1
+        or len(payload) != 36 + 3 * components
+        or rsiz & _PART_2_CAPABILITIES
     ):
-        key = (component, resolution, index)
-        if layer == 0:
-            precincts[key] = _precinct(
-                resolutions[component][resolution], index, budget
-            )
-        position = _packet(
-            body,
-            position,
-            defaults.scod,
-            styles[component],
-            layer,
-            precincts[key],
-            budget,
+        raise _Unreadable
+    # XRsiz and YRsiz of every component: none is subsampled.
+    if any(payload[37 + 3 * i : 39 + 3 * i] != b"\x01\x01" for i in range(components)):
+        raise _Unreadable
+    # The tile grid starts at or before the image, and the image starts
+    # inside the first tile and inside the image.
+    if not (
+        tile_x0 <= x0 < min(x1, tile_x0 + tile_width)
+        and tile_y0 <= y0 < min(y1, tile_y0 + tile_height)
+    ):
+        raise _Unreadable
+    size = _Size(
+        (x0, y0, x1, y1), (tile_width, tile_height), (tile_x0, tile_y0), components
+    )
+    if size.tiles > _MAXIMUM_TILES:
+        raise _Unreadable
+    return size, 6 + len(payload)
+
+
+def _read_header(
+    data: bytes,
+    position: int,
+    limit: int,
+    allowed: frozenset[int],
+    until: int,
+    size: _Size,
+) -> tuple[_Markers, int]:
+    """Read the marker segments of a main or tile-part header from
+    ``position`` up to the marker ``until``, SOT or SOD, and return those
+    that set coding and quantisation, with where ``until`` is."""
+    markers = _Markers()
+    while True:
+        if position + 2 > limit or data[position] != 0xFF:
+            raise _Unreadable
+        if data[position + 1] == until:
+            return markers, position
+        code, payload = _marker_segment(data, position, limit)
+        if code not in allowed:
+            raise _Unreadable
+        if code == _COD:
+            if markers.cod is not None:
+                raise _Unreadable
+            markers.cod = _read_cod(payload)
+        elif code == _QCD:
+            if markers.qcd is not None:
+                raise _Unreadable
+            markers.qcd = _read_quantisation(payload)
+        elif code == _COC:
+            component, rest = _component(payload, size.components, markers.coc)
+            # Scoc, then SPcoc.
+            markers.coc[component] = _read_coding(rest[1:], rest[0] & _PRECINCTS_GIVEN)
+        elif code == _QCC:
+            component, rest = _component(payload, size.components, markers.qcc)
+            markers.qcc[component] = _read_quantisation(rest)
+        position += 4 + len(payload)
+
+
+def _component(payload: bytes, components: int, seen: dict) -> tuple[int, bytes]:
+    """Split the component index, Ccoc or Cqcc, from a COC or QCC payload,
+    where it is a component that ``seen`` does not yet hold, and something
+    follows it."""
+    width = 1 if components <= 256 else 2
+    if len(payload) <= width:
+        raise _Unreadable
+    component = int.from_bytes(payload[:width], "big")
+    if component >= components or component in seen:
+        raise _Unreadable
+    return component, payload[width:]
+
+
+def _read_cod(payload: bytes) -> _Defaults:
+    """Read COD: Scod, progression order, layers, the multiple component
+    transformation, then SPcod."""
+    if len(payload) < 5:
+        raise _Unreadable
+    scod, progression, layers = struct.unpack_from(">BBH", payload)
+    if progression > _CPRL or not layers:
+        raise _Unreadable
+    coding = _read_coding(payload[5:], scod & _PRECINCTS_GIVEN)
+    return _Defaults(scod, progression, layers, coding)
+
+
+def _read_coding(parameters: bytes, precincts_given: int) -> _Coding:
+    """Read SPcod or SPcoc."""
+    if len(parameters) < 5:
+        raise _Unreadable
+    levels, width, height, style = parameters[0], *parameters[1:4]
+    block = (width + 2, height + 2)
+    if (
+        levels > _MAXIMUM_LEVELS
+        or len(parameters) != 5 + (levels + 1 if precincts_given else 0)
+        or max(block) > _MAXIMUM_BLOCK_EXPONENT
+        or sum(block) > _MAXIMUM_BLOCK_AREA_EXPONENT
+        or style & _HT_MIXED
+    ):
+        raise _Unreadable
+    if precincts_given:
+        # PPx in the low four bits and PPy in the high four.
+        precincts = tuple((each & 0x0F, each >> 4) for each in parameters[5:])
+        if any(0 in each for each in precincts[1:]):
+            raise _Unreadable
+    else:
+        precincts = ((15, 15),) * (levels + 1)
+    return _Coding(levels, block, style, precincts)
+
+
+def _read_quantisation(payload: bytes) -> _Quantisation:
+    """Read QCD, or QCC after its component: Sqcd or Sqcc, then each
+    sub-band's exponent in the top 5 bits of its byte or 16 bits."""
+    if not payload:
+        raise _Unreadable
+    guard_bits, style = payload[0] >> 5, payload[0] & 0x1F
+    values = payload[1:]
+    if style == 0:
+        exponents = tuple(each >> 3 for each in values)
+    elif style in (1, 2) and len(values) % 2 == 0:
+        exponents = tuple(each >> 3 for each in values[::2])
+    else:
+        raise _Unreadable
+    if not exponents or (style == 1 and len(exponents) > 1):
+        raise _Unreadable
+    return _Quantisation(guard_bits, style == 1, exponents)
+
+
+def _read_tile_parts(
+    data: bytes, position: int, end: int, size: _Size
+) -> tuple[list[_Markers], list[bytes]]:
+    """Read the tile-parts from ``position`` to EOC, and return each tile's
+    first tile-part header and its tile-part bodies joined in order."""
+    headers: dict[int, _Markers] = {}
+    bodies: list[list[bytes]] = [[] for _ in range(size.tiles)]
+    # Each tile's non-zero TNsot values.
+    declared: list[set[int]] = [set() for _ in range(size.tiles)]
+    while position < end:
+        code, payload = _marker_segment(data, position, end)
+        if code != _SOT or len(payload) != 8:
+            raise _Unreadable
+        # Isot, Psot, TPsot, and TNsot.
+        tile, length, part, parts = struct.unpack(">HIBB", payload)
+        if tile >= size.tiles or part != len(bodies[tile]):
+            raise _Unreadable
+        part_end = end if length == 0 else position + length
+        if part_end > end:
+            raise _Unreadable
+        allowed = _LATER_TILE_PART_HEADER if part else _FIRST_TILE_PART_HEADER
+        markers, sod = _read_header(data, position + 12, part_end, allowed, _SOD, size)
+        if not part:
+            headers[tile] = markers
+        bodies[tile].append(data[sod + 2 : part_end])
+        if parts:
+            declared[tile].add(parts)
+        position = part_end
+    for tile, tile_parts in enumerate(bodies):
+        if not tile_parts or declared[tile] - {len(tile_parts)}:
+            raise _Unreadable
+    return [headers[tile] for tile in range(size.tiles)], [
+        b"".join(tile_parts) for tile_parts in bodies
+    ]
+
+
+def _read_tile(
+    size: _Size,
+    main: _Markers,
+    header: _Markers,
+    body: bytes,
+    tile: int,
+    budget: _Budget,
+) -> bool:
+    """Read every packet of a tile, and return whether every code-block they
+    include holds every coding pass."""
+    # T.800 Section A.6: a tile's COD or QCD replaces the main header's,
+    # with the main header's COC or QCC entries, and the tile's own COC and
+    # QCC entries apply over whatever is in force.
+    cod = header.cod or main.cod
+    qcd = header.qcd or main.qcd
+    if cod is None or qcd is None:
+        raise _Unreadable
+    cocs = {**(main.coc if header.cod is None else {}), **header.coc}
+    qccs = {**(main.qcc if header.qcd is None else {}), **header.qcc}
+    bounds = size.tile_bounds(tile)
+    components = []
+    precincts = 0
+    for component in range(size.components):
+        resolutions = _resolutions(
+            bounds, cocs.get(component, cod.coding), qccs.get(component, qcd)
         )
+        components.append(resolutions)
+        # Each packet takes at least one byte. The highest resolution has
+        # at least one precinct, so this stops within as many components
+        # as the body has bytes.
+        precincts += sum(resolution.precinct_count for resolution in resolutions)
+        if cod.layers * precincts > len(body):
+            raise _Unreadable
+
+    states: dict[tuple[int, int, int], list[_PrecinctBand]] = {}
+    position = 0
+    for layer, component, r, precinct in _packets(cod, components, bounds):
+        bands = states.get((component, r, precinct))
+        if bands is None:
+            bands = _precinct_bands(components[component][r], precinct, budget)
+            states[(component, r, precinct)] = bands
+        position = _read_packet(body, position, cod.scod, bands, layer, budget)
     if position != len(body):
         raise _Unreadable
-    return all(
-        _block_kept(block, styles[component])
-        for (component, _, _), precinct in precincts.items()
-        for blocks, _, _ in precinct.bands
-        for block in blocks
-        if block.included
-    )
 
-
-def _block_kept(block: _Block, style: int) -> bool:
-    if style & _HT:
-        lowest = block.magnitude_bit_planes - 1 - block.zero_bit_planes
-        if lowest < 0 or (block.passes == 3 and lowest == 0):
-            raise _Unreadable
-        return (block.passes, lowest) in ((1, 0), (3, 1))
-    bit_planes = block.magnitude_bit_planes - block.zero_bit_planes
-    if bit_planes < 1 or block.passes > 3 * bit_planes - 2:
-        raise _Unreadable
-    return block.passes == 3 * bit_planes - 2
+    kept = True
+    for bands in states.values():
+        for band in bands:
+            for block in band.blocks:
+                if block.included:
+                    kept = _block_kept(band, block) and kept
+    return kept
 
 
 def _resolutions(
-    defaults: _Defaults, component: int, tile: tuple[int, int, int, int]
+    bounds: tuple[int, int, int, int], coding: _Coding, quantisation: _Quantisation
 ) -> list[_Resolution]:
-    """Return each resolution level of one tile-component, and its
-    sub-bands, as OpenJPEG's ``opj_tcd_init_tile`` sets them (T.800
-    Sections B.5 and B.6)."""
-    coding = defaults.component_coding.get(component, defaults.coding)
-    quantisation = defaults.component_quantisation.get(component, defaults.quantisation)
-    if not quantisation.derived and len(quantisation.exponents) < 3 * coding.levels + 1:
+    """Return a tile-component's resolutions, with their sub-bands and
+    precincts (T.800 B.5, B.6, and B.7)."""
+    levels = coding.levels
+    if not quantisation.derived and len(quantisation.exponents) < 3 * levels + 1:
         raise _Unreadable
-    x0, y0, x1, y1 = tile
     resolutions = []
-    for resolution, precinct_size in enumerate(coding.precincts):
-        level = coding.levels - resolution
-        bounds = (
-            _ceil_shift(x0, level),
-            _ceil_shift(y0, level),
-            _ceil_shift(x1, level),
-            _ceil_shift(y1, level),
-        )
-        if resolution == 0:
-            boxes = [(bounds, 0)]
+    for r in range(levels + 1):
+        level = levels - r
+        x0, y0, x1, y1 = (-(-each >> level) for each in bounds)
+        if r == 0:
+            sub_bands = [_SubBand((x0, y0, x1, y1), _bit_planes(quantisation, 0, 0))]
         else:
-            # HL, LH, and HH, each offset by half a sample of this level
-            # where it is high-pass.
-            boxes = [
-                (
-                    (
-                        _ceil_shift(x0 - (high_x << level), level + 1),
-                        _ceil_shift(y0 - (high_y << level), level + 1),
-                        _ceil_shift(x1 - (high_x << level), level + 1),
-                        _ceil_shift(y1 - (high_y << level), level + 1),
-                    ),
-                    3 * resolution - 3 + band,
+            sub_bands = [
+                _SubBand(
+                    _sub_band_bounds(bounds, level + 1, orientation),
+                    _bit_planes(quantisation, r, index),
                 )
-                for band, (high_x, high_y) in enumerate(((1, 0), (0, 1), (1, 1)), 1)
+                for index, orientation in enumerate(_ORIENTATIONS)
             ]
-        bands = []
-        for box, index in boxes:
-            if quantisation.derived:
-                exponent = max(quantisation.exponents[0] - max(resolution - 1, 0), 0)
-            else:
-                exponent = quantisation.exponents[index]
-            bands.append((box, quantisation.guard_bits + exponent - 1))
+        width, height = coding.precincts[r]
+        precincts = (
+            -(-x1 >> width) - (x0 >> width) if x1 > x0 else 0,
+            -(-y1 >> height) - (y0 >> height) if y1 > y0 else 0,
+        )
         resolutions.append(
             _Resolution(
+                r,
                 level,
-                bounds,
-                precinct_size,
-                (
-                    _span(bounds[0], bounds[2], precinct_size[0]),
-                    _span(bounds[1], bounds[3], precinct_size[1]),
-                ),
-                tuple(bands),
-                (coding.block_width, coding.block_height),
+                (x0, y0, x1, y1),
+                (width, height),
+                precincts,
+                tuple(sub_bands),
+                coding,
             )
         )
     return resolutions
 
 
-def _span(start: int, stop: int, exponent: int) -> int:
-    """Return how many cells of size ``2 ** exponent``, anchored at 0, meet
-    ``[start, stop)``, or 0 where it is empty."""
-    return 0 if start == stop else _ceil_shift(stop, exponent) - (start >> exponent)
+def _sub_band_bounds(
+    bounds: tuple[int, int, int, int], level: int, orientation: tuple[int, int]
+) -> tuple[int, int, int, int]:
+    """Return the bounds of a sub-band at decomposition ``level`` of the
+    tile-component of ``bounds`` (T.800 Equation B-15)."""
+    x_offset, y_offset = (each << (level - 1) for each in orientation)
+    x0, y0, x1, y1 = bounds
+    return (
+        -(-(x0 - x_offset) >> level),
+        -(-(y0 - y_offset) >> level),
+        -(-(x1 - x_offset) >> level),
+        -(-(y1 - y_offset) >> level),
+    )
 
 
-def _ceil_shift(value: int, shift: int) -> int:
-    return -((-value) >> shift)
+def _bit_planes(quantisation: _Quantisation, r: int, orientation: int) -> int:
+    """Return ``M_b`` of a sub-band of resolution ``r``: LL, or HL, LH, and
+    HH as ``orientation`` 0, 1, and 2 (T.800 Annex E)."""
+    if quantisation.derived:
+        # Scalar derived: the first exponent, less NL less the sub-band's
+        # decomposition level, which is r - 1 above resolution 0.
+        exponent = max(quantisation.exponents[0] - max(r - 1, 0), 0)
+    else:
+        exponent = quantisation.exponents[3 * r - 2 + orientation if r else 0]
+    return quantisation.guard_bits + exponent - 1
 
 
-def _precinct(resolution: _Resolution, index: int, budget: _Budget) -> _Precinct:
-    """Return the code-blocks of one precinct in each sub-band that is not
-    empty, as OpenJPEG's ``opj_tcd_init_tile`` sets them (T.800 Section
-    B.7)."""
-    # Above the lowest resolution, a precinct's size in each sub-band is
-    # half its size in the resolution.
-    halved = 1 if len(resolution.bands) == 3 else 0
-    x0, y0 = resolution.bounds[:2]
-    width, height = resolution.precinct_size
-    column, row = index % resolution.precincts[0], index // resolution.precincts[0]
-    cell_x = _ceil_shift((x0 >> width) << width, halved) + (column << (width - halved))
-    cell_y = _ceil_shift((y0 >> height) << height, halved) + (row << (height - halved))
-    block_width = min(resolution.block_size[0], width - halved)
-    block_height = min(resolution.block_size[1], height - halved)
-    bands = []
-    for (bx0, by0, bx1, by1), magnitude_bit_planes in resolution.bands:
-        if bx0 == bx1 or by0 == by1:
-            continue
-        px0, py0 = max(cell_x, bx0), max(cell_y, by0)
-        px1 = min(cell_x + (1 << (width - halved)), bx1)
-        py1 = min(cell_y + (1 << (height - halved)), by1)
-        across = max(_ceil_shift(px1, block_width) - (px0 >> block_width), 0)
-        down = max(_ceil_shift(py1, block_height) - (py0 >> block_height), 0)
-        budget.spend(across * down)
-        bands.append(
-            (
-                [_Block(magnitude_bit_planes) for _ in range(across * down)],
-                _TagTree(across, down),
-                _TagTree(across, down),
-            )
-        )
-    return _Precinct(tuple(bands))
-
-
-def _progression(
-    defaults: _Defaults,
-    resolutions: list[list[_Resolution]],
-    tile: tuple[int, int, int, int],
-) -> Iterator[tuple[int, int, int, int]]:
-    """Yield the layer, resolution, component, and precinct of each packet
-    of a tile in its progression order (T.800 Section B.12), as OpenJPEG's
-    ``opj_pi_next_*`` functions give them where no component is
+def _packets(
+    cod: _Defaults,
+    components: list[list[_Resolution]],
+    bounds: tuple[int, int, int, int],
+) -> list[tuple[int, int, int, int]]:
+    """Return each packet of a tile, as layer, component, resolution, and
+    precinct, in the progression order (T.800 B.12) with no component
     subsampled."""
-    layers = range(defaults.layers)
-    if defaults.progression in (_LRCP, _RLCP):
-        most = max(len(component) for component in resolutions)
-        pairs = itertools.product(layers, range(most))
-        if defaults.progression == _RLCP:
-            pairs = (
-                (layer, resolution)
-                for resolution, layer in itertools.product(range(most), layers)
-            )
-        for layer, resolution in pairs:
-            for component, component_resolutions in enumerate(resolutions):
-                if resolution < len(component_resolutions):
-                    res = component_resolutions[resolution]
-                    for index in range(res.precincts[0] * res.precincts[1]):
-                        yield layer, resolution, component, index
-        return
-    # The position progressions visit each precinct at its top-left corner
-    # on the reference grid, or at the tile's where that is outside it.
-    order = []
-    for component, component_resolutions in enumerate(resolutions):
-        for resolution, res in enumerate(component_resolutions):
-            across, down = res.precincts
-            width, height = res.precinct_size
-            for index in range(across * down):
-                column, row = index % across, index // across
-                x = max(
-                    tile[0], ((res.bounds[0] >> width) + column) << (width + res.level)
-                )
-                y = max(
-                    tile[1],
-                    ((res.bounds[1] >> height) + row) << (height + res.level),
-                )
-                key = {
-                    _RPCL: (resolution, y, x, component),
-                    _PCRL: (y, x, component, resolution),
-                    _CPRL: (component, y, x, resolution),
-                }[defaults.progression]
-                order.append((key, resolution, component, index))
-    for _, resolution, component, index in sorted(order):
-        for layer in layers:
-            yield layer, resolution, component, index
-
-
-class _TagTree:
-    """A tag tree (T.800 Section B.10.2) over ``across`` by ``down`` leaves,
-    decoded as OpenJPEG's ``opj_tgt_decode`` decodes it."""
-
-    def __init__(self, across: int, down: int):
-        levels = [(across, down)]
-        while levels[-1][0] * levels[-1][1] > 1:
-            w, h = levels[-1]
-            levels.append((-(-w // 2), -(-h // 2)))
-        starts = list(itertools.accumulate((w * h for w, h in levels), initial=0))
-        # Each leaf's path from the root.
-        self.paths = [
-            [
-                starts[level] + (y >> level) * levels[level][0] + (x >> level)
-                for level in reversed(range(len(levels)))
-            ]
-            for y in range(down)
-            for x in range(across)
+    layers = range(cod.layers)
+    if cod.progression in (_LRCP, _RLCP):
+        top = range(max(len(resolutions) for resolutions in components))
+        if cod.progression == _LRCP:
+            order = [(layer, r) for layer in layers for r in top]
+        else:
+            order = [(layer, r) for r in top for layer in layers]
+        return [
+            (layer, component, r, precinct)
+            for layer, r in order
+            for component, resolutions in enumerate(components)
+            if r < len(resolutions)
+            for precinct in range(resolutions[r].precinct_count)
         ]
-        self.values = [1 << 30] * starts[-1]
-        self.lows = [0] * starts[-1]
-
-    def below(self, bits: _Bits, leaf: int, threshold: int) -> bool:
-        """Return whether the leaf's value is less than ``threshold``,
-        reading only the bits needed to tell."""
-        low = 0
-        for node in self.paths[leaf]:
-            low = max(low, self.lows[node])
-            while low < threshold and low < self.values[node]:
-                if bits.bit():
-                    self.values[node] = low
-                else:
-                    low += 1
-            self.lows[node] = low
-        return self.values[self.paths[leaf][-1]] < threshold
+    # Each precinct at its position on the reference grid, every layer of
+    # it before the next.
+    keys = []
+    for component, resolutions in enumerate(components):
+        for r, resolution in enumerate(resolutions):
+            for precinct in range(resolution.precinct_count):
+                x, y = _precinct_position(resolution, precinct, bounds)
+                key = {
+                    _RPCL: (r, y, x, component),
+                    _PCRL: (y, x, component, r),
+                    _CPRL: (component, y, x, r),
+                }[cod.progression]
+                keys.append((key, component, r, precinct))
+    return [(layer, *packet) for _, *packet in sorted(keys) for layer in layers]
 
 
-class _Bits:
-    """Packet header bits, most significant first, with a 0 bit stuffed
-    after each byte of 0xFF (T.800 Section B.10.1)."""
-
-    def __init__(self, data: bytes, position: int):
-        self.data = data
-        self.position = position
-        self.byte = 0
-        self.left = 0
-
-    def bit(self) -> int:
-        if not self.left:
-            if self.position >= len(self.data):
-                raise _Unreadable
-            stuffed = self.byte == 0xFF
-            self.byte = self.data[self.position]
-            self.position += 1
-            self.left = 7 if stuffed else 8
-            if stuffed and self.byte & 0x80:
-                raise _Unreadable
-        self.left -= 1
-        return (self.byte >> self.left) & 1
-
-    def bits(self, count: int) -> int:
-        value = 0
-        for _ in range(count):
-            value = value << 1 | self.bit()
-        return value
-
-    def end(self) -> int:
-        """Return where the packet header ends: after its last byte, and
-        after the byte stuffed after it where that is 0xFF."""
-        if self.byte == 0xFF:
-            self.left = 0
-            self.bit()
-        return self.position
+def _precinct_position(
+    resolution: _Resolution, precinct: int, bounds: tuple[int, int, int, int]
+) -> tuple[int, int]:
+    """Return the top-left corner of a precinct's cell on the reference
+    grid, or the tile's origin on an axis where the cell starts before it."""
+    across = resolution.precincts[0]
+    column, row = precinct % across, precinct // across
+    width, height = resolution.precinct
+    x0, y0 = resolution.bounds[:2]
+    x = ((x0 >> width) + column) << (width + resolution.level)
+    y = ((y0 >> height) + row) << (height + resolution.level)
+    return max(x, bounds[0]), max(y, bounds[1])
 
 
-def _packet(  # pylint: disable = too-many-arguments, too-many-positional-arguments
+def _precinct_bands(
+    resolution: _Resolution, precinct: int, budget: _Budget
+) -> list[_PrecinctBand]:
+    """Return the state of a precinct's code-blocks in each sub-band where
+    it has some, after spending their number from ``budget`` (T.800 B.7)."""
+    across = resolution.precincts[0]
+    column, row = precinct % across, precinct // across
+    # Above resolution 0, a precinct's cell in a sub-band is half its size
+    # in the resolution.
+    halved = 1 if resolution.index else 0
+    width, height = (each - halved for each in resolution.precinct)
+    x0, y0 = resolution.bounds[:2]
+    cell_x = ((x0 >> resolution.precinct[0]) + column) << width
+    cell_y = ((y0 >> resolution.precinct[1]) + row) << height
+    block_width = min(resolution.coding.block[0], width)
+    block_height = min(resolution.coding.block[1], height)
+    grids = []
+    for sub_band in resolution.sub_bands:
+        bx0, by0, bx1, by1 = sub_band.bounds
+        if bx1 <= bx0 or by1 <= by0:
+            continue
+        px0, px1 = max(cell_x, bx0), min(cell_x + (1 << width), bx1)
+        py0, py1 = max(cell_y, by0), min(cell_y + (1 << height), by1)
+        blocks_across = max(0, -(-px1 >> block_width) - (px0 >> block_width))
+        blocks_down = max(0, -(-py1 >> block_height) - (py0 >> block_height))
+        if blocks_across and blocks_down:
+            grids.append((sub_band, blocks_across, blocks_down))
+    budget.spend(
+        sum(blocks_across * blocks_down for _, blocks_across, blocks_down in grids)
+    )
+    return [
+        _PrecinctBand(
+            sub_band,
+            resolution.coding.style,
+            blocks_across,
+            [_CodeBlock() for _ in range(blocks_across * blocks_down)],
+            _TagTree(blocks_across, blocks_down),
+            _TagTree(blocks_across, blocks_down),
+        )
+        for sub_band, blocks_across, blocks_down in grids
+    ]
+
+
+def _read_packet(
     body: bytes,
     position: int,
     scod: int,
-    style: int,
+    bands: list[_PrecinctBand],
     layer: int,
-    precinct: _Precinct,
     budget: _Budget,
 ) -> int:
-    """Read the packet at ``position`` (T.800 Section B.10), add what its
-    header says to the precinct's code-blocks, and return where the next
-    packet starts."""
-    if scod & _SOP and body[position : position + 2] == _START_OF_PACKET:
-        if body[position + 2 : position + 4] != b"\x00\x04":
+    """Read the packet at ``position`` of a precinct's ``layer``, and return
+    where it ends (T.800 B.10)."""
+    if scod & _SOP_MAY_BE_USED and body[position : position + 2] == _START_OF_PACKET:
+        # Lsop must be 4; Nsop is not checked.
+        if body[position + 2 : position + 4] != b"\x00\x04" or position + 6 > len(body):
             raise _Unreadable
         position += 6
     bits = _Bits(body, position)
-    lengths = 0
+    length = 0
     if bits.bit():
-        budget.spend(sum(len(blocks) for blocks, _, _ in precinct.bands))
-        for blocks, inclusion, zero_bit_planes in precinct.bands:
-            for leaf, block in enumerate(blocks):
-                lengths += _contribution(
-                    bits, block, leaf, layer, style, inclusion, zero_bit_planes
-                )
+        budget.spend(sum(len(band.blocks) for band in bands))
+        for band in bands:
+            for index, block in enumerate(band.blocks):
+                length += _read_code_block(bits, band, index, block, layer)
     position = bits.end()
-    if scod & _EPH:
+    if scod & _EPH_USED:
         if body[position : position + 2] != _END_OF_PACKET_HEADER:
             raise _Unreadable
         position += 2
-    position += lengths
+    position += length
     if position > len(body):
         raise _Unreadable
     return position
 
 
-def _contribution(
-    bits: _Bits,
-    block: _Block,
-    leaf: int,
-    layer: int,
-    style: int,
-    inclusion: _TagTree,
-    zero_bit_planes: _TagTree,
+def _read_code_block(
+    bits: _Bits, band: _PrecinctBand, index: int, block: _CodeBlock, layer: int
 ) -> int:
-    """Read what a packet header says of one code-block, and return how
-    many bytes of the packet body are its."""
+    """Read a code-block's part of a packet header, and return the length of
+    its codeword segments in the packet's body."""
     if block.included:
         if not bits.bit():
             return 0
+        if band.ht:
+            raise _Unreadable
     else:
-        if not inclusion.below(bits, leaf, layer + 1):
+        column, row = index % band.across, index // band.across
+        # Included here where its first layer is below this one plus 1.
+        if band.inclusion.value_below(bits, column, row, layer + 1) is None:
             return 0
-        planes = 0
-        while not zero_bit_planes.below(bits, leaf, planes + 1):
-            planes += 1
-            if planes > block.magnitude_bit_planes:
-                raise _Unreadable
-        block.zero_bit_planes = planes
-    passes = _passes(bits)
+        # Reading the zero bit-planes against a threshold one above M_b
+        # reads the same bits as raising it one at a time, and stops once
+        # they could only exceed M_b.
+        zero_bit_planes = band.zero_bit_planes.value_below(
+            bits, column, row, band.sub_band.magnitude_bit_planes + 1
+        )
+        if zero_bit_planes is None:
+            raise _Unreadable
+        block.included = True
+        block.zero_bit_planes = zero_bit_planes
+    passes = _read_pass_count(bits)
     while bits.bit():
-        block.length_bits += 1
-    first = not block.included
-    block.included = True
-    block.packets += 1
-    if style & _HT:
-        # The HT cleanup pass in one codeword segment, and the significance
-        # propagation and magnitude refinement passes in another (T.814).
-        if block.packets > 1 or passes > 3:
-            raise _Unreadable
-        cleanup = _length(bits, block, 1)
-        refinement = _length(bits, block, passes - 1) if passes > 1 else 0
-        if not cleanup:
-            raise _Unreadable
-        # Refinement passes with no bytes are not coded: the cleanup pass
-        # alone is (T.814 Annex B.3).
-        block.passes = passes if refinement else 1
-        return cleanup + refinement
+        block.lblock += 1
+    if band.ht:
+        return _read_ht_lengths(bits, block, passes)
+    length = 0
+    remaining = passes
+    while remaining:
+        if block.segment_passes == block.segment_capacity:
+            block.segment_capacity = _segment_capacity(band.style, block)
+            block.segment_passes = 0
+        part = min(remaining, block.segment_capacity - block.segment_passes)
+        length += _read_length(bits, block.lblock + part.bit_length() - 1)
+        block.segment_passes += part
+        remaining -= part
     block.passes += passes
-    if first or block.segment_passes == block.segment_limit:
-        _new_segment(block, style, first)
-    total = 0
-    while passes:
-        count = min(block.segment_limit - block.segment_passes, passes)
-        total += _length(bits, block, count)
-        block.segment_passes += count
-        passes -= count
-        if passes:
-            _new_segment(block, style, False)
-    return total
+    return length
 
 
-def _new_segment(block: _Block, style: int, first: bool) -> None:
-    """Start a codeword segment, of as many passes as its style lets one
-    hold, as OpenJPEG's ``opj_t2_init_seg`` does (T.800 Section D.4)."""
-    if style & _TERMINATE_ALL:
-        limit = 1
-    elif style & _BYPASS:
-        limit = 10 if first else 2 if block.segment_limit in (1, 10) else 1
-    else:
-        limit = 109
-    block.segment_passes, block.segment_limit = 0, limit
-
-
-def _length(bits: _Bits, block: _Block, passes: int) -> int:
-    """Read the length of a codeword segment of ``passes`` coding passes
-    (T.800 Section B.10.7)."""
-    count = block.length_bits + passes.bit_length() - 1
-    if count > 32:
-        raise _Unreadable
-    return bits.bits(count)
-
-
-def _passes(bits: _Bits) -> int:
+def _read_pass_count(bits: _Bits) -> int:
     """Read a number of coding passes (T.800 Table B.4)."""
     if not bits.bit():
         return 1
     if not bits.bit():
         return 2
     value = bits.bits(2)
-    if value != 3:
+    if value < 3:
         return 3 + value
     value = bits.bits(5)
-    if value != 31:
+    if value < 31:
         return 6 + value
     return 37 + bits.bits(7)
+
+
+def _segment_capacity(style: int, block: _CodeBlock) -> int:
+    """Return how many passes a code-block's next codeword segment holds
+    (T.800 Annex D.4 and B.10.7)."""
+    if style & _TERMINATE_EACH_PASS:
+        return 1
+    if style & _BYPASS:
+        if not block.segment_capacity:
+            return 10
+        return 2 if block.segment_capacity in (1, 10) else 1
+    return _PASSES_IN_ONE_SEGMENT
+
+
+def _read_ht_lengths(bits: _Bits, block: _CodeBlock, passes: int) -> int:
+    """Read the lengths of an HT code-block's cleanup segment and, where it
+    has refinement passes, its refinement segment (T.814 B.3), and
+    return their sum."""
+    if passes > 3:
+        raise _Unreadable
+    cleanup = _read_length(bits, block.lblock)
+    if not cleanup:
+        raise _Unreadable
+    refinement = 0
+    if passes > 1:
+        refinement = _read_length(bits, block.lblock + (passes - 1).bit_length() - 1)
+    # Refinement passes without bytes leave the cleanup pass alone.
+    block.passes = passes if refinement else 1
+    return cleanup + refinement
+
+
+def _read_length(bits: _Bits, count: int) -> int:
+    if count > _MAXIMUM_LENGTH_BITS:
+        raise _Unreadable
+    return bits.bits(count)
+
+
+def _block_kept(band: _PrecinctBand, block: _CodeBlock) -> bool:
+    """Return whether an included code-block holds every coding pass."""
+    planes = band.sub_band.magnitude_bit_planes - block.zero_bit_planes
+    if band.ht:
+        # The bit-plane that the cleanup pass codes down to.
+        lowest = planes - 1
+        if lowest < 0 or (block.passes == 3 and lowest == 0):
+            raise _Unreadable
+        return (block.passes, lowest) in ((1, 0), (3, 1))
+    if planes < 1 or block.passes > 3 * planes - 2:
+        raise _Unreadable
+    return block.passes == 3 * planes - 2
