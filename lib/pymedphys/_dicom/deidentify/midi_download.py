@@ -54,6 +54,7 @@ import sys
 import tempfile
 import time
 import tomllib
+import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
@@ -68,7 +69,10 @@ NBIA_IMAGES = "https://services.cancerimagingarchive.net/nbia-api/services/v1/ge
 DOWNLOAD_JSON = "download.json"
 ANSWER_KEY = "answer-key.db"
 IMAGES = "images"
-ATTEMPTS = 4
+ATTEMPTS = 6
+# Seconds to wait before each retry: TCIA's servers can refuse or drop
+# connections for minutes at a time.
+WAITS = (10.0, 20.0, 40.0, 80.0, 120.0)
 TIMEOUT_SECONDS = 600
 CHUNK = 1 << 20
 # A Part 10 file holds "DICM" after its 128-byte preamble.
@@ -211,6 +215,21 @@ def _check(sha256: str, pinned: str, what: str) -> Checked:
     return Checked(sha256, pinned)
 
 
+def _failure(error: BaseException) -> str:
+    """Name a failed fetch by its type, status, and cause, never its message.
+
+    >>> _failure(urllib.error.URLError(TimeoutError("quoted")))
+    'URLError: TimeoutError'
+    """
+    if isinstance(error, urllib.error.HTTPError):
+        return f"HTTPError {error.code}"
+    if isinstance(error, urllib.error.URLError) and isinstance(
+        error.reason, BaseException
+    ):
+        return f"URLError: {type(error.reason).__name__}"
+    return type(error).__name__
+
+
 def _fetch(
     url: str,
     destination: Path,
@@ -235,9 +254,9 @@ def _fetch(
             if attempt == ATTEMPTS:
                 raise DownloadError(
                     f"the {what} could not be fetched after {ATTEMPTS} "
-                    f"attempts ({type(error).__name__})"
+                    f"attempts ({_failure(error)})"
                 ) from None
-            (sleep or time.sleep)(2.0**attempt)
+            (sleep or time.sleep)(WAITS[attempt - 1])
     raise AssertionError("unreachable")
 
 

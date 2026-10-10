@@ -273,7 +273,7 @@ def test_mismatches_are_refused_without_quoting_a_uid(
 def test_a_failed_fetch_is_retried(tmp_path, no_sleep):
     server = Server(failures=midi_download.ATTEMPTS - 1)
     midi_download.download(_subset(), tmp_path / "midi", opener=server, workers=1)
-    assert no_sleep == [2.0, 4.0, 8.0]
+    assert no_sleep == list(midi_download.WAITS)
 
 
 def test_a_fetch_that_keeps_failing_names_no_url(tmp_path, no_sleep):
@@ -282,7 +282,7 @@ def test_a_fetch_that_keeps_failing_names_no_url(tmp_path, no_sleep):
             _subset(), tmp_path / "midi", opener=Server(failures=99), workers=1
         )
     assert str(raised.value) == (
-        "the manifest could not be fetched after 4 attempts (URLError)"
+        "the manifest could not be fetched after 6 attempts (URLError)"
     )
     assert len(no_sleep) == midi_download.ATTEMPTS - 1
 
@@ -300,7 +300,7 @@ def test_a_series_that_keeps_failing_names_only_its_position(tmp_path):
             _subset(), tmp_path / "midi", opener=Failing(), workers=1
         )
     assert str(raised.value) == (
-        "the series 2 of 2 could not be fetched after 4 attempts (HTTPError)"
+        "the series 2 of 2 could not be fetched after 6 attempts (HTTPError 500)"
     )
 
 
