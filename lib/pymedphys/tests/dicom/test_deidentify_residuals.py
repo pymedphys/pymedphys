@@ -1313,20 +1313,12 @@ def test_entropy_coded_data_hold_numbers_and_marker_segments_are_text(split):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
-@pytest.mark.parametrize(
-    "transfer_syntax, coded",
-    [
-        (compressed.JPEG_LOSSLESS_SV1, _jpeg_lossless),
-        ("1.2.840.10008.1.2.5", lambda text: bytes(64) + text),
-    ],
-    ids=["jpeg-lossless", "rle-lossless"],
-)
-def test_entropy_coded_data_are_searched_for_forms_of_six_bytes(transfer_syntax, coded):
+def test_entropy_coded_data_are_searched_for_forms_of_six_bytes():
     # Decoders skip bytes after the data they need, which may hold a name,
     # so forms of six bytes are found in entropy-coded data, but not shorter
     # ones, nor six-byte forms in values that hold numbers.
     text = b"ZEBED\x01QUILLO\x01"
-    data = _encapsulated_file(transfer_syntax, coded(text))
+    data = _encapsulated_file(compressed.JPEG_LOSSLESS_SV1, _jpeg_lossless(text))
     numbers = _file(_element(0x7FE00010, "OW", text))
     name = _source("(0010,0010)", "PN", "QUILLO^ZEBED")
 
@@ -1366,8 +1358,11 @@ def test_fragments_whose_codestreams_do_not_parse_are_searched_for_every_form():
 
 
 def test_rle_lossless_fragments_hold_numbers():
+    # RLE Lossless has no bytes that a decoder skips, so its fragments are
+    # searched as sample values, not for forms of six or seven bytes.
     data = _encapsulated_file(
-        "1.2.840.10008.1.2.5", bytes(64) + b"MARY" + PATIENT_ID.encode()
+        "1.2.840.10008.1.2.5",
+        bytes(64) + b"MARY\x01QUILLON\x01" + PATIENT_ID.encode(),
     )
     name = _source("(0010,0010)", "PN", "MARY^QUILLON")
 

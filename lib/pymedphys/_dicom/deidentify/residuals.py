@@ -96,7 +96,9 @@ sample values, because a decoder skips bytes after the data it needs, at
 the end of a JPEG or JPEG-LS scan or restart interval, of a JPEG 2000
 tile-part, or of a JPEG 2000 code-block's codeword segments, and those
 bytes can hold anything; forms of 4 and 5 bytes there are not found.
-Every other byte,
+RLE Lossless has no such bytes, since each of its segments must decode to
+exactly one byte plane, so its fragments are searched as values that hold
+numbers. Every other byte,
 including the marker segments of those codestreams, fragments that do not
 parse, and bytes that could not be read as elements, is searched for every
 form. ASCII case is folded byte by byte,
@@ -177,6 +179,7 @@ _SINGLE_VALUED = frozenset({"LT", "ST", "UR", "UT"})
 _NUMBERS = frozenset({"OD", "OF", "OL", "OV", "OW"})
 _PIXEL_DATA = frozenset({"(7FE0,0008)", "(7FE0,0009)", "(7FE0,0010)"})
 _ENCAPSULATED = ElementPath((), "(7FE0,0010)")
+_RLE_LOSSLESS = "1.2.840.10008.1.2.5"
 _DIGITS = frozenset(string.digits.encode())
 _LETTERS = frozenset(string.ascii_letters.encode())
 _UUID_ROOT = b"2.25."  # PS3.5 B.2
@@ -803,10 +806,11 @@ _Found = dict[tuple[ElementPath, ValueKind, Location], Finding]
 
 def _coded(
     octets: memoryview, layout: FileLayout
-) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
+) -> tuple[list[tuple[int, int]], list[tuple[int, int]], list[tuple[int, int]]]:
     """Return where the Basic Offset Table and entropy-coded data of the
-    top-level data set's encapsulated Pixel Data are, and where the values
-    of its items are, or nothing where its codestreams do not all parse."""
+    top-level data set's encapsulated Pixel Data are, where the values of
+    its items are, and those of RLE Lossless, which a decoder reads in full,
+    as samples instead, or nothing where its codestreams do not all parse."""
     pieces = [
         span
         for span in layout.spans
@@ -819,7 +823,7 @@ def _coded(
     joined = b"".join(bytes(octets[span.value_start : span.end]) for span in fragments)
     coded = entropy_coded(layout.transfer_syntax or "", joined)
     if coded is None:
-        return [], []
+        return [], [], []
     values = [(span.value_start, span.end) for span in pieces]
     ranges = [(span.value_start, span.end) for span in pieces if not span.location.item]
     starts, position = [], 0
@@ -832,10 +836,10 @@ def _coded(
             if low < stop and start < high:
                 offset = span.value_start - start
                 ranges.append((max(low, start) + offset, min(high, stop) + offset))
-    return (
-        sorted(range_ for range_ in ranges if range_[0] < range_[1]),
-        sorted(range_ for range_ in values if range_[0] < range_[1]),
-    )
+    ranges = sorted(range_ for range_ in ranges if range_[0] < range_[1])
+    values = sorted(range_ for range_ in values if range_[0] < range_[1])
+    samples = layout.transfer_syntax == _RLE_LOSSLESS
+    return ([], values, ranges) if samples else (ranges, values, [])
 
 
 def _search(  # pylint: disable = too-many-arguments, too-many-positional-arguments
@@ -845,6 +849,7 @@ def _search(  # pylint: disable = too-many-arguments, too-many-positional-argume
     needles: list[_Needle],
     coded: Sequence[tuple[int, int]],
     codestreams: Sequence[tuple[int, int]],
+    samples: Sequence[tuple[int, int]],
 ) -> _Found:
     """Return the first finding of the widest form of each source in each place.
 
@@ -853,10 +858,11 @@ def _search(  # pylint: disable = too-many-arguments, too-many-positional-argume
     shorter than :data:`MIN_BYTES_IN_NUMBERS` are not searched in values
     that hold numbers, nor forms shorter than :data:`MIN_BYTES_IN_CODED` in
     ``coded``, nor UTF-16LE forms in either, and a match wholly in those
-    values or in ``codestreams`` is judged as binary.
+    values or in ``codestreams`` is judged as binary. ``samples`` are
+    searched as values that hold numbers.
     """
     starts = [span.start for span in spans]
-    numbers = [
+    numbers = [*samples] + [
         (span.value_start, span.end)
         for span in spans
         if span.value_start is not None and _holds_numbers(span)

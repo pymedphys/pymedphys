@@ -424,8 +424,11 @@ def residual_search(named: Callable[[str], str]) -> list[str]:
         f"values of VR {numbers}, "
         f"only forms of at least {residuals.MIN_BYTES_IN_NUMBERS} bytes that "
         "are not UTF-16LE are searched, since shorter forms match sample "
-        "values by chance, and in its entropy-coded data, where encapsulated, "
-        f"only those of at least {residuals.MIN_BYTES_IN_CODED} bytes.",
+        "values by chance. RLE Lossless Pixel Data is searched in the same "
+        "way. In the entropy-coded data of other encapsulated Pixel Data of "
+        "the top-level data set, only forms of at least "
+        f"{residuals.MIN_BYTES_IN_CODED} bytes that are not UTF-16LE are "
+        "searched.",
         "",
         "These are not searched, and the search lists each by its source "
         "attribute and reason, never by its value:",
