@@ -37,6 +37,13 @@ on:
         type: choice
         options: [pinned, tcia]
         default: pinned
+      engine-ref:
+        description: >-
+          Optionally, a pull request's head (refs/pull/<n>/head) or a branch
+          (refs/heads/<name>) to merge into the chosen branch on the runner,
+          to benchmark an engine change before it merges
+        type: string
+        default: ''
   # Temporary, for the first runs before this workflow is on the default
   # branch; removed before review.
   push:
@@ -84,6 +91,11 @@ jobs:
       ASPERA_GEM_SHA256: 562eb4214e8910b03b6618eb862ef8065362b501504bf35a270aa514279b3f6c
       ANSWER_KEY_URL: ${{ inputs.answer-key-url }}
       ANSWER_KEY_SHA256: ${{ inputs.answer-key-sha256 }}
+      # A push (temporary, above) benchmarks #2339's engine fix with this
+      # branch, to measure it before it merges.
+      ENGINE_REF: >-
+        ${{ inputs.engine-ref
+        || (github.event_name == 'push' && 'refs/pull/2339/head' || '') }}
       # NCI's validation script (https://github.com/CBIIT/midi_validation_script,
       # Apache-2.0) at a pinned commit. It pins pydicom 2.2.1, so it runs in
       # an environment of its own, on Python 3.10.
@@ -92,6 +104,21 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Merging an engine ref needs the history back to the merge base.
+          fetch-depth: ${{ env.ENGINE_REF != '' && '0' || '1' }}
+
+      # The merge stays on the runner, which is deleted when the job ends.
+      - name: Merge the engine ref
+        if: env.ENGINE_REF != ''
+        run: |
+          if [[ ! "${ENGINE_REF}" =~ ^refs/(pull/[0-9]+/head|heads/[A-Za-z0-9._/-]+)$ ]]; then
+            echo "The engine ref must be refs/pull/<n>/head or refs/heads/<branch>."
+            exit 1
+          fi
+          git fetch --no-tags origin "${ENGINE_REF}"
+          git -c user.name="MIDI-B Benchmark" -c user.email="midi-b-benchmark@invalid" \
+            merge --no-edit --no-ff FETCH_HEAD
+          echo "ENGINE_SHA=$(git rev-parse FETCH_HEAD)" >> "${GITHUB_ENV}"
 
       # The Test subset is 11 GB, and the release and QC pack about as much
       # again; remove toolchains this job does not use.
@@ -110,6 +137,10 @@ jobs:
         run: |
           umask 077
           mkdir -p "${RUNNER_TEMP}/midi-b/private" "${RUNNER_TEMP}/midi-b/results"
+          if [[ -n "${ENGINE_REF}" ]]; then
+            echo "${GITHUB_SHA} merged with ${ENGINE_REF} at ${ENGINE_SHA}" \
+              > "${RUNNER_TEMP}/midi-b/results/engine.txt"
+          fi
 
       # TCIA publishes the answer keys only as Faspex packages. Fetch them
       # with IBM's client, list their files' names, sizes, and digests, and
@@ -248,6 +279,10 @@ jobs:
           {
             echo "# MIDI-B ${SUBSET}, ${PRESET}"
             echo
+            if [[ -f "${results}/engine.txt" ]]; then
+              echo "Engine: $(cat "${results}/engine.txt")"
+              echo
+            fi
             if [[ -f "${results}/download.json" ]]; then
               echo '```json'
               cat "${results}/download.json"

@@ -218,6 +218,7 @@ The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchm
    - `pinned`, the default: the copy at the address pinned in `midi_data.toml`. While no address is pinned, the run downloads and checks the images but cannot score them.
    - `tcia`: TCIA's own Aspera packages, fetched on the runner with IBM's `ascli` and checked against the pinned digest. This is the check from the source described in section 10.
    - Otherwise, give an HTTPS address for an answer key and its SHA-256, for one subset at a time.
+   - Optionally, give an engine ref, a pull request's head (`refs/pull/<n>/head`) or a branch (`refs/heads/<name>`), to merge into the chosen branch on the runner before the run. This benchmarks an engine change before it merges, and `engine.txt` in the artefact records both commits.
 3. Each job benchmarks its subset under its preset, then scores the same release with NCI's validation script (step 7), at a pinned commit, in a Python 3.10 environment of its own. When the run finishes, its summary page shows each job's `download.json`, `benchmark.md`, and the script's counts, and each job's `midi-b-<subset>-<preset>-results` artefact holds:
    - `download.json`, `benchmark.md`, and `benchmark.json`;
    - `script-results.json`, the script's results counted by answer-key category as step 7's `script-results` counts them, or `script-results.txt` saying why there are none;
