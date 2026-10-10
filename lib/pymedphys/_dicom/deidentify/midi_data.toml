@@ -17,10 +17,10 @@
 collection = "MIDI-B-Synthetic-Validation"
 name = "MIDI-B Validation (TCIA 10.7937/cf2p-aw56)"
 manifest_url = "https://www.cancerimagingarchive.net/wp-content/uploads/TCIA-MIDI-B-Synthetic-Validation_20250502.tcia"
-manifest_sha256 = ""
+manifest_sha256 = "e6dceb5fcc354121049aee001333724fcc931ab214c9e78e9dbc406878f5a452"
 series = 280
 instances = 23921
-content_sha256 = ""
+content_sha256 = "fc61a4fef81b8037d91b86a07079f82e9d732f8994455dd1d09bfe21353ee42e"
 answer_key_url = ""
 answer_key_sha256 = ""
 

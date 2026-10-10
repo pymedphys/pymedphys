@@ -19,7 +19,7 @@ on:
       subset:
         description: MIDI-B subset
         type: choice
-        options: [validation, test]
+        options: [validation, test, both]
         default: validation
       answer-key-url:
         description: An answer key to use in place of the pinned one (HTTPS)
@@ -42,18 +42,26 @@ permissions:
   contents: read
 
 concurrency:
-  group: midi-b-benchmark-${{ inputs.subset || 'validation' }}
+  group: midi-b-benchmark
   cancel-in-progress: false
 
 jobs:
   benchmark:
-    name: MIDI-B ${{ inputs.subset || 'validation' }}
+    name: MIDI-B ${{ matrix.subset }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # A push (temporary, above) has no inputs, and runs both.
+        subset: >-
+          ${{ fromJSON(inputs.subset == 'validation' && '["validation"]'
+          || inputs.subset == 'test' && '["test"]'
+          || '["validation", "test"]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 330
     permissions:
       contents: read
     env:
-      SUBSET: ${{ inputs.subset || 'validation' }}
+      SUBSET: ${{ matrix.subset }}
       ANSWER_KEY_URL: ${{ inputs.answer-key-url }}
       ANSWER_KEY_SHA256: ${{ inputs.answer-key-sha256 }}
     steps:

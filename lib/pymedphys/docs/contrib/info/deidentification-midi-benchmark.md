@@ -198,7 +198,7 @@ Repeat steps 3 to 7 with `--subset test` and a destination such as `/data/midi-b
 The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchmark.yml`) does steps 2 to 6 on a GitHub-hosted runner, so you need neither the disk space nor the download time. It runs only when started by hand. A maintainer starts it on `pymedphys/pymedphys`; anyone can start it on their own fork, where it uses the fork's free runner minutes.
 
 1. On GitHub, open the repository's (or your fork's) **Actions** tab, choose **MIDI-B Benchmark**, and choose **Run workflow**.
-2. Pick the branch, the subset (`validation` or `test`), and, only when no answer key is pinned for that subset, an HTTPS address for one and its SHA-256.
+2. Pick the branch, the subset (`validation`, `test`, or `both`, which runs each in a job of its own), and, only when no answer key is pinned for the subset, an HTTPS address for one and its SHA-256.
 3. When the run finishes, its summary page shows `download.json` and `benchmark.md`, and the `midi-b-<subset>-results` artefact holds `download.json`, `benchmark.md`, and `benchmark.json`.
 
 Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, and the mapping files. The benchmark's standard error, where libraries log, goes to a file on the runner, and a crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.
