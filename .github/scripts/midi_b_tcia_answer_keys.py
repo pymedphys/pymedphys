@@ -28,6 +28,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -37,6 +38,9 @@ _FASPEX = re.compile(r'href="(https://faspex\.cancerimagingarchive\.net/[^"]+)"'
 _SAFE_NAME = re.compile(r"[A-Za-z0-9 ._()+-]{1,200}")
 _SQLITE = b"SQLite format 3\x00"
 CHUNK = 1 << 20
+# TCIA's site sometimes times out: up to six tries, 15 s to 4 min apart.
+ATTEMPTS = 6
+PAUSE = 15.0
 
 
 def public_links(page: str) -> list[str]:
@@ -53,12 +57,28 @@ def public_links(page: str) -> list[str]:
     return links
 
 
+def _page(attempts: int = ATTEMPTS, pause: float = PAUSE) -> str:
+    """Return TCIA's MIDI-B page, trying again after a network error."""
+    request = urllib.request.Request(PAGE, headers={"User-Agent": "pymedphys-midi-b"})
+    for attempt in range(1, attempts + 1):
+        try:
+            # A constant HTTPS URL.
+            with urllib.request.urlopen(request, timeout=60) as response:  # nosec B310
+                return response.read().decode("utf-8", "replace")
+        except OSError as error:
+            if attempt == attempts:
+                raise
+            print(
+                f"Reading TCIA's MIDI-B page, attempt {attempt} of {attempts}: "
+                f"{type(error).__name__}; trying again."
+            )
+            time.sleep(pause * 2 ** (attempt - 1))
+    raise AssertionError("unreachable")
+
+
 def fetch(destination: Path) -> int:
     """Receive every package that TCIA's MIDI-B page links into ``destination``."""
-    request = urllib.request.Request(PAGE, headers={"User-Agent": "pymedphys-midi-b"})
-    # A constant HTTPS URL.
-    with urllib.request.urlopen(request, timeout=120) as response:  # nosec B310
-        links = public_links(response.read().decode("utf-8", "replace"))
+    links = public_links(_page())
     if not links:
         print("TCIA's MIDI-B page links no Faspex package.")
         return 1

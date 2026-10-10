@@ -72,15 +72,18 @@ def test_a_preset_with_clean_descriptors_cleans_and_scores(tmp_path, edition):
     assert document["coverage"]["instances"]["released"] == 2
     # Study Description takes C, which the option leaves to the policy
     # without it, so its X explains the failure, as under basic.
-    assert document["deliberate_differences"] == [
-        {
-            "category": "tcia TEST-RETAIN-DESCRIPTION",
-            "action": "text_retained",
-            "attribute": "(0008,1030)",
-            "policy_action": "X",
-            "checks": 1,
-        }
+    (description,) = [
+        row
+        for row in document["deliberate_differences"]
+        if row["attribute"] == "(0008,1030)"
     ]
+    assert description == {
+        "category": "tcia TEST-RETAIN-DESCRIPTION",
+        "action": "text_retained",
+        "attribute": "(0008,1030)",
+        "policy_action": "X",
+        "checks": 1,
+    }
 
 
 def test_a_tag_retained_failure_takes_the_fallback_action_under_the_option():

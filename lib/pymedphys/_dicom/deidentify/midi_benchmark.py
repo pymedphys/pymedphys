@@ -59,10 +59,15 @@ separately for each answer-key category rather than as one score:
   policy, for the attribute's Type in the instance's IOD, explains the
   failure (:func:`score_check`), such as a description
   that the Basic Profile removes but TCIA's curation of the source
-  collection kept. The validation
-  manual says that many answers follow that curation rather than the
-  standard, so these are counted by category, attribute, and action, apart
-  from failures;
+  collection kept; each such check of Patient Identity Removed or
+  Longitudinal Temporal Information Modified, whose values the PS3.15
+  markers replace; and each failed check under a TCIA category that asked
+  for a text to be removed, where the selected action keeps it. The
+  validation manual says that many answers follow that curation rather than
+  the standard, so these are counted by category, attribute, and action,
+  apart from failures;
+- the **source gaps**: each other failed check that asked for an attribute,
+  or a value of it, to be present, and fails on the source instance too;
 - the **findings**: every other failed check, such as a value that should
   have been removed and was not.
 
@@ -143,6 +148,13 @@ from .midi_answer_key import (
 )
 from .midi_benchmark_errors import ErrorRecorder, uid_name
 from .midi_benchmark_markdown import render_markdown
+from .midi_benchmark_values import (
+    compare_text,
+    element_text,
+    find_element,
+    is_bulk_data,
+    unbracketed,
+)
 from .policy import Policy, compose_policy
 from .reviewed_roi_names import ReviewedNames
 from .runtime import runtime_environment
@@ -208,14 +220,17 @@ class Scored:
     result : Result
     note : str or None
         For a check not evaluated, why; for a deliberate difference, the
-        policy's action for the attribute, such as ``"X"``.
+        policy's action for the attribute, such as ``"X"``, or ``"marker"``.
     deliberate : bool
         Whether a failed check is a deliberate difference.
+    source_gap : bool
+        Whether a failed check fails on the source instance too.
     """
 
     result: Result
     note: str | None = None
     deliberate: bool = False
+    source_gap: bool = False
 
 
 @dataclasses.dataclass
@@ -225,6 +240,7 @@ class CategoryCounts:
     passed: int = 0
     failed: int = 0
     deliberate: int = 0
+    source_gap: int = 0
     not_evaluated: int = 0
     withheld: int = 0
     outside_coverage: int = 0
@@ -342,6 +358,7 @@ def run_benchmark(
         method=digest,
         roi_names=None if cleaning is None else _roi_names_used(),
         internal_errors=errors.records(),
+        sources=discovery.paths,
     )
     (work / RESULTS_JSON).write_text(benchmark.json(), encoding="utf-8", newline="\n")
     (work / RESULTS_MARKDOWN).write_text(
@@ -479,6 +496,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     method: str | None = None,
     roi_names: str | None = None,
     internal_errors: Sequence[Mapping[str, object]] = (),
+    sources: Sequence[Path] = (),
 ) -> Benchmark:
     """Score each check of the answer key against the run's outcome.
 
@@ -487,7 +505,9 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     Clean Descriptors, says what ROI Names were cleaned with; and
     ``internal_errors``, from
     :meth:`~pymedphys._dicom.deidentify.midi_benchmark_errors.ErrorRecorder.records`,
-    where the run's transform and gate raised.
+    where the run's transform and gate raised. ``sources``, each input's
+    path by position, lets a finding be counted as a source gap
+    (:func:`source_gap`).
     """
     positions: dict[str, int] = {}
     for position, header in enumerate(headers):
@@ -505,6 +525,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     )
     differences: collections.Counter = collections.Counter()
     findings: collections.Counter = collections.Counter()
+    gaps: collections.Counter = collections.Counter()
     instances: collections.Counter = collections.Counter()
     modalities: dict[str, collections.Counter] = collections.defaultdict(
         collections.Counter
@@ -527,6 +548,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 kind = _not_released(context, headers[position], outcomes[position])
                 not_released[kind][0] += 1
                 not_released[kind][1] += len(answer.checks)
+            source: list[pydicom.Dataset | None] = []
             for check in answer.checks:
                 tally = counts[check.category]
                 if dataset is None:
@@ -536,6 +558,15 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 scored = score_check(
                     check, dataset, mapping, rules, iod, fallback=fallback
                 )
+                if (
+                    scored.result is Result.FAILED
+                    and not scored.deliberate
+                    and position is not None
+                    and position < len(sources)
+                ):
+                    if not source:
+                        source.append(_source(sources[position]))
+                    scored = source_gap(check, source[0], scored)
                 described = (
                     str(check.category or "unknown"),
                     check.action_name,
@@ -548,6 +579,9 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 elif scored.deliberate:
                     tally.deliberate += 1
                     differences[(*described, scored.note)] += 1
+                elif scored.source_gap:
+                    tally.source_gap += 1
+                    gaps[described] += 1
                 else:
                     tally.failed += 1
                     findings[described] += 1
@@ -625,19 +659,27 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 differences.items(), key=_counted_order
             )
         ],
-        "findings": [
-            {
-                "category": category,
-                "action": action,
-                "attribute": attribute,
-                "checks": number,
-            }
-            for (category, action, attribute), number in sorted(
-                findings.items(), key=_counted_order
-            )
-        ],
+        "source_gaps": _described(gaps),
+        "findings": _described(findings),
     }
     return Benchmark(document)
+
+
+def _described(counted: collections.Counter) -> list[dict[str, object]]:
+    return [
+        {"category": category, "action": action, "attribute": attribute, "checks": n}
+        for (category, action, attribute), n in sorted(
+            counted.items(), key=_counted_order
+        )
+    ]
+
+
+def _source(path: Path) -> pydicom.Dataset | None:
+    """Read a source instance, deferring large values, or return ``None``."""
+    try:
+        return pydicom.dcmread(path, defer_size=1024)
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
 
 
 def _counted_order(pair: tuple[tuple[str | None, ...], int]) -> tuple[str, ...]:
@@ -741,7 +783,15 @@ def score_check(
     a sequence. Any other failure, such as a missing attribute that the
     selected action replaces (D or U) or keeps, or changed pixel data, is a
     finding. Without the instance's IOD no action can be selected, so every
-    failure is a finding.
+    such failure is a finding.
+
+    A check that asks for Patient Identity Removed or Longitudinal Temporal
+    Information Modified to be kept, as the source holds it, fails on the
+    value that the markers write in its place: where the value is present,
+    a deliberate difference noted ``marker``, with or without the IOD. A text that a check under a
+    TCIA category asks to be removed, where the selected action is K, is a
+    deliberate difference too; under any other category, such as HIPAA's,
+    it is a finding.
 
     Under Clean Descriptors, ``fallback`` holds the rules of the policy
     without the option: an attribute given C other than a ROI Name takes
@@ -750,18 +800,65 @@ def score_check(
     scored = _score(check, dataset, mapping)
     if scored.result is not Result.FAILED or check.path is None:
         return scored
+    note = _explanation(check, check.path, dataset, rules, iod, fallback)
+    return scored if note is None else Scored(Result.FAILED, note, deliberate=True)
+
+
+def _explanation(  # pylint: disable = too-many-arguments
+    check: Check,
+    path: AttributePath,
+    dataset: pydicom.Dataset,
+    rules: ElementRules,
+    iod: IOD | None,
+    fallback: ElementRules | None,
+) -> str | None:
+    """Return what makes a failed check a deliberate difference, if anything."""
+    if check.action is Action.TEXT_REMOVED:
+        family = None if check.category is None else check.category.family
+        kept = _explaining_action(rules, path, iod, KEPT, fallback)
+        return KEEP if family == "tcia" and kept == KEEP else None
     if check.action not in _EXPLAINING:
-        return scored
-    action = _explaining_action(
+        return None
+    if (
+        len(path.elements) == 1
+        and str(path.attribute) in _MARKERS
+        and find_element(dataset, path) is not None
+    ):
+        return "marker"
+    return _explaining_action(
         rules,
-        check.path,
+        path,
         iod,
         _EXPLAINING[check.action],  # type: ignore[index]
         fallback,
     )
-    if action is None:
+
+
+def source_gap(check: Check, source: pydicom.Dataset | None, scored: Scored) -> Scored:
+    """Return a finding as a source gap where the check fails on the source too.
+
+    Only a check that asks for an attribute, or a value of it, to be present
+    can fail on the source instance; where it does, the source had nothing
+    to keep.
+    """
+    if (
+        source is None
+        or scored.result is not Result.FAILED
+        or scored.deliberate
+        or check.action not in (Action.TAG_RETAINED, Action.TEXT_NOTNULL)
+    ):
         return scored
-    return Scored(Result.FAILED, action, deliberate=True)
+    if _score(check, source, IdentifierMapping({}, {})).result is not Result.FAILED:
+        return scored
+    return Scored(Result.FAILED, "absent from the source", source_gap=True)
+
+
+# The markers that replace what the source holds (PS3.15 E.2 and E.3): a
+# check that asks for the source's own value fails on them by design.
+_MARKERS = frozenset({"(0012,0062)", "(0028,0303)"})
+# A text removed under a TCIA category, the curation's choice, that the
+# selected action keeps is a deliberate difference; under HIPAA, a finding.
+KEPT = frozenset({KEEP})
 
 
 # For each action that asks for something to be kept, the selected actions
@@ -845,7 +942,7 @@ def _score(  # pylint: disable = too-many-return-statements, too-many-branches
         if check.action_text is None:
             return Scored(Result.NOT_EVALUATED, "no digest")
         digest = hashlib.md5(pixels.value, usedforsecurity=False).hexdigest()
-        return _passed(digest == _unbracketed(check.action_text).strip().lower())
+        return _passed(digest == unbracketed(check.action_text).strip().lower())
     if check.path is None:
         return Scored(
             Result.NOT_EVALUATED,
@@ -862,16 +959,19 @@ def _score(  # pylint: disable = too-many-return-statements, too-many-branches
     text = element_text(element)
     if action in (Action.TEXT_RETAINED, Action.TEXT_REMOVED):
         keep = action is Action.TEXT_RETAINED
-        if not text or (not keep and _is_bulk_data(element)):
+        if not text or (not keep and is_bulk_data(element)):
             # The script reads Pixel Data and Overlay Data as removed.
             return _passed(not keep)
         if check.action_text is None:
             return Scored(Result.NOT_EVALUATED, "no text to compare")
-        return compare_text(text, check.action_text, keep=keep)
+        passed = compare_text(text, check.action_text, keep=keep)
+        if passed is None:
+            return Scored(Result.NOT_EVALUATED, "no words to compare")
+        return _passed(passed)
     if check.value is None:
         return Scored(Result.NOT_EVALUATED, "no value to compare")
     if action in (Action.DATE_SHIFTED, Action.UID_CHANGED):
-        value = _unbracketed(check.value).replace("\\", "")
+        value = unbracketed(check.value).replace("\\", "")
         return _passed(value not in text.replace("\\", ""))
     replacements = (
         mapping.uids if action is Action.UID_CONSISTENT else mapping.patient_ids
@@ -882,102 +982,5 @@ def _score(  # pylint: disable = too-many-return-statements, too-many-branches
     return _passed(text == expected)
 
 
-def _unbracketed(text: str) -> str:
-    """Return ``text`` without any ``<`` or ``>``, as the script compares it."""
-    return text.replace("<", "").replace(">", "")
-
-
-def _is_bulk_data(element: pydicom.DataElement) -> bool:
-    return element.tag == 0x7FE00010 or (
-        element.tag.group & 0xFF01 == 0x6000 and element.tag.element == 0x3000
-    )
-
-
 def _passed(passed: bool) -> Scored:
     return Scored(Result.PASSED if passed else Result.FAILED)
-
-
-_NUMBER = re.compile(r"[0-9]*\.?[0-9]+|[0-9]+\.")
-_WORD = re.compile(r"\w+")
-
-
-def compare_text(text: str, answer: str, *, keep: bool) -> Scored:
-    """Compare an attribute's text with the answer key's, ignoring case.
-
-    Two numbers compare as numbers. Otherwise the answer is kept if it is
-    within the text, and removed if none of its words is; a text that keeps
-    some of its words, but not all, fails both.
-    """
-    text = _unbracketed(text).lower()
-    answer = _unbracketed(answer).lower()
-    if _NUMBER.fullmatch(text) and _NUMBER.fullmatch(answer):
-        return _passed((float(text) == float(answer)) == keep)
-    if answer in text:
-        return _passed(keep)
-    words = _WORD.findall(answer)
-    if not words:
-        return Scored(Result.NOT_EVALUATED, "no words to compare")
-    found = sum(word in text for word in words)
-    return _passed(found == len(words) if keep else found == 0)
-
-
-def find_element(
-    dataset: pydicom.Dataset, path: AttributePath
-) -> pydicom.DataElement | None:
-    """Return the element at ``path``, or ``None`` if there is none."""
-    current = dataset
-    for depth, wanted in enumerate(path.elements):
-        element = _element(current, wanted)
-        if element is None or depth == len(path.elements) - 1:
-            return element
-        if element.VR != "SQ":
-            return None
-        index = path.items[depth]
-        if index >= len(element.value):
-            return None
-        current = element.value[index]
-    return None  # pragma: no cover - the loop returns at the last element
-
-
-def _element(dataset: pydicom.Dataset, wanted: Element) -> pydicom.DataElement | None:
-    if not wanted.is_private:
-        return dataset.get((wanted.group << 16) | wanted.element)
-    for element in dataset:
-        tag = element.tag
-        if tag.group != wanted.group or tag.element < 0x1000:
-            continue
-        if tag.element & 0xFF != wanted.element:
-            continue
-        creator = dataset.get((tag.group << 16) | (tag.element >> 8))
-        if (
-            creator is not None
-            and str(creator.value).strip().upper()
-            == (wanted.creator or "").strip().upper()
-        ):
-            return element
-    return None
-
-
-def element_text(element: pydicom.DataElement) -> str:
-    """Return an element's value as text, as the checks compare it.
-
-    A multi-valued value is joined by ``\\``, as it is encoded; bytes are
-    read as ISO 8859-1, so that text in them is found; and a sequence is the
-    text of every element of its items, joined by spaces.
-    """
-    value = element.value
-    if element.VR == "SQ":
-        return " ".join(
-            text
-            for item in value
-            for inner in item
-            for text in [element_text(inner)]
-            if text
-        )
-    if value is None:
-        return ""
-    if isinstance(value, (bytes, bytearray)):
-        return bytes(value).decode("latin-1").strip(" \t\r\n\x00")
-    if isinstance(value, pydicom.multival.MultiValue):
-        return "\\".join(str(each) for each in value).strip(" \t\r\n\x00")
-    return str(value).strip(" \t\r\n\x00")

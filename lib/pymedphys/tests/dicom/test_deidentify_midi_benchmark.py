@@ -578,7 +578,15 @@ def _benchmark_key(tmp_path):
         ),
         _check("date_shifted", "<(0008,0020)>", value=STUDY_DATE),
         _check("text_removed", "<(0008,0060)>", text="CT", hipaa_z="TEST-MODALITY"),
+        # TCIA's curation removed what the policy keeps.
+        _check("text_removed", "<(0008,0060)>", text="CT", tcia_rev="TEST-REV"),
+        # The markers replace what the source held.
+        _check(
+            "text_retained", "<(0028,0303)>", text="UNMODIFIED", tcia_rev="TEST-MARKER"
+        ),
         _check("tag_retained", "<(0008,0060)>", dicom_iod="TEST-IOD"),
+        # The policy keeps KVP, but the source has none.
+        _check("tag_retained", "<(0018,0060)>", dicom_iod="TEST-GAP"),
         _check("uid_consistent", "<(0020,000E)>", value=synthetic.CT_SERIES),
         _check("patid_consistent", "<(0010,0020)>", value=synthetic.PATIENT_ID),
         _check(
@@ -664,6 +672,7 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
             "passed",
             "failed",
             "deliberate",
+            "source_gap",
             "not_evaluated",
             "withheld",
             "outside_coverage",
@@ -678,6 +687,7 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
         "passed": 1,
         "failed": 0,
         "deliberate": 0,
+        "source_gap": 0,
         "not_evaluated": 0,
         "withheld": 0,
         "outside_coverage": 0,
@@ -693,10 +703,33 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
     assert (iod["passed"], iod["outside_coverage"]) == (1, 1)
     assert document["deliberate_differences"] == [
         {
+            "category": "tcia TEST-MARKER",
+            "action": "text_retained",
+            "attribute": "(0028,0303)",
+            "policy_action": "marker",
+            "checks": 1,
+        },
+        {
             "category": "tcia TEST-RETAIN-DESCRIPTION",
             "action": "text_retained",
             "attribute": "(0008,1030)",
             "policy_action": "X",
+            "checks": 1,
+        },
+        {
+            "category": "tcia TEST-REV",
+            "action": "text_removed",
+            "attribute": "(0008,0060)",
+            "policy_action": "K",
+            "checks": 1,
+        },
+    ]
+    assert _category(document, "dicom", "TEST-GAP")["source_gap"] == 1
+    assert document["source_gaps"] == [
+        {
+            "category": "dicom TEST-GAP",
+            "action": "tag_retained",
+            "attribute": "(0018,0060)",
             "checks": 1,
         }
     ]
@@ -792,12 +825,15 @@ def test_the_markdown_gives_each_section(tmp_path):
         "## Supported coverage",
         "## Results by answer-key category",
         "## Deliberate differences",
+        "## Source gaps",
         "## Findings",
     ):
         assert f"\n{heading}\n" in f"\n{markdown}"
     assert "| tcia TEST-RETAIN-DESCRIPTION | text_retained | (0008,1030) | X | 1 |" in (
         markdown
     )
+    assert "| dicom TEST-GAP | tag_retained | (0018,0060) | 1 |" in markdown
+    assert "| Failed: source gaps | 1 | " in markdown
     assert "| Not released: outside coverage | 1 | " in markdown
     assert (
         "| outside-coverage | none | Nuclear Medicine Image Storage | "

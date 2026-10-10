@@ -135,7 +135,8 @@ def render_markdown(document: Mapping[str, object]) -> str:
         "## Results by answer-key category",
         "",
         "Checks of released instances passed, failed, failed by a deliberate "
-        "difference, or were not evaluated; checks of other instances are "
+        "difference, failed where the source lacked what they ask for, or "
+        "were not evaluated; checks of other instances are "
         "counted where those instances ended up, and not scored.",
         "",
         _table(
@@ -144,6 +145,7 @@ def render_markdown(document: Mapping[str, object]) -> str:
                 "Passed",
                 "Failed",
                 "Deliberate",
+                "Source gap",
                 "Not evaluated",
                 "Withheld",
                 "Outside coverage",
@@ -157,6 +159,7 @@ def render_markdown(document: Mapping[str, object]) -> str:
                     row["passed"],
                     row["failed"],
                     row["deliberate"],
+                    row["source_gap"],
                     row["not_evaluated"],
                     row["withheld"],
                     row["outside_coverage"],
@@ -178,7 +181,9 @@ def render_markdown(document: Mapping[str, object]) -> str:
         "## Deliberate differences",
         "",
         "Checks that asked for an attribute to be kept, where the policy "
-        "removes or replaces it:",
+        "removes or replaces it or a PS3.15 marker replaces it (`marker`), "
+        "and checks under a TCIA category that asked for a text to be "
+        "removed, where the policy keeps it (`K`):",
         "",
     ]
     lines += _rows_or_none(
@@ -192,6 +197,21 @@ def render_markdown(document: Mapping[str, object]) -> str:
                 row["checks"],
             )
             for row in document["deliberate_differences"]
+        ],
+    )
+    lines += [
+        "",
+        "## Source gaps",
+        "",
+        "Checks that asked for an attribute, or a value of it, to be present, "
+        "and fail on the source instance too:",
+        "",
+    ]
+    lines += _rows_or_none(
+        ("Category", "Action", "Attribute", "Checks"),
+        [
+            (row["category"], row["action"], row["attribute"], row["checks"])
+            for row in document["source_gaps"]
         ],
     )
     lines += ["", "## Findings", "", "Every other failed check:", ""]
@@ -210,6 +230,7 @@ _OUTCOMES = {
     "passed": "Passed",
     "failed": "Failed: findings",
     "deliberate": "Failed: deliberate differences",
+    "source_gap": "Failed: source gaps",
     "not_evaluated": "Not evaluated",
     "withheld": "Not released: withheld",
     "outside_coverage": "Not released: outside coverage",
