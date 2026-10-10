@@ -49,14 +49,35 @@ To benchmark a later engine, run `git pull` and `uv sync --no-dev --extra user` 
 
 ## 3. Download MIDI-B
 
-The collection's DOI is <https://doi.org/10.7937/cf2p-aw56>, which leads to TCIA's MIDI-B-Test / MIDI-B-Validation page. It has a Validation subset (216 patients) and a Test subset (322 patients). Start with Validation, which is smaller.
+The collection's DOI is <https://doi.org/10.7937/cf2p-aw56>, which leads to TCIA's MIDI-B-Test / MIDI-B-Validation page. TCIA publishes it under the Creative Commons Attribution 4.0 licence. It has a Validation subset (216 patients, 280 series, 23,921 instances, 7.6 GB) and a Test subset (322 patients, 428 series, 29,660 instances, 11.1 GB). Start with Validation, which is smaller. The benchmark uses the collections carrying synthetic PHI (MIDI-B-Synthetic-Validation and MIDI-B-Synthetic-Test), not the TCIA-curated ones.
 
-For that subset, download:
+PyMedPhys's development downloader fetches a subset for you. It reads TCIA's dated manifest for the subset, fetches each series it lists from TCIA's public NBIA API, and checks the manifest and the images against the SHA-256 digests pinned in `lib/pymedphys/_dicom/deidentify/midi_data.toml`, so every run benchmarks the same files. It refuses a destination that already exists.
 
-1. **The synthetic DICOM images**, the set carrying synthetic PHI, not the TCIA-curated set. TCIA delivers images as a `.tcia` manifest that you open in NBIA Data Retriever (TCIA's download tool, linked from the page). Point it at an empty folder, for example `/data/midi-b/validation/synthetic` or `D:\midi-b\validation\synthetic`. The Retriever's folder layout inside it does not matter: the harness reads every file below the folder you give it.
-2. **The subset's answer key**, an SQLite `.db` file, saved for example in `/data/midi-b/validation/`.
+bash:
 
-The commands below use placeholders for the file names; use the names that the page gives you.
+```bash
+mkdir -p /data/midi-b
+uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_download \
+  --subset validation --dest /data/midi-b/validation
+```
+
+PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force D:\midi-b | Out-Null
+uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_download `
+  --subset validation --dest D:\midi-b\validation
+```
+
+It writes:
+
+- `images/`, the subset's DICOM files, named `<series>/<instance>.dcm` by their position in the manifest, so no path carries a UID;
+- `answer-key.db`, the subset's answer key, when one is pinned for it;
+- `download.json`, what it fetched: counts, digests, and whether each digest matched its pin. It prints the same record at the end.
+
+When no answer key is pinned for the subset, download it from TCIA's page (an SQLite `.db` file) and save it as `answer-key.db` beside `images/`. If you have an answer key at an HTTPS address, `--answer-key-url` and `--answer-key-sha256` fetch and check it in place of the pinned one.
+
+If you prefer TCIA's own tool, open the subset's `.tcia` manifest from the page in NBIA Data Retriever and point it at an empty `images` folder. The Retriever's folder layout inside it does not matter: the harness reads every file below the folder you give it.
 
 ## 4. Run the benchmark
 
@@ -67,8 +88,8 @@ bash:
 ```bash
 mkdir -p /data/midi-b/runs
 uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmark_command run \
-  --source /data/midi-b/validation/synthetic \
-  --answer-key "/data/midi-b/validation/<answer key>.db" \
+  --source /data/midi-b/validation/images \
+  --answer-key /data/midi-b/validation/answer-key.db \
   --work /data/midi-b/runs/validation-basic-1 \
   --collection "MIDI-B Validation (TCIA 10.7937/cf2p-aw56)"
 ```
@@ -78,8 +99,8 @@ PowerShell:
 ```powershell
 New-Item -ItemType Directory -Force D:\midi-b\runs | Out-Null
 uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmark_command run `
-  --source D:\midi-b\validation\synthetic `
-  --answer-key "D:\midi-b\validation\<answer key>.db" `
+  --source D:\midi-b\validation\images `
+  --answer-key D:\midi-b\validation\answer-key.db `
   --work D:\midi-b\runs\validation-basic-1 `
   --collection "MIDI-B Validation (TCIA 10.7937/cf2p-aw56)"
 ```
@@ -139,7 +160,7 @@ Write its config, for example `midi-validation-basic-1.json`, naming the release
   "run_name": "validation-basic-1",
   "input_data_path": "/data/midi-b/runs/validation-basic-1/release",
   "output_data_path": "/data/midi-b/nci-results",
-  "answer_db_file": "/data/midi-b/validation/<answer key>.db",
+  "answer_db_file": "/data/midi-b/validation/answer-key.db",
   "uid_mapping_file": "/data/midi-b/runs/validation-basic-1/validation-script/uid_mapping.csv",
   "patid_mapping_file": "/data/midi-b/runs/validation-basic-1/validation-script/patid_mapping.csv",
   "multiprocessing": "True",
@@ -170,4 +191,14 @@ That prints JSON with counts and no values, which is safe to share too. The scri
 
 ## 8. The Test subset
 
-Repeat steps 3 to 7 with the Test subset's images and answer key, a new work directory such as `test-basic-1`, and `--collection "MIDI-B Test (TCIA 10.7937/cf2p-aw56)"`.
+Repeat steps 3 to 7 with `--subset test` and a destination such as `/data/midi-b/test`, a new work directory such as `test-basic-1`, and `--collection "MIDI-B Test (TCIA 10.7937/cf2p-aw56)"`.
+
+## 9. Run it on GitHub Actions instead
+
+The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchmark.yml`) does steps 2 to 6 on a GitHub-hosted runner, so you need neither the disk space nor the download time. It runs only when started by hand. A maintainer starts it on `pymedphys/pymedphys`; anyone can start it on their own fork, where it uses the fork's free runner minutes.
+
+1. On GitHub, open the repository's (or your fork's) **Actions** tab, choose **MIDI-B Benchmark**, and choose **Run workflow**.
+2. Pick the branch, the subset (`validation` or `test`), and, only when no answer key is pinned for that subset, an HTTPS address for one and its SHA-256.
+3. When the run finishes, its summary page shows `download.json` and `benchmark.md`, and the `midi-b-<subset>-results` artefact holds `download.json`, `benchmark.md`, and `benchmark.json`.
+
+Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, and the mapping files. The benchmark's standard error, where libraries log, goes to a file on the runner, and a crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.
