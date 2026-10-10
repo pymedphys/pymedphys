@@ -444,16 +444,32 @@ PS3_16 = {
     "Table CID 7050": (CID_HEADER, CID_7050_ROWS, codes.CodedConcept),
     "Table CID 7005": (CID_HEADER, CID_7005_ROWS, codes.CodedConcept),
 }
+# Annex L's tables of Body Part Examined terms, with some of their columns.
+# A row can give a code but no term.
+ANNEX_L_HEADER = ("Code Value", "Code Meaning", "Body Part Examined")
+ANNEX_L = {
+    "Table L-1": (
+        ANNEX_L_HEADER,
+        (("900011", "Fixture region", "FIXTUREREGION"), ("900012", "Uncut", "")),
+    ),
+    "Table L-2": (ANNEX_L_HEADER, (("900013", "Fixture leg", "FIXTURE LEG"),)),
+    "Table L-3": (
+        ("Code Meaning", "Body Part Examined", "Mouse Anatomy ID"),
+        (("Fixture region", "FIXTUREREGION", "0000001"),),
+    ),
+}
 PS3_16_PAGES = {
     "chtml/part16/chapter_8.html": ("Table 8-1", "Table 8-2"),
     "chtml/part16/sect_CID_7050.html": ("Table CID 7050",),
     "chtml/part16/sect_CID_7005.html": ("Table CID 7005",),
+    "chtml/part16/chapter_L.html": tuple(ANNEX_L),
 }
 
 
 def _ps3_16_page(labels):
+    tables = {**PS3_16, **ANNEX_L}
     return _page(
-        *(_table(f"{label}. Fixture {label}", *PS3_16[label][:2]) for label in labels)
+        *(_table(f"{label}. Fixture {label}", *tables[label][:2]) for label in labels)
     )
 
 
@@ -2817,6 +2833,39 @@ def test_generate_writes_the_terms_of_the_cs_attributes(source_dir, tmp_path):
     ]
 
 
+def test_generate_writes_the_body_part_terms_of_annex_l(source_dir, tmp_path):
+    output_dir = tmp_path / "tables"
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    path = output_dir / residual_exemptions.BODY_PART_TERMS_TABLE.file
+    document = json.loads(path.read_text("utf-8"))
+    rows = [{"term": "FIXTURE LEG"}, {"term": "FIXTUREREGION"}]
+    assert document["table"] == residual_exemptions.BODY_PART_TERMS_TABLE.table
+    assert document["acknowledgement"] == "DICOM PS3.16 2099a, \u00a9 NEMA"
+    assert document["rows"] == rows
+    table = residual_exemptions.load_body_part_terms(path)
+    assert [row.term for row in table.rows] == ["FIXTURE LEG", "FIXTUREREGION"]
+
+
+def _annex_l(header=ANNEX_L_HEADER, rows=(("900011", "Fixture", "FIXTURE"),)):
+    page = _page(_table("Table L-1. Fixture", header, rows))
+    return {"Table L-1": chtml.select_table(chtml.extract_tables(page), "Table L-1")}
+
+
+@pytest.mark.parametrize(
+    "tables, message",
+    [
+        (_annex_l(header=("Code Value", "Code Meaning", "Body Part")), "column"),
+        (_annex_l(rows=(("900011", "Fixture", "Fixture"),)), "row 1"),
+        (_annex_l(rows=(("900011", "Fixture", ""),)), "no Annex L"),
+    ],
+)
+def test_annex_l_without_valid_body_part_terms_fails(tables, message):
+    with pytest.raises(chtml.TableFormatError, match=message):
+        ps3_16.parse_body_part_terms(tables)
+
+
 def _terms_page(*parts):
     return "<html><body>" + "".join(parts) + "</body></html>"
 
@@ -2908,6 +2957,9 @@ def test_a_page_without_terms_fails():
 def test_the_ps3_3_tables_are_named_as_the_loader_expects():
     assert residual_exemptions.DEFINED_TERMS_TABLE.table == (
         f"PS3.3 {ps3_3_terms.TERMS_LABEL}"
+    )
+    assert residual_exemptions.BODY_PART_TERMS_TABLE.table == (
+        f"PS3.16 {ps3_16.BODY_PART_LABEL}"
     )
     assert iods.IOD_MODULES_TABLE == "PS3.3 IOD Modules"
     assert iods.MODULE_ATTRIBUTES_TABLE == "PS3.3 Module Attributes"

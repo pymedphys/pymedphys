@@ -25,7 +25,9 @@ reason that such a finding is not a reason for review (D-032), or returns
 
 - :attr:`Exemption.STANDARD_TERM`: the finding is in a value of an attribute
   of VR CS, each of whose values is an Enumerated Value or Defined Term of
-  that attribute in the pinned PS3.3 (:func:`load_defined_terms`).
+  that attribute in the pinned PS3.3 (:func:`load_defined_terms`) or, for
+  Body Part Examined (0018,0015), whose Defined Terms PS3.3 leaves to
+  PS3.16 Annex L, in the pinned Annex L (:func:`load_body_part_terms`).
 - :attr:`Exemption.STANDARD_CODE`: the finding is in the Code Value,
   Coding Scheme Designator, Coding Scheme Version, Code Meaning, Long Code
   Value, or URN Code Value of a code item whose Coding Scheme Designator is
@@ -59,6 +61,7 @@ from .residuals import Finding
 from .uid_registry import RegistryTable, RegistryTableSpec, load_registry_table
 
 _DESIGNATOR = "(0008,0102)"
+BODY_PART_EXAMINED = "(0018,0015)"
 # Code Value, Coding Scheme Version, Code Meaning, Long Code Value, and URN
 # Code Value, which the designator in their item qualifies.
 _CODE_ITEM = frozenset(
@@ -121,6 +124,35 @@ DEFINED_TERMS_TABLE = RegistryTableSpec(
 )
 
 
+@dataclasses.dataclass(frozen=True)
+class BodyPartTerm:
+    """A Defined Term of Body Part Examined (0018,0015) in PS3.16 Annex L.
+
+    Attributes
+    ----------
+    term : str
+        Such as ``"CHEST"``.
+    """
+
+    term: str
+
+
+BODY_PART_TERMS_TABLE = RegistryTableSpec(
+    "PS3.16 Annex L Body Part Examined Defined Terms",
+    "body_part_terms.json",
+    BodyPartTerm,
+    (
+        (
+            lambda row: (
+                isinstance(row["term"], str) and bool(_CS_VALUE.fullmatch(row["term"]))
+            ),
+            "has a term that VR CS cannot hold",
+        ),
+    ),
+    (("term",),),
+)
+
+
 def load_defined_terms(path: pathlib.Path | None = None) -> RegistryTable[DefinedTerm]:
     """Load the Enumerated Values and Defined Terms of PS3.3's CS attributes.
 
@@ -141,12 +173,37 @@ def load_defined_terms(path: pathlib.Path | None = None) -> RegistryTable[Define
     return load_registry_table(DEFINED_TERMS_TABLE, path)
 
 
+def load_body_part_terms(
+    path: pathlib.Path | None = None,
+) -> RegistryTable[BodyPartTerm]:
+    """Load the Defined Terms of Body Part Examined from PS3.16 Annex L.
+
+    Parameters
+    ----------
+    path : pathlib.Path, optional
+        The generated file. Defaults to the one shipped with PyMedPhys.
+
+    Returns
+    -------
+    RegistryTable of BodyPartTerm
+
+    Raises
+    ------
+    StandardTableError
+        If the file is not a valid generated table.
+    """
+    return load_registry_table(BODY_PART_TERMS_TABLE, path)
+
+
 @functools.cache
 def defined_terms() -> Mapping[str, frozenset[str]]:
-    """Return the terms of each CS attribute, by tag, from the shipped table."""
+    """Return the terms of each CS attribute, by tag, from the shipped tables."""
     terms: dict[str, set[str]] = {}
     for row in load_defined_terms().rows:
         terms.setdefault(row.tag, set()).add(row.term)
+    terms.setdefault(BODY_PART_EXAMINED, set()).update(
+        row.term for row in load_body_part_terms().rows
+    )
     return {tag: frozenset(each) for tag, each in terms.items()}
 
 

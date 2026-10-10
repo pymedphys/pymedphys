@@ -36,7 +36,10 @@ from collections.abc import Callable, Mapping
 from pymedphys._data.download import download_with_progress
 from pymedphys._dicom.deidentify.codes import CODE_TABLES
 from pymedphys._dicom.deidentify.iods import IOD_MODULES_TABLE, MODULE_ATTRIBUTES_TABLE
-from pymedphys._dicom.deidentify.residual_exemptions import DEFINED_TERMS_TABLE
+from pymedphys._dicom.deidentify.residual_exemptions import (
+    BODY_PART_TERMS_TABLE,
+    DEFINED_TERMS_TABLE,
+)
 from pymedphys._dicom.deidentify.sop_classes import STORAGE_SOP_CLASS_TABLE
 from pymedphys._dicom.deidentify.standard import SCHEMA, STANDARD_DIR, content_sha256
 from pymedphys._dicom.deidentify.uid_registry import UID_TABLES
@@ -147,6 +150,10 @@ PIN = Pin(
         PinnedSource(
             "chtml/part16/sect_CID_7005.html",
             "15d1ca542b46cda0a5525f59ea8417f3d253e0259037ac5f567ccf31972f28b0",
+        ),
+        PinnedSource(
+            "chtml/part16/chapter_L.html",
+            "961864cd5810868701227bfb751eb4085b40c8fe2d6a9057f92e193f6d6c85a4",
         ),
         PinnedSource(
             "chtml/part04/sect_B.5.html",
@@ -271,6 +278,7 @@ _CODE_TABLE_PAGES = {
     "Table CID 7050": "chtml/part16/sect_CID_7050.html",
     "Table CID 7005": "chtml/part16/sect_CID_7005.html",
 }
+_ANNEX_L = "chtml/part16/chapter_L.html"
 _SECTION_B_5 = "chtml/part04/sect_B.5.html"
 _PS3_3 = "html/part03.html"
 _PART = re.compile(r"part([0-9]{2})")
@@ -418,6 +426,15 @@ def _defined_terms(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
     return _document(pin, _PS3_3, ps3_3_terms.TERMS_LABEL, list(rows))
 
 
+def _body_part_terms(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    """Return the Defined Terms of Body Part Examined, which PS3.16 lists."""
+    tables = {
+        label: _select(pages, _ANNEX_L, label) for label in ps3_16.BODY_PART_TABLES
+    }
+    rows = ps3_16.parse_body_part_terms(tables)
+    return _document(pin, _ANNEX_L, ps3_16.BODY_PART_LABEL, list(rows))
+
+
 def _registry_table(
     source: str, label: str, parse: Callable[[str, chtml.HtmlTable], tuple]
 ) -> Callable[[Pin, Mapping[str, bytes]], dict[str, object]]:
@@ -439,6 +456,7 @@ _OUTPUTS: dict[str, Callable[[Pin, Mapping[str, bytes]], dict[str, object]]] = {
     "iod_modules.json": _iod_modules,
     "module_attributes.json": _module_attributes,
     DEFINED_TERMS_TABLE.file: _defined_terms,
+    BODY_PART_TERMS_TABLE.file: _body_part_terms,
     STORAGE_SOP_CLASS_TABLE.file: _storage_sop_classes,
     **{
         spec.file: _registry_table(_CHAPTER_A, label, ps3_6.parse_uid_table)

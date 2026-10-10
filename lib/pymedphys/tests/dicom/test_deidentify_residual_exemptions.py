@@ -30,6 +30,7 @@ from pymedphys._dicom.deidentify.residual_exemptions import (
     Exemption,
     KeptValues,
     defined_terms,
+    load_body_part_terms,
     load_defined_terms,
 )
 from pymedphys._dicom.deidentify.residuals import SourceValue
@@ -119,10 +120,16 @@ def test_terms_come_from_rows_and_the_sections_they_refer_to(tag, terms):
     assert terms <= defined_terms()[tag]
 
 
-def test_terms_outside_ps3_3_are_not_in_the_table():
-    # Body Part Examined's Defined Terms are in PS3.16 Annex L, which is not
-    # read; PS3.3 lists only an ophthalmic module's EYE.
-    assert "CHEST" not in defined_terms()["(0018,0015)"]
+def test_body_part_examined_takes_its_terms_from_annex_l_of_ps3_16():
+    # PS3.3 refers to PS3.16 Annex L for Body Part Examined's Defined Terms.
+    table = load_body_part_terms()
+
+    assert table.edition == "2026d"
+    assert table.acknowledgement == "DICOM PS3.16 2026d, © NEMA"
+    assert {"CHEST", "CHESTABDOMEN", "HEAD"} <= defined_terms()["(0018,0015)"]
+    # PS3.3 itself lists only an ophthalmic module's EYE.
+    ps3_3 = {row.term for row in load_defined_terms().rows if row.tag == "(0018,0015)"}
+    assert "CHEST" not in ps3_3
 
 
 def test_only_cs_attributes_have_terms():
@@ -167,12 +174,22 @@ def test_a_cs_value_with_a_value_that_is_no_term_goes_to_review(kept, removed):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
-def test_a_body_part_that_holds_a_removed_description_goes_to_review():
-    # D-027's example: CHEST is not one of the terms that PS3.3 lists.
-    written = _written(_element(0x00180015, "CS", "CHESTABDOMEN"))
+@pytest.mark.parametrize(
+    "kept, decision",
+    [
+        # D-027's example: CHESTABDOMEN is a term of PS3.16 Annex L.
+        ("CHESTABDOMEN", Decision.RELEASE),
+        # A site's own text in Body Part Examined is no term.
+        ("CHEST ZARQUON", Decision.QC_REVIEW),
+    ],
+)
+def test_a_removed_description_in_a_body_part_is_released_only_from_a_term(
+    kept, decision
+):
+    written = _written(_element(0x00180015, "CS", kept))
     condition = _condition(written, ("(0008,1030)", "LO", "CHEST"))
 
-    assert condition.decision is Decision.QC_REVIEW
+    assert condition.decision is decision
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
