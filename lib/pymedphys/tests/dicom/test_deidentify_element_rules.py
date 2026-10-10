@@ -238,6 +238,9 @@ KEPT_URIS = {"(0008,010E)": "CodingSchemeURL", "(0008,0120)": "URNCodeValue"}
 # place that no removed sequence encloses, so that X/Z/D resolves to D there.
 REQUIRED_URIS = {"(0028,7FE0)"}
 ICC_PROFILE = "(0028,2000)"
+# A number that can hold anything, such as a date, emptied as Table E.1-1
+# empties Study ID (0020,0010).
+SERIES_NUMBER = "(0020,0011)"
 
 
 @functools.cache
@@ -601,6 +604,46 @@ def test_patient_size_code_sequence_is_removed_under_retain_patient_characterist
     assert rules.rule("(0010,1020)").action == "K"  # Patient's Size
     action = rules.rule("(0010,1021)").action
     assert compound_actions.resolve_in_iod(ct_image, "(0010,1021)", (), action) == "X"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+def test_series_number_is_removed_by_type_under_every_option():
+    rule = supplementary_actions.load_supplementary_actions().rules[SERIES_NUMBER]
+
+    assert (rule.keyword, rule.action, dict(rule.options)) == (
+        "SeriesNumber",
+        "X/Z/D",
+        {},
+    )
+    for composed in _usable_policies():
+        assert ElementRules(composed).rule(SERIES_NUMBER) == ElementRule(
+            SERIES_NUMBER, SUPPLEMENTARY, "X/Z/D", SERIES_NUMBER
+        )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-06")
+def test_series_number_is_emptied_in_the_supported_iods_but_where_type_1():
+    # Type 2 in the General Series and RT Series Modules; Type 1 only in the
+    # items of the Structure Set Module's Source Series Information Sequence.
+    tables = iods.load_iod_tables()
+    resolved = {
+        (
+            name,
+            definition.path,
+            compound_actions.resolve_in_iod(
+                tables.iods[name], SERIES_NUMBER, definition.path, "X/Z/D"
+            ),
+        )
+        for name in SUPPORTED_IODS
+        for definition in tables.iods[name].definitions
+        if definition.tag == SERIES_NUMBER
+    }
+
+    assert {name for name, _, _ in resolved} == set(SUPPORTED_IODS)
+    assert {(name, path) for name, path, action in resolved if action != "Z"} == {
+        ("RT Structure Set", ("(3006,004C)",))
+    }
+    assert {action for _, _, action in resolved} == {"Z", "D"}
 
 
 # Building the rules the first time in a process takes longer than

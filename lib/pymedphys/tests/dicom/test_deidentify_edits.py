@@ -207,6 +207,24 @@ def test_an_empty_value_is_edited_and_collected_whatever_the_transfer_syntax(
     assert found[_path("(300A,0002)")].values == ("DEIDENTIFIED",)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-06")
+def test_a_series_number_is_emptied_whatever_number_it_holds():
+    # A date written as the Series Number is a number like any other, so it is
+    # emptied by the rule for Series Number, not kept as numbers are.
+    data_set = (
+        _explicit(0x00080016, "UI", RT_PLAN_CLASS.encode() + b"\x00")
+        + _explicit(0x00080018, "UI", INSTANCE_UID.encode())
+        + _explicit(0x00200011, "IS", b"20230512")
+    )
+    evidence = source.read_source(_file(EXPLICIT, data_set))
+    plan = walker.plan_instance(evidence, _rules(), _rt_plan())
+    result = edits.edit_instance(evidence, plan, KEY)
+
+    assert not result.sequestrations
+    found = {edit.path: edit for edit in result.edits}
+    assert found[_path("(0020,0011)")].kind is EditKind.EMPTY
+
+
 def test_patients_name_and_id_wait_for_their_pseudonyms():
     # D-005: Patient's Name and Patient ID take the subject's keyed
     # pseudonyms under Z and D, which a later step gives.

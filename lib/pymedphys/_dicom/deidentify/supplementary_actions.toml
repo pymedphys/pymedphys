@@ -1203,6 +1203,15 @@ keyword = "ContactURI"
 action = "X/Z/D"
 note = "A URI by which to communicate about a procedure step, such as a telephone number or email address. It can identify a person or the institution, so it is removed by Type under every option, as Table E.1-1 removes Person's Telephone Numbers (0040,1103), and none of the IODs whose Types are generated uses it."
 
+# Numbers that whatever writes the instance assigns, which can hold any
+# number, such as a date.
+
+[[attribute]]
+tag = "(0020,0011)"
+keyword = "SeriesNumber"
+action = "X/Z/D"
+note = "A number that identifies a series. Nothing constrains its value beyond its VR, so it can hold a date written as eight digits, or another identifier. It is removed by Type under every option, as Table E.1-1 empties Study ID (0020,0010), the study's own number (Z), which loses the order of the series within a study. It is Type 2 in the General Series and RT Series Modules, where it is emptied, and Type 1 in the items of Source Series Information Sequence (3006,004C) in the Structure Set Module, where it is given a dummy value."
+
 # Sequences whose codes or identifiers can identify the institution or other
 # patients, or say something about the patient, as attributes that Table
 # E.1-1 removes or empties do.
