@@ -873,6 +873,10 @@ def test_the_rules_for_other_elements_are_described():
     assert f"get `{other.text_action}`, resolved by Type" in section
     assert "items" in section
     assert "does not list" in section
+    # The Common Instance Reference Module's sequences lapse with the last
+    # other reference to an instance.
+    assert "Referenced Series Sequence (0008,1115)" in section
+    assert "Referenced Instances Sequence (0008,1200)" in section
     # Group 0002 is the File Meta Information, which the engine writes.
     assert "File Meta Information" in section
 

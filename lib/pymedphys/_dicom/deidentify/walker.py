@@ -85,7 +85,13 @@ overlay group in the same data set or item; and where neither applies, a
 :class:`Sequestration` is added. Each element so removed that its own rule
 would not remove names the attribute in :attr:`ElementPlan.removed_for`.
 The engine's own removals, such as Encrypted Attributes Sequence
-(0400,0500), apply alone, whatever the Type. The consumers here are those
+(0400,0500), apply alone, whatever the Type. So does the removal of the
+Common Instance Reference Module's Type 1C sequences, Referenced Series
+Sequence (0008,1115) and Studies Containing Other Referenced Instances
+Sequence (0008,1200), with everything in them, where the plan keeps no other
+reference to an instance, since their conditions then do not hold
+(:mod:`~pymedphys._dicom.deidentify.common_instance_reference`):
+:attr:`ElementPlan.lapsed` marks them. The consumers here are those
 of the actions; the
 inputs of options that keep or modify values, such as patient pseudonyms
 and modified dates, are added with those options.
@@ -117,6 +123,10 @@ from __future__ import annotations
 import dataclasses
 import enum
 
+from .common_instance_reference import (
+    is_common_instance_reference,
+    is_instance_reference,
+)
 from .compound_actions import (
     COMPOUND_ACTIONS,
     RemovalExtent,
@@ -253,6 +263,11 @@ class ElementPlan:
         the innermost enclosing sequence that is Type 3 at its own place, or
         another attribute of the overlay group of Overlay Data (60xx,3000).
         Otherwise ``None``.
+    lapsed : bool
+        ``True`` for a sequence of the Common Instance Reference Module that
+        is removed, which its own rule would not remove, because the plan
+        keeps no other reference to an instance, so its Type 1C condition
+        does not hold in the output. Otherwise ``False``.
     """
 
     path: ElementPath
@@ -262,6 +277,7 @@ class ElementPlan:
     removed_with: ElementPath | None
     consumers: frozenset[Consumer]
     removed_for: ElementPath | None = None
+    lapsed: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -392,11 +408,16 @@ def _resolve(iod: IOD, path: ElementPath, rule: ElementRule) -> str:
 
 
 def _plan(
-    source: SourceEvidence, rules: ElementRules, iod: IOD, forced: _PlainRemovals
+    source: SourceEvidence,
+    rules: ElementRules,
+    iod: IOD,
+    forced: _PlainRemovals,
+    lapsed: frozenset[ElementPath] = frozenset(),
 ) -> tuple[InstancePlan, _PlainRemovals]:
     """Plan every element, removing what ``forced`` says plain X removes.
 
-    Also return what each plain X found removes with its attribute.
+    The sequences in ``lapsed`` are removed too. Also return what each plain
+    X found removes with its attribute.
     """
     elements: list[ElementPlan] = []
     sequestrations: list[Sequestration] = []
@@ -420,7 +441,8 @@ def _plan(
         rule = rules.rule(path.tag, tuple(tag for tag, _ in path.items), iod=iod)
         action = _resolve(iod, path, rule)
         removed_for = forced.removed_for(path) if action != _REMOVED else None
-        if removed_for is not None:
+        lapses = path in lapsed and action != _REMOVED
+        if removed_for is not None or lapses:
             action = _REMOVED
         elif rule.action == _REMOVED and rule.source is not RuleSource.ENGINE:
             # The engine's own removals apply whatever the Type.
@@ -439,9 +461,48 @@ def _plan(
             removing[path] = action
         consumers = _consumers(action, container, False)
         elements.append(
-            ElementPlan(path, vr, rule, action, None, consumers, removed_for)
+            ElementPlan(path, vr, rule, action, None, consumers, removed_for, lapses)
         )
     return InstancePlan(tuple(elements), tuple(sequestrations)), found
+
+
+def _keeps_a_reference(plan: InstancePlan, source: SourceEvidence) -> bool:
+    """Return whether the plan keeps a reference to an instance.
+
+    A reference is kept where its element keeps a value: it has one in the
+    source, and is neither removed nor emptied. The dummy item that D writes
+    for Referenced Performed Procedure Step Sequence (0008,1111) holds a
+    replacement Referenced SOP Instance UID, so that counts too.
+    """
+    for element in plan.elements:
+        if element.path.tag in REVIEWED_DUMMY_SEQUENCES and element.action == "D":
+            if "(0008,1155)" in REVIEWED_DUMMY_SEQUENCES[element.path.tag]:
+                return True
+        elif (
+            element.action not in (_REMOVED, "Z")
+            and is_instance_reference(element.path)
+            and not _source_empty(source, element.path)
+        ):
+            return True
+    return False
+
+
+def _source_empty(source: SourceEvidence, path: ElementPath) -> bool:
+    """Return whether the source holds the element with a zero-length value."""
+    extent = source.element(path)
+    return not extent.undefined_length and extent.end == extent.value_start
+
+
+def _lapsed(plan: InstancePlan, source: SourceEvidence) -> frozenset[ElementPath]:
+    """Return the module's kept sequences, where no other reference is kept."""
+    kept = frozenset(
+        element.path
+        for element in plan.elements
+        if is_common_instance_reference(element.path) and element.action != _REMOVED
+    )
+    if not kept or _keeps_a_reference(plan, source):
+        return frozenset()
+    return kept
 
 
 def plan_instance(
@@ -451,7 +512,10 @@ def plan_instance(
 
     A plain X can remove a sequence that encloses its attribute, or the
     other attributes of an overlay group, some of which come before it in
-    file order, so the data set is planned again where one does.
+    file order, so the data set is planned again where one does. Where the
+    plan then keeps no reference to an instance outside the Common Instance
+    Reference Module, it is planned once more with the module's sequences
+    removed, which removes no reference that the decision rests on.
 
     Parameters
     ----------
@@ -472,4 +536,7 @@ def plan_instance(
     if removals.sequences or removals.overlay_groups:
         # Planning again only removes more, so it finds nothing new to force.
         plan, _ = _plan(source, rules, iod, removals)
+    lapsed = _lapsed(plan, source)
+    if lapsed:
+        plan, _ = _plan(source, rules, iod, removals, lapsed)
     return plan

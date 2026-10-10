@@ -413,7 +413,11 @@ def _other(statement: ConformanceStatement, named: Callable[[str], str]) -> list
         "defines the attribute at the element's place, and removed "
         f"({_code('X')}) elsewhere. The elements in the items of a kept "
         "sequence take their actions by the rules of this statement, as Table E.1-1a "
-        "requires of a retained sequence.",
+        "requires of a retained sequence. Referenced Series Sequence (0008,1115) "
+        "and Studies Containing Other Referenced Instances Sequence (0008,1200) of "
+        "the Common Instance Reference Module are removed, with their items, "
+        "where the instance keeps no other reference to an instance, since their "
+        "Type 1C conditions then do not hold (D-022).",
         f"- Any other attribute is removed ({_code('X')}), as is an element "
         "that the pinned data dictionary does not list.",
         "",
