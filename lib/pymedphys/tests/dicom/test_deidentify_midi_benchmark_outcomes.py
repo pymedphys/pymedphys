@@ -32,14 +32,21 @@ from pymedphys._dicom.deidentify.release_gate import (
     ReleaseReason,
 )
 
+from . import _synthetic_references as synthetic
+from .test_deidentify_run import (  # noqa: F401  # pylint: disable = unused-import
+    _short_tmp_path,
+)
 from .test_deidentify_midi_benchmark import (
     CT_IOD,
     FAILED,
     MAPPING,
     STUDY_DESCRIPTION,
+    _answer_key,
     _check,
     _released_ct,
+    _row,
     _score,
+    _source,
     read_answer_check,
 )
 
@@ -195,14 +202,16 @@ def test_a_removed_text_that_the_policy_keeps_is_a_finding(categories):
 @pytest.mark.parametrize(
     "value, answer, expected",
     [
-        ("3", "3", ("IS", "1 to 4 digits", True)),
-        ("20240131", "20240131", ("IS", "8 digits, a date", True)),
-        ("20241399", "2024", ("IS", "8 digits", False)),
-        ("123456789", "123456789", ("IS", "9 or more digits", True)),
+        ("3", "3", ("IS", "1 to 4 digits", True, "not a date")),
+        ("20240131", "20240131", ("IS", "8 digits, a date", True, "none")),
+        ("20240102", "20240102", ("IS", "8 digits, a date", True, "SeriesDate")),
+        ("20241399", "2024", ("IS", "8 digits", False, "not a date")),
+        ("123456789", "123456789", ("IS", "9 or more digits", True, "not a date")),
     ],
 )
 def test_a_removed_text_is_described_by_its_shape(value, answer, expected):
     source = _released_ct()
+    source.SeriesDate = "20240102"
     source.SeriesNumber = value
     check = read_answer_check("text_removed", "<(0020,0011)>", text=answer)
 
@@ -212,11 +221,17 @@ def test_a_removed_text_is_described_by_its_shape(value, answer, expected):
 def test_a_removed_text_of_another_vr_is_described_by_its_vr():
     check = read_answer_check("text_removed", "<(0008,0060)>", text="ct")
 
-    assert sources.removed_shape(_released_ct(), check) == ("CS", "not IS", False)
+    assert sources.removed_shape(_released_ct(), check) == (
+        "CS",
+        "not IS",
+        False,
+        "not a date",
+    )
     assert sources.removed_shape(pydicom.Dataset(), check) == (
         "none",
         "absent",
         False,
+        "not a date",
     )
 
 
@@ -245,6 +260,8 @@ def test_the_source_state_says_whether_the_attribute_and_a_value_are_there(
         # The source has Rows, so its absence is the release's.
         ("tag_retained", "<(0028,0010)>", False),
         ("text_notnull", "<(0028,0010)>", False),
+        # Only a check that asks for something to be present can be one.
+        ("text_retained", "<(0018,0060)>", False),
     ],
 )
 def test_a_present_check_that_fails_on_the_source_too_is_a_source_gap(
@@ -252,43 +269,44 @@ def test_a_present_check_that_fails_on_the_source_too_is_a_source_gap(
 ):
     source = _released_ct()
     source.Rows = 2
-    check = read_answer_check(action, place)
+    check = read_answer_check(action, place, text="120")
 
-    scored = benchmark.source_gap(check, source, FAILED)
+    assert sources.is_source_gap(check, source) is gap
+    assert sources.is_source_gap(check, None) is False
 
-    assert scored == (
-        benchmark.Scored(
-            benchmark.Result.FAILED, "absent from the source", source_gap=True
-        )
-        if gap
-        else FAILED
+
+def test_a_kept_text_finding_is_described_by_its_source(tmp_path):
+    # The source has Rows 2, so a key that asks for 3 fails on it too.
+    key = _answer_key(
+        tmp_path / "key.db",
+        [
+            _row(
+                synthetic.CT_SLICES[0],
+                [_check("text_retained", "<(0028,0010)>", text="3", tcia_rev="T")],
+            )
+        ],
     )
 
+    document = benchmark.run_benchmark(
+        _source(tmp_path), key, tmp_path / "work", watched=["(0028,0010)"]
+    ).document
 
-def test_only_a_finding_of_a_present_check_can_be_a_source_gap():
-    source = _released_ct()
-    deliberate = benchmark.Scored(benchmark.Result.FAILED, "X", deliberate=True)
-
-    assert (
-        benchmark.source_gap(
-            read_answer_check("tag_retained", "<(0018,0060)>"), source, deliberate
-        )
-        == deliberate
-    )
-    assert (
-        benchmark.source_gap(
-            read_answer_check("text_retained", "<(0018,0060)>", text="120"),
-            source,
-            FAILED,
-        )
-        == FAILED
-    )
-    assert (
-        benchmark.source_gap(
-            read_answer_check("tag_retained", "<(0018,0060)>"), None, FAILED
-        )
-        == FAILED
-    )
+    described = {"category": "tcia T", "action": "text_retained"}
+    described |= {"attribute": "(0028,0010)"}
+    assert document["failed_at_source"]["finding"] == [
+        {**described, "fails_at_source": "yes", "checks": 1}
+    ]
+    assert document["failed_at_source"]["encoding"] == [
+        {
+            **described,
+            "transfer_syntax": "Explicit VR Little Endian",
+            "vr_written": "US",
+            "pixel_representation": "0",
+            "same_in_output": "yes",
+            "checks": 1,
+        }
+    ]
+    assert document["watched"] == [{**described, "outcome": "failed", "checks": 1}]
 
 
 def test_a_withheld_instance_is_counted_by_where_its_reasons_were_found():

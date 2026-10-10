@@ -650,8 +650,12 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
         "vr": "CS",
         "shape": "not IS",
         "whole_value": True,
+        "same_date_as": "not a date",
         "checks": 1,
     }
+    # The source holds the text that the key asks to be removed.
+    finding = {k: removed[k] for k in ("action", "attribute")}
+    finding |= {"fails_at_source": "yes", "checks": 1}
     assert document["failed_at_source"] == {
         "present": [
             {
@@ -666,7 +670,13 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
             {"category": "hipaa TEST-MODALITY", **removed},
             {"category": "tcia TEST-REV", **removed},
         ],
+        "finding": [
+            {"category": "hipaa TEST-MODALITY", **finding},
+            {"category": "tcia TEST-REV", **finding},
+        ],
+        "encoding": [],
     }
+    assert document["watched"] == []
     assert json.loads((work / benchmark.RESULTS_JSON).read_text()) == document
     assert (work / benchmark.RESULTS_MARKDOWN).read_text() == result.markdown()
     assert (work / "release" / "release-report.json").is_file()
@@ -754,6 +764,7 @@ def test_the_markdown_gives_each_section(tmp_path):
         "## Source gaps",
         "## Findings",
         "## Failed checks at their source",
+        "## Watched attributes",
     ):
         assert f"\n{heading}\n" in f"\n{markdown}"
     assert "| tcia TEST-RETAIN-DESCRIPTION | text_retained | (0008,1030) | X | 1 |" in (

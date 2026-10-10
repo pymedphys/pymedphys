@@ -125,7 +125,7 @@ import io
 import os
 import json
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pydicom
@@ -153,17 +153,18 @@ from .midi_answer_key import (
 from .midi_benchmark_errors import ErrorRecorder, uid_name
 from .midi_benchmark_markdown import render_markdown
 from .midi_benchmark_sources import (
-    ABSENT,
-    EMPTY,
+    WATCHED,
     counted_order,
+    counted_rows,
+    describe_finding,
     describe_source,
     described_rows,
     explained_rows,
     place_rows,
+    is_source_gap,
     read_source,
     reason_code,
     reason_places,
-    source_state,
 )
 from .midi_benchmark_values import (
     compare_text,
@@ -295,6 +296,7 @@ def run_benchmark(
     preset: str = "basic",
     collection: str | None = None,
     tg263_spreadsheet: str | Path | None = None,
+    watched: Collection[str] = (),
 ) -> Benchmark:
     """De-identify a MIDI test data set and score the release.
 
@@ -316,6 +318,9 @@ def run_benchmark(
     tg263_spreadsheet : str or Path, optional
         A copy of the pinned TG-263 edition's spreadsheet, for a preset with
         Clean Descriptors; by default, PyMedPhys's cached download.
+    watched : collection of str, optional
+        Attributes, such as ``(0020,0011)``, each of whose checks is counted
+        by where it ended up.
 
     Raises
     ------
@@ -376,6 +381,7 @@ def run_benchmark(
         roi_names=None if cleaning is None else _roi_names_used(),
         internal_errors=errors.records(),
         sources=discovery.paths,
+        watched=frozenset(watched),
     )
     (work / RESULTS_JSON).write_text(benchmark.json(), encoding="utf-8", newline="\n")
     (work / RESULTS_MARKDOWN).write_text(
@@ -514,6 +520,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     roi_names: str | None = None,
     internal_errors: Sequence[Mapping[str, object]] = (),
     sources: Sequence[Path] = (),
+    watched: Collection[str] = (),
 ) -> Benchmark:
     """Score each check of the answer key against the run's outcome.
 
@@ -524,7 +531,10 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     :meth:`~pymedphys._dicom.deidentify.midi_benchmark_errors.ErrorRecorder.records`,
     where the run's transform and gate raised. ``sources``, each input's
     path by position, lets a finding be counted as a source gap
-    (:func:`source_gap`).
+    (:func:`~pymedphys._dicom.deidentify.midi_benchmark_sources.is_source_gap`)
+    and be described at its source; and each check of
+    an attribute in ``watched``, such as ``(0020,0011)``, is counted by
+    where it ended up.
     """
     positions: dict[str, int] = {}
     for position, header in enumerate(headers):
@@ -552,6 +562,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     )
     withheld_reasons: collections.Counter = collections.Counter()
     places: collections.Counter = collections.Counter()
+    watching: collections.Counter = collections.Counter()
     not_released: dict[tuple[str, str | None, str, str], list[int]] = (
         collections.defaultdict(lambda: [0, 0])
     )
@@ -573,17 +584,20 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
             source: list[pydicom.Dataset | None] = []
             for check in answer.checks:
                 tally = counts[check.category]
-                if dataset is None:
-                    field = context.value.replace("-", "_")
-                    setattr(tally, field, getattr(tally, field) + 1)
-                    continue
-                scored = score_check(
-                    check, dataset, mapping, rules, iod, fallback=fallback
-                )
                 described = (
                     str(check.category or "unknown"),
                     check.action_name,
                     _attribute(check),
+                )
+                watch = described[2] in watched
+                if dataset is None:
+                    field = context.value.replace("-", "_")
+                    setattr(tally, field, getattr(tally, field) + 1)
+                    if watch:
+                        watching[(*described, context.value)] += 1
+                    continue
+                scored = score_check(
+                    check, dataset, mapping, rules, iod, fallback=fallback
                 )
                 if (
                     scored.result is Result.FAILED
@@ -594,20 +608,28 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                     if not source:
                         source.append(read_source(sources[position]))
                     describe_source(check, source[0], described, explained)
-                    scored = source_gap(check, source[0], scored)
-                if scored.result is Result.PASSED:
-                    tally.passed += 1
-                elif scored.result is Result.NOT_EVALUATED:
-                    tally.not_evaluated += 1
-                elif scored.deliberate:
-                    tally.deliberate += 1
+                    if is_source_gap(check, source[0]):
+                        scored = Scored(Result.FAILED, _GAP, source_gap=True)
+                outcome = _outcome(scored)
+                setattr(tally, outcome, getattr(tally, outcome) + 1)
+                if watch:
+                    watching[(*described, outcome.replace("_", " "))] += 1
+                if outcome == "deliberate":
                     differences[(*described, scored.note)] += 1
-                elif scored.source_gap:
-                    tally.source_gap += 1
+                elif outcome == "source_gap":
                     gaps[described] += 1
-                else:
-                    tally.failed += 1
+                elif outcome == "failed":
                     findings[described] += 1
+                    describe_finding(
+                        check,
+                        None
+                        if not source or source[0] is None
+                        else _score(check, source[0], mapping).result is Result.FAILED,
+                        described,
+                        explained,
+                        source=sources[position] if source else None,
+                        output=release / outcomes[position].output,  # type: ignore[index, operator]
+                    )
     environment = runtime_environment()
     if method is None:
         method = method_digest(policy, vocabulary=None, reviewed_roi_names=None)
@@ -686,8 +708,22 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
         "source_gaps": described_rows(gaps),
         "findings": described_rows(findings),
         "failed_at_source": explained_rows(explained),
+        "watched": counted_rows(watching, WATCHED),
     }
     return Benchmark(document)
+
+
+def _outcome(scored: Scored) -> str:
+    """Return the CategoryCounts field that a released instance's check adds to."""
+    if scored.result is not Result.FAILED:
+        return "passed" if scored.result is Result.PASSED else "not_evaluated"
+    return (
+        "deliberate"
+        if scored.deliberate
+        else "source_gap"
+        if scored.source_gap
+        else "failed"
+    )
 
 
 def _attribute(check: Check) -> str | None:
@@ -822,24 +858,8 @@ def _explanation(  # pylint: disable = too-many-arguments
     )
 
 
-def source_gap(check: Check, source: pydicom.Dataset | None, scored: Scored) -> Scored:
-    """Return a finding as a source gap where the check fails on the source too.
-
-    Only a check that asks for an attribute, or a value of it, to be present
-    can fail on the source instance; where it does, the source had nothing
-    to keep.
-    """
-    if (
-        source is None
-        or scored.result is not Result.FAILED
-        or scored.deliberate
-        or check.action not in (Action.TAG_RETAINED, Action.TEXT_NOTNULL)
-    ):
-        return scored
-    state = source_state(source, check)
-    if state != ABSENT and (check.action is Action.TAG_RETAINED or state != EMPTY):
-        return scored
-    return Scored(Result.FAILED, "absent from the source", source_gap=True)
+# A source gap's note: the source had nothing for the check to find.
+_GAP = "absent from the source"
 
 
 # The markers that replace what the source holds (PS3.15 E.2 and E.3): a

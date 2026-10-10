@@ -23,6 +23,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 
+from .midi_benchmark_sources import EXPLAINED, WATCHED
+
 
 def render_markdown(document: Mapping[str, object]) -> str:
     """Render a benchmark's results as CommonMark."""
@@ -244,56 +246,74 @@ def render_markdown(document: Mapping[str, object]) -> str:
         ],
     )
     lines += _at_source(document["failed_at_source"])
+    lines += _watched(document.get("watched", ()))
     return "\n".join(lines) + "\n"
 
 
 def _at_source(explained: Mapping[str, Sequence[Mapping[str, object]]]) -> list[str]:
     """Render what the source instances of failed checks hold, without a value."""
-    lines = [
+    lines = ["", "## Failed checks at their source"]
+    for kind, (text, header) in _AT_SOURCE.items():
+        lines += ["", text, ""]
+        lines += _rows_or_none(
+            ("Category", "Action", "Attribute", *header, "Checks"),
+            [
+                [_yes_no(row[field]) for field in (*EXPLAINED[kind], "checks")]
+                for row in explained.get(kind, ())
+            ],
+        )
+    return lines
+
+
+def _watched(rows: Sequence[Mapping[str, object]]) -> list[str]:
+    """Render each check of the watched attributes by where it ended up."""
+    return [
         "",
-        "## Failed checks at their source",
+        "## Watched attributes",
         "",
+        "Each check of the attributes that the run was asked to watch, by "
+        "where it ended up:",
+        "",
+        *_rows_or_none(
+            ("Category", "Action", "Attribute", "Outcome", "Checks"),
+            [[row[field] for field in (*WATCHED, "checks")] for row in rows],
+        ),
+    ]
+
+
+def _yes_no(value: object) -> object:
+    return ("yes" if value else "no") if isinstance(value, bool) else value
+
+
+# For each kind of description of a failed check's source, its introduction
+# and the headers of the columns that follow its attribute.
+_AT_SOURCE = {
+    "present": (
         "Each failed check, apart from deliberate differences, that asked for "
         "an attribute or a value to be present, by what its source instance "
         "holds there:",
-        "",
-    ]
-    lines += _rows_or_none(
-        ("Category", "Action", "Attribute", "Source", "Checks"),
-        [
-            (
-                row["category"],
-                row["action"],
-                row["attribute"],
-                row["source"],
-                row["checks"],
-            )
-            for row in explained["present"]
-        ],
-    )
-    lines += [
-        "",
+        ("Source",),
+    ),
+    "removed": (
         "Each failed check that asked for a text to be removed, by the source "
-        "value's VR, its shape where it is an Integer String, and whether the "
-        "answer key's text is the whole value:",
-        "",
-    ]
-    lines += _rows_or_none(
-        ("Category", "Action", "Attribute", "VR", "Shape", "Whole value", "Checks"),
-        [
-            (
-                row["category"],
-                row["action"],
-                row["attribute"],
-                row["vr"],
-                row["shape"],
-                "yes" if row["whole_value"] else "no",
-                row["checks"],
-            )
-            for row in explained["removed"]
-        ],
-    )
-    return lines
+        "value's VR, its shape where it is an Integer String, whether the "
+        "answer key's text is the whole value, and, for an Integer String "
+        "shaped as a date, which of the instance's Study, Series, "
+        "Acquisition, Content, and Patient's Birth Dates equal it:",
+        ("VR", "Shape", "Whole value", "Same date as"),
+    ),
+    "finding": (
+        "Each finding, by whether the same check fails on the source instance too:",
+        ("Fails at source",),
+    ),
+    "encoding": (
+        "Each finding that asked for a text to be kept, by how the source "
+        "encodes the attribute: its transfer syntax, the VR as written (none "
+        "in Implicit VR), the Pixel Representation, and whether the encoded "
+        "value is the same in the output:",
+        ("Transfer syntax", "VR written", "Pixel Representation", "Same in output"),
+    ),
+}
 
 
 # The places of withholding reasons that the Markdown lists.

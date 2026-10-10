@@ -241,6 +241,7 @@ jobs:
             --work "${work}" \
             --collection "${name}" \
             --preset "${PRESET}" \
+            --watch "(0020,0011)" --watch "(0028,0106)" --watch "(0008,0008)" \
             2> "${RUNNER_TEMP}/midi-b/private/benchmark-stderr.log"
           kill "${sampler}"
           free -m
