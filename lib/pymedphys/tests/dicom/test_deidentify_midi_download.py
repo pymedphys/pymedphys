@@ -214,6 +214,7 @@ def test_a_download_writes_files_by_position_and_records_no_value(tmp_path):
         "source": "pinned",
         "sha256": _sha256(KEY),
         "pin": "matched",
+        "database_sha256": _sha256(KEY),
     }
     # Only the images, the answer key, and the record remain.
     assert sorted(path.name for path in destination.iterdir()) == [
@@ -279,7 +280,10 @@ def test_a_failed_fetch_is_retried(tmp_path, no_sleep):
 def test_a_fetch_that_keeps_failing_names_no_url(tmp_path, no_sleep):
     with pytest.raises(DownloadError) as raised:
         midi_download.download(
-            _subset(), tmp_path / "midi", opener=Server(failures=99), workers=1
+            _subset(answer_key_url="", answer_key_sha256=""),
+            tmp_path / "midi",
+            opener=Server(failures=99),
+            workers=1,
         )
     assert str(raised.value) == (
         "the manifest could not be fetched after 6 attempts (URLError)"
@@ -399,3 +403,116 @@ def test_verifying_needs_a_directory(tmp_path):
             ["--subset", "validation", "--verify", str(tmp_path / "missing")],
             subsets={"validation": _subset()},
         )
+
+
+def test_a_local_answer_key_is_checked_against_the_pin(tmp_path):
+    key = tmp_path / "from-tcia.db"
+    key.write_bytes(KEY)
+    record = midi_download.download(
+        _subset(answer_key_url=""),
+        tmp_path / "midi",
+        opener=Server(),
+        answer_key_file=key,
+    )
+    assert record["answer_key"] == {
+        "source": "file",
+        "sha256": _sha256(KEY),
+        "pin": "matched",
+        "database_sha256": _sha256(KEY),
+    }
+    assert (tmp_path / "midi" / "answer-key.db").read_bytes() == KEY
+
+
+def test_a_local_answer_key_that_differs_is_refused(tmp_path):
+    key = tmp_path / "other.db"
+    key.write_bytes(b"another key")
+    with pytest.raises(DownloadError, match="answer key's SHA-256"):
+        midi_download.download(
+            _subset(), tmp_path / "midi", opener=Server(), answer_key_file=key
+        )
+
+
+def test_an_answer_key_by_url_and_by_file_is_refused(tmp_path):
+    key = tmp_path / "key.db"
+    key.write_bytes(KEY)
+    with pytest.raises(DownloadError, match="not both"):
+        midi_download.download(
+            _subset(),
+            tmp_path / "midi",
+            opener=Server(),
+            answer_key_url=KEY_URL,
+            answer_key_sha256=_sha256(KEY),
+            answer_key_file=key,
+        )
+
+
+@pytest.mark.parametrize(
+    "data, status, pin", [(KEY, 0, "matched"), (b"x", 1, "differs")]
+)
+def test_verifying_checks_a_local_answer_key(tmp_path, capsys, data, status, pin):
+    midi_download.download(_subset(), tmp_path / "midi", opener=Server())
+    key = tmp_path / "key.db"
+    key.write_bytes(data)
+    returned = midi_download.main(
+        [
+            "--subset",
+            "validation",
+            "--verify",
+            str(tmp_path / "midi" / "images"),
+            "--answer-key-file",
+            str(key),
+        ],
+        subsets={"validation": _subset()},
+    )
+    assert returned == status
+    assert json.loads(capsys.readouterr().out)["answer_key"]["pin"] == pin
+
+
+def test_a_zipped_answer_key_is_checked_as_zipped_and_unpacked(tmp_path):
+    # As TCIA publishes it: one database in a ZIP file, beside other files.
+    zipped = _archive({"key/README.txt": b"notes", "key/answer.db": KEY})
+    key = tmp_path / "MIDI-B-Answer-Key-Validation.zip"
+    key.write_bytes(zipped)
+    record = midi_download.download(
+        _subset(answer_key_url="", answer_key_sha256=_sha256(zipped)),
+        tmp_path / "midi",
+        opener=Server(),
+        answer_key_file=key,
+    )
+    assert record["answer_key"] == {
+        "source": "file",
+        "sha256": _sha256(zipped),
+        "pin": "matched",
+        "database_sha256": _sha256(KEY),
+    }
+    assert (tmp_path / "midi" / "answer-key.db").read_bytes() == KEY
+    assert "answer.db" not in _all_text(tmp_path / "midi")
+
+
+@pytest.mark.parametrize(
+    "data, message",
+    [
+        (b"neither", "neither an SQLite database nor a ZIP"),
+        (_archive({"a.txt": b"text"}), "holds 0 SQLite databases, not one"),
+        (_archive({"a.db": KEY, "b.db": KEY}), "holds 2 SQLite databases, not one"),
+    ],
+)
+def test_an_answer_key_without_one_database_is_refused(tmp_path, data, message):
+    key = tmp_path / "key"
+    key.write_bytes(data)
+    with pytest.raises(DownloadError, match=message):
+        midi_download.download(
+            _subset(answer_key_url="", answer_key_sha256=""),
+            tmp_path / "midi",
+            opener=Server(),
+            answer_key_file=key,
+        )
+
+
+def test_a_wrong_answer_key_fails_before_the_images_download(tmp_path):
+    server = Server()
+    with pytest.raises(DownloadError, match="answer key's SHA-256"):
+        midi_download.download(
+            _subset(answer_key_sha256="0" * 64), tmp_path / "midi", opener=server
+        )
+    assert server.requests == [KEY_URL]

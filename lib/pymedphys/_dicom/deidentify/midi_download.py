@@ -30,7 +30,11 @@ must not exist:
   ``<series>/<instance>.dcm`` by the series' position in the manifest and
   the file's position in its series' archive, so no path carries a value
   from the data set;
-- ``answer-key.db``, the answer key, when there is one;
+- ``answer-key.db``, the answer key, when there is one. TCIA publishes
+  each subset's key as a ZIP file holding one SQLite database; the digest
+  pinned for it is the ZIP file's, so a copy elsewhere, such as on Zenodo,
+  is checked as byte for byte TCIA's file, and the database is extracted
+  from it;
 - ``download.json``, what was downloaded: counts, digests, whether each
   digest matched its pin, and the versions, and no value from the files.
 
@@ -78,6 +82,7 @@ CHUNK = 1 << 20
 # A Part 10 file holds "DICM" after its 128-byte preamble.
 _PREAMBLE = 128
 _MAGIC = b"DICM"
+_SQLITE = b"SQLite format 3\x00"
 _UID = re.compile(r"[0-9]+(\.[0-9]+)+")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
@@ -325,6 +330,7 @@ def download(  # pylint: disable = too-many-locals
     *,
     answer_key_url: str | None = None,
     answer_key_sha256: str | None = None,
+    answer_key_file: str | Path | None = None,
     workers: int = 8,
     opener: Opener = open_url,
     progress: Callable[[str], None] | None = None,
@@ -339,6 +345,10 @@ def download(  # pylint: disable = too-many-locals
         A directory that does not exist, whose parent does.
     answer_key_url, answer_key_sha256 : str, optional
         An answer key to fetch in place of the pinned one, and its digest.
+    answer_key_file : str or Path, optional
+        A local copy of the answer key, such as the ZIP file received from
+        TCIA, to use in place of fetching the pinned one, checked against
+        the pinned digest.
     workers : int, default 8
         How many series to fetch at once.
     opener : callable, optional
@@ -355,16 +365,25 @@ def download(  # pylint: disable = too-many-locals
     ------
     DownloadError
         If the destination exists or its parent does not, a fetch fails, the
-        manifest or the images do not match the pinned digests or counts, or
-        an answer key is given without its digest.
+        manifest, the images, or the answer key do not match the pinned
+        digests or counts, an answer key is given without its digest, both a
+        URL and a file are given for it, or it is neither an SQLite database
+        nor a ZIP file holding exactly one.
     """
     destination = Path(destination)
     if destination.exists() or not destination.parent.is_dir():
         raise DownloadError("the destination must not exist, and its parent must")
-    if answer_key_url is None:
+    if answer_key_url is not None and answer_key_file is not None:
+        raise DownloadError("give an answer key's URL or its file, not both")
+    if answer_key_file is not None:
+        if not Path(answer_key_file).is_file():
+            raise DownloadError("the answer key file is not a file")
+        key_url, key_pin, key_source = "", subset.answer_key_sha256, "file"
+    elif answer_key_url is None:
         key_url, key_pin = subset.answer_key_url, subset.answer_key_sha256
+        key_source = "pinned"
     elif answer_key_sha256 and _SHA256.fullmatch(answer_key_sha256):
-        key_url, key_pin = answer_key_url, answer_key_sha256
+        key_url, key_pin, key_source = answer_key_url, answer_key_sha256, "given"
     else:
         raise DownloadError("an answer key's URL needs its SHA-256")
     say = progress or (lambda line: None)
@@ -373,6 +392,12 @@ def download(  # pylint: disable = too-many-locals
     images.mkdir(mode=0o700)
     with tempfile.TemporaryDirectory(dir=destination) as scratch_name:
         scratch = Path(scratch_name)
+        # The answer key first: a wrong one fails before the images download.
+        answer_key = _answer_key(
+            answer_key_file, key_url, key_pin, scratch, destination, opener
+        )
+        if answer_key is not None:
+            answer_key = {"source": key_source, **answer_key}
         manifest_path = scratch / "manifest.tcia"
         manifest = _check(
             _fetch(subset.manifest_url, manifest_path, opener, what="manifest"),
@@ -410,19 +435,6 @@ def download(  # pylint: disable = too-many-locals
             f"{subset.instances}"
         )
     content = _check(content_digest(digests), subset.content_sha256, "image set")
-    answer_key: dict[str, object] | None = None
-    if key_url:
-        if not key_url.startswith("https://"):
-            raise DownloadError("the answer key's URL is not HTTPS")
-        checked = _check(
-            _fetch(key_url, destination / ANSWER_KEY, opener, what="answer key"),
-            key_pin,
-            "answer key",
-        )
-        answer_key = {
-            "source": "given" if answer_key_url else "pinned",
-            **checked.as_dict(),
-        }
     record: dict[str, object] = {
         "format": FORMAT,
         "subset": subset.key,
@@ -443,6 +455,88 @@ def download(  # pylint: disable = too-many-locals
     return record
 
 
+def _answer_key(
+    file: str | Path | None,
+    url: str,
+    pinned: str,
+    scratch: Path,
+    destination: Path,
+    opener: Opener,
+) -> dict[str, object] | None:
+    """Copy or fetch the answer key, check it, and unpack its database."""
+    received = scratch / "answer-key"
+    if file is not None:
+        sha256 = _copy(Path(file), received)
+    elif url:
+        if not url.startswith("https://"):
+            raise DownloadError("the answer key's URL is not HTTPS")
+        sha256 = _fetch(url, received, opener, what="answer key")
+    else:
+        return None
+    checked = _check(sha256, pinned, "answer key")
+    database = _unpack_answer_key(received, destination / ANSWER_KEY)
+    received.unlink()
+    return {**checked.as_dict(), "database_sha256": database}
+
+
+def _unpack_answer_key(received: Path, destination: Path) -> str:
+    """Write the SQLite answer key in ``received`` to ``destination``.
+
+    ``received`` is the database itself, or a ZIP file holding exactly one
+    database, as TCIA publishes it. Returns the database's SHA-256.
+    """
+    with received.open("rb") as file:
+        if file.read(len(_SQLITE)) == _SQLITE:
+            return _copy(received, destination)
+    if not zipfile.is_zipfile(received):
+        raise DownloadError(
+            "the answer key is neither an SQLite database nor a ZIP file holding one"
+        )
+    try:
+        with zipfile.ZipFile(received) as zipped:
+            databases = []
+            for info in zipped.infolist():
+                if info.is_dir():
+                    continue
+                with zipped.open(info) as member:
+                    if member.read(len(_SQLITE)) == _SQLITE:
+                        databases.append(info)
+            if len(databases) != 1:
+                raise DownloadError(
+                    f"the answer key's ZIP file holds {len(databases)} SQLite "
+                    "databases, not one"
+                )
+            # The member's name is never used as a path.
+            digest = hashlib.sha256()
+            with zipped.open(databases[0]) as member, destination.open("wb") as file:
+                while chunk := member.read(CHUNK):
+                    digest.update(chunk)
+                    file.write(chunk)
+    except (zipfile.BadZipFile, zipfile.LargeZipFile) as error:
+        raise DownloadError(
+            f"the answer key's ZIP file is not readable ({type(error).__name__})"
+        ) from None
+    return digest.hexdigest()
+
+
+def _copy(source: Path, destination: Path) -> str:
+    """Copy ``source`` to ``destination``, and return its SHA-256."""
+    digest = hashlib.sha256()
+    with source.open("rb") as reader, destination.open("wb") as writer:
+        while chunk := reader.read(CHUNK):
+            digest.update(chunk)
+            writer.write(chunk)
+    return digest.hexdigest()
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        while chunk := file.read(CHUNK):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _file_digest(path: Path) -> str | None:
     """The SHA-256 of a Part 10 file, or None for any other file."""
     with path.open("rb") as file:
@@ -455,19 +549,25 @@ def _file_digest(path: Path) -> str | None:
     return digest.hexdigest()
 
 
-def verify(subset: Subset, directory: str | Path) -> dict[str, object]:
+def verify(
+    subset: Subset, directory: str | Path, answer_key: str | Path | None = None
+) -> dict[str, object]:
     """Check a copy of ``subset``, however it was downloaded, against its pins.
 
     Every Part 10 file below ``directory`` counts, whatever its name or
     folder, so a copy fetched with NBIA Data Retriever checks as well as one
     fetched by :func:`download`. Other files are counted and skipped.
 
+    Given ``answer_key``, a copy of the subset's answer key as TCIA
+    publishes it (the ZIP file), it checks that file's digest against the
+    pinned one in the same way.
+
     Returns
     -------
     dict
         Counts, the content digest, and ``"matched"``, ``"not pinned"``, or
-        ``"differs"``, beside whether the file count matched. Nothing in it
-        names a file.
+        ``"differs"``, beside whether the file count matched, and the same
+        for the answer key when one is given. Nothing in it names a file.
 
     Raises
     ------
@@ -489,11 +589,7 @@ def verify(subset: Subset, directory: str | Path) -> dict[str, object]:
         digests.append(file_digest)
         size += path.stat().st_size
     content = content_digest(digests)
-    if not subset.content_sha256:
-        status = "not pinned"
-    else:
-        status = "matched" if content == subset.content_sha256 else "differs"
-    return {
+    record: dict[str, object] = {
         "format": FORMAT,
         "subset": subset.key,
         "collection": subset.collection,
@@ -501,8 +597,24 @@ def verify(subset: Subset, directory: str | Path) -> dict[str, object]:
         "expected_files": subset.instances,
         "bytes": size,
         "skipped_files_not_dicom": skipped,
-        "content": {"sha256": content, "pin": status},
+        "content": {"sha256": content, "pin": _compare(content, subset.content_sha256)},
+        "answer_key": None,
     }
+    if answer_key is not None:
+        if not Path(answer_key).is_file():
+            raise DownloadError("the answer key file is not a file")
+        key_digest = _sha256(Path(answer_key))
+        record["answer_key"] = {
+            "sha256": key_digest,
+            "pin": _compare(key_digest, subset.answer_key_sha256),
+        }
+    return record
+
+
+def _compare(sha256: str, pinned: str) -> str:
+    if not pinned:
+        return "not pinned"
+    return "matched" if sha256 == pinned else "differs"
 
 
 def main(
@@ -545,15 +657,26 @@ def main(
         "--answer-key-url", help="An answer key to fetch in place of the pinned one."
     )
     parser.add_argument("--answer-key-sha256", help="The given answer key's SHA-256.")
+    parser.add_argument(
+        "--answer-key-file",
+        help=(
+            "A local copy of the answer key, such as one received from TCIA, "
+            "checked against the pinned digest: used in place of the pinned "
+            "copy, or, with --verify, checked alone."
+        ),
+    )
     parser.add_argument("--workers", type=int, default=8)
     arguments = parser.parse_args(argv)
     if arguments.verify is not None:
         try:
-            checked = verify(subsets[arguments.subset], arguments.verify)
+            checked = verify(
+                subsets[arguments.subset], arguments.verify, arguments.answer_key_file
+            )
         except DownloadError as error:
             raise SystemExit(str(error)) from None
         sys.stdout.write(json.dumps(checked, indent=2) + "\n")
-        differs = checked["content"]["pin"] == "differs"  # type: ignore[index]
+        pins = [checked["content"], checked["answer_key"]]
+        differs = any(isinstance(pin, dict) and pin["pin"] == "differs" for pin in pins)
         return 1 if differs or checked["files"] != checked["expected_files"] else 0
     try:
         record = download(
@@ -561,6 +684,7 @@ def main(
             arguments.dest,
             answer_key_url=arguments.answer_key_url,
             answer_key_sha256=arguments.answer_key_sha256,
+            answer_key_file=arguments.answer_key_file,
             workers=arguments.workers,
             progress=lambda line: print(line, file=sys.stderr, flush=True),
         )

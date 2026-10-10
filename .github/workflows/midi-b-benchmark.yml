@@ -104,10 +104,16 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/midi-b/private" "${RUNNER_TEMP}/midi-b/results"
 
       # TCIA publishes the answer keys only as Faspex packages. Fetch them
-      # with IBM's client, and list their files' names, sizes, and digests.
+      # with IBM's client, list their files' names, sizes, and digests, and
+      # hand this subset's ZIP file to the downloader, which checks it
+      # against the pinned digest that the Zenodo copy shares.
       - name: Fetch the answer keys from TCIA
         if: env.ANSWER_KEYS_FROM == 'tcia'
         run: |
+          if [[ -n "${ANSWER_KEY_URL}" ]]; then
+            echo "Give an answer key's URL or take the keys from TCIA, not both."
+            exit 1
+          fi
           gem_file="${RUNNER_TEMP}/aspera-cli-${ASPERA_GEM_VERSION}.gem"
           curl -sSfL -o "${gem_file}" "https://rubygems.org/downloads/aspera-cli-${ASPERA_GEM_VERSION}.gem"
           echo "${ASPERA_GEM_SHA256}  ${gem_file}" | sha256sum --check --strict -
@@ -122,6 +128,13 @@ jobs:
           python3 -I .github/scripts/midi_b_tcia_answer_keys.py fetch "${RUNNER_TEMP}/midi-b/tcia"
           python3 -I .github/scripts/midi_b_tcia_answer_keys.py list "${RUNNER_TEMP}/midi-b/tcia" \
             | tee "${RUNNER_TEMP}/midi-b/results/tcia-answer-keys.txt"
+          mapfile -t keys < <(find "${RUNNER_TEMP}/midi-b/tcia" -type f \
+            -name "MIDI-B-Answer-Key-${SUBSET^}.zip")
+          if [[ "${#keys[@]}" -ne 1 ]]; then
+            echo "TCIA's packages hold ${#keys[@]} answer keys for ${SUBSET}, not one."
+            exit 1
+          fi
+          echo "ANSWER_KEY_FILE=${keys[0]}" >> "${GITHUB_ENV}"
 
       # The downloader prints only counts, digests, and positions.
       - name: Download the subset from TCIA
@@ -133,6 +146,9 @@ jobs:
               exit 1
             fi
             args+=(--answer-key-url "${ANSWER_KEY_URL}" --answer-key-sha256 "${ANSWER_KEY_SHA256}")
+          fi
+          if [[ -n "${ANSWER_KEY_FILE:-}" ]]; then
+            args+=(--answer-key-file "${ANSWER_KEY_FILE}")
           fi
           uv run --no-sync python .github/scripts/run_redacted.py \
             pymedphys._dicom.deidentify.midi_download "${args[@]}"

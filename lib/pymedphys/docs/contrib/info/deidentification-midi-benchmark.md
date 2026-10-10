@@ -72,18 +72,27 @@ uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_download
 It writes:
 
 - `images/`, the subset's DICOM files, named `<series>/<instance>.dcm` by their position in the manifest, so no path carries a UID;
-- `answer-key.db`, the subset's answer key, when one is pinned for it;
+- `answer-key.db`, the subset's answer key, when a copy of it is pinned or given (see below);
 - `download.json`, what it fetched: counts, digests, and whether each digest matched its pin. It prints the same record at the end.
 
-When no answer key is pinned for the subset, download it from TCIA's page (an SQLite `.db` file) and save it as `answer-key.db` beside `images/`. If you have an answer key at an HTTPS address, `--answer-key-url` and `--answer-key-sha256` fetch and check it in place of the pinned one.
-
-If you prefer TCIA's own tool, open the subset's `.tcia` manifest from the page in NBIA Data Retriever and point it at an empty `images` folder. The Retriever's folder layout inside it does not matter: the harness reads every file below the folder you give it.
-
-To check that a copy holds exactly the pinned files, however you downloaded it, run the downloader with `--verify` and the folder in place of `--dest`. It counts and fingerprints every DICOM file below the folder, whatever its name, and exits with status 1 when the count or the fingerprint differs from the pin. The fingerprint (`content_sha256` in `midi_data.toml`) is the SHA-256 of the sorted, newline-joined SHA-256 digests of the files, so it depends only on the files' bytes.
+TCIA publishes each subset's answer key only through IBM Aspera, as a package (`MIDI-B-Answer-Key-Validation` or `MIDI-B-Answer-Key-Test`) holding a ZIP file of the same name, which holds the SQLite database. `midi_data.toml` pins that ZIP file's SHA-256 (`answer_key_sha256`) and, once one is published, the HTTPS address of a byte-identical copy (`answer_key_url`), which the downloader then fetches for you. Otherwise, download the package with its link on TCIA's page, in a browser or with IBM's `ascli` command, and give the downloader the ZIP file:
 
 ```bash
 uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_download \
-  --subset validation --verify /data/midi-b/validation/images
+  --subset validation --dest /data/midi-b/validation \
+  --answer-key-file ~/Downloads/MIDI-B-Answer-Key-Validation.zip
+```
+
+It checks the file against the pinned digest before it downloads the images, extracts the database as `answer-key.db`, and records both digests in `download.json`. An answer key at another HTTPS address can be given with `--answer-key-url` and `--answer-key-sha256`, in place of the pinned one.
+
+If you prefer TCIA's own tool, open the subset's `.tcia` manifest from the page in NBIA Data Retriever and point it at an empty `images` folder. The Retriever's folder layout inside it does not matter: the harness reads every file below the folder you give it.
+
+To check that a copy holds exactly the pinned files, however you downloaded it, run the downloader with `--verify` and the folder in place of `--dest`, adding `--answer-key-file` with the answer key's ZIP file to check that too. It counts and fingerprints every DICOM file below the folder, whatever its name, and exits with status 1 when the count or a fingerprint differs from its pin. The images' fingerprint (`content_sha256` in `midi_data.toml`) is the SHA-256 of the sorted, newline-joined SHA-256 digests of the files, so it depends only on the files' bytes. [Section 10](#10-where-the-data-come-from-and-how-to-check-them) explains what the pins establish.
+
+```bash
+uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_download \
+  --subset validation --verify /data/midi-b/validation/images \
+  --answer-key-file ~/Downloads/MIDI-B-Answer-Key-Validation.zip
 ```
 
 ## 4. Run the benchmark
@@ -205,7 +214,37 @@ Repeat steps 3 to 7 with `--subset test` and a destination such as `/data/midi-b
 The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchmark.yml`) does steps 2 to 6 on a GitHub-hosted runner, so you need neither the disk space nor the download time. It runs only when started by hand. A maintainer starts it on `pymedphys/pymedphys`; anyone can start it on their own fork, where it uses the fork's free runner minutes.
 
 1. On GitHub, open the repository's (or your fork's) **Actions** tab, choose **MIDI-B Benchmark**, and choose **Run workflow**.
-2. Pick the branch, the subset (`validation`, `test`, or `both`, which runs each in a job of its own), and, only when no answer key is pinned for the subset, an HTTPS address for one and its SHA-256.
-3. When the run finishes, its summary page shows `download.json` and `benchmark.md`, and the `midi-b-<subset>-results` artefact holds `download.json`, `benchmark.md`, and `benchmark.json`.
+2. Pick the branch, the subset (`validation`, `test`, or `both`, which runs each in a job of its own), and where the answer key comes from:
+   - `pinned`, the default: the copy at the address pinned in `midi_data.toml`. While no address is pinned, the run downloads and checks the images but cannot score them.
+   - `tcia`: TCIA's own Aspera packages, fetched on the runner with IBM's `ascli` and checked against the pinned digest. This is the check from the source described in section 10.
+   - Otherwise, give an HTTPS address for an answer key and its SHA-256, for one subset at a time.
+3. When the run finishes, its summary page shows `download.json` and `benchmark.md`, and the `midi-b-<subset>-results` artefact holds `download.json`, `benchmark.md`, `benchmark.json`, and, with `tcia`, `tcia-answer-keys.txt`, the names, sizes, and SHA-256 digests of the files in TCIA's packages.
 
 Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, and the mapping files. The benchmark's standard error, where libraries log, goes to a file on the runner, and a crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.
+
+## 10. Where the data come from, and how to check them
+
+Anyone reading a MIDI-B result should be able to ask "were these really NCI's files?" and check the answer without trusting PyMedPhys. The benchmark is built so that they can.
+
+### The images
+
+The downloader fetches the images from The Cancer Imaging Archive itself, through its public NBIA API, and checks three things before it writes a result:
+
+1. TCIA's dated manifest for the subset (`TCIA-MIDI-B-Synthetic-Validation_20250502.tcia` or `TCIA-MIDI-B-Synthetic-Test_20250502.tcia`, linked from the collection page) has the pinned SHA-256, so the list of series is the one TCIA published.
+2. The counts match: 280 series and 23,921 DICOM files for Validation, and 428 series and 29,660 for Test. These are the counts on TCIA's collection page and in Table 1 of the MIDI-B challenge paper ([arXiv:2508.01889](https://arxiv.org/abs/2508.01889)).
+3. The fingerprint of the files' bytes, `content_sha256`, matches its pin. It was pinned from a download on a GitHub-hosted runner and has matched on every download since, so NBIA serves the same bytes each time.
+
+A copy fetched any other way, such as with NBIA Data Retriever, can be checked against the same pins with `--verify` (step 3), whatever its folder layout.
+
+### The answer keys
+
+TCIA offers the answer keys only through IBM Aspera, which a GitHub runner or a script can use only with IBM's client. So the pins name TCIA's own file:
+
+- `answer_key_sha256` is the SHA-256 of the ZIP file in TCIA's package for the subset, as the **MIDI-B Benchmark** workflow received it from TCIA on 10 October 2026.
+- Routine runs fetch a copy of that same ZIP file from Zenodo (`answer_key_url`), deposited with a citation of TCIA's DOI under the same CC BY 4.0 licence. The downloader refuses any copy whose digest differs from the pin, so a run can only ever score against a file byte-identical to TCIA's.
+- Running the workflow with `answer-keys-from: tcia` fetches the packages from TCIA again, records their files' digests in `tcia-answer-keys.txt`, and scores against TCIA's file directly. If TCIA's file still matches the pin, so does the Zenodo copy. Anyone can run it on a fork.
+- On your own machine, `--verify` with `--answer-key-file` checks a ZIP file you downloaded from TCIA against the same pin.
+
+### What the pins do not establish
+
+A matching digest shows that the files are the ones TCIA served when they were pinned. It says nothing about whether the answer key is right about a given file, which is NCI's responsibility; the benchmark reports deliberate differences from it by category for that reason. If TCIA revises the collection or the answer keys, as NCI did once in 2025, the downloader stops with a digest mismatch rather than benchmark different files quietly, and the pins are updated in a reviewed pull request.

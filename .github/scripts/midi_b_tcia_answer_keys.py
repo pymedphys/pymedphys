@@ -7,8 +7,9 @@ Usage:
   with IBM's ``ascli``, which must be on the path with its transfer daemon
   installed.
 - ``python midi_b_tcia_answer_keys.py list DEST``: print each file's
-  package, name, size, and SHA-256, and, for an SQLite file, its tables and
-  their row counts.
+  package, name, size, and SHA-256; for a ZIP file, each member's name,
+  size, and SHA-256; and, for an SQLite database, its tables and their row
+  counts.
 
 TCIA publishes MIDI-B's answer keys (https://doi.org/10.7937/cf2p-aw56,
 CC BY 4.0) only as Faspex packages. The MIDI-B Benchmark workflow uses this
@@ -26,7 +27,9 @@ import re
 import sqlite3
 import subprocess
 import sys
+import tempfile
 import urllib.request
+import zipfile
 from pathlib import Path
 
 PAGE = "https://www.cancerimagingarchive.net/collection/midi-b-test-midi-b-validation/"
@@ -119,21 +122,47 @@ def _tables(path: Path) -> list[str]:
         connection.close()
 
 
+def _shown(parts: tuple[str, ...] | list[str]) -> str:
+    if all(_SAFE_NAME.fullmatch(part) for part in parts):
+        return "/".join(parts)
+    return "<name not shown>"
+
+
+def _members(path: Path) -> list[str]:
+    lines = []
+    with zipfile.ZipFile(path) as zipped, tempfile.TemporaryDirectory() as scratch:
+        for info in zipped.infolist():
+            if info.is_dir():
+                continue
+            # The member's name is never used as a path.
+            extracted = Path(scratch) / "member"
+            with zipped.open(info) as member, extracted.open("wb") as file:
+                while chunk := member.read(CHUNK):
+                    file.write(chunk)
+            name = _shown(info.filename.split("/"))
+            lines.append(
+                f"  member {name} {info.file_size} bytes sha256 {_sha256(extracted)}"
+            )
+            lines.extend(_tables(extracted))
+            extracted.unlink()
+    return lines
+
+
 def listing(destination: Path) -> list[str]:
-    """Each received file's package, name, size, and SHA-256."""
+    """Each received file's package, name, size, and SHA-256, and its members."""
     lines = []
     for path in sorted(destination.rglob("*")):
         if not path.is_file() or path.name == "ascli.log":
             continue
         relative = path.relative_to(destination)
         package = relative.parts[0]
-        name = "/".join(relative.parts[1:])
-        if not all(_SAFE_NAME.fullmatch(part) for part in relative.parts[1:]):
-            name = "<name not shown>"
+        name = _shown(relative.parts[1:])
         lines.append(
             f"package {package}: {name} {path.stat().st_size} bytes sha256 {_sha256(path)}"
         )
         lines.extend(_tables(path))
+        if zipfile.is_zipfile(path):
+            lines.extend(_members(path))
     return lines
 
 
