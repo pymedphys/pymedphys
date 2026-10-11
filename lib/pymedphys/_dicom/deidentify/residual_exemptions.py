@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Name the residual text findings that a kept standard term or equipment name explains.
+"""Name the residual text findings that kept vocabulary or a vendor's label explains.
 
 The residual search finds the text of a removed value wherever it is in a
 written file (:mod:`~pymedphys._dicom.deidentify.residuals`), and the release
@@ -38,10 +38,18 @@ reason that such a finding is not a reason for review (D-032), or returns
   itself names equipment: one of those three attributes, or Secondary
   Capture Device Manufacturer (0018,1016), its Model Name (0018,1018), or
   its Software Versions (0018,1019).
+- :attr:`Exemption.VENDOR_CREATOR`: the finding's source is a private
+  creator element, (gggg,0010) to (gggg,00FF) of an odd group, and each
+  of its values collected for the subject is, without trailing spaces and
+  NULs, exactly one of the private creators that the pinned PS3.15 Table
+  E.3.10-1 lists (:func:`vendor_creators`), wherever in the data set the
+  finding is.
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
-every one of its values is a term. A finding of any other kind, or outside
+every one of its values is a term; and a source's values are pooled across
+the subject, so a private creator is exempt only if all of them are a
+vendor's. A finding of any other kind, or outside
 the data set, is never exempt. Kept values are read from the written file's
 bytes, as text in ISO 646, never decoded by pydicom, and none is reported.
 """
@@ -57,7 +65,8 @@ from collections.abc import Mapping
 
 from .codes import load_coding_schemes
 from .file_layout import ElementPath, Region, read_file_layout
-from .residuals import Finding
+from .residuals import Finding, SourceValue
+from .standard import load_table_e3_10_1
 from .uid_registry import RegistryTable, RegistryTableSpec, load_registry_table
 
 _DESIGNATOR = "(0008,0102)"
@@ -84,6 +93,7 @@ class Exemption(enum.Enum):
     STANDARD_TERM = "standard-term"  # every value a term of its CS attribute
     STANDARD_CODE = "standard-code"  # in a code item of a scheme of Table 8-1
     EQUIPMENT = "equipment"  # an equipment name, found from equipment or private
+    VENDOR_CREATOR = "vendor-creator"  # a private creator of Table E.3.10-1
 
 
 @dataclasses.dataclass(frozen=True)
@@ -208,6 +218,22 @@ def defined_terms() -> Mapping[str, frozenset[str]]:
 
 
 @functools.cache
+def vendor_creators() -> frozenset[str]:
+    """Return the private creators that PS3.15 Table E.3.10-1 lists."""
+    return frozenset(row.private_creator for row in load_table_e3_10_1().attributes)
+
+
+def source_values(
+    collected: tuple[SourceValue, ...],
+) -> Mapping[ElementPath, tuple[str | bytes, ...]]:
+    """Return the collected values of each source, pooled across the subject."""
+    values: dict[ElementPath, list[str | bytes]] = {}
+    for each in collected:
+        values.setdefault(each.source, []).append(each.value)
+    return {source: tuple(each) for source, each in values.items()}
+
+
+@functools.cache
 def _designators() -> frozenset[str]:
     return frozenset(row.designator for row in load_coding_schemes().rows)
 
@@ -251,7 +277,11 @@ class KeptValues:
         )
 
 
-def exemption(finding: Finding, kept: KeptValues) -> Exemption | None:
+def exemption(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[str | bytes, ...]],
+) -> Exemption | None:
     """Return why a text finding inside the data set is not a reason for review.
 
     Parameters
@@ -260,6 +290,8 @@ def exemption(finding: Finding, kept: KeptValues) -> Exemption | None:
         A finding that would otherwise send its file to QC review.
     kept : KeptValues
         The written file's values.
+    sources : mapping
+        The collected values of each source (:func:`source_values`).
 
     Returns
     -------
@@ -283,7 +315,27 @@ def exemption(finding: Finding, kept: KeptValues) -> Exemption | None:
                 return Exemption.STANDARD_CODE
     if tag in EQUIPMENT_NAMES and _equipment_source(finding.source):
         return Exemption.EQUIPMENT
+    if _vendor_creator(finding.source, sources):
+        return Exemption.VENDOR_CREATOR
     return None
+
+
+def _vendor_creator(
+    source: ElementPath, sources: Mapping[ElementPath, tuple[str | bytes, ...]]
+) -> bool:
+    """Return whether every value of a private creator source is a vendor's.
+
+    The values of a source are pooled across the subject, so a finding of
+    the source could be any of them.
+    """
+    group, element = int(source.tag[1:5], 16), int(source.tag[6:10], 16)
+    if group % 2 == 0 or not 0x0010 <= element <= 0x00FF:
+        return False
+    values = sources.get(source, ())
+    return bool(values) and all(
+        isinstance(value, str) and value.rstrip(" \x00") in vendor_creators()
+        for value in values
+    )
 
 
 def _equipment_source(source: ElementPath) -> bool:

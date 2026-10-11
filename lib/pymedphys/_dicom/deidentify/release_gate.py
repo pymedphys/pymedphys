@@ -55,7 +55,7 @@ dictionary gives none. The file goes to QC review (:attr:`~Decision.QC_REVIEW`)
 when collection is incomplete for any other value, including a private
 value or one to which the dictionary gives no VR, or the search finds other
 text inside the data set, unless a kept standard term, code of a standard
-scheme, or equipment name explains it
+scheme, or equipment name, or a vendor's private creator, explains it
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.exemption`). Otherwise
 it may be released (:attr:`~Decision.RELEASE`). There is no setting that
 changes this.
@@ -89,7 +89,7 @@ import functools
 import re
 
 from .file_layout import ElementPath, Location, Region
-from .residual_exemptions import Exemption, KeptValues, exemption
+from .residual_exemptions import Exemption, KeptValues, exemption, source_values
 from .residuals import (
     Finding,
     NotSearched,
@@ -532,11 +532,12 @@ def release_condition(
         reasons.append(ReleaseReason(Decision.WITHHOLD, ReasonCode.UNREADABLE_FILE))
     exempted = []
     kept: KeptValues | None = None  # read only for a text finding
+    sources = source_values(coverage.collected)
     for each in search.findings:
         reason = _finding_reason(each, identifiers)
         if reason.code is ReasonCode.RESIDUAL_TEXT:
             kept = kept or KeptValues(written)
-            why = exemption(each, kept)
+            why = exemption(each, kept, sources)
             if why is not None:
                 exempted.append((each, why))
                 continue

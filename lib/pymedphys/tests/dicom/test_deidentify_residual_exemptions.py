@@ -325,3 +325,63 @@ def test_the_equipment_names_are_kept_by_the_basic_profile():
     listed = {row.tag for row in load_table_e1_1().attributes}
 
     assert listed.isdisjoint(residual_exemptions.EQUIPMENT_NAMES)
+
+
+# Private creators of PS3.15 Table E.3.10-1.
+
+
+def _vendor():
+    """A private creator that Table E.3.10-1 lists, short enough for SH."""
+    return min(sorted(residual_exemptions.vendor_creators()), key=len)
+
+
+def test_the_vendor_creators_are_those_of_table_e3_10_1():
+    assert len(residual_exemptions.vendor_creators()) == 20
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "kept",
+    [
+        _sequence(0x00081032, _code(_vendor(), "Fixture")),  # a local designator
+        _element(0x00080070, "LO", _vendor()),  # Manufacturer
+    ],
+)
+def test_a_vendor_private_creator_found_anywhere_is_released(kept):
+    condition = _condition(_written(kept), ("(0009,0010)", "LO", _vendor() + " "))
+
+    assert condition.decision is Decision.RELEASE
+    assert [why for _, why in condition.exempted] == [Exemption.VENDOR_CREATOR]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "source, value",
+    [
+        ("(0009,0010)", "ZARQUON 01"),  # a creator that the table does not list
+        ("(0009,0010)", _vendor().lower()),  # a listed creator in the wrong case
+        ("(0009,1010)", _vendor()),  # a private data element, not a creator
+    ],
+)
+def test_another_private_value_found_in_a_local_designator_goes_to_review(
+    source, value
+):
+    written = _written(_sequence(0x00081032, _code(value, "Fixture")))
+    condition = _condition(written, (source, "LO", value))
+
+    assert condition.decision is Decision.QC_REVIEW
+    assert not condition.exempted
+
+
+def test_a_vendor_creator_is_exempt_only_if_every_pooled_value_is_a_vendors():
+    # A subject's files can hold different creators at the same place.
+    written = _written(_element(0x00080070, "LO", f"{_vendor()} ZARQUON 01"))
+    values = [
+        SourceValue(ElementPath((), "(0009,0010)"), "LO", value)
+        for value in (_vendor(), "ZARQUON 01")
+    ]
+    coverage = Coverage(
+        planned=frozenset({ElementPath((), "(0009,0010)")}), collected=tuple(values)
+    )
+
+    assert release_condition(coverage, written).decision is Decision.QC_REVIEW
