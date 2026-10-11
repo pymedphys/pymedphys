@@ -380,21 +380,38 @@ def test_cleaned_text_outside_iso_646_without_a_character_set_sequesters():
     assert not result.edits
 
 
-def test_an_unsupported_character_set_sequesters_the_instance():
+def test_text_in_iso_646_is_read_under_an_unsupported_character_set():
+    # Text with no byte from 0x80 and no escape reads the same in every
+    # character set, so it is read in the Default Character Repertoire.
     _, result = _edits(
         _explicit(0x00080005, "CS", b"ISO_IR 999")
         + _explicit(0x00100010, "PN", b"SENTINEL^NAME ")
     )
 
-    (sequestration,) = result.sequestrations
-    assert sequestration.path == _path("(0008,0005)")
-    assert sequestration.reason is walker.SequesterReason.UNSUPPORTED_CHARACTER_SET
-    assert not result.edits
-    # With no character set to read the data set's text in, nothing in it is
-    # collected, and each value to collect is listed.
-    assert not result.source_values
-    assert [missing.path for missing in result.not_collected] == [_path("(0010,0010)")]
-    assert "SENTINEL" not in "".join(m.reason for m in result.not_collected)
+    assert not result.sequestrations
+    assert not result.not_collected
+    assert _collected(result)[_path("(0010,0010)")] == ("PN", "SENTINEL^NAME")
+    assert not result.read_as_latin_1
+
+
+def test_text_outside_iso_646_under_an_unsupported_character_set_is_not_guessed():
+    # As where no Specific Character Set is given: removed text is read as
+    # ISO 8859-1 and listed as such, and cleaned text sequesters the instance.
+    character_set = _explicit(0x00080005, "CS", b"ISO-IR 100")
+    _, removed = _edits(character_set + _explicit(0x00081030, "LO", b"SENTINEL \xe9"))
+    _, cleaned = _edits(
+        character_set + _explicit(0x300A0003, "LO", b"SENTINEL \xe9"),
+        _rules("basic-clean-descriptors"),
+    )
+
+    assert not removed.sequestrations
+    assert removed.read_as_latin_1 == (_path("(0008,1030)"),)
+    assert cleaned.sequestrations == (
+        walker.Sequestration(
+            _path("(300A,0003)"), "C", "LO", walker.SequesterReason.UNDECODABLE
+        ),
+    )
+    assert not cleaned.edits
 
 
 def test_an_item_with_its_own_character_set_is_read_under_an_unsupported_one(
@@ -403,6 +420,7 @@ def test_an_item_with_its_own_character_set_is_read_under_an_unsupported_one(
     # An item's own Specific Character Set replaces the one it would inherit
     # (PS3.5 Section 7.5.3), so its text can be read where the data set's
     # cannot.
+    _refusing(monkeypatch, _path("(0008,0005)"))
     data_set = (
         _explicit(0x00080005, "CS", b"ISO_IR 999")
         + _explicit(0x00100010, "PN", b"SENTINEL^NAME ")
@@ -547,8 +565,10 @@ def test_a_sequestration_while_editing_keeps_the_values_before_and_after_it(
 def test_an_unsupported_character_set_in_an_item_keeps_the_other_values(
     monkeypatch,
 ):
-    _refusing(monkeypatch, _path("(300A,0002)"))
     in_item = (("(0010,1002)", 0),)
+    _refusing(
+        monkeypatch, walker.ElementPath(in_item, "(0008,0005)"), _path("(300A,0002)")
+    )
     data_set = (
         _explicit(0x00081030, "LO", b"SENTINEL DESC ")
         + _explicit(
@@ -763,8 +783,11 @@ def test_an_items_character_set_is_inherited_or_its_own():
 
 
 @pytest.mark.parametrize("action", ["K", "X"])
-def test_an_unsupported_character_set_in_an_item_sequesters_the_instance(action):
+def test_an_unsupported_character_set_in_an_item_sequesters_the_instance(
+    monkeypatch, action
+):
     # D-010, whether the item is kept, with nothing in it read, or removed.
+    _refusing(monkeypatch, _path(("(300A,00B0)", 0), "(0008,0005)"))
     # Beam Sequence is Type 1, so the engine's rule removes it, as a plain X
     # from Table E.1-1 would sequester the instance (D-020).
     data_set = _explicit(
