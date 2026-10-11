@@ -328,6 +328,8 @@ def test_the_residual_search_coverage_is_described(preset):
     section = _section(preset, "Residual search")
     assert f"fewer than {residuals.MIN_CHARACTERS} characters" in section
     assert f"at least {residuals.MIN_BYTES_IN_NUMBERS} bytes" in section
+    assert f"at least {residuals.MIN_BYTES_IN_CODED} bytes" in section
+    assert "RLE Lossless Pixel Data is searched in the same way" in section
     assert f"first {residuals.MAX_CHARACTERS} characters" in section
     for codec in residuals.CODECS:
         assert conformance_values.CODEC_NAMES[codec] in section

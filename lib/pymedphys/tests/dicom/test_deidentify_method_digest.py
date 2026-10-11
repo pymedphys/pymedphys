@@ -755,11 +755,6 @@ def test_changing_adding_or_removing_an_engine_file_changes_the_digest(
     )
 
 
-# Files of the engine that are neither source nor rules: OpenJPEG's licence
-# notice, which jpeg_2000_packets.py also carries, decides no method.
-NOT_METHOD = frozenset({"LICENSE-BSD-2-Clause"})
-
-
 def test_every_file_of_the_engine_other_than_caches_has_a_covered_type():
     package = method_digest.PACKAGE_DIR
     expected = set()
@@ -769,8 +764,6 @@ def test_every_file_of_the_engine_other_than_caches_has_a_covered_type():
             part == "__pycache__" or part.startswith(".") for part in relative.parts
         ):
             expected.add(relative.as_posix())
-    assert NOT_METHOD <= expected
-    expected -= NOT_METHOD
     uncovered = sorted(
         name
         for name in expected

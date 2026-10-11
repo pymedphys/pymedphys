@@ -497,12 +497,15 @@ def run_dciodvfy(executable: str, path: Path) -> Validation:
 
 def _in_implicit_vr(path: Path) -> bool:
     """Return whether a file's File Meta Information gives Implicit VR."""
+    # pydicom converts, and validates, a value as it is first read, so the
+    # value is read within the context too.
     try:
         with redacted_diagnostics():
             meta = pydicom.filereader.read_file_meta_info(path)
+            transfer_syntax = meta.get("TransferSyntaxUID")
     except Exception:  # pylint: disable = broad-exception-caught
         return False
-    return meta.get("TransferSyntaxUID") == pydicom.uid.ImplicitVRLittleEndian
+    return transfer_syntax == pydicom.uid.ImplicitVRLittleEndian
 
 
 def parse_dcentvfy(output: str, strings: frozenset[str]) -> Validation:

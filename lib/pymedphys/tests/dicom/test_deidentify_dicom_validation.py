@@ -329,6 +329,28 @@ def test_an_unknown_attribute_is_unparsed_in_implicit_vr_alone():
     assert explicit.unparsed == {"(300A,07A0)"}
 
 
+def test_reading_a_transfer_syntax_reports_no_invalid_value(tmp_path, caplog):
+    dataset = pydicom.Dataset()
+    dataset.SOPClassUID = pydicom.uid.CTImageStorage
+    dataset.SOPInstanceUID = "1.2.3"
+    dataset.file_meta = pydicom.dataset.FileMetaDataset()
+    dataset.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+    path = tmp_path / "meta.dcm"
+    dataset.save_as(path, enforce_file_format=True)
+    # The same length, so the element's length still holds.
+    invalid = b"1.02.840.10008.1.2.1"
+    path.write_bytes(path.read_bytes().replace(b"1.2.840.10008.1.2.1\x00", invalid))
+    caplog.set_level(logging.DEBUG)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        assert not validators._in_implicit_vr(path)  # pylint: disable = protected-access
+
+    assert caplog.records
+    assert invalid.decode() not in caplog.text
+    assert not [each for each in caught if invalid.decode() in str(each.message)]
+
+
 def test_dcentvfy_keeps_the_attribute_and_entity_and_not_the_files_or_values():
     output = (
         "Error - String attribute has different value - Element=<PatientName> "
@@ -575,6 +597,40 @@ def test_a_comparison_fails_on_an_unexplained_finding(monkeypatch):
 
     assert not comparison.passed
     assert "**Failed**" in comparison.markdown()
+
+
+def test_a_comparison_reports_no_invalid_sop_class(tmp_path, monkeypatch, caplog):
+    invalid = "1.2.840.10008.05.1"
+    source = tmp_path / "source.dcm"
+    # Setting and writing the value report it too.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dataset = pydicom.Dataset()
+        dataset.SOPClassUID = invalid
+        dataset.SOPInstanceUID = "1.2.3"
+        dataset.file_meta = pydicom.dataset.FileMetaDataset()
+        dataset.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+        dataset.save_as(source, enforce_file_format=True)
+    validation = _validation(DCIODVFY, {})
+    monkeypatch.setattr(
+        dicom_validation, "_validate_files", lambda *_: [(validation,), (validation,)]
+    )
+    monkeypatch.setattr(dicom_validation.Toolset, "versions", lambda self: NO_VERSIONS)
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        comparison = dicom_validation.compare(
+            [Pair(source, tmp_path / "output.dcm")],
+            dicom_validation.Toolset(DCIODVFY, None, None, "2026d"),
+            known=(),
+        )
+
+    assert comparison.sop_classes == {dicom_validation.OTHER_SOP_CLASS: 1}
+    assert caplog.records
+    assert invalid not in caplog.text
+    assert not [each for each in caught if invalid in str(each.message)]
 
 
 def test_the_markdown_escapes_what_could_break_a_table(monkeypatch):

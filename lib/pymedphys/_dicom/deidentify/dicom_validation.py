@@ -384,7 +384,10 @@ def sop_class_name(uid: str) -> str:
     >>> sop_class_name("1.2.840.10008.5.1.4.1.1.2")
     'CT Image Storage'
     """
-    name = pydicom.uid.UID(uid).name
+    # Constructing the UID validates it, and reports an invalid one with
+    # the value.
+    with redacted_diagnostics():
+        name = pydicom.uid.UID(uid).name
     return OTHER_SOP_CLASS if not uid or name == uid else name
 
 
