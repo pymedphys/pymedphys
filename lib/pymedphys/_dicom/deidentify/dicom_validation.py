@@ -312,6 +312,9 @@ def pairs_from_uid_mapping(
 
 def _header(path: Path) -> dict[str, str]:
     """Return a file's SOP Instance and SOP Class UIDs, and its patient."""
+    keywords = {"instance": "SOPInstanceUID", "sop_class": "SOPClassUID"}
+    # pydicom converts, and validates, each value as it is first read, so
+    # the values are read within the context too.
     try:
         with redacted_diagnostics():
             dataset = pydicom.dcmread(
@@ -324,14 +327,14 @@ def _header(path: Path) -> dict[str, str]:
                     "IssuerOfPatientID",
                 ],
             )
+            header = {
+                key: str(dataset.get(keyword, "")).strip()
+                for key, keyword in keywords.items()
+            }
+            patient = str(dataset.get("PatientID", "")).strip(" \x00")
+            issuer = str(dataset.get("IssuerOfPatientID", "")).strip(" \x00")
     except Exception:  # pylint: disable = broad-exception-caught
         return {}
-    keywords = {"instance": "SOPInstanceUID", "sop_class": "SOPClassUID"}
-    header = {
-        key: str(dataset.get(keyword, "")).strip() for key, keyword in keywords.items()
-    }
-    patient = str(dataset.get("PatientID", "")).strip(" \x00")
-    issuer = str(dataset.get("IssuerOfPatientID", "")).strip(" \x00")
     # A file without a Patient ID names no patient to compare it with.
     header["patient"] = f"{patient}\\{issuer}" if patient else ""
     return header
@@ -343,11 +346,6 @@ def output_premises(path: Path) -> frozenset[str]:
     The UIDs are compared here and never leave this function. A file that
     cannot be read has none.
     """
-    try:
-        with redacted_diagnostics():
-            dataset = pydicom.dcmread(path, stop_before_pixels=True, force=True)
-    except Exception:  # pylint: disable = broad-exception-caught
-        return frozenset()
     listed: dict[int, set[str]] = {_REFERENCED_SERIES: set(), _OTHER_STUDIES: set()}
     elsewhere: set[str] = set()
 
@@ -359,13 +357,17 @@ def output_premises(path: Path) -> frozenset[str]:
                 for item in element.value or ():
                     walk(item, into)
 
+    # pydicom converts, and validates, each value as it is first read, so
+    # the walk is within the context too.
     try:
-        for element in dataset:
-            if element.VR != "SQ":
-                continue
-            into = listed.get(int(element.tag), elsewhere)
-            for item in element.value or ():
-                walk(item, into)
+        with redacted_diagnostics():
+            dataset = pydicom.dcmread(path, stop_before_pixels=True, force=True)
+            for element in dataset:
+                if element.VR != "SQ":
+                    continue
+                into = listed.get(int(element.tag), elsewhere)
+                for item in element.value or ():
+                    walk(item, into)
     except Exception:  # pylint: disable = broad-exception-caught
         return frozenset()
     premises = set()
@@ -382,7 +384,10 @@ def sop_class_name(uid: str) -> str:
     >>> sop_class_name("1.2.840.10008.5.1.4.1.1.2")
     'CT Image Storage'
     """
-    name = pydicom.uid.UID(uid).name
+    # Constructing the UID validates it, and reports an invalid one with
+    # the value.
+    with redacted_diagnostics():
+        name = pydicom.uid.UID(uid).name
     return OTHER_SOP_CLASS if not uid or name == uid else name
 
 
