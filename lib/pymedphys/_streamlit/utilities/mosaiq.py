@@ -181,11 +181,10 @@ def save_mosaiq_config_to_file(
     with open(config_path, "w") as f:
         toml.dump(config, f)
 
-    # Write the updated config back to file
-    with open(config_path, "w") as f:
-        toml.dump(config, f)
-
+    # get_config is memoised, so without this the app keeps reading the
+    # config from before the save.
     st_config.get_config.clear()
+
     return config_path
 
 
