@@ -20,7 +20,10 @@ for anything it cannot decode exactly. UN is decoded as Implicit VR Little
 Endian (PS3.5 Section 6.2.2), including a sequence that pydicom does not
 know, such as RT Assertions Sequence (0044,0110), by
 :func:`.sequences.decode_items` once :func:`.file_layout.reads_as_items`
-finds that items fill it: pydicom reads malformed items silently. A VR in
+finds that items fill it: pydicom reads malformed items silently. So is a
+value of an attribute that the dictionary does not list, such as a private
+one, written as UN or in implicit VR, where the source's layout reads it as
+items (:func:`.file_layout.read_file_layout`). A VR in
 the file must be one the dictionary gives, and not contradict the one that
 the standard decides of alternatives. US or
 SS follows Pixel Representation (0028,0103) in the nearest data set that has
@@ -275,7 +278,9 @@ def read_element(
     from the source whatever value it now holds, since pydicom keeps no
     encoded form of it to compare. A sequence of undefined length is read
     from the items that ``dcmread`` built, whose elements are then read
-    against the source in turn. ``codecs`` must then come from
+    against the source in turn. An element whose attribute the dictionary
+    does not list, written as UN or in implicit VR, is read as a sequence
+    where the source holds items in it. ``codecs`` must then come from
     :func:`dataset_codecs` given the same source. The elements of
     ``ancestors`` that decide a VR are read without the source.
 
@@ -305,6 +310,10 @@ def read_element(
             undefined = element.is_undefined_length
         stated = str(element.VR) if element.VR in VRS - {"UN"} else None
         vr = _applicable_vr(path, stated, undefined, (dataset, *ancestors))
+        if vr == "UN" and source is not None and source.element(path).items is not None:
+            # An attribute that the dictionary does not list holds items where
+            # the source's layout reads them, as the plan has it.
+            vr = "SQ"
         if (literal := _outside_repertoire(element, vr, codecs)) is not None:
             if not outside_repertoire_as_latin_1:
                 raise OutsideDefaultRepertoire(path, _OUTSIDE.format(vr=vr))

@@ -254,6 +254,17 @@ def test_every_removed_or_replaced_value_is_collected_with_its_vr():
     assert all(value.codecs == ("latin_1",) for value in result.source_values)
 
 
+def test_a_private_un_value_that_reads_as_items_has_its_items_collected():
+    # As in MR private sequences: the layout, and so the plan, has its items.
+    _, result = _edits(
+        _explicit(0x00091001, "UN", _item(_implicit(0x00100020, b"SENTINEL")))
+    )
+
+    assert not result.sequestrations
+    inner = _path(("(0009,1001)", 0), "(0010,0020)")
+    assert _collected(result)[inner] == ("LO", "SENTINEL")
+
+
 def test_only_the_planned_values_and_the_sequences_that_hold_them_are_read(
     monkeypatch,
 ):
