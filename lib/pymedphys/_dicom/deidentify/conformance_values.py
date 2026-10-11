@@ -328,11 +328,13 @@ def values_written(named: Callable[[str], str]) -> list[str]:
         f"{named('(0010,0021)')}, or a curated subject identifier.",
         "",
         f"Wherever Z or D applies to {named(SERIES_NUMBER)}, it takes its "
-        "rank among the distinct Series Numbers that the run holds for its "
-        "study, in ascending order from 1, so the order of the series "
-        "survives and the number does not. A value that is not one Integer "
-        "String, or has no rank, is emptied under Z and takes D's constant "
-        "under D. The numbering spans one run (D-022).",
+        "rank among the distinct Series Numbers that the run holds for the "
+        "study that holds the series it numbers, found by its Series Instance "
+        "UID, in ascending order from 1, so the order of the series survives "
+        "and the number does not. A value that is not one Integer String, or "
+        "has no rank, as where the run holds no instance of its series, is "
+        "emptied under Z and takes D's constant under D. The numbering spans "
+        "one run (D-022).",
         "",
         f"U replaces a UID with `{uids.UID_ROOT}` followed by the decimal form "
         f"of a name-based (version 5) UUID, at most {uid_length} characters "

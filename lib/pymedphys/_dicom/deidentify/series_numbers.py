@@ -16,26 +16,33 @@
 
 Series Number (0020,0011) can hold any number, such as a date written as
 eight digits. Wherever Z or D applies to it, it takes its rank among the
-Series Numbers of its study instead, so the order of the series survives
-and nothing else does:
+Series Numbers of the study that holds the series it numbers instead, so
+the order of the series survives and nothing else does:
 
-- the run's first pass records the Series Numbers that each instance holds
-  where its IOD defines them
-  (:attr:`~pymedphys._dicom.deidentify.references.InstanceRecord.series_numbering`),
-  and :func:`number_studies` gives every instance of a study the numbering
-  of all the study's values;
+- the run's first pass records each Series Number that an instance holds
+  where its IOD defines one, with the Series Instance UID of the series it
+  numbers: the instance's own at the top level, and the item's own in an
+  item, such as one of an RT Structure Set's Source Series Information
+  Sequence (3006,004C)
+  (:attr:`~pymedphys._dicom.deidentify.references.InstanceRecord.series_numbers`);
+- :func:`number_series` finds the study of each such series among the
+  run's instances, and gives each Series Number the numbering of all the
+  values that number a series of that study;
 - each distinct number takes its rank among them in ascending order, from
   1, so equal numbers, such as those of the instances of one series, share
-  a rank, and the ranks have no gaps;
-- an instance outside a run, whose record is built alone, ranks only its
-  own values.
+  a rank, and the ranks have no gaps.
 
 A value counts only if it is one Integer String (PS3.5 Section 6.2): an
 optional sign and at least one digit, at most 12 bytes with any leading or
-trailing spaces, from -2^31 to 2^31 - 1. A value that is empty, is not such
-a number, or is not in the numbering takes no rank:
-:func:`~pymedphys._dicom.deidentify.edits.edit_instance` then empties it
-under Z and gives it D's dummy value under D.
+trailing spaces, from -2^31 to 2^31 - 1. A value takes no rank if it is
+empty or is not such a number, or if the series it numbers is in no study
+of the run, or in several: an item can name a series that the run does not
+hold, and its rank in another study's numbering would number that series
+differently from its own instances.
+:func:`~pymedphys._dicom.deidentify.edits.edit_instance` then empties such
+a value under Z and gives it D's dummy value under D. An instance outside
+a run, whose record is built alone, ranks only the values that number its
+own series.
 
 The numbering spans one run, as the values that a run's ephemeral key
 generates do: a study de-identified in two runs can number its series
@@ -50,7 +57,9 @@ import bisect
 import collections
 import dataclasses
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
+
+from .file_layout import ElementPath
 
 SERIES_NUMBER = "(0020,0011)"
 # An Integer String's characters, without its padding (PS3.5 Section 6.2).
@@ -121,34 +130,92 @@ class SeriesNumbering:
         return None
 
 
-def number_studies(
-    numberings: Mapping[int, SeriesNumbering], studies: Mapping[int, str | None]
-) -> dict[int, SeriesNumbering]:
-    """Give every instance of a study the numbering of all the study's values.
+@dataclasses.dataclass(frozen=True, repr=False)
+class SeriesNumberUse:
+    """A Series Number that an instance holds, and the series it numbers.
+
+    Its ``repr`` shows only its path, since its number could be a date.
+
+    Attributes
+    ----------
+    path : ElementPath
+        Where the instance holds it.
+    number : int or None
+        Its number, or ``None`` if its value is not one Integer String.
+    series : str or None
+        The Series Instance UID of the series it numbers, without padding,
+        or ``None`` if there is not one.
+    """
+
+    path: ElementPath
+    number: int | None
+    series: str | None
+
+    def __repr__(self) -> str:
+        return f"SeriesNumberUse({self.path})"
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class SeriesNumberings:
+    """The numbering in which each Series Number of an instance takes its rank.
+
+    Build one with :meth:`of`. Its ``repr`` shows only how many places it
+    numbers.
+
+    Attributes
+    ----------
+    by_path : tuple of (ElementPath, SeriesNumbering)
+        Each place's numbering. A place without one takes no rank.
+    """
+
+    by_path: tuple[tuple[ElementPath, SeriesNumbering], ...] = ()
+
+    @classmethod
+    def of(cls, numberings: Mapping[ElementPath, SeriesNumbering]) -> SeriesNumberings:
+        """Return the numberings of the places in ``numberings``, in any order."""
+        return cls(tuple(sorted(numberings.items(), key=lambda pair: str(pair[0]))))
+
+    def __repr__(self) -> str:
+        return f"SeriesNumberings({len(self.by_path)} places)"
+
+    def numbering(self, path: ElementPath) -> SeriesNumbering | None:
+        """Return the numbering of the Series Number at ``path``, if any."""
+        return dict(self.by_path).get(path)
+
+
+def number_series(
+    uses: Mapping[int, Sequence[SeriesNumberUse]], studies: Mapping[str, str]
+) -> dict[int, SeriesNumberings]:
+    """Give each Series Number the numbering of the study of its series.
 
     Parameters
     ----------
-    numberings : mapping of int to SeriesNumbering
-        Each instance's own numbering, by its run position.
-    studies : mapping of int to str or None
-        Each instance's Study Instance UID, by the same positions, or
-        ``None`` if it has none.
+    uses : mapping of int to sequence of SeriesNumberUse
+        Each instance's Series Numbers, by its run position.
+    studies : mapping of str to str
+        The Study Instance UID of each series that one study of the run
+        holds, by its Series Instance UID.
 
     Returns
     -------
-    dict of int to SeriesNumbering
-        By the same positions. An instance without a Study Instance UID
-        keeps its own numbering, since no study holds it.
+    dict of int to SeriesNumberings
+        By the same positions. A Series Number whose series is not in
+        ``studies`` has no numbering.
     """
     by_study: dict[str, set[int]] = collections.defaultdict(set)
-    for position, numbering in numberings.items():
-        study = studies.get(position)
-        if study is not None:
-            by_study[study].update(numbering.numbers)
+    for each in uses.values():
+        for use in each:
+            study = studies.get(use.series or "")
+            if study is not None and use.number is not None:
+                by_study[study].add(use.number)
     shared = {study: SeriesNumbering.of(numbers) for study, numbers in by_study.items()}
     return {
-        position: numbering
-        if (study := studies.get(position)) is None
-        else shared[study]
-        for position, numbering in numberings.items()
+        position: SeriesNumberings.of(
+            {
+                use.path: shared[study]
+                for use in each
+                if (study := studies.get(use.series or "")) in shared
+            }
+        )
+        for position, each in uses.items()
     }

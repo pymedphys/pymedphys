@@ -41,12 +41,12 @@ Patient's Name (0010,0010) and Patient ID (0010,0020) at the top level of
 the data set take the subject's keyed pseudonyms under Z and D (D-005),
 given the subject's identity, which the run resolves across its instances;
 without one, their edits are pending. Series Number (0020,0011), wherever Z
-or D applies to it, takes its rank in the numbering of its study's Series
-Numbers, which the run gives
+or D applies to it, takes its rank in the numbering of the study that holds
+the series it numbers, which the run gives
 (:mod:`~pymedphys._dicom.deidentify.series_numbers`); a value that takes no
-rank, being empty, not one number, or not in the numbering, is emptied under
-Z and given D's dummy value under D, and without a numbering its edit is
-pending. C cleans the value (D-009), so its edit is pending, for a later
+rank, being empty, not one number, or without a numbering or not in it, is
+emptied under Z and given D's dummy value under D, and without any
+numberings its edit is pending. C cleans the value (D-009), so its edit is pending, for a later
 step to give.
 
 It also collects, for the residual search
@@ -100,7 +100,7 @@ from .file_layout import ElementPath
 from .keys import DeidKey
 from .pseudonyms import SubjectIdentity, patient_pseudonym
 from .residuals import SourceValue
-from .series_numbers import SERIES_NUMBER, SeriesNumbering, series_number
+from .series_numbers import SERIES_NUMBER, SeriesNumberings, series_number
 from .source import SourceEvidence
 from .standard import dictionary_attribute
 from .uid_roles import load_uid_roles
@@ -439,11 +439,14 @@ def _takes_rank(element: ElementPlan) -> bool:
 def _ranked(
     element: ElementPlan,
     value: ElementValue | None,
-    numbering: SeriesNumbering | None,
+    numberings: SeriesNumberings | None,
 ) -> Edit | None:
     """Return a Series Number's edit, or ``None`` if its value takes no rank."""
-    if numbering is None:
+    if numberings is None:
         return Edit(element.path, element.action, EditKind.PENDING)
+    numbering = numberings.numbering(element.path)
+    if numbering is None:
+        return None
     number = (
         series_number(value.values[0])
         if value is not None and len(value.values) == 1
@@ -529,7 +532,7 @@ def _edit(
     value: ElementValue | None,
     key: DeidKey,
     identity: SubjectIdentity | None,
-    numbering: SeriesNumbering | None,
+    numberings: SeriesNumberings | None,
 ) -> Edit:
     """Return the edit of an element whose needed value, if any, is read."""
     kind = _kind(element, container)
@@ -538,7 +541,7 @@ def _edit(
         return _pseudonym(path, element.action, key, identity)
     if (
         _takes_rank(element)
-        and (ranked := _ranked(element, value, numbering)) is not None
+        and (ranked := _ranked(element, value, numberings)) is not None
     ):
         return ranked
     if kind is not EditKind.REPLACE:
@@ -707,7 +710,7 @@ def edit_instance(
     plan: InstancePlan,
     key: DeidKey,
     identity: SubjectIdentity | None = None,
-    series_numbering: SeriesNumbering | None = None,
+    series_numberings: SeriesNumberings | None = None,
 ) -> InstanceEdits:
     """Return what each element of a planned data set becomes.
 
@@ -723,10 +726,10 @@ def edit_instance(
         The subject's identity, as the run resolves it, for the pseudonyms
         of Patient's Name and Patient ID. Without one, their edits are
         pending.
-    series_numbering : SeriesNumbering, optional
-        The numbering of the Series Numbers of the instance's study, as the
-        run gives it, for the ranks that replace them. Without one, the
-        edits of the Series Numbers that Z or D applies to are pending.
+    series_numberings : SeriesNumberings, optional
+        The numbering of each of the instance's Series Numbers, as the run
+        gives it, for the ranks that replace them. Without them, the edits
+        of the Series Numbers that Z or D applies to are pending.
 
     Returns
     -------
@@ -758,7 +761,7 @@ def edit_instance(
             if _kept_container(element, container):
                 _check_items(reader, element)
             value = gathered.read(reader, element) if element.consumers else None
-            edit = _edit(element, container, value, key, identity, series_numbering)
+            edit = _edit(element, container, value, key, identity, series_numberings)
             if container and edit.kind is EditKind.REPLACE:
                 reviewed[edit.path] = (len(found), items or 0)
             found.append(edit)

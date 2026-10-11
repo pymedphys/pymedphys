@@ -75,6 +75,7 @@ errors are the entry point's to redact.
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import enum
 import functools
@@ -97,7 +98,13 @@ from .file_layout import (
 from .iods import IOD
 from .pseudonyms import SubjectIdentity
 from .sequences import UnreadableItems, decode_items
-from .series_numbers import SERIES_NUMBER, SeriesNumbering, series_number
+from .series_numbers import (
+    SERIES_NUMBER,
+    SeriesNumberings,
+    SeriesNumberUse,
+    number_series,
+    series_number,
+)
 from .sop_classes import iod_for_sop_class
 from .standard import load_data_dictionary
 from .uids import normalise_uid
@@ -363,13 +370,16 @@ class InstanceRecord:
         The Referenced Frame of Reference UID (3006,0024) of each item of the
         Structure Set ROI Sequence (3006,0020), where the IOD defines it, in
         order, without padding, or ``""`` for an item without one UID.
-    series_numbering : SeriesNumbering
-        The numbering of the Series Numbers (0020,0011) that the instance
-        holds, at each place where its IOD defines one
-        (:mod:`~pymedphys._dicom.deidentify.series_numbers`). The run gives
-        each instance its study's numbering instead. A value that is not one
-        number is left out, and so is every value at a place where a value,
-        or a sequence on the way to it, cannot be read, so they take no rank.
+    series_numbers : tuple of SeriesNumberUse
+        Each Series Number (0020,0011) that the instance holds where its
+        IOD defines one, with the series it numbers
+        (:mod:`~pymedphys._dicom.deidentify.series_numbers`). A value that
+        is not one number has no number, and every value at a place where a
+        value, or a sequence on the way to it, cannot be read is left out.
+    series_numberings : SeriesNumberings
+        The numbering in which each of them takes its rank, as
+        :func:`with_series_numberings` gives it among the run's records; a
+        record built alone has its own.
     """
 
     iod: str | None
@@ -382,8 +392,11 @@ class InstanceRecord:
     frame_of_reference: str | None = dataclasses.field(default=None, repr=False)
     frames: tuple[FrameUse, ...] = dataclasses.field(default=(), repr=False)
     roi_frames: tuple[str, ...] = dataclasses.field(default=(), repr=False)
-    series_numbering: SeriesNumbering = dataclasses.field(
-        default_factory=SeriesNumbering, repr=False
+    series_numbers: tuple[SeriesNumberUse, ...] = dataclasses.field(
+        default=(), repr=False
+    )
+    series_numberings: SeriesNumberings = dataclasses.field(
+        default_factory=SeriesNumberings, repr=False
     )
 
     @classmethod
@@ -429,7 +442,7 @@ class InstanceRecord:
                     target_class = _uid(item, REFERENCED_SOP_CLASS_TAG)
                     found.append(Reference(site, target, target_class))
             frames, roi_frames = _frames(dataset, sop_class) if iod else ((), ())
-            return cls(
+            record = cls(
                 iod,
                 _uid(dataset, IDENTITY_TAGS[Level.INSTANCE]),
                 _uid(dataset, IDENTITY_TAGS[Level.SERIES]),
@@ -440,8 +453,9 @@ class InstanceRecord:
                 _uid(dataset, FRAME_OF_REFERENCE_TAG),
                 frames,
                 roi_frames,
-                _series_numbering(dataset, sop_class) if iod else SeriesNumbering(),
+                _series_numbers(dataset, sop_class) if iod else (),
             )
+        return with_series_numberings({0: record})[0]
 
     def identifier(self, level: Level) -> str | None:
         """Return the UID that identifies the instance's entity at ``level``."""
@@ -516,30 +530,75 @@ def _series_number_paths(sop_class: str) -> tuple[tuple[str, ...], ...]:
     )
 
 
-def _series_numbering(dataset: pydicom.Dataset, sop_class: str) -> SeriesNumbering:
-    """Return the numbering of the Series Numbers where the IOD defines them."""
-    return SeriesNumbering.of(
-        number
+def _series_numbers(
+    dataset: pydicom.Dataset, sop_class: str
+) -> tuple[SeriesNumberUse, ...]:
+    """Return the Series Numbers where the IOD defines them."""
+    return tuple(
+        use
         for path in _series_number_paths(sop_class)
-        for number in _series_numbers_at(dataset, path)
+        for use in _series_numbers_at(dataset, path)
     )
 
 
-def _series_numbers_at(dataset: pydicom.Dataset, path: tuple[str, ...]) -> list[int]:
+def _series_numbers_at(
+    dataset: pydicom.Dataset, path: tuple[str, ...]
+) -> list[SeriesNumberUse]:
     """Return the Series Numbers at one place, or none if any cannot be read.
 
     A value that cannot be read takes no rank, which removes it or gives it
     a dummy value, so the record is still built. pydicom raises many types
     for a value that it cannot convert.
     """
+    series = IDENTITY_TAGS[Level.SERIES]
     try:
-        elements = [_element(item, SERIES_NUMBER) for item in _items(dataset, path)]
-        numbers = [
-            series_number(element.value) for element in elements if element is not None
+        found = [
+            (ElementPath(within, SERIES_NUMBER), element, _uid(item, series))
+            for within, item in _located_items(dataset, path)
+            if (element := _element(item, SERIES_NUMBER)) is not None
+        ]
+        return [
+            SeriesNumberUse(where, series_number(element.value), uid)
+            for where, element, uid in found
         ]
     except Exception:  # pylint: disable = broad-exception-caught
         return []
-    return [number for number in numbers if number is not None]
+
+
+def with_series_numberings(
+    records: Mapping[int, InstanceRecord],
+) -> dict[int, InstanceRecord]:
+    """Return each record with the numbering of each of its Series Numbers.
+
+    A Series Number takes its rank among the Series Numbers of the study
+    that holds the series it numbers, found by its Series Instance UID among
+    the records. One whose series no record holds, or records of several
+    studies hold, has no numbering.
+
+    Parameters
+    ----------
+    records : mapping of int to InstanceRecord
+        The run's records, by position.
+
+    Returns
+    -------
+    dict of int to InstanceRecord
+        By the same positions.
+    """
+    pairs = {
+        (record.series, record.study)
+        for record in records.values()
+        if record.series is not None and record.study is not None
+    }
+    count = collections.Counter(series for series, _ in pairs)
+    numberings = number_series(
+        {position: record.series_numbers for position, record in records.items()},
+        {series: study for series, study in pairs if count[series] == 1},
+    )
+    return {
+        position: dataclasses.replace(record, series_numberings=numberings[position])
+        for position, record in records.items()
+    }
 
 
 def _element(dataset: pydicom.Dataset, tag: str) -> pydicom.DataElement | None:
@@ -568,12 +627,20 @@ def _items(
     ``within`` is the path of the items that hold ``dataset``, as in
     :class:`~pymedphys._dicom.deidentify.file_layout.ElementPath`.
     """
+    for _, item in _located_items(dataset, path, within):
+        yield item
+
+
+def _located_items(
+    dataset: pydicom.Dataset, path: tuple[str, ...], within: _Within = ()
+) -> Iterator[tuple[_Within, pydicom.Dataset]]:
+    """Yield every item of the innermost sequence of ``path``, with its path."""
     if not path:
-        yield dataset
+        yield within, dataset
         return
     sequence = _sequence(dataset, ElementPath(within, path[0]))
     for index, item in enumerate(sequence):
-        yield from _items(item, path[1:], (*within, (path[0], index)))
+        yield from _located_items(item, path[1:], (*within, (path[0], index)))
 
 
 def _sequence(dataset: pydicom.Dataset, path: ElementPath) -> Sequence[pydicom.Dataset]:

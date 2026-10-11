@@ -25,10 +25,10 @@ A run has five steps:
 2. The first pass reads each file once, builds its
    :class:`~pymedphys._dicom.deidentify.references.InstanceRecord`, and
    builds the :class:`~pymedphys._dicom.deidentify.reference_graph.ReferenceGraph`
-   of the inputs, before anything is written. It gives each record the
-   numbering of all the Series Numbers of its study
-   (:func:`~pymedphys._dicom.deidentify.series_numbers.number_studies`),
-   so that every instance of a study renumbers its series alike. Its
+   of the inputs, before anything is written. It gives each Series Number
+   the numbering of the study that holds the series it numbers
+   (:func:`~pymedphys._dicom.deidentify.references.with_series_numberings`),
+   so that the run renumbers each series alike wherever it is named. Its
    findings take their graded consequences: a study whose instances name
    several patients stops the run with :class:`RunStopped` before any
    directory is created; every copy of a conflicting instance, every
@@ -122,7 +122,7 @@ from .reference_graph import (
     ReferenceGraph,
     build_reference_graph,
 )
-from .references import InstanceRecord, UnreadableSequence
+from .references import InstanceRecord, UnreadableSequence, with_series_numberings
 from .reasons import RunReason
 
 # discover and ReleaseWithheld are part of the run's interface, from here.
@@ -143,7 +143,6 @@ from .run_results import (
     WrittenCheck,
 )
 from .run_written import ReleaseWithheld  # pylint: disable = unused-import
-from .series_numbers import number_studies
 from .written_references import WrittenFinding
 
 # Media Storage SOP Class UID of a DICOMDIR: the Media Storage Directory
@@ -586,14 +585,7 @@ def _first_pass(discovery: Discovery) -> _FirstPass:
                 position, Status.REFUSED, RunReason.NOT_READABLE_AS_DICOM
             )
 
-    numberings = number_studies(
-        {position: record.series_numbering for position, record in records.items()},
-        {position: record.study for position, record in records.items()},
-    )
-    records = {
-        position: dataclasses.replace(record, series_numbering=numberings[position])
-        for position, record in records.items()
-    }
+    records = with_series_numberings(records)
     positions = tuple(records)
     graph = build_reference_graph([records[position] for position in positions])
     findings = tuple(

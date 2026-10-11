@@ -29,7 +29,7 @@ from pymedphys._dicom.deidentify.element_rules import RuleSource
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.pseudonyms import SubjectIdentity, patient_pseudonym
-from pymedphys._dicom.deidentify.series_numbers import SeriesNumbering
+from pymedphys._dicom.deidentify.series_numbers import SeriesNumbering, SeriesNumberings
 from pymedphys._dicom.deidentify.uids import UIDOutcome, replacement_uid
 
 from .test_deidentify_file_layout import (
@@ -227,7 +227,8 @@ def _series_number_edit(value, action=None, numbering=NUMBERING):
     evidence = source.read_source(_file(EXPLICIT, data_set))
     rules = _rules() if action is None else _Overridden({"(0020,0011)": action})
     plan = walker.plan_instance(evidence, rules, _rt_plan())
-    result = edits.edit_instance(evidence, plan, KEY, series_numbering=numbering)
+    numberings = numbering and SeriesNumberings.of({SERIES_NUMBER: numbering})
+    result = edits.edit_instance(evidence, plan, KEY, series_numberings=numberings)
     assert not result.sequestrations
     return {edit.path: edit for edit in result.edits}[SERIES_NUMBER]
 

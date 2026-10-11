@@ -722,7 +722,7 @@ class InstanceTransform:
             risk += source_gaps(source, iod)
         plan = plan_instance(source, self._rules, iod)
         edits = edit_instance(
-            source, plan, self._key, record.patient, record.series_numbering
+            source, plan, self._key, record.patient, record.series_numberings
         )
         evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
         if classification.sequestered:
@@ -750,7 +750,7 @@ class InstanceTransform:
                     plan_instance(source, fallback, iod),
                     self._key,
                     record.patient,
-                    record.series_numbering,
+                    record.series_numberings,
                 )
 
             try:
