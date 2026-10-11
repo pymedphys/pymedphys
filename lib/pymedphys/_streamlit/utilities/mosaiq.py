@@ -18,7 +18,7 @@ from typing import Any, Dict, Literal, Optional, Tuple, cast
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import toml
 
-from pymedphys._config import get_config_dir
+from pymedphys._config import get_config_path
 from pymedphys._mosaiq import connect as _connect
 from pymedphys._mosaiq import credentials as _credentials
 
@@ -26,6 +26,8 @@ from . import config as st_config
 
 DEFAULT_PORT = 1433
 DEFAULT_DATABASE = "MOSAIQ"
+
+_SUBMITTED_SETTINGS_KEY = "_mosaiq_prompt_settings"
 
 
 def get_valid_mosaiq_sites_from_config(
@@ -130,10 +132,11 @@ def save_mosaiq_config_to_file(
     Returns
     -------
     pathlib.Path
-        The path to the config file that was updated.
+        The path to the config file that was updated. When ``config.toml``
+        redirects elsewhere, this is the file it redirects to, since that is
+        the one the config is read from.
     """
-    config_dir = get_config_dir()
-    config_path = config_dir / "config.toml"
+    config_path = get_config_path()
 
     # Load existing config or create new one
     if config_path.exists():
@@ -174,8 +177,13 @@ def save_mosaiq_config_to_file(
         config["site"].append(new_site)
 
     # Write the updated config back to file
+    config_path.parent.mkdir(parents=True, exist_ok=True)
     with open(config_path, "w") as f:
         toml.dump(config, f)
+
+    # get_config is memoised, so without this the app keeps reading the
+    # config from before the save.
+    st_config.get_config.clear()
 
     return config_path
 
@@ -222,20 +230,31 @@ def get_mosaiq_connection_with_prompts() -> _connect.Connection:
         )
 
     with col2:
-        connect_button = st.button("Connect", type="primary")
-
-    if not connect_button:
-        st.stop()
-
-    # Save config if requested
-    if save_config:
-        config_path = save_mosaiq_config_to_file(
-            site_name=site_name,
-            hostname=hostname,
-            port=port,
-            database=database,
+        # Keyed because the login form shown after connecting has its own
+        # "Connect" button.
+        connect_button = st.button(
+            "Connect", type="primary", key="mosaiq_prompt_connect"
         )
-        st.success(f"Configuration saved to {config_path}")
+
+    # The Connect button is only true on the run it is clicked, so remember
+    # what was submitted. Otherwise the next widget interaction (entering a
+    # username, say) reruns the script and stops here again.
+    settings = (hostname, port, database, site_name)
+
+    if connect_button:
+        if save_config:
+            config_path = save_mosaiq_config_to_file(
+                site_name=site_name,
+                hostname=hostname,
+                port=port,
+                database=database,
+            )
+            st.success(f"Configuration saved to {config_path}")
+        st.session_state[_SUBMITTED_SETTINGS_KEY] = settings
+
+    # Editing any setting after submitting needs another click on Connect.
+    if st.session_state.get(_SUBMITTED_SETTINGS_KEY) != settings:
+        st.stop()
 
     # Now get the connection using the streamlit mosaiq utility
     # which will prompt for credentials if needed

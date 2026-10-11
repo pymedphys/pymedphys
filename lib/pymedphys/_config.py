@@ -32,16 +32,21 @@ def get_config_dir() -> pathlib.Path:
     return config_dir
 
 
-def get_config(path=None):
+def get_config_path(path=None) -> pathlib.Path:
+    """Return the config file that ``get_config`` reads, following redirects.
+
+    The returned file does not exist when there is no config yet, or when
+    the last redirect points at a file that has not been created.
+    """
     if path is None:
         path = get_config_dir()
 
     path = pathlib.Path(path)
 
-    config_path = path.joinpath("config.toml")
+    config_path: pathlib.Path = path.joinpath("config.toml")
     visited = set()
 
-    while True:
+    while config_path.exists():
         resolved = config_path.resolve()
         if resolved in visited:
             raise ValueError(
@@ -61,4 +66,9 @@ def get_config(path=None):
         # to the directory PyMedPhys happened to be started from.
         config_path = config_path.parent.joinpath(redirect)
 
-    return results
+    return config_path
+
+
+def get_config(path=None):
+    with open(get_config_path(path)) as f:
+        return toml.load(f)
