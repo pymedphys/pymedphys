@@ -109,6 +109,12 @@ jobs:
       # released files in one part used about 15.7 GB of memory and 12.9 GB
       # of swap.
       NCI_PART_FILES: 5000
+      # A re-run's artefacts are named apart from the first attempt's: the
+      # last upload's overwrite deletes the first attempt's artefact of that
+      # name, not this attempt's, and then conflicts with this attempt's.
+      ATTEMPT_SUFFIX: >-
+        ${{ github.run_attempt != '1'
+        && format('-attempt-{0}', github.run_attempt) || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -296,7 +302,7 @@ jobs:
         if: ${{ !cancelled() && steps.benchmark.outputs.ran == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midi-b-${{ env.SUBSET }}-${{ env.PRESET }}-results
+          name: midi-b-${{ env.SUBSET }}-${{ env.PRESET }}-results${{ env.ATTEMPT_SUFFIX }}
           path: ${{ runner.temp }}/midi-b/results/
           if-no-files-found: warn
           retention-days: 90
@@ -477,7 +483,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midi-b-${{ env.SUBSET }}-${{ env.PRESET }}-results
+          name: midi-b-${{ env.SUBSET }}-${{ env.PRESET }}-results${{ env.ATTEMPT_SUFFIX }}
           path: ${{ runner.temp }}/midi-b/results/
           if-no-files-found: warn
           retention-days: 90
