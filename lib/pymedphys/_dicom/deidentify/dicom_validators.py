@@ -497,12 +497,15 @@ def run_dciodvfy(executable: str, path: Path) -> Validation:
 
 def _in_implicit_vr(path: Path) -> bool:
     """Return whether a file's File Meta Information gives Implicit VR."""
+    # pydicom converts, and validates, a value as it is first read, so the
+    # value is read within the context too.
     try:
         with redacted_diagnostics():
             meta = pydicom.filereader.read_file_meta_info(path)
+            transfer_syntax = meta.get("TransferSyntaxUID")
     except Exception:  # pylint: disable = broad-exception-caught
         return False
-    return meta.get("TransferSyntaxUID") == pydicom.uid.ImplicitVRLittleEndian
+    return transfer_syntax == pydicom.uid.ImplicitVRLittleEndian
 
 
 def parse_dcentvfy(output: str, strings: frozenset[str]) -> Validation:
@@ -578,12 +581,23 @@ class DicomValidator:
         """
         standard_path = Path(standard_path)
         standard_path.mkdir(parents=True, exist_ok=True)
-        reader = dicom_validator_editions.EditionReader(standard_path)
-        if reader.get_edition_path(edition) is None:
-            raise ValidatorUnavailable(
-                f"dicom-validator could not obtain DICOM edition {edition}"
-            )
-        return cls(edition, standard_path, reader.load_dicom_info(edition))
+        # dicom-validator's readers give the root logger a handler that
+        # writes to standard output, at level INFO, so that every later
+        # record of any logger, pydicom's among them, would be printed
+        # there. The root logger is restored.
+        root = logging.getLogger()
+        handlers, level = list(root.handlers), root.level
+        try:
+            reader = dicom_validator_editions.EditionReader(standard_path)
+            if reader.get_edition_path(edition) is None:
+                raise ValidatorUnavailable(
+                    f"dicom-validator could not obtain DICOM edition {edition}"
+                )
+            info = reader.load_dicom_info(edition)
+        finally:
+            root.handlers[:] = handlers
+            root.setLevel(level)
+        return cls(edition, standard_path, info)
 
     def docbook_sha256(self) -> dict[str, str]:
         """Return the SHA-256 of each DocBook file the tables were read from."""
