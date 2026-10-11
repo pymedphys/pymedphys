@@ -591,6 +591,42 @@ def test_a_value_that_only_starts_like_items_is_one_element():
     assert evidence.value_field(_path("(0009,1001)")) == looks_like_items
 
 
+PRIVATE_ITEMS = _item(_implicit(0x00100020, b"SENTINEL"))
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+@pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.parametrize(
+    "transfer_syntax, data_set",
+    [
+        (
+            EXPLICIT,
+            _explicit(0x00090010, "LO", b"SYNTHETIC ")
+            + _explicit(0x00091001, "UN", PRIVATE_ITEMS),
+        ),
+        (
+            IMPLICIT,
+            _implicit(0x00090010, b"SYNTHETIC ") + _implicit(0x00091001, PRIVATE_ITEMS),
+        ),
+    ],
+    ids=["explicit-vr-un", "implicit-vr"],
+)
+def test_a_private_value_that_reads_as_items_is_read_as_a_sequence(
+    transfer_syntax, data_set
+):
+    # The layout reads the items in a private value of defined length, so
+    # the plan has elements in them; pydicom holds the value as bytes.
+    evidence = source.read_source(_file(transfer_syntax, data_set))
+    dataset = evidence.dataset()
+
+    sequence = _read(dataset, _path("(0009,1001)"), evidence)
+    inner = _read(dataset, _path(("(0009,1001)", 0), "(0010,0020)"), evidence)
+
+    assert evidence.element(_path("(0009,1001)")).items == 1
+    assert (sequence.vr, len(sequence.items)) == ("SQ", 1)
+    assert (inner.vr, inner.values) == ("LO", ("SENTINEL",))
+
+
 # Thirteen bytes, so odd, and an even counterpart one byte longer.
 ODD_VALUE = b"SENTINEL^ODD^"
 EVEN_VALUE = ODD_VALUE + b" "
