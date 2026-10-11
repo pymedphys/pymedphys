@@ -125,6 +125,10 @@ def test_no_sop_class_is_described_by_where_reading_stopped(tmp_path):
     def misspelt(dataset):
         dataset.SpecificCharacterSet = ["iso-ir100", "SYNTHETIC TERM"]
 
+    def latin_9(dataset):
+        # Defined Terms that pydicom cannot decode, which the engine refuses.
+        dataset.SpecificCharacterSet = ["ISO 2022 IR 203", "ISO 2022 IR 203"]
+
     ct = "CT Image Storage"
     # The writer copies a single SOP Class UID into the File Meta
     # Information, and leaves its placeholder otherwise.
@@ -147,6 +151,13 @@ def test_no_sop_class_is_described_by_where_reading_stopped(tmp_path):
             ct,
             ct,
             "other like ISO_IR 100\\other",
+        ),
+        (
+            latin_9,
+            "character set: is not a supported Specific Character Set",
+            ct,
+            ct,
+            "ISO 2022 IR 203\\ISO 2022 IR 203",
         ),
     ):
         with warnings.catch_warnings():

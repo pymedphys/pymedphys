@@ -293,11 +293,13 @@ def _pydicom_read(path: Path) -> tuple[str, str, str, str]:
 
 
 def _character_set(dataset: pydicom.Dataset) -> str:
-    """Return a Specific Character Set's Defined Terms, without other text.
+    """Return a Specific Character Set's terms, without other text.
 
-    A value that is not a Defined Term is ``other``, or ``other like <term>``
-    where it differs from one only in case, spaces, hyphens, and
-    underscores, as a misspelt term does.
+    Each value is named where it is a Defined Term of PS3.3 Tables C.12-2
+    to C.12-5, or ``ISO_IR 6``, which the engine reads too. Any other value
+    is ``other``, or ``other like <term>`` where it differs from one of
+    them only in case, spaces, hyphens, and underscores, as a misspelt
+    term does.
     """
     element = dataset.get((0x0008, 0x0005))
     if element is None:
@@ -307,16 +309,28 @@ def _character_set(dataset: pydicom.Dataset) -> str:
     return "\\".join(_term(str(value).strip()) for value in values)
 
 
+# The Defined Terms of PS3.3 Tables C.12-2 to C.12-5, including the two
+# (ISO_IR 203 and ISO 2022 IR 203) that the engine cannot decode, and
+# ISO_IR 6, which is not one but names the Default Character Repertoire.
+_SINGLE_BYTE = "13 100 101 109 110 126 127 138 144 148 166 203".split()
+_NAMED_TERMS = frozenset(
+    {
+        "ISO_IR 6",
+        "ISO_IR 192",
+        "GB18030",
+        "GBK",
+        *(f"ISO_IR {n}" for n in _SINGLE_BYTE),
+        *(f"ISO 2022 IR {n}" for n in ("6", *_SINGLE_BYTE, "87", "149", "159", "58")),
+    }
+)
+
+
 def _term(value: str) -> str:
     if not value:
         return "empty"
-    if value in pydicom.charset.python_encoding:
+    if value in _NAMED_TERMS:
         return value
-    like = [
-        term
-        for term in sorted(pydicom.charset.python_encoding)
-        if term and _squeezed(term) == _squeezed(value)
-    ]
+    like = sorted(term for term in _NAMED_TERMS if _squeezed(term) == _squeezed(value))
     return f"other like {like[0]}" if like else "other"
 
 
