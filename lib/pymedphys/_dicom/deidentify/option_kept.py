@@ -54,7 +54,8 @@ from collections.abc import Iterator, Mapping
 
 from .file_layout import ElementPath
 from .policy import compose_custom_policy
-from .residuals import _KINDS, MIN_CHARACTERS, Form, SourceValue, ValueKind
+from .residuals import _KINDS, MAX_CHARACTERS, MIN_CHARACTERS, Form, SourceValue
+from .residuals import ValueKind
 from .residuals import _forms, _length
 from .standard import dictionary_attribute
 
@@ -219,9 +220,9 @@ def _values_in(
     but that the search could find in ``text``, the kept element's whole
     value in lower case; nothing for one that it could not. A value of a
     kind that a kept date cannot explain is never explained. Each form that
-    the search derives, of at least its shortest length, is looked for
-    ignoring the characters around it, which finds at least what the
-    search does.
+    the search derives, of at least its shortest length and cut to its
+    longest, is looked for ignoring the characters around it, which finds
+    at least what the search does.
     """
     kind = _KINDS.get(value.vr)
     if not isinstance(value.value, str) or kind is None:
@@ -233,5 +234,6 @@ def _values_in(
             if whole:
                 yield True
         if not whole and _length(written) >= MIN_CHARACTERS:
-            if written.lower() in text:
+            # The search looks for a long form by its first characters.
+            if written[:MAX_CHARACTERS].lower() in text:
                 yield None

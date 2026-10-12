@@ -321,6 +321,24 @@ def test_single_valued_text_across_two_kept_times_goes_to_review(vr, pooled):
     assert not condition.exempted
 
 
+# The search looks for a value longer than 256 characters by its first 256.
+MANY_TIMES = "\\".join(["120000.12", "1300"] * 20)
+LONG = f"{MANY_TIMES}X"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize("vr", ["ST", "LT", "UT"])
+@pytest.mark.parametrize("pooled", [(LONG,), (LONG, "1300"), ("1300", LONG)])
+def test_a_long_value_found_by_its_first_characters_goes_to_review(vr, pooled):
+    written = _written(_element(TIME_OF_LAST_CALIBRATION, "TM", MANY_TIMES))
+    removed = [(PRIVATE_VALUE, vr, value) for value in pooled]
+    condition = _condition(written, [DEVICE_IDENTITY], *removed)
+
+    assert len(LONG) > 256
+    assert condition.decision is Decision.QC_REVIEW
+    assert not condition.exempted
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01")
 @pytest.mark.parametrize(
     "vr, pooled",
