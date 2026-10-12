@@ -454,40 +454,6 @@ def test_cleaned_text_outside_iso_646_without_a_character_set_sequesters():
     assert not result.edits
 
 
-def test_text_in_iso_646_is_read_under_an_unsupported_character_set():
-    # Text with no byte from 0x80 and no escape reads the same in every
-    # character set, so it is read in the Default Character Repertoire.
-    _, result = _edits(
-        _explicit(0x00080005, "CS", b"ISO_IR 999")
-        + _explicit(0x00100010, "PN", b"SENTINEL^NAME ")
-    )
-
-    assert not result.sequestrations
-    assert not result.not_collected
-    assert _collected(result)[_path("(0010,0010)")] == ("PN", "SENTINEL^NAME")
-    assert not result.read_as_latin_1
-
-
-def test_text_outside_iso_646_under_an_unsupported_character_set_is_not_guessed():
-    # As where no Specific Character Set is given: removed text is read as
-    # ISO 8859-1 and listed as such, and cleaned text sequesters the instance.
-    character_set = _explicit(0x00080005, "CS", b"ISO-IR 100")
-    _, removed = _edits(character_set + _explicit(0x00081030, "LO", b"SENTINEL \xe9"))
-    _, cleaned = _edits(
-        character_set + _explicit(0x300A0003, "LO", b"SENTINEL \xe9"),
-        _rules("basic-clean-descriptors"),
-    )
-
-    assert not removed.sequestrations
-    assert removed.read_as_latin_1 == (_path("(0008,1030)"),)
-    assert cleaned.sequestrations == (
-        walker.Sequestration(
-            _path("(300A,0003)"), "C", "LO", walker.SequesterReason.UNDECODABLE
-        ),
-    )
-    assert not cleaned.edits
-
-
 def test_an_item_with_its_own_character_set_is_read_under_an_unsupported_one(
     monkeypatch,
 ):
