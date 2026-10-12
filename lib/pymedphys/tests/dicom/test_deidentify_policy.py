@@ -89,6 +89,7 @@ def test_the_presets_select_only_the_options_the_scope_targets():
         SAFE_PRIVATE,
         DEVICE_IDENTITY,
         PATIENT_CHARACTERISTICS,
+        policy.FULL_DATES,
         MODIFIED_DATES,
         CLEAN_DESCRIPTORS,
     )
@@ -318,6 +319,10 @@ def test_only_composing_an_enabled_preset_enables_a_policy(monkeypatch):
     ],
 )
 def test_a_custom_option_set_is_validated_and_never_enabled(options):
+    if {policy.FULL_DATES, MODIFIED_DATES} <= set(options):
+        with pytest.raises(policy.PolicyError, match="mutually exclusive"):
+            policy.compose_custom_policy(options)
+        return
     if {DEVICE_IDENTITY, MODIFIED_DATES} <= set(options):
         with pytest.raises(
             policy.PolicyError, match="no precedence.*only the tps-import preset"
@@ -437,13 +442,12 @@ def test_the_engine_applies_the_target_options():
     "options, named",
     [
         (
-            ["retain_longitudinal_full_dates"],
-            "the option retain_longitudinal_full_dates, so a policy that selects it",
+            ["retain_uids"],
+            "the option retain_uids, so a policy that selects it",
         ),
         (
-            ["retain_uids", "retain_longitudinal_full_dates", CLEAN_DESCRIPTORS],
-            "the options retain_uids and retain_longitudinal_full_dates, so a "
-            "policy that selects them",
+            ["retain_uids", "clean_graphics", CLEAN_DESCRIPTORS],
+            "the options retain_uids and clean_graphics, so a policy that selects them",
         ),
     ],
 )
@@ -453,7 +457,8 @@ def test_an_option_the_engine_does_not_yet_apply_is_refused_by_name(options, nam
         f"the engine does not yet apply {named} can be composed and described "
         "but not applied; the engine applies retain_safe_private, "
         "retain_device_identity, retain_patient_characteristics, "
-        "retain_longitudinal_modified_dates, and clean_descriptors"
+        "retain_longitudinal_full_dates, retain_longitudinal_modified_dates, "
+        "and clean_descriptors"
     )
 
     with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):

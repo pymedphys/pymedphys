@@ -271,6 +271,7 @@ def _custom_option_sets():
         for size in range(len(policy.TARGET_OPTIONS) + 1)
         for subset in itertools.combinations(policy.TARGET_OPTIONS, size)
         if not {DEVICE_IDENTITY, MODIFIED_DATES} <= set(subset)
+        and not {FULL_DATES, MODIFIED_DATES} <= set(subset)
     ]
 
 
@@ -659,11 +660,16 @@ def test_only_the_date_options_override_the_action_of_an_omitted_date(options, a
     assert {effective.actions[tag] for tag in OMITTED_DATES} == {action}
 
 
-def test_every_policy_cleans_the_omitted_dates_only_under_modified_dates():
+def test_every_policy_keeps_or_cleans_the_omitted_dates_only_under_a_date_option():
     # Every preset, including basic (X/Z/D), and public-release and
-    # tps-import (C), and every custom option set.
+    # tps-import (C), and every custom option set, including those that
+    # select Full Dates (K).
     for composed in _every_policy():
-        expected = "C" if MODIFIED_DATES in composed.options else "X/Z/D"
+        expected = "X/Z/D"
+        if FULL_DATES in composed.options:
+            expected = "K"
+        if MODIFIED_DATES in composed.options:
+            expected = "C"
         assert {composed.supplementary_actions[tag] for tag in OMITTED_DATES} == {
             expected
         }, composed.options

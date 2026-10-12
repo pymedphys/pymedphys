@@ -48,6 +48,7 @@ from . import release_report as report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
 from .pixel_risk import Indicator
+from .policy import FULL_DATES
 from .qc_retained import _NOT_REVIEWED_TAGS, RETAINED_TEXT_VRS
 from .reasons import TransformReason
 from .release_gate import ReasonCode
@@ -377,6 +378,21 @@ def dates_and_times(
         "Information with Modified Dates. Each takes the action listed under "
         f"Actions: {counts}."
     )
+    if temporal.option == FULL_DATES:
+        kept = dict(temporal.actions).get("K", 0)
+        return [
+            "## Dates and times",
+            "",
+            f"The policy selects {option(temporal.option)}, so no date or time "
+            f"is shifted or otherwise modified. {covered} The {kept} that take "
+            "`K` keep their source values; the others take their listed "
+            "actions, as the Basic Profile does. Where a source value that "
+            "the policy removes or replaces equals a kept value, the residual "
+            "search finds it in the kept element and the instance is withheld "
+            "(D-027 and D-043). "
+            f"{named(TEMPORAL_MODIFIED)} is `{statement.markers.temporal}`, as "
+            "Attributes inserted describes.",
+        ]
     if temporal.option:
         return [
             "## Dates and times",

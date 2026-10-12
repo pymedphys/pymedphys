@@ -420,9 +420,17 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When the Retain Longitudinal Temporal Information With Full Dates Option is specified in addition to the Basic Application Level Confidentiality Profile, any dates and times present in the Attributes shall be retained, as described in Table E.1-1. The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "UNMODIFIED".
 '''
-status = "out-of-scope"
+status = "implemented"
+decisions = ["D-012", "D-023", "D-043"]
+implementation = [
+  "_dicom/deidentify/actions.py",
+  "_dicom/deidentify/markers.py",
+  "_dicom/deidentify/policy.py",
+]
 note = '''
-The Retain Longitudinal Temporal Information with Full Dates Option is not supported.
+A custom policy can select Full Dates, which keeps every date and time that Table E.1-1 gives K under it and the supplementary rules keep under it (D-023); it cannot be selected with Modified Dates.
+Longitudinal Temporal Information Modified is UNMODIFIED, unless MODIFIED or REMOVED is already present from an earlier run, which is kept because the dates that run modified or removed are not restored (D-012).
+Kept dates are not exempt from the residual search: where a removed or replaced source value equals a kept date, the instance is withheld (D-027 and D-043).
 '''
 
 [[requirement]]

@@ -85,6 +85,7 @@ TARGET_OPTIONS = (
     SAFE_PRIVATE,
     DEVICE_IDENTITY,
     "retain_patient_characteristics",
+    FULL_DATES,
     MODIFIED_DATES,
     "clean_descriptors",
 )

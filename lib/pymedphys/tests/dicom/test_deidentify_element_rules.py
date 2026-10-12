@@ -261,6 +261,7 @@ def _usable_policies():
         for options in itertools.combinations(policy.TARGET_OPTIONS, size)
         if RETAIN_SAFE_PRIVATE not in options
         and not {policy.DEVICE_IDENTITY, policy.MODIFIED_DATES} <= set(options)
+        and not {policy.FULL_DATES, policy.MODIFIED_DATES} <= set(options)
     ]
     return [
         policy.compose_policy(name)
