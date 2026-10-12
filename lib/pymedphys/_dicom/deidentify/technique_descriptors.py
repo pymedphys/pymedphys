@@ -103,8 +103,15 @@ _CLOCK = re.compile(r"[1-9][0-9]\.[0-9]{2}")
 _LONG_NUMBER = re.compile(r"[0-9]{5,}")
 # Digits that run on across separators from one word into the next.
 _SPLIT_NUMBER = re.compile(rf"[0-9]+(?:{_SEPARATOR}[0-9]+)+")
-# Two digit runs with one letter between them, as in 14H30 or 512X512.
-_DIGIT_LETTER_DIGIT = re.compile(r"[0-9][A-Z][0-9]")
+# A clock time written with an hour unit: hours, the unit, and minutes, as
+# in 14H30, 14HR30MIN, or 14HR 30MIN, or four or three digits of a 24-hour
+# time and the unit, as in 1430HRS or 830H.
+_HOUR_UNIT = r"(?:H|HRS?|HOURS?)"
+_CLOCK_WITH_UNIT = re.compile(
+    rf"(?<![0-9.])(?:[0-9]{{1,2}}(?:{_SEPARATOR})?{_HOUR_UNIT}(?:{_SEPARATOR})?[0-5][0-9](?![0-9])"
+    rf"|(?:[01]?[0-9]|2[0-3])[0-5][0-9](?:{_SEPARATOR})?{_HOUR_UNIT}(?![A-Z]))",
+    re.IGNORECASE,
+)
 _DIMENSIONS = frozenset({"1", "2", "3", "4"})
 _TITLES = frozenset({"MR", "MRS", "MS"})
 MAX_DIGITS = 4
@@ -226,9 +233,11 @@ class TechniqueVocabulary:
         return None if found_word else Rejection.NO_VOCABULARY_WORD
 
     def _token_rejection(self, token: str, previous: str) -> Rejection | None:
-        if _DIGIT_LETTER_DIGIT.search(token):
-            return Rejection.NUMBER
         runs = _RUN.findall(token)
+        # Two numbers in one word, as in 512X512 or 14MIN30, could be a
+        # clock time or part of an identifier.
+        if sum(run[0].isdigit() for run in runs) > 1:
+            return Rejection.NUMBER
         return self._context_rejection(token, runs[0], previous) or next(
             filter(None, (self._run_rejection(runs, i) for i in range(len(runs)))),
             None,
@@ -292,7 +301,7 @@ def _text_rejection(value: str) -> Rejection | None:
         return Rejection.NOT_PRINTABLE
     if "^" in value:
         return Rejection.NAME
-    if _DATE.search(value) or _TIME.search(value):
+    if _DATE.search(value) or _TIME.search(value) or _CLOCK_WITH_UNIT.search(value):
         return Rejection.DATE_OR_TIME
     if _LONG_NUMBER.search(value) or any(
         len(re.sub(r"[^0-9]", "", match[0])) >= MIN_SPLIT_DIGITS

@@ -91,6 +91,9 @@ def _read(document):
         "t2_tirm_tra_dark-fluid",
         "3D Brain VIEW FLAIR",
         "AX T2 3T",
+        "PET Delay 2hr",
+        "PET WB 60min 3D",
+        "CT 120kV 3mm",
     ],
 )
 def test_technique_values_made_of_vocabulary_words_are_kept(vocabulary, value):
@@ -131,7 +134,15 @@ def test_technique_values_made_of_vocabulary_words_are_kept(vocabulary, value):
         ("CT HEAD 12/10", Rejection.NUMBER),
         ("CT 14:30", Rejection.DATE_OR_TIME),
         ("CT HEAD 14.30", Rejection.DATE_OR_TIME),
-        ("CT 14H30", Rejection.NUMBER),
+        ("CT 14H30", Rejection.DATE_OR_TIME),
+        ("CT HEAD 14HR30MIN", Rejection.DATE_OR_TIME),
+        ("CT HEAD TIME14HR30", Rejection.DATE_OR_TIME),
+        ("CT HEAD 14hr 30min", Rejection.DATE_OR_TIME),
+        ("CT HEAD 14H-30", Rejection.DATE_OR_TIME),
+        ("CT HEAD 1430HRS", Rejection.DATE_OR_TIME),
+        ("CT HEAD 830 H", Rejection.DATE_OR_TIME),
+        ("CT HEAD 14MIN30", Rejection.NUMBER),
+        ("CT 512X512", Rejection.NUMBER),
         ("HEAD 12345", Rejection.NUMBER),
         ("CT 1234 5678", Rejection.NUMBER),
         ("CT HEAD 1234_5678", Rejection.NUMBER),
@@ -267,6 +278,29 @@ def test_cleaning_keeps_vocabulary_values_and_holds_echoes(vocabulary):
         (Outcome.HELD, Held.UNREVIEWED, None),
         (Outcome.EMPTY, None, ""),
     ]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+def test_every_clock_time_written_with_hour_and_minute_units_is_held(vocabulary):
+    values = [
+        f"CT HEAD TIME{hour:02d}HR{minute:02d}MIN"
+        for hour in range(24)
+        for minute in (0, 15, 30, 45)
+    ]
+
+    rejections = {vocabulary.rejection(SERIES_DESCRIPTION, value) for value in values}
+    cleaned = clean_descriptor_values(
+        SERIES_DESCRIPTION,
+        values,
+        ReviewedDescriptors.empty(),
+        identifiers=(),
+        vocabulary=vocabulary,
+    )
+
+    assert rejections == {Rejection.DATE_OR_TIME}
+    assert {(c.outcome, c.held_because) for c in cleaned} == {
+        (Outcome.HELD, Held.UNREVIEWED)
+    }
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
