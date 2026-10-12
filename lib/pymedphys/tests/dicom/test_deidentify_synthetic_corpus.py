@@ -14,7 +14,9 @@
 
 """The synthetic corpus, its markers, and its manifest."""
 
+import bisect
 import collections
+import datetime
 import json
 import re
 import warnings
@@ -29,6 +31,7 @@ from pymedphys._dicom.deidentify import (
     standard,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
+from pymedphys._dicom.deidentify.dates import MAX_OFFSET_WEEKS, MIN_OFFSET_WEEKS
 from pymedphys._dicom.deidentify.file_layout import (
     ElementPath,
     Region,
@@ -54,9 +57,9 @@ MARKER_PATTERNS = {
     **dict.fromkeys(("AE", "LO", "LT", "SH", "ST", "UC", "UT", "UN", "OB", "OW"), TEXT),
     "AS": r"\d{3}W",
     "CS": r"SYNMK_\d{5}",
-    "DA": r"18\d\d(0[1-9]|1[0-2])\d\d",
+    "DA": r"(09|1[0-8])\d\d(0[1-9]|1[0-2])\d\d",
     "DS": r"8\d{5}\.5",
-    "DT": r"18\d\d(0[1-9]|1[0-2])\d{8}",
+    "DT": r"(09|1[0-8])\d\d(0[1-9]|1[0-2])\d{8}",
     "IS": r"7\d{5}",
     "PN": r"SYNMK(\d{5})\^M[AÄ]RKER\1",
     "TM": r"([01]\d|2[0-3])[0-5]\d[0-5]\d\.424242",
@@ -320,7 +323,7 @@ def test_markers_are_unique_and_conspicuous(corpus):
     assert len(numbers) == len(set(numbers))
 
 
-def test_dates_are_distinct_valid_nineteenth_century_dates(corpus):
+def test_dates_are_distinct_valid_dates_before_1900(corpus):
     dates = [
         value[:8]
         for _, placement in _placements(corpus, Kind.PLANTED)
@@ -330,7 +333,28 @@ def test_dates_are_distinct_valid_nineteenth_century_dates(corpus):
 
     assert dates and len(dates) == len(set(dates))
     assert all(value_problem("DA", date) is None for date in dates)
-    assert all(date.startswith("18") for date in dates)
+    assert all("0900" <= date[:4] <= "1899" for date in dates)
+
+
+def test_no_date_shifted_under_modified_dates_is_another_markers(corpus):
+    # The Modified Dates Option moves a subject's dates back by 52 to 520
+    # whole weeks, so no two marker dates may be that far apart, or a
+    # shifted date would be another marker's, which the residual search
+    # finds.
+    days = sorted(
+        datetime.date(int(value[:4]), int(value[4:6]), int(value[6:8])).toordinal()
+        for _, placement in _placements(corpus, Kind.PLANTED)
+        if placement.vr in ("DA", "DT")
+        for value in placement.values
+    )
+    shortest, longest = 7 * MIN_OFFSET_WEEKS, 7 * MAX_OFFSET_WEEKS
+
+    assert days[-1] - days[0] > longest
+    for day in days:
+        within = bisect.bisect_right(days, day + longest) - bisect.bisect_left(
+            days, day + shortest
+        )
+        assert within == 0, datetime.date.fromordinal(day)
 
 
 def test_values_read_back_and_are_valid_for_their_vr_and_vm(corpus):
