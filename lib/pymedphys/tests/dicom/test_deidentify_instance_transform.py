@@ -1220,6 +1220,55 @@ def test_a_removed_registered_uid_does_not_withhold_the_collection(tmp_path):
     assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
 
 
+def _ct_with_an_icon(vr, icon_representation):
+    """A CT slice whose icon image's palette colour descriptors are of ``vr``."""
+    ct = synthetic.ct_slice(0)
+    ct.PixelRepresentation = 1
+    icon = pydicom.Dataset()
+    icon.PhotometricInterpretation = "PALETTE COLOR"
+    if icon_representation is not None:
+        icon.PixelRepresentation = icon_representation
+    for tag in (0x00281101, 0x00281102, 0x00281103):
+        icon.add_new(tag, vr, [256, 0, 8])
+    ct.IconImageSequence = pydicom.Sequence([icon])
+    return ct
+
+
+@pytest.mark.parametrize(
+    "vr, icon_representation", [("US", None), ("SS", 0)], ids=["us", "ss"]
+)
+def test_palette_descriptors_whose_vr_pixel_representation_contradicts_are_collected(
+    tmp_path, vr, icon_representation
+):
+    # Explicit VR states the VR that the second value needs (PS3.3 Section
+    # C.7.6.3.1.5), so an icon image's descriptors are collected, and do not
+    # withhold the collection, where Pixel Representation would say otherwise.
+    ct = _ct_with_an_icon(vr, icon_representation)
+    data = synthetic.written(ct)
+    source = read_source(data)
+    plan = plan_instance(
+        source, ElementRules(compose_policy("basic")), _iod("CT Image")
+    )
+    coverage = coverage_of(plan, edit_instance(source, plan, KEY))
+    collected = {value.source: value.vr for value in coverage.collected}
+    datasets = [
+        ct if dataset.SOPInstanceUID == ct.SOPInstanceUID else dataset
+        for dataset in synthetic.collection()
+    ]
+    result = run.run(
+        _source(tmp_path, datasets),
+        tmp_path / "release",
+        _transform(),
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+    )
+
+    assert not coverage.uncollected
+    for tag in ("(0028,1101)", "(0028,1102)", "(0028,1103)"):
+        assert collected[ElementPath((("(0088,0200)", 0),), tag)] == vr
+    assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_run_with_the_transform_and_gate_releases_the_collection(tmp_path):
     release = tmp_path / "release"
