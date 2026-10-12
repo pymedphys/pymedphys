@@ -263,7 +263,7 @@ implementation = [
 note = '''
 The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters.
 It lists the action that the engine applies to each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020), and why where the engine's own removals, the File Meta Information that it writes in place of the source's (D-025), or a sequence given C supersede the policy's action; the rules that give every other element its action (D-022); the values that Z, D, and U write, including the reviewed item of Person Identification Code Sequence, the keyed pseudonyms at the top level of the data set, and replacement UIDs of at most 44 characters (D-003, D-005, D-021); how dates and times are handled: without a Retain Longitudinal Temporal Information Option, by the listed actions of the attributes that have a temporal role, unshifted (D-006, D-007, D-023); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); the attributes and values that the markers insert, as the engine computes them for the policy (D-012); the removal of private attributes at every level of nesting; what the residual search covers, and each reason it lists a value as not searched (D-027); how the release report names each sequestered instance by a label drawn at random for the run, with each stage and reason code (D-026), including the release gate's withholding of every file of a subject one of whose instances gave no values to search, counts the instances held for review by the codes that can hold one, and counts the values that the residual search does not search by attribute and reason, with per-instance detail only in the confidential QC pack (D-027); and the options applied, those that can be composed, and those that are not supported.
-It describes what each run's QC pack lists for review: each distinct retained string (D-017), each instance whose attributes show an indicator of risk in its pixel data, and each CT, MR, and PET volume among the released and held instances, with whether it names the head or neck (D-015).
+It describes what each run's QC pack lists for review: each distinct retained string (D-017), each instance whose attributes show an indicator of risk in its pixel data, and each CT, MR, PET, and RT Dose volume and CT, MR, and PET localizer among the released and held instances, with whether it names the head or neck (D-015).
 A statement lists what it cannot yet describe and then claims nothing.
 Plain X, Z, and D are resolved by Type at every place too (D-020), except within a sequence that the engine removes with its contents, and the resolved Z and D are checked against the walker's plan of a synthetic instance.
 Where an IOD requires an attribute given a plain X, the statement names the enclosing sequence or overlay group that D-020 removes with it, or that the instance is sequestered, and each is checked against the walker's plan of a synthetic instance.
@@ -373,7 +373,7 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information that is embedded in text or string Attributes corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-009", "D-022"]
+decisions = ["D-009", "D-022", "D-036"]
 implementation = [
   "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/roi_names.py",
@@ -381,6 +381,8 @@ implementation = [
   "_dicom/deidentify/reviewed_names_command.py",
   "_dicom/deidentify/reviewed_descriptors.py",
   "_dicom/deidentify/reviewed_descriptors_command.py",
+  "_dicom/deidentify/technique_descriptors.py",
+  "_dicom/deidentify/common_names.py",
   "_dicom/deidentify/run_report.py",
 ]
 note = '''
@@ -396,6 +398,7 @@ The release report counts the ROI Names of the structure sets that descriptor cl
 A run can also be given an institutional list converted from CSV, as the maintainer decided on 6 October 2026; it renames nothing, and the QC pack shows the reviewer of a held name the list's names it matched.
 A ROI Name kept or mapped by a reviewer's decision in the reviewed-names list has passed pooled human review, since each distinct name is reviewed once for the collection.
 A reviewed descriptors list, kept as the reviewed-names list is and filled by a private command of its own, records a reviewer's decision to keep, map, or empty one value of each other text attribute given C, and the reviewed tier for those values checks what a kept or mapped value would write for echoes of identifiers, also within its letters and digits, and holds every other value; runs do not yet apply it, so those attributes still take their action without the Option.
+For the technique descriptors of D-036, such as Series Description and Protocol Name, an automatic tier keeps a value that the list has no decision on where every word of it is in the reviewed technique vocabulary, which leaves out common personal names that are not reviewed exceptions, and it echoes no identifier; runs do not yet apply it either.
 '''
 
 [[requirement]]
@@ -941,7 +944,7 @@ implementation = [
   "_dicom/deidentify/qc_pack.py",
 ]
 note = '''
-Recognizable Visual Features of YES, an RT Structure Set's contours of an ROI whose interpreted type or name is EXTERNAL, BODY, or SKIN, the patient's outline, and every CT, MR, and PET volume, single-frame or enhanced, whatever its slice spacing, are reported as indicators of a reconstructable face, and a volume that names a region of the head or neck as showing it.
+Recognizable Visual Features of YES, an RT Structure Set's contours of an ROI whose interpreted type or name is EXTERNAL, BODY, or SKIN, the patient's outline, or BOLUS or FIXATION, which lie on it, every CT, MR, PET, and RT Dose volume, single-frame or enhanced, whatever its slice spacing, and every CT, MR, and PET localizer, which can show the face in profile, are reported as indicators of a reconstructable face, and a volume or localizer that names a region of the head or neck as showing it.
 Each run lists each instance's indicators and each series' indicators, assessed over its released and held instances, in its QC pack for review.
 Remaining: the `public-release` assessment and face review (M4).
 '''
