@@ -104,11 +104,11 @@ _LONG_NUMBER = re.compile(r"[0-9]{5,}")
 # Digits that run on across separators from one word into the next.
 _SPLIT_NUMBER = re.compile(rf"[0-9]+(?:{_SEPARATOR}[0-9]+)+")
 # A clock time written with an hour unit: hours, the unit, and minutes, as
-# in 14H30, 14HR30MIN, or 14HR 30MIN, or four or three digits of a 24-hour
+# in 14H30, 14HR30MIN, 14HR 30MIN, or 9H 5MIN, or four or three digits of a 24-hour
 # time and the unit, as in 1430HRS or 830H.
 _HOUR_UNIT = r"(?:H|HRS?|HOURS?)"
 _CLOCK_WITH_UNIT = re.compile(
-    rf"(?<![0-9.])(?:[0-9]{{1,2}}(?:{_SEPARATOR})?{_HOUR_UNIT}(?:{_SEPARATOR})?[0-5][0-9](?![0-9])"
+    rf"(?<![0-9.])(?:[0-9]{{1,2}}(?:{_SEPARATOR})?{_HOUR_UNIT}(?:{_SEPARATOR})?[0-5]?[0-9](?![0-9])"
     rf"|(?:[01]?[0-9]|2[0-3])[0-5][0-9](?:{_SEPARATOR})?{_HOUR_UNIT}(?![A-Z]))",
     re.IGNORECASE,
 )

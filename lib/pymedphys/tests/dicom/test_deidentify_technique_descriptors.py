@@ -141,6 +141,11 @@ def test_technique_values_made_of_vocabulary_words_are_kept(vocabulary, value):
         ("CT HEAD 14H-30", Rejection.DATE_OR_TIME),
         ("CT HEAD 1430HRS", Rejection.DATE_OR_TIME),
         ("CT HEAD 830 H", Rejection.DATE_OR_TIME),
+        ("CT HEAD TIME14HR 3MIN", Rejection.DATE_OR_TIME),
+        ("CT HEAD 9H 5MIN", Rejection.DATE_OR_TIME),
+        ("CT HEAD 9H_5", Rejection.DATE_OR_TIME),
+        ("CT HEAD 9hrs-5min", Rejection.DATE_OR_TIME),
+        ("CT HEAD 9HR/5MIN", Rejection.DATE_OR_TIME),
         ("CT HEAD 14MIN30", Rejection.NUMBER),
         ("CT 512X512", Rejection.NUMBER),
         ("HEAD 12345", Rejection.NUMBER),
@@ -282,10 +287,14 @@ def test_cleaning_keeps_vocabulary_values_and_holds_echoes(vocabulary):
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_every_clock_time_written_with_hour_and_minute_units_is_held(vocabulary):
+    hours = {form for h in range(24) for form in (f"{h}", f"{h:02d}")}
+    minutes = {form for m in range(60) for form in (f"{m}", f"{m:02d}")}
     values = [
-        f"CT HEAD TIME{hour:02d}HR{minute:02d}MIN"
-        for hour in range(24)
-        for minute in (0, 15, 30, 45)
+        f"CT HEAD TIME{hour}{unit}{separator}{minute}MIN"
+        for hour in sorted(hours)
+        for unit in ("H", "HR", "HRS", "hours")
+        for separator in ("", " ", "_", "-", "/")
+        for minute in sorted(minutes)
     ]
 
     rejections = {vocabulary.rejection(SERIES_DESCRIPTION, value) for value in values}
