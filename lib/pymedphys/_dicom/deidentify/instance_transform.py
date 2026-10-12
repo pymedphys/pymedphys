@@ -75,8 +75,9 @@ define, such as a nuclear medicine image or a spatial registration, is
 planned and edited too when its source is readable, only so that its values
 are collected for its subject's search; it is never written. Where an
 instance of the subject gives no coverage at all, because its source is
-refused, its SOP Class names no IOD of the tables, the transform raises, or
-it changed during the run, the gate withholds the file, since its values
+refused, its SOP Class names no IOD of the tables, its Specific Character
+Set cannot be decoded, the transform raises, or it changed during the run,
+the gate withholds the file, since its values
 could be there unsearched for.
 
 A UID that the pinned tables register, and that U therefore retains, such
@@ -145,10 +146,16 @@ from .pixel_decoding import frames_problem, same_pixels
 from .pixel_risk import assess_pixel_risk, series_evidence
 from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial, SeriesEvidence
 from .run_report import ReleaseReporter
-from .scope import classify
+from .scope import Classification, classify
 from .source import SourceEvidence, SourceRefused, read_source
 from .uids import UIDOutcome
-from .walker import Consumer, InstancePlan, plan_instance
+from .walker import (
+    Consumer,
+    InstancePlan,
+    SequesterReason,
+    Sequestration,
+    plan_instance,
+)
 from .written_references import WrittenFinding, verify_written_references
 
 _SOP_CLASS = ElementPath((), "(0008,0016)")
@@ -696,32 +703,64 @@ class InstanceTransform:
         """
         return verify_written_references(self._key, graph, written)
 
+    def _unplanned(
+        self,
+        source: SourceEvidence,
+        classification: Classification,
+        character_set: ElementPath | None,
+    ) -> tuple[object, ...]:
+        """Why an instance that gives no coverage is sequestered.
+
+        One whose SOP Class names no IOD of the pinned tables gives its scope's
+        reason alone. One whose Specific Character Set cannot be decoded gives
+        the walker's reason for it, by its path and planned action as the edits
+        give an item's (D-010), after any scope reason: none of its text can be
+        read, so none is collected, and its subject's files are withheld as not
+        reported (D-027).
+        """
+        scope = (classification.reason,) if classification.sequestered else ()
+        iod = self._iods.iods.get(classification.iod or "")
+        if iod is None or character_set is None:
+            return scope
+        plan = plan_instance(source, self._rules, iod)
+        planned = next((e for e in plan.elements if e.path == character_set), None)
+        action = "K" if planned is None else planned.action
+        reason = SequesterReason.UNSUPPORTED_CHARACTER_SET
+        return (*scope, Sequestration(character_set, action, "CS", reason))
+
     def __call__(
         self, data: bytes, record: InstanceRecord
     ) -> Transformed | Sequestered:
         try:
             source = read_source(data)
+            dataset = source.dataset()
         except SourceRefused as refused:
             return Sequestered((refused.reason,))
         try:
-            dataset = source.dataset()
             codecs = dataset_codecs(dataset, source=source)
-        except (SourceRefused, UndecodableElement):
-            codecs = DEFAULT_CODECS
-            dataset = None
+            character_set = None
+        except UndecodableElement as error:
+            codecs, character_set = DEFAULT_CODECS, error.path
+        # The SOP Class UID is UI, which no character set changes.
         classification = classify(
             _text(dataset, _SOP_CLASS, source), source.transfer_syntax
         )
-        if classification.iod is None or (
-            classification.sequestered and classification.iod not in self._iods.iods
+        if (
+            classification.iod is None
+            or (
+                classification.sequestered and classification.iod not in self._iods.iods
+            )
+            or character_set is not None
         ):
-            return Sequestered((classification.reason,))
+            return Sequestered(self._unplanned(source, classification, character_set))
         iod = self._iods.iods[classification.iod]
         risk: tuple[object, ...] = _pixel_risk(dataset, record)
         if not classification.sequestered:
             risk += source_gaps(source, iod)
         plan = plan_instance(source, self._rules, iod)
-        edits = edit_instance(source, plan, self._key, record.patient)
+        edits = edit_instance(
+            source, plan, self._key, record.patient, record.series_numberings
+        )
         evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
         if classification.sequestered:
             reasons: tuple[object, ...] = (classification.reason,)
@@ -748,6 +787,7 @@ class InstanceTransform:
                     plan_instance(source, fallback, iod),
                     self._key,
                     record.patient,
+                    record.series_numberings,
                 )
 
             try:
@@ -790,18 +830,15 @@ class InstanceTransform:
 
 
 def _pixel_risk(
-    dataset: pydicom.Dataset | None, record: InstanceRecord
+    dataset: pydicom.Dataset, record: InstanceRecord
 ) -> tuple[PixelRiskMaterial | SeriesEvidence, ...]:
     """The QC material of the source's indicators of risk in its pixel data.
 
     The source is assessed, since the Basic Profile removes some of the
     evidence, such as an overlay group whose graphics lie in the pixel data:
     its own indicators, if any, and what it gives the assessment of its
-    series, by its source Series Instance UID. A source whose data set does
-    not decode gives none: the walker and the gate decide what becomes of it.
+    series, by its source Series Instance UID.
     """
-    if dataset is None:
-        return ()
     assessment = assess_pixel_risk(dataset)
     return (
         *((PixelRiskMaterial(assessment),) if assessment.findings else ()),
@@ -966,10 +1003,10 @@ def _replaced(
 
 
 def _text(
-    dataset: pydicom.Dataset | None, path: ElementPath, source: SourceEvidence
+    dataset: pydicom.Dataset, path: ElementPath, source: SourceEvidence
 ) -> object:
     """Return the top-level value at ``path``, or ``None`` if it cannot be read."""
-    if dataset is None or path not in source:
+    if path not in source:
         return None
     try:
         values = read_element(dataset, path, DEFAULT_CODECS, source=source).values

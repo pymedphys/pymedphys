@@ -53,6 +53,7 @@ from .reasons import TransformReason
 from .release_gate import ReasonCode
 from .release_report import _HOLDING, _SEQUESTERING
 from .reviewed_roi_names import Outcome as RoiNameOutcome
+from .series_numbers import SERIES_NUMBER
 from .residuals import _BINARY as _BINARY_VRS
 from .residuals import _KINDS
 from .residuals import _NUMBERS as _NUMBER_VRS
@@ -326,6 +327,15 @@ def values_written(named: Callable[[str], str]) -> list[str]:
         "of the subject's identity: a Patient ID with its "
         f"{named('(0010,0021)')}, or a curated subject identifier.",
         "",
+        f"Wherever Z or D applies to {named(SERIES_NUMBER)}, it takes its "
+        "rank among the distinct Series Numbers that the run holds for the "
+        "study that holds the series it numbers, found by its Series Instance "
+        "UID, in ascending order from 1, so the order of the series survives "
+        "and the number does not. A value that is not one Integer String, or "
+        "has no rank, as where the run holds no instance of its series, is "
+        "emptied under Z and takes D's constant under D. The numbering spans "
+        "one run (D-022).",
+        "",
         f"U replaces a UID with `{uids.UID_ROOT}` followed by the decimal form "
         f"of a name-based (version 5) UUID, at most {uid_length} characters "
         f"in all. The UUID's namespace is `{uids.UID_NAMESPACE}`, and its name "
@@ -553,8 +563,9 @@ def release_report() -> list[str]:
         "values are collected for its subject's search; it is never written. "
         "An instance that the first pass read but whose values were not "
         "collected at all, since its source file was refused on its second "
-        "read, its SOP Class names no IOD of the pinned tables, its transform "
-        "raised an error, or its source file changed during the run, makes "
+        "read, its SOP Class names no IOD of the pinned tables, its Specific "
+        "Character Set could not be decoded, its transform raised an error, "
+        "or its source file changed during the run, makes "
         "the release gate withhold every other file of its subject, by "
         "`not-reported`, since its values were not searched for in them "
         "(D-027). An input that the first pass sequesters for a sequence it "

@@ -521,6 +521,103 @@ def test_a_presentation_lut_descriptor_stated_as_ss_is_refused():
         _read(dataset, PRESENTATION_LUT_DESCRIPTOR)
 
 
+ICON_IMAGE_SEQUENCE = "(0088,0200)"
+PALETTE_DESCRIPTORS = ("(0028,1101)", "(0028,1102)", "(0028,1103)")
+
+
+def _icon_image(descriptor, stated, representation, icon_representation):
+    """Return a CT image whose icon image has palette colour descriptors.
+
+    Each descriptor holds the bytes ``descriptor`` with the VR ``stated``,
+    as Explicit VR wrote them, or None or UN for Implicit VR. The image's
+    and the icon's Pixel Representation are as given, the icon's absent
+    where None.
+    """
+    dataset = _image(representation)
+    icon = pydicom.Dataset()
+    if icon_representation is not None:
+        icon.PixelRepresentation = icon_representation
+    for tag in PALETTE_DESCRIPTORS:
+        icon[_tag(tag)] = _raw(tag, stated, descriptor)
+    dataset.add(synthetic.sequence(_tag(ICON_IMAGE_SEQUENCE), [icon]))
+    return dataset
+
+
+def _palette_descriptors(dataset):
+    return [
+        _read(dataset, _path((ICON_IMAGE_SEQUENCE, 0), tag))
+        for tag in PALETTE_DESCRIPTORS
+    ]
+
+
+@pytest.mark.parametrize("stated", ["US", "SS"])
+@pytest.mark.parametrize(
+    "representation, icon_representation",
+    [(0, 0), (0, 1), (1, 0), (1, 1), (0, None), (1, None)],
+)
+def test_the_palette_descriptors_take_the_vr_that_explicit_vr_states(
+    stated, representation, icon_representation
+):
+    # "The explicit VR actually used is dictated by the VR needed to
+    # represent the second Value, which will be consistent with Pixel
+    # Representation" (PS3.3 Section C.7.6.3.1.5), so the file decides, even
+    # where the icon's Pixel Representation, or the image's, says otherwise.
+    dataset = _icon_image(DESCRIPTOR, stated, representation, icon_representation)
+
+    for descriptor in _palette_descriptors(dataset):
+        assert (descriptor.vr, descriptor.values) == (
+            stated,
+            DESCRIPTOR_VALUES[stated],
+        )
+
+
+@pytest.mark.parametrize("stated", [None, "UN"], ids=["implicit-vr", "un"])
+@pytest.mark.parametrize(
+    "representation, icon_representation, vr",
+    [(1, 0, "US"), (0, 1, "SS"), (0, None, "US"), (1, None, "SS")],
+    ids=["icon-us", "icon-ss", "image-us", "image-ss"],
+)
+def test_without_a_vr_in_the_file_pixel_representation_decides_the_palette_vr(
+    stated, representation, icon_representation, vr
+):
+    # The nearest data set that has Pixel Representation decides: the icon
+    # image's own, or else the image's.
+    dataset = _icon_image(DESCRIPTOR, stated, representation, icon_representation)
+
+    for descriptor in _palette_descriptors(dataset):
+        assert (descriptor.vr, descriptor.values) == (vr, DESCRIPTOR_VALUES[vr])
+
+
+@pytest.mark.parametrize("stated", ["SS", None], ids=["ss", "implicit-vr"])
+def test_the_first_and_third_palette_descriptor_values_are_unsigned(stated):
+    # "the first and third Values are always by definition interpreted as
+    # unsigned" (PS3.3 Section C.7.6.3.1.5).
+    encoded = struct.pack("<HhH", 40000, -2, 16)
+    dataset = _icon_image(encoded, stated, 1, 1)
+
+    for descriptor in _palette_descriptors(dataset):
+        assert (descriptor.vr, descriptor.values) == ("SS", (40000, -2, 16))
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+@TRANSFER_SYNTAXES
+def test_an_ss_palette_descriptor_is_written_and_read_back(transfer_syntax):
+    dataset = _image(1)
+    icon = pydicom.Dataset()
+    icon.PixelRepresentation = 1
+    for tag in PALETTE_DESCRIPTORS:
+        path = _path((ICON_IMAGE_SEQUENCE, 0), tag)
+        icon[_tag(tag)] = elements.new_element(
+            path, "SS", (40000, -2, 16), elements.DEFAULT_CODECS
+        )
+    dataset.add(synthetic.sequence(_tag(ICON_IMAGE_SEQUENCE), [icon]))
+
+    read = _written_and_read(dataset, transfer_syntax)
+
+    for descriptor in _palette_descriptors(read):
+        assert (descriptor.vr, descriptor.values) == ("SS", (40000, -2, 16))
+
+
 @pytest.mark.parametrize(
     "changes",
     [

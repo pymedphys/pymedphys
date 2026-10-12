@@ -82,8 +82,13 @@ from pymedphys._dicom.deidentify.residuals import (
     written_constants,
 )
 from pymedphys._dicom.deidentify.run_qc import Dropped, SearchMaterial, SeriesEvidence
-from pymedphys._dicom.deidentify.scope import UnsupportedIod
-from pymedphys._dicom.deidentify.source import SourceReason, read_source
+from pymedphys._dicom.deidentify.scope import Disposition, UnsupportedIod
+from pymedphys._dicom.deidentify.source import (
+    SourceEvidence,
+    SourceReason,
+    SourceRefused,
+    read_source,
+)
 from pymedphys._dicom.deidentify.uids import UIDOutcome, replacement_uid
 from pymedphys._dicom.deidentify.walker import (
     SequesterReason,
@@ -720,6 +725,71 @@ def test_a_source_file_that_is_not_ps3_10_is_sequestered_by_the_source_reason():
     assert result == run.Sequestered((SourceReason.NOT_PS3_10,))
 
 
+def test_a_source_that_pydicom_cannot_read_is_sequestered_by_the_source_reason(
+    monkeypatch,
+):
+    data = synthetic.written(_plan_with_sentinels())
+
+    def refused(_):
+        raise SourceRefused(SourceReason.PYDICOM)
+
+    monkeypatch.setattr(SourceEvidence, "dataset", refused)
+    result = _transform()(data, InstanceRecord.from_file(data))
+
+    assert result == run.Sequestered((SourceReason.PYDICOM,))
+
+
+_CHARACTER_SET = 0x00080005
+_UNSUPPORTED_CHARACTER_SET = Sequestration(
+    ElementPath((), "(0008,0005)"),
+    "K",
+    "CS",
+    SequesterReason.UNSUPPORTED_CHARACTER_SET,
+)
+
+
+def _with_character_set(dataset, value, vr="CS"):
+    dataset[_CHARACTER_SET] = pydicom.DataElement(_CHARACTER_SET, vr, value)
+    return dataset
+
+
+@pytest.mark.parametrize(
+    "value, vr",
+    [
+        ("ISO_IR 999", "CS"),  # not a Defined Term of PS3.3 C.12.1.1.2
+        (["ISO 2022 IR 999", "ISO 2022 IR 998"], "CS"),
+        (["ISO_IR 100", "ISO_IR 192"], "CS"),  # ISO_IR 192 allows no extensions
+        ("ISO_IR 100", "LO"),  # a VR that the pinned dictionary does not give
+    ],
+    ids=["not-a-term", "two-not-terms", "no-extensions", "not-cs"],
+)
+def test_an_unsupported_character_set_sequesters_by_its_path(value, vr):
+    dataset = _with_character_set(_plan_with_sentinels(), value, vr)
+    result = _transformed(dataset)
+
+    # The walker's reason for an item's character set (D-010), never no SOP
+    # Class: the SOP Class UID is UI, which no character set changes.
+    assert result == run.Sequestered((_UNSUPPORTED_CHARACTER_SET,))
+    assert "SENTINEL" not in repr(result)
+
+
+def test_an_unsupported_character_set_keeps_the_scope_reason_first():
+    nm = synthetic.instance(
+        synthetic.NM_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
+    )
+    result = _transformed(_with_character_set(nm, "ISO_IR 999"))
+
+    assert result == run.Sequestered(
+        (UnsupportedIod("Nuclear Medicine Image"), _UNSUPPORTED_CHARACTER_SET)
+    )
+
+    plan = _with_character_set(_plan_with_sentinels(), "ISO_IR 999")
+    plan.SOPClassUID = _UNLISTED_SOP_CLASS
+    result = _transformed(plan)
+
+    assert result == run.Sequestered((Disposition.UNLISTED_SOP_CLASS,))
+
+
 def test_without_the_subjects_identity_the_pseudonyms_are_pending():
     dataset = synthetic.rt_plan()
     dataset.PatientID = ""
@@ -756,26 +826,29 @@ _UNLISTED_SOP_CLASS = "2.25.999"
 _SHARED = "QUIMBYZELDA7"
 
 
-def _plan_label_kept_in_a_dose(tmp_path, plan_class=None):
+def _plan_label_kept_in_a_dose(tmp_path, plan_class=None, character_set=None):
     """A plan, at position 0, whose label its subject's dose keeps."""
     plan = synthetic.rt_plan()
     plan.RTPlanLabel = _SHARED
     if plan_class is not None:
         plan.SOPClassUID = plan_class
+    if character_set is not None:
+        _with_character_set(plan, character_set)
     dose = synthetic.rt_dose()
     dose.DoseUnits = _SHARED  # kept as it is (K)
     return _source(tmp_path, [plan, dose])
 
 
 @pytest.mark.deid_requirement("MIDI-BP-17")
-@pytest.mark.parametrize("cause", ["no-iod", "raises", "changed"])
+@pytest.mark.parametrize("cause", ["no-iod", "character-set", "raises", "changed"])
 def test_a_sibling_that_gives_no_evidence_withholds_its_subject(
     tmp_path, monkeypatch, cause
 ):
     # Without the plan's coverage, the dose's search could not look for the
     # plan's label, which the dose keeps (D-027).
     no_iod = _UNLISTED_SOP_CLASS if cause == "no-iod" else None
-    discovery = _plan_label_kept_in_a_dose(tmp_path, no_iod)
+    character_set = "ISO_IR 999" if cause == "character-set" else None
+    discovery = _plan_label_kept_in_a_dose(tmp_path, no_iod, character_set)
     transform = _transform()
     if cause == "raises":
         calls = []
@@ -1105,6 +1178,55 @@ def test_a_removed_registered_uid_does_not_withhold_the_collection(tmp_path):
         qc_destination=tmp_path / "qc",
     )
 
+    assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
+
+
+def _ct_with_an_icon(vr, icon_representation):
+    """A CT slice whose icon image's palette colour descriptors are of ``vr``."""
+    ct = synthetic.ct_slice(0)
+    ct.PixelRepresentation = 1
+    icon = pydicom.Dataset()
+    icon.PhotometricInterpretation = "PALETTE COLOR"
+    if icon_representation is not None:
+        icon.PixelRepresentation = icon_representation
+    for tag in (0x00281101, 0x00281102, 0x00281103):
+        icon.add_new(tag, vr, [256, 0, 8])
+    ct.IconImageSequence = pydicom.Sequence([icon])
+    return ct
+
+
+@pytest.mark.parametrize(
+    "vr, icon_representation", [("US", None), ("SS", 0)], ids=["us", "ss"]
+)
+def test_palette_descriptors_whose_vr_pixel_representation_contradicts_are_collected(
+    tmp_path, vr, icon_representation
+):
+    # Explicit VR states the VR that the second value needs (PS3.3 Section
+    # C.7.6.3.1.5), so an icon image's descriptors are collected, and do not
+    # withhold the collection, where Pixel Representation would say otherwise.
+    ct = _ct_with_an_icon(vr, icon_representation)
+    data = synthetic.written(ct)
+    source = read_source(data)
+    plan = plan_instance(
+        source, ElementRules(compose_policy("basic")), _iod("CT Image")
+    )
+    coverage = coverage_of(plan, edit_instance(source, plan, KEY))
+    collected = {value.source: value.vr for value in coverage.collected}
+    datasets = [
+        ct if dataset.SOPInstanceUID == ct.SOPInstanceUID else dataset
+        for dataset in synthetic.collection()
+    ]
+    result = run.run(
+        _source(tmp_path, datasets),
+        tmp_path / "release",
+        _transform(),
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+    )
+
+    assert not coverage.uncollected
+    for tag in ("(0028,1101)", "(0028,1102)", "(0028,1103)"):
+        assert collected[ElementPath((("(0088,0200)", 0),), tag)] == vr
     assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
 
 

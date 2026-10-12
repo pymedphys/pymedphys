@@ -238,6 +238,9 @@ KEPT_URIS = {"(0008,010E)": "CodingSchemeURL", "(0008,0120)": "URNCodeValue"}
 # place that no removed sequence encloses, so that X/Z/D resolves to D there.
 REQUIRED_URIS = {"(0028,7FE0)"}
 ICC_PROFILE = "(0028,2000)"
+# A number that can hold anything, such as a date, which Z or D replaces
+# with its rank among its study's Series Numbers.
+SERIES_NUMBER = "(0020,0011)"
 
 
 @functools.cache
@@ -285,6 +288,30 @@ def test_each_level_decides_its_elements(tag, source, action, entry):
     rule = _rules().rule(tag)
 
     assert rule == ElementRule(tag=tag, source=source, action=action, entry=entry)
+
+
+@pytest.mark.parametrize(
+    "tag, source, action",
+    [
+        ("(0018,0060)", DEFAULT, "K"),  # KVP
+        ("(0020,0012)", DEFAULT, "K"),  # Acquisition Number
+        ("(0008,0008)", DEFAULT, "K"),  # Image Type
+        ("(0028,0106)", DEFAULT, "K"),  # Smallest Image Pixel Value
+        ("(0020,1040)", SUPPLEMENTARY, "X/Z/D"),  # Position Reference Indicator
+    ],
+)
+@pytest.mark.parametrize("preset", ["basic", "basic-clean-descriptors"])
+def test_the_attributes_of_midi_b_checks_that_fail_by_design_keep_their_rules(
+    tag, source, action, preset
+):
+    # MIDI-B's answer keys expect these present even where the source lacks
+    # them, and Smallest Image Pixel Value as they read it. The rules keep
+    # them, emptying Position Reference Indicator where it is Type 2.
+    if preset == "basic-clean-descriptors" and source is SUPPLEMENTARY:
+        action = "C"
+    rule = _rules(preset).rule(tag)
+
+    assert (rule.source, rule.action) == (source, action)
 
 
 @pytest.mark.parametrize("tag, preset, source, action", POLICY_RULES)
@@ -601,6 +628,48 @@ def test_patient_size_code_sequence_is_removed_under_retain_patient_characterist
     assert rules.rule("(0010,1020)").action == "K"  # Patient's Size
     action = rules.rule("(0010,1021)").action
     assert compound_actions.resolve_in_iod(ct_image, "(0010,1021)", (), action) == "X"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+def test_series_number_has_x_z_d_under_every_option():
+    rule = supplementary_actions.load_supplementary_actions().rules[SERIES_NUMBER]
+
+    assert (rule.keyword, rule.action, dict(rule.options)) == (
+        "SeriesNumber",
+        "X/Z/D",
+        {},
+    )
+    for composed in _usable_policies():
+        assert ElementRules(composed).rule(SERIES_NUMBER) == ElementRule(
+            SERIES_NUMBER, SUPPLEMENTARY, "X/Z/D", SERIES_NUMBER
+        )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-06")
+def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
+    # Type 2 in the General Series and RT Series Modules; Type 1 only in the
+    # items of the Structure Set Module's Source Series Information Sequence.
+    # Either way it then takes its rank, or is emptied or given D's dummy
+    # value if it has none.
+    tables = iods.load_iod_tables()
+    resolved = {
+        (
+            name,
+            definition.path,
+            compound_actions.resolve_in_iod(
+                tables.iods[name], SERIES_NUMBER, definition.path, "X/Z/D"
+            ),
+        )
+        for name in SUPPORTED_IODS
+        for definition in tables.iods[name].definitions
+        if definition.tag == SERIES_NUMBER
+    }
+
+    assert {name for name, _, _ in resolved} == set(SUPPORTED_IODS)
+    assert {(name, path) for name, path, action in resolved if action != "Z"} == {
+        ("RT Structure Set", ("(3006,004C)",))
+    }
+    assert {action for _, _, action in resolved} == {"Z", "D"}
 
 
 # Building the rules the first time in a process takes longer than
