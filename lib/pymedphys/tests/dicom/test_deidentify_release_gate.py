@@ -18,6 +18,8 @@ import struct
 
 from pymedphys._imports import pytest
 
+from pymedphys._dicom.deidentify import markers, policy
+from pymedphys._dicom.deidentify.codes import load_context_group
 from pymedphys._dicom.deidentify.file_layout import ElementPath, Region
 from pymedphys._dicom.deidentify.release_gate import (
     CollectionOutcome,
@@ -135,6 +137,34 @@ def _codes(condition):
 @pytest.mark.deid_requirement("MIDI-BP-01")
 def test_the_rule_selects_exactly_the_direct_identifiers_the_design_lists():
     assert direct_identifiers() == frozenset(LISTED)
+
+
+def _refused_option_codes():
+    """The code and the meaning of each option that the engine refuses."""
+    meanings = {
+        row.code_value: row.code_meaning
+        for row in load_context_group(7050).rows
+        if row.scheme_designator == markers.DCM
+    }
+    return [
+        pytest.param(text, id=f"{option}-{kind}")
+        for option, code in markers.OPTION_CODES.items()
+        if option not in policy.ENGINE_OPTIONS
+        for kind, text in (("code", code), ("meaning", meanings[code]))
+    ]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize("value", _refused_option_codes())
+def test_a_patient_id_equal_to_a_refused_options_code_is_withheld_where_found(value):
+    # The markers never write the code of an option that the engine refuses,
+    # so the search leaves neither it nor its meaning out (D-027).
+    coverage = _coverage(SourceValue(ID_PATH, "LO", value))
+
+    condition = release_condition(coverage, _written(value))
+
+    assert condition.decision is Decision.WITHHOLD
+    assert _codes(condition) == [ReasonCode.RESIDUAL_DIRECT_IDENTIFIER]
 
 
 # Collection outcomes.

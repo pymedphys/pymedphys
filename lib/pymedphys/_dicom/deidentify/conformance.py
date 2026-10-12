@@ -78,7 +78,7 @@ from .element_rules import (
 )
 from .iods import IOD, load_iod_tables
 from .method_digest import digest_inputs, method_digest
-from .policy import Policy, PolicyError, ResolvedConflict
+from .policy import SAFE_PRIVATE, Policy, PolicyError, ResolvedConflict
 from .scope import SUPPORTED_IODS, SUPPORTED_TRANSFER_SYNTAXES, classify
 from .sop_classes import load_storage_sop_classes
 from .standard import (
@@ -94,19 +94,9 @@ from .uid_registry import load_uid_values
 from .uid_roles import UIDRole, load_uid_roles
 from .walker import DESCENDED
 
-# The CID 7050 code of each option of Table E.1-1: those of the supported
-# options from the markers, and those of the others, which the statement
-# names as not supported.
-OPTION_CODES: Mapping[str, str] = types.MappingProxyType(
-    {
-        **markers.OPTION_CODES,
-        "retain_uids": "113110",
-        "retain_institution_identity": "113112",
-        "retain_longitudinal_full_dates": "113106",
-        "clean_structured_content": "113104",
-        "clean_graphics": "113103",
-    }
-)
+# The CID 7050 code of each option of Table E.1-1, which every policy can
+# compose.
+OPTION_CODES: Mapping[str, str] = markers.OPTION_CODES
 
 # The CID 7050 codes of Clean Pixel Data and Clean Recognizable Visual
 # Features, which PS3.15 E.1.1 Note 11 leaves out of Table E.1-1. Neither is
@@ -143,7 +133,16 @@ CLEAN_DESCRIPTORS_FALLBACK = "clean descriptors fallback"
 # What the statement cannot yet describe from the engine, whatever the
 # policy. Each is to be generated once the engine decides it; none remains.
 PENDING: tuple[str, ...] = ()
-# Pending only for a policy whose element rules the engine refuses.
+# Pending only for a policy that selects an option the engine does not yet
+# apply.
+PENDING_UNAPPLIED = (
+    "The actions that the engine applies under this policy, which it refuses "
+    "because it does not yet apply every selected option: the actions above "
+    "are those that the policy gives, and the rules for elements that no row "
+    "covers are not listed."
+)
+# Pending only for a policy whose element rules the engine refuses because
+# it selects Retain Safe Private.
 PENDING_REFUSED = (
     "The actions that the engine applies under this policy, which it refuses "
     "until reviewed rules say which private attributes are safe to retain: "
@@ -802,14 +801,16 @@ def conformance_statement(
     except PolicyError:
         rules = None
     attributes = tuple(_fallen_back(policy, rules, _attributes(policy, rules)))
+    safe_private = SAFE_PRIVATE in policy.options
     actions = {entry.action for entry in attributes if entry.tag != _ROI_NAME}
     pending = PENDING + tuple(
         item
         for item, applies in (
-            (PENDING_REFUSED, rules is None),
+            (PENDING_UNAPPLIED, rules is None and not safe_private),
+            (PENDING_REFUSED, rules is None and safe_private),
             (PENDING_CLEANING, "C" in actions),
             (PENDING_FALLBACK, not _falls_back(policy)),
-            (PENDING_SAFE_PRIVATE, "retain_safe_private" in policy.options),
+            (PENDING_SAFE_PRIVATE, safe_private),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
         )
         if applies

@@ -57,18 +57,28 @@ CUSTOM_OPTIONS = ("retain_patient_characteristics", "retain_device_identity")
 # each one names.
 CID_7050 = {
     "113100": "Basic Application Confidentiality Profile",
+    "113103": "Clean Graphics Option",
+    "113104": "Clean Structured Content Option",
     "113105": "Clean Descriptors Option",
+    "113106": "Retain Longitudinal Temporal Information Full Dates Option",
     "113107": "Retain Longitudinal Temporal Information Modified Dates Option",
     "113108": "Retain Patient Characteristics Option",
     "113109": "Retain Device Identity Option",
+    "113110": "Retain UIDs Option",
     "113111": "Retain Safe Private Option",
+    "113112": "Retain Institution Identity Option",
 }
 OPTION_CODES = {
     "retain_safe_private": "113111",
+    "retain_uids": "113110",
     "retain_device_identity": "113109",
+    "retain_institution_identity": "113112",
     "retain_patient_characteristics": "113108",
+    "retain_longitudinal_full_dates": "113106",
     "retain_longitudinal_modified_dates": "113107",
     "clean_descriptors": "113105",
+    "clean_structured_content": "113104",
+    "clean_graphics": "113103",
 }
 
 # Each preset's claim in its readable value, its codes when every option is
@@ -253,6 +263,29 @@ def test_a_custom_option_set_with_modified_dates_marks_dates_as_modified():
     assert [code.code_value for code in found.method_codes] == ["113100", "113107"]
 
 
+def test_a_custom_option_set_with_full_dates_marks_dates_as_unmodified():
+    options = ["retain_longitudinal_full_dates"]
+    found = markers.markers_for(
+        policy.compose_custom_policy(options), DIGEST, satisfied=options
+    )
+
+    assert found.temporal_information_modified == "UNMODIFIED"
+    assert [code.code_value for code in found.method_codes] == ["113100", "113106"]
+
+
+@pytest.mark.parametrize("option", standard.OPTIONS)
+def test_each_option_alone_adds_its_code_after_the_profiles(option):
+    found = markers.markers_for(
+        policy.compose_custom_policy([option]), DIGEST, satisfied=[option]
+    )
+
+    assert [(c.code_value, c.code_meaning) for c in found.method_codes] == [
+        ("113100", CID_7050["113100"]),
+        (OPTION_CODES[option], CID_7050[OPTION_CODES[option]]),
+    ]
+    assert found.method[1].endswith("; PS3.15 2026d; custom option set")
+
+
 def test_codes_follow_the_profile_in_table_e1_1s_order_of_options():
     composed = policy.compose_policy("public-release")
 
@@ -363,19 +396,20 @@ def test_every_code_is_a_row_of_the_pinned_context_groups():
         )
 
 
-def test_each_target_option_has_the_cid_7050_code_that_names_it():
+def test_each_option_of_table_e1_1_has_the_cid_7050_code_that_names_it():
     pinned = {
         row.code_value: row.code_meaning
         for row in codes.load_context_group(7050).rows
         if row.scheme_designator == "DCM"
     }
 
-    assert set(markers.OPTION_CODES) == set(policy.TARGET_OPTIONS)
+    assert tuple(markers.OPTION_CODES) == standard.OPTIONS
     assert dict(markers.OPTION_CODES) == OPTION_CODES
     assert markers.PROFILE_CODE == "113100"
     for value, meaning in CID_7050.items():
         assert pinned[value] == meaning
-    # Clean Pixel Data and Clean Recognizable Visual Features are never claimed.
+    # Clean Pixel Data and Clean Recognizable Visual Features, which have no
+    # column in Table E.1-1, are never claimed.
     assert {"113101", "113102"}.isdisjoint(markers.OPTION_CODES.values())
 
 
@@ -1793,10 +1827,10 @@ def test_an_option_that_the_policy_records_as_unmet_is_never_required(monkeypatc
 
 def test_a_policy_with_an_option_that_has_no_code_is_refused():
     outside = dataclasses.replace(
-        policy.compose_policy("basic"), options=("retain_uids",)
+        policy.compose_policy("basic"), options=("clean_pixel_data",)
     )
 
-    with pytest.raises(ValueError, match="retain_uids have no code"):
+    with pytest.raises(ValueError, match="clean_pixel_data have no code"):
         markers.markers_for(outside, DIGEST, satisfied=())
 
 

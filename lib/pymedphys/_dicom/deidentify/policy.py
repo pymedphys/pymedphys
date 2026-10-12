@@ -16,7 +16,7 @@
 
 A preset names a set of DICOM PS3.15 Options on top of the Basic Application
 Level Confidentiality Profile, chosen from the Options that the design
-document's Scope targets:
+document's Scope targets (:data:`TARGET_OPTIONS`):
 
 - ``basic``, the default: the Basic Profile alone;
 - ``basic-clean-descriptors``: Clean Descriptors, so that cleaned
@@ -33,9 +33,12 @@ and each reviewed supplementary rule, for an attribute that the table omits,
 its action under the same options
 (:func:`~pymedphys._dicom.deidentify.actions.effective_supplementary_actions`),
 such as C for Beam Name under Clean Descriptors. It first checks that the
-options are within the supported scope and that the table is of the same
-edition as the data dictionary, against which the supplementary rules were
-reviewed.
+options are options of Table E.1-1, not both Retain Longitudinal Temporal
+Information Options, which PS3.15 E.3.6 makes mutually exclusive, and that
+the table is of the same edition as the data dictionary, against which the
+supplementary rules were reviewed. Any option of Table E.1-1 can be composed,
+so that its policy can be described; the engine applies only a policy whose
+options are all in :data:`ENGINE_OPTIONS` (:func:`refuse_unapplied_options`).
 
 PS3.15 defines no precedence between options, so an attribute to which two
 selected options give different actions makes the policy invalid. The one
@@ -63,12 +66,19 @@ from collections.abc import Iterable, Mapping
 
 from .actions import OptionConflict, effective_actions, effective_supplementary_actions
 from .attribute_roles import AttributeRoles
-from .standard import OPTIONS, ProfileTable, load_data_dictionary, load_table_e1_1
+from .standard import (
+    MUTUALLY_EXCLUSIVE,
+    OPTIONS,
+    ProfileTable,
+    load_data_dictionary,
+    load_table_e1_1,
+)
 from .temporal_roles import TemporalRole, load_temporal_roles
 
 SAFE_PRIVATE = "retain_safe_private"
 DEVICE_IDENTITY = "retain_device_identity"
 MODIFIED_DATES = "retain_longitudinal_modified_dates"
+FULL_DATES = "retain_longitudinal_full_dates"
 
 # The Options that the design document's Scope targets, in Table E.1-1's order.
 TARGET_OPTIONS = (
@@ -78,6 +88,13 @@ TARGET_OPTIONS = (
     MODIFIED_DATES,
     "clean_descriptors",
 )
+# The options whose policies the engine accepts, in Table E.1-1's order. Every
+# option of Table E.1-1 can be composed into a policy, but the engine refuses
+# a policy that selects any other (refuse_unapplied_options); each option
+# joins once the engine applies its actions. Retain Safe Private is among
+# them, but refused on its own until reviewed rules say which private
+# attributes are safe (refuse_retain_safe_private).
+ENGINE_OPTIONS = TARGET_OPTIONS
 
 # Each preset's options, in Table E.1-1's order.
 PRESETS: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
@@ -213,17 +230,12 @@ def _checked_options(options: Iterable[str]) -> tuple[str, ...]:
             f"unknown options {unknown}; the options of Table E.1-1 are "
             + ", ".join(OPTIONS)
         )
-    unsupported = [o for o in OPTIONS if o in chosen and o not in TARGET_OPTIONS]
-    if unsupported:
-        named = (
-            f"the option {unsupported[0]} is"
-            if len(unsupported) == 1
-            else f"the options {_join(unsupported)} are"
-        )
-        raise PolicyError(
-            f"{named} outside the supported scope; "
-            f"the supported options are {_join(TARGET_OPTIONS)}"
-        )
+    for exclusive in MUTUALLY_EXCLUSIVE:
+        if exclusive <= chosen:
+            raise PolicyError(
+                f"the options {_join(o for o in OPTIONS if o in exclusive)} "
+                "are mutually exclusive (PS3.15 E.3.6)"
+            )
     return tuple(option for option in OPTIONS if option in chosen)
 
 
@@ -370,7 +382,8 @@ def compose_custom_policy(
     Parameters
     ----------
     options : iterable of str
-        The selected options, from :data:`TARGET_OPTIONS`.
+        The selected options, from those of Table E.1-1. The engine applies
+        the policy only if every one is in :data:`ENGINE_OPTIONS`.
     table : ProfileTable, optional
         Table E.1-1. Defaults to
         :func:`~pymedphys._dicom.deidentify.standard.load_table_e1_1`.
@@ -385,10 +398,10 @@ def compose_custom_policy(
     TypeError
         If ``options`` is a single string rather than a collection of names.
     PolicyError
-        If an option is not one of Table E.1-1's options, or is outside
-        :data:`TARGET_OPTIONS`; if the table is of another edition than the
-        data dictionary; or if two of the options give an attribute
-        different actions.
+        If an option is not one of Table E.1-1's options; if the options
+        include both Retain Longitudinal Temporal Information Options; if
+        the table is of another edition than the data dictionary; or if two
+        of the options give an attribute different actions.
     """
     return _compose(None, options, table)
 
@@ -448,4 +461,32 @@ def refuse_retain_safe_private(policy: Policy) -> None:
             "the Retain Safe Private Option keeps the private attributes that "
             "are known to be safe, and no reviewed rules yet say which are, so "
             "a policy that selects it cannot yet be applied"
+        )
+
+
+def refuse_unapplied_options(policy: Policy) -> None:
+    """Refuse a policy that selects an option the engine does not yet apply.
+
+    Every option of Table E.1-1 can be composed into a policy, so that its
+    actions can be described, but the engine applies only the options in
+    :data:`ENGINE_OPTIONS`. The rule of every element refuses any other with
+    this, before anything is transformed.
+
+    Raises
+    ------
+    PolicyError
+        If ``policy`` selects an option outside :data:`ENGINE_OPTIONS`. The
+        message names each such option.
+    """
+    unapplied = [o for o in policy.options if o not in ENGINE_OPTIONS]
+    if unapplied:
+        named = (
+            f"the option {unapplied[0]}"
+            if len(unapplied) == 1
+            else f"the options {_join(unapplied)}"
+        )
+        raise PolicyError(
+            f"the engine does not yet apply {named}, so a policy that selects "
+            f"{'it' if len(unapplied) == 1 else 'them'} can be composed and "
+            "described but not applied; the engine applies " + _join(ENGINE_OPTIONS)
         )
