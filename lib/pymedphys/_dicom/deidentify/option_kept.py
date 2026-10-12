@@ -56,7 +56,7 @@ from .file_layout import ElementPath
 from .policy import compose_custom_policy
 from .residuals import _KINDS, MAX_CHARACTERS, MIN_CHARACTERS, Form, SourceValue
 from .residuals import ValueKind
-from .residuals import _forms, _length
+from .residuals import _folded, _forms, _length
 from .standard import dictionary_attribute
 
 # The VRs of text, coded text, and AE titles, in which kept text is read.
@@ -186,7 +186,10 @@ def retained_value(
         the search could have found in the element is one too. Values are
         read as the search reads them, by the VR collected with each: a
         backslash separates the values of a multi-valued VR, but is a
-        character of a single-valued one, such as ST. A source value found
+        character of a single-valued one, such as ST. They are found as the
+        search encodes them, in each of its codecs, so a value whose
+        UTF-16LE bytes are in the element can be found there whatever the
+        source's character set. A source value found
         inside a longer kept value, across two kept values, or in a value
         that no option keeps, is not explained. The search records one
         finding of a source in each element, for whichever of its pooled
@@ -204,7 +207,7 @@ def retained_value(
         return False
     explained = False
     for value in found:
-        for whole in _values_in(value, values, text.lower()):
+        for whole in _values_in(value, values, text.encode("ascii").lower()):
             if whole is None:
                 return False
             explained = explained or whole
@@ -212,28 +215,30 @@ def retained_value(
 
 
 def _values_in(
-    value: SourceValue, kept: tuple[str, ...], text: str
+    value: SourceValue, kept: tuple[str, ...], written: bytes
 ) -> Iterator[bool | None]:
     """Yield, for each value of ``value``, whether ``kept`` explains it.
 
     True for a value equal to a whole kept value; None for one that is not
-    but that the search could find in ``text``, the kept element's whole
-    value in lower case; nothing for one that it could not. A value of a
-    kind that a kept date cannot explain is never explained. Each form that
-    the search derives, of at least its shortest length and cut to its
-    longest, is looked for ignoring the characters around it, which finds
-    at least what the search does.
+    but that the search could find in ``written``, the kept element's whole
+    value with ASCII letters in lower case; nothing for one that it could
+    not. A value of a kind that a kept date cannot explain is never
+    explained. Each form that the search derives, of at least its shortest
+    length and cut to its longest, is looked for as the search encodes it,
+    in each codec and case, but ignoring the characters around it, which
+    finds at least what the search does.
     """
     kind = _KINDS.get(value.vr)
     if not isinstance(value.value, str) or kind is None:
         return
     whole = False
-    for form, written in _forms(value.value, value.vr, kind):
+    for form, text in _forms(value.value, value.vr, kind):
         if form is Form.VALUE:
-            whole = kind in _EXPLICABLE and bool(written) and written in kept
+            whole = kind in _EXPLICABLE and bool(text) and text in kept
             if whole:
                 yield True
-        if not whole and _length(written) >= MIN_CHARACTERS:
+        if not whole and _length(text) >= MIN_CHARACTERS:
             # The search looks for a long form by its first characters.
-            if written[:MAX_CHARACTERS].lower() in text:
-                yield None
+            for _, folded, run in _folded(text[:MAX_CHARACTERS], value.codecs):
+                if folded in written or (run is not None and run in written):
+                    yield None

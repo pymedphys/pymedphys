@@ -78,7 +78,8 @@ def _written(*elements):
 def _condition(written, options, *removed):
     """The release condition of ``written`` for the removed values given."""
     values = [
-        SourceValue(ElementPath((), tag), vr, value) for tag, vr, value in removed
+        SourceValue(ElementPath((), tag), vr, value, tuple(codecs))
+        for tag, vr, value, *codecs in removed
     ]
     coverage = Coverage(
         planned=frozenset(value.source for value in values),
@@ -337,6 +338,43 @@ def test_a_long_value_found_by_its_first_characters_goes_to_review(vr, pooled):
     assert len(LONG) > 256
     assert condition.decision is Decision.QC_REVIEW
     assert not condition.exempted
+
+
+# The search also looks for each value's bytes in UTF-16LE, whatever the
+# source's character set: these four characters are "120000.1" in it.
+WIDE = b"120000.1".decode("utf-16-le")
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize("vr", ["ST", "LT", "UT"])
+@pytest.mark.parametrize(
+    "pooled, options",
+    [
+        ((WIDE, "1300"), [DEVICE_IDENTITY]),
+        (("1300", WIDE), [DEVICE_IDENTITY]),
+        ((WIDE,), [DEVICE_IDENTITY]),
+        ((WIDE, "1300"), []),
+    ],
+)
+def test_a_value_found_by_its_encoded_bytes_goes_to_review(vr, pooled, options):
+    written = _written(_element(TIME_OF_LAST_CALIBRATION, "TM", CALIBRATION_TIMES))
+    removed = [(PRIVATE_VALUE, vr, value, "utf8") for value in pooled]
+    condition = _condition(written, options, *removed)
+
+    assert condition.decision is Decision.QC_REVIEW
+    assert not condition.exempted
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize("vr", ["ST", "LT", "UT"])
+def test_a_utf_8_value_equal_to_a_whole_kept_time_is_released(vr):
+    written = _written(_element(TIME_OF_LAST_CALIBRATION, "TM", CALIBRATION_TIMES))
+    condition = _condition(
+        written, [DEVICE_IDENTITY], (PRIVATE_VALUE, vr, "1300", "utf8")
+    )
+
+    assert condition.decision is Decision.RELEASE
+    assert _why(condition) == [Exemption.RETAINED_VALUE]
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
