@@ -79,7 +79,7 @@ from .diagnostics import RedactionCounts, redacted_diagnostics
 from .keys import DeidKey
 from .qc_pack import QcPackError
 from .reviewed_roi_names import ReviewedNames, ReviewedNamesError
-from .standard import OPTIONS
+from .standard import ALL_OPTIONS
 
 EXIT_RELEASED = 0
 EXIT_WITHHELD = 1
@@ -367,13 +367,13 @@ def build_parser(
     selection.add_argument(
         "--option",
         action="append",
-        choices=OPTIONS,
+        choices=ALL_OPTIONS,
         dest="options",
         metavar="OPTION",
         help=(
-            "in place of --preset, an option of PS3.15 Table E.1-1 to apply "
-            "with the Basic Profile, given once for each option: "
-            + ", ".join(OPTIONS)
+            "in place of --preset, a PS3.15 option to apply with the Basic "
+            "Profile, given once for each option: "
+            + ", ".join(ALL_OPTIONS)
             + "; a run is refused unless each option it gives is enabled"
         ),
     )

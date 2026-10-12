@@ -583,10 +583,66 @@ def test_the_two_retain_longitudinal_temporal_information_options_are_exclusive(
 
 
 def test_the_engine_applies_the_options_that_it_marks_applied():
-    assert tuple(policy.ENGINE_APPLIES) == standard.OPTIONS
+    assert tuple(policy.ENGINE_APPLIES) == standard.ALL_OPTIONS
     assert policy.ENGINE_OPTIONS == tuple(
-        o for o in standard.OPTIONS if policy.ENGINE_APPLIES[o]
+        o for o in standard.ALL_OPTIONS if policy.ENGINE_APPLIES[o]
     )
+
+
+def test_the_pixel_options_follow_table_e1_1s():
+    # PS3.15 E.1.1 Note 11 leaves Clean Pixel Data and Clean Recognizable
+    # Visual Features out of Table E.1-1.
+    assert (
+        policy.CLEAN_PIXEL_DATA,
+        policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    ) == standard.PIXEL_OPTIONS
+    assert standard.ALL_OPTIONS == standard.OPTIONS + standard.PIXEL_OPTIONS
+    assert set(standard.PIXEL_OPTIONS).isdisjoint(standard.OPTIONS)
+
+
+@pytest.mark.parametrize("option", standard.PIXEL_OPTIONS)
+@pytest.mark.parametrize("preset", policy.PRESETS)
+def test_a_pixel_option_gives_no_attribute_an_action(option, preset):
+    options = policy.PRESETS[preset]
+    if preset == "tps-import":
+        # Its conflicts are resolved only by the preset itself.
+        options = tuple(o for o in options if o != DEVICE_IDENTITY)
+    without = policy.compose_custom_policy(options)
+
+    composed = policy.compose_custom_policy([option, *reversed(options)])
+
+    assert composed.options == (*without.options, option)
+    assert dict(composed.actions) == dict(without.actions)
+    assert dict(composed.supplementary_actions) == dict(without.supplementary_actions)
+    assert composed.resolved == without.resolved
+    assert composed.claims_conformance
+
+
+def test_both_pixel_options_follow_the_table_options_in_their_order():
+    composed = policy.compose_custom_policy(
+        [
+            policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+            CLEAN_DESCRIPTORS,
+            policy.CLEAN_PIXEL_DATA,
+            MODIFIED_DATES,
+        ]
+    )
+
+    assert composed.options == (
+        MODIFIED_DATES,
+        CLEAN_DESCRIPTORS,
+        policy.CLEAN_PIXEL_DATA,
+        policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    )
+
+
+@pytest.mark.parametrize("option", standard.PIXEL_OPTIONS)
+def test_the_engine_does_not_yet_apply_a_pixel_option(option):
+    composed = policy.compose_custom_policy([option])
+
+    assert option not in policy.ENGINE_OPTIONS
+    with pytest.raises(policy.PolicyError, match=f"apply the option {option},"):
+        policy.refuse_unapplied_options(composed)
 
 
 @pytest.mark.parametrize(
@@ -643,7 +699,10 @@ def test_a_preset_must_be_named(preset):
 
 
 def test_an_unknown_option_is_rejected():
-    with pytest.raises(policy.PolicyError, match="'retain_everything'"):
+    message = "unknown options ['retain_everything']; the options are " + ", ".join(
+        standard.ALL_OPTIONS
+    )
+    with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
         policy.compose_custom_policy([CLEAN_DESCRIPTORS, "retain_everything"])
 
 

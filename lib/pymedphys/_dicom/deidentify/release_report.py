@@ -138,7 +138,7 @@ from .residuals import NotSearched, Omission, Unsearched, UnsearchedReason
 from .runtime import RuntimeEnvironment, runtime_environment
 from .scope import Disposition, UnsupportedIod, unsupported_iods
 from .source import SourceReason
-from .standard import OPTIONS, VRS
+from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
@@ -269,7 +269,8 @@ class PolicyRecord:
     edition : str
         The edition of PS3.15 Table E.1-1, such as ``"2026d"``.
     options : tuple of str
-        The selected options, in the table's order.
+        The selected options, in the order of
+        :data:`~pymedphys._dicom.deidentify.standard.ALL_OPTIONS`.
     claims_conformance : bool
         Whether the policy can claim PS3.15 conformance, which it cannot
         when it leaves a selected option's action unapplied, as
@@ -1014,7 +1015,7 @@ def _policy_section(record: PolicyRecord) -> dict:
     if not _matches(_EDITION, record.edition):
         raise _refuse("edition", "is not an edition")
     if not isinstance(record.options, tuple) or any(
-        option not in OPTIONS for option in record.options
+        option not in ALL_OPTIONS for option in record.options
     ):
         raise _refuse("options", "are not PS3.15 options")
     if not isinstance(record.claims_conformance, bool):
