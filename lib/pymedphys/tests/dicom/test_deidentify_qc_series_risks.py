@@ -108,6 +108,7 @@ def test_the_series_evidence_is_assessed_as_the_instances_are(transfer_syntax):
     assert found == pixel_risk.assess_series(series)
     assert {finding.indicator for finding in found} == {
         Indicator.CT_VOLUME,
+        Indicator.LOCALIZER,
         Indicator.HEAD_OR_NECK,
     }
 
@@ -336,7 +337,11 @@ def test_findings_name_the_run_positions_of_the_instances_that_show_them():
 
     (entry,) = pack.series_risks
     assert entry.positions == (1, 2, 3, 4)
-    assert [entry.shown_by(finding) for finding in entry.findings] == [(3, 4), (4,)]
+    assert [entry.shown_by(finding) for finding in entry.findings] == [
+        (3, 4),
+        (1,),
+        (4,),
+    ]
 
 
 def test_instances_without_a_series_are_assessed_together():
@@ -409,21 +414,24 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes(tmp_path):
     pack = json.loads(text)
     iods = {file.manifest.name: file.manifest.iod for file in corpus.files}
 
-    def released(iod):
+    def released(iod, *, held=False):
+        dispositions = {"released", "held-for-review"} if held else {"released"}
         return [
             entry["position"]
             for entry in pack["instances"]
             if iods[Path(entry["source"]).name] == iod
-            and entry["disposition"] == "released"
+            and entry["disposition"] in dispositions
         ]
 
     # The third slice is sequestered, and the other two are a volume. Each
     # enhanced or legacy converted enhanced CT, MR, and PET instance, of two
-    # frames, is a volume too; the MR Image and PET Image instances are one
+    # frames, is a volume too, and so is each RT Dose, a grid of two frames,
+    # the one released and the one held for review, in one series; the MR Image and PET Image instances are one
     # slice each, so not volumes, and MR Spectroscopy has no pixels. None of
     # the PET instances is SUV-scaled, so none shows the body weight.
     volumes = [
         ("ct-volume", released("CT Image")),
+        ("rt-dose-volume", released("RT Dose", held=True)),
         ("ct-volume", released("Enhanced CT Image")),
         ("ct-volume", released("Legacy Converted Enhanced CT Image")),
         ("mr-volume", released("Enhanced MR Image")),
@@ -432,7 +440,7 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes(tmp_path):
         ("pet-volume", released("Enhanced PET Image")),
         ("pet-volume", released("Legacy Converted Enhanced PET Image")),
     ]
-    assert [len(positions) for _, positions in volumes] == [2, 1, 1, 1, 1, 1, 1, 1]
+    assert [len(positions) for _, positions in volumes] == [2, 2, 1, 1, 1, 1, 1, 1, 1]
     assert pack["series_risks"] == [
         {
             "positions": positions,

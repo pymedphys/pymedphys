@@ -269,7 +269,7 @@ def test_each_external_roi_is_reported_once_whatever_its_observations():
     }
 
 
-@pytest.mark.parametrize("interpreted_type", ["ORGAN", "", "AVOIDANCE"])
+@pytest.mark.parametrize("interpreted_type", ["ORGAN", "", "AVOIDANCE", "SUPPORT"])
 def test_other_interpreted_types_mark_no_patient_surface(interpreted_type):
     dataset = _structure_set([_roi(1, interpreted_type)], [_contour(1, 2)])
     assert not pixel_risk.assess_pixel_risk(dataset).findings
@@ -284,6 +284,23 @@ def test_body_and_skin_interpreted_types_mark_a_patient_surface(
     dataset = _structure_set([_roi(7, interpreted_type)], [_contour(7, 1)])
     assert _found(_assess(dataset, transfer_syntax)) == {
         (Indicator.PATIENT_SURFACE_CONTOUR, "(3006,0039)[0] > (3006,0040)")
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+@TRANSFER_SYNTAXES
+@pytest.mark.parametrize("interpreted_type", ["BOLUS", "FIXATION"])
+def test_a_bolus_or_fixation_device_marks_a_patient_surface(
+    transfer_syntax, interpreted_type
+):
+    # A bolus lies on the skin, and a thermoplastic mask is moulded to the
+    # face (PS3.3 Section C.8.8.8 Defined Terms).
+    dataset = _structure_set(
+        [_roi(1, "SUPPORT"), _roi(7, interpreted_type)],
+        [_contour(1, 1), _contour(7, 1)],
+    )
+    assert _found(_assess(dataset, transfer_syntax)) == {
+        (Indicator.PATIENT_SURFACE_CONTOUR, "(3006,0039)[1] > (3006,0040)")
     }
 
 
@@ -662,16 +679,60 @@ def test_one_ct_image_is_no_volume():
     assert not pixel_risk.assess_series([])
 
 
-def test_localizers_and_other_iods_are_not_part_of_a_volume():
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_localizers_are_reported_apart_from_a_volume():
     localizer = ["ORIGINAL", "PRIMARY", "LOCALIZER"]
     dose = _slice(2)
     dose.SOPClassUID = RT_DOSE
     series = [_slice(0), _slice(1, ImageType=localizer), dose]
-    assert not pixel_risk.assess_series(series)
+    # A localizer can show the face in profile, but is no frame of a volume,
+    # and a single-frame dose is a plane, not a grid.
+    assert _series_found(pixel_risk.assess_series(series)) == {
+        (Indicator.LOCALIZER, (1,), None)
+    }
     for_processing = _slice(3)
     for_processing.SOPClassUID = CT_FOR_PROCESSING
     findings = pixel_risk.assess_series([*series, for_processing])
-    assert _series_found(findings) == {(Indicator.CT_VOLUME, (0, 3), None)}
+    assert _series_found(findings) == {
+        (Indicator.CT_VOLUME, (0, 3), None),
+        (Indicator.LOCALIZER, (1,), None),
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_a_localizer_that_names_the_head_says_so():
+    localizer = ["ORIGINAL", "PRIMARY", "LOCALIZER"]
+    series = [_slice(0, ImageType=localizer, BodyPartExamined="HEAD")]
+    assert _series_found(pixel_risk.assess_series(series)) == {
+        (Indicator.LOCALIZER, (0,), None),
+        (Indicator.HEAD_OR_NECK, (0,), "(0018,0015)"),
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+@TRANSFER_SYNTAXES
+def test_a_grid_of_doses_is_a_volume(transfer_syntax):
+    # A planning system that computes dose only within the patient's
+    # outline leaves the outline in the grid.
+    grid = _multi_frame(0, RT_DOSE, NumberOfFrames=4, BodyPartExamined="HEAD")
+    del grid.ImageType
+    series = [grid]
+    if transfer_syntax is not None:
+        series = [_read_back(each, transfer_syntax) for each in series]
+    assert _series_found(pixel_risk.assess_series(series)) == {
+        (Indicator.RT_DOSE_VOLUME, (0,), None),
+        (Indicator.HEAD_OR_NECK, (0,), "(0018,0015)"),
+    }
+
+
+def test_a_dose_plane_or_dvhs_alone_are_no_volume():
+    plane = _multi_frame(0, RT_DOSE, NumberOfFrames=1)
+    dvhs = _multi_frame(1, RT_DOSE)
+    del dvhs.PixelData
+    assert not pixel_risk.assess_series([plane])
+    assert not pixel_risk.assess_series([dvhs])
+    # Two doses are not two frames of one grid.
+    assert not pixel_risk.assess_series([plane, dvhs])
 
 
 def test_a_ct_image_without_image_type_counts_towards_a_volume():
@@ -926,7 +987,9 @@ def test_single_frames_of_multi_frame_ct_images_add_up_to_a_volume(sop_class):
     localizer = _multi_frame(
         2, sop_class, NumberOfFrames=5, ImageType=["ORIGINAL", "PRIMARY", "LOCALIZER"]
     )
-    assert not pixel_risk.assess_series([one, localizer])
+    assert _series_found(pixel_risk.assess_series([one, localizer])) == {
+        (Indicator.LOCALIZER, (1,), None)
+    }
 
 
 @pytest.mark.parametrize("value", [b"0 ", b"-3", b"2\\3", b"many"])

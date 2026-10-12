@@ -36,7 +36,9 @@ What a kept or mapped value would write is checked for echoes of the
 instance's patient and other person identifiers, as the reviewed tier of ROI
 Name cleaning checks it, and held if it echoes one, since a reviewer may have
 decided on it for another patient. A value that the list does not cover is
-held too. The caller holds an instance with a held value for review and does
+held too, unless the automatic tier of technique descriptors
+(:mod:`.technique_descriptors`) keeps it and it echoes no identifier: the
+list's decisions take precedence over that tier. The caller holds an instance with a held value for review and does
 not release it, unless the user chooses explicitly to empty held values so
 that the run proceeds. :class:`DescriptorReviewQueue` collects the distinct
 held values of a run for the confidential QC material.
@@ -63,12 +65,16 @@ import re
 import types
 import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
+from typing import TYPE_CHECKING
 
 from . import custodian_lists, roi_names
 from .keys import DeidKey, warn_where_owner_only_modes_are_not_enforced
 from .reviewed_roi_names import Review
 from .standard import load_data_dictionary, load_table_e1_1
 from .supplementary_actions import load_supplementary_actions
+
+if TYPE_CHECKING:
+    from .technique_descriptors import TechniqueVocabulary
 
 FORMAT = "pymedphys-deid-reviewed-descriptors/1"
 # The domain of the list's keyed digest, which no other derivation uses.
@@ -452,13 +458,14 @@ class Outcome(enum.Enum):
 
     EMPTY = "empty"  # the value was empty
     KEPT = "kept"
+    KEPT_BY_VOCABULARY = "kept by vocabulary"  # the automatic tier kept it
     MAPPED = "mapped"
     EMPTIED = "emptied"  # by a reviewer's decision
     HELD = "held"  # for review; nothing is written
     EMPTIED_UNREVIEWED = "emptied unreviewed"  # held, but the user chose to empty
 
 
-# The outcomes that a reviewer's decision gives.
+# The outcomes that a reviewer's decision gives, apart from the empty value.
 REVIEWED = frozenset({Outcome.EMPTY, Outcome.KEPT, Outcome.MAPPED, Outcome.EMPTIED})
 
 
@@ -495,6 +502,7 @@ def clean_descriptor_values(
     reviewed: ReviewedDescriptors,
     *,
     identifiers: Iterable[str],
+    vocabulary: TechniqueVocabulary | None = None,
     empty_held: bool = False,
 ) -> tuple[CleanedDescriptor, ...]:
     """Decide what is written for each value of one descriptor element.
@@ -511,6 +519,11 @@ def clean_descriptor_values(
     identifiers : iterable of str
         The decoded values of the instance's patient and other person
         identifiers, as for :func:`.roi_names.clean_roi_names`.
+    vocabulary : TechniqueVocabulary, optional
+        The automatic tier (:mod:`.technique_descriptors`), which keeps a
+        value that the list does not cover where it is made only of
+        vocabulary words. The list's decision takes precedence. Without it,
+        every value the list does not cover is held.
     empty_held : bool, optional
         Whether to empty a held value rather than hold it, as the user may
         choose explicitly so that the run proceeds.
@@ -539,7 +552,7 @@ def clean_descriptor_values(
         raise TypeError("values and identifiers must all be strings")
     results = []
     for value in map(stripped, values):
-        result = _decide(tag, value, reviewed, identifiers)
+        result = _decide(tag, value, reviewed, identifiers, vocabulary)
         if empty_held and result.outcome is Outcome.HELD:
             result = CleanedDescriptor(
                 Outcome.EMPTIED_UNREVIEWED, result.held_because, ""
@@ -549,13 +562,21 @@ def clean_descriptor_values(
 
 
 def _decide(
-    tag: str, value: str, reviewed: ReviewedDescriptors, identifiers: Sequence[str]
+    tag: str,
+    value: str,
+    reviewed: ReviewedDescriptors,
+    identifiers: Sequence[str],
+    vocabulary: TechniqueVocabulary | None,
 ) -> CleanedDescriptor:
     if not value:
         return CleanedDescriptor(Outcome.EMPTY, None, "")
     decision = reviewed.get(tag, value)
     if decision is None:
-        return CleanedDescriptor(Outcome.HELD, Held.UNREVIEWED, None)
+        if vocabulary is None or not vocabulary.keeps(tag, value):
+            return CleanedDescriptor(Outcome.HELD, Held.UNREVIEWED, None)
+        if echoes_identifier(value, identifiers):
+            return CleanedDescriptor(Outcome.HELD, Held.ECHOES_IDENTIFIER, None)
+        return CleanedDescriptor(Outcome.KEPT_BY_VOCABULARY, None, value)
     written = {Review.KEEP: value, Review.MAP: decision.to, Review.EMPTY: ""}[
         decision.review
     ]
