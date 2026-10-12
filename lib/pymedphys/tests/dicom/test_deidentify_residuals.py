@@ -30,7 +30,16 @@ from unittest import mock
 from pymedphys._imports import hypothesis, pydicom, pytest
 from pymedphys._imports import numpy as np
 
-from pymedphys._dicom.deidentify import dates, dummy_values, pseudonyms, residuals, uids
+from pymedphys._dicom.deidentify import (
+    dates,
+    dummy_values,
+    markers,
+    policy,
+    pseudonyms,
+    residuals,
+    uids,
+)
+from pymedphys._dicom.deidentify.codes import load_context_group
 from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.residuals import (
@@ -1621,6 +1630,19 @@ def test_a_source_value_that_differs_from_every_constant_is_searched(vr, value):
 
     assert result.findings
     assert not result.unsearched
+
+
+def test_only_the_codes_of_the_options_that_the_engine_applies_are_constants():
+    constants = set(residuals.written_constants())
+    meanings = {
+        row.code_value: row.code_meaning for row in load_context_group(7050).rows
+    }
+    for option, code in markers.OPTION_CODES.items():
+        # The engine refuses a policy with any other option, so the markers
+        # never write its code.
+        written = option in policy.ENGINE_OPTIONS
+        assert (("SH", code) in constants) is written, option
+        assert (("LO", meanings[code]) in constants) is written, option
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")

@@ -62,17 +62,12 @@ import json
 import os
 import pathlib
 import re
-import tempfile
 import types
 import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
 
-from . import roi_names
-from .keys import (
-    DeidKey,
-    custodian_location_problem,
-    warn_where_owner_only_modes_are_not_enforced,
-)
+from . import custodian_lists, roi_names
+from .keys import DeidKey, warn_where_owner_only_modes_are_not_enforced
 from .roi_names import Reason
 
 FORMAT = "pymedphys-deid-reviewed-roi-names/1"
@@ -190,13 +185,9 @@ class ReviewedNames:
             cannot be read, is not a :data:`FORMAT` file, or has a malformed
             or repeated name or decision. The message holds no name.
         """
-        given = pathlib.Path(path).absolute()
-        resolved = given.parent.resolve() / given.name
-        problem = custodian_location_problem(resolved, protected_dirs)
-        if problem:
-            raise ReviewedNamesError(
-                f"refusing to keep a reviewed-names list {problem}"
-            )
+        resolved = custodian_lists.custodian_path(
+            path, protected_dirs, what="reviewed-names list", error=ReviewedNamesError
+        )
         names = _read(resolved) if resolved.exists() else {}
         return cls(resolved, names)
 
@@ -303,43 +294,15 @@ class ReviewedNames:
         """
         if self._path is None:
             raise ReviewedNamesError("a list made by empty() has no file to save to")
-        text = json.dumps(self._document(), indent=1, ensure_ascii=False)
-        # mkstemp creates the file readable and writable only by its owner.
-        descriptor, temporary = tempfile.mkstemp(
-            dir=self._path.parent, prefix=f".{self._path.name}.", suffix=".part"
-        )
-        try:
-            with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as file:
-                file.write(text + "\n")
-            os.replace(temporary, self._path)
-        except BaseException:
-            pathlib.Path(temporary).unlink(missing_ok=True)
-            raise
+        custodian_lists.save_document(self._path, self._document())
         warn_where_owner_only_modes_are_not_enforced("reviewed-names list")
         return self._path
 
 
-def _unique_pairs(pairs: list[tuple[str, object]]) -> dict[str, object]:
-    document: dict[str, object] = {}
-    for number, (key, value) in enumerate(pairs, start=1):
-        if key in document:
-            raise ReviewedNamesError(
-                f"item {number} of an object in the list is repeated"
-            )
-        document[key] = value
-    return document
-
-
 def _read(path: pathlib.Path) -> dict[str, ReviewedName]:
-    try:
-        document = json.loads(
-            path.read_text(encoding="utf-8"), object_pairs_hook=_unique_pairs
-        )
-    except ReviewedNamesError:
-        raise
-    except (OSError, ValueError, RecursionError):
-        # Not chained, since a decoding or parsing error holds the file's text.
-        raise ReviewedNamesError("the reviewed-names list could not be read") from None
+    document = custodian_lists.read_document(
+        path, what="reviewed-names list", error=ReviewedNamesError
+    )
     if (
         not isinstance(document, dict)
         or document.keys() != {"format", "names"}
