@@ -50,8 +50,8 @@ A value that cannot be modified so is left pending, which sequesters its
 instance, as an attribute given C that no cleaner settles does (D-034): a
 date that is not valid, a DT value without a full date or at a leap second,
 one whose precision cannot express its conversion to local time, a shifted
-date before year 1, a Timezone Offset From UTC that is not a valid offset or
-that differs from another in the instance, a value read in a VR that the
+date before year 1, a valid Timezone Offset From UTC that differs from
+another in the instance, a value read in a VR that the
 pinned dictionary does not give its attribute or that its role does not
 provide for, and every shifted value of an instance without a subject's
 identity.
@@ -292,14 +292,17 @@ METHOD = (
     "equals the first, since moving it would disclose the offset wherever "
     "its original is known. Timezone Offset From UTC (0008,0201) becomes "
     f"`{dates.NOMINAL_UTC_OFFSET}`. The instance's local time is its "
-    "Timezone Offset From UTC where it has one, and otherwise the UTC offset "
-    "of the earliest of its DT values that has one. Each value of a multi-valued attribute is modified on its own, "
+    "Timezone Offset From UTC where it has a valid one, and otherwise the UTC "
+    "offset of the earliest of its DT values that has one; a Timezone Offset "
+    "From UTC that is not a valid offset also becomes "
+    f"`{dates.NOMINAL_UTC_OFFSET}`. Each value of a multi-valued attribute is "
+    "modified on its own, "
     "and an empty value stays empty. An instance is sequestered where a value "
     "cannot be modified so: a date that is not valid, a DT value without a "
     "full date or at a leap second, one whose precision cannot express its "
-    "conversion to local time, a shifted date before year 1, Timezone Offset "
-    "From UTC values that are not valid offsets or that differ within the "
-    "instance, or an instance whose subject has no identity."
+    "conversion to local time, a shifted date before year 1, valid Timezone "
+    "Offset From UTC values that differ within the instance, or an instance "
+    "whose subject has no identity."
 )
 
 # What a value becomes: the values written in its place, and whether they are
@@ -368,17 +371,19 @@ def _content(text: str) -> bool:
 def _local_offset(given: tuple[SourceValue, ...]) -> Callable[[], str | None]:
     """Return a call that gives the instance's local time, worked out once.
 
-    It is the instance's Timezone Offset From UTC, every value of which must
-    be the same, or otherwise the UTC offset of the earliest DT value that
-    has one, or None. The call raises :class:`ValueError` where the
-    instance's offsets differ, or one of those values is not valid.
+    It is the instance's Timezone Offset From UTC, every valid value of
+    which must be the same, or otherwise the UTC offset of the earliest DT
+    value that has one, or None. A Timezone Offset From UTC that is not a
+    valid offset says nothing of the local time, so it counts as absent. The
+    call raises :class:`ValueError` where the instance's valid offsets
+    differ, or, without one, a DT value is not valid.
     """
     zones = {
         zone.strip(" ")
         for value in given
         if value.source.tag == TIMEZONE_OFFSET and isinstance(value.value, str)
         for zone in _texts(value)
-        if zone.strip(" ")
+        if _valid_offset(zone.strip(" "))
     }
     datetimes = [
         text
@@ -395,6 +400,17 @@ def _local_offset(given: tuple[SourceValue, ...]) -> Callable[[], str | None]:
         return dates.local_offset(next(iter(zones), None), datetimes)
 
     return local
+
+
+def _valid_offset(zone: str) -> bool:
+    """Whether a Timezone Offset From UTC value is a valid UTC offset."""
+    if not zone:
+        return False
+    try:
+        dates.local_offset(zone, ())
+    except ValueError:
+        return False
+    return True
 
 
 def _modified(
@@ -414,7 +430,7 @@ def _modified(
             raise _Unmodified
         zones = _texts(value)
         if any(zone.strip(" ") for zone in zones):
-            local()  # raises where the offset is not valid or differs
+            local()  # raises where valid offsets differ
         return tuple(
             dates.NOMINAL_UTC_OFFSET if z.strip(" ") else "" for z in zones
         ), False

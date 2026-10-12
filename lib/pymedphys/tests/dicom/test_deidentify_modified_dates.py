@@ -255,7 +255,6 @@ def test_offsets_differ_by_subject_and_key_but_not_within_a_run():
         _value(_ACQUISITION_DATETIME, "DT", "20261231235960"),  # a leap second
         _value(_ACQUISITION_DATETIME, "DT", "20260927+1000"),  # needs an hour
         _value(_STUDY_DATE, "DA", "00010101"),  # before year 1 once moved
-        _value(_TIMEZONE, "SH", "+1500"),  # not a valid offset
         _value(_STUDY_TIME, "DA", "20260927"),  # read in a VR its role does not use
         _value(_FRAME_ORIGIN, "OB", b"\x00" * 9),  # not an IEEE 1588 timestamp
     ],
@@ -278,6 +277,22 @@ def test_differing_timezones_leave_offsets_and_local_datetimes_pending():
     )
 
     assert set(written) == {ElementPath((), "(0018,9074)"), _STUDY_DATE}
+
+
+@pytest.mark.parametrize("zone", ["+1500", "SENTINEL"])
+def test_an_invalid_timezone_counts_as_absent_and_becomes_nominal(zone):
+    nested = ElementPath((("(0018,A001)", 0),), "(0008,0201)")
+    written = _modified(
+        _value(_TIMEZONE, "SH", zone),
+        _value(nested, "SH", "+1000"),
+        _value(_ACQUISITION_DATETIME, "DT", "20260927013000+0000"),
+    )
+
+    assert written[_TIMEZONE] == (("+0000",), False)
+    assert written[nested] == (("+0000",), False)
+    # The local time is the valid offset, as if the invalid one were absent.
+    (local,) = written[_ACQUISITION_DATETIME][0]
+    assert local == dates.shift_datetime("20260927113000+0000", WEEKS)
 
 
 def test_without_a_subject_only_values_that_do_not_move_are_settled():
