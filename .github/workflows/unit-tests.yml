@@ -69,8 +69,15 @@ jobs:
           # `pymedphys dev tests` changes directory to lib/pymedphys before
           # invoking pytest, so the JUnit path must be absolute for the
           # upload step (which looks in the workspace root) to find it.
+          # Keep pytest's Windows temporary paths short enough for the DICOM
+          # release guard's worst-case 259-character output path.
+          pytest_tmp=()
+          if [[ "${MATRIX_OS}" == "windows-latest" ]]; then
+            pytest_tmp=(--basetemp="${RUNNER_TEMP}/p")
+          fi
           uv run -- pymedphys dev tests -m "not slow" \
             -n 2 --dist worksteal --durations=15 \
+            "${pytest_tmp[@]}" \
             --junitxml="${GITHUB_WORKSPACE}/test-results/junit-${MATRIX_OS}-${MATRIX_PYTHON}.xml"
 
       - name: Record the locked pydicom test evidence
