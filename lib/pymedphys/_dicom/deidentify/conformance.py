@@ -561,6 +561,11 @@ def _places(
         elsewhere = compound_actions.resolve(action, "3")
     elif action in _PLAIN_ELSEWHERE:
         elsewhere = _PLAIN_ELSEWHERE[action]
+    elif tag in compound_actions.LAPSED_CONDITIONS and action == "K":
+        # Clinical Trial Protocol Ethics Committee Name, which Retain
+        # Institution Identity gives K, is removed wherever it is, as its
+        # Type 1C condition never holds in the output (D-020).
+        elsewhere = "X"
     else:
         return (), ""
     # A tag of a repeating group, such as (60xx,0022), is looked up as that of

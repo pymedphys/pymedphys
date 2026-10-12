@@ -923,7 +923,7 @@ note = "The value of a coded entry written as a URN or URL, used instead of Code
 tag = "(0008,0116)"
 keyword = "CodingSchemeResponsibleOrganization"
 action = "X/Z/D"
-note = "The organisation responsible for a coding scheme, which PS3.3 says may include contact information, so for a local scheme it names the institution and can name a person. Table E.1-1 removes names of people and organisations, such as Operators' Name, Institution Name, and Clinical Trial Sponsor Name, under every supported option, so it is removed by Type under every option too."
+note = "The organisation responsible for a coding scheme, which PS3.3 says may include contact information, so for a local scheme it names the institution and can name a person. Table E.1-1 removes names of people and organisations, such as Operators' Name and Clinical Trial Sponsor Name, under every option, and keeps Institution Name only under Retain Institution Identity, which retains the institution where the acquisition was performed, not the owner of a coding scheme, so it is removed by Type under every option too."
 
 [[attribute]]
 tag = "(0008,0122)"
@@ -941,7 +941,7 @@ note = "The stock number of a non-human subject's strain, issued by the organisa
 tag = "(0010,0217)"
 keyword = "StrainSource"
 action = "X/Z/D"
-note = "The organisation that supplied a non-human subject, which can be the institution's own colony. Table E.1-1 removes names of organisations, such as Institution Name and Clinical Trial Sponsor Name, under every supported option, so it is removed by Type under every option too."
+note = "The organisation that supplied a non-human subject, which can be the institution's own colony. Table E.1-1 removes names of organisations, such as Clinical Trial Sponsor Name, under every option, and keeps Institution Name only under Retain Institution Identity, which retains the institution where the acquisition was performed, not a supplier, so it is removed by Type under every option too."
 
 [[attribute]]
 tag = "(0010,2295)"
@@ -959,7 +959,7 @@ note = "The IP address of the time server, which identifies a network and so usu
 tag = "(0024,0202)"
 keyword = "AlgorithmSource"
 action = "X/Z/D"
-note = "The source of an algorithm, which PS3.3 says can be a manufacturer, researcher, or university, so it can name a person or the institution. Table E.1-1 removes names of people and organisations, such as Operators' Name and Institution Name, under every supported option, so it is removed by Type under every option too."
+note = "The source of an algorithm, which PS3.3 says can be a manufacturer, researcher, or university, so it can name a person or the institution. Table E.1-1 removes names of people and organisations, such as Operators' Name and Clinical Trial Sponsor Name, under every option, and keeps Institution Name only under Retain Institution Identity, which retains the institution where the acquisition was performed, not an algorithm's source, so it is removed by Type under every option too."
 
 [[attribute]]
 tag = "(0040,0031)"

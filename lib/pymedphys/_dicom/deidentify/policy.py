@@ -107,7 +107,7 @@ ENGINE_APPLIES: Mapping[str, bool] = types.MappingProxyType(
         # Retain Device Identity.
         DEVICE_IDENTITY: True,
         # Retain Institution Identity.
-        INSTITUTION_IDENTITY: False,
+        INSTITUTION_IDENTITY: True,
         # Retain Patient Characteristics.
         PATIENT_CHARACTERISTICS: True,
         # Retain Longitudinal Temporal Information with Full Dates.

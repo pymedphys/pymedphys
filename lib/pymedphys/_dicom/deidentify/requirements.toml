@@ -660,9 +660,19 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about the identity of the institution in the Attributes shall be retained, as described in Table E.1-1.
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-011"]
+status = "implemented"
+decisions = ["D-011", "D-020", "D-022", "D-044"]
+implementation = [
+  "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/policy.py",
+]
+note = '''
+The ten attributes that the Option gives K are kept as read, wherever they are in the data set, including Institution Name in the items of Contributing Equipment Sequence, with the Option's code (D-044).
+Clinical Trial Protocol Ethics Committee Name, which the Option gives K, is still removed, since its Type 1C condition needs the approval number that Table E.1-1 removes under every option, and keeping it would make the instance invalid (D-020); the instance still claims the Option, and the conformance statement says so.
+The attributes that Table E.1-1 omits and that name other organisations, such as Coding Scheme Responsible Organization, are removed under every option (D-022).
+No preset selects the Option.
+'''
 
 # MIDI Task Group report, section 1.6, summarised in PyMedPhys's words.
 
