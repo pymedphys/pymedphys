@@ -317,7 +317,9 @@ class CorpusRun:
     reviewed_roi_names: (
         Callable[[corpus_module.SyntheticCorpus], ReviewedNames] | None
     ) = None
-    withheld: Mapping[str, Withheld] = BASIC_WITHHELD
+    withheld: Mapping[str, Withheld] = dataclasses.field(
+        default_factory=lambda: BASIC_WITHHELD
+    )
     kept: frozenset[str] | None = None
     codes: frozenset[str] | None = None
     roi_names: tuple[str, ...] | None = ("",)
