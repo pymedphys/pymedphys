@@ -262,6 +262,12 @@ def test_pseudonyms_are_described_where_the_engine_writes_them():
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_series_numbers_ranks_are_described():
+    section = _section("basic", "Values written")
+    assert f"Wherever Z or D applies to {_named('(0020,0011)')}, it takes" in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_the_longest_replacement_uid_is_described():
     section = _section("basic", "Values written")
     key = DeidKey(bytes(range(32)))
