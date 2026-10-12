@@ -205,12 +205,15 @@ def dataset_codecs(
 
     ``inherited`` are those of the data set that holds it, which apply unless
     it has its own Specific Character Set (0008,0005) (PS3.5 Section 7.5.3),
-    and ``items`` the items that hold it, as in :class:`ElementPath`. It
-    raises :class:`UndecodableElement` unless each value is a Defined Term of
-    PS3.3 Section C.12.1.1.2 that pydicom can decode, or the only value is
-    ``ISO_IR 6``, which gives the Default Character Repertoire as an absent
-    value does; only the first is empty; and several all use ISO 2022 code
-    extensions.
+    and ``items`` the items that hold it, as in :class:`ElementPath`. Each
+    value must be a Defined Term of PS3.3 Section C.12.1.1.2 that pydicom can
+    decode, or the only value ``ISO_IR 6``, which gives the Default Character
+    Repertoire as an absent value does; only the first may be empty; and
+    several must all use ISO 2022 code extensions. Any other value gives the
+    Default Character Repertoire too, so that the data set's text is read only
+    where it is in ISO 646, without a byte from 0x80 or an escape. The current
+    pydicom codecs read those bytes as the same characters; text outside it is
+    then read as it is where no value is given (Architecture item 5).
 
     Given the ``source`` that the data set was read from, the value is read
     from the source's bytes, as :func:`read_element` reads it, and a data
@@ -238,7 +241,7 @@ def dataset_codecs(
         or (term in _TERMS and (single or term.startswith("ISO 2022")))
         for index, term in enumerate(terms)
     ):
-        raise UndecodableElement(path, "is not a supported Specific Character Set")
+        return DEFAULT_CODECS
     return tuple(pydicom.charset.python_encoding[term] for term in terms)
 
 
