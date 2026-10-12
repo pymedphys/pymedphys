@@ -72,6 +72,7 @@ KEY = DeidKey(bytes(range(32)))
 RETAIN_UIDS_CODE = "113110"
 SOP_INSTANCE_UID = "(0008,0018)"
 MULTI_FRAME_SOURCE = "(0008,1167)"
+EXTRACTED_DOSE = "2.25.502"
 CONTENT_ITEM_UID = "(0040,A124)"
 DIGITAL_SIGNATURE_UID = "(0400,0100)"
 FRAME_OF_REFERENCE = "2.25.700"
@@ -126,17 +127,26 @@ def _codes(dataset):
     return [item.CodeValue for item in dataset.DeidentificationMethodCodeSequence]
 
 
-def _plan(omitted=True):
-    """The collection's RT Plan, in a frame of reference.
-
-    With ``omitted``, it also has a UID that the table omits, which names
-    the dose that the plan references.
-    """
+def _plan():
+    """The collection's RT Plan, in a frame of reference."""
     plan = synthetic.rt_plan()
     synthetic.uid(plan, "FrameOfReferenceUID", FRAME_OF_REFERENCE)
-    if omitted:
-        synthetic.uid(plan, "MultiFrameSourceSOPInstanceUID", synthetic.DOSE)
     return plan
+
+
+def _dose_extracted_from(sop_instance):
+    """An RT Dose of frames extracted from the multi-frame instance named.
+
+    Its Frame Extraction Sequence names that instance (PS3.3 C.12.3), by a
+    UID that Table E.1-1 omits, and it is in a frame of reference.
+    """
+    dose = synthetic.rt_dose()
+    dose.SOPInstanceUID = EXTRACTED_DOSE
+    synthetic.uid(dose, "FrameOfReferenceUID", FRAME_OF_REFERENCE)
+    extraction = pydicom.Dataset()
+    synthetic.uid(extraction, "MultiFrameSourceSOPInstanceUID", sop_instance)
+    dose.FrameExtractionSequence = [extraction]
+    return dose
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.9-01")
@@ -193,23 +203,26 @@ def test_the_rules_keep_the_tables_uids_and_replace_every_other():
 
 @pytest.mark.deid_requirement("PS3.15-E.3.9-01", "PS3.15-E.1.1-04")
 def test_an_instance_keeps_its_uids_and_references_and_claims_the_option():
-    result, written = _written(_transform(), _plan())
+    result, written = _written(_transform(), _dose_extracted_from(synthetic.DOSE))
 
-    assert written.SOPInstanceUID == synthetic.PLAN
-    assert written.SeriesInstanceUID == synthetic.PLAN_SERIES
+    assert written.SOPInstanceUID == EXTRACTED_DOSE
+    assert written.SeriesInstanceUID == synthetic.DOSE_SERIES
     assert written.StudyInstanceUID == synthetic.STUDY
     assert written.FrameOfReferenceUID == FRAME_OF_REFERENCE
+    assert written.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID == (
+        synthetic.PLAN
+    )
     assert (
         written.ReferencedStructureSetSequence[0].ReferencedSOPInstanceUID
         == synthetic.STRUCTURE_SET
     )
-    assert written.ReferencedDoseSequence[0].ReferencedSOPInstanceUID == synthetic.DOSE
     # A UID that the table does not keep under the option is still replaced.
-    assert written.MultiFrameSourceSOPInstanceUID == replacement_uid(
+    (extraction,) = written.FrameExtractionSequence
+    assert extraction.MultiFrameSourceSOPInstanceUID == replacement_uid(
         KEY, synthetic.DOSE
     )
     # PS3.10 Section 7.1: the File Meta Information names the kept UID.
-    assert written.file_meta.MediaStorageSOPInstanceUID == synthetic.PLAN
+    assert written.file_meta.MediaStorageSOPInstanceUID == EXTRACTED_DOSE
     assert _codes(written) == ["113100", RETAIN_UIDS_CODE]
     # The patient is still pseudonymised.
     assert synthetic.PATIENT_ID.encode() not in result.data
@@ -254,7 +267,7 @@ def test_an_instance_whose_kept_sop_instance_uid_is_not_valid_is_sequestered():
 
 def _plan_with_a_request():
     """An RT Plan whose request repeats its Study Instance UID, and an ID."""
-    plan = _plan(omitted=False)
+    plan = _plan()
     request = synthetic.item(RequestedProcedureID="SENTINEL REQUEST")
     synthetic.uid(request, "StudyInstanceUID", synthetic.STUDY)
     plan.RequestAttributesSequence = [request]
@@ -338,29 +351,22 @@ def test_a_collection_keeps_its_uids_and_still_refers_to_itself(tmp_path):
     assert "keep their source UIDs" in report
 
 
-def _dose_extracted_from(sop_instance):
-    dose = synthetic.rt_dose()
-    extraction = pydicom.Dataset()
-    synthetic.uid(extraction, "MultiFrameSourceSOPInstanceUID", sop_instance)
-    dose.FrameExtractionSequence = [extraction]
-    return dose
-
-
 def test_a_reference_the_table_does_not_keep_cannot_name_a_kept_uid(tmp_path):
-    # The dose's Multi-frame Source SOP Instance UID names the first CT
-    # slice. The option keeps the slice's SOP Instance UID, but not the
+    # The extracted dose's Multi-frame Source SOP Instance UID names the
+    # dose. The option keeps the dose's SOP Instance UID, but not the
     # reference, which is replaced, so its source value, found where the
-    # slice and the structure set keep it, withholds both.
-    datasets = synthetic.collection()
-    datasets[DOSE] = _dose_extracted_from(synthetic.CT_SLICES[0])
+    # dose and the plan's Referenced Dose Sequence keep it, withholds both.
+    datasets = [*synthetic.collection(), _dose_extracted_from(synthetic.DOSE)]
+    extracted = len(datasets) - 1
 
     result = _run(tmp_path, datasets)
 
     statuses = _statuses(result)
-    assert statuses[SLICES[0]] is run.Status.SEQUESTERED
-    assert statuses[STRUCTURE_SET] is run.Status.SEQUESTERED
-    assert {statuses[p] for p in (*SLICES[1:], PLAN, DOSE)} == {run.Status.RELEASED}
-    # The dose's reference names an instance that was withheld.
+    assert statuses[DOSE] is run.Status.SEQUESTERED
+    assert statuses[PLAN] is run.Status.SEQUESTERED
+    released = (*SLICES, STRUCTURE_SET, extracted)
+    assert {statuses[p] for p in released} == {run.Status.RELEASED}
+    # The extracted dose's references name instances that were withheld.
     assert {finding.kind for finding in result.written_findings} == {
         written_references.WrittenFindingKind.UNWRITTEN_TARGET
     }
