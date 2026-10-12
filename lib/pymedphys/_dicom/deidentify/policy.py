@@ -52,10 +52,13 @@ table adds, are rejected.
 
 A preset is enabled only once its behaviour is implemented and validated. No
 preset is enabled yet; the first supported release is to enable ``basic`` and
-``basic-clean-descriptors``. The engine takes its policy from
-:func:`select_policy`, which refuses a preset that is not enabled. A policy
-composed from a given table is never enabled, and a custom option set is
-validated but not enabled.
+``basic-clean-descriptors``. A run can select a custom option set in place
+of a preset (D-033), which is enabled only once ``basic``, whose Basic
+Profile it applies, is enabled, and each of its options is in
+:data:`ENABLED_OPTIONS`, which an option joins once its behaviour is
+implemented and validated; none has yet. The engine takes its policy from
+:func:`select_policy`, which refuses a policy that is not enabled. A policy
+composed from a given table is never enabled.
 """
 
 from __future__ import annotations
@@ -144,7 +147,14 @@ DEFAULT_PRESET = "basic"
 # The presets whose behaviour is implemented and validated. None is yet; the
 # first supported release is to enable ``basic`` and ``basic-clean-descriptors``.
 ENABLED_PRESETS: frozenset[str] = frozenset()
+# The options whose behaviour is implemented and validated, each one of
+# ENGINE_OPTIONS, which a custom option set may select once the basic preset
+# is enabled too (D-033). None is yet. Enabling a preset does not enable its
+# options.
+ENABLED_OPTIONS: frozenset[str] = frozenset()
 
+# The preset of the Basic Profile alone, which every custom option set applies.
+_BASIC = "basic"
 # The preset that resolves the conflicts below, and the actions it resolves.
 _TPS_IMPORT = "tps-import"
 _RESOLVABLE = types.MappingProxyType({DEVICE_IDENTITY: "K", MODIFIED_DATES: "C"})
@@ -208,9 +218,11 @@ class Policy:
         to it. Read-only.
     enabled : bool
         Whether the engine may use the policy: only for an enabled preset,
-        composed from the pinned tables. Only :func:`compose_policy` sets it,
-        so a policy constructed directly, or copied with
-        :func:`dataclasses.replace`, is not enabled.
+        or a custom option set whose options are all enabled (D-033),
+        composed from the pinned tables. Only :func:`compose_policy` and
+        :func:`compose_custom_policy` set it, so a policy constructed
+        directly, or copied with :func:`dataclasses.replace`, is not
+        enabled.
     """
 
     preset: str | None
@@ -350,10 +362,26 @@ def _compose(
         resolved=tuple(resolved.values()),
         supplementary_actions=supplementary.actions,
     )
-    if preset in ENABLED_PRESETS and pinned:
+    if pinned and _enabled(preset, selected):
         # The way a frozen dataclass sets a field that is not an argument.
         object.__setattr__(composed, "enabled", True)
     return composed
+
+
+def _enabled(preset: str | None, options: tuple[str, ...]) -> bool:
+    """Return whether ``preset``, or a custom set of ``options``, is enabled."""
+    if preset is not None:
+        return preset in ENABLED_PRESETS
+    return _BASIC in ENABLED_PRESETS and ENABLED_OPTIONS.issuperset(options)
+
+
+def _enabled_status(enabled: list[str], kind: str) -> str:
+    """Say which of a ``kind`` of name are enabled: ``"only basic is enabled"``."""
+    if not enabled:
+        return f"no {kind} is enabled yet"
+    if len(enabled) == 1:
+        return f"only {enabled[0]} is enabled"
+    return f"only {_join(enabled)} are enabled"
 
 
 def compose_policy(
@@ -400,7 +428,7 @@ def compose_policy(
 def compose_custom_policy(
     options: Iterable[str], *, table: ProfileTable | None = None
 ) -> Policy:
-    """Validate a custom set of options as a policy, which is not enabled.
+    """Validate a custom set of options as a policy, whether enabled or not.
 
     A custom policy must be able to conform, so every conflict between its
     options is rejected, including those the ``tps-import`` preset resolves.
@@ -412,12 +440,15 @@ def compose_custom_policy(
         the policy only if every one is in :data:`ENGINE_OPTIONS`.
     table : ProfileTable, optional
         Table E.1-1. Defaults to
-        :func:`~pymedphys._dicom.deidentify.standard.load_table_e1_1`.
+        :func:`~pymedphys._dicom.deidentify.standard.load_table_e1_1`. A
+        policy composed from a given table is never enabled.
 
     Returns
     -------
     Policy
-        With no preset, and not enabled.
+        With no preset. Enabled only where composed from the pinned table,
+        while ``basic`` is in :data:`ENABLED_PRESETS` and each option is in
+        :data:`ENABLED_OPTIONS` (D-033).
 
     Raises
     ------
@@ -432,37 +463,70 @@ def compose_custom_policy(
     return _compose(None, options, table)
 
 
-def select_policy(preset: str = DEFAULT_PRESET) -> Policy:
-    """Return the policy of an enabled preset, for the engine to apply.
+def select_policy(
+    preset: str | None = None, *, options: Iterable[str] | None = None
+) -> Policy:
+    """Return the policy of an enabled preset or custom option set, for the engine.
 
     Parameters
     ----------
     preset : str, optional
-        One of :data:`ENABLED_PRESETS`. Defaults to ``"basic"``.
+        One of :data:`ENABLED_PRESETS`. Defaults to ``"basic"``, unless
+        ``options`` is given.
+    options : iterable of str, optional
+        A custom option set, in place of a preset (D-033): options of
+        Table E.1-1, each in :data:`ENABLED_OPTIONS`, which the Basic
+        Profile is applied with.
 
     Returns
     -------
     Policy
-        The preset's policy, composed from the pinned tables.
+        The policy, composed from the pinned tables.
 
     Raises
     ------
     TypeError
-        If ``preset`` is not a string.
+        If ``preset`` is not a string, or ``options`` is a single string
+        rather than a collection of names.
     PolicyError
-        For any reason :func:`compose_policy` gives, or if the preset is not
-        enabled because its behaviour is not yet implemented and validated.
-        No preset is enabled yet, so every preset is refused.
+        If both ``preset`` and ``options`` are given; for any reason
+        :func:`compose_policy` or :func:`compose_custom_policy` gives; or if
+        the policy is not enabled, because the behaviour of its preset, or
+        of the Basic Profile or one of its options, is not yet implemented
+        and validated. Nothing is enabled yet, so every policy is refused.
     """
+    if options is None:
+        return _selected_preset(DEFAULT_PRESET if preset is None else preset)
+    if preset is not None:
+        raise PolicyError(
+            "a policy is that of a preset or of a custom option set, not both"
+        )
+    custom = compose_custom_policy(options)
+    if not custom.enabled:
+        unenabled = (
+            []
+            if _BASIC in ENABLED_PRESETS
+            else [f"the Basic Profile (the {_BASIC} preset)"]
+        )
+        unenabled += [
+            f"the option {o}" for o in custom.options if o not in ENABLED_OPTIONS
+        ]
+        enabled = [o for o in OPTIONS if o in ENABLED_OPTIONS]
+        raise PolicyError(
+            "the custom option set is not enabled: the behaviour of "
+            f"{_join(unenabled)} is not yet implemented and validated; "
+            + _enabled_status(enabled, "option")
+        )
+    return custom
+
+
+def _selected_preset(preset: str) -> Policy:
+    """Return the policy of ``preset``, as :func:`select_policy` does."""
     policy = compose_policy(preset)
     if not policy.enabled:
-        enabled = [name for name in PRESETS if name in ENABLED_PRESETS]
-        if not enabled:
-            status = "no preset is enabled yet"
-        elif len(enabled) == 1:
-            status = f"only {enabled[0]} is enabled"
-        else:
-            status = f"only {_join(enabled)} are enabled"
+        status = _enabled_status(
+            [name for name in PRESETS if name in ENABLED_PRESETS], "preset"
+        )
         raise PolicyError(
             f"the {preset} preset is not enabled: its behaviour is not yet "
             f"implemented and validated; {status}"

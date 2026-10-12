@@ -98,7 +98,7 @@ from .residuals import UnsearchedReason
 from .reviewed_roi_names import Outcome
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/1"
+FORMAT = "pymedphys-deid-qc-pack/2"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 
@@ -631,6 +631,8 @@ class PreviewKind(enum.Enum):
 
     SERIES_CINE = "series-cine"  # frames evenly spaced through a series
     SERIES_MIP = "series-mip"  # a frontal maximum intensity projection
+    # renders of a volume's skin surface, from the front, obliques, and profiles
+    SERIES_SURFACE = "series-surface"
     INSTANCE = "instance"  # a high-risk instance at full resolution
 
 
