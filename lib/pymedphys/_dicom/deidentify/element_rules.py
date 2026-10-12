@@ -50,7 +50,11 @@ An element's rule comes from the first of these that covers it:
 No rules for cleaning the contents of a sequence are designed yet, so a
 sequence to which the policy gives C, such as Reason for Visit Code
 Sequence (0032,1067) under Clean Descriptors, takes its Basic Profile
-action. An attribute
+action. Nor is a cleaner of overlays and curves, so a masked row to which
+the policy gives C, which only Clean Graphics does, to Curve Data
+(50xx,xxxx), Overlay Data (60xx,3000), and Overlay Comments (60xx,4000),
+takes its Basic Profile action too, X, which removes the attribute, and
+for Overlay Data its overlay group (D-020, D-041). An attribute
 whose alternative VRs include a binary VR, such as LUT Data (0028,3006),
 US or OW, is kept only where the IOD defines it.
 
@@ -145,6 +149,11 @@ def _is_sequence(tag: str) -> bool:
     return attribute is not None and "SQ" in attribute.vrs
 
 
+def _is_masked(tag: str) -> bool:
+    """Whether a row of Table E.1-1 is masked, such as (60xx,3000)."""
+    return "x" in tag
+
+
 def _matches(pattern: str, tag: str) -> bool:
     """Whether a masked tag of Table E.1-1, such as (60xx,3000), covers ``tag``.
 
@@ -212,13 +221,43 @@ class ElementRules:
         self._private = policy.actions[PRIVATE_ATTRIBUTES_TAG]
         self._table = {
             tag: rows[tag].basic_profile
-            if action == "C" and _is_sequence(tag)
+            if action == "C" and (_is_sequence(tag) or _is_masked(tag))
             else action
             for tag, action in policy.actions.items()
             if tag != PRIVATE_ATTRIBUTES_TAG
         }
         self._masked = tuple(tag for tag in self._table if "x" in tag)
         self._uid_roles = frozenset(load_uid_roles().rules)
+
+    def row_action(self, entry: str) -> str:
+        """Return the action that the rules give the elements of a table row.
+
+        It is the policy's action for the row, except that a sequence or a
+        masked row to which the policy gives C takes its Basic Profile
+        action.
+
+        Parameters
+        ----------
+        entry : str
+            The row's tag, as Table E.1-1 gives it, such as ``"(50xx,xxxx)"``
+            or the Private Attributes row.
+
+        Raises
+        ------
+        KeyError
+            If ``entry`` is not the tag of a row of Table E.1-1.
+
+        Examples
+        --------
+        >>> from pymedphys._dicom.deidentify.policy import compose_custom_policy
+        >>> ElementRules(compose_custom_policy(["clean_graphics"])).row_action(
+        ...     "(50xx,xxxx)"
+        ... )
+        'X'
+        """
+        if entry == PRIVATE_ATTRIBUTES_TAG:
+            return self._private
+        return self._table[entry]
 
     def rule(
         self, tag: str, path: Sequence[str] = (), *, iod: IOD | None = None

@@ -33,6 +33,7 @@ from .conformance import (
     CLEAN_DESCRIPTORS_FALLBACK,
     ENGINE_REMOVAL,
     FILE_META_WRITTEN,
+    GRAPHICS_NOT_CLEANED,
     OPTION_CODES,
     OVERLAY_GROUP,
     PIXEL_OPTION_CODES,
@@ -320,7 +321,12 @@ def _superseded(statement: ConformanceStatement) -> list[str]:
         if e.superseded_by:
             key = (e.superseded_by, e.policy_action)
             found.setdefault(key, []).append(f"{e.name} {e.tag}")
-    order = (ENGINE_REMOVAL, FILE_META_WRITTEN, SEQUENCE_NOT_CLEANED)
+    order = (
+        ENGINE_REMOVAL,
+        FILE_META_WRITTEN,
+        SEQUENCE_NOT_CLEANED,
+        GRAPHICS_NOT_CLEANED,
+    )
     lines = []
     for (reason, given), names in sorted(
         found.items(),
@@ -359,6 +365,22 @@ def _superseded(statement: ConformanceStatement) -> list[str]:
                 "and Table E.1-1 gives the minimum actions; where it keeps the "
                 "attribute, the instance does not gain the option's code, as "
                 "Attributes inserted describes."
+            )
+        elif reason == GRAPHICS_NOT_CLEANED:
+            text = (
+                "No cleaner for overlays and curves is designed yet, so under "
+                "Clean Graphics each masked row to which the policy gives "
+                f"{_code(given)} takes its Basic Profile action, as the table "
+                f"shows: {_join(names)}. That action removes the attribute, and "
+                "removing Overlay Data removes every attribute of its overlay "
+                "group where the IOD's Overlay Plane Module is user-optional "
+                "(D-020), so the instance still meets the option, since PS3.15 "
+                "E.3.3 specifies what the option removes, and Table E.1-1 "
+                "gives the minimum actions (D-041). An overlay group without "
+                "Overlay Data may keep its overlay in unused bits of Pixel "
+                "Data, as PS3.3 allowed before 2004, which the engine does not "
+                "change, so under this option such an instance is sequestered "
+                "as `overlay-in-pixel-data`."
             )
         else:
             text = (
