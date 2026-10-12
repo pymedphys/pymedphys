@@ -232,7 +232,7 @@ class Surface:
             return CT_THRESHOLD
         if threshold is Threshold.DOSE:
             return DOSE_FRACTION * self._peak if self._peak > 0 else None
-        return _otsu(_padding_below(self._samples))
+        return _otsu(self._samples, padding=True)
 
 
 def _voxel(coordinates: Sequence[Sequence[float]]) -> float:
@@ -267,41 +267,38 @@ def _sampled(coordinates: np.ndarray, axis: int, voxel: float) -> np.ndarray:
     return order[np.where(closer_left, left, right)]
 
 
-def _padding_below(samples: np.ndarray) -> np.ndarray:
-    """The samples with pixel padding, which is NaN, one bin below the rest.
-
-    Padding marks where there is no patient, so Otsu's threshold counts it
-    with the background: a padded volume whose other values are all one
-    still has an outline. Where padding is the only background and the
-    patient's values vary, the threshold can still fall among them.
-    """
-    padded = np.isnan(samples)
-    if not padded.any() or padded.all():
-        return samples
-    finite = samples[~padded]
-    low, high = float(finite.min()), float(finite.max())
-    step = (high - low) / _OTSU_BINS if high > low else 1.0
-    return np.where(padded, np.float32(low - step), samples)
-
-
-def _otsu(values: np.ndarray) -> float | None:
+def _otsu(values: np.ndarray, padding: bool = False) -> float | None:
     """Otsu's threshold of the finite values, or None if they are all one value.
 
     The values are put in :data:`_OTSU_BINS` bins from the lowest to the
     highest. The threshold is the lower edge of the first bin of the upper
     class, where the split into two classes maximises the variance between
     them; the first such split where several do.
+
+    With ``padding``, NaN values are pixel padding, which marks where there
+    is no patient, and count as a bin of their own just below the lowest
+    finite value, with the background. A padded volume whose other values
+    are all one then has the threshold of that value, so its padding still
+    outlines it. Where padding is the only background and the patient's
+    values vary, the threshold can still fall among them.
     """
     finite = values[np.isfinite(values)].astype(np.float64)
+    padded = int(np.isnan(values).sum()) if padding else 0
     if finite.size == 0:
         return None
     low, high = float(finite.min()), float(finite.max())
     if high <= low:
-        return None
+        return low if padded else None
     counts, edges = np.histogram(finite, bins=_OTSU_BINS, range=(low, high))
     centres = (edges[:-1] + edges[1:]) / 2
+    if padded:
+        # In float64, a bin's width below a float32 value stays distinct from it.
+        below_low = low - (edges[1] - edges[0])
+        counts = np.concatenate([[padded], counts])
+        centres = np.concatenate([[below_low], centres])
+        edges = np.concatenate([[below_low], edges])
     below = np.cumsum(counts)[:-1].astype(np.float64)
-    above = finite.size - below
+    above = counts.sum() - below
     sums = np.cumsum(counts * centres)
     below_mean = np.divide(sums[:-1], below, out=np.zeros_like(below), where=below > 0)
     above_mean = np.divide(

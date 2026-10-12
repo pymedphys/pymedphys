@@ -212,6 +212,16 @@ def test_otsu_gives_no_threshold_without_two_values(values):
     assert qc_surfaces._otsu(values) is None  # pylint: disable = protected-access
 
 
+@pytest.mark.parametrize("value", [300.0, 3.0e8, 1.0e30])
+def test_otsu_puts_padding_below_one_value(value):
+    values = np.array([np.nan, value, value, np.nan], np.float32)
+
+    level = qc_surfaces._otsu(values, padding=True)  # pylint: disable = protected-access
+
+    assert level is not None
+    assert ((values >= level) == np.isfinite(values)).all()
+
+
 @pytest.mark.deid_requirement("MIDI-BP-15", "MIDI-BP-17")
 @pytest.mark.pydicom
 def test_a_volume_gets_a_surface_render_after_its_projection():
@@ -370,21 +380,25 @@ def test_padding_is_below_every_threshold():
     assert _surface(_axial(_body(outside=3000))) != _surface(_axial(_body()))
 
 
-def _padded(body, modality):
+def _padded(body, modality, slope=1):
     """Axial slices of ``body`` with 0 as Pixel Padding Value."""
     padded = {}
     for k, data in _axial(body, modality=modality).items():
         dataset = pydicom.dcmread(io.BytesIO(data))
         dataset.add_new(0x00280120, "SS", 0)  # Pixel Padding Value
+        dataset.RescaleSlope = slope
+        dataset.RescaleIntercept = 0
         padded[k] = _file(dataset)
     return padded
 
 
 @pytest.mark.pydicom
 @pytest.mark.parametrize("modality", ["MR", "PT"])
-def test_padding_alone_outlines_an_mr_or_pet_surface(modality):
-    # Every value but the padding is one, and the padding outlines the head.
-    data = _surface(_padded(_body(inside=300, outside=0), modality))
+@pytest.mark.parametrize("slope", [1, 1_000_000])
+def test_padding_alone_outlines_an_mr_or_pet_surface(modality, slope):
+    # Every value but the padding is one, and the padding outlines the head,
+    # however large the value is once rescaled.
+    data = _surface(_padded(_body(inside=300, outside=0), modality, slope))
 
     assert data == _surface(_axial(_body()))
 
