@@ -45,6 +45,7 @@ from pymedphys._dicom.deidentify.policy import (
     compose_custom_policy,
     compose_policy,
 )
+from pymedphys._dicom.deidentify.pseudonyms import SubjectIdentity
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.residuals import SourceValue
 from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
@@ -222,6 +223,90 @@ def test_a_cleaner_that_may_write_the_source_value_leaves_it_out_of_the_search()
     (edit,) = cleaned.edits.edits
     assert (edit.kind, edit.values) == (EditKind.REPLACE, ("SENTINEL",))
     assert cleaned.retained == frozenset({_ALLERGIES})
+
+
+def test_a_cleaner_cleans_single_values_or_the_whole_instance_not_both():
+    def clean(source, _key):
+        return (source,)
+
+    def clean_instance(_values, _key, _identity):
+        return {}
+
+    shared = {
+        "option": "retain_patient_characteristics",
+        "tags": frozenset({"(0010,2110)"}),
+        "vrs": frozenset({"LO"}),
+        "method": "Kept as it is.",
+    }
+    with pytest.raises(ValueError, match="either"):
+        cleaners.Cleaner(**shared)
+    with pytest.raises(ValueError, match="either"):
+        cleaners.Cleaner(**shared, clean=clean, clean_instance=clean_instance)
+    with pytest.raises(ValueError, match="retains"):
+        cleaners.Cleaner(**shared, clean_instance=clean_instance, retains=True)
+
+
+def test_a_cleaner_of_the_whole_instance_settles_what_it_returns():
+    received = []
+    first = ElementPath((), "(0008,0020)")
+    second = ElementPath((), "(0008,0030)")
+    timestamp = ElementPath((("(5200,9230)", 0),), "(0034,0007)")
+
+    def clean_instance(values, key, identity):
+        values = tuple(values)
+        received.append((values, key, identity))
+        return {
+            first: (("19000101",), False),
+            second: (("SENTINEL",), True),
+            timestamp: ((b"\x00" * 10,), False),
+            # A path it was not given is not settled.
+            _ALLERGIES: (("NOT GIVEN",), False),
+        }
+
+    instance = cleaners.Cleaner(
+        option="retain_longitudinal_modified_dates",
+        tags=frozenset({"(0008,0020)", "(0008,0030)", "(0034,0007)", "(0010,2110)"}),
+        vrs=frozenset({"DA", "TM", "OB"}),
+        method="Modified.",
+        clean_instance=clean_instance,
+    )
+    pending = EditKind.PENDING
+    edits = _edits(
+        (first, "C", pending, "DA", "SENTINEL"),
+        (second, "C", pending, "TM", "SENTINEL"),
+        (timestamp, "C", pending, "OB", b"SENTINEL!!"),
+        # Read in a VR that the cleaner does not read, so not given to it.
+        (_ALLERGIES, "C", pending, "LO", "SENTINEL"),
+    )
+    identity = SubjectIdentity.from_patient_id("SENTINEL")
+
+    cleaned = cleaners.apply_cleaners(edits, (instance,), KEY, identity)
+
+    ((given, key, subject),) = received
+    assert [value.source for value in given] == [first, second, timestamp]
+    assert (key, subject) == (KEY, identity)
+    date, time, stamp, allergies = cleaned.edits.edits
+    assert (date.kind, date.values) == (EditKind.REPLACE, ("19000101",))
+    assert (time.kind, time.values) == (EditKind.REPLACE, ("SENTINEL",))
+    assert (stamp.kind, stamp.values) == (EditKind.REPLACE, (b"\x00" * 10,))
+    assert allergies == edits.edits[3]
+    assert cleaned.retained == frozenset({second})
+
+
+def test_a_cleaner_of_the_whole_instance_is_given_nothing_without_pending_c():
+    def clean_instance(_values, _key, _identity):
+        raise AssertionError("not called")
+
+    instance = cleaners.Cleaner(
+        option="retain_longitudinal_modified_dates",
+        tags=frozenset({"(0008,0020)"}),
+        vrs=frozenset({"DA"}),
+        method="Modified.",
+        clean_instance=clean_instance,
+    )
+    edits = _edits((ElementPath((), "(0008,0020)"), "K", EditKind.KEEP, "DA", None))
+
+    assert cleaners.apply_cleaners(edits, (instance,), KEY).edits == edits
 
 
 def _transform(options, cleaning=None):
