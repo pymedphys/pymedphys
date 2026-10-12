@@ -57,8 +57,9 @@ ONNX Runtime records telemetry and sends it to Microsoft unless the
 environment variable ``ORT_DISABLE_TELEMETRY`` is ``1`` when it is first
 imported; its ``disable_telemetry_events()`` does not stop the first event,
 which carries the interpreter's path. This module sets the variable before it
-imports ONNX Runtime, and refuses to run where ONNX Runtime was imported
-before without it. The variable governs ONNX Runtime's 1DS telemetry, which
+imports ONNX Runtime, and refuses to run with an ONNX Runtime that anything
+else imported, since it cannot tell whether the variable was set then. The
+variable governs ONNX Runtime's 1DS telemetry, which
 its official wheels use on Linux and macOS from 1.29 and on Windows from
 1.31. Earlier official Windows wheels trace through ETW instead, which
 ignores it, as do Windows builds made for Windows apps and components, so on
@@ -80,6 +81,7 @@ import sys
 import urllib.parse
 import zipfile
 from collections.abc import Callable, Mapping
+from typing import Any
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
@@ -508,32 +510,43 @@ def _runtime_problem(
     return None
 
 
+# The ONNX Runtime module that _onnxruntime imported itself, with telemetry
+# disabled. ONNX Runtime reads TELEMETRY_VARIABLE only as it initialises, so
+# the variable's value now says nothing about a module imported elsewhere.
+_IMPORTED: dict[str, Any] = {}
+
+
 def _onnxruntime():
     """Import ONNX Runtime with its telemetry disabled.
 
     Raises
     ------
     TextDetectionError
-        Where ONNX Runtime is not installed, was imported before without
-        ``ORT_DISABLE_TELEMETRY=1``, which it reads only on import, or is a
-        Windows build whose telemetry that variable does not turn off.
+        Where ONNX Runtime is not installed, was imported by something other
+        than this function, which cannot tell whether ``ORT_DISABLE_TELEMETRY``
+        was ``1`` then, or is a Windows build whose telemetry that variable
+        does not turn off.
     """
+    existing = sys.modules.get("onnxruntime")
+    if existing is not None and existing is _IMPORTED.get("onnxruntime"):
+        return existing
     problem = _runtime_problem(sys.platform, *_installed_onnxruntime())
     if problem is not None:
         raise TextDetectionError(problem)
-    if "onnxruntime" not in sys.modules:
-        os.environ[TELEMETRY_VARIABLE] = "1"
-    elif os.environ.get(TELEMETRY_VARIABLE) != "1":
+    if existing is not None:
         raise TextDetectionError(
-            "ONNX Runtime was imported with its telemetry enabled; set "
-            f"{TELEMETRY_VARIABLE}=1 before anything imports it"
+            "ONNX Runtime was imported before text detection could disable its "
+            "telemetry, which it reads only on import; run text detection in a "
+            "Python process that has not imported onnxruntime"
         )
+    os.environ[TELEMETRY_VARIABLE] = "1"
     try:
         import onnxruntime  # pylint: disable = import-outside-toplevel
     except ImportError:
         raise TextDetectionError(
             f'text detection needs ONNX Runtime: install "pymedphys[{EXTRA}]"'
         ) from None
+    _IMPORTED["onnxruntime"] = onnxruntime
     return onnxruntime
 
 

@@ -258,12 +258,28 @@ def test_rgb_frames_are_searched_by_luminance():
         text_detection._luminance(np.zeros((4, 4, 4)))  # pylint: disable = protected-access
 
 
-def test_onnxruntime_imported_with_telemetry_enabled_is_refused(monkeypatch):
+@pytest.mark.parametrize("variable", [None, "0", "1"])
+def test_onnxruntime_imported_elsewhere_is_refused(monkeypatch, variable):
+    # ONNX Runtime reads the variable as it initialises, so one set only
+    # after another import (the "1" case) cannot have disabled its telemetry.
     monkeypatch.setitem(sys.modules, "onnxruntime", object())
-    monkeypatch.delenv(text_detection.TELEMETRY_VARIABLE, raising=False)
+    monkeypatch.setattr(text_detection, "_IMPORTED", {})
+    monkeypatch.setattr(text_detection, "_installed_onnxruntime", lambda: ((), None))
+    if variable is None:
+        monkeypatch.delenv(text_detection.TELEMETRY_VARIABLE, raising=False)
+    else:
+        monkeypatch.setenv(text_detection.TELEMETRY_VARIABLE, variable)
 
     with pytest.raises(TextDetectionError, match="telemetry"):
         text_detection._onnxruntime()  # pylint: disable = protected-access
+
+
+def test_the_runtime_text_detection_imported_is_reused(monkeypatch):
+    runtime = object()
+    monkeypatch.setitem(sys.modules, "onnxruntime", runtime)
+    monkeypatch.setattr(text_detection, "_IMPORTED", {"onnxruntime": runtime})
+
+    assert text_detection._onnxruntime() is runtime  # pylint: disable = protected-access
 
 
 @pytest.mark.parametrize(
@@ -410,6 +426,37 @@ def test_a_session_leaves_no_telemetry_behind(tmp_path):
     )
 
     assert not [path for path in home.rglob("*") if path.is_file()]
+
+
+def test_a_runtime_imported_before_text_detection_is_refused(tmp_path):
+    """Whatever the variable is now, text detection cannot know what it was
+    when something else imported ONNX Runtime, so it refuses that runtime.
+    The variable is set from the start here, so the import sends nothing."""
+    _skip_without_onnxruntime()
+    model = tmp_path / "identity.onnx"
+    model.write_bytes(_identity_model())
+    script = textwrap.dedent(
+        """
+        import pathlib, sys
+        import onnxruntime
+        from pymedphys._dicom.deidentify import text_detection
+        try:
+            text_detection._session(pathlib.Path(sys.argv[1]).read_bytes())
+        except text_detection.TextDetectionError as error:
+            assert "imported before" in str(error)
+        else:
+            raise AssertionError("a runtime imported elsewhere was used")
+        """
+    )
+    environment = dict(os.environ)
+    environment[text_detection.TELEMETRY_VARIABLE] = "1"
+
+    subprocess.run(
+        [sys.executable, "-c", script, str(model)],
+        check=True,
+        env=environment,
+        timeout=120,
+    )
 
 
 @pytest.fixture(name="detector", scope="module")
