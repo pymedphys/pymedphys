@@ -512,10 +512,16 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about the identity of the device in the Attributes shall be retained, as described in Table E.1-1.
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-003", "D-007", "D-022"]
+status = "implemented"
+decisions = ["D-003", "D-007", "D-022", "D-034"]
+implementation = [
+  "_dicom/deidentify/ae_titles.py",
+  "_dicom/deidentify/cleaners.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/policy.py",
+]
 note = '''
+The attributes that the Option gives K are kept, and the eleven AE titles that it gives C are each replaced by a keyed token, the same for the same application entity throughout a run (D-034).
 `tps-import` also selects Modified Dates, which conflicts with this Option for device dates, so its output claims neither (D-007).
 '''
 

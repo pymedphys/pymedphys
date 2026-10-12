@@ -15,8 +15,10 @@
 """Clean Descriptors in the transform: ROI Names cleaned, others removed or replaced.
 
 Under a policy that selects the Clean Descriptors Option, the edits leave
-each attribute that Table E.1-1 gives C pending (D-009). This module settles
-them for one instance:
+each attribute that Table E.1-1 gives C pending (D-009), and the cleaners of
+the selected options settle those that they clean
+(:mod:`~pymedphys._dicom.deidentify.cleaners`, D-034). This module settles
+the rest for one instance:
 
 - Each ROI Name (3006,0026) of Structure Set ROI Sequence (3006,0020) is
   cleaned in both tiers by

@@ -37,7 +37,11 @@ each instance it may process. It joins the engine's per-instance steps:
    element its action under the run's policy and the instance's IOD;
 4. :func:`~pymedphys._dicom.deidentify.edits.edit_instance` works out what
    each element becomes, with the run's key and the subject's identity, and
-   collects the values removed or replaced for the residual search;
+   collects the values removed or replaced for the residual search, and
+   :func:`~pymedphys._dicom.deidentify.cleaners.apply_cleaners`, then, under
+   Clean Descriptors,
+   :func:`~pymedphys._dicom.deidentify.descriptor_cleaning.clean_descriptors`,
+   settle the attributes that the policy gives C;
 5. :func:`writer_plan` turns those edits into what the byte-preserving
    writer takes, and
    :func:`~pymedphys._dicom.deidentify.preserving_writer.write_data_set` and
@@ -96,6 +100,7 @@ from pathlib import PurePosixPath
 from pymedphys._imports import pydicom
 
 from . import output_names
+from .cleaners import apply_cleaners, cleaners_for
 from .descriptor_cleaning import (
     CLEAN_DESCRIPTORS,
     DescriptorCleaning,
@@ -631,8 +636,12 @@ class InstanceTransform:
     instance without one has no pseudonyms, so its Patient's Name and
     Patient ID edits stay pending and it is sequestered.
 
-    Under Clean Descriptors, :func:`~.descriptor_cleaning.clean_descriptors`
-    settles the attributes given C. An instance with a ROI Name held for
+    The cleaners of the options that the policy selects
+    (:func:`~.cleaners.cleaners_for`) settle the attributes given C that they
+    clean, such as Retain Device Identity's AE titles, and then, under Clean
+    Descriptors, :func:`~.descriptor_cleaning.clean_descriptors` settles the
+    others, where it can; an attribute given C that is still pending
+    sequesters the instance. An instance with a ROI Name held for
     review is written with that name empty, and its evidence is a
     :class:`HeldEvidence`, which :class:`ReleaseGate` holds for review. The
     markers claim Clean Descriptors only for an instance that satisfies it.
@@ -663,6 +672,7 @@ class InstanceTransform:
             )
         self._rules = ElementRules(policy)
         self._key = key
+        self._cleaners = cleaners_for(policy)
         self._cleaning = cleaning
         self._fallback = (
             None if cleaning is None else ElementRules(fallback_policy(policy))
@@ -776,7 +786,10 @@ class InstanceTransform:
                 reasons, evidence, (*risk, *dropped_of(edits), *omissions_of(evidence))
             )
         satisfied = False
-        retained: frozenset[ElementPath] = frozenset()
+        settled = apply_cleaners(edits, self._cleaners, self._key)
+        edits, retained = settled.edits, settled.retained
+        if retained:
+            evidence = coverage_of(plan, edits, retained)
         names: tuple[object, ...] = ()
         if self._cleaning is not None and self._fallback is not None:
             fallback = self._fallback
@@ -802,10 +815,10 @@ class InstanceTransform:
                 return Sequestered(
                     (refused.reason,),
                     evidence,
-                    (*risk, *dropped_of(edits), *omissions_of(evidence)),
+                    (*risk, *dropped_of(edits, retained), *omissions_of(evidence)),
                 )
             edits, satisfied = cleaned.edits, cleaned.satisfied
-            retained = frozenset(cleaned.retained)
+            retained |= cleaned.retained
             names = cleaned.qc
             evidence = coverage_of(plan, edits, retained)
             if cleaned.held:

@@ -500,6 +500,26 @@ def _roi_names(statement: ConformanceStatement) -> list[str]:
     ]
 
 
+def _cleaned(
+    statement: ConformanceStatement,
+    named: Callable[[str], str],
+    option: Callable[[str], str],
+) -> list[str]:
+    """Describe how each selected option's cleaner cleans its attributes."""
+    lines: list[str] = []
+    for cleaned in statement.cleaned:
+        lines += [
+            f"## Cleaning under the {option(cleaned.option)}",
+            "",
+            f"The policy gives C under this option to "
+            f"{_join(named(tag) for tag in cleaned.tags)}, wherever they are "
+            f"in the data set, and a reviewed cleaner cleans them (D-034). "
+            f"{cleaned.method}",
+            "",
+        ]
+    return lines
+
+
 def _inserted(
     statement: ConformanceStatement,
     named: Callable[[str], str],
@@ -757,6 +777,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         *_other(statement, named),
         *_local_codes(named),
         *_roi_names(statement),
+        *_cleaned(statement, named, option),
         *conformance_values.values_written(named),
         "",
         *conformance_values.dates_and_times(statement, named, option),
