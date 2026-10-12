@@ -408,6 +408,6 @@ def test_a_reviewed_addition_is_read_with_its_source(tmp_path):
 
 
 def test_the_shipped_file_has_no_reviewed_addition(rules):
-    # Additions need a reviewed public source; TCIA's Private Tag Knowledge
-    # Base is not one until its licence is known.
+    # Additions need a reviewed public source. TCIA's Private Tag Dictionary
+    # is a separate list, not a source of additions.
     assert {rule.basis for rule in rules.rules.values()} == {Basis.TABLE}

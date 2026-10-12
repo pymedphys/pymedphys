@@ -153,6 +153,7 @@ SLOW_TEST_FILES = frozenset(
     {
         "lib/pymedphys/tests/delivery/test_deliverydata_trf_dicom_round_trip.py",
         "lib/pymedphys/tests/dicom/test_anonymise.py",
+        "lib/pymedphys/tests/dicom/test_deidentify_tcia_private_tags_published.py",
         "lib/pymedphys/tests/experimental/pseudonymisation/test_pseudonymisation.py",
         "lib/pymedphys/tests/gamma/test_agnew_mcgarry.py",
         "lib/pymedphys/tests/metersetmap/test_metersetmap_regression.py",

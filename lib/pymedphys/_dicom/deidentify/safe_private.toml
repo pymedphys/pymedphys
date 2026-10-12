@@ -23,7 +23,9 @@
 # Each rule takes the handling of its VR unless its note says why not. A
 # reviewed addition, for a private attribute that the table does not list,
 # must retain its value, and cites the public document that shows it is
-# safe; there are none yet. TCIA's Private Tag Knowledge Base is not used.
+# safe; there are none yet. TCIA's Private Tag Dictionary, which ships in
+# _tcia/, is a separate list that a run may choose instead of this one; it is
+# not a source of additions.
 #
 # The comment after each rule is the table's description of the attribute.
 

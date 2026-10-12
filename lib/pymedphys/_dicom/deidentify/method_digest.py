@@ -43,9 +43,10 @@ apply, whether or not the policy's options use it:
   keyed values, the root and namespace of replacement UIDs, the prefix, family
   name, and code length of patient pseudonyms, the range of date offsets and
   the nominal UTC offset, and the constants of dummy values;
-- the engine's source and rule files: every ``.py``, ``.toml``, and ``.json``
-  file of this package, at any depth. These are its modules; its rule files,
-  and the requirements register beside them; and its generated tables. Each
+- the engine's source and rule files: every ``.py``, ``.toml``, ``.json``,
+  ``.csv``, and ``.txt`` file of this package, at any depth. These are its
+  modules; its rule files, and the requirements register beside them; its
+  generated tables; and TCIA's Private Tag Dictionary and its notice. Each
   is read as bytes, with CRLF line endings normalised to LF, so a Windows
   checkout gives each file the same digest. ``__pycache__`` and names that
   start with ``.`` within the package, such as the caches that tools write,
@@ -125,7 +126,7 @@ from .policy import Policy
 FORMAT = "pymedphys-deid-method-digest/2"
 # The engine's package, whose source and rule files the digest covers.
 PACKAGE_DIR = pathlib.Path(__file__).resolve().parent
-COVERED_SUFFIXES = frozenset({".py", ".toml", ".json"})
+COVERED_SUFFIXES = frozenset({".py", ".toml", ".json", ".csv", ".txt"})
 # A keyed digest, as 64 lowercase hexadecimal digits.
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # The parameters of generated values, by module, which the digest names as
