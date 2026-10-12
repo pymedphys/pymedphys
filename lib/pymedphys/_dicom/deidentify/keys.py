@@ -55,6 +55,7 @@ DOMAINS = frozenset(
         "date-offset",
         "key-id",
         "patient",
+        "reviewed-descriptors",
         "reviewed-roi-names",
         "subject",
         "uid",
