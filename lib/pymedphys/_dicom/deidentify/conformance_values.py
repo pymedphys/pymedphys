@@ -210,6 +210,11 @@ REVIEW_CODES = frozenset(
 HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
     {
         "roi-names": "descriptor cleaning sent one of its ROI Names to review",
+        "visual-features": (
+            "under Clean Recognizable Visual Features, the instance can show a "
+            "face, and its source file is in a series that the face review "
+            "marked as showing one, or in none that it reviewed"
+        ),
         "release": (
             "the release gate requires QC review, for other text that the "
             "residual search found inside the data set, or a value that could "

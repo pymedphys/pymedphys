@@ -130,6 +130,10 @@ class ReleaseReporter:
         applies to ROI Names, or None without one, as
         :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
+    face_review : str, optional
+        The reference of the attested QC pack whose face verdicts the run
+        applies under the Clean Recognizable Visual Features Option, or
+        None, the default, without one.
     """
 
     def __init__(
@@ -138,12 +142,14 @@ class ReleaseReporter:
         *,
         vocabulary: tg263.Nomenclature | None,
         reviewed_roi_names: str | None,
+        face_review: str | None = None,
     ):
         if not isinstance(policy, Policy):
             raise TypeError("policy must be a Policy")
         self._policy = policy
         self._vocabulary = vocabulary
         self._reviewed_roi_names = reviewed_roi_names
+        self._face_review = face_review
 
     def __repr__(self) -> str:
         return "ReleaseReporter()"
@@ -226,6 +232,7 @@ class ReleaseReporter:
             self._policy,
             vocabulary=self._vocabulary,
             reviewed_roi_names=self._reviewed_roi_names,
+            face_review=self._face_review,
             **run,  # type: ignore[arg-type]
         )
 
@@ -462,8 +469,8 @@ def held_instances(
     Raises
     ------
     TypeError
-        For a held outcome's reason that is neither a held ROI Name nor a
-        release gate's reason.
+        For a held outcome's reason that is not a held ROI Name, held visual
+        features, or a release gate's reason.
     """
     return release_report.held_for_review(
         getattr(outcome, "reasons")

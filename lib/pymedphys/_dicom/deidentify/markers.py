@@ -153,14 +153,19 @@ DEIDENTIFYING_EQUIPMENT = "109104"
 # The values of Longitudinal Temporal Information Modified, from the least
 # strict to the strictest.
 TEMPORAL_VALUES = ("UNMODIFIED", "MODIFIED", "REMOVED")
-# The one selected option that a policy claiming conformance can leave
-# unsatisfied: in an instance that retains a descriptor without review.
+# The selected options that a policy claiming conformance can leave
+# unsatisfied, each only in an instance that review has not cleared: Clean
+# Descriptors in one that retains a descriptor without review, and Clean
+# Recognizable Visual Features in one that is held for its face review.
 _CLEAN_DESCRIPTORS = "clean_descriptors"
+_VISUAL_FEATURES = "clean_recognizable_visual_features"
+_REVIEWED_OPTIONS = (_CLEAN_DESCRIPTORS, _VISUAL_FEATURES)
 
 _PATIENT_IDENTITY_REMOVED = "(0012,0062)"
 _DEIDENTIFICATION_METHOD = "(0012,0063)"
 _DEIDENTIFICATION_METHOD_CODES = "(0012,0064)"
 _TEMPORAL_INFORMATION_MODIFIED = "(0028,0303)"
+_RECOGNIZABLE_VISUAL_FEATURES = "(0028,0302)"
 _CONTRIBUTING_EQUIPMENT = "(0018,A001)"
 _MANUFACTURER = "(0008,0070)"
 _SOFTWARE_VERSIONS = "(0018,1020)"
@@ -219,6 +224,11 @@ class Markers:
     purpose_of_reference : CodedConcept
         The item's Purpose of Reference Code Sequence (0040,A170) item: DCM
         109104 "De-identifying Equipment".
+    recognizable_visual_features : str or None
+        Recognizable Visual Features (0028,0302): ``"NO"`` in an instance
+        that satisfies the Clean Recognizable Visual Features Option and
+        whose IOD defines the attribute (PS3.15 E.3.2), or None, which
+        leaves it as it is.
     """
 
     patient_identity_removed: str
@@ -228,6 +238,7 @@ class Markers:
     manufacturer: str
     software_versions: tuple[str, ...]
     purpose_of_reference: CodedConcept
+    recognizable_visual_features: str | None = None
 
 
 @functools.cache
@@ -257,9 +268,9 @@ def _satisfied(policy: Policy, satisfied: Iterable[str]) -> tuple[str, ...]:
     """Return the satisfied options in the policy's order, after checking them.
 
     Under a policy that can claim conformance, every selected option but
-    Clean Descriptors must be satisfied, so that the codes name each option
-    whose actions the instance carries. An option that the policy records as
-    unmet is never required.
+    Clean Descriptors and Clean Recognizable Visual Features must be
+    satisfied, so that the codes name each option whose actions the instance
+    carries. An option that the policy records as unmet is never required.
     """
     if isinstance(satisfied, str):
         raise TypeError(
@@ -276,13 +287,16 @@ def _satisfied(policy: Policy, satisfied: Iterable[str]) -> tuple[str, ...]:
     missing = [
         option
         for option in policy.options
-        if option not in chosen and option != _CLEAN_DESCRIPTORS and option not in unmet
+        if option not in chosen
+        and option not in _REVIEWED_OPTIONS
+        and option not in unmet
     ]
     if policy.claims_conformance and missing:
         raise ValueError(
             f"satisfied leaves out {', '.join(missing)}, which the policy "
-            f"selects; only {_CLEAN_DESCRIPTORS} can go unsatisfied, in an "
-            "instance that retains a descriptor without review"
+            f"selects; only {_CLEAN_DESCRIPTORS}, in an instance that retains "
+            f"a descriptor without review, and {_VISUAL_FEATURES}, in one held "
+            "for its face review, can go unsatisfied"
         )
     return tuple(option for option in policy.options if option in chosen)
 
@@ -341,6 +355,9 @@ def _check(found: Markers) -> None:
     if found.patient_identity_removed != "YES":
         name = _dictionary()[_PATIENT_IDENTITY_REMOVED].name
         problems.append(f"{name} {_PATIENT_IDENTITY_REMOVED} is not YES")
+    if found.recognizable_visual_features not in (None, "NO"):
+        name = _dictionary()[_RECOGNIZABLE_VISUAL_FEATURES].name
+        problems.append(f"{name} {_RECOGNIZABLE_VISUAL_FEATURES} is not NO")
     if found.temporal_information_modified not in TEMPORAL_VALUES:
         name = _dictionary()[_TEMPORAL_INFORMATION_MODIFIED].name
         problems.append(
@@ -398,8 +415,10 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         whose codes a policy that can claim conformance adds. Such a policy
         must have every selected option satisfied except Clean Descriptors,
         which an instance that retains a descriptor that has not passed
-        pooled human review does not satisfy; one whose descriptors are
-        removed or replaced by their Basic Profile actions instead does.
+        pooled human review does not satisfy, while one whose descriptors are
+        removed or replaced by their Basic Profile actions instead does, and
+        Clean Recognizable Visual Features, which an instance held for its
+        face review does not satisfy.
         ``tps-import``, which claims no conformance and adds no codes, needs
         none satisfied, and never the Retain Device Identity that it records
         as unmet.
@@ -419,7 +438,7 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         If ``digest`` is not 64 lowercase hexadecimal digits; if
         ``satisfied`` names an option that the policy does not select, or,
         under a policy that can claim conformance, leaves out a selected
-        option other than Clean Descriptors, in which case the message names
+        option other than those two, in which case the message names
         each option left out; or if the policy selects an option without a
         CID 7050 code here, which a validated policy never does. The message
         does not quote the digest.
@@ -739,4 +758,10 @@ def _marked(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset:
         marked.pop(_int_tag(_DEIDENTIFICATION_METHOD_CODES), None)
     _set(marked, _TEMPORAL_INFORMATION_MODIFIED, [temporal])
     _set(marked, _CONTRIBUTING_EQUIPMENT, equipment_items)
+    if markers.recognizable_visual_features is not None:
+        _set(
+            marked,
+            _RECOGNIZABLE_VISUAL_FEATURES,
+            [markers.recognizable_visual_features],
+        )
     return marked

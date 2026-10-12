@@ -101,6 +101,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import hashlib
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import PurePosixPath
 
@@ -127,18 +128,24 @@ from .elements import (
     new_items,
     read_element,
 )
+from .face_review import FaceReview, carries_visual_features
 from .file_layout import ElementPath
 from .iod_conformance import lost_requirements, source_gaps
 from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
 from .markers import MarkerError, Markers, apply_markers, markers_for
 from .method_digest import method_digest
-from .policy import Policy, PolicyError, select_policy
+from .policy import (
+    CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    Policy,
+    PolicyError,
+    select_policy,
+)
 from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
-from .reasons import TransformReason
+from .reasons import HeldVisualFeatures, TransformReason
 from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
@@ -179,6 +186,7 @@ _STUDY = ElementPath((), "(0020,000D)")
 _SERIES = ElementPath((), "(0020,000E)")
 _PATIENT_ID = ElementPath((), "(0010,0020)")
 _PIXEL_DATA = ElementPath((), "(7FE0,0010)")
+_RECOGNIZABLE_VISUAL_FEATURES = "(0028,0302)"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -276,18 +284,23 @@ def dropped_of(
 
 @dataclasses.dataclass(frozen=True)
 class HeldEvidence:
-    """The evidence of an instance that descriptor cleaning holds for review.
+    """The evidence of an instance that review holds.
+
+    Descriptor cleaning holds an instance with a ROI Name held for review,
+    and the face review one that can show a face without a verdict of
+    absent for its source file.
 
     Attributes
     ----------
     coverage : Coverage
         Its residual search's coverage, pooled with its subject's as any.
-    held : tuple of HeldRoiName
-        Each ROI Name held, by path and reason.
+    held : tuple of HeldRoiName or HeldVisualFeatures
+        Each ROI Name held, by path and reason, then why its visual
+        features hold it, if they do.
     """
 
     coverage: Coverage
-    held: tuple[HeldRoiName, ...]
+    held: tuple[HeldRoiName | HeldVisualFeatures, ...]
 
 
 def omissions_of(
@@ -434,7 +447,8 @@ def writer_plan(
 
 
 # The attributes that PS3.15 E.1.1, E.2, and E.3.6 have a de-identifier add
-# or update, which apply_markers writes.
+# or update, which apply_markers writes; it writes Recognizable Visual
+# Features (0028,0302) too, under E.3.2, only where the markers set it.
 MARKER_TAGS = (
     "(0012,0062)",  # Patient Identity Removed
     "(0012,0063)",  # De-identification Method
@@ -469,8 +483,13 @@ def with_markers(
         cannot be read, holds an element that the plan does not plan, or the
         markers cannot be added to it.
     """
+    tags = MARKER_TAGS + (
+        ()
+        if markers.recognizable_visual_features is None
+        else (_RECOGNIZABLE_VISUAL_FEATURES,)
+    )
     present = pydicom.Dataset()
-    for tag in MARKER_TAGS:
+    for tag in tags:
         path = ElementPath((), tag)
         if path in writing.replacements:
             present.add(copy.deepcopy(writing.replacements[path]))
@@ -485,7 +504,7 @@ def with_markers(
     kept, removed = set(writing.kept), set(writing.removed)
     replacements = dict(writing.replacements)
     introduced = set(writing.introduced)
-    for tag in MARKER_TAGS:
+    for tag in tags:
         if _int_tag(tag) not in marked:
             continue
         element = marked[_int_tag(tag)]
@@ -578,14 +597,16 @@ def satisfied_options(policy: Policy) -> tuple[str, ...]:
     """Return the options an instance satisfies by the policy's actions alone.
 
     Every selected option but Clean Descriptors, which descriptor cleaning
-    must satisfy for each instance (D-009), and but any option the policy
-    records as unmet.
+    must satisfy for each instance (D-009), Clean Recognizable Visual
+    Features, which the face review must, and any option the policy records
+    as unmet.
     """
     unmet = {option for resolution in policy.resolved for option in resolution.unmet}
     return tuple(
         option
         for option in policy.options
-        if option != "clean_descriptors" and option not in unmet
+        if option not in ("clean_descriptors", CLEAN_RECOGNIZABLE_VISUAL_FEATURES)
+        and option not in unmet
     )
 
 
@@ -621,6 +642,11 @@ class InstanceTransform:
         policy takes. The transform applies the list's decisions as they
         stand when it is made, the version whose keyed digest its markers and
         release report record; a decision recorded later does not apply.
+    face_review : FaceReview, optional
+        The face verdicts of an earlier run's attested QC pack, from
+        :func:`~pymedphys._dicom.deidentify.face_review.read_face_review`,
+        which a policy selecting Clean Recognizable Visual Features needs,
+        and no other policy takes.
     unvalidated_policy : bool, default False
         Allow a policy that is not enabled, such as a preset whose behaviour
         is not yet validated. For tests and validation runs only; nothing
@@ -631,8 +657,10 @@ class InstanceTransform:
     PolicyError
         If the policy is not enabled and ``unvalidated_policy`` is not set;
         if ``cleaning`` is given without Clean Descriptors, or left out with
-        it; or if the policy's other options cannot be composed into the
-        policy whose actions descriptors take where they are not cleaned.
+        it, or ``face_review`` without Clean Recognizable Visual Features,
+        or left out with it; or if the policy's other options cannot be
+        composed into the policy whose actions descriptors take where they
+        are not cleaned.
 
     Attributes
     ----------
@@ -661,6 +689,16 @@ class InstanceTransform:
     markers claim Clean Descriptors only for an instance that satisfies it.
     Under Clean Graphics, an instance whose overlay may lie in Pixel Data is
     sequestered (:func:`~.clean_graphics.overlay_in_pixel_data`).
+
+    Under Clean Recognizable Visual Features, an instance that can show a
+    face (:func:`~.face_review.carries_visual_features`) satisfies the
+    option only where the SHA-256 of its source file is in a series that the
+    face review marks absent; it is then marked with the option's code and,
+    where its IOD defines Recognizable Visual Features (0028,0302), that
+    attribute set to NO. Any other such instance is written without them,
+    and its evidence is a :class:`HeldEvidence` with its
+    :class:`~.reasons.HeldVisualFeatures`, so it is never released. An
+    instance that cannot show a face satisfies the option.
     """
 
     def __init__(
@@ -670,6 +708,7 @@ class InstanceTransform:
         iod_tables: IODTables | None = None,
         *,
         cleaning: DescriptorCleaning | None = None,
+        face_review: FaceReview | None = None,
         unvalidated_policy: bool = False,
     ) -> None:
         if not (policy.enabled or unvalidated_policy):
@@ -681,6 +720,13 @@ class InstanceTransform:
             raise PolicyError(
                 "descriptor cleaning is given exactly when the policy selects "
                 "Clean Descriptors"
+            )
+        if (CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.options) != (
+            face_review is not None
+        ):
+            raise PolicyError(
+                "a face review is given exactly when the policy selects Clean "
+                "Recognizable Visual Features"
             )
         if cleaning is not None:
             # One version of the list, for both cleaning and its digest.
@@ -704,17 +750,30 @@ class InstanceTransform:
             policy, vocabulary=nomenclature, reviewed_roi_names=reviewed
         )
         satisfied = satisfied_options(policy)
+        descriptors = (CLEAN_DESCRIPTORS,) if cleaning else ()
+        faces = (CLEAN_RECOGNIZABLE_VISUAL_FEATURES,) if face_review else ()
+        # By whether the instance satisfies Clean Descriptors, and Clean
+        # Recognizable Visual Features, where the policy selects them.
         self._markers = {
-            False: markers_for(policy, digest, satisfied=satisfied),
-            True: markers_for(
+            (cleaned, faceless): markers_for(
                 policy,
                 digest,
-                satisfied=satisfied + ((CLEAN_DESCRIPTORS,) if cleaning else ()),
-            ),
+                satisfied=(
+                    satisfied
+                    + (descriptors if cleaned else ())
+                    + (faces if faceless else ())
+                ),
+            )
+            for cleaned in (False, True)
+            for faceless in (False, True)
         }
+        self._face_review = face_review
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
         self.reporter = ReleaseReporter(
-            policy, vocabulary=nomenclature, reviewed_roi_names=reviewed
+            policy,
+            vocabulary=nomenclature,
+            reviewed_roi_names=reviewed,
+            face_review=None if face_review is None else face_review.reference,
         )
 
     def __repr__(self) -> str:
@@ -787,6 +846,25 @@ class InstanceTransform:
             written[path] = value
             names[path] = output_name_uid(self._key, value, kept)
         return _Identifiers(written[_SOP_INSTANCE], names)
+
+    def _face_markers(
+        self, data: bytes, dataset: pydicom.Dataset, iod: IOD, cleaned: bool
+    ) -> tuple[Markers, HeldVisualFeatures | None]:
+        """Return an instance's markers, and why its face review holds it, if it does.
+
+        Without a face review, the markers are those of whether descriptor
+        cleaning satisfied Clean Descriptors, and nothing holds the instance.
+        """
+        review = self._face_review
+        if review is None or not carries_visual_features(dataset, iod.name):
+            return self._markers[(cleaned, True)], None
+        reason = review.hold_reason(hashlib.sha256(data).digest())
+        if reason is not None:
+            return self._markers[(cleaned, False)], HeldVisualFeatures(reason)
+        markers = self._markers[(cleaned, True)]
+        if iod.lookup(_RECOGNIZABLE_VISUAL_FEATURES):
+            markers = dataclasses.replace(markers, recognizable_visual_features="NO")
+        return markers, None
 
     def __call__(
         self, data: bytes, record: InstanceRecord
@@ -880,14 +958,17 @@ class InstanceTransform:
             evidence = coverage_of(plan, edits, retained, self._options)
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
+        markers, held = self._face_markers(data, dataset, iod, satisfied)
+        if held:
+            evidence = HeldEvidence(
+                _coverage(evidence),
+                (*(evidence.held if isinstance(evidence, HeldEvidence) else ()), held),
+            )
         qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         try:
             qc = (*qc, *_retained(source, plan))
             writing = with_markers(
-                writer_plan(plan, edits, codecs),
-                source,
-                dataset,
-                self._markers[satisfied],
+                writer_plan(plan, edits, codecs), source, dataset, markers
             )
             writing = _without_bitstream_metadata(writing, source)
             identifiers = self._identifiers(writing, dataset, source)

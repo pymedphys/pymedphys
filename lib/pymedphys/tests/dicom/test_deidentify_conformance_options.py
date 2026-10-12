@@ -118,11 +118,16 @@ def test_a_policy_with_an_option_the_engine_does_not_yet_apply_is_described(opti
     assert conformance.PENDING_UNAPPLIED in text
 
 
-def test_the_pixel_options_outside_table_e1_1_can_be_composed_but_are_not_supported(
-    preset, statement_for
+@pytest.mark.parametrize("unapplied", standard.PIXEL_OPTIONS)
+def test_the_pixel_options_outside_table_e1_1_can_be_composed_and_described(
+    preset, statement_for, unapplied, monkeypatch
 ):
     # PS3.15 E.1.1 Note 11 leaves Clean Pixel Data and Clean Recognizable
-    # Visual Features out of Table E.1-1; CID 7050 still codes them.
+    # Visual Features out of Table E.1-1; CID 7050 still codes them. The
+    # engine's applied options are patched, so that each pixel option is
+    # shown both applied and not, however many the engine applies.
+    applied_options = tuple(o for o in standard.ALL_OPTIONS if o != unapplied)
+    monkeypatch.setattr(conformance_markdown, "ENGINE_OPTIONS", applied_options)
     text = conformance_markdown.render_markdown(statement_for(preset))
     meanings = {
         c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
@@ -136,17 +141,16 @@ def test_the_pixel_options_outside_table_e1_1_can_be_composed_but_are_not_suppor
         for line in text.splitlines()
         if line.startswith("- Options ")
     }
-    for code in ("113101", "113102"):
+    applied = lines["- Options whose policies the engine applies"]
+    unsupported = lines[
+        "- Options that are not supported, since the engine does not yet apply them"
+    ]
+    for option in standard.PIXEL_OPTIONS:
+        code = conformance.OPTION_CODES[option]
         named = f"{meanings[code]} (DCM {code})"
         assert named in lines["- Options that PyMedPhys can compose into a policy"]
-        assert named not in lines["- Options whose policies the engine applies"]
-        assert (
-            named
-            in lines[
-                "- Options that are not supported, since the engine does not yet "
-                "apply them"
-            ]
-        )
+        assert (named in applied) is (option != unapplied)
+        assert (named in unsupported) is (option == unapplied)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
