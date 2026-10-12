@@ -299,6 +299,44 @@ def test_a_pooled_value_found_only_by_its_date_still_withholds(pooled):
     assert not condition.exempted
 
 
+# Retain Device Identity keeps Time of Last Calibration, which pairs its
+# times with the calibration dates. A backslash separates the values of a
+# multi-valued source, but is a character of a single-valued one, which the
+# search then finds across two kept times.
+TIME_OF_LAST_CALIBRATION = 0x00181201
+PRIVATE_VALUE = "(0009,1012)"
+CALIBRATION_TIMES = "120000.12\\1300"
+ACROSS = "12\\1300"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize("vr", ["ST", "LT", "UT"])
+@pytest.mark.parametrize("pooled", [(ACROSS,), (ACROSS, "1300"), ("1300", ACROSS)])
+def test_single_valued_text_across_two_kept_times_goes_to_review(vr, pooled):
+    written = _written(_element(TIME_OF_LAST_CALIBRATION, "TM", CALIBRATION_TIMES))
+    removed = [(PRIVATE_VALUE, vr, value) for value in pooled]
+    condition = _condition(written, [DEVICE_IDENTITY], *removed)
+
+    assert condition.decision is Decision.QC_REVIEW
+    assert not condition.exempted
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "vr, pooled",
+    [("LO", (ACROSS,)), ("LO", ("1300\\120000.12",)), ("ST", ("1300",))],
+)
+def test_text_equal_to_whole_kept_times_is_released(vr, pooled):
+    # As LO, "12" is a value of its own, too short to search for, and "1300"
+    # another, equal to the second kept time.
+    written = _written(_element(TIME_OF_LAST_CALIBRATION, "TM", CALIBRATION_TIMES))
+    removed = [(PRIVATE_VALUE, vr, value) for value in pooled]
+    condition = _condition(written, [DEVICE_IDENTITY], *removed)
+
+    assert condition.decision is Decision.RELEASE
+    assert _why(condition) == [Exemption.RETAINED_VALUE]
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_removed_uid_equal_to_a_kept_uid_still_withholds():
     # Retain UIDs keeps SOP Instance UID; a replaced reference to it whose

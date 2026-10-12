@@ -242,11 +242,11 @@ def vendor_creators() -> frozenset[str]:
 
 def source_values(
     collected: tuple[SourceValue, ...],
-) -> Mapping[ElementPath, tuple[str | bytes, ...]]:
+) -> Mapping[ElementPath, tuple[SourceValue, ...]]:
     """Return the collected values of each source, pooled across the subject."""
-    values: dict[ElementPath, list[str | bytes]] = {}
+    values: dict[ElementPath, list[SourceValue]] = {}
     for each in collected:
-        values.setdefault(each.source, []).append(each.value)
+        values.setdefault(each.source, []).append(each)
     return {source: tuple(each) for source, each in values.items()}
 
 
@@ -277,6 +277,19 @@ class KeptValues:
     def __repr__(self) -> str:
         return f"KeptValues(elements={len(self._extents)})"
 
+    def text(self, path: ElementPath) -> str | None:
+        """Return an element's whole value, with its separators, or ``None``.
+
+        ``None`` as for :meth:`values`; trailing NULs are left out.
+        """
+        extent = self._extents.get(path)
+        if extent is None or extent.items is not None:
+            return None
+        raw = bytes(self._written[extent.value_start : extent.end]).rstrip(b"\x00")
+        if any(byte < 0x20 or byte > 0x7E for byte in raw):
+            return None
+        return raw.decode("ascii")
+
     def values(self, path: ElementPath) -> tuple[str, ...] | None:
         """Return an element's values without padding, or ``None``.
 
@@ -297,7 +310,7 @@ class KeptValues:
 def exemption(
     finding: Finding,
     kept: KeptValues,
-    sources: Mapping[ElementPath, tuple[str | bytes, ...]],
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
     options: tuple[str, ...] = (),
 ) -> Exemption | None:
     """Return why a text finding inside the data set is not a reason for review.
@@ -342,7 +355,7 @@ def exemption(
 def _retained(
     finding: Finding,
     kept: KeptValues,
-    sources: Mapping[ElementPath, tuple[str | bytes, ...]],
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
     options: tuple[str, ...],
 ) -> Exemption | None:
     """Return whether a value that an option keeps explains a text finding."""
@@ -355,7 +368,7 @@ def _retained(
 def retained_date(
     finding: Finding,
     kept: KeptValues,
-    sources: Mapping[ElementPath, tuple[str | bytes, ...]],
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
     options: tuple[str, ...],
 ) -> Exemption | None:
     """Return whether a date or time that an option keeps explains a finding.
@@ -366,21 +379,25 @@ def retained_date(
     element = finding.location.element
     if finding.location.region is not Region.DATA_SET or element is None:
         return None
-    values = kept.values(element)
-    if values is None or not retained_value(
-        element,
-        values,
-        finding.source,
-        finding.kind,
-        sources.get(finding.source, ()),
-        options,
+    values, text = kept.values(element), kept.text(element)
+    if (
+        values is None
+        or text is None
+        or not retained_value(
+            element,
+            values,
+            text,
+            finding.source,
+            sources.get(finding.source, ()),
+            options,
+        )
     ):
         return None
     return Exemption.RETAINED_VALUE
 
 
 def _vendor_creator(
-    source: ElementPath, sources: Mapping[ElementPath, tuple[str | bytes, ...]]
+    source: ElementPath, sources: Mapping[ElementPath, tuple[SourceValue, ...]]
 ) -> bool:
     """Return whether every value of a private creator source is a vendor's.
 
@@ -392,8 +409,8 @@ def _vendor_creator(
         return False
     values = sources.get(source, ())
     return bool(values) and all(
-        isinstance(value, str) and value.rstrip(" \x00") in vendor_creators()
-        for value in values
+        isinstance(each.value, str) and each.value.rstrip(" \x00") in vendor_creators()
+        for each in values
     )
 
 

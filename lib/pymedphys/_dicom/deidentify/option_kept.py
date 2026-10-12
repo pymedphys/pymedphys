@@ -50,23 +50,20 @@ from __future__ import annotations
 
 import functools
 import types
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 
 from .file_layout import ElementPath
 from .policy import compose_custom_policy
-from .residuals import _KINDS, MIN_CHARACTERS, ValueKind, _forms, _length
+from .residuals import _KINDS, MIN_CHARACTERS, Form, SourceValue, ValueKind
+from .residuals import _forms, _length
 from .standard import dictionary_attribute
 
 # The VRs of text, coded text, and AE titles, in which kept text is read.
 TEXT_VRS = frozenset({"AE", "CS", "LO", "LT", "SH", "ST", "UC", "UT"})
 # The VRs of dates, times, and datetimes.
 TEMPORAL_VRS = frozenset({"DA", "DT", "TM"})
-# A VR of each kind of value that a kept date or time can explain, whose
-# forms the residual search derives as it does for the source's own VR.
-_KIND_VRS = {
-    kind: min(vr for vr, each in _KINDS.items() if each is kind)
-    for kind in (ValueKind.DATE, ValueKind.DATETIME, ValueKind.TEXT)
-}
+# The kinds of value that a kept date or time can explain.
+_EXPLICABLE = frozenset({ValueKind.DATE, ValueKind.DATETIME, ValueKind.TEXT})
 
 
 @functools.cache
@@ -153,12 +150,12 @@ def retained_text(tag: str, source: ElementPath, options: tuple[str, ...]) -> bo
     )
 
 
-def retained_value(  # pylint: disable = too-many-arguments, too-many-positional-arguments
+def retained_value(
     location: ElementPath,
     values: tuple[str, ...],
+    text: str,
     source: ElementPath,
-    kind: ValueKind,
-    found: tuple[str | bytes, ...],
+    found: tuple[SourceValue, ...],
     options: tuple[str, ...],
 ) -> bool:
     """Return whether a kept date or time explains a finding by equalling it.
@@ -169,11 +166,11 @@ def retained_value(  # pylint: disable = too-many-arguments, too-many-positional
         The element that the finding is in.
     values : tuple of str
         That element's values, as written, without padding.
+    text : str
+        That element's whole value, as written, values and separators.
     source : ElementPath
         The finding's source.
-    kind : ValueKind
-        The kind of value that the finding is of.
-    found : tuple of str or bytes
+    found : tuple of SourceValue
         The source's collected values, pooled across the subject.
     options : tuple of str
         The run's options.
@@ -185,12 +182,16 @@ def retained_value(  # pylint: disable = too-many-arguments, too-many-positional
         pinned dictionary gives only VRs of dates, times, and datetimes,
         ``source`` is another element, one of the source's values is a
         whole value of the element, and each other value of the source that
-        the search could have found in the element is one too. A source
-        value found inside a longer kept value, or in a value that no option
-        keeps, is not explained. The search records one finding of a source
-        in each element, for whichever of its pooled values it found there
-        in the widest form, so a finding is explained only where every
-        value of the source that could be in the element is.
+        the search could have found in the element is one too. Values are
+        read as the search reads them, by the VR collected with each: a
+        backslash separates the values of a multi-valued VR, but is a
+        character of a single-valued one, such as ST. A source value found
+        inside a longer kept value, across two kept values, or in a value
+        that no option keeps, is not explained. The search records one
+        finding of a source in each element, for whichever of its pooled
+        values it found there in the widest form, so a finding is explained
+        only where every value of the source that could be in the element
+        is.
     """
     vrs = _vrs(location.tag)
     if (
@@ -198,35 +199,39 @@ def retained_value(  # pylint: disable = too-many-arguments, too-many-positional
         or not vrs
         or not vrs <= TEMPORAL_VRS
         or source == location
-        or kind not in _KIND_VRS
     ):
         return False
     explained = False
-    for part in {
-        part.strip(" \x00")
-        for value in found
-        if isinstance(value, str)
-        for part in value.split("\\")
-    }:
-        if part and part in values:
-            explained = True
-        elif _could_be_in(part, kind, values):
-            return False
+    for value in found:
+        for whole in _values_in(value, values, text.lower()):
+            if whole is None:
+                return False
+            explained = explained or whole
     return explained
 
 
-def _could_be_in(part: str, kind: ValueKind, values: tuple[str, ...]) -> bool:
-    """Return whether the search could find a form of ``part`` in ``values``.
+def _values_in(
+    value: SourceValue, kept: tuple[str, ...], text: str
+) -> Iterator[bool | None]:
+    """Yield, for each value of ``value``, whether ``kept`` explains it.
 
-    Each form that the search derives, of at least its shortest length, is
-    looked for in each value and in the values as written together, ignoring
-    the case of ASCII letters and the characters around it, which can only
-    find more than the search does.
+    True for a value equal to a whole kept value; None for one that is not
+    but that the search could find in ``text``, the kept element's whole
+    value in lower case; nothing for one that it could not. A value of a
+    kind that a kept date cannot explain is never explained. Each form that
+    the search derives, of at least its shortest length, is looked for
+    ignoring the characters around it, which finds at least what the
+    search does.
     """
-    texts = [value.lower() for value in (*values, "\\".join(values))]
-    return any(
-        form.lower() in text
-        for _, form in _forms(part, _KIND_VRS[kind], kind)
-        if _length(form) >= MIN_CHARACTERS
-        for text in texts
-    )
+    kind = _KINDS.get(value.vr)
+    if not isinstance(value.value, str) or kind is None:
+        return
+    whole = False
+    for form, written in _forms(value.value, value.vr, kind):
+        if form is Form.VALUE:
+            whole = kind in _EXPLICABLE and bool(written) and written in kept
+            if whole:
+                yield True
+        if not whole and _length(written) >= MIN_CHARACTERS:
+            if written.lower() in text:
+                yield None
