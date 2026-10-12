@@ -222,8 +222,9 @@ class Coverage:
         The source paths of collected text read as ISO 8859-1, because it
         has bytes outside ISO 646 and no Specific Character Set applies.
     options : tuple of str, optional
-        The options of the run's policy, whose kept values can explain a
-        finding (D-042). With none, no option explains a finding.
+        The options of the run's policy, which say which findings an option
+        can explain, such as a date that Modified Dates shifted onto another
+        source date. With none, no option explains a finding.
 
     Raises
     ------
