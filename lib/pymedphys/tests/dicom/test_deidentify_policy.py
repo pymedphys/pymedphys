@@ -327,6 +327,142 @@ def test_only_composing_an_enabled_preset_enables_a_policy(monkeypatch):
     assert hash(selected) == hash(policy.compose_policy())
 
 
+def test_no_option_is_enabled_yet():
+    # A custom option set is selected only once its options are (D-033).
+    assert policy.ENABLED_OPTIONS == frozenset()
+    message = (
+        "the custom option set is not enabled: the behaviour of the Basic "
+        "Profile (the basic preset) and the option clean_descriptors is not yet "
+        "implemented and validated; no option is enabled yet"
+    )
+    with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
+        policy.select_policy(options=[CLEAN_DESCRIPTORS])
+
+
+def test_every_enabled_option_is_one_that_the_engine_applies():
+    assert policy.ENABLED_OPTIONS <= set(policy.ENGINE_OPTIONS)
+
+
+def test_a_custom_option_set_of_enabled_options_is_selected(monkeypatch):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
+    monkeypatch.setattr(
+        policy, "ENABLED_OPTIONS", frozenset({DEVICE_IDENTITY, CLEAN_DESCRIPTORS})
+    )
+
+    selected = policy.select_policy(options=[CLEAN_DESCRIPTORS, DEVICE_IDENTITY])
+
+    assert selected == policy.compose_custom_policy(
+        [DEVICE_IDENTITY, CLEAN_DESCRIPTORS]
+    )
+    assert (selected.preset, selected.options) == (
+        None,
+        (DEVICE_IDENTITY, CLEAN_DESCRIPTORS),
+    )
+    assert selected.enabled and selected.claims_conformance
+    # No options is the Basic Profile alone, as a custom option set.
+    alone = policy.select_policy(options=())
+    assert alone.enabled and (alone.preset, alone.options) == (None, ())
+    assert dict(alone.actions) == _basic()
+    given = standard.load_table_e1_1()
+    assert not policy.compose_custom_policy([CLEAN_DESCRIPTORS], table=given).enabled
+
+
+@pytest.mark.parametrize(
+    "presets, options, selected, unenabled, status",
+    [
+        (
+            set(),
+            {CLEAN_DESCRIPTORS},
+            [CLEAN_DESCRIPTORS],
+            "the Basic Profile (the basic preset)",
+            "only clean_descriptors is enabled",
+        ),
+        (
+            {"basic-clean-descriptors"},
+            {CLEAN_DESCRIPTORS},
+            [CLEAN_DESCRIPTORS],
+            "the Basic Profile (the basic preset)",
+            "only clean_descriptors is enabled",
+        ),
+        (
+            {"basic", "basic-clean-descriptors"},
+            set(),
+            [CLEAN_DESCRIPTORS],
+            "the option clean_descriptors",
+            "no option is enabled yet",
+        ),
+        (
+            {"basic"},
+            {CLEAN_DESCRIPTORS, DEVICE_IDENTITY},
+            [PATIENT_CHARACTERISTICS, CLEAN_DESCRIPTORS],
+            "the option retain_patient_characteristics",
+            "only retain_device_identity and clean_descriptors are enabled",
+        ),
+        (
+            set(),
+            set(),
+            [PATIENT_CHARACTERISTICS, DEVICE_IDENTITY],
+            "the Basic Profile (the basic preset), the option "
+            "retain_device_identity, and the option retain_patient_characteristics",
+            "no option is enabled yet",
+        ),
+    ],
+    ids=[
+        "basic-not-enabled",
+        "its-options-preset-enabled",
+        "a-preset-enables-no-option",
+        "one-option-not-enabled",
+        "nothing-enabled",
+    ],
+)
+def test_the_refusal_of_a_custom_option_set_names_what_is_not_enabled(
+    monkeypatch, presets, options, selected, unenabled, status
+):
+    # Enabling a preset enables neither its options nor a custom option set.
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset(presets))
+    monkeypatch.setattr(policy, "ENABLED_OPTIONS", frozenset(options))
+    message = (
+        f"the custom option set is not enabled: the behaviour of {unenabled} is "
+        f"not yet implemented and validated; {status}"
+    )
+
+    with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
+        policy.select_policy(options=selected)
+
+
+def test_a_preset_and_a_custom_option_set_are_not_selected_together(monkeypatch):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
+    monkeypatch.setattr(policy, "ENABLED_OPTIONS", frozenset({CLEAN_DESCRIPTORS}))
+    message = "a policy is that of a preset or of a custom option set, not both"
+
+    with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
+        policy.select_policy("basic", options=[CLEAN_DESCRIPTORS])
+
+
+@pytest.mark.parametrize(
+    "options, error, match",
+    [
+        ([CLEAN_DESCRIPTORS, "retain_everything"], policy.PolicyError, "unknown"),
+        (CLEAN_DESCRIPTORS, TypeError, "not a single string"),
+        (
+            ["retain_longitudinal_full_dates", MODIFIED_DATES],
+            policy.PolicyError,
+            "mutually exclusive",
+        ),
+        ([DEVICE_IDENTITY, MODIFIED_DATES], policy.PolicyError, "no precedence"),
+    ],
+    ids=["unknown", "string", "exclusive", "conflicting"],
+)
+def test_enabling_every_option_still_refuses_a_set_that_cannot_conform(
+    monkeypatch, options, error, match
+):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
+    monkeypatch.setattr(policy, "ENABLED_OPTIONS", frozenset(standard.OPTIONS))
+
+    with pytest.raises(error, match=match):
+        policy.select_policy(options=options)
+
+
 @pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.parametrize(
     "options",
@@ -336,7 +472,7 @@ def test_only_composing_an_enabled_preset_enables_a_policy(monkeypatch):
         for subset in itertools.combinations(PRESET_OPTIONS, size)
     ],
 )
-def test_a_custom_option_set_is_validated_and_never_enabled(options):
+def test_a_custom_option_set_is_validated_and_not_yet_enabled(options):
     if {DEVICE_IDENTITY, MODIFIED_DATES} <= set(options):
         with pytest.raises(
             policy.PolicyError, match="no precedence.*only the tps-import preset"
