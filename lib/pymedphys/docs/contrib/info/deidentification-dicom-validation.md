@@ -46,7 +46,7 @@ At present the synthetic corpus needs five known differences, each listed with i
 
 ## Run it on the synthetic corpus
 
-The corpus tests build the synthetic corpus, run the engine over it under `basic`, under `basic-clean-descriptors`, and under `basic` with its images compressed, and compare each run. They need Linux or macOS with dicom3tools on the `PATH`.
+The corpus tests build the synthetic corpus, run the engine over it once for each policy listed in `CORPUS_RUNS` in `lib/pymedphys/tests/dicom/_corpus_runs.py`, and compare each run. The list holds `basic`, `basic-clean-descriptors`, and `basic` with the corpus's images compressed, and each option joins it as its own run once the engine applies the option. They need Linux or macOS with dicom3tools on the `PATH`.
 
 1. Install Git and uv, as in the [MIDI-B benchmark guide](deidentification-midi-benchmark.md).
 2. Install dicom3tools. On Debian or Ubuntu, `sudo apt-get install dicom3tools`. Elsewhere, build it from a source snapshot on the [dicom3tools site](https://www.dclunie.com/dicom3tools/workinprogress/index.html), following its instructions, and put `dciodvfy` and `dcentvfy` on the `PATH`. A newer snapshot than CI's can give fewer findings, since its dictionary knows more attributes.
@@ -62,9 +62,9 @@ The corpus tests build the synthetic corpus, run the engine over it under `basic
      lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus.py
    ```
 
-The tests are marked `dicom_validators`, so the ordinary test run leaves them out. Without `PYMEDPHYS_DICOM_VALIDATORS=required` they skip when a validator is missing, rather than fail. The first run downloads the DocBook source into `~/.pymedphys/dicom-validator`, or into the directory that `PYMEDPHYS_DICOM_VALIDATOR_STANDARD` names. Each preset's report is written into a directory of `dicom-validation` named after it.
+The tests are marked `dicom_validators`, so the ordinary test run leaves them out. Without `PYMEDPHYS_DICOM_VALIDATORS=required` they skip when a validator is missing, rather than fail. The first run downloads the DocBook source into `~/.pymedphys/dicom-validator`, or into the directory that `PYMEDPHYS_DICOM_VALIDATOR_STANDARD` names. Each run's report is written into a directory of `dicom-validation` named after the run.
 
-In CI the job is `DICOM validation of de-identified output`, in the Unit Tests workflow. Its summary shows each preset's report, and its `dicom-validation` artefact holds the reports as Markdown and JSON.
+In CI the job is `DICOM validation of de-identified output`, in the Unit Tests workflow. Its summary shows each run's report, and its `dicom-validation` artefact holds the reports as Markdown and JSON.
 
 ## Run it on a release of your own
 

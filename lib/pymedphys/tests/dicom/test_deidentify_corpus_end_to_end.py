@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Each preset run end to end over the synthetic corpus, searched for its markers.
+"""Each policy run end to end over the synthetic corpus, searched for its markers.
 
 The corpus (:mod:`~pymedphys._dicom.deidentify.synthetic_corpus`) plants a
 conspicuous marker in each attribute of Table E.1-1 that its IODs define.
-Under the Basic Profile every one of them is removed or replaced, so no
-released file may hold any of them. The search here is independent of the
-engine's own residual search: it looks for each recorded value as bytes,
-a value of digits and full stops alone, such as a date, a decimal, or a
-UID, only where no digit or full stop is before it, so that the digits of
-a replacement UID do not match it by chance, and checks
-numeric values, which cannot be searched for, at their place.
+Each policy of :data:`~pymedphys.tests.dicom._corpus_runs.CORPUS_RUNS`, a
+preset or a custom option set, runs once over it, with what that run must
+do. Under the Basic Profile every marker is removed or replaced, so no
+released file may hold any of them; an option keeps the markers in the rows
+of Table E.1-1 to which it gives K, at their place and nowhere else. The
+search here is independent of the engine's own residual search: it looks
+for each recorded value as bytes, a value of digits and full stops alone,
+such as a date, a decimal, or a UID, only where no digit or full stop is
+before it, so that the digits of a replacement UID do not match it by
+chance, and checks numeric values, which cannot be searched for, at their
+place.
 
 Under ``basic-clean-descriptors`` every marker is removed or replaced as
 under ``basic``: each attribute given C other than ROI Name takes its Basic
@@ -53,50 +57,43 @@ from pathlib import Path
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._nomenclature import tg263
-
 from pymedphys._dicom.deidentify import (
     dummy_values,
-    pixel_decoding,
-    roi_names,
     run,
     standard,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
-from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.file_layout import ElementPath
-from pymedphys._dicom.deidentify.instance_transform import (
-    InstanceTransform,
-    ReleaseGate,
-)
-from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.instance_transform import ReleaseGate
 from pymedphys._dicom.deidentify.method_digest import method_digest
-from pymedphys._dicom.deidentify.policy import compose_policy
+from pymedphys._dicom.deidentify.policy import PRESETS
 from pymedphys._dicom.deidentify.reasons import HeldRoiName
-from pymedphys._dicom.deidentify.release_gate import (
-    Decision,
-    ReasonCode,
-    ReleaseReason,
-)
-from pymedphys._dicom.deidentify.reviewed_roi_names import (
-    Review,
-    ReviewedName,
-    ReviewedNames,
-)
+from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.roi_names import Reason
 from pymedphys._dicom.deidentify.run_report import (
     CONFORMANCE_STATEMENT,
     RELEASE_REPORT,
     RELEASE_REPORT_MARKDOWN,
 )
-from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 from pymedphys._dicom.deidentify.written_references import WrittenFindingKind
 
+from . import _corpus_runs as runs
 from . import _synthetic_compressed as compressed
+from ._corpus_runs import (
+    CLEAN_DESCRIPTORS,
+    CORPUS_RUNS,
+    KEY,
+    MARKER_SIGNATURES,
+    ROI_NAME,
+    ROI_SEQUENCE,
+    CorpusRun,
+    planted_roi_name,
+    structure_set,
+    with_a_second_roi,
+)
 
 pytestmark = pytest.mark.pydicom
 
-KEY = DeidKey(bytes(range(32)))
 UNWRITTEN_TARGET = WrittenFindingKind.UNWRITTEN_TARGET
 Kind = corpus_module.PlacementKind
 # The kinds whose values the Basic Profile removes or replaces.
@@ -119,99 +116,44 @@ SHORTEST_FORM = 4
 # is found only where no digit or full stop is before it.
 DIGITS_ONLY = re.compile(r"[0-9.]+")
 DATE_DIGITS = 8
-# The generic parts of every marker.
-MARKER_SIGNATURES = (
-    corpus_module.MARKER_PREFIX,
-    corpus_module.MARKER_UID_ROOT,
-    corpus_module.LINKED_UID_ROOT,
-    ".424242",
-    "MARKER",
-    "synmk.invalid",
-)
-
-
-CLEAN_DESCRIPTORS = "basic-clean-descriptors"
-# The basic preset over the corpus with its images compressed, and text
-# planted in their codestreams' metadata segments.
-COMPRESSED = "basic-compressed"
-BASIC_PROFILE_CODE = ("113100", "DCM")
 CLEAN_DESCRIPTORS_CODE = ("113105", "DCM")
-ROI_SEQUENCE = "(3006,0020)"
-ROI_NAME = "(3006,0026)"
-# The second ROI's name, which the automatic tier renames, and what it and
-# the reviewer write.
-UNCLEANED_NAME = "lung l"
-VOCABULARY_NAME = "Lung_L"
-MAPPED_NAME = "GTV_Primary"
-VOCABULARY = tg263.Nomenclature(
-    source=tg263.Source(file="invented.xls", sha256="0" * 64, sheet="Invented"),
-    attribution=tg263.ATTRIBUTION,
-    structures=(
-        tg263.Structure(
-            target_type="Anatomic",
-            major_category="Invented",
-            minor_category="",
-            anatomic_group="",
-            primary_name=VOCABULARY_NAME,
-            reverse_order_name="L_Lung",
-            description="",
-            fma_id=None,
-        ),
-    ),
+
+
+def _unreviewed_corpus(corpus):
+    return with_a_second_roi(_ct_and_rt(corpus))
+
+
+def _no_reviewed_names(corpus):  # pylint: disable = unused-argument
+    return ReviewedNames.empty()
+
+
+# Clean Descriptors without a reviewer's decision on the planted ROI Name.
+UNREVIEWED = CorpusRun(
+    "unreviewed",
+    preset=CLEAN_DESCRIPTORS,
+    corpus=_unreviewed_corpus,
+    reviewed_roi_names=_no_reviewed_names,
 )
 
 
 @pytest.fixture(name="published", scope="module")
 def fixture_published():
-    """Treat the invented vocabulary as a published edition."""
-    entries = [dataclasses.asdict(s) for s in VOCABULARY.structures]
-    with pytest.MonkeyPatch.context() as patch:
-        patch.setitem(
-            roi_names.PUBLISHED_TG263, "TG263 vInvented", tg263.content_sha256(entries)
-        )
+    with runs.published_vocabulary():
         yield
 
 
 @pytest.fixture(
-    name="preset_run",
+    name="policy_run",
     scope="module",
-    params=[
-        "basic",
-        CLEAN_DESCRIPTORS,
-        pytest.param(
-            COMPRESSED,
-            marks=pytest.mark.skipif(
-                not all(
-                    pixel_decoding.decoder_available(syntax)
-                    for syntax in compressed.CORPUS_SYNTAXES
-                ),
-                reason="a decoding plugin of the compressed corpus is not installed",
-            ),
-        ),
-    ],
+    params=[corpus_run.param() for corpus_run in CORPUS_RUNS],
 )
-def fixture_preset_run(request, published):  # pylint: disable = unused-argument
-    corpus = corpus_module.build_corpus()
-    if request.param == COMPRESSED:
-        yield _run(compressed.compressed_corpus(corpus), "basic")
-    elif request.param == CLEAN_DESCRIPTORS:
-        corpus = _with_a_second_roi(corpus)
-        reviewed = ReviewedNames.empty()
-        reviewed.record(
-            _planted_roi_name(corpus), ReviewedName(Review.MAP, MAPPED_NAME)
-        )
-        yield _run(corpus, request.param, reviewed)
-    else:
-        yield _run(corpus, request.param)
+def fixture_policy_run(request, published):  # pylint: disable = unused-argument
+    yield _run(request.param)
 
 
 @pytest.fixture(name="unreviewed_run", scope="module")
 def fixture_unreviewed_run(published):  # pylint: disable = unused-argument
-    yield _run(
-        _with_a_second_roi(_ct_and_rt(corpus_module.build_corpus())),
-        CLEAN_DESCRIPTORS,
-        ReviewedNames.empty(),
-    )
+    yield _run(UNREVIEWED)
 
 
 def _ct_and_rt(corpus):
@@ -219,7 +161,7 @@ def _ct_and_rt(corpus):
 
     The residual search of each output looks for the values of every
     instance of its patient, so a run's time grows with the square of the
-    number of instances; the other instances are run in ``preset_run``.
+    number of instances; the other instances are run in ``policy_run``.
     """
     return dataclasses.replace(
         corpus,
@@ -232,19 +174,16 @@ def _ct_and_rt(corpus):
     )
 
 
-def _run(corpus, preset, reviewed=None):
-    """Run a preset over the corpus, and return what the tests read."""
+def _run(spec):
+    """Run a policy over its corpus, and return what the tests read."""
+    prepared = runs.prepare(spec)
+    corpus, reviewed = prepared.corpus, prepared.reviewed
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
         corpus_module.write_corpus(corpus, directory)
-        cleaning = (
-            None if reviewed is None else DescriptorCleaning(VOCABULARY, reviewed)
-        )
-        transform = InstanceTransform(
-            compose_policy(preset), KEY, cleaning=cleaning, unvalidated_policy=True
-        )
+        transform = prepared.transform(spec.policy())
         # Only the run's own records and warnings, not those of the tests.
         shown = _Shown()
         logger = logging.getLogger("pydicom")
@@ -269,12 +208,14 @@ def _run(corpus, preset, reviewed=None):
         # The method digest as D-024 composes it, independently of the
         # transform's own.
         digest = method_digest(
-            compose_policy(preset),
-            vocabulary=None if cleaning is None else cleaning.nomenclature,
+            spec.policy(),
+            vocabulary=(
+                None if prepared.cleaning is None else prepared.cleaning.nomenclature
+            ),
             reviewed_roi_names=None if reviewed is None else reviewed.keyed_digest(KEY),
         )
         return _Run(
-            preset,
+            spec,
             corpus,
             result,
             _released(result),
@@ -286,51 +227,11 @@ def _run(corpus, preset, reviewed=None):
         shutil.rmtree(directory, ignore_errors=True)
 
 
-def _structure_set(corpus):
-    (file,) = [file for file in corpus.files if file.manifest.iod == "RT Structure Set"]
-    return file
-
-
-def _planted_roi_name(corpus):
-    (placement,) = [
-        placement
-        for placement in _structure_set(corpus).manifest.placements
-        if placement.path.tag == ROI_NAME
-    ]
-    return placement.values[0]
-
-
-def _with_a_second_roi(corpus):
-    """Return the corpus with a second ROI, named for the automatic tier.
-
-    pydicom writes the structure set again, which keeps every planted value.
-    """
-    structure_set = _structure_set(corpus)
-    dataset = _read(structure_set.data)
-    first = dataset.StructureSetROISequence[0]
-    item = pydicom.Dataset()
-    item.ROINumber = max(each.ROINumber for each in dataset.StructureSetROISequence) + 1
-    item.ReferencedFrameOfReferenceUID = first.ReferencedFrameOfReferenceUID
-    item.ROIName = UNCLEANED_NAME
-    item.ROIGenerationAlgorithm = "MANUAL"
-    dataset.StructureSetROISequence.append(item)
-    buffer = pydicom.filebase.DicomBytesIO()
-    dataset.save_as(buffer, enforce_file_format=True)
-    data = buffer.getvalue()
-    return dataclasses.replace(
-        corpus,
-        files=tuple(
-            dataclasses.replace(file, data=data) if file is structure_set else file
-            for file in corpus.files
-        ),
-    )
-
-
 @dataclasses.dataclass(frozen=True)
 class _Run:
-    """A preset's run over the corpus, as the tests read it."""
+    """A policy's run over the corpus, as the tests read it."""
 
-    preset: str
+    spec: CorpusRun
     corpus: corpus_module.SyntheticCorpus
     result: run.RunResult
     released: dict
@@ -419,23 +320,19 @@ def _holds(data, form):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01", "MIDI-BP-03", "PS3.15-E.1.1-09")
-def test_each_preset_releases_all_but_the_instances_it_must_hold(
-    preset_run,
-):
-    corpus, result = preset_run.corpus, preset_run.result
+def test_each_run_releases_all_but_the_instances_it_must_withhold(policy_run):
+    spec, corpus, result = policy_run.spec, policy_run.corpus, policy_run.result
     names = [file.name for file in corpus.files]
-    sequestered = names.index(corpus_module.SEQUESTERED_FILE)
-    review = names.index(corpus_module.REVIEW_FILE)
+    assert set(spec.withheld) <= set(names)
+    withheld = {names.index(name) for name in spec.withheld}
 
     assert not result.findings
     # What was written refers to itself as the corpus did, but for the
     # references to the instances that were withheld, which are reported.
-    assert result.written_findings
+    assert bool(result.written_findings) == bool(withheld)
     assert all(
         finding.kind is UNWRITTEN_TARGET
-        and all(
-            position not in (sequestered, review) for (position,) in finding.instances
-        )
+        and all(position not in withheld for (position,) in finding.instances)
         for finding in result.written_findings
     )
     assert result.staging_removed
@@ -443,36 +340,13 @@ def test_each_preset_releases_all_but_the_instances_it_must_hold(
         range(len(names))
     )
     for outcome in result.outcomes:
-        if outcome.position == sequestered:
-            assert outcome.status is run.Status.SEQUESTERED
-            assert {
-                (reason.path.tag, reason.reason)
-                for reason in outcome.reasons
-                if isinstance(reason, Sequestration)
-            } == {
-                ("(0010,2297)", SequesterReason.REQUIRED_BY_IOD),
-                ("(0010,2299)", SequesterReason.REQUIRED_BY_IOD),
-            }
-        elif outcome.position == review:
-            # The plan's RT Plan Label, found in the dose's Manufacturer's
-            # Model Name.
-            assert outcome.status is run.Status.HELD_FOR_REVIEW
-            assert {
-                (reason.decision, reason.code, reason.path)
-                for reason in outcome.reasons
-                if isinstance(reason, ReleaseReason)
-            } == {
-                (
-                    Decision.QC_REVIEW,
-                    ReasonCode.RESIDUAL_TEXT,
-                    ElementPath((), "(300A,0002)"),
-                )
-            }
+        name = names[outcome.position]
+        if name in spec.withheld:
+            expected = spec.withheld[name]
+            assert outcome.status is expected.status, name
+            assert {runs.reason_key(r) for r in outcome.reasons} == expected.reasons
         else:
-            assert outcome.status is run.Status.RELEASED, (
-                names[outcome.position],
-                outcome.reasons[:5],
-            )
+            assert outcome.status is run.Status.RELEASED, (name, outcome.reasons[:5])
 
 
 @pytest.mark.deid_requirement(
@@ -486,9 +360,9 @@ def test_each_preset_releases_all_but_the_instances_it_must_hold(
     "MIDI-BP-11",
     "MIDI-BP-13",
 )
-def test_no_published_file_holds_a_marker(preset_run):
-    corpus, result = preset_run.corpus, preset_run.result
-    released, published = preset_run.released, preset_run.published
+def test_no_published_file_holds_a_marker(policy_run):
+    corpus, result = policy_run.corpus, policy_run.result
+    released, published = policy_run.released, policy_run.published
     # The released instances, the release report in both its forms, and the
     # conformance statement, and nothing else.
     assert set(published) == {
@@ -502,26 +376,39 @@ def test_no_published_file_holds_a_marker(preset_run):
         CONFORMANCE_STATEMENT,
     }
 
+    # The markers the run keeps, which a kept place holds and the markers'
+    # generic parts may then be found in.
+    spec = policy_run.spec
+    kept_forms = {
+        form
+        for file in corpus.files
+        for placement in file.manifest.placements
+        if _searched(placement) and spec.keeps(placement)
+        for form in _forms(placement)
+    }
     for name, data in published.items():
+        for form in sorted(kept_forms, key=len, reverse=True):
+            for encoded in _encodings(form):
+                data = data.replace(encoded, b"")
         for signature in MARKER_SIGNATURES:
             for encoded in _encodings(signature):
                 assert encoded not in data, (name, signature)
-    # Every file's markers, the sequestered file's included, in every
-    # published file.
+    # Every file's other markers, the sequestered file's included, in every
+    # published file, but for a form that a kept marker shares.
     for file in corpus.files:
         for placement in file.manifest.placements:
-            if not _searched(placement):
+            if not _searched(placement) or spec.keeps(placement):
                 continue
             forms = _forms(placement)
             assert forms, (file.name, placement.path)
-            for form in forms:
+            for form in set(forms) - kept_forms:
                 for name, data in published.items():
                     assert not _holds(data, form), (name, file.name, placement.path)
 
 
 @pytest.mark.deid_requirement("MIDI-BP-14", "PS3.15-E.1.1-02")
-def test_released_images_keep_their_transfer_syntax_and_pixels(preset_run):
-    corpus, released = preset_run.corpus, preset_run.released
+def test_released_images_keep_their_transfer_syntax_and_pixels(policy_run):
+    corpus, released = policy_run.corpus, policy_run.released
     text = compressed.CODESTREAM_TEXT.encode("ascii")
     images = cut = 0
 
@@ -539,15 +426,15 @@ def test_released_images_keep_their_transfer_syntax_and_pixels(preset_run):
             cut += 1
     assert images
     if (
-        preset_run.corpus.files[0].manifest.transfer_syntax
+        policy_run.corpus.files[0].manifest.transfer_syntax
         in compressed.CORPUS_SYNTAXES
     ):
         assert cut
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.1-01", "PS3.15-E.1.1-09")
-def test_no_released_file_keeps_a_numeric_marker_at_its_place(preset_run):
-    corpus, released = preset_run.corpus, preset_run.released
+def test_no_released_file_keeps_a_numeric_marker_at_its_place(policy_run):
+    corpus, released = policy_run.corpus, policy_run.released
     assert released
 
     for position, data in released.items():
@@ -555,7 +442,11 @@ def test_no_released_file_keeps_a_numeric_marker_at_its_place(preset_run):
         source = _read(file.data)
         dataset = _read(data)
         for placement in file.manifest.placements:
-            if placement.kind not in REMOVED_KINDS or placement.vr not in NUMERIC_VRS:
+            if (
+                placement.kind not in REMOVED_KINDS
+                or placement.vr not in NUMERIC_VRS
+                or policy_run.spec.keeps(placement)
+            ):
                 continue
             planted = _numbers(placement.vr, placement.values)
             # The comparison can find the marker where it was planted.
@@ -566,13 +457,48 @@ def test_no_released_file_keeps_a_numeric_marker_at_its_place(preset_run):
             )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+def test_each_kept_marker_is_kept_at_its_place(policy_run):
+    """An option that gives a row K keeps its marker; the Basic Profile keeps none.
+
+    A marker within a sequence that is not kept goes with the sequence: one
+    of Table E.1-1 that an option does not keep (``CorpusRun.keeps``), or a
+    Type 3 sequence that a removed attribute it requires takes with it.
+    """
+    corpus, released = policy_run.corpus, policy_run.released
+    kept = []
+    assert released
+
+    for position, data in released.items():
+        file = corpus.files[position]
+        dataset = _read(data)
+        for placement in file.manifest.placements:
+            if placement.kind not in REMOVED_KINDS or not policy_run.spec.keeps(
+                placement
+            ):
+                continue
+            if (
+                not placement.path.items
+                or _item_at(dataset, placement.path) is not None
+            ):
+                assert _kept_at(dataset, placement), (file.name, placement.path)
+                kept.append(placement)
+    if not policy_run.spec.kept_rows():
+        assert not kept
+    elif any(
+        policy_run.spec.keeps(placement)
+        for position in released
+        for placement in corpus.files[position].manifest.placements
+        if placement.kind in REMOVED_KINDS
+    ):
+        assert kept
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.1-09")
-def test_no_released_file_keeps_a_removed_sequence_without_a_marker(preset_run):
+def test_no_released_file_keeps_a_removed_sequence_without_a_marker(policy_run):
     """A sequence whose item holds no marker is checked by its absence."""
-    corpus, released = preset_run.corpus, preset_run.released
-    actions = {
-        row.tag: row.basic_profile for row in standard.load_table_e1_1().attributes
-    }
+    corpus, released = policy_run.corpus, policy_run.released
+    removed = runs.removed_rows(policy_run.spec.selected)
     checked = 0
 
     for position, data in released.items():
@@ -581,7 +507,7 @@ def test_no_released_file_keeps_a_removed_sequence_without_a_marker(preset_run):
         for placement in file.manifest.placements:
             if (
                 placement.reason is corpus_module.NotPlantedReason.NO_MARKER_CARRIER
-                and actions[placement.profile_tag] == "X"
+                and placement.profile_tag in removed
             ):
                 assert _element_at(_read(file.data), placement.path) is not None
                 assert _element_at(dataset, placement.path) is None, (
@@ -593,8 +519,8 @@ def test_no_released_file_keeps_a_removed_sequence_without_a_marker(preset_run):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
-def test_no_warning_or_log_record_shows_a_marker(preset_run):
-    corpus, messages = preset_run.corpus, preset_run.messages
+def test_no_warning_or_log_record_shows_a_marker(policy_run):
+    corpus, messages = policy_run.corpus, policy_run.messages
     # pydicom warns about the invalid Device UID, quoting it.
     (invalid,) = [
         placement
@@ -602,9 +528,10 @@ def test_no_warning_or_log_record_shows_a_marker(preset_run):
         for placement in file.manifest.placements
         if placement.kind is Kind.INVALID
     ]
-    # Both channels are watched.
-    assert messages.logged
-    assert messages.warned
+    # Both channels are watched, where the value is not kept.
+    if not policy_run.spec.keeps(invalid):
+        assert messages.logged
+        assert messages.warned
 
     for message in (*messages.logged, *messages.warned):
         assert invalid.values[0] not in message
@@ -613,41 +540,49 @@ def test_no_warning_or_log_record_shows_a_marker(preset_run):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-05", "PS3.15-E.3.5-01")
-def test_every_released_instance_claims_the_presets_options(preset_run):
-    released = preset_run.released
-    clean_descriptors = preset_run.preset == CLEAN_DESCRIPTORS
+def test_every_released_instance_claims_the_policys_options(policy_run):
+    corpus, released = policy_run.corpus, policy_run.released
+    expected = policy_run.spec.method_codes()
     assert released
 
-    for data in released.values():
-        codes = _codes(_read(data))
-        assert BASIC_PROFILE_CODE in codes
-        assert (CLEAN_DESCRIPTORS_CODE in codes) == clean_descriptors
+    for position, data in released.items():
+        source = _read(corpus.files[position].data)
+        codes = set(_codes(_read(data)))
+        # The profile's and each option's, after any already present.
+        assert codes >= expected
+        if "DeidentificationMethodCodeSequence" in source:
+            assert codes - expected <= set(_codes(source))
+        else:
+            assert codes == expected
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-05", "PS3.15-E.2-01")
-def test_every_released_instance_carries_the_profiles_markers(preset_run):
+def test_every_released_instance_carries_the_profiles_markers(policy_run):
     # E.1.1: Patient Identity Removed is YES and De-identification Method
-    # holds the method digest first; E.2: without the Retain Longitudinal
-    # Temporal Information Options, the dates and times are removed.
-    released = preset_run.released
+    # holds the method digest first; E.2 and E.3.6: the dates and times are
+    # removed without the Retain Longitudinal Temporal Information Options,
+    # and otherwise kept or modified.
+    released = policy_run.released
     assert released
 
     for data in released.values():
         dataset = _read(data)
         assert dataset.PatientIdentityRemoved == "YES"
         assert list(_multi(dataset.DeidentificationMethod))[:1] == [
-            preset_run.method_digest
+            policy_run.method_digest
         ]
-        assert dataset.LongitudinalTemporalInformationModified == "REMOVED"
+        assert dataset.LongitudinalTemporalInformationModified == (
+            policy_run.spec.temporal_value()
+        )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-01", "MIDI-BP-14")
-def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(preset_run):
+def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(policy_run):
     # Referenced Performed Procedure Step Sequence, which the multi-frame
     # IODs conditionally require (Type 1C), refers to the procedure step by its keyed replacement,
     # the same in each instance, and the colour image's ICC Profile is the
     # fixed sRGB profile (D-021).
-    corpus, released = preset_run.corpus, preset_run.released
+    corpus, released = policy_run.corpus, policy_run.released
     procedure_step = "ReferencedPerformedProcedureStepSequence"
     multi_frame = {
         "Enhanced CT Image",
@@ -681,39 +616,43 @@ def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(preset_run):
         else:
             assert "ICCProfile" not in written
 
-    (step,) = steps
-    assert step != corpus_module.PROCEDURE_STEP
-    assert {corpus.files[position].manifest.iod for position in released} >= (
-        multi_frame
-    )
+    expected = multi_frame & {
+        file.manifest.iod
+        for file in corpus.files
+        if file.name not in policy_run.spec.withheld
+    }
+    assert {corpus.files[position].manifest.iod for position in released} >= expected
+    assert len(steps) == (1 if expected else 0)
+    assert corpus_module.PROCEDURE_STEP not in steps
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_roi_names_take_the_vocabulary_spelling_or_the_reviewed_decision(
-    preset_run,
+    policy_run,
 ):
     corpus, result, released = (
-        preset_run.corpus,
-        preset_run.result,
-        preset_run.released,
+        policy_run.corpus,
+        policy_run.result,
+        policy_run.released,
     )
-    position = corpus.files.index(_structure_set(corpus))
+    expected = policy_run.spec.roi_names
+    position = corpus.files.index(structure_set(corpus))
     (outcome,) = [o for o in result.outcomes if o.position == position]
+    if expected is None:
+        assert outcome.status is not run.Status.RELEASED
+        return
     assert outcome.status is run.Status.RELEASED
 
     names = [item.ROIName for item in _read(released[position]).StructureSetROISequence]
 
-    if preset_run.preset == CLEAN_DESCRIPTORS:
-        assert names == [MAPPED_NAME, VOCABULARY_NAME]
-    else:
-        assert names == [""]
+    assert names == list(expected)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_without_a_reviewed_decision_the_structure_set_is_held(unreviewed_run):
     corpus, result = unreviewed_run.corpus, unreviewed_run.result
     released, published = unreviewed_run.released, unreviewed_run.published
-    position = corpus.files.index(_structure_set(corpus))
+    position = corpus.files.index(structure_set(corpus))
     held = [o for o in result.outcomes if o.status is run.Status.HELD_FOR_REVIEW]
     (outcome,) = [o for o in held if o.position == position]
 
@@ -723,12 +662,47 @@ def test_without_a_reviewed_decision_the_structure_set_is_held(unreviewed_run):
     }
     # The rest are released or held as under a reviewed list.
     assert len(released) == len(corpus.files) - 3
-    marker = _planted_roi_name(corpus)
+    marker = planted_roi_name(corpus)
     for data in published.values():
         for encoded in _encodings(marker):
             assert encoded not in data
     for data in released.values():
         assert CLEAN_DESCRIPTORS_CODE in _codes(_read(data))
+
+
+def test_the_kept_rows_are_those_table_e1_1_gives_k():
+    # Device Serial Number is K under Retain Device Identity, but Station AE
+    # Title is C; Date of Last Calibration is K under Retain Device Identity
+    # and C under Modified Dates, which tps-import applies.
+    device = runs.kept_rows(("retain_device_identity",))
+    tps_import = runs.kept_rows(PRESETS["tps-import"])
+
+    assert not runs.kept_rows(())
+    assert not runs.kept_rows(PRESETS["basic-clean-descriptors"])
+    assert {"(0018,1000)", "(0008,1010)", "(0018,1200)"} <= device
+    assert "(0008,0055)" not in device
+    assert "(0018,1000)" in tps_import
+    assert "(0018,1200)" not in tps_import
+    assert runs.kept_rows(("retain_uids",)) >= {"(0018,1002)", "(0020,000D)"}
+
+
+def test_each_option_of_table_e1_1_has_its_code_and_temporal_value():
+    assert set(runs.OPTION_CODES) == set(standard.OPTIONS)
+    assert runs.temporal_value(()) == "REMOVED"
+    assert runs.temporal_value((runs.MODIFIED_DATES,)) == "MODIFIED"
+    assert runs.temporal_value((runs.FULL_DATES,)) == "UNMODIFIED"
+
+
+def test_each_run_names_a_policy_once():
+    names = [corpus_run.name for corpus_run in CORPUS_RUNS]
+
+    assert len(set(names)) == len(names)
+    for corpus_run in CORPUS_RUNS:
+        assert corpus_run.policy().options == corpus_run.selected
+    with pytest.raises(ValueError, match="not both"):
+        CorpusRun("both", preset="basic", options=("clean_descriptors",))
+    with pytest.raises(TypeError):
+        CorpusRun("one string", options="clean_descriptors")
 
 
 def _codes(dataset):
@@ -754,13 +728,41 @@ def _read(data):
     return pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
 
 
-def _element_at(dataset, path):
-    """Return the element at an element path, or None."""
+def _kept_at(dataset, placement):
+    """Return whether a dataset holds a placement's values at its place."""
+    if placement.vr in NUMERIC_VRS:
+        planted = _numbers(placement.vr, placement.values)
+        return _values_at(dataset, placement.path) == planted
+    element = _element_at(dataset, placement.path)
+    if element is None:
+        return False
+    value = element.value
+    if isinstance(value, bytes):
+        values = value.decode("latin-1").split("\\")
+    elif isinstance(value, pydicom.multival.MultiValue):
+        values = [str(each) for each in value]
+    else:
+        values = [str(value)]
+    return [each.rstrip(" \x00") for each in values] == [
+        each.rstrip(" \x00") for each in placement.values
+    ]
+
+
+def _item_at(dataset, path):
+    """Return the item that holds the element at an element path, or None."""
     for tag, index in path.items:
         number = int(tag[1:5] + tag[6:10], 16)
         if number not in dataset or len(dataset[number].value) <= index:
             return None
         dataset = dataset[number].value[index]
+    return dataset
+
+
+def _element_at(dataset, path):
+    """Return the element at an element path, or None."""
+    dataset = _item_at(dataset, path)
+    if dataset is None:
+        return None
     number = int(path.tag[1:5] + path.tag[6:10], 16)
     return dataset[number] if number in dataset else None
 

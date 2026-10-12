@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Each preset's output over the synthetic corpus, checked by independent validators.
+"""Each policy's output over the synthetic corpus, checked by independent validators.
 
 dciodvfy, dcentvfy, and dicom-validator
 (:mod:`~pymedphys._dicom.deidentify.dicom_validators`) check each released
 instance's input and output, and every finding that an output introduces
 must be explained by the known differences
 (:mod:`~pymedphys._dicom.deidentify.dicom_validation`). The runs are those of
-the end-to-end tests: ``basic``, ``basic-clean-descriptors`` with a reviewed
-ROI name and one the automatic tier renames, and ``basic`` over the corpus
-with its images compressed, which is skipped where a decoding plugin is not
-installed.
+the end-to-end tests, one for each policy of
+:data:`~pymedphys.tests.dicom._corpus_runs.CORPUS_RUNS`: among them
+``basic``, ``basic-clean-descriptors`` with a reviewed ROI name and one the
+automatic tier renames, and ``basic`` over the corpus with its images
+compressed, which is skipped where a decoding plugin is not installed.
 
 The tests are marked ``dicom_validators``, so they run only when asked for,
 with ``--dicom-validators`` or ``--include-dicom-validators``. Without the
@@ -37,7 +38,6 @@ requirements matrix reads the reports of the full unit-test runs, which do
 not run them, so a cited test would read as not run.
 """
 
-import dataclasses
 import json
 import os
 import shutil
@@ -48,13 +48,10 @@ from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import (
     dicom_validation,
-    pixel_decoding,
-    roi_names,
     run,
     standard,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
-from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.dicom_validation_command import (
     default_standard_path,
 )
@@ -65,30 +62,10 @@ from pymedphys._dicom.deidentify.dicom_validators import (
     VALIDATORS,
     ValidatorUnavailable,
 )
-from pymedphys._dicom.deidentify.instance_transform import (
-    InstanceTransform,
-    ReleaseGate,
-)
-from pymedphys._dicom.deidentify.policy import compose_policy
-from pymedphys._dicom.deidentify.reviewed_roi_names import (
-    Review,
-    ReviewedName,
-    ReviewedNames,
-)
+from pymedphys._dicom.deidentify.instance_transform import ReleaseGate
 
-from pymedphys._nomenclature import tg263
-
-from . import _synthetic_compressed as compressed
-from .test_deidentify_corpus_end_to_end import (
-    CLEAN_DESCRIPTORS,
-    COMPRESSED,
-    KEY,
-    MAPPED_NAME,
-    MARKER_SIGNATURES,
-    VOCABULARY,
-    _planted_roi_name,
-    _with_a_second_roi,
-)
+from . import _corpus_runs as runs
+from ._corpus_runs import MARKER_SIGNATURES
 
 pytestmark = [pytest.mark.pydicom, pytest.mark.dicom_validators]
 
@@ -113,57 +90,24 @@ def fixture_toolset():  # pylint: disable = inconsistent-return-statements
 
 @pytest.fixture(name="published", scope="module")
 def fixture_published():
-    """Treat the end-to-end tests' invented vocabulary as a published edition."""
-    entries = [dataclasses.asdict(s) for s in VOCABULARY.structures]
-    with pytest.MonkeyPatch.context() as patch:
-        patch.setitem(
-            roi_names.PUBLISHED_TG263, "TG263 vInvented", tg263.content_sha256(entries)
-        )
+    with runs.published_vocabulary():
         yield
 
 
 @pytest.fixture(
     name="comparison",
     scope="module",
-    params=[
-        "basic",
-        CLEAN_DESCRIPTORS,
-        pytest.param(
-            COMPRESSED,
-            marks=pytest.mark.skipif(
-                not all(
-                    pixel_decoding.decoder_available(syntax)
-                    for syntax in compressed.CORPUS_SYNTAXES
-                ),
-                reason="a decoding plugin of the compressed corpus is not installed",
-            ),
-        ),
-    ],
+    params=[corpus_run.param() for corpus_run in runs.CORPUS_RUNS],
 )
 def fixture_comparison(request, toolset, published):  # pylint: disable = unused-argument
-    corpus = corpus_module.build_corpus()
-    reviewed = None
-    preset = request.param
-    if preset == COMPRESSED:
-        corpus = compressed.compressed_corpus(corpus)
-        preset = "basic"
-    elif preset == CLEAN_DESCRIPTORS:
-        corpus = _with_a_second_roi(corpus)
-        reviewed = ReviewedNames.empty()
-        reviewed.record(
-            _planted_roi_name(corpus), ReviewedName(Review.MAP, MAPPED_NAME)
-        )
+    spec = request.param
+    prepared = runs.prepare(spec)
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.
     directory = Path(tempfile.mkdtemp(prefix="v"))
     try:
-        corpus_module.write_corpus(corpus, directory)
-        cleaning = (
-            None if reviewed is None else DescriptorCleaning(VOCABULARY, reviewed)
-        )
-        transform = InstanceTransform(
-            compose_policy(preset), KEY, cleaning=cleaning, unvalidated_policy=True
-        )
+        corpus_module.write_corpus(prepared.corpus, directory)
+        transform = prepared.transform(spec.policy())
         discovery = run.discover(directory / corpus_module.INSTANCES_DIRECTORY)
         result = run.run(
             discovery,
@@ -181,7 +125,7 @@ def fixture_comparison(request, toolset, published):  # pylint: disable = unused
     reports = os.environ.get(REPORT_VARIABLE)
     if reports:
         Path(reports).mkdir(parents=True, exist_ok=True)
-        dicom_validation.write_results(comparison, Path(reports) / request.param)
+        dicom_validation.write_results(comparison, Path(reports) / spec.name)
     return comparison
 
 
