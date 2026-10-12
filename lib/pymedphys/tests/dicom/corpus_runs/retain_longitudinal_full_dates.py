@@ -16,6 +16,26 @@
 
 from .._corpus_run import CorpusRun
 
+# The dates and times that the corpus makes differ among instances of one
+# study or series, and that the option keeps: Study Date and Time, Last
+# Menstrual Date, Series Date and Time, and the Performed Procedure Step
+# Start and End Dates and Times.
+INCONSISTENT = frozenset(
+    {
+        "(0008,0020)",
+        "(0008,0030)",
+        "(0010,21D0)",
+        "(0008,0021)",
+        "(0008,0031)",
+        "(0040,0244)",
+        "(0040,0245)",
+        "(0040,0250)",
+        "(0040,0251)",
+    }
+)
+
 RUN = CorpusRun(
-    "retain-longitudinal-full-dates", options=("retain_longitudinal_full_dates",)
+    "retain-longitudinal-full-dates",
+    options=("retain_longitudinal_full_dates",),
+    inconsistent=INCONSISTENT,
 )

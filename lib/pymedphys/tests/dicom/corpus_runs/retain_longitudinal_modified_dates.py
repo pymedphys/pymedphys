@@ -18,7 +18,9 @@ Modified Dates gives C to every date and time of Table E.1-1 but Patient's
 Birth Date, Patient's Birth Time, and GPS Time Stamp. Its cleaner keeps the
 time of each subject event and radiation source, since whole weeks keep the
 time of day (D-006, D-039), so those TM rows are kept, although the table
-gives them C, which leaves the manner of cleaning to the engine.
+gives them C, which leaves the manner of cleaning to the engine. The dates
+and times that the corpus makes differ among one study's or series'
+instances all move by the subject's one offset, so they differ as before.
 """
 
 from pymedphys._dicom.deidentify import standard
@@ -29,6 +31,7 @@ from pymedphys._dicom.deidentify.temporal_roles import (
 )
 
 from .._corpus_run import CorpusRun
+from .retain_longitudinal_full_dates import INCONSISTENT
 
 _ROLES = load_temporal_roles().rules
 
@@ -42,4 +45,5 @@ RUN = CorpusRun(
         and standard.dictionary_attribute(row.tag).vrs == ("TM",)
         and _ROLES[row.tag].role.action is TemporalAction.SHIFT
     ),
+    inconsistent=INCONSISTENT,
 )
