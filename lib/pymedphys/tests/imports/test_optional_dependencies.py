@@ -311,8 +311,9 @@ def test_user_holds_every_package_of_every_feature_extra():
             name = re.match(r"[A-Za-z0-9._-]+", requirement).group()
             by_extra.setdefault(extra.group(1), set()).add(_extras.normalise(name))
 
-    # ai is separate by design, and tests and all add to user.
-    feature_extras = set(by_extra) - {"user", "ai", "tests", "all"}
+    # ai and text-detection are separate by design, and tests and all add to
+    # user.
+    feature_extras = set(by_extra) - {"user", "ai", "text-detection", "tests", "all"}
     assert {"gamma", "dicom", "mosaiq", "icom", "trf"} <= feature_extras
     for extra in feature_extras:
         assert by_extra[extra] <= by_extra["user"], extra
