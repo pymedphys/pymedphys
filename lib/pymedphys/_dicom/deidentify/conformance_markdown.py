@@ -44,7 +44,7 @@ from .conformance import (
 from .conformance_values import code as _code
 from .conformance_values import join as _join
 from .markers import PROFILE_CODE
-from .policy import ENGINE_OPTIONS, RETAIN_UIDS
+from .policy import ENGINE_OPTIONS, UIDS
 from .reviewed_roi_names import Outcome, Review
 from .roi_names import Reason
 from .source import ENCAPSULATED_TRANSFER_SYNTAXES
@@ -619,11 +619,11 @@ def _retained_uids(
     statement: ConformanceStatement, option: Callable[[str], str]
 ) -> list[str]:
     """Say what keeping UIDs does to referential integrity, where it applies."""
-    if RETAIN_UIDS not in statement.options:
+    if UIDS not in statement.options:
         return []
     return [
         "",
-        f"Under the {option(RETAIN_UIDS)}, each UID of an attribute to which "
+        f"Under the {option(UIDS)}, each UID of an attribute to which "
         "Table E.1-1 gives K under it is kept as it is, wherever it occurs, "
         "and Media Storage SOP Instance UID (0002,0003) is the kept SOP "
         "Instance UID (D-040). The UIDs of every other attribute are "

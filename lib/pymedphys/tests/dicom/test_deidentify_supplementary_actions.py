@@ -265,11 +265,16 @@ def _definitions_of(tags, names=None):
 
 
 def _custom_option_sets():
-    """Every set of the targeted options that a custom policy accepts."""
+    """Every set of the presets' options that a custom policy accepts."""
+    preset_options = [
+        option
+        for option in standard.OPTIONS
+        if any(option in options for options in policy.PRESETS.values())
+    ]
     return [
         subset
-        for size in range(len(policy.TARGET_OPTIONS) + 1)
-        for subset in itertools.combinations(policy.TARGET_OPTIONS, size)
+        for size in range(len(preset_options) + 1)
+        for subset in itertools.combinations(preset_options, size)
         if not {DEVICE_IDENTITY, MODIFIED_DATES} <= set(subset)
     ]
 

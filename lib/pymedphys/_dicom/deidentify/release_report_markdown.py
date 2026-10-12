@@ -42,7 +42,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence
 
-from .policy import RETAIN_UIDS
+from .policy import UIDS
 from .release_report import FORMAT, STRUCTURAL_CHECKS
 
 # The name of each field of a section, as a reader sees it, in the order of
@@ -202,7 +202,7 @@ def _policy(section: object) -> list[Block]:
 
 def _kept_uids(options: list[object]) -> list[Block]:
     """Warn that kept UIDs link the release to its source (PS3.15 E.3.9)."""
-    if RETAIN_UIDS not in options:
+    if UIDS not in options:
         return []
     return [
         [

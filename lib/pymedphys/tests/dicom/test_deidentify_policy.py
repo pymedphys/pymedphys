@@ -37,6 +37,12 @@ SAFE_PRIVATE = "retain_safe_private"
 CLEAN_DESCRIPTORS = "clean_descriptors"
 BEAM_HOLD = "(300C,0127)"  # Beam Hold Transition DateTime
 TAG = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
+# The options that the presets select, in Table E.1-1's order.
+PRESET_OPTIONS = tuple(
+    option
+    for option in standard.OPTIONS
+    if any(option in options for options in policy.PRESETS.values())
+)
 
 
 def _rows():
@@ -84,19 +90,31 @@ def test_the_presets_are_the_designs_option_sets_in_the_tables_order():
     assert policy.MODIFIED_DATES == MODIFIED_DATES
 
 
-def test_the_presets_select_only_the_options_the_scope_targets():
-    assert policy.TARGET_OPTIONS == (
+def test_each_option_is_named_in_table_e1_1s_order():
+    assert (
+        policy.SAFE_PRIVATE,
+        policy.UIDS,
+        policy.DEVICE_IDENTITY,
+        policy.INSTITUTION_IDENTITY,
+        policy.PATIENT_CHARACTERISTICS,
+        policy.FULL_DATES,
+        policy.MODIFIED_DATES,
+        policy.CLEAN_DESCRIPTORS,
+        policy.CLEAN_STRUCTURED_CONTENT,
+        policy.CLEAN_GRAPHICS,
+    ) == standard.OPTIONS
+
+
+def test_the_presets_select_only_options_that_the_engine_applies():
+    assert PRESET_OPTIONS == (
         SAFE_PRIVATE,
-        "retain_uids",
         DEVICE_IDENTITY,
         PATIENT_CHARACTERISTICS,
         MODIFIED_DATES,
         CLEAN_DESCRIPTORS,
     )
-    in_order = tuple(o for o in standard.OPTIONS if o in policy.TARGET_OPTIONS)
-    assert policy.TARGET_OPTIONS == in_order
     for options in policy.PRESETS.values():
-        assert options == tuple(o for o in policy.TARGET_OPTIONS if o in options)
+        assert options == tuple(o for o in policy.ENGINE_OPTIONS if o in options)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-09")
@@ -142,9 +160,9 @@ def test_basic_clean_descriptors_is_the_basic_profile_with_clean_descriptors():
     # Clean Descriptors leaves identifiers and dates to the Profile.
     assert composed.actions["(0010,0010)"] == "Z"  # Patient's Name
     assert composed.actions["(0008,0020)"] == "Z"  # Study Date
-    # Its option is within the supported scope, and is valid as a custom set,
-    # which allows no conflict.
-    assert set(composed.options) <= set(policy.TARGET_OPTIONS)
+    # The engine applies its option, which is valid as a custom set, which
+    # allows no conflict.
+    assert set(composed.options) <= set(policy.ENGINE_OPTIONS)
     custom = policy.compose_custom_policy(composed.options)
     assert dict(custom.actions) == dict(composed.actions)
     # Defined and validated, but not enabled until its behaviour is.
@@ -314,8 +332,8 @@ def test_only_composing_an_enabled_preset_enables_a_policy(monkeypatch):
     "options",
     [
         subset
-        for size in range(len(policy.TARGET_OPTIONS) + 1)
-        for subset in itertools.combinations(policy.TARGET_OPTIONS, size)
+        for size in range(len(PRESET_OPTIONS) + 1)
+        for subset in itertools.combinations(PRESET_OPTIONS, size)
     ],
 )
 def test_a_custom_option_set_is_validated_and_never_enabled(options):
@@ -428,10 +446,11 @@ def test_the_two_retain_longitudinal_temporal_information_options_are_exclusive(
         )
 
 
-def test_the_engine_applies_the_target_options():
-    assert policy.ENGINE_OPTIONS == policy.TARGET_OPTIONS
-    for options in policy.PRESETS.values():
-        assert set(options) <= set(policy.ENGINE_OPTIONS)
+def test_the_engine_applies_the_options_that_it_marks_applied():
+    assert tuple(policy.ENGINE_APPLIES) == standard.OPTIONS
+    assert policy.ENGINE_OPTIONS == tuple(
+        o for o in standard.OPTIONS if policy.ENGINE_APPLIES[o]
+    )
 
 
 @pytest.mark.parametrize(
@@ -442,23 +461,23 @@ def test_the_engine_applies_the_target_options():
             "the option retain_longitudinal_full_dates, so a policy that selects it",
         ),
         (
-            [
-                "retain_institution_identity",
-                "retain_longitudinal_full_dates",
-                CLEAN_DESCRIPTORS,
-            ],
-            "the options retain_institution_identity and "
-            "retain_longitudinal_full_dates, so a policy that selects them",
+            ["retain_uids", "retain_longitudinal_full_dates", CLEAN_DESCRIPTORS],
+            "the options retain_uids and retain_longitudinal_full_dates, so a "
+            "policy that selects them",
         ),
     ],
 )
-def test_an_option_the_engine_does_not_yet_apply_is_refused_by_name(options, named):
+def test_an_option_the_engine_does_not_yet_apply_is_refused_by_name(
+    monkeypatch, options, named
+):
+    # The refusal names the options, whichever the engine applies.
+    applied = (SAFE_PRIVATE, DEVICE_IDENTITY, CLEAN_DESCRIPTORS)
+    monkeypatch.setattr(policy, "ENGINE_OPTIONS", applied)
     composed = policy.compose_custom_policy(options)
     message = (
         f"the engine does not yet apply {named} can be composed and described "
         "but not applied; the engine applies retain_safe_private, "
-        "retain_uids, retain_device_identity, retain_patient_characteristics, "
-        "retain_longitudinal_modified_dates, and clean_descriptors"
+        "retain_device_identity, and clean_descriptors"
     )
 
     with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):

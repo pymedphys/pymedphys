@@ -49,7 +49,7 @@ from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.policy import (
     DEVICE_IDENTITY,
     ENGINE_OPTIONS,
-    RETAIN_UIDS,
+    UIDS,
     compose_custom_policy,
     compose_policy,
 )
@@ -105,7 +105,7 @@ def _short_tmp_path(tmp_path):
     shutil.rmtree(directory, ignore_errors=True)
 
 
-def _transform(options=(RETAIN_UIDS,)):
+def _transform(options=(UIDS,)):
     return InstanceTransform(
         compose_custom_policy(options), KEY, unvalidated_policy=True
     )
@@ -141,16 +141,16 @@ def _plan(omitted=True):
 
 @pytest.mark.deid_requirement("PS3.15-E.3.9-01")
 def test_the_engine_applies_the_option():
-    assert RETAIN_UIDS in ENGINE_OPTIONS
-    ElementRules(compose_custom_policy([RETAIN_UIDS]))
+    assert UIDS in ENGINE_OPTIONS
+    ElementRules(compose_custom_policy([UIDS]))
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.9-01")
 def test_the_kept_uids_are_the_tables_uids_under_the_option():
-    rows = _rows_kept_under(RETAIN_UIDS)
+    rows = _rows_kept_under(UIDS)
     sequences = {tag for tag in rows if _is_sequence(tag)}
 
-    tags = retained_uid_tags(compose_custom_policy([RETAIN_UIDS]))
+    tags = retained_uid_tags(compose_custom_policy([UIDS]))
 
     assert len(rows) == 60
     assert sequences == {
@@ -177,9 +177,9 @@ def test_only_an_option_that_keeps_uids_has_kept_uids():
 
 @pytest.mark.deid_requirement("PS3.15-E.3.9-01")
 def test_the_rules_keep_the_tables_uids_and_replace_every_other():
-    rules = ElementRules(compose_custom_policy([RETAIN_UIDS]))
+    rules = ElementRules(compose_custom_policy([UIDS]))
 
-    for tag in _rows_kept_under(RETAIN_UIDS):
+    for tag in _rows_kept_under(UIDS):
         if tag[1:5] not in ("0000", "0002", "0004"):
             assert rules.rule(tag).action == "K", tag
     # The table gives these U under every option.
@@ -373,7 +373,7 @@ def _records(datasets):
 def test_the_second_pass_expects_the_kept_uids_where_the_policy_keeps_them():
     inputs = synthetic.collection()
     graph = build_reference_graph([synthetic.record(each) for each in inputs])
-    kept = retained_uid_tags(compose_custom_policy([RETAIN_UIDS]))
+    kept = retained_uid_tags(compose_custom_policy([UIDS]))
     # Written as they were given: every UID kept.
     written = _records(inputs)
 
@@ -390,7 +390,7 @@ def test_the_second_pass_expects_the_kept_uids_where_the_policy_keeps_them():
 def test_the_second_pass_reports_a_replacement_where_a_kept_uid_was_required():
     inputs = synthetic.collection()
     graph = build_reference_graph([synthetic.record(each) for each in inputs])
-    kept = retained_uid_tags(compose_custom_policy([RETAIN_UIDS]))
+    kept = retained_uid_tags(compose_custom_policy([UIDS]))
     replaced = synthetic.collection()
     synthetic.uid(
         replaced[PLAN], "SOPInstanceUID", replacement_uid(KEY, synthetic.PLAN)
@@ -418,7 +418,7 @@ def test_the_statement_says_what_keeping_uids_does_only_under_the_option():
         )
         return text.split("## Referential integrity")[1].split("\n## ")[0]
 
-    kept = integrity(compose_custom_policy([RETAIN_UIDS]))
+    kept = integrity(compose_custom_policy([UIDS]))
     assert "Under the Retain UIDs Option" in kept
     assert "Multi-frame Source SOP Instance UID (0008,1167)" in kept
     assert "Retain UIDs" not in integrity(compose_policy("basic"))
@@ -431,17 +431,17 @@ def test_the_release_report_cautions_that_kept_uids_link_to_the_source():
         )
         return to_markdown(release_report.to_json(report))
 
-    kept = markdown(compose_custom_policy([RETAIN_UIDS]))
+    kept = markdown(compose_custom_policy([UIDS]))
     assert "keep their source UIDs" in kept
     assert "PS3.15 E.3.9" in kept
     assert "source UIDs" not in markdown(compose_policy("basic"))
     document = json.loads(
         release_report.to_json(
             release_report.release_report(
-                compose_custom_policy([RETAIN_UIDS]),
+                compose_custom_policy([UIDS]),
                 vocabulary=None,
                 reviewed_roi_names=None,
             )
         )
     )
-    assert document["policy"]["options"] == [RETAIN_UIDS]
+    assert document["policy"]["options"] == [UIDS]

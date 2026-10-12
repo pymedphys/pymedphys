@@ -830,7 +830,7 @@ class InstanceTransform:
                 (*risk, *dropped_of(edits, kept_uids), *omissions_of(evidence)),
             )
         satisfied = False
-        settled = apply_cleaners(edits, self._cleaners, self._key)
+        settled = apply_cleaners(edits, self._cleaners, self._key, record.patient)
         edits, retained = settled.edits, settled.retained | kept_uids
         if settled.retained:
             evidence = coverage_of(plan, edits, retained)
