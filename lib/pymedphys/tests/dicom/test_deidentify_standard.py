@@ -42,6 +42,7 @@ def _write(path, document):
     [
         ("e1_1.json", "chtml/part15/chapter_E.html"),
         ("e1_1a.json", "chtml/part15/chapter_E.html"),
+        ("e3_4_1.json", "chtml/part15/sect_E.3.4.html"),
         ("e3_10_1.json", "chtml/part15/sect_E.3.10.html"),
         ("data_dictionary.json", "chtml/part06/chapter_6.html"),
         ("uid_values.json", "chtml/part06/chapter_A.html"),
