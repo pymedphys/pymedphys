@@ -19,23 +19,22 @@ known not to contain identifying information and consistent with the VR"
 (Table E.1-1a), to attributes under several options, and the edits leave
 each such attribute pending (D-009). A :class:`Cleaner` settles them for one
 option: it names the option, the attributes it cleans by tag, the VRs it
-reads them in, and its method, which the conformance statement gives. Each
-cleaner's method is in a module of its own, and :data:`CLEANERS` lists every
+reads them in, and its method, which the conformance statement gives. Most
+cleaners clean each value on its own; a cleaner of the whole instance is given
+every value that it is to settle in an instance, and the subject's identity,
+for values that depend on each other or on the subject. Each cleaner's method
+is in a module of its own, and :data:`CLEANERS` lists every
 cleaner, so an option is given a cleaner here, without changing the
 transform (D-034):
 
 - Retain Device Identity's eleven attributes of VR AE become keyed tokens
   (:mod:`~pymedphys._dicom.deidentify.ae_titles`).
-- Retain Patient Characteristics' five attributes of free text are written
-  with no value where they have none, and otherwise hold their instance,
-  since no method yet cleans them
-  (:mod:`~pymedphys._dicom.deidentify.patient_characteristics`, D-038).
 
 :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`
 applies the cleaners of the options its policy selects to each instance's
 edits, by :func:`apply_cleaners`, before descriptor cleaning. An attribute
-given C that no cleaner settles, or whose cleaner cannot clean its value,
-stays pending. Under Clean Descriptors, descriptor cleaning gives it the action that the policy gives it without
+given C that no cleaner settles stays pending. Under Clean Descriptors,
+descriptor cleaning gives it the action that the policy gives it without
 that option, where that action is not C (D-009); otherwise the instance is
 sequestered, since writing it with the option's code would claim a retention
 that did not happen (D-011), and writing it without the code would claim
@@ -45,13 +44,23 @@ that the Basic Profile removed values that the option keeps (D-012).
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from . import ae_titles, patient_characteristics
-from .edits import EditKind, InstanceEdits
+from .edits import Edit, EditKind, InstanceEdits
 from .file_layout import ElementPath
 from .keys import DeidKey
 from .policy import DEVICE_IDENTITY, PATIENT_CHARACTERISTICS, Policy
+from .pseudonyms import SubjectIdentity
+from .residuals import SourceValue
+
+# What a cleaner of the whole instance writes for each attribute that it
+# settles: the values written in its place, ``()`` for none, and whether they
+# are the source's own.
+InstanceClean = Callable[
+    [Iterable[SourceValue], DeidKey, SubjectIdentity | None],
+    Mapping[ElementPath, tuple[tuple[str | bytes, ...], bool]],
+]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -73,26 +82,50 @@ class Cleaner:
     method : str
         How it cleans them, as the conformance statement gives it: one or
         more sentences, naming no value.
-    clean : callable
+    clean : callable or None
         Given an attribute's decoded source values, separated by
         backslashes, and the run's key, returns the values that replace them,
-        ``()`` for an attribute written with no value, or None where it
-        cannot clean them, which leaves the attribute pending, so that its
-        instance is held.
+        ``()`` for an attribute written with no value. A cleaner has this or
+        ``clean_instance``, not both.
     retains : bool
-        Whether a value that it writes may be the source's own, so that the
-        residual search leaves the source value out (D-027), as it does a
-        ROI Name that descriptor cleaning keeps.
+        Whether a value that ``clean`` writes may be the source's own, so
+        that the residual search leaves the source value out (D-027), as it
+        does a ROI Name that descriptor cleaning keeps.
+    clean_instance : callable or None
+        For a cleaner whose values depend on each other or on the subject,
+        such as the dates of an instance, which move by its subject's offset
+        and are put in its local time first. Given the source value of every
+        attribute of one instance that it is to settle, in file order, the
+        run's key, and the subject's identity, or None for an instance
+        without one, returns, for each that it settles, the values that
+        replace it, ``()`` for none, and whether they are the source's own,
+        so that the residual search leaves the source value out. An
+        attribute that it leaves out stays pending. Its values may be bytes,
+        for an attribute of a VR such as OB.
+
+    Raises
+    ------
+    ValueError
+        If the cleaner has neither or both of ``clean`` and
+        ``clean_instance``, or ``retains`` with ``clean_instance``, which
+        says itself which values it retains.
     """
 
     option: str
     tags: frozenset[str]
     vrs: frozenset[str]
     method: str
-    clean: Callable[[str, DeidKey], tuple[str, ...] | None] = dataclasses.field(
-        repr=False
+    clean: Callable[[str, DeidKey], tuple[str, ...]] | None = dataclasses.field(
+        default=None, repr=False
     )
     retains: bool = False
+    clean_instance: InstanceClean | None = dataclasses.field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        if (self.clean is None) == (self.clean_instance is None):
+            raise ValueError("a cleaner has either clean or clean_instance")
+        if self.retains and self.clean_instance is not None:
+            raise ValueError("clean_instance says itself which values it retains")
 
 
 # Every cleaner, by the order of its option in Table E.1-1. No two clean the
@@ -128,7 +161,7 @@ CLEANERS: tuple[Cleaner, ...] = (
             "Category Comment (0010,0042) too, and where the policy selects "
             "both options, the same applies to them."
         ),
-        clean=patient_characteristics.held_unless_empty,
+        clean_instance=patient_characteristics.held_unless_empty,
     ),
 )
 
@@ -157,7 +190,10 @@ def cleaners_for(policy: Policy) -> tuple[Cleaner, ...]:
 
 
 def apply_cleaners(
-    edits: InstanceEdits, cleaners: Sequence[Cleaner], key: DeidKey
+    edits: InstanceEdits,
+    cleaners: Sequence[Cleaner],
+    key: DeidKey,
+    identity: SubjectIdentity | None = None,
 ) -> Cleaned:
     """Settle each pending C of one instance that one of ``cleaners`` cleans.
 
@@ -169,42 +205,60 @@ def apply_cleaners(
         Those of the run's policy, :func:`cleaners_for` it.
     key : DeidKey
         The run's key.
+    identity : SubjectIdentity, optional
+        The subject's identity, as the run resolves it, for the cleaners of
+        the whole instance; None for an instance without one.
 
     Returns
     -------
     Cleaned
         With each edit that a cleaner settles replaced. An attribute stays
-        pending where its value was not collected for the residual search,
-        is bytes, or was read in a VR that its cleaner does not read, or
-        where its cleaner cannot clean it.
+        pending where its value was not collected for the residual search
+        or was read in a VR that its cleaner does not read; where its
+        cleaner cleans single values and the value is bytes; and where its
+        cleaner cleans the whole instance and leaves it out.
     """
     by_tag = {tag: cleaner for cleaner in cleaners for tag in cleaner.tags}
     if not by_tag:
         return Cleaned(edits)
     sources = {value.source: value for value in edits.source_values}
+    edited = {edit.path: edit for edit in edits.edits}
     settled = {}
     retained = set()
+    # The source values that each cleaner of the whole instance is given, in
+    # file order, by the cleaner's position in ``cleaners``.
+    gathered: dict[int, list[SourceValue]] = {}
     for edit in edits.edits:
         cleaner = by_tag.get(edit.path.tag)
         if cleaner is None or edit.kind is not EditKind.PENDING or edit.action != "C":
             continue
         source = sources.get(edit.path)
-        if (
-            source is None
-            or source.vr not in cleaner.vrs
-            or not isinstance(source.value, str)
-        ):
+        if source is None or source.vr not in cleaner.vrs:
             continue
-        values = cleaner.clean(source.value, key)
-        if values is None:
-            continue
-        kind = EditKind.REPLACE if values else EditKind.EMPTY
-        settled[edit.path] = dataclasses.replace(edit, kind=kind, values=values)
-        if cleaner.retains:
-            retained.add(edit.path)
+        if cleaner.clean_instance is not None:
+            gathered.setdefault(cleaners.index(cleaner), []).append(source)
+        elif cleaner.clean is not None and isinstance(source.value, str):
+            settled[edit.path] = _settled(edit, cleaner.clean(source.value, key))
+            if cleaner.retains:
+                retained.add(edit.path)
+    for position, given in gathered.items():
+        clean_instance = cleaners[position].clean_instance
+        assert clean_instance is not None  # only such cleaners are gathered
+        offered = {value.source for value in given}
+        for path, (values, own) in clean_instance(given, key, identity).items():
+            if path in offered:
+                settled[path] = _settled(edited[path], values)
+                if own:
+                    retained.add(path)
     return Cleaned(
         dataclasses.replace(
             edits, edits=tuple(settled.get(edit.path, edit) for edit in edits.edits)
         ),
         frozenset(retained),
     )
+
+
+def _settled(edit: Edit, values: tuple[str | bytes, ...]) -> Edit:
+    """Return a pending edit settled with the values that replace it."""
+    kind = EditKind.REPLACE if values else EditKind.EMPTY
+    return dataclasses.replace(edit, kind=kind, values=values)

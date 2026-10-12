@@ -28,9 +28,9 @@ statement.
 No method yet cleans such text automatically: a clinician's note can hold a
 name, a date, or a place, and the reviewed lists that keep a ROI Name after
 pooled human review do not yet cover these attributes (D-009). So none of
-their values is written (D-038). :func:`held_unless_empty` leaves an
-attribute with a value pending, which holds its instance, sequestered
-rather than written: removing the value would contradict the Option, which
+their values is written (D-038). :func:`held_unless_empty`, the Option's
+cleaner of the whole instance, leaves out an attribute with a value, which
+stays pending and holds its instance, sequestered rather than written: removing the value would contradict the Option, which
 retains it (D-011), and writing the instance without the Option's code
 would claim that the Basic Profile removed the characteristics that the
 Option keeps (D-012). An attribute with no value, or whose values hold
@@ -41,7 +41,12 @@ allows.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
+
+from .file_layout import ElementPath
 from .keys import DeidKey
+from .pseudonyms import SubjectIdentity
+from .residuals import SourceValue
 
 # The attributes that Retain Patient Characteristics gives C in Table E.1-1
 # of PS3.15 2026d, all free text.
@@ -60,37 +65,48 @@ VRS = frozenset({"LO", "UT"})
 _PADDING = " \x00"
 
 
-def held_unless_empty(source: str, key: DeidKey) -> tuple[str, ...] | None:
-    """Return no values for an empty attribute, and None for one with a value.
+def is_empty(value: str) -> bool:
+    """Whether a decoded value holds nothing but padding and separators.
 
-    Parameters
-    ----------
-    source : str
-        The attribute's decoded values, separated by backslashes; ``""`` for
-        an attribute with no value. In UT, a backslash is a character of the
-        text, so it is not a separator there, but it is treated as one here,
-        since each of these attributes is either LO, in which it separates
-        values, or UT, of which a value of backslashes and padding alone
-        describes nothing.
-    key : DeidKey
-        The run's key, which is not used: nothing is derived from a value.
-
-    Returns
-    -------
-    tuple of str or None
-        ``()``, written as no value, where every value holds nothing but
-        padding; otherwise None, which leaves the attribute pending, so that
-        its instance is held.
+    In UT, a backslash is a character of the text, not a separator, but it
+    is treated as one here, since each of these attributes is either LO, in
+    which it separates values, or UT, of which a value of backslashes and
+    padding alone describes nothing.
 
     Examples
     --------
-    >>> key = DeidKey(bytes(32))
-    >>> held_unless_empty("", key), held_unless_empty(" \\\\ ", key)
-    ((), ())
-    >>> held_unless_empty("NONE KNOWN", key) is None
-    True
+    >>> is_empty(""), is_empty(" \\\\ "), is_empty("NONE KNOWN")
+    (True, True, False)
     """
-    del key
-    if all(not value.strip(_PADDING) for value in source.split("\\")):
-        return ()
-    return None
+    return all(not part.strip(_PADDING) for part in value.split("\\"))
+
+
+def held_unless_empty(
+    values: Iterable[SourceValue], key: DeidKey, identity: SubjectIdentity | None
+) -> Mapping[ElementPath, tuple[tuple[str | bytes, ...], bool]]:
+    """Settle each attribute with no value, and leave out each with one.
+
+    Parameters
+    ----------
+    values : iterable of SourceValue
+        The source value of each attribute of one instance to settle.
+    key : DeidKey
+        The run's key, which is not used: nothing is derived from a value.
+    identity : SubjectIdentity or None
+        The instance's subject, which is not used.
+
+    Returns
+    -------
+    Mapping of ElementPath to tuple
+        For each attribute whose decoded values are empty (:func:`is_empty`),
+        ``((), False)``: written with no value, which is not the source's
+        own. Every other attribute, with a value or with one that could not
+        be decoded, is left out, so that it stays pending and its instance
+        is held.
+    """
+    del key, identity
+    return {
+        value.source: ((), False)
+        for value in values
+        if isinstance(value.value, str) and is_empty(value.value)
+    }

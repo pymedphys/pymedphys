@@ -107,17 +107,25 @@ def test_every_attribute_that_the_option_gives_c_has_a_cleaner():
 
 @pytest.mark.parametrize("source", ["", " ", "  \x00", "\\", " \\ \\"])
 def test_an_attribute_with_no_value_or_only_padding_is_written_with_none(source):
-    assert patient_characteristics.held_unless_empty(source, KEY) == ()
+    assert patient_characteristics.is_empty(source)
+    value = SourceValue(_ALLERGIES, "LO", source)
+
+    settled = patient_characteristics.held_unless_empty([value], KEY, None)
+
+    assert settled == {_ALLERGIES: ((), False)}
 
 
 @pytest.mark.parametrize(
     "source", ["SENTINEL", " SENTINEL ", "\\SENTINEL", "SENTINEL\\", "NONE"]
 )
-def test_an_attribute_with_a_value_is_not_cleaned(source):
-    assert patient_characteristics.held_unless_empty(source, KEY) is None
+def test_an_attribute_with_a_value_is_left_out(source):
+    assert not patient_characteristics.is_empty(source)
+    value = SourceValue(_ALLERGIES, "LO", source)
+
+    assert not patient_characteristics.held_unless_empty([value], KEY, None)
 
 
-def test_a_cleaner_that_cannot_clean_a_value_leaves_it_pending():
+def test_the_cleaner_leaves_a_value_that_it_cannot_clean_pending():
     edits = InstanceEdits(
         edits=(
             Edit(_ALLERGIES, "C", EditKind.PENDING),
@@ -307,11 +315,9 @@ def test_the_statement_describes_how_the_free_text_is_settled(options):
     assert cleaner.method in section
 
 
-def test_tps_import_describes_the_free_text_and_still_awaits_its_dates():
+def test_tps_import_describes_the_free_text():
     statement = conformance.conformance_statement(
         compose_policy("tps-import"), vocabulary=None
     )
 
     assert PATIENT_CHARACTERISTICS in [c.option for c in statement.cleaned]
-    assert "patient characteristics" not in conformance.PENDING_CLEANING
-    assert conformance.PENDING_CLEANING in statement.pending
