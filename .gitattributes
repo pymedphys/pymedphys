@@ -1,3 +1,6 @@
 # line-specific gitignore filters
 .vscode/settings.json filter=gitignore-python-env-in-vscode-settings
 *.ipynb -linguist-detectable
+# TCIA's Private Tag Dictionary ships byte for byte, CRLF line endings
+# included, and its SHA-256 is checked.
+lib/pymedphys/_dicom/deidentify/_tcia/*.csv -text
