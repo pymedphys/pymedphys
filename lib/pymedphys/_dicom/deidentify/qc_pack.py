@@ -52,9 +52,9 @@ A pack holds, for one run:
 - ``pixel_risks``: each instance in a high-risk category, with the
   indicators of risk in its pixel data that put it there (D-017); and
   ``series_risks``: each series of released or held instances with
-  findings of its series assessment, a CT, MR, or PET volume, the head or
-  neck, or unreadable evidence of either, with the instances that show each
-  (D-015, D-017);
+  findings of its series assessment, a CT, MR, PET, or RT Dose volume, a
+  localizer, the head or neck, or unreadable evidence of any of them, with
+  the instances that show each (D-015, D-017);
 - ``previews``: each image preview, by its file in the previews directory
   beside the pack, with what it shows and the file's SHA-256, so that an
   attestation of the pack covers them; and ``not_previewed``: each instance
