@@ -22,7 +22,10 @@ releasing the data may add their confirmations, each ``yes`` or ``no``:
 ``--intended-use-checked``, that the output was checked for its intended
 use, and ``--residual-risk-accepted``, that its residual risk was accepted
 under the institution's governance; either left out is recorded as not
-stated. It is not
+stated. The reviewer may give a face verdict on any of the pack's series, by
+the run position of its first instance: ``--face-absent POSITION`` where
+they saw no recognisable face in its previews, and ``--face-present
+POSITION`` where they saw one, each repeatable. It is not
 registered with the ``pymedphys`` command: nothing de-identification related
 joins the public command line before the first supported release.
 
@@ -31,8 +34,9 @@ joins the public command line before the first supported release.
 there with :func:`~.qc_attestation.attest`, bound to the pack and its
 previews by their SHA-256, and only once: a pack that has been attested, a
 directory that holds no QC pack, a pack of another format, a pack whose
-previews are missing or changed, and an outcome of attested without all
-three reviews are each refused, and nothing is written.
+previews are missing or changed, an outcome of attested without all three
+reviews, a face verdict on a position that begins none of the pack's series,
+and a series given both verdicts are each refused, and nothing is written.
 
 The release report published with the run is not changed. It records the
 outcome when the run wrote it, not attested, since no reviewer had seen the
@@ -42,7 +46,8 @@ that a release report records (D-016).
 
 The reviewer's name and the pack's path can identify people, so neither the
 summary nor any message quotes them; the summary gives the outcome, the
-reviews done, and the pack's opaque reference.
+reviews done, how many series have each face verdict, and the pack's opaque
+reference.
 
 Exit statuses:
 
@@ -62,7 +67,7 @@ from typing import TextIO
 
 from . import command
 from .command import _Parser, _print
-from .qc_attestation import Attestation, Coverage, Outcome, attest
+from .qc_attestation import Attestation, Coverage, Face, Outcome, attest
 from .qc_pack import QcPackError
 
 EXIT_RECORDED = 0
@@ -79,10 +84,12 @@ def summary_lines(attestation: Attestation) -> list[str]:
     """Return the summary that the command prints, which names no one.
 
     It gives the pack's reference, the outcome, whether each review that
-    D-017 requires was done, the releaser's confirmations, and that the
-    published release report is unchanged.
+    D-017 requires was done, the releaser's confirmations, how many series
+    have each face verdict, and that the published release report is
+    unchanged.
     """
     coverage = attestation.coverage
+    faces = [verdict.face for verdict in attestation.faces]
     return [
         f"QC pack {attestation.reference}: {attestation.outcome.value}",
         *(
@@ -103,6 +110,8 @@ def summary_lines(attestation: Attestation) -> list[str]:
                 ("residual risk accepted", attestation.residual_risk_accepted),
             )
         ),
+        f"  series without a recognisable face: {faces.count(Face.ABSENT)}",
+        f"  series with a recognisable face: {faces.count(Face.PRESENT)}",
         "the release report published with the run is unchanged",
     ]
 
@@ -168,6 +177,21 @@ def build_parser(*, stderr: TextIO | None = None) -> argparse.ArgumentParser:
             "under the institution's governance; not stated if left out"
         ),
     )
+    for flag, seen in (
+        ("--face-absent", "no recognisable face"),
+        ("--face-present", "a recognisable face"),
+    ):
+        parser.add_argument(
+            flag,
+            action="append",
+            type=int,
+            default=[],
+            metavar="POSITION",
+            help=(
+                f"you saw {seen} in the previews of the series whose first "
+                "instance is at this run position; repeatable"
+            ),
+        )
     return parser
 
 
@@ -193,6 +217,13 @@ def main(
     stdout = sys.stdout if stdout is None else stdout
     stderr = sys.stderr if stderr is None else stderr
     arguments = build_parser(stderr=stderr).parse_args(argv)
+    absent, present = set(arguments.face_absent), set(arguments.face_present)
+    if absent & present:
+        _print(
+            "error: a series is given both face verdicts; nothing was recorded",
+            stderr,
+        )
+        return EXIT_NOT_RECORDED
     try:
         attestation = attest(
             Path(arguments.pack),
@@ -205,6 +236,10 @@ def main(
             ),
             intended_use_checked=_ANSWERS.get(arguments.intended_use_checked),
             residual_risk_accepted=_ANSWERS.get(arguments.residual_risk_accepted),
+            faces={
+                **{series: Face.ABSENT for series in absent},
+                **{series: Face.PRESENT for series in present},
+            },
         )
     except QcPackError as error:
         # QcPackError and the OSErrors it replaces name a check, never a path.

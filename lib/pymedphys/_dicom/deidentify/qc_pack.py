@@ -27,9 +27,10 @@ release, and staging directories, and readable only by its owner (D-016).
 
 A pack holds, for one run:
 
-- ``instances``: each input by its run position and source path, with its
-  output path if written, or the opaque per-run label by which the release
-  report refers to it if sequestered, and why (D-026);
+- ``instances``: each input by its run position and source path, with the
+  SHA-256 of the source file as the run read it, its output path if
+  written, or the opaque per-run label by which the release report refers
+  to it if sequestered, and why (D-026);
 - ``residual_findings``: each residual that the search of a written file
   found, by instance and place, with a contextual excerpt of the bytes
   around it (D-027);
@@ -50,8 +51,10 @@ A pack holds, for one run:
   attribute's tags and its count; the release report gives only how many
   instances have each kind;
 - ``pixel_risks``: each instance in a high-risk category, with the
-  indicators of risk in its pixel data that put it there (D-017); and
-  ``series_risks``: each series of released or held instances with
+  indicators of risk in its pixel data that put it there (D-017);
+  ``series``: each series of released or held instances, by the run
+  positions of its instances, by which an attestation gives each series'
+  face verdict (D-016, D-017); and ``series_risks``: each series of released or held instances with
   findings of its series assessment, a CT, MR, PET, or RT Dose volume, a
   localizer, the head or neck, or unreadable evidence of any of them, with
   the instances that show each (D-015, D-017);
@@ -98,7 +101,7 @@ from .residuals import UnsearchedReason
 from .reviewed_roi_names import Outcome
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/2"
+FORMAT = "pymedphys-deid-qc-pack/3"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 
@@ -108,6 +111,7 @@ PREVIEW_DIRECTORY = "previews"
 _CHUNK_BYTES = 4096
 
 _REFERENCE = re.compile(r"A-[0-9a-f]{32}")
+_SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 class QcPackError(ValueError):
@@ -188,6 +192,10 @@ class InstanceEntry:
     reasons : tuple of str
         Why an input was sequestered, held for review, or refused, as the
         engine words its findings, which hold no values; empty otherwise.
+    source_sha256 : str, optional
+        The SHA-256 of the source file as the run's first pass read it, in
+        lower-case hexadecimal, which binds a series' face verdict to the
+        files the reviewer saw; ``None`` for an input that was not read.
     """
 
     position: int
@@ -196,6 +204,7 @@ class InstanceEntry:
     output: PurePosixPath | None = None
     label: str | None = None
     reasons: tuple[str, ...] = ()
+    source_sha256: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("an instance", self.position)
@@ -207,6 +216,14 @@ class InstanceEntry:
             isinstance(reason, str) and reason for reason in self.reasons
         ):
             raise QcPackError(f"instance {self.position} needs reasons as text")
+        if self.source_sha256 is not None and not (
+            isinstance(self.source_sha256, str)
+            and _SHA256.fullmatch(self.source_sha256)
+        ):
+            raise QcPackError(
+                f"instance {self.position} needs its source's SHA-256 as 64 "
+                "lower-case hexadecimal digits"
+            )
         problem = self._problem()
         if problem:
             raise QcPackError(
@@ -810,6 +827,32 @@ class SourceGapEntry:
 
 
 @dataclasses.dataclass(frozen=True)
+class SeriesEntry:
+    """A series of released or held instances, which a face verdict names.
+
+    An attestation names the series by its first run position (D-017), and
+    the SHA-256 of its instances' source files, in ``instances``, binds the
+    verdict to the files the reviewer saw.
+
+    Attributes
+    ----------
+    positions : tuple of int
+        The run positions of the series' released and held instances, in
+        order, each once.
+    """
+
+    positions: tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.positions, tuple) or not self.positions:
+            raise QcPackError("a series needs its instances' run positions")
+        for position in self.positions:
+            _check_position("a series", position)
+        if list(self.positions) != sorted(set(self.positions)):
+            raise QcPackError("a series must list each instance once, in order")
+
+
+@dataclasses.dataclass(frozen=True)
 class SeriesRiskEntry:
     """A series with indicators of risk as a whole, and the instances that show each.
 
@@ -893,6 +936,10 @@ class QcPack:
         Each instance once, in run position order.
     source_gaps : tuple of SourceGapEntry
         Each instance once, in run position order.
+    series : tuple of SeriesEntry
+        Each instance in at most one, by its first run position in order;
+        each instance released or held for review, with its source's
+        SHA-256.
 
     Raises
     ------
@@ -908,7 +955,8 @@ class QcPack:
         instance is listed twice as high-risk, as not previewed, or with source
         gaps, or out of order; or if an instance is in two series with risks,
         the series are out of order, or one has an instance that was neither
-        released nor held for review.
+        released nor held for review; or if the same holds of ``series``, or
+        a series has an instance without its source's SHA-256.
     """
 
     reference: str
@@ -924,6 +972,7 @@ class QcPack:
     previews: tuple[Preview, ...] = ()
     not_previewed: tuple[NotPreviewedEntry, ...] = ()
     source_gaps: tuple[SourceGapEntry, ...] = ()
+    series: tuple[SeriesEntry, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -943,6 +992,7 @@ class QcPack:
             "previews": Preview,
             "not_previewed": NotPreviewedEntry,
             "source_gaps": SourceGapEntry,
+            "series": SeriesEntry,
         }
         for name, kind in sections.items():
             entries = getattr(self, name)
@@ -987,23 +1037,29 @@ class QcPack:
         self._check_previews()
 
     def _check_series(self) -> None:
-        firsts = [entry.positions[0] for entry in self.series_risks]
-        if firsts != sorted(firsts):
-            raise QcPackError("series_risks must be in order of their first instance")
-        listed = [
-            position for entry in self.series_risks for position in entry.positions
-        ]
-        if len(set(listed)) != len(listed):
-            raise QcPackError("an instance is in two series of series_risks")
+        for name in ("series", "series_risks"):
+            entries = getattr(self, name)
+            firsts = [entry.positions[0] for entry in entries]
+            if firsts != sorted(firsts):
+                raise QcPackError(f"{name} must be in order of their first instance")
+            listed = [position for entry in entries for position in entry.positions]
+            if len(set(listed)) != len(listed):
+                raise QcPackError(f"an instance is in two series of {name}")
+            if any(
+                position >= len(self.instances)
+                or self.instances[position].disposition not in _REVIEWED
+                for position in listed
+            ):
+                raise QcPackError(
+                    f"{name} names an instance that was neither released nor "
+                    "held for review"
+                )
         if any(
-            position >= len(self.instances)
-            or self.instances[position].disposition not in _REVIEWED
-            for position in listed
+            self.instances[position].source_sha256 is None
+            for entry in self.series
+            for position in entry.positions
         ):
-            raise QcPackError(
-                "series_risks names an instance that was neither released nor "
-                "held for review"
-            )
+            raise QcPackError("series names an instance without its source's SHA-256")
 
     def _check_previews(self) -> None:
         width = max(4, len(str(len(self.previews))))
@@ -1055,7 +1111,7 @@ class QcPack:
             f"pixel_risks={len(self.pixel_risks)}, "
             f"series_risks={len(self.series_risks)}, previews={len(self.previews)}, "
             f"not_previewed={len(self.not_previewed)}, "
-            f"source_gaps={len(self.source_gaps)})"
+            f"source_gaps={len(self.source_gaps)}, series={len(self.series)})"
         )
 
 
@@ -1180,6 +1236,7 @@ def pack_document(pack: QcPack) -> dict:
             }
             for entry in pack.pixel_risks
         ],
+        "series": [{"positions": list(entry.positions)} for entry in pack.series],
         "series_risks": [
             {
                 "positions": list(entry.positions),
@@ -1232,6 +1289,7 @@ def _instance(entry: InstanceEntry) -> dict:
         "output": None if entry.output is None else entry.output.as_posix(),
         "label": entry.label,
         "reasons": list(entry.reasons),
+        "source_sha256": entry.source_sha256,
     }
 
 

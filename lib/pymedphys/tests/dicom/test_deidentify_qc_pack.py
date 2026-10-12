@@ -47,6 +47,7 @@ from pymedphys._dicom.deidentify.qc_pack import (
     RetainedString,
     RoiNameEntry,
     RoiNameOutcome,
+    SeriesEntry,
 )
 from pymedphys._dicom.deidentify.residuals import (
     Finding,
@@ -62,6 +63,7 @@ SOURCE_PATH = "/imports/ZEBEDEE QUILLON/CT.1.dcm"
 RETAINED = "QUILLON CLINIC CT"
 REFERENCE = "A-" + "0123456789abcdef" * 2
 OUTPUT = PurePosixPath("ZQ0001/2.25.1/2.25.2/2.25.3.dcm")
+SOURCE_SHA256 = "0f" * 32
 
 POSIX_ONLY = pytest.mark.skipif(os.name != "posix", reason="POSIX file modes")
 
@@ -73,8 +75,14 @@ def _path(tag, *items):
 NAME_PATH = _path("(0010,0010)")
 
 
-def _written(position=0, output=OUTPUT, source=SOURCE_PATH):
-    return InstanceEntry(position, source, Disposition.RELEASED, output=output)
+def _written(position=0, output=OUTPUT, source=SOURCE_PATH, source_sha256=None):
+    return InstanceEntry(
+        position,
+        source,
+        Disposition.RELEASED,
+        output=output,
+        source_sha256=source_sha256,
+    )
 
 
 def _sequestered(position=0, label="S-0001"):
@@ -108,7 +116,8 @@ def _full_pack():
     search = find_residuals(data, [SourceValue(NAME_PATH, "PN", NAME)])
     findings, omissions = qc_pack.entries_for_search(0, search, data)
     return _pack(
-        instances=(_written(), _sequestered(1)),
+        instances=(_written(source_sha256=SOURCE_SHA256), _sequestered(1)),
+        series=(SeriesEntry((0,)),),
         residual_findings=findings,
         drops=(DropEntry(0, _path("(0008,1030)"), DropReason.RETAINED),),
         not_searched=omissions,
@@ -505,7 +514,7 @@ def test_a_search_gives_entries_with_excerpts_and_omissions():
 @pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_document_holds_every_section():
     document = json.loads(qc_pack.to_json(_full_pack()))
-    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/2"
+    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/3"
     assert document["reference"] == REFERENCE
     assert document["instances"] == [
         {
@@ -515,6 +524,7 @@ def test_the_document_holds_every_section():
             "output": OUTPUT.as_posix(),
             "label": None,
             "reasons": [],
+            "source_sha256": SOURCE_SHA256,
         },
         {
             "position": 1,
@@ -523,6 +533,7 @@ def test_the_document_holds_every_section():
             "output": None,
             "label": "S-0001",
             "reasons": ["conflicting instance"],
+            "source_sha256": None,
         },
     ]
     (residual,) = document["residual_findings"]
@@ -577,6 +588,7 @@ def test_the_document_holds_every_section():
             "count": 2,
         }
     ]
+    assert document["series"] == [{"positions": [0]}]
     assert list(document) == [
         "format",
         "reference",
@@ -588,6 +600,7 @@ def test_the_document_holds_every_section():
         "roi_names",
         "reference_findings",
         "pixel_risks",
+        "series",
         "series_risks",
         "previews",
         "not_previewed",

@@ -231,6 +231,7 @@ def qc_pack_of(
     outcomes: Sequence[object],
     material: Mapping[int, Sequence[object]],
     reference: str | None = None,
+    digests: Mapping[int, bytes] | None = None,
 ) -> QcPack:
     """Return the QC pack of a run.
 
@@ -246,6 +247,9 @@ def qc_pack_of(
         it.
     reference : str, optional
         The pack's reference; a new one by default.
+    digests : mapping of int to bytes, optional
+        The SHA-256 of each source file that the run's first pass read, by
+        run position, which the pack records with each instance.
 
     Notes
     -----
@@ -260,7 +264,8 @@ def qc_pack_of(
     with :func:`~.pixel_risk.assess_series`; one with any finding is
     listed in ``series_risks``. Only these instances are assessed, since
     only they reach a recipient, so a series of which one image was
-    released is not a volume.
+    released is not a volume. Each series of them whose instances all have a
+    digest is listed in ``series``, for the reviewer's face verdicts.
 
     Raises
     ------
@@ -269,9 +274,12 @@ def qc_pack_of(
     TypeError
         If an item of material is none of this module's types.
     """
+    digests = {} if digests is None else digests
     instances = tuple(
-        _instance(outcome, source)
-        for outcome, source in zip(outcomes, sources, strict=True)
+        _instance(outcome, source, digests.get(position))
+        for position, (outcome, source) in enumerate(
+            zip(outcomes, sources, strict=True)
+        )
     )
     findings: list[qc_pack.ResidualEntry] = []
     omissions: list[qc_pack.NotSearchedEntry] = []
@@ -352,6 +360,11 @@ def qc_pack_of(
             for position, found in sorted(high_risk.items())
         ),
         series_risks=_series_risks(instances, series),
+        series=tuple(
+            qc_pack.SeriesEntry(grouped)
+            for grouped in _series_groups(_reviewed(instances, series), series)
+            if all(instances[position].source_sha256 for position in grouped)
+        ),
         previews=previews.previews,
         not_previewed=not_previewed,
         source_gaps=tuple(
@@ -368,14 +381,30 @@ def _series_risks(
     return tuple(
         qc_pack.SeriesRiskEntry(positions, found)
         for positions, found in assessed_series(
-            (
-                position
-                for position in evidence
-                if instances[position].disposition in _PREVIEWED
-            ),
-            evidence,
+            _reviewed(instances, evidence), evidence
         )
     )
+
+
+def _reviewed(
+    instances: Sequence[qc_pack.InstanceEntry], evidence: Mapping[int, SeriesEvidence]
+) -> list[int]:
+    """Return the positions of the released and held instances with evidence."""
+    return [
+        position
+        for position in evidence
+        if instances[position].disposition in _PREVIEWED
+    ]
+
+
+def _series_groups(
+    positions: Iterable[int], evidence: Mapping[int, SeriesEvidence]
+) -> list[tuple[int, ...]]:
+    """Group the instances at ``positions`` with evidence by series, by first position."""
+    groups: dict[str | None, list[int]] = {}
+    for position in sorted(set(positions) & set(evidence)):
+        groups.setdefault(evidence[position].series, []).append(position)
+    return [tuple(grouped) for grouped in groups.values()]
 
 
 def assessed_series(
@@ -390,20 +419,19 @@ def assessed_series(
     and its findings, whose ``instances`` count from 0 within those
     positions.
     """
-    groups: dict[str | None, list[int]] = {}
-    for position in sorted(set(positions) & set(evidence)):
-        groups.setdefault(evidence[position].series, []).append(position)
     assessed = []
-    for grouped in groups.values():
+    for grouped in _series_groups(positions, evidence):
         found = pixel_risk.assess_series(
             [evidence[position].evidence for position in grouped]
         )
         if found:
-            assessed.append((tuple(grouped), found))
+            assessed.append((grouped, found))
     return assessed
 
 
-def _instance(outcome: object, source: Path) -> qc_pack.InstanceEntry:
+def _instance(
+    outcome: object, source: Path, digest: bytes | None
+) -> qc_pack.InstanceEntry:
     status = getattr(outcome, "status")
     disposition = _DISPOSITIONS[status.value]
     with_output = disposition in (Disposition.RELEASED, Disposition.DUPLICATE)
@@ -419,6 +447,7 @@ def _instance(outcome: object, source: Path) -> qc_pack.InstanceEntry:
         reasons=()
         if with_output
         else tuple(reason_text(reason) for reason in getattr(outcome, "reasons")),
+        source_sha256=None if digest is None else digest.hex(),
     )
 
 
