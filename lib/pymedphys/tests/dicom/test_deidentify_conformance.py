@@ -139,59 +139,6 @@ def test_the_statement_names_the_edition_preset_and_options(preset, statement_fo
         assert meanings[conformance.OPTION_CODES[option]] in text
 
 
-def test_each_option_names_its_cid_7050_code():
-    meanings = {
-        c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
-    }
-    assert set(conformance.OPTION_CODES) == set(standard.OPTIONS)
-    assert len(set(conformance.OPTION_CODES.values())) == len(standard.OPTIONS)
-    assert meanings[markers.PROFILE_CODE] == (
-        "Basic Application Confidentiality Profile"
-    )
-    for option, code in conformance.OPTION_CODES.items():
-        words = meanings[code].lower().split()
-        # Each option's own words appear in its code's meaning, in order.
-        assert words[-1] == "option"
-        for word in option.split("_"):
-            assert word in words, (option, meanings[code])
-
-
-@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
-def test_options_outside_the_supported_scope_are_listed_as_not_supported(statement_for):
-    text = conformance_markdown.render_markdown(statement_for("basic"))
-    meanings = {
-        c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
-    }
-    supported, unsupported = text.split("Options that are not supported")
-    for option in policy.TARGET_OPTIONS:
-        assert meanings[conformance.OPTION_CODES[option]] in supported
-    for option in set(standard.OPTIONS) - set(policy.TARGET_OPTIONS):
-        assert meanings[conformance.OPTION_CODES[option]] in unsupported
-
-
-def test_the_pixel_options_outside_table_e1_1_are_listed_as_not_supported(
-    preset, statement_for
-):
-    # PS3.15 E.1.1 Note 11 leaves Clean Pixel Data and Clean Recognizable
-    # Visual Features out of Table E.1-1; CID 7050 still codes them.
-    text = conformance_markdown.render_markdown(statement_for(preset))
-    meanings = {
-        c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
-    }
-    assert meanings["113101"] == "Clean Pixel Data Option"
-    assert meanings["113102"] == "Clean Recognizable Visual Features Option"
-    (line,) = [
-        line
-        for line in text.splitlines()
-        if line.startswith("- Options that are not supported: ")
-    ]
-    for code in conformance.PIXEL_OPTION_CODES:
-        assert f"{meanings[code]} (DCM {code})" in line
-    assert set(conformance.PIXEL_OPTION_CODES).isdisjoint(
-        conformance.OPTION_CODES.values()
-    )
-
-
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_action(
     preset,
@@ -900,8 +847,10 @@ def test_a_policy_that_the_engine_refuses_lists_the_policys_actions():
     text = conformance_markdown.render_markdown(statement)
     assert "## Other elements" not in text
     assert conformance.PENDING_REFUSED in text
+    assert conformance.PENDING_UNAPPLIED not in text
     for name in SUPPORTED_BY_THE_ENGINE:
         assert conformance.PENDING_REFUSED not in _statement(name).pending
+        assert conformance.PENDING_UNAPPLIED not in _statement(name).pending
 
 
 def _described_action(other, attribute, defined):

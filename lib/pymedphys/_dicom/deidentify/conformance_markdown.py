@@ -44,7 +44,7 @@ from .conformance import (
 from .conformance_values import code as _code
 from .conformance_values import join as _join
 from .markers import PROFILE_CODE
-from .policy import TARGET_OPTIONS
+from .policy import ENGINE_OPTIONS
 from .reviewed_roi_names import Outcome, Review
 from .roi_names import Reason
 from .source import ENCAPSULATED_TRANSFER_SYNTAXES
@@ -648,13 +648,15 @@ def render_markdown(statement: ConformanceStatement) -> str:
         f"{meanings[PROFILE_CODE]} (DCM {PROFILE_CODE}).",
         f"- Options applied: {options}.",
         "- Options that PyMedPhys can compose into a policy: "
-        + _join(option(o) for o in TARGET_OPTIONS)
+        + _join(option(o) for o in OPTIONS)
         + ".",
+        "- Options whose policies the engine applies: "
+        + _join(option(o) for o in ENGINE_OPTIONS)
+        + "; it refuses a policy that selects any other, and one that "
+        "selects Retain Safe Private until reviewed rules say which private "
+        "attributes are safe (D-028).",
         "- Options that are not supported: "
-        + _join(
-            [option(o) for o in OPTIONS if o not in TARGET_OPTIONS]
-            + [coded(c) for c in PIXEL_OPTION_CODES]
-        )
+        + _join(coded(c) for c in PIXEL_OPTION_CODES)
         + ".",
         "",
         "## Conformance claim",

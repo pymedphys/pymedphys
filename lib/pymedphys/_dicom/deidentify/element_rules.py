@@ -69,7 +69,12 @@ from collections.abc import Sequence
 
 from .file_layout import TAG_PATTERN
 from .iods import IOD
-from .policy import Policy, PolicyError, refuse_retain_safe_private
+from .policy import (
+    Policy,
+    PolicyError,
+    refuse_retain_safe_private,
+    refuse_unapplied_options,
+)
 from .standard import (
     _RESERVED_ODD_GROUPS,
     PRIVATE_ATTRIBUTES_TAG,
@@ -178,8 +183,10 @@ class ElementRules:
     Raises
     ------
     PolicyError
-        If the policy selects the Retain Safe Private Option, or was not
-        composed from the pinned Table E.1-1.
+        If the policy selects the Retain Safe Private Option, or an option
+        that the engine does not yet apply
+        (:func:`~pymedphys._dicom.deidentify.policy.refuse_unapplied_options`),
+        or was not composed from the pinned Table E.1-1.
 
     Examples
     --------
@@ -196,6 +203,7 @@ class ElementRules:
 
     def __init__(self, policy: Policy) -> None:
         refuse_retain_safe_private(policy)
+        refuse_unapplied_options(policy)
         table = load_table_e1_1()
         rows = {row.tag: row for row in table.attributes}
         if table.edition != policy.edition or rows.keys() != policy.actions.keys():

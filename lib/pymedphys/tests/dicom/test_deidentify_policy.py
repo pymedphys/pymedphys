@@ -404,47 +404,65 @@ def test_a_conflict_that_a_new_edition_adds_is_rejected(preset, tag, option, act
     assert "only the tps-import preset" not in str(raised.value)
 
 
-@pytest.mark.parametrize(
-    "option",
-    [
-        "retain_uids",
-        "retain_institution_identity",
-        "retain_longitudinal_full_dates",
-        "clean_structured_content",
-        "clean_graphics",
-    ],
-)
-def test_an_option_outside_the_supported_scope_is_rejected(option):
-    with pytest.raises(policy.PolicyError) as raised:
-        policy.compose_custom_policy([CLEAN_DESCRIPTORS, option])
+@pytest.mark.parametrize("option", standard.OPTIONS)
+def test_every_option_of_table_e1_1_can_be_composed(option):
+    composed = policy.compose_custom_policy([CLEAN_DESCRIPTORS, option])
 
-    message = str(raised.value)
-    assert option in message
-    assert ", ".join(policy.TARGET_OPTIONS[:-1]) in message
+    assert composed.options == tuple(
+        o for o in standard.OPTIONS if o in {CLEAN_DESCRIPTORS, option}
+    )
+    assert composed.preset is None
+    assert not composed.enabled
+    assert composed.claims_conformance
+
+
+def test_the_two_retain_longitudinal_temporal_information_options_are_exclusive():
+    message = (
+        "the options retain_longitudinal_full_dates and "
+        "retain_longitudinal_modified_dates are mutually exclusive (PS3.15 E.3.6)"
+    )
+    with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
+        policy.compose_custom_policy(
+            [MODIFIED_DATES, CLEAN_DESCRIPTORS, "retain_longitudinal_full_dates"]
+        )
+
+
+def test_the_engine_applies_the_target_options():
+    assert policy.ENGINE_OPTIONS == policy.TARGET_OPTIONS
+    for options in policy.PRESETS.values():
+        assert set(options) <= set(policy.ENGINE_OPTIONS)
 
 
 @pytest.mark.parametrize(
     "options, named",
     [
         (
-            ["retain_longitudinal_full_dates", MODIFIED_DATES],
-            "the option retain_longitudinal_full_dates is",
+            ["retain_longitudinal_full_dates"],
+            "the option retain_longitudinal_full_dates, so a policy that selects it",
         ),
         (
-            ["retain_longitudinal_full_dates", "retain_uids"],
-            "the options retain_uids and retain_longitudinal_full_dates are",
+            ["retain_uids", "retain_longitudinal_full_dates", CLEAN_DESCRIPTORS],
+            "the options retain_uids and retain_longitudinal_full_dates, so a "
+            "policy that selects them",
         ),
     ],
 )
-def test_the_scope_error_agrees_in_number_with_its_options(options, named):
+def test_an_option_the_engine_does_not_yet_apply_is_refused_by_name(options, named):
+    composed = policy.compose_custom_policy(options)
     message = (
-        f"{named} outside the supported scope; the supported options are "
-        "retain_safe_private, retain_device_identity, "
-        "retain_patient_characteristics, retain_longitudinal_modified_dates, "
-        "and clean_descriptors"
+        f"the engine does not yet apply {named} can be composed and described "
+        "but not applied; the engine applies retain_safe_private, "
+        "retain_device_identity, retain_patient_characteristics, "
+        "retain_longitudinal_modified_dates, and clean_descriptors"
     )
+
     with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
-        policy.compose_custom_policy(options)
+        policy.refuse_unapplied_options(composed)
+
+
+@pytest.mark.parametrize("preset", policy.PRESETS)
+def test_no_preset_selects_an_option_the_engine_does_not_yet_apply(preset):
+    policy.refuse_unapplied_options(policy.compose_policy(preset))
 
 
 def test_an_unknown_preset_is_rejected():
