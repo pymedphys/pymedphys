@@ -513,15 +513,17 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about the identity of the device in the Attributes shall be retained, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-003", "D-007", "D-022", "D-034"]
+decisions = ["D-003", "D-007", "D-022", "D-034", "D-042"]
 implementation = [
   "_dicom/deidentify/ae_titles.py",
   "_dicom/deidentify/cleaners.py",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/option_kept.py",
   "_dicom/deidentify/policy.py",
 ]
 note = '''
 The attributes that the Option gives K are kept, and the eleven AE titles that it gives C are each replaced by a keyed token, the same for the same application entity throughout a run (D-034).
+A removed AE title or private value found in a text attribute that the Option keeps, such as an AE title equal to the Station Name, does not send the file to review (D-042).
 `tps-import` also selects Modified Dates, which conflicts with this Option for device dates, so its output claims neither (D-007).
 '''
 
@@ -613,10 +615,11 @@ For public sharing, remove or replace all known direct identifiers and relevant 
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027", "D-032"]
+decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027", "D-032", "D-042"]
 implementation = [
   "_dicom/deidentify/file_layout.py",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/option_kept.py",
   "_dicom/deidentify/release_gate.py",
   "_dicom/deidentify/residual_exemptions.py",
   "_dicom/deidentify/residuals.py",
@@ -628,6 +631,7 @@ A source value, or a form of one, equal to a constant that the engine writes is 
 The release gate runs that search itself, for exactly the values collected across the file's subject, and checks the collection against the values the walker planned to collect.
 It withholds any output file that still holds a source person name, UID, date, datetime, or direct identifier, or a source value outside its data set, or whose collection of person names, UIDs, dates, datetimes, direct identifiers, or sequences was incomplete, and sends other text findings and other incomplete collection, including of private values, to confidential review; a search that finds nothing does not on its own release a file (D-027).
 A text finding is not sent to review where it is in a kept CS value made only of its attribute's terms in the pinned PS3.3 (for Body Part Examined, PS3.16 Annex L), in a code item of a scheme that PS3.16 Table 8-1 lists, or in Manufacturer, Manufacturer's Model Name, or Software Versions with a private or equipment source, or where its source is a private creator that PS3.15 Table E.3.10-1 lists, and the QC pack still lists it (D-032).
+Nor is a finding inside a value that a selected option keeps, where its source is a private data element or an attribute of that option, or where it equals a whole kept date or time, and in that case a date finding does not withhold the file either (D-042).
 `public-release` retains indirect identifiers only after its statistical assessment.
 A deterministic synthetic collection, with an instance of each IOD of the first supported release, plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released, and the Enhanced PET Image's Radiopharmaceutical Start DateTime, whose removal sequesters it, in none.
 The run's instance transform removes and replaces identifiers in each data set and gives the gate its coverage, including each value read as ISO 8859-1, and the run acts on the gate's decision.

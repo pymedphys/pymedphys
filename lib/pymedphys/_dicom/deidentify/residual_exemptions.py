@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Name the residual text findings that kept vocabulary or a vendor's label explains.
+"""Name the residual findings that kept vocabulary, labels, or options explain.
 
 The residual search finds the text of a removed value wherever it is in a
 written file (:mod:`~pymedphys._dicom.deidentify.residuals`), and the release
@@ -44,6 +44,17 @@ reason that such a finding is not a reason for review (D-032), or returns
   NULs, exactly one of the private creators that the pinned PS3.15 Table
   E.3.10-1 lists (:func:`vendor_creators`), wherever in the data set the
   finding is.
+- :attr:`Exemption.RETAINED_TEXT`: the finding is in a text attribute that
+  a selected option keeps, such as Station Name (0008,1010) under Retain
+  Device Identity, and its source is a private data element or an attribute
+  of that option, such as Station AE Title (0008,0055) (D-042,
+  :func:`~pymedphys._dicom.deidentify.option_kept.retained_text`).
+- :attr:`Exemption.RETAINED_VALUE`: a value of the element, a date, time,
+  or datetime that a selected option keeps, equals a whole value of the
+  finding's source (D-042,
+  :func:`~pymedphys._dicom.deidentify.option_kept.retained_value`). It also
+  applies to a finding of a date or datetime, which would otherwise
+  withhold the file (:func:`retained_date`).
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
@@ -66,6 +77,7 @@ from collections.abc import Mapping
 
 from .codes import load_coding_schemes
 from .file_layout import ElementPath, Region, read_file_layout
+from .option_kept import retained_text, retained_value
 from .residuals import Finding, SourceValue
 from .standard import load_table_e3_10_1
 from .uid_registry import RegistryTable, RegistryTableSpec, load_registry_table
@@ -95,6 +107,8 @@ class Exemption(enum.Enum):
     STANDARD_CODE = "standard-code"  # in a code item of a scheme of Table 8-1
     EQUIPMENT = "equipment"  # an equipment name, found from equipment or private
     VENDOR_CREATOR = "vendor-creator"  # a private creator of Table E.3.10-1
+    RETAINED_TEXT = "retained-text"  # in text an option keeps, from its own or private
+    RETAINED_VALUE = "retained-value"  # equal to a date or time an option keeps
 
 
 @dataclasses.dataclass(frozen=True)
@@ -282,6 +296,7 @@ def exemption(
     finding: Finding,
     kept: KeptValues,
     sources: Mapping[ElementPath, tuple[str | bytes, ...]],
+    options: tuple[str, ...] = (),
 ) -> Exemption | None:
     """Return why a text finding inside the data set is not a reason for review.
 
@@ -293,6 +308,8 @@ def exemption(
         The written file's values.
     sources : mapping
         The collected values of each source (:func:`source_values`).
+    options : tuple of str, optional
+        The run's options. With none, no option explains a finding.
 
     Returns
     -------
@@ -317,7 +334,42 @@ def exemption(
         return Exemption.EQUIPMENT
     if _vendor_creator(finding.source, sources):
         return Exemption.VENDOR_CREATOR
-    return None
+    return _retained(finding, kept, sources, options)
+
+
+def _retained(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[str | bytes, ...]],
+    options: tuple[str, ...],
+) -> Exemption | None:
+    """Return whether a value that an option keeps explains a text finding."""
+    element = finding.location.element
+    if element is not None and retained_text(element.tag, finding.source, options):
+        return Exemption.RETAINED_TEXT
+    return retained_date(finding, kept, sources, options)
+
+
+def retained_date(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[str | bytes, ...]],
+    options: tuple[str, ...],
+) -> Exemption | None:
+    """Return whether a date or time that an option keeps explains a finding.
+
+    For a finding inside the data set, of text, a date, or a datetime, as
+    :attr:`Exemption.RETAINED_VALUE` describes; ``None`` otherwise.
+    """
+    element = finding.location.element
+    if finding.location.region is not Region.DATA_SET or element is None:
+        return None
+    values = kept.values(element)
+    if values is None or not retained_value(
+        element, values, finding.source, sources.get(finding.source, ()), options
+    ):
+        return None
+    return Exemption.RETAINED_VALUE
 
 
 def _vendor_creator(
