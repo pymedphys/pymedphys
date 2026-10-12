@@ -55,7 +55,10 @@ The indicators are:
   (0010,1030) but keeps these and Radionuclide Total Dose (0018,1074), so
   a mapping's slope and the dose give the weight, and so do images scaled
   to an SUV released with attenuation-corrected images of the same
-  acquisition (MIDI report Section 1.20.2).
+  acquisition (MIDI report Section 1.20.2). The Retain Patient
+  Characteristics Option keeps the weight itself, so under it these
+  indicators say no more than the written instance does; they are still
+  reported, since the assessment reads the source whatever the policy.
 
 Values are compared whatever their case, though CS is upper case, so that a
 writer's lower-case "yes" does not hide an indicator. An ROI Name is

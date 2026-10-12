@@ -152,7 +152,12 @@ def test_a_policy_has_the_cleaners_of_the_options_it_selects():
     assert not cleaners.cleaners_for(compose_policy("basic-clean-descriptors"))
     (cleaner,) = cleaners.cleaners_for(compose_custom_policy([DEVICE_IDENTITY]))
     assert cleaner.option == DEVICE_IDENTITY
-    assert cleaners.cleaners_for(compose_policy("tps-import")) == (cleaner,)
+    tps_import = cleaners.cleaners_for(compose_policy("tps-import"))
+    assert [c.option for c in tps_import] == [
+        DEVICE_IDENTITY,
+        "retain_patient_characteristics",
+    ]
+    assert tps_import[0] == cleaner
 
 
 def _edits(*elements):
@@ -359,6 +364,9 @@ def test_tps_import_describes_its_ae_titles_and_still_awaits_its_other_cleaning(
         compose_policy("tps-import"), vocabulary=None
     )
 
-    assert [cleaned.option for cleaned in statement.cleaned] == [DEVICE_IDENTITY]
-    # Its dates and retained patient characteristics are not cleaned yet.
+    assert [cleaned.option for cleaned in statement.cleaned] == [
+        DEVICE_IDENTITY,
+        "retain_patient_characteristics",
+    ]
+    # Its dates are not cleaned yet.
     assert conformance.PENDING_CLEANING in statement.pending

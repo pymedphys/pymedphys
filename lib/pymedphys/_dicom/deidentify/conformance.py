@@ -159,9 +159,7 @@ PENDING_REFUSED = (
 PENDING_CLEANING = (
     "The manner of cleaning each attribute other than ROI Name (3006,0026) "
     "to which the policy gives C and which no cleaner above cleans, including "
-    "how dates and times are modified and how retained patient "
-    "characteristics are cleaned (PS3.15 E.3.5, E.3.6, and E.3.7; D-007, "
-    "D-009)."
+    "how dates and times are modified (PS3.15 E.3.5 and E.3.6; D-007, D-009)."
 )
 # Pending only for a policy that selects Clean Descriptors and whose other
 # options cannot be composed without it.

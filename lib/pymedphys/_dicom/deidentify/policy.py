@@ -77,6 +77,7 @@ from .temporal_roles import TemporalRole, load_temporal_roles
 
 SAFE_PRIVATE = "retain_safe_private"
 DEVICE_IDENTITY = "retain_device_identity"
+PATIENT_CHARACTERISTICS = "retain_patient_characteristics"
 MODIFIED_DATES = "retain_longitudinal_modified_dates"
 FULL_DATES = "retain_longitudinal_full_dates"
 

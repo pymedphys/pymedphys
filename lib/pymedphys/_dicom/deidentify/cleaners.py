@@ -26,12 +26,16 @@ transform (D-034):
 
 - Retain Device Identity's eleven attributes of VR AE become keyed tokens
   (:mod:`~pymedphys._dicom.deidentify.ae_titles`).
+- Retain Patient Characteristics' five attributes of free text are written
+  with no value where they have none, and otherwise hold their instance,
+  since no method yet cleans them
+  (:mod:`~pymedphys._dicom.deidentify.patient_characteristics`, D-038).
 
 :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`
 applies the cleaners of the options its policy selects to each instance's
 edits, by :func:`apply_cleaners`, before descriptor cleaning. An attribute
-given C that no cleaner settles stays pending. Under Clean Descriptors,
-descriptor cleaning gives it the action that the policy gives it without
+given C that no cleaner settles, or whose cleaner cannot clean its value,
+stays pending. Under Clean Descriptors, descriptor cleaning gives it the action that the policy gives it without
 that option, where that action is not C (D-009); otherwise the instance is
 sequestered, since writing it with the option's code would claim a retention
 that did not happen (D-011), and writing it without the code would claim
@@ -43,11 +47,11 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Callable, Sequence
 
-from . import ae_titles
+from . import ae_titles, patient_characteristics
 from .edits import EditKind, InstanceEdits
 from .file_layout import ElementPath
 from .keys import DeidKey
-from .policy import DEVICE_IDENTITY, Policy
+from .policy import DEVICE_IDENTITY, PATIENT_CHARACTERISTICS, Policy
 
 
 @dataclasses.dataclass(frozen=True)
@@ -72,7 +76,9 @@ class Cleaner:
     clean : callable
         Given an attribute's decoded source values, separated by
         backslashes, and the run's key, returns the values that replace them,
-        ``()`` for an attribute written with no value.
+        ``()`` for an attribute written with no value, or None where it
+        cannot clean them, which leaves the attribute pending, so that its
+        instance is held.
     retains : bool
         Whether a value that it writes may be the source's own, so that the
         residual search leaves the source value out (D-027), as it does a
@@ -83,7 +89,9 @@ class Cleaner:
     tags: frozenset[str]
     vrs: frozenset[str]
     method: str
-    clean: Callable[[str, DeidKey], tuple[str, ...]] = dataclasses.field(repr=False)
+    clean: Callable[[str, DeidKey], tuple[str, ...] | None] = dataclasses.field(
+        repr=False
+    )
     retains: bool = False
 
 
@@ -105,6 +113,22 @@ CLEANERS: tuple[Cleaner, ...] = (
             "value stays empty."
         ),
         clean=ae_titles.ae_tokens,
+    ),
+    Cleaner(
+        option=PATIENT_CHARACTERISTICS,
+        tags=patient_characteristics.TAGS,
+        vrs=patient_characteristics.VRS,
+        method=(
+            "No method yet cleans these values of free text, so none of them "
+            "is written: an instance in which one of them has a value is "
+            "held, sequestered rather than written, and one that has no "
+            "value, or whose values hold nothing but spaces, is written with "
+            "no value. Clean Descriptors gives C to Allergies (0010,2110), "
+            "Patient State (0038,0500), and Sex Parameters for Clinical Use "
+            "Category Comment (0010,0042) too, and where the policy selects "
+            "both options, the same applies to them."
+        ),
+        clean=patient_characteristics.held_unless_empty,
     ),
 )
 
@@ -151,7 +175,8 @@ def apply_cleaners(
     Cleaned
         With each edit that a cleaner settles replaced. An attribute stays
         pending where its value was not collected for the residual search,
-        is bytes, or was read in a VR that its cleaner does not read.
+        is bytes, or was read in a VR that its cleaner does not read, or
+        where its cleaner cannot clean it.
     """
     by_tag = {tag: cleaner for cleaner in cleaners for tag in cleaner.tags}
     if not by_tag:
@@ -171,6 +196,8 @@ def apply_cleaners(
         ):
             continue
         values = cleaner.clean(source.value, key)
+        if values is None:
+            continue
         kind = EditKind.REPLACE if values else EditKind.EMPTY
         settled[edit.path] = dataclasses.replace(edit, kind=kind, values=values)
         if cleaner.retains:

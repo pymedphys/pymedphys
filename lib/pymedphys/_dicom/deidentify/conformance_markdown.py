@@ -513,7 +513,7 @@ def _cleaned(
             "",
             f"The policy gives C under this option to "
             f"{_join(named(tag) for tag in cleaned.tags)}, wherever they are "
-            f"in the data set, and a reviewed cleaner cleans them (D-034). "
+            f"in the data set, and a reviewed cleaner settles them (D-034). "
             f"{cleaned.method}",
             "",
         ]
