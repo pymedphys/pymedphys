@@ -379,6 +379,8 @@ implementation = [
   "_dicom/deidentify/roi_names.py",
   "_dicom/deidentify/reviewed_roi_names.py",
   "_dicom/deidentify/reviewed_names_command.py",
+  "_dicom/deidentify/reviewed_descriptors.py",
+  "_dicom/deidentify/reviewed_descriptors_command.py",
   "_dicom/deidentify/run_report.py",
 ]
 note = '''
@@ -393,6 +395,7 @@ A private command records a reviewer's decisions from a CSV file in the list, al
 The release report counts the ROI Names of the structure sets that descriptor cleaning cleaned, each by its outcome, and the distinct names sent for review by reason, whether then held or emptied unreviewed, without a name.
 A run can also be given an institutional list converted from CSV, as the maintainer decided on 6 October 2026; it renames nothing, and the QC pack shows the reviewer of a held name the list's names it matched.
 A ROI Name kept or mapped by a reviewer's decision in the reviewed-names list has passed pooled human review, since each distinct name is reviewed once for the collection.
+A reviewed descriptors list, kept as the reviewed-names list is and filled by a private command of its own, records a reviewer's decision to keep, map, or empty one value of each other text attribute given C, and the reviewed tier for those values checks what a kept or mapped value would write for echoes of identifiers, also within its letters and digits, and holds every other value; runs do not yet apply it, so those attributes still take their action without the Option.
 '''
 
 [[requirement]]
