@@ -17,12 +17,12 @@
 A Retain option keeps values that the Basic Profile removes, such as Station
 Name (0008,1010) under Retain Device Identity or Study Date (0008,0020)
 under Retain Longitudinal Temporal Information with Full Dates. The residual
-search (D-027) still finds removed values inside them: a station's AE title
+search still finds removed values inside them: a station's AE title
 in its kept Station Name, a vendor's private copy of an institution's name
 in its kept Institution Name, or a removed Patient's Birth Date equal to a
 kept Study Date. Such a finding shows only that removed text is inside a
 value that the run's policy releases anyway, so it reveals nothing that the
-kept value does not, wherever the option explains it (D-042):
+kept value does not, wherever the option explains it:
 
 - :func:`retained_text`: a text finding in a text attribute that a selected
   option keeps, whose source is a private data element or an attribute that
@@ -35,7 +35,7 @@ kept value does not, wherever the option explains it (D-042):
 An attribute is kept under a set of options where one of them gives it K
 and the Basic Profile does not, and no other gives it an action of its own
 other than K (:func:`kept_by`), so that the eleven device dates that
-``tps-import`` modifies (D-007) are not kept. The rules read the run's
+``tps-import`` modifies are not kept. The rules read the run's
 options, which the transform records in each instance's coverage, because
 the same attributes hold received values only under the options that keep
 them: under Modified Dates the dates that Full Dates keeps are shifted, and
@@ -72,7 +72,7 @@ def option_actions(option: str) -> Mapping[str, str]:
     """Return the actions that ``option`` gives in place of the Basic Profile's.
 
     By tag, for the attributes of Table E.1-1 and of the reviewed
-    supplementary rules (D-022) to which the option alone, added to the
+    supplementary rules to which the option alone, added to the
     Basic Profile, gives another action than the Basic Profile does.
     """
     basic = compose_custom_policy(())

@@ -317,8 +317,8 @@ def coverage_of(
     value. Where the edits sequester the instance, each planned value that
     they did not reach is uncollected. Each value read as ISO 8859-1, since
     no Specific Character Set applies, is carried over as read as bytes, so
-    that its collection is incomplete (D-027). ``options``, the policy's,
-    say which kept values can explain a finding (D-042).
+    that its collection is incomplete (D-027).
+    ``options``, the policy's, say which kept values can explain a finding.
     """
     left_out: set[ElementPath] = set(retained) | set(_left_out(edits))
     planned = frozenset(

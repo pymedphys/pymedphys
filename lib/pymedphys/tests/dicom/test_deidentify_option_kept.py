@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Residual findings that a value a selected option keeps explains (D-042).
+"""Residual findings that a value a selected option keeps explains.
 
 Every file is synthetic, and every value invented.
 """
@@ -99,7 +99,7 @@ def _why(condition):
 def test_an_option_keeps_what_it_gives_k_and_the_basic_profile_does_not():
     kept = kept_by((DEVICE_IDENTITY,))
 
-    # Table E.1-1's rows, and a reviewed supplementary rule's (D-022).
+    # Table E.1-1's rows, and a reviewed supplementary rule's.
     for tag in ("(0008,1010)", "(0018,1000)", "(0018,1200)", "(300A,00D4)"):
         assert kept[tag] == {DEVICE_IDENTITY}
     # Not the AE titles that it cleans, nor what the Basic Profile keeps.
@@ -114,7 +114,7 @@ def test_tps_import_keeps_no_device_date_that_modified_dates_shifts():
     assert kept["(0008,1010)"] == {DEVICE_IDENTITY}
     assert "(0010,1010)" in kept  # Patient's Age, Retain Patient Characteristics
     # Date of Last Calibration: K under Retain Device Identity, but C under
-    # Modified Dates, which the preset applies (D-007).
+    # Modified Dates, which the preset applies.
     assert "(0018,1200)" not in kept
     assert "(0018,1200)" in kept_by((DEVICE_IDENTITY,))
 

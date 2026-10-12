@@ -47,12 +47,12 @@ reason that such a finding is not a reason for review (D-032), or returns
 - :attr:`Exemption.RETAINED_TEXT`: the finding is in a text attribute that
   a selected option keeps, such as Station Name (0008,1010) under Retain
   Device Identity, and its source is a private data element or an attribute
-  of that option, such as Station AE Title (0008,0055) (D-042,
-  :func:`~pymedphys._dicom.deidentify.option_kept.retained_text`).
+  of that option, such as Station AE Title (0008,0055)
+  (:func:`~pymedphys._dicom.deidentify.option_kept.retained_text`).
 - :attr:`Exemption.RETAINED_VALUE`: a value of the element, a date, time,
   or datetime that a selected option keeps, equals a whole value of the
-  finding's source (D-042,
-  :func:`~pymedphys._dicom.deidentify.option_kept.retained_value`). It also
+  finding's source
+  (:func:`~pymedphys._dicom.deidentify.option_kept.retained_value`). It also
   applies to a finding of a date or datetime, which would otherwise
   withhold the file (:func:`retained_date`).
 

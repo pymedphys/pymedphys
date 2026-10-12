@@ -172,8 +172,8 @@ _RESIDUAL_KINDS = {
     ValueKind.DATE: ReasonCode.RESIDUAL_DATE,
     ValueKind.DATETIME: ReasonCode.RESIDUAL_DATETIME,
 }
-# The findings that kept values can explain: text (D-032, D-042), and dates
-# and datetimes equal to a date or time that an option keeps (D-042).
+# The findings that kept values can explain: text, and dates and datetimes
+# equal to a date or time that an option keeps.
 _EXPLICABLE = frozenset(
     {ReasonCode.RESIDUAL_TEXT, ReasonCode.RESIDUAL_DATE, ReasonCode.RESIDUAL_DATETIME}
 )
@@ -237,7 +237,7 @@ class Coverage:
         has bytes outside ISO 646 and no Specific Character Set applies.
     options : tuple of str, optional
         The options of the run's policy, whose kept values can explain a
-        finding (D-042). With none, no option explains a finding.
+        finding. With none, no option explains a finding.
 
     Raises
     ------
