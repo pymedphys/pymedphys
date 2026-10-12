@@ -22,23 +22,34 @@ Every other value of a descriptor is decided on by a reviewer
 (:mod:`.reviewed_descriptors`), whose decision takes precedence over this
 tier. Study Description, comments, and diagnoses are never kept by it.
 
-:meth:`TechniqueVocabulary.rejection` reads a value as follows, and keeps it
-only where no rule rejects it:
+:meth:`TechniqueVocabulary.rejection` reads a value as words, the runs of
+letters and digits between other characters, with any decimal places, and
+keeps it only where no rule rejects it:
 
-- it is printable ISO 646 (ASCII), without control characters;
-- it holds no date or time, such as ``2026-10-12``, ``12/10/26``, or
-  ``14:30``, no run of five or more digits, and no numbers that run together
-  across spaces, hyphens, or slashes to five or more digits, such as a
+- it is printable ISO 646 (ASCII), without control characters, and holds no
+  ``^``, which separates the components of a person's name;
+- it holds no date or time, such as ``2026-10-12``, ``12_10_26``, or
+  ``14:30``, no run of five or more digits, and no digits that run together
+  across separators from one word to the next to five or more, such as a
   record number split into groups;
-- each of its words, the runs of letters and digits between other
-  characters, is made of letter runs that are each a vocabulary word, or two
-  or three vocabulary words of at least three letters joined, as in
-  ``FATSAT``, and digit runs of at most four digits that are not a year from
-  1900 to 2099, as in ``T2``, ``B1000``, ``120KV``, and ``0.625MM``, or is
-  a reconstruction kernel of one or two letters, two digits, and at most one
-  letter, as in ``B70f`` and ``Br40``, apart from a lone M, F, or Y;
-- no letter run of it is a common personal name that is not a reviewed
-  exception; and
+- it has at most one bare number, a word of only digits, which has at most
+  three digits before its decimal point and at most three after, and is not
+  two digits, a point, and two digits from ``10.00`` up, which could be a
+  time;
+- every other word is a reviewed reconstruction kernel, such as ``B70f`` or
+  ``Br40``, or is made of letter runs that are each a vocabulary word, or
+  two or three vocabulary words of at least three letters joined, as in
+  ``FATSAT``, and digit runs that each have at most four digits before any
+  decimal point and three after, and are not a year from 1900 to 2099, as in
+  ``T2``, ``B1000``, ``120KV``, and ``0.625MM``; no word holds two digit
+  runs with one letter between them, as ``14H30`` and ``512X512`` do;
+- a single letter after digits, in a word or as the next word, is a unit,
+  as in ``3T``, or the ``D`` of ``2D``, ``3D``, or ``4D``, since another,
+  such as the ``F`` of ``45F``, could give an age or sex; and no two
+  single-letter words are next to each other, as initials are;
+- no letter run is a common personal name that is not a reviewed exception,
+  and no title (``MR``, ``MRS``, or ``MS``) comes before a word that is an
+  exception and also a common name, such as ``MRS HAND``; and
 - it has at least one vocabulary word of at least two letters.
 
 The rules hold a value rather than keep it wherever they are unsure, so a
@@ -49,8 +60,8 @@ check holds such a value where it names a person of the instance.
 
 The vocabulary changes what the engine writes, so the method digest is to
 cover it through :attr:`TechniqueVocabulary.sha256`, which is computed over
-the effective attributes and words after every term, name, and exclusion is
-applied.
+the effective attributes, words, units, kernels, and names after every term,
+name, and exclusion is applied.
 """
 
 from __future__ import annotations
@@ -78,16 +89,27 @@ _PRINTABLE = re.compile(r"[\x20-\x7e]*")
 # A word of a value: a run of letters and digits, with any decimal places.
 _TOKEN = re.compile(r"[A-Za-z0-9]+(?:\.[0-9]+)*")
 _RUN = re.compile(r"[A-Z]+|[0-9]+(?:\.[0-9]+)*")
-# A reconstruction kernel, such as B70f, Br40, Hr38, or FC13: one or two
-# letters, two digits, and at most one letter. A lone M, F, or Y before the
-# digits is left out, since it could give a patient's sex or age, as in M45.
-_KERNEL = re.compile(r"(?![MFY][0-9])[A-Z]{1,2}[0-9]{2}[A-Z]?")
-_DATE = re.compile(r"(?<![0-9])[0-9]{1,4}[-/.][0-9]{1,2}[-/.][0-9]{1,4}(?![0-9])")
+_BARE_NUMBER = re.compile(r"[0-9]+(?:\.[0-9]+)*")
+# A reconstruction kernel: a reviewed prefix of one or two letters, two
+# digits, and at most one of the reviewed suffixes.
+_KERNEL = re.compile(r"([A-Z]{1,2})([0-9]{2})([A-Z]?)")
+_KERNEL_SUFFIXES = frozenset({"", "D", "F", "H", "S", "U"})
+_SEPARATOR = r"[^A-Za-z0-9]+"
+_DATE = re.compile(
+    rf"(?<![0-9])[0-9]{{1,4}}{_SEPARATOR}[0-9]{{1,2}}{_SEPARATOR}[0-9]{{1,4}}(?![0-9])"
+)
 _TIME = re.compile(r"(?<![0-9])[0-9]{1,2}:[0-9]{2}")
+_CLOCK = re.compile(r"[1-9][0-9]\.[0-9]{2}")
 _LONG_NUMBER = re.compile(r"[0-9]{5,}")
-# Numbers that run together across separators, such as a split record number.
-_SPLIT_NUMBER = re.compile(r"[0-9]+(?:[ /-]+[0-9]+)+")
+# Digits that run on across separators from one word into the next.
+_SPLIT_NUMBER = re.compile(rf"[0-9]+(?:{_SEPARATOR}[0-9]+)+")
+# Two digit runs with one letter between them, as in 14H30 or 512X512.
+_DIGIT_LETTER_DIGIT = re.compile(r"[0-9][A-Z][0-9]")
+_DIMENSIONS = frozenset({"1", "2", "3", "4"})
+_TITLES = frozenset({"MR", "MRS", "MS"})
 MAX_DIGITS = 4
+MAX_BARE_DIGITS = 3
+MAX_DECIMALS = 3
 MIN_SPLIT_DIGITS = 5
 MIN_COMPOUND_PART = 3
 MIN_WORD = 2
@@ -105,8 +127,9 @@ class Rejection(enum.Enum):
     NOT_AUTOMATIC = "not a technique descriptor"
     NOT_PRINTABLE = "not printable ASCII"
     DATE_OR_TIME = "date or time"
-    LONG_NUMBER = "long number"
-    NAME = "common personal name"
+    NUMBER = "number"
+    NAME = "personal name"
+    INITIALS_AGE_OR_SEX = "initials, age, or sex"
     UNKNOWN_WORD = "word outside the vocabulary"
     NO_VOCABULARY_WORD = "no vocabulary word"
 
@@ -123,15 +146,22 @@ class TechniqueVocabulary:
         The vocabulary words, in capitals.
     units : frozenset of str
         The units, in capitals, which are also words.
+    kernels : frozenset of str
+        The reviewed prefixes of reconstruction kernels, in capitals.
     names : frozenset of str
         The common personal names that are not exceptions, which no letter
         run of a kept value may be.
+    named_exceptions : frozenset of str
+        The exceptions, which are common names kept in the vocabulary, and
+        which no title may come before.
     """
 
     attributes: frozenset[str]
     words: frozenset[str] = dataclasses.field(repr=False)
     units: frozenset[str] = dataclasses.field(repr=False)
+    kernels: frozenset[str] = dataclasses.field(repr=False)
     names: frozenset[str] = dataclasses.field(repr=False)
+    named_exceptions: frozenset[str] = dataclasses.field(repr=False)
 
     def __repr__(self) -> str:
         return (
@@ -148,7 +178,9 @@ class TechniqueVocabulary:
                 "attributes": sorted(self.attributes),
                 "words": sorted(self.words),
                 "units": sorted(self.units),
+                "kernels": sorted(self.kernels),
                 "names": sorted(self.names),
+                "named_exceptions": sorted(self.named_exceptions),
             },
             separators=(",", ":"),
         ).encode()
@@ -174,20 +206,68 @@ class TechniqueVocabulary:
 
     def _word_rejection(self, value: str) -> Rejection | None:
         found_word = False
+        bare_numbers = 0
+        previous = ""
         for token in _TOKEN.findall(value.upper()):
-            if _KERNEL.fullmatch(token):
-                continue
-            for run in _RUN.findall(token):
-                if run[0].isdigit():
-                    if _number_problem(run):
-                        return Rejection.LONG_NUMBER
-                    continue
-                if run in self.names:
-                    return Rejection.NAME
-                if not self._is_vocabulary(run):
-                    return Rejection.UNKNOWN_WORD
-                found_word = found_word or len(run) >= MIN_WORD
+            if _BARE_NUMBER.fullmatch(token):
+                bare_numbers += 1
+                rejection = _bare_number_rejection(token, bare_numbers)
+            elif self._is_kernel(token):
+                rejection = None
+            else:
+                rejection = self._token_rejection(token, previous)
+                found_word = found_word or any(
+                    run.isalpha() and len(run) >= MIN_WORD
+                    for run in _RUN.findall(token)
+                )
+            if rejection:
+                return rejection
+            previous = token
         return None if found_word else Rejection.NO_VOCABULARY_WORD
+
+    def _token_rejection(self, token: str, previous: str) -> Rejection | None:
+        if _DIGIT_LETTER_DIGIT.search(token):
+            return Rejection.NUMBER
+        runs = _RUN.findall(token)
+        return self._context_rejection(token, runs[0], previous) or next(
+            filter(None, (self._run_rejection(runs, i) for i in range(len(runs)))),
+            None,
+        )
+
+    def _context_rejection(
+        self, token: str, first: str, previous: str
+    ) -> Rejection | None:
+        # What the word before rejects: initials, an age, or a title.
+        if len(token) == 1 and (
+            (len(previous) == 1 and previous.isalpha())
+            or (_BARE_NUMBER.fullmatch(previous) and token not in self.units)
+        ):
+            return Rejection.INITIALS_AGE_OR_SEX
+        if previous in _TITLES and first in self.named_exceptions:
+            return Rejection.NAME
+        return None
+
+    def _run_rejection(self, runs: list[str], index: int) -> Rejection | None:
+        run = runs[index]
+        if run[0].isdigit():
+            return Rejection.NUMBER if _number_problem(run) else None
+        if run in self.names:
+            return Rejection.NAME
+        if not self._is_vocabulary(run):
+            return Rejection.UNKNOWN_WORD
+        # A letter run after the first follows digits.
+        if (
+            index > 0
+            and len(run) == 1
+            and run not in self.units
+            and not (run == "D" and runs[index - 1] in _DIMENSIONS)
+        ):
+            return Rejection.INITIALS_AGE_OR_SEX
+        return None
+
+    def _is_kernel(self, token: str) -> bool:
+        match = _KERNEL.fullmatch(token)
+        return bool(match and match[1] in self.kernels and match[3] in _KERNEL_SUFFIXES)
 
     def _is_vocabulary(self, run: str) -> bool:
         return run in self.words or self._is_compound(run, MAX_COMPOUND_PARTS)
@@ -210,18 +290,36 @@ def _text_rejection(value: str) -> Rejection | None:
     # What rejects the value as a whole, before it is read word by word.
     if not _PRINTABLE.fullmatch(value):
         return Rejection.NOT_PRINTABLE
+    if "^" in value:
+        return Rejection.NAME
     if _DATE.search(value) or _TIME.search(value):
         return Rejection.DATE_OR_TIME
     if _LONG_NUMBER.search(value) or any(
-        sum(c.isdigit() for c in match[0]) >= MIN_SPLIT_DIGITS
+        len(re.sub(r"[^0-9]", "", match[0])) >= MIN_SPLIT_DIGITS
         for match in _SPLIT_NUMBER.finditer(value)
     ):
-        return Rejection.LONG_NUMBER
+        return Rejection.NUMBER
+    return None
+
+
+def _bare_number_rejection(token: str, count: int) -> Rejection | None:
+    if count > 1:
+        return Rejection.NUMBER
+    if _CLOCK.fullmatch(token):
+        return Rejection.DATE_OR_TIME
+    whole = token.split(".", 1)[0]
+    if len(whole) > MAX_BARE_DIGITS or _number_problem(token):
+        return Rejection.NUMBER
     return None
 
 
 def _number_problem(run: str) -> bool:
-    whole = run.split(".", 1)[0]
+    # Whether a digit run, with any decimal places, could be part of an
+    # identifier or a date: more than one point, too many digits, or a year.
+    parts = run.split(".")
+    if len(parts) > 2 or (len(parts) == 2 and len(parts[1]) > MAX_DECIMALS):
+        return True
+    whole = parts[0]
     return len(whole) > MAX_DIGITS or (len(whole) == 4 and int(whole) in _YEARS)
 
 
@@ -293,6 +391,9 @@ def read_vocabulary(
         raise TechniqueVocabularyError("term_attributes holds a tag with no terms")
     excluded = set(_words(document.get("excluded"), "excluded"))
     units = set(_words(document.get("units"), "units"))
+    kernels = set(_words(document.get("kernels"), "kernels"))
+    if any(not kernel.isalpha() or len(kernel) > 2 for kernel in kernels):
+        raise TechniqueVocabularyError("a kernel prefix is not one or two letters")
     exceptions = document.get("exceptions")
     if not isinstance(exceptions, dict) or not all(
         isinstance(basis, str) and basis for basis in exceptions.values()
@@ -310,14 +411,17 @@ def read_vocabulary(
         ):
             raise TechniqueVocabularyError(f"group {number} needs a name and a basis")
         grouped.update(_words(group.get("words"), f"group {number}"))
-    if grouped & excluded:
+    checked = grouped | kernels
+    if checked & excluded:
         raise TechniqueVocabularyError(
-            f"the groups and units hold {len(grouped & excluded)} excluded words"
+            f"the groups, units, and kernels hold {len(checked & excluded)} "
+            "excluded words"
         )
-    unreviewed = (grouped & names) - set(exceptions)
+    unreviewed = (checked & names) - set(exceptions)
     if unreviewed:
         raise TechniqueVocabularyError(
-            f"the groups and units hold {len(unreviewed)} common names that are "
+            f"the groups, units, and kernels hold {len(unreviewed)} common names "
+            "that are "
             "not exceptions"
         )
     vocabulary = grouped | _term_words(term_attributes, terms)
@@ -330,7 +434,9 @@ def read_vocabulary(
         attributes=frozenset(attributes),
         words=frozenset(vocabulary - excluded - kept_names),
         units=frozenset(units),
+        kernels=frozenset(kernels),
         names=frozenset(kept_names),
+        named_exceptions=frozenset(exceptions),
     )
 
 

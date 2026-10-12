@@ -61,7 +61,9 @@ def load_common_names(path: pathlib.Path = COMMON_NAMES_FILE) -> frozenset[str]:
         document = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         raise CommonNamesFileError("the common names file cannot be read") from error
-    names = document.get("names") if isinstance(document, dict) else None
+    if not isinstance(document, dict):
+        raise CommonNamesFileError(f"the file is not a {SCHEMA} file")
+    names = document.get("names")
     if (
         document.get("schema") != SCHEMA
         or not isinstance(names, list)

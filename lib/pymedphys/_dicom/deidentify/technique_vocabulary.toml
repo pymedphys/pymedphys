@@ -93,6 +93,16 @@ units = [
   "ML", "CC", "L", "MG", "G", "KG", "MMOL", "MOL", "PCT", "PERCENT", "X", "MMS",
 ]
 
+# The prefixes of reconstruction kernels, which a kept value may hold as a
+# word of the prefix, two digits, and at most one of the suffixes D, F, H, S,
+# and U, as in B70f, Br40, Hr38d, YA20, or FC13. Each is a vendor's kernel
+# family, and none is a word of the vocabulary unless a group holds it.
+kernels = [
+  "A", "B", "BF", "BL", "BR", "BV", "C", "D", "E", "EB", "EC", "FC", "FL", "H", "HC",
+  "HF", "HR", "I", "J", "L", "Q", "QR", "S", "SA", "T", "TR", "U", "UB", "V",
+  "YA", "YB", "YC", "YD",
+]
+
 [[group]]
 name = "Modalities, acquisitions, and series"
 basis = "Names of modalities, acquisition kinds, and series roles that scanners and protocols write."
@@ -120,7 +130,7 @@ words = [
   "AVG", "AVERAGE", "AVE", "SUM", "VR", "VRT", "SSD", "MAXIP", "REFORMAT", "REFORMATS", "REFORMATTED",
   "REF", "CURVED", "PLANAR", "RADIAL", "RECT", "STACK", "STACKS", "THIN", "THICK", "THK",
   "THICKNESS", "SPACING", "OVERLAP", "INCREMENT", "INC", "FOV", "SFOV", "DFOV", "MATRIX", "PIXEL",
-  "VOXEL", "RES", "RESOLUTION", "HIRES", "HR", "UHR", "PROJECTION", "PROJ", "MOSAIC",
+  "VOXEL", "RES", "RESOLUTION", "HIRES", "HR", "UHR", "PROJECTION", "PROJ", "VIEW", "VIEWS", "PL", "PLANE", "PLANES", "MOSAIC",
   "CINE", "ROTATION", "ROT", "TILT", "GANTRY", "HELICAL", "HELIX", "SPIRAL", "SEQUENTIAL",
   "AXIALMODE", "PITCH", "COLLIMATION", "COLL", "DETECTOR", "DETECTORS", "ROW", "ROWS",
   "UPPER", "LOWER", "UP", "DOWN", "SUP", "SUPERIOR", "INF", "INFERIOR", "ANT", "ANTERIOR",
@@ -180,10 +190,10 @@ name = "MR technique"
 basis = "MR weightings, pulse sequences, preparations, and vendor sequence names, which name techniques sold or published under those names."
 words = [
   "T1", "T2", "T1W", "T2W", "T1WI", "T2WI", "T2STAR", "PD", "PDW", "PDFS", "T1FS", "T2FS",
-  "T1C", "T1CE", "T1GD", "T1POST", "T1PRE", "WEIGHTED", "WEIGHTING", "FLAIR", "STIR", "TIRM",
+  "T1C", "T1CE", "T1GD", "T1POST", "T1PRE", "WEIGHTED", "WEIGHTING", "FLAIR", "STIR", "TIRM", "DARK", "FLUID", "DARKFLUID",
   "PSIR", "IR", "INVERSION", "RECOVERY", "SE", "FSE", "TSE", "SSFSE", "HASTE", "RARE",
-  "GRE", "GRASE", "FFE", "TFE", "FLASH", "FL", "FL2D", "FL3D", "SPGR", "FSPGR", "BRAVO",
-  "MPRAGE", "MPR", "MP2RAGE", "SPACE", "CUBE", "VISTA", "VIBE", "LAVA", "THRIVE", "STARVIBE",
+  "GRE", "GRASE", "FFE", "TFE", "FLASH", "FL", "FL2D", "FL3D", "TFL", "TIR", "FGRE", "SPGR", "FSPGR", "BRAVO",
+  "MPRAGE", "MPR", "MP2RAGE", "SPACE", "SPC", "CUBE", "VISTA", "VIBE", "LAVA", "THRIVE", "STARVIBE",
   "TWIST", "TRICKS", "DISCO", "KEYHOLE", "TWISTVIBE", "FIESTA", "TRUFI", "TRUEFISP", "FISP",
   "BFFE", "SSFP", "BSSFP", "CISS", "DESS", "MEDIC", "MERGE", "SWI", "SWAN", "SWIP", "VEN",
   "BOLD", "FMRI", "EPI", "EP", "SS", "MS", "RESOLVE", "READOUT", "SEGMENTED", "DWI", "DW",
@@ -347,6 +357,7 @@ COUCH = "Radiotherapy couch."
 COUNTS = "PET and NM counts."
 CURRENT = "CT tube current."
 DEGREE = "Unit of angle."
+DARK = "MR dark-fluid (fluid-attenuated) sequences."
 DELAY = "Contrast delay."
 DIXON = "MR fat and water separation (Dixon)."
 EARLY = "Contrast and PET timing (early phase, early images)."

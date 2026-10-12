@@ -87,6 +87,10 @@ def _read(document):
         "localizer",
         "Topogram 0.6 T20s",
         "DE_Abdomen_ME 1.5 Q30f",
+        "t2_spc_sag_p2_iso",
+        "t2_tirm_tra_dark-fluid",
+        "3D Brain VIEW FLAIR",
+        "AX T2 3T",
     ],
 )
 def test_technique_values_made_of_vocabulary_words_are_kept(vocabulary, value):
@@ -102,23 +106,47 @@ def test_technique_values_made_of_vocabulary_words_are_kept(vocabulary, value):
         ("AX T1 JOHN", Rejection.NAME),
         ("Brown chest", Rejection.NAME),
         ("Paul", Rejection.NAME),
+        ("CT HEAD AL45", Rejection.NAME),
+        ("CT HEAD MRS HAND", Rejection.NAME),
+        ("MR MAX HAND", Rejection.NAME),
+        ("AX T1 HU^MA", Rejection.NAME),
         ("Dr Quokka chest", Rejection.UNKNOWN_WORD),
         ("CHEST Wombat", Rejection.UNKNOWN_WORD),
         ("45Y F", Rejection.UNKNOWN_WORD),
         ("CHEST MALE", Rejection.UNKNOWN_WORD),
         ("HEAD MRN", Rejection.UNKNOWN_WORD),
         ("CHEST M45", Rejection.UNKNOWN_WORD),
+        ("AX T1 YR45", Rejection.UNKNOWN_WORD),
+        ("AX T1 PT12F", Rejection.UNKNOWN_WORD),
+        ("AX T1 J45M", Rejection.UNKNOWN_WORD),
+        ("CT HEAD 45F", Rejection.UNKNOWN_WORD),
+        ("CT HEAD 45 D", Rejection.INITIALS_AGE_OR_SEX),
+        ("CT 6 W", Rejection.INITIALS_AGE_OR_SEX),
+        ("CT HEAD BY C L", Rejection.INITIALS_AGE_OR_SEX),
+        ("AX T1 C.L.", Rejection.INITIALS_AGE_OR_SEX),
         ("T1 2026-10-12", Rejection.DATE_OR_TIME),
         ("T1 12/10/26", Rejection.DATE_OR_TIME),
+        ("AX T1 12_10_26", Rejection.DATE_OR_TIME),
+        ("CT 12;10;26", Rejection.DATE_OR_TIME),
+        ("CT HEAD 12/10", Rejection.NUMBER),
         ("CT 14:30", Rejection.DATE_OR_TIME),
-        ("HEAD 12345", Rejection.LONG_NUMBER),
-        ("CT 1234 5678", Rejection.LONG_NUMBER),
-        ("CT 12-345", Rejection.LONG_NUMBER),
-        ("AX T1 1998", Rejection.LONG_NUMBER),
-        ("SERIES2026", Rejection.LONG_NUMBER),
-        ("CT CHESTé", Rejection.NOT_PRINTABLE),
+        ("CT HEAD 14.30", Rejection.DATE_OR_TIME),
+        ("CT 14H30", Rejection.NUMBER),
+        ("HEAD 12345", Rejection.NUMBER),
+        ("CT 1234 5678", Rejection.NUMBER),
+        ("CT HEAD 1234_5678", Rejection.NUMBER),
+        ("CT 1234X5678", Rejection.NUMBER),
+        ("CT 12-345", Rejection.NUMBER),
+        ("T12 345", Rejection.NUMBER),
+        ("CT HEAD 1430", Rejection.NUMBER),
+        ("AX T1 1998", Rejection.NUMBER),
+        ("SERIES2026", Rejection.NUMBER),
+        ("CT HEAD 1210.2026", Rejection.NUMBER),
+        ("CT HEAD 0412.345.678", Rejection.NUMBER),
+        ("CT HEAD 1 1 26", Rejection.DATE_OR_TIME),
+        ("CT CHEST\u00e9", Rejection.NOT_PRINTABLE),
         ("CT\tCHEST", Rejection.NOT_PRINTABLE),
-        ("3 5", Rejection.NO_VOCABULARY_WORD),
+        ("3 5", Rejection.NUMBER),
         ("B70f", Rejection.NO_VOCABULARY_WORD),
     ],
 )
@@ -202,6 +230,8 @@ def test_its_repr_and_digest_hold_no_word(vocabulary, document):
         (lambda d: d["exceptions"].update(QUOKKA="A marsupial."), "an exception"),
         (lambda d: d["exceptions"].update(HEAD=""), "needs its basis"),
         (lambda d: d.update(group=[]), "holds no groups"),
+        (lambda d: d["kernels"].append("ABC"), "one or two letters"),
+        (lambda d: d["kernels"].append("UR"), "1 excluded words"),
     ],
 )
 def test_an_invalid_vocabulary_is_refused(document, change, problem):
@@ -293,6 +323,13 @@ def test_a_changed_common_names_file_is_refused(tmp_path, change, problem):
     path = _write(tmp_path / "names.json", document)
 
     with pytest.raises(common_names.CommonNamesFileError, match=problem):
+        common_names.load_common_names(path)
+
+
+def test_a_common_names_file_that_is_not_an_object_is_refused(tmp_path):
+    path = _write(tmp_path / "names.json", [1, 2])
+
+    with pytest.raises(common_names.CommonNamesFileError, match="is not a"):
         common_names.load_common_names(path)
 
 
