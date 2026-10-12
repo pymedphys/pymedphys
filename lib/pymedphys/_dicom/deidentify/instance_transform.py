@@ -53,7 +53,11 @@ each instance it may process. It joins the engine's per-instance steps:
    checks that it still holds each attribute that its IOD requires where
    the source held one; and
 7. :func:`~pymedphys._dicom.deidentify.output_names.instance_path` names the
-   file from its replacement Patient ID and UIDs alone (D-016).
+   file from its replacement Patient ID and UIDs alone (D-016), and where
+   the policy keeps the Study, Series, or SOP Instance UID, as the Retain
+   UIDs Option does, from that UID's keyed replacement
+   (:func:`~pymedphys._dicom.deidentify.retained_uids.output_name_uid`),
+   while its File Meta Information gives the SOP Instance UID as written.
 
 Any step that refuses the instance sequesters it with that step's own
 value-free reason: a :class:`~.scope.Disposition`, or an
@@ -87,7 +91,10 @@ could be there unsearched for.
 A UID that the pinned tables register, and that U therefore retains, such
 as a SOP Class UID, is meant to stay in the output, so it is neither planned
 nor collected: the written file is searched only for values that must not
-appear in it.
+appear in it. For the same reason, a UID that the policy keeps
+(:func:`~pymedphys._dicom.deidentify.retained_uids.retained_uid_tags`) is
+left out of the search where it is removed with an enclosing sequence or by
+the engine's own removals (D-040).
 """
 
 from __future__ import annotations
@@ -145,6 +152,7 @@ from .release_gate import (
     release_condition,
 )
 from .residuals import NotSearched, has_written_constant, not_searched_of
+from .retained_uids import output_name_uid, retained_uid_paths, retained_uid_tags
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
 from .codestreams import CodestreamRefused, without_metadata
 from .pixel_decoding import frames_problem, same_pixels
@@ -153,7 +161,8 @@ from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial, SeriesEvidence
 from .run_report import ReleaseReporter
 from .scope import Classification, classify
 from .source import SourceEvidence, SourceRefused, read_source
-from .uids import UIDOutcome
+from .uids import UIDOutcome, normalise_uid
+from .values import value_problem
 from .walker import (
     Consumer,
     InstancePlan,
@@ -672,6 +681,7 @@ class InstanceTransform:
             )
         self._rules = ElementRules(policy)
         self._key = key
+        self._retained_uids = retained_uid_tags(policy)
         self._cleaners = cleaners_for(policy)
         self._cleaning = cleaning
         self._fallback = (
@@ -709,9 +719,11 @@ class InstanceTransform:
         The reference graph's second pass under the transform's key, for
         :func:`~pymedphys._dicom.deidentify.run.run`'s ``written_check``, as
         :func:`~pymedphys._dicom.deidentify.written_references.verify_written_references`
-        makes it.
+        makes it, with the UIDs that the transform's policy keeps.
         """
-        return verify_written_references(self._key, graph, written)
+        return verify_written_references(
+            self._key, graph, written, retained=self._retained_uids
+        )
 
     def _unplanned(
         self,
@@ -737,6 +749,35 @@ class InstanceTransform:
         action = "K" if planned is None else planned.action
         reason = SequesterReason.UNSUPPORTED_CHARACTER_SET
         return (*scope, Sequestration(character_set, action, "CS", reason))
+
+    def _identifiers(
+        self, writing: WriterPlan, dataset: pydicom.Dataset, source: SourceEvidence
+    ) -> _Identifiers:
+        """Return the identifiers that the output is written and named with.
+
+        Each of the Patient ID, Study, Series, and SOP Instance UIDs is its
+        replacement, which names the file as it is written. One that the
+        policy keeps, which only a UID can be, is written as it is, and
+        names the file by its keyed replacement.
+
+        Raises
+        ------
+        _Refused
+            With :attr:`TransformReason.UNNAMED_OUTPUT` where an identifier
+            is neither replaced by one text value, nor kept as a valid UID.
+        """
+        written: dict[ElementPath, str] = {}
+        names: dict[ElementPath, str] = {}
+        for path in (_PATIENT_ID, _STUDY, _SERIES, _SOP_INSTANCE):
+            value = _replaced(writing.replacements, path)
+            kept = value is None and path.tag in self._retained_uids
+            if kept and path in writing.kept:
+                value = _kept_uid(dataset, path, source)
+            if value is None:
+                raise _Refused(TransformReason.UNNAMED_OUTPUT)
+            written[path] = value
+            names[path] = output_name_uid(self._key, value, kept)
+        return _Identifiers(written[_SOP_INSTANCE], names)
 
     def __call__(
         self, data: bytes, record: InstanceRecord
@@ -771,7 +812,8 @@ class InstanceTransform:
         edits = edit_instance(
             source, plan, self._key, record.patient, record.series_numberings
         )
-        evidence: Coverage | HeldEvidence = coverage_of(plan, edits)
+        kept_uids = retained_uid_paths(plan.elements, self._retained_uids)
+        evidence: Coverage | HeldEvidence = coverage_of(plan, edits, kept_uids)
         if classification.sequestered:
             reasons: tuple[object, ...] = (classification.reason,)
         else:
@@ -783,12 +825,14 @@ class InstanceTransform:
             # An instance out of scope is planned and edited only so that
             # its identifiers are collected for its subject's search (D-027).
             return Sequestered(
-                reasons, evidence, (*risk, *dropped_of(edits), *omissions_of(evidence))
+                reasons,
+                evidence,
+                (*risk, *dropped_of(edits, kept_uids), *omissions_of(evidence)),
             )
         satisfied = False
         settled = apply_cleaners(edits, self._cleaners, self._key)
-        edits, retained = settled.edits, settled.retained
-        if retained:
+        edits, retained = settled.edits, settled.retained | kept_uids
+        if settled.retained:
             evidence = coverage_of(plan, edits, retained)
         names: tuple[object, ...] = ()
         if self._cleaning is not None and self._fallback is not None:
@@ -833,7 +877,10 @@ class InstanceTransform:
                 self._markers[satisfied],
             )
             writing = _without_bitstream_metadata(writing, source)
-            return Transformed(*_written(source, writing, iod), evidence, qc)
+            identifiers = self._identifiers(writing, dataset, source)
+            return Transformed(
+                *_written(source, writing, iod, identifiers), evidence, qc
+            )
         except _Refused as refused:
             reasons = tuple(
                 TransformReason.PENDING_EDIT if isinstance(r, PendingEdit) else r
@@ -913,11 +960,36 @@ def _retained(source: SourceEvidence, plan: InstancePlan) -> tuple[object, ...]:
     return retained_text(plan, kept)
 
 
+@dataclasses.dataclass(frozen=True)
+class _Identifiers:
+    """The SOP Instance UID that an output is written with, and its name's values.
+
+    ``names`` gives the Patient ID, Study, Series, and SOP Instance UIDs that
+    name the output, by their paths.
+    """
+
+    sop_instance_uid: str
+    names: Mapping[ElementPath, str]
+
+
+def _kept_uid(
+    dataset: pydicom.Dataset, path: ElementPath, source: SourceEvidence
+) -> str | None:
+    """Return a kept top-level UID without padding, or None if it is not valid."""
+    value = _text(dataset, path, source)
+    if not isinstance(value, str):
+        return None
+    value = normalise_uid(value)
+    if not value or value_problem("UI", value):
+        return None
+    return value
+
+
 def _written(
-    source: SourceEvidence, writing: WriterPlan, iod: IOD
+    source: SourceEvidence, writing: WriterPlan, iod: IOD, identifiers: _Identifiers
 ) -> tuple[PurePosixPath, bytes]:
     """Return the output's path and bytes, verified against the source and IOD."""
-    path = _output_path(writing.replacements)
+    path = _output_path(identifiers.names)
     sop_class = _replaced(writing.replacements, _SOP_CLASS)
     if sop_class is None:
         raise _Refused(TransformReason.UNNAMED_OUTPUT)
@@ -931,7 +1003,7 @@ def _written(
         data = write_file_bytes(
             data_set,
             sop_class_uid=sop_class,
-            sop_instance_uid=path.stem,
+            sop_instance_uid=identifiers.sop_instance_uid,
             transfer_syntax_uid=source.transfer_syntax,
         )
     except WriteRefused as refused:
@@ -983,16 +1055,10 @@ def _without_bitstream_metadata(
     )
 
 
-def _output_path(
-    replacements: Mapping[ElementPath, pydicom.DataElement],
-) -> PurePosixPath:
-    values = [
-        _replaced(replacements, path)
-        for path in (_PATIENT_ID, _STUDY, _SERIES, _SOP_INSTANCE)
-    ]
-    patient, study, series, instance = values
-    if None in values:
-        raise _Refused(TransformReason.UNNAMED_OUTPUT)
+def _output_path(names: Mapping[ElementPath, str]) -> PurePosixPath:
+    patient, study, series, instance = (
+        names[path] for path in (_PATIENT_ID, _STUDY, _SERIES, _SOP_INSTANCE)
+    )
     try:
         return output_names.instance_path(
             patient_id=str(patient),

@@ -44,7 +44,7 @@ from .conformance import (
 from .conformance_values import code as _code
 from .conformance_values import join as _join
 from .markers import PROFILE_CODE
-from .policy import ENGINE_OPTIONS
+from .policy import ENGINE_OPTIONS, RETAIN_UIDS
 from .reviewed_roi_names import Outcome, Review
 from .roi_names import Reason
 from .source import ENCAPSULATED_TRANSFER_SYNTAXES
@@ -341,8 +341,9 @@ def _superseded(statement: ConformanceStatement) -> list[str]:
                 "File Meta Information Group Length (0002,0000), File Meta "
                 "Information Version (0002,0001), Media Storage SOP Class UID "
                 "(0002,0002), which is the instance's SOP Class UID, Media "
-                "Storage SOP Instance UID (0002,0003), which is the instance's "
-                "replacement SOP Instance UID, Transfer Syntax UID (0002,0010), "
+                "Storage SOP Instance UID (0002,0003), which is the SOP Instance "
+                "UID that the instance is written with, Transfer Syntax UID "
+                "(0002,0010), "
                 "and PyMedPhys's Implementation Class UID (0002,0012) and "
                 "Implementation Version Name (0002,0013) (D-025)."
             )
@@ -614,6 +615,31 @@ def _compressed(statement: ConformanceStatement) -> list[str]:
     ]
 
 
+def _retained_uids(
+    statement: ConformanceStatement, option: Callable[[str], str]
+) -> list[str]:
+    """Say what keeping UIDs does to referential integrity, where it applies."""
+    if RETAIN_UIDS not in statement.options:
+        return []
+    return [
+        "",
+        f"Under the {option(RETAIN_UIDS)}, each UID of an attribute to which "
+        "Table E.1-1 gives K under it is kept as it is, wherever it occurs, "
+        "and Media Storage SOP Instance UID (0002,0003) is the kept SOP "
+        "Instance UID (D-040). The UIDs of every other attribute are "
+        "replaced as described above, so a reference at such an attribute, "
+        "such as Multi-frame Source SOP Instance UID (0008,1167), no longer "
+        "names the kept UID of the instance that it named. Where that "
+        "instance is in the same run, the residual search finds the "
+        "reference's source value in its kept UIDs, and withholds it and "
+        "each instance that keeps a reference to it. Kept UIDs link "
+        "each instance to its source: anyone with access to the source "
+        "images, or to a database of them, can recover the patient's "
+        "identity from them (PS3.15 E.3.9). Output files are still named by "
+        "keyed replacement UIDs, so no source UID is in a file's name.",
+    ]
+
+
 def render_markdown(statement: ConformanceStatement) -> str:
     """Write a conformance statement as CommonMark.
 
@@ -798,6 +824,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "subject gets the same pseudonyms. Across runs they are not "
         "consistent: de-identifying the same study in two runs gives unrelated "
         "replacements, and no map from source to replacement values is kept.",
+        *_retained_uids(statement, option),
         "",
         "## Encrypted Attributes",
         "",

@@ -87,6 +87,7 @@ def test_the_presets_are_the_designs_option_sets_in_the_tables_order():
 def test_the_presets_select_only_the_options_the_scope_targets():
     assert policy.TARGET_OPTIONS == (
         SAFE_PRIVATE,
+        "retain_uids",
         DEVICE_IDENTITY,
         PATIENT_CHARACTERISTICS,
         MODIFIED_DATES,
@@ -441,9 +442,13 @@ def test_the_engine_applies_the_target_options():
             "the option retain_longitudinal_full_dates, so a policy that selects it",
         ),
         (
-            ["retain_uids", "retain_longitudinal_full_dates", CLEAN_DESCRIPTORS],
-            "the options retain_uids and retain_longitudinal_full_dates, so a "
-            "policy that selects them",
+            [
+                "retain_institution_identity",
+                "retain_longitudinal_full_dates",
+                CLEAN_DESCRIPTORS,
+            ],
+            "the options retain_institution_identity and "
+            "retain_longitudinal_full_dates, so a policy that selects them",
         ),
     ],
 )
@@ -452,7 +457,7 @@ def test_an_option_the_engine_does_not_yet_apply_is_refused_by_name(options, nam
     message = (
         f"the engine does not yet apply {named} can be composed and described "
         "but not applied; the engine applies retain_safe_private, "
-        "retain_device_identity, retain_patient_characteristics, "
+        "retain_uids, retain_device_identity, retain_patient_characteristics, "
         "retain_longitudinal_modified_dates, and clean_descriptors"
     )
 

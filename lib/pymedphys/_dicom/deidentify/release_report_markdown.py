@@ -21,7 +21,9 @@ the JSON text that
 nothing else, so that it can hold no value or path that the JSON lacks.
 Every value of the document, and each file name that keys a digest, is shown
 once for each time the document holds it, as a code span; everything outside
-the code spans is fixed text that depends only on the document's shape. The
+the code spans is fixed text that depends only on the document's shape, but
+for the caution that follows the policy where it selects the Retain UIDs
+Option, since kept UIDs link the release to its source (PS3.15 E.3.9). The
 sections follow the document's order, with a table for each, and the same
 text always gives the same form. The JSON remains the record.
 
@@ -40,6 +42,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence
 
+from .policy import RETAIN_UIDS
 from .release_report import FORMAT, STRUCTURAL_CHECKS
 
 # The name of each field of a section, as a reader sees it, in the order of
@@ -193,6 +196,23 @@ def _policy(section: object) -> list[Block]:
                 ),
             ],
         ),
+        *_kept_uids(options),
+    ]
+
+
+def _kept_uids(options: list[object]) -> list[Block]:
+    """Warn that kept UIDs link the release to its source (PS3.15 E.3.9)."""
+    if RETAIN_UIDS not in options:
+        return []
+    return [
+        [
+            "Under the Retain UIDs Option, the released instances keep their "
+            "source UIDs, such as their SOP Instance, Series Instance, and "
+            "Study Instance UIDs, as Table E.1-1 lists them. Anyone with access "
+            "to the source images, or to a database of them, can link each "
+            "released instance to its source by them, and so recover the "
+            "patient's identity (PS3.15 E.3.9)."
+        ]
     ]
 
 
