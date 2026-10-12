@@ -510,9 +510,13 @@ def qc_pack(named: Callable[[str], str]) -> list[str]:
     exempt = join(named(tag) for tag in sorted(_NOT_REVIEWED_TAGS))
     unreviewable = code(TransformReason.UNREVIEWABLE_RETAINED_TEXT.value)
     volume = join((code(each.value) for each in pixel_risk.VOLUME_INDICATORS), "or")
-    head, unreadable = (
+    localizer, head, unreadable = (
         code(indicator.value)
-        for indicator in (Indicator.HEAD_OR_NECK, Indicator.UNREADABLE)
+        for indicator in (
+            Indicator.LOCALIZER,
+            Indicator.HEAD_OR_NECK,
+            Indicator.UNREADABLE,
+        )
     )
     return [
         "## QC pack",
@@ -538,18 +542,23 @@ def qc_pack(named: Callable[[str], str]) -> list[str]:
         "instance's attributes, never from its pixel data, so the absence "
         "of an indicator is not evidence that the risk is absent (D-015).",
         "",
-        "The QC pack also lists each CT, MR, and PET volume among the "
-        "instances that are "
+        "The QC pack also lists each CT, MR, PET, and RT Dose volume among "
+        "the instances that are "
         "released or held for review, as one that may hold a face that could "
         f"be reconstructed, by {volume}, whether or not it covers the face, "
         "since the engine cannot tell without inspecting its pixel data; "
-        "where the volume's attributes name a region of the head or neck in "
-        f"a reviewed list from PS3.16 Annex L, by {head}; and where such "
-        f"evidence cannot be read, by {unreadable}; each with the instances "
-        "that show it. A volume is a series whose images of one of those "
-        "modalities hold at least two frames that are not localizers, or an "
-        "Enhanced or Legacy Converted Enhanced image whose Number of Frames "
-        "cannot be read. "
+        "the CT, MR, and PET localizers among them, which can show the face "
+        f"in profile, by {localizer}; "
+        "where the attributes of a volume or localizer name a region of the "
+        f"head or neck in a reviewed list from PS3.16 Annex L, by {head}; and "
+        f"where such evidence cannot be read, by {unreadable}; each with the "
+        "instances that show it. A volume is a series whose instances of one "
+        "of those modalities hold at least two frames that are not "
+        "localizers, an RT Dose counting only where it holds at least two "
+        "frames itself, or an Enhanced or Legacy Converted Enhanced image or "
+        "an RT Dose whose Number of Frames cannot be read. An RT Dose grid "
+        "shows the patient's outline wherever the planning system computed "
+        "dose only within it. "
         "The run groups instances into series by their source's "
         f"{named(_SERIES_INSTANCE_UID)}, which it never writes, and assesses "
         "only the released and held instances, so a series with just one "

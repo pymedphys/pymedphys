@@ -665,19 +665,21 @@ def test_the_qc_pack_lists_what_the_run_keeps_for_review(preset):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
-def test_the_qc_pack_lists_each_ct_mr_and_pet_volume(preset):
+def test_the_qc_pack_lists_each_ct_mr_pet_and_rt_dose_volume(preset):
     section = _section(preset, "QC pack")
     for indicator in (
         *pixel_risk.VOLUME_INDICATORS,
+        pixel_risk.Indicator.LOCALIZER,
         pixel_risk.Indicator.HEAD_OR_NECK,
         pixel_risk.Indicator.UNREADABLE,
     ):
         assert f"`{indicator.value}`" in section
-    assert "`ct-volume`, `mr-volume`, or `pet-volume`" in section
+    assert "`ct-volume`, `mr-volume`, `pet-volume`, or `rt-dose-volume`" in section
     assert (
-        "each CT, MR, and PET volume among the instances that are released or held"
-        in section
+        "each CT, MR, PET, and RT Dose volume among the instances that are "
+        "released or held" in section
     )
+    assert "localizers among them, which can show the face in profile" in section
     assert "PS3.16 Annex L" in section
     assert "Series Instance UID (0020,000E), which it never writes" in section
     assert "assesses only the released and held instances" in section
