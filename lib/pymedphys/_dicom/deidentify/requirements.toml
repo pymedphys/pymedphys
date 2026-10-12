@@ -271,7 +271,8 @@ Where an IOD requires an attribute given a plain X, the statement names the encl
 Under Clean Descriptors, it describes how ROI Name is cleaned in two tiers: automatic renaming against a published TG-263 edition, which it names, and reviewers' decisions, with every reason a name is held, what is written for each, and the condition on which an instance gains the Clean Descriptors code, each checked against the engine (D-009).
 Each run with a release reporter writes the statement of its policy, as `conformance-statement.md` beside the release report at the root of the release, since it holds no instance value; it describes the policy and vocabulary that the report records, and the report gives the run's own method digest and reviewed-names digest.
 The statements of `basic` and `basic-clean-descriptors`, the presets of the first supported release, list nothing as pending.
-A statement still lists as pending, and so claims nothing for, the manner of cleaning an attribute to which the policy gives C other than under Clean Descriptors alone, including how Modified Dates modifies dates and times; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; the safe private attributes retained, for a policy that selects Retain Safe Private; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset (PS3.15-E.3.6-04, PS3.15-E.3.7-02, PS3.15-E.3.10-04).
+For each selected option that has a cleaner, it gives the attributes that the policy gives C and the cleaner settles, with its method: the AE titles under Retain Device Identity (D-034), and the free text under Retain Patient Characteristics, which holds its instance unless it has no value (D-038, PS3.15-E.3.7-02).
+A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone, including how Modified Dates modifies dates and times; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; the safe private attributes retained, for a policy that selects Retain Safe Private; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset (PS3.15-E.3.6-04, PS3.15-E.3.10-04).
 '''
 
 [[requirement]]
@@ -428,7 +429,7 @@ note = '''
 The conformance statement describes how ROI Name (3006,0026) is cleaned under Clean Descriptors: automatic renaming against the published TG-263 edition that it names, or none without such a vocabulary, the reasons a name goes to review, the reviewers' decisions, the checks of what a reviewed decision would write, that a run's method digest covers its reviewed list (D-024), and what cleaning writes for each name, including that a held name holds its instance for review.
 It also says that a run can be given an institutional list of ROI names, which renames nothing and only shows the reviewer of a held name the list's names it matched.
 Every other attribute given C under Clean Descriptors takes the action that the policy gives it without that option, as the maintainer decided on 6 October 2026 (D-009); the statement lists that action for each, at each place, as the one the engine applies, so for `basic-clean-descriptors` it lists no manner of cleaning as pending.
-The manner of cleaning an attribute to which the policy gives C without Clean Descriptors too, such as the dates and times under Modified Dates (E.3.6) and the patient characteristics under Retain Patient Characteristics (E.3.7), which no preset of the first supported release selects, is listed as pending until those options are implemented (PS3.15-E.3.6-04, PS3.15-E.3.7-02).
+The manner of cleaning an attribute to which the policy gives C without Clean Descriptors too, such as the dates and times under Modified Dates (E.3.6), which no preset of the first supported release selects, is listed as pending until its option is implemented (PS3.15-E.3.6-04); the free text that Retain Patient Characteristics gives C is described with the Option's cleaner, which settles Allergies, Patient State, and Sex Parameters for Clinical Use Category Comment before Clean Descriptors where both are selected (PS3.15-E.3.7-02).
 '''
 
 [[requirement]]
@@ -506,9 +507,19 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about age, sex, height and weight and other characteristics present in the Attributes shall be retained, as described in Table E.1-1.
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-011"]
+status = "implemented"
+decisions = ["D-011", "D-012", "D-022", "D-034", "D-038"]
+implementation = [
+  "_dicom/deidentify/cleaners.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/patient_characteristics.py",
+]
+note = '''
+The fourteen attributes that the Option gives K are kept as read, wherever they are in the data set, with the Option's code (D-038).
+Its five attributes of free text, which it gives C, are written with no value where they have none, and otherwise hold their instance, so a released instance retains every characteristic it held (PS3.15-E.3.7-02).
+The measures of the body that Table E.1-1 omits, such as Patient's Body Mass Index, are removed under every option (D-022).
+No preset of the first supported release selects the Option; `tps-import` selects it with options that are not yet all implemented.
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.7-02"
@@ -516,10 +527,17 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The manner of cleaning of retained Attributes shall be described in the Conformance Statement.
 '''
-status = "planned"
-milestone = "M3"
+status = "implemented"
+decisions = ["D-034", "D-038"]
+implementation = [
+  "_dicom/deidentify/cleaners.py",
+  "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/conformance_markdown.py",
+  "_dicom/deidentify/patient_characteristics.py",
+]
 note = '''
-No preset of the first supported release selects Retain Patient Characteristics, so the conformance statement describes how retained attributes are cleaned once the Option is implemented (PS3.15-E.3.7-01).
+The statement of a policy that selects the Option lists the fourteen attributes that it keeps, with K, and gives the five that it gives C with their method: none of their values is written, an instance in which one has a value is held, and one with no value is written with none (D-038).
+No method yet cleans their free text automatically; a reviewed list could later keep a reviewed value, which the maintainer has not decided.
 '''
 
 [[requirement]]
@@ -825,7 +843,7 @@ status = "planned"
 milestone = "M4"
 decisions = ["D-017"]
 note = '''
-`tps-import` retains patient characteristics for non-clinical databases, not for public sharing.
+`tps-import` retains patient characteristics for non-clinical databases, not for public sharing, and `public-release` does not select Retain Patient Characteristics (D-038).
 '''
 
 [[requirement]]

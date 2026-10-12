@@ -46,11 +46,11 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Callable, Iterable, Mapping, Sequence
 
-from . import ae_titles
+from . import ae_titles, patient_characteristics
 from .edits import Edit, EditKind, InstanceEdits
 from .file_layout import ElementPath
 from .keys import DeidKey
-from .policy import DEVICE_IDENTITY, Policy
+from .policy import DEVICE_IDENTITY, PATIENT_CHARACTERISTICS, Policy
 from .pseudonyms import SubjectIdentity
 from .residuals import SourceValue
 
@@ -146,6 +146,22 @@ CLEANERS: tuple[Cleaner, ...] = (
             "value stays empty."
         ),
         clean=ae_titles.ae_tokens,
+    ),
+    Cleaner(
+        option=PATIENT_CHARACTERISTICS,
+        tags=patient_characteristics.TAGS,
+        vrs=patient_characteristics.VRS,
+        method=(
+            "No method yet cleans these values of free text, so none of them "
+            "is written: an instance in which one of them has a value is "
+            "held, sequestered rather than written, and one that has no "
+            "value, or whose values hold nothing but spaces, is written with "
+            "no value. Clean Descriptors gives C to Allergies (0010,2110), "
+            "Patient State (0038,0500), and Sex Parameters for Clinical Use "
+            "Category Comment (0010,0042) too, and where the policy selects "
+            "both options, the same applies to them."
+        ),
+        clean_instance=patient_characteristics.held_unless_empty,
     ),
 )
 
