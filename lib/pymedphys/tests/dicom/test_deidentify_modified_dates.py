@@ -42,6 +42,7 @@ from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.policy import (
     DEVICE_IDENTITY,
     MODIFIED_DATES,
+    PATIENT_CHARACTERISTICS,
     compose_custom_policy,
     compose_policy,
 )
@@ -408,6 +409,7 @@ def test_device_dates_that_retain_device_identity_would_keep_are_modified_by_rol
     assert "(0018,1200)" in cleaner.tags
     assert [c.option for c in cleaners.cleaners_for(composed)] == [
         DEVICE_IDENTITY,
+        PATIENT_CHARACTERISTICS,
         MODIFIED_DATES,
     ]
 
