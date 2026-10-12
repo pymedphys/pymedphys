@@ -1,0 +1,426 @@
+# The reviewed vocabulary of technique descriptors, for the automatic tier
+# of free-text Clean Descriptors. A value of one of the attributes below is
+# kept as it is only where every word of it is in this vocabulary, as the
+# rules of technique_descriptors.py read it, and it echoes no identifier of
+# the instance.
+#
+# The vocabulary is the words of the groups and the units below, and the
+# Enumerated Values and Defined Terms that the pinned PS3.3 gives the
+# attributes of term_attributes and the pinned PS3.16 Annex L gives Body
+# Part Examined, each split at "_" and spaces; less every excluded word, and
+# every common personal name (common_names.json) that is not an exception.
+# Words are matched without case. Each group says why its words describe
+# technique, anatomy, or equipment rather than a person. A group, or the
+# units, may not hold an excluded word, or a common name that is not an
+# exception, so that each such word is a decision recorded here.
+
+schema = "pymedphys-deid-technique-vocabulary/1"
+
+# The attributes whose values the automatic tier may keep: the technique
+# descriptors of the plan for the option the maintainer chose on 12 October
+# 2026, which describe how the images were made.
+attributes = [
+  "(0008,103E)", # Series Description
+  "(0018,1030)", # Protocol Name
+  "(0018,0024)", # Sequence Name
+  "(0018,0010)", # Contrast/Bolus Agent
+  "(0018,1040)", # Contrast/Bolus Route
+  "(0008,2111)", # Derivation Description
+  "(0040,0254)", # Performed Procedure Step Description
+  "(0028,1055)", # Window Center & Width Explanation
+  "(0054,1101)", # Attenuation Correction Method
+  "(0054,1105)", # Scatter Correction Method
+  "(0054,1103)", # Reconstruction Method
+]
+
+# Attributes whose Defined Terms and Enumerated Values describe acquisition,
+# reconstruction, or anatomy.
+term_attributes = [
+  "(0008,0008)", # Image Type
+  "(0008,0060)", # Modality
+  "(0018,0020)", # Scanning Sequence
+  "(0018,0021)", # Sequence Variant
+  "(0018,0022)", # Scan Options
+  "(0018,0023)", # MR Acquisition Type
+  "(0018,5100)", # Patient Position
+  "(0018,5101)", # View Position
+  "(0020,0060)", # Laterality
+  "(0028,0051)", # Corrected Image
+  "(0054,1000)", # Series Type
+  "(0054,1100)", # Randoms Correction Method
+  "(0054,1102)", # Decay Correction
+  "(0018,9008)", # Echo Pulse Sequence
+  "(0018,9017)", # Steady State Pulse Sequence
+  "(0018,9025)", # Spectrally Selected Suppression
+  "(0018,9032)", # Geometry of k-Space Traversal
+  "(0018,9034)", # Rectilinear Phase Encode Reordering
+  "(0018,9043)", # Receive Coil Type
+  "(0018,9064)", # k-space Filtering
+  "(0018,9075)", # Diffusion Directionality
+  "(0018,9078)", # Parallel Acquisition Technique
+  "(0018,9147)", # Diffusion Anisotropy Type
+  "(0018,9302)", # Acquisition Type
+  "(0018,9316)", # Convolution Kernel Group
+  "(0018,9323)", # Exposure Modulation Type
+]
+
+# Words never kept, even where a group or a term holds them: titles, sex,
+# age and time words, and words of records and institutions, which the
+# Basic Profile removes elsewhere.
+excluded = [
+  "DR", "DOCTOR", "PROF", "PROFESSOR", "MISS", "MX", "SIR", "MADAM", "NURSE",
+  "PATIENT", "PT", "PTS", "MALE", "FEMALE", "MAN", "WOMAN", "BOY", "GIRL", "INFANT", "BABY",
+  "CHILD", "ADULT", "PAED", "PED", "PEDS", "PAEDS", "PEDIATRIC", "PAEDIATRIC", "NEONATE",
+  "NEONATAL", "FETAL", "FETUS", "PREGNANT", "PREGNANCY", "Y", "YO", "YR", "YRS", "YEAR",
+  "YEARS", "MO", "MOS", "MONTH", "MONTHS", "WK", "WKS", "WEEK", "WEEKS", "DAY", "DAYS",
+  "AGE", "AGED", "OLD", "DOB", "BORN", "BIRTH", "DECEASED", "DIED", "DEATH", "JAN", "FEB",
+  "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "SEPT", "OCT", "NOV", "DEC", "JANUARY",
+  "FEBRUARY", "MARCH", "APRIL", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER",
+  "NOVEMBER", "DECEMBER", "MON", "TUE", "TUES", "WED", "THU", "THUR", "THURS", "FRI",   "SUN", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY",
+  "AM", "PM", "TODAY", "YESTERDAY", "TOMORROW", "NAME", "NAMES", "ID", "IDS", "MRN", "URN",
+  "UR", "NHI", "SSN", "ACC", "ACCESSION", "HOSPITAL", "HOSP", "CLINIC", "UNIVERSITY", "UNI",
+  "INSTITUTE", "INSTITUTION", "WARD", "ROOM", "BEDNO", "DEPT", "DEPARTMENT", "PHONE", "TEL",
+  "EMAIL", "STREET", "ROAD", "AVENUE", "SUBURB", "CITY", "STATE", "COUNTRY", "POSTCODE",
+  "ZIP", "MEDICARE", "INSURANCE", "PRIVATE", "PUBLIC", "REFERRER", "REFERRING", "PHYSICIAN",
+  "RADIOLOGIST", "ONCOLOGIST", "TECH", "TECHNOLOGIST", "RADIOGRAPHER", "OPERATOR",   ]
+
+# Units of acquisition and reconstruction parameters, which are words of
+# the vocabulary and which a number may also carry as a suffix, as in 120KV.
+units = [
+  "MM", "CM", "UM", "S", "SEC", "MS", "MSEC", "US", "MIN", "MINS", "H", "HR", "HRS",
+  "HZ", "KHZ", "MHZ", "T", "TESLA", "MT", "DEG", "DEGREE", "DEGREES", "KV", "KVP", "MV",
+  "KEV", "MEV", "MA", "MAS", "MGY", "GY", "CGY", "MSV", "MBQ", "GBQ", "KBQ", "MCI", "UCI",
+  "ML", "CC", "L", "MG", "G", "KG", "MMOL", "MOL", "PCT", "PERCENT", "X", "MMS",
+]
+
+# The prefixes of reconstruction kernels, which a kept value may hold as a
+# word of the prefix, two digits, and at most one of the suffixes D, F, H, S,
+# and U, as in B70f, Br40, Hr38d, YA20, or FC13. Each is a vendor's kernel
+# family, and none is a word of the vocabulary unless a group holds it.
+kernels = [
+  "A", "B", "BF", "BL", "BR", "BV", "C", "D", "E", "EB", "EC", "FC", "FL", "H", "HC",
+  "HF", "HR", "I", "J", "L", "Q", "QR", "S", "SA", "T", "TR", "U", "UB", "V",
+  "YA", "YB", "YC", "YD",
+]
+
+[[group]]
+name = "Modalities, acquisitions, and series"
+basis = "Names of modalities, acquisition kinds, and series roles that scanners and protocols write."
+words = [
+  "ACQ", "ACQUISITION", "ANGIO", "ANGIOGRAPHY", "CBCT", "CONEBEAM", "CT", "CTA",
+  "CTP", "CTV", "DE", "DECT", "DUAL", "ENERGY", "FLUORO", "FUSED", "FUSION", "HYBRID",
+  "IMAGE", "IMAGES", "IMG", "MR", "MRA", "MRI", "MRS", "MRV", "MULTIENERGY", "NM", "PET",
+  "PETCT", "PETMR", "PERFUSION", "PROTOCOL", "RECON", "RECONSTRUCTION", "RECONS", "SCAN",
+  "SCANS", "SER", "SERIES", "SPECT", "SPECTCT", "SPECTRAL", "SPECTROSCOPY", "STUDY", "SURVIEW",
+  "SURVEY", "SCOUT", "SCANOGRAM", "TOPO", "TOPOGRAM", "LOCALISER", "LOCALIZER", "LOC", "LOCS",
+  "PILOT", "PLANNING", "SIM", "SIMULATION", "CTSIM", "RT", "RTP", "RADIOTHERAPY", "VERIFICATION",
+  "CALIBRATION", "CAL", "QA", "QC", "PHANTOM", "TEST", "SCREEN", "SCREENSHOT", "SECONDARY",
+  "CAPTURE", "REPORT", "DOSE", "SUMMARY", "INFO", "PROTOCOLS", "EXAM", "ROUTINE", "STANDARD",
+  "ADVANCED", "DEFAULT", "SPECIAL", "RESEARCH", "VOLUME", "VOL", "VOLUMES", "SLAB", "SLICE",
+  "SLICES", "SECTION", "SECTIONS", "FRAME", "FRAMES", "PHASE", "PHASES", "PART", "PASS", "BED",
+  "BEDS", "D", "POSITION", "POSITIONS", "STATION", "STEP", "RUN", "SEQ", "SEQUENCE", "SEQUENCES",
+]
+
+[[group]]
+name = "Planes, orientation, and geometry"
+basis = "Image planes, orientations, and geometric terms of acquisition and reformatting."
+words = [
+  "AX", "AXI", "AXIAL", "TRA", "TRANS", "TRANSVERSE", "SAG", "SAGITTAL", "COR", "CORONAL", "OBL",
+  "OBLIQUE", "OBLIQUES", "DOUBLE", "ISO", "ISOTROPIC", "MPR", "MPRS", "MIP", "MINIP", "MINIMIP",
+  "AVG", "AVERAGE", "AVE", "SUM", "VR", "VRT", "SSD", "MAXIP", "REFORMAT", "REFORMATS", "REFORMATTED",
+  "REF", "CURVED", "PLANAR", "RADIAL", "RECT", "STACK", "STACKS", "THIN", "THICK", "THK",
+  "THICKNESS", "SPACING", "OVERLAP", "INCREMENT", "INC", "FOV", "SFOV", "DFOV", "MATRIX", "PIXEL",
+  "VOXEL", "RES", "RESOLUTION", "HIRES", "HR", "UHR", "PROJECTION", "PROJ", "VIEW", "VIEWS", "PL", "PLANE", "PLANES", "MOSAIC",
+  "CINE", "ROTATION", "ROT", "TILT", "GANTRY", "HELICAL", "HELIX", "SPIRAL", "SEQUENTIAL",
+  "AXIALMODE", "PITCH", "COLLIMATION", "COLL", "DETECTOR", "DETECTORS", "ROW", "ROWS",
+  "UPPER", "LOWER", "UP", "DOWN", "SUP", "SUPERIOR", "INF", "INFERIOR", "ANT", "ANTERIOR",
+  "POST", "POSTERIOR", "MED", "MEDIAL", "LAT", "LATERAL", "PROX", "PROXIMAL", "DIST", "DISTAL",
+  "LEFT", "RIGHT", "LT", "RT", "BILAT", "BILATERAL", "BOTH", "L", "R", "CENTRE", "CENTER",
+  "CENTRAL", "MID", "MIDLINE", "WHOLE", "WB", "FULL", "PARTIAL", "HALF", "TOTAL", "PRONE",
+  "SUPINE", "DECUBITUS", "ERECT", "UPRIGHT", "FEET", "FIRST", "HEADFIRST", "FEETFIRST",
+]
+
+[[group]]
+name = "Contrast and timing"
+basis = "Contrast administration and enhancement phases, including generic agent names and routes, which describe the examination rather than the person."
+words = [
+  "CONTRAST", "CON", "C", "NONCON", "NONCONTRAST", "UNENHANCED", "ENHANCED", "CE", "NC", "NECT",
+  "CECT", "PRE", "POST", "WITH", "WITHOUT", "W", "WO", "AND", "OR", "NO", "NON", "PLAIN",
+  "NATIVE", "NATIV", "IV", "IA", "ORAL", "PO", "INTRAVENOUS", "INTRAARTERIAL", "INTRATHECAL",
+  "RECTAL", "BOLUS", "INJECTION", "INJ", "INFUSION", "TEST", "TRACKING", "TRIGGER", "TRIGGERED",
+  "ARTERIAL", "EARLY", "LATE", "VENOUS", "VEN", "PORTAL", "PORTOVENOUS", "PV", "DELAY",
+  "DELAYED", "EQUILIBRIUM", "NEPHROGRAPHIC", "EXCRETORY", "UROGRAPHIC", "PEAK", "DYN",
+  "DYNAMIC", "TIME", "RESOLVED", "WASHIN", "WASHOUT", "UPTAKE", "STATIC", "BASELINE",
+  "GAD", "GADO", "GD", "GADOLINIUM", "IODINE", "IODINATED", "BARIUM", "WATER", "SALINE", "AIR",
+  "CO2", "GAS", "IOHEXOL", "IOPAMIDOL", "IODIXANOL", "IOPROMIDE", "IOMEPROL", "IOVERSOL",
+  "IOPENTOL", "IOXILAN", "IOXAGLATE", "GADOBUTROL", "GADOTERATE", "GADOTERIDOL", "GADOBENATE",
+  "GADOXETATE", "GADOPENTETATE", "GADODIAMIDE", "GADOPICLENOL", "FERUMOXYTOL", "OMNIPAQUE",
+  "VISIPAQUE", "ISOVUE", "ULTRAVIST", "IOMERON", "OPTIRAY", "XENETIX", "GADOVIST", "GADAVIST",
+  "DOTAREM", "CLARISCAN", "PROHANCE", "MULTIHANCE", "PRIMOVIST", "EOVIST", "MAGNEVIST",
+  "OMNISCAN", "ELUCIREM", "VUEWAY", "SONOVUE", "LUMASON", "DEFINITY", "OPTISON", "MG", "ML",
+  "MGI", "MGIML", "CC",
+]
+
+[[group]]
+name = "CT technique"
+basis = "Terms of CT acquisition, kernels by tissue class, dose modulation, and spectral reconstruction."
+words = [
+  "KV", "KVP", "MA", "MAS", "EFF", "MGY", "CTDI", "CTDIVOL", "DLP", "DOSEREPORT", "LOWDOSE", "LD",
+  "ULD", "LOW", "ULTRALOW", "REDUCED", "MODULATION", "CARE", "AEC", "SMART", "AUTO", "KERNEL",
+  "FILTER", "ALGORITHM", "ALGO", "SOFT", "TISSUE", "SOFTTISSUE", "ST", "BONE", "LUNG", "LUNGS",
+  "BRAIN", "MEDIASTINUM", "MEDIASTINAL", "ABD", "SMOOTH", "SHARP", "SHARPER",
+  "SMOOTHER", "DETAIL", "DETAILED", "EDGE", "SOFTER", "HARD", "ULTRA", "IR", "ITERATIVE",
+  "FBP", "ASIR", "ASIRV", "VEO", "ADMIRE", "SAFIRE", "IDOSE", "IMR", "AIDR", "AIDR3D",
+  "DLR", "AICE", "TRUEFIDELITY", "PRECISE", "DEEP", "LEARNING", "DL", "MONO", "MONOE",
+  "MONOENERGETIC", "MONOCHROMATIC", "KEV", "VMI", "VNC", "VIRTUAL", "NONCALCIUM", "CALCIUM",
+  "SCORE", "SCORING", "CAC", "AGATSTON", "IODINEMAP", "MAP", "MAPS", "ZEFF", "RHO",
+  "ELECTRON", "DENSITY", "EFFECTIVE", "ATOMIC", "NUMBER", "MATERIAL", "DECOMPOSITION", "HU",
+  "METAL", "ARTIFACT", "ARTEFACT", "REDUCTION", "SEMAR", "IMAR", "SMARTMAR",
+  "GSI", "TWINBEAM", "DUALSOURCE", "FLASH", "TURBO", "HIGHPITCH", "PERFUSION", "BOLUSTRACKING",
+  "CARDIAC", "GATED", "GATING", "UNGATED", "ECG", "EKG", "PROSPECTIVE", "RETROSPECTIVE",
+  "SYSTOLE", "SYSTOLIC", "DIASTOLE", "DIASTOLIC", "BEST", "CORONARY", "CALCSCORE",
+  "RESPIRATORY", "RESP", "BREATH", "BREATHHOLD", "HOLD", "BH", "FB", "FREEBREATHING",
+  "INSPIRATION", "INSP", "INSPIRATORY", "EXPIRATION", "EXP", "EXPIRATORY", "INHALE",
+  "EXHALE", "DIBH", "MIBH", "ABC", "4D", "4DCT", "4DCBCT", "AVEIP", "MIDV", "MIDVENTILATION",
+  "PERCENT", "PCT", "AMPLITUDE", "BIN", "BINS", "BINNED",
+]
+
+[[group]]
+name = "MR technique"
+basis = "MR weightings, pulse sequences, preparations, and vendor sequence names, which name techniques sold or published under those names."
+words = [
+  "T1", "T2", "T1W", "T2W", "T1WI", "T2WI", "T2STAR", "PD", "PDW", "PDFS", "T1FS", "T2FS",
+  "T1C", "T1CE", "T1GD", "T1POST", "T1PRE", "WEIGHTED", "WEIGHTING", "FLAIR", "STIR", "TIRM", "DARK", "FLUID", "DARKFLUID",
+  "PSIR", "IR", "INVERSION", "RECOVERY", "SE", "FSE", "TSE", "SSFSE", "HASTE", "RARE",
+  "GRE", "GRASE", "FFE", "TFE", "FLASH", "FL", "FL2D", "FL3D", "TFL", "TIR", "FGRE", "SPGR", "FSPGR", "BRAVO",
+  "MPRAGE", "MPR", "MP2RAGE", "SPACE", "SPC", "CUBE", "VISTA", "VIBE", "LAVA", "THRIVE", "STARVIBE",
+  "TWIST", "TRICKS", "DISCO", "KEYHOLE", "TWISTVIBE", "FIESTA", "TRUFI", "TRUEFISP", "FISP",
+  "BFFE", "SSFP", "BSSFP", "CISS", "DESS", "MEDIC", "MERGE", "SWI", "SWAN", "SWIP", "VEN",
+  "BOLD", "FMRI", "EPI", "EP", "SS", "MS", "RESOLVE", "READOUT", "SEGMENTED", "DWI", "DW",
+  "DIFF", "DIFFUSION", "ADC", "EADC", "TRACE", "TRACEW", "EXP", "DTI", "DTT", "TENSOR",
+  "FA", "MD", "RD", "AD", "COLFA", "TRACTOGRAPHY", "IVIM", "DKI", "KURTOSIS", "B0", "BVALUE",
+  "BVAL", "DIRECTIONS", "DIR", "TOF", "PC", "PCA", "QFLOW", "FLOW", "VELOCITY", "VENC",
+  "MRCP", "MYELO", "MYELOGRAPHY", "UROGRAPHY", "MRU", "ASL", "PCASL", "PASL", "CASL", "CBF", "CORE", "PENUMBRA",
+  "CBV", "MTT", "TTP", "DSC", "DCE", "PWI", "PERF", "KTRANS", "CEST", "APT", "MTC", "MT",
+  "MAGNETIZATION", "MAGNETISATION", "TRANSFER", "FS", "FATSAT", "FAT", "SAT", "SATURATION",
+  "SUPPRESSION", "SUPPRESSED", "SPAIR", "SPIR", "SPECIR", "CHESS", "WE", "WATEREXCITATION",
+  "DIXON", "MDIXON", "IDEAL", "FLEX", "INPHASE", "OPPPHASE", "OPP", "OUTPHASE", "IP", "OP",
+  "IN", "OUT", "OPPOSED", "WATERONLY", "FATONLY", "FF", "FATFRACTION", "PDFF", "R2STAR",
+  "T2MAP", "T1MAP", "MOLLI", "SHMOLLI", "MAPPING", "RELAXOMETRY", "ECV", "LGE", "PSIRLGE",
+  "SCAR", "VIABILITY", "TAGGING", "TAG", "CINE", "SA", "LA", "SAX", "LAX", "2CH", "3CH",
+  "4CH", "CH", "CHAMBER", "LVOT", "RVOT", "SHORTAXIS", "LONGAXIS", "NAV", "NAVIGATOR",
+  "TRIGGERING", "PROPELLER", "BLADE", "MULTIVANE", "RADIAL", "STARSTACK", "GRASP",
+  "SENSE", "ASSET", "ARC", "GRAPPA", "IPAT", "CAIPI", "SMS", "MB", "MULTIBAND",
+  "HYPERSENSE", "CS", "COMPRESSED", "SENSING", "DEEPRESOLVE", "AIRRECON", "PI", "ACCEL",
+  "ACCELERATED", "P", "NEX", "NSA", "AVERAGES", "TE", "TR", "TI", "ETL", "BW", "BANDWIDTH",
+  "ECHO", "ECHOES", "MULTIECHO", "ME", "MEGRE", "DUALECHO", "SINGLESHOT", "SHOT", "SPIN",
+  "GRADIENT", "TURBO", "FAST", "RAPID", "QUICK", "BREATHHOLD", "TRIGGERED", "RESPTRIG",
+  "SVS", "CSI", "PRESS", "STEAM", "SPECTRO", "NAA", "CR", "LACTATE", "SHIM",
+  "COIL", "COILS", "HEADCOIL", "BODYCOIL", "SURFACE", "FLEXCOIL", "ARRAY", "PHASEDARRAY",
+  "NORM", "NORMALIZED", "NORMALISED", "PRESCAN", "PURE", "CLEAR", "CORRECTION", "CORRECTED",
+  "DISTORTION", "MOCO", "MOTION", "MOTIONCORRECTED", "FIELDMAP", "B1MAP", "B1",
+  "CALIBRATION", "AAH", "AUTOALIGN", "SCOUT", "SMARTPREP", "FLUOROTRIGGER", "CAREBOLUS",
+  "SUB", "SUBTRACTION", "SUBTRACTED", "SUBS", "MOSAIC", "TENSORTRACE", "COLLAPSED",
+  "MRAC", "UTE", "ZTE", "SILENT", "QUIET", "VFA",
+]
+
+[[group]]
+name = "PET and nuclear medicine technique"
+basis = "PET and SPECT reconstruction, correction, and acquisition terms, and generic radiopharmaceutical and nuclide names."
+words = [
+  "AC", "NAC", "CTAC", "MRAC", "ATTN", "ATTENUATION", "CORR", "CORRECTED", "UNCORRECTED",
+  "SCATTER", "SCAT", "SSS", "RANDOMS", "RANDOM", "DECAY", "DEADTIME", "NORMALIZATION",
+  "OSEM", "OSEM2D", "OSEM3D", "MLEM", "EM", "FBP", "RAMLA", "BLOB", "BLOBOS", "TOF",
+  "PSF", "TRUEX", "HD", "HDPET", "QCLEAR", "BSREM", "VPFX", "VPFXS", "VPHD", "VPHDS",
+  "SHARPIR", "LOR", "ITERATIONS", "ITER", "IT", "SUBSETS", "SUBSET", "GAUSSIAN", "GAUSS",
+  "FWHM", "ZOOM", "POSTFILTER", "SUV", "SUVBW", "SUVLBM", "SUVBSA", "BQML", "CNTS",
+  "COUNTS", "WBMAC", "LIST", "LISTMODE", "STATIC", "DYNAMIC", "RESPGATED",
+  "WHOLEBODY", "WB", "MBQ", "MCI", "FRAMES", "FRAME", "EMISSION", "TRANSMISSION", "TX", "EX",
+  "TOMO", "SPECT", "PLANAR", "NM", "NUCLEAR", "MEDICINE", "FDG", "PSMA", "DOTATATE",
+  "DOTATOC", "DOTANOC", "FLT", "FET", "FDOPA", "DOPA", "FCH", "CHOLINE", "FLUCICLOVINE",
+  "AMYLOID", "FLORBETAPIR", "FLORBETABEN", "FLUTEMETAMOL", "TAU", "FLORTAUCIPIR", "NAF",
+  "FLUORIDE", "RUBIDIUM", "AMMONIA", "WATER", "OXYGEN", "FLUORINE", "GALLIUM", "GA68",
+  "F18", "C11", "N13", "O15", "RB82", "CU64", "ZR89", "I124", "Y90", "TC99M", "TC99",
+  "TC", "TECHNETIUM", "MDP", "HDP", "MIBI", "SESTAMIBI", "TETROFOSMIN", "MAG3", "DTPA",
+  "DMSA", "MAA", "SULFUR", "COLLOID", "PYP", "MIBG", "IODINE131", "I131", "I123", "IN111",
+  "OCTREOTIDE", "LUTETIUM", "LU177", "THALLIUM", "TL201", "FLUCICLOVIN", "RADIOPHARMACEUTICAL",
+  "TRACER", "INJECTED", "DOSE", "ACTIVITY", "UPTAKE", "EARLY", "DELAYED", "BLOOD", "POOL",
+  "FLOW", "STRESS", "REST", "GATED", "MPI", "MYOCARDIAL",
+]
+
+[[group]]
+name = "Anatomy"
+basis = "Anatomical regions and structures as written in protocols and series names, beyond the body part terms of PS3.16 Annex L."
+words = [
+  "HEAD", "NECK", "BRAIN", "SKULL", "CRANIUM", "CRANIAL", "INTRACRANIAL", "FACE", "FACIAL",
+  "ORBIT", "ORBITS", "SINUS", "PNS", "IAM", "IAC", "PETROUS", "TEMPORAL", "BONES",
+  "MASTOID", "MASTOIDS", "PITUITARY", "SELLA", "HIPPOCAMPUS", "HIPPOCAMPI", "POSTERIOR", "FOSSA",
+  "CEREBELLUM", "BRAINSTEM", "IAMS", "COW", "CIRCLE", "CAROTID", "CAROTIDS",
+  "VERTEBRAL", "INTRACRANIALS", "NECKS", "SOFT", "PAROTID", "THYROID", "LARYNX", "PHARYNX",
+  "NASOPHARYNX", "OROPHARYNX", "HYPOPHARYNX", "ORAL", "CAVITY", "TONGUE", "MANDIBLE", "MAXILLA",
+  "DENTAL", "TMJ", "TMJS", "C", "T", "L", "S", "SPINE", "CSPINE", "TSPINE", "LSPINE", "CERVICAL",
+  "LUMBAR", "LUMBOSACRAL", "SACRAL", "SACRUM", "COCCYX", "CORD", "SPINAL",
+  "WHOLESPINE", "CHEST", "THORAX", "LUNG", "LUNGS", "PULMONARY", "PE", "AIRWAY", "AIRWAYS",
+  "TRACHEA", "HEART", "CARDIAC", "CORONARY", "CORONARIES", "AORTA", "AORTIC", "ARCH",
+  "THORACIC", "ABDOMINAL", "ABDOMEN", "ABDO", "ABD", "PELVIS", "PELVIC", "PEL", "PELV", "AP", "CAP", "TAP",
+  "CHESTABDO", "LIVER", "HEPATIC", "PANCREAS", "PANCREATIC", "SPLEEN", "KIDNEY", "KIDNEYS",
+  "RENAL", "ADRENAL", "ADRENALS", "URETER", "URETERS", "BLADDER", "KUB", "UROGRAM",
+  "PROSTATE", "UTERUS", "OVARIES", "OVARY", "CERVIX", "RECTUM", "RECTAL", "ANAL", "COLON",
+  "COLONOGRAPHY", "BOWEL", "ENTEROGRAPHY", "SMALL", "LARGE", "STOMACH", "OESOPHAGUS",
+  "ESOPHAGUS", "BILIARY", "GALLBLADDER", "BREAST", "BREASTS", "AXILLA", "AXILLAE",
+  "UPPER", "LOWER", "LIMB", "LIMBS", "EXTREMITY", "EXTREMITIES", "ARM", "ARMS", "FOREARM",
+  "HUMERUS", "SHOULDER", "SHOULDERS", "ELBOW", "WRIST", "HAND", "HANDS", "FINGER", "FINGERS",
+  "THUMB", "HIP", "HIPS", "THIGH", "FEMUR", "KNEE", "KNEES", "LEG", "LEGS", "TIBIA", "FIBULA",
+  "ANKLE", "ANKLES", "FOOT", "FEET", "TOE", "TOES", "HEEL", "CALCANEUS", "JOINT", "JOINTS",
+  "BONE", "MUSCLE", "MUSCLES", "MSK", "SOFTTISSUE", "VESSEL", "VESSELS", "VASCULAR", "ARTERY",
+  "ARTERIES", "VEIN", "VEINS", "VENOGRAM", "RUNOFF", "RUN", "OFF", "PERIPHERAL", "ILIAC",
+  "FEMORAL", "POPLITEAL", "RENALS", "MESENTERIC", "PORTAL", "HEPATICS", "SUBCLAVIAN",
+  "BRACHIAL", "JUGULAR", "SINUSES", "VENOUS", "LYMPH", "NODE", "NODES", "NODAL", "WHOLE",
+  "BODY", "WB", "VERTEX", "THIGHS", "TORSO", "TRUNK", "SKIN", "SURFACE", "EXTERNAL",
+  "TARGET", "TUMOUR", "TUMOR", "LESION", "MASS", "BOOST", "FIELD", "FIELDS", "BEAM",
+  "ISOCENTRE", "ISOCENTER", "MARKER", "MARKERS", "FIDUCIAL", "FIDUCIALS", "BOLUS",
+  "MASK", "IMMOBILISATION", "IMMOBILIZATION", "VACBAG", "COUCH",
+]
+
+[[group]]
+name = "Windows and display"
+basis = "Display windows and presets named by tissue, and display processing terms."
+words = [
+  "WINDOW", "WIN", "WL", "WW", "LEVEL", "WIDTH", "CENTER", "CENTRE", "PRESET", "DISPLAY",
+  "GREY", "GRAY", "GRAYSCALE", "GREYSCALE", "COLOR", "COLOUR", "INVERTED", "INVERT", "LUT",
+  "VOI", "HU", "SOFT", "TISSUE", "BONE", "LUNG", "BRAIN", "STROKE", "SUBDURAL", "LIVER",
+  "ABDOMEN", "MEDIASTINUM", "ANGIO", "VASCULAR", "SPINE", "TEMPORAL", "POSTERIOR", "FOSSA",
+  "DEFAULT", "USER", "AUTO", "AUTOMATIC", "MANUAL", "WIDE", "NARROW", "FULL", "DYNAMIC",
+  "RANGE",
+]
+
+[[group]]
+name = "Processing and derivation"
+basis = "Terms of image derivation, processing, and the software functions that write them."
+words = [
+  "ORIGINAL", "PRIMARY", "DERIVED", "SECONDARY", "PROCESSED", "PROCESSING", "UNPROCESSED",
+  "RAW", "FILTERED", "UNFILTERED", "RESAMPLED", "REGISTERED", "REGISTRATION", "RIGID",
+  "DEFORMABLE", "DEFORMED", "FUSED", "MERGED", "COMBINED", "COMPOSED", "COMPOSITE",
+  "MOTIONCORRECTED", "INTERPOLATED", "INTERP", "SMOOTHED", "SHARPENED", "DENOISED",
+  "NOISE", "LOSSY", "LOSSLESS", "COMPRESSED", "COMPRESSION", "JPEG", "J2K", "RLE",
+  "DECOMPRESSED", "ANONYMOUS", "ANONYMISED", "ANONYMIZED", "ANON", "DEIDENTIFIED",
+  "COPY", "COPIED", "EXPORT", "EXPORTED", "IMPORT", "IMPORTED", "CONVERTED", "CONVERSION",
+  "LEGACY", "ENHANCED", "MULTIFRAME", "SPLIT", "MERGE", "CROPPED", "CROP", "MASKED", "MASK",
+  "SEGMENTATION", "SEG", "CONTOURS", "CONTOUR", "STRUCTURES", "STRUCTURE", "SET", "DOSE",
+  "PLAN", "REFERENCE", "REF", "DRR", "DRRS", "EPID", "PORTAL", "KV", "MV", "CBCT", "OBI",
+  "XVI", "IGRT", "SETUP", "VERIF", "VERIFY", "PRETREATMENT", "TREATMENT", "TX", "FX",
+  "FRACTION", "FRACTIONS", "NEW", "PREVIOUS", "PRIOR", "CURRENT", "FINAL", "TEMP",
+  "VERSION", "V", "REV", "ADAPTIVE", "ADAPT", "REPLAN", "REPLANNING", "ONLINE", "OFFLINE",
+  "MATCH", "MATCHED", "AUTOMATCH", "AUTOMATIC", "MANUAL", "AI", "ML", "MODEL", "OUTPUT",
+  "RESULT", "RESULTS", "PARAMETRIC", "PARAMETER", "PARAMETERS", "FIT", "FITTED", "RATIO",
+  "INDEX", "DIFFERENCE", "DIFF", "MEAN", "MAX", "MAXIMUM", "MIN", "MINIMUM", "STD", "SD",
+  "SUM", "INTEGRAL", "SLOPE", "INTENSITY", "SIGNAL", "CONTRAST", "SNR", "CNR", "TRACE",
+  "ISOTROPIC", "RECONSTRUCTED", "REPROCESSED", "REFORMATTED", "REPROJECTION", "REPROJECTED",
+  "BY", "OF", "THE", "FOR", "FROM", "TO", "AT", "ON", "IN", "AS", "PER", "VS", "X",
+  "NONE", "OTHER", "UNKNOWN", "ALL", "ONLY", "ONE", "TWO", "THREE", "SINGLE", "MULTI",
+  "MULTIPLE", "SERIES", "IMAGE", "IMAGES",
+]
+
+# Common personal names kept in the vocabulary, each with the reason it is
+# chiefly a technique, anatomy, or equipment word in a descriptor. Every
+# other common personal name (common_names.json) is left out, even where a
+# term or a group holds it. A value made only of vocabulary words that is
+# also a person's name, such as a Series Description of only "HAND", is the
+# residual risk the maintainer accepted with this tier on 12 October 2026;
+# the echo check still holds one that names a person of the instance.
+[exceptions]
+ABDO = "Abbreviation of abdomen."
+AI = "Deep-learning reconstruction and processing."
+ARMS = "Plural of the Annex L body part ARM."
+BACK = "Annex L body part."
+BEAM = "Radiotherapy beam."
+BEST = "Cardiac phase chosen as best (best diastole, best systole)."
+BLADE = "MR radial sequence (BLADE)."
+BLOOD = "PET and MR blood pool."
+BODY = "MR coil type (Receive Coil Type term), and whole-body acquisitions."
+BOLD = "MR blood-oxygen-level-dependent imaging."
+BONE = "CT kernel and window by tissue class (Convolution Kernel Group term)."
+BONES = "Plural of bone; temporal bones."
+BRAIN = "Annex L body part, and a CT kernel and window by tissue class."
+BRAVO = "MR 3D T1-weighted sequence (BRAVO)."
+CENTER = "Window centre, and isocentre."
+CHAMBER = "Cardiac views (two, three, and four chamber)."
+CHEEK = "Annex L body part."
+CHESS = "MR chemical shift selective fat suppression."
+CLEAR = "MR coil intensity normalisation (CLEAR)."
+COIL = "MR coil."
+COLL = "Abbreviation of collimation."
+COLON = "Annex L body part."
+CORE = "Perfusion core."
+CORR = "Abbreviation of correction."
+COUCH = "Radiotherapy couch."
+COUNTS = "PET and NM counts."
+CURRENT = "CT tube current."
+DEGREE = "Unit of angle."
+DARK = "MR dark-fluid (fluid-attenuated) sequences."
+DELAY = "Contrast delay."
+DIXON = "MR fat and water separation (Dixon)."
+EARLY = "Contrast and PET timing (early phase, early images)."
+ECHO = "MR echo."
+EDGE = "CT edge-enhancing kernel."
+EYE = "Annex L body part."
+FAST = "Fast MR and CT sequences and modes."
+FIELD = "Radiotherapy field and MR field map."
+FIELDS = "Radiotherapy fields."
+FINGER = "Annex L body part."
+FRAME = "Frame of a multi-frame or dynamic acquisition."
+GRAY = "Greyscale display."
+GREY = "Greyscale display."
+HAND = "Annex L body part."
+HARD = "CT kernel sharpness."
+HEAD = "Annex L body part; the commonest region of CT and MR."
+HIRES = "High resolution."
+HU = "Hounsfield units."
+IN = "MR in-phase images, and position words (feet in)."
+KIDNEY = "Annex L body part."
+KNEE = "Annex L body part."
+LA = "Cardiac long axis."
+LARGE = "Large field of view or bowel."
+LAX = "Cardiac long axis."
+LIST = "PET list mode."
+LOR = "PET line of response."
+LOW = "Low-dose acquisitions."
+LOWER = "Lower limb and lower abdomen."
+LUNG = "Annex L body part, and a CT kernel and window by tissue class."
+MA = "Unit of tube current (mA)."
+MANUAL = "Manual processing or windowing."
+MARKER = "Radiotherapy and imaging markers."
+MASK = "Radiotherapy mask and subtraction mask."
+MASS = "Target region (mass protocol)."
+MAX = "Maximum (projection, value)."
+MIN = "Minimum (projection, value), and minutes."
+NEW = "New series or reconstruction."
+OPP = "MR opposed-phase images."
+PASS = "Acquisition pass."
+PEAK = "Contrast peak."
+PLAIN = "Unenhanced (plain) acquisitions."
+POOL = "Blood pool."
+POST = "Contrast timing (post-contrast) and posterior."
+PRESS = "MR spectroscopy point-resolved sequence (PRESS)."
+PRIOR = "Prior examination or reconstruction."
+QUICK = "Quick sequence or protocol."
+RANGE = "Scan or dynamic range."
+ROW = "Detector row."
+SAX = "Cardiac short axis."
+SHARP = "CT kernel sharpness."
+SHARPER = "CT kernel sharpness."
+SHIM = "MR shimming."
+SHOULDERS = "Plural of the Annex L body part SHOULDER."
+SIM = "Radiotherapy simulation."
+SMALL = "Small field of view or bowel."
+SMART = "Vendor dose modulation and preparation features (smart mA, SmartPrep)."
+STACK = "Image stack."
+STACKS = "Image stacks."
+STANDARD = "CT kernel and protocol name (standard kernel, standard dose)."
+SURFACE = "Surface coil and surface rendering."
+SWAN = "MR susceptibility-weighted sequence (SWAN)."
+TO = "Range words (head to toe)."
+TRUEX = "PET reconstruction (TrueX)."
+TSE = "MR turbo spin echo."
+UTE = "MR ultrashort echo time."
+VESSELS = "Plural of vessel."

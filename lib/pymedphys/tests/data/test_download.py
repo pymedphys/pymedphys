@@ -64,6 +64,20 @@ def test_file_url_is_copied(tmp_path: pathlib.Path):
     assert destination.read_bytes() == payload
 
 
+def test_a_download_needs_no_tqdm(tmp_path: pathlib.Path, monkeypatch):
+    # The text-detection extra downloads its model without tqdm.
+    monkeypatch.setattr(download, "_tqdm_installed", lambda: False)
+    monkeypatch.setattr(download, "tqdm", None)
+    source = tmp_path / "source.bin"
+    payload = bytes(range(256)) * 4
+    source.write_bytes(payload)
+    destination = tmp_path / "destination.bin"
+
+    download.download_with_progress(source.as_uri(), destination)
+
+    assert destination.read_bytes() == payload
+
+
 @pytest.mark.parametrize("url", ["ftp://example.invalid/data.zip", "data:,hello"])
 def test_unsupported_scheme_is_rejected(url: str, tmp_path: pathlib.Path):
     destination = tmp_path / "unused.bin"
