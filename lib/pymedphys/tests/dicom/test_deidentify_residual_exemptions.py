@@ -385,3 +385,38 @@ def test_a_vendor_creator_is_exempt_only_if_every_pooled_value_is_a_vendors():
     )
 
     assert release_condition(coverage, written).decision is Decision.QC_REVIEW
+
+
+# Kept values outside ISO 646, in a file that declares their character set.
+
+
+@pytest.mark.parametrize(
+    "kept, source, removed",
+    [
+        (  # Equipment
+            _element(0x00080070, "LO", f"{SCANNER} M\xdcLLER"),
+            "(0009,1012)",
+            SCANNER,
+        ),
+        (  # Standard code
+            _sequence(
+                0x00540016,
+                [_sequence(0x00540304, _code("SCT", f"{TRACER} M\xdcLLER"))],
+            ),
+            "(0018,0031)",
+            TRACER,
+        ),
+        (  # Vendor private creator
+            _element(0x0008103E, "LO", f"{_vendor()} M\xdcLLER"),
+            "(0009,0010)",
+            _vendor(),
+        ),
+    ],
+    ids=["equipment", "standard-code", "vendor-creator"],
+)
+def test_a_matched_element_outside_iso_646_is_never_exempt(kept, source, removed):
+    written = _written(_element(0x00080005, "CS", "ISO_IR 100"), kept)
+    condition = _condition(written, (source, "LO", removed))
+
+    assert condition.decision is Decision.QC_REVIEW
+    assert not condition.exempted

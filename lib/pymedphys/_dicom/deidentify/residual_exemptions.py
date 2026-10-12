@@ -49,8 +49,9 @@ The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
 every one of its values is a term; and a source's values are pooled across
 the subject, so a private creator is exempt only if all of them are a
-vendor's. A finding of any other kind, or outside
-the data set, is never exempt. Kept values are read from the written file's
+vendor's. A finding in an element that holds a byte outside ISO 646's
+printable characters, a finding of any other kind, and a finding outside
+the data set are never exempt. Kept values are read from the written file's
 bytes, as text in ISO 646, never decoded by pydicom, and none is reported.
 """
 
@@ -298,16 +299,15 @@ def exemption(
     Exemption or None
         As the module describes, or ``None`` if none applies.
     """
-    location = finding.location
-    element = location.element
-    if location.region is not Region.DATA_SET or element is None:
+    element = finding.location.element
+    in_data_set = finding.location.region is Region.DATA_SET
+    values = kept.values(element) if in_data_set and element is not None else None
+    if element is None or values is None:
         return None
     tag = element.tag
     terms = defined_terms().get(tag)
-    if terms is not None:
-        values = kept.values(element)
-        if values and any(values) and all(not v or v in terms for v in values):
-            return Exemption.STANDARD_TERM
+    if terms is not None and any(values) and all(not v or v in terms for v in values):
+        return Exemption.STANDARD_TERM
     if element.items and (tag == _DESIGNATOR or tag in _CODE_ITEM):
         designator = kept.values(ElementPath(element.items, _DESIGNATOR))
         if designator is not None and len(designator) == 1:
