@@ -37,8 +37,8 @@ pinned PS3.6 data dictionary, and that no other placement in the collection
 holds, except for the two placements that **Diagnostics and review**
 describes. Text is ``SYNMK-00042``, a code string ``SYNMK_00042``, a person name
 ``SYNMK00042^MARKER00042``, a UID ``2.25.9999900042``, a URI
-``https://synmk.invalid/SYNMK-00042``, a date a day from 1800 to 1899, a
-datetime that date at noon, a time ``HHMMSS.424242`` whose seconds from
+``https://synmk.invalid/SYNMK-00042``, a date before 1900 (see
+:func:`_marker_date`), a datetime that date at noon, a time ``HHMMSS.424242`` whose seconds from
 midnight are the marker's number, and a binary value of VR OB, OW, or UN the
 text marker in ASCII, padded to an even length. No text marker occurs inside
 another value of its file. A number of a binary VR, such as US or SS, and an
@@ -332,7 +332,15 @@ _EVEN = 2
 _TIME_SIGNATURE = ".424242"
 # The time of every DT marker, which no TM marker matches.
 _NOON = "120000"
-_FIRST_DATE = datetime.date(1800, 1, 1)
+_FIRST_DATE = datetime.date(900, 1, 1)
+# Dates come in runs of consecutive days, each run the same number of days
+# after the one before it, so that no two date markers are 364 to 3,640 days
+# apart: the range of the Retain Longitudinal Temporal Information Modified
+# Dates Option's backward shift of 52 to 520 whole weeks
+# (pymedphys._dicom.deidentify.dates). A shifted date then never equals
+# another marker's date, which the residual search would find.
+_DATE_RUN_DAYS = 363
+_DATE_RUN_PERIOD = 4004
 _SECONDS_IN_A_DAY = 86_400
 
 
@@ -832,12 +840,26 @@ class _Markers:
         return values, tuple(_as_text(vr, value) for value in values)
 
 
+def _marker_date(number: int) -> datetime.date:
+    """Return the date of the marker numbered ``number``.
+
+    Within a run of ``_DATE_RUN_DAYS`` consecutive days dates are at most
+    362 days apart, and between runs at least ``_DATE_RUN_PERIOD`` less 362,
+    3,642 days, so no two are 364 to 3,640 days apart. Every date of a
+    number below :data:`MAX_MARKERS` is from 900 to before 1900.
+    """
+    run, day = divmod(number, _DATE_RUN_DAYS)
+    return _FIRST_DATE + datetime.timedelta(days=run * _DATE_RUN_PERIOD + day)
+
+
 def _marker(vr: str, number: int, latin_1: bool) -> object:
     """Return the marker numbered ``number`` as a value of ``vr``."""
     text = f"{MARKER_PREFIX}-{number:05d}"
     if vr in _WORD_BYTES:
         return _padded(text, vr)
-    day = _FIRST_DATE + datetime.timedelta(days=number)
+    day = _marker_date(number)
+    # strftime does not pad a year before 1000 to four digits on every platform.
+    date = f"{day.year:04d}{day.month:02d}{day.day:02d}"
     seconds = number % _SECONDS_IN_A_DAY
     time = f"{seconds // 3600:02d}{seconds // 60 % 60:02d}{seconds % 60:02d}"
     time += _TIME_SIGNATURE
@@ -845,9 +867,9 @@ def _marker(vr: str, number: int, latin_1: bool) -> object:
     formats: dict[str, object] = {
         "AE": text,
         "CS": f"{MARKER_PREFIX}_{number:05d}",
-        "DA": day.strftime("%Y%m%d"),
+        "DA": date,
         "DS": f"8{number:05d}.5",
-        "DT": day.strftime("%Y%m%d") + _NOON,
+        "DT": date + _NOON,
         "IS": f"7{number:05d}",
         "PN": f"{MARKER_PREFIX}{number:05d}^{given}{number:05d}",
         "TM": time,

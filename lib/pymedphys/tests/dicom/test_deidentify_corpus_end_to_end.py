@@ -757,12 +757,21 @@ def _kept_at(dataset, placement):
 
 
 def _item_at(dataset, path):
-    """Return the item that holds the element at an element path, or None."""
+    """Return the item that holds the element at an element path, or None.
+
+    A sequence that pydicom's dictionary does not know reads back as UN,
+    whose value holds the items in Implicit VR Little Endian (PS3.5 6.2.2).
+    """
     for tag, index in path.items:
         number = int(tag[1:5] + tag[6:10], 16)
-        if number not in dataset or len(dataset[number].value) <= index:
+        if number not in dataset:
             return None
-        dataset = dataset[number].value[index]
+        items = dataset[number].value
+        if isinstance(items, bytes):
+            items = pydicom.values.convert_SQ(items, True, True)
+        if len(items) <= index:
+            return None
+        dataset = items[index]
     return dataset
 
 
