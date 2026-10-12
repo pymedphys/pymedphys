@@ -545,11 +545,17 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, Private Attributes that are known by the de-identifier to be safe from identity leakage shall be retained, together with the Private Creator IDs that are required to fully define the retained Private Attributes; all other Private Attributes shall be removed or processed in the element-specific manner recommended by Deidentification Action (0008,0307), if present within Private Data Element Characteristics Sequence (0008,0300) (see PS3.3 Section C.12.1).
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
-decisions = ["D-001", "D-028"]
+decisions = ["D-001", "D-028", "D-035"]
+implementation = [
+  "_dicom/deidentify/safe_private.py",
+  "_dicom/deidentify/tcia_private_tags.py",
+]
 note = '''
-Until reviewed rules say which private attributes are safe, a policy that selects the Option is refused (D-028).
+Reviewed rules give every row of Table E.3.10-1 a handling, keyed by private creator and element within the block: numbers and code strings are checked and kept, UIDs replaced, text cleaned as descriptors, private sequences parsed, and bulk binary data and three timestamps removed (D-035).
+TCIA's Private Tag Dictionary ships unchanged, pinned by its length and SHA-256, as a second list that a run may choose; its keep is a basis for retention, and kept values still pass the handling of their VR (D-035).
+Remaining: applying the rules, following Private Data Element Characteristics Sequence and Deidentification Action, and enabling the Option, which a policy is refused until then (D-028) (M3).
 '''
 
 [[requirement]]
@@ -581,7 +587,7 @@ status = "planned"
 milestone = "M3"
 decisions = ["D-028"]
 note = '''
-Without the Option, a private sequence is removed with everything in it, and a policy that selects the Option is refused until reviewed rules say which private attributes are safe (D-028).
+Without the Option, a private sequence is removed with everything in it, and a policy that selects the Option is refused until the engine applies the reviewed rules (D-028, D-035).
 '''
 
 [[requirement]]
@@ -898,12 +904,18 @@ Retain private data elements only after evaluating their risk against a reliable
 '''
 status = "partial"
 milestone = "M3"
-decisions = ["D-001", "D-028"]
-implementation = ["_dicom/deidentify/private_attributes.py"]
+decisions = ["D-001", "D-028", "D-035"]
+implementation = [
+  "_dicom/deidentify/private_attributes.py",
+  "_dicom/deidentify/safe_private.py",
+  "_dicom/deidentify/tcia_private_tags.py",
+]
 note = '''
-Without Retain Safe Private, every private data element and private creator is removed from a data set, at every level, and a policy that selects the Option, which retains those known to be safe, is refused until reviewed rules say which are (D-028).
+Without Retain Safe Private, every private data element and private creator is removed from a data set, at every level, and a policy that selects the Option, which retains those known to be safe, is refused until the engine applies the reviewed rules (D-028).
 The run's instance transform removes them from each instance it writes.
-Remaining: the reviewed rules that `public-release` needs (M3).
+The reviewed rules evaluate every row of PS3.15 Table E.3.10-1, and retain only values that can be checked (D-035).
+TCIA's Private Tag Dictionary, shipped unchanged and pinned by its SHA-256, is a second source that a run may choose, and its kept values pass the same checks (D-035).
+Remaining: applying the rules, which `public-release` needs (M3).
 '''
 
 [[requirement]]

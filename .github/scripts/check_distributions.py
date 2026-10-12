@@ -81,8 +81,14 @@ WHEEL_PACKAGE_ROOT = "pymedphys/"
 # Independent release expectations: keep these in sync with the project's
 # license and license-files settings in pyproject.toml. Reading expectations
 # from archive metadata would let matching omissions in both archives pass.
-EXPECTED_LICENCE_EXPRESSION = "Apache-2.0 AND MIT"
-EXPECTED_LICENCE_FILES = frozenset(("LICENSE", "lib/pymedphys/_pinnacle/LICENSE-MIT"))
+EXPECTED_LICENCE_EXPRESSION = "Apache-2.0 AND MIT AND CC-BY-3.0"
+EXPECTED_LICENCE_FILES = frozenset(
+    (
+        "LICENSE",
+        "lib/pymedphys/_pinnacle/LICENSE-MIT",
+        "lib/pymedphys/_dicom/deidentify/_tcia/LICENSE-CC-BY-3.0.txt",
+    )
+)
 # pymedphys.cli imports every command module, as the console script does.
 SMOKE_IMPORTS = ("pymedphys", "pymedphys.dicom", "pymedphys.cli")
 # The extras and command a contributor uses to run the default test selection.
