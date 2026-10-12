@@ -715,6 +715,7 @@ def test_every_module_rule_file_and_table_of_the_engine_is_covered():
         "uid_roles.toml",
         "temporal_roles.toml",
         "supplementary_actions.toml",
+        "safe_private.toml",
         "requirements.toml",
     }
 
