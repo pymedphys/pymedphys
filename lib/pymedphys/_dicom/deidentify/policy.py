@@ -111,7 +111,7 @@ ENGINE_APPLIES: Mapping[str, bool] = types.MappingProxyType(
         # Retain Patient Characteristics.
         PATIENT_CHARACTERISTICS: True,
         # Retain Longitudinal Temporal Information with Full Dates.
-        FULL_DATES: False,
+        FULL_DATES: True,
         # Retain Longitudinal Temporal Information with Modified Dates.
         MODIFIED_DATES: True,
         # Clean Descriptors.

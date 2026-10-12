@@ -271,8 +271,8 @@ Where an IOD requires an attribute given a plain X, the statement names the encl
 Under Clean Descriptors, it describes how ROI Name is cleaned in two tiers: automatic renaming against a published TG-263 edition, which it names, and reviewers' decisions, with every reason a name is held, what is written for each, and the condition on which an instance gains the Clean Descriptors code, each checked against the engine (D-009).
 Each run with a release reporter writes the statement of its policy, as `conformance-statement.md` beside the release report at the root of the release, since it holds no instance value; it describes the policy and vocabulary that the report records, and the report gives the run's own method digest and reviewed-names digest.
 The statements of `basic` and `basic-clean-descriptors`, the presets of the first supported release, list nothing as pending.
-For each selected option that has a cleaner, it gives the attributes that the policy gives C and the cleaner settles, with its method: the AE titles under Retain Device Identity (D-034), and the free text under Retain Patient Characteristics, which holds its instance unless it has no value (D-038, PS3.15-E.3.7-02).
-A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone, including how Modified Dates modifies dates and times; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; the safe private attributes retained, for a policy that selects Retain Safe Private; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset (PS3.15-E.3.6-04, PS3.15-E.3.10-04).
+For each selected option that has a cleaner, it gives the attributes that the policy gives C and the cleaner settles, with its method: the AE titles under Retain Device Identity (D-034), the free text under Retain Patient Characteristics, which holds its instance unless it has no value (D-038, PS3.15-E.3.7-02), and the dates and times that Modified Dates modifies (D-039, PS3.15-E.3.6-04).
+A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; the safe private attributes retained, for a policy that selects Retain Safe Private; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset (PS3.15-E.3.10-04).
 '''
 
 [[requirement]]
@@ -429,7 +429,7 @@ note = '''
 The conformance statement describes how ROI Name (3006,0026) is cleaned under Clean Descriptors: automatic renaming against the published TG-263 edition that it names, or none without such a vocabulary, the reasons a name goes to review, the reviewers' decisions, the checks of what a reviewed decision would write, that a run's method digest covers its reviewed list (D-024), and what cleaning writes for each name, including that a held name holds its instance for review.
 It also says that a run can be given an institutional list of ROI names, which renames nothing and only shows the reviewer of a held name the list's names it matched.
 Every other attribute given C under Clean Descriptors takes the action that the policy gives it without that option, as the maintainer decided on 6 October 2026 (D-009); the statement lists that action for each, at each place, as the one the engine applies, so for `basic-clean-descriptors` it lists no manner of cleaning as pending.
-The manner of cleaning an attribute to which the policy gives C without Clean Descriptors too, such as the dates and times under Modified Dates (E.3.6), which no preset of the first supported release selects, is listed as pending until its option is implemented (PS3.15-E.3.6-04); the free text that Retain Patient Characteristics gives C is described with the Option's cleaner, which settles Allergies, Patient State, and Sex Parameters for Clinical Use Category Comment before Clean Descriptors where both are selected (PS3.15-E.3.7-02).
+The manner of cleaning an attribute to which the policy gives C without Clean Descriptors too and that no cleaner cleans is listed as pending until its option is implemented; the dates and times under Modified Dates are described with their cleaner (PS3.15-E.3.6-04), and the free text that Retain Patient Characteristics gives C is described with the Option's cleaner, which settles Allergies, Patient State, and Sex Parameters for Clinical Use Category Comment before Clean Descriptors where both are selected (PS3.15-E.3.7-02).
 '''
 
 [[requirement]]
@@ -438,9 +438,19 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When the Retain Longitudinal Temporal Information With Full Dates Option is specified in addition to the Basic Application Level Confidentiality Profile, any dates and times present in the Attributes shall be retained, as described in Table E.1-1. The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "UNMODIFIED".
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-011"]
+status = "implemented"
+decisions = ["D-012", "D-023", "D-042", "D-043"]
+implementation = [
+  "_dicom/deidentify/actions.py",
+  "_dicom/deidentify/markers.py",
+  "_dicom/deidentify/option_kept.py",
+  "_dicom/deidentify/policy.py",
+]
+note = '''
+A custom policy can select Full Dates, which keeps every date and time that Table E.1-1 gives K under it and the supplementary rules keep under it (D-023); it cannot be selected with Modified Dates.
+Longitudinal Temporal Information Modified is UNMODIFIED, unless MODIFIED or REMOVED is already present from an earlier run, which is kept because the dates that run modified or removed are not restored (D-012).
+A removed or replaced source value, other than the kept element's own, that equals the whole of a kept date is explained by it and does not withhold the instance; one found inside a longer kept value, such as the date of a kept datetime, still does (D-042, D-043).
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.6-02"
@@ -452,20 +462,22 @@ When the Retain Longitudinal Temporal Information With Modified Dates Option is 
 - preserves the gross longitudinal temporal relationships between images obtained on different dates to the extent necessary for the application
 - preserves the fine temporal relationships between images and real-world events to the extent necessary for analysis of the images for the application
 '''
-status = "partial"
-milestone = "M3"
-decisions = ["D-006", "D-007"]
+status = "implemented"
+decisions = ["D-006", "D-007", "D-034", "D-039"]
 implementation = [
+  "_dicom/deidentify/cleaners.py",
   "_dicom/deidentify/dates.py",
-  "_dicom/deidentify/policy.py",
-  "_dicom/deidentify/profiles.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/modified_dates.py",
   "_dicom/deidentify/temporal_roles.py",
 ]
 note = '''
-Each subject's offset is persisted in its profile, DA and DT values are shifted by whole weeks, keeping intervals, weekdays, and times, and every attribute that Table E.1-1 cleans under Modified Dates has a reviewed role that decides whether it is shifted or replaced by a dummy value.
-Time zone offsets become a nominal +0000 once each DT value with its own offset is in the instance's local time, which keeps every interval within the instance.
+Under Modified Dates, a cleaner of the whole instance modifies every value of the 184 attributes that Table E.1-1 and the supplementary rules give C, by its attribute's reviewed temporal role (D-007, D-039).
+A subject-event or radiation-source DA or DT value moves back by the subject's whole-week offset, derived from the run's key and the subject's identity, which keeps intervals, weekdays, times, and decay intervals; a TM value is kept, since whole weeks keep the time of day (D-006); and Frame Origin Timestamp moves its seconds.
+Device, vocabulary-version, and other values take D's dummy value, which discloses nothing of the offset; time zone offsets become a nominal +0000 once each DT value with its own offset is in the instance's local time, which keeps every interval within the instance.
+A value that cannot be modified so, such as a DT value without a full date, sequesters its instance.
 Under `tps-import`, the eleven device and beam hold dates and times that Retain Device Identity would keep are modified by their role instead.
-Remaining: modifying every date and time in a data set (M3).
+Each run has its own key, so offsets are consistent within a run only; reading them from a project key's subject profiles comes with project keys (D-004).
 '''
 
 [[requirement]]
@@ -474,18 +486,15 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "MODIFIED".
 '''
-status = "partial"
-milestone = "M4"
-decisions = ["D-012"]
+status = "implemented"
+decisions = ["D-012", "D-039"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/markers.py",
 ]
 note = '''
 Every policy that applies Modified Dates, including `tps-import`, sets Longitudinal Temporal Information Modified to MODIFIED in its markers, unless REMOVED is already present from an earlier run, which is kept because the dates that run removed are not restored (D-012).
-The run's instance transform adds it to each instance it de-identifies.
-Neither preset of the first supported release applies Modified Dates, so the end-to-end test of `basic` and `basic-clean-descriptors` does not reach this marker.
-Remaining: validating `tps-import` and `public-release`, which apply Modified Dates, end to end, once they modify every date and time in a data set (PS3.15-E.3.6-02) (M4).
+The run's instance transform adds it to each instance it de-identifies, which under Modified Dates is written only once every date and time in it is modified (D-039).
 '''
 
 [[requirement]]
@@ -494,11 +503,15 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The manner of date modification shall be described in the Conformance Statement.
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-006", "D-007"]
+status = "implemented"
+decisions = ["D-006", "D-007", "D-039"]
+implementation = [
+  "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/conformance_values.py",
+  "_dicom/deidentify/modified_dates.py",
+]
 note = '''
-No preset of the first supported release selects Modified Dates, so the conformance statement describes how dates are modified once the Option is implemented (PS3.15-E.3.6-02).
+The statement of a policy that selects Modified Dates gives the attributes that its cleaner modifies and the cleaner's method: the offset's range and derivation, how each role's values are modified, how local time is chosen, and which values sequester their instance; under Dates and times, it counts the attributes given C by role (D-039).
 '''
 
 [[requirement]]

@@ -93,7 +93,7 @@ from .standard import (
     load_table_e1_1a,
 )
 from .supplementary_actions import TEXT_VRS, UNCOVERED_TEXT_ACTION
-from .temporal_roles import load_temporal_roles
+from .temporal_roles import TemporalRole, load_temporal_roles
 from .uid_registry import load_uid_values
 from .uid_roles import UIDRole, load_uid_roles
 from .walker import DESCENDED
@@ -325,12 +325,18 @@ class TemporalHandling:
     actions : tuple of tuple of str and int
         Each action listed for those attributes, with how many have it, most
         first and then in the order of the actions.
+    roles : tuple of tuple of str and int
+        Each temporal role of those of them that the policy gives C, by its
+        name in the roles file, with how many have it, in the order of
+        :class:`~pymedphys._dicom.deidentify.temporal_roles.TemporalRole`;
+        ``()`` where it gives none C.
     """
 
     option: str
     attributes: int
     other_attributes: tuple[str, ...]
     actions: tuple[tuple[str, int], ...]
+    roles: tuple[tuple[str, int], ...] = ()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -727,11 +733,17 @@ def _temporal(
         attribute = dictionary_attribute(tag)
         if attribute is None or not set(attribute.vrs) <= _TEMPORAL_VRS:
             others.append(tag)
+    cleaned = [roles[tag].role for tag in roles if actions[tag] == "C"]
     return TemporalHandling(
         option=next((o for o in policy.options if o in _TEMPORAL_OPTIONS), ""),
         attributes=len(roles),
         other_attributes=tuple(sorted(others)),
         actions=tuple(sorted(counts.items(), key=lambda item: (-item[1], item[0]))),
+        roles=tuple(
+            (role.value, cleaned.count(role))
+            for role in TemporalRole
+            if role in cleaned
+        ),
     )
 
 

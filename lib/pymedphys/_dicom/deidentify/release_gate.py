@@ -109,6 +109,8 @@ from .residuals import (
     ValueKind,
     find_residuals,
 )
+from .residual_shifts import KINDS as SHIFTED_KINDS
+from .residual_shifts import shifted_date
 from .standard import ProfileTable, dictionary_attribute, load_table_e1_1
 
 # The PS3.6 groups of the patient, a visit, the study, and a procedure or
@@ -236,8 +238,10 @@ class Coverage:
         The source paths of collected text read as ISO 8859-1, because it
         has bytes outside ISO 646 and no Specific Character Set applies.
     options : tuple of str, optional
-        The options of the run's policy, whose kept values can explain a
-        finding. With none, no option explains a finding.
+        The options of the run's policy, which say which findings an option
+        can explain, such as one that a kept value explains, or a date that
+        Modified Dates shifted onto another source date. With none, no option
+        explains a finding.
 
     Raises
     ------
@@ -556,6 +560,11 @@ def release_condition(
     kept: KeptValues | None = None  # read only for a finding it may explain
     sources = source_values(coverage.collected)
     for each in search.findings:
+        if each.kind in SHIFTED_KINDS and shifted_date(
+            each, kept := kept or KeptValues(written), sources, coverage.options
+        ):
+            exempted.append((each, Exemption.SHIFTED_DATE))
+            continue
         reason = _finding_reason(each, identifiers)
         if reason.code in _EXPLICABLE:
             kept = kept or KeptValues(written)

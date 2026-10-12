@@ -43,11 +43,12 @@ import base64
 import types
 from collections.abc import Callable, Iterable, Mapping
 
-from . import dummy_values, pixel_risk, pseudonyms, residuals, uids
+from . import dates, dummy_values, pixel_risk, pseudonyms, residuals, uids
 from . import release_report as report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
 from .pixel_risk import Indicator
+from .policy import FULL_DATES, MODIFIED_DATES
 from .qc_retained import _NOT_REVIEWED_TAGS, RETAINED_TEXT_VRS
 from .reasons import TransformReason
 from .release_gate import ReasonCode
@@ -62,6 +63,18 @@ from .values import CHECKED_VRS
 from .walker import REVIEWED_DUMMY_SEQUENCES
 
 TEMPORAL_MODIFIED = "(0028,0303)"  # Longitudinal Temporal Information Modified
+# How the statement names the attributes of each temporal role, by its name in
+# the roles file.
+_ROLE_WORDS = types.MappingProxyType(
+    {
+        "subject-event": "subject events",
+        "radiation-source": "radiation-source dates and times",
+        "device": "device dates and times",
+        "vocabulary-version": "vocabulary versions",
+        "time-zone": "time zone offset",
+        "other": "other dates and times",
+    }
+)
 _SERIES_INSTANCE_UID = "(0020,000E)"
 
 # The name of each codec in which the residual search encodes every form.
@@ -377,13 +390,40 @@ def dates_and_times(
         "Information with Modified Dates. Each takes the action listed under "
         f"Actions: {counts}."
     )
-    if temporal.option:
+    if temporal.option == FULL_DATES:
+        kept = dict(temporal.actions).get("K", 0)
         return [
             "## Dates and times",
             "",
-            f"The policy selects {option(temporal.option)}. {covered} How the "
-            "attributes that it cleans are modified, by their temporal roles "
-            "(D-006 and D-007), is not yet described; see below.",
+            f"The policy selects {option(temporal.option)}, so no date or time "
+            f"is shifted or otherwise modified. {covered} The {kept} that take "
+            "`K` keep their source values; the others take their listed "
+            "actions, as the Basic Profile does. Where a source value that "
+            "the policy removes or replaces, other than the kept element's "
+            "own, equals a whole kept value, the residual search finds it in "
+            "the kept element, and the kept value explains it, so it does not "
+            "withhold the instance; found inside a longer kept value, such as "
+            "the date of a kept datetime, it still does (D-042 and D-043). "
+            f"{named(TEMPORAL_MODIFIED)} is `{statement.markers.temporal}`, as "
+            "Attributes inserted describes.",
+        ]
+    if temporal.option == MODIFIED_DATES:
+        cleaned = sum(count for _, count in temporal.roles)
+        roles = join(f"{count} {_ROLE_WORDS[role]}" for role, count in temporal.roles)
+        return [
+            "## Dates and times",
+            "",
+            f"The policy selects {option(temporal.option)}. {covered} The "
+            f"policy gives C to {cleaned} of them, which are, by their "
+            f"temporal roles, {roles}. Each is modified by its role, as "
+            f"Cleaning under the {option(temporal.option)} describes (D-006 "
+            "and D-007): a subject-event or radiation-source value moves "
+            "backwards by its subject's offset in whole weeks, a device, "
+            "vocabulary-version, or other value takes D's dummy value, and a "
+            f"time zone offset becomes `{dates.NOMINAL_UTC_OFFSET}`. The "
+            "others take the actions listed under Actions. "
+            f"{named(TEMPORAL_MODIFIED)} is `{statement.markers.temporal}`, as "
+            "Attributes inserted describes.",
         ]
     timezone = "(0008,0201)"
     vrs = ("DA", "DT", "TM")
