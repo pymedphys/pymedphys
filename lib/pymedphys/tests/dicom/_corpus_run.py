@@ -317,6 +317,8 @@ class CorpusRun:
     reviewed_roi_names: (
         Callable[[corpus_module.SyntheticCorpus], ReviewedNames] | None
     ) = None
+    # A factory, since dataclasses refuse a default they cannot hash, which
+    # a mapping proxy is before Python 3.12.
     withheld: Mapping[str, Withheld] = dataclasses.field(
         default_factory=lambda: BASIC_WITHHELD
     )
