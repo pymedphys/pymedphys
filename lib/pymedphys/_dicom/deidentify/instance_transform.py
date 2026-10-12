@@ -94,7 +94,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import PurePosixPath
 
 from pymedphys._imports import pydicom
@@ -125,7 +125,7 @@ from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
 from .markers import MarkerError, Markers, apply_markers, markers_for
 from .method_digest import method_digest
-from .policy import DEFAULT_PRESET, Policy, PolicyError, select_policy
+from .policy import Policy, PolicyError, select_policy
 from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
@@ -658,7 +658,8 @@ class InstanceTransform:
     ) -> None:
         if not (policy.enabled or unvalidated_policy):
             raise PolicyError(
-                "the policy is not enabled: no preset's behaviour is validated yet"
+                "the policy is not enabled: its behaviour is not yet implemented "
+                "and validated"
             )
         if (CLEAN_DESCRIPTORS in policy.options) != (cleaning is not None):
             raise PolicyError(
@@ -860,24 +861,29 @@ def _pixel_risk(
 
 
 def transform_for(
-    preset: str = DEFAULT_PRESET,
+    preset: str | None = None,
     key: DeidKey | None = None,
     *,
+    options: Iterable[str] | None = None,
     cleaning: DescriptorCleaning | None = None,
     iod_tables: IODTables | None = None,
 ) -> InstanceTransform:
-    """Return the run's transform for an enabled preset.
+    """Return the run's transform for an enabled preset or custom option set.
 
     Parameters
     ----------
     preset : str, optional
         As :func:`~pymedphys._dicom.deidentify.policy.select_policy` takes
-        it. Defaults to ``"basic"``.
+        it. Defaults to ``"basic"``, unless ``options`` is given.
     key : DeidKey, optional
         The run's key. By default, a new one, so that the run's replacement
         UIDs and pseudonyms match no other run's.
+    options : iterable of str, optional
+        A custom option set in place of a preset, as
+        :func:`~pymedphys._dicom.deidentify.policy.select_policy` takes it
+        (D-033).
     cleaning : DescriptorCleaning, optional
-        As for :class:`InstanceTransform`: needed for a preset with Clean
+        As for :class:`InstanceTransform`: needed for a policy with Clean
         Descriptors, and refused without it.
     iod_tables : IODTables, optional
         As for :class:`InstanceTransform`.
@@ -886,10 +892,10 @@ def transform_for(
     ------
     PolicyError
         As :func:`~pymedphys._dicom.deidentify.policy.select_policy` raises
-        it, for a preset that is unknown or not enabled, or as
+        it, for a preset or option that is unknown or not enabled, or as
         :class:`InstanceTransform` raises it for ``cleaning``.
     """
-    policy = select_policy(preset)
+    policy = select_policy(preset, options=options)
     return InstanceTransform(
         policy,
         DeidKey.generate() if key is None else key,

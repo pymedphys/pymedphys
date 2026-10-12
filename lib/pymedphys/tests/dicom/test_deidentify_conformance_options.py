@@ -123,3 +123,34 @@ def test_the_pixel_options_outside_table_e1_1_are_listed_as_not_supported(
     assert set(conformance.PIXEL_OPTION_CODES).isdisjoint(
         conformance.OPTION_CODES.values()
     )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_no_enabled_option_has_an_incomplete_statement():
+    # Enabling an option needs a complete statement for it alone (D-033).
+    for option in sorted(policy.ENABLED_OPTIONS):
+        statement = conformance.conformance_statement(
+            policy.compose_custom_policy([option]), vocabulary=None
+        )
+        assert not statement.pending, option
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_an_enabled_custom_option_set_claims_its_options(monkeypatch):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
+    monkeypatch.setattr(policy, "ENABLED_OPTIONS", frozenset({"clean_descriptors"}))
+
+    statement = conformance.conformance_statement(
+        policy.select_policy(options=["clean_descriptors"]), vocabulary=None
+    )
+
+    assert (statement.preset, statement.options) == (None, ("clean_descriptors",))
+    assert statement.enabled and statement.claims_conformance
+    text = conformance_markdown.render_markdown(statement)
+    assert text.startswith(
+        "# DICOM PS3.15 conformance statement for a custom option set\n"
+    )
+    assert (
+        "Confidentiality Profile with Clean Descriptors Option (DCM 113105), for "
+        "each instance whose validated result satisfies them"
+    ) in " ".join(text.split())
