@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The policies the synthetic corpus is run under, and what each run must do.
+"""A policy run over the synthetic corpus, and what the run must do.
 
 The end-to-end tests (``test_deidentify_corpus_end_to_end.py``) and the
 independent validators' tests (``test_deidentify_dicom_validation_corpus.py``)
 each run the engine over the synthetic corpus once for each
-:class:`CorpusRun` in :data:`CORPUS_RUNS`, in a module-scoped fixture. A run
-is a policy, either a preset or a custom option set, with its inputs and what
-it must do: which instances it withholds and why, which planted markers it
-keeps, which CID 7050 codes its released instances claim, and the names its
-released structure set gives its ROIs.
+:class:`CorpusRun` in :data:`~pymedphys.tests.dicom.corpus_runs.CORPUS_RUNS`,
+in a module-scoped fixture. A run is a policy, either a preset or a custom
+option set, with its inputs and what it must do: which instances it
+withholds and why, which planted markers it keeps, which CID 7050 codes its
+released instances claim, and the names its released structure set gives
+its ROIs.
 
-Each option joins as one entry in :data:`CORPUS_RUNS` once the engine
-applies it, so that a pull request adds one corpus run to each module, and
-no fixture. What follows from the standard is derived here from PS3.15, not
+Each run is a module of its own in :mod:`pymedphys.tests.dicom.corpus_runs`,
+and each option joins as one new module once the engine applies it, so that
+a pull request adds one corpus run to each test module, no fixture, and no
+line that another option's pull request also changes. What follows from the standard is derived here from PS3.15, not
 from the engine's composition of the policy: the markers kept are those in
 the rows of Table E.1-1 that the selected options keep (action K), the codes
 are CID 7050's, and Longitudinal Temporal Information Modified follows
@@ -445,39 +447,9 @@ def mapped_planted_name(corpus: corpus_module.SyntheticCorpus) -> ReviewedNames:
     return reviewed
 
 
-def _decoders_installed() -> bool:
+def decoders_installed() -> bool:
+    """Whether a decoding plugin of every syntax of the compressed corpus is installed."""
     return all(
         pixel_decoding.decoder_available(syntax)
         for syntax in compressed.CORPUS_SYNTAXES
     )
-
-
-# The runs, one for each policy. An option's pull request adds its option set
-# here once the engine applies it, alone or with the options it needs.
-CORPUS_RUNS: tuple[CorpusRun, ...] = (
-    CorpusRun("basic", preset="basic"),
-    # The structure set's one ROI Name, a marker, is mapped by a reviewer's
-    # decision; the second ROI's name, added here, the automatic tier writes
-    # in the vocabulary's spelling.
-    CorpusRun(
-        CLEAN_DESCRIPTORS,
-        preset=CLEAN_DESCRIPTORS,
-        corpus=with_a_second_roi,
-        reviewed_roi_names=mapped_planted_name,
-        roi_names=(MAPPED_NAME, VOCABULARY_NAME),
-    ),
-    # Skipped where a decoding plugin of those syntaxes is not installed, as
-    # with the dicom extra alone, which installs neither GDCM nor
-    # pylibjpeg-openjpeg.
-    CorpusRun(
-        COMPRESSED,
-        preset="basic",
-        corpus=compressed.compressed_corpus,
-        marks=(
-            pytest.mark.skipif(
-                not _decoders_installed(),
-                reason="a decoding plugin of the compressed corpus is not installed",
-            ),
-        ),
-    ),
-)

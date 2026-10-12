@@ -46,7 +46,7 @@ At present the synthetic corpus needs five known differences, each listed with i
 
 ## Run it on the synthetic corpus
 
-The corpus tests build the synthetic corpus, run the engine over it once for each policy listed in `CORPUS_RUNS` in `lib/pymedphys/tests/dicom/_corpus_runs.py`, and compare each run. The list holds `basic`, `basic-clean-descriptors`, and `basic` with the corpus's images compressed, and each option joins it as its own run once the engine applies the option. They need Linux or macOS with dicom3tools on the `PATH`.
+The corpus tests build the synthetic corpus, run the engine over it once for each policy, each defined by a module of `lib/pymedphys/tests/dicom/corpus_runs`, and compare each run. They hold `basic`, `basic-clean-descriptors`, and `basic` with the corpus's images compressed, and each option joins them as a module of its own once the engine applies the option. They need Linux or macOS with dicom3tools on the `PATH`.
 
 1. Install Git and uv, as in the [MIDI-B benchmark guide](deidentification-midi-benchmark.md).
 2. Install dicom3tools. On Debian or Ubuntu, `sudo apt-get install dicom3tools`. Elsewhere, build it from a source snapshot on the [dicom3tools site](https://www.dclunie.com/dicom3tools/workinprogress/index.html), following its instructions, and put `dciodvfy` and `dcentvfy` on the `PATH`. A newer snapshot than CI's can give fewer findings, since its dictionary knows more attributes.

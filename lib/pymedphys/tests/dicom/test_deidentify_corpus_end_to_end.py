@@ -16,7 +16,7 @@
 
 The corpus (:mod:`~pymedphys._dicom.deidentify.synthetic_corpus`) plants a
 conspicuous marker in each attribute of Table E.1-1 that its IODs define.
-Each policy of :data:`~pymedphys.tests.dicom._corpus_runs.CORPUS_RUNS`, a
+Each policy of :data:`~pymedphys.tests.dicom.corpus_runs.CORPUS_RUNS`, a
 preset or a custom option set, runs once over it, with what that run must
 do. Under the Basic Profile every marker is removed or replaced, so no
 released file may hold any of them; an option keeps the markers in the rows
@@ -77,11 +77,10 @@ from pymedphys._dicom.deidentify.run_report import (
 )
 from pymedphys._dicom.deidentify.written_references import WrittenFindingKind
 
-from . import _corpus_runs as runs
+from . import _corpus_run as runs
 from . import _synthetic_compressed as compressed
-from ._corpus_runs import (
+from ._corpus_run import (
     CLEAN_DESCRIPTORS,
-    CORPUS_RUNS,
     KEY,
     MARKER_SIGNATURES,
     ROI_NAME,
@@ -91,6 +90,7 @@ from ._corpus_runs import (
     structure_set,
     with_a_second_roi,
 )
+from .corpus_runs import CORPUS_RUNS
 
 pytestmark = pytest.mark.pydicom
 
@@ -117,6 +117,7 @@ SHORTEST_FORM = 4
 DIGITS_ONLY = re.compile(r"[0-9.]+")
 DATE_DIGITS = 8
 CLEAN_DESCRIPTORS_CODE = ("113105", "DCM")
+PERFORMED_PROCEDURE_STEP_SEQUENCE = "(0008,1111)"
 
 
 def _unreviewed_corpus(corpus):
@@ -595,19 +596,26 @@ def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(policy_run):
         "Legacy Converted Enhanced PET Image",
     }
     steps = set()
+    # Under Retain UIDs, Table E.1-1 gives K to the sequence and to the
+    # Referenced SOP Instance UID in its item, so each instance keeps the
+    # source's sequence in place of the dummy value (PS3.15 E.3.9).
+    kept = PERFORMED_PROCEDURE_STEP_SEQUENCE in policy_run.spec.kept_rows()
 
     for position, data in released.items():
         file = corpus.files[position]
         source, written = _read(file.data), _read(data)
+        if kept:
+            assert written.get(procedure_step) == source.get(procedure_step)
         if file.manifest.iod not in multi_frame:
-            assert procedure_step not in written, file.name
+            assert kept or procedure_step not in written, file.name
             continue
         assert procedure_step in source
-        (item,) = written[procedure_step].value
-        assert item.ReferencedSOPClassUID == (
-            corpus_module.MODALITY_PERFORMED_PROCEDURE_STEP
-        )
-        steps.add(item.ReferencedSOPInstanceUID)
+        if not kept:
+            (item,) = written[procedure_step].value
+            assert item.ReferencedSOPClassUID == (
+                corpus_module.MODALITY_PERFORMED_PROCEDURE_STEP
+            )
+            steps.add(item.ReferencedSOPInstanceUID)
         if file.manifest.iod == "Enhanced MR Color Image":
             assert written.ICCProfile == dummy_values.icc_profile_for_d(
                 source.ICCProfile
@@ -622,7 +630,7 @@ def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(policy_run):
         if file.name not in policy_run.spec.withheld
     }
     assert {corpus.files[position].manifest.iod for position in released} >= expected
-    assert len(steps) == (1 if expected else 0)
+    assert len(steps) == (1 if expected and not kept else 0)
     assert corpus_module.PROCEDURE_STEP not in steps
 
 

@@ -20,7 +20,7 @@ instance's input and output, and every finding that an output introduces
 must be explained by the known differences
 (:mod:`~pymedphys._dicom.deidentify.dicom_validation`). The runs are those of
 the end-to-end tests, one for each policy of
-:data:`~pymedphys.tests.dicom._corpus_runs.CORPUS_RUNS`: among them
+:data:`~pymedphys.tests.dicom.corpus_runs.CORPUS_RUNS`: among them
 ``basic``, ``basic-clean-descriptors`` with a reviewed ROI name and one the
 automatic tier renames, and ``basic`` over the corpus with its images
 compressed, which is skipped where a decoding plugin is not installed.
@@ -64,8 +64,9 @@ from pymedphys._dicom.deidentify.dicom_validators import (
 )
 from pymedphys._dicom.deidentify.instance_transform import ReleaseGate
 
-from . import _corpus_runs as runs
-from ._corpus_runs import MARKER_SIGNATURES
+from . import _corpus_run as runs
+from ._corpus_run import MARKER_SIGNATURES
+from .corpus_runs import CORPUS_RUNS
 
 pytestmark = [pytest.mark.pydicom, pytest.mark.dicom_validators]
 
@@ -97,7 +98,7 @@ def fixture_published():
 @pytest.fixture(
     name="comparison",
     scope="module",
-    params=[corpus_run.param() for corpus_run in runs.CORPUS_RUNS],
+    params=[corpus_run.param() for corpus_run in CORPUS_RUNS],
 )
 def fixture_comparison(request, toolset, published):  # pylint: disable = unused-argument
     spec = request.param
