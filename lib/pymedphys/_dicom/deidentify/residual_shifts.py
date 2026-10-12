@@ -34,9 +34,10 @@ A finding is such a match only where all of these hold:
   value of the finding's source, pooled across the subject, which may be the
   same element of another instance, or, for a datetime, that value's date;
   and
-- that value of the element is a source value of the same element, pooled
+- every value of the element is a source value of the same element, pooled
   across the subject, moved back by whole weeks within the offset's range,
-  with the same time of day, as the engine writes it.
+  with the same time of day, as the engine writes it, so that no value of
+  the element that the search could have found is left unexplained.
 
 A finding anywhere else, or of any other source value, still withholds the
 file. Values are read from the written file's bytes, as text in ISO 646, and
@@ -97,16 +98,16 @@ def shifted_date(
     own = [value for value in sources.get(element, ()) if isinstance(value, str)]
     if written is None:
         return False
+    values = [value for value in written if value]
+    if not values or not all(any(_moved(s, value) for s in own) for value in values):
+        return False
     found = {
         form
         for value in sources.get(finding.source, ())
         if isinstance(value, str)
         for form in _whole_forms(value)
     }
-    return any(
-        bool(found & {value, value[:8]}) and any(_moved(s, value) for s in own)
-        for value in written
-    )
+    return any(found & {value, value[:8]} for value in values)
 
 
 def _shifts(tag: str) -> bool:

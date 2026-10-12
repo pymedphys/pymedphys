@@ -21,10 +21,12 @@ Date equals the earlier plan's source Study Date.
 
 import dataclasses
 import datetime
+import types
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import dates, run
+from pymedphys._dicom.deidentify import dates, residual_shifts, run
+from pymedphys._dicom.deidentify.file_layout import ElementPath, Region
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
     ReleaseGate,
@@ -40,6 +42,7 @@ from pymedphys._dicom.deidentify.release_gate import (
     release_condition,
 )
 from pymedphys._dicom.deidentify.residual_exemptions import Exemption
+from pymedphys._dicom.deidentify.residuals import ValueKind
 
 from . import _synthetic_references as synthetic
 
@@ -161,3 +164,30 @@ def test_a_date_not_moved_by_whole_weeks_in_range_is_not_exempt():
 
     assert condition.decision is Decision.RELEASE
     assert not condition.exempted
+
+
+@pytest.mark.parametrize(
+    "second_source, exempt",
+    [(_later("20200301"), True), ("20200301", False)],
+    ids=["both moved", "one written unmoved"],
+)
+def test_every_value_of_the_element_must_be_a_shifted_source_value(
+    second_source, exempt
+):
+    # An element of two values, the first of which equals another source's
+    # date: the finding is exempt only if the second is a moved source value
+    # too.
+    element = ElementPath((), STUDY_DATE)
+    source = ElementPath((), "(0010,0030)")
+    finding = types.SimpleNamespace(
+        kind=ValueKind.DATE,
+        source=source,
+        location=types.SimpleNamespace(region=Region.DATA_SET, element=element),
+    )
+    kept = types.SimpleNamespace(values=lambda path: (EARLIER, "20200301"))
+    sources = {element: (_later(), second_source), source: (EARLIER,)}
+
+    assert (
+        residual_shifts.shifted_date(finding, kept, sources, (MODIFIED_DATES,))
+        is exempt
+    )
