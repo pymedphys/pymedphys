@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Name the residual text findings that kept vocabulary or a vendor's label explains.
+"""Name the residual findings that kept vocabulary, labels, or options explain.
 
 The residual search finds the text of a removed value wherever it is in a
 written file (:mod:`~pymedphys._dicom.deidentify.residuals`), and the release
@@ -48,15 +48,28 @@ reason that such a finding is not a reason for review (D-032), or returns
   NULs, exactly one of the private creators that the pinned PS3.15 Table
   E.3.10-1 lists (:func:`vendor_creators`), wherever in the data set the
   finding is.
+- :attr:`Exemption.RETAINED_TEXT`: the finding is in a text attribute that
+  a selected option keeps, such as Station Name (0008,1010) under Retain
+  Device Identity, and its source is a private data element or an attribute
+  of that option, such as Station AE Title (0008,0055)
+  (:func:`~pymedphys._dicom.deidentify.option_kept.retained_text`).
+- :attr:`Exemption.RETAINED_VALUE`: a value of the element, a date, time,
+  or datetime that a selected option keeps, equals a whole value of the
+  finding's source
+  (:func:`~pymedphys._dicom.deidentify.option_kept.retained_value`). It also
+  applies to a finding of a date or datetime, which would otherwise
+  withhold the file (:func:`retained_date`).
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
 every one of its values is a term; and a source's values are pooled across
 the subject, so a private creator is exempt only if all of them are a
-vendor's. A finding in an element that holds a byte outside ISO 646's
-printable characters, a finding of any other kind, and a finding outside
-the data set are never exempt. Kept values are read from the written file's
-bytes, as text in ISO 646, never decoded by pydicom, and none is reported.
+vendor's, and a date only if each of them that could be in the element
+equals a whole kept value. A finding in an element that holds a byte
+outside ISO 646's printable characters, a finding of any other kind, and a
+finding outside the data set are never exempt. Kept values are read from the
+written file's bytes, as text in ISO 646, never decoded by pydicom, and none
+is reported.
 """
 
 from __future__ import annotations
@@ -70,6 +83,7 @@ from collections.abc import Mapping
 
 from .codes import load_coding_schemes
 from .file_layout import ElementPath, Region, read_file_layout
+from .option_kept import retained_text, retained_value
 from .residuals import Finding, SourceValue
 from .standard import load_table_e3_10_1
 from .uid_registry import RegistryTable, RegistryTableSpec, load_registry_table
@@ -100,6 +114,8 @@ class Exemption(enum.Enum):
     EQUIPMENT = "equipment"  # an equipment name, found from equipment or private
     SHIFTED_DATE = "shifted-date"  # equal to a date that Modified Dates shifted
     VENDOR_CREATOR = "vendor-creator"  # a private creator of Table E.3.10-1
+    RETAINED_TEXT = "retained-text"  # in text an option keeps, from its own or private
+    RETAINED_VALUE = "retained-value"  # equal to a date or time an option keeps
 
 
 @dataclasses.dataclass(frozen=True)
@@ -231,11 +247,11 @@ def vendor_creators() -> frozenset[str]:
 
 def source_values(
     collected: tuple[SourceValue, ...],
-) -> Mapping[ElementPath, tuple[str | bytes, ...]]:
+) -> Mapping[ElementPath, tuple[SourceValue, ...]]:
     """Return the collected values of each source, pooled across the subject."""
-    values: dict[ElementPath, list[str | bytes]] = {}
+    values: dict[ElementPath, list[SourceValue]] = {}
     for each in collected:
-        values.setdefault(each.source, []).append(each.value)
+        values.setdefault(each.source, []).append(each)
     return {source: tuple(each) for source, each in values.items()}
 
 
@@ -266,6 +282,19 @@ class KeptValues:
     def __repr__(self) -> str:
         return f"KeptValues(elements={len(self._extents)})"
 
+    def text(self, path: ElementPath) -> str | None:
+        """Return an element's whole value, with its separators, or ``None``.
+
+        ``None`` as for :meth:`values`; trailing NULs are left out.
+        """
+        extent = self._extents.get(path)
+        if extent is None or extent.items is not None:
+            return None
+        raw = bytes(self._written[extent.value_start : extent.end]).rstrip(b"\x00")
+        if any(byte < 0x20 or byte > 0x7E for byte in raw):
+            return None
+        return raw.decode("ascii")
+
     def values(self, path: ElementPath) -> tuple[str, ...] | None:
         """Return an element's values without padding, or ``None``.
 
@@ -286,7 +315,8 @@ class KeptValues:
 def exemption(
     finding: Finding,
     kept: KeptValues,
-    sources: Mapping[ElementPath, tuple[str | bytes, ...]],
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+    options: tuple[str, ...] = (),
 ) -> Exemption | None:
     """Return why a text finding inside the data set is not a reason for review.
 
@@ -298,6 +328,8 @@ def exemption(
         The written file's values.
     sources : mapping
         The collected values of each source (:func:`source_values`).
+    options : tuple of str, optional
+        The run's options. With none, no option explains a finding.
 
     Returns
     -------
@@ -322,11 +354,55 @@ def exemption(
         return Exemption.EQUIPMENT
     if _vendor_creator(finding.source, sources):
         return Exemption.VENDOR_CREATOR
-    return None
+    return _retained(finding, kept, sources, options)
+
+
+def _retained(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+    options: tuple[str, ...],
+) -> Exemption | None:
+    """Return whether a value that an option keeps explains a text finding."""
+    element = finding.location.element
+    if element is not None and retained_text(element.tag, finding.source, options):
+        return Exemption.RETAINED_TEXT
+    return retained_date(finding, kept, sources, options)
+
+
+def retained_date(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+    options: tuple[str, ...],
+) -> Exemption | None:
+    """Return whether a date or time that an option keeps explains a finding.
+
+    For a finding inside the data set, of text, a date, or a datetime, as
+    :attr:`Exemption.RETAINED_VALUE` describes; ``None`` otherwise.
+    """
+    element = finding.location.element
+    if finding.location.region is not Region.DATA_SET or element is None:
+        return None
+    values, text = kept.values(element), kept.text(element)
+    if (
+        values is None
+        or text is None
+        or not retained_value(
+            element,
+            values,
+            text,
+            finding.source,
+            sources.get(finding.source, ()),
+            options,
+        )
+    ):
+        return None
+    return Exemption.RETAINED_VALUE
 
 
 def _vendor_creator(
-    source: ElementPath, sources: Mapping[ElementPath, tuple[str | bytes, ...]]
+    source: ElementPath, sources: Mapping[ElementPath, tuple[SourceValue, ...]]
 ) -> bool:
     """Return whether every value of a private creator source is a vendor's.
 
@@ -338,8 +414,8 @@ def _vendor_creator(
         return False
     values = sources.get(source, ())
     return bool(values) and all(
-        isinstance(value, str) and value.rstrip(" \x00") in vendor_creators()
-        for value in values
+        isinstance(each.value, str) and each.value.rstrip(" \x00") in vendor_creators()
+        for each in values
     )
 
 

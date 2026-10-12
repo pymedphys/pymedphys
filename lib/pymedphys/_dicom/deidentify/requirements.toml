@@ -559,15 +559,17 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about the identity of the device in the Attributes shall be retained, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-003", "D-007", "D-022", "D-034"]
+decisions = ["D-003", "D-007", "D-022", "D-034", "D-042"]
 implementation = [
   "_dicom/deidentify/ae_titles.py",
   "_dicom/deidentify/cleaners.py",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/option_kept.py",
   "_dicom/deidentify/policy.py",
 ]
 note = '''
 The attributes that the Option gives K are kept, and the eleven AE titles that it gives C are each replaced by a keyed token, the same for the same application entity throughout a run (D-034).
+A removed AE title or private value found in a text attribute that the Option keeps, such as an AE title equal to the Station Name, does not send the file to review (D-042).
 `tps-import` also selects Modified Dates, which conflicts with this Option for device dates, so its output claims neither (D-007).
 '''
 
@@ -683,10 +685,11 @@ For public sharing, remove or replace all known direct identifiers and relevant 
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027", "D-032"]
+decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027", "D-032", "D-042"]
 implementation = [
   "_dicom/deidentify/file_layout.py",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/option_kept.py",
   "_dicom/deidentify/release_gate.py",
   "_dicom/deidentify/residual_exemptions.py",
   "_dicom/deidentify/residuals.py",
@@ -698,6 +701,7 @@ A source value, or a form of one, equal to a constant that the engine writes is 
 The release gate runs that search itself, for exactly the values collected across the file's subject, and checks the collection against the values the walker planned to collect.
 It withholds any output file that still holds a source person name, UID, date, datetime, or direct identifier, or a source value outside its data set, or whose collection of person names, UIDs, dates, datetimes, direct identifiers, or sequences was incomplete, and sends other text findings and other incomplete collection, including of private values, to confidential review; a search that finds nothing does not on its own release a file (D-027).
 A text finding is not sent to review where it is in a kept CS value made only of its attribute's terms in the pinned PS3.3 (for Body Part Examined, PS3.16 Annex L), in a code item of a scheme that PS3.16 Table 8-1 lists, or in Manufacturer, Manufacturer's Model Name, or Software Versions with a private or equipment source, or where its source is a private creator that PS3.15 Table E.3.10-1 lists, and the QC pack still lists it (D-032).
+Nor is a finding inside a value that a selected option keeps, where its source is a private data element or an attribute of that option, or where it equals a whole kept date or time, and in that case a date finding does not withhold the file either (D-042).
 `public-release` retains indirect identifiers only after its statistical assessment.
 A deterministic synthetic collection, with an instance of each IOD of the first supported release, plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released, and the Enhanced PET Image's Radiopharmaceutical Start DateTime, whose removal sequesters it, in none.
 The run's instance transform removes and replaces identifiers in each data set and gives the gate its coverage, including each value read as ISO 8859-1, and the run acts on the gate's decision.
@@ -1066,9 +1070,10 @@ implementation = [
 note = '''
 D-016 provides the confidential QC pack, to which the release gate sends the residual search's text findings inside the data set, and files whose collection for the search was incomplete for other text or for private values or values to which the pinned dictionary gives no VR (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation.
 For the first release, the design assigns to whoever releases the data the confirmation that utility is preserved and that the residual risk is acceptable (decided 6 October 2026).
-The QC pack is built and written: each instance by run position and source path, with its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); and what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009).
+The QC pack is built and written: each instance by run position and source path, with its source file's SHA-256 and its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); and what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009).
 It is written only to a designated, owner-only location outside the source, release, and staging directories, and is marked so that no release includes it (D-016).
 A reviewer attests to a pack once, stating whether they reviewed every distinct retained string, every series, and every instance in high-risk categories, and an outcome of attested needs all three; the attestation is bound to the pack by its digest, and gives the release report only the pack's opaque reference and the outcome (D-016, D-017).
+The pack lists each series of released or held instances, and the attestation may give any of them, by its first run position, a face verdict, absent or present, from its previews; the pack's source digests bind the verdict to the files the reviewer saw, and the release report does not record it (D-016, D-017).
 Each run writes its pack before it publishes the release, to a QC destination that the caller must name and that is checked before anything is created; a pack that cannot be written publishes nothing, and the pack of a release that cannot be published is removed, or named if it cannot be.
 The run's instance transform and release gate adapter give it this material.
 The pack lists every input from its outcome, each sequestered one by the random label that the run gives it, and the transform's and gate's material by run position: each residual search with its excerpts, each source value they left out of the search with its reason, what descriptor cleaning wrote for each ROI Name, and each retained string with its places.

@@ -419,7 +419,9 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         if reporter is not None:
             outcomes = _admitted(outcomes, reporter)
         outcomes = _labelled(outcomes)
-        pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
+        pack = run_qc.qc_pack_of(
+            discovery.paths, outcomes, material, digests=first.digests
+        )
         # Built before the pack is written, so a failure leaves no QC material.
         files = run_report.documents(reporter, outcomes, material, pack.reference)
         staged_release = staging / _STAGED_RELEASE
