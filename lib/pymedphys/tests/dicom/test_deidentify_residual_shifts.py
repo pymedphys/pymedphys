@@ -126,6 +126,27 @@ def test_a_shifted_datetime_whose_date_equals_another_source_date_is_released():
     assert ("(0100,0420)", Exemption.SHIFTED_DATE) in whys
 
 
+def test_a_multi_valued_shifted_datetime_whose_date_equals_a_source_date_is_released():
+    # Referenced DateTime may hold several values, which are collected as one
+    # field; the first value of the later plan's shifts to the earlier
+    # plan's Study Date at noon, and the second shifts too.
+    earlier, later = _transformed(
+        _plan(EARLIER),
+        _plan(
+            _later(),
+            ReferencedDateTime=[_later() + "120000", _later("20200301") + "130000"],
+        ),
+    )
+
+    subject = (earlier.evidence, later.evidence)
+    decision = ReleaseGate()(later.data, later.evidence, subject)
+    condition = _condition(later, earlier)
+
+    assert isinstance(decision, run.Release), decision
+    whys = {(f.location.element.tag, why) for f, why in condition.exempted}
+    assert ("(0040,A13A)", Exemption.SHIFTED_DATE) in whys
+
+
 def test_the_same_source_date_in_an_element_that_was_not_shifted_withholds():
     # The earlier date also stands in the later plan's kept Manufacturer's
     # Model Name, which the engine did not write.

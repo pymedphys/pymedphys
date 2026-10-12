@@ -95,7 +95,13 @@ def shifted_date(
     ):
         return False
     written = kept.values(element)
-    own = [value for value in sources.get(element, ()) if isinstance(value, str)]
+    # A multi-valued element's source values are collected as one field.
+    own = [
+        value
+        for field in sources.get(element, ())
+        if isinstance(field, str)
+        for value in field.split("\\")
+    ]
     if written is None:
         return False
     values = [value for value in written if value]
