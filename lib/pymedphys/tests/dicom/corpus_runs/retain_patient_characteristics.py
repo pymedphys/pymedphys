@@ -87,8 +87,25 @@ def with_empty_free_text(
     )
 
 
+# Patient's Sex, Age, Size, Weight, Smoking Status, Pregnancy Status, and Sex
+# Neutered are Patient or Study attributes that the Option keeps, so each
+# instance keeps its own planted value, and they differ among one patient's
+# instances in the outputs as in the inputs.
+KEPT_DIFFERENCES = frozenset(
+    {
+        "(0010,0040)",
+        "(0010,1010)",
+        "(0010,1020)",
+        "(0010,1030)",
+        "(0010,21A0)",
+        "(0010,21C0)",
+        "(0010,2203)",
+    }
+)
+
 RUN = CorpusRun(
     "retain-patient-characteristics",
     options=("retain_patient_characteristics",),
     corpus=with_empty_free_text,
+    inconsistent=KEPT_DIFFERENCES,
 )
