@@ -54,8 +54,11 @@ collected under, and from the search only for an attribute to which the
 dictionary gives none. The file goes to QC review (:attr:`~Decision.QC_REVIEW`)
 when collection is incomplete for any other value, including a private
 value or one to which the dictionary gives no VR, or the search finds other
-text inside the data set. Otherwise it may be released
-(:attr:`~Decision.RELEASE`). There is no setting that changes this.
+text inside the data set, unless a kept standard term, code of a standard
+scheme, or equipment name, or a vendor's private creator, explains it
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.exemption`). Otherwise
+it may be released (:attr:`~Decision.RELEASE`). There is no setting that
+changes this.
 
 Reasons name an attribute path, a code, and for a finding its place, never a
 value, and nothing is logged or warned.
@@ -86,6 +89,7 @@ import functools
 import re
 
 from .file_layout import ElementPath, Location, Region
+from .residual_exemptions import Exemption, KeptValues, exemption, source_values
 from .residuals import (
     Finding,
     NotSearched,
@@ -464,6 +468,9 @@ class ReleaseCondition:
     search : ResidualSearch
         The search of the written file for the collected values, for the
         confidential QC material.
+    exempted : tuple of (Finding, Exemption)
+        The text findings inside the data set that are not reasons, each
+        with why, in the search's order.
     """
 
     decision: Decision
@@ -471,6 +478,7 @@ class ReleaseCondition:
     reasons: tuple[ReleaseReason, ...]
     exclusions: tuple[NotSearched, ...]
     search: ResidualSearch
+    exempted: tuple[tuple[Finding, Exemption], ...] = ()
 
     def __repr__(self) -> str:
         return (
@@ -522,14 +530,30 @@ def release_condition(
     ]
     if not search.readable:
         reasons.append(ReleaseReason(Decision.WITHHOLD, ReasonCode.UNREADABLE_FILE))
-    reasons += (_finding_reason(each, identifiers) for each in search.findings)
+    exempted = []
+    kept: KeptValues | None = None  # read only for a text finding
+    sources = source_values(coverage.collected)
+    for each in search.findings:
+        reason = _finding_reason(each, identifiers)
+        if reason.code is ReasonCode.RESIDUAL_TEXT:
+            kept = kept or KeptValues(written)
+            why = exemption(each, kept, sources)
+            if why is not None:
+                exempted.append((each, why))
+                continue
+        reasons.append(reason)
     decision = max(
         (reason.decision for reason in reasons),
         key=_SEVERITY.__getitem__,
         default=Decision.RELEASE,
     )
     return ReleaseCondition(
-        decision, coverage.outcome, tuple(reasons), search.not_searched, search
+        decision,
+        coverage.outcome,
+        tuple(reasons),
+        search.not_searched,
+        search,
+        tuple(exempted),
     )
 
 

@@ -1,0 +1,1056 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.16 Annex L Body Part Examined Defined Terms",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.16 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "chtml/part16/chapter_L.html",
+   "sha256": "961864cd5810868701227bfb751eb4085b40c8fe2d6a9057f92e193f6d6c85a4"
+  }
+ ],
+ "content_sha256": "1a3724631a834467387cc0239c79402f046f7aa9b9760fe5828cfd90e2e99df0",
+ "rows": [
+  {
+   "term": "3RDVENTRICLE"
+  },
+  {
+   "term": "4THVENTRICLE"
+  },
+  {
+   "term": "ABDOMEN"
+  },
+  {
+   "term": "ABDOMENPELVIS"
+  },
+  {
+   "term": "ABDOMINALAORTA"
+  },
+  {
+   "term": "ACA"
+  },
+  {
+   "term": "ACJOINT"
+  },
+  {
+   "term": "ADRENAL"
+  },
+  {
+   "term": "AMNIOTICFLUID"
+  },
+  {
+   "term": "ANKLE"
+  },
+  {
+   "term": "ANTCARDIACV"
+  },
+  {
+   "term": "ANTCOMMA"
+  },
+  {
+   "term": "ANTECUBITALV"
+  },
+  {
+   "term": "ANTSPINALA"
+  },
+  {
+   "term": "ANTTIBIALA"
+  },
+  {
+   "term": "ANUS"
+  },
+  {
+   "term": "ANUSRECTUMSIGMD"
+  },
+  {
+   "term": "AORTA"
+  },
+  {
+   "term": "AORTICARCH"
+  },
+  {
+   "term": "APPENDIX"
+  },
+  {
+   "term": "ARM"
+  },
+  {
+   "term": "ARTERY"
+  },
+  {
+   "term": "ASCAORTA"
+  },
+  {
+   "term": "ASCENDINGCOLON"
+  },
+  {
+   "term": "ATLANTOAXIAL"
+  },
+  {
+   "term": "ATLANTOOCCIPITAL"
+  },
+  {
+   "term": "AXILLA"
+  },
+  {
+   "term": "AXILLARYA"
+  },
+  {
+   "term": "AXILLARYV"
+  },
+  {
+   "term": "AZYGOSVEIN"
+  },
+  {
+   "term": "BACK"
+  },
+  {
+   "term": "BASILARA"
+  },
+  {
+   "term": "BILEDUCT"
+  },
+  {
+   "term": "BILIARYTRACT"
+  },
+  {
+   "term": "BLADDER"
+  },
+  {
+   "term": "BLADDERURETHRA"
+  },
+  {
+   "term": "BRACHIALA"
+  },
+  {
+   "term": "BRACHIALV"
+  },
+  {
+   "term": "BRAIN"
+  },
+  {
+   "term": "BREAST"
+  },
+  {
+   "term": "BRONCHUS"
+  },
+  {
+   "term": "BULB"
+  },
+  {
+   "term": "BUTTOCK"
+  },
+  {
+   "term": "CALCANEUS"
+  },
+  {
+   "term": "CALF"
+  },
+  {
+   "term": "CARDIOVASCSYS"
+  },
+  {
+   "term": "CAROTID"
+  },
+  {
+   "term": "CARPUS"
+  },
+  {
+   "term": "CCA"
+  },
+  {
+   "term": "CELIACA"
+  },
+  {
+   "term": "CEPHALICV"
+  },
+  {
+   "term": "CEREBELLUM"
+  },
+  {
+   "term": "CEREBHEMISPHERE"
+  },
+  {
+   "term": "CEREBRALA"
+  },
+  {
+   "term": "CERVIX"
+  },
+  {
+   "term": "CFA"
+  },
+  {
+   "term": "CFV"
+  },
+  {
+   "term": "CHEEK"
+  },
+  {
+   "term": "CHEST"
+  },
+  {
+   "term": "CHESTABDOMEN"
+  },
+  {
+   "term": "CHESTABDPELVIS"
+  },
+  {
+   "term": "CHOROIDPLEXUS"
+  },
+  {
+   "term": "CIRCLEOFWILLIS"
+  },
+  {
+   "term": "CLAVICLE"
+  },
+  {
+   "term": "COCCYX"
+  },
+  {
+   "term": "COLON"
+  },
+  {
+   "term": "COMILIACA"
+  },
+  {
+   "term": "COMILIACV"
+  },
+  {
+   "term": "COMMONBILEDUCT"
+  },
+  {
+   "term": "CORNEA"
+  },
+  {
+   "term": "CORONARYARTERY"
+  },
+  {
+   "term": "CORONARYSINUS"
+  },
+  {
+   "term": "CSPINE"
+  },
+  {
+   "term": "CTSPINE"
+  },
+  {
+   "term": "CULDESAC"
+  },
+  {
+   "term": "DESCAORTA"
+  },
+  {
+   "term": "DESCENDINGCOLON"
+  },
+  {
+   "term": "DIGIT"
+  },
+  {
+   "term": "DISTALPHALANX"
+  },
+  {
+   "term": "DUODENUM"
+  },
+  {
+   "term": "EAC"
+  },
+  {
+   "term": "EAR"
+  },
+  {
+   "term": "ECA"
+  },
+  {
+   "term": "ELBOW"
+  },
+  {
+   "term": "ENDOARTERIAL"
+  },
+  {
+   "term": "ENDOCARDIAC"
+  },
+  {
+   "term": "ENDOESOPHAGEAL"
+  },
+  {
+   "term": "ENDOMETRIUM"
+  },
+  {
+   "term": "ENDONASAL"
+  },
+  {
+   "term": "ENDONASOPHARYNYX"
+  },
+  {
+   "term": "ENDORECTAL"
+  },
+  {
+   "term": "ENDORENAL"
+  },
+  {
+   "term": "ENDOURETERIC"
+  },
+  {
+   "term": "ENDOURETHRAL"
+  },
+  {
+   "term": "ENDOVAGINAL"
+  },
+  {
+   "term": "ENDOVASCULAR"
+  },
+  {
+   "term": "ENDOVENOUS"
+  },
+  {
+   "term": "ENDOVESICAL"
+  },
+  {
+   "term": "EPIDIDYMIS"
+  },
+  {
+   "term": "EPIGASTRIC"
+  },
+  {
+   "term": "ESOPHAGUS"
+  },
+  {
+   "term": "EXTILIACA"
+  },
+  {
+   "term": "EXTILIACV"
+  },
+  {
+   "term": "EXTJUGV"
+  },
+  {
+   "term": "EXTREMITY"
+  },
+  {
+   "term": "EYE"
+  },
+  {
+   "term": "EYELID"
+  },
+  {
+   "term": "FACE"
+  },
+  {
+   "term": "FACIALA"
+  },
+  {
+   "term": "FEMORALA"
+  },
+  {
+   "term": "FEMORALV"
+  },
+  {
+   "term": "FEMUR"
+  },
+  {
+   "term": "FETALARM"
+  },
+  {
+   "term": "FETALDIGIT"
+  },
+  {
+   "term": "FETALHEART"
+  },
+  {
+   "term": "FETALLEG"
+  },
+  {
+   "term": "FETALPOLE"
+  },
+  {
+   "term": "FIBULA"
+  },
+  {
+   "term": "FINGER"
+  },
+  {
+   "term": "FLANK"
+  },
+  {
+   "term": "FONTANEL"
+  },
+  {
+   "term": "FOOT"
+  },
+  {
+   "term": "FOREARM"
+  },
+  {
+   "term": "FOREFETLOCK"
+  },
+  {
+   "term": "FOREFOOT"
+  },
+  {
+   "term": "FORENAVICULAR"
+  },
+  {
+   "term": "FOREPASTERN"
+  },
+  {
+   "term": "FRONTALSINUS"
+  },
+  {
+   "term": "GALLBLADDER"
+  },
+  {
+   "term": "GASTRICV"
+  },
+  {
+   "term": "GENICULARA"
+  },
+  {
+   "term": "GESTSAC"
+  },
+  {
+   "term": "GLUTEAL"
+  },
+  {
+   "term": "GSV"
+  },
+  {
+   "term": "HAND"
+  },
+  {
+   "term": "HEAD"
+  },
+  {
+   "term": "HEADNECK"
+  },
+  {
+   "term": "HEART"
+  },
+  {
+   "term": "HEPATICA"
+  },
+  {
+   "term": "HEPATICV"
+  },
+  {
+   "term": "HINDFETLOCK"
+  },
+  {
+   "term": "HINDFOOT"
+  },
+  {
+   "term": "HINDNAVICULAR"
+  },
+  {
+   "term": "HINDPASTERN"
+  },
+  {
+   "term": "HIP"
+  },
+  {
+   "term": "HUMERUS"
+  },
+  {
+   "term": "HYPOGASTRIC"
+  },
+  {
+   "term": "HYPOPHARYNX"
+  },
+  {
+   "term": "IAC"
+  },
+  {
+   "term": "ICA"
+  },
+  {
+   "term": "ILEUM"
+  },
+  {
+   "term": "ILIACA"
+  },
+  {
+   "term": "ILIACV"
+  },
+  {
+   "term": "ILIUM"
+  },
+  {
+   "term": "INFMESA"
+  },
+  {
+   "term": "INFVENACAVA"
+  },
+  {
+   "term": "INGUINAL"
+  },
+  {
+   "term": "INNOMINATEA"
+  },
+  {
+   "term": "INNOMINATEV"
+  },
+  {
+   "term": "INTILIACA"
+  },
+  {
+   "term": "INTJUGULARV"
+  },
+  {
+   "term": "INTMAMMARYA"
+  },
+  {
+   "term": "INTRACRANIAL"
+  },
+  {
+   "term": "JAW"
+  },
+  {
+   "term": "JEJUNUM"
+  },
+  {
+   "term": "JOINT"
+  },
+  {
+   "term": "KIDNEY"
+  },
+  {
+   "term": "KNEE"
+  },
+  {
+   "term": "LACRIMALA"
+  },
+  {
+   "term": "LARGEINTESTINE"
+  },
+  {
+   "term": "LARYNX"
+  },
+  {
+   "term": "LATRIUM"
+  },
+  {
+   "term": "LATVENTRICLE"
+  },
+  {
+   "term": "LEGS"
+  },
+  {
+   "term": "LFEMORALA"
+  },
+  {
+   "term": "LHEPATICV"
+  },
+  {
+   "term": "LHYPOCHONDRIAC"
+  },
+  {
+   "term": "LINGUALA"
+  },
+  {
+   "term": "LINGUINAL"
+  },
+  {
+   "term": "LIVER"
+  },
+  {
+   "term": "LLQ"
+  },
+  {
+   "term": "LLUMBAR"
+  },
+  {
+   "term": "LOWERLEG"
+  },
+  {
+   "term": "LOWERLIMB"
+  },
+  {
+   "term": "LOWERTRUNK"
+  },
+  {
+   "term": "LPORTALV"
+  },
+  {
+   "term": "LPULMONARYA"
+  },
+  {
+   "term": "LSPINE"
+  },
+  {
+   "term": "LSSPINE"
+  },
+  {
+   "term": "LSUPPULMONARYV"
+  },
+  {
+   "term": "LUMBAR"
+  },
+  {
+   "term": "LUMBARA"
+  },
+  {
+   "term": "LUMEN"
+  },
+  {
+   "term": "LUNG"
+  },
+  {
+   "term": "LUQ"
+  },
+  {
+   "term": "LVENTRICLE"
+  },
+  {
+   "term": "MANDIBLE"
+  },
+  {
+   "term": "MASTOID"
+  },
+  {
+   "term": "MAXILLA"
+  },
+  {
+   "term": "MCA"
+  },
+  {
+   "term": "MEDIASTINUM"
+  },
+  {
+   "term": "MESENTRICA"
+  },
+  {
+   "term": "MESENTRICV"
+  },
+  {
+   "term": "METACARPUS"
+  },
+  {
+   "term": "METATARSUS"
+  },
+  {
+   "term": "MIDHEPATICV"
+  },
+  {
+   "term": "MORISONSPOUCH"
+  },
+  {
+   "term": "MOUTH"
+  },
+  {
+   "term": "NASOPHARYNX"
+  },
+  {
+   "term": "NECK"
+  },
+  {
+   "term": "NECKCHEST"
+  },
+  {
+   "term": "NECKCHESTABDOMEN"
+  },
+  {
+   "term": "NECKCHESTABDPELV"
+  },
+  {
+   "term": "NOSE"
+  },
+  {
+   "term": "OCCIPTALV"
+  },
+  {
+   "term": "OCCPITALA"
+  },
+  {
+   "term": "OPHTHALMICA"
+  },
+  {
+   "term": "OPTICCANAL"
+  },
+  {
+   "term": "ORBIT"
+  },
+  {
+   "term": "OVARY"
+  },
+  {
+   "term": "PANCBILEDUCT"
+  },
+  {
+   "term": "PANCREAS"
+  },
+  {
+   "term": "PANCREATICDUCT"
+  },
+  {
+   "term": "PARASTERNAL"
+  },
+  {
+   "term": "PARATHYROID"
+  },
+  {
+   "term": "PAROTID"
+  },
+  {
+   "term": "PATELLA"
+  },
+  {
+   "term": "PCA"
+  },
+  {
+   "term": "PELVIS"
+  },
+  {
+   "term": "PELVISLOWEXTREMT"
+  },
+  {
+   "term": "PENILEA"
+  },
+  {
+   "term": "PENIS"
+  },
+  {
+   "term": "PERINEUM"
+  },
+  {
+   "term": "PERONEALA"
+  },
+  {
+   "term": "PHANTOM"
+  },
+  {
+   "term": "PHARYNX"
+  },
+  {
+   "term": "PHARYNXLARYNX"
+  },
+  {
+   "term": "PLACENTA"
+  },
+  {
+   "term": "POPLITEALA"
+  },
+  {
+   "term": "POPLITEALFOSSA"
+  },
+  {
+   "term": "POPLITEALV"
+  },
+  {
+   "term": "PORTALV"
+  },
+  {
+   "term": "POSCOMMA"
+  },
+  {
+   "term": "POSTIBIALA"
+  },
+  {
+   "term": "PROFFEMA"
+  },
+  {
+   "term": "PROFFEMV"
+  },
+  {
+   "term": "PROSTATE"
+  },
+  {
+   "term": "PULMONARYA"
+  },
+  {
+   "term": "PULMONARYV"
+  },
+  {
+   "term": "RADIALA"
+  },
+  {
+   "term": "RADIUS"
+  },
+  {
+   "term": "RADIUSULNA"
+  },
+  {
+   "term": "RATRIUM"
+  },
+  {
+   "term": "RECTUM"
+  },
+  {
+   "term": "RENALA"
+  },
+  {
+   "term": "RENALV"
+  },
+  {
+   "term": "RETROPERITONEUM"
+  },
+  {
+   "term": "RFEMORALA"
+  },
+  {
+   "term": "RHEPATICV"
+  },
+  {
+   "term": "RHYPOCHONDRIAC"
+  },
+  {
+   "term": "RIB"
+  },
+  {
+   "term": "RINGUINAL"
+  },
+  {
+   "term": "RLQ"
+  },
+  {
+   "term": "RLUMBAR"
+  },
+  {
+   "term": "RPORTALV"
+  },
+  {
+   "term": "RPULMONARYA"
+  },
+  {
+   "term": "RSUPPULMONARYV"
+  },
+  {
+   "term": "RUQ"
+  },
+  {
+   "term": "RVENTRICLE"
+  },
+  {
+   "term": "SAPHENOUSV"
+  },
+  {
+   "term": "SCALP"
+  },
+  {
+   "term": "SCAPULA"
+  },
+  {
+   "term": "SCJOINT"
+  },
+  {
+   "term": "SCLERA"
+  },
+  {
+   "term": "SCROTUM"
+  },
+  {
+   "term": "SELLA"
+  },
+  {
+   "term": "SEMVESICLE"
+  },
+  {
+   "term": "SESAMOID"
+  },
+  {
+   "term": "SFA"
+  },
+  {
+   "term": "SFJ"
+  },
+  {
+   "term": "SFV"
+  },
+  {
+   "term": "SHOULDER"
+  },
+  {
+   "term": "SIGMOID"
+  },
+  {
+   "term": "SIJOINT"
+  },
+  {
+   "term": "SKULL"
+  },
+  {
+   "term": "SMA"
+  },
+  {
+   "term": "SMALLINTESTINE"
+  },
+  {
+   "term": "SPINALCORD"
+  },
+  {
+   "term": "SPINE"
+  },
+  {
+   "term": "SPLEEN"
+  },
+  {
+   "term": "SPLENICA"
+  },
+  {
+   "term": "SPLENICV"
+  },
+  {
+   "term": "SSPINE"
+  },
+  {
+   "term": "STERNUM"
+  },
+  {
+   "term": "STIFLE"
+  },
+  {
+   "term": "STOMACH"
+  },
+  {
+   "term": "SUBCLAVIANA"
+  },
+  {
+   "term": "SUBCLAVIANV"
+  },
+  {
+   "term": "SUBCOSTAL"
+  },
+  {
+   "term": "SUBMANDIBULAR"
+  },
+  {
+   "term": "SUPRACLAVICULAR"
+  },
+  {
+   "term": "SUPRAPUBIC"
+  },
+  {
+   "term": "SUPTHYROIDA"
+  },
+  {
+   "term": "SVC"
+  },
+  {
+   "term": "TAIL"
+  },
+  {
+   "term": "TARSUS"
+  },
+  {
+   "term": "TESTIS"
+  },
+  {
+   "term": "THALAMUS"
+  },
+  {
+   "term": "THIGH"
+  },
+  {
+   "term": "THORACICAORTA"
+  },
+  {
+   "term": "THORAX"
+  },
+  {
+   "term": "THUMB"
+  },
+  {
+   "term": "THYMUS"
+  },
+  {
+   "term": "THYROID"
+  },
+  {
+   "term": "TIBIA"
+  },
+  {
+   "term": "TIBIAFIBULA"
+  },
+  {
+   "term": "TLSPINE"
+  },
+  {
+   "term": "TMJ"
+  },
+  {
+   "term": "TOE"
+  },
+  {
+   "term": "TONGUE"
+  },
+  {
+   "term": "TRACHEA"
+  },
+  {
+   "term": "TRACHEABRONCHUS"
+  },
+  {
+   "term": "TRANSVERSECOLON"
+  },
+  {
+   "term": "TRUNK"
+  },
+  {
+   "term": "TSPINE"
+  },
+  {
+   "term": "UGITRACT"
+  },
+  {
+   "term": "ULNA"
+  },
+  {
+   "term": "ULNARA"
+  },
+  {
+   "term": "UMBILICAL"
+  },
+  {
+   "term": "UMBILICALA"
+  },
+  {
+   "term": "UMBILICALV"
+  },
+  {
+   "term": "UPPERARM"
+  },
+  {
+   "term": "UPPERLIMB"
+  },
+  {
+   "term": "UPPERTRUNK"
+  },
+  {
+   "term": "UPRURINARYTRACT"
+  },
+  {
+   "term": "URETER"
+  },
+  {
+   "term": "URETHRA"
+  },
+  {
+   "term": "URINARYTRACT"
+  },
+  {
+   "term": "UTERUS"
+  },
+  {
+   "term": "VAGINA"
+  },
+  {
+   "term": "VEIN"
+  },
+  {
+   "term": "VERTEBRALA"
+  },
+  {
+   "term": "VULVA"
+  },
+  {
+   "term": "WHOLEBODY"
+  },
+  {
+   "term": "WING"
+  },
+  {
+   "term": "WRIST"
+  },
+  {
+   "term": "ZYGOMA"
+  }
+ ]
+}
