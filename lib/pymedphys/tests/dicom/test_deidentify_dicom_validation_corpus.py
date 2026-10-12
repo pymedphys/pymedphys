@@ -156,14 +156,23 @@ def test_every_validator_ran_over_every_released_instance(comparison):
     assert statuses == {BOTH_VALIDATED: comparison.pairs - failed}
 
 
-def test_each_patients_outputs_are_consistent(comparison):
+def test_each_patients_outputs_are_consistent(comparison, request):
     # The corpus plants a different marker in each instance's patient and
-    # study attributes, which the profile removes or replaces alike.
+    # study attributes, which the profile removes or replaces alike. A row
+    # that a run keeps keeps each instance's own marker, so the outputs may
+    # then differ where the inputs do, but no more often.
+    spec = request.node.callspec.params["comparison"]
     tally = comparison.tallies[DCENTVFY]
+    inputs, outputs = tally["input_findings"], tally["output_findings"]
 
     assert tally["statuses"] == {BOTH_VALIDATED: 1}
-    assert tally["input_findings"].get("error", 0) > 0
-    assert tally["output_findings"] == {}
+    assert inputs.get("error", 0) > 0
+    if spec.kept_rows():
+        assert all(
+            count <= inputs.get(severity, 0) for severity, count in outputs.items()
+        )
+    else:
+        assert outputs == {}
 
 
 def test_the_results_hold_no_marker(comparison):
