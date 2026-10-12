@@ -15,7 +15,9 @@
 """Image previews for the confidential QC pack's human review (D-016, D-017).
 
 D-017 asks a reviewer to look at every series, by maximum intensity
-projection or cine strip, and at every instance in high-risk categories.
+projection or cine strip, and at every instance in high-risk categories,
+and blocks release on facial information that could be reconstructed unless
+a risk assessment is recorded.
 :func:`previews_of` makes those images, as PNG files, from the files that a
 run wrote, since the engine never changes pixel data:
 
@@ -32,6 +34,10 @@ run wrote, since the engine never changes pixel data:
   strip only. It is projected along the anterior-posterior axis and shown
   with the patient's head at the top and right on the viewer's left, sampled
   to square pixels by nearest neighbour, at most :data:`MIP_PIXELS` a side;
+- a sheet of renders of the skin surface of each such volume, and of each
+  RT Dose instance of two or more frames whose grid lies along the patient's
+  axes, from the front, the two obliques, and the two profiles, as
+  :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes;
 - each high-risk instance at full resolution: every frame, or
   :data:`CINE_FRAMES` evenly spaced, unscaled, since burned-in text may be
   small.
@@ -79,6 +85,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
 from .pixel_decoding import DECODING_PLUGINS, decoder_available
+from . import qc_surfaces
 from .qc_pack import NotPreviewedEntry, NotPreviewedReason, Preview, PreviewKind
 
 CINE_FRAMES = 16
@@ -97,7 +104,8 @@ _FLOAT_PIXEL_DATA = ("FloatPixelData", "DoubleFloatPixelData")
 # what a frontal view keeps apart.
 _ALIGNMENT_TOLERANCE = 1e-4
 _ORIENTATION_TOLERANCE = 1e-4
-# In millimetres, how far a slice's origin may lie off the normal of the first.
+# In millimetres, how far a slice's origin may lie off the normal of the first,
+# or a dose grid's frame from even spacing.
 _STACKING_TOLERANCE = 0.01
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
@@ -130,6 +138,8 @@ class _Instance:
     spacing: tuple[float, float] | None
     plane: _Plane | None
     number: int | None
+    modality: str
+    grid: qc_surfaces.Grid | None  # an RT Dose grid that a surface render shows
 
 
 @dataclasses.dataclass(frozen=True)
@@ -139,8 +149,9 @@ class PreviewSet:
     Attributes
     ----------
     previews : tuple of ~pymedphys._dicom.deidentify.qc_pack.Preview
-        Each series' cine strip, then its projection if it forms a volume,
-        series in the order of their first run position; then each
+        Each series' cine strip, then its projection and its surface render
+        if it forms a volume, then the surface render of each RT Dose grid
+        in it, series in the order of their first run position; then each
         high-risk instance, in run position order. Named ``P-0001.png``
         onwards in that order.
     not_previewed : tuple of ~pymedphys._dicom.deidentify.qc_pack.NotPreviewedEntry
@@ -247,6 +258,10 @@ def _described(
     )
     number = _number(dataset, "InstanceNumber", int)
     number = None if number is None else int(number)
+    try:
+        modality = str(dataset.get("Modality") or "").strip()
+    except Exception:  # pylint: disable = broad-exception-caught
+        modality = ""
     colour = photometric in _COLOUR and samples == 3 and allocated == 8
     if not colour and not (photometric in _MONOCHROME and samples == 1):
         return NotPreviewedReason.UNSUPPORTED
@@ -268,6 +283,8 @@ def _described(
         spacing=spacing,
         plane=_plane(dataset, spacing, (rows, columns)) if frames == 1 else None,
         number=number,
+        modality=modality,
+        grid=None if colour else _dose_grid(dataset, spacing, (rows, columns), frames),
     )
 
 
@@ -330,6 +347,61 @@ def _plane(
         spacing=spacing,
         shape=shape,
         origin=(origin[0], origin[1], origin[2]),
+    )
+
+
+def _dose_grid(
+    dataset: pydicom.Dataset,
+    spacing: tuple[float, float] | None,
+    shape: tuple[int, int],
+    frames: int,
+) -> qc_surfaces.Grid | None:
+    """The grid of an RT Dose instance of two or more frames, if it is rendered.
+
+    Its axes must lie along the patient's, and its frames be evenly spaced.
+    """
+    try:
+        sop_class = str(dataset.get("SOPClassUID") or "")
+    except Exception:  # pylint: disable = broad-exception-caught
+        sop_class = ""
+    if frames < 2 or sop_class != qc_surfaces.RT_DOSE_STORAGE:
+        return None
+    plane = _plane(dataset, spacing, shape)
+    offsets = _floats(dataset, "GridFrameOffsetVector", frames)
+    if plane is None or offsets is None:
+        return None
+    directions = (
+        np.cross(plane.row, plane.column),
+        np.array(plane.column),
+        np.array(plane.row),
+    )
+    # Absolute z coordinates, which PS3.3 C.8.8.3.2 permits only for an
+    # orientation of (1, 0, 0, 0, 1, 0), the first being the origin's; a grid
+    # that does not meet this keeps its first offset, and is refused below.
+    if (
+        offsets[0] != 0
+        and np.allclose(
+            plane.row + plane.column, (1, 0, 0, 0, 1, 0), atol=_ORIENTATION_TOLERANCE
+        )
+        and abs(offsets[0] - plane.origin[2]) <= _STACKING_TOLERANCE
+    ):
+        offsets = tuple(offset - plane.origin[2] for offset in offsets)
+    steps = np.diff(offsets)
+    if (
+        _roles(directions) is None
+        or abs(offsets[0]) > _STACKING_TOLERANCE
+        or not ((steps > 0).all() or (steps < 0).all())
+        or np.ptp(steps) > _STACKING_TOLERANCE
+    ):
+        return None
+    scaling = _number(dataset, "DoseGridScaling", float)
+    return qc_surfaces.grid(
+        directions,
+        offsets,
+        plane.spacing,
+        shape,
+        qc_surfaces.Threshold.DOSE,
+        1.0 if scaling is None else float(scaling),
     )
 
 
@@ -430,10 +502,13 @@ def _series_images(series: list[_Instance], decoder: _Decoder):
     volume = _volume(series)
     tiles: list[tuple[int, int, np.ndarray, _Instance]] = []
     projection = _Projection(volume) if volume is not None else None
+    surfaces = _surfaces(series, volume)
+    rendered = {frame for shown, _ in surfaces for frame in shown}
     for instance in series:
         for frame in range(instance.frames):
             shown = (instance.position, frame) in chosen
-            if not shown and (projection is None or frame):
+            projected = projection is not None and not frame
+            if not (shown or projected or (instance.position, frame) in rendered):
                 continue
             pixels = decoder.frame(instance, frame)
             if pixels is None:
@@ -444,6 +519,9 @@ def _series_images(series: list[_Instance], decoder: _Decoder):
                 )
             if projection is not None:
                 projection.add(instance, pixels)
+            for each, surface in surfaces:
+                if (instance.position, frame) in each:
+                    surface.add(pixels)
     if tiles:
         image = _sheet(
             _windowed_tiles([(tile, instance) for _, _, tile, instance in tiles]),
@@ -460,6 +538,39 @@ def _series_images(series: list[_Instance], decoder: _Decoder):
         projected = projection.image()
         if projected is not None:
             yield projected
+    for shown, surface in surfaces:
+        image = surface.image()
+        if image is not None:
+            yield PreviewKind.SERIES_SURFACE, shown, len(shown), image
+
+
+def _surfaces(
+    series: list[_Instance], volume: _Volume | None
+) -> list[tuple[tuple[tuple[int, int], ...], qc_surfaces.Surface]]:
+    """The surface renders of a series, each with the frames that it shows.
+
+    The volume's first, if the series forms one, then each RT Dose grid's.
+    A CT series' surface is at a fixed level, and any other's by Otsu's.
+    """
+    surfaces = []
+    if volume is not None:
+        threshold = (
+            qc_surfaces.Threshold.CT
+            if all(instance.modality == "CT" for instance in series)
+            else qc_surfaces.Threshold.OTSU
+        )
+        grid = qc_surfaces.grid(
+            volume.directions, volume.positions, volume.spacing, volume.shape, threshold
+        )
+        shown = tuple((instance.position, 0) for instance in series)
+        surfaces.append((shown, qc_surfaces.Surface(grid)))
+    for instance in series:
+        if instance.grid is not None:
+            shown = tuple(
+                (instance.position, frame) for frame in range(instance.frames)
+            )
+            surfaces.append((shown, qc_surfaces.Surface(instance.grid)))
+    return surfaces
 
 
 def _instance_image(instance: _Instance, decoder: _Decoder):

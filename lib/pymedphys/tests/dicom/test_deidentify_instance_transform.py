@@ -1534,13 +1534,20 @@ def test_a_run_writes_the_qc_pack_of_the_transform_and_gate(tmp_path):
     assert registered in pack["drops"]
 
 
-def test_transform_for_selects_an_enabled_preset_only(monkeypatch):
+def test_transform_for_selects_an_enabled_policy_only(monkeypatch):
     with pytest.raises(PolicyError):
         transform_for("basic", KEY)
+    with pytest.raises(PolicyError):
+        transform_for(key=KEY, options=["clean_descriptors"])
 
     policy = compose_policy("basic")
-    made = []
-    monkeypatch.setattr(instance_transform, "select_policy", lambda preset: policy)
+    made, selected = [], []
+
+    def select(preset, options=None):
+        selected.append((preset, options))
+        return policy
+
+    monkeypatch.setattr(instance_transform, "select_policy", select)
     monkeypatch.setattr(
         instance_transform,
         "InstanceTransform",
@@ -1550,8 +1557,10 @@ def test_transform_for_selects_an_enabled_preset_only(monkeypatch):
 
     transform_for(key=KEY, cleaning=cleaning)
     transform_for("basic")
+    transform_for(key=KEY, options=("clean_descriptors",))
 
-    (given, generated) = made
+    assert selected == [(None, None), ("basic", None), (None, ("clean_descriptors",))]
+    (given, generated, _) = made
     assert given == (policy, KEY, None, {"cleaning": cleaning})
     assert generated[3] == {"cleaning": None}
     assert generated[0] is policy and generated[1] != KEY
