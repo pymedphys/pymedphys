@@ -38,6 +38,7 @@ requirements matrix reads the reports of the full unit-test runs, which do
 not run them, so a cited test would read as not run.
 """
 
+import dataclasses
 import json
 import os
 import shutil
@@ -51,6 +52,7 @@ from pymedphys._dicom.deidentify import (
     run,
     standard,
 )
+from pymedphys._dicom.deidentify import dicom_validators as validators
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.dicom_validation_command import (
     default_standard_path,
@@ -60,6 +62,8 @@ from pymedphys._dicom.deidentify.dicom_validators import (
     DCIODVFY,
     DICOM_VALIDATOR,
     VALIDATORS,
+    Status,
+    Validation,
     ValidatorUnavailable,
 )
 from pymedphys._dicom.deidentify.instance_transform import ReleaseGate
@@ -95,12 +99,29 @@ def fixture_published():
         yield
 
 
+@dataclasses.dataclass(frozen=True)
+class Validated:
+    """A run's comparison, and dcentvfy's findings for its patient.
+
+    Attributes
+    ----------
+    spec : CorpusRun
+    comparison : Comparison
+    consistency : tuple of Validation
+        dcentvfy's findings in the patient's inputs and in their outputs.
+    """
+
+    spec: runs.CorpusRun
+    comparison: dicom_validation.Comparison
+    consistency: tuple[Validation, Validation]
+
+
 @pytest.fixture(
-    name="comparison",
+    name="validated",
     scope="module",
     params=[corpus_run.param() for corpus_run in CORPUS_RUNS],
 )
-def fixture_comparison(request, toolset, published):  # pylint: disable = unused-argument
+def fixture_validated(request, toolset, published):  # pylint: disable = unused-argument
     spec = request.param
     prepared = runs.prepare(spec)
     # A short directory, since a run refuses output paths that could exceed
@@ -121,13 +142,39 @@ def fixture_comparison(request, toolset, published):  # pylint: disable = unused
         )
         pairs, unpaired = dicom_validation.pairs_from_run(discovery, result)
         comparison = dicom_validation.compare(pairs, toolset, unpaired=unpaired)
+        consistency = _consistency(pairs, toolset)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
     reports = os.environ.get(REPORT_VARIABLE)
     if reports:
         Path(reports).mkdir(parents=True, exist_ok=True)
         dicom_validation.write_results(comparison, Path(reports) / spec.name)
-    return comparison
+    return Validated(spec, comparison, consistency)
+
+
+@pytest.fixture(name="comparison", scope="module")
+def fixture_comparison(validated):
+    return validated.comparison
+
+
+def _consistency(pairs, toolset):
+    """Return dcentvfy's findings in the inputs and in the outputs.
+
+    As in the comparison, a pair that dciodvfy cannot read to the end, input
+    or output, is left out, since dcentvfy stops at it.
+    """
+    readable = [
+        pair
+        for pair in pairs
+        if all(
+            validators.run_dciodvfy(toolset.dciodvfy, path).status is Status.VALIDATED
+            for path in (pair.source, pair.output)
+        )
+    ]
+    return (
+        validators.run_dcentvfy(toolset.dcentvfy, [pair.source for pair in readable]),
+        validators.run_dcentvfy(toolset.dcentvfy, [pair.output for pair in readable]),
+    )
 
 
 def test_the_output_introduces_no_unexplained_finding(comparison):
@@ -156,23 +203,22 @@ def test_every_validator_ran_over_every_released_instance(comparison):
     assert statuses == {BOTH_VALIDATED: comparison.pairs - failed}
 
 
-def test_each_patients_outputs_are_consistent(comparison, request):
+def test_each_patients_outputs_are_consistent(validated):
     # The corpus plants a different marker in each instance's patient and
-    # study attributes, which the profile removes or replaces alike. A row
-    # that a run keeps keeps each instance's own marker, so the outputs may
-    # then differ where the inputs do, but no more often.
-    spec = request.node.callspec.params["comparison"]
-    tally = comparison.tallies[DCENTVFY]
-    inputs, outputs = tally["input_findings"], tally["output_findings"]
+    # study attributes, which the profile removes or replaces alike. Where an
+    # option keeps or modifies some of them alike, their differences stay as
+    # they were, and no other appears.
+    tally = validated.comparison.tallies[DCENTVFY]
+    inputs, outputs = validated.consistency
 
     assert tally["statuses"] == {BOTH_VALIDATED: 1}
-    assert inputs.get("error", 0) > 0
-    if spec.kept_rows():
-        assert all(
-            count <= inputs.get(severity, 0) for severity, count in outputs.items()
-        )
-    else:
-        assert outputs == {}
+    assert tally["input_findings"].get("error", 0) > 0
+    assert outputs.status is Status.VALIDATED
+    assert {finding.path for finding in outputs.findings} == (
+        validated.spec.inconsistent
+    )
+    for finding, count in outputs.findings.items():
+        assert inputs.findings.get(finding) == count, finding.json()
 
 
 def test_the_results_hold_no_marker(comparison):
