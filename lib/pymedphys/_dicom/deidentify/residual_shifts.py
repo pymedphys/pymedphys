@@ -54,7 +54,7 @@ from .file_layout import ElementPath, Region
 from .modified_dates import TAGS
 from .policy import MODIFIED_DATES
 from .residual_exemptions import KeptValues
-from .residuals import Finding, ValueKind
+from .residuals import Finding, SourceValue, ValueKind
 from .standard import dictionary_attribute
 from .temporal_roles import TemporalAction, load_temporal_roles
 
@@ -68,7 +68,7 @@ _DAYS = range(7 * dates.MIN_OFFSET_WEEKS, 7 * dates.MAX_OFFSET_WEEKS + 1, 7)
 def shifted_date(
     finding: Finding,
     kept: KeptValues,
-    sources: Mapping[ElementPath, tuple[str | bytes, ...]],
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
     options: tuple[str, ...],
 ) -> bool:
     """Return whether a finding only matches a date that the engine shifted.
@@ -95,12 +95,12 @@ def shifted_date(
     ):
         return False
     written = kept.values(element)
-    # A multi-valued element's source values are collected as one field.
+    # A multi-valued element's source values are collected as one value.
     own = [
         value
-        for field in sources.get(element, ())
-        if isinstance(field, str)
-        for value in field.split("\\")
+        for each in sources.get(element, ())
+        if isinstance(each.value, str)
+        for value in each.value.split("\\")
     ]
     if written is None:
         return False
@@ -109,9 +109,9 @@ def shifted_date(
         return False
     found = {
         form
-        for value in sources.get(finding.source, ())
-        if isinstance(value, str)
-        for form in _whole_forms(value)
+        for each in sources.get(finding.source, ())
+        if isinstance(each.value, str)
+        for form in _whole_forms(each.value)
     }
     return any(found & {value, value[:8]} for value in values)
 

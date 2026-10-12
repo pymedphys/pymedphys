@@ -42,7 +42,7 @@ from pymedphys._dicom.deidentify.release_gate import (
     release_condition,
 )
 from pymedphys._dicom.deidentify.residual_exemptions import Exemption
-from pymedphys._dicom.deidentify.residuals import ValueKind
+from pymedphys._dicom.deidentify.residuals import SourceValue, ValueKind
 
 from . import _synthetic_references as synthetic
 
@@ -206,7 +206,13 @@ def test_every_value_of_the_element_must_be_a_shifted_source_value(
         location=types.SimpleNamespace(region=Region.DATA_SET, element=element),
     )
     kept = types.SimpleNamespace(values=lambda path: (EARLIER, "20200301"))
-    sources = {element: (_later(), second_source), source: (EARLIER,)}
+    sources = {
+        element: (
+            SourceValue(element, "DA", _later()),
+            SourceValue(element, "DA", second_source),
+        ),
+        source: (SourceValue(source, "DA", EARLIER),),
+    }
 
     assert (
         residual_shifts.shifted_date(finding, kept, sources, (MODIFIED_DATES,))

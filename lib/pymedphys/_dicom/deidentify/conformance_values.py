@@ -399,9 +399,11 @@ def dates_and_times(
             f"is shifted or otherwise modified. {covered} The {kept} that take "
             "`K` keep their source values; the others take their listed "
             "actions, as the Basic Profile does. Where a source value that "
-            "the policy removes or replaces equals a kept value, the residual "
-            "search finds it in the kept element and the instance is withheld "
-            "(D-027 and D-043). "
+            "the policy removes or replaces, other than the kept element's "
+            "own, equals a whole kept value, the residual search finds it in "
+            "the kept element, and the kept value explains it, so it does not "
+            "withhold the instance; found inside a longer kept value, such as "
+            "the date of a kept datetime, it still does (D-042 and D-043). "
             f"{named(TEMPORAL_MODIFIED)} is `{statement.markers.temporal}`, as "
             "Attributes inserted describes.",
         ]

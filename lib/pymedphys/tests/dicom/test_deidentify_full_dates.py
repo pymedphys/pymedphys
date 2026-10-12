@@ -29,6 +29,7 @@ from pymedphys._dicom.deidentify import (
     run,
     temporal_roles,
 )
+from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
     ReleaseGate,
@@ -43,7 +44,8 @@ from pymedphys._dicom.deidentify.policy import (
     refuse_unapplied_options,
 )
 from pymedphys._dicom.deidentify.references import InstanceRecord
-from pymedphys._dicom.deidentify.release_gate import ReasonCode
+from pymedphys._dicom.deidentify.release_gate import release_condition
+from pymedphys._dicom.deidentify.residual_exemptions import Exemption
 
 from . import _synthetic_references as synthetic
 
@@ -164,15 +166,17 @@ def _request_attributes(date):
     ],
     ids=["birth date", "removed sequence"],
 )
-def test_a_removed_date_equal_to_a_kept_one_withholds_the_instance(attributes):
-    # D-027 and D-043: a kept date is not exempt from the residual search, so
-    # a removed source value equal to it is found in the kept element.
+def test_a_removed_date_equal_to_a_kept_one_is_released_as_explained(attributes):
+    # D-042 and D-043: the residual search finds a removed source value equal
+    # to a kept date in the kept element, and the value that Full Dates keeps
+    # explains it.
     _, result = _written(_plan(**attributes))
 
-    decision = _decision(result)
+    condition = release_condition(result.evidence, result.data)
 
-    assert isinstance(decision, run.Sequestered), decision
-    assert ReasonCode.RESIDUAL_DATE in {r.code for r in decision.reasons}
+    assert isinstance(_decision(result), run.Release)
+    exempted = [(each.location.element, why) for each, why in condition.exempted]
+    assert exempted == [(ElementPath((), "(0008,0020)"), Exemption.RETAINED_VALUE)]
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.6-01")
@@ -190,6 +194,7 @@ def test_the_statement_describes_kept_dates_and_needs_nothing_else():
     section = text.split("## Dates and times")[1].split("\n## ")[0]
     assert "no date or time is shifted or otherwise modified" in section
     assert f"The {kept} that take `K` keep their source values" in section
-    assert "the instance is withheld (D-027 and D-043)" in section
+    assert "the kept value explains it" in section
+    assert "it still does (D-042 and D-043)" in section
     assert "`UNMODIFIED`" in section
     assert "not yet described" not in section

@@ -439,16 +439,17 @@ text = '''
 When the Retain Longitudinal Temporal Information With Full Dates Option is specified in addition to the Basic Application Level Confidentiality Profile, any dates and times present in the Attributes shall be retained, as described in Table E.1-1. The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "UNMODIFIED".
 '''
 status = "implemented"
-decisions = ["D-012", "D-023", "D-043"]
+decisions = ["D-012", "D-023", "D-042", "D-043"]
 implementation = [
   "_dicom/deidentify/actions.py",
   "_dicom/deidentify/markers.py",
+  "_dicom/deidentify/option_kept.py",
   "_dicom/deidentify/policy.py",
 ]
 note = '''
 A custom policy can select Full Dates, which keeps every date and time that Table E.1-1 gives K under it and the supplementary rules keep under it (D-023); it cannot be selected with Modified Dates.
 Longitudinal Temporal Information Modified is UNMODIFIED, unless MODIFIED or REMOVED is already present from an earlier run, which is kept because the dates that run modified or removed are not restored (D-012).
-Kept dates are not exempt from the residual search: where a removed or replaced source value equals a kept date, the instance is withheld (D-027 and D-043).
+A removed or replaced source value, other than the kept element's own, that equals the whole of a kept date is explained by it and does not withhold the instance; one found inside a longer kept value, such as the date of a kept datetime, still does (D-042, D-043).
 '''
 
 [[requirement]]
