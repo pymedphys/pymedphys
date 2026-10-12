@@ -14,7 +14,9 @@
 
 """TCIA's Private Tag Dictionary, shipped unchanged and pinned by its SHA-256.
 
-No test here reaches the network.
+No test here reaches the network: ``pymedphys dev tcia-check``, tested in
+``tests/dev/test_tcia_edition_check.py``, compares the shipped file with
+TCIA's.
 """
 
 import collections

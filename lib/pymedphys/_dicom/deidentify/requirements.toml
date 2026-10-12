@@ -551,7 +551,7 @@ implementation = [
 ]
 note = '''
 Reviewed rules give every row of Table E.3.10-1 a handling, keyed by private creator and element within the block: numbers and code strings are checked and kept, UIDs replaced, text cleaned as descriptors, private sequences parsed, and bulk binary data and three timestamps removed (D-035).
-TCIA's Private Tag Dictionary ships unchanged, pinned by its length and SHA-256, as a second list that a run may choose; its keep is a basis for retention, and kept values still pass the handling of their VR (D-035).
+TCIA's Private Tag Dictionary ships unchanged, pinned by its length and SHA-256 and compared with TCIA's file by a monthly edition check, as a second list that a run may choose; its keep is a basis for retention, and kept values still pass the handling of their VR (D-035).
 Remaining: applying the rules, following Private Data Element Characteristics Sequence and Deidentification Action, and enabling the Option, which a policy is refused until then (D-028) (M3).
 '''
 

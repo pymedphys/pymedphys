@@ -20,7 +20,9 @@ it uses, with a disposition for each, saying whether it is kept. PyMedPhys
 ships one file of it unchanged in ``_tcia/``, with TCIA's attribution and
 licence beside it. :data:`PIN` records where it came from and its SHA-256,
 and :func:`load_tcia_private_tags` refuses a file that no longer matches, so
-the shipped copy is always the original.
+the shipped copy is always the original; ``pymedphys dev tcia-check``
+downloads TCIA's file and compares the two, each month and on pull requests
+that change the dictionary.
 
 Each row describes one attribute by its path: the private creator, group,
 and element within the block of each private step, and the tag of each
