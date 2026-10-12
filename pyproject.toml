@@ -88,6 +88,8 @@ ai = [
 # this with each published version.
 tests = [
   "pymedphys[user]",
+  # Finds burned-in text for the Clean Pixel Data tests.
+  "pymedphys[text-detection]",
   # Checks de-identified output against its IOD, independently of the engine.
   "dicom-validator==0.9.0",
   "hypothesis",
@@ -123,6 +125,15 @@ dicom = [
   "scipy",
   "shapely>=1.7.0",
   "toml",
+]
+# Text detection: finds burned-in text for DICOM de-identification's Clean
+# Pixel Data Option. Like ai, users opt in to it separately from user: ONNX
+# Runtime runs a model downloaded on first use, and publishes no wheel for
+# Intel macOS.
+text-detection = [
+  "numpy>=1.26",
+  "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+  "scipy",
 ]
 # Mosaiq: pymedphys.mosaiq and Delivery.from_mosaiq. keyring stores the
 # credentials that connect() asks for when none are given.
