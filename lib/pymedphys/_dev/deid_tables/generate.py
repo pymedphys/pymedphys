@@ -42,6 +42,9 @@ from pymedphys._dicom.deidentify.residual_exemptions import (
 )
 from pymedphys._dicom.deidentify.sop_classes import STORAGE_SOP_CLASS_TABLE
 from pymedphys._dicom.deidentify.standard import SCHEMA, STANDARD_DIR, content_sha256
+from pymedphys._dicom.deidentify.structured_content import (
+    FILE as STRUCTURED_CONTENT_FILE,
+)
 from pymedphys._dicom.deidentify.uid_registry import UID_TABLES
 
 from . import annex_e, chtml, ps3_3, ps3_3_terms, ps3_4, ps3_6, ps3_16
@@ -109,6 +112,13 @@ class Pin:
     corrections : tuple of Correction
         Corrections to errors in the edition's PS3.3 tables. Generation fails
         if one no longer applies.
+    structured_content_schemes : tuple of str
+        The coding schemes, by designator, whose rows of Table E.3.4-1 are
+        generated, such as ``"DCM"``.
+    left_out_structured_content_schemes : tuple of str
+        The coding schemes whose rows of Table E.3.4-1 are left out, because
+        their terms have not been accepted for bundling. Generation fails if
+        a row's scheme is in neither tuple, or a scheme in them has no row.
     """
 
     edition: str
@@ -116,6 +126,8 @@ class Pin:
     left_out_iods: tuple[ps3_3.LeftOutIOD, ...]
     shared_functional_groups: tuple[tuple[str, str], ...]
     corrections: tuple[ps3_3.Correction, ...]
+    structured_content_schemes: tuple[str, ...]
+    left_out_structured_content_schemes: tuple[str, ...]
 
 
 # To move to a new edition, update the edition and every digest, regenerate,
@@ -126,6 +138,10 @@ PIN = Pin(
         PinnedSource(
             "chtml/part15/chapter_E.html",
             "cb214710fce798ed3688b4cb1d6b2d62ebd254e6946aa3efb3fc14038a41d58d",
+        ),
+        PinnedSource(
+            "chtml/part15/sect_E.3.4.html",
+            "d3bf68bd69f8623b34060b7599630634634bcd1a1bcefaf7112ef7847f15d3c9",
         ),
         PinnedSource(
             "chtml/part15/sect_E.3.10.html",
@@ -226,6 +242,13 @@ PIN = Pin(
             "Table C.8.31.7-1", "Include Table C.8-36b", ">Include Table C.8-36b"
         ),
     ),
+    # DICOM's own codes, and the SNOMED CT codes of the subset DICOM
+    # publishes (PS3.16 Section 2.19), which head_and_neck_regions.toml also
+    # bundles. The LOINC, NCDR, NCIt, and UMLS codes carry their own terms,
+    # which have not been accepted for bundling, so their rows are left out
+    # and a content item they name takes its sequence's Basic Profile action.
+    structured_content_schemes=("DCM", "SCT"),
+    left_out_structured_content_schemes=("LN", "NCDR", "NCIt", "UMLS"),
 )
 
 
@@ -268,6 +291,7 @@ def _read_sources(pin: Pin, source_dir: pathlib.Path | None) -> dict[str, bytes]
 
 
 _CHAPTER_E = "chtml/part15/chapter_E.html"
+_SECTION_E3_4 = "chtml/part15/sect_E.3.4.html"
 _SECTION_E3_10 = "chtml/part15/sect_E.3.10.html"
 _CHAPTER_6 = "chtml/part06/chapter_6.html"
 _CHAPTER_A = "chtml/part06/chapter_A.html"
@@ -340,6 +364,29 @@ def _table_e1_1a(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
         {"code": action.code, "description": action.description} for action in codes
     ]
     return _document(pin, _CHAPTER_E, annex_e.TABLE_E1_1A, rows)
+
+
+def _table_e3_4_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    concepts = annex_e.parse_table_e3_4_1(
+        _select(pages, _SECTION_E3_4, annex_e.TABLE_E3_4_1),
+        frozenset(pin.structured_content_schemes),
+        frozenset(pin.left_out_structured_content_schemes),
+    )
+    rows: list[dict[str, object]] = [
+        {
+            "code_meaning": concept.code_meaning,
+            "code_value": concept.code_value,
+            "scheme_designator": concept.scheme_designator,
+            "scheme_version": concept.scheme_version,
+            "value_type": concept.value_type,
+            "retired": concept.retired,
+            "in_standard_template": concept.in_standard_template,
+            "basic_profile": concept.basic_profile,
+            "options": dict(concept.options),
+        }
+        for concept in concepts
+    ]
+    return _document(pin, _SECTION_E3_4, annex_e.TABLE_E3_4_1, rows)
 
 
 def _table_e3_10_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
@@ -451,6 +498,7 @@ def _registry_table(
 _OUTPUTS: dict[str, Callable[[Pin, Mapping[str, bytes]], dict[str, object]]] = {
     "e1_1.json": _table_e1_1,
     "e1_1a.json": _table_e1_1a,
+    STRUCTURED_CONTENT_FILE: _table_e3_4_1,
     "e3_10_1.json": _table_e3_10_1,
     "data_dictionary.json": _data_dictionary,
     "iod_modules.json": _iod_modules,
