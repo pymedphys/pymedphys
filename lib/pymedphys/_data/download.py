@@ -17,6 +17,7 @@
 import contextlib
 import functools
 import hashlib
+import importlib.util
 import json
 import logging
 import os
@@ -75,6 +76,34 @@ DATA_DIR_ENVIRONMENT_VARIABLE = "PYMEDPHYS_DATA_DIR"
 _CHUNK_SIZE = 64 * 1024
 
 
+class _NoProgress:
+    """Stands in for tqdm's progress bar where tqdm is not installed."""
+
+    def update(self, _count: int) -> None:
+        pass
+
+
+def _tqdm_installed() -> bool:
+    return importlib.util.find_spec("tqdm") is not None
+
+
+def _progress_bar(total: int | None, description: str):
+    """A progress bar for a download, which shows nothing without tqdm.
+
+    tqdm comes with the user extra; text-detection downloads its model
+    without it.
+    """
+    if not _tqdm_installed():
+        return contextlib.nullcontext(_NoProgress())
+    return tqdm.tqdm(
+        total=total,
+        unit="B",
+        unit_scale=True,
+        miniters=1,
+        desc=description,
+    )
+
+
 def _is_permanent_failure(error: BaseException) -> bool:
     return (
         isinstance(error, urllib.error.HTTPError)
@@ -88,6 +117,8 @@ def _is_permanent_failure(error: BaseException) -> bool:
 )
 def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
     """Download ``url`` to ``filepath`` while showing a progress bar.
+
+    The progress bar needs tqdm; without it the download is silent.
 
     The download is written to a temporary file beside ``filepath`` and only
     moved into place once it is complete, so an interrupted download never
@@ -127,13 +158,7 @@ def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
         try:
             with (
                 os.fdopen(file_descriptor, "wb") as temp_file,
-                tqdm.tqdm(
-                    total=expected_size,
-                    unit="B",
-                    unit_scale=True,
-                    miniters=1,
-                    desc=url.split("/")[-1],
-                ) as progress,
+                _progress_bar(expected_size, url.split("/")[-1]) as progress,
             ):
                 received = 0
                 while chunk := response.read(_CHUNK_SIZE):
