@@ -91,7 +91,7 @@ def _codes(dataset):
 
 
 def test_the_engine_applies_the_option_alone_and_with_the_others():
-    assert INSTITUTION_IDENTITY in policy.TARGET_OPTIONS
+    assert policy.ENGINE_APPLIES[INSTITUTION_IDENTITY]
     assert INSTITUTION_IDENTITY in policy.ENGINE_OPTIONS
     for other in policy.ENGINE_OPTIONS:
         composed = policy.compose_custom_policy({INSTITUTION_IDENTITY, other})
