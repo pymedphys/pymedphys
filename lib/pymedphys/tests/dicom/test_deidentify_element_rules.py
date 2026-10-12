@@ -254,14 +254,18 @@ def _rules(preset="basic"):
 
 
 def _usable_policies():
-    """Every preset and custom option set that does not select Retain Safe Private."""
+    """Every preset, and custom set of its options, without Retain Safe Private."""
+    preset_options = [
+        option
+        for option in standard.OPTIONS
+        if any(option in options for options in policy.PRESETS.values())
+    ]
     custom = [
         options
-        for size in range(len(policy.TARGET_OPTIONS) + 1)
-        for options in itertools.combinations(policy.TARGET_OPTIONS, size)
+        for size in range(len(preset_options) + 1)
+        for options in itertools.combinations(preset_options, size)
         if RETAIN_SAFE_PRIVATE not in options
         and not {policy.DEVICE_IDENTITY, policy.MODIFIED_DATES} <= set(options)
-        and not {policy.FULL_DATES, policy.MODIFIED_DATES} <= set(options)
     ]
     return [
         policy.compose_policy(name)

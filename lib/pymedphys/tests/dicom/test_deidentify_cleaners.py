@@ -42,9 +42,11 @@ from pymedphys._dicom.deidentify.instance_transform import (
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.policy import (
     DEVICE_IDENTITY,
+    PRESETS,
     compose_custom_policy,
     compose_policy,
 )
+from pymedphys._dicom.deidentify.pseudonyms import SubjectIdentity
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.residuals import SourceValue
 from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
@@ -121,10 +123,13 @@ def test_no_two_cleaners_clean_the_same_attribute():
 
 
 def test_each_cleaner_cleans_attributes_its_option_gives_c_in_the_vrs_it_reads():
-    rows = {row.tag: row for row in load_table_e1_1().attributes}
     for cleaner in cleaners.CLEANERS:
+        composed = compose_custom_policy([cleaner.option])
+        # Table E.1-1's rows, and the supplementary rules for attributes that
+        # it omits.
+        actions = {**composed.actions, **composed.supplementary_actions}
         for tag in cleaner.tags:
-            assert rows[tag].options.get(cleaner.option) == "C"
+            assert actions[tag] == "C"
             attribute = dictionary_attribute(tag)
             assert attribute is not None
             assert set(attribute.vrs) <= cleaner.vrs
@@ -149,10 +154,15 @@ def test_every_attribute_that_retain_device_identity_gives_c_has_a_cleaner():
 
 def test_a_policy_has_the_cleaners_of_the_options_it_selects():
     assert not cleaners.cleaners_for(compose_policy("basic"))
-    assert not cleaners.cleaners_for(compose_policy("basic-clean-descriptors"))
     (cleaner,) = cleaners.cleaners_for(compose_custom_policy([DEVICE_IDENTITY]))
     assert cleaner.option == DEVICE_IDENTITY
-    assert cleaners.cleaners_for(compose_policy("tps-import")) == (cleaner,)
+    assert cleaner in cleaners.cleaners_for(compose_policy("tps-import"))
+    # Each preset has the cleaners of its own options, in the registry's order,
+    # whichever options have cleaners.
+    for preset, options in PRESETS.items():
+        assert cleaners.cleaners_for(compose_policy(preset)) == tuple(
+            each for each in cleaners.CLEANERS if each.option in options
+        )
 
 
 def _edits(*elements):
@@ -222,6 +232,90 @@ def test_a_cleaner_that_may_write_the_source_value_leaves_it_out_of_the_search()
     (edit,) = cleaned.edits.edits
     assert (edit.kind, edit.values) == (EditKind.REPLACE, ("SENTINEL",))
     assert cleaned.retained == frozenset({_ALLERGIES})
+
+
+def test_a_cleaner_cleans_single_values_or_the_whole_instance_not_both():
+    def clean(source, _key):
+        return (source,)
+
+    def clean_instance(_values, _key, _identity):
+        return {}
+
+    shared = {
+        "option": "retain_patient_characteristics",
+        "tags": frozenset({"(0010,2110)"}),
+        "vrs": frozenset({"LO"}),
+        "method": "Kept as it is.",
+    }
+    with pytest.raises(ValueError, match="either"):
+        cleaners.Cleaner(**shared)
+    with pytest.raises(ValueError, match="either"):
+        cleaners.Cleaner(**shared, clean=clean, clean_instance=clean_instance)
+    with pytest.raises(ValueError, match="retains"):
+        cleaners.Cleaner(**shared, clean_instance=clean_instance, retains=True)
+
+
+def test_a_cleaner_of_the_whole_instance_settles_what_it_returns():
+    received = []
+    first = ElementPath((), "(0008,0020)")
+    second = ElementPath((), "(0008,0030)")
+    timestamp = ElementPath((("(5200,9230)", 0),), "(0034,0007)")
+
+    def clean_instance(values, key, identity):
+        values = tuple(values)
+        received.append((values, key, identity))
+        return {
+            first: (("19000101",), False),
+            second: (("SENTINEL",), True),
+            timestamp: ((b"\x00" * 10,), False),
+            # A path it was not given is not settled.
+            _ALLERGIES: (("NOT GIVEN",), False),
+        }
+
+    instance = cleaners.Cleaner(
+        option="retain_longitudinal_modified_dates",
+        tags=frozenset({"(0008,0020)", "(0008,0030)", "(0034,0007)", "(0010,2110)"}),
+        vrs=frozenset({"DA", "TM", "OB"}),
+        method="Modified.",
+        clean_instance=clean_instance,
+    )
+    pending = EditKind.PENDING
+    edits = _edits(
+        (first, "C", pending, "DA", "SENTINEL"),
+        (second, "C", pending, "TM", "SENTINEL"),
+        (timestamp, "C", pending, "OB", b"SENTINEL!!"),
+        # Read in a VR that the cleaner does not read, so not given to it.
+        (_ALLERGIES, "C", pending, "LO", "SENTINEL"),
+    )
+    identity = SubjectIdentity.from_patient_id("SENTINEL")
+
+    cleaned = cleaners.apply_cleaners(edits, (instance,), KEY, identity)
+
+    ((given, key, subject),) = received
+    assert [value.source for value in given] == [first, second, timestamp]
+    assert (key, subject) == (KEY, identity)
+    date, time, stamp, allergies = cleaned.edits.edits
+    assert (date.kind, date.values) == (EditKind.REPLACE, ("19000101",))
+    assert (time.kind, time.values) == (EditKind.REPLACE, ("SENTINEL",))
+    assert (stamp.kind, stamp.values) == (EditKind.REPLACE, (b"\x00" * 10,))
+    assert allergies == edits.edits[3]
+    assert cleaned.retained == frozenset({second})
+
+
+def test_a_cleaner_of_the_whole_instance_is_given_nothing_without_pending_c():
+    def clean_instance(_values, _key, _identity):
+        raise AssertionError("not called")
+
+    instance = cleaners.Cleaner(
+        option="retain_longitudinal_modified_dates",
+        tags=frozenset({"(0008,0020)"}),
+        vrs=frozenset({"DA"}),
+        method="Modified.",
+        clean_instance=clean_instance,
+    )
+    edits = _edits((ElementPath((), "(0008,0020)"), "K", EditKind.KEEP, "DA", None))
+
+    assert cleaners.apply_cleaners(edits, (instance,), KEY).edits == edits
 
 
 def _transform(options, cleaning=None):
@@ -313,7 +407,8 @@ def test_ae_titles_are_cleaned_before_descriptors_fall_back():
     assert _codes(written) == ["113100", DEVICE_IDENTITY_CODE, CLEAN_DESCRIPTORS_CODE]
 
 
-def test_a_retain_c_that_no_cleaner_settles_holds_the_instance():
+def test_a_retain_c_that_no_cleaner_settles_holds_the_instance(monkeypatch):
+    monkeypatch.setattr(cleaners, "CLEANERS", ())
     plan = _plan(Allergies="SENTINEL ALLERGY")
     data = synthetic.written(plan)
 
@@ -325,25 +420,56 @@ def test_a_retain_c_that_no_cleaner_settles_holds_the_instance():
     assert result.reasons == (TransformReason.PENDING_EDIT,)
 
 
-def test_the_statement_gives_each_cleaners_method_and_needs_no_other():
-    statement = conformance.conformance_statement(
-        compose_custom_policy([DEVICE_IDENTITY]), vocabulary=None
+def test_a_transform_gives_a_cleaner_of_the_whole_instance_its_subject(monkeypatch):
+    received = []
+
+    def clean_instance(values, _key, identity):
+        received.append(identity)
+        return {value.source: (("CLEANED",), False) for value in values}
+
+    instance = cleaners.Cleaner(
+        option="retain_patient_characteristics",
+        tags=frozenset({_ALLERGIES.tag}),
+        vrs=frozenset({"LO"}),
+        method="Cleaned.",
+        clean_instance=clean_instance,
     )
+    monkeypatch.setattr(cleaners, "CLEANERS", (instance,))
+    data = synthetic.written(_plan(Allergies="SENTINEL ALLERGY"))
+    record = InstanceRecord.from_file(data)
+
+    result = _transform(["retain_patient_characteristics"])(data, record)
+
+    assert isinstance(result, run.Transformed), result
+    assert record.patient is not None
+    assert received == [record.patient]
+    assert pydicom.dcmread(io.BytesIO(result.data)).Allergies == "CLEANED"
+
+
+def test_the_statement_gives_each_cleaners_method_and_needs_no_other():
+    composed = compose_custom_policy([DEVICE_IDENTITY])
+    (cleaner,) = cleaners.cleaners_for(composed)
+    statement = conformance.conformance_statement(composed, vocabulary=None)
 
     (cleaned,) = statement.cleaned
     assert cleaned == conformance.CleanedAttributes(
-        DEVICE_IDENTITY, tuple(sorted(ae_titles.TAGS)), cleaners.CLEANERS[0].method
+        DEVICE_IDENTITY, tuple(sorted(ae_titles.TAGS)), cleaner.method
     )
     assert conformance.PENDING_CLEANING not in statement.pending
     text = conformance_markdown.render_markdown(statement)
     section = text.split("## Cleaning under the Retain Device Identity Option")[1]
     section = section.split("\n## ")[0]
     assert "Station AE Title (0008,0055)" in section
-    assert cleaners.CLEANERS[0].method in section
+    assert cleaner.method in section
 
 
 @pytest.mark.parametrize(
-    "preset", ["basic", "basic-clean-descriptors", "public-release"]
+    "preset",
+    [
+        preset
+        for preset, options in PRESETS.items()
+        if not any(cleaner.option in options for cleaner in cleaners.CLEANERS)
+    ],
 )
 def test_a_policy_without_a_cleaners_option_describes_no_cleaner(preset):
     statement = conformance.conformance_statement(
@@ -354,11 +480,17 @@ def test_a_policy_without_a_cleaners_option_describes_no_cleaner(preset):
     assert "## Cleaning under" not in conformance_markdown.render_markdown(statement)
 
 
-def test_tps_import_describes_its_ae_titles_and_still_awaits_its_other_cleaning():
-    statement = conformance.conformance_statement(
-        compose_policy("tps-import"), vocabulary=None
+def test_a_statement_awaits_the_cleaning_that_no_cleaner_describes(monkeypatch):
+    composed = compose_policy("tps-import")
+    # With Retain Device Identity's cleaner alone, tps-import's dates and
+    # retained patient characteristics have no cleaner.
+    monkeypatch.setattr(
+        cleaners,
+        "CLEANERS",
+        cleaners.cleaners_for(compose_custom_policy([DEVICE_IDENTITY])),
     )
 
+    statement = conformance.conformance_statement(composed, vocabulary=None)
+
     assert [cleaned.option for cleaned in statement.cleaned] == [DEVICE_IDENTITY]
-    # Its dates and retained patient characteristics are not cleaned yet.
     assert conformance.PENDING_CLEANING in statement.pending
