@@ -42,6 +42,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.policy import (
     DEVICE_IDENTITY,
+    PRESETS,
     compose_custom_policy,
     compose_policy,
 )
@@ -122,10 +123,13 @@ def test_no_two_cleaners_clean_the_same_attribute():
 
 
 def test_each_cleaner_cleans_attributes_its_option_gives_c_in_the_vrs_it_reads():
-    rows = {row.tag: row for row in load_table_e1_1().attributes}
     for cleaner in cleaners.CLEANERS:
+        composed = compose_custom_policy([cleaner.option])
+        # Table E.1-1's rows, and the supplementary rules for attributes that
+        # it omits.
+        actions = {**composed.actions, **composed.supplementary_actions}
         for tag in cleaner.tags:
-            assert rows[tag].options.get(cleaner.option) == "C"
+            assert actions[tag] == "C"
             attribute = dictionary_attribute(tag)
             assert attribute is not None
             assert set(attribute.vrs) <= cleaner.vrs
@@ -150,10 +154,15 @@ def test_every_attribute_that_retain_device_identity_gives_c_has_a_cleaner():
 
 def test_a_policy_has_the_cleaners_of_the_options_it_selects():
     assert not cleaners.cleaners_for(compose_policy("basic"))
-    assert not cleaners.cleaners_for(compose_policy("basic-clean-descriptors"))
     (cleaner,) = cleaners.cleaners_for(compose_custom_policy([DEVICE_IDENTITY]))
     assert cleaner.option == DEVICE_IDENTITY
-    assert cleaners.cleaners_for(compose_policy("tps-import")) == (cleaner,)
+    assert cleaner in cleaners.cleaners_for(compose_policy("tps-import"))
+    # Each preset has the cleaners of its own options, in the registry's order,
+    # whichever options have cleaners.
+    for preset, options in PRESETS.items():
+        assert cleaners.cleaners_for(compose_policy(preset)) == tuple(
+            each for each in cleaners.CLEANERS if each.option in options
+        )
 
 
 def _edits(*elements):
@@ -398,7 +407,8 @@ def test_ae_titles_are_cleaned_before_descriptors_fall_back():
     assert _codes(written) == ["113100", DEVICE_IDENTITY_CODE, CLEAN_DESCRIPTORS_CODE]
 
 
-def test_a_retain_c_that_no_cleaner_settles_holds_the_instance():
+def test_a_retain_c_that_no_cleaner_settles_holds_the_instance(monkeypatch):
+    monkeypatch.setattr(cleaners, "CLEANERS", ())
     plan = _plan(Allergies="SENTINEL ALLERGY")
     data = synthetic.written(plan)
 
@@ -410,25 +420,56 @@ def test_a_retain_c_that_no_cleaner_settles_holds_the_instance():
     assert result.reasons == (TransformReason.PENDING_EDIT,)
 
 
-def test_the_statement_gives_each_cleaners_method_and_needs_no_other():
-    statement = conformance.conformance_statement(
-        compose_custom_policy([DEVICE_IDENTITY]), vocabulary=None
+def test_a_transform_gives_a_cleaner_of_the_whole_instance_its_subject(monkeypatch):
+    received = []
+
+    def clean_instance(values, _key, identity):
+        received.append(identity)
+        return {value.source: (("CLEANED",), False) for value in values}
+
+    instance = cleaners.Cleaner(
+        option="retain_patient_characteristics",
+        tags=frozenset({_ALLERGIES.tag}),
+        vrs=frozenset({"LO"}),
+        method="Cleaned.",
+        clean_instance=clean_instance,
     )
+    monkeypatch.setattr(cleaners, "CLEANERS", (instance,))
+    data = synthetic.written(_plan(Allergies="SENTINEL ALLERGY"))
+    record = InstanceRecord.from_file(data)
+
+    result = _transform(["retain_patient_characteristics"])(data, record)
+
+    assert isinstance(result, run.Transformed), result
+    assert record.patient is not None
+    assert received == [record.patient]
+    assert pydicom.dcmread(io.BytesIO(result.data)).Allergies == "CLEANED"
+
+
+def test_the_statement_gives_each_cleaners_method_and_needs_no_other():
+    composed = compose_custom_policy([DEVICE_IDENTITY])
+    (cleaner,) = cleaners.cleaners_for(composed)
+    statement = conformance.conformance_statement(composed, vocabulary=None)
 
     (cleaned,) = statement.cleaned
     assert cleaned == conformance.CleanedAttributes(
-        DEVICE_IDENTITY, tuple(sorted(ae_titles.TAGS)), cleaners.CLEANERS[0].method
+        DEVICE_IDENTITY, tuple(sorted(ae_titles.TAGS)), cleaner.method
     )
     assert conformance.PENDING_CLEANING not in statement.pending
     text = conformance_markdown.render_markdown(statement)
     section = text.split("## Cleaning under the Retain Device Identity Option")[1]
     section = section.split("\n## ")[0]
     assert "Station AE Title (0008,0055)" in section
-    assert cleaners.CLEANERS[0].method in section
+    assert cleaner.method in section
 
 
 @pytest.mark.parametrize(
-    "preset", ["basic", "basic-clean-descriptors", "public-release"]
+    "preset",
+    [
+        preset
+        for preset, options in PRESETS.items()
+        if not any(cleaner.option in options for cleaner in cleaners.CLEANERS)
+    ],
 )
 def test_a_policy_without_a_cleaners_option_describes_no_cleaner(preset):
     statement = conformance.conformance_statement(
@@ -439,11 +480,17 @@ def test_a_policy_without_a_cleaners_option_describes_no_cleaner(preset):
     assert "## Cleaning under" not in conformance_markdown.render_markdown(statement)
 
 
-def test_tps_import_describes_its_ae_titles_and_still_awaits_its_other_cleaning():
-    statement = conformance.conformance_statement(
-        compose_policy("tps-import"), vocabulary=None
+def test_a_statement_awaits_the_cleaning_that_no_cleaner_describes(monkeypatch):
+    composed = compose_policy("tps-import")
+    # With Retain Device Identity's cleaner alone, tps-import's dates and
+    # retained patient characteristics have no cleaner.
+    monkeypatch.setattr(
+        cleaners,
+        "CLEANERS",
+        cleaners.cleaners_for(compose_custom_policy([DEVICE_IDENTITY])),
     )
 
+    statement = conformance.conformance_statement(composed, vocabulary=None)
+
     assert [cleaned.option for cleaned in statement.cleaned] == [DEVICE_IDENTITY]
-    # Its dates and retained patient characteristics are not cleaned yet.
     assert conformance.PENDING_CLEANING in statement.pending
