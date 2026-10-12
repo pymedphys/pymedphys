@@ -61,7 +61,8 @@ class TransformReason(enum.Enum):
     # new value does not fit it
     UNWRITABLE_ELEMENT = "unwritable-element"
     # no replacement Patient ID, Study, Series, or SOP Instance UID to name
-    # the output by (D-016)
+    # the output by (D-016), or, for a UID that the policy keeps, no valid
+    # UID to write and name it by (D-040)
     UNNAMED_OUTPUT = "unnamed-output"
     # the output file cannot be read back as a source file
     UNREADABLE_OUTPUT = "unreadable-output"

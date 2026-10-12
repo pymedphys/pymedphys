@@ -757,7 +757,7 @@ def test_the_file_meta_information_the_engine_writes_is_described():
         tag = f"({element.tag.group:04X},{element.tag.element:04X})"
         assert f"{names.get(tag, element.name)} {tag}" in paragraph, tag
     assert "holds only" in paragraph
-    assert "replacement SOP Instance UID" in paragraph
+    assert "the SOP Instance UID that the instance is written with" in paragraph
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")

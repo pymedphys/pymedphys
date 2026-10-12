@@ -103,7 +103,7 @@ ENGINE_APPLIES: Mapping[str, bool] = types.MappingProxyType(
         # Retain Safe Private.
         SAFE_PRIVATE: True,
         # Retain UIDs.
-        UIDS: False,
+        UIDS: True,
         # Retain Device Identity.
         DEVICE_IDENTITY: True,
         # Retain Institution Identity.
