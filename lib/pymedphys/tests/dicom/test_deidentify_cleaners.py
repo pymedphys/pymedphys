@@ -42,6 +42,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.policy import (
     DEVICE_IDENTITY,
+    MODIFIED_DATES,
     compose_custom_policy,
     compose_policy,
 )
@@ -122,10 +123,13 @@ def test_no_two_cleaners_clean_the_same_attribute():
 
 
 def test_each_cleaner_cleans_attributes_its_option_gives_c_in_the_vrs_it_reads():
-    rows = {row.tag: row for row in load_table_e1_1().attributes}
     for cleaner in cleaners.CLEANERS:
+        composed = compose_custom_policy([cleaner.option])
+        # Table E.1-1's rows, and the supplementary rules for attributes that
+        # it omits.
+        actions = {**composed.actions, **composed.supplementary_actions}
         for tag in cleaner.tags:
-            assert rows[tag].options.get(cleaner.option) == "C"
+            assert actions[tag] == "C"
             attribute = dictionary_attribute(tag)
             assert attribute is not None
             assert set(attribute.vrs) <= cleaner.vrs
@@ -153,7 +157,8 @@ def test_a_policy_has_the_cleaners_of_the_options_it_selects():
     assert not cleaners.cleaners_for(compose_policy("basic-clean-descriptors"))
     (cleaner,) = cleaners.cleaners_for(compose_custom_policy([DEVICE_IDENTITY]))
     assert cleaner.option == DEVICE_IDENTITY
-    assert cleaners.cleaners_for(compose_policy("tps-import")) == (cleaner,)
+    (dates,) = cleaners.cleaners_for(compose_custom_policy([MODIFIED_DATES]))
+    assert cleaners.cleaners_for(compose_policy("tps-import")) == (cleaner, dates)
 
 
 def _edits(*elements):
@@ -427,9 +432,7 @@ def test_the_statement_gives_each_cleaners_method_and_needs_no_other():
     assert cleaners.CLEANERS[0].method in section
 
 
-@pytest.mark.parametrize(
-    "preset", ["basic", "basic-clean-descriptors", "public-release"]
-)
+@pytest.mark.parametrize("preset", ["basic", "basic-clean-descriptors"])
 def test_a_policy_without_a_cleaners_option_describes_no_cleaner(preset):
     statement = conformance.conformance_statement(
         compose_policy(preset), vocabulary=None
@@ -444,6 +447,9 @@ def test_tps_import_describes_its_ae_titles_and_still_awaits_its_other_cleaning(
         compose_policy("tps-import"), vocabulary=None
     )
 
-    assert [cleaned.option for cleaned in statement.cleaned] == [DEVICE_IDENTITY]
-    # Its dates and retained patient characteristics are not cleaned yet.
+    assert [cleaned.option for cleaned in statement.cleaned] == [
+        DEVICE_IDENTITY,
+        MODIFIED_DATES,
+    ]
+    # Its retained patient characteristics are not cleaned yet.
     assert conformance.PENDING_CLEANING in statement.pending

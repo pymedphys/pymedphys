@@ -296,14 +296,22 @@ def test_dates_take_their_listed_actions_without_a_temporal_option(preset):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.deid_requirement("PS3.15-E.3.6-04")
 @pytest.mark.parametrize("preset", ["tps-import", "public-release"])
-def test_dates_under_modified_dates_are_cleaned_and_their_manner_is_pending(preset):
+def test_dates_under_modified_dates_are_modified_by_role_as_described(preset):
     statement = _statement(preset)
     assert statement.temporal.option == policy.MODIFIED_DATES
-    assert conformance.PENDING_CLEANING in statement.pending
+    roles = temporal_roles.load_temporal_roles().rules
+    actions = {e.tag: e.action for e in statement.attributes}
+    counts = collections.Counter(
+        roles[tag].role.value for tag in roles if actions[tag] == "C"
+    )
+    assert dict(statement.temporal.roles) == dict(counts)
     section = _section(preset, "Dates and times")
-    assert "Retain Longitudinal Temporal Information with Modified Dates" in section
-    assert "is not yet described" in section
+    assert "Retain Longitudinal Temporal Information Modified Dates" in section
+    assert f"gives C to {sum(counts.values())} of them" in section
+    assert "is not yet described" not in section
+    assert "`MODIFIED`" in section
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")

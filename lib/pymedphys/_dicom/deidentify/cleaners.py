@@ -29,6 +29,9 @@ transform (D-034):
 
 - Retain Device Identity's eleven attributes of VR AE become keyed tokens
   (:mod:`~pymedphys._dicom.deidentify.ae_titles`).
+- Retain Longitudinal Temporal Information with Modified Dates' dates, times,
+  and datetimes are modified by their temporal roles, a cleaner of the whole
+  instance (:mod:`~pymedphys._dicom.deidentify.modified_dates`).
 
 :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`
 applies the cleaners of the options its policy selects to each instance's
@@ -46,11 +49,11 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Callable, Iterable, Mapping, Sequence
 
-from . import ae_titles
+from . import ae_titles, modified_dates
 from .edits import Edit, EditKind, InstanceEdits
 from .file_layout import ElementPath
 from .keys import DeidKey
-from .policy import DEVICE_IDENTITY, Policy
+from .policy import DEVICE_IDENTITY, MODIFIED_DATES, Policy
 from .pseudonyms import SubjectIdentity
 from .residuals import SourceValue
 
@@ -146,6 +149,13 @@ CLEANERS: tuple[Cleaner, ...] = (
             "value stays empty."
         ),
         clean=ae_titles.ae_tokens,
+    ),
+    Cleaner(
+        option=MODIFIED_DATES,
+        tags=modified_dates.TAGS,
+        vrs=modified_dates.VRS,
+        method=modified_dates.METHOD,
+        clean_instance=modified_dates.modify_dates,
     ),
 )
 

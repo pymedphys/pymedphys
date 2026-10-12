@@ -43,11 +43,12 @@ import base64
 import types
 from collections.abc import Callable, Iterable, Mapping
 
-from . import dummy_values, pixel_risk, pseudonyms, residuals, uids
+from . import dates, dummy_values, pixel_risk, pseudonyms, residuals, uids
 from . import release_report as report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
 from .pixel_risk import Indicator
+from .policy import MODIFIED_DATES
 from .qc_retained import _NOT_REVIEWED_TAGS, RETAINED_TEXT_VRS
 from .reasons import TransformReason
 from .release_gate import ReasonCode
@@ -62,6 +63,18 @@ from .values import CHECKED_VRS
 from .walker import REVIEWED_DUMMY_SEQUENCES
 
 TEMPORAL_MODIFIED = "(0028,0303)"  # Longitudinal Temporal Information Modified
+# How the statement names the attributes of each temporal role, by its name in
+# the roles file.
+_ROLE_WORDS = types.MappingProxyType(
+    {
+        "subject-event": "subject events",
+        "radiation-source": "radiation-source dates and times",
+        "device": "device dates and times",
+        "vocabulary-version": "vocabulary versions",
+        "time-zone": "time zone offset",
+        "other": "other dates and times",
+    }
+)
 _SERIES_INSTANCE_UID = "(0020,000E)"
 
 # The name of each codec in which the residual search encodes every form.
@@ -377,6 +390,24 @@ def dates_and_times(
         "Information with Modified Dates. Each takes the action listed under "
         f"Actions: {counts}."
     )
+    if temporal.option == MODIFIED_DATES:
+        cleaned = sum(count for _, count in temporal.roles)
+        roles = join(f"{count} {_ROLE_WORDS[role]}" for role, count in temporal.roles)
+        return [
+            "## Dates and times",
+            "",
+            f"The policy selects {option(temporal.option)}. {covered} The "
+            f"policy gives C to {cleaned} of them, which are, by their "
+            f"temporal roles, {roles}. Each is modified by its role, as "
+            f"Cleaning under the {option(temporal.option)} describes (D-006 "
+            "and D-007): a subject-event or radiation-source value moves "
+            "backwards by its subject's offset in whole weeks, a device, "
+            "vocabulary-version, or other value takes D's dummy value, and a "
+            f"time zone offset becomes `{dates.NOMINAL_UTC_OFFSET}`. The "
+            "others take the actions listed under Actions. "
+            f"{named(TEMPORAL_MODIFIED)} is `{statement.markers.temporal}`, as "
+            "Attributes inserted describes.",
+        ]
     if temporal.option:
         return [
             "## Dates and times",
