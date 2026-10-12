@@ -58,6 +58,7 @@ from typing import TextIO
 
 from .command import _Parser, _print
 from .reviewed_descriptors import (
+    MAX_CHARACTERS,
     ReviewedDescriptor,
     ReviewedDescriptors,
     ReviewedDescriptorsError,
@@ -78,6 +79,10 @@ __all__ = ["EXIT_NOT_RECORDED", "EXIT_RECORDED", "EXIT_USAGE"]
 
 _REQUIRED = ("attribute", "value", "decision")
 _COLUMNS = (*_REQUIRED, "to")
+# The most characters a cell may hold: enough for the longest UC or UT value,
+# but no more than a C long holds on every platform, which bounds the csv
+# module's limit; a value that long would be a CSV file of 2 GiB.
+FIELD_SIZE_LIMIT = min(max(MAX_CHARACTERS.values()), 2**31 - 1)
 _TAG = re.compile(r"\(([0-9A-Fa-f]{4}),([0-9A-Fa-f]{4})\)")
 
 
@@ -170,7 +175,9 @@ def read_decisions(path: str | os.PathLike) -> tuple[Decision, ...]:
         not fit its decision or VR, or a value given different decisions. The
         message names lines by number, never a value, a cell, or the path.
     """
-    header, body = read_rows(path, ReviewedDescriptorsError)
+    header, body = read_rows(
+        path, ReviewedDescriptorsError, field_size_limit=FIELD_SIZE_LIMIT
+    )
     columns = read_columns(
         header,
         _COLUMNS,

@@ -16,6 +16,7 @@
 Every descriptor value here is synthetic.
 """
 
+import csv
 import io
 import pathlib
 import subprocess
@@ -149,6 +150,33 @@ def test_later_decisions_are_added_and_a_different_one_needs_replace(
     ]
     opened = reviewed.ReviewedDescriptors.open(listed)
     assert opened.get(SERIES_DESCRIPTION, "Quokka").review is Review.EMPTY
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+def test_a_value_longer_than_the_csv_modules_default_limit_is_recorded(
+    tmp_path, custodian
+):
+    # UT and UC values are not limited to the 131,072 characters that the csv
+    # module allows by default.
+    limit = csv.field_size_limit()
+    long_value = "Quokka " * 30_000
+    assert len(long_value) > limit
+    decisions = _csv(
+        tmp_path / "decisions.csv",
+        "attribute,value,decision\n"
+        f"SpecimenDetailedDescription,{long_value.strip()},empty\n",
+    )
+    listed = custodian / "reviewed.json"
+
+    status, stdout, stderr = _run(listed, decisions)
+
+    assert status == command.EXIT_RECORDED, stderr
+    assert "decisions recorded: 1" in stdout
+    assert csv.field_size_limit() == limit
+    opened = reviewed.ReviewedDescriptors.open(listed)
+    assert opened.get("(0040,0602)", long_value.strip()) == ReviewedDescriptor(
+        Review.EMPTY
+    )
 
 
 def test_one_value_is_decided_on_separately_for_each_attribute(tmp_path, custodian):

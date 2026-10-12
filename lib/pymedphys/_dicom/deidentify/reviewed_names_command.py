@@ -178,11 +178,16 @@ def read_decisions(path: str | os.PathLike) -> tuple[Decision, ...]:
 
 
 def read_rows(
-    path: str | os.PathLike, error: type[ValueError]
+    path: str | os.PathLike,
+    error: type[ValueError],
+    *,
+    field_size_limit: int | None = None,
 ) -> tuple[list[str], list[tuple[int, list[str]]]]:
     """Return a decisions file's header, and each other row with its line.
 
-    Rows whose cells are all empty are left out.
+    Rows whose cells are all empty are left out. ``field_size_limit``, if
+    given, is the most characters a cell may hold while the file is read, in
+    place of the :mod:`csv` module's limit, which is restored afterwards.
 
     Raises
     ------
@@ -190,7 +195,10 @@ def read_rows(
         ``error``, if the file cannot be read as UTF-8 CSV, or has no
         header. The message quotes neither the file's text nor its path.
     """
+    previous_limit = csv.field_size_limit()
     try:
+        if field_size_limit is not None:
+            csv.field_size_limit(field_size_limit)
         with open(path, encoding="utf-8-sig", newline="") as file:
             reader = csv.reader(file, strict=True)
             # Each row with the line it ends on.
@@ -206,6 +214,8 @@ def read_rows(
         raise error("the decisions file could not be read as CSV") from None
     except OSError:
         raise error("the decisions file could not be read") from None
+    finally:
+        csv.field_size_limit(previous_limit)
     if not rows:
         raise error("the decisions file has no header")
     (_, header), body = rows[0], rows[1:]
