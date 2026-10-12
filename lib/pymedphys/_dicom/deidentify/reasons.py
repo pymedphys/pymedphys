@@ -61,7 +61,8 @@ class TransformReason(enum.Enum):
     # new value does not fit it
     UNWRITABLE_ELEMENT = "unwritable-element"
     # no replacement Patient ID, Study, Series, or SOP Instance UID to name
-    # the output by (D-016)
+    # the output by (D-016), or, for a UID that the policy keeps, no valid
+    # UID to write and name it by (D-040)
     UNNAMED_OUTPUT = "unnamed-output"
     # the output file cannot be read back as a source file
     UNREADABLE_OUTPUT = "unreadable-output"
@@ -101,6 +102,10 @@ class TransformReason(enum.Enum):
     # compressed pixel data whose frames, with metadata segments cut, do not
     # decode to the same pixels as before
     CUT_CHANGED_PIXELS = "cut-changed-pixels"
+    # under Clean Graphics, an overlay group without Overlay Data (60xx,3000),
+    # whose overlay may lie in unused bits of Pixel Data, which the engine
+    # does not change
+    OVERLAY_IN_PIXEL_DATA = "overlay-in-pixel-data"
 
 
 class DescriptorReason(enum.Enum):

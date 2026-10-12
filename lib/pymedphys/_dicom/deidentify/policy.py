@@ -103,7 +103,7 @@ ENGINE_APPLIES: Mapping[str, bool] = types.MappingProxyType(
         # Retain Safe Private.
         SAFE_PRIVATE: True,
         # Retain UIDs.
-        UIDS: False,
+        UIDS: True,
         # Retain Device Identity.
         DEVICE_IDENTITY: True,
         # Retain Institution Identity.
@@ -118,8 +118,8 @@ ENGINE_APPLIES: Mapping[str, bool] = types.MappingProxyType(
         CLEAN_DESCRIPTORS: True,
         # Clean Structured Content.
         CLEAN_STRUCTURED_CONTENT: False,
-        # Clean Graphics.
-        CLEAN_GRAPHICS: False,
+        # Clean Graphics: its rows take their Basic Profile actions (D-041).
+        CLEAN_GRAPHICS: True,
     }
 )
 # The options whose policies the engine accepts, in Table E.1-1's order.
