@@ -461,6 +461,7 @@ def test_the_run_pack_previews_released_and_held_files_and_lists_high_risk():
     assert [(preview.kind, preview.frames) for preview in pack.previews] == [
         (PreviewKind.SERIES_CINE, ((0, 0), (1, 0), (2, 0))),
         (PreviewKind.SERIES_MIP, ((0, 0), (1, 0), (2, 0))),
+        (PreviewKind.SERIES_SURFACE, ((0, 0), (1, 0), (2, 0))),
         (PreviewKind.SERIES_CINE, ((4, 0),)),
         (PreviewKind.INSTANCE, ((4, 0),)),
     ]
