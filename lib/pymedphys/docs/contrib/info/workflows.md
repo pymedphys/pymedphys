@@ -512,8 +512,11 @@ Safe Private Option against TCIA's original.
   `tcia_private_tags.py`, and lists the editions that TCIA's page links to and
   whether it still links to the CC BY 3.0 licence that the shipped notice
   relies on. Its check job can only read the repository
-- **Failures**: on a pull request, the check job fails. On a scheduled or
-  manual run, when the shipped copy or the pinned file differs from the pin,
+- **Failures**: on a pull request, the check job fails. The result is
+  advisory: the workflow is not a required check, because TCIA's site does
+  not always answer GitHub's runners, so a reviewer of a change to the
+  dictionary reads the result rather than the merge queue enforcing it. On a
+  scheduled or manual run, when the shipped copy or the pinned file differs from the pin,
   the page links to an edition not yet reviewed, or no longer links to the
   pinned file or the licence, or the page or the file cannot be fetched, the
   page links to no edition, or the check stops without a result, a separate

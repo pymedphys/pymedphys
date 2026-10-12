@@ -7,7 +7,9 @@ name: TCIA Edition Check
 # update one issue when the dictionary needs attention. On a pull request that
 # changes the dictionary, its loader, or this check, or that carries the
 # check-upstream label, run the same check and fail when it does not pass.
-# Merge groups never reach TCIA, so its availability cannot block them.
+# That failure is advisory: this workflow is not a required check, because
+# TCIA's site does not always answer GitHub's runners. Merge groups never
+# reach TCIA, so its availability cannot block them.
 on:
   schedule:
     - cron: '17 5 5 * *'  # The 5th of each month; staggered to avoid top-of-hour congestion
