@@ -167,8 +167,7 @@ def _consistency(pairs, toolset):
         pair
         for pair in pairs
         if all(
-            validators.run_dciodvfy(toolset.dciodvfy, path).status
-            is Status.VALIDATED
+            validators.run_dciodvfy(toolset.dciodvfy, path).status is Status.VALIDATED
             for path in (pair.source, pair.output)
         )
     ]
