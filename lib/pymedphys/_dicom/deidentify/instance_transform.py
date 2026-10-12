@@ -314,6 +314,7 @@ def coverage_of(
     plan: InstancePlan,
     edits: InstanceEdits,
     retained: frozenset[ElementPath] = frozenset(),
+    options: tuple[str, ...] = (),
 ) -> Coverage:
     """Return the residual search's coverage of an instance's plan and edits.
 
@@ -327,6 +328,7 @@ def coverage_of(
     they did not reach is uncollected. Each value read as ISO 8859-1, since
     no Specific Character Set applies, is carried over as read as bytes, so
     that its collection is incomplete (D-027).
+    ``options``, the policy's, say which kept values can explain a finding.
     """
     left_out: set[ElementPath] = set(retained) | set(_left_out(edits))
     planned = frozenset(
@@ -359,6 +361,7 @@ def coverage_of(
         collected=collected,
         uncollected=tuple(uncollected),
         decoded_as_bytes=frozenset(edits.read_as_latin_1) - left_out,
+        options=options,
     )
 
 
@@ -684,6 +687,7 @@ class InstanceTransform:
                 cleaning, reviewed=cleaning.reviewed.snapshot()
             )
         self._rules = ElementRules(policy)
+        self._options = policy.options
         self._key = key
         self._retained_uids = retained_uid_tags(policy)
         self._cleaners = cleaners_for(policy)
@@ -817,7 +821,9 @@ class InstanceTransform:
             source, plan, self._key, record.patient, record.series_numberings
         )
         kept_uids = retained_uid_paths(plan.elements, self._retained_uids)
-        evidence: Coverage | HeldEvidence = coverage_of(plan, edits, kept_uids)
+        evidence: Coverage | HeldEvidence = coverage_of(
+            plan, edits, kept_uids, self._options
+        )
         if classification.sequestered:
             reasons: tuple[object, ...] = (classification.reason,)
         else:
@@ -839,7 +845,7 @@ class InstanceTransform:
         settled = apply_cleaners(edits, self._cleaners, self._key, record.patient)
         edits, retained = settled.edits, settled.retained | kept_uids
         if settled.retained:
-            evidence = coverage_of(plan, edits, retained)
+            evidence = coverage_of(plan, edits, retained, self._options)
         names: tuple[object, ...] = ()
         if self._cleaning is not None and self._fallback is not None:
             fallback = self._fallback
@@ -870,7 +876,7 @@ class InstanceTransform:
             edits, satisfied = cleaned.edits, cleaned.satisfied
             retained |= cleaned.retained
             names = cleaned.qc
-            evidence = coverage_of(plan, edits, retained)
+            evidence = coverage_of(plan, edits, retained, self._options)
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
         qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)

@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module derives, searches for, and reports every form of a value.
+
 """Search a written DICOM file for source values that should not be in it.
 
 A source value that de-identification had to remove or replace can survive
@@ -702,21 +705,18 @@ def _derive(value: SourceValue) -> Iterator[_Needle | NotSearched | Unsearched]:
         before = _edge(text[0], word)
         after = frozenset() if open_end else _edge(text[-1], word)
         digits = text.isascii() and text.isdigit()
-        for codec, encoded in _encodings(text, value.codecs):
-            escaped = b"\x1b" in encoded or (extended and not text.isascii())
-            if encoded.lower() in seen:
+        for codec, folded, run in _folded(text, value.codecs):
+            escaped = b"\x1b" in folded or (extended and not text.isascii())
+            if folded in seen:
                 continue
             if escaped and codec not in CODECS:
                 yield omission(form, Omission.CODE_EXTENSIONS, codec)
-            seen.add(encoded.lower())
+            seen.add(folded)
             origin, wide = (value.source, kind, form, codec), codec == "utf-16-le"
-            yield _Needle(encoded.lower(), origin, wide, before, after, digits)
-            # A run that the codec designates and resets is also searched
-            # without them, as it is written inside a longer run.
-            run = _RUN.fullmatch(encoded)
-            if run and run[1].lower() not in seen:
-                seen.add(run[1].lower())
-                yield _Needle(run[1].lower(), origin, wide, before, after, digits)
+            yield _Needle(folded, origin, wide, before, after, digits)
+            if run is not None and run not in seen:
+                seen.add(run)
+                yield _Needle(run, origin, wide, before, after, digits)
 
 
 def _forms(text: str, vr: str, kind: ValueKind) -> Iterator[tuple[Form, str]]:
@@ -792,6 +792,20 @@ def _encodings(text: str, codecs: tuple[str, ...]) -> Iterator[tuple[str, bytes]
             except UnicodeEncodeError:
                 continue
             yield codec, encoded
+
+
+def _folded(
+    text: str, codecs: tuple[str, ...]
+) -> Iterator[tuple[str, bytes, bytes | None]]:
+    """Yield each codec, and the bytes searched for each case of ``text`` in it.
+
+    Each encoding, and the run inside it where the codec designates and
+    resets one, which is also searched without its escape sequences, as it
+    is written inside a longer run; both with ASCII letters in lower case.
+    """
+    for codec, encoded in _encodings(text, codecs):
+        run = _RUN.fullmatch(encoded)
+        yield codec, encoded.lower(), run[1].lower() if run else None
 
 
 def _holds_numbers(span: Span) -> bool:
