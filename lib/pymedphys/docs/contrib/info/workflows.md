@@ -24,6 +24,7 @@ security.yml <- schedule, manual run, main push, ready PR, merge_group
 Schedule / manual run -> deps.yml
 Schedule / manual run -> deid-edition-check.yml
 Schedule / manual run -> tg263-edition-check.yml
+Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 
@@ -494,6 +495,37 @@ cleaning ROI names.
   the check's report and a link to the run. Once each new download is
   reviewed, the pin moved or the download added to `REVIEWED`, close the issue;
   a later finding opens a new one
+
+#### `tcia-edition-check.yml`
+
+Checks the TCIA Private Tag Dictionary that PyMedPhys ships for the Retain
+Safe Private Option against TCIA's original.
+
+- **Triggers**: monthly (the 5th), manually, and on ready pull requests that
+  change the dictionary in `lib/pymedphys/_dicom/deidentify/_tcia/`, its
+  loader, the check, the downloader, or this workflow, or that carry the
+  `check-upstream` label. Merge groups do not run it, so TCIA's availability
+  cannot block them
+- **Steps**: installs the project with the `user` extra and runs
+  `pymedphys dev tcia-check`, which downloads the file at the pinned URL and
+  compares its length and SHA-256, and the shipped copy's, with `PIN` in
+  `tcia_private_tags.py`, and lists the editions that TCIA's page links to and
+  whether it still links to the CC BY 3.0 licence that the shipped notice
+  relies on. Its check job can only read the repository
+- **Failures**: on a pull request, the check job fails. The result is
+  advisory: the workflow is not a required check, because TCIA's site does
+  not always answer GitHub's runners, so a reviewer of a change to the
+  dictionary reads the result rather than the merge queue enforcing it. On a
+  scheduled or manual run, when the shipped copy or the pinned file differs from the pin,
+  the page links to an edition not yet reviewed, or no longer links to the
+  pinned file or the licence, or the page or the file cannot be fetched, the
+  page links to no edition, or the check stops without a result, a separate
+  job, the only one that can write issues and which runs no repository code,
+  opens or comments on the issue titled "TCIA edition check: the Private Tag
+  Dictionary needs attention" with the check's report and a link to the run.
+  Once each new edition is reviewed, the pin moved or the edition added to
+  `REVIEWED` in `lib/pymedphys/_dev/tcia_edition_check.py`, close the issue; a
+  later finding opens a new one
 
 ### AI Assistance
 
