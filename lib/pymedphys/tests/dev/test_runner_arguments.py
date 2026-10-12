@@ -34,13 +34,17 @@ def test_library_relative_path_is_passed_through(tmp_path: pathlib.Path):
     assert args == ["tests/dev"]
 
 
-def test_path_relative_to_the_callers_directory_is_made_absolute():
-    repo_root = LIBRARY_ROOT.parent.parent
-    relative = "lib/pymedphys/tests/dev/test_runner_arguments.py"
+def test_path_relative_to_the_callers_directory_is_made_absolute(
+    tmp_path: pathlib.Path,
+):
+    relative = "suite/test_sample.py"
+    test_file = tmp_path.joinpath(relative)
+    test_file.parent.mkdir()
+    test_file.touch()
 
-    args = dev_tests.resolve_test_paths([relative], repo_root)
+    args = dev_tests.resolve_test_paths([relative], tmp_path)
 
-    assert args == [str(repo_root.joinpath(relative))]
+    assert args == [str(test_file.resolve())]
 
 
 def test_node_id_keeps_its_test_selector(tmp_path: pathlib.Path):

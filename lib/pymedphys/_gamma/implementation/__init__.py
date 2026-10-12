@@ -14,5 +14,4 @@
 
 # ruff: noqa: F401
 
-from .filter import gamma_filter_numpy
 from .shell import gamma_shell

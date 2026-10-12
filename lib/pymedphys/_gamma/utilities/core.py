@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2015 Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,31 +13,71 @@
 # limitations under the License.
 
 
+from collections.abc import Mapping
+
 from pymedphys._imports import numpy as np
 
 
-def create_point_combination(coords):
-    mesh_index = np.meshgrid(*coords)
-    point_combination = np.reshape(np.array(mesh_index), (3, -1))
+def calculate_pass_rate(gamma) -> float:
+    """The percentage of analysed reference points that pass gamma.
 
-    return point_combination
+    A point passes when its gamma is at most 1. NaN marks reference points
+    that :func:`pymedphys.gamma` did not analyse (below the lower dose
+    cutoff, not selected by ``random_subset``, or with NaN dose left out by
+    ``exclude_nan_reference``), so they are left out of both the count and
+    the total, as are the masked values of a masked array.
 
+    Every NaN is taken to mark a point that was not analysed. Gamma from other
+    software, or from :func:`pymedphys.gamma` before version 0.42.0, can also
+    be NaN at analysed points, which would then be left out and raise the
+    pass rate. Recalculate such gamma with this version of
+    :func:`pymedphys.gamma` first.
 
-def convert_to_ravel_index(points):
-    ravel_index = (
-        points[2, :]
-        + (points[2, -1] + 1) * points[1, :]
-        + (points[2, -1] + 1) * (points[1, -1] + 1) * points[0, :]
-    )
+    Parameters
+    ----------
+    gamma : array_like
+        Gamma values of any shape, as returned by :func:`pymedphys.gamma` for
+        one pair of dose and distance thresholds.
 
-    return ravel_index
+    Returns
+    -------
+    float
+        The pass rate, in percent.
 
+    Raises
+    ------
+    TypeError
+        If ``gamma`` is the dict that :func:`pymedphys.gamma` returns for
+        several thresholds, rather than one of its values.
+    ValueError
+        If no reference point was analysed, so every value is NaN or masked,
+        or if any gamma value is negative.
+    """
+    if isinstance(gamma, Mapping):
+        raise TypeError(
+            "gamma holds results for several thresholds, keyed by (dose, "
+            "distance). Pass the result for one pair of thresholds, for "
+            "example gamma[(3, 3)]."
+        )
 
-def calculate_pass_rate(gamma_array):
-    valid_gamma = gamma_array[np.invert(np.isnan(gamma_array))]
-    percent_pass = 100 * np.sum(valid_gamma < 1) / len(valid_gamma)
+    # Masked values, like NaN, were not analysed.
+    gamma = np.ma.filled(np.ma.asarray(gamma, dtype=float), np.nan)
+    valid_gamma = gamma[~np.isnan(gamma)]
+    if valid_gamma.size == 0:
+        raise ValueError(
+            "No reference point was analysed, so there is no pass rate. Every "
+            "gamma value is NaN or masked; check the lower dose cutoff, "
+            "random_subset, and any mask."
+        )
 
-    return percent_pass
+    negative = np.count_nonzero(valid_gamma < 0)
+    if negative:
+        raise ValueError(
+            f"Gamma cannot be negative, but {negative} of the values are. "
+            "Check that the input is a gamma array."
+        )
+
+    return float(100 * np.count_nonzero(valid_gamma <= 1) / valid_gamma.size)
 
 
 def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evaluation):
@@ -55,7 +96,7 @@ def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evalu
 
             else:
                 raise ValueError(
-                    "Can only use numpy arrays as input " "for one dimensional gamma."
+                    "Can only use numpy arrays as input for one dimensional gamma."
                 )
         else:
             raise ValueError(

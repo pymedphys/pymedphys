@@ -15,12 +15,12 @@ Common reasons to use the CLI include:
 
 If you have not installed PyMedPhys yet, read
 :doc:`Installation options <installation-options>` first.
-Common CLI-centred installs include:
+The ``user`` extra installs everything the commands need. A feature extra,
+such as ``dicom``, is enough for that feature's commands:
 
 .. code:: bash
 
-    uv pip install "pymedphys[dicom,cli]"
-    uv pip install "pymedphys[mosaiq,cli]"
+    uv pip install "pymedphys[user]"
 
 If you used the fallback Python + ``venv`` + ``pip`` path, replace
 ``uv pip install`` with ``python -m pip install``.

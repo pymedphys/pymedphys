@@ -1,0 +1,543 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.16 Table 8-1",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.16 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "chtml/part16/chapter_8.html",
+   "sha256": "14b5472ced78b0271643725b54a259ab943aafd20dc3d0ba43e6f2e7698c3471"
+  }
+ ],
+ "content_sha256": "662366d0e21876ad424e8fa93f2f30f4912df38f293e7a4f8604b7868cd9e338",
+ "rows": [
+  {
+   "designator": "ACR",
+   "uid": "2.16.840.1.113883.6.76",
+   "name": "ACR Index",
+   "responsible_organization": "ACR",
+   "resources": "",
+   "description": "ACR Index for Radiological Diagnosis Revised, 3rd Edition 1986"
+  },
+  {
+   "designator": "ASTM-sigpurpose",
+   "uid": "1.2.840.10065.1.12",
+   "name": "ASTM E 2084",
+   "responsible_organization": "ASTM",
+   "resources": "",
+   "description": "[ASTM E 2084-00] Signature Purpose codes (see Annex A1 of ASTM E 2084), ASTM Subcommittee E 31.20 Data and System Security for Health Information"
+  },
+  {
+   "designator": "BARI",
+   "uid": "",
+   "name": "BARI",
+   "responsible_organization": "",
+   "resources": "",
+   "description": "Bypass Angioplasty Revascularization Investigation[Alderman 1992]; endorsed by ACC/AHA Guidelines for Coronary Angiography[Scanlon 1999]."
+  },
+  {
+   "designator": "BI",
+   "uid": "",
+   "name": "BI-RADS",
+   "responsible_organization": "ACR",
+   "resources": "",
+   "description": "ACR Breast Imaging Reporting and Data System [BI-RADS®], Coding Scheme Version (0008,0103) is required; Code Values are section and paragraph identifiers within the publication where the code meaning is defined (e.g., \"I.D.1\", where I = Breast Imaging Lexicon, D = Special Cases, 1 = Tubular Density, as the Code Value for \"Tubular Density\"). Note In the HL7 registry, the abbreviation BI is assigned to a different Coding Scheme, specifically the Beth Israel problem list."
+  },
+  {
+   "designator": "C4",
+   "uid": "2.16.840.1.113883.6.12",
+   "name": "CPT-4",
+   "responsible_organization": "AMA",
+   "resources": "",
+   "description": "American Medical Association's Current Procedure Terminology 4 (CPT-4)"
+  },
+  {
+   "designator": "C5",
+   "uid": "2.16.840.1.113883.6.82",
+   "name": "CPT-5",
+   "responsible_organization": "AMA",
+   "resources": "",
+   "description": "American Medical Association's Current Procedure Terminology 5 (CPT-5)"
+  },
+  {
+   "designator": "caDSR",
+   "uid": "2.16.840.1.113883.3.26.2",
+   "name": "Cancer Data Standard Repository",
+   "responsible_organization": "NCI",
+   "resources": "",
+   "description": "The Public ID is used as the Code Value. These can be looked up as in the following example (the version is required): http://cdebrowser.nci.nih.gov/CDEBrowser/search?dataElementDetails=9/&cdeId=2178693&version=2.1&PageId=DataElementsGroup"
+  },
+  {
+   "designator": "CD2",
+   "uid": "2.16.840.1.113883.6.13",
+   "name": "CDT-2",
+   "responsible_organization": "ADA",
+   "resources": "",
+   "description": "American Dental Association's (ADA) Current Dental Terminology 2 (CDT-2)"
+  },
+  {
+   "designator": "CTV3",
+   "uid": "2.16.840.1.113883.6.6",
+   "name": "Clinical Terms Version 3",
+   "responsible_organization": "UK NHS",
+   "resources": "",
+   "description": "Read Codes"
+  },
+  {
+   "designator": "DC",
+   "uid": "1.2.840.10008.2.16.10",
+   "name": "Dublin Core",
+   "responsible_organization": "W3C",
+   "resources": "DOC: http://dublincore.org/documents/1998/09/dces/ DOC: http://www.ietf.org/rfc/rfc2413.txt",
+   "description": "Dublin Code Metadata for Resource Discovery. The Code Value is the Label field, e.g., \"Creator\" (capitalization significant)."
+  },
+  {
+   "designator": "DCM",
+   "uid": "1.2.840.10008.2.16.4",
+   "name": "DICOM Controlled Terminology",
+   "responsible_organization": "DICOM",
+   "resources": "DOC: http://dicom.nema.org/medical/dicom/current/output/chtml/part16/chapter_D.html OWL: ftp://medical.nema.org/MEDICAL/Dicom/Resources/Ontology/DCM/dcm.owl.zip FHIR: http://dicom.nema.org/resources/ontology/DCM",
+   "description": "PS3.16 Content Mapping Resource, Annex D (Note that HL7 also specifies an OID of 2.16.840.1.113883.6.31, but deprecates it in favor of 1.2.840.10008.2.16.4)."
+  },
+  {
+   "designator": "DCMUID",
+   "uid": "1.2.840.10008.2.6.1",
+   "name": "DICOM UID Registry",
+   "responsible_organization": "DICOM",
+   "resources": "DOC: http://dicom.nema.org/medical/dicom/current/output/chtml/part06/chapter_A.html FHIR: http://dicom.nema.org/resources/ontology/DCMUID",
+   "description": ""
+  },
+  {
+   "designator": "FMA",
+   "uid": "2.16.840.1.113883.6.119",
+   "name": "FMA",
+   "responsible_organization": "University of Washington, Seattle",
+   "resources": "DOC: http://sig.biostr.washington.edu/projects/fm/AboutFM.html OWL: http://sig.biostr.washington.edu/share/downloads/fma/release/latest/fma.zip",
+   "description": "Digital Anatomist Foundational Model of Anatomy"
+  },
+  {
+   "designator": "HPC",
+   "uid": "2.16.840.1.113883.6.14",
+   "name": "",
+   "responsible_organization": "",
+   "resources": "",
+   "description": "Healthcare Financing Administration (HCFA) Common Procedure Coding System (HCPCS)"
+  },
+  {
+   "designator": "I10",
+   "uid": "2.16.840.1.113883.6.3",
+   "name": "ICD-10",
+   "responsible_organization": "WHO",
+   "resources": "",
+   "description": "International Classification of Diseases revision 10 (ICD-10)"
+  },
+  {
+   "designator": "I10C",
+   "uid": "2.16.840.1.113883.6.90",
+   "name": "ICD-10-CM",
+   "responsible_organization": "US DHHS CDC",
+   "resources": "DOC: http://www.cdc.gov/nchs/icd/icd10cm.htm",
+   "description": "International Classification of Diseases, Tenth Revision, Clinical Modification"
+  },
+  {
+   "designator": "I10P",
+   "uid": "2.16.840.1.113883.6.4",
+   "name": "ICD-10-PCS",
+   "responsible_organization": "US DHHS CMS",
+   "resources": "DOC: http://www.cms.gov/Medicare/Coding/ICD10",
+   "description": "ICD-10 Procedure Coding System (ICD 10 PCS)"
+  },
+  {
+   "designator": "I11",
+   "uid": "1.2.840.10008.2.16.16",
+   "name": "ICD-11",
+   "responsible_organization": "WHO",
+   "resources": "DOC: http://icd.who.int/browse11/l-m/en",
+   "description": "International Classification of Diseases revision 11 (ICD-11)"
+  },
+  {
+   "designator": "I9",
+   "uid": "2.16.840.1.113883.6.42",
+   "name": "ICD-9",
+   "responsible_organization": "WHO",
+   "resources": "",
+   "description": "International Classification of Diseases revision 9 (ICD-9)"
+  },
+  {
+   "designator": "I9C",
+   "uid": "2.16.840.1.113883.6.2",
+   "name": "ICD-9-CM",
+   "responsible_organization": "",
+   "resources": "",
+   "description": "International Classification of Diseases revision 9, with Clinical Modifications (ICD-9-CM)"
+  },
+  {
+   "designator": "ICDO3",
+   "uid": "2.16.840.1.113883.6.43.1",
+   "name": "ICD-O-3",
+   "responsible_organization": "WHO",
+   "resources": "DOC: http://www.who.int/standards/classifications/other-classifications/international-classification-of-diseases-for-oncology",
+   "description": "International Classification of Diseases for Oncology, 3rd Edition Note ICD-O-3 version 3.2 is described at http://www.iacr.com.fr/index.php?option=com_content&view=article&id=149."
+  },
+  {
+   "designator": "IBSI",
+   "uid": "1.2.840.10008.2.16.13",
+   "name": "Image Biomarker Standardisation Initiative",
+   "responsible_organization": "",
+   "resources": "DOC: http://arxiv.org/abs/1612.07003",
+   "description": ""
+  },
+  {
+   "designator": "IETF4646",
+   "uid": "",
+   "name": "RFC 4646",
+   "responsible_organization": "IETF",
+   "resources": "DOC: http://tools.ietf.org/html/rfc4646",
+   "description": "[RFC 4646], Tags for Identifying Languages, The Internet Society (2005) [RFC 4646] has been superceded by [RFC 5646]."
+  },
+  {
+   "designator": "ISO639_1",
+   "uid": "2.16.840.1.113883.6.99",
+   "name": "ISO 639-1",
+   "responsible_organization": "ISO",
+   "resources": "",
+   "description": "[ISO 639-1] Two-letter language codes Note HL7 uses \"ISO639-1\" for the symbolic name, with a hyphen rather than an underscore"
+  },
+  {
+   "designator": "ISO639_2",
+   "uid": "2.16.840.1.113883.6.100",
+   "name": "ISO 639-2",
+   "responsible_organization": "ISO",
+   "resources": "",
+   "description": "[ISO 639-2] Three-letter language codes Note HL7 uses \"ISO639-2\" for the symbolic name, with a hyphen rather than an underscore"
+  },
+  {
+   "designator": "ISO3166_1",
+   "uid": "2.16.1",
+   "name": "ISO 3166-1",
+   "responsible_organization": "ISO",
+   "resources": "",
+   "description": "[ISO 3166-1] alpha-2 Country Codes Note HL7 uses \"ISO3166-1\" for the symbolic name, with a hyphen rather than an underscore"
+  },
+  {
+   "designator": "ISO5218_1",
+   "uid": "",
+   "name": "ISO 5218-1",
+   "responsible_organization": "ISO",
+   "resources": "",
+   "description": "Representation of Human Sexes (not used) ISO5218_1, which uses numeric codes, was improperly specified in CID 7455 Sex in earlier editions of the Standard. The alphabetic codes improperly attributed to that Coding Scheme have been added to the DICOM Controlled Terminology, and thus all references to Coding Scheme ISO5218_1 should be considered equivalent to Coding Scheme DCM."
+  },
+  {
+   "designator": "ISO_OID",
+   "uid": "",
+   "name": "ISO OID",
+   "responsible_organization": "ISO",
+   "resources": "",
+   "description": "[ISO 8824-1] ISO/IEC 8824-1- Information Technology - Abstract Syntax 1 (ASN.1): Specification of Basic Notation, and [ISO 9834-1] - Information technology - Open Systems Interconnection - Procedures for the operation of OSI Registration Authorities: General procedures and top arcs of the ASN.1 Object Identifier tree"
+  },
+  {
+   "designator": "ITIS_TSN",
+   "uid": "1.2.840.10008.2.16.7",
+   "name": "ITIS TSN",
+   "responsible_organization": "ITIS",
+   "resources": "DOC: http://www.itis.gov",
+   "description": "A Taxonomic Serial Number (TSN) is a unique, persistent, non-intelligent identifier for a scientific name in the context of the Integrated Taxonomic Information System (ITIS)."
+  },
+  {
+   "designator": "LN",
+   "uid": "2.16.840.1.113883.6.1",
+   "name": "LOINC",
+   "responsible_organization": "Regenstrief Institute",
+   "resources": "DOC: http://loinc.org/ FHIR: http://loinc.org",
+   "description": "[LOINC] Logical Observation Identifier Names and Codes"
+  },
+  {
+   "designator": "MA",
+   "uid": "1.2.840.10008.2.16.5",
+   "name": "Adult Mouse Anatomy Ontology",
+   "responsible_organization": "The Jackson Laboratory",
+   "resources": "DOC: http://www.informatics.jax.org/searches/AMA.cgi?id=MA:0002405",
+   "description": "Hayamizu TF, Mangan M, Corradi JP, Kadin JA, Ringwald M. The Adult Mouse Anatomical Dictionary: a tool for annotating and integrating data. Genome Biology 2005;6(3):R29. doi:10.1186/gb-2005-6-3-r29. http://www.ncbi.nlm.nih.gov/pmc/articles/PMC1088948/"
+  },
+  {
+   "designator": "MAYOASRG",
+   "uid": "1.2.840.10008.2.16.12",
+   "name": "Mayo Clinic Non-radiological Images Specific Body Structure Anatomical Surface Region Guide",
+   "responsible_organization": "",
+   "resources": "",
+   "description": "The numeric code of entries in the Mayo Clinic Non-radiological Images Specific Body Structure Anatomical Surface Region Guide."
+  },
+  {
+   "designator": "MDC",
+   "uid": "2.16.840.1.113883.6.24",
+   "name": "",
+   "responsible_organization": "",
+   "resources": "",
+   "description": "ISO/IEEE 11073 Medical Device Nomenclature, including all its subsections ([ISO/IEEE 11073-10101], [ISO/IEEE 11073-10101a], [ISO/IEEE 11073-10102], etc.), encoded as decimal strings <partition>:<element>"
+  },
+  {
+   "designator": "MDNS",
+   "uid": "",
+   "name": "",
+   "responsible_organization": "",
+   "resources": "",
+   "description": "Universal Medical Device (UMD) Nomenclature System"
+  },
+  {
+   "designator": "MGI",
+   "uid": "1.2.840.10008.2.16.8",
+   "name": "MGI",
+   "responsible_organization": "The Jackson Laboratory",
+   "resources": "DOC: http://www.informatics.jax.org/mgihome/nomen/",
+   "description": "The MGI ID from the Mouse Genome Initiative (MGI) nomenclature."
+  },
+  {
+   "designator": "MSH",
+   "uid": "2.16.840.1.113883.6.177",
+   "name": "MeSH",
+   "responsible_organization": "NLM",
+   "resources": "DOC: http://www.nlm.nih.gov/mesh/meshhome.html",
+   "description": "US National Library of Medicine (NLM) Medical Subject Headings (MeSH)"
+  },
+  {
+   "designator": "NBD",
+   "uid": "2.16.840.1.113883.15.2",
+   "name": "",
+   "responsible_organization": "",
+   "resources": "",
+   "description": "NASPE/BPEG Defibrillator Code Bernstein AD, et al.\"The NASPE/BPEG Defibrillator Code\" PACE, 16:1776-1780, 1993"
+  },
+  {
+   "designator": "NBG",
+   "uid": "2.16.840.1.113883.15.3",
+   "name": "",
+   "responsible_organization": "",
+   "resources": "DOC: http://www.hrsonline.org/Practice-Guidance/Clinical-Guidelines-Documents/2002-The-Revised-NASPE-BPEG-Generic-Code-for-Antibradycardia-AdaptiveRate-and-Multisite-Pacing",
+   "description": "NASPE/BPEG Generic Pacemaker Code (2000) Bernstein AD, et al.\"The Revised NASPE/BPEG Generic Code for antibradycardia, adaptive-rate, and multisite pacing.\" Pacing Clin Electrophysiol., 25:260-264, 2002 See http://www.hrsonline.org/Practice-Guidance/Clinical-Guidelines-Documents/2002-The-Revised-NASPE-BPEG-Generic-Code-for-Antibradycardia-AdaptiveRate-and-Multisite-Pacing."
+  },
+  {
+   "designator": "NCDR",
+   "uid": "",
+   "name": "",
+   "responsible_organization": "",
+   "resources": "",
+   "description": "American College of Cardiology National Cardiovascular Data Registry™ Cath Lab Module Version 1.1, 1997; Version 2.0b, 1999"
+  },
+  {
+   "designator": "NCIt",
+   "uid": "2.16.840.1.113883.3.26.1.1",
+   "name": "NCI Thesaurus",
+   "responsible_organization": "NCI",
+   "resources": "DOC: http://ncit.nci.nih.gov/",
+   "description": ""
+  },
+  {
+   "designator": "NDC",
+   "uid": "2.16.840.1.113883.6.69",
+   "name": "National Drug Code Directory",
+   "responsible_organization": "US FDA",
+   "resources": "DOC: http://www.fda.gov/Drugs/InformationOnDrugs/ucm142438.htm DOC: http://www.hl7.org/fhir/ndc.html",
+   "description": "The Code Value is the 10 digit 3 segment NDC code with \"-\" between segments included and no asterisk (leading zero placeholder)."
+  },
+  {
+   "designator": "NEU",
+   "uid": "2.16.840.1.113883.6.210",
+   "name": "NeuroNames",
+   "responsible_organization": "",
+   "resources": "DOC: http://braininfo.rprc.washington.edu/aboutBrainInfo.aspx#NeuroNames",
+   "description": "The numeric brainInfoID is used as the Code Value."
+  },
+  {
+   "designator": "NICIP",
+   "uid": "2.16.840.1.113883.2.1.3.2.4.21",
+   "name": "NICIP",
+   "responsible_organization": "UK NHS",
+   "resources": "DOC: http://digital.nhs.uk/article/1108/National-Interim-Clinical-Imaging-Procedure-NICIP-Code-Set",
+   "description": "UK National Health Service National Interim Clinical Imaging Procedures (NICIP) Short Code (e.g., \"CCHAPC\" for CT Thorax abdomen pelvis with contrast)"
+  },
+  {
+   "designator": "NPI",
+   "uid": "",
+   "name": "",
+   "responsible_organization": "",
+   "resources": "",
+   "description": "HCFA National Provider Identifier"
+  },
+  {
+   "designator": "NYUMCCG",
+   "uid": "1.2.840.10008.2.16.11",
+   "name": "New York University Melanoma Clinical Cooperative Group",
+   "responsible_organization": "",
+   "resources": "DOC: http://www.anatomymapper.com/nyu/",
+   "description": "The numeric code of entries in the New York University Melanoma Clinical Cooperative Group's numbering system."
+  },
+  {
+   "designator": "PATHLEX",
+   "uid": "1.3.6.1.4.1.19376.1.8.2.1",
+   "name": "PathLex",
+   "responsible_organization": "IHE",
+   "resources": "DOC: http://www.ihe.net/Technical_Framework/upload/IHE_PAT_Suppl_APSR_Appendix_Value_Sets_2011_03_31.xls DOC: http://purl.bioontology.org/ontology/PATHLEX",
+   "description": "The numeric pathLexCode is used as the Code Value."
+  },
+  {
+   "designator": "POS",
+   "uid": "2.16.840.1.113883.6.50",
+   "name": "",
+   "responsible_organization": "",
+   "resources": "",
+   "description": "HCFA Place of Service (POS) Codes for Professional Claims"
+  },
+  {
+   "designator": "PUBCHEM_CID",
+   "uid": "1.2.840.10008.2.16.9",
+   "name": "PubChem",
+   "responsible_organization": "NCBI",
+   "resources": "DOC: http://pubchem.ncbi.nlm.nih.gov/",
+   "description": "US National Center for Biotechnology Information (NCBI) PubChem Compound CID."
+  },
+  {
+   "designator": "RADLEX",
+   "uid": "2.16.840.1.113883.6.256",
+   "name": "RadLex",
+   "responsible_organization": "RSNA",
+   "resources": "DOC: http://www.radlex.org/ FHIR: http://www.radlex.org",
+   "description": "[RadLex]"
+  },
+  {
+   "designator": "RADELEMENT",
+   "uid": "1.2.840.10008.2.16.15",
+   "name": "RadElement",
+   "responsible_organization": "RSNA",
+   "resources": "DOC: http://radelement.org/",
+   "description": "[RadElement]"
+  },
+  {
+   "designator": "RFC3066",
+   "uid": "2.16.840.1.113883.6.121",
+   "name": "RFC 3066",
+   "responsible_organization": "IETF",
+   "resources": "DOC: http://www.rfc-editor.org/info/rfc3066",
+   "description": "[RFC 3066], Tags for the Identification of Languages, Internet Engineering Task Force Note HL7 uses \"IETF3066\" for the symbolic name. [RFC 3066] has been superseded by [RFC 4646], which in turn has been superceded by [RFC 5646]."
+  },
+  {
+   "designator": "RFC-3881",
+   "uid": "",
+   "name": "RFC 3881",
+   "responsible_organization": "IETF",
+   "resources": "DOC: http://www.rfc-editor.org/info/rfc3881",
+   "description": "[RFC 3881], Security Audit and Access Accountability Message - XML Data Definitions for Healthcare Applications Note A hyphen is used in the Coding Scheme Designator for consistency with historical use in IHE. See IHE ITI TF Vol2a. Section 3.20.7.1.3."
+  },
+  {
+   "designator": "RFC5646",
+   "uid": "2.16.840.1.113883.6.316",
+   "name": "RFC 5646",
+   "responsible_organization": "IETF",
+   "resources": "DOC: http://www.rfc-editor.org/info/rfc5646",
+   "description": "[RFC 5646], Tags for Identifying Languages, The Internet Society (2009) Note The HL7 OID Registry specifies \"rfc5646\", not \"ietf5646\", as the Desired Symbolic Name (inconsistent with the pattern used for [RFC 4646]). [RFC 5646] constitutes one part of IETF Best Current Practice BCP 47 Tags for Identifying Languages, which also includes [RFC 4647] Matching of Language Tags; [RFC 4647] is not relevant in this context."
+  },
+  {
+   "designator": "RO",
+   "uid": "1.2.840.10008.2.16.14",
+   "name": "Radiomics Ontology",
+   "responsible_organization": "",
+   "resources": "DOC: http://bioportal.bioontology.org/ontologies/RO",
+   "description": ""
+  },
+  {
+   "designator": "RRID",
+   "uid": "1.2.840.10008.2.16.18",
+   "name": "RRID",
+   "responsible_organization": "Resource Identification Portal Community",
+   "resources": "DOC: http://www.rrids.org/",
+   "description": "Research Resource Identification"
+  },
+  {
+   "designator": "RXNORM",
+   "uid": "2.16.840.1.113883.6.88",
+   "name": "RXNORM",
+   "responsible_organization": "NLM",
+   "resources": "DOC: http://www.nlm.nih.gov/research/umls/rxnorm/ FHIR: http://www.nlm.nih.gov/research/umls/rxnorm",
+   "description": "RxNorm provides normalized names for clinical drugs and links its names to many of the drug vocabularies commonly used in pharmacy management and drug interaction software."
+  },
+  {
+   "designator": "99SDM",
+   "uid": "2.16.840.1.113883.6.53",
+   "name": "SDM",
+   "responsible_organization": "DICOM",
+   "resources": "",
+   "description": "SNOMED DICOM Microglossary (Retired) (see Section 8.1)"
+  },
+  {
+   "designator": "SCPECG",
+   "uid": "",
+   "name": "",
+   "responsible_organization": "",
+   "resources": "",
+   "description": "Standard Communications Protocol for Computer-Assisted Electrocardiography, Draft proposal for ISO Standard, AAMI, Revision 1.3"
+  },
+  {
+   "designator": "SNM3",
+   "uid": "2.16.840.1.113883.6.51",
+   "name": "SNOMED V3",
+   "responsible_organization": "SNOMED International",
+   "resources": "DOC: http://www.snomed.org/",
+   "description": "SNOMED International Version 3 (see Section 8.1) Note This Coding Scheme is deprecated. The use of \"SNOMED-RT style\" Code Values is no longer authorized by SNOMED except for creation by legacy devices, legacy objects in archives, and receiving systems that need to understand them."
+  },
+  {
+   "designator": "SCT",
+   "uid": "2.16.840.1.113883.6.96",
+   "name": "SNOMED CT",
+   "responsible_organization": "SNOMED International",
+   "resources": "DOC: http://www.snomed.org/ FHIR: http://snomed.info/sct",
+   "description": "[SNOMED], using the CT Code Values"
+  },
+  {
+   "designator": "SRT",
+   "uid": "2.16.840.1.113883.6.96",
+   "name": "SNOMED CT",
+   "responsible_organization": "SNOMED International",
+   "resources": "DOC: http://www.snomed.org/",
+   "description": "[SNOMED], using the \"SNOMED-RT style\" Code Values (see Section 8.1) Note HL7 uses \"SNM\" for the symbolic name. This Coding Scheme is deprecated. The use of \"SNOMED-RT style\" Code Values is no longer authorized by SNOMED except for creation by legacy devices, legacy objects in archives, and receiving systems that need to understand them."
+  },
+  {
+   "designator": "UBERON",
+   "uid": "1.2.840.10008.2.16.6",
+   "name": "UBERON",
+   "responsible_organization": "",
+   "resources": "DOC: http://uberon.org/",
+   "description": "The Uberon ID from the Uberon integrated cross-species ontology covering anatomical structures in animals."
+  },
+  {
+   "designator": "UCUM",
+   "uid": "2.16.840.1.113883.6.8",
+   "name": "UCUM",
+   "responsible_organization": "Regenstrief Institute",
+   "resources": "DOC: http://unitsofmeasure.org/ucum.html FHIR: http://unitsofmeasure.org",
+   "description": "[UCUM] Unified Code for Units of Measure"
+  },
+  {
+   "designator": "UMLS",
+   "uid": "2.16.840.1.113883.6.86",
+   "name": "UMLS",
+   "responsible_organization": "NLM",
+   "resources": "DOC: http://www.nlm.nih.gov/research/umls/",
+   "description": "UMLS codes as CUIs making up the values in a coding system"
+  },
+  {
+   "designator": "UNS",
+   "uid": "1.2.840.10008.2.16.17",
+   "name": "UNS",
+   "responsible_organization": "SAE International",
+   "resources": "",
+   "description": "Unified numbering system (UNS) for metals and alloys [J1086_201210]"
+  },
+  {
+   "designator": "UPC",
+   "uid": "2.16.840.1.113883.6.55",
+   "name": "",
+   "responsible_organization": "",
+   "resources": "",
+   "description": "Universal Product Code - Universal Code Council"
+  }
+ ]
+}

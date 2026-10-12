@@ -16,10 +16,9 @@
 import functools
 import os
 import pathlib
-from typing import Callable, Dict
+from typing import Callable, Dict, Literal
 
 from pymedphys._imports import streamlit as st
-from typing_extensions import Literal
 
 from pymedphys import _config as pmp_config
 

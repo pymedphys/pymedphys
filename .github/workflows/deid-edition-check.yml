@@ -1,0 +1,108 @@
+name: DICOM Edition Check
+
+# Each month, generate the de-identification tables from NEMA's current edition
+# of the DICOM standard and compare them with the committed tables, which are
+# generated from the pinned edition. When a table would change, or a page cannot
+# be fetched or parsed, open or update one issue.
+on:
+  schedule:
+    - cron: '23 4 3 * *'  # The 3rd of each month; staggered to avoid top-of-hour congestion
+  workflow_dispatch:
+
+# Read-only. Only the job that opens the issue can write, and it runs no
+# repository code.
+permissions:
+  contents: read
+
+concurrency:
+  group: deid-edition-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Edition Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      status: ${{ steps.check.outputs.status }}
+      report: ${{ steps.check.outputs.report }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user'
+
+      # The command exits with 0 when no table would change, 1 when one would,
+      # and 3 when a page could not be fetched or a table generated. Its JSON
+      # report says which; a run that stops before writing it has failed.
+      - name: Compare the tables generated from the current edition
+        id: check
+        run: |
+          set +e
+          uv run --no-sync pymedphys dev deid-tables --check-current \
+            --json "${RUNNER_TEMP}/edition-check.json" \
+            | tee "${RUNNER_TEMP}/edition-check.txt"
+          code="${PIPESTATUS[0]}"
+          set -e
+          status="$(jq -r '.status' "${RUNNER_TEMP}/edition-check.json" 2> /dev/null || true)"
+          case "${status}" in
+            unchanged | changed | failed) ;;
+            *) status=failed ;;
+          esac
+          delimiter="report-$(openssl rand -hex 16)"
+          {
+            echo "status=${status}"
+            echo "report<<${delimiter}"
+            cat "${RUNNER_TEMP}/edition-check.txt"
+            echo "${delimiter}"
+          } >> "${GITHUB_OUTPUT}"
+          exit "${code}"
+
+  report:
+    name: Report
+    needs: [check]
+    if: ${{ !cancelled() && needs.check.outputs.status != 'unchanged' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the edition-check issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          STATUS: ${{ needs.check.outputs.status }}
+          REPORT: ${{ needs.check.outputs.report }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="DICOM edition check: the de-identification tables need attention"
+          if [[ "${STATUS}" == "changed" ]]; then
+            summary="Generating the de-identification tables from NEMA's current edition of the DICOM standard would change the tables on \`${REF_NAME}\`."
+          else
+            summary="The edition check on \`${REF_NAME}\` could not fetch a page of NEMA's current edition of the DICOM standard, could not generate a table from it (as also happens when the pin's named corrections or its list of IODs with Functional Group Macros no longer match the new edition), or did not finish."
+          fi
+          body="${RUNNER_TEMP}/body.md"
+          {
+            echo "${summary}"
+            echo
+            echo '```text'
+            echo "${REPORT:-The check wrote no report; see the run log.}"
+            echo '```'
+            echo
+            echo "Run: ${RUN_URL}"
+            echo
+            echo "To move to the new edition, update the pin in \`lib/pymedphys/_dev/deid_tables/generate.py\`, regenerate the tables with \`pymedphys dev deid-tables\`, and compare the requirements register with every Annex E page of that edition, as the de-identification design describes."
+          } > "${body}"
+          number=$(gh issue list --state open --search "\"${title}\" in:title" \
+            --json number,title --jq "map(select(.title == \"${title}\")) | first | .number // empty")
+          if [[ -n "${number}" ]]; then
+            gh issue comment "${number}" --body-file "${body}"
+          else
+            gh issue create --title "${title}" --body-file "${body}"
+          fi

@@ -1,0 +1,17 @@
+effect,denominator_case,numerator_case,variant,median_multiplier,minimum,maximum
+hard/easy,3d-diagnostic-1x,3d-diagnostic-2x,current-pymedphys,56.235801648342786,50.52400601775642,58.20525763545285
+hard/easy,3d-diagnostic-3x,3d-diagnostic-4x,current-pymedphys,88.24899196224668,83.84626403917902,91.57576920046954
+hard/easy,3d-diagnostic-5x,3d-diagnostic-6x,current-pymedphys,30.456133928192457,27.30976162833289,33.30818474220857
+hard/easy,3d-diagnostic-7x,3d-diagnostic-8x,current-pymedphys,65.61223916160324,61.46618318770519,69.26829377657316
+hard/easy,3d-diagnostic-1x,3d-diagnostic-2x,current-scipy,115.00403669868734,99.42541289387225,124.19114228166478
+hard/easy,3d-diagnostic-3x,3d-diagnostic-4x,current-scipy,143.04904456095986,126.68845946323613,168.22975218579938
+hard/easy,3d-diagnostic-5x,3d-diagnostic-6x,current-scipy,88.77830545580764,83.97819814440513,90.91431366642313
+hard/easy,3d-diagnostic-7x,3d-diagnostic-8x,current-scipy,125.29569790777666,111.58438362912338,133.8357402918349
+padded/base,3d-diagnostic-1x,3d-diagnostic-5x,current-pymedphys,1.9003201683736508,1.7621520306725682,2.111721271581407
+padded/base,3d-diagnostic-1x,3d-diagnostic-5x,current-scipy,1.305502956658815,1.250252812938657,1.3503149268740082
+padded/base,3d-diagnostic-3x,3d-diagnostic-7x,current-pymedphys,1.3499461830480772,1.2439729232842804,1.4362325614990645
+padded/base,3d-diagnostic-3x,3d-diagnostic-7x,current-scipy,1.1486428124717531,1.021438908303207,1.2752734999079642
+padded/base,3d-diagnostic-2x,3d-diagnostic-6x,current-pymedphys,1.0442869555249648,1.009867782542067,1.1070883679398928
+padded/base,3d-diagnostic-2x,3d-diagnostic-6x,current-scipy,1.0277546953085541,0.9503563701158183,1.0560074673024906
+padded/base,3d-diagnostic-4x,3d-diagnostic-8x,current-pymedphys,1.0005084489750038,0.9740426668328543,1.02245795235256
+padded/base,3d-diagnostic-4x,3d-diagnostic-8x,current-scipy,0.9837098583291969,0.9341437776463412,1.0268719701754863

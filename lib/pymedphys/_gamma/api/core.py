@@ -13,8 +13,7 @@
 
 from pymedphys._dicom.dose import zyx_and_dose_from_dataset
 
-from ..implementation import gamma_filter_numpy, gamma_shell
-from ..utilities import calculate_pass_rate
+from ..implementation import gamma_shell
 
 
 def gamma_dicom(
@@ -38,43 +37,3 @@ def gamma_dicom(
     )
 
     return gamma
-
-
-def gamma_percent_pass(
-    dcm_ref_filepath,
-    dcm_eval_filepath,
-    dose_percent_threshold,
-    distance_mm_threshold,
-    method="shell",
-    **kwargs,
-):
-    axes_reference, dose_reference = zyx_and_dose_from_dataset(dcm_ref_filepath)
-    axes_evaluation, dose_evaluation = zyx_and_dose_from_dataset(dcm_eval_filepath)
-
-    if method == "shell":
-        gamma = gamma_shell(
-            axes_reference,
-            dose_reference,
-            axes_evaluation,
-            dose_evaluation,
-            dose_percent_threshold,
-            distance_mm_threshold,
-            **kwargs,
-        )
-
-        percent_pass = calculate_pass_rate(gamma)
-
-    elif method == "filter":
-        percent_pass = gamma_filter_numpy(
-            axes_reference,
-            dose_reference,
-            axes_evaluation,
-            dose_evaluation,
-            dose_percent_threshold,
-            distance_mm_threshold,
-            **kwargs,
-        )
-    else:
-        raise ValueError("method should be either `shell` or `filter`")
-
-    return percent_pass

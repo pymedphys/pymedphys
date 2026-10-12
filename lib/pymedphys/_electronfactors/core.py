@@ -116,6 +116,9 @@ def _single_calculate_deformability(x_test, y_test, x_data, y_data, z_data):
     adjusted_x_data = np.append(x_data, x_test)
     adjusted_y_data = np.append(y_data, y_test)
 
+    # All three fits share one domain that contains the test point. The
+    # initial fit's data exclude the test point and ev() clamps points
+    # outside the domain to its boundary rather than extrapolating.
     bbox = [
         min(adjusted_x_data),
         max(adjusted_x_data),
@@ -131,10 +134,10 @@ def _single_calculate_deformability(x_test, y_test, x_data, y_data, z_data):
     neg_adjusted_z_data = np.append(z_data, initial_model - deviation)
 
     pos_adjusted_model = scipy.interpolate.SmoothBivariateSpline(
-        adjusted_x_data, adjusted_y_data, pos_adjusted_z_data, kx=2, ky=1
+        adjusted_x_data, adjusted_y_data, pos_adjusted_z_data, bbox=bbox, kx=2, ky=1
     ).ev(x_test, y_test)
     neg_adjusted_model = scipy.interpolate.SmoothBivariateSpline(
-        adjusted_x_data, adjusted_y_data, neg_adjusted_z_data, kx=2, ky=1
+        adjusted_x_data, adjusted_y_data, neg_adjusted_z_data, bbox=bbox, kx=2, ky=1
     ).ev(x_test, y_test)
 
     deformability_from_pos_adjustment = (pos_adjusted_model - initial_model) / deviation
@@ -295,8 +298,9 @@ def calculate_percent_prediction_differences(
     Returns
     -------
     percent_prediction_differences : np.ndarray
-        The predicted electron insert factors for each data point
-        with that given data point removed.
+        Percent differences, computed as
+        ``100 * (factor_data - predictions) / factor_data``. Each prediction
+        is made with that data point removed from the model.
 
     """
     predictions = [
@@ -326,9 +330,9 @@ def search_for_centre_of_largest_bounded_circle(x, y, callback=None):
     boundary = insert.boundary
     centroid = insert.centroid
 
-    furthest_distance = np.hypot(
-        np.diff(insert.bounds[::2]), np.diff(insert.bounds[1::2])
-    )
+    # A scalar: basinhopping's temperature and step size must not be arrays.
+    min_x, min_y, max_x, max_y = insert.bounds
+    furthest_distance = np.hypot(max_x - min_x, max_y - min_y)
 
     def minimising_function(optimiser_input):
         x, y = optimiser_input

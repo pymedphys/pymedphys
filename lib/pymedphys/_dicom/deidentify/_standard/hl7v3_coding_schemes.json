@@ -1,0 +1,55 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.16 Table 8-2",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.16 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "chtml/part16/chapter_8.html",
+   "sha256": "14b5472ced78b0271643725b54a259ab943aafd20dc3d0ba43e6f2e7698c3471"
+  }
+ ],
+ "content_sha256": "2e5870bf91176e957d1d07ce99b4f37e21b8b91341e33bd61364192b6daa1311",
+ "rows": [
+  {
+   "designator": "ActCode",
+   "uid": "2.16.840.1.113883.5.4",
+   "description": ""
+  },
+  {
+   "designator": "ActPriority",
+   "uid": "2.16.840.1.113883.5.7",
+   "description": ""
+  },
+  {
+   "designator": "AdministrativeGender",
+   "uid": "2.16.840.1.113883.5.1",
+   "description": ""
+  },
+  {
+   "designator": "mediaType",
+   "uid": "2.16.840.1.113883.5.79",
+   "description": "RFC2046"
+  },
+  {
+   "designator": "NullFlavor",
+   "uid": "2.16.840.1.113883.5.1008",
+   "description": ""
+  },
+  {
+   "designator": "ObservationInterpretation",
+   "uid": "2.16.840.1.113883.5.83",
+   "description": ""
+  },
+  {
+   "designator": "Confidentiality",
+   "uid": "2.16.840.1.113883.5.25",
+   "description": ""
+  },
+  {
+   "designator": "ParticipationType",
+   "uid": "2.16.840.1.113883.5.90",
+   "description": ""
+  }
+ ]
+}

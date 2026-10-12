@@ -1,0 +1,46 @@
+{
+  "repeats": 7,
+  "template": {
+    "dimension": 2,
+    "n": 96,
+    "grid_mode": "fixed_extent",
+    "extent_mm": 80.0,
+    "spacing_mm": 1.0,
+    "evaluation_padding_mm": 6.0,
+    "field": "gaussian",
+    "field_width_mm": 18.4,
+    "fraction_mode": "cutoff",
+    "above_fraction_target": 0.5,
+    "lower_percent_dose_cutoff": 20.0,
+    "dose_percent_threshold": 3.0,
+    "distance_mm_threshold": 3.0,
+    "interp_fraction": 10.0,
+    "max_gamma": 2.0,
+    "local_gamma": false,
+    "ram_mib": 256,
+    "threads": 1,
+    "shift_mm": 1.0,
+    "dose_scale": 1.01,
+    "seed": 20261001,
+    "study": "size_by_fraction"
+  },
+  "factors": {
+    "n": [
+      32,
+      64,
+      96,
+      128,
+      192,
+      256
+    ],
+    "above_fraction_target": [
+      0.02,
+      0.05,
+      0.1,
+      0.25,
+      0.5,
+      0.8,
+      0.95
+    ]
+  }
+}

@@ -27,7 +27,15 @@ from collections.abc import Set
 # the Streamlit AppTest suite does, so the whole test run draws with Agg.
 os.environ.setdefault("MPLBACKEND", "Agg")
 
+import hypothesis  # noqa: E402
 import pytest  # noqa: E402
+
+from pymedphys._root import LIBRARY_ROOT  # noqa: E402
+
+# A longer campaign of the property tests, chosen with
+# --hypothesis-profile=deid-fuzz, as the de-identification engine's tests of
+# malformed input describe. CI runs Hypothesis's default profile.
+hypothesis.settings.register_profile("deid-fuzz", max_examples=10_000, deadline=None)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -83,6 +91,12 @@ MARKER_CONFIG: dict[str, Marker] = {
         description="mark test as requiring an Anthropic API key",
         noun="the tests that use the Anthropic API",
     ),
+    "dicom_validators": Marker(
+        only_options=("--run-only-dicom-validators", "--dicom-validators"),
+        include_option="--include-dicom-validators",
+        description="mark test as running external DICOM validators",
+        noun="the tests that run external DICOM validators",
+    ),
 }
 
 OPT_IN_MARKERS = frozenset(
@@ -102,6 +116,61 @@ SHARED_DATA_DIR: pathlib.Path | None = None
 
 _SAVED_ENVIRONMENT = pytest.StashKey[dict[str, str | None]]()
 _TEMPORARY_HOME = pytest.StashKey[pathlib.Path]()
+_COLLECTED_TEST_IDS = pytest.StashKey[set[str]]()
+_COLLECTED_CITATIONS = pytest.StashKey[dict[str, frozenset[str]]]()
+
+# The marker with which a test cites the de-identification requirements it
+# shows are met, which the requirements register reads from the tests' source.
+DEID_REQUIREMENT_MARKER = "deid_requirement"
+
+
+def pytest_itemcollected(item):
+    """Record actual tests before marker or name selection can remove them."""
+    try:
+        relative_path = item.path.resolve().relative_to(LIBRARY_ROOT)
+    except ValueError:
+        return
+
+    _, separator, name = item.nodeid.partition("::")
+    node_id = relative_path.as_posix()
+    if separator:
+        node_id += "::" + name.partition("[")[0]
+    item.session.stash.setdefault(_COLLECTED_TEST_IDS, set()).add(node_id)
+    cited = frozenset(
+        identifier
+        for marker in item.iter_markers(DEID_REQUIREMENT_MARKER)
+        for identifier in marker.args
+    )
+    if cited:
+        # The cases of a parametrised test share a node id.
+        citations = item.session.stash.setdefault(_COLLECTED_CITATIONS, {})
+        citations[node_id] = citations.get(node_id, frozenset()) | cited
+
+
+@pytest.fixture(scope="session")
+def collected_test_ids(request):
+    """Return collected test ids relative to the installed library root.
+
+    Each worker records its own collection, before deselection. An explicit
+    node selection can collect only some cases of a parametrised test, so it
+    cannot replace collecting the complete modules that requirements cite.
+    """
+    if any("::" in argument for argument in request.config.args):
+        return None
+    return frozenset(request.session.stash.get(_COLLECTED_TEST_IDS, set()))
+
+
+@pytest.fixture(scope="session")
+def collected_citations(request):
+    """Return the requirements each collected test cites with its marker.
+
+    By node id relative to the installed library root, as for
+    ``collected_test_ids``, and None when the session selected tests by
+    node id.
+    """
+    if any("::" in argument for argument in request.config.args):
+        return None
+    return dict(request.session.stash.get(_COLLECTED_CITATIONS, {}))
 
 
 def skip_reason(
@@ -173,6 +242,11 @@ def pytest_addoption(parser):
 def pytest_configure(config):
     for key, marker in MARKER_CONFIG.items():
         config.addinivalue_line("markers", f"{key}: {marker.description}")
+    config.addinivalue_line(
+        "markers",
+        f"{DEID_REQUIREMENT_MARKER}(*ids): the de-identification requirements, "
+        "by their ids in the requirements register, that the test shows are met",
+    )
 
     _isolate_home_directory(config)
 

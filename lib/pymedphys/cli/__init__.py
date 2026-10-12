@@ -20,7 +20,6 @@ import sys
 from pymedphys import _config
 from pymedphys._version import __version__
 
-from .claude import claude_cli
 from .dev import dev_cli
 from .dicom import dicom_cli
 from .experimental import experimental_cli
@@ -43,7 +42,6 @@ def define_parser():
     subparsers = parser.add_subparsers()
 
     dicom_cli(subparsers)
-    claude_cli(subparsers)
     experimental_cli(subparsers)
     pinnacle_cli(subparsers)
     trf_cli(subparsers)

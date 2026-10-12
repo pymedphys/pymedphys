@@ -9,6 +9,7 @@ updates:
   - package-ecosystem: github-actions
     directories:
       - "/"
+      - "/.github/actions/cache-data"
       - "/.github/actions/setup-project"
     schedule:
       interval: weekly
@@ -19,7 +20,6 @@ updates:
       default-days: 7
     labels:
       - dependencies
-      - "CI / CD"
     groups:
       actions:
         patterns:

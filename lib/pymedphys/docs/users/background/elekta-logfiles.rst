@@ -2,6 +2,10 @@
 Elekta Logfile Decoding and Indexing
 ====================================
 
+.. note::
+
+   This page is a historical record of the project as originally written. Statements about current or planned work, and links to source code, have not been updated against the current PyMedPhys source.
+
 Project aim
 -----------
 The aim of this project is to have an automated machine record based delivery

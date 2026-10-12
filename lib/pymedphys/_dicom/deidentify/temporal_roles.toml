@@ -1,0 +1,1016 @@
+# Supplementary (L2) rules: the role of every date, time, and datetime (DA,
+# DT, and TM) attribute in the pinned PS3.6 data dictionary, and of every
+# other attribute that Table E.1-1 cleans under Retain Longitudinal Temporal
+# Information with Modified Dates, curated by hand against the attribute
+# descriptions in PS3.3.
+#
+# subject-event: an event in the subject's record, such as an acquisition,
+#   a treatment, or a review of the subject's data.
+# radiation-source: the reference date and time of a brachytherapy source's
+#   strength.
+# device: a property of equipment, such as its calibration or installation.
+# vocabulary-version: the version of a context group or template.
+# time-zone: a time zone offset.
+# other: any other date, such as a product's expiry or a clinical trial's
+#   ethics approval.
+#
+# Where Retain Longitudinal Temporal Information with Modified Dates is
+# selected, subject-event and radiation-source values move by the subject's
+# offset, a time-zone value becomes +0000 once every DT value with its own
+# offset is in the instance's local time, and values of every other role are
+# replaced by a fixed dummy value. Otherwise Table E.1-1 decides, or, for an
+# attribute that it omits, the attribute's supplementary action.
+#
+# Rules also cover attributes that Table E.1-1 omits, and attributes of other
+# VRs that it cleans under Modified Dates. A subject event that Table E.1-1
+# lists with C under Modified Dates needs no note; every other rule says why
+# it has its role.
+
+schema = "pymedphys-deid-temporal-roles/1"
+edition = "2026d"
+acknowledgement = "DICOM PS3.6 2026d, © NEMA"
+
+[[attribute]]
+tag = "(0008,0012)"
+keyword = "InstanceCreationDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0013)"
+keyword = "InstanceCreationTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0015)"
+keyword = "InstanceCoercionDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0020)"
+keyword = "StudyDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0021)"
+keyword = "SeriesDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0022)"
+keyword = "AcquisitionDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0023)"
+keyword = "ContentDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0024)"
+keyword = "OverlayDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0025)"
+keyword = "CurveDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,002A)"
+keyword = "AcquisitionDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0030)"
+keyword = "StudyTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0031)"
+keyword = "SeriesTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0032)"
+keyword = "AcquisitionTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0033)"
+keyword = "ContentTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0034)"
+keyword = "OverlayTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0035)"
+keyword = "CurveTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0008,0106)"
+keyword = "ContextGroupVersion"
+role = "vocabulary-version"
+note = "The version of the context group a code was taken from."
+
+[[attribute]]
+tag = "(0008,0107)"
+keyword = "ContextGroupLocalVersion"
+role = "vocabulary-version"
+note = "The local version of a context group with private extensions."
+
+[[attribute]]
+tag = "(0008,0201)"
+keyword = "TimezoneOffsetFromUTC"
+role = "time-zone"
+note = "The time zone offset of the instance's local dates and times, which Modified Dates cleans. Every DT value with its own offset is converted to this local time, and every offset, this one included, becomes +0000: a valid offset for the instance's times that keeps their intervals and reveals neither the season of the original date, through daylight saving, nor the location."
+
+[[attribute]]
+tag = "(0008,0404)"
+keyword = "ItemInventoryDateTime"
+role = "subject-event"
+note = "Not in Table E.1-1. PS3.3 requires it to be at or after Content Date (0008,0023) and Content Time (0008,0033), so it moves with the subject."
+
+[[attribute]]
+tag = "(0008,0416)"
+keyword = "ExpirationDateTime"
+role = "other"
+note = "Not in Table E.1-1. Until when a storage system expects to provide the instance through a URI, not an event in the subject's record."
+
+[[attribute]]
+tag = "(0008,041F)"
+keyword = "StudyUpdateDateTime"
+role = "subject-event"
+note = "Not in Table E.1-1. The last update to the subject's study in a storage system."
+
+[[attribute]]
+tag = "(0010,0030)"
+keyword = "PatientBirthDate"
+role = "subject-event"
+note = "Table E.1-1 empties it under every option."
+
+[[attribute]]
+tag = "(0010,0032)"
+keyword = "PatientBirthTime"
+role = "subject-event"
+note = "Table E.1-1 removes it under every option."
+
+[[attribute]]
+tag = "(0010,21D0)"
+keyword = "LastMenstrualDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0012,0086)"
+keyword = "EthicsCommitteeApprovalEffectivenessStartDate"
+role = "other"
+note = "When a clinical trial's ethics committee approval takes or ceases to take effect: a property of the trial, which may be public."
+
+[[attribute]]
+tag = "(0012,0087)"
+keyword = "EthicsCommitteeApprovalEffectivenessEndDate"
+role = "other"
+note = "When a clinical trial's ethics committee approval takes or ceases to take effect: a property of the trial, which may be public."
+
+[[attribute]]
+tag = "(0014,0102)"
+keyword = "SecondaryReviewDate"
+role = "subject-event"
+note = "Not in Table E.1-1. A review of the inspected object's data (DICONDE), like Review Date (300E,0004)."
+
+[[attribute]]
+tag = "(0014,0103)"
+keyword = "SecondaryReviewTime"
+role = "subject-event"
+note = "Not in Table E.1-1. A review of the inspected object's data (DICONDE), like Review Time (300E,0005)."
+
+[[attribute]]
+tag = "(0014,1020)"
+keyword = "ExpiryDate"
+role = "other"
+note = "Not in Table E.1-1. A DICONDE expiry date, defined outside PS3.3, rather than an event in the inspected object's record."
+
+[[attribute]]
+tag = "(0014,3076)"
+keyword = "DateOfGainCalibration"
+role = "device"
+note = "When the equipment's gain was calibrated (DICONDE)."
+
+[[attribute]]
+tag = "(0014,3077)"
+keyword = "TimeOfGainCalibration"
+role = "device"
+note = "When the equipment's gain was calibrated (DICONDE)."
+
+[[attribute]]
+tag = "(0014,4076)"
+keyword = "ProcedureCreationDate"
+role = "other"
+note = "Not in Table E.1-1. A date of a DICONDE inspection procedure, defined outside PS3.3, which applies to many inspected objects."
+
+[[attribute]]
+tag = "(0014,4078)"
+keyword = "ProcedureExpirationDate"
+role = "other"
+note = "Not in Table E.1-1. A date of a DICONDE inspection procedure, defined outside PS3.3, which applies to many inspected objects."
+
+[[attribute]]
+tag = "(0014,407A)"
+keyword = "ProcedureLastModifiedDate"
+role = "other"
+note = "Not in Table E.1-1. A date of a DICONDE inspection procedure, defined outside PS3.3, which applies to many inspected objects."
+
+[[attribute]]
+tag = "(0014,407C)"
+keyword = "CalibrationTime"
+role = "device"
+note = "When the equipment was calibrated (DICONDE)."
+
+[[attribute]]
+tag = "(0014,407E)"
+keyword = "CalibrationDate"
+role = "device"
+note = "When the equipment was calibrated (DICONDE)."
+
+[[attribute]]
+tag = "(0016,0077)"
+keyword = "GPSTimeStamp"
+role = "subject-event"
+note = "Table E.1-1 removes it under every option."
+
+[[attribute]]
+tag = "(0016,008D)"
+keyword = "GPSDateStamp"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,0027)"
+keyword = "InterventionDrugStopTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,0035)"
+keyword = "InterventionDrugStartTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,1012)"
+keyword = "DateOfSecondaryCapture"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,1014)"
+keyword = "TimeOfSecondaryCapture"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,1042)"
+keyword = "ContrastBolusStartTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,1043)"
+keyword = "ContrastBolusStopTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,1072)"
+keyword = "RadiopharmaceuticalStartTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,1073)"
+keyword = "RadiopharmaceuticalStopTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,1078)"
+keyword = "RadiopharmaceuticalStartDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,1079)"
+keyword = "RadiopharmaceuticalStopDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,1200)"
+keyword = "DateOfLastCalibration"
+role = "device"
+note = "When the equipment was last calibrated."
+
+[[attribute]]
+tag = "(0018,1201)"
+keyword = "TimeOfLastCalibration"
+role = "device"
+note = "When the equipment was last calibrated."
+
+[[attribute]]
+tag = "(0018,1202)"
+keyword = "DateTimeOfLastCalibration"
+role = "device"
+note = "When the equipment was last calibrated."
+
+[[attribute]]
+tag = "(0018,1203)"
+keyword = "CalibrationDateTime"
+role = "device"
+note = "When a treatment machine's output was calibrated."
+
+[[attribute]]
+tag = "(0018,1204)"
+keyword = "DateOfManufacture"
+role = "device"
+note = "When the equipment was manufactured."
+
+[[attribute]]
+tag = "(0018,1205)"
+keyword = "DateOfInstallation"
+role = "device"
+note = "When the equipment was installed."
+
+[[attribute]]
+tag = "(0018,700C)"
+keyword = "DateOfLastDetectorCalibration"
+role = "device"
+note = "When the detector was last calibrated."
+
+[[attribute]]
+tag = "(0018,700E)"
+keyword = "TimeOfLastDetectorCalibration"
+role = "device"
+note = "When the detector was last calibrated."
+
+[[attribute]]
+tag = "(0018,9074)"
+keyword = "FrameAcquisitionDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,9151)"
+keyword = "FrameReferenceDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,9369)"
+keyword = "SourceStartDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,936A)"
+keyword = "SourceEndDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,9516)"
+keyword = "StartAcquisitionDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,9517)"
+keyword = "EndAcquisitionDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,9623)"
+keyword = "FunctionalSyncPulse"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,9701)"
+keyword = "DecayCorrectionDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,9804)"
+keyword = "ExclusionStartDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,9919)"
+keyword = "InstructionPerformedDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0018,A002)"
+keyword = "ContributionDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0020,3403)"
+keyword = "ModifiedImageDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0020,3405)"
+keyword = "ModifiedImageTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0032,0032)"
+keyword = "StudyVerifiedDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0032,0033)"
+keyword = "StudyVerifiedTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0032,0034)"
+keyword = "StudyReadDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0032,0035)"
+keyword = "StudyReadTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0032,1000)"
+keyword = "ScheduledStudyStartDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0032,1001)"
+keyword = "ScheduledStudyStartTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0032,1010)"
+keyword = "ScheduledStudyStopDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0032,1011)"
+keyword = "ScheduledStudyStopTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0032,1040)"
+keyword = "StudyArrivalDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0032,1041)"
+keyword = "StudyArrivalTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0032,1050)"
+keyword = "StudyCompletionDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0032,1051)"
+keyword = "StudyCompletionTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0034,0007)"
+keyword = "FrameOriginTimestamp"
+role = "subject-event"
+note = "The capture time of each frame as an IEEE 1588 timestamp in TAI (PS3.3 C.7.6.27.1.1), rather than a DT value. Its seconds move by the subject's offset, which keeps the timing between frames exactly."
+
+[[attribute]]
+tag = "(0038,001A)"
+keyword = "ScheduledAdmissionDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0038,001B)"
+keyword = "ScheduledAdmissionTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0038,001C)"
+keyword = "ScheduledDischargeDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0038,001D)"
+keyword = "ScheduledDischargeTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0038,0020)"
+keyword = "AdmittingDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0038,0021)"
+keyword = "AdmittingTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0038,0030)"
+keyword = "DischargeDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0038,0032)"
+keyword = "DischargeTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(003A,0314)"
+keyword = "ImpedanceMeasurementDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,0002)"
+keyword = "ScheduledProcedureStepStartDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,0003)"
+keyword = "ScheduledProcedureStepStartTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,0004)"
+keyword = "ScheduledProcedureStepEndDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,0005)"
+keyword = "ScheduledProcedureStepEndTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,0244)"
+keyword = "PerformedProcedureStepStartDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,0245)"
+keyword = "PerformedProcedureStepStartTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,0250)"
+keyword = "PerformedProcedureStepEndDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,0251)"
+keyword = "PerformedProcedureStepEndTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,2004)"
+keyword = "IssueDateOfImagingServiceRequest"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,2005)"
+keyword = "IssueTimeOfImagingServiceRequest"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,4005)"
+keyword = "ScheduledProcedureStepStartDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,4008)"
+keyword = "ScheduledProcedureStepExpirationDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,4010)"
+keyword = "ScheduledProcedureStepModificationDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,4011)"
+keyword = "ExpectedCompletionDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,4050)"
+keyword = "PerformedProcedureStepStartDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,4051)"
+keyword = "PerformedProcedureStepEndDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,4052)"
+keyword = "ProcedureStepCancellationDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,A023)"
+keyword = "FindingsGroupRecordingDateTrial"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,A024)"
+keyword = "FindingsGroupRecordingTimeTrial"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,A030)"
+keyword = "VerificationDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,A032)"
+keyword = "ObservationDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,A033)"
+keyword = "ObservationStartDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,A034)"
+keyword = "EffectiveStartDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,A035)"
+keyword = "EffectiveStopDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,A082)"
+keyword = "ParticipationDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,A110)"
+keyword = "DateOfDocumentOrVerbalTransactionTrial"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,A112)"
+keyword = "TimeOfDocumentCreationOrVerbalTransactionTrial"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,A120)"
+keyword = "DateTime"
+role = "subject-event"
+note = "A structured report content item's value, whose meaning depends on its concept name. Some concepts, such as a calibration date, are not subject events, so structured reports need handling by concept (E.3.4)."
+
+[[attribute]]
+tag = "(0040,A121)"
+keyword = "Date"
+role = "subject-event"
+note = "A structured report content item's value, whose meaning depends on its concept name. Some concepts, such as a calibration date, are not subject events, so structured reports need handling by concept (E.3.4)."
+
+[[attribute]]
+tag = "(0040,A122)"
+keyword = "Time"
+role = "subject-event"
+note = "A structured report content item's value, whose meaning depends on its concept name. Some concepts, such as a calibration date, are not subject events, so structured reports need handling by concept (E.3.4)."
+
+[[attribute]]
+tag = "(0040,A13A)"
+keyword = "ReferencedDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,A192)"
+keyword = "ObservationDateTrial"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,A193)"
+keyword = "ObservationTimeTrial"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,B034)"
+keyword = "AnnotationDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,B036)"
+keyword = "SegmentDefinitionDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0040,DB06)"
+keyword = "TemplateVersion"
+role = "vocabulary-version"
+note = "The version of the template a document follows (retired)."
+
+[[attribute]]
+tag = "(0040,DB07)"
+keyword = "TemplateLocalVersion"
+role = "vocabulary-version"
+note = "The local version of a template with private extensions (retired)."
+
+[[attribute]]
+tag = "(0040,E004)"
+keyword = "HL7DocumentEffectiveTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0044,0004)"
+keyword = "ApprovalStatusDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0044,000B)"
+keyword = "ProductExpirationDateTime"
+role = "other"
+note = "When the manufacturer stops ensuring a product's safety, quality, or function."
+
+[[attribute]]
+tag = "(0044,0010)"
+keyword = "SubstanceAdministrationDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0044,0104)"
+keyword = "AssertionDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0044,0105)"
+keyword = "AssertionExpirationDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0068,6226)"
+keyword = "EffectiveDateTime"
+role = "other"
+note = "When an implant template, which its manufacturer publishes, becomes valid."
+
+[[attribute]]
+tag = "(0068,6270)"
+keyword = "InformationIssueDateTime"
+role = "other"
+note = "When an implant template's information was issued."
+
+[[attribute]]
+tag = "(0070,0082)"
+keyword = "PresentationCreationDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0070,0083)"
+keyword = "PresentationCreationTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0072,000A)"
+keyword = "HangingProtocolCreationDateTime"
+role = "other"
+note = "When a hanging protocol, a display layout rather than the subject's data, was created."
+
+[[attribute]]
+tag = "(0072,0061)"
+keyword = "SelectorDAValue"
+role = "other"
+note = "A selector value, such as a matching criterion in a hanging protocol. Its relationship to the subject's dates is not needed."
+
+[[attribute]]
+tag = "(0072,0063)"
+keyword = "SelectorDTValue"
+role = "other"
+note = "A selector value, such as a matching criterion in a hanging protocol. Its relationship to the subject's dates is not needed."
+
+[[attribute]]
+tag = "(0072,006B)"
+keyword = "SelectorTMValue"
+role = "other"
+note = "A selector value, such as a matching criterion in a hanging protocol. Its relationship to the subject's dates is not needed."
+
+[[attribute]]
+tag = "(0100,0420)"
+keyword = "SOPAuthorizationDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0400,0105)"
+keyword = "DigitalSignatureDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(0400,0310)"
+keyword = "CertifiedTimestamp"
+role = "other"
+note = "A signed timestamp that occurs only inside the Digital Signatures Sequence (FFFA,FFFA), which Table E.1-1 removes under every option."
+
+[[attribute]]
+tag = "(0400,0562)"
+keyword = "AttributeModificationDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(2100,0040)"
+keyword = "CreationDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(2100,0050)"
+keyword = "CreationTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3006,0008)"
+keyword = "StructureSetDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3006,0009)"
+keyword = "StructureSetTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3006,002D)"
+keyword = "ROIDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3006,002E)"
+keyword = "ROIObservationDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3008,0024)"
+keyword = "TreatmentControlPointDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3008,0025)"
+keyword = "TreatmentControlPointTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3008,0054)"
+keyword = "FirstTreatmentDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3008,0056)"
+keyword = "MostRecentTreatmentDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3008,0162)"
+keyword = "SafePositionExitDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3008,0164)"
+keyword = "SafePositionExitTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3008,0166)"
+keyword = "SafePositionReturnDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3008,0168)"
+keyword = "SafePositionReturnTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3008,0250)"
+keyword = "TreatmentDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3008,0251)"
+keyword = "TreatmentTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(300A,0006)"
+keyword = "RTPlanDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(300A,0007)"
+keyword = "RTPlanTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(300A,022C)"
+keyword = "SourceStrengthReferenceDate"
+role = "radiation-source"
+note = "The reference date and time of a brachytherapy source's strength. It moves with the subject, so decay intervals to treatment stay correct."
+
+[[attribute]]
+tag = "(300A,022E)"
+keyword = "SourceStrengthReferenceTime"
+role = "radiation-source"
+note = "The reference date and time of a brachytherapy source's strength. It moves with the subject, so decay intervals to treatment stay correct."
+
+[[attribute]]
+tag = "(300A,0736)"
+keyword = "TreatmentToleranceViolationDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(300A,073A)"
+keyword = "RecordedRTControlPointDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(300A,0741)"
+keyword = "InterlockDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(300A,0760)"
+keyword = "OverrideDateTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(300C,0127)"
+keyword = "BeamHoldTransitionDateTime"
+role = "subject-event"
+note = "Table E.1-1 gives it K under Retain Device Identity as well as C under Modified Dates. It is a treatment delivery event, like the other beam delivery times."
+
+[[attribute]]
+tag = "(300E,0004)"
+keyword = "ReviewDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(300E,0005)"
+keyword = "ReviewTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3010,004C)"
+keyword = "IntendedPhaseStartDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3010,004D)"
+keyword = "IntendedPhaseEndDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(3010,0085)"
+keyword = "IntendedFractionStartTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(4008,0100)"
+keyword = "InterpretationRecordedDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(4008,0101)"
+keyword = "InterpretationRecordedTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(4008,0108)"
+keyword = "InterpretationTranscriptionDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(4008,0109)"
+keyword = "InterpretationTranscriptionTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(4008,0112)"
+keyword = "InterpretationApprovalDate"
+role = "subject-event"
+
+[[attribute]]
+tag = "(4008,0113)"
+keyword = "InterpretationApprovalTime"
+role = "subject-event"
+
+[[attribute]]
+tag = "(4010,1025)"
+keyword = "RouteSegmentStartTime"
+role = "subject-event"
+note = "Not in Table E.1-1. When the inspected object began a segment of its route (DICOS)."
+
+[[attribute]]
+tag = "(4010,1026)"
+keyword = "RouteSegmentEndTime"
+role = "subject-event"
+note = "Not in Table E.1-1. When the inspected object ended a segment of its route (DICOS)."
+
+[[attribute]]
+tag = "(4010,102B)"
+keyword = "AlarmDecisionTime"
+role = "subject-event"
+note = "Not in Table E.1-1. When an alarm decision was made about the inspected object (DICOS)."
+
+[[attribute]]
+tag = "(4010,1041)"
+keyword = "OOIOwnerCreationTime"
+role = "other"
+note = "Not in Table E.1-1. A DICOS attribute, defined outside PS3.3, whose relationship to the inspection is not documented in PS3.3."

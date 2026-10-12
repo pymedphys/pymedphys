@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question or discuss an idea
+    url: https://github.com/pymedphys/pymedphys/discussions
+    about: Ask how to use PyMedPhys, or discuss an idea, in GitHub Discussions.
+  - name: Report a security vulnerability
+    url: https://github.com/pymedphys/pymedphys/blob/main/SECURITY.md
+    about: Report a suspected vulnerability privately, as the security policy describes, not in a public issue.

@@ -235,39 +235,34 @@ def AliasModule(modname, modpath, attrname=None):
             # Reverted change from https://github.com/pytest-dev/apipkg/commit/c9b997713cb77d2c1334acb7847ee6b24e3261b2
             # return getattr(getmod(), name)
             try:
-                return getattr(getmod(), name)
-            except (ImportError, ModuleNotFoundError) as exc:
-                # Support inspection rejection
-                if name in ["__file__", "__spec__", "__path__"]:
-                    return None
+                module = getmod()
+            except ImportError as exc:
+                # inspect, doctest, and IDEs probe dunder attributes such as
+                # ``__wrapped__``. They must find them missing, not fail.
+                if name.startswith("__") and name.endswith("__"):
+                    try:
+                        return ModuleType.__getattribute__(self, name)
+                    except AttributeError:
+                        raise AttributeError(name) from exc
 
-                no_scope_modname = modname.replace("pymedphys._imports.", "")
-
-                from pymedphys._imports import tomlkit
-
-                from pymedphys._dev.paths import DEPENDENCY_EXTRA_PATH
-                from pymedphys._version import __version__
-
-                extra = "user"
-                with open(DEPENDENCY_EXTRA_PATH) as f:
-                    dep_extra_contents = tomlkit.loads(f.read())
-
-                # Suggest extra with minimal num of dependencies
-                for sorted_extra in sorted(
-                    dep_extra_contents, key=lambda k: len(dep_extra_contents[k])
+                missing = exc.name or ""
+                top_level = modpath.split(".", maxsplit=1)[0]
+                if (
+                    not isinstance(exc, ModuleNotFoundError)
+                    or missing.split(".", maxsplit=1)[0] != top_level
                 ):
-                    if no_scope_modname in dep_extra_contents[sorted_extra]:
-                        extra = sorted_extra
-                        break
+                    # The package is installed but broken, for example by a
+                    # missing dependency of its own. Its error says more.
+                    raise
+
+                from pymedphys import _extras
 
                 raise ModuleNotFoundError(
-                    f"""
-                    PyMedPhys was unable to import "{no_scope_modname}.{name}".
-                    The easiest way to fix this issue is to use the "[extra]"
-                    option when installing PyMedPhys. Please run
-                    "pip install pymedphys[{extra}]=={__version__}".
-                    """
+                    _extras.missing_dependency_message(modpath, f"{modpath}.{name}"),
+                    name=top_level,
                 ) from exc
+
+            return getattr(module, name)
 
         def __setattr__(self, name, value):
             setattr(getmod(), name, value)

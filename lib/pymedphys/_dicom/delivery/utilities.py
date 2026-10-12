@@ -29,7 +29,7 @@ def jaw_dd2dcm(jaw):
 
 
 def mlc_dd2dcm(mlc):
-    mlc = np.array(mlc, copy=False)
+    mlc = np.asarray(mlc)
 
     dicom_mlc_format = []
     for control_point in mlc:
@@ -47,12 +47,14 @@ def angle_dd2dcm(angle):
     movement[diff < 0] = "CC"
     movement[diff == 0] = "NONE"
 
-    converted_angle = np.array(angle, copy=False)
+    # Copy, so that adding 360 to negative angles leaves the caller's array
+    # unchanged.
+    converted_angle = np.array(angle)
     converted_angle[converted_angle < 0] = converted_angle[converted_angle < 0] + 360
 
     converted_angle = converted_angle.astype(str).tolist()
 
-    return converted_angle, movement
+    return converted_angle, movement.tolist()
 
 
 def gantry_tol_from_gantry_angles(gantry_angles):

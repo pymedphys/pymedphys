@@ -13,10 +13,9 @@
 # limitations under the License.
 
 
-from typing import Dict, List
+from typing import Dict, List, Literal
 
 from pymedphys._imports import pydicom  # pylint: disable = unused-import
-from typing_extensions import Literal
 
 DicomPatientPosition = Literal[  # DICOM Patient Position Attribute (0x0018,5100)
     "HFP",

@@ -48,12 +48,12 @@ class CTSlice:
     def __post_init__(self):
         assert self.Rows > 0, "Rows must be positive."
         assert self.Columns > 0, "Columns must be positive."
-        assert (
-            len(self.ImagePositionPatient) == 3
-        ), "ImagePositionPatient must be a 3-tuple."
-        assert (
-            len(self.ImageOrientationPatient) == 6
-        ), "ImageOrientationPatient must be a 6-tuple."
+        assert len(self.ImagePositionPatient) == 3, (
+            "ImagePositionPatient must be a 3-tuple."
+        )
+        assert len(self.ImageOrientationPatient) == 6, (
+            "ImageOrientationPatient must be a 6-tuple."
+        )
         assert len(self.PixelSpacing) == 2, "PixelSpacing must be a 2-tuple."
 
 
@@ -603,7 +603,8 @@ def window_image(img: np.ndarray, ww: float, wl: float) -> np.ndarray:
     """
     img_min = wl - (ww / 2)
     img_max = wl + (ww / 2)
-    return np.clip(img, img_min, img_max)
+    windowed: np.ndarray = np.clip(img, img_min, img_max)
+    return windowed
 
 
 def create_structure_legend(structures: Dict[str, Dict[str, Any]]) -> str:

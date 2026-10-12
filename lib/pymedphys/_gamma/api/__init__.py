@@ -14,4 +14,4 @@
 
 # ruff: noqa: F401
 
-from .core import gamma_dicom, gamma_percent_pass
+from .core import gamma_dicom

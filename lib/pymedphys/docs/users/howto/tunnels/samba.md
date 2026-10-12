@@ -1,5 +1,9 @@
 # SAMBA SSH Tunnelling
 
+```{note}
+This page is a historical record of a site-specific deployment at Cancer Care Associates, kept as originally written. Commands, versions, hostnames, paths, and external links have not been updated or verified against current PyMedPhys or third-party software.
+```
+
 ## Background
 
 We need to access file shares across a range of sites. We do not yet have the

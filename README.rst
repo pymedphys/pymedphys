@@ -73,7 +73,7 @@ PyMedPhys is often used to:
 Install PyMedPhys
 *****************
 
-PyMedPhys currently supports Python 3.10, 3.11, and 3.12.
+PyMedPhys currently supports Python 3.11, 3.12, 3.13, and 3.14.
 
 For most users, we recommend using ``uv`` to create an environment and install
 PyMedPhys:
@@ -152,7 +152,7 @@ pre-commit by running:
 
 .. code:: bash
 
-    uv sync --python 3.12 --locked --extra all --group dev
+    uv sync --python 3.14 --locked
     uv run -- pre-commit install
 
 Run automated tests with:
@@ -234,6 +234,11 @@ Active contributors
 
 .. _`Marcus Fisk`: https://github.com/laser47-hue
 
+* `Vishu`_
+    * Hansraj College, India
+
+.. _`Vishu`: https://github.com/httpsVishu
+
 |uth| |ccr|
 
 Past contributors
@@ -302,6 +307,8 @@ Past contributors
 .. _`Yale University School of Medicine`: https://medicine.yale.edu/
 
 .. _`Cancer Care Riverina`: https://cancercare.com.au/clinics/cancer-care-riverina/
+
+.. _`Hansraj College`: https://hansrajcollege.ac.in/
 
 .. _`Astropy Project`: https://www.astropy.org/
 .. _`PyPI`: https://pypi.org/project/pymedphys/

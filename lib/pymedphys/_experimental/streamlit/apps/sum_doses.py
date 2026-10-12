@@ -14,6 +14,7 @@
 
 
 import pathlib
+import warnings
 from typing import BinaryIO, List, Sequence
 
 from pymedphys._imports import pydicom
@@ -70,7 +71,7 @@ def main():
         st.write("---")
         st.write("Summing doses...")
 
-        ds_summed = sum_doses_in_datasets(datasets)
+        ds_summed = _sum_doses_showing_warnings(datasets)
         _save_dataset_to_downloads_dir(ds_summed)
 
         st.write("Done!")
@@ -78,6 +79,19 @@ def main():
             "*Download the summed DICOM dose file from "
             "[downloads/RD.summed.dcm](downloads/RD.summed.dcm)*"
         )
+
+
+def _sum_doses_showing_warnings(datasets):
+    # Streamlit only logs Python warnings. Show them, including a grid
+    # mismatch that is accepted without resampling, to the person summing.
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", UserWarning)
+        ds_summed = sum_doses_in_datasets(datasets)
+
+    for warning in caught:
+        st.warning(str(warning.message))
+
+    return ds_summed
 
 
 def _load_and_check_files_valid(

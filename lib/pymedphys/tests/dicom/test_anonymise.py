@@ -121,7 +121,7 @@ def _check_is_anonymised_dataset_file_and_dir(
 
         ds.file_meta = pydicom.filereader.read_file_meta_info(test_file_path)
 
-        ds.save_as(temp_filepath, write_like_original=False)
+        ds.save_as(temp_filepath, enforce_file_format=True)
 
         if anon_is_expected:
             assert is_anonymised_dataset(ds, ignore_private_tags)

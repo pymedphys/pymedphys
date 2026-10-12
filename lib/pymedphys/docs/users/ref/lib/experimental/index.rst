@@ -11,8 +11,8 @@ Experimental Modules
    PyMedPhys release these modules may change in such a way that breaks code
    that depends on them.
 
-Changes within the experimental module are not tracked within the
-:doc:`release notes </release-notes>`.
+When upgrading, consult the :doc:`release notes </release-notes>` and
+revalidate code that depends on these modules.
 
 .. note::
 

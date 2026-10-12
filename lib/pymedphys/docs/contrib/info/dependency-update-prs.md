@@ -12,7 +12,7 @@ That workflow should:
 1. run on a schedule and also allow manual dispatch
 2. check out the repository
 3. run `uv lock --upgrade`, sync the environment, and run
-   `pymedphys dev propagate` so the exported requirements files,
+   `pymedphys dev propagate` so the exported `requirements.txt`,
    `dependency-extra.txt`, and `pyproject.hash` match the new lock
 4. stop without opening a PR if `uv.lock` did not change
 5. run a focused validation suite if `uv.lock` changed
@@ -22,8 +22,8 @@ That workflow should:
 The PR should usually have:
 
 - title: `chore: update dependencies`
-- branch: `deps/update-<run_number>`
-- label: `dependencies`
+- branch: `deps/weekly-update`, updated each week while its PR remains open
+- labels: `dependencies` and `full-test`
 
 ## What validation should run before the PR opens?
 
@@ -94,7 +94,7 @@ update manually.
 Run these preparation commands from the repository root in Bash or PowerShell:
 
 ```shell
-uv sync --python 3.12 --locked --extra all --group dev
+uv sync --python 3.14 --locked
 uv run pymedphys dev propagate
 
 uv run pymedphys dev tests -m "not slow" --maxfail=3

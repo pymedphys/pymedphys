@@ -1,0 +1,972 @@
+# Copyright (C) 2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""The release report's record of the method and the runtime environment.
+
+The sentinel tests put recognisable text where a report could leak it, in
+the path of the installed engine and in the vocabulary's entries, and check
+that the report holds none of it. Ordinary tests share the engine's files
+and tables, which are read once per process. Each synthetic engine uses its
+own directory, and cached reads are cleared at each module boundary.
+"""
+
+import dataclasses
+import json
+import pathlib
+import random
+import shutil
+import types
+import uuid
+
+from pymedphys._imports import pytest
+
+from pymedphys._dicom.deidentify import (
+    method_digest,
+    output_names,
+    policy,
+    qc_attestation,
+    reference_graph,
+    release_report,
+    residuals,
+    runtime,
+    scope,
+    standard,
+    walker,
+)
+from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._nomenclature import tg263
+
+# The method section's fields, as the design's method digest decision lists
+# them, and the runtime section's, as its runtime environments decision does.
+METHOD_FIELDS = [
+    "method_digest",
+    "method_digest_format",
+    "engine_version",
+    "table_digests",
+    "l2_rules_digest",
+    "l3_rules",
+    "vocabulary_digest",
+    "reviewed_roi_names",
+    "generated_values_digest",
+    "engine_files",
+]
+RUNTIME_FIELDS = [
+    "pymedphys_version",
+    "python_implementation",
+    "python_version",
+    "pydicom_version",
+    "tomlkit_version",
+]
+POLICY_FIELDS = ["preset", "edition", "options", "claims_conformance"]
+
+# Text that must never reach a report: a person name and an ROI name of the
+# kind a site's vocabulary or an installation path could hold.
+SENTINEL = "SENTINEL^Margaret"
+SENTINEL_ROI = "SentinelTumourMcAllister"
+
+ENGINE_FILES = {
+    "__init__.py": b'"""A package."""\n',
+    "method_digest.py": b'FORMAT = "digest/1"\n',
+    "policy.py": b"ACTION = 'X'\n",
+}
+
+
+@pytest.fixture(name="basic", scope="module")
+def _basic():
+    return policy.compose_policy("basic")
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _read_again():
+    """Start and end this module with the engine's files and tables unread."""
+    # pylint: disable = protected-access
+    method_digest._file_digests.cache_clear()
+    method_digest._table_digests.cache_clear()
+    yield
+    method_digest._file_digests.cache_clear()
+    method_digest._table_digests.cache_clear()
+
+
+def _vocabulary(*names):
+    structures = tuple(
+        tg263.Structure(
+            target_type="Anatomic",
+            major_category="Thorax",
+            minor_category="",
+            anatomic_group="",
+            primary_name=name,
+            reverse_order_name=name,
+            description="",
+            fma_id=None,
+        )
+        for name in names
+    )
+    return tg263.Nomenclature(
+        source=tg263.Source(file="invented.xls", sha256="0" * 64, sheet="Invented"),
+        attribution=tg263.ATTRIBUTION,
+        structures=structures,
+    )
+
+
+def test_the_report_records_the_policy_the_method_and_the_runtime(basic):
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
+
+    assert report.policy == release_report.PolicyRecord(
+        preset="basic", edition=basic.edition, options=(), claims_conformance=True
+    )
+    assert report.method == method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
+    assert report.runtime == runtime.runtime_environment()
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+@pytest.mark.parametrize("preset", list(policy.PRESETS))
+def test_the_policy_section_names_the_edition_preset_and_options(preset):
+    composed = policy.compose_policy(preset)
+
+    document = release_report.report_document(
+        release_report.release_report(
+            composed, vocabulary=None, reviewed_roi_names=None
+        )
+    )
+
+    assert document["policy"] == {
+        "preset": preset,
+        "edition": composed.edition,
+        "options": list(policy.PRESETS[preset]),
+        "claims_conformance": preset != "tps-import",
+    }
+
+
+def test_a_custom_option_set_has_no_preset():
+    custom = policy.compose_custom_policy(("clean_descriptors",))
+
+    report = release_report.release_report(
+        custom, vocabulary=None, reviewed_roi_names=None
+    )
+
+    assert report.policy.preset is None
+    assert report.policy.options == ("clean_descriptors",)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
+    document = release_report.report_document(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
+    )
+
+    assert list(document) == [
+        "format",
+        "policy",
+        "method",
+        "runtime",
+        "qc_review",
+        "released",
+        "sequestered",
+        "held_for_review",
+        "roi_names",
+        "reference_findings",
+        "pixel_risks",
+        "search_coverage",
+        "source_gaps",
+        "structural_checks",
+    ]
+    assert document["format"] == "pymedphys-deid-release-report/12"
+    assert list(document["policy"]) == POLICY_FIELDS
+    assert list(document["method"]) == METHOD_FIELDS
+    assert list(document["runtime"]) == RUNTIME_FIELDS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_the_method_section_holds_the_digest_and_its_components(basic):
+    vocabulary = _vocabulary("Heart", "Lung_L")
+    components = method_digest.method_digest_components(
+        basic, vocabulary=vocabulary, reviewed_roi_names=None
+    )
+
+    document = release_report.report_document(
+        release_report.release_report(
+            basic, vocabulary=vocabulary, reviewed_roi_names=None
+        )
+    )
+
+    assert document["method"] == {
+        name: (
+            dict(getattr(components, name))
+            if name in ("table_digests", "engine_files")
+            else getattr(components, name)
+        )
+        for name in METHOD_FIELDS
+    }
+    assert document["method"]["method_digest"] == method_digest.method_digest(
+        basic, vocabulary=vocabulary, reviewed_roi_names=None
+    )
+    assert document["method"]["l3_rules"] is None
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_the_runtime_section_holds_the_values_of_software_versions(basic):
+    environment = runtime.runtime_environment()
+
+    section = release_report.report_document(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
+    )["runtime"]
+
+    assert section == dataclasses.asdict(environment)
+    assert (
+        section["pymedphys_version"],
+        f"{section['python_implementation']} {section['python_version']}",
+        f"pydicom {section['pydicom_version']}",
+        f"tomlkit {section['tomlkit_version']}",
+    ) == environment.software_versions
+
+
+def test_the_json_is_the_document_and_the_same_report_gives_the_same_text(basic):
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
+
+    text = release_report.to_json(report)
+
+    assert json.loads(text) == release_report.report_document(report)
+    assert text == release_report.to_json(report)
+    assert text.endswith("}\n")
+
+
+def _installed_engine(tmp_path, monkeypatch):
+    """Install a synthetic engine below a directory named after a person."""
+    engine = tmp_path / SENTINEL / "site-packages" / "pymedphys" / "deidentify"
+    for name, content in ENGINE_FILES.items():
+        path = engine / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    tables = engine / "_standard"
+    shutil.copytree(standard.STANDARD_DIR, tables)
+    monkeypatch.setattr(method_digest, "PACKAGE_DIR", engine)
+    monkeypatch.setattr(standard, "STANDARD_DIR", tables)
+    return engine
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_the_report_holds_no_path_of_the_installed_engine(basic, tmp_path, monkeypatch):
+    engine = _installed_engine(tmp_path, monkeypatch)
+
+    text = release_report.to_json(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
+    )
+
+    assert SENTINEL not in text and "SENTINEL" not in text
+    assert str(tmp_path) not in text and tmp_path.as_posix() not in text
+    assert set(json.loads(text)["method"]["engine_files"]) == {
+        *ENGINE_FILES,
+        *(f"_standard/{path.name}" for path in (engine / "_standard").glob("*.json")),
+    }
+
+
+def test_the_report_holds_no_path_of_the_running_engine_or_home(basic):
+    text = release_report.to_json(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
+    )
+
+    for directory in (method_digest.PACKAGE_DIR, pathlib.Path.home()):
+        assert str(directory) not in text and directory.as_posix() not in text
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_the_report_holds_the_vocabulary_digest_not_its_entries(basic):
+    vocabulary = _vocabulary("Heart", SENTINEL_ROI)
+
+    text = release_report.to_json(
+        release_report.release_report(
+            basic, vocabulary=vocabulary, reviewed_roi_names=None
+        )
+    )
+
+    assert SENTINEL_ROI not in text and "Sentinel" not in text
+    assert json.loads(text)["method"]["vocabulary_digest"] == (
+        method_digest.digest_inputs(
+            vocabulary=vocabulary, reviewed_roi_names=None
+        ).vocabulary
+    )
+
+
+# A keyed digest of a reviewed-names list, as ReviewedNames.keyed_digest gives.
+REVIEWED_ROI_NAMES = "4247e696d65fef56fae5a25e8b7e2ffc5f81727a0a44395ca29acdc48df4d667"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_the_report_holds_the_reviewed_names_digest_it_was_given(basic):
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=REVIEWED_ROI_NAMES
+    )
+
+    method = release_report.report_document(report)["method"]
+
+    assert method["reviewed_roi_names"] == REVIEWED_ROI_NAMES
+    assert method["method_digest"] == method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=REVIEWED_ROI_NAMES
+    )
+    assert (
+        release_report.report_document(
+            release_report.release_report(
+                basic, vocabulary=None, reviewed_roi_names=None
+            )
+        )["method"]["reviewed_roi_names"]
+        is None
+    )
+
+
+def test_every_report_states_the_reviewed_names_digest_by_name(basic):
+    # This call omits the argument on purpose.
+    # pylint: disable = missing-kwoa
+    with pytest.raises(TypeError, match="reviewed_roi_names"):
+        release_report.release_report(basic, vocabulary=None)  # type: ignore[call-arg]
+
+
+def _with_method(report, **changes):
+    return dataclasses.replace(
+        report, method=dataclasses.replace(report.method, **changes)
+    )
+
+
+def _with_runtime(report, **changes):
+    return dataclasses.replace(
+        report, runtime=dataclasses.replace(report.runtime, **changes)
+    )
+
+
+def _engine_files(report, path):
+    files = {**report.method.engine_files, path: "0" * 64}
+    return _with_method(report, engine_files=types.MappingProxyType(files))
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+@pytest.mark.parametrize(
+    "change, field",
+    [
+        (lambda r: _engine_files(r, f"/home/{SENTINEL}/policy.py"), "engine_files"),
+        (lambda r: _engine_files(r, f"../{SENTINEL}/policy.py"), "engine_files"),
+        (lambda r: _engine_files(r, f"C:\\{SENTINEL}\\policy.py"), "engine_files"),
+        (lambda r: _engine_files(r, f".{SENTINEL}/policy.py"), "engine_files"),
+        (
+            lambda r: _with_method(
+                r,
+                table_digests={**r.method.table_digests, f"{SENTINEL}.json": "0" * 64},
+            ),
+            "table_digests",
+        ),
+        (lambda r: _with_method(r, method_digest=SENTINEL), "method_digest"),
+        (lambda r: _with_method(r, vocabulary_digest=SENTINEL), "vocabulary_digest"),
+        (lambda r: _with_method(r, l3_rules=SENTINEL), "l3_rules"),
+        (
+            lambda r: _with_method(r, reviewed_roi_names=SENTINEL),
+            "reviewed_roi_names",
+        ),
+        (
+            lambda r: _with_method(r, reviewed_roi_names="A" * 64),
+            "reviewed_roi_names",
+        ),
+        (
+            lambda r: _with_method(r, l2_rules_digest="A" * 64),
+            "l2_rules_digest",
+        ),
+        (
+            lambda r: _with_method(r, method_digest_format=SENTINEL),
+            "method_digest_format",
+        ),
+        (
+            lambda r: _with_method(r, engine_version=f"0.42.0+{SENTINEL}"),
+            "engine_version",
+        ),
+        (
+            lambda r: _with_runtime(r, python_version=f"/home/{SENTINEL}"),
+            "python_version",
+        ),
+        (
+            lambda r: dataclasses.replace(
+                r, policy=dataclasses.replace(r.policy, preset=SENTINEL)
+            ),
+            "preset",
+        ),
+        (
+            lambda r: dataclasses.replace(
+                r, policy=dataclasses.replace(r.policy, preset=[SENTINEL])
+            ),
+            "preset",
+        ),
+        (
+            lambda r: dataclasses.replace(
+                r, policy=dataclasses.replace(r.policy, options=(SENTINEL,))
+            ),
+            "options",
+        ),
+        (
+            lambda r: dataclasses.replace(
+                r, policy=dataclasses.replace(r.policy, edition=SENTINEL)
+            ),
+            "edition",
+        ),
+    ],
+    ids=[
+        "absolute-path",
+        "parent-path",
+        "windows-path",
+        "hidden-path",
+        "table-name",
+        "digest",
+        "vocabulary-digest",
+        "l3-rules",
+        "reviewed-names-digest",
+        "uppercase-reviewed-names-digest",
+        "uppercase-digest",
+        "format",
+        "engine-version",
+        "runtime-value",
+        "preset",
+        "unhashable-preset",
+        "options",
+        "edition",
+    ],
+)
+def test_a_report_with_a_field_that_could_hold_a_value_or_path_is_refused(
+    basic, change, field
+):
+    report = change(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
+    )
+
+    for write in (release_report.report_document, release_report.to_json):
+        with pytest.raises(release_report.ReleaseReportError, match=field) as raised:
+            write(report)
+        assert "SENTINEL" not in str(raised.value) and "AAAA" not in str(raised.value)
+        assert raised.value.__cause__ is None
+
+
+@pytest.mark.parametrize("vocabulary", [(), (None,)], ids=["left-out", "by-position"])
+def test_every_report_states_the_vocabulary_by_name(basic, vocabulary):
+    with pytest.raises(TypeError, match="vocabulary|positional"):
+        release_report.release_report(basic, *vocabulary)
+
+
+def test_only_a_policy_is_accepted():
+    with pytest.raises(TypeError, match="policy must be"):
+        release_report.release_report(
+            {"preset": "basic"}, vocabulary=None, reviewed_roi_names=None
+        )
+
+
+# D-026, as the maintainer decided on 2 October 2026: a sequestered instance
+# is named by a random per-run label, which only the QC pack maps to its
+# source.
+def _sequestered(label="S-0001"):
+    rule = walker.Sequestration(
+        ElementPath((("(0010,1002)", 3),), "(0010,0020)"),
+        "D",
+        "SQ",
+        walker.SequesterReason.NO_DUMMY_VALUE,
+    )
+    return release_report.SequesteredInstance(
+        label,
+        (
+            release_report.sequestration_reason(
+                reference_graph.FindingKind.CONFLICTING_INSTANCE
+            ),
+            release_report.sequestration_reason(rule),
+        ),
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18", "MIDI-BP-06")
+def test_sequestered_instances_are_listed_by_label_with_their_reasons(basic):
+    report = release_report.release_report(
+        basic,
+        vocabulary=None,
+        reviewed_roi_names=None,
+        sequestered=(_sequestered("S-0002"), _sequestered("S-0001")),
+    )
+    document = release_report.report_document(report)
+
+    assert [entry["label"] for entry in document["sequestered"]] == [
+        "S-0001",
+        "S-0002",
+    ]
+    assert document["sequestered"][0]["reasons"] == [
+        # Only the walker names a place.
+        {"stage": "references", "code": "conflicting-instance"},
+        {
+            # The attribute's tags, without the item that held it.
+            "stage": "walker",
+            "code": "no-dummy-value",
+            "attribute": "(0010,1002) > (0010,0020)",
+            "action": "D",
+            "vr": "SQ",
+        },
+    ]
+
+
+def test_a_reason_given_twice_is_listed_once(basic):
+    instance = _sequestered()
+    twice = dataclasses.replace(instance, reasons=instance.reasons * 2)
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None, sequestered=(twice,)
+    )
+
+    (entry,) = release_report.report_document(report)["sequestered"]
+    assert len(entry["reasons"]) == 2
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_labels_are_random_and_carry_nothing_from_the_run():
+    first = release_report.sequestration_labels(12, rng=random.Random(1))
+    second = release_report.sequestration_labels(12, rng=random.Random(2))
+
+    assert sorted(first) == sorted(second) == [f"S-{n:04d}" for n in range(1, 13)]
+    assert first != second
+    assert first != tuple(sorted(first))
+    assert not release_report.sequestration_labels(0)
+    assert release_report.sequestration_labels(12345)[0].startswith("S-")
+    assert {len(label) for label in release_report.sequestration_labels(12345)} == {7}
+
+
+def test_labels_are_drawn_from_the_operating_system_by_default(monkeypatch):
+    drawn = []
+
+    class Recording(random.Random):
+        def shuffle(self, x):  # pylint: disable=arguments-differ
+            drawn.append(list(x))
+            x.reverse()
+
+    monkeypatch.setattr(release_report.secrets, "SystemRandom", Recording)
+
+    assert release_report.sequestration_labels(3) == ("S-0003", "S-0002", "S-0001")
+    assert drawn == [["S-0001", "S-0002", "S-0003"]]
+
+
+# D-027, as the maintainer decided on 2 October 2026: the report counts what
+# the residual search did not search, by attribute and reason, and the QC
+# pack lists each by instance and place.
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_values_not_searched_are_counted_by_attribute_and_reason(basic):
+    name = ElementPath((), "(0010,0010)")
+    nested = ElementPath((("(0010,1002)", 0),), "(0010,0020)")
+    short_word = residuals.NotSearched(
+        name, "PN", residuals.Form.NAME_WORD, residuals.Omission.TOO_SHORT
+    )
+    coverage = release_report.search_coverage(
+        [
+            [
+                # Two forms of one value count as one value.
+                short_word,
+                residuals.NotSearched(
+                    name,
+                    "PN",
+                    residuals.Form.NAME_COMPONENT,
+                    residuals.Omission.TOO_SHORT,
+                ),
+                residuals.NotSearched(
+                    ElementPath((("(0010,1002)", 1),), "(0010,0020)"),
+                    "LO",
+                    residuals.Form.VALUE,
+                    residuals.Omission.TOO_SHORT,
+                ),
+                residuals.Unsearched(nested, residuals.UnsearchedReason.UNDECODABLE),
+                residuals.Unsearched(name, residuals.UnsearchedReason.RETAINED),
+            ],
+            # The same place in another instance is another value.
+            [short_word],
+        ]
+    )
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None, coverage=coverage
+    )
+
+    assert release_report.report_document(report)["search_coverage"] == [
+        {"attribute": "(0010,0010)", "reason": "retained", "count": 1},
+        {"attribute": "(0010,0010)", "reason": "too-short", "count": 2},
+        {"attribute": "(0010,1002) > (0010,0020)", "reason": "too-short", "count": 1},
+        {"attribute": "(0010,1002) > (0010,0020)", "reason": "undecodable", "count": 1},
+    ]
+
+
+@pytest.mark.parametrize(
+    "records",
+    [
+        residuals.Unsearched(
+            ElementPath((), "(0010,0010)"), residuals.UnsearchedReason.RETAINED
+        ),
+        ["SENTINEL"],
+    ],
+    ids=["not-by-instance", "not-a-record"],
+)
+def test_coverage_needs_records_by_instance(records):
+    with pytest.raises(TypeError) as raised:
+        release_report.search_coverage([records])
+
+    assert "SENTINEL" not in str(raised.value)
+
+
+class _Text(str):
+    pass
+
+
+def _with(report, **changes):
+    return dataclasses.replace(report, **changes)
+
+
+def _reason(**changes):
+    return dataclasses.replace(_sequestered().reasons[1], **changes)
+
+
+def _instance(*causes, label="S-0001"):
+    return release_report.SequesteredInstance(label, causes)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+@pytest.mark.parametrize(
+    "change, field",
+    [
+        (
+            lambda r: _with(r, sequestered=(_sequestered("SENTINEL"),)),
+            "label",
+        ),
+        (
+            lambda r: _with(r, sequestered=(_sequestered(), _sequestered())),
+            "label",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(code="SENTINEL"),)
+                    ),
+                ),
+            ),
+            "code",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(stage="SENTINEL"),)
+                    ),
+                ),
+            ),
+            "stage",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(attribute="/SENTINEL/path"),)
+                    ),
+                ),
+            ),
+            "attribute",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(action="SENTINEL"),)
+                    ),
+                ),
+            ),
+            "action",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    release_report.SequesteredInstance(
+                        "S-0001", (_reason(vr="SENTINEL"),)
+                    ),
+                ),
+            ),
+            "vr",
+        ),
+        (
+            lambda r: _with(
+                r, sequestered=(release_report.SequesteredInstance("S-0001", ()),)
+            ),
+            "reasons",
+        ),
+        (lambda r: _with(r, sequestered=(_instance("SENTINEL"),)), "reasons"),
+        (lambda r: _with(r, sequestered=("SENTINEL",)), "sequestered"),
+        (lambda r: _with(r, sequestered=(_sequestered("S-0002"),)), "label"),
+        (lambda r: _with(r, sequestered=(_sequestered("S-001"),)), "label"),
+        (lambda r: _with(r, sequestered=(_sequestered(_Text("S-0001")),)), "label"),
+        (
+            lambda r: _with(
+                r, sequestered=(_instance(_reason(code=_Text("no-dummy-value"))),)
+            ),
+            "code",
+        ),
+        (
+            lambda r: _with(
+                r,
+                sequestered=(
+                    _instance(
+                        dataclasses.replace(
+                            release_report.sequestration_reason(
+                                scope.Disposition.NO_SOP_CLASS
+                            ),
+                            attribute="(0010,0010)",
+                        )
+                    ),
+                ),
+            ),
+            "attribute",
+        ),
+        (
+            lambda r: _with(r, sequestered=(_instance(_reason(attribute=None)),)),
+            "attribute",
+        ),
+        (lambda r: _with(r, search_coverage=("SENTINEL",)), "search_coverage"),
+        (
+            lambda r: _with(
+                r,
+                search_coverage=(
+                    release_report.SearchCoverage("SENTINEL^Margaret", "too-short", 1),
+                ),
+            ),
+            "attribute",
+        ),
+        (
+            lambda r: _with(
+                r,
+                search_coverage=(
+                    release_report.SearchCoverage("(0010,0010)", "SENTINEL", 1),
+                ),
+            ),
+            "reason",
+        ),
+        (
+            lambda r: _with(
+                r,
+                search_coverage=(
+                    release_report.SearchCoverage("(0010,0010)", "too-short", 0),
+                ),
+            ),
+            "count",
+        ),
+        (
+            lambda r: _with(
+                r,
+                search_coverage=(
+                    release_report.SearchCoverage("(0010,0010)", "too-short", True),
+                ),
+            ),
+            "count",
+        ),
+    ],
+    ids=[
+        "label",
+        "repeated-label",
+        "code",
+        "stage",
+        "attribute",
+        "action",
+        "vr",
+        "no-reason",
+        "not-a-reason",
+        "not-an-instance",
+        "label-gap",
+        "label-width",
+        "label-subclass",
+        "code-subclass",
+        "place-for-another-stage",
+        "walker-without-place",
+        "not-coverage",
+        "coverage-attribute",
+        "coverage-reason",
+        "zero-count",
+        "boolean-count",
+    ],
+)
+def test_a_run_section_with_a_field_that_could_hold_a_value_is_refused(
+    basic, change, field
+):
+    report = change(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
+    )
+
+    for write in (release_report.report_document, release_report.to_json):
+        with pytest.raises(release_report.ReleaseReportError, match=field) as raised:
+            write(report)
+        assert "SENTINEL" not in str(raised.value)
+        assert raised.value.__cause__ is None
+
+
+def _uid(name):
+    return f"2.25.{uuid.uuid5(uuid.NAMESPACE_OID, name).int}"
+
+
+def _output_name(patient="DEID-AAAAAAAAAAAAAAAA", instance="sop"):
+    return output_names.instance_path(
+        patient_id=patient,
+        study_instance_uid=_uid("study"),
+        series_instance_uid=_uid("series"),
+        sop_instance_uid=_uid(instance),
+    )
+
+
+_REFERENCE = "A-" + "0" * 32
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_released_instances_are_listed_by_output_name_alone(basic):
+    names = [
+        _output_name(instance="b"),
+        _output_name(patient="DEID-BBBBBBBBBBBBBBBB"),
+        _output_name(instance="a"),
+    ]
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None, released=names
+    )
+
+    assert release_report.report_document(report)["released"] == sorted(
+        str(name) for name in names
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+@pytest.mark.parametrize("outcome", list(qc_attestation.Outcome))
+def test_the_qc_review_is_recorded_by_the_packs_reference_and_outcome(basic, outcome):
+    record = qc_attestation.AttestationRecord(_REFERENCE, outcome)
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None, qc_review=record
+    )
+
+    assert release_report.report_document(report)["qc_review"] == {
+        "reference": _REFERENCE,
+        "outcome": outcome.value,
+        "intended_use_checked": None,
+        "residual_risk_accepted": None,
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-17")
+@pytest.mark.parametrize(
+    "outcome", [qc_attestation.Outcome.ATTESTED, qc_attestation.Outcome.REJECTED]
+)
+@pytest.mark.parametrize(
+    "intended_use, residual_risk", [(True, True), (False, None), (None, False)]
+)
+def test_the_qc_review_records_the_releasers_confirmations(
+    basic, outcome, intended_use, residual_risk
+):
+    record = qc_attestation.AttestationRecord(
+        _REFERENCE, outcome, intended_use, residual_risk
+    )
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None, qc_review=record
+    )
+
+    assert release_report.report_document(report)["qc_review"] == {
+        "reference": _REFERENCE,
+        "outcome": outcome.value,
+        "intended_use_checked": intended_use,
+        "residual_risk_accepted": residual_risk,
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_a_run_without_a_qc_pack_records_no_qc_review(basic):
+    document = release_report.report_document(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None)
+    )
+
+    assert document["qc_review"] is None
+    assert document["released"] == []
+
+
+def _record(**changes):
+    record = qc_attestation.AttestationRecord(
+        _REFERENCE, qc_attestation.Outcome.ATTESTED
+    )
+    # Bypass the record's own checks, as a fault or a substitute could.
+    for name, value in changes.items():
+        object.__setattr__(record, name, value)
+    return record
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+@pytest.mark.parametrize(
+    "changes, field",
+    [
+        ({"released": ("SENTINEL",)}, "released"),
+        ({"released": (pathlib.PurePosixPath("SENTINEL/a/b/c.dcm"),)}, "released"),
+        (
+            {"released": (pathlib.PurePosixPath("DEID-AAAAAAAAAAAAAAAA/SENTINEL"),)},
+            "released",
+        ),
+        ({"released": (_output_name(), _output_name())}, "released"),
+        ({"released": (pathlib.PureWindowsPath(str(_output_name())),)}, "released"),
+        ({"qc_review": "SENTINEL"}, "qc_review"),
+        ({"qc_review": _record(reference="A-SENTINEL")}, "qc_review reference"),
+        ({"qc_review": _record(reference=_Text(_REFERENCE))}, "qc_review reference"),
+        ({"qc_review": _record(outcome="attested")}, "qc_review outcome"),
+        (
+            {"qc_review": _record(intended_use_checked="SENTINEL")},
+            "qc_review intended_use_checked",
+        ),
+        (
+            {"qc_review": _record(residual_risk_accepted=1)},
+            "qc_review residual_risk_accepted",
+        ),
+        (
+            {
+                "qc_review": _record(
+                    outcome=qc_attestation.Outcome.NOT_ATTESTED,
+                    intended_use_checked=True,
+                )
+            },
+            "qc_review intended_use_checked",
+        ),
+    ],
+    ids=[
+        "not-a-path",
+        "not-an-output-name",
+        "too-few-parts",
+        "listed-twice",
+        "windows-path",
+        "not-a-record",
+        "reference",
+        "reference-subclass",
+        "outcome-text",
+        "intended-use-text",
+        "residual-risk-number",
+        "confirmed-without-attestation",
+    ],
+)
+def test_a_release_or_review_field_that_could_hold_a_value_is_refused(
+    basic, changes, field
+):
+    report = _with(
+        release_report.release_report(basic, vocabulary=None, reviewed_roi_names=None),
+        **changes,
+    )
+
+    for write in (release_report.report_document, release_report.to_json):
+        with pytest.raises(release_report.ReleaseReportError, match=field) as raised:
+            write(report)
+        assert "SENTINEL" not in str(raised.value)
+        assert raised.value.__cause__ is None

@@ -1,4 +1,4 @@
-# Copyright (C) 2024 Matthew Jennings
+# Copyright (C) 2024, 2026 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -200,3 +200,26 @@ def test_1d_vs_scipy(setup_interp):
     )
 
     assert np.allclose(values_interp, values_interp_linear_scipy)
+
+
+@pytest.mark.parametrize(
+    "axis, message",
+    [
+        (np.array([3.0, 2.0, 1.0, 0.0]), "ascending"),
+        (np.array([0.0, 1.0, 3.0, 4.0]), "evenly spaced"),
+        (np.array([0.0]), "at least two"),
+    ],
+)
+def test_axis_structure_is_checked_even_when_skipping_checks(axis, message):
+    # Checking an axis is O(n) and the kernels silently return fill values
+    # or wrong weights (or read out of bounds) when these assumptions fail.
+    values = np.arange(axis.size, dtype=float)
+
+    with pytest.raises(ValueError, match=message):
+        interp.interp(
+            (axis,),
+            values,
+            points_interp=np.array([[0.5]]),
+            bounds_error=False,
+            skip_checks=True,
+        )

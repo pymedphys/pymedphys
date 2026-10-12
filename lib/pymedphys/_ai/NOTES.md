@@ -1,8 +1,11 @@
 # Creating the local Elekta MOSAIQ database
 
-NOTE: All of the below is implemented within the MOSAIQ Claude Chat streamlit
-app, and should be able to be undergone by clicking the "Start demo MOSAIQ
-server from .bak file" button.
+These are developer notes for the older `.bak` restoration workflow. The
+current draft **MOSAIQ Claude Chat** app has a **Fill database with CSV records**
+button; it does not expose the former **Start demo MOSAIQ server from .bak file**
+button. See `lib/pymedphys/_mosaiq/mock/from_csv.py` for that app's database
+setup. The SQL Server 2017 example below is separate from the SQL Server 2022
+container used by the current database CI workflow.
 
 ## Create the MSSQL database for MOSAIQ
 

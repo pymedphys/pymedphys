@@ -6,14 +6,6 @@ This documentation site is built with Sphinx, MyST, and Jupyter Book 1.x. This p
 document aims to help contributors to improve the PyMedPhys
 documentation.
 
-Documentation structure and philosophy
---------------------------------------
-
-The PyMedPhys documentation adheres to the `"Grand Unified Theory of
-Documentation"
-<https://documentation.divio.com/>`__ by Daniele Procida.
-
-
 Building the documentation on your workstation
 ----------------------------------------------
 
@@ -27,7 +19,7 @@ build the documentation:
     uv run -- pymedphys dev docs
 
 The build fails on Sphinx warnings and unexpected notebook execution errors.
-Notebook dependencies belong in the project's ``docs`` extra; notebooks should
+Notebook dependencies belong in the project's ``docs`` dependency group; notebooks should
 not install or change dependencies while building the documentation. An
 install cell kept for readers who run a notebook elsewhere (for example on
 Colab) must carry the ``skip-execution`` cell tag so the build never runs it.
@@ -59,16 +51,46 @@ The HTML output is in ``lib/pymedphys/docs/_build/html``. Serve it locally:
 Open ``http://localhost:8000`` and inspect the pages you changed, including their
 navigation, code examples, and links. Stop the server with Ctrl+C.
 
-To produce the same external-link report as CI, run this after an HTML build:
+To produce the same external-link report as CI, run:
 
 .. code-block:: bash
 
-    uv run python -m sphinx -b linkcheck -d lib/pymedphys/docs/_build/.doctrees lib/pymedphys/docs lib/pymedphys/docs/_build/linkcheck
+    uv run -- pymedphys dev docs --linkcheck
 
-Read ``output.txt`` or ``output.json`` in the linkcheck directory. A failed
+It reads the sources without executing notebooks, so it needs no HTML build
+first. Read ``output.txt`` or ``output.json`` in
+``lib/pymedphys/docs/_build/linkcheck``. A failed
 request may be a rate limit, authentication requirement, or temporary outage;
 verify it before replacing a link. CI reports external-link failures as
 advisory, so a green summary alone does not establish that every link works.
+
+Checking a pull request's documentation
+---------------------------------------
+
+CI's ``docs-check`` job builds the documentation of every pull request whose
+changes can affect it, with the same checks as a local build, and is the
+pull request's only documentation check. It uploads the built pages as the
+``docs-html`` artefact and the link-check report as ``docs-linkcheck``. To
+read the pages it built:
+
+#. From the pull request's **Checks** tab, open the summary page of its CI
+   run.
+#. Download ``docs-html`` from the run's **Artifacts** list, or run
+   ``gh run download <run-id> --name docs-html --dir docs-html``.
+#. Extract the archive if you downloaded it from the page, and serve that
+   folder as described above, giving its path to ``--directory``.
+
+A pull request whose changes cannot affect the documentation, such as one
+that changes only tests, has no documentation build. Build it locally, or ask
+someone with write access to run the ``Documentation`` workflow on its branch:
+under **Actions**, select **Documentation**, then **Run workflow**, or run
+``gh workflow run docs.yml --ref <branch>``. The run uploads the same
+artefacts. It can build only branches of this repository, not branches of
+forks.
+
+Read the Docs does not build pull requests unless a maintainer asks for a
+hosted preview with the ``rtd-preview`` label; the "Read the Docs" section of
+the :doc:`workflow guide <workflows>` explains how.
 
 Source files and publishing
 ---------------------------
@@ -82,11 +104,10 @@ by ``pymedphys dev docs --prep`` and by the normal build:
 
 Do not edit their generated copies.
 
-GitHub Actions builds and uploads ``docs-html`` and ``docs-linkcheck``
-artefacts for selected PRs. ReadTheDocs publishes the public site separately,
-using ``.readthedocs.yml``. The ``latest`` site describes the development
-branch; select the documentation version matching an installed release when
-checking release-specific behaviour.
+Read the Docs publishes the public site separately, using
+``.readthedocs.yml``. The ``latest`` site describes the development branch,
+``main``, and the ``stable`` site matches the latest release; use ``stable``
+when checking released behaviour.
 
 Writing portable links
 ----------------------
@@ -106,8 +127,9 @@ In notebooks that readers can download individually, use published
 documentation URLs so links work without the rest of the repository. Also use
 a published URL when the target is a generated page with no checked-in source
 at that path, such as
-``https://docs.pymedphys.com/en/latest/contrib/index.html``. Choose a release
-version instead of ``latest`` when the surrounding instructions require one.
+``https://docs.pymedphys.com/en/latest/contrib/index.html``. Link to ``stable``
+instead of ``latest`` when the surrounding instructions describe released
+behaviour.
 
 Check both the source-view destination and the built HTML after changing links.
 Keep native reStructuredText cross-references such as ``:doc:`` in

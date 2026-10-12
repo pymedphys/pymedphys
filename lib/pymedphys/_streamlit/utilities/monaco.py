@@ -4,10 +4,9 @@
 
 import os
 import pathlib
-from typing import List, Optional
+from typing import List, Optional, TypedDict
 
 from pymedphys._imports import streamlit as st
-from typing_extensions import TypedDict
 
 from pymedphys._monaco import patient as mnc_patient
 from pymedphys._streamlit.utilities import exceptions as _exceptions

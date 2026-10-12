@@ -1,0 +1,32 @@
+{
+  "source_archive_sha256": "4b56abc09d4f9fe3fb95c8edae37f05894059f84b24ac4cde203ca4e43b2fd1a",
+  "uncompressed_results_sha256": "42c959f1757d4bdd156f83ce77ac2414b7108a2b1f14c962090643f89673688e",
+  "started_utc": "2026-09-27T11:48:39.184589+00:00",
+  "finished_utc": "2026-09-27T12:31:15.841769+00:00",
+  "verified_groups": 84,
+  "verified_timed_calls": 336,
+  "workloads": 17,
+  "revisions": {
+    "previous": "866f83edad8586a42a739094e488f45242b72c95",
+    "current": "9b3a8aa00b752fd70bd92acd6d24f1089288dde5"
+  },
+  "host": {
+    "processor": "Intel(R) Core(TM) Ultra 7 265HX; 20 logical CPUs",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.14 (main, Sep  1 2026, 14:17:39) [MSC v.1944 64 bit (AMD64)]"
+  },
+  "versions": {
+    "numpy": "1.26.4",
+    "scipy": "1.17.1",
+    "numba": "0.67.0"
+  },
+  "thread_environment": {
+    "NUMBA_NUM_THREADS": "4",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1"
+  },
+  "numerical_checks": "Recorded full-array checks; source input arrays and hashes independently regenerated during publication review. Gamma calculations were not rerun.",
+  "max_recorded_gamma_difference": 2.5895952049381776e-14,
+  "pass_classification_disagreements": 0
+}

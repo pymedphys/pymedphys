@@ -402,7 +402,9 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
         offset_count = 0
         for n in range(fractions):
             # determine the session date for the current workday
-            session_date_str = f"2021-W{session_workday//5+1}-{session_workday%5+1}"
+            session_date_str = (
+                f"2021-W{session_workday // 5 + 1}-{session_workday % 5 + 1}"
+            )
             session_date = datetime.strptime(session_date_str, "%Y-W%W-%w")
 
             # and add the appointment time

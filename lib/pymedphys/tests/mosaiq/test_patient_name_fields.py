@@ -94,5 +94,5 @@ def test_get_patient_fields(connection: pymedphys.mosaiq.Connection):
         # iterate over the txfield results and see if they match
         current_index = 0.0
         for _, tx_point in point_results.iterrows():
-            assert tx_point[0] >= current_index
-            current_index = tx_point[0]
+            assert tx_point["Index"] >= current_index
+            current_index = tx_point["Index"]

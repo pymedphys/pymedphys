@@ -16,7 +16,6 @@
 # pylint: disable = redefined-outer-name
 
 
-from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
 import pymedphys
@@ -76,10 +75,7 @@ def test_dicom_trf_comparison(_data_paths):
             **GAMMA_OPTIONS,
         )
 
-        valid_gamma = gamma[~np.isnan(gamma)]
-        pass_ratio = np.sum(valid_gamma <= 1) / len(valid_gamma)
-
-        assert pass_ratio >= 0.98
+        assert pymedphys.gamma_pass_rate(gamma) >= 98
 
 
 @pytest.fixture()
