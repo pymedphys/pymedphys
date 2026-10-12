@@ -46,6 +46,7 @@ from pymedphys._imports import pytest
 from pymedphys import _version
 from pymedphys._dicom.deidentify import (
     actions,
+    ae_titles,
     dates,
     dummy_values,
     keys,
@@ -136,6 +137,8 @@ GENERATED_VALUE_CHANGES = {
     "pseudonyms.PATIENT_ID_PREFIX": (pseudonyms, "DEID_"),
     "pseudonyms.FAMILY_NAME": (pseudonyms, "DE-IDENTIFIED"),
     "pseudonyms.CODE_BYTES": (pseudonyms, 12),
+    "ae_titles.TOKEN_PREFIX": (ae_titles, "AT"),
+    "ae_titles.TOKEN_CHARACTERS": (ae_titles, 13),
     "dates.MIN_OFFSET_WEEKS": (dates, 53),
     "dates.MAX_OFFSET_WEEKS": (dates, 521),
     "dates.NOMINAL_UTC_OFFSET": (dates, "-0000"),
@@ -715,13 +718,18 @@ def test_every_module_rule_file_and_table_of_the_engine_is_covered():
         "uid_roles.toml",
         "temporal_roles.toml",
         "supplementary_actions.toml",
+        "safe_private.toml",
         "requirements.toml",
+        "_tcia/TCIAPrivateTagKB-02-01-2024-formatted.csv",
+        "_tcia/LICENSE-CC-BY-3.0.txt",
     }
 
     assert {"__init__.py", "method_digest.py"} | rule_files | tables | modules <= set(
         files
     )
-    assert all(name.endswith((".py", ".toml", ".json")) for name in files)
+    assert all(
+        name.endswith((".py", ".toml", ".json", ".csv", ".txt")) for name in files
+    )
     assert not [name for name in files if "__pycache__" in name]
 
 
@@ -797,7 +805,7 @@ def test_every_file_is_covered_when_the_engine_is_installed_below_a_hidden_direc
         (None, "found no source or rule files"),
         ({}, "found no source or rule files"),
         (
-            {"notes.txt": b"notes", "__pycache__/method_digest.cpython-313.pyc": b""},
+            {"notes.md": b"notes", "__pycache__/method_digest.cpython-313.pyc": b""},
             "found no source or rule files",
         ),
         (
@@ -887,7 +895,7 @@ def test_caches_and_files_of_other_types_are_not_covered(
             "__pycache__/stale.py": b"ACTION = 'K'\n",
             ".mypy_cache/3.13/policy.data.json": b"{}",
             ".hidden.py": b"",
-            "notes.txt": b"notes",
+            "notes.md": b"notes",
         },
     )
     read_again()

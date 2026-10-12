@@ -41,11 +41,13 @@ apply, whether or not the policy's options use it:
   gives, never the list or an unkeyed digest of it;
 - the parameters of generated values: the derivation version and domains of
   keyed values, the root and namespace of replacement UIDs, the prefix, family
-  name, and code length of patient pseudonyms, the range of date offsets and
-  the nominal UTC offset, and the constants of dummy values;
-- the engine's source and rule files: every ``.py``, ``.toml``, and ``.json``
-  file of this package, at any depth. These are its modules; its rule files,
-  and the requirements register beside them; and its generated tables. Each
+  name, and code length of patient pseudonyms, the prefix and length of the
+  tokens that replace AE titles, the range of date offsets and the nominal UTC
+  offset, and the constants of dummy values;
+- the engine's source and rule files: every ``.py``, ``.toml``, ``.json``,
+  ``.csv``, and ``.txt`` file of this package, at any depth. These are its
+  modules; its rule files, and the requirements register beside them; its
+  generated tables; and TCIA's Private Tag Dictionary and its notice. Each
   is read as bytes, with CRLF line endings normalised to LF, so a Windows
   checkout gives each file the same digest. ``__pycache__`` and names that
   start with ``.`` within the package, such as the caches that tools write,
@@ -109,6 +111,7 @@ from pymedphys import _version
 from pymedphys._nomenclature import tg263
 
 from . import (
+    ae_titles,
     dates,
     dummy_values,
     keys,
@@ -125,7 +128,7 @@ from .policy import Policy
 FORMAT = "pymedphys-deid-method-digest/2"
 # The engine's package, whose source and rule files the digest covers.
 PACKAGE_DIR = pathlib.Path(__file__).resolve().parent
-COVERED_SUFFIXES = frozenset({".py", ".toml", ".json"})
+COVERED_SUFFIXES = frozenset({".py", ".toml", ".json", ".csv", ".txt"})
 # A keyed digest, as 64 lowercase hexadecimal digits.
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # The parameters of generated values, by module, which the digest names as
@@ -134,6 +137,7 @@ GENERATED_VALUE_PARAMETERS: tuple[tuple[types.ModuleType, tuple[str, ...]], ...]
     (keys, ("DERIVATION_VERSION", "DOMAINS")),
     (uids, ("UID_ROOT", "UID_NAMESPACE")),
     (pseudonyms, ("PATIENT_ID_PREFIX", "FAMILY_NAME", "CODE_BYTES")),
+    (ae_titles, ("TOKEN_PREFIX", "TOKEN_CHARACTERS")),
     (dates, ("MIN_OFFSET_WEEKS", "MAX_OFFSET_WEEKS", "NOMINAL_UTC_OFFSET")),
     (dummy_values, ("CONSTANTS",)),
 )

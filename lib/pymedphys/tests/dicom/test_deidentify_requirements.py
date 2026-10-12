@@ -153,8 +153,14 @@ def test_unsupported_options_and_re_identification_are_excluded(register):
     by_section = collections.defaultdict(set)
     for entry in register.requirements:
         by_section[entry.section].add(entry.status)
-    # The design document's Scope excludes these Options.
-    for section in ("E.3.1", "E.3.2", "E.3.3", "E.3.4", "E.3.9", "E.3.11"):
+    # The design document's Scope targets every option of Table E.1-1, which
+    # E.3.3 to E.3.11 describe.
+    for section in (f"E.3.{number}" for number in range(3, 12)):
+        assert by_section[section], section
+        assert "out-of-scope" not in by_section[section], section
+    # It excludes the Clean Pixel Data and Clean Recognizable Visual Features
+    # Options (D-015).
+    for section in ("E.3.1", "E.3.2"):
         assert by_section[section] == {"out-of-scope"}, section
     # PyMedPhys never claims conformance as a re-identifier.
     assert by_section["E.1.2"] == {"not-applicable"}

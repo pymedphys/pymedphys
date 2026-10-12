@@ -8,16 +8,20 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      # TCIA's Private Tag Dictionary ships byte for byte as TCIA publishes
+      # it, and its SHA-256 is checked, so no hook may change it.
       - id: trailing-whitespace
+        exclude: ^lib/pymedphys/_dicom/deidentify/_tcia/.*\.csv$
       - id: end-of-file-fixer
-        exclude: ^.*demographic\.000000$
+        exclude: ^(.*demographic\.000000|lib/pymedphys/_dicom/deidentify/_tcia/.*\.csv)$
       - id: check-yaml
       - id: check-toml
       - id: check-added-large-files
         args: ["--maxkb", "500"]
         # Generated from the DICOM standard and checked against their recorded
-        # digests; the PS3.6 data dictionary alone exceeds 500 KB.
-        exclude: ^lib/pymedphys/_dicom/deidentify/_standard/
+        # digests; the PS3.6 data dictionary alone exceeds 500 KB. TCIA's
+        # Private Tag Dictionary is also pinned by its SHA-256.
+        exclude: ^lib/pymedphys/_dicom/deidentify/(_standard/|_tcia/.*\.csv$)
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.12
     hooks:
