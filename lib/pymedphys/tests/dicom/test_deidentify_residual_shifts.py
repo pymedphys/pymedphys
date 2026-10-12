@@ -109,6 +109,20 @@ def test_a_shifted_date_that_equals_another_source_date_is_released():
     assert (STUDY_DATE, Exemption.SHIFTED_DATE) in whys
 
 
+def test_a_shifted_datetime_whose_date_equals_another_source_date_is_released():
+    # The later plan's SOP Authorization DateTime shifts to the earlier
+    # plan's Study Date at noon, so that date is found inside it.
+    earlier, later = _transformed(
+        _plan(EARLIER), _plan(_later(), SOPAuthorizationDateTime=_later() + "120000")
+    )
+
+    condition = _condition(later, earlier)
+
+    assert condition.decision is Decision.RELEASE
+    whys = {(f.location.element.tag, why) for f, why in condition.exempted}
+    assert ("(0100,0420)", Exemption.SHIFTED_DATE) in whys
+
+
 def test_the_same_source_date_in_an_element_that_was_not_shifted_withholds():
     # The earlier date also stands in the later plan's kept Manufacturer's
     # Model Name, which the engine did not write.

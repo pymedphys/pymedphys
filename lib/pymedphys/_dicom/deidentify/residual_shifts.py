@@ -30,9 +30,10 @@ A finding is such a match only where all of these hold:
   datetime, inside the data set, in an element of VR DA or DT whose
   attribute Modified Dates moves by the subject's offset, by its temporal
   role (D-007);
-- a value of the element equals a whole value of its source, pooled across
-  the subject, which may be the same element of another instance, or, for a
-  datetime, that value's date; and
+- a value of the element, or, for a datetime, its date, equals a whole
+  value of the finding's source, pooled across the subject, which may be the
+  same element of another instance, or, for a datetime, that value's date;
+  and
 - that value of the element is a source value of the same element, pooled
   across the subject, moved back by whole weeks within the offset's range,
   with the same time of day, as the engine writes it.
@@ -103,7 +104,7 @@ def shifted_date(
         for form in _whole_forms(value)
     }
     return any(
-        value in found and any(_moved(source, value) for source in own)
+        bool(found & {value, value[:8]}) and any(_moved(s, value) for s in own)
         for value in written
     )
 
