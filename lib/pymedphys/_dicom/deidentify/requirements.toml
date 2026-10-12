@@ -945,7 +945,7 @@ implementation = [
 note = '''
 Recognizable Visual Features of YES, an RT Structure Set's contours of an ROI whose interpreted type or name is EXTERNAL, BODY, or SKIN, the patient's outline, or BOLUS or FIXATION, which lie on it, every CT, MR, PET, and RT Dose volume, single-frame or enhanced, whatever its slice spacing, and every CT, MR, and PET localizer, which can show the face in profile, are reported as indicators of a reconstructable face, and a volume or localizer that names a region of the head or neck as showing it.
 Each run lists each instance's indicators and each series' indicators, assessed over its released and held instances, in its QC pack for review.
-The QC pack renders the skin surface of each volume that it projects, and of each RT Dose grid of two or more frames, from the front, both obliques, and both profiles, so that the reviewer sees the face that a recognition system would.
+The QC pack renders the skin surface of each volume that it projects, and the 5% isodose surface of each RT Dose grid of two or more frames, from the front, both obliques, and both profiles, so that the reviewer sees the face that a recognition system would. A dose render that shows no face is inconclusive, since lower doses can keep an outline that the 5% isodose misses.
 Remaining: the `public-release` assessment and face review (M4).
 '''
 

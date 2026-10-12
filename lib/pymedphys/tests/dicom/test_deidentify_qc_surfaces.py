@@ -370,6 +370,39 @@ def test_padding_is_below_every_threshold():
     assert _surface(_axial(_body(outside=3000))) != _surface(_axial(_body()))
 
 
+def _padded(body, modality):
+    """Axial slices of ``body`` with 0 as Pixel Padding Value."""
+    padded = {}
+    for k, data in _axial(body, modality=modality).items():
+        dataset = pydicom.dcmread(io.BytesIO(data))
+        dataset.add_new(0x00280120, "SS", 0)  # Pixel Padding Value
+        padded[k] = _file(dataset)
+    return padded
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("modality", ["MR", "PT"])
+def test_padding_alone_outlines_an_mr_or_pet_surface(modality):
+    # Every value but the padding is one, and the padding outlines the head.
+    data = _surface(_padded(_body(inside=300, outside=0), modality))
+
+    assert data == _surface(_axial(_body()))
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("modality", ["MR", "PT"])
+def test_padding_joins_the_background_of_an_mr_or_pet_surface(modality):
+    # Half the air is padded, and the rest is noise a little above it.
+    rng = np.random.default_rng(2)
+    body = _body(inside=300, outside=0) + rng.integers(1, 6, (SIDE,) * 3)
+    z = np.arange(SIDE)[:, None, None]
+    body = np.where((body < 300) & (z < SIDE // 2), 0, body)
+
+    data = _surface(_padded(body, modality))
+
+    assert data == _surface(_axial(_body()))
+
+
 def _dose_body():
     """The head as dose: 1 Gy inside, at a scaling of 0.001, and 0 outside."""
     return _body(inside=1000, outside=0)

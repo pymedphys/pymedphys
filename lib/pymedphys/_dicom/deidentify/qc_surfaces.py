@@ -32,9 +32,15 @@ Enhanced multi-frame images and RT Structure Set contours are not rendered.
 The surface encloses the voxels at or above a threshold, applied after
 Rescale Slope and Rescale Intercept, or after Dose Grid Scaling for RT Dose:
 :data:`CT_THRESHOLD` Hounsfield units for a CT series; Otsu's threshold over
-the finite values of the sampled volume for any other series, such as MR or
-PET; and :data:`DOSE_FRACTION` of the maximum of every voxel of the grid for
-RT Dose. Pixel padding, which is NaN, lies below every threshold.
+the sampled volume for any other series, such as MR or PET, with pixel
+padding counted below its lowest value, since padding marks where there is
+no patient; and :data:`DOSE_FRACTION` of the maximum of every voxel of the
+grid for RT Dose. Pixel padding, which is NaN, lies below every threshold.
+
+An RT Dose render is a preview of one isodose surface. Lower doses can
+outline the patient where it does not, so a render that shows no face is
+inconclusive: it does not show that no face can be reconstructed from the
+grid.
 
 The volume is sampled by nearest neighbour to cubic voxels of
 :data:`MINIMUM_VOXEL` millimetres, or of its smallest spacing where that is
@@ -85,7 +91,7 @@ class Threshold(enum.Enum):
     """Which threshold gives a volume's surface."""
 
     CT = "ct"  # CT_THRESHOLD
-    OTSU = "otsu"  # Otsu's threshold over the sampled volume's finite values
+    OTSU = "otsu"  # Otsu's threshold over the sampled volume, padding lowest
     DOSE = "dose"  # DOSE_FRACTION of the grid's maximum
 
 
@@ -226,7 +232,7 @@ class Surface:
             return CT_THRESHOLD
         if threshold is Threshold.DOSE:
             return DOSE_FRACTION * self._peak if self._peak > 0 else None
-        return _otsu(self._samples)
+        return _otsu(_padding_below(self._samples))
 
 
 def _voxel(coordinates: Sequence[Sequence[float]]) -> float:
@@ -259,6 +265,23 @@ def _sampled(coordinates: np.ndarray, axis: int, voxel: float) -> np.ndarray:
     left = right - 1
     closer_left = (wanted - ascending[left]) <= (ascending[right] - wanted)
     return order[np.where(closer_left, left, right)]
+
+
+def _padding_below(samples: np.ndarray) -> np.ndarray:
+    """The samples with pixel padding, which is NaN, one bin below the rest.
+
+    Padding marks where there is no patient, so Otsu's threshold counts it
+    with the background: a padded volume whose other values are all one
+    still has an outline. Where padding is the only background and the
+    patient's values vary, the threshold can still fall among them.
+    """
+    padded = np.isnan(samples)
+    if not padded.any() or padded.all():
+        return samples
+    finite = samples[~padded]
+    low, high = float(finite.min()), float(finite.max())
+    step = (high - low) / _OTSU_BINS if high > low else 1.0
+    return np.where(padded, np.float32(low - step), samples)
 
 
 def _otsu(values: np.ndarray) -> float | None:
