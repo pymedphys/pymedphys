@@ -263,6 +263,10 @@ Extras (`[project.optional-dependencies]`) are published and are for people who 
 
 ### Packaging
 
+- PyMedPhys packages are published on PyPI only. The conda-forge feedstock is
+  archived; do not add conda recipes, feedstock automation, or conda CI. Direct
+  conda-environment users to the
+  [installation guide](lib/pymedphys/docs/users/get-started/installation-options.md#conda-environments).
 - `uv build` makes the sdist and then the wheel from it, so a file missing from
   the sdist also breaks the wheel. Check a build with
   `python .github/scripts/check_distributions.py dist`, which also installs the
