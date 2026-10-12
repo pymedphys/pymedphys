@@ -118,6 +118,9 @@ DIGITS_ONLY = re.compile(r"[0-9.]+")
 DATE_DIGITS = 8
 CLEAN_DESCRIPTORS_CODE = ("113105", "DCM")
 PERFORMED_PROCEDURE_STEP_SEQUENCE = "(0008,1111)"
+IMAGE_COMMENTS = "(0020,4000)"
+SOP_INSTANCE_UID = "(0008,0018)"
+MEDIA_STORAGE_UID = "(0002,0003)"
 
 
 def _unreviewed_corpus(corpus):
@@ -320,6 +323,62 @@ def _holds(data, form):
     return any(encoded in data for encoded in _encodings(form))
 
 
+def _instances(result, released):
+    """Return the position of each released instance, by its published path."""
+    return {
+        outcome.output.as_posix(): outcome.position
+        for outcome in result.outcomes
+        if outcome.position in released
+    }
+
+
+def _markers_in(spec, corpus, instances, published):
+    """Return where the published files hold a marker that they may not.
+
+    A released instance may hold the markers that the run keeps at their
+    place, which are blanked, once for each place that holds one, before the
+    instance is searched like every other published file.
+    """
+    found = []
+    for name, data in published.items():
+        if name in instances:
+            data = _without_kept(data, corpus.files[instances[name]], spec)
+        found.extend(
+            (name, signature)
+            for signature in MARKER_SIGNATURES
+            if any(encoded in data for encoded in _encodings(signature))
+        )
+        for file in corpus.files:
+            for placement in file.manifest.placements:
+                if not _searched(placement):
+                    continue
+                forms = _forms(placement)
+                assert forms, (file.name, placement.path)
+                if any(_holds(data, form) for form in forms):
+                    found.append((name, file.name, placement.path))
+    return found
+
+
+def _without_kept(data, file, spec):
+    """Return an instance's bytes with each marker kept at its place blanked."""
+    dataset, raw = _read(data), _read(data)
+    kept = [
+        placement.path
+        for placement in file.manifest.placements
+        if _searched(placement)
+        and spec.keeps(placement)
+        and _kept_at(dataset, placement)
+    ]
+    values = [_raw_value_at(raw, path) for path in kept]
+    # PS3.10 7.1: Media Storage SOP Instance UID is the SOP Instance UID.
+    if ElementPath((), SOP_INSTANCE_UID) in kept:
+        values.append(_raw_value_at(raw.file_meta, ElementPath((), MEDIA_STORAGE_UID)))
+    for value in sorted(values, key=len, reverse=True):
+        assert value in data, (file.name, value)
+        data = data.replace(value, b"\0" * len(value), 1)
+    return data
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01", "MIDI-BP-03", "PS3.15-E.1.1-09")
 def test_each_run_releases_all_but_the_instances_it_must_withhold(policy_run):
     spec, corpus, result = policy_run.spec, policy_run.corpus, policy_run.result
@@ -377,34 +436,50 @@ def test_no_published_file_holds_a_marker(policy_run):
         CONFORMANCE_STATEMENT,
     }
 
-    # The markers the run keeps, which a kept place holds and the markers'
-    # generic parts may then be found in.
-    spec = policy_run.spec
-    kept_forms = {
-        form
-        for file in corpus.files
-        for placement in file.manifest.placements
-        if _searched(placement) and spec.keeps(placement)
-        for form in _forms(placement)
-    }
-    for name, data in published.items():
-        for form in sorted(kept_forms, key=len, reverse=True):
-            for encoded in _encodings(form):
-                data = data.replace(encoded, b"")
-        for signature in MARKER_SIGNATURES:
-            for encoded in _encodings(signature):
-                assert encoded not in data, (name, signature)
-    # Every file's other markers, the sequestered file's included, in every
-    # published file, but for a form that a kept marker shares.
-    for file in corpus.files:
-        for placement in file.manifest.placements:
-            if not _searched(placement) or spec.keeps(placement):
-                continue
-            forms = _forms(placement)
-            assert forms, (file.name, placement.path)
-            for form in set(forms) - kept_forms:
-                for name, data in published.items():
-                    assert not _holds(data, form), (name, file.name, placement.path)
+    # Every file's markers, the sequestered file's included, in every
+    # published file, but for those that a released instance keeps at their
+    # place.
+    assert not _markers_in(
+        policy_run.spec, corpus, _instances(result, released), published
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+def test_a_kept_marker_anywhere_but_its_place_is_found(policy_run):
+    """The marker search lets a kept marker be at its place, and nowhere else.
+
+    One released instance has a removed marker put back at its place. A run
+    that keeps that row too passes the search; a copy of the marker in the
+    release report, or in another attribute of the instance, does not.
+    """
+    spec, corpus = policy_run.spec, policy_run.corpus
+    instances = _instances(policy_run.result, policy_run.released)
+    name, position = min(instances.items())
+    placement = next(
+        placement
+        for placement in corpus.files[position].manifest.placements
+        if placement.kind is Kind.PLANTED
+        and not placement.path.items
+        and placement.path.tag != IMAGE_COMMENTS
+        and placement.vr in ("LO", "SH")
+        and not spec.keeps(placement)
+    )
+    keeping = dataclasses.replace(spec, kept=spec.kept_rows() | {placement.profile_tag})
+    (value,) = placement.values
+    dataset = _read(policy_run.released[position])
+    dataset.add_new(_number(placement.path.tag), placement.vr, value)
+    published = {**policy_run.published, name: _written(dataset)}
+
+    assert _markers_in(spec, corpus, instances, published)
+    assert not _markers_in(keeping, corpus, instances, published)
+    report = published[RELEASE_REPORT_MARKDOWN] + value.encode("ascii")
+    assert _markers_in(
+        keeping, corpus, instances, {**published, RELEASE_REPORT_MARKDOWN: report}
+    )
+    dataset.add_new(_number(IMAGE_COMMENTS), "LT", value)
+    assert _markers_in(
+        keeping, corpus, instances, {**published, name: _written(dataset)}
+    )
 
 
 @pytest.mark.deid_requirement("MIDI-BP-14", "PS3.15-E.1.1-02")
@@ -736,6 +811,12 @@ def _read(data):
     return pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
 
 
+def _written(dataset):
+    buffer = pydicom.filebase.DicomBytesIO()
+    dataset.save_as(buffer)
+    return buffer.getvalue()
+
+
 def _kept_at(dataset, placement):
     """Return whether a dataset holds a placement's values at its place."""
     if placement.vr in NUMERIC_VRS:
@@ -763,7 +844,7 @@ def _item_at(dataset, path):
     whose value holds the items in Implicit VR Little Endian (PS3.5 6.2.2).
     """
     for tag, index in path.items:
-        number = int(tag[1:5] + tag[6:10], 16)
+        number = _number(tag)
         if number not in dataset:
             return None
         items = dataset[number].value
@@ -775,12 +856,23 @@ def _item_at(dataset, path):
     return dataset
 
 
+def _raw_value_at(dataset, path):
+    """Return the bytes of an element's value as its file holds them."""
+    element = _item_at(dataset, path).get_item(_number(path.tag))
+    assert isinstance(element.value, bytes), path
+    return element.value
+
+
+def _number(tag):
+    return int(tag[1:5] + tag[6:10], 16)
+
+
 def _element_at(dataset, path):
     """Return the element at an element path, or None."""
     dataset = _item_at(dataset, path)
     if dataset is None:
         return None
-    number = int(path.tag[1:5] + path.tag[6:10], 16)
+    number = _number(path.tag)
     return dataset[number] if number in dataset else None
 
 
