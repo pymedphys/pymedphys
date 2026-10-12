@@ -126,8 +126,15 @@ def test_an_enabled_option_that_the_engine_does_not_apply_is_still_refused(
     monkeypatch,
 ):
     # Enabling an option never overrides the engine's own refusal (D-011).
+    # The option is made unapplied here, so the test holds whichever options
+    # the engine applies.
     monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
     monkeypatch.setattr(policy, "ENABLED_OPTIONS", frozenset({FULL_DATES}))
+    monkeypatch.setattr(
+        policy,
+        "ENGINE_OPTIONS",
+        tuple(option for option in policy.ENGINE_OPTIONS if option != FULL_DATES),
+    )
 
     assert policy.select_policy(options=[FULL_DATES]).enabled
     with pytest.raises(
