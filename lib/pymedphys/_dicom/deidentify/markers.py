@@ -111,7 +111,7 @@ from pymedphys._imports import pydicom
 from . import runtime
 from .codes import CodedConcept, load_context_group
 from .diagnostics import redacted_diagnostics
-from .policy import FULL_DATES, MODIFIED_DATES, Policy
+from .policy import ENGINE_OPTIONS, FULL_DATES, MODIFIED_DATES, Policy
 from .standard import DictionaryAttribute, StandardTableError, load_data_dictionary
 from .values import values_problem
 
@@ -141,6 +141,10 @@ OPTION_CODES = types.MappingProxyType(
         "clean_graphics": "113103",
     }
 )
+# The codes of the options whose policies the engine applies, the only option
+# codes that the markers write in a run, since the engine refuses any other.
+# The residual search leaves out these alone (residuals.written_constants).
+WRITTEN_OPTION_CODES = frozenset(OPTION_CODES[o] for o in ENGINE_OPTIONS)
 # The CID 7005 code of De-identifying Equipment.
 DEIDENTIFYING_EQUIPMENT = "109104"
 # The values of Longitudinal Temporal Information Modified, from the least
