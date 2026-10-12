@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Each preset's output over the synthetic corpus, checked by independent validators.
+"""Each policy's output over the synthetic corpus, checked by independent validators.
 
 dciodvfy, dcentvfy, and dicom-validator
 (:mod:`~pymedphys._dicom.deidentify.dicom_validators`) check each released
 instance's input and output, and every finding that an output introduces
 must be explained by the known differences
 (:mod:`~pymedphys._dicom.deidentify.dicom_validation`). The runs are those of
-the end-to-end tests: ``basic``, ``basic-clean-descriptors`` with a reviewed
-ROI name and one the automatic tier renames, and ``basic`` over the corpus
-with its images compressed, which is skipped where a decoding plugin is not
-installed.
+the end-to-end tests, one for each policy of
+:data:`~pymedphys.tests.dicom.corpus_runs.CORPUS_RUNS`: among them
+``basic``, ``basic-clean-descriptors`` with a reviewed ROI name and one the
+automatic tier renames, and ``basic`` over the corpus with its images
+compressed, which is skipped where a decoding plugin is not installed.
 
 The tests are marked ``dicom_validators``, so they run only when asked for,
 with ``--dicom-validators`` or ``--include-dicom-validators``. Without the
@@ -48,13 +49,11 @@ from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import (
     dicom_validation,
-    pixel_decoding,
-    roi_names,
     run,
     standard,
 )
+from pymedphys._dicom.deidentify import dicom_validators as validators
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
-from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.dicom_validation_command import (
     default_standard_path,
 )
@@ -63,32 +62,15 @@ from pymedphys._dicom.deidentify.dicom_validators import (
     DCIODVFY,
     DICOM_VALIDATOR,
     VALIDATORS,
+    Status,
+    Validation,
     ValidatorUnavailable,
 )
-from pymedphys._dicom.deidentify.instance_transform import (
-    InstanceTransform,
-    ReleaseGate,
-)
-from pymedphys._dicom.deidentify.policy import compose_policy
-from pymedphys._dicom.deidentify.reviewed_roi_names import (
-    Review,
-    ReviewedName,
-    ReviewedNames,
-)
+from pymedphys._dicom.deidentify.instance_transform import ReleaseGate
 
-from pymedphys._nomenclature import tg263
-
-from . import _synthetic_compressed as compressed
-from .test_deidentify_corpus_end_to_end import (
-    CLEAN_DESCRIPTORS,
-    COMPRESSED,
-    KEY,
-    MAPPED_NAME,
-    MARKER_SIGNATURES,
-    VOCABULARY,
-    _planted_roi_name,
-    _with_a_second_roi,
-)
+from . import _corpus_run as runs
+from ._corpus_run import MARKER_SIGNATURES
+from .corpus_runs import CORPUS_RUNS
 
 pytestmark = [pytest.mark.pydicom, pytest.mark.dicom_validators]
 
@@ -113,57 +95,41 @@ def fixture_toolset():  # pylint: disable = inconsistent-return-statements
 
 @pytest.fixture(name="published", scope="module")
 def fixture_published():
-    """Treat the end-to-end tests' invented vocabulary as a published edition."""
-    entries = [dataclasses.asdict(s) for s in VOCABULARY.structures]
-    with pytest.MonkeyPatch.context() as patch:
-        patch.setitem(
-            roi_names.PUBLISHED_TG263, "TG263 vInvented", tg263.content_sha256(entries)
-        )
+    with runs.published_vocabulary():
         yield
 
 
+@dataclasses.dataclass(frozen=True)
+class Validated:
+    """A run's comparison, and dcentvfy's findings for its patient.
+
+    Attributes
+    ----------
+    spec : CorpusRun
+    comparison : Comparison
+    consistency : tuple of Validation
+        dcentvfy's findings in the patient's inputs and in their outputs.
+    """
+
+    spec: runs.CorpusRun
+    comparison: dicom_validation.Comparison
+    consistency: tuple[Validation, Validation]
+
+
 @pytest.fixture(
-    name="comparison",
+    name="validated",
     scope="module",
-    params=[
-        "basic",
-        CLEAN_DESCRIPTORS,
-        pytest.param(
-            COMPRESSED,
-            marks=pytest.mark.skipif(
-                not all(
-                    pixel_decoding.decoder_available(syntax)
-                    for syntax in compressed.CORPUS_SYNTAXES
-                ),
-                reason="a decoding plugin of the compressed corpus is not installed",
-            ),
-        ),
-    ],
+    params=[corpus_run.param() for corpus_run in CORPUS_RUNS],
 )
-def fixture_comparison(request, toolset, published):  # pylint: disable = unused-argument
-    corpus = corpus_module.build_corpus()
-    reviewed = None
-    preset = request.param
-    if preset == COMPRESSED:
-        corpus = compressed.compressed_corpus(corpus)
-        preset = "basic"
-    elif preset == CLEAN_DESCRIPTORS:
-        corpus = _with_a_second_roi(corpus)
-        reviewed = ReviewedNames.empty()
-        reviewed.record(
-            _planted_roi_name(corpus), ReviewedName(Review.MAP, MAPPED_NAME)
-        )
+def fixture_validated(request, toolset, published):  # pylint: disable = unused-argument
+    spec = request.param
+    prepared = runs.prepare(spec)
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.
     directory = Path(tempfile.mkdtemp(prefix="v"))
     try:
-        corpus_module.write_corpus(corpus, directory)
-        cleaning = (
-            None if reviewed is None else DescriptorCleaning(VOCABULARY, reviewed)
-        )
-        transform = InstanceTransform(
-            compose_policy(preset), KEY, cleaning=cleaning, unvalidated_policy=True
-        )
+        corpus_module.write_corpus(prepared.corpus, directory)
+        transform = prepared.transform(spec.policy())
         discovery = run.discover(directory / corpus_module.INSTANCES_DIRECTORY)
         result = run.run(
             discovery,
@@ -176,13 +142,39 @@ def fixture_comparison(request, toolset, published):  # pylint: disable = unused
         )
         pairs, unpaired = dicom_validation.pairs_from_run(discovery, result)
         comparison = dicom_validation.compare(pairs, toolset, unpaired=unpaired)
+        consistency = _consistency(pairs, toolset)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
     reports = os.environ.get(REPORT_VARIABLE)
     if reports:
         Path(reports).mkdir(parents=True, exist_ok=True)
-        dicom_validation.write_results(comparison, Path(reports) / request.param)
-    return comparison
+        dicom_validation.write_results(comparison, Path(reports) / spec.name)
+    return Validated(spec, comparison, consistency)
+
+
+@pytest.fixture(name="comparison", scope="module")
+def fixture_comparison(validated):
+    return validated.comparison
+
+
+def _consistency(pairs, toolset):
+    """Return dcentvfy's findings in the inputs and in the outputs.
+
+    As in the comparison, a pair that dciodvfy cannot read to the end, input
+    or output, is left out, since dcentvfy stops at it.
+    """
+    readable = [
+        pair
+        for pair in pairs
+        if all(
+            validators.run_dciodvfy(toolset.dciodvfy, path).status is Status.VALIDATED
+            for path in (pair.source, pair.output)
+        )
+    ]
+    return (
+        validators.run_dcentvfy(toolset.dcentvfy, [pair.source for pair in readable]),
+        validators.run_dcentvfy(toolset.dcentvfy, [pair.output for pair in readable]),
+    )
 
 
 def test_the_output_introduces_no_unexplained_finding(comparison):
@@ -211,14 +203,22 @@ def test_every_validator_ran_over_every_released_instance(comparison):
     assert statuses == {BOTH_VALIDATED: comparison.pairs - failed}
 
 
-def test_each_patients_outputs_are_consistent(comparison):
+def test_each_patients_outputs_are_consistent(validated):
     # The corpus plants a different marker in each instance's patient and
-    # study attributes, which the profile removes or replaces alike.
-    tally = comparison.tallies[DCENTVFY]
+    # study attributes, which the profile removes or replaces alike. Where an
+    # option keeps or modifies some of them alike, their differences stay as
+    # they were, and no other appears.
+    tally = validated.comparison.tallies[DCENTVFY]
+    inputs, outputs = validated.consistency
 
     assert tally["statuses"] == {BOTH_VALIDATED: 1}
     assert tally["input_findings"].get("error", 0) > 0
-    assert tally["output_findings"] == {}
+    assert outputs.status is Status.VALIDATED
+    assert {finding.path for finding in outputs.findings} == (
+        validated.spec.inconsistent
+    )
+    for finding, count in outputs.findings.items():
+        assert inputs.findings.get(finding) == count, finding.json()
 
 
 def test_the_results_hold_no_marker(comparison):
