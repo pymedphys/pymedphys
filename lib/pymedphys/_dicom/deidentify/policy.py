@@ -15,8 +15,7 @@
 """Compose the presets, and validate a policy's options before processing.
 
 A preset names a set of DICOM PS3.15 Options on top of the Basic Application
-Level Confidentiality Profile, chosen from the Options that the design
-document's Scope targets (:data:`TARGET_OPTIONS`):
+Level Confidentiality Profile:
 
 - ``basic``, the default: the Basic Profile alone;
 - ``basic-clean-descriptors``: Clean Descriptors, so that cleaned
@@ -38,7 +37,8 @@ Information Options, which PS3.15 E.3.6 makes mutually exclusive, and that
 the table is of the same edition as the data dictionary, against which the
 supplementary rules were reviewed. Any option of Table E.1-1 can be composed,
 so that its policy can be described; the engine applies only a policy whose
-options are all in :data:`ENGINE_OPTIONS` (:func:`refuse_unapplied_options`).
+options are all in :data:`ENGINE_OPTIONS` (:func:`refuse_unapplied_options`),
+those that :data:`ENGINE_APPLIES` marks.
 
 PS3.15 defines no precedence between options, so an attribute to which two
 selected options give different actions makes the policy invalid. The one
@@ -75,44 +75,68 @@ from .standard import (
 )
 from .temporal_roles import TemporalRole, load_temporal_roles
 
+# The options of Table E.1-1, in its order.
 SAFE_PRIVATE = "retain_safe_private"
+UIDS = "retain_uids"
 DEVICE_IDENTITY = "retain_device_identity"
-MODIFIED_DATES = "retain_longitudinal_modified_dates"
+INSTITUTION_IDENTITY = "retain_institution_identity"
+PATIENT_CHARACTERISTICS = "retain_patient_characteristics"
 FULL_DATES = "retain_longitudinal_full_dates"
+MODIFIED_DATES = "retain_longitudinal_modified_dates"
+CLEAN_DESCRIPTORS = "clean_descriptors"
+CLEAN_STRUCTURED_CONTENT = "clean_structured_content"
 CLEAN_GRAPHICS = "clean_graphics"
 
-# The Options that the design document's Scope targets, in Table E.1-1's order.
-TARGET_OPTIONS = (
-    SAFE_PRIVATE,
-    DEVICE_IDENTITY,
-    "retain_patient_characteristics",
-    MODIFIED_DATES,
-    "clean_descriptors",
+# Whether the engine applies each option's actions, in Table E.1-1's order.
+# Every option can be composed into a policy, but the engine refuses a policy
+# that selects one that it does not apply (refuse_unapplied_options). An
+# option is marked applied once the engine implements its actions, by its own
+# entry alone, which a line naming the option separates from the others', so
+# that options implemented in parallel change no line in common. Retain Safe
+# Private is applied, but refused on its own until reviewed rules say which
+# private attributes are safe (refuse_retain_safe_private).
+ENGINE_APPLIES: Mapping[str, bool] = types.MappingProxyType(
+    {
+        # Retain Safe Private.
+        SAFE_PRIVATE: True,
+        # Retain UIDs.
+        UIDS: False,
+        # Retain Device Identity.
+        DEVICE_IDENTITY: True,
+        # Retain Institution Identity.
+        INSTITUTION_IDENTITY: False,
+        # Retain Patient Characteristics.
+        PATIENT_CHARACTERISTICS: True,
+        # Retain Longitudinal Temporal Information with Full Dates.
+        FULL_DATES: False,
+        # Retain Longitudinal Temporal Information with Modified Dates.
+        MODIFIED_DATES: True,
+        # Clean Descriptors.
+        CLEAN_DESCRIPTORS: True,
+        # Clean Structured Content.
+        CLEAN_STRUCTURED_CONTENT: False,
+        # Clean Graphics: its rows take their Basic Profile actions (D-041).
+        CLEAN_GRAPHICS: True,
+    }
 )
-# The options whose policies the engine accepts, in Table E.1-1's order. Every
-# option of Table E.1-1 can be composed into a policy, but the engine refuses
-# a policy that selects any other (refuse_unapplied_options); each option
-# joins once the engine applies its actions. Retain Safe Private is among
-# them, but refused on its own until reviewed rules say which private
-# attributes are safe (refuse_retain_safe_private). Clean Graphics joins the
-# target options, since its rows take their Basic Profile actions (D-041).
-ENGINE_OPTIONS = tuple(o for o in OPTIONS if o in {*TARGET_OPTIONS, CLEAN_GRAPHICS})
+# The options whose policies the engine accepts, in Table E.1-1's order.
+ENGINE_OPTIONS = tuple(option for option in OPTIONS if ENGINE_APPLIES[option])
 
 # Each preset's options, in Table E.1-1's order.
 PRESETS: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
     {
         "basic": (),
-        "basic-clean-descriptors": ("clean_descriptors",),
+        "basic-clean-descriptors": (CLEAN_DESCRIPTORS,),
         "tps-import": (
             DEVICE_IDENTITY,
-            "retain_patient_characteristics",
+            PATIENT_CHARACTERISTICS,
             MODIFIED_DATES,
-            "clean_descriptors",
+            CLEAN_DESCRIPTORS,
         ),
         "public-release": (
             SAFE_PRIVATE,
             MODIFIED_DATES,
-            "clean_descriptors",
+            CLEAN_DESCRIPTORS,
         ),
     }
 )

@@ -369,11 +369,11 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information encoded in SR Content Items or Acquisition Context or Specimen Preparation Sequence Items corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed.
 '''
-status = "out-of-scope"
-decisions = ["D-010"]
+status = "planned"
+milestone = "M3"
+decisions = ["D-010", "D-011"]
 note = '''
-The Clean Structured Content Option is later work.
-Until then, Structured Reports are sequestered (D-010).
+Structured Reports are sequestered (D-010).
 '''
 
 [[requirement]]
@@ -430,10 +430,9 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When the Retain Longitudinal Temporal Information With Full Dates Option is specified in addition to the Basic Application Level Confidentiality Profile, any dates and times present in the Attributes shall be retained, as described in Table E.1-1. The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "UNMODIFIED".
 '''
-status = "out-of-scope"
-note = '''
-The Retain Longitudinal Temporal Information with Full Dates Option is not supported.
-'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-011"]
 
 [[requirement]]
 id = "PS3.15-E.3.6-02"
@@ -541,10 +540,9 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to an Application Level Confidentiality Profile, UIDs shall be retained, as described in Table E.1-1.
 '''
-status = "out-of-scope"
-note = '''
-The Retain UIDs Option is not supported.
-'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-011"]
 
 [[requirement]]
 id = "PS3.15-E.3.10-01"
@@ -609,10 +607,9 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about the identity of the institution in the Attributes shall be retained, as described in Table E.1-1.
 '''
-status = "out-of-scope"
-note = '''
-The Retain Institution Identity Option is not supported.
-'''
+status = "planned"
+milestone = "M3"
+decisions = ["D-011"]
 
 # MIDI Task Group report, section 1.6, summarised in PyMedPhys's words.
 
