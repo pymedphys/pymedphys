@@ -46,6 +46,7 @@ from pymedphys._imports import pytest
 from pymedphys import _version
 from pymedphys._dicom.deidentify import (
     actions,
+    ae_titles,
     dates,
     dummy_values,
     keys,
@@ -136,6 +137,8 @@ GENERATED_VALUE_CHANGES = {
     "pseudonyms.PATIENT_ID_PREFIX": (pseudonyms, "DEID_"),
     "pseudonyms.FAMILY_NAME": (pseudonyms, "DE-IDENTIFIED"),
     "pseudonyms.CODE_BYTES": (pseudonyms, 12),
+    "ae_titles.TOKEN_PREFIX": (ae_titles, "AT"),
+    "ae_titles.TOKEN_CHARACTERS": (ae_titles, 13),
     "dates.MIN_OFFSET_WEEKS": (dates, 53),
     "dates.MAX_OFFSET_WEEKS": (dates, 521),
     "dates.NOMINAL_UTC_OFFSET": (dates, "-0000"),

@@ -51,6 +51,7 @@ DERIVATION_VERSION = b"pymedphys-deid/1"
 # identifiers and date offsets, add their own.
 DOMAINS = frozenset(
     {
+        "ae-title",
         "date-offset",
         "key-id",
         "patient",

@@ -37,6 +37,9 @@ writes it as CommonMark:
   reason;
 - the rules that give every other element its action
   (:mod:`~pymedphys._dicom.deidentify.element_rules`, D-022);
+- how the cleaner of each selected option that has one cleans the attributes
+  that the policy gives C (:mod:`~pymedphys._dicom.deidentify.cleaners`,
+  D-034);
 - the values that Z, D, and U write (D-003, D-005, and D-021);
 - how dates and times are handled, by the policy's Retain Longitudinal
   Temporal Information Option, or without one (D-006, D-007, and D-023);
@@ -65,6 +68,7 @@ from pymedphys import _version
 from pymedphys._nomenclature import tg263
 
 from . import compound_actions, markers, roi_names
+from .cleaners import cleaners_for
 from .codes import load_context_group
 from .descriptor_cleaning import fallback_policy
 from .element_rules import (
@@ -149,13 +153,13 @@ PENDING_REFUSED = (
     "the actions above are those that the policy gives, and the rules for "
     "elements that no row covers are not listed."
 )
-# Pending only for a policy that gives an attribute other than ROI Name C that
-# Clean Descriptors' fallback does not settle (D-009).
+# Pending only for a policy that gives C to an attribute other than ROI Name
+# that neither a cleaner of a selected option (D-034) nor Clean Descriptors'
+# fallback (D-009) settles.
 PENDING_CLEANING = (
     "The manner of cleaning each attribute other than ROI Name (3006,0026) "
-    "to which the policy gives C, including how dates and times are modified "
-    "and how retained patient characteristics are cleaned (PS3.15 E.3.5, "
-    "E.3.6, and E.3.7; D-007, D-009)."
+    "to which the policy gives C and which no cleaner above cleans (PS3.15 "
+    "Table E.1-1a; D-009, D-034)."
 )
 # Pending only for a policy that selects Clean Descriptors and whose other
 # options cannot be composed without it.
@@ -393,6 +397,26 @@ class RoiNameCleaning:
 
 
 @dataclasses.dataclass(frozen=True)
+class CleanedAttributes:
+    """How the cleaner of a selected option cleans the attributes given C (D-034).
+
+    Attributes
+    ----------
+    option : str
+        The option, such as ``"retain_device_identity"``.
+    tags : tuple of str
+        The attributes that the policy gives C and the cleaner cleans,
+        wherever they are in the data set, in the order of their tags.
+    method : str
+        How the cleaner cleans them, naming no value.
+    """
+
+    option: str
+    tags: tuple[str, ...]
+    method: str
+
+
+@dataclasses.dataclass(frozen=True)
 class ConformanceStatement:
     """What the conformance statement of a policy describes.
 
@@ -427,6 +451,10 @@ class ConformanceStatement:
     roi_names : RoiNameCleaning or None
         How ROI Names are cleaned, or None where the policy does not give
         ROI Name C.
+    cleaned : tuple of CleanedAttributes
+        How the cleaner of each selected option that has one cleans the
+        attributes that the policy gives C, in the order of the options in
+        Table E.1-1.
     markers : InsertedMarkers
         The parts of the markers that the policy decides.
     temporal : TemporalHandling
@@ -451,6 +479,7 @@ class ConformanceStatement:
     attributes: tuple[AttributeAction, ...]
     other_elements: OtherElements | None
     roi_names: RoiNameCleaning | None
+    cleaned: tuple[CleanedAttributes, ...]
     markers: InsertedMarkers
     temporal: TemporalHandling
     pending: tuple[str, ...]
@@ -711,6 +740,20 @@ def _roi_names(
     return RoiNameCleaning(edition)
 
 
+def _cleaned(
+    policy: Policy, attributes: Iterable[AttributeAction]
+) -> tuple[CleanedAttributes, ...]:
+    """Return how each cleaner of the policy cleans the attributes given C."""
+    given_c = {entry.tag for entry in attributes if entry.action == "C"}
+    return tuple(
+        CleanedAttributes(
+            cleaner.option, tuple(sorted(cleaner.tags & given_c)), cleaner.method
+        )
+        for cleaner in cleaners_for(policy)
+        if cleaner.tags & given_c
+    )
+
+
 def _markers(policy: Policy, digest: str) -> InsertedMarkers:
     """Return the parts of the markers that the policy decides.
 
@@ -802,7 +845,13 @@ def conformance_statement(
         rules = None
     attributes = tuple(_fallen_back(policy, rules, _attributes(policy, rules)))
     safe_private = SAFE_PRIVATE in policy.options
-    actions = {entry.action for entry in attributes if entry.tag != _ROI_NAME}
+    cleaned = _cleaned(policy, attributes)
+    by_cleaner = {tag for each in cleaned for tag in each.tags}
+    actions = {
+        entry.action
+        for entry in attributes
+        if entry.tag != _ROI_NAME and entry.tag not in by_cleaner
+    }
     pending = PENDING + tuple(
         item
         for item, applies in (
@@ -844,6 +893,7 @@ def conformance_statement(
         attributes=attributes,
         other_elements=None if rules is None else _other_elements(),
         roi_names=_roi_names(attributes, vocabulary),
+        cleaned=cleaned,
         markers=_markers(policy, digest),
         temporal=_temporal(policy, attributes),
         pending=pending,
