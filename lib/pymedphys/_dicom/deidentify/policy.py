@@ -79,11 +79,13 @@ SAFE_PRIVATE = "retain_safe_private"
 DEVICE_IDENTITY = "retain_device_identity"
 MODIFIED_DATES = "retain_longitudinal_modified_dates"
 FULL_DATES = "retain_longitudinal_full_dates"
+INSTITUTION_IDENTITY = "retain_institution_identity"
 
 # The Options that the design document's Scope targets, in Table E.1-1's order.
 TARGET_OPTIONS = (
     SAFE_PRIVATE,
     DEVICE_IDENTITY,
+    INSTITUTION_IDENTITY,
     "retain_patient_characteristics",
     MODIFIED_DATES,
     "clean_descriptors",

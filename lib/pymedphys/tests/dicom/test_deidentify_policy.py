@@ -88,6 +88,7 @@ def test_the_presets_select_only_the_options_the_scope_targets():
     assert policy.TARGET_OPTIONS == (
         SAFE_PRIVATE,
         DEVICE_IDENTITY,
+        policy.INSTITUTION_IDENTITY,
         PATIENT_CHARACTERISTICS,
         MODIFIED_DATES,
         CLEAN_DESCRIPTORS,
@@ -452,8 +453,9 @@ def test_an_option_the_engine_does_not_yet_apply_is_refused_by_name(options, nam
     message = (
         f"the engine does not yet apply {named} can be composed and described "
         "but not applied; the engine applies retain_safe_private, "
-        "retain_device_identity, retain_patient_characteristics, "
-        "retain_longitudinal_modified_dates, and clean_descriptors"
+        "retain_device_identity, retain_institution_identity, "
+        "retain_patient_characteristics, retain_longitudinal_modified_dates, "
+        "and clean_descriptors"
     )
 
     with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
