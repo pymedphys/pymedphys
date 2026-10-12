@@ -26,9 +26,15 @@ from .._corpus_run import CorpusRun, kept_rows
 
 OPTIONS = ("retain_institution_identity",)
 ETHICS_COMMITTEE_NAME = "(0012,0081)"
+# Clinical Trial Site ID, Site Name, and Coordinating Center Name are Patient
+# attributes that the Option keeps, so each instance keeps its own planted
+# value, and they differ among one patient's instances in the outputs as in
+# the inputs.
+KEPT_DIFFERENCES = frozenset({"(0012,0030)", "(0012,0031)", "(0012,0060)"})
 
 RUN = CorpusRun(
     "retain-institution-identity",
     options=OPTIONS,
     kept=kept_rows(OPTIONS) - {ETHICS_COMMITTEE_NAME},
+    inconsistent=KEPT_DIFFERENCES,
 )
