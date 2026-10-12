@@ -79,6 +79,7 @@ SAFE_PRIVATE = "retain_safe_private"
 DEVICE_IDENTITY = "retain_device_identity"
 MODIFIED_DATES = "retain_longitudinal_modified_dates"
 FULL_DATES = "retain_longitudinal_full_dates"
+CLEAN_GRAPHICS = "clean_graphics"
 
 # The Options that the design document's Scope targets, in Table E.1-1's order.
 TARGET_OPTIONS = (
@@ -93,8 +94,9 @@ TARGET_OPTIONS = (
 # a policy that selects any other (refuse_unapplied_options); each option
 # joins once the engine applies its actions. Retain Safe Private is among
 # them, but refused on its own until reviewed rules say which private
-# attributes are safe (refuse_retain_safe_private).
-ENGINE_OPTIONS = TARGET_OPTIONS
+# attributes are safe (refuse_retain_safe_private). Clean Graphics joins the
+# target options, since its rows take their Basic Profile actions (D-041).
+ENGINE_OPTIONS = tuple(o for o in OPTIONS if o in {*TARGET_OPTIONS, CLEAN_GRAPHICS})
 
 # Each preset's options, in Table E.1-1's order.
 PRESETS: Mapping[str, tuple[str, ...]] = types.MappingProxyType(

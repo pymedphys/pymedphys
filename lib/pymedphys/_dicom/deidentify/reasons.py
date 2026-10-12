@@ -101,6 +101,10 @@ class TransformReason(enum.Enum):
     # compressed pixel data whose frames, with metadata segments cut, do not
     # decode to the same pixels as before
     CUT_CHANGED_PIXELS = "cut-changed-pixels"
+    # under Clean Graphics, an overlay group without Overlay Data (60xx,3000),
+    # whose overlay may lie in unused bits of Pixel Data, which the engine
+    # does not change
+    OVERLAY_IN_PIXEL_DATA = "overlay-in-pixel-data"
 
 
 class DescriptorReason(enum.Enum):

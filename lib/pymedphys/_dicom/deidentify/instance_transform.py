@@ -100,6 +100,7 @@ from pathlib import PurePosixPath
 from pymedphys._imports import pydicom
 
 from . import output_names
+from .clean_graphics import overlay_in_pixel_data
 from .cleaners import apply_cleaners, cleaners_for
 from .descriptor_cleaning import (
     CLEAN_DESCRIPTORS,
@@ -645,6 +646,8 @@ class InstanceTransform:
     review is written with that name empty, and its evidence is a
     :class:`HeldEvidence`, which :class:`ReleaseGate` holds for review. The
     markers claim Clean Descriptors only for an instance that satisfies it.
+    Under Clean Graphics, an instance whose overlay may lie in Pixel Data is
+    sequestered (:func:`~.clean_graphics.overlay_in_pixel_data`).
     """
 
     def __init__(
@@ -776,8 +779,10 @@ class InstanceTransform:
             reasons: tuple[object, ...] = (classification.reason,)
         else:
             undecoded = None if edits.sequestrations else frames_problem(source)
-            reasons = edits.sequestrations or (
-                () if undecoded is None else (undecoded,)
+            reasons = (
+                edits.sequestrations
+                or (() if undecoded is None else (undecoded,))
+                or overlay_in_pixel_data(self._rules.policy, risk)
             )
         if reasons:
             # An instance out of scope is planned and edited only so that

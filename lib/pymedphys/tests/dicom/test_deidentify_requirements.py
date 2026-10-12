@@ -154,7 +154,7 @@ def test_unsupported_options_and_re_identification_are_excluded(register):
     for entry in register.requirements:
         by_section[entry.section].add(entry.status)
     # The design document's Scope excludes these Options.
-    for section in ("E.3.1", "E.3.2", "E.3.3", "E.3.4", "E.3.9", "E.3.11"):
+    for section in ("E.3.1", "E.3.2", "E.3.4", "E.3.9", "E.3.11"):
         assert by_section[section] == {"out-of-scope"}, section
     # PyMedPhys never claims conformance as a re-identifier.
     assert by_section["E.1.2"] == {"not-applicable"}

@@ -427,8 +427,10 @@ def test_the_two_retain_longitudinal_temporal_information_options_are_exclusive(
         )
 
 
-def test_the_engine_applies_the_target_options():
-    assert policy.ENGINE_OPTIONS == policy.TARGET_OPTIONS
+def test_the_engine_applies_the_target_options_and_clean_graphics():
+    assert policy.ENGINE_OPTIONS == (*policy.TARGET_OPTIONS, policy.CLEAN_GRAPHICS)
+    in_order = tuple(o for o in standard.OPTIONS if o in policy.ENGINE_OPTIONS)
+    assert policy.ENGINE_OPTIONS == in_order
     for options in policy.PRESETS.values():
         assert set(options) <= set(policy.ENGINE_OPTIONS)
 
@@ -451,9 +453,10 @@ def test_an_option_the_engine_does_not_yet_apply_is_refused_by_name(options, nam
     composed = policy.compose_custom_policy(options)
     message = (
         f"the engine does not yet apply {named} can be composed and described "
-        "but not applied; the engine applies retain_safe_private, "
-        "retain_device_identity, retain_patient_characteristics, "
-        "retain_longitudinal_modified_dates, and clean_descriptors"
+        "but not applied; the engine applies "
+        + ", ".join(policy.ENGINE_OPTIONS[:-1])
+        + ", and "
+        + policy.ENGINE_OPTIONS[-1]
     )
 
     with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
