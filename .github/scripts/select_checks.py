@@ -196,6 +196,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/release_gate.py",
         "lib/pymedphys/_dicom/deidentify/release_report.py",
         "lib/pymedphys/_dicom/deidentify/residuals.py",
+        "lib/pymedphys/_dicom/deidentify/retained_uids.py",
         "lib/pymedphys/_dicom/deidentify/runtime.py",
         "lib/pymedphys/_dicom/deidentify/scope.py",
         "lib/pymedphys/_dicom/deidentify/sequences.py",
