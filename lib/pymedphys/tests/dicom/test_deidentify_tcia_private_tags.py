@@ -14,8 +14,7 @@
 
 """TCIA's Private Tag Dictionary, shipped unchanged and pinned by its SHA-256.
 
-The slow test in ``test_deidentify_tcia_private_tags_published.py`` compares
-the shipped file with TCIA's.
+No test here reaches the network.
 """
 
 import collections
