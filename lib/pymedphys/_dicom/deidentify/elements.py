@@ -211,9 +211,9 @@ def dataset_codecs(
     Repertoire as an absent value does; only the first may be empty; and
     several must all use ISO 2022 code extensions. Any other value gives the
     Default Character Repertoire too, so that the data set's text is read only
-    where it is in ISO 646, without a byte from 0x80 or an escape, which every
-    character set reads as the same characters; text outside it is then read
-    as it is where no value is given (Architecture item 5).
+    where it is in ISO 646, without a byte from 0x80 or an escape. The current
+    pydicom codecs read those bytes as the same characters; text outside it is
+    then read as it is where no value is given (Architecture item 5).
 
     Given the ``source`` that the data set was read from, the value is read
     from the source's bytes, as :func:`read_element` reads it, and a data
