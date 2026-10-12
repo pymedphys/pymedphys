@@ -29,7 +29,8 @@ kept value does not, wherever the option explains it (D-042):
   the same option keeps or cleans;
 - :func:`retained_value`: a finding, of text, a date, or a datetime, that
   equals a whole value of a date, time, or datetime attribute that a
-  selected option keeps, from any other source.
+  selected option keeps, from any other source, where each other pooled
+  value of the source that the search could find there does too.
 
 An attribute is kept under a set of options where one of them gives it K
 and the Basic Profile does not, and no other gives it an action of its own
@@ -53,12 +54,19 @@ from collections.abc import Mapping
 
 from .file_layout import ElementPath
 from .policy import compose_custom_policy
+from .residuals import _KINDS, MIN_CHARACTERS, ValueKind, _forms, _length
 from .standard import dictionary_attribute
 
 # The VRs of text, coded text, and AE titles, in which kept text is read.
 TEXT_VRS = frozenset({"AE", "CS", "LO", "LT", "SH", "ST", "UC", "UT"})
 # The VRs of dates, times, and datetimes.
 TEMPORAL_VRS = frozenset({"DA", "DT", "TM"})
+# A VR of each kind of value that a kept date or time can explain, whose
+# forms the residual search derives as it does for the source's own VR.
+_KIND_VRS = {
+    kind: min(vr for vr, each in _KINDS.items() if each is kind)
+    for kind in (ValueKind.DATE, ValueKind.DATETIME, ValueKind.TEXT)
+}
 
 
 @functools.cache
@@ -145,10 +153,11 @@ def retained_text(tag: str, source: ElementPath, options: tuple[str, ...]) -> bo
     )
 
 
-def retained_value(
+def retained_value(  # pylint: disable = too-many-arguments, too-many-positional-arguments
     location: ElementPath,
     values: tuple[str, ...],
     source: ElementPath,
+    kind: ValueKind,
     found: tuple[str | bytes, ...],
     options: tuple[str, ...],
 ) -> bool:
@@ -162,6 +171,8 @@ def retained_value(
         That element's values, as written, without padding.
     source : ElementPath
         The finding's source.
+    kind : ValueKind
+        The kind of value that the finding is of.
     found : tuple of str or bytes
         The source's collected values, pooled across the subject.
     options : tuple of str
@@ -172,9 +183,14 @@ def retained_value(
     bool
         Whether a selected option keeps the element's attribute, which the
         pinned dictionary gives only VRs of dates, times, and datetimes,
-        ``source`` is another element, and one of the element's values is
-        a whole value of the source. A source value found inside a longer
-        kept value, or in a value that no option keeps, is not explained.
+        ``source`` is another element, one of the source's values is a
+        whole value of the element, and each other value of the source that
+        the search could have found in the element is one too. A source
+        value found inside a longer kept value, or in a value that no option
+        keeps, is not explained. The search records one finding of a source
+        in each element, for whichever of its pooled values it found there
+        in the widest form, so a finding is explained only where every
+        value of the source that could be in the element is.
     """
     vrs = _vrs(location.tag)
     if (
@@ -182,12 +198,35 @@ def retained_value(
         or not vrs
         or not vrs <= TEMPORAL_VRS
         or source == location
+        or kind not in _KIND_VRS
     ):
         return False
-    whole = {
+    explained = False
+    for part in {
         part.strip(" \x00")
         for value in found
         if isinstance(value, str)
         for part in value.split("\\")
-    }
-    return any(value and value in whole for value in values)
+    }:
+        if part and part in values:
+            explained = True
+        elif _could_be_in(part, kind, values):
+            return False
+    return explained
+
+
+def _could_be_in(part: str, kind: ValueKind, values: tuple[str, ...]) -> bool:
+    """Return whether the search could find a form of ``part`` in ``values``.
+
+    Each form that the search derives, of at least its shortest length, is
+    looked for in each value and in the values as written together, ignoring
+    the case of ASCII letters and the characters around it, which can only
+    find more than the search does.
+    """
+    texts = [value.lower() for value in (*values, "\\".join(values))]
+    return any(
+        form.lower() in text
+        for _, form in _forms(part, _KIND_VRS[kind], kind)
+        if _length(form) >= MIN_CHARACTERS
+        for text in texts
+    )

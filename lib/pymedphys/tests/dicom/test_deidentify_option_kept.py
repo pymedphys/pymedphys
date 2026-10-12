@@ -267,6 +267,38 @@ def test_a_kept_date_equal_to_its_own_source_still_withholds():
     assert condition.decision is Decision.WITHHOLD
 
 
+# Retain Device Identity keeps Calibration DateTime; a subject's removed
+# Acquisition DateTimes are pooled, and the search records one finding of
+# them in the element, in the widest form it found.
+CALIBRATION_DATETIME = 0x00181203
+ACQUISITION_DATETIME = "(0008,002A)"
+WHOLE = f"{DAY}120000"
+SAME_DAY = f"{DAY}130000"
+UNRELATED = "20210304120000"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize("pooled", [(WHOLE,), (WHOLE, UNRELATED), (UNRELATED, WHOLE)])
+def test_a_kept_datetime_equal_to_each_pooled_value_found_is_released(pooled):
+    written = _written(_element(CALIBRATION_DATETIME, "DT", WHOLE))
+    removed = [(ACQUISITION_DATETIME, "DT", value) for value in pooled]
+    condition = _condition(written, [DEVICE_IDENTITY], *removed)
+
+    assert condition.decision is Decision.RELEASE
+    assert _why(condition) == [Exemption.RETAINED_VALUE]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize("pooled", [(SAME_DAY,), (WHOLE, SAME_DAY), (SAME_DAY, WHOLE)])
+def test_a_pooled_value_found_only_by_its_date_still_withholds(pooled):
+    written = _written(_element(CALIBRATION_DATETIME, "DT", WHOLE))
+    removed = [(ACQUISITION_DATETIME, "DT", value) for value in pooled]
+    condition = _condition(written, [DEVICE_IDENTITY], *removed)
+
+    assert condition.decision is Decision.WITHHOLD
+    assert not condition.exempted
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_removed_uid_equal_to_a_kept_uid_still_withholds():
     # Retain UIDs keeps SOP Instance UID; a replaced reference to it whose

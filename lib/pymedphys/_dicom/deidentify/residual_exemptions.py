@@ -60,10 +60,12 @@ The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
 every one of its values is a term; and a source's values are pooled across
 the subject, so a private creator is exempt only if all of them are a
-vendor's. A finding in an element that holds a byte outside ISO 646's
-printable characters, a finding of any other kind, and a finding outside
-the data set are never exempt. Kept values are read from the written file's
-bytes, as text in ISO 646, never decoded by pydicom, and none is reported.
+vendor's, and a date only if each of them that could be in the element
+equals a whole kept value. A finding in an element that holds a byte
+outside ISO 646's printable characters, a finding of any other kind, and a
+finding outside the data set are never exempt. Kept values are read from the
+written file's bytes, as text in ISO 646, never decoded by pydicom, and none
+is reported.
 """
 
 from __future__ import annotations
@@ -366,7 +368,12 @@ def retained_date(
         return None
     values = kept.values(element)
     if values is None or not retained_value(
-        element, values, finding.source, sources.get(finding.source, ()), options
+        element,
+        values,
+        finding.source,
+        finding.kind,
+        sources.get(finding.source, ()),
+        options,
     ):
         return None
     return Exemption.RETAINED_VALUE
