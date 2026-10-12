@@ -98,6 +98,8 @@ from .residuals import (
     ValueKind,
     find_residuals,
 )
+from .residual_shifts import KINDS as SHIFTED_KINDS
+from .residual_shifts import shifted_date
 from .standard import ProfileTable, dictionary_attribute, load_table_e1_1
 
 # The PS3.6 groups of the patient, a visit, the study, and a procedure or
@@ -219,6 +221,9 @@ class Coverage:
     decoded_as_bytes : frozenset of ElementPath, optional
         The source paths of collected text read as ISO 8859-1, because it
         has bytes outside ISO 646 and no Specific Character Set applies.
+    options : tuple of str, optional
+        The options of the run's policy, whose kept values can explain a
+        finding (D-042). With none, no option explains a finding.
 
     Raises
     ------
@@ -230,6 +235,7 @@ class Coverage:
     collected: tuple[SourceValue, ...]
     uncollected: tuple[Uncollected, ...] = ()
     decoded_as_bytes: frozenset[ElementPath] = frozenset()
+    options: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         for name, container, kind in (
@@ -237,6 +243,7 @@ class Coverage:
             ("collected", tuple, SourceValue),
             ("uncollected", tuple, Uncollected),
             ("decoded_as_bytes", frozenset, ElementPath),
+            ("options", tuple, str),
         ):
             given = getattr(self, name)
             if not isinstance(given, container) or not all(
@@ -286,6 +293,7 @@ class Coverage:
             decoded_as_bytes=frozenset().union(
                 *(each.decoded_as_bytes for each in coverages)
             ),
+            options=tuple(dict.fromkeys(o for c in coverages for o in c.options)),
         )
 
     def not_reported(self) -> tuple[ElementPath, ...]:
@@ -534,6 +542,11 @@ def release_condition(
     kept: KeptValues | None = None  # read only for a text finding
     sources = source_values(coverage.collected)
     for each in search.findings:
+        if each.kind in SHIFTED_KINDS and shifted_date(
+            each, kept := kept or KeptValues(written), sources, coverage.options
+        ):
+            exempted.append((each, Exemption.SHIFTED_DATE))
+            continue
         reason = _finding_reason(each, identifiers)
         if reason.code is ReasonCode.RESIDUAL_TEXT:
             kept = kept or KeptValues(written)

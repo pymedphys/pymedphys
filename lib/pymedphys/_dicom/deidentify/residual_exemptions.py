@@ -38,6 +38,10 @@ reason that such a finding is not a reason for review (D-032), or returns
   itself names equipment: one of those three attributes, or Secondary
   Capture Device Manufacturer (0018,1016), its Model Name (0018,1018), or
   its Software Versions (0018,1019).
+- :attr:`Exemption.SHIFTED_DATE`: a date or datetime found in a date that
+  Modified Dates shifted, equal to the whole shifted value, which only
+  coincides with it (D-039, :mod:`~pymedphys._dicom.deidentify.residual_shifts`).
+  It applies to a finding that would otherwise withhold the file.
 - :attr:`Exemption.VENDOR_CREATOR`: the finding's source is a private
   creator element, (gggg,0010) to (gggg,00FF) of an odd group, and each
   of its values collected for the subject is, without trailing spaces and
@@ -94,6 +98,7 @@ class Exemption(enum.Enum):
     STANDARD_TERM = "standard-term"  # every value a term of its CS attribute
     STANDARD_CODE = "standard-code"  # in a code item of a scheme of Table 8-1
     EQUIPMENT = "equipment"  # an equipment name, found from equipment or private
+    SHIFTED_DATE = "shifted-date"  # equal to a date that Modified Dates shifted
     VENDOR_CREATOR = "vendor-creator"  # a private creator of Table E.3.10-1
 
 
