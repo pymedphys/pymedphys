@@ -304,6 +304,12 @@ class CorpusRun:
     roi_names : tuple of str or None
         The ROI Names of the released structure set, in order; or None where
         the run withholds it.
+    inconsistent : frozenset of str
+        The attributes, by tag, whose differing values among one patient's
+        instances, which the corpus plants, the run keeps or modifies alike,
+        so that dcentvfy finds each of them in the released instances as
+        often as in their inputs. The Basic Profile removes or replaces
+        every such value alike, so by default there are none.
     marks : tuple
         pytest marks of the run's parameter, such as a skip.
     """
@@ -325,6 +331,7 @@ class CorpusRun:
     kept: frozenset[str] | None = None
     codes: frozenset[str] | None = None
     roi_names: tuple[str, ...] | None = ("",)
+    inconsistent: frozenset[str] = frozenset()
     marks: tuple = ()
 
     def __post_init__(self):
