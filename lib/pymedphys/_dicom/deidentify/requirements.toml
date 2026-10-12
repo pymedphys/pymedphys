@@ -86,6 +86,7 @@ implementation = [
 note = '''
 Replacement UIDs are derived from the key, so every occurrence of a UID is replaced consistently, and every UI attribute has a reviewed role.
 The run's instance transform replaces each SOP Instance UID and each reference to another SOP Instance in a data set, at the top level and in sequences, with the same replacement in every instance of the run.
+Under the Retain UIDs Option, the SOP Instance UID and the references that Table E.1-1 gives K under it are kept instead (PS3.15-E.3.9-01, D-040).
 '''
 
 [[requirement]]
@@ -535,9 +536,19 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to an Application Level Confidentiality Profile, UIDs shall be retained, as described in Table E.1-1.
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-011"]
+status = "implemented"
+decisions = ["D-003", "D-040"]
+implementation = [
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/retained_uids.py",
+  "_dicom/deidentify/written_references.py",
+]
+note = '''
+The 55 UIDs that Table E.1-1 gives K under the Option are kept wherever they occur, and its five reference sequences are kept as containers whose items' elements take their own rules; every other UID is replaced with the run's key, including those the table omits, such as Multi-frame Source SOP Instance UID (D-040).
+Media Storage SOP Instance UID is the kept SOP Instance UID, output files are named by the kept UIDs' keyed replacements, the reference graph's second pass expects the kept UIDs, and the residual search leaves a kept UID out where its enclosing sequence is removed.
+No preset selects the Option.
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.10-01"
