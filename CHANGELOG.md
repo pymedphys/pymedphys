@@ -511,6 +511,11 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - PyMedPhys no longer has a Discourse group. Forum-like conversation and
   collaboration have moved to [GitHub Discussions](https://github.com/pymedphys/pymedphys/discussions).
   [PR #1896](https://github.com/pymedphys/pymedphys/pull/1896)
+- PyMedPhys's conda-forge feedstock is archived. Its last release is 0.11.0
+  (2019), and it will not receive updates. Install current releases from PyPI
+  with pip inside a conda environment; see
+  [Installation options](https://docs.pymedphys.com/en/latest/users/get-started/installation-options.html#conda-environments).
+  [PR #2073](https://github.com/pymedphys/pymedphys/pull/2073)
 
 ### (Potentially) breaking changes
 
