@@ -158,9 +158,8 @@ PENDING_REFUSED = (
 # fallback (D-009) settles.
 PENDING_CLEANING = (
     "The manner of cleaning each attribute other than ROI Name (3006,0026) "
-    "to which the policy gives C and which no cleaner above cleans, including "
-    "how retained patient characteristics are cleaned (PS3.15 E.3.5 and "
-    "E.3.7; D-009)."
+    "to which the policy gives C and which no cleaner above cleans (PS3.15 "
+    "Table E.1-1a; D-009, D-034)."
 )
 # Pending only for a policy that selects Clean Descriptors and whose other
 # options cannot be composed without it.
