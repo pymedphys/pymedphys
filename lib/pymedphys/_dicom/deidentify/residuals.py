@@ -536,7 +536,7 @@ def written_constants() -> tuple[tuple[str, str], ...]:
     # The markers write MODIFIED or REMOVED, never the least strict value.
     found += [("CS", value) for value in markers.TEMPORAL_VALUES[1:]]
     codes = {
-        7050: {markers.PROFILE_CODE, *markers.OPTION_CODES.values()},
+        7050: {markers.PROFILE_CODE, *markers.WRITTEN_OPTION_CODES},
         7005: {markers.DEIDENTIFYING_EQUIPMENT},
     }
     for cid, values in codes.items():
