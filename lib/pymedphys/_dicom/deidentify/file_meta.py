@@ -25,8 +25,9 @@ elements, in this order:
 - File Meta Information Group Length (0002,0000);
 - File Meta Information Version (0002,0001), the bytes 00H and 01H;
 - Media Storage SOP Class UID (0002,0002), the instance's SOP Class UID;
-- Media Storage SOP Instance UID (0002,0003), its replacement SOP Instance
-  UID;
+- Media Storage SOP Instance UID (0002,0003), the SOP Instance UID that it
+  is written with: its replacement, or its own where the policy keeps it,
+  as the Retain UIDs Option does;
 - Transfer Syntax UID (0002,0010), one the engine supports;
 - Implementation Class UID (0002,0012), :data:`IMPLEMENTATION_CLASS_UID`;
 - Implementation Version Name (0002,0013), :data:`IMPLEMENTATION_VERSION_NAME`.
@@ -145,7 +146,7 @@ def file_meta_information(
     sop_class_uid : str
         The instance's SOP Class UID (0008,0016).
     sop_instance_uid : str
-        The instance's replacement SOP Instance UID (0008,0018).
+        The SOP Instance UID (0008,0018) that the instance is written with.
     transfer_syntax_uid : str
         The transfer syntax that the instance's data set is written in, one
         of :data:`~pymedphys._dicom.deidentify.source.SUPPORTED_TRANSFER_SYNTAXES`,

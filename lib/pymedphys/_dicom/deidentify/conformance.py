@@ -132,6 +132,9 @@ SEQUENCE_NOT_CLEANED = "sequence not cleaned"
 # Under Clean Descriptors, an attribute other than ROI Name given C takes the
 # action that the policy gives it without that option (D-009).
 CLEAN_DESCRIPTORS_FALLBACK = "clean descriptors fallback"
+# Under Clean Graphics, a masked row given C, an overlay's or a curve's, takes
+# its Basic Profile action (D-041).
+GRAPHICS_NOT_CLEANED = "graphics not cleaned"
 
 
 # What the statement cannot yet describe from the engine, whatever the
@@ -258,8 +261,8 @@ class AttributeAction:
     superseded_by : str
         Why the engine applies ``action`` in place of ``policy_action``:
         :data:`ENGINE_REMOVAL`, :data:`FILE_META_WRITTEN`, or
-        :data:`SEQUENCE_NOT_CLEANED`, or :data:`CLEAN_DESCRIPTORS_FALLBACK`;
-        otherwise
+        :data:`SEQUENCE_NOT_CLEANED`, :data:`GRAPHICS_NOT_CLEANED`, or
+        :data:`CLEAN_DESCRIPTORS_FALLBACK`; otherwise
         ``""``.
     """
 
@@ -582,13 +585,16 @@ def _attribute(  # pylint: disable=too-many-arguments
 ) -> AttributeAction:
     """Return the action that the engine applies to one listed attribute."""
     # A masked tag is looked up as one of the tags it covers, as for its
-    # places; one that stays masked, such as (50xx,xxxx), keeps the policy's
-    # action, which its row gives every tag it covers.
+    # places; one that stays masked, such as (50xx,xxxx), takes the action
+    # that the rules give its row, which applies to every tag it covers.
     concrete = _REPEATING.sub(r"(\g<1>00,", tag)
-    if rules is None or not _CONCRETE_TAG.fullmatch(concrete):
+    if rules is not None and _CONCRETE_TAG.fullmatch(concrete):
+        applied = rules.rule(concrete)
+    elif rules is not None and rule == TABLE_E1_1:
+        applied = ElementRule(tag, RuleSource.TABLE, rules.row_action(tag), tag)
+    else:
         places = _places(tag, given, sequence_action)
         return AttributeAction(tag, name, rule, given, *places)
-    applied = rules.rule(concrete)
     if applied.action == given:
         places = _places(tag, given, sequence_action)
         return AttributeAction(tag, name, rule, given, *places)
@@ -604,8 +610,11 @@ def _reason(applied: ElementRule, given: str) -> str:
     # Information in place of the source's (D-025).
     if applied.source is RuleSource.ENGINE:
         return FILE_META_WRITTEN if applied.tag.startswith("(0002,") else ENGINE_REMOVAL
-    # The element rules give a sequence to which the policy gives C its Basic
-    # Profile action.
+    # The element rules give a masked row to which the policy gives C, which
+    # only Clean Graphics does, its Basic Profile action.
+    if given == "C" and applied.source is RuleSource.TABLE and "x" in applied.entry:
+        return GRAPHICS_NOT_CLEANED
+    # And a sequence to which the policy gives C.
     attribute = dictionary_attribute(applied.tag)
     if (
         given == "C"
