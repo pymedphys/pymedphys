@@ -159,9 +159,9 @@ python -m pip install --upgrade "pymedphys[user]"
 
 If you installed PyMedPhys from conda-forge, use a new environment for the
 PyPI installation. This keeps the old conda-managed installation separate.
-You can use an existing environment with a supported Python version and pip
-if it has no conda-forge PyMedPhys packages: activate it and run the
-`python -m pip` command above.
+You can use an existing environment if its Python version is supported by
+the current PyPI release and it has pip and no conda-forge PyMedPhys packages:
+activate it and run the `python -m pip` command above.
 
 Check the installed version in that environment:
 
