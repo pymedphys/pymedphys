@@ -348,9 +348,20 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information encoded in graphics, text annotations or overlays corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-011"]
+status = "implemented"
+decisions = ["D-041"]
+implementation = [
+  "_dicom/deidentify/clean_graphics.py",
+  "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/conformance.py",
+]
+note = '''
+The engine applies the Clean Graphics Option to a custom option set; no preset selects it (D-041).
+No cleaner of graphics exists yet, so each of the four rows that Table E.1-1 gives C under the option takes its Basic Profile action: Curve Data, Overlay Data, and Overlay Comments are removed, Overlay Data with its overlay group where the IOD's Overlay Plane Module is user-optional, and Graphic Annotation Sequence takes D, which removes it from every supported IOD.
+Every instance written under the option claims it, since E.3.3 specifies what the option removes and Table E.1-1 gives the minimum actions, as for Clean Descriptors (D-009).
+An instance with an overlay group that has no Overlay Data, whose overlay may lie in unused bits of Pixel Data, which the engine does not change, is sequestered under the option as overlay-in-pixel-data.
+The conformance statement gives each row its Basic Profile action and why.
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.4-01"
