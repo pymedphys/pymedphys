@@ -44,10 +44,11 @@ to a copy of a data set and changes nothing else in it:
   where either has one. ``tps-import`` adds no code, and the sequence is left
   out where it would have no item, since a present Type 1C sequence needs
   one.
-- Longitudinal Temporal Information Modified (0028,0303) is MODIFIED where
-  the policy applies Retain Longitudinal Temporal Information with Modified
-  Dates, and otherwise REMOVED, or the value already present where that is
-  stricter, in the order UNMODIFIED, MODIFIED, REMOVED. A value already
+- Longitudinal Temporal Information Modified (0028,0303) is UNMODIFIED where
+  the policy applies Retain Longitudinal Temporal Information with Full
+  Dates, MODIFIED where it applies Retain Longitudinal Temporal Information
+  with Modified Dates, and otherwise REMOVED, or the value already present
+  where that is stricter, in the order UNMODIFIED, MODIFIED, REMOVED. A value already
   present that is not one of these is refused.
 - Contributing Equipment Sequence (0018,A001) keeps the items already present
   and, unless one of them has the same Manufacturer, Software Versions in the
@@ -110,7 +111,7 @@ from pymedphys._imports import pydicom
 from . import runtime
 from .codes import CodedConcept, load_context_group
 from .diagnostics import redacted_diagnostics
-from .policy import MODIFIED_DATES, Policy
+from .policy import FULL_DATES, MODIFIED_DATES, Policy
 from .standard import DictionaryAttribute, StandardTableError, load_data_dictionary
 from .values import values_problem
 
@@ -124,15 +125,20 @@ NO_CONFORMANCE_CLAIM = "no PS3.15 claim"
 # The Coding Scheme Designator of every code that the markers write.
 DCM = "DCM"
 # The CID 7050 code of the Basic Application Level Confidentiality Profile,
-# and of each option that the design document's Scope targets.
+# and of each option of Table E.1-1, in the table's order.
 PROFILE_CODE = "113100"
 OPTION_CODES = types.MappingProxyType(
     {
         "retain_safe_private": "113111",
+        "retain_uids": "113110",
         "retain_device_identity": "113109",
+        "retain_institution_identity": "113112",
         "retain_patient_characteristics": "113108",
+        "retain_longitudinal_full_dates": "113106",
         "retain_longitudinal_modified_dates": "113107",
         "clean_descriptors": "113105",
+        "clean_structured_content": "113104",
+        "clean_graphics": "113103",
     }
 )
 # The CID 7005 code of De-identifying Equipment.
@@ -466,15 +472,24 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         patient_identity_removed="YES",
         method=(digest, f"{MANUFACTURER} {version}; {claim}; {name}"),
         method_codes=method_codes,
-        temporal_information_modified=(
-            "MODIFIED" if MODIFIED_DATES in policy.options else "REMOVED"
-        ),
+        temporal_information_modified=_temporal_value(policy),
         manufacturer=MANUFACTURER,
         software_versions=software_versions,
         purpose_of_reference=_code(7005, DEIDENTIFYING_EQUIPMENT),
     )
     _check(found)
     return found
+
+
+def _temporal_value(policy: Policy) -> str:
+    """Return the Longitudinal Temporal Information Modified of the policy.
+
+    UNMODIFIED under Full Dates and MODIFIED under Modified Dates (PS3.15
+    E.3.6), and otherwise REMOVED (E.2). A policy never selects both.
+    """
+    if FULL_DATES in policy.options:
+        return "UNMODIFIED"
+    return "MODIFIED" if MODIFIED_DATES in policy.options else "REMOVED"
 
 
 def _int_tag(tag: str) -> int:

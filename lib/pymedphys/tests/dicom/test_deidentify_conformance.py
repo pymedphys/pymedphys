@@ -157,16 +157,42 @@ def test_each_option_names_its_cid_7050_code():
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
-def test_options_outside_the_supported_scope_are_listed_as_not_supported(statement_for):
+def test_the_statement_lists_the_options_composed_applied_and_not_supported(
+    statement_for,
+):
     text = conformance_markdown.render_markdown(statement_for("basic"))
     meanings = {
         c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
     }
-    supported, unsupported = text.split("Options that are not supported")
-    for option in policy.TARGET_OPTIONS:
-        assert meanings[conformance.OPTION_CODES[option]] in supported
-    for option in set(standard.OPTIONS) - set(policy.TARGET_OPTIONS):
-        assert meanings[conformance.OPTION_CODES[option]] in unsupported
+    lines = {
+        line.split(": ")[0]: line
+        for line in text.splitlines()
+        if line.startswith("- Options ")
+    }
+    composed = lines["- Options that PyMedPhys can compose into a policy"]
+    applied = lines["- Options whose policies the engine applies"]
+    unsupported = lines["- Options that are not supported"]
+    for option in standard.OPTIONS:
+        named = meanings[conformance.OPTION_CODES[option]]
+        assert named in composed
+        assert (named in applied) == (option in policy.ENGINE_OPTIONS)
+        assert named not in unsupported
+
+
+@pytest.mark.parametrize(
+    "option", [o for o in standard.OPTIONS if o not in policy.ENGINE_OPTIONS]
+)
+def test_a_policy_with_an_option_the_engine_does_not_yet_apply_is_described(option):
+    composed = policy.compose_custom_policy([option])
+    statement = conformance.conformance_statement(composed, vocabulary=None)
+
+    assert statement.other_elements is None
+    assert conformance.PENDING_UNAPPLIED in statement.pending
+    assert conformance.PENDING_REFUSED not in statement.pending
+    table = [e for e in statement.attributes if e.rule == conformance.TABLE_E1_1]
+    assert [(e.tag, e.action) for e in table] == list(composed.actions.items())
+    text = conformance_markdown.render_markdown(statement)
+    assert conformance.PENDING_UNAPPLIED in text
 
 
 def test_the_pixel_options_outside_table_e1_1_are_listed_as_not_supported(
@@ -900,8 +926,10 @@ def test_a_policy_that_the_engine_refuses_lists_the_policys_actions():
     text = conformance_markdown.render_markdown(statement)
     assert "## Other elements" not in text
     assert conformance.PENDING_REFUSED in text
+    assert conformance.PENDING_UNAPPLIED not in text
     for name in SUPPORTED_BY_THE_ENGINE:
         assert conformance.PENDING_REFUSED not in _statement(name).pending
+        assert conformance.PENDING_UNAPPLIED not in _statement(name).pending
 
 
 def _described_action(other, attribute, defined):

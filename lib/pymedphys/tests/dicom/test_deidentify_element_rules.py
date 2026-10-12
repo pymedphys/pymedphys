@@ -378,6 +378,20 @@ def test_retain_safe_private_is_refused_until_reviewed_rules_exist():
             ElementRules(composed)
 
 
+@pytest.mark.parametrize(
+    "option", [o for o in standard.OPTIONS if o not in policy.ENGINE_OPTIONS]
+)
+def test_an_option_the_engine_does_not_yet_apply_is_refused(option):
+    composed = policy.compose_custom_policy([option])
+    with pytest.raises(policy.PolicyError) as by_rules:
+        ElementRules(composed)
+    with pytest.raises(policy.PolicyError) as by_policy:
+        policy.refuse_unapplied_options(composed)
+
+    assert str(by_rules.value) == str(by_policy.value)
+    assert option in str(by_rules.value)
+
+
 def test_retain_safe_private_is_refused_as_private_attribute_removal_refuses_it():
     # One refusal, so the rules and the removal cannot disagree about why.
     composed = policy.compose_policy("public-release")
