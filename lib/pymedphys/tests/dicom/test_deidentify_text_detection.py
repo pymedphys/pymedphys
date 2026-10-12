@@ -20,6 +20,7 @@ import importlib.util
 import io
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import textwrap
@@ -263,6 +264,74 @@ def test_onnxruntime_imported_with_telemetry_enabled_is_refused(monkeypatch):
 
     with pytest.raises(TextDetectionError, match="telemetry"):
         text_detection._onnxruntime()  # pylint: disable = protected-access
+
+
+@pytest.mark.parametrize(
+    "platform, distributions, version",
+    [
+        ("win32", ("onnxruntime",), "1.31.0"),
+        ("win32", ("onnxruntime",), "1.32.0rc1"),
+        ("win32", ("onnxruntime",), "2.0.0"),
+        ("win32", (), None),
+        ("linux", ("onnxruntime",), "1.20.1"),
+        ("linux", ("onnxruntime-gpu",), None),
+        ("darwin", ("onnxruntime",), "1.29.0"),
+    ],
+)
+def test_runtimes_whose_telemetry_the_variable_turns_off_are_accepted(
+    platform, distributions, version
+):
+    assert (
+        text_detection._runtime_problem(  # pylint: disable = protected-access
+            platform, distributions, version
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    "distributions, version, message",
+    [
+        (("onnxruntime",), "1.20.1", r"1\.20\.1 traces through ETW.*1\.31 or later"),
+        (("onnxruntime",), "1.30.0", r"1\.30\.0 traces through ETW"),
+        (("onnxruntime",), "unknown", "ETW"),
+        (("onnxruntime-directml",), None, "onnxruntime-directml"),
+        (("onnxruntime", "onnxruntime-gpu"), "1.31.0", "onnxruntime, onnxruntime-gpu"),
+    ],
+)
+def test_windows_runtimes_that_may_trace_through_etw_are_refused(
+    distributions, version, message
+):
+    problem = text_detection._runtime_problem(  # pylint: disable = protected-access
+        "win32", distributions, version
+    )
+    assert problem is not None
+    assert re.search(message, problem)
+
+
+def test_an_older_windows_runtime_is_refused_before_it_is_imported(monkeypatch):
+    # A None entry would make an import fail; refusing first never reaches it.
+    monkeypatch.setitem(sys.modules, "onnxruntime", None)
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(
+        text_detection,
+        "_installed_onnxruntime",
+        lambda: (("onnxruntime",), "1.20.1"),
+    )
+
+    with pytest.raises(TextDetectionError, match="ETW"):
+        text_detection._onnxruntime()  # pylint: disable = protected-access
+
+
+def test_the_installed_runtime_is_found_without_importing_it():
+    imported = "onnxruntime" in sys.modules
+    distributions, version = text_detection._installed_onnxruntime()  # pylint: disable = protected-access
+
+    assert ("onnxruntime" in sys.modules) == imported
+    if importlib.util.find_spec("onnxruntime") is None:
+        assert not distributions
+    if "onnxruntime" in distributions:
+        assert version
 
 
 def test_a_missing_onnxruntime_names_the_extra(monkeypatch):

@@ -58,13 +58,19 @@ environment variable ``ORT_DISABLE_TELEMETRY`` is ``1`` when it is first
 imported; its ``disable_telemetry_events()`` does not stop the first event,
 which carries the interpreter's path. This module sets the variable before it
 imports ONNX Runtime, and refuses to run where ONNX Runtime was imported
-before without it.
+before without it. The variable governs ONNX Runtime's 1DS telemetry, which
+its official wheels use on Linux and macOS from 1.29 and on Windows from
+1.31. Earlier official Windows wheels trace through ETW instead, which
+ignores it, as do Windows builds made for Windows apps and components, so on
+Windows the detector runs only the official ``onnxruntime`` distribution at
+1.31 or later, and checks that before importing it.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import hashlib
+import importlib.metadata
 import io
 import os
 import pathlib
@@ -87,6 +93,9 @@ from pymedphys._data.download import (
 EXTRA = "text-detection"
 CACHE_DIRECTORY = "text-detection"
 TELEMETRY_VARIABLE = "ORT_DISABLE_TELEMETRY"
+# The first official Windows wheel whose telemetry TELEMETRY_VARIABLE turns
+# off: before it, those wheels traced through ETW, which ignores it.
+WINDOWS_MINIMUM_VERSION = (1, 31)
 
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
@@ -461,15 +470,57 @@ def boxes_from_probability(
     return boxes
 
 
+def _installed_onnxruntime() -> tuple[tuple[str, ...], str | None]:
+    """The distributions that install the ``onnxruntime`` module, and the
+    version of the one named ``onnxruntime``, read without importing it."""
+    distributions = tuple(
+        sorted(set(importlib.metadata.packages_distributions().get("onnxruntime", ())))
+    )
+    if "onnxruntime" not in distributions:
+        return distributions, None
+    return distributions, importlib.metadata.version("onnxruntime")
+
+
+def _runtime_problem(
+    platform: str, distributions: tuple[str, ...], version: str | None
+) -> str | None:
+    """Why ``ORT_DISABLE_TELEMETRY`` may not turn off the installed ONNX
+    Runtime's telemetry, or None where it does or nothing is installed.
+    Elsewhere than Windows, official wheels before 1.29 have no telemetry,
+    and later ones use 1DS, which the variable turns off."""
+    if platform != "win32" or not distributions:
+        return None
+    if distributions != ("onnxruntime",):
+        return (
+            f"the onnxruntime module comes from {', '.join(distributions)}; on "
+            "Windows only the official onnxruntime distribution is known to "
+            f"turn its telemetry off with {TELEMETRY_VARIABLE}"
+        )
+    release = re.match(r"(\d+)\.(\d+)", version or "")
+    if release is None or (
+        tuple(int(part) for part in release.groups()) < WINDOWS_MINIMUM_VERSION
+    ):
+        minimum = ".".join(str(part) for part in WINDOWS_MINIMUM_VERSION)
+        return (
+            f"ONNX Runtime {version} traces through ETW on Windows, which "
+            f"ignores {TELEMETRY_VARIABLE}; install onnxruntime {minimum} or later"
+        )
+    return None
+
+
 def _onnxruntime():
     """Import ONNX Runtime with its telemetry disabled.
 
     Raises
     ------
     TextDetectionError
-        Where ONNX Runtime is not installed, or was imported before without
-        ``ORT_DISABLE_TELEMETRY=1``, which it reads only on import.
+        Where ONNX Runtime is not installed, was imported before without
+        ``ORT_DISABLE_TELEMETRY=1``, which it reads only on import, or is a
+        Windows build whose telemetry that variable does not turn off.
     """
+    problem = _runtime_problem(sys.platform, *_installed_onnxruntime())
+    if problem is not None:
+        raise TextDetectionError(problem)
     if "onnxruntime" not in sys.modules:
         os.environ[TELEMETRY_VARIABLE] = "1"
     elif os.environ.get(TELEMETRY_VARIABLE) != "1":
