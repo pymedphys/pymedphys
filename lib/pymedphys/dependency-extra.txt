@@ -158,7 +158,6 @@ text-detection = [
     'numpy',
     'onnxruntime',
     'scipy',
-    'tqdm',
 ]
 trf = [
     'attrs',

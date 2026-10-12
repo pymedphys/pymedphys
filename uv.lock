@@ -3637,7 +3637,6 @@ text-detection = [
     { name = "onnxruntime", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "tqdm" },
 ]
 trf = [
     { name = "attrs" },
@@ -3837,7 +3836,6 @@ requires-dist = [
     { name = "toml", marker = "extra == 'trf'" },
     { name = "toml", marker = "extra == 'user'" },
     { name = "tomlkit" },
-    { name = "tqdm", marker = "extra == 'text-detection'" },
     { name = "tqdm", marker = "extra == 'user'" },
     { name = "trio", marker = "extra == 'ai'" },
     { name = "watchdog", marker = "extra == 'user'" },
