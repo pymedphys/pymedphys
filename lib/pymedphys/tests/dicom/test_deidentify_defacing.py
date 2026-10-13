@@ -17,10 +17,10 @@
 from __future__ import annotations
 
 import dataclasses
-
-import pytest
+import math
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import defacing
 
@@ -69,9 +69,17 @@ def _assert_around_the_globes(block: defacing.FaceBlock) -> None:
         head.axial(feet_first=True),
         head.axial(prone=True),
         head.axial(prone=True, feet_first=True),
+        dataclasses.replace(head.axial(), positions=head.axial().positions[::-1]),
         head.sagittal(),
     ],
-    ids=["head-first-supine", "feet-first", "prone", "prone-feet-first", "sagittal"],
+    ids=[
+        "head-first-supine",
+        "feet-first",
+        "prone",
+        "prone-feet-first",
+        "slices-from-superior",
+        "sagittal",
+    ],
 )
 def test_the_block_is_found_from_the_globes_whatever_the_orientation(scan):
     _assert_around_the_globes(_block(scan))
@@ -107,7 +115,10 @@ def test_the_block_holds_the_upper_face_and_keeps_the_rest():
         "front of each globe": [(-32, -75, 20), (32, -75, 20)],
         "bridge of the nose": [(0, -90, 12)],
         "forehead": [(0, -85, 60), (0, -70, 100)],
-        "mask and air before the face": [(0, -125, 30), (-90, -125, 115)],
+        "air before the face, where a mask would lie": [
+            (0, -125, 30),
+            (-90, -125, 115),
+        ],
     }
     kept = {
         "back of each globe": [(-32, -57, 20), (32, -57, 20)],
@@ -278,3 +289,102 @@ def test_a_head_recorded_upside_down_is_refused():
         _block(head.axial(), head.Head(upside_down=True))
 
     assert refused.value.problem is defacing.FaceBlockProblem.CRANIUM_NOT_ABOVE_EYES
+
+
+def test_a_volume_that_ends_above_the_orbits_is_refused_with_bone_below_or_none():
+    # It shows nothing of the cranium above the eyes, so the head may be
+    # upside down, whatever bone encloses below them.
+    scan = head.axial(extent=((-100, 100), (-130, 110), (-120, 45)))
+
+    for anatomy in (head.Head(), head.Head(skull=False)):
+        with pytest.raises(defacing.FaceBlockRefused) as refused:
+            _block(scan, anatomy)
+
+        assert (
+            refused.value.problem is defacing.FaceBlockProblem.CRANIUM_NOT_ABOVE_EYES
+        ), anatomy
+
+
+def test_slices_added_out_of_order_give_the_same_block():
+    scan = head.axial()
+    order = np.random.default_rng(3).permutation(len(scan.positions))
+    shuffled = dataclasses.replace(
+        scan, positions=tuple(scan.positions[index] for index in order)
+    )
+    anatomy = head.Head(noise=0.0)
+
+    assert _block(shuffled, anatomy) == _block(scan, anatomy)
+
+
+def test_a_wide_gap_between_slices_far_from_the_eyes_does_not_move_the_block():
+    scan = head.axial()
+    # Slices every 40 mm below the head, as a long volume might have.
+    below = tuple(
+        (scan.positions[0][0], scan.positions[0][1], float(height))
+        for height in np.arange(-400.0, -120.0, 40.0)
+    )
+    anatomy = head.Head(noise=0.0)
+
+    block = _block(dataclasses.replace(scan, positions=below + scan.positions), anatomy)
+
+    assert block == _block(scan, anatomy)
+
+
+def test_slices_sheared_within_their_plane_are_refused():
+    # Axial slices whose positions step anteriorly, as a gantry tilt does
+    # when the scanner records axial direction cosines.
+    scan = head.axial()
+    step = 2.5 * math.tan(math.radians(15.0))
+    sheared = tuple(
+        (x, y - index * step, z) for index, (x, y, z) in enumerate(scan.positions)
+    )
+
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        _finder(dataclasses.replace(scan, positions=sheared))
+
+    assert refused.value.problem is defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES
+
+
+def test_slices_offset_within_their_plane_by_less_than_the_tolerance_are_kept():
+    scan = head.axial()
+    offset = 0.9 * defacing.STACKING_TOLERANCE
+    count = len(scan.positions)
+    shifted = tuple(
+        (x + offset * index / (count - 1), y, z)
+        for index, (x, y, z) in enumerate(scan.positions)
+    )
+
+    _assert_around_the_globes(_block(dataclasses.replace(scan, positions=shifted)))
+
+
+def test_direction_cosines_not_of_unit_length_are_refused():
+    # Their cross product, the slices' normal, is still of unit length.
+    scan = dataclasses.replace(head.axial(), orientation=(1.01, 0, 0, 0, 1 / 1.01, 0))
+
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        _finder(scan)
+
+    assert refused.value.problem is defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES
+
+
+def test_a_volume_without_slices_is_an_error():
+    with pytest.raises(ValueError, match="position"):
+        defacing.FaceFinder((1, 0, 0, 0, 1, 0), [], (1.0, 1.0), (10, 10))
+
+
+def test_a_slice_of_other_rows_and_columns_is_an_error():
+    scan = head.axial()
+    finder = _finder(scan)
+
+    with pytest.raises(ValueError, match="rows and columns"):
+        finder.add(np.zeros((scan.shape[0] + 1, scan.shape[1]), np.float32))
+
+
+def test_a_slice_beyond_the_last_is_an_error():
+    scan = head.axial(extent=((-100, 100), (-130, 110), (-10, 0)))
+    finder = _finder(scan)
+    for values in scan.slices():
+        finder.add(values)
+
+    with pytest.raises(ValueError, match="every slice"):
+        finder.add(np.zeros(scan.shape, np.float32))

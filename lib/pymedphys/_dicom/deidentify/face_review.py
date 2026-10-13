@@ -16,18 +16,17 @@
 
 The engine removes no face from pixel data, so a run can claim the option
 (PS3.15 E.3.2) only for an instance that cannot show a face, or in which a
-reviewer found no recognisable face. The
-reviewer records a verdict for each series of a first run's QC pack, by its
-first run position, in the pack's attestation
-(:mod:`~pymedphys._dicom.deidentify.qc_attestation`), and the pack records
-the SHA-256 of each source file of each series. A second run of the same
-files under a policy that selects the option is given that pack
-(:func:`read_face_review`). An instance that carries visual features
-(:func:`carries_visual_features`) satisfies the option only where the
-SHA-256 of its source file is that of an instance of a series marked
+reviewer found no recognisable face. The reviewer records a verdict for
+each series of a first run's QC pack, by its first run position, in the
+pack's attestation (:mod:`~pymedphys._dicom.deidentify.qc_attestation`),
+and the pack records the SHA-256 of each source file of each series. A
+second run of the same files under a policy that selects the option is
+given that pack (:func:`read_face_review`). An instance that carries visual
+features (:func:`carries_visual_features`) satisfies the option only where
+the SHA-256 of its source file is that of an instance of a series marked
 absent; any other such instance is held for review
-(:func:`FaceReview.hold_reason`), so it is never released, and a source file
-changed since the review no longer matches.
+(:func:`FaceReview.hold_reason`), so it is never released, and a source
+file changed since the review no longer matches.
 
 The verdicts are read by digest, never by path or run position, so the
 second run may discover the files in another order, or among others, which

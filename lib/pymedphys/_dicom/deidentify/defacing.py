@@ -19,8 +19,9 @@ The Clean Recognizable Visual Features Option (PS3.15 E.3.2) asks for
 recognition". This module finds the region to remove, the face block, in
 the patient's coordinates: every point anterior to a vertical plane
 :data:`MARGIN` millimetres posterior to the centres of the two eye globes,
-facing the way the eyes face, and superior to an axial plane through the
-lower of the globes' inferior edges. It reaches the edges of the field of
+facing the way the eyes face, and superior to an axial plane at the lower
+of the globes' inferior edges, lowered by a voxel or by the spacing of the
+slices there, whichever is larger, for the sampling. It reaches the edges of the field of
 view, so that an immobilisation mask or anything else resting on the face
 is inside it. It keeps the nose below the eyes, the mouth, and the jaw,
 which most head and neck targets and organs at risk need. Nothing here
@@ -52,9 +53,11 @@ patient's axes, as
    the lens and excludes the orbital fat around the globe and bone;
 2. finds each ball of soft tissue whose centre is as far from other
    tissue as anywhere near it, of a diameter within :data:`GLOBE_DIAMETER`,
-   the largest first, and keeps those nearly surrounded by other tissue,
-   as each globe is by the orbital fat behind and beside it, whatever
-   touches its front;
+   give or take a voxel at each end for the sampling, the largest first,
+   and keeps those with at least half of a sphere around them, and most of
+   one half of it, outside the soft tissue, in fat, air, or bone, as each
+   globe has the orbital fat behind and beside it, whatever touches its
+   front;
 3. pairs two such balls that lie side by side: their centres
    :data:`GLOBE_SEPARATION` millimetres apart across the axial plane, at
    heights within :data:`PAIR_TOLERANCE` millimetres, and the line between
@@ -68,11 +71,12 @@ patient's axes, as
    than of the region as far in front, so that a patient position entered
    wrongly, which would turn the block onto the back of the head, is
    refused; and
-5. checks that the cranium lies above the eyes: that bone encloses no more
-   of the axial slices from :data:`CRANIUM_DEPTH` millimetres below the
-   globes' centres than of those as far above, where it encloses the
-   brain, so that a head recorded upside down, which would turn the block
-   onto the nose and mouth and keep the forehead, is refused.
+5. checks that the cranium lies above the eyes: that bone encloses more of
+   the axial slices from :data:`CRANIUM_DEPTH` millimetres above the
+   globes' centres, where it encloses the brain, than of those as far
+   below, so that a head recorded upside down, which would turn the block
+   onto the nose and mouth and keep the forehead, is refused, as is a
+   volume that shows no cranium above the eyes.
 
 Exactly one such pair gives the block. No pair, as where the volume does
 not include both eyes, more than one, or a head that does not lie behind
@@ -101,8 +105,10 @@ STACKING_TOLERANCE = 0.01  # millimetres of a slice's offset within the plane
 SOFT_TISSUE = (-40.0, 160.0)  # Hounsfield units
 BODY = -500.0  # Hounsfield units
 BONE = 300.0  # Hounsfield units
-GLOBE_DIAMETER = (16.0, 30.0)  # millimetres, from a newborn's to a large adult's
-GLOBE_SEPARATION = (40.0, 80.0)  # millimetres, between the centres
+GLOBE_DIAMETER = (16.0, 30.0)  # millimetres, from an infant's to a large adult's
+# Millimetres, between the centres: a young child's eyes may be closer, and
+# are then not found.
+GLOBE_SEPARATION = (40.0, 80.0)
 PAIR_TOLERANCE = 10.0  # millimetres
 MAXIMUM_TURN = 30.0  # degrees
 ORBIT_REACH = 15.0  # millimetres beyond the globe
@@ -257,7 +263,8 @@ class FaceFinder:
             Image Orientation (Patient), shared by every slice.
         positions : sequence of sequence of float
             Image Position (Patient) of each slice, in the order in which
-            the slices are added.
+            the slices are added, which need not be their order along the
+            stack.
         spacing : sequence of float
             Pixel Spacing, shared by every slice: between rows, then between
             columns, in millimetres.
@@ -266,15 +273,23 @@ class FaceFinder:
 
         Raises
         ------
+        ValueError
+            If there are no positions, or ``orientation`` does not hold six
+            values or each position three.
         FaceBlockRefused
             With :attr:`FaceBlockProblem.NOT_ALONG_PATIENT_AXES` unless the
-            rows, the columns, and the stacking of the slices each lie
-            along a patient axis, and no two slices share a position.
+            rows and the columns each lie along a patient axis, with unit
+            direction cosines, and the slices are stacked along the third,
+            with no two at one position.
         """
+        if len(orientation) != 6:
+            raise ValueError("Image Orientation (Patient) holds six values")
+        origins = np.asarray(positions, dtype=float)
+        if origins.ndim != 2 or origins.shape[1] != 3 or not len(origins):
+            raise ValueError("a face block needs a position of three values per slice")
         along_row = np.asarray(orientation[:3], dtype=float)
         down_column = np.asarray(orientation[3:], dtype=float)
         normal = np.cross(along_row, down_column)
-        origins = np.asarray(positions, dtype=float).reshape(-1, 3)
         offsets = origins @ normal
         in_plane = (origins - origins[0]) - np.outer(offsets - offsets[0], normal)
         directions = (normal, down_column, along_row)
@@ -285,6 +300,10 @@ class FaceFinder:
                 np.delete(np.abs(direction), np.argmax(np.abs(direction))).max()
                 > ALIGNMENT_TOLERANCE
                 for direction in directions
+            )
+            or any(
+                abs(float(np.linalg.norm(direction)) - 1) > ALIGNMENT_TOLERANCE
+                for direction in (along_row, down_column)
             )
             or np.abs(in_plane).max() > STACKING_TOLERANCE
             or len(np.unique(np.round(offsets, 6))) != len(offsets)
@@ -297,8 +316,12 @@ class FaceFinder:
             shape,
             qc_surfaces.Threshold.CT,
         )
+        self._shape = (int(shape[0]), int(shape[1]))
+        # Sorted, since the slices may be added in any order.
         self._voxel = qc_surfaces.voxel_side(
-            self._grid.coordinates, MINIMUM_VOXEL, MAXIMUM_VOXELS
+            [sorted(coordinates) for coordinates in self._grid.coordinates],
+            MINIMUM_VOXEL,
+            MAXIMUM_VOXELS,
         )
         # As in qc_surfaces.Surface: for each of the volume's axes, the index
         # sampled at each voxel along its patient axis.
@@ -310,13 +333,15 @@ class FaceFinder:
             tuple(len(taken) for taken in self._taken), np.nan, np.float32
         )
         self._added = 0
-        vertical = self._grid.coordinates[self._grid.axes.index(2)]
-        self._vertical_spacing = (
-            float(np.abs(np.diff(vertical)).max()) if len(vertical) > 1 else 0.0
-        )
         # A grid's row and column coordinates run from the first pixel, and
         # its slice coordinates from the patient's origin.
         shifts = (0.0, origins[0][self._grid.axes[1]], origins[0][self._grid.axes[2]])
+        vertical = self._grid.axes.index(2)
+        # The z of each slice, row, or column along the patient's superior
+        # axis, from inferior up.
+        self._heights = np.sort(
+            np.asarray(self._grid.coordinates[vertical]) + float(shifts[vertical])
+        )
         lowest, highest = {}, {}
         for coordinates, axis, shift in zip(
             self._grid.coordinates, self._grid.axes, shifts
@@ -328,16 +353,24 @@ class FaceFinder:
         self._first = np.array([lowest[0], lowest[1], highest[2]], dtype=float)
 
     def add(self, frame: np.ndarray) -> None:
-        """Add the next slice, in Hounsfield units, with padding as NaN."""
+        """Add the next slice, in Hounsfield units, with padding as NaN.
+
+        Raises
+        ------
+        ValueError
+            If every slice has been added, or ``frame`` is not of the
+            volume's rows and columns.
+        """
         index = self._added
-        self._added += 1
         if index >= len(self._grid.coordinates[0]):
-            return
+            raise ValueError("every slice of the volume has been added")
+        frame = np.asarray(frame, dtype=np.float32)
+        if frame.shape != self._shape:
+            raise ValueError("a slice must have the volume's rows and columns")
+        self._added += 1
         wanted = np.flatnonzero(self._taken[0] == index)
         if wanted.size:
-            self._samples[wanted] = np.asarray(frame, dtype=np.float32)[
-                np.ix_(self._taken[1], self._taken[2])
-            ]
+            self._samples[wanted] = frame[np.ix_(self._taken[1], self._taken[2])]
 
     def block(self) -> FaceBlock:
         """The volume's face block.
@@ -348,7 +381,7 @@ class FaceFinder:
             If a slice has not been added.
         FaceBlockRefused
             If the volume has no one pair of eye globes, or the head does
-            not lie behind them.
+            not lie behind them, or its cranium above them.
         """
         if self._added != len(self._grid.coordinates[0]):
             raise ValueError("a face block needs every slice of the volume")
@@ -384,10 +417,20 @@ class FaceFinder:
         if not self._cranium_above(bone, middle):
             raise FaceBlockRefused(FaceBlockProblem.CRANIUM_NOT_ABOVE_EYES)
         # Lower by a voxel, or by the volume's spacing along the patient's
-        # superior axis where that is larger, for the sampling.
-        inferior = min(
-            right.centre[2] - right.radius, left.centre[2] - left.radius
-        ) - max(self._voxel, self._vertical_spacing)
+        # superior axis about the globes where that is larger, for the
+        # sampling.
+        edges = [
+            (globe.centre[2] - globe.radius, globe.centre[2] + globe.radius)
+            for globe in (right, left)
+        ]
+        inferior = min(low for low, _ in edges) - max(
+            self._voxel,
+            _spacing_over(
+                self._heights,
+                min(low for low, _ in edges),
+                max(high for _, high in edges),
+            ),
+        )
         return FaceBlock(
             _point(middle - MARGIN * anterior),
             _point(anterior),
@@ -396,12 +439,14 @@ class FaceFinder:
         )
 
     def _regions(self, values: np.ndarray) -> list[_Region]:
-        """The balls of soft tissue, nearly surrounded by other tissue, that
-        may be globes, as the module describes."""
+        """The balls of soft tissue, mostly bordered by other tissue or air,
+        that may be globes, as the module describes."""
         soft = (values >= SOFT_TISSUE[0]) & (values <= SOFT_TISSUE[1])
         depth = scipy.ndimage.distance_transform_edt(soft) * self._voxel
         # A ball's depth at its centre falls short of its radius by up to
-        # about a voxel, from the sampling and the averaging.
+        # about a voxel, from the sampling and the averaging, so a ball's
+        # radius, taken as its depth and a voxel, runs from half the least
+        # diameter to a voxel more than half the greatest.
         low, high = GLOBE_DIAMETER[0] / 2 - self._voxel, GLOBE_DIAMETER[1] / 2
         peaks = (
             (depth >= low)
@@ -444,7 +489,8 @@ class FaceFinder:
         return offsets[near].mean(axis=0) if near.any() else peak
 
     def _surrounded(self, soft: np.ndarray, index: np.ndarray, radius: float) -> bool:
-        """Whether a ball of soft tissue is nearly surrounded by other tissue.
+        """Whether a ball of soft tissue is mostly bordered by other tissue
+        or air.
 
         Of the points on a sphere :data:`_SHELL` times its radius, at least
         :data:`_OUTSIDE` must be outside the soft tissue, and at least
@@ -547,8 +593,8 @@ class FaceFinder:
         return filled["back"] - filled["front"] >= HEAD_BEHIND
 
     def _cranium_above(self, bone: np.ndarray, middle: np.ndarray) -> bool:
-        """Whether bone encloses no more of the axial slices below the eyes
-        than above them, as the module describes."""
+        """Whether bone encloses more of the axial slices above the eyes
+        than below them, as the module describes."""
         superior = self._index(middle)[0]
         low, high = (depth / self._voxel for depth in CRANIUM_DEPTH)
         enclosed = {}
@@ -564,7 +610,15 @@ class FaceFinder:
                 int((scipy.ndimage.binary_fill_holes(bone[row]) & ~bone[row]).sum())
                 for row in rows
             )
-        return enclosed["below"] <= enclosed["above"]
+        return enclosed["above"] > enclosed["below"]
+
+
+def _spacing_over(heights: np.ndarray, low: float, high: float) -> float:
+    """The largest spacing between consecutive sorted ``heights`` that
+    overlaps the span from ``low`` to ``high``, or 0 for one height."""
+    overlapping = (heights[1:] >= low) & (heights[:-1] <= high)
+    gaps = np.diff(heights)[overlapping]
+    return float(gaps.max()) if gaps.size else 0.0
 
 
 def _paired(right: _Region, left: _Region) -> bool:

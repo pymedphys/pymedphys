@@ -153,8 +153,11 @@ def axial(
 
     Head first and supine by default: rows from anterior to posterior and
     columns from the patient's right to left, slices from inferior up.
-    ``prone`` turns rows and columns about, and ``feet_first`` orders the
-    slices from superior down.
+    ``feet_first`` orders the slices from superior down. Image Orientation
+    (Patient) is the one scanners commonly give for each patient position:
+    (1, 0, 0, 0, 1, 0) head first supine, (-1, 0, 0, 0, -1, 0) head first
+    prone, (-1, 0, 0, 0, 1, 0) feet first supine, and (1, 0, 0, 0, -1, 0)
+    feet first prone.
     """
     (x_low, x_high), (y_low, y_high), (z_low, z_high) = extent
     columns = int(round((x_high - x_low) / spacing)) + 1
@@ -162,12 +165,10 @@ def axial(
     heights = np.arange(z_low, z_high + 1e-9, thickness)
     if feet_first:
         heights = heights[::-1]
-    if prone:
-        orientation = (-1.0, 0.0, 0.0, 0.0, -1.0, 0.0)
-        corner = (x_high, y_high)
-    else:
-        orientation = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
-        corner = (x_low, y_low)
+    across = -1.0 if prone != feet_first else 1.0
+    down = -1.0 if prone else 1.0
+    orientation = (across, 0.0, 0.0, 0.0, down, 0.0)
+    corner = (x_low if across > 0 else x_high, y_low if down > 0 else y_high)
     positions = tuple((corner[0], corner[1], float(height)) for height in heights)
     return Scan(orientation, positions, (spacing, spacing), (rows, columns))
 
