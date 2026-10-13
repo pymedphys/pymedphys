@@ -405,6 +405,85 @@ def test_a_removed_uid_equal_to_a_kept_uid_still_withholds():
     assert not condition.exempted
 
 
+# Free-text descriptors that Clean Descriptors writes.
+
+CLEAN_DESCRIPTORS = "clean_descriptors"
+PATIENT_CHARACTERISTICS = "retain_patient_characteristics"
+SERIES_DESCRIPTION = 0x0008103E
+PATIENT_STATE = 0x00380500
+TECHNIQUE = "AXIAL CHEST"
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+@pytest.mark.parametrize(
+    "source",
+    [
+        "(0008,103E)",  # the same attribute, of an instance withheld uncleaned
+        "(0018,1030)",  # Protocol Name, which often equals it
+    ],
+)
+def test_a_written_descriptor_equal_to_each_pooled_descriptor_value_is_released(
+    source,
+):
+    written = _written(_element(SERIES_DESCRIPTION, "LO", TECHNIQUE))
+    condition = _condition(written, [CLEAN_DESCRIPTORS], (source, "LO", TECHNIQUE))
+
+    assert condition.decision is Decision.RELEASE
+    assert _why(condition) == [Exemption.CLEANED_DESCRIPTOR]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+@pytest.mark.parametrize(
+    "written_value, source, options",
+    [
+        # No option writes a Series Description, so it is not explained.
+        (TECHNIQUE, "(0008,103E)", []),
+        # Institution Name is not a descriptor.
+        (TECHNIQUE, "(0008,0080)", [CLEAN_DESCRIPTORS]),
+        # Found inside a longer written value.
+        (f"{TECHNIQUE} WIDE", "(0008,103E)", [CLEAN_DESCRIPTORS]),
+    ],
+)
+def test_a_descriptor_value_not_explained_by_a_written_descriptor_goes_to_review(
+    written_value, source, options
+):
+    written = _written(_element(SERIES_DESCRIPTION, "LO", written_value))
+    condition = _condition(written, options, (source, "LO", TECHNIQUE))
+
+    assert condition.decision is Decision.QC_REVIEW
+    assert not condition.exempted
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+def test_a_descriptor_another_option_acts_on_explains_nothing():
+    # Retain Patient Characteristics cleans Patient State itself.
+    written = _written(_element(PATIENT_STATE, "LO", "FASTING STATE"))
+    removed = ("(0038,0500)", "LO", "FASTING STATE")
+
+    released = _condition(written, [CLEAN_DESCRIPTORS], removed)
+    reviewed = _condition(
+        written, [CLEAN_DESCRIPTORS, PATIENT_CHARACTERISTICS], removed
+    )
+
+    assert _why(released) == [Exemption.CLEANED_DESCRIPTOR]
+    assert reviewed.decision is Decision.QC_REVIEW
+    assert not reviewed.exempted
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+def test_a_pooled_descriptor_value_found_inside_a_written_one_goes_to_review():
+    written = _written(_element(SERIES_DESCRIPTION, "LO", TECHNIQUE))
+    condition = _condition(
+        written,
+        [CLEAN_DESCRIPTORS],
+        ("(0008,103E)", "LO", TECHNIQUE),
+        ("(0008,103E)", "LO", "AXIAL CHE"),
+    )
+
+    assert condition.decision is Decision.QC_REVIEW
+    assert not condition.exempted
+
+
 # A run under Retain Device Identity.
 
 

@@ -59,6 +59,14 @@ reason that such a finding is not a reason for review (D-032), or returns
   (:func:`~pymedphys._dicom.deidentify.option_kept.retained_value`). It also
   applies to a finding of a date or datetime, which would otherwise
   withhold the file (:func:`retained_date`).
+- :attr:`Exemption.CLEANED_DESCRIPTOR`: under Clean Descriptors, the
+  finding's source and the element it is in are free-text descriptors that
+  the option cleans, no other selected option gives the element's attribute
+  an action of its own, and each pooled value of the source that the search
+  could find in the element is a whole written value of it, such as the
+  Series Description that the vocabulary keeps, found from the same Series
+  Description of an instance of the series that was withheld before it was
+  cleaned.
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
@@ -83,8 +91,14 @@ from collections.abc import Mapping
 
 from .codes import load_coding_schemes
 from .file_layout import ElementPath, Region, read_file_layout
-from .option_kept import retained_text, retained_value
+from .option_kept import (
+    option_actions,
+    retained_text,
+    retained_value,
+    whole_values_explain,
+)
 from .residuals import Finding, SourceValue
+from .reviewed_descriptors import CLEAN_DESCRIPTORS, descriptor_attributes
 from .standard import load_table_e3_10_1
 from .uid_registry import RegistryTable, RegistryTableSpec, load_registry_table
 
@@ -116,6 +130,7 @@ class Exemption(enum.Enum):
     VENDOR_CREATOR = "vendor-creator"  # a private creator of Table E.3.10-1
     RETAINED_TEXT = "retained-text"  # in text an option keeps, from its own or private
     RETAINED_VALUE = "retained-value"  # equal to a date or time an option keeps
+    CLEANED_DESCRIPTOR = "cleaned-descriptor"  # equal to a written descriptor
 
 
 @dataclasses.dataclass(frozen=True)
@@ -367,7 +382,45 @@ def _retained(
     element = finding.location.element
     if element is not None and retained_text(element.tag, finding.source, options):
         return Exemption.RETAINED_TEXT
+    if element is not None and _cleaned_descriptor(finding, kept, sources, options):
+        return Exemption.CLEANED_DESCRIPTOR
     return retained_date(finding, kept, sources, options)
+
+
+def _cleaned_descriptor(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+    options: tuple[str, ...],
+) -> bool:
+    """Return whether a free-text descriptor that Clean Descriptors writes explains a finding.
+
+    The finding's source and the element it is in are both free-text
+    descriptors (:func:`~pymedphys._dicom.deidentify.reviewed_descriptors.descriptor_attributes`),
+    no other selected option gives the element's attribute an action of its
+    own, and each pooled value of the source that the search could find in
+    the element is a whole written value of it.
+    """
+    element = finding.location.element
+    descriptors = descriptor_attributes()
+    if (
+        CLEAN_DESCRIPTORS not in options
+        or element is None
+        or element.tag not in descriptors
+        or finding.source.tag not in descriptors
+        or any(
+            element.tag in option_actions(option)
+            for option in options
+            if option != CLEAN_DESCRIPTORS
+        )
+    ):
+        return False
+    values, text = kept.values(element), kept.text(element)
+    return (
+        values is not None
+        and text is not None
+        and whole_values_explain(sources.get(finding.source, ()), values, text)
+    )
 
 
 def retained_date(
