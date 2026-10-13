@@ -793,8 +793,9 @@ def test_a_policy_rejects_a_conflict_between_the_options_of_a_rule(monkeypatch):
         # Retired, like the other (Trial) person names, which Table E.1-1
         # removes.
         ("(0040,A067)", "DocumentAuthorTrial", "X"),
-        # Kept as received and never set to NO, since the pixel data are
-        # unchanged.
+        # Kept as received, since the pixel data are unchanged. Burned In
+        # Annotation is never set to NO, and Recognizable Visual Features
+        # only by the markers, under its option.
         ("(0028,0301)", "BurnedInAnnotation", "K"),
         ("(0028,0302)", "RecognizableVisualFeatures", "K"),
     ],

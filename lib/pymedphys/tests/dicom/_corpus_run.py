@@ -428,9 +428,11 @@ def prepare(corpus_run: CorpusRun) -> Prepared:
     corpus = corpus_run.corpus(corpus_module.build_corpus())
     faces = None if corpus_run.face_review is None else corpus_run.face_review(corpus)
     if corpus_run.reviewed_roi_names is None:
-        return Prepared(corpus, None, None, faces)
+        return Prepared(corpus, None, None, face_review=faces)
     reviewed = corpus_run.reviewed_roi_names(corpus)
-    return Prepared(corpus, reviewed, DescriptorCleaning(VOCABULARY, reviewed), faces)
+    return Prepared(
+        corpus, reviewed, DescriptorCleaning(VOCABULARY, reviewed), face_review=faces
+    )
 
 
 def structure_set(corpus: corpus_module.SyntheticCorpus) -> corpus_module.CorpusFile:

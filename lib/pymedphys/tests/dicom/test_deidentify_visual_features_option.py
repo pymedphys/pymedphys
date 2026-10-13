@@ -42,6 +42,7 @@ from pymedphys._dicom.deidentify.face_review import (
     carries_visual_features,
     read_face_review,
 )
+from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
     ReleaseGate,
@@ -56,6 +57,7 @@ from pymedphys._dicom.deidentify.policy import (
 )
 from pymedphys._dicom.deidentify.qc_attestation import Coverage, Face, Outcome
 from pymedphys._dicom.deidentify.qc_pack import QcPack, QcPackError
+from pymedphys._dicom.deidentify.scope import SUPPORTED_IODS
 from pymedphys._dicom.deidentify.reasons import (
     HeldVisualFeatures,
     VisualFeaturesReason,
@@ -275,6 +277,20 @@ def test_the_statement_gives_the_code_only_after_the_face_review():
         "also has Recognizable Visual Features (0028,0302) set to NO, as PS3.15 "
         "E.3.2 requires, including in an IOD that does not define the attribute"
     ) in text
+
+
+def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
+    tables = load_iod_tables()
+    lacking = {
+        name for name in SUPPORTED_IODS if not tables.iods[name].lookup("(0028,0302)")
+    }
+
+    assert lacking == {"RT Plan", "RT Structure Set", "MR Spectroscopy"}
+    assert (
+        "which of the supported IODs are RT Plan, RT Structure Set, and MR Spectroscopy"
+    ) in conformance_markdown.render_markdown(
+        conformance.conformance_statement(_policy(), vocabulary=None)
+    )
 
 
 def test_the_statement_of_the_option_alone_has_one_review_code():
