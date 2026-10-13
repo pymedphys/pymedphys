@@ -786,6 +786,12 @@ def read_values(
     plan keeps as they are, which D-017's review needs
     (:func:`~pymedphys._dicom.deidentify.qc_retained.retained_paths`).
 
+    A private element that the plan reads by a reviewed safe private rule's
+    VR, or a private creator that it reads as LO, because its own VR is not
+    written, is read from its Value Field, which the rule's check, or the
+    creator's match, has found to be printable ISO 646
+    (:mod:`~pymedphys._dicom.deidentify.retained_private`).
+
     Returns
     -------
     dict of ElementPath to ElementValue or None
@@ -795,9 +801,41 @@ def read_values(
     """
     found: dict[ElementPath, ElementValue | None] = dict.fromkeys(paths)
     reader = _Reader(source, plan)
+    planned = {element.path: element for element in plan.elements}
     for path in paths:
+        element = planned.get(path)
         try:
-            found[path] = reader.read(path)
+            if element is not None and _read_by_private_rule(source, element):
+                found[path] = _private_string(source, element)
+            else:
+                found[path] = reader.read(path)
         except (UndecodableElement, _Sequester):
             pass
     return found
+
+
+def _read_by_private_rule(source: SourceEvidence, element: ElementPlan) -> bool:
+    """Return whether a private element is read by its rule's VR, not its own."""
+    written = source.element(element.path).vr
+    return (
+        is_private(element.path.tag)
+        and written in (None, "UN")
+        and element.vr not in (None, "UN")
+    )
+
+
+def _private_string(
+    source: SourceEvidence, element: ElementPlan
+) -> ElementValue | None:
+    """Read a kept private creator, CS, DS, or IS from its Value Field, or None."""
+    try:
+        text = source.value_field(element.path).decode("ascii")
+    except (UnicodeDecodeError, ValueError):
+        return None
+    # Padded to an even length with a space, or, as a creator can be, a NUL.
+    text = text.rstrip(" \x00")
+    if not text.isprintable():
+        return None
+    assert element.vr is not None  # _read_by_private_rule checks it
+    values = tuple(text.split("\\")) if text else ()
+    return ElementValue(element.path, element.vr, values)

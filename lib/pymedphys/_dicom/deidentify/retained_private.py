@@ -75,11 +75,16 @@ merits. Removing what is not retained meets E.3.10's "removed or processed".
 
 The actions name paths, never values. The values that decide them are read
 from the source file's own bytes, and only those of private creators and of
-elements that a rule would keep.
+elements that a rule would keep. :func:`private_plan` also gives the VR by
+which each kept value whose VR the file does not write is read: the rule's,
+or LO for a private creator, so that a creator, code, or number string kept
+from Implicit VR Little Endian, or written as UN, is reviewed as the same
+value written with its VR would be.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import types
 from collections.abc import Mapping
 
@@ -120,6 +125,24 @@ def is_private(tag: str) -> bool:
     return group % 2 == 1 and group not in _RESERVED_ODD_GROUPS
 
 
+@dataclasses.dataclass(frozen=True)
+class PrivatePlan:
+    """The actions that settle the C of each private element, and how to read it.
+
+    Attributes
+    ----------
+    actions : mapping of ElementPath to str
+        As :func:`private_actions` gives them.
+    vrs : mapping of ElementPath to str
+        The VR by which the value of each kept or replaced private element
+        whose VR is not written, in implicit VR or as UN, is read: its
+        rule's, or LO for a private creator.
+    """
+
+    actions: Mapping[ElementPath, str]
+    vrs: Mapping[ElementPath, str]
+
+
 def private_actions(
     source: SourceEvidence, rules: SafePrivateRules
 ) -> Mapping[ElementPath, str]:
@@ -141,7 +164,24 @@ def private_actions(
         private group, at every level of nesting, in file order, as the
         module describes.
     """
+    return private_plan(source, rules).actions
+
+
+def private_plan(source: SourceEvidence, rules: SafePrivateRules) -> PrivatePlan:
+    """Return the actions of :func:`private_actions`, with the VRs that read them.
+
+    Parameters
+    ----------
+    source : SourceEvidence
+    rules : SafePrivateRules
+
+    Returns
+    -------
+    PrivatePlan
+        Its mappings are read-only.
+    """
     actions: dict[ElementPath, str] = {}
+    vrs: dict[ElementPath, str] = {}
     creators: dict[_Block, str | None] = {}
     kept: set[_Block] = set()
     for path in source.paths():
@@ -161,12 +201,16 @@ def private_actions(
             actions[path] = _action(source, path, rule)
             if actions[path] != REMOVE:
                 kept.add(block)
+                if rule is not None and source.element(path).vr in _UNWRITTEN:
+                    vrs[path] = rule.vr
     for path in actions:
         element = int(path.tag[6:10], 16)
         if 0x0010 <= element <= 0x00FF:
             if (path.items, int(path.tag[1:5], 16), element) in kept:
                 actions[path] = KEEP
-    return types.MappingProxyType(actions)
+                if source.element(path).vr in _UNWRITTEN:
+                    vrs[path] = _CREATOR_VR
+    return PrivatePlan(types.MappingProxyType(actions), types.MappingProxyType(vrs))
 
 
 def _creator(source: SourceEvidence, path: ElementPath) -> str | None:

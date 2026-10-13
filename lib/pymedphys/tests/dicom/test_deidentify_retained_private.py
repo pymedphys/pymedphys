@@ -34,6 +34,7 @@ from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.retained_private import private_actions
+from pymedphys._dicom.deidentify.run_qc import RetainedText
 from pymedphys._dicom.deidentify.safe_private import Handling, load_safe_private_rules
 from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.standard import PRIVATE_ATTRIBUTES_TAG
@@ -454,6 +455,57 @@ def test_the_option_keeps_safe_private_attributes_end_to_end(transfer_syntax):
         )
     )
     assert not _private(basic)
+
+
+def _diffusion(vr):
+    """Philips codes and a PET factor, top level and in an item, with ``vr``."""
+    item = pydicom.Dataset()
+    item.add_new(0x20010010, "LO", PHILIPS)
+    item.add_new(0x20011004, vr or "CS", b"RIGHT " if vr == "UN" else "RIGHT")
+    dataset = _slice(
+        (0x20010010, "LO", PHILIPS),
+        (0x20011004, vr or "CS", b"LEFT" if vr == "UN" else "LEFT"),
+        (0x2001105F, "SQ", pydicom.Sequence([item])),
+        (0x70530010, "LO", PET),
+        (0x70531000, vr or "DS", b"1.25" if vr == "UN" else "1.25"),
+    )
+    return dataset
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01", "MIDI-BP-17")
+@pytest.mark.parametrize(
+    "transfer_syntax, vr",
+    [
+        (synthetic.EXPLICIT_VR_LITTLE_ENDIAN, None),
+        (synthetic.EXPLICIT_VR_LITTLE_ENDIAN, "UN"),
+        (synthetic.IMPLICIT_VR_LITTLE_ENDIAN, None),
+    ],
+    ids=["explicit", "explicit-UN", "implicit"],
+)
+def test_each_kept_private_string_is_given_to_the_qc_pack(transfer_syntax, vr):
+    # A kept creator, code, or number string is reviewed whether or not its
+    # VR is written, read by its rule's VR, or as LO for a creator.
+    data = synthetic.written(_diffusion(vr), transfer_syntax)
+
+    result = _transform()(data, InstanceRecord.from_file(data))
+
+    assert isinstance(result, run.Transformed), result
+    output = pydicom.dcmread(io.BytesIO(result.data))
+    assert {"(2001,1004)", "(7053,1000)"} <= _private(output).keys()
+    item = (("(2001,105F)", 0),)
+    retained = [
+        text
+        for text in result.qc
+        if isinstance(text, RetainedText) and int(text.path.tag[1:5], 16) % 2
+    ]
+    assert retained == [
+        RetainedText(PHILIPS, _top("(2001,0010)")),
+        RetainedText("LEFT", _top("(2001,1004)")),
+        RetainedText(PHILIPS, ElementPath(item, "(2001,0010)")),
+        RetainedText("RIGHT", ElementPath(item, "(2001,1004)")),
+        RetainedText(PET, _top("(7053,0010)")),
+        RetainedText("1.25", _top("(7053,1000)")),
+    ]
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-04")

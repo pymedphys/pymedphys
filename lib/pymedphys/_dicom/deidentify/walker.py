@@ -104,7 +104,8 @@ rules (:func:`~pymedphys._dicom.deidentify.retained_private.private_actions`):
 a private creator or data element is kept (K), a private UID is
 replaced (U), or the element is removed (X). A private sequence that a rule
 keeps is kept as a container, so that each element in its items takes its
-own rule.
+own rule. A private data element that a rule keeps or replaces, written
+without its VR, in implicit VR or as UN, is read by the rule's VR.
 
 Making the plan reads no value but, under the Retain Safe Private Option,
 the private creators and the private values that a rule would keep, which
@@ -134,7 +135,6 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-from collections.abc import Mapping
 
 from .common_instance_reference import (
     is_common_instance_reference,
@@ -151,7 +151,7 @@ from .dummy_values import DUMMY_VRS, ICC_PROFILE
 from .element_rules import ElementRule, ElementRules, RuleSource
 from .file_layout import ElementPath
 from .iods import IOD
-from .retained_private import private_actions
+from .retained_private import PrivatePlan, private_plan
 from .source import SourceEvidence
 from .standard import dictionary_attribute
 
@@ -261,8 +261,9 @@ class ElementPlan:
     path : ElementPath
     vr : str or None
         The VR that the value is read by: as written, or, in implicit VR or
-        in place of UN, the one VR that the pinned data dictionary gives;
-        ``None`` where neither gives one.
+        in place of UN, the one VR that the pinned data dictionary gives, or,
+        for a private element that a reviewed safe private rule keeps or
+        replaces, the rule's; ``None`` where none gives one.
     rule : ElementRule or None
         The element's rule, or ``None`` if it is removed with a sequence.
     action : str
@@ -427,7 +428,7 @@ def _plan(
     iod: IOD,
     forced: _PlainRemovals,
     lapsed: frozenset[ElementPath] = frozenset(),
-    private: Mapping[ElementPath, str] | None = None,
+    private: PrivatePlan | None = None,
 ) -> tuple[InstancePlan, _PlainRemovals]:
     """Plan every element, removing what ``forced`` says plain X removes.
 
@@ -456,7 +457,8 @@ def _plan(
             continue
         rule = rules.rule(path.tag, tuple(tag for tag, _ in path.items), iod=iod)
         if rule.source is RuleSource.PRIVATE and private is not None:
-            action = private.get(path, _REMOVED)
+            action = private.actions.get(path, _REMOVED)
+            vr = private.vrs.get(path, vr)
         else:
             action = _resolve(iod, path, rule)
         removed_for = forced.removed_for(path) if action != _REMOVED else None
@@ -552,9 +554,7 @@ def plan_instance(
     InstancePlan
     """
     private = (
-        None
-        if rules.safe_private is None
-        else private_actions(source, rules.safe_private)
+        None if rules.safe_private is None else private_plan(source, rules.safe_private)
     )
     plan, removals = _plan(source, rules, iod, _PlainRemovals(), private=private)
     if removals.sequences or removals.overlay_groups:
