@@ -53,6 +53,12 @@ OPTIONS = (
     "clean_structured_content",
     "clean_graphics",
 )
+# The Clean Pixel Data and Clean Recognizable Visual Features Options (PS3.15
+# E.3.1 and E.3.2), which PS3.15 E.1.1 Note 11 leaves out of Table E.1-1: they
+# change what an instance's pixel data show, not any attribute's action.
+PIXEL_OPTIONS = ("clean_pixel_data", "clean_recognizable_visual_features")
+# Every option that a policy can select: Table E.1-1's, then the pixel options.
+ALL_OPTIONS = OPTIONS + PIXEL_OPTIONS
 # Options that PS3.15 specifies as mutually exclusive: E.3.6 for the two Retain
 # Longitudinal Temporal Information Options.
 MUTUALLY_EXCLUSIVE = (

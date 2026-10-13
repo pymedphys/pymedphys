@@ -50,8 +50,8 @@ def test_each_option_names_its_cid_7050_code():
     meanings = {
         c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
     }
-    assert set(conformance.OPTION_CODES) == set(standard.OPTIONS)
-    assert len(set(conformance.OPTION_CODES.values())) == len(standard.OPTIONS)
+    assert tuple(conformance.OPTION_CODES) == standard.ALL_OPTIONS
+    assert len(set(conformance.OPTION_CODES.values())) == len(standard.ALL_OPTIONS)
     assert meanings[markers.PROFILE_CODE] == (
         "Basic Application Confidentiality Profile"
     )
@@ -78,16 +78,32 @@ def test_the_statement_lists_the_options_composed_applied_and_not_supported(
     }
     composed = lines["- Options that PyMedPhys can compose into a policy"]
     applied = lines["- Options whose policies the engine applies"]
-    unsupported = lines["- Options that are not supported"]
-    for option in standard.OPTIONS:
+    unsupported = lines[
+        "- Options that are not supported, since the engine does not yet apply them"
+    ]
+    for option in standard.ALL_OPTIONS:
         named = meanings[conformance.OPTION_CODES[option]]
         assert named in composed
         assert (named in applied) == (option in policy.ENGINE_OPTIONS)
-        assert named not in unsupported
+        assert (named in unsupported) == (option not in policy.ENGINE_OPTIONS)
+
+
+def test_the_statement_says_when_every_option_is_supported(monkeypatch):
+    monkeypatch.setattr(conformance_markdown, "ENGINE_OPTIONS", standard.ALL_OPTIONS)
+    statement = conformance.conformance_statement(
+        policy.compose_policy("basic"), vocabulary=None
+    )
+
+    text = conformance_markdown.render_markdown(statement)
+
+    assert (
+        "- Options that are not supported, since the engine does not yet apply "
+        "them: none.\n"
+    ) in text
 
 
 @pytest.mark.parametrize(
-    "option", [o for o in standard.OPTIONS if o not in policy.ENGINE_OPTIONS]
+    "option", [o for o in standard.ALL_OPTIONS if o not in policy.ENGINE_OPTIONS]
 )
 def test_a_policy_with_an_option_the_engine_does_not_yet_apply_is_described(option):
     composed = policy.compose_custom_policy([option])
@@ -101,7 +117,7 @@ def test_a_policy_with_an_option_the_engine_does_not_yet_apply_is_described(opti
     assert conformance.PENDING_UNAPPLIED in text
 
 
-def test_the_pixel_options_outside_table_e1_1_are_listed_as_not_supported(
+def test_the_pixel_options_outside_table_e1_1_can_be_composed_but_are_not_supported(
     preset, statement_for
 ):
     # PS3.15 E.1.1 Note 11 leaves Clean Pixel Data and Clean Recognizable
@@ -112,16 +128,24 @@ def test_the_pixel_options_outside_table_e1_1_are_listed_as_not_supported(
     }
     assert meanings["113101"] == "Clean Pixel Data Option"
     assert meanings["113102"] == "Clean Recognizable Visual Features Option"
-    (line,) = [
-        line
+    assert conformance.OPTION_CODES["clean_pixel_data"] == "113101"
+    assert conformance.OPTION_CODES["clean_recognizable_visual_features"] == "113102"
+    lines = {
+        line.split(": ")[0]: line
         for line in text.splitlines()
-        if line.startswith("- Options that are not supported: ")
-    ]
-    for code in conformance.PIXEL_OPTION_CODES:
-        assert f"{meanings[code]} (DCM {code})" in line
-    assert set(conformance.PIXEL_OPTION_CODES).isdisjoint(
-        conformance.OPTION_CODES.values()
-    )
+        if line.startswith("- Options ")
+    }
+    for code in ("113101", "113102"):
+        named = f"{meanings[code]} (DCM {code})"
+        assert named in lines["- Options that PyMedPhys can compose into a policy"]
+        assert named not in lines["- Options whose policies the engine applies"]
+        assert (
+            named
+            in lines[
+                "- Options that are not supported, since the engine does not yet "
+                "apply them"
+            ]
+        )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")

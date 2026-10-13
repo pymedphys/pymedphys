@@ -125,7 +125,8 @@ NO_CONFORMANCE_CLAIM = "no PS3.15 claim"
 # The Coding Scheme Designator of every code that the markers write.
 DCM = "DCM"
 # The CID 7050 code of the Basic Application Level Confidentiality Profile,
-# and of each option of Table E.1-1, in the table's order.
+# and of each option, in the order of standard.ALL_OPTIONS: Table E.1-1's,
+# then Clean Pixel Data and Clean Recognizable Visual Features.
 PROFILE_CODE = "113100"
 OPTION_CODES = types.MappingProxyType(
     {
@@ -139,6 +140,8 @@ OPTION_CODES = types.MappingProxyType(
         "clean_descriptors": "113105",
         "clean_structured_content": "113104",
         "clean_graphics": "113103",
+        "clean_pixel_data": "113101",
+        "clean_recognizable_visual_features": "113102",
     }
 )
 # The codes of the options whose policies the engine applies, the only option

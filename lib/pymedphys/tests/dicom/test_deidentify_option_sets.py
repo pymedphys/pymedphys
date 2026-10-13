@@ -237,7 +237,7 @@ def test_the_help_names_every_option(capsys):
     assert raised.value.code == 0
     text = " ".join(capsys.readouterr().out.split())
     assert "--option OPTION" in text
-    for option in standard.OPTIONS:
+    for option in standard.ALL_OPTIONS:
         assert option in text
 
 
