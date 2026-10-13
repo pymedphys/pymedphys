@@ -124,6 +124,15 @@ def test_a_policy_with_an_option_the_engine_does_not_yet_apply_is_described(
     assert [(e.tag, e.action) for e in table] == list(composed.actions.items())
     text = conformance_markdown.render_markdown(statement)
     assert conformance.PENDING_UNAPPLIED in text
+    meanings = {
+        c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
+    }
+    (unsupported,) = [
+        line
+        for line in text.splitlines()
+        if line.startswith("- Options that are not supported")
+    ]
+    assert meanings[conformance.OPTION_CODES[option]] in unsupported
 
 
 def test_the_pixel_options_outside_table_e1_1_can_be_composed_but_are_not_supported(
