@@ -82,7 +82,13 @@ from .element_rules import (
 )
 from .iods import IOD, load_iod_tables
 from .method_digest import digest_inputs, method_digest
-from .policy import SAFE_PRIVATE, Policy, PolicyError, ResolvedConflict
+from .policy import (
+    CLEAN_PIXEL_DATA,
+    SAFE_PRIVATE,
+    Policy,
+    PolicyError,
+    ResolvedConflict,
+)
 from .scope import SUPPORTED_IODS, SUPPORTED_TRANSFER_SYNTAXES, classify
 from .sop_classes import load_storage_sop_classes
 from .standard import (
@@ -177,6 +183,12 @@ PENDING_SAFE_PRIVATE = (
 PENDING_BIRTH_DATES = (
     "The synthetic birth date that Z writes to Patient's Birth Date "
     "(0010,0030) in place of a zero-length value (D-008, D-021)."
+)
+# Pending only for a policy that selects Clean Pixel Data.
+PENDING_PIXEL_DATA = (
+    "How the Clean Pixel Data Option blacks out the text that it finds in "
+    "Pixel Data (7FE0,0010), which instances it holds for review or "
+    "sequesters, and when an instance claims it (PS3.15 E.3.1; D-037)."
 )
 _TPS_IMPORT = "tps-import"
 _FULL_DATES = "retain_longitudinal_full_dates"
@@ -883,6 +895,7 @@ def conformance_statement(
             (PENDING_FALLBACK, not _falls_back(policy)),
             (PENDING_SAFE_PRIVATE, safe_private),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
+            (PENDING_PIXEL_DATA, CLEAN_PIXEL_DATA in policy.options),
         )
         if applies
     )

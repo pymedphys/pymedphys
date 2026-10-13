@@ -500,7 +500,8 @@ def test_released_images_keep_their_transfer_syntax_and_pixels(policy_run):
             # Cut from the codestreams, which were not recompressed.
             assert text not in data
             cut += 1
-    assert images
+    # Clean Pixel Data holds every image that it cleans for review (D-037).
+    assert images or "clean_pixel_data" in policy_run.spec.selected
     if (
         policy_run.corpus.files[0].manifest.transfer_syntax
         in compressed.CORPUS_SYNTAXES

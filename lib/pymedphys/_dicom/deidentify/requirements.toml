@@ -300,10 +300,18 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information burned in to the Pixel Data (7FE0,0010) corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
-status = "out-of-scope"
-decisions = ["D-015"]
+status = "partial"
+milestone = "M3"
+decisions = ["D-015", "D-037"]
+implementation = [
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/pixel_cleaning.py",
+  "_dicom/deidentify/text_detection.py",
+]
 note = '''
-The Clean Pixel Data Option is not supported.
+Text that a text finder finds in native Pixel Data is blacked out, whatever it says, and every instance cleaned is held for review (D-037).
+No instance is released with its Pixel Data cleaned, or claims the option, until a reviewer's decision can be applied.
+Compressed Pixel Data is sequestered.
 '''
 
 [[requirement]]
@@ -312,11 +320,12 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The Attribute Burned In Annotation (0028,0301) shall be added to the Data Set with a Value of "NO".
 '''
-status = "out-of-scope"
-decisions = ["D-015"]
+status = "planned"
+milestone = "M3"
+decisions = ["D-015", "D-037"]
 note = '''
 Applies only with the Clean Pixel Data Option.
-Burned In Annotation is kept as received and never set to NO (D-015).
+Burned In Annotation is kept as received (D-015) until a reviewer's decision on an instance's cleaned Pixel Data can be applied, which is then to set it to NO (D-037).
 '''
 
 [[requirement]]

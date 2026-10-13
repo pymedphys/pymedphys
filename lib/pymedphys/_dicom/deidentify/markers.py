@@ -38,7 +38,9 @@ to a copy of a data set and changes nothing else in it:
   Descriptors, which goes unsatisfied where an instance retains a
   descriptor that has not passed pooled human review, such as a reviewer's
   decision in the reviewed-names list (D-009); a descriptor removed or
-  replaced by its Basic Profile action instead still meets it.
+  replaced by its Basic Profile action instead still meets it. Clean Pixel
+  Data likewise goes unsatisfied where an instance's pixel data await review
+  (D-037), and so may Clean Recognizable Visual Features.
   A code is not added where an item already present has the same Code
   Value and Coding Scheme Designator, and the same Coding Scheme Version
   where either has one. ``tps-import`` adds no code, and the sequence is left
@@ -153,9 +155,15 @@ DEIDENTIFYING_EQUIPMENT = "109104"
 # The values of Longitudinal Temporal Information Modified, from the least
 # strict to the strictest.
 TEMPORAL_VALUES = ("UNMODIFIED", "MODIFIED", "REMOVED")
-# The one selected option that a policy claiming conformance can leave
-# unsatisfied: in an instance that retains a descriptor without review.
-_CLEAN_DESCRIPTORS = "clean_descriptors"
+# The selected options that a policy claiming conformance can leave
+# unsatisfied, each in an instance whose own outcome does not meet it: Clean
+# Descriptors, where it retains a descriptor without review, and the pixel
+# options, where its pixel data await review.
+_PER_INSTANCE = (
+    "clean_descriptors",
+    "clean_pixel_data",
+    "clean_recognizable_visual_features",
+)
 
 _PATIENT_IDENTITY_REMOVED = "(0012,0062)"
 _DEIDENTIFICATION_METHOD = "(0012,0063)"
@@ -257,8 +265,8 @@ def _satisfied(policy: Policy, satisfied: Iterable[str]) -> tuple[str, ...]:
     """Return the satisfied options in the policy's order, after checking them.
 
     Under a policy that can claim conformance, every selected option but
-    Clean Descriptors must be satisfied, so that the codes name each option
-    whose actions the instance carries. An option that the policy records as
+    Clean Descriptors and the pixel options must be satisfied, so that the
+    codes name each option whose actions the instance carries. An option that the policy records as
     unmet is never required.
     """
     if isinstance(satisfied, str):
@@ -276,13 +284,13 @@ def _satisfied(policy: Policy, satisfied: Iterable[str]) -> tuple[str, ...]:
     missing = [
         option
         for option in policy.options
-        if option not in chosen and option != _CLEAN_DESCRIPTORS and option not in unmet
+        if option not in chosen and option not in _PER_INSTANCE and option not in unmet
     ]
     if policy.claims_conformance and missing:
         raise ValueError(
             f"satisfied leaves out {', '.join(missing)}, which the policy "
-            f"selects; only {_CLEAN_DESCRIPTORS} can go unsatisfied, in an "
-            "instance that retains a descriptor without review"
+            f"selects; only {', '.join(_PER_INSTANCE)} can go unsatisfied, in "
+            "an instance whose own outcome does not meet them"
         )
     return tuple(option for option in policy.options if option in chosen)
 
@@ -399,7 +407,9 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         must have every selected option satisfied except Clean Descriptors,
         which an instance that retains a descriptor that has not passed
         pooled human review does not satisfy; one whose descriptors are
-        removed or replaced by their Basic Profile actions instead does.
+        removed or replaced by their Basic Profile actions instead does; and
+        except the pixel options, which an instance whose pixel data await
+        review does not satisfy (D-037).
         ``tps-import``, which claims no conformance and adds no codes, needs
         none satisfied, and never the Retain Device Identity that it records
         as unmet.
@@ -419,10 +429,10 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         If ``digest`` is not 64 lowercase hexadecimal digits; if
         ``satisfied`` names an option that the policy does not select, or,
         under a policy that can claim conformance, leaves out a selected
-        option other than Clean Descriptors, in which case the message names
-        each option left out; or if the policy selects an option without a
-        CID 7050 code here, which a validated policy never does. The message
-        does not quote the digest.
+        option other than Clean Descriptors and the pixel options, in which
+        case the message names each option left out; or if the policy
+        selects an option without a CID 7050 code here, which a validated
+        policy never does. The message does not quote the digest.
     MarkerError
         If the policy resolves a conflict between options by keeping the
         value, so that Patient Identity Removed could be neither YES nor NO;

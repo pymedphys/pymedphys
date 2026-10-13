@@ -52,6 +52,7 @@ from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.pixel_cleaning import TextFinder
 from pymedphys._dicom.deidentify.policy import (
     PRESETS,
     Policy,
@@ -289,6 +290,9 @@ class CorpusRun:
         Returns the reviewed-names list for the corpus it is given, to clean
         ROI Names with the invented vocabulary; or None to run without
         descriptor cleaning.
+    finder : TextFinder or None
+        What finds text in each frame under Clean Pixel Data; or None for a
+        run without that option.
     withheld : Mapping of str to Withheld
         Each instance the run must withhold, by its file name in the
         corpus. Every other instance must be released.
@@ -323,6 +327,7 @@ class CorpusRun:
     reviewed_roi_names: (
         Callable[[corpus_module.SyntheticCorpus], ReviewedNames] | None
     ) = None
+    finder: TextFinder | None = None
     # A factory, since dataclasses refuse a default they cannot hash, which
     # a mapping proxy is before Python 3.12.
     withheld: Mapping[str, Withheld] = dataclasses.field(
@@ -387,26 +392,37 @@ class CorpusRun:
 
 @dataclasses.dataclass(frozen=True)
 class Prepared:
-    """A run's corpus, and what its transform cleans descriptors with."""
+    """A run's corpus, and what its transform cleans descriptors and finds
+    text with."""
 
     corpus: corpus_module.SyntheticCorpus
     reviewed: ReviewedNames | None
     cleaning: DescriptorCleaning | None
+    finder: TextFinder | None = None
 
     def transform(self, policy: Policy) -> InstanceTransform:
         """The run's instance transform, which applies a policy not yet enabled."""
         return InstanceTransform(
-            policy, KEY, cleaning=self.cleaning, unvalidated_policy=True
+            policy,
+            KEY,
+            cleaning=self.cleaning,
+            finder=self.finder,
+            unvalidated_policy=True,
         )
 
 
 def prepare(corpus_run: CorpusRun) -> Prepared:
-    """Build the corpus a run is over, and its reviewed-names list."""
+    """Build the corpus a run is over, its reviewed-names list, and its finder."""
     corpus = corpus_run.corpus(corpus_module.build_corpus())
     if corpus_run.reviewed_roi_names is None:
-        return Prepared(corpus, None, None)
+        return Prepared(corpus, None, None, corpus_run.finder)
     reviewed = corpus_run.reviewed_roi_names(corpus)
-    return Prepared(corpus, reviewed, DescriptorCleaning(VOCABULARY, reviewed))
+    return Prepared(
+        corpus,
+        reviewed,
+        DescriptorCleaning(VOCABULARY, reviewed),
+        corpus_run.finder,
+    )
 
 
 def structure_set(corpus: corpus_module.SyntheticCorpus) -> corpus_module.CorpusFile:

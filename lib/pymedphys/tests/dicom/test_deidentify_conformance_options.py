@@ -118,7 +118,7 @@ def test_a_policy_with_an_option_the_engine_does_not_yet_apply_is_described(opti
     assert conformance.PENDING_UNAPPLIED in text
 
 
-def test_the_pixel_options_outside_table_e1_1_can_be_composed_but_are_not_supported(
+def test_the_pixel_options_outside_table_e1_1_can_be_composed_and_are_listed(
     preset, statement_for
 ):
     # PS3.15 E.1.1 Note 11 leaves Clean Pixel Data and Clean Recognizable
@@ -136,17 +136,18 @@ def test_the_pixel_options_outside_table_e1_1_can_be_composed_but_are_not_suppor
         for line in text.splitlines()
         if line.startswith("- Options ")
     }
-    for code in ("113101", "113102"):
+    unsupported = lines[
+        "- Options that are not supported, since the engine does not yet apply them"
+    ]
+    for option in standard.PIXEL_OPTIONS:
+        code = conformance.OPTION_CODES[option]
         named = f"{meanings[code]} (DCM {code})"
+        applied = option in policy.ENGINE_OPTIONS
         assert named in lines["- Options that PyMedPhys can compose into a policy"]
-        assert named not in lines["- Options whose policies the engine applies"]
         assert (
-            named
-            in lines[
-                "- Options that are not supported, since the engine does not yet "
-                "apply them"
-            ]
-        )
+            named in lines["- Options whose policies the engine applies"]
+        ) is applied
+        assert (named in unsupported) is not applied
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")

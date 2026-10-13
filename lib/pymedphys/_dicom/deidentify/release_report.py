@@ -72,8 +72,9 @@ and codes that the engine defines, never by a source value or path:
   Table B.5-1 names it without "IOD" (D-010).
 - ``held_for_review``: how many instances were held for review, by stage and
   reason (D-009), from :func:`held_for_review`: a ROI Name that descriptor
-  cleaning held, or a release gate's reason that requires QC review. A held
-  instance has neither an output name nor a label.
+  cleaning held, why a pixel option held its pixel data (D-037), or a
+  release gate's reason that requires QC review. A held instance has neither
+  an output name nor a label.
 - ``roi_names``: the outcome of each ROI Name of the structure sets that
   descriptor cleaning cleaned, every name counted, and how many distinct
   names it sent for review for each reason, whether they were then held or
@@ -128,7 +129,13 @@ from .policy import PRESETS, Policy
 from .preservation import PreservationReason
 from .preserving_writer import WriteReason
 from .qc_attestation import AttestationRecord, Outcome
-from .reasons import DescriptorReason, HeldRoiName, RunReason, TransformReason
+from .reasons import (
+    DescriptorReason,
+    HeldRoiName,
+    PixelDataReason,
+    RunReason,
+    TransformReason,
+)
 from .reference_graph import FindingKind
 from .release_gate import Decision, ReasonCode, ReleaseReason
 from .reviewed_roi_names import Outcome as RoiNameOutcome
@@ -142,7 +149,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/13"
+FORMAT = "pymedphys-deid-release-report/14"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -231,6 +238,7 @@ _CHECK_REASONS = {
 # The reason codes of each stage that holds an instance for review.
 _HOLDING = {
     "roi-names": frozenset(r.value for r in RoiNameReason),
+    "pixel-data": frozenset(r.value for r in PixelDataReason),
     "release": _SEQUESTERING["release"],
 }
 # The dispositions of the instances whose pixel data risks are counted: those
@@ -370,7 +378,8 @@ class HeldForReview:
     Attributes
     ----------
     stage : str
-        ``"roi-names"`` (descriptor cleaning held a ROI Name) or
+        ``"roi-names"`` (descriptor cleaning held a ROI Name),
+        ``"pixel-data"`` (a pixel option held the instance's pixel data), or
         ``"release"`` (the release gate requires QC review).
     code : str
         The stage's reason code, such as ``"unmatched"``.
@@ -700,13 +709,13 @@ def source_gaps(
 
 
 def held_for_review(
-    instances: Iterable[Iterable[HeldRoiName | ReleaseReason]],
+    instances: Iterable[Iterable[HeldRoiName | PixelDataReason | ReleaseReason]],
 ) -> tuple[HeldForReview, ...]:
     """Count the instances held for review by stage and reason (D-009).
 
     ``instances`` holds, for each held instance, its reasons: a ROI Name
-    that descriptor cleaning held, or a release gate's reason that requires
-    QC review. An instance
+    that descriptor cleaning held, why a pixel option held its pixel data
+    (D-037), or a release gate's reason that requires QC review. An instance
     counts once for each stage and code, however many of its names or
     attributes have it. The counts are in the order of their stages and
     codes.
@@ -719,12 +728,14 @@ def held_for_review(
     """
     counts: collections.Counter[tuple[str, str]] = collections.Counter()
     for reasons in instances:
-        if isinstance(reasons, (HeldRoiName, ReleaseReason)):
+        if isinstance(reasons, (HeldRoiName, PixelDataReason, ReleaseReason)):
             raise TypeError("reasons must be given for each instance")
         codes = set()
         for reason in reasons:
             if isinstance(reason, HeldRoiName):
                 codes.add(("roi-names", reason.reason.value))
+            elif isinstance(reason, PixelDataReason):
+                codes.add(("pixel-data", reason.value))
             elif (
                 isinstance(reason, ReleaseReason)
                 and reason.decision is Decision.QC_REVIEW
@@ -733,8 +744,8 @@ def held_for_review(
                 codes.add(("release", reason.code.value))
             else:
                 raise TypeError(
-                    "a held reason must be a HeldRoiName or a release reason "
-                    "that requires QC review"
+                    "a held reason must be a HeldRoiName, a PixelDataReason, "
+                    "or a release reason that requires QC review"
                 )
         counts.update(codes)
     return tuple(

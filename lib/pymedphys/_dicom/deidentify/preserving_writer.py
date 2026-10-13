@@ -386,6 +386,21 @@ def _belongs(path: ElementPath, element: pydicom.DataElement) -> bool:
     )
 
 
+def _bytes_alike(vrs: tuple[str, ...], element: pydicom.DataElement) -> bool:
+    """Whether a value of bytes reads the same by each of an attribute's VRs.
+
+    Every transfer syntax with implicit VR is little endian, in which OB and
+    OW hold the same bytes, so a value of bytes of an attribute that may be
+    either, such as native Pixel Data (7FE0,0010), reads the same whichever
+    a reader takes.
+    """
+    return (
+        sorted(vrs) == ["OB", "OW"]
+        and element.VR in vrs
+        and isinstance(element.value, bytes)
+    )
+
+
 def _encode(
     path: ElementPath,
     element: object,
@@ -396,7 +411,10 @@ def _encode(
     if not isinstance(element, pydicom.DataElement) or not _belongs(path, element):
         raise WriteRefused(WriteReason.ELEMENT, path)
     attribute = dictionary_attribute(path.tag)
-    if not explicit and (attribute is None or attribute.vrs != (element.VR,)):
+    if not explicit and not (
+        attribute is not None
+        and (attribute.vrs == (element.VR,) or _bytes_alike(attribute.vrs, element))
+    ):
         # A reader takes the VR from its dictionary, so one that the pinned
         # dictionary does not give alone could be read otherwise.
         raise WriteRefused(WriteReason.IMPLICIT_VR, path)

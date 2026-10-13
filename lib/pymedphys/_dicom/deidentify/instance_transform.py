@@ -41,14 +41,18 @@ each instance it may process. It joins the engine's per-instance steps:
    :func:`~pymedphys._dicom.deidentify.cleaners.apply_cleaners`, then, under
    Clean Descriptors,
    :func:`~pymedphys._dicom.deidentify.descriptor_cleaning.clean_descriptors`,
-   settle the attributes that the policy gives C;
+   settle the attributes that the policy gives C, and under Clean Pixel Data,
+   :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out` blacks out
+   the text found in native Pixel Data (D-037);
 5. :func:`writer_plan` turns those edits into what the byte-preserving
    writer takes, and
    :func:`~pymedphys._dicom.deidentify.preserving_writer.write_data_set` and
    :func:`~pymedphys._dicom.deidentify.preserving_writer.write_file_bytes`
    write the file;
 6. :func:`~pymedphys._dicom.deidentify.preservation.verify_preservation`
-   checks the file written against its source and the same plan, and
+   checks the file written against its source and the same plan,
+   :func:`~pymedphys._dicom.deidentify.pixel_cleaning.redaction_problem` any
+   Pixel Data blacked out, and
    :func:`~pymedphys._dicom.deidentify.iod_conformance.lost_requirements`
    checks that it still holds each attribute that its IOD requires where
    the source held one; and
@@ -133,12 +137,18 @@ from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
 from .markers import MarkerError, Markers, apply_markers, markers_for
 from .method_digest import method_digest
-from .policy import Policy, PolicyError, select_policy
+from .policy import (
+    CLEAN_PIXEL_DATA,
+    CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    Policy,
+    PolicyError,
+    select_policy,
+)
 from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
-from .reasons import TransformReason
+from .reasons import PixelDataReason, TransformReason
 from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
@@ -157,6 +167,13 @@ from .retained_uids import output_name_uid, retained_uid_paths, retained_uid_tag
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
 from .codestreams import CodestreamRefused, without_metadata
 from .pixel_decoding import frames_problem, same_pixels
+from .pixel_cleaning import (
+    PixelDataRefused,
+    Redaction,
+    TextFinder,
+    black_out,
+    redaction_problem,
+)
 from .pixel_risk import assess_pixel_risk, series_evidence
 from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial, SeriesEvidence
 from .run_report import ReleaseReporter
@@ -276,18 +293,20 @@ def dropped_of(
 
 @dataclasses.dataclass(frozen=True)
 class HeldEvidence:
-    """The evidence of an instance that descriptor cleaning holds for review.
+    """The evidence of an instance that descriptor cleaning or a pixel option
+    holds for review.
 
     Attributes
     ----------
     coverage : Coverage
         Its residual search's coverage, pooled with its subject's as any.
-    held : tuple of HeldRoiName
-        Each ROI Name held, by path and reason.
+    held : tuple of HeldRoiName or PixelDataReason
+        Each ROI Name held, by path and reason, and why a pixel option holds
+        the instance.
     """
 
     coverage: Coverage
-    held: tuple[HeldRoiName, ...]
+    held: tuple[HeldRoiName | PixelDataReason, ...]
 
 
 def omissions_of(
@@ -574,18 +593,26 @@ def _tag_text(tag: int) -> str:
     return f"({tag >> 16:04X},{tag & 0xFFFF:04X})"
 
 
+# The options that each instance satisfies, or not, by its own outcome: Clean
+# Descriptors, by descriptor cleaning (D-009), and the pixel options, by what
+# its pixel data hold (D-037).
+PER_INSTANCE_OPTIONS = frozenset(
+    {CLEAN_DESCRIPTORS, CLEAN_PIXEL_DATA, CLEAN_RECOGNIZABLE_VISUAL_FEATURES}
+)
+
+
 def satisfied_options(policy: Policy) -> tuple[str, ...]:
     """Return the options an instance satisfies by the policy's actions alone.
 
-    Every selected option but Clean Descriptors, which descriptor cleaning
-    must satisfy for each instance (D-009), and but any option the policy
-    records as unmet.
+    Every selected option but those of :data:`PER_INSTANCE_OPTIONS`, which
+    each instance satisfies by its own outcome, and but any option the
+    policy records as unmet.
     """
     unmet = {option for resolution in policy.resolved for option in resolution.unmet}
     return tuple(
         option
         for option in policy.options
-        if option != "clean_descriptors" and option not in unmet
+        if option not in PER_INSTANCE_OPTIONS and option not in unmet
     )
 
 
@@ -621,6 +648,11 @@ class InstanceTransform:
         policy takes. The transform applies the list's decisions as they
         stand when it is made, the version whose keyed digest its markers and
         release report record; a decision recorded later does not apply.
+    finder : TextFinder, optional
+        What finds the regions of text in each frame, such as a
+        :class:`~pymedphys._dicom.deidentify.text_detection.TextDetector`,
+        which a policy selecting Clean Pixel Data needs, and no other policy
+        takes.
     unvalidated_policy : bool, default False
         Allow a policy that is not enabled, such as a preset whose behaviour
         is not yet validated. For tests and validation runs only; nothing
@@ -631,6 +663,7 @@ class InstanceTransform:
     PolicyError
         If the policy is not enabled and ``unvalidated_policy`` is not set;
         if ``cleaning`` is given without Clean Descriptors, or left out with
+        it; if ``finder`` is given without Clean Pixel Data, or left out with
         it; or if the policy's other options cannot be composed into the
         policy whose actions descriptors take where they are not cleaned.
 
@@ -661,6 +694,19 @@ class InstanceTransform:
     markers claim Clean Descriptors only for an instance that satisfies it.
     Under Clean Graphics, an instance whose overlay may lie in Pixel Data is
     sequestered (:func:`~.clean_graphics.overlay_in_pixel_data`).
+
+    Under Clean Pixel Data, :func:`~.pixel_cleaning.black_out` blacks out the
+    regions of text that ``finder`` finds in each frame of the instance's
+    top-level native Pixel Data, :func:`~.pixel_cleaning.redaction_problem`
+    checks the file written, and the instance's evidence is a
+    :class:`HeldEvidence`, whether or not text was found, since the finder can
+    miss text and only review can confirm the option (D-037). One whose
+    pixel data the option cannot clean, such as compressed Pixel Data, is
+    sequestered (:class:`~.pixel_cleaning.PixelDataRefused`), and one without
+    top-level pixel data is written as under the other options. No instance's
+    markers claim the option yet, since none can be released with Burned In
+    Annotation (0028,0301) set to NO until a reviewer's decision can be
+    applied.
     """
 
     def __init__(
@@ -670,6 +716,7 @@ class InstanceTransform:
         iod_tables: IODTables | None = None,
         *,
         cleaning: DescriptorCleaning | None = None,
+        finder: TextFinder | None = None,
         unvalidated_policy: bool = False,
     ) -> None:
         if not (policy.enabled or unvalidated_policy):
@@ -682,6 +729,12 @@ class InstanceTransform:
                 "descriptor cleaning is given exactly when the policy selects "
                 "Clean Descriptors"
             )
+        if (CLEAN_PIXEL_DATA in policy.options) != (finder is not None):
+            raise PolicyError(
+                "a text finder is given exactly when the policy selects Clean "
+                "Pixel Data"
+            )
+        self._finder = finder
         if cleaning is not None:
             # One version of the list, for both cleaning and its digest.
             cleaning = dataclasses.replace(
@@ -704,13 +757,16 @@ class InstanceTransform:
             policy, vocabulary=nomenclature, reviewed_roi_names=reviewed
         )
         satisfied = satisfied_options(policy)
+        # The markers of each set of per-instance options that an instance
+        # can satisfy.
+        per_instance = [o for o in policy.options if o in PER_INSTANCE_OPTIONS]
         self._markers = {
-            False: markers_for(policy, digest, satisfied=satisfied),
-            True: markers_for(
+            frozenset(chosen): markers_for(
                 policy,
                 digest,
-                satisfied=satisfied + ((CLEAN_DESCRIPTORS,) if cleaning else ()),
-            ),
+                satisfied=satisfied + tuple(o for o in per_instance if o in chosen),
+            )
+            for chosen in _subsets(per_instance)
         }
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
         self.reporter = ReleaseReporter(
@@ -787,6 +843,26 @@ class InstanceTransform:
             written[path] = value
             names[path] = output_name_uid(self._key, value, kept)
         return _Identifiers(written[_SOP_INSTANCE], names)
+
+    def _black_out(
+        self, source: SourceEvidence, dataset: pydicom.Dataset
+    ) -> Redaction | None:
+        """Return the instance's Pixel Data blacked out under Clean Pixel Data.
+
+        None without the option, or where the instance has no top-level
+        pixel data.
+
+        Raises
+        ------
+        _Refused
+            With the reason of :class:`~.pixel_cleaning.PixelDataRefused`.
+        """
+        if self._finder is None:
+            return None
+        try:
+            return black_out(source, dataset, self._finder)
+        except PixelDataRefused as refused:
+            raise _Refused(refused.reason) from None
 
     def __call__(
         self, data: bytes, record: InstanceRecord
@@ -881,18 +957,26 @@ class InstanceTransform:
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
         qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
+        # No instance claims Clean Pixel Data until a reviewer's decision
+        # can release its pixel data with Burned In Annotation set to NO
+        # (D-037).
+        chosen = frozenset({CLEAN_DESCRIPTORS} if satisfied else ())
         try:
             qc = (*qc, *_retained(source, plan))
+            redaction = self._black_out(source, dataset)
+            if redaction is not None:
+                evidence = _held(evidence, redaction.reason)
             writing = with_markers(
                 writer_plan(plan, edits, codecs),
                 source,
                 dataset,
-                self._markers[satisfied],
+                self._markers[chosen],
             )
             writing = _without_bitstream_metadata(writing, source)
+            writing = _with_redaction(writing, dataset, redaction)
             identifiers = self._identifiers(writing, dataset, source)
             return Transformed(
-                *_written(source, writing, iod, identifiers), evidence, qc
+                *_written(source, writing, iod, identifiers, redaction), evidence, qc
             )
         except _Refused as refused:
             reasons = tuple(
@@ -1004,9 +1088,18 @@ def _kept_uid(
 
 
 def _written(
-    source: SourceEvidence, writing: WriterPlan, iod: IOD, identifiers: _Identifiers
+    source: SourceEvidence,
+    writing: WriterPlan,
+    iod: IOD,
+    identifiers: _Identifiers,
+    redaction: Redaction | None = None,
 ) -> tuple[PurePosixPath, bytes]:
-    """Return the output's path and bytes, verified against the source and IOD."""
+    """Return the output's path and bytes, verified against the source and IOD.
+
+    Pixel Data that the plan replaces must decode to the source's pixels, or,
+    where Clean Pixel Data blacked out ``redaction``'s regions, differ from
+    the source's only as that redaction planned.
+    """
     path = _output_path(identifiers.names)
     sop_class = _replaced(writing.replacements, _SOP_CLASS)
     if sop_class is None:
@@ -1036,9 +1129,51 @@ def _written(
         raise _Refused(failed.reason) from None
     if lost_requirements(source, output, iod, frozenset(writing.replacements)):
         raise _Refused(TransformReason.REQUIRED_ATTRIBUTE_LOST)
-    if _PIXEL_DATA in writing.replacements and not same_pixels(source, output):
+    if redaction is not None:
+        if redaction_problem(source, output, redaction):
+            raise _Refused(TransformReason.REDACTION_MISMATCH)
+    elif _PIXEL_DATA in writing.replacements and not same_pixels(source, output):
         raise _Refused(TransformReason.CUT_CHANGED_PIXELS)
     return path, data
+
+
+def _with_redaction(
+    writing: WriterPlan, dataset: pydicom.Dataset, redaction: Redaction | None
+) -> WriterPlan:
+    """Return the writer's plan with Pixel Data replaced by its redaction.
+
+    The new value is written with the source element's VR, or, where pydicom
+    reads it as neither OB nor OW, by Bits Allocated as PS3.5 Section A.1
+    gives it for the native transfer syntaxes. Pixel Data without a region
+    to black out is kept, and Pixel Data that the plan does not keep is left
+    as planned, which :func:`_written` refuses.
+    """
+    if redaction is None or not redaction.regions or _PIXEL_DATA not in writing.kept:
+        return writing
+    vr = dataset[0x7FE00010].VR
+    if vr not in ("OB", "OW"):
+        vr = "OW" if redaction.layout.bits_allocated > 8 else "OB"
+    element = pydicom.DataElement(0x7FE00010, vr, redaction.value)
+    return dataclasses.replace(
+        writing,
+        kept=writing.kept - {_PIXEL_DATA},
+        replacements={**writing.replacements, _PIXEL_DATA: element},
+    )
+
+
+def _held(evidence: Coverage | HeldEvidence, reason: PixelDataReason) -> HeldEvidence:
+    """Return the evidence of an instance that a pixel option holds for review."""
+    if isinstance(evidence, HeldEvidence):
+        return dataclasses.replace(evidence, held=(*evidence.held, reason))
+    return HeldEvidence(evidence, (reason,))
+
+
+def _subsets(options: list[str]) -> list[tuple[str, ...]]:
+    """Return every subset of ``options``, each in their order."""
+    subsets: list[tuple[str, ...]] = [()]
+    for option in options:
+        subsets += [(*subset, option) for subset in subsets]
+    return subsets
 
 
 def _without_bitstream_metadata(
@@ -1134,8 +1269,8 @@ class ReleaseGate:
     :attr:`~.release_gate.ReasonCode.NOT_REPORTED` for the file as a whole,
     since that instance's values may be in it unsearched for (D-027). An
     instance whose evidence is a :class:`HeldEvidence` is
-    held for review, with its held ROI Names first among the reasons, unless
-    the condition withholds it. Evidence that is neither a
+    held for review, with its held ROI Names and pixel options' reasons first
+    among the reasons, unless the condition withholds it. Evidence that is neither a
     :class:`~.release_gate.Coverage` nor a :class:`HeldEvidence` raises
     :class:`TypeError`, which the run takes as an internal error and
     sequesters the file for.
