@@ -45,7 +45,10 @@ force, as :func:`.elements.character_set_problem` finds, or, for a VR of the
 Default Character Repertoire alone, in ISO 646. In implicit VR, including
 the items of a sequence kept as UN, which stay in implicit VR, no VR is
 written and a reader takes it from its dictionary, so a replacement is
-refused unless the pinned dictionary gives its VR alone. A plan is refused
+refused unless the pinned dictionary gives its VR alone, or gives OB or OW
+and the replacement holds bytes, which read the same either way in little
+endian, as native Pixel Data blacked out under Clean Pixel Data does
+(D-037). A plan is refused
 where it keeps an element inside one removed or replaced, keeps a group
 length, which could go stale, or changes the character set of kept text.
 
