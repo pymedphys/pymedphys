@@ -116,8 +116,9 @@ ENGINE_APPLIES: Mapping[str, bool] = types.MappingProxyType(
         MODIFIED_DATES: True,
         # Clean Descriptors.
         CLEAN_DESCRIPTORS: True,
-        # Clean Structured Content.
-        CLEAN_STRUCTURED_CONTENT: False,
+        # Clean Structured Content: content items by their concept names
+        # (D-047).
+        CLEAN_STRUCTURED_CONTENT: True,
         # Clean Graphics: its rows take their Basic Profile actions (D-041).
         CLEAN_GRAPHICS: True,
     }
