@@ -352,14 +352,14 @@ def clean_descriptors(  # pylint: disable = too-many-locals
         satisfied = satisfied and all(
             edit.kind is not EditKind.KEEP for edit in instead.values()
         )
-    for path, results in described.items():
+    for path, outcomes in described.items():
         # A cleaned descriptor in a sequence that another's action removes
         # (D-020) goes with it.
         applied = path in cleaned and settled[path] is cleaned[path]
-        qc.append(DescriptorMaterial(path, tuple(texts_of[path]), results, applied))
+        qc.append(DescriptorMaterial(path, tuple(texts_of[path]), outcomes, applied))
         kept = [
             result.value
-            for result in results
+            for result in outcomes
             if applied and result.outcome in _KEEPS_ITS_SOURCE and result.value
         ]
         if kept:
