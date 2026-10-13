@@ -21,9 +21,11 @@ conservative approach of removing any and all burned in text", so
 :func:`black_out` asks a :class:`TextFinder`, such as
 :class:`~pymedphys._dicom.deidentify.text_detection.TextDetector`, for the
 regions of text in each frame, whatever they say, and sets every pixel of
-each region to the frame's darkest displayed value: its smallest stored
-value for MONOCHROME2, its largest for MONOCHROME1, and black for RGB. The
-finder is an aid to review, not a guarantee, so every instance whose pixel
+each region to one stored value, the frame's fill: its smallest stored
+value for MONOCHROME2, its largest for MONOCHROME1, and zero for RGB. The
+fill erases the text's pattern, but how bright it is displayed depends on
+the Modality and VOI LUT attributes that are kept, which can invert it, so
+it is not always black. The finder is an aid to review, not a guarantee, so every instance whose pixel
 data the option cleans is held for review, whether or not text was found
 (:class:`~.reasons.PixelDataReason`).
 
@@ -40,7 +42,7 @@ value written into a region has them as its sign gives them.
 
 :func:`redaction_problem` then checks the file written: pydicom must read
 the same stored values from it as from the source outside the regions, and
-the darkest value inside them, and every byte outside the regions must be
+the fill inside them, and every byte outside the regions must be
 the source's. An instance that fails is sequestered, as one is whose Pixel
 Data cannot be cleaned (:class:`PixelDataRefused`).
 """
@@ -132,8 +134,10 @@ class Layout:
         signed, so that the bits above Bits Stored give its sign."""
         return value % (1 << self.bits_allocated)
 
-    def darkest(self, frame: np.ndarray) -> tuple[int, ...]:
-        """Return the darkest displayed value of a frame, once per sample."""
+    def fill(self, frame: np.ndarray) -> tuple[int, ...]:
+        """Return the stored value that fills a frame's regions, once per
+        sample: its smallest for MONOCHROME2, its largest for MONOCHROME1,
+        and zero for RGB."""
         if self.photometric == _RGB:
             return (0, 0, 0)
         value = frame.min() if self.photometric == "MONOCHROME2" else frame.max()
@@ -244,11 +248,11 @@ def black_out(
         boxes = tuple(sorted(set(_checked(finder.find(frame), layout))))
         if not boxes:
             continue
-        darkest = layout.darkest(frame)
+        fill = layout.fill(frame)
         for box in boxes:
-            for sample, value in enumerate(darkest):
+            for sample, value in enumerate(fill):
                 written[layout.word_index(index, box, sample)] = layout.word_of(value)
-        regions.append(FrameRegions(index, boxes, darkest))
+        regions.append(FrameRegions(index, boxes, fill))
     size = layout.words * layout.dtype.itemsize
     value = written.tobytes() + field[size:]
     return Redaction(layout, tuple(regions), value)
@@ -321,7 +325,7 @@ def redaction_problem(
     """Return whether the written Pixel Data differs from the redaction planned.
 
     pydicom must read, frame by frame, the source's stored values outside
-    the regions and the darkest value inside them, and every byte of the
+    the regions and the fill inside them, and every byte of the
     written value field outside the regions must be the source's.
     """
     if PIXEL_DATA not in output or output.transfer_syntax != source.transfer_syntax:

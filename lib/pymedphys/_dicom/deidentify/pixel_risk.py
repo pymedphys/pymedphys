@@ -16,8 +16,10 @@
 
 """Read an instance's indicators of risk in its pixel data.
 
-The engine does not change pixel data and never claims the Clean Pixel Data
-or Clean Recognizable Visual Features Options. It reports indicators of risk
+The engine changes pixel data only under the Clean Pixel Data Option, which
+blacks out the text that a text finder finds and holds the instance for
+review (D-037), and it never claims the Clean Pixel Data or Clean
+Recognizable Visual Features Options. It reports indicators of risk
 for review instead: of text burned into the pixel data, of a face that
 could be reconstructed and recognised, and of values that may disclose the
 patient's body weight. :func:`assess_pixel_risk` reads them

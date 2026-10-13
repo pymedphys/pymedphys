@@ -194,6 +194,9 @@ _TPS_IMPORT = "tps-import"
 _FULL_DATES = "retain_longitudinal_full_dates"
 _ROI_NAME = "(3006,0026)"
 _CLEAN_DESCRIPTORS = "clean_descriptors"
+# The options that an instance satisfies, or not, by its own outcome, whose
+# codes are therefore not among those that every instance gains.
+_REVIEWED_OPTIONS = (_CLEAN_DESCRIPTORS, CLEAN_PIXEL_DATA)
 # The Retain Longitudinal Temporal Information Options, and the VRs of a date,
 # time, or datetime.
 _TEMPORAL_OPTIONS = next(o for o in MUTUALLY_EXCLUSIVE if _FULL_DATES in o)
@@ -376,8 +379,10 @@ class InsertedMarkers:
     codes : tuple of str
         The CID 7050 Code Values of the items that De-identification Method
         Code Sequence (0012,0064) gains in every instance: the Basic
-        Profile's and each selected option's that the policy applies, or none
-        for a policy that claims no conformance.
+        Profile's and each selected option's that the policy applies, but
+        Clean Descriptors' and Clean Pixel Data's, or none for a policy that
+        claims no conformance. No instance yet claims Clean Pixel Data
+        (D-037).
     review_codes : tuple of str
         The Code Values that it gains only in an instance in which every
         ROI Name was renamed, was empty, or took a reviewer's decision, and
@@ -793,13 +798,14 @@ def _markers(policy: Policy, digest: str) -> InsertedMarkers:
 
     They are those that :func:`markers.markers_for` gives an instance that
     satisfies every selected option it can without review: all but Clean
-    Descriptors and any option that the policy records as unmet.
+    Descriptors, Clean Pixel Data, which no instance yet claims (D-037), and
+    any option that the policy records as unmet.
     """
     unmet = {option for resolution in policy.resolved for option in resolution.unmet}
     satisfied = [
         option
         for option in policy.options
-        if option != _CLEAN_DESCRIPTORS and option not in unmet
+        if option not in _REVIEWED_OPTIONS and option not in unmet
     ]
     found = markers.markers_for(policy, digest, satisfied=satisfied)
     review = policy.claims_conformance and _CLEAN_DESCRIPTORS in policy.options

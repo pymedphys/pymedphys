@@ -24,7 +24,14 @@ import json
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import pixel_cleaning, policy, release_report, run
+from pymedphys._dicom.deidentify import (
+    conformance,
+    conformance_markdown,
+    pixel_cleaning,
+    policy,
+    release_report,
+    run,
+)
 from pymedphys._dicom.deidentify.instance_transform import (
     HeldEvidence,
     InstanceTransform,
@@ -140,17 +147,17 @@ def _inside(shape, box=BOX):
 
 
 @pytest.mark.parametrize(
-    "photometric, darkest", [("MONOCHROME2", np.min), ("MONOCHROME1", np.max)]
+    "photometric, fill", [("MONOCHROME2", np.min), ("MONOCHROME1", np.max)]
 )
 @pytest.mark.deid_requirement("PS3.15-E.3.1-01")
-def test_text_is_set_to_the_frames_darkest_displayed_value(photometric, darkest):
+def test_text_is_set_to_the_frames_stored_fill(photometric, fill):
     frame = _frame()
     source, redaction = _blacked_out(_ct(frame, photometric=photometric))
 
     output = _replaced(source, redaction)
     pixels = _pixels(output)
     inside = _inside(frame.shape)
-    assert np.all(pixels[inside] == darkest(frame))
+    assert np.all(pixels[inside] == fill(frame))
     assert np.array_equal(pixels[~inside], frame[~inside])
     assert redaction.reason is PixelDataReason.TEXT_BLACKED_OUT
     assert not redaction_problem(source, output, redaction)
@@ -191,7 +198,7 @@ def test_rgb_text_is_set_to_black_in_either_planar_configuration(planar):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.1-01")
-def test_each_frame_is_searched_and_blacked_out_with_its_own_darkest_value():
+def test_each_frame_is_searched_and_blacked_out_with_its_own_fill():
     frames = np.stack([_frame(start=100), _frame(start=900), _frame(start=50)])
     finder = Finder(frames={1})
     source, redaction = _blacked_out(_ct(frames), finder)
@@ -207,6 +214,7 @@ def test_each_frame_is_searched_and_blacked_out_with_its_own_darkest_value():
     assert np.array_equal(pixels[[0, 2]], frames[[0, 2]])
     assert np.all(pixels[1][inside] == frames[1].min())
     assert np.array_equal(pixels[1][~inside], frames[1][~inside])
+    assert not redaction_problem(source, output, redaction)
 
 
 def test_regions_beyond_the_frame_are_clipped_to_it():
@@ -353,6 +361,21 @@ def test_written_pixel_data_that_differs_from_the_plan_is_found(where):
     assert redaction_problem(source, output, redaction)
 
 
+@pytest.mark.parametrize(
+    "where",
+    [48 + 1 * 8 + 3, 2 * 48],
+    ids=["inside-the-second-frames-region", "in-the-third-frame"],
+)
+def test_written_pixel_data_that_differs_in_a_later_frame_is_found(where):
+    frames = np.stack([_frame(start=100), _frame(start=900), _frame(start=50)])
+    source, redaction = _blacked_out(_ct(frames), Finder(frames={1}))
+    dataset = source.dataset()
+    dataset.PixelData = _changed_word(redaction, where)
+    output = read_source(synthetic.written(dataset))
+
+    assert redaction_problem(source, output, redaction)
+
+
 def test_written_pixel_data_in_another_transfer_syntax_is_found():
     source, redaction = _blacked_out(_ct(_frame()))
     dataset = source.dataset()
@@ -484,6 +507,48 @@ def test_a_redaction_that_was_not_written_as_planned_sequesters_the_instance(
 
     assert isinstance(result, run.Sequestered)
     assert result.reasons == (TransformReason.REDACTION_MISMATCH,)
+
+
+def _statement(monkeypatch, options):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
+    monkeypatch.setattr(policy, "ENABLED_OPTIONS", frozenset(options))
+    selected = policy.select_policy(options=options) if options else None
+    statement = conformance.conformance_statement(
+        selected or policy.select_policy("basic"), vocabulary=None
+    )
+    text = conformance_markdown.render_markdown(statement)
+    return statement, " ".join(text.split())
+
+
+UNCHANGED = "The engine writes Pixel Data (7FE0,0010) unchanged"
+BLACKED_OUT = "Under the Clean Pixel Data Option, the engine blacks out"
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_statement_says_how_pixel_data_are_cleaned_and_claims_no_code(
+    monkeypatch,
+):
+    statement, text = _statement(monkeypatch, [CLEAN_PIXEL_DATA])
+
+    # Pending until the option's claim is described, so the statement claims
+    # no conformance; the markers' codes are the policy's.
+    assert not statement.claims_conformance
+    assert conformance.PENDING_PIXEL_DATA in statement.pending
+    assert BASIC_PROFILE_CODE in statement.markers.codes
+    assert CLEAN_PIXEL_DATA_CODE not in statement.markers.codes
+    assert CLEAN_PIXEL_DATA_CODE not in statement.markers.review_codes
+    assert BLACKED_OUT in text
+    assert UNCHANGED not in text
+
+
+def test_the_statement_of_a_policy_without_the_option_keeps_pixel_data(
+    monkeypatch,
+):
+    statement, text = _statement(monkeypatch, [])
+
+    assert conformance.PENDING_PIXEL_DATA not in statement.pending
+    assert UNCHANGED in text
+    assert BLACKED_OUT not in text
 
 
 def test_the_release_report_counts_the_held_instances_by_reason():

@@ -18,7 +18,7 @@ import struct
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import markers, policy
+from pymedphys._dicom.deidentify import markers
 from pymedphys._dicom.deidentify.codes import load_context_group
 from pymedphys._dicom.deidentify.file_layout import ElementPath, Region
 from pymedphys._dicom.deidentify.release_gate import (
@@ -140,7 +140,7 @@ def test_the_rule_selects_exactly_the_direct_identifiers_the_design_lists():
 
 
 def _refused_option_codes():
-    """The code and the meaning of each option that the engine refuses."""
+    """The code and the meaning of each option whose code no marker writes."""
     meanings = {
         row.code_value: row.code_meaning
         for row in load_context_group(7050).rows
@@ -149,7 +149,7 @@ def _refused_option_codes():
     return [
         pytest.param(text, id=f"{option}-{kind}")
         for option, code in markers.OPTION_CODES.items()
-        if option not in policy.ENGINE_OPTIONS
+        if code not in markers.WRITTEN_OPTION_CODES
         for kind, text in (("code", code), ("meaning", meanings[code]))
     ]
 
@@ -158,7 +158,8 @@ def _refused_option_codes():
 @pytest.mark.parametrize("value", _refused_option_codes())
 def test_a_patient_id_equal_to_a_refused_options_code_is_withheld_where_found(value):
     # The markers never write the code of an option that the engine refuses,
-    # so the search leaves neither it nor its meaning out (D-027).
+    # or of Clean Pixel Data, which no instance yet claims (D-037), so the
+    # search leaves neither it nor its meaning out (D-027).
     coverage = _coverage(SourceValue(ID_PATH, "LO", value))
 
     condition = release_condition(coverage, _written(value))

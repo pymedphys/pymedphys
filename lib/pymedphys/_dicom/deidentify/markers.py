@@ -146,10 +146,13 @@ OPTION_CODES = types.MappingProxyType(
         "clean_recognizable_visual_features": "113102",
     }
 )
-# The codes of the options whose policies the engine applies, the only option
-# codes that the markers write in a run, since the engine refuses any other.
-# The residual search leaves out these alone (residuals.written_constants).
-WRITTEN_OPTION_CODES = frozenset(OPTION_CODES[o] for o in ENGINE_OPTIONS)
+# The codes of the options whose policies the engine applies, but Clean Pixel
+# Data's, which no instance yet claims (D-037): the only option codes that the
+# markers write in a run, since the engine refuses any other option. The
+# residual search leaves out these alone (residuals.written_constants).
+WRITTEN_OPTION_CODES = frozenset(
+    OPTION_CODES[o] for o in ENGINE_OPTIONS if o != "clean_pixel_data"
+)
 # The CID 7005 code of De-identifying Equipment.
 DEIDENTIFYING_EQUIPMENT = "109104"
 # The values of Longitudinal Temporal Information Modified, from the least

@@ -952,7 +952,7 @@ Under the Basic Profile, every text attribute that a supported IOD uses is remov
 Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocabulary only where it matches one of its names and echoes no known patient or other person identifier, and goes to review otherwise; a reviewer's decision to keep or map a name is applied only where what it would write echoes no such identifier (D-009).
 The run's instance transform applies the actions to each data set, and descriptor cleaning holds for review a ROI name whose decision would echo an identifier.
 A reviewer's decision on a ROI name applies to every ROI Name of that spelling, in the collection and in later runs, and each run searches every written file for the source values that had to be removed or replaced (MIDI-BP-01).
-Indicators of burned-in text are reported in the confidential QC pack, since the engine does not change pixel data (D-015).
+Indicators of burned-in text are reported in the confidential QC pack (D-015); only under the Clean Pixel Data Option does the engine black out text, and it then holds the instance for review (D-037).
 Remaining: human review of the instances whose indicators show burned-in text, before `public-release` (M4, with MIDI-BP-10).
 '''
 
