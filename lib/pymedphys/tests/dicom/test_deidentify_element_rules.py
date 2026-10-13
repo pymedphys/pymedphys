@@ -365,10 +365,15 @@ def test_a_sequence_given_c_takes_its_basic_profile_action():
                 assert rules.rule(_instance(attribute.tag)).action != "C"
 
 
-@pytest.mark.parametrize(
-    "option", [o for o in standard.OPTIONS if o not in policy.ENGINE_OPTIONS]
-)
-def test_an_option_the_engine_does_not_yet_apply_is_refused(option):
+# Each option in turn is taken out of the options the engine applies, so the
+# test runs whatever the engine applies.
+@pytest.mark.parametrize("option", standard.ALL_OPTIONS)
+def test_an_option_the_engine_does_not_yet_apply_is_refused(option, monkeypatch):
+    monkeypatch.setattr(
+        policy,
+        "ENGINE_OPTIONS",
+        tuple(o for o in policy.ENGINE_OPTIONS if o != option),
+    )
     composed = policy.compose_custom_policy([option])
     with pytest.raises(policy.PolicyError) as by_rules:
         ElementRules(composed)

@@ -45,7 +45,11 @@ from pymedphys._dicom.deidentify.policy import (
 from pymedphys._dicom.deidentify.reasons import DescriptorReason
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.residuals import SourceValue
-from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
+from pymedphys._dicom.deidentify.reviewed_descriptors import (
+    ReviewedDescriptor,
+    ReviewedDescriptors,
+)
+from pymedphys._dicom.deidentify.reviewed_roi_names import Review, ReviewedNames
 from pymedphys._dicom.deidentify.standard import load_table_e1_1
 
 from . import _synthetic_references as synthetic
@@ -172,6 +176,10 @@ def _written(transform, dataset):
     return pydicom.dcmread(io.BytesIO(result.data))
 
 
+def _collected(result):
+    return {value.source for value in result.evidence.collected}
+
+
 def _codes(dataset):
     return [item.CodeValue for item in dataset.DeidentificationMethodCodeSequence]
 
@@ -287,6 +295,36 @@ def test_under_clean_descriptors_too_the_shared_attributes_are_settled_the_same(
         PATIENT_CHARACTERISTICS_CODE,
         CLEAN_DESCRIPTORS_CODE,
     ]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.7-02")
+@pytest.mark.parametrize(
+    "decision",
+    [ReviewedDescriptor(Review.KEEP), ReviewedDescriptor(Review.MAP, "NONE")],
+)
+def test_a_reviewed_descriptor_decision_does_not_settle_the_shared_attributes(
+    decision,
+):
+    reviewed = ReviewedDescriptors.empty()
+    reviewed.record(_ALLERGIES.tag, "SENTINEL ALLERGY", decision)
+    cleaning = DescriptorCleaning(
+        None, ReviewedNames.empty(), reviewed_descriptors=reviewed
+    )
+    transform = _transform([PATIENT_CHARACTERISTICS, "clean_descriptors"], cleaning)
+
+    held = _result(
+        transform, _plan(Allergies="SENTINEL ALLERGY", SeriesDescription="AXIAL CHEST")
+    )
+
+    # The reviewed descriptors list is Clean Descriptors', and does not
+    # clean what the Option's cleaner leaves, which still holds the instance.
+    assert isinstance(held, run.Sequestered)
+    assert held.reasons == (DescriptorReason.UNSETTLED_DESCRIPTOR,)
+    # The refused instance still leaves out of its subject's search a
+    # descriptor that cleaning would keep, but not the Option's attribute.
+    collected = _collected(held)
+    assert _ALLERGIES in collected
+    assert ElementPath((), "(0008,103E)") not in collected
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.7-02")
