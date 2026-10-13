@@ -19,7 +19,8 @@ projection or cine strip, and at every instance in high-risk categories,
 and blocks release on facial information that could be reconstructed unless
 a risk assessment is recorded.
 :func:`previews_of` makes those images, as PNG files, from the files that a
-run wrote, since the engine never changes pixel data:
+run wrote, so that a reviewer sees the pixel data as written, with any
+region that the Clean Pixel Data Option blacked out (D-037):
 
 - a cine strip of each series: up to :data:`CINE_FRAMES` of its frames,
   evenly spaced through the series from its first frame to its last, each

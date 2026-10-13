@@ -108,6 +108,20 @@ class TransformReason(enum.Enum):
     # whose overlay may lie in unused bits of Pixel Data, which the engine
     # does not change
     OVERLAY_IN_PIXEL_DATA = "overlay-in-pixel-data"
+    # under Clean Pixel Data, compressed Pixel Data, which the engine does not
+    # yet black out (D-037)
+    COMPRESSED_PIXEL_DATA = "compressed-pixel-data"
+    # under Clean Pixel Data, top-level Float Pixel Data or Double Float Pixel
+    # Data, or native Pixel Data that cannot be read as frames of stored
+    # values: a layout other than whole bytes of 8, 16, or 32 bits with its
+    # High Bit one less than Bits Stored, a photometric interpretation other
+    # than MONOCHROME1, MONOCHROME2, or 8-bit RGB, a length that does not fit
+    # its frames, or bits above Bits Stored that hold more than the value's
+    # sign, such as an overlay (D-037)
+    UNCLEANABLE_PIXEL_DATA = "uncleanable-pixel-data"
+    # under Clean Pixel Data, written Pixel Data that differs from its source
+    # other than by the blacked-out regions (D-037)
+    REDACTION_MISMATCH = "redaction-mismatch"
 
 
 class DescriptorReason(enum.Enum):
@@ -120,12 +134,34 @@ class DescriptorReason(enum.Enum):
     UNSETTLED_DESCRIPTOR = "unsettled-descriptor"
 
 
+class PixelDataReason(enum.Enum):
+    """Why a pixel option holds an instance for review."""
+
+    # Clean Pixel Data blacked out text that the detector found; review
+    # checks the regions and looks for text that it missed (D-037)
+    TEXT_BLACKED_OUT = "text-blacked-out"
+    # Clean Pixel Data's detector found no text; review looks for text that
+    # it missed (D-037)
+    NO_TEXT_FOUND = "no-text-found"
+
+
 @dataclasses.dataclass(frozen=True)
 class HeldRoiName:
     """A ROI Name held for review, by its path and reason, never its value."""
 
     path: ElementPath
     reason: Reason
+
+
+@dataclasses.dataclass(frozen=True)
+class HeldPixelData:
+    """An instance held for review because its pixel data await review."""
+
+    reason: PixelDataReason
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.reason, PixelDataReason):
+            raise TypeError("a held instance's pixel data need their reason")
 
 
 class VisualFeaturesReason(enum.Enum):

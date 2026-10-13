@@ -301,10 +301,18 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information burned in to the Pixel Data (7FE0,0010) corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
-status = "out-of-scope"
-decisions = ["D-015"]
+status = "partial"
+milestone = "M3"
+decisions = ["D-015", "D-037"]
+implementation = [
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/pixel_cleaning.py",
+  "_dicom/deidentify/text_detection.py",
+]
 note = '''
-The Clean Pixel Data Option is not supported.
+Text that a text finder finds in native Pixel Data is blacked out, whatever it says, and every instance cleaned is held for review (D-037).
+No instance is released with its Pixel Data cleaned, or claims the option, until a reviewer's decision can be applied.
+Compressed Pixel Data is sequestered.
 '''
 
 [[requirement]]
@@ -313,11 +321,12 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The Attribute Burned In Annotation (0028,0301) shall be added to the Data Set with a Value of "NO".
 '''
-status = "out-of-scope"
-decisions = ["D-015"]
+status = "planned"
+milestone = "M3"
+decisions = ["D-015", "D-037"]
 note = '''
 Applies only with the Clean Pixel Data Option.
-Burned In Annotation is kept as received and never set to NO (D-015).
+Burned In Annotation is kept as received (D-015) until a reviewer's decision on an instance's cleaned Pixel Data can be applied, which is then to set it to NO (D-037).
 '''
 
 [[requirement]]
@@ -956,7 +965,7 @@ implementation = [
 ]
 note = '''
 Every instance's attributes are read for indicators of burned-in text, whatever its IOD: Burned In Annotation of YES, a secondary or converted image, and an overlay without Overlay Data, which may lie in the pixel data; an attribute that cannot be read is itself reported, and a received NO counts for nothing.
-The pixel data are never inspected or changed (D-015).
+The indicators are read from attributes, never from the pixel data (D-015), which only the Clean Pixel Data Option changes (D-037).
 Each run gives the indicators of each source it can decode to the confidential QC pack, which lists the instances at high risk and previews those released or held.
 The release report counts the released and held instances with each risk and each indicator, naming none, as the QC pack lists them (D-015).
 Remaining: pixel review before `public-release` (M4).
@@ -986,7 +995,7 @@ Under the Basic Profile, every text attribute that a supported IOD uses is remov
 Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocabulary only where it matches one of its names and echoes no known patient or other person identifier, and goes to review otherwise; a reviewer's decision to keep or map a name is applied only where what it would write echoes no such identifier (D-009).
 The run's instance transform applies the actions to each data set, and descriptor cleaning holds for review a ROI name whose decision would echo an identifier.
 A reviewer's decision on a ROI name applies to every ROI Name of that spelling, in the collection and in later runs, and each run searches every written file for the source values that had to be removed or replaced (MIDI-BP-01).
-Indicators of burned-in text are reported in the confidential QC pack, since the engine does not change pixel data (D-015).
+Indicators of burned-in text are reported in the confidential QC pack (D-015); only under the Clean Pixel Data Option does the engine black out text, and it then holds the instance for review (D-037).
 Remaining: human review of the instances whose indicators show burned-in text, before `public-release` (M4, with MIDI-BP-10).
 '''
 

@@ -54,6 +54,7 @@ from pymedphys._dicom.deidentify.face_review import FaceReview
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.pixel_cleaning import TextFinder
 from pymedphys._dicom.deidentify.policy import (
     PRESETS,
     Policy,
@@ -300,6 +301,9 @@ class CorpusRun:
         Returns the reviewed-names list for the corpus it is given, to clean
         ROI Names with the invented vocabulary; or None to run without
         descriptor cleaning.
+    finder : TextFinder or None
+        What finds text in each frame under Clean Pixel Data; or None for a
+        run without that option.
     face_review : callable or None
         Returns the face review of the corpus it is given, for a run under
         Clean Recognizable Visual Features; or None for any other run.
@@ -337,6 +341,7 @@ class CorpusRun:
     reviewed_roi_names: (
         Callable[[corpus_module.SyntheticCorpus], ReviewedNames] | None
     ) = None
+    finder: TextFinder | None = None
     face_review: Callable[[corpus_module.SyntheticCorpus], FaceReview] | None = None
     # A factory, since dataclasses refuse a default they cannot hash, which
     # a mapping proxy is before Python 3.12.
@@ -405,11 +410,13 @@ class CorpusRun:
 
 @dataclasses.dataclass(frozen=True)
 class Prepared:
-    """A run's corpus, what its transform cleans descriptors with, and its face review."""
+    """A run's corpus, what its transform cleans descriptors and finds text
+    with, and its face review."""
 
     corpus: corpus_module.SyntheticCorpus
     reviewed: ReviewedNames | None
     cleaning: DescriptorCleaning | None
+    finder: TextFinder | None = None
     face_review: FaceReview | None = None
 
     def transform(self, policy: Policy) -> InstanceTransform:
@@ -418,20 +425,26 @@ class Prepared:
             policy,
             KEY,
             cleaning=self.cleaning,
+            finder=self.finder,
             face_review=self.face_review,
             unvalidated_policy=True,
         )
 
 
 def prepare(corpus_run: CorpusRun) -> Prepared:
-    """Build the corpus a run is over, its reviewed-names list, and its face review."""
+    """Build the corpus a run is over, its reviewed-names list, its finder, and
+    its face review."""
     corpus = corpus_run.corpus(corpus_module.build_corpus())
     faces = None if corpus_run.face_review is None else corpus_run.face_review(corpus)
     if corpus_run.reviewed_roi_names is None:
-        return Prepared(corpus, None, None, face_review=faces)
+        return Prepared(corpus, None, None, finder=corpus_run.finder, face_review=faces)
     reviewed = corpus_run.reviewed_roi_names(corpus)
     return Prepared(
-        corpus, reviewed, DescriptorCleaning(VOCABULARY, reviewed), face_review=faces
+        corpus,
+        reviewed,
+        DescriptorCleaning(VOCABULARY, reviewed),
+        finder=corpus_run.finder,
+        face_review=faces,
     )
 
 

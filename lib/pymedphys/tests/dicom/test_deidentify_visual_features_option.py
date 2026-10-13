@@ -300,6 +300,36 @@ def test_the_statement_of_the_option_alone_has_one_review_code():
     assert statement.markers.review_codes == (CODE,)
 
 
+def test_with_clean_pixel_data_only_the_option_is_claimed_after_review():
+    statement = conformance.conformance_statement(
+        _policy("clean_pixel_data"), vocabulary=None
+    )
+
+    assert statement.markers.codes == (markers.PROFILE_CODE,)
+    assert statement.markers.review_codes == (CODE,)
+
+
+@pytest.mark.parametrize("pixel", [(), ("clean_pixel_data",)])
+def test_the_statement_says_the_option_is_claimed_only_after_review(pixel):
+    claims = (
+        "claims Clean Recognizable Visual Features only for an instance that "
+        "cannot show a face or whose source file a reviewer found free of one, "
+        "and never Clean Pixel Data."
+    )
+    neither = "claims neither Clean Pixel Data nor Clean Recognizable Visual Features."
+    under = conformance_markdown.render_markdown(
+        conformance.conformance_statement(_policy(*pixel), vocabulary=None)
+    )
+    without = conformance_markdown.render_markdown(
+        conformance.conformance_statement(
+            compose_custom_policy(["clean_descriptors", *pixel]), vocabulary=None
+        )
+    )
+
+    assert claims in under and neither not in under
+    assert neither in without and claims not in without
+
+
 def test_the_report_names_the_reviewed_pack_by_its_reference():
     report = release_report.release_report(
         _policy(), vocabulary=None, reviewed_roi_names=None, face_review=REFERENCE
@@ -476,7 +506,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"] == {"reference": attestation.reference}
-    assert report["format"] == "pymedphys-deid-release-report/15"
+    assert report["format"] == "pymedphys-deid-release-report/16"
 
 
 def test_a_held_reason_is_a_visual_features_reason():

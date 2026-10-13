@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # pylint: disable = too-many-lines
+# One statement describes every option the engine applies, so it is long.
 
 """Generate the conformance statement of a policy, as PS3.15 E.1.3 requires.
 
@@ -92,6 +93,7 @@ from .iods import IOD, load_iod_tables
 from .method_digest import digest_inputs, method_digest
 from .policy import (
     CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    CLEAN_PIXEL_DATA,
     CLEAN_STRUCTURED_CONTENT,
     SAFE_PRIVATE,
     Policy,
@@ -199,12 +201,26 @@ PENDING_BIRTH_DATES = (
     "The synthetic birth date that Z writes to Patient's Birth Date "
     "(0010,0030) in place of a zero-length value (D-008, D-021)."
 )
+# Pending only for a policy that selects Clean Pixel Data.
+PENDING_PIXEL_DATA = (
+    "When an instance claims the Clean Pixel Data Option, and how a "
+    "reviewer's decisions on its blacked-out regions are applied (PS3.15 "
+    "E.3.1; D-037)."
+)
 _TPS_IMPORT = "tps-import"
 _FULL_DATES = "retain_longitudinal_full_dates"
 _ROI_NAME = "(3006,0026)"
 _CLEAN_DESCRIPTORS = "clean_descriptors"
-# The options that each instance satisfies only after a review of its own.
-_REVIEWED_OPTIONS = (_CLEAN_DESCRIPTORS, CLEAN_RECOGNIZABLE_VISUAL_FEATURES)
+# The options that an instance satisfies, or not, by its own outcome, whose
+# codes are therefore not among those that every instance gains.
+_REVIEWED_OPTIONS = (
+    _CLEAN_DESCRIPTORS,
+    CLEAN_PIXEL_DATA,
+    CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+)
+# Those whose codes an instance gains once it satisfies them, since no
+# instance yet claims Clean Pixel Data.
+_CLAIMED_AFTER_REVIEW = (_CLEAN_DESCRIPTORS, CLEAN_RECOGNIZABLE_VISUAL_FEATURES)
 # The Retain Longitudinal Temporal Information Options, and the VRs of a date,
 # time, or datetime.
 _TEMPORAL_OPTIONS = next(o for o in MUTUALLY_EXCLUSIVE if _FULL_DATES in o)
@@ -387,8 +403,10 @@ class InsertedMarkers:
     codes : tuple of str
         The CID 7050 Code Values of the items that De-identification Method
         Code Sequence (0012,0064) gains in every instance: the Basic
-        Profile's and each selected option's that the policy applies, or none
-        for a policy that claims no conformance.
+        Profile's and each selected option's that the policy applies, but
+        Clean Descriptors', Clean Pixel Data's, and Clean Recognizable Visual
+        Features', or none for a policy that claims no conformance. No
+        instance yet claims Clean Pixel Data (D-037).
     review_codes : tuple of str
         The Code Values that it gains only in an instance that satisfies
         their options, in the policy's order, where the policy can claim
@@ -848,8 +866,9 @@ def _markers(policy: Policy, digest: str) -> InsertedMarkers:
 
     They are those that :func:`markers.markers_for` gives an instance that
     satisfies every selected option it can without review: all but Clean
-    Descriptors, Clean Recognizable Visual Features, and any option that the
-    policy records as unmet.
+    Descriptors, Clean Pixel Data, which no instance yet claims (D-037),
+    Clean Recognizable Visual Features, and any option that the policy
+    records as unmet.
     """
     unmet = {option for resolution in policy.resolved for option in resolution.unmet}
     satisfied = [
@@ -858,7 +877,7 @@ def _markers(policy: Policy, digest: str) -> InsertedMarkers:
         if option not in _REVIEWED_OPTIONS and option not in unmet
     ]
     found = markers.markers_for(policy, digest, satisfied=satisfied)
-    reviewed = [o for o in policy.options if o in _REVIEWED_OPTIONS]
+    reviewed = [o for o in policy.options if o in _CLAIMED_AFTER_REVIEW]
     return InsertedMarkers(
         method=found.method[1],
         codes=tuple(code.code_value for code in found.method_codes),
@@ -960,6 +979,7 @@ def conformance_statement(
             (PENDING_SAFE_PRIVATE, rules is None and safe_private),
             (PENDING_SAFE_PRIVATE_ROUTES, rules is not None and safe_private),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
+            (PENDING_PIXEL_DATA, CLEAN_PIXEL_DATA in policy.options),
         )
         if applies
     )

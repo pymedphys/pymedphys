@@ -637,15 +637,12 @@ def test_both_pixel_options_follow_the_table_options_in_their_order():
 
 
 @pytest.mark.parametrize("option", standard.PIXEL_OPTIONS)
-def test_the_engine_refuses_a_pixel_option_until_it_applies_it(option, monkeypatch):
-    # Patched, so that the case holds whichever pixel options the engine
-    # applies.
-    monkeypatch.setattr(
-        policy,
-        "ENGINE_OPTIONS",
-        tuple(o for o in policy.ENGINE_OPTIONS if o != option),
-    )
+def test_the_engine_refuses_a_pixel_option_that_it_does_not_apply(option, monkeypatch):
     composed = policy.compose_custom_policy([option])
+    # Whether the engine applies the option yet or not, a policy that selects
+    # it is refused while it is not applied.
+    unapplied = tuple(o for o in policy.ENGINE_OPTIONS if o != option)
+    monkeypatch.setattr(policy, "ENGINE_OPTIONS", unapplied)
 
     with pytest.raises(policy.PolicyError, match=f"apply the option {option},"):
         policy.refuse_unapplied_options(composed)
