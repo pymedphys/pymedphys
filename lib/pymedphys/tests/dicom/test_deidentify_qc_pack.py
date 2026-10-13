@@ -514,7 +514,7 @@ def test_a_search_gives_entries_with_excerpts_and_omissions():
 @pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_document_holds_every_section():
     document = json.loads(qc_pack.to_json(_full_pack()))
-    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/4"
+    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/5"
     assert document["reference"] == REFERENCE
     assert document["instances"] == [
         {
@@ -603,6 +603,7 @@ def test_the_document_holds_every_section():
         "pixel_risks",
         "series",
         "series_risks",
+        "redactions",
         "previews",
         "not_previewed",
         "source_gaps",

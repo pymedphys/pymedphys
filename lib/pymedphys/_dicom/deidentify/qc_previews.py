@@ -41,7 +41,16 @@ region that the Clean Pixel Data Option blacked out (D-037):
   :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes;
 - each high-risk instance at full resolution: every frame, or
   :data:`CINE_FRAMES` evenly spaced, unscaled, since burned-in text may be
-  small.
+  small;
+- each frame of each instance whose Pixel Data the Clean Pixel Data Option
+  cleaned, at full resolution, since the option's review must see every
+  frame for text that the finder missed: as written, and, for a
+  frame with regions, first as received, beside it, so that the reviewer
+  can judge what each region covered. Each region is outlined in yellow
+  along its own edge pixels, inside the region, so that the outline hides
+  nothing next to a region, where text that a region only partly covered
+  would show; the two images are windowed together, from the frame as
+  received where shown, so the fill appears as it would beside the rest.
 
 A series is the instances that share a Series Instance UID, or an instance
 alone without one. Its instances are ordered by their positions along the
@@ -87,7 +96,13 @@ from pymedphys._imports import pydicom
 
 from .pixel_decoding import DECODING_PLUGINS, decoder_available
 from . import qc_surfaces
-from .qc_pack import NotPreviewedEntry, NotPreviewedReason, Preview, PreviewKind
+from .qc_pack import (
+    NotPreviewedEntry,
+    NotPreviewedReason,
+    Preview,
+    PreviewKind,
+    RedactionEntry,
+)
 
 CINE_FRAMES = 16
 CINE_COLUMNS = 4
@@ -109,6 +124,11 @@ _ORIENTATION_TOLERANCE = 1e-4
 # or a dose grid's frame from even spacing.
 _STACKING_TOLERANCE = 0.01
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+# The outline of a region in a redaction preview, and the columns between
+# the frame as received and as written.
+_OUTLINE = (255, 255, 0)
+_GUTTER_PIXELS = 8
+_GUTTER = (128, 128, 128)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -153,8 +173,9 @@ class PreviewSet:
         Each series' cine strip, then its projection and its surface render
         if it forms a volume, then the surface render of each RT Dose grid
         in it, series in the order of their first run position; then each
-        high-risk instance, in run position order. Named ``P-0001.png``
-        onwards in that order.
+        high-risk instance, in run position order; then each frame of each
+        instance that Clean Pixel Data cleaned, in run position and frame
+        order. Named ``P-0001.png`` onwards in that order.
     not_previewed : tuple of ~pymedphys._dicom.deidentify.qc_pack.NotPreviewedEntry
         In run position order.
     """
@@ -163,7 +184,11 @@ class PreviewSet:
     not_previewed: tuple[NotPreviewedEntry, ...]
 
 
-def previews_of(written: Mapping[int, bytes], high_risk: Collection[int]) -> PreviewSet:
+def previews_of(
+    written: Mapping[int, bytes],
+    high_risk: Collection[int],
+    redactions: Mapping[int, tuple[bytes, RedactionEntry]] | None = None,
+) -> PreviewSet:
     """Return the previews of the files that a run wrote, as the module describes.
 
     Parameters
@@ -173,11 +198,16 @@ def previews_of(written: Mapping[int, bytes], high_risk: Collection[int]) -> Pre
     high_risk : collection of int
         The run positions of the instances in high-risk categories. A
         position without a file is ignored, since nothing of it is released.
+    redactions : mapping of int to (bytes, RedactionEntry), optional
+        The source file of each instance that Clean Pixel Data cleaned, and
+        what it cleaned, by run position. A position without a written file
+        is ignored.
 
     Returns
     -------
     PreviewSet
     """
+    redactions = {} if redactions is None else redactions
     instances: list[_Instance] = []
     refused: dict[int, NotPreviewedReason] = {}
     for position in sorted(written):
@@ -197,6 +227,10 @@ def previews_of(written: Mapping[int, bytes], high_risk: Collection[int]) -> Pre
             image = _instance_image(instance, decoded)
             if image is not None:
                 images.append(image)
+    for instance in instances:
+        if instance.position in redactions:
+            source, entry = redactions[instance.position]
+            images.extend(_redaction_images(instance, source, entry, decoded))
     width = max(4, len(str(len(images))))
     previews = tuple(
         Preview(f"P-{number:0{width}d}.png", kind, frames, total, png(image))
@@ -412,6 +446,10 @@ class _Decoder:
     def __init__(self, refused: dict[int, NotPreviewedReason]) -> None:
         self._refused = refused
 
+    def refuse(self, position: int) -> None:
+        """Record that an instance's pixel data cannot be previewed."""
+        self._refused.setdefault(position, NotPreviewedReason.UNREADABLE)
+
     def frame(self, instance: _Instance, index: int) -> np.ndarray | None:
         """Return one frame as (row, column[, sample]), or None.
 
@@ -589,6 +627,69 @@ def _instance_image(instance: _Instance, decoder: _Decoder):
         instance.frames,
         _sheet(tiles, tiles[0].shape[0], tiles[0].shape[1]),
     )
+
+
+def _redaction_images(
+    instance: _Instance, source: bytes, entry: RedactionEntry, decoder: _Decoder
+) -> list[tuple[PreviewKind, tuple[tuple[int, int], ...], int, np.ndarray]]:
+    """Each frame of a cleaned instance, as written, beside the frame as
+    received where it has regions; none if a frame cannot be decoded."""
+    received = _instance(instance.position, source)
+    regions = dict(entry.regions)
+    if regions and not (
+        isinstance(received, _Instance)
+        and received.shape == instance.shape
+        and received.frames == instance.frames
+        and received.colour == instance.colour
+    ):
+        decoder.refuse(instance.position)
+        return []
+    images = []
+    for index in range(instance.frames):
+        after = decoder.frame(instance, index)
+        boxes = regions.get(index, ())
+        before = None
+        if boxes:
+            assert isinstance(received, _Instance)
+            before = decoder.frame(received, index)
+        if after is None or (boxes and before is None):
+            return []
+        shown = [after] if before is None else [before, after]
+        if not instance.colour:
+            window = _window(shown[0])
+            shown = [
+                np.repeat(
+                    _grey(image, window, instance.inverted)[..., np.newaxis], 3, axis=2
+                )
+                for image in shown
+            ]
+        shown = [_outlined(image, boxes) for image in shown]
+        gutter = np.empty((shown[0].shape[0], _GUTTER_PIXELS, 3), np.uint8)
+        gutter[...] = _GUTTER
+        image = shown[0] if len(shown) == 1 else np.hstack([shown[0], gutter, shown[1]])
+        images.append(
+            (
+                PreviewKind.REDACTION,
+                ((instance.position, index),),
+                instance.frames,
+                image,
+            )
+        )
+    return images
+
+
+def _outlined(image: np.ndarray, boxes) -> np.ndarray:
+    """Draw each box's edge pixels in the outline colour, clipped to the image."""
+    outlined = image.copy()
+    rows, columns = image.shape[:2]
+    for box in boxes:
+        top, left = min(box.top, rows - 1), min(box.left, columns - 1)
+        bottom, right = min(box.bottom, rows), min(box.right, columns)
+        outlined[top, left:right] = _OUTLINE
+        outlined[bottom - 1, left:right] = _OUTLINE
+        outlined[top:bottom, left] = _OUTLINE
+        outlined[top:bottom, right - 1] = _OUTLINE
+    return outlined
 
 
 def _fitted(frame: np.ndarray, instance: _Instance) -> np.ndarray:
