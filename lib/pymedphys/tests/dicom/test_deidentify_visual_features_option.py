@@ -20,6 +20,7 @@ Every name, path, and data set here is invented or synthetic.
 import dataclasses
 import datetime
 import json
+import contextlib
 import shutil
 import tempfile
 from pathlib import Path
@@ -50,6 +51,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.method_digest import method_digest
 from pymedphys._dicom.deidentify.policy import (
+    CLEAN_PIXEL_DATA,
     CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
     PolicyError,
     compose_custom_policy,
@@ -59,9 +61,12 @@ from pymedphys._dicom.deidentify.qc_attestation import Coverage, Face, Outcome
 from pymedphys._dicom.deidentify.qc_pack import QcPack, QcPackError
 from pymedphys._dicom.deidentify.scope import SUPPORTED_IODS
 from pymedphys._dicom.deidentify.reasons import (
+    HeldPixelData,
     HeldVisualFeatures,
+    PixelDataReason,
     VisualFeaturesReason,
 )
+from pymedphys._dicom.deidentify.text_detection import TextBox
 
 from .test_deidentify_qc_face_verdicts import SERIES, _digest, _released
 
@@ -375,8 +380,30 @@ _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
 _STRUCTURE_SET = "04-rtstruct.dcm"
 
 
+class _CornerFinder:
+    """Finds text in the top left corner of every frame."""
+
+    def find(self, frame):
+        del frame
+        return (TextBox(0, 0, 2, 3),)
+
+
 @pytest.fixture(name="second_run", scope="module")
 def fixture_second_run():
+    with _second_run() as found:
+        yield found
+
+
+@pytest.fixture(name="second_run_with_pixel_data", scope="module")
+def fixture_second_run_with_pixel_data():
+    with _second_run(CLEAN_PIXEL_DATA) as found:
+        yield found
+
+
+@contextlib.contextmanager
+def _second_run(*others):
+    """Run the synthetic collection under ``basic``, attest its pack, and run
+    it again under the option and ``others``, given the verdicts."""
     corpus = corpus_module.build_corpus()
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.
@@ -405,7 +432,11 @@ def fixture_second_run():
         )
         review = read_face_review(pack_directory)
         transform = InstanceTransform(
-            _policy(), KEY, face_review=review, unvalidated_policy=True
+            _policy(*others),
+            KEY,
+            face_review=review,
+            finder=_CornerFinder() if CLEAN_PIXEL_DATA in others else None,
+            unvalidated_policy=True,
         )
         # The same files, renamed so that they are found in the reverse
         # order, since the verdicts follow the files' contents alone.
@@ -487,6 +518,36 @@ def test_every_other_instance_that_can_show_a_face_is_held(second_run):
         HeldVisualFeatures(VisualFeaturesReason.FACE_PRESENT),
         HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT),
     }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_with_clean_pixel_data_a_pixel_hold_outranks_a_face_verdict(
+    second_run_with_pixel_data,
+):
+    _, outcomes, _, result = second_run_with_pixel_data
+    entries = json.loads(result.qc_pack.read_text("utf-8"))["instances"]
+    names = {entry["position"]: Path(entry["source"]).name[2:] for entry in entries}
+    reasons = {names[o.position]: set(o.reasons) for o in result.outcomes}
+    blacked_out = HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT)
+
+    # A CT series marked absent is cleared of faces, but its pixel data
+    # still await review, so it is held, for its pixel data alone.
+    for name in _CT:
+        assert outcomes[name] == ("held-for-review", None), name
+        assert blacked_out in reasons[name]
+        assert not any(isinstance(r, HeldVisualFeatures) for r in reasons[name])
+    # A series marked present is held for both.
+    assert blacked_out in reasons[_DOSE[0]]
+    assert HeldVisualFeatures(VisualFeaturesReason.FACE_PRESENT) in reasons[_DOSE[0]]
+    # What has no pixel data is released as without Clean Pixel Data, and no
+    # instance claims that option.
+    for name in (_STRUCTURE_SET, "05-rtplan.dcm", "14-mr-spectroscopy.dcm"):
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", name
+        assert dataset.RecognizableVisualFeatures == "NO"
+        assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+    for _, dataset in outcomes.values():
+        assert dataset is None or "113101" not in _codes(dataset)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-02")

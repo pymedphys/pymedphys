@@ -1386,8 +1386,8 @@ class ReleaseGate:
     :attr:`~.release_gate.ReasonCode.NOT_REPORTED` for the file as a whole,
     since that instance's values may be in it unsearched for (D-027). An
     instance whose evidence is a :class:`HeldEvidence` is held for review,
-    with its held ROI Names and pixel data first among the reasons, unless
-    the condition withholds it. Evidence that is neither a
+    with its held ROI Names, pixel data, and visual features first among
+    the reasons, unless the condition withholds it. Evidence that is neither a
     :class:`~.release_gate.Coverage` nor a :class:`HeldEvidence` raises
     :class:`TypeError`, which the run takes as an internal error and
     sequesters the file for.

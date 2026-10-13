@@ -672,9 +672,9 @@ _REVIEW_CONDITIONS = {
         "Standard Extended SOP Class (PS3.2 Section 7.3), added to the top "
         "level of the data set as an attribute of the instance, where every "
         "PS3.3 module that defines it, such as the General Image Module, "
-        "places it. The run changes no "
-        "pixel data, so any other instance that can show a face does not "
-        "gain that code, and is held for review, so it is never released"
+        "places it. The face review removes no face from the pixel data, so "
+        "any other instance that can show a face does not gain that code, "
+        "and is held for review, so it is never released"
     ),
 }
 
