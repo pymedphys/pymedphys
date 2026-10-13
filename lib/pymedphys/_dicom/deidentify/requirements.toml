@@ -335,10 +335,17 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, if there is sufficient visual information within the Pixel Data of a set of instances to allow an individual to be recognized from the instances themselves or a reconstruction of a set of instances, then sufficient removal or distortion of the Pixel Data shall be applied to prevent recognition.
 '''
-status = "out-of-scope"
-decisions = ["D-015"]
+status = "implemented"
+decisions = ["D-015", "D-016", "D-017", "D-046"]
+implementation = [
+  "_dicom/deidentify/face_review.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/qc_attestation.py",
+]
 note = '''
-The Clean Recognizable Visual Features Option is not supported.
+The engine removes no face from pixel data, so it claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file, or one that cannot show a face (D-046).
+Every other instance that can show a face, with pixel data or as an RT Structure Set, is held for review and never released, so no released instance that claims the option has the visual information that the paragraph requires to be removed or distorted.
+Defacing CT, so that the option can be claimed for an instance whose face was removed, is a later step.
 '''
 
 [[requirement]]
@@ -347,11 +354,16 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The Attribute Recognizable Visual Features (0028,0302) shall be added to the Data Set with a Value of "NO".
 '''
-status = "out-of-scope"
-decisions = ["D-015"]
+status = "implemented"
+decisions = ["D-012", "D-015", "D-046"]
+implementation = [
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/markers.py",
+]
 note = '''
 Applies only with the Clean Recognizable Visual Features Option.
-Recognizable Visual Features is kept as received and never set to NO (D-015).
+An instance that satisfies the option has Recognizable Visual Features set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, and MR Spectroscopy IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-046).
+Under any other policy, Recognizable Visual Features is kept as received and never set to NO (D-015).
 '''
 
 [[requirement]]

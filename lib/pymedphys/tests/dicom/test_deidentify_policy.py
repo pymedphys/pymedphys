@@ -648,6 +648,16 @@ def test_the_engine_refuses_a_pixel_option_that_it_does_not_apply(option, monkey
         policy.refuse_unapplied_options(composed)
 
 
+def test_the_engine_applies_clean_recognizable_visual_features_but_no_preset_has_it():
+    option = policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES
+    composed = policy.compose_custom_policy([option])
+
+    assert option in policy.ENGINE_OPTIONS
+    policy.refuse_unapplied_options(composed)
+    assert not composed.enabled
+    assert all(option not in options for options in policy.PRESETS.values())
+
+
 @pytest.mark.parametrize(
     "options, named",
     [

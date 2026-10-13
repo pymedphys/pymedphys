@@ -92,6 +92,7 @@ from .element_rules import (
 from .iods import IOD, load_iod_tables
 from .method_digest import digest_inputs, method_digest
 from .policy import (
+    CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
     CLEAN_PIXEL_DATA,
     CLEAN_STRUCTURED_CONTENT,
     SAFE_PRIVATE,
@@ -210,7 +211,14 @@ _ROI_NAME = "(3006,0026)"
 _CLEAN_DESCRIPTORS = "clean_descriptors"
 # The options that an instance satisfies, or not, by its own outcome, whose
 # codes are therefore not among those that every instance gains.
-_REVIEWED_OPTIONS = (_CLEAN_DESCRIPTORS, CLEAN_PIXEL_DATA)
+_REVIEWED_OPTIONS = (
+    _CLEAN_DESCRIPTORS,
+    CLEAN_PIXEL_DATA,
+    CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+)
+# Those whose codes an instance gains once it satisfies them, since no
+# instance yet claims Clean Pixel Data.
+_CLAIMED_AFTER_REVIEW = (_CLEAN_DESCRIPTORS, CLEAN_RECOGNIZABLE_VISUAL_FEATURES)
 # The Retain Longitudinal Temporal Information Options, and the VRs of a date,
 # time, or datetime.
 _TEMPORAL_OPTIONS = next(o for o in MUTUALLY_EXCLUSIVE if _FULL_DATES in o)
@@ -394,15 +402,18 @@ class InsertedMarkers:
         The CID 7050 Code Values of the items that De-identification Method
         Code Sequence (0012,0064) gains in every instance: the Basic
         Profile's and each selected option's that the policy applies, but
-        Clean Descriptors' and Clean Pixel Data's, or none for a policy that
-        claims no conformance. No instance yet claims Clean Pixel Data
-        (D-037).
+        Clean Descriptors', Clean Pixel Data's, and Clean Recognizable Visual
+        Features', or none for a policy that claims no conformance. No
+        instance yet claims Clean Pixel Data (D-037).
     review_codes : tuple of str
-        The Code Values that it gains only in an instance in which every
-        ROI Name was renamed, was empty, or took a reviewer's decision, and
-        whose other attributes given C are removed or replaced:
-        Clean Descriptors', where the policy selects it and can claim
-        conformance.
+        The Code Values that it gains only in an instance that satisfies
+        their options, in the policy's order, where the policy can claim
+        conformance: Clean Descriptors', where the policy selects it, in an
+        instance in which every ROI Name was renamed, was empty, or took a
+        reviewer's decision, and whose other attributes given C are removed
+        or replaced; and Clean Recognizable Visual Features', where the
+        policy selects it, in an instance that cannot show a face or whose
+        source file the face review found free of one.
     temporal : str
         Longitudinal Temporal Information Modified (0028,0303), unless the
         value already present is stricter.
@@ -853,8 +864,9 @@ def _markers(policy: Policy, digest: str) -> InsertedMarkers:
 
     They are those that :func:`markers.markers_for` gives an instance that
     satisfies every selected option it can without review: all but Clean
-    Descriptors, Clean Pixel Data, which no instance yet claims (D-037), and
-    any option that the policy records as unmet.
+    Descriptors, Clean Pixel Data, which no instance yet claims (D-037),
+    Clean Recognizable Visual Features, and any option that the policy
+    records as unmet.
     """
     unmet = {option for resolution in policy.resolved for option in resolution.unmet}
     satisfied = [
@@ -863,11 +875,15 @@ def _markers(policy: Policy, digest: str) -> InsertedMarkers:
         if option not in _REVIEWED_OPTIONS and option not in unmet
     ]
     found = markers.markers_for(policy, digest, satisfied=satisfied)
-    review = policy.claims_conformance and _CLEAN_DESCRIPTORS in policy.options
+    reviewed = [o for o in policy.options if o in _CLAIMED_AFTER_REVIEW]
     return InsertedMarkers(
         method=found.method[1],
         codes=tuple(code.code_value for code in found.method_codes),
-        review_codes=(OPTION_CODES[_CLEAN_DESCRIPTORS],) if review else (),
+        review_codes=(
+            tuple(OPTION_CODES[o] for o in reviewed)
+            if policy.claims_conformance
+            else ()
+        ),
         temporal=found.temporal_information_modified,
     )
 
