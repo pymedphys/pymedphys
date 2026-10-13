@@ -149,3 +149,14 @@ class HeldRoiName:
 
     path: ElementPath
     reason: Reason
+
+
+@dataclasses.dataclass(frozen=True)
+class HeldPixelData:
+    """An instance held for review because its pixel data await review."""
+
+    reason: PixelDataReason
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.reason, PixelDataReason):
+            raise TypeError("a held instance's pixel data need their reason")

@@ -37,7 +37,11 @@ from pymedphys._dicom.deidentify.pixel_cleaning import (
     redaction_problem,
 )
 from pymedphys._dicom.deidentify.policy import PolicyError
-from pymedphys._dicom.deidentify.reasons import PixelDataReason, TransformReason
+from pymedphys._dicom.deidentify.reasons import (
+    HeldPixelData,
+    PixelDataReason,
+    TransformReason,
+)
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.run_report import RELEASE_REPORT
 from pymedphys._dicom.deidentify.source import read_source
@@ -406,7 +410,8 @@ def test_a_ct_image_is_written_blacked_out_and_held_for_review():
     assert isinstance(result, run.Transformed), result
     evidence = result.evidence
     assert isinstance(evidence, HeldEvidence)
-    assert evidence.held == (PixelDataReason.TEXT_BLACKED_OUT,)  # pylint: disable=no-member
+    held = evidence.held  # pylint: disable=no-member
+    assert held == (HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT),)
     written = pydicom.dcmread(io.BytesIO(result.data))
     pixels = pydicom.pixels.pixel_array(written)
     inside = _inside(frame.shape)
@@ -419,7 +424,7 @@ def test_a_ct_image_is_written_blacked_out_and_held_for_review():
 
     decision = ReleaseGate()(result.data, result.evidence, (result.evidence,))
     assert isinstance(decision, run.HoldForReview)
-    assert decision.reasons[0] is PixelDataReason.TEXT_BLACKED_OUT
+    assert decision.reasons[0] == HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT)
 
 
 def test_implicit_vr_pixel_data_is_written_blacked_out_in_implicit_vr():
@@ -443,7 +448,8 @@ def test_an_image_without_text_found_is_still_held_for_review():
     assert isinstance(result, run.Transformed), result
     evidence = result.evidence
     assert isinstance(evidence, HeldEvidence)
-    assert evidence.held == (PixelDataReason.NO_TEXT_FOUND,)  # pylint: disable=no-member
+    held = evidence.held  # pylint: disable=no-member
+    assert held == (HeldPixelData(PixelDataReason.NO_TEXT_FOUND),)
     written = pydicom.dcmread(io.BytesIO(result.data))
     assert written.PixelData == pydicom.dcmread(io.BytesIO(data)).PixelData
 
@@ -483,9 +489,9 @@ def test_a_redaction_that_was_not_written_as_planned_sequesters_the_instance(
 def test_the_release_report_counts_the_held_instances_by_reason():
     counted = release_report.held_for_review(
         [
-            (PixelDataReason.TEXT_BLACKED_OUT,),
-            (PixelDataReason.TEXT_BLACKED_OUT,),
-            (PixelDataReason.NO_TEXT_FOUND,),
+            (HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT),),
+            (HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT),),
+            (HeldPixelData(PixelDataReason.NO_TEXT_FOUND),),
         ]
     )
 
@@ -493,6 +499,13 @@ def test_the_release_report_counts_the_held_instances_by_reason():
         release_report.HeldForReview("pixel-data", "no-text-found", 1),
         release_report.HeldForReview("pixel-data", "text-blacked-out", 2),
     )
+
+
+def test_a_held_instance_names_its_pixel_data_reason():
+    with pytest.raises(TypeError):
+        HeldPixelData("text-blacked-out")  # type: ignore[arg-type]
+    with pytest.raises(TypeError):
+        release_report.held_for_review([(PixelDataReason.NO_TEXT_FOUND,)])
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.1-01")

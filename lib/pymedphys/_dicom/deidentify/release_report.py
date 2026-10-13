@@ -131,6 +131,7 @@ from .preserving_writer import WriteReason
 from .qc_attestation import AttestationRecord, Outcome
 from .reasons import (
     DescriptorReason,
+    HeldPixelData,
     HeldRoiName,
     PixelDataReason,
     RunReason,
@@ -709,7 +710,7 @@ def source_gaps(
 
 
 def held_for_review(
-    instances: Iterable[Iterable[HeldRoiName | PixelDataReason | ReleaseReason]],
+    instances: Iterable[Iterable[HeldRoiName | HeldPixelData | ReleaseReason]],
 ) -> tuple[HeldForReview, ...]:
     """Count the instances held for review by stage and reason (D-009).
 
@@ -728,14 +729,14 @@ def held_for_review(
     """
     counts: collections.Counter[tuple[str, str]] = collections.Counter()
     for reasons in instances:
-        if isinstance(reasons, (HeldRoiName, PixelDataReason, ReleaseReason)):
+        if isinstance(reasons, (HeldRoiName, HeldPixelData, ReleaseReason)):
             raise TypeError("reasons must be given for each instance")
         codes = set()
         for reason in reasons:
             if isinstance(reason, HeldRoiName):
                 codes.add(("roi-names", reason.reason.value))
-            elif isinstance(reason, PixelDataReason):
-                codes.add(("pixel-data", reason.value))
+            elif isinstance(reason, HeldPixelData):
+                codes.add(("pixel-data", reason.reason.value))
             elif (
                 isinstance(reason, ReleaseReason)
                 and reason.decision is Decision.QC_REVIEW
@@ -744,7 +745,7 @@ def held_for_review(
                 codes.add(("release", reason.code.value))
             else:
                 raise TypeError(
-                    "a held reason must be a HeldRoiName, a PixelDataReason, "
+                    "a held reason must be a HeldRoiName, a HeldPixelData, "
                     "or a release reason that requires QC review"
                 )
         counts.update(codes)

@@ -139,7 +139,6 @@ from .markers import MarkerError, Markers, apply_markers, markers_for
 from .method_digest import method_digest
 from .policy import (
     CLEAN_PIXEL_DATA,
-    CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
     Policy,
     PolicyError,
     select_policy,
@@ -148,7 +147,7 @@ from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
-from .reasons import PixelDataReason, TransformReason
+from .reasons import HeldPixelData, PixelDataReason, TransformReason
 from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
@@ -300,13 +299,13 @@ class HeldEvidence:
     ----------
     coverage : Coverage
         Its residual search's coverage, pooled with its subject's as any.
-    held : tuple of HeldRoiName or PixelDataReason
+    held : tuple of HeldRoiName or HeldPixelData
         Each ROI Name held, by path and reason, and why a pixel option holds
         the instance.
     """
 
     coverage: Coverage
-    held: tuple[HeldRoiName | PixelDataReason, ...]
+    held: tuple[HeldRoiName | HeldPixelData, ...]
 
 
 def omissions_of(
@@ -594,11 +593,9 @@ def _tag_text(tag: int) -> str:
 
 
 # The options that each instance satisfies, or not, by its own outcome: Clean
-# Descriptors, by descriptor cleaning (D-009), and the pixel options, by what
+# Descriptors, by descriptor cleaning (D-009), and Clean Pixel Data, by what
 # its pixel data hold (D-037).
-PER_INSTANCE_OPTIONS = frozenset(
-    {CLEAN_DESCRIPTORS, CLEAN_PIXEL_DATA, CLEAN_RECOGNIZABLE_VISUAL_FEATURES}
-)
+PER_INSTANCE_OPTIONS = frozenset({CLEAN_DESCRIPTORS, CLEAN_PIXEL_DATA})
 
 
 def satisfied_options(policy: Policy) -> tuple[str, ...]:
@@ -1164,8 +1161,10 @@ def _with_redaction(
 def _held(evidence: Coverage | HeldEvidence, reason: PixelDataReason) -> HeldEvidence:
     """Return the evidence of an instance that a pixel option holds for review."""
     if isinstance(evidence, HeldEvidence):
-        return dataclasses.replace(evidence, held=(*evidence.held, reason))
-    return HeldEvidence(evidence, (reason,))
+        return dataclasses.replace(
+            evidence, held=(*evidence.held, HeldPixelData(reason))
+        )
+    return HeldEvidence(evidence, (HeldPixelData(reason),))
 
 
 def _subsets(options: list[str]) -> list[tuple[str, ...]]:
@@ -1268,9 +1267,9 @@ class ReleaseGate:
     (:data:`~pymedphys._dicom.deidentify.run.NO_EVIDENCE`) is withheld, with
     :attr:`~.release_gate.ReasonCode.NOT_REPORTED` for the file as a whole,
     since that instance's values may be in it unsearched for (D-027). An
-    instance whose evidence is a :class:`HeldEvidence` is
-    held for review, with its held ROI Names and pixel options' reasons first
-    among the reasons, unless the condition withholds it. Evidence that is neither a
+    instance whose evidence is a :class:`HeldEvidence` is held for review,
+    with its held ROI Names and pixel data first among the reasons, unless
+    the condition withholds it. Evidence that is neither a
     :class:`~.release_gate.Coverage` nor a :class:`HeldEvidence` raises
     :class:`TypeError`, which the run takes as an internal error and
     sequesters the file for.

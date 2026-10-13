@@ -23,7 +23,7 @@ its pixel data, so every released instance claims the Basic Profile alone.
 
 from pymedphys._dicom.deidentify import run
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
-from pymedphys._dicom.deidentify.reasons import PixelDataReason
+from pymedphys._dicom.deidentify.reasons import HeldPixelData, PixelDataReason
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
 from .._corpus_run import BASIC_PROFILE_CODE, BASIC_WITHHELD, CorpusRun, Withheld
@@ -55,7 +55,8 @@ _IMAGES = (
     "17-pet-legacy-enhanced.dcm",
 )
 _BLACKED_OUT = Withheld(
-    run.Status.HELD_FOR_REVIEW, frozenset({PixelDataReason.TEXT_BLACKED_OUT})
+    run.Status.HELD_FOR_REVIEW,
+    frozenset({HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT)}),
 )
 _REVIEW = BASIC_WITHHELD[corpus_module.REVIEW_FILE]
 
