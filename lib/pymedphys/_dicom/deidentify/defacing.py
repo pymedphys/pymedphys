@@ -50,34 +50,41 @@ patient's axes, as
 1. averages each voxel with its neighbours, and marks the soft tissue, at
    :data:`SOFT_TISSUE` Hounsfield units, which includes the vitreous and
    the lens and excludes the orbital fat around the globe and bone;
-2. erodes that by a ball of :data:`EROSION` millimetres, which parts each
-   globe from the eyelids and muscles that touch it;
-3. keeps each remaining region that is nearly a sphere, of a diameter
-   within :data:`GLOBE_DIAMETER` once the erosion is added back;
-4. pairs two such regions that lie side by side: their centres
+2. finds each ball of soft tissue whose centre is as far from other
+   tissue as anywhere near it, of a diameter within :data:`GLOBE_DIAMETER`,
+   the largest first, and keeps those nearly surrounded by other tissue,
+   as each globe is by the orbital fat behind and beside it, whatever
+   touches its front;
+3. pairs two such balls that lie side by side: their centres
    :data:`GLOBE_SEPARATION` millimetres apart across the axial plane, at
    heights within :data:`PAIR_TOLERANCE` millimetres, and the line between
    them within :data:`MAXIMUM_TURN` degrees of the patient's left-right
    axis, each with bone, at :data:`BONE` Hounsfield units or more, lateral
    to it and superior to it within :data:`ORBIT_REACH` millimetres, as the
-   bony orbit is; and
-5. checks that the head lies behind the eyes: that, at the eyes' height and
+   bony orbit is;
+4. checks that the head lies behind the eyes: that, at the eyes' height and
    between them, tissue fills at least :data:`HEAD_BEHIND` more of the
    region from :data:`CHECKED_DEPTH` millimetres behind the globes' centres
    than of the region as far in front, so that a patient position entered
    wrongly, which would turn the block onto the back of the head, is
-   refused.
+   refused; and
+5. checks that the cranium lies above the eyes: that bone encloses no more
+   of the axial slices from :data:`CRANIUM_DEPTH` millimetres below the
+   globes' centres than of those as far above, where it encloses the
+   brain, so that a head recorded upside down, which would turn the block
+   onto the nose and mouth and keep the forehead, is refused.
 
 Exactly one such pair gives the block. No pair, as where the volume does
 not include both eyes, more than one, or a head that does not lie behind
-them, refuses with a :class:`FaceBlockProblem`, so that the caller holds
-the volume or leaves it to review rather than guess.
+them or below its cranium, refuses with a :class:`FaceBlockProblem`, so
+that the caller holds the volume or leaves it to review rather than guess.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import enum
+import functools
 import itertools
 import math
 from collections.abc import Sequence
@@ -94,7 +101,6 @@ STACKING_TOLERANCE = 0.01  # millimetres of a slice's offset within the plane
 SOFT_TISSUE = (-40.0, 160.0)  # Hounsfield units
 BODY = -500.0  # Hounsfield units
 BONE = 300.0  # Hounsfield units
-EROSION = 3.0  # millimetres
 GLOBE_DIAMETER = (16.0, 30.0)  # millimetres, from a newborn's to a large adult's
 GLOBE_SEPARATION = (40.0, 80.0)  # millimetres, between the centres
 PAIR_TOLERANCE = 10.0  # millimetres
@@ -103,12 +109,19 @@ ORBIT_REACH = 15.0  # millimetres beyond the globe
 MARGIN = 5.0  # millimetres posterior to the globes' centres
 CHECKED_DEPTH = (20.0, 60.0)  # millimetres from the globes' centres
 HEAD_BEHIND = 0.4  # of the checked region filled by tissue
+CRANIUM_DEPTH = (30.0, 70.0)  # millimetres above and below the globes' centres
 
-# How far a globe's region may be from a sphere: its volume over that of the
-# ellipsoid filling its bounding box, and the ratio of its longest to its
-# shortest extent.
-_FILL = (0.55, 1.45)
-_ELONGATION = 1.4
+# The sphere, as a multiple of a ball's radius, on which at least the
+# fraction _OUTSIDE of points, and _OUTSIDE_BEHIND of those on one half of it,
+# must lie outside the soft tissue, and the directions in which those points
+# lie: a Fibonacci sphere, the same each run.
+_SHELL = 1.3
+_OUTSIDE = 0.5
+_OUTSIDE_BEHIND = 0.8
+# How far from a ball's deepest point, as a multiple of its radius, the soft
+# tissue that gives its centre reaches.
+_CENTRING = 1.1
+_DIRECTION_COUNT = 128
 # Half the side of the square, across the ray, in which bone is looked for
 # lateral and superior to a globe, in millimetres.
 _ORBIT_HALF_WIDTH = 6.0
@@ -124,6 +137,7 @@ class FaceBlockProblem(enum.Enum):
     NO_EYES = "no-eyes"  # no pair of eye globes, as when an eye is out of view
     AMBIGUOUS_EYES = "ambiguous-eyes"  # more than one pair
     HEAD_NOT_BEHIND_EYES = "head-not-behind-eyes"  # as for a wrong position
+    CRANIUM_NOT_ABOVE_EYES = "cranium-not-above-eyes"  # as for a head upside down
 
 
 class FaceBlockRefused(Exception):
@@ -223,7 +237,7 @@ class _Region:
     """A region that may be a globe, in the sampled volume."""
 
     centre: np.ndarray  # x, y, and z, in millimetres
-    radius: float  # millimetres, with the erosion added back
+    radius: float  # millimetres: the ball's depth, and a voxel for the sampling
 
 
 class FaceFinder:
@@ -296,6 +310,10 @@ class FaceFinder:
             tuple(len(taken) for taken in self._taken), np.nan, np.float32
         )
         self._added = 0
+        vertical = self._grid.coordinates[self._grid.axes.index(2)]
+        self._vertical_spacing = (
+            float(np.abs(np.diff(vertical)).max()) if len(vertical) > 1 else 0.0
+        )
         # A grid's row and column coordinates run from the first pixel, and
         # its slice coordinates from the patient's origin.
         shifts = (0.0, origins[0][self._grid.axes[1]], origins[0][self._grid.axes[2]])
@@ -363,11 +381,13 @@ class FaceFinder:
         middle = (right.centre + left.centre) / 2
         if not self._head_behind(values >= BODY, middle, anterior, across):
             raise FaceBlockRefused(FaceBlockProblem.HEAD_NOT_BEHIND_EYES)
-        # One voxel lower, for the sampling.
-        inferior = (
-            min(right.centre[2] - right.radius, left.centre[2] - left.radius)
-            - self._voxel
-        )
+        if not self._cranium_above(bone, middle):
+            raise FaceBlockRefused(FaceBlockProblem.CRANIUM_NOT_ABOVE_EYES)
+        # Lower by a voxel, or by the volume's spacing along the patient's
+        # superior axis where that is larger, for the sampling.
+        inferior = min(
+            right.centre[2] - right.radius, left.centre[2] - left.radius
+        ) - max(self._voxel, self._vertical_spacing)
         return FaceBlock(
             _point(middle - MARGIN * anterior),
             _point(anterior),
@@ -376,33 +396,73 @@ class FaceFinder:
         )
 
     def _regions(self, values: np.ndarray) -> list[_Region]:
-        """The regions of soft tissue, once eroded, that may be globes."""
+        """The balls of soft tissue, nearly surrounded by other tissue, that
+        may be globes, as the module describes."""
         soft = (values >= SOFT_TISSUE[0]) & (values <= SOFT_TISSUE[1])
-        eroded = scipy.ndimage.binary_erosion(
-            soft, structure=_ball(EROSION / self._voxel)
+        depth = scipy.ndimage.distance_transform_edt(soft) * self._voxel
+        # A ball's depth at its centre falls short of its radius by up to
+        # about a voxel, from the sampling and the averaging.
+        low, high = GLOBE_DIAMETER[0] / 2 - self._voxel, GLOBE_DIAMETER[1] / 2
+        peaks = (
+            (depth >= low)
+            & (depth <= high)
+            & (depth == scipy.ndimage.maximum_filter(depth, footprint=_ball(2.0)))
         )
-        labels, _ = scipy.ndimage.label(eroded)
-        regions = []
-        for label, box in enumerate(scipy.ndimage.find_objects(labels), start=1):
-            if box is None:
-                continue
-            counts = np.array([part.stop - part.start for part in box], dtype=float)
-            diameters = counts * self._voxel + 2 * EROSION
-            if (
-                diameters.min() < GLOBE_DIAMETER[0]
-                or diameters.max() > GLOBE_DIAMETER[1]
-                or diameters.max() > _ELONGATION * diameters.min()
+        candidates = sorted(
+            (
+                (-float(depth[index]), index)
+                for index in zip(*(axis.tolist() for axis in np.nonzero(peaks)))
+            ),
+        )
+        regions: list[_Region] = []
+        for negative, peak in candidates:
+            radius = -negative + self._voxel
+            if any(
+                np.linalg.norm(self._position(np.array(peak, float)) - region.centre)
+                < region.radius
+                for region in regions
             ):
                 continue
-            inside = labels[box] == label
-            fill = int(inside.sum()) / (math.pi / 6 * float(np.prod(counts)))
-            if not _FILL[0] <= fill <= _FILL[1]:
-                continue
-            centre = np.array([part.start for part in box], dtype=float) + np.array(
-                scipy.ndimage.center_of_mass(inside)
-            )
-            regions.append(_Region(self._position(centre), float(diameters.mean()) / 2))
+            index = self._centred(soft, np.array(peak, dtype=float), radius)
+            if self._surrounded(soft, index, radius):
+                regions.append(_Region(self._position(index), radius))
         return regions
+
+    def _centred(self, soft: np.ndarray, peak: np.ndarray, radius: float) -> np.ndarray:
+        """The centre of the soft tissue within :data:`_CENTRING` times a
+        ball's radius of its deepest point, which may lie off its centre
+        where the ball is coarsely sampled."""
+        reach = _CENTRING * radius / self._voxel
+        box = _box(soft.shape, *((value - reach, value + reach) for value in peak))
+        offsets = np.stack(
+            np.meshgrid(
+                *(np.arange(part.start, part.stop) for part in box), indexing="ij"
+            ),
+            axis=-1,
+        )
+        near = soft[box] & (np.linalg.norm(offsets - peak, axis=-1) <= reach)
+        return offsets[near].mean(axis=0) if near.any() else peak
+
+    def _surrounded(self, soft: np.ndarray, index: np.ndarray, radius: float) -> bool:
+        """Whether a ball of soft tissue is nearly surrounded by other tissue.
+
+        Of the points on a sphere :data:`_SHELL` times its radius, at least
+        :data:`_OUTSIDE` must be outside the soft tissue, and at least
+        :data:`_OUTSIDE_BEHIND` of those on one half of it, as the orbital
+        fat behind a globe is, whatever touches its front. A cylinder, such
+        as a muscle, has soft tissue along its axis on every half.
+        """
+        points = index + _directions() * (_SHELL * radius / self._voxel)
+        inside = np.all((points >= 0) & (points <= np.array(soft.shape) - 1), axis=1)
+        if not inside.all():
+            return False
+        nearest = np.rint(points).astype(np.intp)
+        outside = ~soft[nearest[:, 0], nearest[:, 1], nearest[:, 2]]
+        halves = _directions() @ _directions().T > 0
+        behind = (halves & outside).sum(axis=1) / halves.sum(axis=1)
+        return (
+            float(outside.mean()) >= _OUTSIDE and float(behind.max()) >= _OUTSIDE_BEHIND
+        )
 
     def _position(self, index: np.ndarray) -> np.ndarray:
         """The x, y, and z of a point indexed from superior, anterior, right."""
@@ -486,6 +546,26 @@ class FaceFinder:
             filled[name] = float(slab[:, where].sum()) / count if count else 0.0
         return filled["back"] - filled["front"] >= HEAD_BEHIND
 
+    def _cranium_above(self, bone: np.ndarray, middle: np.ndarray) -> bool:
+        """Whether bone encloses no more of the axial slices below the eyes
+        than above them, as the module describes."""
+        superior = self._index(middle)[0]
+        low, high = (depth / self._voxel for depth in CRANIUM_DEPTH)
+        enclosed = {}
+        for name, start, stop in (
+            ("above", superior - high, superior - low),
+            ("below", superior + low, superior + high),
+        ):
+            rows = range(
+                max(0, math.ceil(start)),
+                max(0, min(bone.shape[0], math.floor(stop) + 1)),
+            )
+            enclosed[name] = sum(
+                int((scipy.ndimage.binary_fill_holes(bone[row]) & ~bone[row]).sum())
+                for row in rows
+            )
+        return enclosed["below"] <= enclosed["above"]
+
 
 def _paired(right: _Region, left: _Region) -> bool:
     """Whether two regions lie side by side, as the module describes."""
@@ -496,6 +576,23 @@ def _paired(right: _Region, left: _Region) -> bool:
         GLOBE_SEPARATION[0] <= apart <= GLOBE_SEPARATION[1]
         and abs(across[2]) <= PAIR_TOLERANCE
         and turn <= MAXIMUM_TURN
+    )
+
+
+@functools.cache
+def _directions() -> np.ndarray:
+    """:data:`_DIRECTION_COUNT` unit vectors spread evenly over the sphere."""
+    count = _DIRECTION_COUNT
+    steps = np.arange(count) + 0.5
+    polar = np.arccos(1 - 2 * steps / count)
+    azimuth = math.pi * (1 + 5**0.5) * steps
+    return np.stack(
+        [
+            np.cos(polar),
+            np.sin(polar) * np.cos(azimuth),
+            np.sin(polar) * np.sin(azimuth),
+        ],
+        axis=1,
     )
 
 

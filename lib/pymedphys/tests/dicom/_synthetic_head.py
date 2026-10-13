@@ -57,6 +57,12 @@ class Head:
     # Whether the face is towards posterior, as when a prone patient is
     # recorded as supine.
     facing_back: bool = False
+    # Whether the head is upside down, mirrored about the axial plane through
+    # the origin, as when a feet-first patient is recorded as head first.
+    upside_down: bool = False
+    # Whether a bolus of soft-tissue density, 8 mm thick, lies over the
+    # eyes and forehead.
+    bolus: bool = False
     noise: float = 10.0  # the standard deviation, in Hounsfield units
     seed: int = 0
 
@@ -75,12 +81,17 @@ def hounsfield(points: np.ndarray, head: Head = Head()) -> np.ndarray:
         )
     if head.facing_back:
         y = -y
+    if head.upside_down:
+        z = -z
     values = np.full(x.shape, AIR)
-    values[_inside(x, y, z, (0, 0, 0), (75, 95, 110))] = SOFT_TISSUE
+    if head.bolus:
+        over = _inside(x, y, z, (0, 0, 10), (83, 103, 138)) & (y < -40)
+        values[over & (z > 0) & (z < 70)] = SOFT_TISSUE
+    values[_inside(x, y, z, (0, 0, 10), (75, 95, 130))] = SOFT_TISSUE
     values[_inside(x, y, z, (0, -100, -15), (12, 22, 30))] = SOFT_TISSUE  # nose
     if head.skull:
-        values[_inside(x, y, z, (0, 0, 0), (68, 88, 100))] = BONE
-    values[_inside(x, y, z, (0, 0, 0), (62, 82, 94))] = BRAIN
+        values[_inside(x, y, z, (0, 0, 40), (68, 88, 85))] = BONE
+    values[_inside(x, y, z, (0, 0, 40), (62, 82, 79))] = BRAIN
     for side, present in zip((-1, 1), head.eyes):
         centre = (side * GLOBE_X, GLOBE_Y + 6, GLOBE_Z)
         if head.orbits:

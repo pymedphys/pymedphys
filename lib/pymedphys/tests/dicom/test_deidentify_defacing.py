@@ -57,9 +57,9 @@ def _assert_around_the_globes(block: defacing.FaceBlock) -> None:
     np.testing.assert_allclose(
         block.origin, (0, head.GLOBE_Y + defacing.MARGIN, head.GLOBE_Z), atol=1.5
     )
-    # From the globes' inferior edge, or a few millimetres lower, up.
+    # From the globes' inferior edge, or lower by up to two slices, up.
     inferior_edge = head.GLOBE_Z - head.GLOBE_RADIUS
-    assert inferior_edge - 5.0 <= block.inferior_limit <= inferior_edge
+    assert inferior_edge - 10.0 <= block.inferior_limit <= inferior_edge
 
 
 @pytest.mark.parametrize(
@@ -81,6 +81,7 @@ def test_the_block_is_found_from_the_globes_whatever_the_orientation(scan):
     "scan, anatomy",
     [
         (head.axial(), head.Head(noise=40.0, seed=1)),
+        (head.axial(), head.Head(bolus=True)),
         (head.axial(thickness=5.0), head.Head()),
         (head.axial(spacing=1.5, thickness=3.0), head.Head()),
         (
@@ -88,7 +89,13 @@ def test_the_block_is_found_from_the_globes_whatever_the_orientation(scan):
             head.Head(),
         ),
     ],
-    ids=["noisy", "thick-slices", "coarse-pixels", "long-volume"],
+    ids=[
+        "noisy",
+        "bolus-over-the-eyes",
+        "thick-slices",
+        "coarse-pixels",
+        "long-volume",
+    ],
 )
 def test_the_block_is_found_through_noise_and_coarser_sampling(scan, anatomy):
     _assert_around_the_globes(_block(scan, anatomy))
@@ -264,3 +271,10 @@ def test_two_slices_at_one_position_are_refused():
         _finder(scan)
 
     assert refused.value.problem is defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES
+
+
+def test_a_head_recorded_upside_down_is_refused():
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        _block(head.axial(), head.Head(upside_down=True))
+
+    assert refused.value.problem is defacing.FaceBlockProblem.CRANIUM_NOT_ABOVE_EYES
