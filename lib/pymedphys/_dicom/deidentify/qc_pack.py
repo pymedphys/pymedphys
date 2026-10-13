@@ -45,6 +45,12 @@ A pack holds, for one run:
   audit of every name renamed, kept, or mapped, and each name held for
   review, with why and the names of the run's institutional list that it
   matched (D-009);
+- ``descriptors``: what descriptor cleaning decided for each value of each
+  free-text descriptor that it read, kept, kept by the technique vocabulary,
+  mapped, emptied, or held for review, with why, and whether the element
+  was written with those values or took its action without Clean
+  Descriptors instead, for the audit of every value retained or changed and
+  the reviewer's list of values to decide on for later runs (D-009, D-036);
 - ``reference_findings``: each reference finding that the run reports
   without acting on it, such as a dangling reference, or a written reference
   to an instance that was not written, at each instance it names, with the
@@ -98,10 +104,14 @@ from .run_written import REPORTED_ONLY
 from .written_references import WrittenFindingKind
 from .labels import LABEL_PATTERN
 from .residuals import UnsearchedReason
+from .reviewed_descriptors import CleanedDescriptor
+from .reviewed_descriptors import Held as DescriptorHeld
+from .reviewed_descriptors import Outcome as DescriptorOutcome
+from .reviewed_descriptors import stripped
 from .reviewed_roi_names import Outcome
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/3"
+FORMAT = "pymedphys-deid-qc-pack/4"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 
@@ -153,6 +163,23 @@ _HELD_BECAUSE = frozenset(
         roi_names.Reason.ECHOES_IDENTIFIER,
         roi_names.Reason.WOULD_DUPLICATE,
     }
+)
+
+
+# The outcomes of a descriptor value: held for review, written empty, and
+# written as the source value without its padding.
+_DESCRIPTOR_HELD = frozenset(
+    {DescriptorOutcome.HELD, DescriptorOutcome.EMPTIED_UNREVIEWED}
+)
+_DESCRIPTOR_EMPTIED = frozenset(
+    {
+        DescriptorOutcome.EMPTY,
+        DescriptorOutcome.EMPTIED,
+        DescriptorOutcome.EMPTIED_UNREVIEWED,
+    }
+)
+_DESCRIPTOR_KEPT = frozenset(
+    {DescriptorOutcome.KEPT, DescriptorOutcome.KEPT_BY_VOCABULARY}
 )
 
 
@@ -643,6 +670,106 @@ class RoiNameEntry:
         )
 
 
+@dataclasses.dataclass(frozen=True, repr=False)
+class DescriptorEntry:
+    """What descriptor cleaning decided for the values of one free-text descriptor.
+
+    The kept, mapped, and emptied values are the audit of what was retained
+    or changed; the held values are the reviewer's list, whose decisions a
+    reviewed descriptors list carries to later runs (D-009). Its ``repr``
+    leaves out the values.
+
+    Attributes
+    ----------
+    position : int
+        The instance's run position.
+    path : ElementPath
+        The descriptor's element.
+    sources : tuple of str
+        The element's source values, in order, each as decoded.
+    results : tuple of ~pymedphys._dicom.deidentify.reviewed_descriptors.CleanedDescriptor
+        What cleaning decided for each source value, in the same order: its
+        outcome, why a held value was held, and what it would write, the
+        source value without its padding if kept, which is None if held.
+    applied : bool
+        Whether the element was written with those values. Where it was not,
+        because a value was held, no value had text, or a kept value was
+        beside a mapped or emptied one, or because another attribute's action removed
+        its sequence, it took its action without Clean Descriptors.
+    """
+
+    position: int
+    path: ElementPath
+    sources: tuple[str, ...]
+    results: tuple[CleanedDescriptor, ...]
+    applied: bool
+
+    def __post_init__(self) -> None:
+        _check_position("a descriptor", self.position)
+        if (
+            not isinstance(self.path, ElementPath)
+            or not isinstance(self.sources, tuple)
+            or not self.sources
+            or not all(isinstance(source, str) for source in self.sources)
+        ):
+            raise QcPackError(
+                f"a descriptor of instance {self.position} needs an ElementPath "
+                "and its values as text"
+            )
+        if (
+            not isinstance(self.results, tuple)
+            or len(self.results) != len(self.sources)
+            or not all(isinstance(result, CleanedDescriptor) for result in self.results)
+        ):
+            raise QcPackError(
+                f"a descriptor of instance {self.position} needs a "
+                "CleanedDescriptor for each value"
+            )
+        if not isinstance(self.applied, bool):
+            raise QcPackError(
+                f"a descriptor of instance {self.position} needs whether it was "
+                "applied as True or False"
+            )
+        for source, result in zip(self.sources, self.results):
+            problem = _descriptor_problem(source, result)
+            if problem is None and self.applied and result.value is None:
+                problem = "was applied, so is not held"
+            if problem:
+                raise QcPackError(
+                    f"a descriptor value of instance {self.position} {problem}"
+                )
+
+    def __repr__(self) -> str:
+        return (
+            f"DescriptorEntry(position={self.position}, path={str(self.path)!r}, "
+            f"applied={self.applied!r})"
+        )
+
+
+def _descriptor_problem(source: str, result: CleanedDescriptor) -> str | None:
+    """Return why a descriptor value's result cannot be listed, or None."""
+    if not isinstance(result.outcome, DescriptorOutcome):
+        return "needs an outcome"
+    if (result.outcome in _DESCRIPTOR_HELD) != isinstance(
+        result.held_because, DescriptorHeld
+    ):
+        return "has a reason for review only when it was held"
+    if result.outcome is DescriptorOutcome.HELD:
+        return None if result.value is None else "has nothing written"
+    problems = (
+        (not isinstance(result.value, str), "needs what was written"),
+        (
+            (result.outcome in _DESCRIPTOR_EMPTIED) != (result.value == ""),
+            "is written empty only when it was emptied or empty",
+        ),
+        (
+            result.outcome in _DESCRIPTOR_KEPT and result.value != stripped(source),
+            "is written as its source value, without padding",
+        ),
+    )
+    return next((problem for failed, problem in problems if failed), None)
+
+
 class PreviewKind(enum.Enum):
     """What an image preview shows (D-017)."""
 
@@ -924,6 +1051,7 @@ class QcPack:
     retained_strings : tuple of RetainedString
         Each value once.
     roi_names : tuple of RoiNameEntry
+    descriptors : tuple of DescriptorEntry
     reference_findings : tuple of ReferenceFindingEntry
     pixel_risks : tuple of PixelRiskEntry
         Each high-risk instance once, in run position order.
@@ -966,6 +1094,7 @@ class QcPack:
     not_searched: tuple[NotSearchedEntry, ...] = ()
     retained_strings: tuple[RetainedString, ...] = ()
     roi_names: tuple[RoiNameEntry, ...] = ()
+    descriptors: tuple[DescriptorEntry, ...] = ()
     reference_findings: tuple[ReferenceFindingEntry, ...] = ()
     pixel_risks: tuple[PixelRiskEntry, ...] = ()
     series_risks: tuple[SeriesRiskEntry, ...] = ()
@@ -986,6 +1115,7 @@ class QcPack:
             "not_searched": NotSearchedEntry,
             "retained_strings": RetainedString,
             "roi_names": RoiNameEntry,
+            "descriptors": DescriptorEntry,
             "reference_findings": ReferenceFindingEntry,
             "pixel_risks": PixelRiskEntry,
             "series_risks": SeriesRiskEntry,
@@ -1011,6 +1141,7 @@ class QcPack:
             "drops",
             "not_searched",
             "roi_names",
+            "descriptors",
             "reference_findings",
             "pixel_risks",
             "not_previewed",
@@ -1107,6 +1238,7 @@ class QcPack:
             f"drops={len(self.drops)}, not_searched={len(self.not_searched)}, "
             f"retained_strings={len(self.retained_strings)}, "
             f"roi_names={len(self.roi_names)}, "
+            f"descriptors={len(self.descriptors)}, "
             f"reference_findings={len(self.reference_findings)}, "
             f"pixel_risks={len(self.pixel_risks)}, "
             f"series_risks={len(self.series_risks)}, previews={len(self.previews)}, "
@@ -1212,6 +1344,27 @@ def pack_document(pack: QcPack) -> dict:
                 "institutional_matches": list(entry.institutional_matches),
             }
             for entry in pack.roi_names
+        ],
+        "descriptors": [
+            {
+                "position": entry.position,
+                "element": str(entry.path),
+                "applied": entry.applied,
+                "values": [
+                    {
+                        "source": source,
+                        "outcome": result.outcome.value,
+                        "held_because": (
+                            None
+                            if result.held_because is None
+                            else result.held_because.value
+                        ),
+                        "written": result.value,
+                    }
+                    for source, result in zip(entry.sources, entry.results)
+                ],
+            }
+            for entry in pack.descriptors
         ],
         "reference_findings": [
             {

@@ -25,8 +25,8 @@ no warning or log record of pydicom's, or of the transform's or gate's,
 shows a source value or path, and the summary says how many were redacted.
 :func:`main` parses the source and release directories, the QC
 destination, the preset or custom option set (D-033), and, under Clean
-Descriptors, what ROI Names are cleaned with from the command line's
-arguments, builds the policy's transform for a new run-scoped key with
+Descriptors, what ROI Names and free-text descriptors are cleaned with
+from the command line's arguments, builds the policy's transform for a new run-scoped key with
 :func:`build_transform`, and runs it with the release gate, the
 transform's release report, and the reference graph's second pass under
 its key, for the ``pymedphys`` command to call once the engine is public;
@@ -48,10 +48,10 @@ Exit statuses:
   input was refused, sequestered, or held for review;
 - :data:`EXIT_USAGE`, 2: the arguments could not be parsed, as for any
   :mod:`argparse` command, though the message quotes none of them, or
-  they give ROI name options without Clean Descriptors;
+  they give ROI name or descriptor options without Clean Descriptors;
 - :data:`EXIT_NOT_RUN`, 3: the run could not start, because its preset or
-  option set is not enabled, or what it cleans ROI Names with cannot be
-  used, among other reasons, the first pass stopped it, or its QC pack
+  option set is not enabled, or what it cleans ROI Names or descriptors
+  with cannot be used, among other reasons, the first pass stopped it, or its QC pack
   could not be written, and nothing was published;
 - :data:`EXIT_STAGING_LEFT`, 4: the staging area could not be deleted, and
   may hold output that still identifies people, whatever else happened;
@@ -78,6 +78,7 @@ from .descriptor_cleaning import CLEAN_DESCRIPTORS, DescriptorCleaning
 from .diagnostics import RedactionCounts, redacted_diagnostics
 from .keys import DeidKey
 from .qc_pack import QcPackError
+from .reviewed_descriptors import ReviewedDescriptors, ReviewedDescriptorsError
 from .reviewed_roi_names import ReviewedNames, ReviewedNamesError
 from .standard import ALL_OPTIONS
 
@@ -92,9 +93,9 @@ _RELEASED = (run.Status.RELEASED, run.Status.DUPLICATE)
 # The first supported release's presets (design document, Scope).
 _PRESETS = ("basic", "basic-clean-descriptors")
 _ROI_NAME_OPTIONS = (
-    "error: --tg263, --reviewed-names, --empty-held-roi-names, and --roi-list "
-    "apply only under Clean Descriptors: with --preset basic-clean-descriptors, "
-    "or --option clean_descriptors"
+    "error: --tg263, --reviewed-names, --empty-held-roi-names, --roi-list, and "
+    "--reviewed-descriptors apply only under Clean Descriptors: with --preset "
+    "basic-clean-descriptors, or --option clean_descriptors"
 )
 _TG263_UNLOADED = (
     "the TG-263 edition could not be loaded; its details are not "
@@ -111,6 +112,14 @@ _ROI_LIST_UNUSABLE = (
 _REVIEWED_UNUSABLE = (
     "the reviewed-names list could not be used; its details are not "
     "shown because they can contain file paths or ROI names"
+)
+_DESCRIPTORS_MISSING = (
+    "the reviewed descriptors list does not exist; its path is not shown "
+    "because it can name a person"
+)
+_DESCRIPTORS_UNUSABLE = (
+    "the reviewed descriptors list could not be used; its details are not "
+    "shown because they can contain file paths or descriptor values"
 )
 
 
@@ -414,6 +423,18 @@ def build_parser(
             "ROI Name the list's names it matches"
         ),
     )
+    parser.add_argument(
+        "--reviewed-descriptors",
+        metavar="FILE",
+        help=(
+            "under Clean Descriptors, the custodian's reviewed descriptors "
+            "list, outside SOURCE, RELEASE, and the QC pack; by default, none, "
+            "so only technique descriptors made of reviewed vocabulary words "
+            "are kept; python -m "
+            "pymedphys._dicom.deidentify.reviewed_descriptors_command records "
+            "a reviewer's decisions in it"
+        ),
+    )
     return parser
 
 
@@ -465,8 +486,9 @@ def _descriptor_cleaning(  # pylint: disable = too-many-arguments
     reviewed_names: str | os.PathLike[str] | None,
     empty_held_roi_names: bool,
     roi_list_path: str | os.PathLike[str] | None,
+    reviewed_descriptors: str | os.PathLike[str] | None,
 ) -> DescriptorCleaning:
-    """Return what ROI Names are cleaned with (D-009).
+    """Return what ROI Names and free-text descriptors are cleaned with (D-009).
 
     The pinned TG-263 edition is read from ``tg263_spreadsheet`` or else
     from PyMedPhys's cached download. The custodian's reviewed-names list is
@@ -476,12 +498,15 @@ def _descriptor_cleaning(  # pylint: disable = too-many-arguments
     without it, the list is empty. Held names are emptied only with
     ``empty_held_roi_names``. An institutional list, converted from CSV, is
     read from ``roi_list_path``; it renames nothing, and is matched against
-    held names for their reviewer (D-009).
+    held names for their reviewer (D-009). The custodian's reviewed
+    descriptors list is read from ``reviewed_descriptors`` as the
+    reviewed-names list is; without it, the list is empty, and only the
+    bundled technique vocabulary keeps a descriptor value (D-036).
 
     Raises
     ------
     TransformNotBuilt
-        If the edition or either list cannot be used.
+        If the edition or any list cannot be used.
     """
     try:
         nomenclature = (
@@ -491,22 +516,33 @@ def _descriptor_cleaning(  # pylint: disable = too-many-arguments
         )
     except (tg263.TG263Error, OSError):
         raise TransformNotBuilt(_TG263_UNLOADED) from None
+    absolute_release = Path(release).absolute()
+    protected = (
+        Path(source),
+        absolute_release,
+        run.staging_path(absolute_release),
+        Path(qc_pack),
+    )
     if reviewed_names is None:
         reviewed = ReviewedNames.empty()
     else:
-        absolute_release = Path(release).absolute()
-        protected = (
-            Path(source),
-            absolute_release,
-            run.staging_path(absolute_release),
-            Path(qc_pack),
-        )
         try:
             if not Path(reviewed_names).is_file():
                 raise TransformNotBuilt(_REVIEWED_MISSING)
             reviewed = ReviewedNames.open(reviewed_names, protected_dirs=protected)
         except (ReviewedNamesError, OSError):
             raise TransformNotBuilt(_REVIEWED_UNUSABLE) from None
+    if reviewed_descriptors is None:
+        descriptors = ReviewedDescriptors.empty()
+    else:
+        try:
+            if not Path(reviewed_descriptors).is_file():
+                raise TransformNotBuilt(_DESCRIPTORS_MISSING)
+            descriptors = ReviewedDescriptors.open(
+                reviewed_descriptors, protected_dirs=protected
+            )
+        except (ReviewedDescriptorsError, OSError):
+            raise TransformNotBuilt(_DESCRIPTORS_UNUSABLE) from None
     institutional = None
     if roi_list_path is not None:
         try:
@@ -518,6 +554,7 @@ def _descriptor_cleaning(  # pylint: disable = too-many-arguments
         reviewed,
         empty_held=empty_held_roi_names,
         institutional=institutional,
+        reviewed_descriptors=descriptors,
     )
 
 
@@ -533,6 +570,7 @@ def transform_for(  # pylint: disable = too-many-arguments
     reviewed_names: str | os.PathLike[str] | None = None,
     empty_held_roi_names: bool = False,
     roi_list_path: str | os.PathLike[str] | None = None,
+    reviewed_descriptors: str | os.PathLike[str] | None = None,
 ) -> instance_transform.InstanceTransform:
     """Return :func:`build_transform`'s transform for a run's options.
 
@@ -544,15 +582,18 @@ def transform_for(  # pylint: disable = too-many-arguments
     the custodian's ``reviewed_names`` list, which must exist and lie
     outside ``source``, ``release`` and its staging area, and ``qc_pack``,
     and, if given, the institutional list converted from CSV at
-    ``roi_list_path``, which renames nothing (D-009). Under any other
-    policy, the ROI name options are not read.
+    ``roi_list_path``, which renames nothing (D-009); and free-text
+    descriptors are cleaned with the custodian's ``reviewed_descriptors``
+    list, which must exist and lie outside the same directories, and the
+    bundled technique vocabulary (D-036). Under any other policy, these
+    options are not read.
 
     Raises
     ------
     TransformNotBuilt
-        If the preset or option set is not enabled, or what ROI Names are
-        cleaned with cannot be used, with a message that quotes nothing but
-        the names of presets and options.
+        If the preset or option set is not enabled, or what ROI Names or
+        descriptors are cleaned with cannot be used, with a message that
+        quotes nothing but the names of presets and options.
     """
     try:
         selected = policy.select_policy(preset, options=options)
@@ -567,6 +608,7 @@ def transform_for(  # pylint: disable = too-many-arguments
             reviewed_names=reviewed_names,
             empty_held_roi_names=empty_held_roi_names,
             roi_list_path=roi_list_path,
+            reviewed_descriptors=reviewed_descriptors,
         )
         if CLEAN_DESCRIPTORS in selected.options
         else None
@@ -585,7 +627,7 @@ def transform_for(  # pylint: disable = too-many-arguments
 def roi_name_options_apply(
     preset: str | None, options: Collection[str] | None = None
 ) -> bool:
-    """Return whether the run's policy takes the ROI name options.
+    """Return whether the run's policy takes the ROI name and descriptor options.
 
     They apply under Clean Descriptors: with the ``basic-clean-descriptors``
     preset, or a custom option set in ``options`` that selects it (D-033).
@@ -613,6 +655,7 @@ def _built(
         reviewed_names=arguments.reviewed_names,
         empty_held_roi_names=arguments.empty_held_roi_names,
         roi_list_path=arguments.roi_list,
+        reviewed_descriptors=arguments.reviewed_descriptors,
     )
 
 
@@ -662,6 +705,7 @@ def main(
         or arguments.reviewed_names is not None
         or arguments.empty_held_roi_names
         or arguments.roi_list is not None
+        or arguments.reviewed_descriptors is not None
     )
     if roi_name_options and not roi_name_options_apply(
         arguments.preset, arguments.options

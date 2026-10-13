@@ -99,6 +99,7 @@ def deidentify(  # pylint: disable = too-many-arguments
     reviewed_names: str | os.PathLike[str] | None = None,
     empty_held_roi_names: bool = False,
     roi_list: str | os.PathLike[str] | None = None,
+    reviewed_descriptors: str | os.PathLike[str] | None = None,
 ) -> Deidentified:
     """De-identify the DICOM files below a source directory into a new release.
 
@@ -142,6 +143,13 @@ def deidentify(  # pylint: disable = too-many-arguments
         converted from CSV by ``python -m pymedphys._nomenclature
         roi-list``. It renames nothing: the QC pack shows the reviewer of a
         held ROI Name the list's names that it matches (D-009).
+    reviewed_descriptors : str or os.PathLike, optional
+        Under Clean Descriptors, the custodian's reviewed descriptors list,
+        which must exist, outside ``source``, ``release``, and ``qc_pack``,
+        recorded by ``python -m
+        pymedphys._dicom.deidentify.reviewed_descriptors_command``. By
+        default, none, so only technique descriptors made of reviewed
+        vocabulary words are kept (D-036).
 
     Returns
     -------
@@ -158,12 +166,14 @@ def deidentify(  # pylint: disable = too-many-arguments
     ValueError
         If both ``preset`` and ``options`` are given, or if
         ``tg263_spreadsheet``, ``reviewed_names``, ``empty_held_roi_names``,
-        or ``roi_list`` is given with a policy without Clean Descriptors.
+        ``roi_list``, or ``reviewed_descriptors`` is given with a policy
+        without Clean Descriptors.
         Nothing is read or created.
     DeidentifyError
         If the preset or an option is unknown or not enabled, the options
         cannot be composed, or the TG-263 edition, the reviewed-names list,
-        or the institutional list cannot be used. Nothing is created.
+        the institutional list, or the reviewed descriptors list cannot be
+        used. Nothing is created.
     ~pymedphys._dicom.deidentify.run.RunError
     ~pymedphys._dicom.deidentify.run.RunStopped
     ~pymedphys._dicom.deidentify.qc_pack.QcPackError
@@ -190,11 +200,12 @@ def deidentify(  # pylint: disable = too-many-arguments
         or reviewed_names is not None
         or empty_held_roi_names
         or roi_list is not None
+        or reviewed_descriptors is not None
     )
     if roi_name_options and not command.roi_name_options_apply(preset, chosen):
         raise ValueError(
-            "tg263_spreadsheet, reviewed_names, empty_held_roi_names, and "
-            "roi_list apply only under Clean Descriptors: with the "
+            "tg263_spreadsheet, reviewed_names, empty_held_roi_names, roi_list, "
+            "and reviewed_descriptors apply only under Clean Descriptors: with the "
             "basic-clean-descriptors preset, or options that include "
             "clean_descriptors"
         )
@@ -211,6 +222,7 @@ def deidentify(  # pylint: disable = too-many-arguments
                 reviewed_names=reviewed_names,
                 empty_held_roi_names=empty_held_roi_names,
                 roi_list_path=roi_list,
+                reviewed_descriptors=reviewed_descriptors,
             )
         except command.TransformNotBuilt as error:
             raise DeidentifyError(str(error)) from None

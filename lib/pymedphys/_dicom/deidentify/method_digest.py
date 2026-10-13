@@ -39,6 +39,17 @@ apply, whether or not the policy's options use it:
   under the run's key, which
   :meth:`~pymedphys._dicom.deidentify.reviewed_roi_names.ReviewedNames.keyed_digest`
   gives, never the list or an unkeyed digest of it;
+- the keyed digest of the reviewed descriptors list whose decisions
+  descriptor cleaning applies to free-text descriptors, or the absence of a
+  list, in the same way, as
+  :meth:`~pymedphys._dicom.deidentify.reviewed_descriptors.ReviewedDescriptors.keyed_digest`
+  gives it;
+- the SHA-256 of the effective technique vocabulary whose words keep the
+  technique descriptors that the list does not cover, which
+  :attr:`~pymedphys._dicom.deidentify.technique_descriptors.TechniqueVocabulary.sha256`
+  gives, or the absence of one. The bundled vocabulary's files are also
+  among the engine's files below, but a run can apply another vocabulary or
+  none;
 - the parameters of generated values: the derivation version and domains of
   keyed values, the root and namespace of replacement UIDs, the prefix, family
   name, and code length of patient pseudonyms, the prefix and length of the
@@ -125,7 +136,7 @@ from . import (
 from .policy import Policy
 
 # The format of the canonical form. A change to the form takes a new label.
-FORMAT = "pymedphys-deid-method-digest/2"
+FORMAT = "pymedphys-deid-method-digest/3"
 # The engine's package, whose source and rule files the digest covers.
 PACKAGE_DIR = pathlib.Path(__file__).resolve().parent
 COVERED_SUFFIXES = frozenset({".py", ".toml", ".json", ".csv", ".txt"})
@@ -179,6 +190,12 @@ class MethodDigestInputs:
         vocabulary.
     reviewed_roi_names : str or None
         The keyed digest of the reviewed-names list, or None without a list.
+    reviewed_descriptors : str or None
+        The keyed digest of the reviewed descriptors list, or None without a
+        list.
+    technique_vocabulary : str or None
+        The SHA-256 of the effective technique vocabulary, or None without
+        one.
     generated_values : Mapping of str to object
         Each parameter of generated values, by module and name, such as
         ``"dates.MIN_OFFSET_WEEKS"``.
@@ -194,6 +211,8 @@ class MethodDigestInputs:
     l2_rules: Mapping[str, object] = dataclasses.field(hash=False)
     vocabulary: str | None
     reviewed_roi_names: str | None
+    reviewed_descriptors: str | None
+    technique_vocabulary: str | None
     generated_values: Mapping[str, object] = dataclasses.field(hash=False)
     files: Mapping[str, str] = dataclasses.field(hash=False)
 
@@ -232,6 +251,12 @@ class MethodDigestComponents:
         vocabulary.
     reviewed_roi_names : str or None
         The keyed digest of the reviewed-names list, or None without a list.
+    reviewed_descriptors : str or None
+        The keyed digest of the reviewed descriptors list, or None without a
+        list.
+    technique_vocabulary_digest : str or None
+        The SHA-256 of the effective technique vocabulary, or None without
+        one.
     generated_values_digest : str
         The SHA-256 of the canonical bytes of the ``generated_values``
         member, in which each parameter is a ``[type, value]`` pair.
@@ -250,6 +275,8 @@ class MethodDigestComponents:
     l3_rules: str | None
     vocabulary_digest: str | None
     reviewed_roi_names: str | None
+    reviewed_descriptors: str | None
+    technique_vocabulary_digest: str | None
     generated_values_digest: str
     engine_files: Mapping[str, str] = dataclasses.field(hash=False)
 
@@ -334,6 +361,8 @@ def _document(policy: Policy, inputs: MethodDigestInputs) -> dict:
         "l3_rules": None,
         "vocabulary": inputs.vocabulary,
         "reviewed_roi_names": inputs.reviewed_roi_names,
+        "reviewed_descriptors": inputs.reviewed_descriptors,
+        "technique_vocabulary": inputs.technique_vocabulary,
         # Already JSON values, which _plain keeps as they are.
         "generated_values": generated,
         "files": inputs.files,
@@ -347,9 +376,12 @@ def canonical_bytes(policy: Policy, inputs: MethodDigestInputs) -> bytes:
     The form is one JSON object (RFC 8259), with the members ``format``
     (:data:`FORMAT`), ``engine_version``, ``policy``, ``tables``,
     ``l2_rules``, ``l3_rules``, ``vocabulary``, ``reviewed_roi_names``,
+    ``reviewed_descriptors``, ``technique_vocabulary``,
     ``generated_values``, and ``files``. ``l3_rules`` is ``null``, since
-    there are no user rules yet, and so are ``vocabulary`` and
-    ``reviewed_roi_names`` without a vocabulary or a reviewed-names list. It
+    there are no user rules yet, and so are ``vocabulary``,
+    ``reviewed_roi_names``, ``reviewed_descriptors``, and
+    ``technique_vocabulary`` without a vocabulary, a reviewed-names list, a
+    reviewed descriptors list, or a technique vocabulary. It
     is encoded so that the same inputs give the same bytes on every platform
     and Python version:
 
@@ -439,6 +471,8 @@ def digest_components(
         l3_rules=None if l3_rules is None else _sha256(l3_rules),
         vocabulary_digest=inputs.vocabulary,
         reviewed_roi_names=inputs.reviewed_roi_names,
+        reviewed_descriptors=inputs.reviewed_descriptors,
+        technique_vocabulary_digest=inputs.technique_vocabulary,
         generated_values_digest=_sha256(document["generated_values"]),
         engine_files=_read_only(inputs.files),
     )
@@ -496,7 +530,11 @@ def _file_digests(directory: pathlib.Path) -> Mapping[str, str]:
 
 
 def digest_inputs(
-    *, vocabulary: tg263.Nomenclature | None, reviewed_roi_names: str | None
+    *,
+    vocabulary: tg263.Nomenclature | None,
+    reviewed_roi_names: str | None,
+    reviewed_descriptors: str | None = None,
+    technique_vocabulary: str | None = None,
 ) -> MethodDigestInputs:
     """Gather everything the method digest covers apart from the policy.
 
@@ -516,6 +554,16 @@ def digest_inputs(
         :meth:`~pymedphys._dicom.deidentify.reviewed_roi_names.ReviewedNames.keyed_digest`
         gives it, or None without a list. It must be given by name, and has
         no default, so that every caller states whether there is one.
+    reviewed_descriptors : str or None, optional
+        The keyed digest of the reviewed descriptors list whose decisions
+        descriptor cleaning applies to free-text descriptors, as
+        :meth:`~pymedphys._dicom.deidentify.reviewed_descriptors.ReviewedDescriptors.keyed_digest`
+        gives it, or None, the default, without a list.
+    technique_vocabulary : str or None, optional
+        The SHA-256 of the technique vocabulary that descriptor cleaning
+        applies to technique descriptors, as
+        :attr:`~pymedphys._dicom.deidentify.technique_descriptors.TechniqueVocabulary.sha256`
+        gives it, or None, the default, without one.
 
     Returns
     -------
@@ -525,11 +573,13 @@ def digest_inputs(
     ------
     TypeError
         If ``vocabulary`` is not a TG-263 nomenclature or None, or
-        ``reviewed_roi_names`` is not text or None.
+        ``reviewed_roi_names``, ``reviewed_descriptors``, or
+        ``technique_vocabulary`` is not text or None.
     ValueError
         If the vocabulary's entries have text that cannot be encoded as
-        UTF-8, or ``reviewed_roi_names`` is not 64 lowercase hexadecimal
-        digits. The message does not quote either.
+        UTF-8, or ``reviewed_roi_names``, ``reviewed_descriptors``, or
+        ``technique_vocabulary`` is not 64 lowercase hexadecimal digits. The
+        message does not quote any.
     ~pymedphys._dicom.deidentify.standard.StandardTableError
         If a generated table cannot be read, or its rows do not match the
         digest it records.
@@ -539,13 +589,17 @@ def digest_inputs(
     """
     if vocabulary is not None and not isinstance(vocabulary, tg263.Nomenclature):
         raise TypeError("vocabulary must be a TG-263 Nomenclature or None")
-    if reviewed_roi_names is not None:
-        if not isinstance(reviewed_roi_names, str):
-            raise TypeError("reviewed_roi_names must be a keyed digest or None")
-        if not _DIGEST.fullmatch(reviewed_roi_names):
-            raise ValueError(
-                "reviewed_roi_names must be 64 lowercase hexadecimal digits"
-            )
+    for name, digest in (
+        ("reviewed_roi_names", reviewed_roi_names),
+        ("reviewed_descriptors", reviewed_descriptors),
+        ("technique_vocabulary", technique_vocabulary),
+    ):
+        if digest is None:
+            continue
+        if not isinstance(digest, str):
+            raise TypeError(f"{name} must be a digest or None")
+        if not _DIGEST.fullmatch(digest):
+            raise ValueError(f"{name} must be 64 lowercase hexadecimal digits")
     entries = None
     if vocabulary is not None:
         structures = [dataclasses.asdict(s) for s in vocabulary.structures]
@@ -570,6 +624,8 @@ def digest_inputs(
         },
         vocabulary=entries,
         reviewed_roi_names=reviewed_roi_names,
+        reviewed_descriptors=reviewed_descriptors,
+        technique_vocabulary=technique_vocabulary,
         generated_values={
             f"{module.__name__.rpartition('.')[2]}.{name}": getattr(module, name)
             for module, names in GENERATED_VALUE_PARAMETERS
@@ -584,6 +640,8 @@ def method_digest(
     *,
     vocabulary: tg263.Nomenclature | None,
     reviewed_roi_names: str | None,
+    reviewed_descriptors: str | None = None,
+    technique_vocabulary: str | None = None,
 ) -> str:
     """Return the method digest of a policy, as 64 lowercase hexadecimal digits.
 
@@ -609,6 +667,16 @@ def method_digest(
         :meth:`~pymedphys._dicom.deidentify.reviewed_roi_names.ReviewedNames.keyed_digest`
         gives it, or None without a list. It must be given by name, and has
         no default, so that every caller states whether there is one.
+    reviewed_descriptors : str or None, optional
+        The keyed digest of the reviewed descriptors list whose decisions
+        descriptor cleaning applies to free-text descriptors, as
+        :meth:`~pymedphys._dicom.deidentify.reviewed_descriptors.ReviewedDescriptors.keyed_digest`
+        gives it, or None, the default, without a list.
+    technique_vocabulary : str or None, optional
+        The SHA-256 of the technique vocabulary that descriptor cleaning
+        applies to technique descriptors, as
+        :attr:`~pymedphys._dicom.deidentify.technique_descriptors.TechniqueVocabulary.sha256`
+        gives it, or None, the default, without one.
 
     Returns
     -------
@@ -634,7 +702,12 @@ def method_digest(
     return hashlib.sha256(
         canonical_bytes(
             policy,
-            digest_inputs(vocabulary=vocabulary, reviewed_roi_names=reviewed_roi_names),
+            digest_inputs(
+                vocabulary=vocabulary,
+                reviewed_roi_names=reviewed_roi_names,
+                reviewed_descriptors=reviewed_descriptors,
+                technique_vocabulary=technique_vocabulary,
+            ),
         )
     ).hexdigest()
 
@@ -644,18 +717,21 @@ def method_digest_components(
     *,
     vocabulary: tg263.Nomenclature | None,
     reviewed_roi_names: str | None,
+    reviewed_descriptors: str | None = None,
+    technique_vocabulary: str | None = None,
 ) -> MethodDigestComponents:
     """Return the method digest of a policy with the components it is computed from.
 
     The components are those a release report records: the digest and its
     format, PyMedPhys's version, the content digest of each generated table,
     the digests of the supplementary and user rules, the vocabulary's
-    content digest, the reviewed-names list's keyed digest, the digest of
+    content digest, the keyed digests of the reviewed-names and reviewed
+    descriptors lists, the technique vocabulary's digest, the digest of
     the parameters of generated values, and the digest of each source and
     rule file. They come from one call of
     :func:`digest_inputs`, so the digest is the one :func:`method_digest`
-    gives for the same policy, vocabulary, and reviewed-names list in the
-    same process.
+    gives for the same policy, vocabularies, and reviewed lists in the same
+    process.
 
     Parameters
     ----------
@@ -672,6 +748,16 @@ def method_digest_components(
         :meth:`~pymedphys._dicom.deidentify.reviewed_roi_names.ReviewedNames.keyed_digest`
         gives it, or None without a list. It must be given by name, and has
         no default, so that every caller states whether there is one.
+    reviewed_descriptors : str or None, optional
+        The keyed digest of the reviewed descriptors list whose decisions
+        descriptor cleaning applies to free-text descriptors, as
+        :meth:`~pymedphys._dicom.deidentify.reviewed_descriptors.ReviewedDescriptors.keyed_digest`
+        gives it, or None, the default, without a list.
+    technique_vocabulary : str or None, optional
+        The SHA-256 of the technique vocabulary that descriptor cleaning
+        applies to technique descriptors, as
+        :attr:`~pymedphys._dicom.deidentify.technique_descriptors.TechniqueVocabulary.sha256`
+        gives it, or None, the default, without one.
 
     Returns
     -------
@@ -696,10 +782,15 @@ def method_digest_components(
     ... )
     True
     >>> components.method_digest_format, components.l3_rules
-    ('pymedphys-deid-method-digest/2', None)
+    ('pymedphys-deid-method-digest/3', None)
     """
     _check_policy(policy)
     return digest_components(
         policy,
-        digest_inputs(vocabulary=vocabulary, reviewed_roi_names=reviewed_roi_names),
+        digest_inputs(
+            vocabulary=vocabulary,
+            reviewed_roi_names=reviewed_roi_names,
+            reviewed_descriptors=reviewed_descriptors,
+            technique_vocabulary=technique_vocabulary,
+        ),
     )
