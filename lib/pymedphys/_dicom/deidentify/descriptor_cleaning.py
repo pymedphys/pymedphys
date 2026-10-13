@@ -46,7 +46,10 @@ the rest for one instance:
   Every other
   element takes its action under the policy without Clean Descriptors, as
   below, and its values are listed for review, so that a reviewer can
-  record decisions for later runs.
+  record decisions for later runs. A descriptor that another selected
+  option's cleaner cleans, such as Allergies (0010,2110) under Retain
+  Patient Characteristics, is left to that cleaner, and what it leaves
+  pending is not cleaned here (D-038).
 - Every other attribute given C takes its action under the policy without
   Clean Descriptors. Where that action removes or replaces it, the instance
   still satisfies the option, since PS3.15 E.3.5 specifies what the option
@@ -69,7 +72,7 @@ from __future__ import annotations
 
 import dataclasses
 import functools
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 
 from pymedphys._nomenclature import roi_list, tg263
 
@@ -268,6 +271,8 @@ def clean_descriptors(  # pylint: disable = too-many-locals
     vocabulary: RoiNameVocabulary | None,
     queue: ReviewQueue,
     fallback: Callable[[], InstanceEdits],
+    *,
+    cleaned_elsewhere: Collection[str],
 ) -> CleanedDescriptors:
     """Settle each edit that the policy's C leaves pending in one instance.
 
@@ -285,6 +290,12 @@ def clean_descriptors(  # pylint: disable = too-many-locals
         Returns the instance's edits under :func:`fallback_policy`; called
         only where an attribute given C is neither a ROI Name nor a
         descriptor that cleaning writes.
+    cleaned_elsewhere : collection of str
+        The tags of the attributes that the cleaners of the policy's other
+        options clean (:func:`~.cleaners.cleaners_for`). A descriptor among
+        them that its cleaner left pending is not cleaned, so it takes its
+        action without Clean Descriptors, which is that other option's C, so
+        it is left unsettled, as for Retain Patient Characteristics (D-038).
 
     Raises
     ------
@@ -310,7 +321,7 @@ def clean_descriptors(  # pylint: disable = too-many-locals
             vocabulary=cleaning.technique,
         )
         for edit in others
-        if edit.path in texts_of
+        if edit.path in texts_of and edit.path.tag not in cleaned_elsewhere
     }
     settled: dict[ElementPath, Edit] = {}
     held: list[HeldRoiName] = []
@@ -448,7 +459,11 @@ def _descriptor_texts(
 
 
 def kept_descriptors(
-    plan: InstancePlan, edits: InstanceEdits, cleaning: DescriptorCleaning
+    plan: InstancePlan,
+    edits: InstanceEdits,
+    cleaning: DescriptorCleaning,
+    *,
+    cleaned_elsewhere: Collection[str],
 ) -> frozenset[ElementPath]:
     """Return the free-text descriptors of a withheld instance that cleaning would keep.
 
@@ -460,6 +475,10 @@ def kept_descriptors(
     value written in another instance, such as the Series Description of the
     rest of a series, is not found from it. A value that a reviewer maps or
     empties, that no tier cleans, or that echoes an identifier stays in it.
+    So does a kept value in a sequence that also holds an attribute given C
+    that cleaning would not write, since that attribute's action without the
+    option may remove the sequence with both (D-020), which only an instance
+    that is written settles.
 
     Parameters
     ----------
@@ -469,6 +488,8 @@ def kept_descriptors(
         Its edits, with the values that they collected.
     cleaning : DescriptorCleaning
         What descriptors are cleaned with.
+    cleaned_elsewhere : collection of str
+        As for :func:`clean_descriptors`: descriptors that are not cleaned.
 
     Returns
     -------
@@ -481,8 +502,11 @@ def kept_descriptors(
         if element.action == "C" and not _is_roi_name(element.path)
     ]
     identifiers = _identifiers(edits)
-    kept = set()
-    for path, texts in _descriptor_texts(edits, paths).items():
+    texts_of = _descriptor_texts(
+        edits, [path for path in paths if path.tag not in cleaned_elsewhere]
+    )
+    written, kept = set(), set()
+    for path, texts in texts_of.items():
         results = clean_descriptor_values(
             path.tag,
             texts,
@@ -490,11 +514,27 @@ def kept_descriptors(
             identifiers=identifiers,
             vocabulary=cleaning.technique,
         )
-        if _written(results) is not None and any(
+        if _written(results) is None:
+            continue
+        written.add(path)
+        if any(
             result.outcome in _KEEPS_ITS_SOURCE and result.value for result in results
         ):
             kept.add(path)
-    return frozenset(kept)
+    fallen_back = [path for path in paths if path not in written]
+    return frozenset(
+        path
+        for path in kept
+        if not any(_shares_a_sequence(path, other) for other in fallen_back)
+    )
+
+
+def _shares_a_sequence(path: ElementPath, other: ElementPath) -> bool:
+    """Return whether ``path`` is in a sequence that holds, or is, ``other``."""
+    return any(
+        _within(path, ElementPath(other.items[:depth], tag))
+        for depth, (tag, _) in enumerate(other.items)
+    ) or _within(path, other)
 
 
 def _written(results: Sequence[CleanedDescriptor]) -> tuple[str, ...] | None:

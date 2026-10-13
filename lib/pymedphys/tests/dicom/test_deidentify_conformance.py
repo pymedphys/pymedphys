@@ -328,7 +328,10 @@ def test_the_method_digest_is_the_policys_with_the_same_vocabulary(
     assert statement.vocabulary_digest == expected
     text = conformance_markdown.render_markdown(statement)
     assert statement.method_digest in text
-    assert "and without a reviewed-names list, is" in text
+    assert (
+        "without the technique vocabulary of free-text descriptors, and "
+        "without a reviewed-names or reviewed descriptors list, is"
+    ) in text
     if vocabulary is None:
         assert "without a vocabulary" in text
     else:
