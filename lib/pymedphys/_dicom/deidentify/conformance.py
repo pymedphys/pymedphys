@@ -106,14 +106,10 @@ from .uid_registry import load_uid_values
 from .uid_roles import UIDRole, load_uid_roles
 from .walker import DESCENDED
 
-# The CID 7050 code of each option of Table E.1-1, which every policy can
-# compose.
+# The CID 7050 code of each option that a policy can compose: those of
+# Table E.1-1, then Clean Pixel Data and Clean Recognizable Visual Features,
+# which PS3.15 E.1.1 Note 11 leaves out of the table.
 OPTION_CODES: Mapping[str, str] = markers.OPTION_CODES
-
-# The CID 7050 codes of Clean Pixel Data and Clean Recognizable Visual
-# Features, which PS3.15 E.1.1 Note 11 leaves out of Table E.1-1. Neither is
-# supported, and the statement names both as not supported.
-PIXEL_OPTION_CODES: tuple[str, ...] = ("113101", "113102")
 
 _REPEATING = re.compile(r"^\((50|60)xx,")
 _CONCRETE_TAG = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")

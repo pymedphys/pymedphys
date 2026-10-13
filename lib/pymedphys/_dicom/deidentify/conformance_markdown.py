@@ -36,7 +36,6 @@ from .conformance import (
     GRAPHICS_NOT_CLEANED,
     OPTION_CODES,
     OVERLAY_GROUP,
-    PIXEL_OPTION_CODES,
     SEQUENCE_NOT_CLEANED,
     SEQUESTER,
     AttributeAction,
@@ -51,7 +50,7 @@ from .roi_names import Reason
 from .source import ENCAPSULATED_TRANSFER_SYNTAXES
 from .standard import (
     _RESERVED_ODD_GROUPS,
-    OPTIONS,
+    ALL_OPTIONS,
     PRIVATE_ATTRIBUTES_TAG,
     load_data_dictionary,
     load_table_e1_1a,
@@ -721,15 +720,16 @@ def render_markdown(statement: ConformanceStatement) -> str:
         f"{meanings[PROFILE_CODE]} (DCM {PROFILE_CODE}).",
         f"- Options applied: {options}.",
         "- Options that PyMedPhys can compose into a policy: "
-        + _join(option(o) for o in OPTIONS)
+        + _join(option(o) for o in ALL_OPTIONS)
         + ".",
         "- Options whose policies the engine applies: "
         + _join(option(o) for o in ENGINE_OPTIONS)
         + "; it refuses a policy that selects any other, and one that "
         "selects Retain Safe Private until reviewed rules say which private "
         "attributes are safe (D-028).",
-        "- Options that are not supported: "
-        + _join(coded(c) for c in PIXEL_OPTION_CODES)
+        "- Options that are not supported, since the engine does not yet "
+        "apply them: "
+        + (_join(option(o) for o in ALL_OPTIONS if o not in ENGINE_OPTIONS) or "none")
         + ".",
         "",
         "## Conformance claim",
