@@ -109,6 +109,7 @@ from pymedphys._imports import pydicom
 
 from . import output_names
 from .clean_graphics import overlay_in_pixel_data
+from .content_items import content_item_actions
 from .cleaners import apply_cleaners, cleaners_for
 from .descriptor_cleaning import (
     CLEAN_DESCRIPTORS,
@@ -691,7 +692,11 @@ class InstanceTransform:
     :class:`HeldEvidence`, which :class:`ReleaseGate` holds for review. The
     markers claim Clean Descriptors only for an instance that satisfies it.
     Under Clean Graphics, an instance whose overlay may lie in Pixel Data is
-    sequestered (:func:`~.clean_graphics.overlay_in_pixel_data`).
+    sequestered (:func:`~.clean_graphics.overlay_in_pixel_data`). Under Clean
+    Structured Content, the plan keeps each content-item sequence that it
+    can and gives the values of its content items the actions of their
+    concept names (:func:`~.content_items.content_item_actions`, D-047), as
+    does the plan that descriptor cleaning falls back to.
 
     Under Clean Recognizable Visual Features, an instance that can show a
     face (:func:`~.face_review.carries_visual_features`) satisfies the
@@ -740,6 +745,7 @@ class InstanceTransform:
                 reviewed_descriptors=cleaning.reviewed_descriptors.snapshot(),
             )
         self._rules = ElementRules(policy)
+        self._policy = policy
         self._options = policy.options
         self._key = key
         self._retained_uids = retained_uid_tags(policy)
@@ -921,7 +927,9 @@ class InstanceTransform:
         risk: tuple[object, ...] = _pixel_risk(dataset, record)
         if not classification.sequestered:
             risk += source_gaps(source, iod)
-        plan = plan_instance(source, self._rules, iod)
+        plan = plan_instance(
+            source, self._rules, iod, content_item_actions(source, self._policy, iod)
+        )
         edits = edit_instance(
             source, plan, self._key, record.patient, record.series_numberings
         )
@@ -961,7 +969,12 @@ class InstanceTransform:
             def fallen_back() -> InstanceEdits:
                 return edit_instance(
                     source,
-                    plan_instance(source, fallback, iod),
+                    plan_instance(
+                        source,
+                        fallback,
+                        iod,
+                        content_item_actions(source, fallback.policy, iod),
+                    ),
                     self._key,
                     record.patient,
                     record.series_numberings,

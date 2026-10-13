@@ -18,7 +18,7 @@ import struct
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import markers, policy
+from pymedphys._dicom.deidentify import markers, residuals
 from pymedphys._dicom.deidentify.codes import load_context_group
 from pymedphys._dicom.deidentify.file_layout import ElementPath, Region
 from pymedphys._dicom.deidentify.release_gate import (
@@ -139,26 +139,55 @@ def test_the_rule_selects_exactly_the_direct_identifiers_the_design_lists():
     assert direct_identifiers() == frozenset(LISTED)
 
 
-def _refused_option_codes():
-    """The code and the meaning of each option that the engine refuses."""
+def _option_codes():
+    """The code and the meaning of each option."""
     meanings = {
         row.code_value: row.code_meaning
         for row in load_context_group(7050).rows
         if row.scheme_designator == markers.DCM
     }
     return [
-        pytest.param(text, id=f"{option}-{kind}")
+        pytest.param(option, text, id=f"{option}-{kind}")
         for option, code in markers.OPTION_CODES.items()
-        if option not in policy.ENGINE_OPTIONS
         for kind, text in (("code", code), ("meaning", meanings[code]))
     ]
 
 
+def _clear_written_constants():
+    residuals.written_constants.cache_clear()
+    residuals._constant_keys.cache_clear()  # pylint: disable = protected-access
+    residuals._PREPARED.clear()  # pylint: disable = protected-access
+
+
+@pytest.fixture(name="refused")
+def _refused(monkeypatch):
+    """Return a function that makes the engine refuse an option.
+
+    The option's code leaves the codes that the markers write, as it would
+    if the engine did not apply the option, so that the test runs whatever
+    the engine applies.
+    """
+
+    def refuse(option):
+        monkeypatch.setattr(
+            markers,
+            "WRITTEN_OPTION_CODES",
+            markers.WRITTEN_OPTION_CODES - {markers.OPTION_CODES[option]},
+        )
+        _clear_written_constants()
+
+    yield refuse
+    _clear_written_constants()
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01")
-@pytest.mark.parametrize("value", _refused_option_codes())
-def test_a_patient_id_equal_to_a_refused_options_code_is_withheld_where_found(value):
+@pytest.mark.parametrize("option,value", _option_codes())
+def test_a_patient_id_equal_to_a_refused_options_code_is_withheld_where_found(
+    refused, option, value
+):
     # The markers never write the code of an option that the engine refuses,
     # so the search leaves neither it nor its meaning out (D-027).
+    refused(option)
     coverage = _coverage(SourceValue(ID_PATH, "LO", value))
 
     condition = release_condition(coverage, _written(value))

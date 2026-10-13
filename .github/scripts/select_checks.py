@@ -171,6 +171,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/ae_titles.py",
         "lib/pymedphys/_dicom/deidentify/common_instance_reference.py",
         "lib/pymedphys/_dicom/deidentify/compound_actions.py",
+        "lib/pymedphys/_dicom/deidentify/content_items.py",
         "lib/pymedphys/_dicom/deidentify/dates.py",
         "lib/pymedphys/_dicom/deidentify/diagnostics.py",
         "lib/pymedphys/_dicom/deidentify/dicom_validation.py",

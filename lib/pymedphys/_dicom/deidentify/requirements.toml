@@ -384,11 +384,22 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information encoded in SR Content Items or Acquisition Context or Specimen Preparation Sequence Items corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed.
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-010", "D-011"]
+status = "implemented"
+decisions = ["D-001", "D-010", "D-047"]
+implementation = [
+  "_dicom/deidentify/content_items.py",
+  "_dicom/deidentify/structured_content.py",
+  "_dicom/deidentify/walker.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/policy.py",
+]
 note = '''
-Structured Reports are sequestered (D-010).
+The engine applies the Clean Structured Content Option to a custom option set; no preset selects it (D-047).
+Structured Reports are sequestered (D-010), and no supported IOD defines Content Sequence or Waveform Annotation Sequence, so each takes its Basic Profile action.
+Acquisition Context Sequence and Specimen Preparation Sequence are kept where the IOD defines them, and each content item is cleaned by its Value Type and concept name, as Table E.3.4-1 gives them, generated for the concept names that DICOM and SNOMED CT code (D-001).
+An item whose concept name the table does not list keeps its codes and numbers, and its other values take their own rules, as in any kept sequence.
+Where the table removes an item, where an item cannot be read as one Value Type and one concept name, or where its concept name is coded in a scheme whose rows the table does not hold, including the retired SNOMED designators, the whole sequence takes its Basic Profile action, since a single item is not removed on its own.
 '''
 
 [[requirement]]
