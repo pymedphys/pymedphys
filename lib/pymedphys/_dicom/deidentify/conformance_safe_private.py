@@ -17,8 +17,9 @@
 PS3.15 E.3.10 requires that "The safe Private Attributes that are retained
 shall be described in the Conformance Statement".
 :func:`safe_private_section` describes, under the Retain Safe Private Option,
-how the reviewed rules settle the C that Table E.1-1 gives private
-attributes (:mod:`~pymedphys._dicom.deidentify.retained_private`),
+how the reviewed rules, and what an instance declares safe, settle the C
+that Table E.1-1 gives private attributes
+(:mod:`~pymedphys._dicom.deidentify.retained_private`),
 and lists each rule that can retain an attribute, with the meaning that
 Table E.3.10-1 gives it.
 :func:`~pymedphys._dicom.deidentify.conformance_markdown.render_markdown`
@@ -142,16 +143,42 @@ def safe_private_section(statement: ConformanceStatement) -> list[str]:
         "sequence, is among the retained strings that the QC pack lists for "
         "review.",
         "",
+        "An instance may also declare which of its private attributes are "
+        "safe, in Private Data Element Characteristics Sequence (0008,0300) at "
+        "the top level, which E.3.10 counts as a way of knowing. An item of it "
+        "describes the block that Private Group Reference (0008,0301) and "
+        "Private Creator Reference (0008,0302) name, the creator compared as "
+        "above, wherever that block is. An attribute that holds a value is "
+        "declared safe where Block Identifying Information Status (0008,0303) "
+        "is SAFE, or MIXED with the attribute listed in Nonidentifying Private "
+        "Elements (0008,0304), and declared possibly identifying where it is "
+        "UNSAFE, or MIXED without the attribute listed, or where Identifying "
+        "Private Elements (0008,0306) lists it. Where items disagree, possibly "
+        "identifying wins. An item that names a block but whose status is not "
+        "one of those values, or whose list of attributes cannot be read, "
+        "declares every attribute of the block possibly identifying. "
+        "An attribute declared possibly identifying is removed, even where a "
+        "rule would keep it, since it is then not known to be safe. One "
+        "declared safe that no rule lists takes the handling of its VR, as "
+        "written or, where the file does not write it, as Private Data Element "
+        "Value Representation (0008,030A) defines it, and is removed where "
+        "neither gives one or the two differ: a number or code string is "
+        "checked as above, with any number of values, and kept, a UID is "
+        "replaced, and text, dates, times, names, and bulk binary data are "
+        "removed. A sequence is parsed as above whatever the instance declares "
+        "of it.",
+        "",
         "Every other private attribute is removed: one whose rule is for text, "
         "since no reviewed cleaner cleans private text (D-009), or removes it; "
-        "one without a rule that is not such a sequence; one in a block "
-        "without such a creator; one whose value does not pass its handling's "
-        "check; and each element in an odd group that PS3.5 Section 7.8.1 does "
-        "not allow. A private creator is kept where an attribute of its block "
-        "in the same data set or item is kept or replaced, and removed "
-        "otherwise. Private Data Element Characteristics Sequence (0008,0300) "
-        "is not yet followed, and is removed by its supplementary rule; this "
-        "is among what the statement does not yet describe.",
+        "one that is not such a sequence and that neither a rule nor the "
+        "instance declares safe; one in a block without such a creator; one "
+        "whose value does not pass its handling's check; and each element in "
+        "an odd group that PS3.5 Section 7.8.1 does not allow. So an attribute "
+        "that Deidentification Action (0008,0307) asks to be processed is "
+        "removed, as E.3.10 allows. A private creator is kept where an "
+        "attribute of its block in the same data set or item is kept or "
+        "replaced, and removed otherwise. (0008,0300) itself is removed by its "
+        "supplementary rule, as under every policy.",
         "",
         f"These are the {len(statement.safe_private)} rules that can retain "
         f"an attribute, for Table E.3.10-1 of PS3.15 {statement.edition} and "

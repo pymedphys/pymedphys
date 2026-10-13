@@ -184,15 +184,6 @@ PENDING_SAFE_PRIVATE = (
     "The safe private attributes that the policy retains, and the basis on "
     "which each is retained (PS3.15 E.3.10)."
 )
-# Pending only for a policy that selects Retain Safe Private and whose
-# element rules the engine applies, until it applies every route of E.3.10.
-PENDING_SAFE_PRIVATE_ROUTES = (
-    "The private attributes that the route of PS3.15 E.3.10 that the engine "
-    "does not yet apply would retain, which it removes: a block that Private "
-    "Data Element Characteristics Sequence (0008,0300) marks SAFE, or an "
-    "attribute that it lists as nonidentifying, is retained only where a "
-    "reviewed rule retains it (D-035)."
-)
 # Pending only for tps-import, whose Z writes a synthetic birth date.
 PENDING_BIRTH_DATES = (
     "The synthetic birth date that Z writes to Patient's Birth Date "
@@ -959,7 +950,6 @@ def conformance_statement(
             (PENDING_CLEANING, "C" in actions),
             (PENDING_FALLBACK, not _falls_back(policy)),
             (PENDING_SAFE_PRIVATE, rules is None and safe_private),
-            (PENDING_SAFE_PRIVATE_ROUTES, rules is not None and safe_private),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
             (PENDING_PIXEL_DATA, CLEAN_PIXEL_DATA in policy.options),
         )

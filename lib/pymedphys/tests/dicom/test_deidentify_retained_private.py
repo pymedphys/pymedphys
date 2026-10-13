@@ -713,11 +713,8 @@ def test_the_statement_lists_the_safe_private_attributes_retained():
     listed = [rule for rule in rules.retained() if rule.handling is not Handling.TEXT]
     assert statement.safe_private == tuple(listed)
     assert len(listed) == 280 + 65 + 7 + 55
-    # It says what the routes of E.3.10 not yet applied would retain.
-    assert statement.pending == (conformance.PENDING_SAFE_PRIVATE_ROUTES,)
     text = conformance_markdown.render_markdown(statement)
     assert "## Safe private attributes" in text
-    assert conformance.PENDING_SAFE_PRIVATE_ROUTES in text
     rows = [line for line in text.splitlines() if line.startswith(f"| {PET} |")]
     assert rows == [
         f"| {PET} | (7053,xx00) | DS | 1 | numeric | SUV Factor - Multiplying "
