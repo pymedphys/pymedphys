@@ -396,6 +396,8 @@ implementation = [
   "_dicom/deidentify/technique_descriptors.py",
   "_dicom/deidentify/common_names.py",
   "_dicom/deidentify/run_report.py",
+  "_dicom/deidentify/run_qc.py",
+  "_dicom/deidentify/qc_pack.py",
 ]
 note = '''
 The first supported release includes the Option for ROI names (D-009).
@@ -409,8 +411,10 @@ A private command records a reviewer's decisions from a CSV file in the list, al
 The release report counts the ROI Names of the structure sets that descriptor cleaning cleaned, each by its outcome, and the distinct names sent for review by reason, whether then held or emptied unreviewed, without a name.
 A run can also be given an institutional list converted from CSV, as the maintainer decided on 6 October 2026; it renames nothing, and the QC pack shows the reviewer of a held name the list's names it matched.
 A ROI Name kept or mapped by a reviewer's decision in the reviewed-names list has passed pooled human review, since each distinct name is reviewed once for the collection.
-A reviewed descriptors list, kept as the reviewed-names list is and filled by a private command of its own, records a reviewer's decision to keep, map, or empty one value of each other text attribute given C, and the reviewed tier for those values checks what a kept or mapped value would write for echoes of identifiers, also within its letters and digits, and holds every other value; runs do not yet apply it, so those attributes still take their action without the Option.
-For the technique descriptors of D-036, such as Series Description and Protocol Name, an automatic tier keeps a value that the list has no decision on where every word of it is in the reviewed technique vocabulary, which leaves out common personal names that are not reviewed exceptions, and it echoes no identifier; runs do not yet apply it either.
+A reviewed descriptors list, kept as the reviewed-names list is and filled by a private command of its own, records a reviewer's decision to keep, map, or empty one value of each other text attribute given C, and the reviewed tier for those values checks what a kept or mapped value would write for echoes of identifiers, also within its letters and digits, and holds every other value.
+For the technique descriptors of D-036, such as Series Description and Protocol Name, an automatic tier keeps a value that the list has no decision on where every word of it is in the reviewed technique vocabulary, which leaves out common personal names that are not reviewed exceptions, and it echoes no identifier.
+In a run, descriptor cleaning applies both tiers to each such descriptor whose decoded value it collected in its dictionary VR, each value of a multi-valued VR alone, and writes the element with what they give only where every value is cleaned, at least one has text, and no kept value is beside a mapped or emptied one; every other such element takes its action without the Option, and still claims it where that action removes or replaces it.
+A kept value is left out of the residual search and listed among the retained strings; the QC pack lists each element's values, outcomes, and whether it was written; the release report counts them without a value; and the method digest takes the list's keyed digest and the vocabulary's SHA-256 (D-024).
 '''
 
 [[requirement]]
@@ -420,7 +424,7 @@ text = '''
 The manner of cleaning shall be described in the Conformance Statement.
 '''
 status = "implemented"
-decisions = ["D-009"]
+decisions = ["D-009", "D-036"]
 implementation = [
   "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/conformance_markdown.py",
@@ -428,7 +432,8 @@ implementation = [
 note = '''
 The conformance statement describes how ROI Name (3006,0026) is cleaned under Clean Descriptors: automatic renaming against the published TG-263 edition that it names, or none without such a vocabulary, the reasons a name goes to review, the reviewers' decisions, the checks of what a reviewed decision would write, that a run's method digest covers its reviewed list (D-024), and what cleaning writes for each name, including that a held name holds its instance for review.
 It also says that a run can be given an institutional list of ROI names, which renames nothing and only shows the reviewer of a held name the list's names it matched.
-Every other attribute given C under Clean Descriptors takes the action that the policy gives it without that option, as the maintainer decided on 6 October 2026 (D-009); the statement lists that action for each, at each place, as the one the engine applies, so for `basic-clean-descriptors` it lists no manner of cleaning as pending.
+It describes how free-text descriptors are cleaned: the reviewed descriptors list's decisions, the technique descriptors and the rules by which the technique vocabulary keeps a value (D-036), the echo checks, and when an element is written with what cleaning gives it.
+Every other attribute given C under Clean Descriptors, and a free-text descriptor that cleaning does not write, takes the action that the policy gives it without that option, as the maintainer decided on 6 October 2026 (D-009); the statement lists that action for each, at each place, as the one the engine applies, so for `basic-clean-descriptors` it lists no manner of cleaning as pending.
 The manner of cleaning an attribute to which the policy gives C without Clean Descriptors too and that no cleaner cleans is listed as pending until its option is implemented; the dates and times under Modified Dates are described with their cleaner (PS3.15-E.3.6-04), and the free text that Retain Patient Characteristics gives C is described with the Option's cleaner, which settles Allergies, Patient State, and Sex Parameters for Clinical Use Category Comment before Clean Descriptors where both are selected (PS3.15-E.3.7-02).
 '''
 

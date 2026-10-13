@@ -58,8 +58,8 @@ vocabulary words can still be a person's name, such as ``HAND``; that
 residual risk is what the maintainer accepted with this tier, and the echo
 check holds such a value where it names a person of the instance.
 
-The vocabulary changes what the engine writes, so the method digest is to
-cover it through :attr:`TechniqueVocabulary.sha256`, which is computed over
+The vocabulary changes what the engine writes, so the method digest covers
+it through :attr:`TechniqueVocabulary.sha256`, which is computed over
 the effective attributes, words, units, kernels, and names after every term,
 name, and exclusion is applied.
 """
