@@ -827,10 +827,11 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "",
         "## Method digest",
         "",
-        f"The method digest of {preset}, {vocabulary} and without a "
-        f"reviewed-names list, is "
-        f"`{statement.method_digest}` (D-024). It identifies the policy and "
-        "the PyMedPhys implementation and resources that apply it.",
+        f"The method digest of {preset}, {vocabulary}, without the technique "
+        "vocabulary of free-text descriptors, and without a reviewed-names "
+        f"or reviewed descriptors list, is `{statement.method_digest}` "
+        "(D-024). It identifies the policy and the PyMedPhys implementation "
+        "and resources that apply it.",
         "",
         "## Supported instances",
         "",

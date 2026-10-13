@@ -1497,9 +1497,10 @@ def report_document(report: ReleaseReport) -> dict:
         :func:`~pymedphys._dicom.deidentify.output_names.instance_path`
         gives, listed once, one of the labels ``S-0001`` to ``S-n`` for ``n``
         sequestered instances, a path of tags, a code that the engine
-        defines for its stage, a positive count, a structural check's count
-        from 0, no more sequestered than ``sequestered`` lists, or true or
-        false, or is not of its class. The message names the field, never its value.
+        defines for its stage, a positive count, the descriptors'
+        ``fell_back`` count from 0, a structural check's count from 0, no
+        more sequestered than ``sequestered`` lists, or true or false, or is
+        not of its class. The message names the field, never its value.
     """
     return {
         "format": FORMAT,
