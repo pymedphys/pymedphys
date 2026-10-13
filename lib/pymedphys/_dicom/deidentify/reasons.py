@@ -19,7 +19,9 @@ They are here, apart from :mod:`~pymedphys._dicom.deidentify.run` and
 them, so that :mod:`~pymedphys._dicom.deidentify.release_report` can name
 them without importing either; and those of descriptor cleaning, which
 :mod:`~pymedphys._dicom.deidentify.descriptor_cleaning` re-exports, since
-it imports the QC pack, which imports the release report.
+it imports the QC pack, which imports the release report; and those of the
+face review (:mod:`~pymedphys._dicom.deidentify.face_review`), for the same
+reason.
 """
 
 from __future__ import annotations
@@ -160,3 +162,28 @@ class HeldPixelData:
     def __post_init__(self) -> None:
         if not isinstance(self.reason, PixelDataReason):
             raise TypeError("a held instance's pixel data need their reason")
+
+
+class VisualFeaturesReason(enum.Enum):
+    """Why an instance that can show a face does not satisfy the option.
+
+    The Clean Recognizable Visual Features Option, under which such an
+    instance is held for review.
+    """
+
+    # the reviewer saw a recognisable face in its series' previews
+    FACE_PRESENT = "face-present"
+    # no reviewer's verdict covers its source file: its series has no
+    # verdict, or the file is not one that the review saw
+    NO_FACE_VERDICT = "no-face-verdict"
+
+
+@dataclasses.dataclass(frozen=True)
+class HeldVisualFeatures:
+    """An instance held for review because it does not satisfy the option."""
+
+    reason: VisualFeaturesReason
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.reason, VisualFeaturesReason):
+            raise TypeError("a held instance's visual features need their reason")

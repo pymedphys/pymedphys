@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+
 """Write the conformance statement of a policy as CommonMark.
 
 :func:`render_markdown` writes a
@@ -642,6 +644,41 @@ def _cleaned(
     return lines
 
 
+# When an instance gains each option's code that it gains only after review.
+_REVIEW_CONDITIONS = {
+    markers.OPTION_CODES["clean_descriptors"]: (
+        f"only in an instance in which every {_ROI_NAME_NAMED} was renamed by "
+        "the automatic tier, was empty, or took a reviewer's "
+        "decision. Every other attribute given C is a free-text "
+        "descriptor that cleaning writes, or takes the action "
+        "that the policy gives it without Clean Descriptors, as the "
+        "Actions table shows (D-009); where that action removes "
+        "or replaces it, the instance still meets the option, since "
+        "PS3.15 E.3.5 specifies what the option removes, and Table "
+        "E.1-1 gives the minimum actions. An instance with a held "
+        "name, a name emptied without review, or another attribute "
+        "given C that that action keeps does not gain that code"
+    ),
+    markers.OPTION_CODES["clean_recognizable_visual_features"]: (
+        "only in an instance that cannot show a face, having no Pixel Data, "
+        "Float Pixel Data, or Double Float Pixel Data and not being an RT "
+        "Structure Set, or whose source file is, by its SHA-256, in a series "
+        "that a reviewer marked free of a recognisable face in the attested "
+        "QC pack of an earlier run of the same files. Such an instance also "
+        "has Recognizable Visual Features (0028,0302) set to NO, as PS3.15 "
+        "E.3.2 requires, including in an IOD that does not define the "
+        "attribute, which of the supported IODs are RT Plan, RT Structure "
+        "Set, and MR Spectroscopy. There it is a standard attribute of a "
+        "Standard Extended SOP Class (PS3.2 Section 7.3), added to the top "
+        "level of the data set as an attribute of the instance, where every "
+        "PS3.3 module that defines it, such as the General Image Module, "
+        "places it. The face review removes no face from the pixel data, so "
+        "any other instance that can show a face does not gain that code, "
+        "and is held for review, so it is never released"
+    ),
+}
+
+
 def _inserted(
     statement: ConformanceStatement,
     named: Callable[[str], str],
@@ -655,22 +692,8 @@ def _inserted(
             f"Designator `{markers.DCM}` and its Code Meaning, in this order: "
             f"{_join(coded(c) for c in found.codes)}"
         )
-        if found.review_codes:
-            codes += (
-                ", then "
-                f"{_join(coded(c) for c in found.review_codes)} only in an "
-                f"instance in which every {_ROI_NAME_NAMED} was renamed by "
-                "the automatic tier, was empty, or took a reviewer's "
-                "decision. Every other attribute given C is a free-text "
-                "descriptor that cleaning writes, or takes the action "
-                "that the policy gives it without Clean Descriptors, as the "
-                "Actions table shows (D-009); where that action removes "
-                "or replaces it, the instance still meets the option, since "
-                "PS3.15 E.3.5 specifies what the option removes, and Table "
-                "E.1-1 gives the minimum actions. An instance with a held "
-                "name, a name emptied without review, or another attribute "
-                "given C that that action keeps does not gain that code"
-            )
+        for code in found.review_codes:
+            codes += f", then {coded(code)} " + _REVIEW_CONDITIONS[code]
         codes += (
             ". A code is not added where an item already present has the same "
             "Code Value and Coding Scheme Designator, and the same Coding "

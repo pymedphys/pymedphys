@@ -648,6 +648,24 @@ def test_every_released_instance_claims_the_policys_options(policy_run):
             assert codes == expected
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.2-02")
+def test_recognizable_visual_features_is_no_exactly_where_the_option_is_claimed(
+    policy_run,
+):
+    corpus, released = policy_run.corpus, policy_run.released
+    claimed = "clean_recognizable_visual_features" in policy_run.spec.selected
+    assert released
+
+    for position, data in released.items():
+        source = _read(corpus.files[position].data)
+        written = _read(data).get("RecognizableVisualFeatures")
+        if claimed:
+            # In every IOD, whether or not it defines the attribute.
+            assert written == "NO", corpus.files[position].manifest.iod
+        else:
+            assert written == source.get("RecognizableVisualFeatures")
+
+
 @pytest.mark.deid_requirement("PS3.15-E.1.1-05", "PS3.15-E.2-01")
 def test_every_released_instance_carries_the_profiles_markers(policy_run):
     # E.1.1: Patient Identity Removed is YES and De-identification Method

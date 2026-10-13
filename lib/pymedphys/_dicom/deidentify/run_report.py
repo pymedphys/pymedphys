@@ -133,6 +133,10 @@ class ReleaseReporter:
         applies to ROI Names, or None without one, as
         :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
+    face_review : str, optional
+        The reference of the attested QC pack whose face verdicts the run
+        applies under the Clean Recognizable Visual Features Option, or
+        None, the default, without one.
     reviewed_descriptors : str or None, optional
         The keyed digest of the reviewed descriptors list that descriptor
         cleaning applies to free-text descriptors, or None, the default,
@@ -157,6 +161,7 @@ class ReleaseReporter:
         *,
         vocabulary: tg263.Nomenclature | None,
         reviewed_roi_names: str | None,
+        face_review: str | None = None,
         reviewed_descriptors: str | None = None,
         technique_vocabulary: str | None = None,
         text_finder: Mapping[str, object] | None = None,
@@ -166,6 +171,7 @@ class ReleaseReporter:
         self._policy = policy
         self._vocabulary = vocabulary
         self._reviewed_roi_names = reviewed_roi_names
+        self._face_review = face_review
         self._reviewed_descriptors = reviewed_descriptors
         self._technique_vocabulary = technique_vocabulary
         self._text_finder = text_finder
@@ -252,6 +258,7 @@ class ReleaseReporter:
             self._policy,
             vocabulary=self._vocabulary,
             reviewed_roi_names=self._reviewed_roi_names,
+            face_review=self._face_review,
             reviewed_descriptors=self._reviewed_descriptors,
             technique_vocabulary=self._technique_vocabulary,
             text_finder=self._text_finder,
@@ -491,8 +498,8 @@ def held_instances(
     Raises
     ------
     TypeError
-        For a held outcome's reason that is neither a held ROI Name, why a
-        pixel option held it, nor a release gate's reason.
+        For a held outcome's reason that is not a held ROI Name, why a pixel
+        option held it, held visual features, or a release gate's reason.
     """
     return release_report.held_for_review(
         getattr(outcome, "reasons")

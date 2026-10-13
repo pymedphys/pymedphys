@@ -131,7 +131,7 @@ ENGINE_APPLIES: Mapping[str, bool] = types.MappingProxyType(
         # and the instance held for review (D-037).
         CLEAN_PIXEL_DATA: True,
         # Clean Recognizable Visual Features.
-        CLEAN_RECOGNIZABLE_VISUAL_FEATURES: False,
+        CLEAN_RECOGNIZABLE_VISUAL_FEATURES: True,
     }
 )
 # The options whose policies the engine accepts, in the order of ALL_OPTIONS.

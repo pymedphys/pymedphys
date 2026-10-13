@@ -96,6 +96,7 @@ _SECTIONS = (
     "method",
     "runtime",
     "qc_review",
+    "face_review",
     "released",
     "sequestered",
     "held_for_review",
@@ -160,6 +161,7 @@ def to_markdown(report: str) -> str:
         *_method(document["method"]),
         *_runtime(document["runtime"]),
         *_qc_review(document["qc_review"]),
+        *_face_review(document["face_review"]),
         *_released(document["released"]),
         *_sequestered(document["sequestered"]),
         *_held(document["held_for_review"]),
@@ -304,6 +306,23 @@ def _qc_review(section: object) -> list[Block]:
                 ),
             ],
         ),
+    ]
+
+
+def _face_review(section: object) -> list[Block]:
+    if section is None:
+        return []
+    section = _fields("face_review", section, ("reference",))
+    return [
+        ["## Face review"],
+        [
+            "Under the Clean Recognizable Visual Features Option, an instance "
+            "that can show a face is released only where a reviewer saw no "
+            "recognisable face in its series, in the earlier run's confidential "
+            "QC pack with this opaque reference: "
+            + _code("face_review reference", section["reference"])
+            + "."
+        ],
     ]
 
 

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+
 """The release report's record of the method and the runtime environment.
 
 The sentinel tests put recognisable text where a report could leak it, in
@@ -192,6 +194,7 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "method",
         "runtime",
         "qc_review",
+        "face_review",
         "released",
         "sequestered",
         "held_for_review",

@@ -40,7 +40,8 @@ to a copy of a data set and changes nothing else in it:
   decision in the reviewed-names list (D-009); a descriptor removed or
   replaced by its Basic Profile action instead still meets it. Clean Pixel
   Data likewise goes unsatisfied where an instance's pixel data await review
-  (D-037).
+  (D-037), and Clean Recognizable Visual Features where an instance is held
+  for its face review.
   A code is not added where an item already present has the same Code
   Value and Coding Scheme Designator, and the same Coding Scheme Version
   where either has one. ``tps-import`` adds no code, and the sequence is left
@@ -52,6 +53,10 @@ to a copy of a data set and changes nothing else in it:
   with Modified Dates, and otherwise REMOVED, or the value already present
   where that is stricter, in the order UNMODIFIED, MODIFIED, REMOVED. A value already
   present that is not one of these is refused.
+- Recognizable Visual Features (0028,0302) is NO, replacing any value
+  already present, in an instance that satisfies the Clean Recognizable
+  Visual Features Option, as PS3.15 E.3.2 requires whether or not the
+  instance's IOD defines the attribute, and is otherwise left as it is.
 - Contributing Equipment Sequence (0018,A001) keeps the items already present
   and, unless one of them has the same Manufacturer, Software Versions in the
   same order, and purpose of reference, gains one that names PyMedPhys as its
@@ -161,16 +166,19 @@ DEIDENTIFYING_EQUIPMENT = "109104"
 TEMPORAL_VALUES = ("UNMODIFIED", "MODIFIED", "REMOVED")
 # The selected options that a policy claiming conformance can leave
 # unsatisfied, each in an instance whose own outcome does not meet it: Clean
-# Descriptors, where it retains a descriptor without review, and Clean Pixel
-# Data, where its pixel data await review.
+# Descriptors, where it retains a descriptor without review, Clean Pixel Data,
+# where its pixel data await review, and Clean Recognizable Visual Features,
+# where it is held for its face review.
 _CLEAN_DESCRIPTORS = "clean_descriptors"
 _PIXEL_DATA = "clean_pixel_data"
-_REVIEWED_OPTIONS = (_CLEAN_DESCRIPTORS, _PIXEL_DATA)
+_VISUAL_FEATURES = "clean_recognizable_visual_features"
+_REVIEWED_OPTIONS = (_CLEAN_DESCRIPTORS, _PIXEL_DATA, _VISUAL_FEATURES)
 
 _PATIENT_IDENTITY_REMOVED = "(0012,0062)"
 _DEIDENTIFICATION_METHOD = "(0012,0063)"
 _DEIDENTIFICATION_METHOD_CODES = "(0012,0064)"
 _TEMPORAL_INFORMATION_MODIFIED = "(0028,0303)"
+_RECOGNIZABLE_VISUAL_FEATURES = "(0028,0302)"
 _CONTRIBUTING_EQUIPMENT = "(0018,A001)"
 _MANUFACTURER = "(0008,0070)"
 _SOFTWARE_VERSIONS = "(0018,1020)"
@@ -229,6 +237,11 @@ class Markers:
     purpose_of_reference : CodedConcept
         The item's Purpose of Reference Code Sequence (0040,A170) item: DCM
         109104 "De-identifying Equipment".
+    recognizable_visual_features : str or None
+        Recognizable Visual Features (0028,0302): ``"NO"`` in an instance
+        that satisfies the Clean Recognizable Visual Features Option,
+        whether or not its IOD defines the attribute (PS3.15 E.3.2), or
+        None, which leaves it as it is.
     """
 
     patient_identity_removed: str
@@ -238,6 +251,7 @@ class Markers:
     manufacturer: str
     software_versions: tuple[str, ...]
     purpose_of_reference: CodedConcept
+    recognizable_visual_features: str | None = None
 
 
 @functools.cache
@@ -267,9 +281,10 @@ def _satisfied(policy: Policy, satisfied: Iterable[str]) -> tuple[str, ...]:
     """Return the satisfied options in the policy's order, after checking them.
 
     Under a policy that can claim conformance, every selected option but
-    Clean Descriptors and Clean Pixel Data must be satisfied, so that the
-    codes name each option whose actions the instance carries. An option
-    that the policy records as unmet is never required.
+    Clean Descriptors, Clean Pixel Data, and Clean Recognizable Visual
+    Features must be satisfied, so that the codes name each option whose
+    actions the instance carries. An option that the policy records as
+    unmet is never required.
     """
     if isinstance(satisfied, str):
         raise TypeError(
@@ -353,6 +368,9 @@ def _check(found: Markers) -> None:
     if found.patient_identity_removed != "YES":
         name = _dictionary()[_PATIENT_IDENTITY_REMOVED].name
         problems.append(f"{name} {_PATIENT_IDENTITY_REMOVED} is not YES")
+    if found.recognizable_visual_features not in (None, "NO"):
+        name = _dictionary()[_RECOGNIZABLE_VISUAL_FEATURES].name
+        problems.append(f"{name} {_RECOGNIZABLE_VISUAL_FEATURES} is not NO")
     if found.temporal_information_modified not in TEMPORAL_VALUES:
         name = _dictionary()[_TEMPORAL_INFORMATION_MODIFIED].name
         problems.append(
@@ -411,9 +429,11 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         must have every selected option satisfied except Clean Descriptors,
         which an instance that retains a descriptor that has not passed
         pooled human review does not satisfy; one whose descriptors are
-        removed or replaced by their Basic Profile actions instead does; and
+        removed or replaced by their Basic Profile actions instead does;
         except Clean Pixel Data, which an instance whose pixel data await
-        review does not satisfy (D-037).
+        review does not satisfy (D-037); and except Clean Recognizable Visual
+        Features, which an instance held for its face review does not
+        satisfy.
         ``tps-import``, which claims no conformance and adds no codes, needs
         none satisfied, and never the Retain Device Identity that it records
         as unmet.
@@ -433,10 +453,11 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         If ``digest`` is not 64 lowercase hexadecimal digits; if
         ``satisfied`` names an option that the policy does not select, or,
         under a policy that can claim conformance, leaves out a selected
-        option other than Clean Descriptors and Clean Pixel Data, in which
-        case the message names each option left out; or if the policy
-        selects an option without a CID 7050 code here, which a validated
-        policy never does. The message does not quote the digest.
+        option other than Clean Descriptors, Clean Pixel Data, and Clean
+        Recognizable Visual Features, in which case the message names each
+        option left out; or if the policy selects an option without a CID
+        7050 code here, which a validated policy never does. The message
+        does not quote the digest.
     MarkerError
         If the policy resolves a conflict between options by keeping the
         value, so that Patient Identity Removed could be neither YES nor NO;
@@ -497,6 +518,9 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         manufacturer=MANUFACTURER,
         software_versions=software_versions,
         purpose_of_reference=_code(7005, DEIDENTIFYING_EQUIPMENT),
+        recognizable_visual_features=(
+            "NO" if policy.claims_conformance and _VISUAL_FEATURES in options else None
+        ),
     )
     _check(found)
     return found
@@ -753,4 +777,10 @@ def _marked(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset:
         marked.pop(_int_tag(_DEIDENTIFICATION_METHOD_CODES), None)
     _set(marked, _TEMPORAL_INFORMATION_MODIFIED, [temporal])
     _set(marked, _CONTRIBUTING_EQUIPMENT, equipment_items)
+    if markers.recognizable_visual_features is not None:
+        _set(
+            marked,
+            _RECOGNIZABLE_VISUAL_FEATURES,
+            [markers.recognizable_visual_features],
+        )
     return marked

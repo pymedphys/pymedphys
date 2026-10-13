@@ -19,6 +19,10 @@ form that dciodvfy and dcentvfy print, or validations made here. The corpus
 tests (``test_deidentify_dicom_validation_corpus.py``) run the validators.
 """
 
+# The tests share the helpers that write validator output and data sets, so
+# they stay in one module.
+# pylint: disable = too-many-lines
+
 import collections
 import json
 import logging
@@ -834,6 +838,31 @@ def test_a_premise_holds_where_a_listed_instance_is_referenced_elsewhere(tmp_pat
         dicom_validation.OTHER_STUDIES_REFERENCED
     }
     assert dicom_validation.output_premises(tmp_path / "missing.dcm") == set()
+
+
+def test_a_premise_holds_where_the_output_claims_clean_recognizable_visual_features(
+    tmp_path,
+):
+    def written(name, *codes):
+        dataset = pydicom.Dataset()
+        dataset.DeidentificationMethodCodeSequence = [
+            _item(CodeValue=value, CodingSchemeDesignator=designator)
+            for value, designator in codes
+        ]
+        dataset.file_meta = pydicom.dataset.FileMetaDataset()
+        dataset.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+        dataset.save_as(tmp_path / name, enforce_file_format=False)
+        return tmp_path / name
+
+    claimed = written("claimed.dcm", ("113100", "DCM"), ("113102", "DCM"))
+    unclaimed = written("unclaimed.dcm", ("113100", "DCM"))
+    elsewhere = written("elsewhere.dcm", ("113102", "99LOCAL"))
+
+    assert dicom_validation.output_premises(claimed) == {
+        dicom_validation.VISUAL_FEATURES_CLAIMED
+    }
+    assert dicom_validation.output_premises(unclaimed) == set()
+    assert dicom_validation.output_premises(elsewhere) == set()
 
 
 INVALID_UID = "1.02.3"
