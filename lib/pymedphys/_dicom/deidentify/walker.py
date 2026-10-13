@@ -103,8 +103,20 @@ Under Clean Structured Content, each element that
 a content-item sequence that is kept or the value of one of its content
 items, takes the action that it gives in place of its rule's (D-047).
 
-Making the plan reads no value: only the structure that the source evidence
-has already validated, and the actions that it is given. The plan, its ``repr``, and its sequestrations name
+Under the Retain Safe Private Option, the C that Table E.1-1 gives each
+element of a private group is settled here, by the reviewed safe private
+rules (:func:`~pymedphys._dicom.deidentify.retained_private.private_actions`):
+a private creator or data element is kept (K), a private UID is
+replaced (U), or the element is removed (X). A private sequence that a rule
+keeps is kept as a container, so that each element in its items takes its
+own rule. A private data element that a rule keeps or replaces, written
+without its VR, in implicit VR or as UN, is read by the rule's VR.
+
+Making the plan reads no value but, under the Retain Safe Private Option,
+the private creators and the private values that a rule would keep, which
+decide their actions: otherwise only the structure that the source evidence
+has already validated, and the actions that it is given. The plan, its
+``repr``, and its sequestrations name
 tags, item numbers, actions, and VRs, never a value.
 
 Examples
@@ -147,6 +159,7 @@ from .dummy_values import DUMMY_VRS, ICC_PROFILE
 from .element_rules import ElementRule, ElementRules, RuleSource
 from .file_layout import ElementPath
 from .iods import IOD
+from .retained_private import PrivatePlan, private_plan
 from .source import SourceEvidence
 from .standard import dictionary_attribute
 
@@ -258,8 +271,9 @@ class ElementPlan:
     path : ElementPath
     vr : str or None
         The VR that the value is read by: as written, or, in implicit VR or
-        in place of UN, the one VR that the pinned data dictionary gives;
-        ``None`` where neither gives one.
+        in place of UN, the one VR that the pinned data dictionary gives, or,
+        for a private element that a reviewed safe private rule keeps or
+        replaces, the rule's; ``None`` where none gives one.
     rule : ElementRule or None
         The element's rule, or ``None`` if it is removed with a sequence.
     action : str
@@ -425,12 +439,15 @@ def _plan(
     forced: _PlainRemovals,
     content_items: Mapping[ElementPath, str],
     lapsed: frozenset[ElementPath] = frozenset(),
+    private: PrivatePlan | None = None,
 ) -> tuple[InstancePlan, _PlainRemovals]:
     """Plan every element, removing what ``forced`` says plain X removes.
 
     An element in ``content_items`` takes the action given there in place of
-    its rule's. The sequences in ``lapsed`` are removed too. Also return what
-    each plain X found removes with its attribute.
+    its rule's. The sequences in ``lapsed`` are removed too. ``private`` gives
+    the action of each element of a private group under the Retain Safe
+    Private Option. Also return what each plain X found removes with its
+    attribute.
     """
     elements: list[ElementPlan] = []
     sequestrations: list[Sequestration] = []
@@ -456,7 +473,11 @@ def _plan(
             rule = ElementRule(
                 path.tag, RuleSource.CONTENT_ITEM, content_items[path], path.tag
             )
-        action = _resolve(iod, path, rule)
+        if rule.source is RuleSource.PRIVATE and private is not None:
+            action = private.actions.get(path, _REMOVED)
+            vr = private.vrs.get(path, vr)
+        else:
+            action = _resolve(iod, path, rule)
         removed_for = forced.removed_for(path) if action != _REMOVED else None
         lapses = path in lapsed and action != _REMOVED
         if removed_for is not None or lapses:
@@ -560,11 +581,18 @@ def plan_instance(
     -------
     InstancePlan
     """
-    plan, removals = _plan(source, rules, iod, _PlainRemovals(), content_items)
+    private = (
+        None if rules.safe_private is None else private_plan(source, rules.safe_private)
+    )
+    plan, removals = _plan(
+        source, rules, iod, _PlainRemovals(), content_items, private=private
+    )
     if removals.sequences or removals.overlay_groups:
         # Planning again only removes more, so it finds nothing new to force.
-        plan, _ = _plan(source, rules, iod, removals, content_items)
+        plan, _ = _plan(source, rules, iod, removals, content_items, private=private)
     lapsed = _lapsed(plan, source)
     if lapsed:
-        plan, _ = _plan(source, rules, iod, removals, content_items, lapsed)
+        plan, _ = _plan(
+            source, rules, iod, removals, content_items, lapsed, private=private
+        )
     return plan

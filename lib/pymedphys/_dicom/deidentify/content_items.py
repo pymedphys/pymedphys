@@ -53,7 +53,7 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   K, D, or C, as Table E.1-1's options give an attribute. C under Clean
   Descriptors, which no cleaner of content items settles, falls back to the
   action that the concept takes without that option, as an attribute's does
-  (D-009). Where the remaining options give K and C, C applies, as
+  where descriptor cleaning does not write it (D-009). Where the remaining options give K and C, C applies, as
   ``tps-import`` resolves Retain Device Identity's K and Modified Dates' C;
   in 2026d no concept has both. C under Modified Dates is settled by its
   cleaner (:mod:`.modified_dates`), by the temporal role of the value
@@ -144,7 +144,8 @@ METHOD = (
     "concept name the table lists takes the action that the selected "
     "options give it, or else its Basic Profile action, on the attribute "
     "that holds its value; C under Clean Descriptors takes the action "
-    "without that option, as for other attributes (D-009), and C under "
+    "without that option, as for an attribute that descriptor cleaning "
+    "does not write (D-009), and C under "
     "Retain Longitudinal Temporal Information with Modified Dates modifies "
     "the date, time, or datetime by its temporal role. Every other element "
     "of an item, and the value of an item whose concept name the table does "

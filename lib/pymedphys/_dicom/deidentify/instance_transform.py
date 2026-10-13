@@ -117,6 +117,7 @@ from .descriptor_cleaning import (
     HeldRoiName,
     clean_descriptors,
     fallback_policy,
+    kept_descriptors,
 )
 from .edits import Edit, EditKind, InstanceEdits, edit_instance, read_values
 from .element_rules import ElementRules
@@ -618,10 +619,12 @@ class InstanceTransform:
         Defaults to :func:`~pymedphys._dicom.deidentify.iods.load_iod_tables`.
     cleaning : DescriptorCleaning, optional
         The vocabulary and reviewed-names list that ROI Names are cleaned
-        with, which a policy selecting Clean Descriptors needs, and no other
-        policy takes. The transform applies the list's decisions as they
-        stand when it is made, the version whose keyed digest its markers and
-        release report record; a decision recorded later does not apply.
+        with, and the reviewed descriptors list and technique vocabulary
+        that free-text descriptors are cleaned with, which a policy
+        selecting Clean Descriptors needs, and no other policy takes. The
+        transform applies each list's decisions as they stand when it is
+        made, the version whose keyed digest its markers and release report
+        record; a decision recorded later does not apply.
     unvalidated_policy : bool, default False
         Allow a policy that is not enabled, such as a preset whose behaviour
         is not yet validated. For tests and validation runs only; nothing
@@ -688,9 +691,11 @@ class InstanceTransform:
                 "Clean Descriptors"
             )
         if cleaning is not None:
-            # One version of the list, for both cleaning and its digest.
+            # One version of each list, for both cleaning and its digest.
             cleaning = dataclasses.replace(
-                cleaning, reviewed=cleaning.reviewed.snapshot()
+                cleaning,
+                reviewed=cleaning.reviewed.snapshot(),
+                reviewed_descriptors=cleaning.reviewed_descriptors.snapshot(),
             )
         self._rules = ElementRules(policy)
         self._policy = policy
@@ -706,8 +711,17 @@ class InstanceTransform:
         self.review_queue = ReviewQueue()
         nomenclature = None if cleaning is None else cleaning.nomenclature
         reviewed = None if cleaning is None else cleaning.reviewed.keyed_digest(key)
+        descriptors = technique = None
+        if cleaning is not None:
+            descriptors = cleaning.reviewed_descriptors.keyed_digest(key)
+            if cleaning.technique is not None:
+                technique = cleaning.technique.sha256
         digest = method_digest(
-            policy, vocabulary=nomenclature, reviewed_roi_names=reviewed
+            policy,
+            vocabulary=nomenclature,
+            reviewed_roi_names=reviewed,
+            reviewed_descriptors=descriptors,
+            technique_vocabulary=technique,
         )
         satisfied = satisfied_options(policy)
         self._markers = {
@@ -720,7 +734,11 @@ class InstanceTransform:
         }
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
         self.reporter = ReleaseReporter(
-            policy, vocabulary=nomenclature, reviewed_roi_names=reviewed
+            policy,
+            vocabulary=nomenclature,
+            reviewed_roi_names=reviewed,
+            reviewed_descriptors=descriptors,
+            technique_vocabulary=technique,
         )
 
     def __repr__(self) -> str:
@@ -794,6 +812,18 @@ class InstanceTransform:
             names[path] = output_name_uid(self._key, value, kept)
         return _Identifiers(written[_SOP_INSTANCE], names)
 
+    def _kept_descriptors(
+        self, plan: InstancePlan, edits: InstanceEdits
+    ) -> frozenset[ElementPath]:
+        """Return the descriptors of a withheld instance that cleaning would keep.
+
+        None without Clean Descriptors
+        (:func:`~pymedphys._dicom.deidentify.descriptor_cleaning.kept_descriptors`).
+        """
+        if self._cleaning is None or self._fallback is None:
+            return frozenset()
+        return kept_descriptors(plan, edits, self._cleaning)
+
     def __call__(
         self, data: bytes, record: InstanceRecord
     ) -> Transformed | Sequestered:
@@ -845,10 +875,13 @@ class InstanceTransform:
         if reasons:
             # An instance out of scope is planned and edited only so that
             # its identifiers are collected for its subject's search (D-027).
+            withheld = kept_uids | self._kept_descriptors(plan, edits)
+            if withheld != kept_uids:
+                evidence = coverage_of(plan, edits, withheld, self._options)
             return Sequestered(
                 reasons,
                 evidence,
-                (*risk, *dropped_of(edits, kept_uids), *omissions_of(evidence)),
+                (*risk, *dropped_of(edits, withheld), *omissions_of(evidence)),
             )
         satisfied = False
         settled = apply_cleaners(edits, self._cleaners, self._key, record.patient)
@@ -882,10 +915,13 @@ class InstanceTransform:
                     fallen_back,
                 )
             except DescriptorsRefused as refused:
+                withheld = retained | self._kept_descriptors(plan, edits)
+                if withheld != retained:
+                    evidence = coverage_of(plan, edits, withheld, self._options)
                 return Sequestered(
                     (refused.reason,),
                     evidence,
-                    (*risk, *dropped_of(edits, retained), *omissions_of(evidence)),
+                    (*risk, *dropped_of(edits, withheld), *omissions_of(evidence)),
                 )
             edits, satisfied = cleaned.edits, cleaned.satisfied
             retained |= cleaned.retained

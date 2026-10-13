@@ -51,12 +51,16 @@ from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.method_digest import method_digest
 from pymedphys._dicom.deidentify.policy import PolicyError, compose_policy
 from pymedphys._dicom.deidentify.references import InstanceRecord
+from pymedphys._dicom.deidentify.reviewed_descriptors import ReviewedDescriptors
 from pymedphys._dicom.deidentify.reviewed_roi_names import (
     Review,
     ReviewedName,
     ReviewedNames,
 )
 from pymedphys._dicom.deidentify.roi_names import Reason
+from pymedphys._dicom.deidentify.technique_descriptors import (
+    load_technique_vocabulary,
+)
 from pymedphys._dicom.deidentify.run_report import (
     RELEASE_REPORT,
     RELEASE_REPORT_MARKDOWN,
@@ -173,6 +177,24 @@ def test_roi_names_are_renamed_or_given_their_reviewed_decision():
     assert not transform.review_queue.entries()
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+def test_roi_names_are_cleaned_beside_a_free_text_descriptor():
+    transform = _transform(_reviewed(PTV_CUSTOM=ReviewedName(Review.KEEP)))
+    result = _transformed(
+        transform,
+        _structure_set("lung_l", "PTV_CUSTOM", SeriesDescription="AXIAL CHEST"),
+    )
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert [item.ROIName for item in written.StructureSetROISequence] == [
+        "Lung_L",
+        "PTV_CUSTOM",
+    ]
+    assert written.SeriesDescription == "AXIAL CHEST"
+    assert sum(transform.review_queue.report_counts().outcomes.values()) == 2
+
+
 def test_retained_roi_names_are_left_out_of_the_residual_search(tmp_path):
     datasets = [
         _structure_set("PTV_CUSTOM") if index == 3 else dataset
@@ -253,6 +275,8 @@ def test_the_method_digest_and_the_report_cover_the_reviewed_names():
         compose_policy("basic-clean-descriptors"),
         vocabulary=_NOMENCLATURE,
         reviewed_roi_names=keyed,
+        reviewed_descriptors=ReviewedDescriptors.empty().keyed_digest(KEY),
+        technique_vocabulary=load_technique_vocabulary().sha256,
     )
     written = pydicom.dcmread(io.BytesIO(result.data))
     assert list(written.DeidentificationMethod)[:1] == [digest]

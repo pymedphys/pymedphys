@@ -34,6 +34,7 @@ from pymedphys._dicom.deidentify import (
     run,
     run_report,
 )
+from pymedphys._dicom.deidentify.reviewed_descriptors import ReviewedDescriptors
 from pymedphys._dicom.deidentify.reviewed_roi_names import (
     Review,
     ReviewedName,
@@ -239,6 +240,7 @@ def test_an_unknown_preset_raises(tmp_path):
         {"reviewed_names": "x"},
         {"empty_held_roi_names": True},
         {"roi_list": "x"},
+        {"reviewed_descriptors": "x"},
     ],
     ids=lambda option: next(iter(option)),
 )
@@ -409,3 +411,25 @@ def test_a_staging_area_left_behind_is_not_released():
 
     assert not done.released
     assert done.exit_status == command.EXIT_STAGING_LEFT
+
+
+@pytest.mark.usefixtures("enabled", "edition")
+@pytest.mark.parametrize("where", ["custodian", "release"])
+def test_a_reviewed_descriptors_list_that_cannot_be_used_raises_naming_no_path(
+    tmp_path, where
+):
+    path = tmp_path / where / SENTINEL
+    path.parent.mkdir()
+    ReviewedDescriptors.open(path).save()
+    if where == "custodian":
+        path = tmp_path / where / "missing.json"
+    before = sorted(tmp_path.rglob("*"))
+
+    with pytest.raises(api.DeidentifyError) as raised:
+        _deidentify(tmp_path, preset=_CLEAN, reviewed_descriptors=path)
+
+    message = str(raised.value)
+    expected = "does not exist" if where == "custodian" else "could not be used"
+    assert message.startswith("the reviewed descriptors list") and expected in message
+    assert SENTINEL not in message and str(tmp_path) not in message
+    assert sorted(tmp_path.rglob("*")) == before

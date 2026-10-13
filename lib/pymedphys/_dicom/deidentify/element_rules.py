@@ -26,7 +26,9 @@ An element's rule comes from the first of these that covers it:
    values that de-identification removes;
 2. Table E.1-1's Private Attributes row, for each element of an odd group
    other than 0001, 0003, 0005, 0007, and FFFF, which PS3.5 Section 7.8.1
-   does not allow for private use;
+   does not allow for private use: X, or C under the Retain Safe Private
+   Option, which the walker settles by the reviewed safe private rules
+   (:mod:`~pymedphys._dicom.deidentify.retained_private`);
 3. the policy's action for Table E.1-1's row of the attribute, by exact tag
    and then by masked tag, (50xx,xxxx), (60xx,3000), and (60xx,4000), which
    match only the repeating groups 5000 to 501E and 6000 to 601E (PS3.5
@@ -64,9 +66,7 @@ US or OW, is kept only where the IOD defines it.
 
 Compound actions, such as X/Z/D, are kept as the rule gives them, for
 :mod:`~pymedphys._dicom.deidentify.compound_actions` to resolve by Type.
-No reviewed rules yet say which private attributes are safe, so a policy
-that selects the Retain Safe Private Option is refused. Rules name tags,
-never values.
+Rules name tags, never values.
 """
 
 from __future__ import annotations
@@ -77,12 +77,8 @@ from collections.abc import Sequence
 
 from .file_layout import TAG_PATTERN
 from .iods import IOD
-from .policy import (
-    Policy,
-    PolicyError,
-    refuse_retain_safe_private,
-    refuse_unapplied_options,
-)
+from .policy import Policy, PolicyError, refuse_unapplied_options
+from .safe_private import SafePrivateRules, load_safe_private_rules
 from .standard import (
     _RESERVED_ODD_GROUPS,
     PRIVATE_ATTRIBUTES_TAG,
@@ -196,12 +192,14 @@ class ElementRules:
     Attributes
     ----------
     policy : Policy
+    safe_private : SafePrivateRules or None
+        The reviewed rules that settle the C that the policy gives private
+        attributes, under the Retain Safe Private Option; otherwise ``None``.
 
     Raises
     ------
     PolicyError
-        If the policy selects the Retain Safe Private Option, or an option
-        that the engine does not yet apply
+        If the policy selects an option that the engine does not yet apply
         (:func:`~pymedphys._dicom.deidentify.policy.refuse_unapplied_options`),
         or was not composed from the pinned Table E.1-1.
 
@@ -219,7 +217,6 @@ class ElementRules:
     """
 
     def __init__(self, policy: Policy) -> None:
-        refuse_retain_safe_private(policy)
         refuse_unapplied_options(policy)
         table = load_table_e1_1()
         rows = {row.tag: row for row in table.attributes}
@@ -227,6 +224,9 @@ class ElementRules:
             raise PolicyError("the policy was not composed from the pinned Table E.1-1")
         self.policy = policy
         self._private = policy.actions[PRIVATE_ATTRIBUTES_TAG]
+        self.safe_private: SafePrivateRules | None = (
+            load_safe_private_rules() if self._private == "C" else None
+        )
         self._table = {
             tag: rows[tag].basic_profile
             if action == "C" and (_is_sequence(tag) or _is_masked(tag))

@@ -103,11 +103,8 @@ def test_the_statement_says_when_every_option_is_supported(monkeypatch):
 
 
 # Each option in turn is taken out of the options the engine applies, so the
-# test runs whatever the engine applies. A policy with Retain Safe Private is
-# described as refused, not as unapplied.
-@pytest.mark.parametrize(
-    "option", [o for o in standard.ALL_OPTIONS if o != "retain_safe_private"]
-)
+# test runs whatever the engine applies.
+@pytest.mark.parametrize("option", standard.ALL_OPTIONS)
 def test_a_policy_with_an_option_the_engine_does_not_yet_apply_is_described(
     option, monkeypatch
 ):
@@ -119,7 +116,6 @@ def test_a_policy_with_an_option_the_engine_does_not_yet_apply_is_described(
 
     assert statement.other_elements is None
     assert conformance.PENDING_UNAPPLIED in statement.pending
-    assert conformance.PENDING_REFUSED not in statement.pending
     table = [e for e in statement.attributes if e.rule == conformance.TABLE_E1_1]
     assert [(e.tag, e.action) for e in table] == list(composed.actions.items())
     text = conformance_markdown.render_markdown(statement)

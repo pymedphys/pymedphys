@@ -29,6 +29,7 @@ from pymedphys._dicom.deidentify import (
     roi_names,
     run,
     run_qc,
+    standard,
 )
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._nomenclature import tg263
@@ -204,7 +205,11 @@ def test_each_other_attribute_given_c_is_described_by_its_fallback_action(preset
         assert conformance.PENDING_CLEANING not in statement.pending
     elif "clean_descriptors" not in composed.options:
         assert not fallen_back
-    if "C" in {e.action for e in statement.attributes if e.tag != ROI_NAME}:
+    # The cleaners, and the safe private rules, describe what they clean.
+    described = {ROI_NAME, standard.PRIVATE_ATTRIBUTES_TAG} | {
+        tag for each in statement.cleaned for tag in each.tags
+    }
+    if "C" in {e.action for e in statement.attributes if e.tag not in described}:
         assert conformance.PENDING_CLEANING in statement.pending
     assert all(e.action != "C" and e.policy_action == "C" for e in fallen_back.values())
 

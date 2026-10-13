@@ -80,13 +80,16 @@ from pymedphys._imports import pydicom
 
 from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
+from .retained_private import is_private
 from .sequences import UnreadableItems, decode_items
 from .source import SourceEvidence
 from .sop_classes import load_storage_sop_classes
-from .standard import VRS, dictionary_attribute
+from .standard import VRS, DictionaryAttribute, dictionary_attribute
 from .uids import normalise_uid
 from .values import values_problem
 
+# A private UID, which the Retain Safe Private Option replaces, as written.
+_PRIVATE_UID = DictionaryAttribute("(gggg,eeee)", "", "", "UI", "1-n", "")
 # The codecs of the Default Character Repertoire, as pydicom names them.
 DEFAULT_CODECS = ("iso8859",)
 # Not a Defined Term, but it names the Default Character Repertoire.
@@ -863,14 +866,18 @@ def new_element(
     ``vr`` is one the pinned dictionary gives the attribute, of alternatives
     the one :func:`read_element` gives; ``values`` are as in
     :class:`ElementValue`, or a sequence's items; and ``codecs`` are those of
-    the data set it is written in. It raises :class:`ValueError` without the
-    value for any other VR, an item that is not a data set, or a problem that
+    the data set it is written in. A private UID, which the dictionary does
+    not list, takes VR UI and VM 1-n, as the Retain Safe Private Option
+    replaces it. It raises :class:`ValueError` without the value for any
+    other VR, an item that is not a data set, or a problem that
     :func:`written_value_problem` finds. A LUT Descriptor (0028,3002) or Red,
     Green, or Blue Palette Color Lookup Table Descriptor (0028,1101-1103) of
     VR SS takes its first and third values as US, as :func:`read_element`
     gives them.
     """
     attribute = dictionary_attribute(path.tag)
+    if attribute is None and vr == "UI" and is_private(path.tag):
+        attribute = _PRIVATE_UID
     if attribute is None or vr not in attribute.vrs:
         raise ValueError(f"{path} does not have VR {vr} in the pinned data dictionary")
     value: object
