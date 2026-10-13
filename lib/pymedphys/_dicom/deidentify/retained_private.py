@@ -50,7 +50,8 @@ file holds it:
     letters, digits, spaces, and underscores, and the number of values is
     one that the rule's VM allows;
   - ``uid``: replaced, as every other UID is, where it is written
-    as UI, and otherwise removed, since its value cannot be read as UIDs;
+    as UI and the number of values is one that the rule's VM allows, and
+    otherwise removed, since its value cannot be read as UIDs;
   - ``sequence``: kept as a container where the source holds its items, so
     that each element in them takes its own rule (E.3.10), and otherwise
     removed;
@@ -499,17 +500,18 @@ def _declared(
             if each is None
             else _elements(source, ElementPath(each, _DEFINED_ELEMENT))
         )
-        if elements is None or len(elements) != 1:
+        if elements is None:
             continue
-        (element,) = elements
         vr = _code(_field(source, ElementPath(each, _DEFINED_VR), "CS"))
         definition = None
-        if vr in VRS:
+        # A definition of several elements cannot be read for any of them.
+        if len(elements) == 1 and vr in VRS:
             multiplicity = _unsigned(
                 _field(source, ElementPath(each, _DEFINED_VM), "UL"), "L"
             )
             definition = (vr, _vm(multiplicity) or _UNDEFINED_VM)
-        defined[element] = _agreed(defined, element, definition)
+        for element in elements:
+            defined[element] = _agreed(defined, element, definition)
     return (key, frozenset(safe - identifying), frozenset(identifying), defined)
 
 
@@ -626,9 +628,13 @@ def _action(
         return KEEP
     if extent.undefined_length or rule.handling is Handling.TEXT:
         return REMOVE
+    value = source.value_field(path)
     if rule.handling is Handling.UID:
-        return REPLACE if extent.vr == "UI" else REMOVE
-    return KEEP if _valid(source.value_field(path), rule.vr, rule.vm) else REMOVE
+        uids = value.rstrip(_PADDING)
+        count = len(uids.split(b"\\")) if uids else 0
+        replaceable = extent.vr == "UI" and vm_problem(rule.vm, count) is None
+        return REPLACE if replaceable else REMOVE
+    return KEEP if _valid(value, rule.vr, rule.vm) else REMOVE
 
 
 def _valid(value: bytes, vr: str, vm: str) -> bool:

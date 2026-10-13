@@ -49,8 +49,9 @@ _HANDLINGS = (
     ),
     (
         "uid",
-        "replaced (U), as every other UID is, where it is written as UI, and "
-        "otherwise removed, since its value cannot be read as UIDs",
+        "replaced (U), as every other UID is, where it is written as UI and "
+        "the number of values is one that the rule's VM allows, and otherwise "
+        "removed, since its value cannot be read as UIDs",
     ),
     (
         "sequence",

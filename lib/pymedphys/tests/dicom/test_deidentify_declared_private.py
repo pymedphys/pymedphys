@@ -92,8 +92,10 @@ def _declaration(
             if multiplicity is not None:
                 definition.add_new(0x00080309, "UL", multiplicity)
             definition.add_new(0x0008030A, "CS", vr)
-            definition.add_new(0x0008030D, "UC", f"Acme{element:02X}")
-            definition.add_new(0x0008030C, "UC", f"Acme {element:02X}")
+            # A list of elements defines several at once, which is invalid.
+            number = element if isinstance(element, int) else element[0]
+            definition.add_new(0x0008030D, "UC", f"Acme{number:02X}")
+            definition.add_new(0x0008030C, "UC", f"Acme {number:02X}")
             definitions.append(definition)
         item.add_new(0x00080310, "SQ", pydicom.Sequence(definitions))
     return item
@@ -316,8 +318,17 @@ def test_a_declared_element_is_removed_where_its_vr_is_unknown_or_disputed():
         [[(0x01, "US")], [(0x01, "US"), (0x01, "SS")]],  # after one that agrees
         [[(0x01, "US"), (0x01, "US", [3])]],  # in VM alone
         [[(0x01, "XX")]],  # a VR that PS3.6 does not define
+        [[([0x01, 0x02], "US")]],  # one definition of two elements
     ],
-    ids=["one-item", "two-items", "then-agreeing", "after-agreeing", "vm", "unread"],
+    ids=[
+        "one-item",
+        "two-items",
+        "then-agreeing",
+        "after-agreeing",
+        "vm",
+        "unread",
+        "two-elements",
+    ],
 )
 def test_definitions_that_disagree_remove_the_element(transfer_syntax, items):
     # Without the dispute, the file's US and a definition's US keep it.
@@ -360,6 +371,21 @@ def test_a_declared_number_has_at_most_the_values_its_vm_allows(
     actions = _acme_actions(_actions(dataset, transfer_syntax))
 
     assert actions["(0011,1001)"] == ("K" if kept else "X")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01")
+@pytest.mark.parametrize(
+    "multiplicity, action",
+    [([1], "X"), (None, "X"), ([1, 0], "U")],
+    ids=["vm-1", "no-vm", "vm-1-n"],
+)
+def test_a_declared_uid_has_at_most_the_values_its_vm_allows(multiplicity, action):
+    dataset = _acme(
+        _declaration("SAFE", defined=[(0x05, "UI", multiplicity)]),
+        elements=[(0x00111005, "UI", ["2.25.700700", "2.25.700701"])],
+    )
+
+    assert _acme_actions(_actions(dataset))["(0011,1005)"] == action
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")
@@ -420,18 +446,24 @@ def test_a_declaration_applies_to_its_block_in_the_items_of_a_sequence(
 def test_a_declaration_in_the_items_of_a_sequence_is_ignored_and_removed(
     transfer_syntax,
 ):
-    # Only the top-level (0008,0300), in the SOP Common Module, is read.
+    # Only the top-level (0008,0300), in the SOP Common Module, is read. The
+    # sequence keeps Slice Thickness, so it is written without the rest.
     item = pydicom.Dataset()
     item.add_new(
         0x00080300, "SQ", pydicom.Sequence([_declaration("SAFE", defined=ACME_VRS)])
     )
+    item.SliceThickness = "2.5"
     item.add_new(0x00110010, "LO", ACME)
     item.add_new(0x00111001, "US", 5)
     dataset = _acme(elements=[(0x00111010, "SQ", pydicom.Sequence([item]))])
 
     written = _written(synthetic.written(dataset, transfer_syntax))
 
-    assert not _in_private(written)
+    assert _in_private(written) == {
+        "(0011,0010)",
+        "(0011,1010)",
+        "(0011,1010)[0] > (0018,0050)",
+    }
     assert not any(path.tag == CHARACTERISTICS for path in read_source(written).paths())
 
 
