@@ -272,7 +272,7 @@ Under Clean Descriptors, it describes how ROI Name is cleaned in two tiers: auto
 Each run with a release reporter writes the statement of its policy, as `conformance-statement.md` beside the release report at the root of the release, since it holds no instance value; it describes the policy and vocabulary that the report records, and the report gives the run's own method digest and reviewed-names digest.
 The statements of `basic` and `basic-clean-descriptors`, the presets of the first supported release, list nothing as pending.
 For each selected option that has a cleaner, it gives the attributes that the policy gives C and the cleaner settles, with its method: the AE titles under Retain Device Identity (D-034), the free text under Retain Patient Characteristics, which holds its instance unless it has no value (D-038, PS3.15-E.3.7-02), and the dates and times that Modified Dates modifies (D-039, PS3.15-E.3.6-04).
-A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; the private attributes that Retain Safe Private does not yet retain by the routes of E.3.10 that the engine has yet to apply; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset.
+A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; the private attributes that Retain Safe Private does not yet retain by the route of E.3.10 that the engine has yet to apply, the blocks that Private Data Element Characteristics Sequence marks SAFE; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset.
 Under Retain Safe Private, it describes how the reviewed safe private rules are matched and applied, and lists each rule that can retain an attribute (D-035, PS3.15-E.3.10-04).
 '''
 
@@ -649,16 +649,16 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When an entire Sequence (SQ VR) Private Attribute is not known to always only contain safe content, whether that content consists of Standard Attributes or Private Attributes or a combination of both, then when the Retain Safe Private Option is used, any such Sequence Attribute shall be parsed in its entirety and each of the nested Attributes handled on its own merits, rather than removing the Sequence in its entirety without further consideration. Reviewing the content may be a sensible practice to apply even to nominally known safe Private Sequence Attributes.
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-028", "D-035"]
 implementation = [
   "_dicom/deidentify/retained_private.py",
   "_dicom/deidentify/walker.py",
 ]
 note = '''
-Under the Option, a private sequence that a reviewed rule lists is parsed, and each attribute in its items, standard or private, takes its own rule, at every depth (D-035).
-Remaining: parsing a private sequence that no rule lists, which is removed with everything in it, as every private sequence is without the Option (D-028) (M3).
+Under the Option, every private sequence in a block whose private creator is compared is parsed, whether or not a reviewed rule lists it, and each attribute in its items, standard or private, takes its own rule, at every depth (D-035).
+A private sequence that no rule lists is kept, with its creator, only where an attribute in its items other than a private creator is kept or replaced, and is otherwise removed with everything in it; a kept creator is among the retained strings that the QC pack lists for review (D-017, D-035).
+Without the Option, every private sequence is removed with everything in it (D-028).
 '''
 
 [[requirement]]
@@ -1003,7 +1003,7 @@ Without Retain Safe Private, every private data element and private creator is r
 The run's instance transform removes them from each instance it writes.
 The reviewed rules evaluate every row of PS3.15 Table E.3.10-1, and retain only values that can be checked; under the Option, the engine applies them and removes every private attribute that they do not retain (D-035).
 TCIA's Private Tag Dictionary, shipped unchanged and pinned by its SHA-256, is a second source that a run is to be able to choose, and its kept values are to pass the same checks (D-035).
-Remaining: parsing the private sequences that no rule lists, honouring the blocks that Private Data Element Characteristics Sequence marks SAFE, and choosing TCIA's dictionary for a run (M3).
+Remaining: honouring the blocks that Private Data Element Characteristics Sequence marks SAFE, and choosing TCIA's dictionary for a run (M3).
 '''
 
 [[requirement]]

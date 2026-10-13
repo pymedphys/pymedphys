@@ -174,13 +174,11 @@ PENDING_SAFE_PRIVATE = (
 # Pending only for a policy that selects Retain Safe Private and whose
 # element rules the engine applies, until it applies every route of E.3.10.
 PENDING_SAFE_PRIVATE_ROUTES = (
-    "The private attributes that the routes of PS3.15 E.3.10 that the engine "
-    "does not yet apply would retain, which it removes: a private sequence "
-    "that no reviewed rule lists is removed whole, where E.3.10 asks for it "
-    "to be parsed and each nested attribute handled on its own merits; and a "
-    "block that Private Data Element Characteristics Sequence (0008,0300) "
-    "marks SAFE, or an attribute that it lists as nonidentifying, is "
-    "retained only where a reviewed rule retains it (D-035)."
+    "The private attributes that the route of PS3.15 E.3.10 that the engine "
+    "does not yet apply would retain, which it removes: a block that Private "
+    "Data Element Characteristics Sequence (0008,0300) marks SAFE, or an "
+    "attribute that it lists as nonidentifying, is retained only where a "
+    "reviewed rule retains it (D-035)."
 )
 # Pending only for tps-import, whose Z writes a synthetic birth date.
 PENDING_BIRTH_DATES = (
