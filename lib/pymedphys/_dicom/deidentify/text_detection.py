@@ -326,7 +326,13 @@ class TextDetector:
 
     @property
     def method(self) -> Mapping[str, object]:
-        """What decides the boxes: the model, the runtime, and the parameters."""
+        """What decides the boxes: the model, the runtime, and the parameters.
+
+        It is an input to the method digest of a run under the Clean Pixel
+        Data Option, as
+        :func:`~pymedphys._dicom.deidentify.method_digest.digest_inputs`
+        takes it.
+        """
         return {
             "model_sha256": self.model_sha256,
             "onnxruntime": _onnxruntime().__version__,

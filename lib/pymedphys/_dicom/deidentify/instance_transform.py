@@ -653,7 +653,9 @@ class InstanceTransform:
         What finds the regions of text in each frame, such as a
         :class:`~pymedphys._dicom.deidentify.text_detection.TextDetector`,
         which a policy selecting Clean Pixel Data needs, and no other policy
-        takes.
+        takes. The description of its method, read once when the transform
+        is made, is an input to the method digest that the markers and the
+        release report record.
     unvalidated_policy : bool, default False
         Allow a policy that is not enabled, such as a preset whose behaviour
         is not yet validated. For tests and validation runs only; nothing
@@ -667,6 +669,9 @@ class InstanceTransform:
         it; if ``finder`` is given without Clean Pixel Data, or left out with
         it; or if the policy's other options cannot be composed into the
         policy whose actions descriptors take where they are not cleaned.
+    TypeError
+        If ``finder`` does not describe its method as a mapping, or its
+        description has a type that the method digest does not define.
 
     Attributes
     ----------
@@ -740,6 +745,11 @@ class InstanceTransform:
                 "Pixel Data"
             )
         self._finder = finder
+        finder_method = None
+        if finder is not None:
+            finder_method = getattr(finder, "method", None)
+            if not isinstance(finder_method, Mapping):
+                raise TypeError("a text finder must describe its method as a mapping")
         if cleaning is not None:
             # One version of each list, for both cleaning and its digest.
             cleaning = dataclasses.replace(
@@ -775,6 +785,7 @@ class InstanceTransform:
             reviewed_roi_names=reviewed,
             reviewed_descriptors=descriptors,
             technique_vocabulary=technique,
+            text_finder=finder_method,
         )
         satisfied = satisfied_options(policy)
         # The markers of each set of per-instance options that an instance
@@ -795,6 +806,7 @@ class InstanceTransform:
             reviewed_roi_names=reviewed,
             reviewed_descriptors=descriptors,
             technique_vocabulary=technique,
+            text_finder=finder_method,
         )
 
     def __repr__(self) -> str:

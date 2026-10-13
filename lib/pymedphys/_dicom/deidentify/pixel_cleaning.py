@@ -50,7 +50,7 @@ Data cannot be cleaned (:class:`PixelDataRefused`).
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Protocol
 
 from pymedphys._imports import numpy as np
@@ -76,7 +76,13 @@ _RGB = "RGB"
 class TextFinder(Protocol):
     """Finds the regions of text in one frame, as
     :meth:`~pymedphys._dicom.deidentify.text_detection.TextDetector.find`
-    does."""
+    does, and describes what decides them, for the method digest."""
+
+    @property
+    def method(self) -> Mapping[str, object]:
+        """What decides the regions, as
+        :attr:`~pymedphys._dicom.deidentify.text_detection.TextDetector.method`
+        gives it: text, integers, and floats, in mappings and lists."""
 
     def find(self, frame: np.ndarray) -> Sequence[TextBox]:
         """Return the regions of text in a frame of stored values: rows by

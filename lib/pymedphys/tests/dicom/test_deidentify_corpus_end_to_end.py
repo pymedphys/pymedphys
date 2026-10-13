@@ -226,6 +226,7 @@ def _run(spec):
                 if cleaning is None or cleaning.technique is None
                 else cleaning.technique.sha256
             ),
+            text_finder=None if spec.finder is None else spec.finder.method,
         )
         return _Run(
             spec,

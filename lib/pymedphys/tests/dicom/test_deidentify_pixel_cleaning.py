@@ -27,6 +27,7 @@ from pymedphys._imports import pydicom, pytest
 from pymedphys._dicom.deidentify import (
     conformance,
     conformance_markdown,
+    method_digest,
     pixel_cleaning,
     policy,
     release_report,
@@ -69,6 +70,9 @@ BOX = TextBox(1, 2, 3, 5)
 
 class Finder:
     """Gives fixed regions in the frames it names, and records each frame."""
+
+    # What decides its regions, as the method digest takes it.
+    method = {"finder": "fixed regions", "version": 1, "fraction": 0.5}
 
     def __init__(self, boxes=(BOX,), frames=None):
         self.boxes = tuple(boxes)
@@ -408,6 +412,42 @@ def test_the_engine_applies_clean_pixel_data():
     assert CLEAN_PIXEL_DATA not in policy.ENABLED_OPTIONS
 
 
+class _Undescribed:  # pylint: disable = too-few-public-methods
+    """Finds no text, and does not describe its method."""
+
+    def find(self, frame):
+        del frame
+        return ()
+
+
+class _Unencodable(Finder):
+    """Describes its method with a value that the digest has no form for."""
+
+    method = {"finder": True}
+
+
+@pytest.mark.parametrize("finder", [_Undescribed(), _Unencodable()])
+def test_a_finder_must_describe_its_method_for_the_digest(finder):
+    with pytest.raises(TypeError, match="method|bool"):
+        _transform(finder)
+
+
+def test_the_finders_method_is_an_input_to_the_method_digest():
+    clean = policy.compose_custom_policy((CLEAN_PIXEL_DATA,))
+    digest = method_digest.method_digest(
+        clean, vocabulary=None, reviewed_roi_names=None, text_finder=Finder.method
+    )
+
+    result = _transformed(_transform(), synthetic.written(synthetic.rt_plan()))
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert digest in written.DeidentificationMethod
+    assert digest != method_digest.method_digest(
+        clean, vocabulary=None, reviewed_roi_names=None
+    )
+
+
 def test_a_finder_is_given_exactly_with_clean_pixel_data():
     with pytest.raises(PolicyError, match="text finder"):
         InstanceTransform(
@@ -601,3 +641,12 @@ def test_a_run_holds_its_images_and_reports_why(tmp_path):
     assert report["held_for_review"] == [
         {"stage": "pixel-data", "code": "text-blacked-out", "count": 1}
     ]
+    components = method_digest.method_digest_components(
+        policy.compose_custom_policy((CLEAN_PIXEL_DATA,)),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        text_finder=Finder.method,
+    )
+    assert report["method"]["method_digest"] == components.method_digest
+    assert report["method"]["text_finder_digest"] == components.text_finder_digest
+    assert components.text_finder_digest is not None

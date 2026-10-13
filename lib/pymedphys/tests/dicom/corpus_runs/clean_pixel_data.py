@@ -33,6 +33,9 @@ class _CornerFinder:
     """Finds text in the top left corner of every frame, two rows by three
     columns, which every frame of the corpus has."""
 
+    # What decides its regions, as the method digest takes it.
+    method = {"finder": "top left corner"}
+
     def find(self, frame):
         del frame
         return (TextBox(0, 0, 2, 3),)
