@@ -57,6 +57,8 @@ CUSTOM_OPTIONS = ("retain_patient_characteristics", "retain_device_identity")
 # each one names.
 CID_7050 = {
     "113100": "Basic Application Confidentiality Profile",
+    "113101": "Clean Pixel Data Option",
+    "113102": "Clean Recognizable Visual Features Option",
     "113103": "Clean Graphics Option",
     "113104": "Clean Structured Content Option",
     "113105": "Clean Descriptors Option",
@@ -79,6 +81,8 @@ OPTION_CODES = {
     "clean_descriptors": "113105",
     "clean_structured_content": "113104",
     "clean_graphics": "113103",
+    "clean_pixel_data": "113101",
+    "clean_recognizable_visual_features": "113102",
 }
 
 # Each preset's claim in its readable value, its codes when every option is
@@ -273,7 +277,7 @@ def test_a_custom_option_set_with_full_dates_marks_dates_as_unmodified():
     assert [code.code_value for code in found.method_codes] == ["113100", "113106"]
 
 
-@pytest.mark.parametrize("option", standard.OPTIONS)
+@pytest.mark.parametrize("option", standard.ALL_OPTIONS)
 def test_each_option_alone_adds_its_code_after_the_profiles(option):
     found = markers.markers_for(
         policy.compose_custom_policy([option]), DIGEST, satisfied=[option]
@@ -396,21 +400,18 @@ def test_every_code_is_a_row_of_the_pinned_context_groups():
         )
 
 
-def test_each_option_of_table_e1_1_has_the_cid_7050_code_that_names_it():
+def test_each_option_has_the_cid_7050_code_that_names_it():
     pinned = {
         row.code_value: row.code_meaning
         for row in codes.load_context_group(7050).rows
         if row.scheme_designator == "DCM"
     }
 
-    assert tuple(markers.OPTION_CODES) == standard.OPTIONS
+    assert tuple(markers.OPTION_CODES) == standard.ALL_OPTIONS
     assert dict(markers.OPTION_CODES) == OPTION_CODES
     assert markers.PROFILE_CODE == "113100"
     for value, meaning in CID_7050.items():
         assert pinned[value] == meaning
-    # Clean Pixel Data and Clean Recognizable Visual Features, which have no
-    # column in Table E.1-1, are never claimed.
-    assert {"113101", "113102"}.isdisjoint(markers.OPTION_CODES.values())
 
 
 def _elements(dataset, path=()):
@@ -1827,10 +1828,10 @@ def test_an_option_that_the_policy_records_as_unmet_is_never_required(monkeypatc
 
 def test_a_policy_with_an_option_that_has_no_code_is_refused():
     outside = dataclasses.replace(
-        policy.compose_policy("basic"), options=("clean_pixel_data",)
+        policy.compose_policy("basic"), options=("clean_everything",)
     )
 
-    with pytest.raises(ValueError, match="clean_pixel_data have no code"):
+    with pytest.raises(ValueError, match="clean_everything have no code"):
         markers.markers_for(outside, DIGEST, satisfied=())
 
 

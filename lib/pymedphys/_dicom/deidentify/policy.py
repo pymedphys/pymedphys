@@ -32,13 +32,15 @@ and each reviewed supplementary rule, for an attribute that the table omits,
 its action under the same options
 (:func:`~pymedphys._dicom.deidentify.actions.effective_supplementary_actions`),
 such as C for Beam Name under Clean Descriptors. It first checks that the
-options are options of Table E.1-1, not both Retain Longitudinal Temporal
-Information Options, which PS3.15 E.3.6 makes mutually exclusive, and that
-the table is of the same edition as the data dictionary, against which the
-supplementary rules were reviewed. Any option of Table E.1-1 can be composed,
-so that its policy can be described; the engine applies only a policy whose
-options are all in :data:`ENGINE_OPTIONS` (:func:`refuse_unapplied_options`),
-those that :data:`ENGINE_APPLIES` marks.
+options are options of Table E.1-1, or the Clean Pixel Data or Clean
+Recognizable Visual Features Option, which the table has no column for and
+which give no attribute an action; that they are not both Retain
+Longitudinal Temporal Information Options, which PS3.15 E.3.6 makes mutually
+exclusive; and that the table is of the same edition as the data dictionary,
+against which the supplementary rules were reviewed. Any of these options
+can be composed, so that its policy can be described; the engine applies
+only a policy whose options are all in :data:`ENGINE_OPTIONS`
+(:func:`refuse_unapplied_options`), those that :data:`ENGINE_APPLIES` marks.
 
 PS3.15 defines no precedence between options, so an attribute to which two
 selected options give different actions makes the policy invalid. The one
@@ -70,6 +72,7 @@ from collections.abc import Iterable, Mapping
 from .actions import OptionConflict, effective_actions, effective_supplementary_actions
 from .attribute_roles import AttributeRoles
 from .standard import (
+    ALL_OPTIONS,
     MUTUALLY_EXCLUSIVE,
     OPTIONS,
     ProfileTable,
@@ -89,8 +92,13 @@ MODIFIED_DATES = "retain_longitudinal_modified_dates"
 CLEAN_DESCRIPTORS = "clean_descriptors"
 CLEAN_STRUCTURED_CONTENT = "clean_structured_content"
 CLEAN_GRAPHICS = "clean_graphics"
+# The options that Table E.1-1 has no column for (standard.PIXEL_OPTIONS),
+# which give no attribute an action.
+CLEAN_PIXEL_DATA = "clean_pixel_data"
+CLEAN_RECOGNIZABLE_VISUAL_FEATURES = "clean_recognizable_visual_features"
 
-# Whether the engine applies each option's actions, in Table E.1-1's order.
+# Whether the engine applies each option's actions, in Table E.1-1's order,
+# then the options that the table has no column for.
 # Every option can be composed into a policy, but the engine refuses a policy
 # that selects one that it does not apply (refuse_unapplied_options). An
 # option is marked applied once the engine implements its actions, by its own
@@ -120,10 +128,14 @@ ENGINE_APPLIES: Mapping[str, bool] = types.MappingProxyType(
         CLEAN_STRUCTURED_CONTENT: False,
         # Clean Graphics: its rows take their Basic Profile actions (D-041).
         CLEAN_GRAPHICS: True,
+        # Clean Pixel Data.
+        CLEAN_PIXEL_DATA: False,
+        # Clean Recognizable Visual Features.
+        CLEAN_RECOGNIZABLE_VISUAL_FEATURES: False,
     }
 )
-# The options whose policies the engine accepts, in Table E.1-1's order.
-ENGINE_OPTIONS = tuple(option for option in OPTIONS if ENGINE_APPLIES[option])
+# The options whose policies the engine accepts, in the order of ALL_OPTIONS.
+ENGINE_OPTIONS = tuple(option for option in ALL_OPTIONS if ENGINE_APPLIES[option])
 
 # Each preset's options, in Table E.1-1's order.
 PRESETS: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
@@ -200,7 +212,10 @@ class Policy:
     edition : str
         The edition of Table E.1-1, such as ``"2026d"``.
     options : tuple of str
-        The selected options, in the table's order.
+        The selected options, in the order of
+        :data:`~pymedphys._dicom.deidentify.standard.ALL_OPTIONS`: Table
+        E.1-1's, then Clean Pixel Data and Clean Recognizable Visual
+        Features, which give no attribute an action.
     actions : Mapping of str to str
         Each attribute's action code, keyed by its tag as Table E.1-1 gives
         it, in the table's order, including the attributes in
@@ -256,25 +271,24 @@ def _join(values: Iterable[str]) -> str:
 
 
 def _checked_options(options: Iterable[str]) -> tuple[str, ...]:
-    """Return ``options`` in the table's order, once each, after checking them."""
+    """Return ``options`` in the order of ``ALL_OPTIONS``, once each, after checking them."""
     if isinstance(options, str):
         raise TypeError(
             "options must be a collection of option names, not a single string"
         )
     chosen = set(options)
-    unknown = sorted(chosen.difference(OPTIONS))
+    unknown = sorted(chosen.difference(ALL_OPTIONS))
     if unknown:
         raise PolicyError(
-            f"unknown options {unknown}; the options of Table E.1-1 are "
-            + ", ".join(OPTIONS)
+            f"unknown options {unknown}; the options are " + ", ".join(ALL_OPTIONS)
         )
     for exclusive in MUTUALLY_EXCLUSIVE:
         if exclusive <= chosen:
             raise PolicyError(
-                f"the options {_join(o for o in OPTIONS if o in exclusive)} "
+                f"the options {_join(o for o in ALL_OPTIONS if o in exclusive)} "
                 "are mutually exclusive (PS3.15 E.3.6)"
             )
-    return tuple(option for option in OPTIONS if option in chosen)
+    return tuple(option for option in ALL_OPTIONS if option in chosen)
 
 
 def _resolution(
@@ -328,8 +342,10 @@ def _compose(
             f"and the rules reviewed against it are of edition {dictionary.edition}"
         )
 
-    effective = effective_actions(selected, table=table)
-    supplementary = effective_supplementary_actions(selected)
+    # Only Table E.1-1's options give attributes actions.
+    columns = tuple(option for option in selected if option in OPTIONS)
+    effective = effective_actions(columns, table=table)
+    supplementary = effective_supplementary_actions(columns)
     conflicts = effective.conflicts + supplementary.conflicts
     resolved: dict[str, ResolvedConflict] = {}
     unresolved: list[OptionConflict] = []
@@ -436,8 +452,10 @@ def compose_custom_policy(
     Parameters
     ----------
     options : iterable of str
-        The selected options, from those of Table E.1-1. The engine applies
-        the policy only if every one is in :data:`ENGINE_OPTIONS`.
+        The selected options, from those of Table E.1-1 and the Clean
+        Pixel Data and Clean Recognizable Visual Features Options. The
+        engine applies the policy only if every one is in
+        :data:`ENGINE_OPTIONS`.
     table : ProfileTable, optional
         Table E.1-1. Defaults to
         :func:`~pymedphys._dicom.deidentify.standard.load_table_e1_1`. A
@@ -455,7 +473,8 @@ def compose_custom_policy(
     TypeError
         If ``options`` is a single string rather than a collection of names.
     PolicyError
-        If an option is not one of Table E.1-1's options; if the options
+        If an option is not one of
+        :data:`~pymedphys._dicom.deidentify.standard.ALL_OPTIONS`; if the options
         include both Retain Longitudinal Temporal Information Options; if
         the table is of another edition than the data dictionary; or if two
         of the options give an attribute different actions.
@@ -475,8 +494,8 @@ def select_policy(
         ``options`` is given.
     options : iterable of str, optional
         A custom option set, in place of a preset (D-033): options of
-        Table E.1-1, each in :data:`ENABLED_OPTIONS`, which the Basic
-        Profile is applied with.
+        :data:`~pymedphys._dicom.deidentify.standard.ALL_OPTIONS`, each in
+        :data:`ENABLED_OPTIONS`, which the Basic Profile is applied with.
 
     Returns
     -------
@@ -511,7 +530,7 @@ def select_policy(
         unenabled += [
             f"the option {o}" for o in custom.options if o not in ENABLED_OPTIONS
         ]
-        enabled = [o for o in OPTIONS if o in ENABLED_OPTIONS]
+        enabled = [o for o in ALL_OPTIONS if o in ENABLED_OPTIONS]
         raise PolicyError(
             "the custom option set is not enabled: the behaviour of "
             f"{_join(unenabled)} is not yet implemented and validated; "
@@ -557,8 +576,10 @@ def refuse_retain_safe_private(policy: Policy) -> None:
 def refuse_unapplied_options(policy: Policy) -> None:
     """Refuse a policy that selects an option the engine does not yet apply.
 
-    Every option of Table E.1-1 can be composed into a policy, so that its
-    actions can be described, but the engine applies only the options in
+    Every option of
+    :data:`~pymedphys._dicom.deidentify.standard.ALL_OPTIONS` can be
+    composed into a policy, so that it can be described, but the engine
+    applies only the options in
     :data:`ENGINE_OPTIONS`. The rule of every element refuses any other with
     this, before anything is transformed.
 

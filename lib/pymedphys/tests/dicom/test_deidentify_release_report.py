@@ -38,6 +38,7 @@ from pymedphys._dicom.deidentify import (
     qc_attestation,
     reference_graph,
     release_report,
+    release_report_markdown,
     residuals,
     runtime,
     scope,
@@ -150,6 +151,19 @@ def test_the_policy_section_names_the_edition_preset_and_options(preset):
         "options": list(policy.PRESETS[preset]),
         "claims_conformance": preset != "tps-import",
     }
+
+
+@pytest.mark.parametrize("option", standard.PIXEL_OPTIONS)
+def test_the_policy_section_names_a_pixel_option(option):
+    custom = policy.compose_custom_policy((option, "clean_descriptors"))
+    report = release_report.release_report(
+        custom, vocabulary=None, reviewed_roi_names=None
+    )
+
+    document = release_report.report_document(report)
+
+    assert document["policy"]["options"] == ["clean_descriptors", option]
+    assert option in release_report_markdown.to_markdown(release_report.to_json(report))
 
 
 def test_a_custom_option_set_has_no_preset():
