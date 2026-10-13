@@ -80,7 +80,8 @@ file holds it:
     of its VR, as a row of Table E.3.10-1 does: its VR as written, or,
     where the file does not write it, the VR that Private Data Element
     Value Representation (0008,030A) defines for it, and it is removed
-    where neither gives one or the two differ. Its values are checked
+    where neither gives one, the two differ, or the definitions of it in
+    (0008,0300) disagree or one cannot be read. Its values are checked
     against that VR, and their number against the VM that Private Data
     Element Value Multiplicity (0008,0309) defines with it, or against a
     single value where (0008,0310) defines none, or one that PS3.6 has no
@@ -211,12 +212,13 @@ class _Declaration:
     ``safe`` holds the elements that it marks safe and no item of it marks
     identifying; ``identifying`` those that some item marks as possibly
     identifying; ``defined`` the VR and VM that it defines for an element,
-    where every definition of the element in its items agrees.
+    where every definition of the element in its items agrees, and None
+    where two disagree or one cannot be read.
     """
 
     safe: frozenset[int]
     identifying: frozenset[int]
-    defined: Mapping[int, _Defined]
+    defined: Mapping[int, _Defined | None]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -372,7 +374,8 @@ def _rule(
     the element may be identifying. An element without one that the
     instance declares safe takes the handling of its VR, as written or as
     the instance defines it where the file does not write it, and the VM
-    that the instance defines, or a single value where it defines none. The
+    that the instance defines, or a single value where it defines none; it
+    is removed where the instance's definitions of it are disputed. The
     declaration settles only an element that holds a value: a sequence is
     parsed whatever it says.
     """
@@ -384,7 +387,10 @@ def _rule(
         return None
     if rule is not None or element not in declaration.safe:
         return rule
-    defined_vr, vm = declaration.defined.get(element, (None, _UNDEFINED_VM))
+    defined = declaration.defined.get(element, (None, _UNDEFINED_VM))
+    if defined is None:
+        return None
+    defined_vr, vm = defined
     if extent.vr in _UNWRITTEN:
         vr = defined_vr
     elif defined_vr in (None, extent.vr):
@@ -432,13 +438,7 @@ def _declarations(source: SourceEvidence) -> Mapping[_Described, _Declaration]:
         key: _Declaration(
             frozenset(elements - identifying[key]),
             frozenset(identifying[key]),
-            types.MappingProxyType(
-                {
-                    element: definition
-                    for element, definition in definitions[key].items()
-                    if definition is not None
-                }
-            ),
+            types.MappingProxyType(definitions[key]),
         )
         for key, elements in safe.items()
     }

@@ -305,15 +305,28 @@ def test_a_declared_element_is_removed_where_its_vr_is_unknown_or_disputed():
     assert set(implicit.values()) == {"X"}
 
 
-def test_definitions_that_disagree_in_one_item_define_nothing():
-    # A second item's agreeing definition does not settle the dispute.
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01")
+@pytest.mark.parametrize("transfer_syntax", TRANSFER_SYNTAXES)
+@pytest.mark.parametrize(
+    "items",
+    [
+        [[(0x01, "US"), (0x01, "LO")]],  # in one item
+        [[(0x01, "US")], [(0x01, "LO")]],  # in two
+        [[(0x01, "US"), (0x01, "SS")], [(0x01, "US")]],  # then one that agrees
+        [[(0x01, "US")], [(0x01, "US"), (0x01, "SS")]],  # after one that agrees
+        [[(0x01, "US"), (0x01, "US", [3])]],  # in VM alone
+        [[(0x01, "XX")]],  # a VR that PS3.6 does not define
+    ],
+    ids=["one-item", "two-items", "then-agreeing", "after-agreeing", "vm", "unread"],
+)
+def test_definitions_that_disagree_remove_the_element(transfer_syntax, items):
+    # Without the dispute, the file's US and a definition's US keep it.
     dataset = _acme(
-        _declaration("SAFE", defined=[(0x01, "US"), (0x01, "SS")]),
-        _declaration("SAFE", defined=[(0x01, "US")]),
+        *(_declaration("SAFE", defined=defined) for defined in items),
         elements=[(0x00111001, "US", 5)],
     )
 
-    actions = _acme_actions(_actions(dataset, synthetic.IMPLICIT_VR_LITTLE_ENDIAN))
+    actions = _acme_actions(_actions(dataset, transfer_syntax))
 
     assert actions == {"(0011,0010)": "X", "(0011,1001)": "X"}
 
