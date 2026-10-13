@@ -14,8 +14,9 @@
 
 """A reviewer's face verdicts, for the Clean Recognizable Visual Features Option.
 
-A run never changes pixel data, so it can claim the option (PS3.15 E.3.2)
-only for an instance in which a reviewer found no recognisable face. The
+The engine removes no face from pixel data, so a run can claim the option
+(PS3.15 E.3.2) only for an instance that cannot show a face, or in which a
+reviewer found no recognisable face. The
 reviewer records a verdict for each series of a first run's QC pack, by its
 first run position, in the pack's attestation
 (:mod:`~pymedphys._dicom.deidentify.qc_attestation`), and the pack records
