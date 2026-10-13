@@ -308,7 +308,7 @@ def test_the_pixel_risks_are_counted_by_disposition_risk_and_indicator():
         "| `held-for-review` | `reconstructable-face` | `ct-volume` | `1` |",
         "| `held-for-review` | `reconstructable-face` | `head-or-neck` | `1` |",
     ]
-    assert "pixel data are not inspected" in section
+    assert "pixel data are not inspected for them" in section
 
 
 def test_an_empty_run_says_so_in_each_run_section():

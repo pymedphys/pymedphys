@@ -580,17 +580,24 @@ def _pixel_data(statement: ConformanceStatement) -> str:
             "neither Clean Pixel Data nor Clean Recognizable Visual Features. "
         )
     return (
-        "Under the Clean Pixel Data Option, the engine blacks out each region "
+        "Under the Clean Pixel Data Option, the engine replaces each region "
         "of text that its text finder finds in each frame of native Pixel "
-        "Data (7FE0,0010), writing one stored value, the frame's smallest for "
-        "MONOCHROME2, its largest for MONOCHROME1, or zero for RGB, in "
-        "place, and holds every instance whose Pixel Data it searched for "
-        "review, whether or not it found text. It sequesters an instance "
-        "whose Pixel Data are compressed or cannot be read as frames of "
-        "stored values, or whose written Pixel Data differ from its source "
-        "other than in those regions (D-037). It writes other Pixel Data "
-        "unchanged, and claims neither Clean Pixel Data nor Clean "
-        "Recognizable Visual Features. "
+        "Data (7FE0,0010) with one stored value, in place: the frame's "
+        "smallest for MONOCHROME2, its largest for MONOCHROME1, or zero for "
+        "RGB. This erases the text's pattern, but how bright the region is "
+        "displayed depends on the Modality and VOI LUT attributes, which are "
+        "kept, so it is not always black. The engine holds every instance "
+        "whose Pixel Data it searched for review, whether or not it found "
+        "text, until a reviewer has checked the regions and looked for text "
+        "that the finder missed. It sequesters an instance with top-level "
+        "Float or Double Float Pixel Data, or whose Pixel Data are "
+        "compressed, have a photometric interpretation other than MONOCHROME1, MONOCHROME2, or "
+        "8-bit RGB or another layout that cannot be read as frames of stored "
+        "values, hold more than the value's sign in the bits above Bits "
+        "Stored, such as an overlay, or differ when written from its source "
+        "other than in those regions. It writes other Pixel Data unchanged, "
+        "and claims neither Clean Pixel Data nor Clean Recognizable Visual "
+        "Features. "
     )
 
 
@@ -674,8 +681,8 @@ def release_report() -> list[str]:
         + ", each instance once for each, an identical copy counting as the "
         "instance it copies, and names none of them (D-015). The indicators "
         "are read from the instances' attributes, and a volume's from its "
-        "series; the pixel data are not inspected, so an instance without an "
-        "indicator may still show the risk.",
+        "series; the pixel data are not inspected for them, so an instance "
+        "without an indicator may still show the risk.",
         "",
         "The report summarises the engine's structural checks of the "
         "release, as "

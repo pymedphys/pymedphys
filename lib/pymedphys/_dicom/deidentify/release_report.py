@@ -420,8 +420,8 @@ class PixelRiskCount:
     """How many instances of one disposition show one risk in their pixel data.
 
     The engine reads indicators of each risk from an instance's attributes,
-    and those of a volume from its series, and never inspects the pixel
-    data, so an instance without one may still show the risk (D-015).
+    and those of a volume from its series, never from the pixel data, so an
+    instance without one may still show the risk (D-015).
 
     Attributes
     ----------

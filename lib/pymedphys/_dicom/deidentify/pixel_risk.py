@@ -18,7 +18,7 @@
 
 The engine changes pixel data only under the Clean Pixel Data Option, which
 blacks out the text that a text finder finds and holds the instance for
-review (D-037), and it never claims the Clean Pixel Data or Clean
+review (D-037), and it does not yet claim the Clean Pixel Data or Clean
 Recognizable Visual Features Options. It reports indicators of risk
 for review instead: of text burned into the pixel data, of a face that
 could be reconstructed and recognised, and of values that may disclose the

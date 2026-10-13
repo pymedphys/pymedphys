@@ -25,9 +25,9 @@ each region to one stored value, the frame's fill: its smallest stored
 value for MONOCHROME2, its largest for MONOCHROME1, and zero for RGB. The
 fill erases the text's pattern, but how bright it is displayed depends on
 the Modality and VOI LUT attributes that are kept, which can invert it, so
-it is not always black. The finder is an aid to review, not a guarantee, so every instance whose pixel
-data the option cleans is held for review, whether or not text was found
-(:class:`~.reasons.PixelDataReason`).
+it is not always black. The finder is an aid to review, not a guarantee, so
+every instance whose pixel data the option cleans is held for review,
+whether or not text was found (:class:`~.reasons.PixelDataReason`).
 
 Only native Pixel Data in whole bytes is cleaned: Bits Allocated 8, 16, or
 32, with High Bit one less than Bits Stored, little endian, as every native

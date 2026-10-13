@@ -922,7 +922,7 @@ implementation = [
 ]
 note = '''
 Every instance's attributes are read for indicators of burned-in text, whatever its IOD: Burned In Annotation of YES, a secondary or converted image, and an overlay without Overlay Data, which may lie in the pixel data; an attribute that cannot be read is itself reported, and a received NO counts for nothing.
-The pixel data are never inspected or changed (D-015).
+The indicators are read from attributes, never from the pixel data (D-015), which only the Clean Pixel Data Option changes (D-037).
 Each run gives the indicators of each source it can decode to the confidential QC pack, which lists the instances at high risk and previews those released or held.
 The release report counts the released and held instances with each risk and each indicator, naming none, as the QC pack lists them (D-015).
 Remaining: pixel review before `public-release` (M4).

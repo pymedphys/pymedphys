@@ -50,7 +50,7 @@ note = "The engine does not claim the Clean Pixel Data Option, so the value is k
 tag = "(0028,0302)"
 keyword = "RecognizableVisualFeatures"
 action = "K"
-note = "The engine does not change pixel data, so the value is kept as received and never set to NO, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under the Clean Recognizable Visual Features Option."
+note = "The engine does not claim the Clean Recognizable Visual Features Option, so the value is kept as received and never set to NO, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under that option."
 
 [[attribute]]
 tag = "(0040,A067)"

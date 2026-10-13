@@ -186,9 +186,9 @@ PENDING_BIRTH_DATES = (
 )
 # Pending only for a policy that selects Clean Pixel Data.
 PENDING_PIXEL_DATA = (
-    "How the Clean Pixel Data Option blacks out the text that it finds in "
-    "Pixel Data (7FE0,0010), which instances it holds for review or "
-    "sequesters, and when an instance claims it (PS3.15 E.3.1; D-037)."
+    "When an instance claims the Clean Pixel Data Option, and how a "
+    "reviewer's decisions on its blacked-out regions are applied (PS3.15 "
+    "E.3.1; D-037)."
 )
 _TPS_IMPORT = "tps-import"
 _FULL_DATES = "retain_longitudinal_full_dates"

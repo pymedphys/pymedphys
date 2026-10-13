@@ -521,7 +521,7 @@ def _statement(monkeypatch, options):
 
 
 UNCHANGED = "The engine writes Pixel Data (7FE0,0010) unchanged"
-BLACKED_OUT = "Under the Clean Pixel Data Option, the engine blacks out"
+BLACKED_OUT = "Under the Clean Pixel Data Option, the engine replaces each region"
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
