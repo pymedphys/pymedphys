@@ -476,7 +476,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"] == {"reference": attestation.reference}
-    assert report["format"] == "pymedphys-deid-release-report/14"
+    assert report["format"] == "pymedphys-deid-release-report/15"
 
 
 def test_a_held_reason_is_a_visual_features_reason():

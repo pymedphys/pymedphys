@@ -111,7 +111,6 @@ def test_a_policy_with_an_option_the_engine_does_not_yet_apply_is_described(opti
 
     assert statement.other_elements is None
     assert conformance.PENDING_UNAPPLIED in statement.pending
-    assert conformance.PENDING_REFUSED not in statement.pending
     table = [e for e in statement.attributes if e.rule == conformance.TABLE_E1_1]
     assert [(e.tag, e.action) for e in table] == list(composed.actions.items())
     text = conformance_markdown.render_markdown(statement)

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+
 """The release report's record of the method and the runtime environment.
 
 The sentinel tests put recognisable text where a report could leak it, in
@@ -59,6 +61,8 @@ METHOD_FIELDS = [
     "l3_rules",
     "vocabulary_digest",
     "reviewed_roi_names",
+    "reviewed_descriptors",
+    "technique_vocabulary_digest",
     "generated_values_digest",
     "engine_files",
 ]
@@ -194,13 +198,14 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "sequestered",
         "held_for_review",
         "roi_names",
+        "descriptors",
         "reference_findings",
         "pixel_risks",
         "search_coverage",
         "source_gaps",
         "structural_checks",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/14"
+    assert document["format"] == "pymedphys-deid-release-report/15"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS

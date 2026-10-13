@@ -33,8 +33,9 @@ of its VR (:func:`default_handling`) unless its note says why not. A reviewed
 addition must retain its value, and cites the public document that shows it
 is safe.
 
-Nothing applies the rules yet: a policy that selects the Option is refused
-until the engine does (D-028).
+A rule's private creator is printable ISO 646, the characters in which an
+instance's private creators are compared. The engine applies the rules under
+the Option (:mod:`~pymedphys._dicom.deidentify.retained_private`).
 """
 
 from __future__ import annotations
@@ -69,6 +70,9 @@ _CREATOR_PADDING = " \x00"
 # A private creator is LO: at most 64 characters, without a backslash or a
 # control character other than ESC (PS3.5 Table 6.2-1).
 _CREATOR_LENGTH = 64
+# The characters of a rule's private creator: printable ISO 646, the bytes
+# that an instance's creator is compared in (retained_private).
+_CREATOR_CHARACTERS = frozenset(map(chr, range(0x20, 0x7F)))
 
 _TOP_LEVEL_FIELDS = frozenset(
     {"schema", "edition", "acknowledgement", "table", "addition"}
@@ -259,6 +263,11 @@ def _creator_problem(value: object) -> str | None:
         for character in value
     ):
         return "has a private creator that VR LO cannot hold"
+    if not set(value) <= _CREATOR_CHARACTERS:
+        return (
+            "has a private creator outside printable ISO 646, in which an "
+            "instance's private creators are compared"
+        )
     return None
 
 

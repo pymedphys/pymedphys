@@ -211,12 +211,21 @@ def _run(spec):
         )
         # The method digest as D-024 composes it, independently of the
         # transform's own.
+        cleaning = prepared.cleaning
         digest = method_digest(
             spec.policy(),
-            vocabulary=(
-                None if prepared.cleaning is None else prepared.cleaning.nomenclature
-            ),
+            vocabulary=None if cleaning is None else cleaning.nomenclature,
             reviewed_roi_names=None if reviewed is None else reviewed.keyed_digest(KEY),
+            reviewed_descriptors=(
+                None
+                if cleaning is None
+                else cleaning.reviewed_descriptors.keyed_digest(KEY)
+            ),
+            technique_vocabulary=(
+                None
+                if cleaning is None or cleaning.technique is None
+                else cleaning.technique.sha256
+            ),
         )
         return _Run(
             spec,

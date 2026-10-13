@@ -441,14 +441,13 @@ def test_places_name_their_enclosing_sequences(statement_for):
     assert row.endswith(". X elsewhere. |")
 
 
-def test_retained_safe_private_attributes_are_pending_where_selected(
+def test_retained_safe_private_attributes_are_listed_where_selected(
     preset, statement_for
 ):
     composed = policy.compose_policy(preset)
-    pending = statement_for(preset).pending
-    assert (conformance.PENDING_SAFE_PRIVATE in pending) == (
-        "retain_safe_private" in composed.options
-    )
+    statement = statement_for(preset)
+    assert conformance.PENDING_SAFE_PRIVATE not in statement.pending
+    assert bool(statement.safe_private) == ("retain_safe_private" in composed.options)
 
 
 def test_synthetic_birth_dates_are_pending_only_for_tps_import(preset, statement_for):
@@ -467,11 +466,17 @@ def test_cleaning_is_pending_only_for_a_policy_that_cleans(preset, statement_for
     assert cleans == (preset != "basic")
     # Under Clean Descriptors, an attribute other than ROI Name given C whose
     # fallback action is not C takes that action (D-009), so only what keeps
-    # C there is pending.
-    undescribed = "C" in {
-        e.action for e in statement.attributes if e.tag != "(3006,0026)"
+    # C there is pending. The cleaners describe the attributes that they
+    # clean, and under Retain Safe Private the safe private section describes
+    # how Private Attributes are cleaned.
+    described = {"(3006,0026)", standard.PRIVATE_ATTRIBUTES_TAG} | {
+        tag for each in statement.cleaned for tag in each.tags
     }
-    assert undescribed == (cleans and preset != "basic-clean-descriptors")
+    undescribed = "C" in {
+        e.action for e in statement.attributes if e.tag not in described
+    }
+    # Of the presets, only tps-import gives C that no cleaner describes.
+    assert undescribed == (preset == "tps-import")
     assert (conformance.PENDING_CLEANING in statement.pending) == undescribed
     assert set(conformance.PENDING) <= set(statement.pending)
 
@@ -670,7 +675,7 @@ CLEANED_SEQUENCES = {
     "(0032,1067)": "X",  # Reason for Visit Code Sequence
     "(3010,0081)": "Z",  # Prescription Notes Sequence
 }
-SUPPORTED_BY_THE_ENGINE = [p for p in policy.PRESETS if p != "public-release"]
+SUPPORTED_BY_THE_ENGINE = list(policy.PRESETS)
 
 
 def _concrete(tag):
@@ -834,23 +839,30 @@ def test_every_engine_group_has_its_reason():
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
-def test_a_policy_that_the_engine_refuses_lists_the_policys_actions():
+def test_a_policy_that_the_engine_refuses_lists_the_policys_actions(monkeypatch):
+    # An option that the engine does not apply, whichever options it applies.
     composed = policy.compose_policy("public-release")
+    monkeypatch.setattr(policy, "ENGINE_OPTIONS", ())
     with pytest.raises(policy.PolicyError):
         element_rules.ElementRules(composed)
     statement = conformance.conformance_statement(composed, vocabulary=None)
     assert statement.other_elements is None
-    assert conformance.PENDING_REFUSED in statement.pending
+    assert conformance.PENDING_UNAPPLIED in statement.pending
+    assert conformance.PENDING_SAFE_PRIVATE in statement.pending
+    assert not statement.safe_private
     table = [e for e in statement.attributes if e.rule == conformance.TABLE_E1_1]
     assert [(e.tag, e.action) for e in table] == list(composed.actions.items())
     assert not any(e.policy_action for e in statement.attributes)
     text = conformance_markdown.render_markdown(statement)
     assert "## Other elements" not in text
-    assert conformance.PENDING_REFUSED in text
-    assert conformance.PENDING_UNAPPLIED not in text
+    assert "## Safe private attributes" not in text
+    assert conformance.PENDING_UNAPPLIED in text
+
+
+def test_the_engine_applies_every_presets_policy():
     for name in SUPPORTED_BY_THE_ENGINE:
-        assert conformance.PENDING_REFUSED not in _statement(name).pending
         assert conformance.PENDING_UNAPPLIED not in _statement(name).pending
+        assert _statement(name).other_elements is not None
 
 
 def _described_action(other, attribute, defined):

@@ -340,6 +340,13 @@ def _repeat_addition(document):
             _addition(private_creator="A" * 65),
             "has a private creator that VR LO cannot hold",
         ),
+        *(
+            (
+                _addition(private_creator=f"A{character}B"),
+                "has a private creator outside printable ISO 646",
+            )
+            for character in ("\x1b", "\x7f", "\u00e9", "\u3042")
+        ),
         (_addition(tag="(0025,1006)"), "has a tag that is not a private Data Element"),
         (_addition(tag="(0025,xx6a)"), "has a tag that is not a private Data Element"),
         (_addition(vr="OW/OB"), "has a VR that is not one PS3.5 VR"),

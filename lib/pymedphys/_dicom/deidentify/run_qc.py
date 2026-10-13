@@ -41,6 +41,7 @@ from .file_layout import ElementPath
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .reference_graph import Finding, FindingKind
 from .release_report import REPORTED_FINDINGS
+from .reviewed_descriptors import CleanedDescriptor
 from .run_written import REPORTED_ONLY
 from .roi_names import Reason
 from .written_references import WrittenFinding, WrittenFindingKind
@@ -96,6 +97,22 @@ class RoiNameMaterial:
         return (
             f"RoiNameMaterial(path={str(self.path)!r}, outcome={self.outcome.value!r})"
         )
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class DescriptorMaterial:
+    """What descriptor cleaning decided for the values of one free-text descriptor.
+
+    Attributes are those of :class:`~.qc_pack.DescriptorEntry` but its position.
+    """
+
+    path: ElementPath
+    sources: tuple[str, ...]
+    results: tuple[CleanedDescriptor, ...]
+    applied: bool
+
+    def __repr__(self) -> str:
+        return f"DescriptorMaterial(path={str(self.path)!r}, applied={self.applied!r})"
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -285,6 +302,7 @@ def qc_pack_of(
     omissions: list[qc_pack.NotSearchedEntry] = []
     drops: list[qc_pack.DropEntry] = []
     roi_names: list[qc_pack.RoiNameEntry] = []
+    descriptors: list[qc_pack.DescriptorEntry] = []
     reference_findings: list[qc_pack.ReferenceFindingEntry] = []
     retained: list[tuple[str, int, ElementPath]] = []
     written: dict[int, bytes] = {}
@@ -323,6 +341,12 @@ def qc_pack_of(
                         item.institutional_matches,
                     )
                 )
+            elif isinstance(item, DescriptorMaterial):
+                descriptors.append(
+                    qc_pack.DescriptorEntry(
+                        position, item.path, item.sources, item.results, item.applied
+                    )
+                )
             elif isinstance(item, (ReferenceFindingMaterial, WrittenFindingMaterial)):
                 reference_findings.append(
                     qc_pack.ReferenceFindingEntry(
@@ -354,6 +378,7 @@ def qc_pack_of(
         not_searched=tuple(omissions),
         retained_strings=qc_pack.retained_strings(retained),
         roi_names=tuple(roi_names),
+        descriptors=tuple(descriptors),
         reference_findings=tuple(reference_findings),
         pixel_risks=tuple(
             qc_pack.PixelRiskEntry(position, found)
