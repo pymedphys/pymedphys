@@ -109,8 +109,13 @@ rules (:func:`~pymedphys._dicom.deidentify.retained_private.private_actions`):
 a private creator or data element is kept (K), a private UID is
 replaced (U), or the element is removed (X). A private sequence that a rule
 keeps is kept as a container, so that each element in its items takes its
-own rule. A private data element that a rule keeps or replaces, written
-without its VR, in implicit VR or as UN, is read by the rule's VR.
+own rule. So is a private sequence that no rule lists, which E.3.10 asks to
+be parsed, but the data set is planned again with it removed, with
+everything in it, where nothing in its items, at any depth, is kept or
+replaced but private creators: the sequence and its creator are kept only
+for what the parsing keeps. A private data element that a rule keeps or
+replaces, written without its VR, in implicit VR or as UN, is read by the
+rule's VR.
 
 Making the plan reads no value but, under the Retain Safe Private Option,
 the private creators and the private values that a rule would keep, which
@@ -159,7 +164,7 @@ from .dummy_values import DUMMY_VRS, ICC_PROFILE
 from .element_rules import ElementRule, ElementRules, RuleSource
 from .file_layout import ElementPath
 from .iods import IOD
-from .retained_private import PrivatePlan, private_plan
+from .retained_private import PrivatePlan, is_private_creator, private_plan
 from .source import SourceEvidence
 from .standard import dictionary_attribute
 
@@ -543,6 +548,36 @@ def _lapsed(plan: InstancePlan, source: SourceEvidence) -> frozenset[ElementPath
     return kept
 
 
+def _unkept(
+    plan: InstancePlan, source: SourceEvidence, parsed: frozenset[ElementPath]
+) -> frozenset[ElementPath]:
+    """Return the parsed private sequences that the plan keeps nothing in.
+
+    What counts is an element kept or replaced, at any depth, that is not a
+    sequence, whose kept container holds no value of its own, or a private
+    creator, which is kept only for what its block keeps.
+    """
+    holding: set[ElementPath] = set()
+    for element in plan.elements:
+        path = element.path
+        if (
+            element.action in DESCENDED
+            and source.element(path).items is None
+            and not is_private_creator(path.tag)
+        ):
+            holding.update(
+                ElementPath(path.items[:depth], tag)
+                for depth, (tag, _) in enumerate(path.items)
+            )
+    return frozenset(
+        element.path
+        for element in plan.elements
+        if element.path in parsed
+        and element.action in DESCENDED
+        and element.path not in holding
+    )
+
+
 def plan_instance(
     source: SourceEvidence,
     rules: ElementRules,
@@ -553,10 +588,16 @@ def plan_instance(
 
     A plain X can remove a sequence that encloses its attribute, or the
     other attributes of an overlay group, some of which come before it in
-    file order, so the data set is planned again where one does. Where the
-    plan then keeps no reference to an instance outside the Common Instance
-    Reference Module, it is planned once more with the module's sequences
-    removed, which removes no reference that the decision rests on.
+    file order, so the data set is planned again where one does. Under the
+    Retain Safe Private Option, it is planned again, until none is left,
+    with each private sequence that no rule lists removed where the plan
+    keeps nothing in it. Removing such a sequence removes no value that the
+    plan keeps or replaces, only the sequence and, where its block keeps
+    nothing else, its private creator, so no other decision changes. Where
+    the plan then keeps no reference to an instance outside the Common
+    Instance Reference Module, it is planned once more with the module's
+    sequences removed, which removes no reference that the decision rests
+    on.
 
     Parameters
     ----------
@@ -589,6 +630,15 @@ def plan_instance(
     )
     if removals.sequences or removals.overlay_groups:
         # Planning again only removes more, so it finds nothing new to force.
+        plan, _ = _plan(source, rules, iod, removals, content_items, private=private)
+    unkept: frozenset[ElementPath] = frozenset()
+    while private is not None and rules.safe_private is not None:
+        found = _unkept(plan, source, private.parsed)
+        if not found:
+            break
+        # Each pass removes at least one more sequence, so the passes end.
+        unkept |= found
+        private = private_plan(source, rules.safe_private, unkept)
         plan, _ = _plan(source, rules, iod, removals, content_items, private=private)
     lapsed = _lapsed(plan, source)
     if lapsed:

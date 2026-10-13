@@ -132,17 +132,26 @@ def safe_private_section(statement: ConformanceStatement) -> list[str]:
         *(f"- {handling}: {meaning};" for handling, meaning in _HANDLINGS[:-1]),
         f"- {_HANDLINGS[-1][0]}: {_HANDLINGS[-1][1]}.",
         "",
+        "A private sequence that no rule lists is parsed, as E.3.10 asks of a "
+        "sequence not known to hold only safe content, where its block's "
+        "creator is printable ISO 646 without a backslash, written as LO or "
+        "without a VR: each attribute in its items takes its own rule, and the "
+        "sequence is kept only where one of them, at any depth, other than a "
+        "private creator, is kept or replaced, and is otherwise removed with "
+        "everything in it. A creator that no rule names, kept for such a "
+        "sequence, is among the retained strings that the QC pack lists for "
+        "review.",
+        "",
         "Every other private attribute is removed: one whose rule is for text, "
         "since no reviewed cleaner cleans private text (D-009), or removes it; "
-        "one without a rule, or whose block has no creator that matches one; "
-        "one whose value does not pass its handling's check; and each element "
-        "in an odd group that PS3.5 Section 7.8.1 does not allow. A private "
-        "creator is kept where an attribute of its block in the same data set "
-        "or item is kept or replaced, and removed otherwise. Private Data "
-        "Element Characteristics Sequence (0008,0300) is not yet followed, and "
-        "is removed by its supplementary rule; this and the private sequences "
-        "that no rule lists are among what the statement does not yet "
-        "describe.",
+        "one without a rule that is not such a sequence; one in a block "
+        "without such a creator; one whose value does not pass its handling's "
+        "check; and each element in an odd group that PS3.5 Section 7.8.1 does "
+        "not allow. A private creator is kept where an attribute of its block "
+        "in the same data set or item is kept or replaced, and removed "
+        "otherwise. Private Data Element Characteristics Sequence (0008,0300) "
+        "is not yet followed, and is removed by its supplementary rule; this "
+        "is among what the statement does not yet describe.",
         "",
         f"These are the {len(statement.safe_private)} rules that can retain "
         f"an attribute, for Table E.3.10-1 of PS3.15 {statement.edition} and "

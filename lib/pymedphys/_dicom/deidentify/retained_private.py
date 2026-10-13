@@ -56,22 +56,28 @@ settles its C, K, U, or X, from its rule and its value as the file holds it:
 
   A value that does not pass its handling's check, a value where the rule
   expects items, and items where it expects a value, are removed.
+- A private sequence that no rule lists, in a block whose creator is
+  compared, is parsed, as E.3.10 asks of a sequence "not known to always
+  only contain safe content": it is kept as a container, so that each
+  element in its items is "handled on its own merits" by its own rule, and
+  :func:`~pymedphys._dicom.deidentify.walker.plan_instance` removes it,
+  with everything in it, where nothing in its items, at any depth, is kept
+  or replaced but private creators. Such a sequence is listed in
+  :attr:`PrivatePlan.parsed`.
 - A private creator is kept where an element of its block in the same data
   set or item is kept or replaced, and removed otherwise.
 - Every other element of a private group is removed: a data element without
-  a rule, or whose block has no creator that matches one, and each element
-  that PS3.5 Section 7.8.1 does not allow, at (gggg,0001) to (gggg,000F) and
-  (gggg,0100) to (gggg,0FFF).
+  a rule that is not a sequence, one whose block has no creator that is
+  compared, and each element that PS3.5 Section 7.8.1 does not allow, at
+  (gggg,0001) to (gggg,000F) and (gggg,0100) to (gggg,0FFF).
 
-Two routes of E.3.10 are not yet applied, so what they would retain is
-removed. Private Data Element Characteristics Sequence (0008,0300) is not
-yet followed: a block that it marks SAFE in Block Identifying Information
-Status (0008,0303), and an attribute that it lists in Nonidentifying Private
+One route of E.3.10 is not yet applied, so what it would retain is removed.
+Private Data Element Characteristics Sequence (0008,0300) is not yet
+followed: a block that it marks SAFE in Block Identifying Information Status
+(0008,0303), and an attribute that it lists in Nonidentifying Private
 Elements (0008,0304), are retained only where a reviewed rule retains them,
 and the sequence itself is removed by its supplementary rule, as under every
-policy. A private sequence that no rule lists is removed whole, where E.3.10
-asks for it to be parsed and each nested attribute handled on its own
-merits. Removing what is not retained meets E.3.10's "removed or processed".
+policy. Removing what is not retained meets E.3.10's "removed or processed".
 
 The actions name paths, never values. The values that decide them are read
 from the source file's own bytes, and only those of private creators and of
@@ -79,7 +85,8 @@ elements that a rule would keep. :func:`private_plan` also gives the VR by
 which each kept value whose VR the file does not write is read: the rule's,
 or LO for a private creator, so that a creator, code, or number string kept
 from Implicit VR Little Endian, or written as UN, is reviewed as the same
-value written with its VR would be.
+value written with its VR would be. A sequence holds no value of its own, so
+none is given for one.
 """
 
 from __future__ import annotations
@@ -125,6 +132,15 @@ def is_private(tag: str) -> bool:
     return group % 2 == 1 and group not in _RESERVED_ODD_GROUPS
 
 
+def is_private_creator(tag: str) -> bool:
+    """Return whether an element of the form ``(gggg,eeee)`` is a private creator.
+
+    It is in a private group, at (gggg,0010) to (gggg,00FF) (PS3.5 Section
+    7.8.1).
+    """
+    return is_private(tag) and 0x0010 <= int(tag[6:10], 16) <= 0x00FF
+
+
 @dataclasses.dataclass(frozen=True)
 class PrivatePlan:
     """The actions that settle the C of each private element, and how to read it.
@@ -136,11 +152,15 @@ class PrivatePlan:
     vrs : mapping of ElementPath to str
         The VR by which the value of each kept or replaced private element
         whose VR is not written, in implicit VR or as UN, is read: its
-        rule's, or LO for a private creator.
+        rule's, or LO for a private creator. A sequence is not given one.
+    parsed : frozenset of ElementPath
+        The private sequences that no rule lists, kept so that their items
+        are parsed, which are removed where nothing in them is kept.
     """
 
     actions: Mapping[ElementPath, str]
     vrs: Mapping[ElementPath, str]
+    parsed: frozenset[ElementPath] = frozenset()
 
 
 def private_actions(
@@ -162,18 +182,26 @@ def private_actions(
     mapping of ElementPath to str
         Read-only: ``"K"``, ``"U"``, or ``"X"`` for each element of a
         private group, at every level of nesting, in file order, as the
-        module describes.
+        module describes. A private sequence that no rule lists is
+        ``"K"``, as parsed, whatever is kept in it.
     """
     return private_plan(source, rules).actions
 
 
-def private_plan(source: SourceEvidence, rules: SafePrivateRules) -> PrivatePlan:
+def private_plan(
+    source: SourceEvidence,
+    rules: SafePrivateRules,
+    unkept: frozenset[ElementPath] = frozenset(),
+) -> PrivatePlan:
     """Return the actions of :func:`private_actions`, with the VRs that read them.
 
     Parameters
     ----------
     source : SourceEvidence
     rules : SafePrivateRules
+    unkept : frozenset of ElementPath, optional
+        The private sequences that no rule lists, and that the plan found
+        nothing kept in, which are removed. Defaults to none.
 
     Returns
     -------
@@ -182,6 +210,7 @@ def private_plan(source: SourceEvidence, rules: SafePrivateRules) -> PrivatePlan
     """
     actions: dict[ElementPath, str] = {}
     vrs: dict[ElementPath, str] = {}
+    parsed: set[ElementPath] = set()
     creators: dict[_Block, str | None] = {}
     kept: set[_Block] = set()
     for path in source.paths():
@@ -198,10 +227,20 @@ def private_plan(source: SourceEvidence, rules: SafePrivateRules) -> PrivatePlan
             rule = None
             if creator is not None:
                 rule = rules.rule_for(group, creator, element & 0xFF)
-            actions[path] = _action(source, path, rule)
+            extent = source.element(path)
+            if creator is not None and rule is None and extent.items is not None:
+                if path not in unkept:
+                    actions[path] = KEEP
+                    parsed.add(path)
+            else:
+                actions[path] = _action(source, path, rule)
             if actions[path] != REMOVE:
                 kept.add(block)
-                if rule is not None and source.element(path).vr in _UNWRITTEN:
+                if (
+                    rule is not None
+                    and extent.items is None
+                    and extent.vr in _UNWRITTEN
+                ):
                     vrs[path] = rule.vr
     for path in actions:
         element = int(path.tag[6:10], 16)
@@ -210,7 +249,11 @@ def private_plan(source: SourceEvidence, rules: SafePrivateRules) -> PrivatePlan
                 actions[path] = KEEP
                 if source.element(path).vr in _UNWRITTEN:
                     vrs[path] = _CREATOR_VR
-    return PrivatePlan(types.MappingProxyType(actions), types.MappingProxyType(vrs))
+    return PrivatePlan(
+        types.MappingProxyType(actions),
+        types.MappingProxyType(vrs),
+        frozenset(parsed),
+    )
 
 
 def _creator(source: SourceEvidence, path: ElementPath) -> str | None:
