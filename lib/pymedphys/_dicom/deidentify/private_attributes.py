@@ -89,8 +89,9 @@ chained to it. The File Meta Information is not part of the data set; the
 design has the engine replace it whole.
 
 The Retain Safe Private Option keeps the private attributes that are known to
-be safe. No reviewed rules yet say which are, so a policy that selects it is
-refused.
+be safe, which the engine's walker decides by the reviewed safe private rules
+(:mod:`~pymedphys._dicom.deidentify.retained_private`), so a policy that
+selects it is refused here.
 """
 
 from __future__ import annotations
@@ -105,7 +106,7 @@ from pymedphys._imports import pydicom
 
 from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
-from .policy import Policy, PolicyError, refuse_retain_safe_private
+from .policy import Policy, PolicyError
 from .sequences import UnreadableItems, decode_items
 from .standard import PRIVATE_ATTRIBUTES_TAG, sequence_tags
 
@@ -185,8 +186,8 @@ def private_attribute_paths(
     Raises
     ------
     PolicyError
-        If ``policy`` selects the Retain Safe Private Option, or gives private
-        attributes another action than removal (X).
+        If ``policy`` gives private attributes another action than removal
+        (X), as the Retain Safe Private Option does.
     PrivateAttributeError
         If pydicom cannot decode a standard sequence, or a standard sequence
         that pydicom leaves as VR UN, or a sequence nested at any depth in
@@ -257,12 +258,12 @@ def without_private_attributes(
 
 def _check(policy: Policy) -> None:
     """Refuse a policy that does not remove every private attribute."""
-    refuse_retain_safe_private(policy)
     action = policy.actions.get(PRIVATE_ATTRIBUTES_TAG)
     if action != REMOVE:
         raise PolicyError(
             f"the policy gives private attributes {action or 'no action'}, "
-            f"but only their removal ({REMOVE}) is implemented"
+            f"but this removes them ({REMOVE}), as a policy without the "
+            "Retain Safe Private Option does"
         )
 
 

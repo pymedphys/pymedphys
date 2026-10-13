@@ -43,6 +43,7 @@ from .conformance import (
     ConformanceStatement,
 )
 from .conformance_values import code as _code
+from .conformance_safe_private import safe_private_section
 from .conformance_values import join as _join
 from .markers import PROFILE_CODE
 from .policy import ENGINE_OPTIONS, UIDS
@@ -227,8 +228,10 @@ def _claim(
 
 
 def _private(statement: ConformanceStatement) -> list[str]:
-    """Describe the removal of private attributes, where the policy removes them."""
+    """Describe the removal or retention of private attributes (D-028, D-035)."""
     row = next(e for e in statement.attributes if e.tag == PRIVATE_ATTRIBUTES_TAG)
+    if statement.safe_private:
+        return safe_private_section(statement)
     if row.action != "X":
         return []
     return [
@@ -720,9 +723,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         + ".",
         "- Options whose policies the engine applies: "
         + _join(option(o) for o in ENGINE_OPTIONS)
-        + "; it refuses a policy that selects any other, and one that "
-        "selects Retain Safe Private until reviewed rules say which private "
-        "attributes are safe (D-028).",
+        + "; it refuses a policy that selects any other.",
         "- Options that are not supported: "
         + _join(coded(c) for c in PIXEL_OPTION_CODES)
         + ".",

@@ -366,9 +366,9 @@ def test_each_preset_without_retain_safe_private_removes_private_attributes(pres
     ],
     ids=["paths", "copy"],
 )
-def test_retain_safe_private_is_refused(composed, apply):
-    # The option keeps private attributes that are known to be safe, which
-    # needs reviewed rules for which are, and none exist yet.
+def test_removing_every_private_attribute_refuses_retain_safe_private(composed, apply):
+    # Under the option, the walker settles each private attribute by the
+    # reviewed rules, so removing every one would not apply the option.
     with pytest.raises(policy.PolicyError, match="Retain Safe Private"):
         apply(_plan(), composed())
 

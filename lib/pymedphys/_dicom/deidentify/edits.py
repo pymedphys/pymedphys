@@ -100,10 +100,11 @@ from .file_layout import ElementPath
 from .keys import DeidKey
 from .pseudonyms import SubjectIdentity, patient_pseudonym
 from .residuals import SourceValue
+from .retained_private import is_private
 from .series_numbers import SERIES_NUMBER, SeriesNumberings, series_number
 from .source import SourceEvidence
 from .standard import dictionary_attribute
-from .uid_roles import load_uid_roles
+from .uid_roles import UIDRole, load_uid_roles
 from .uids import UIDOutcome, normalise_uid, transform_uid, well_known_uids
 from .walker import (
     DESCENDED,
@@ -499,7 +500,13 @@ def _dummy(path: ElementPath, value: ElementValue, key: DeidKey) -> Edit:
 
 def _uids(path: ElementPath, value: ElementValue, key: DeidKey) -> Edit:
     attribute = dictionary_attribute(path.tag)
-    role = load_uid_roles().role(attribute.tag if attribute else path.tag)
+    # A private UID that the Retain Safe Private Option replaces has no role
+    # of its own; it is replaced as an instance's UID is.
+    role = (
+        UIDRole.INSTANCE
+        if is_private(path.tag)
+        else load_uid_roles().role(attribute.tag if attribute else path.tag)
+    )
     replaced = [
         transform_uid(key, role, str(uid))
         if normalise_uid(str(uid))

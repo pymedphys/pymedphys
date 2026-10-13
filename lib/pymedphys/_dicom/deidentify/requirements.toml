@@ -272,7 +272,8 @@ Under Clean Descriptors, it describes how ROI Name is cleaned in two tiers: auto
 Each run with a release reporter writes the statement of its policy, as `conformance-statement.md` beside the release report at the root of the release, since it holds no instance value; it describes the policy and vocabulary that the report records, and the report gives the run's own method digest and reviewed-names digest.
 The statements of `basic` and `basic-clean-descriptors`, the presets of the first supported release, list nothing as pending.
 For each selected option that has a cleaner, it gives the attributes that the policy gives C and the cleaner settles, with its method: the AE titles under Retain Device Identity (D-034), the free text under Retain Patient Characteristics, which holds its instance unless it has no value (D-038, PS3.15-E.3.7-02), and the dates and times that Modified Dates modifies (D-039, PS3.15-E.3.6-04).
-A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; the safe private attributes retained, for a policy that selects Retain Safe Private; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset (PS3.15-E.3.10-04).
+A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset.
+Under Retain Safe Private, it describes how the reviewed safe private rules are matched and applied, and lists each rule that can retain an attribute (D-035, PS3.15-E.3.10-04).
 '''
 
 [[requirement]]
@@ -600,17 +601,19 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, Private Attributes that are known by the de-identifier to be safe from identity leakage shall be retained, together with the Private Creator IDs that are required to fully define the retained Private Attributes; all other Private Attributes shall be removed or processed in the element-specific manner recommended by Deidentification Action (0008,0307), if present within Private Data Element Characteristics Sequence (0008,0300) (see PS3.3 Section C.12.1).
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-001", "D-028", "D-035"]
 implementation = [
+  "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/retained_private.py",
   "_dicom/deidentify/safe_private.py",
   "_dicom/deidentify/tcia_private_tags.py",
+  "_dicom/deidentify/walker.py",
 ]
 note = '''
-Reviewed rules give every row of Table E.3.10-1 a handling, keyed by private creator and element within the block: numbers and code strings are checked and kept, UIDs replaced, text cleaned as descriptors, private sequences parsed, and bulk binary data and three timestamps removed (D-035).
-TCIA's Private Tag Dictionary ships unchanged, pinned by its length and SHA-256 and compared with TCIA's file by a monthly edition check, as a second list that a run may choose; its keep is a basis for retention, and kept values still pass the handling of their VR (D-035).
-Remaining: applying the rules, following Private Data Element Characteristics Sequence and Deidentification Action, and enabling the Option, which a policy is refused until then (D-028) (M3).
+Reviewed rules give every row of Table E.3.10-1 a handling, keyed by private creator and element within the block: numbers and code strings are checked and kept, UIDs replaced, text cleaned as descriptors where a reviewed cleaner applies and otherwise removed, private sequences parsed, and bulk binary data and three timestamps removed (D-035).
+Under the Option, the engine settles each private attribute by its rule, at the top level and in the items of every sequence that is kept, matching creators only in printable ISO 646 and checking each kept value against its VR and VM; it keeps a private creator only where its block keeps something, and removes every other private attribute, which E.3.10 allows in place of following Deidentification Action (0008,0307) (D-035).
+TCIA's Private Tag Dictionary ships unchanged, pinned by its length and SHA-256 and compared with TCIA's file by a monthly edition check, as a second list that a run is to be able to choose; its keep is a basis for retention, and kept values still pass the handling of their VR. No run can choose it yet (D-035).
 '''
 
 [[requirement]]
@@ -638,11 +641,16 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When an entire Sequence (SQ VR) Private Attribute is not known to always only contain safe content, whether that content consists of Standard Attributes or Private Attributes or a combination of both, then when the Retain Safe Private Option is used, any such Sequence Attribute shall be parsed in its entirety and each of the nested Attributes handled on its own merits, rather than removing the Sequence in its entirety without further consideration. Reviewing the content may be a sensible practice to apply even to nominally known safe Private Sequence Attributes.
 '''
-status = "planned"
+status = "partial"
 milestone = "M3"
-decisions = ["D-028"]
+decisions = ["D-028", "D-035"]
+implementation = [
+  "_dicom/deidentify/retained_private.py",
+  "_dicom/deidentify/walker.py",
+]
 note = '''
-Without the Option, a private sequence is removed with everything in it, and a policy that selects the Option is refused until the engine applies the reviewed rules (D-028, D-035).
+Under the Option, a private sequence that a reviewed rule lists is parsed, and each attribute in its items, standard or private, takes its own rule, at every depth (D-035).
+Remaining: parsing a private sequence that no rule lists, which is removed with everything in it, as every private sequence is without the Option (D-028) (M3).
 '''
 
 [[requirement]]
@@ -651,10 +659,14 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The safe Private Attributes that are retained shall be described in the Conformance Statement.
 '''
-status = "planned"
-milestone = "M3"
+status = "implemented"
+decisions = ["D-035"]
+implementation = [
+  "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/conformance_safe_private.py",
+]
 note = '''
-No preset of the first supported release selects Retain Safe Private, so the conformance statement describes the safe private attributes retained once the Option is implemented (PS3.15-E.3.10-01).
+Under the Option, the conformance statement describes how the reviewed rules are matched and how each handling settles an attribute, and lists every rule that can retain one, with its private creator, tag, VR, VM, and handling, and the meaning that Table E.3.10-1 gives it or the source of a reviewed addition (D-035).
 '''
 
 [[requirement]]
