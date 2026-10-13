@@ -703,6 +703,9 @@ class InstanceTransform:
         self._key = key
         self._retained_uids = retained_uid_tags(policy)
         self._cleaners = cleaners_for(policy)
+        self._cleaned_elsewhere = frozenset(
+            tag for cleaner in self._cleaners for tag in cleaner.tags
+        )
         self._cleaning = cleaning
         self._fallback = (
             None if cleaning is None else ElementRules(fallback_policy(policy))
@@ -822,7 +825,9 @@ class InstanceTransform:
         """
         if self._cleaning is None or self._fallback is None:
             return frozenset()
-        return kept_descriptors(plan, edits, self._cleaning)
+        return kept_descriptors(
+            plan, edits, self._cleaning, cleaned_elsewhere=self._cleaned_elsewhere
+        )
 
     def __call__(
         self, data: bytes, record: InstanceRecord
@@ -913,6 +918,7 @@ class InstanceTransform:
                     self._vocabulary,
                     self.review_queue,
                     fallen_back,
+                    cleaned_elsewhere=self._cleaned_elsewhere,
                 )
             except DescriptorsRefused as refused:
                 withheld = retained | self._kept_descriptors(plan, edits)

@@ -25,7 +25,8 @@ writes it as CommonMark:
   codes, and the options that are not supported;
 - whether the policy can claim conformance, and why not where it cannot;
 - the method digest of the policy (D-024), the vocabulary it covers, and
-  the absence of a reviewed-names list;
+  the absence of the technique vocabulary and of a reviewed-names or
+  reviewed descriptors list;
 - the supported IODs, their Storage SOP Classes, and the transfer
   syntaxes they are read in (D-010);
 - the action that the engine applies to each attribute of Table E.1-1, of
@@ -462,8 +463,9 @@ class ConformanceStatement:
     resolved : tuple of ResolvedConflict
         The conflicts between options that the preset resolves.
     method_digest : str
-        The policy's method digest under the vocabulary given, without a
-        reviewed-names list (D-024).
+        The policy's method digest under the vocabulary given, without the
+        technique vocabulary or a reviewed-names or reviewed descriptors
+        list (D-024).
     vocabulary_digest : str or None
         The content digest of the vocabulary's entries, or None without one.
     iods, sop_classes, transfer_syntaxes : tuple
@@ -871,8 +873,10 @@ def conformance_statement(
         the published baseline digest of a preset (D-024). It must be given
         by name, as for
         :func:`~pymedphys._dicom.deidentify.method_digest.method_digest`.
-        The digest is always computed without a reviewed-names list, which
-        is a site's confidential resource, and the statement says so.
+        The digest is always computed without a reviewed-names list or a
+        reviewed descriptors list, which are a site's confidential
+        resources, and without the technique vocabulary, as D-024's
+        published baseline is, and the statement says so.
 
     Returns
     -------
@@ -956,7 +960,8 @@ def conformance_statement(
         load_context_group(7050),
         load_context_group(7005),
     )
-    # A statement describes a policy, never a site's reviewed-names list.
+    # A statement describes a policy, never a site's reviewed lists, and
+    # gives D-024's baseline, without the technique vocabulary.
     digest = method_digest(policy, vocabulary=vocabulary, reviewed_roi_names=None)
     return ConformanceStatement(
         engine_version=_version.__version__,
