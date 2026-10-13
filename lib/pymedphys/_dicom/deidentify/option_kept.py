@@ -205,30 +205,6 @@ def retained_value(
         or source == location
     ):
         return False
-    return whole_values_explain(found, values, text)
-
-
-def whole_values_explain(
-    found: tuple[SourceValue, ...], values: tuple[str, ...], text: str
-) -> bool:
-    """Return whether kept values explain each source value found among them.
-
-    Parameters
-    ----------
-    found : tuple of SourceValue
-        The source's collected values, pooled across the subject.
-    values : tuple of str
-        The kept element's values, as written, without padding.
-    text : str
-        That element's whole value, as written, values and separators.
-
-    Returns
-    -------
-    bool
-        Whether one of the source's values is a whole kept value, and each
-        other that the search could have found in the element is one too,
-        read and found as :func:`retained_value` describes.
-    """
     explained = False
     for value in found:
         for whole in _values_in(value, values, text.encode("ascii").lower()):

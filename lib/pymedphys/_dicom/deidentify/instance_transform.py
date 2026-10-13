@@ -116,6 +116,7 @@ from .descriptor_cleaning import (
     HeldRoiName,
     clean_descriptors,
     fallback_policy,
+    kept_descriptors,
 )
 from .edits import Edit, EditKind, InstanceEdits, edit_instance, read_values
 from .element_rules import ElementRules
@@ -805,6 +806,18 @@ class InstanceTransform:
             names[path] = output_name_uid(self._key, value, kept)
         return _Identifiers(written[_SOP_INSTANCE], names)
 
+    def _kept_descriptors(
+        self, plan: InstancePlan, edits: InstanceEdits
+    ) -> frozenset[ElementPath]:
+        """Return the descriptors of a withheld instance that cleaning would keep.
+
+        None without Clean Descriptors
+        (:func:`~pymedphys._dicom.deidentify.descriptor_cleaning.kept_descriptors`).
+        """
+        if self._cleaning is None or self._fallback is None:
+            return frozenset()
+        return kept_descriptors(plan, edits, self._cleaning)
+
     def __call__(
         self, data: bytes, record: InstanceRecord
     ) -> Transformed | Sequestered:
@@ -854,10 +867,13 @@ class InstanceTransform:
         if reasons:
             # An instance out of scope is planned and edited only so that
             # its identifiers are collected for its subject's search (D-027).
+            withheld = kept_uids | self._kept_descriptors(plan, edits)
+            if withheld != kept_uids:
+                evidence = coverage_of(plan, edits, withheld, self._options)
             return Sequestered(
                 reasons,
                 evidence,
-                (*risk, *dropped_of(edits, kept_uids), *omissions_of(evidence)),
+                (*risk, *dropped_of(edits, withheld), *omissions_of(evidence)),
             )
         satisfied = False
         settled = apply_cleaners(edits, self._cleaners, self._key, record.patient)
@@ -886,10 +902,13 @@ class InstanceTransform:
                     fallen_back,
                 )
             except DescriptorsRefused as refused:
+                withheld = retained | self._kept_descriptors(plan, edits)
+                if withheld != retained:
+                    evidence = coverage_of(plan, edits, withheld, self._options)
                 return Sequestered(
                     (refused.reason,),
                     evidence,
-                    (*risk, *dropped_of(edits, retained), *omissions_of(evidence)),
+                    (*risk, *dropped_of(edits, withheld), *omissions_of(evidence)),
                 )
             edits, satisfied = cleaned.edits, cleaned.satisfied
             retained |= cleaned.retained

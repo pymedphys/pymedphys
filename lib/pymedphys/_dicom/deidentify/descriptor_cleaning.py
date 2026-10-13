@@ -95,6 +95,7 @@ from .reviewed_roi_names import (
 from .roi_names import InstitutionalNames, RoiNameVocabulary
 from .run_qc import DescriptorMaterial, RetainedText, RoiNameMaterial
 from .technique_descriptors import TechniqueVocabulary, load_technique_vocabulary
+from .walker import InstancePlan
 
 CLEAN_DESCRIPTORS = "clean_descriptors"
 _ROI_SEQUENCE = "(3006,0020)"
@@ -299,7 +300,7 @@ def clean_descriptors(  # pylint: disable = too-many-locals
     names = [edit for edit in pending if _is_roi_name(edit.path)]
     others = [edit for edit in pending if not _is_roi_name(edit.path)]
     identifiers = _identifiers(edits)
-    texts_of = _descriptor_texts(edits, others)
+    texts_of = _descriptor_texts(edits, [edit.path for edit in others])
     described = {
         edit.path: clean_descriptor_values(
             edit.path.tag,
@@ -421,7 +422,7 @@ def _identifiers(edits: InstanceEdits) -> list[str]:
 
 
 def _descriptor_texts(
-    edits: InstanceEdits, others: Sequence[Edit]
+    edits: InstanceEdits, paths: Sequence[ElementPath]
 ) -> dict[ElementPath, list[str]]:
     """Return the values of each free-text descriptor that cleaning can read.
 
@@ -433,17 +434,67 @@ def _descriptor_texts(
     attributes = descriptor_attributes()
     sources = {value.source: value for value in edits.source_values}
     texts = {}
-    for edit in others:
-        source = sources.get(edit.path)
-        vr = attributes.get(edit.path.tag)
+    for path in paths:
+        source = sources.get(path)
+        vr = attributes.get(path.tag)
         if source is None or vr is None or source.vr != vr:
             continue
         if not isinstance(source.value, str):
             continue
-        texts[edit.path] = (
+        texts[path] = (
             source.value.split("\\") if vr in _MULTI_VALUED else [source.value]
         )
     return texts
+
+
+def kept_descriptors(
+    plan: InstancePlan, edits: InstanceEdits, cleaning: DescriptorCleaning
+) -> frozenset[ElementPath]:
+    """Return the free-text descriptors of a withheld instance that cleaning would keep.
+
+    An instance withheld before its descriptors are cleaned is still edited
+    so that its values are collected for its subject's residual search
+    (D-027). A descriptor that cleaning would write with a value that a tier
+    keeps, by the rules of :func:`clean_descriptors`, is left out of that
+    collection, as it is from an instance that is written, so that the same
+    value written in another instance, such as the Series Description of the
+    rest of a series, is not found from it. A value that a reviewer maps or
+    empties, that no tier cleans, or that echoes an identifier stays in it.
+
+    Parameters
+    ----------
+    plan : InstancePlan
+        The instance's plan, under a policy with Clean Descriptors.
+    edits : InstanceEdits
+        Its edits, with the values that they collected.
+    cleaning : DescriptorCleaning
+        What descriptors are cleaned with.
+
+    Returns
+    -------
+    frozenset of ElementPath
+        The descriptors whose values would be kept, each a retained value.
+    """
+    paths = [
+        element.path
+        for element in plan.elements
+        if element.action == "C" and not _is_roi_name(element.path)
+    ]
+    identifiers = _identifiers(edits)
+    kept = set()
+    for path, texts in _descriptor_texts(edits, paths).items():
+        results = clean_descriptor_values(
+            path.tag,
+            texts,
+            cleaning.reviewed_descriptors,
+            identifiers=identifiers,
+            vocabulary=cleaning.technique,
+        )
+        if _written(results) is not None and any(
+            result.outcome in _KEEPS_ITS_SOURCE and result.value for result in results
+        ):
+            kept.add(path)
+    return frozenset(kept)
 
 
 def _written(results: Sequence[CleanedDescriptor]) -> tuple[str, ...] | None:

@@ -385,7 +385,7 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information that is embedded in text or string Attributes corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-009", "D-022", "D-036", "D-042"]
+decisions = ["D-009", "D-022", "D-036"]
 implementation = [
   "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/roi_names.py",
@@ -398,7 +398,6 @@ implementation = [
   "_dicom/deidentify/run_report.py",
   "_dicom/deidentify/run_qc.py",
   "_dicom/deidentify/qc_pack.py",
-  "_dicom/deidentify/residual_exemptions.py",
 ]
 note = '''
 The first supported release includes the Option for ROI names (D-009).
@@ -416,7 +415,7 @@ A reviewed descriptors list, kept as the reviewed-names list is and filled by a 
 For the technique descriptors of D-036, such as Series Description and Protocol Name, an automatic tier keeps a value that the list has no decision on where every word of it is in the reviewed technique vocabulary, which leaves out common personal names that are not reviewed exceptions, and it echoes no identifier.
 In a run, descriptor cleaning applies both tiers to each such descriptor whose decoded value it collected in its dictionary VR, each value of a multi-valued VR alone, and writes the element with what they give only where every value is cleaned, at least one has text, and no kept value is beside a mapped or emptied one; every other such element takes its action without the Option, and still claims it where that action removes or replaces it.
 A kept value is left out of the residual search and listed among the retained strings; the QC pack lists each element's values, outcomes, and whether it was written; the release report counts them without a value; and the method digest takes the list's keyed digest and the vocabulary's SHA-256 (D-024).
-The same value found from a descriptor of another instance of the subject, withheld before it was cleaned, is exempt from review where every pooled value of its source that could be in the written descriptor is a whole value of it (D-042).
+An instance withheld before cleaning leaves the descriptors that cleaning would keep out of its subject's search in the same way, so they do not hold the rest of its series.
 '''
 
 [[requirement]]

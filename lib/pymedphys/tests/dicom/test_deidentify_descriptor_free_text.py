@@ -338,10 +338,7 @@ def test_a_descriptor_is_read_only_in_its_dictionary_vr():
                 SourceValue(comments, "LT", "A\\B"),
             )
         ),
-        [
-            types.SimpleNamespace(path=path)
-            for path in (TOP, DIAGNOSES, comments, STUDY)
-        ],
+        [TOP, DIAGNOSES, comments, STUDY],
     )
 
     # A backslash separates the values of an LO, but is a character of LT.
@@ -440,3 +437,81 @@ def test_a_run_lists_and_counts_its_descriptors_naming_none_in_its_report(
         "fell_back": 1,
     }
     assert "SENTINEL" not in report and "CHEST" not in report
+
+
+def _withheld_slice(**descriptors):
+    """A CT slice that the run sequesters before cleaning its descriptors.
+
+    Responsible Person and Responsible Organization are required where
+    present, and the profile removes them.
+    """
+    dataset = synthetic.ct_slice(0)
+    dataset.ResponsiblePerson = "ROLE^PERSON"
+    dataset.ResponsibleOrganization = "SENTINEL ORGANISATION"
+    for keyword, value in descriptors.items():
+        setattr(dataset, keyword, value)
+    return dataset
+
+
+def _collected(result, *tags):
+    return sorted(
+        value.source.tag
+        for value in result.evidence.collected
+        if value.source.tag in tags
+    )
+
+
+PROTOCOL_NAME = "(0018,1030)"
+ADMITTING_DIAGNOSES_DESCRIPTION = "(0008,1080)"
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+def test_a_withheld_instance_leaves_out_only_the_descriptors_cleaning_would_keep():
+    reviewed = _reviewed(
+        (STUDY_DESCRIPTION, "STUDY FICTITIOUS", Review.KEEP),
+        (PROTOCOL_NAME, "SENTINEL PROTOCOL", Review.EMPTY),
+        (ADMITTING_DIAGNOSES_DESCRIPTION, "SENTINEL ONE", Review.MAP, "OTHER"),
+    )
+    tags = (
+        SERIES_DESCRIPTION,
+        STUDY_DESCRIPTION,
+        PROTOCOL_NAME,
+        ADMITTING_DIAGNOSES_DESCRIPTION,
+    )
+    dataset = _withheld_slice(
+        SeriesDescription="AXIAL CHEST",  # kept by the vocabulary
+        StudyDescription="STUDY FICTITIOUS",  # kept, but echoes the patient
+        ProtocolName="SENTINEL PROTOCOL",  # emptied by its reviewer
+        AdmittingDiagnosesDescription="SENTINEL ONE",  # mapped by its reviewer
+    )
+
+    result = _transformed(_transform(reviewed), dataset)
+
+    assert isinstance(result, run.Sequestered)
+    assert _collected(result, *tags) == sorted(tags[1:])
+    basic = InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
+    assert _collected(_transformed(basic, dataset), *tags) == sorted(tags)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+def test_a_kept_descriptor_of_a_withheld_instance_does_not_hold_its_series(tmp_path):
+    source = tmp_path / "source"
+    source.mkdir()
+    released = synthetic.ct_slice(1)
+    released.SeriesDescription = "AXIAL CHEST"
+    datasets = [_withheld_slice(SeriesDescription="AXIAL CHEST"), released]
+    for position, dataset in enumerate(datasets):
+        (source / f"{position}.dcm").write_bytes(synthetic.written(dataset))
+
+    result = run.run(
+        run.discover(source),
+        tmp_path / "release",
+        _transform(),
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+    )
+
+    assert [outcome.status for outcome in result.outcomes] == [
+        run.Status.SEQUESTERED,
+        run.Status.RELEASED,
+    ]
