@@ -152,7 +152,7 @@ from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
-from .reasons import HeldPixelData, HeldVisualFeatures, PixelDataReason, TransformReason
+from .reasons import HeldPixelData, HeldVisualFeatures, TransformReason
 from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
