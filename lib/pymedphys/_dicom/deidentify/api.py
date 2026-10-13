@@ -122,9 +122,10 @@ def deidentify(  # pylint: disable = too-many-arguments
         ``"basic-clean-descriptors"``, with Clean Descriptors.
     options : collection of str, optional
         A custom option set in place of a preset (D-033): the names of
-        options of PS3.15 Table E.1-1, such as ``"clean_descriptors"``, to
-        apply with the Basic Profile. The run is refused unless each is
-        enabled.
+        options of PS3.15 Table E.1-1, such as ``"clean_descriptors"``, or
+        of the Clean Pixel Data and Clean Recognizable Visual Features
+        Options, to apply with the Basic Profile. The run is refused unless
+        each is enabled.
     tg263_spreadsheet : str or os.PathLike, optional
         Under Clean Descriptors, a copy of the pinned TG-263 spreadsheet to
         read; by default, PyMedPhys's cached download.
