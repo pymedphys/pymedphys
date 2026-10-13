@@ -105,6 +105,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import hashlib
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import PurePosixPath
 
@@ -133,6 +134,7 @@ from .elements import (
     new_items,
     read_element,
 )
+from .face_review import FaceReview, carries_visual_features
 from .file_layout import ElementPath
 from .iod_conformance import lost_requirements, source_gaps
 from .iods import IOD, IODTables, load_iod_tables
@@ -140,6 +142,7 @@ from .keys import DeidKey
 from .markers import MarkerError, Markers, apply_markers, markers_for
 from .method_digest import method_digest
 from .policy import (
+    CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
     CLEAN_PIXEL_DATA,
     Policy,
     PolicyError,
@@ -149,7 +152,7 @@ from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
-from .reasons import HeldPixelData, PixelDataReason, TransformReason
+from .reasons import HeldPixelData, HeldVisualFeatures, TransformReason
 from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
@@ -203,6 +206,7 @@ _STUDY = ElementPath((), "(0020,000D)")
 _SERIES = ElementPath((), "(0020,000E)")
 _PATIENT_ID = ElementPath((), "(0010,0020)")
 _PIXEL_DATA = ElementPath((), "(7FE0,0010)")
+_RECOGNIZABLE_VISUAL_FEATURES = "(0028,0302)"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -300,20 +304,23 @@ def dropped_of(
 
 @dataclasses.dataclass(frozen=True)
 class HeldEvidence:
-    """The evidence of an instance that descriptor cleaning or a pixel option
-    holds for review.
+    """The evidence of an instance that review holds.
+
+    Descriptor cleaning holds an instance with a ROI Name held for review, a
+    pixel option one whose pixel data await review, and the face review one
+    that can show a face without a verdict of absent for its source file.
 
     Attributes
     ----------
     coverage : Coverage
         Its residual search's coverage, pooled with its subject's as any.
-    held : tuple of HeldRoiName or HeldPixelData
-        Each ROI Name held, by path and reason, and why a pixel option holds
-        the instance.
+    held : tuple of HeldRoiName, HeldPixelData, or HeldVisualFeatures
+        Each ROI Name held, by path and reason, then why its visual features
+        hold it, if they do, and why a pixel option holds it, if one does.
     """
 
     coverage: Coverage
-    held: tuple[HeldRoiName | HeldPixelData, ...]
+    held: tuple[HeldRoiName | HeldPixelData | HeldVisualFeatures, ...]
 
 
 def omissions_of(
@@ -460,7 +467,8 @@ def writer_plan(
 
 
 # The attributes that PS3.15 E.1.1, E.2, and E.3.6 have a de-identifier add
-# or update, which apply_markers writes.
+# or update, which apply_markers writes; it writes Recognizable Visual
+# Features (0028,0302) too, under E.3.2, only where the markers set it.
 MARKER_TAGS = (
     "(0012,0062)",  # Patient Identity Removed
     "(0012,0063)",  # De-identification Method
@@ -495,8 +503,13 @@ def with_markers(
         cannot be read, holds an element that the plan does not plan, or the
         markers cannot be added to it.
     """
+    tags = MARKER_TAGS + (
+        ()
+        if markers.recognizable_visual_features is None
+        else (_RECOGNIZABLE_VISUAL_FEATURES,)
+    )
     present = pydicom.Dataset()
-    for tag in MARKER_TAGS:
+    for tag in tags:
         path = ElementPath((), tag)
         if path in writing.replacements:
             present.add(copy.deepcopy(writing.replacements[path]))
@@ -511,7 +524,7 @@ def with_markers(
     kept, removed = set(writing.kept), set(writing.removed)
     replacements = dict(writing.replacements)
     introduced = set(writing.introduced)
-    for tag in MARKER_TAGS:
+    for tag in tags:
         if _int_tag(tag) not in marked:
             continue
         element = marked[_int_tag(tag)]
@@ -601,9 +614,12 @@ def _tag_text(tag: int) -> str:
 
 
 # The options that each instance satisfies, or not, by its own outcome: Clean
-# Descriptors, by descriptor cleaning (D-009), and Clean Pixel Data, by what
-# its pixel data hold (D-037).
-PER_INSTANCE_OPTIONS = frozenset({CLEAN_DESCRIPTORS, CLEAN_PIXEL_DATA})
+# Descriptors, by descriptor cleaning (D-009), Clean Pixel Data, by what its
+# pixel data hold (D-037), and Clean Recognizable Visual Features, by the face
+# review of its source file.
+PER_INSTANCE_OPTIONS = frozenset(
+    {CLEAN_DESCRIPTORS, CLEAN_PIXEL_DATA, CLEAN_RECOGNIZABLE_VISUAL_FEATURES}
+)
 
 
 def satisfied_options(policy: Policy) -> tuple[str, ...]:
@@ -660,6 +676,11 @@ class InstanceTransform:
         :class:`~pymedphys._dicom.deidentify.text_detection.TextDetector`,
         which a policy selecting Clean Pixel Data needs, and no other policy
         takes.
+    face_review : FaceReview, optional
+        The face verdicts of an earlier run's attested QC pack, from
+        :func:`~pymedphys._dicom.deidentify.face_review.read_face_review`,
+        which a policy selecting Clean Recognizable Visual Features needs,
+        and no other policy takes.
     unvalidated_policy : bool, default False
         Allow a policy that is not enabled, such as a preset whose behaviour
         is not yet validated. For tests and validation runs only; nothing
@@ -671,8 +692,10 @@ class InstanceTransform:
         If the policy is not enabled and ``unvalidated_policy`` is not set;
         if ``cleaning`` is given without Clean Descriptors, or left out with
         it; if ``finder`` is given without Clean Pixel Data, or left out with
-        it; or if the policy's other options cannot be composed into the
-        policy whose actions descriptors take where they are not cleaned.
+        it; if ``face_review`` is given without Clean Recognizable Visual
+        Features, or left out with it; or if the policy's other options
+        cannot be composed into the policy whose actions descriptors take
+        where they are not cleaned.
 
     Attributes
     ----------
@@ -718,6 +741,17 @@ class InstanceTransform:
     markers claim the option yet, since none can be released with Burned In
     Annotation (0028,0301) set to NO until a reviewer's decision can be
     applied.
+
+    Under Clean Recognizable Visual Features, an instance that can show a
+    face (:func:`~.face_review.carries_visual_features`) satisfies the
+    option only where the SHA-256 of its source file is in a series that the
+    face review marks absent, and an instance that cannot show a face
+    satisfies it. Each is marked with the option's code and Recognizable
+    Visual Features (0028,0302) set to NO, which PS3.15 E.3.2 adds whether
+    or not its IOD defines the attribute. Any other instance that can show a
+    face is written without them, and its evidence is a
+    :class:`HeldEvidence` with its :class:`~.reasons.HeldVisualFeatures`, so
+    it is never released.
     """
 
     def __init__(
@@ -728,6 +762,7 @@ class InstanceTransform:
         *,
         cleaning: DescriptorCleaning | None = None,
         finder: TextFinder | None = None,
+        face_review: FaceReview | None = None,
         unvalidated_policy: bool = False,
     ) -> None:
         if not (policy.enabled or unvalidated_policy):
@@ -746,6 +781,13 @@ class InstanceTransform:
                 "Pixel Data"
             )
         self._finder = finder
+        if (CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.options) != (
+            face_review is not None
+        ):
+            raise PolicyError(
+                "a face review is given exactly when the policy selects Clean "
+                "Recognizable Visual Features"
+            )
         if cleaning is not None:
             # One version of each list, for both cleaning and its digest.
             cleaning = dataclasses.replace(
@@ -794,6 +836,7 @@ class InstanceTransform:
             )
             for chosen in _subsets(per_instance)
         }
+        self._face_review = face_review
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
         self.reporter = ReleaseReporter(
             policy,
@@ -801,6 +844,7 @@ class InstanceTransform:
             reviewed_roi_names=reviewed,
             reviewed_descriptors=descriptors,
             technique_vocabulary=technique,
+            face_review=None if face_review is None else face_review.reference,
         )
 
     def __repr__(self) -> str:
@@ -873,6 +917,20 @@ class InstanceTransform:
             written[path] = value
             names[path] = output_name_uid(self._key, value, kept)
         return _Identifiers(written[_SOP_INSTANCE], names)
+
+    def _face_hold(
+        self, data: bytes, dataset: pydicom.Dataset, iod: IOD
+    ) -> HeldVisualFeatures | None:
+        """Return why the face review holds an instance, if it does.
+
+        Nothing holds an instance without a face review, or one that cannot
+        show a face.
+        """
+        review = self._face_review
+        if review is None or not carries_visual_features(dataset, iod.name):
+            return None
+        reason = review.hold_reason(hashlib.sha256(data).digest())
+        return None if reason is None else HeldVisualFeatures(reason)
 
     def _black_out(
         self, source: SourceEvidence, dataset: pydicom.Dataset
@@ -1014,22 +1072,27 @@ class InstanceTransform:
             evidence = coverage_of(plan, edits, retained, self._options)
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
+        face = self._face_hold(data, dataset, iod)
+        if face is not None:
+            evidence = _held(evidence, face)
         qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         # No instance claims Clean Pixel Data until a reviewer's decision
         # can release its pixel data with Burned In Annotation set to NO
         # (D-037).
-        chosen = frozenset({CLEAN_DESCRIPTORS} if satisfied else ())
+        chosen = {CLEAN_DESCRIPTORS} if satisfied else set()
+        if self._face_review is not None and face is None:
+            chosen.add(CLEAN_RECOGNIZABLE_VISUAL_FEATURES)
         try:
             qc = (*qc, *_retained(source, plan))
             redaction = self._black_out(source, dataset)
             if redaction is not None:
-                evidence = _held(evidence, redaction.reason)
+                evidence = _held(evidence, HeldPixelData(redaction.reason))
                 qc = (*qc, _redaction_material(redaction, data))
             writing = with_markers(
                 writer_plan(plan, edits, codecs),
                 source,
                 dataset,
-                self._markers[chosen],
+                self._markers[frozenset(chosen)],
             )
             writing = _without_bitstream_metadata(writing, source)
             writing = _with_redaction(writing, dataset, redaction)
@@ -1234,13 +1297,13 @@ def _redaction_material(redaction: Redaction, source: bytes) -> RedactionMateria
     )
 
 
-def _held(evidence: Coverage | HeldEvidence, reason: PixelDataReason) -> HeldEvidence:
-    """Return the evidence of an instance that a pixel option holds for review."""
+def _held(
+    evidence: Coverage | HeldEvidence, held: HeldPixelData | HeldVisualFeatures
+) -> HeldEvidence:
+    """Return the evidence of an instance that review holds, with ``held``."""
     if isinstance(evidence, HeldEvidence):
-        return dataclasses.replace(
-            evidence, held=(*evidence.held, HeldPixelData(reason))
-        )
-    return HeldEvidence(evidence, (HeldPixelData(reason),))
+        return dataclasses.replace(evidence, held=(*evidence.held, held))
+    return HeldEvidence(evidence, (held,))
 
 
 def _subsets(options: list[str]) -> list[tuple[str, ...]]:
@@ -1344,8 +1407,8 @@ class ReleaseGate:
     :attr:`~.release_gate.ReasonCode.NOT_REPORTED` for the file as a whole,
     since that instance's values may be in it unsearched for (D-027). An
     instance whose evidence is a :class:`HeldEvidence` is held for review,
-    with its held ROI Names and pixel data first among the reasons, unless
-    the condition withholds it. Evidence that is neither a
+    with its held ROI Names, pixel data, and visual features first among
+    the reasons, unless the condition withholds it. Evidence that is neither a
     :class:`~.release_gate.Coverage` nor a :class:`HeldEvidence` raises
     :class:`TypeError`, which the run takes as an internal error and
     sequesters the file for.

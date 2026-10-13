@@ -88,7 +88,7 @@ class Outcome(enum.Enum):
 
 
 class Face(enum.Enum):
-    """A reviewer's face verdict on a series, from its previews (D-017)."""
+    """A reviewer's face verdict on a series, from its previews."""
 
     ABSENT = "absent"  # the reviewer saw no recognisable face
     PRESENT = "present"  # the reviewer saw a recognisable face
@@ -419,10 +419,44 @@ def attestation_record(pack_directory: os.PathLike | str) -> AttestationRecord:
     """
     directory = Path(pack_directory)
     data = _pack_bytes(directory)
+    attestation = _attestation_of(directory, data)
+    if attestation is None:
+        return AttestationRecord(_reference_of(data), Outcome.NOT_ATTESTED)
+    return AttestationRecord(
+        attestation.reference,
+        attestation.outcome,
+        attestation.intended_use_checked,
+        attestation.residual_risk_accepted,
+    )
+
+
+def attested_pack(pack_directory: os.PathLike | str) -> tuple[Attestation, bytes]:
+    """Return a QC pack's attestation and the bytes of the pack it attests.
+
+    Both are checked as :func:`attestation_record` checks them, so the pack
+    is the one that the attestation's digest binds, unchanged, with every
+    preview it lists.
+
+    Raises
+    ------
+    QcPackError
+        If the directory holds no QC pack, or no attestation; or for any
+        reason that :func:`attestation_record` gives.
+    """
+    directory = Path(pack_directory)
+    data = _pack_bytes(directory)
+    attestation = _attestation_of(directory, data)
+    if attestation is None:
+        raise QcPackError("the QC pack has not been attested")
+    return attestation, data
+
+
+def _attestation_of(directory: Path, data: bytes) -> Attestation | None:
+    """Return the pack's checked attestation, or None if it has none."""
     reference = _reference_of(data)
     content = _read(directory / ATTESTATION_FILE, "the attestation")
     if content is None:
-        return AttestationRecord(reference, Outcome.NOT_ATTESTED)
+        return None
     attestation = _attestation_from(content)
     if attestation.reference != reference:
         raise QcPackError("the attestation is for another QC pack")
@@ -430,12 +464,7 @@ def attestation_record(pack_directory: os.PathLike | str) -> AttestationRecord:
         data
     ).hexdigest() or not _previews_intact(directory, data):
         raise QcPackError("the QC pack changed after it was attested")
-    return AttestationRecord(
-        reference,
-        attestation.outcome,
-        attestation.intended_use_checked,
-        attestation.residual_risk_accepted,
-    )
+    return attestation
 
 
 def _attestation_from(content: bytes) -> Attestation:

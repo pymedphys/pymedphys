@@ -90,8 +90,11 @@ OTHER_SOP_CLASS = "other"
 _REFERENCED_SERIES = 0x00081115
 _OTHER_STUDIES = 0x00081200
 _REFERENCED_SOP_INSTANCE_UID = 0x00081155
+_METHOD_CODES = 0x00120064
+_VISUAL_FEATURES_CODE = ("113102", "DCM")
 THIS_STUDY_REFERENCED = "instances-of-this-study-referenced-elsewhere"
 OTHER_STUDIES_REFERENCED = "instances-of-other-studies-referenced-elsewhere"
+VISUAL_FEATURES_CLAIMED = "clean-recognizable-visual-features-claimed"
 # The properties of an output that a known difference can require, each
 # with what it means.
 PREMISES = {
@@ -104,13 +107,18 @@ PREMISES = {
         "Sequence (0008,1200) lists is referenced outside the Common Instance "
         "Reference Module"
     ),
+    VISUAL_FEATURES_CLAIMED: (
+        "De-identification Method Code Sequence (0012,0064) holds DCM 113102, "
+        "the Clean Recognizable Visual Features Option's code"
+    ),
 }
 
 
 class Category(enum.Enum):
     """Why a known difference is not a conformance failure of the output."""
 
-    # The action that the profile names for the attribute gives it.
+    # The action that the profile names for the attribute, or another
+    # requirement of the profile or of a selected option, gives it.
     PROFILE = "profile"
     # A limitation or heuristic of the validator.
     VALIDATOR = "validator"
@@ -348,6 +356,7 @@ def output_premises(path: Path) -> frozenset[str]:
     """
     listed: dict[int, set[str]] = {_REFERENCED_SERIES: set(), _OTHER_STUDIES: set()}
     elsewhere: set[str] = set()
+    codes: set[tuple[str, str]] = set()
 
     def walk(items: pydicom.Dataset, into: set[str]) -> None:
         for element in items:
@@ -365,6 +374,14 @@ def output_premises(path: Path) -> frozenset[str]:
             for element in dataset:
                 if element.VR != "SQ":
                     continue
+                if int(element.tag) == _METHOD_CODES:
+                    codes.update(
+                        (
+                            str(item.get("CodeValue", "")),
+                            str(item.get("CodingSchemeDesignator", "")),
+                        )
+                        for item in element.value or ()
+                    )
                 into = listed.get(int(element.tag), elsewhere)
                 for item in element.value or ():
                     walk(item, into)
@@ -375,6 +392,8 @@ def output_premises(path: Path) -> frozenset[str]:
         premises.add(THIS_STUDY_REFERENCED)
     if listed[_OTHER_STUDIES] & elsewhere:
         premises.add(OTHER_STUDIES_REFERENCED)
+    if _VISUAL_FEATURES_CODE in codes:
+        premises.add(VISUAL_FEATURES_CLAIMED)
     return frozenset(premises)
 
 

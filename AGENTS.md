@@ -358,7 +358,7 @@ Extras (`[project.optional-dependencies]`) are published and are for people who 
 7. **DICOM De-identification**: The replacement for `pymedphys.dicom.anonymise` and experimental pseudonymisation is specified in `lib/pymedphys/docs/contrib/info/deidentification-design.md`. Follow its decisions, and update it in any pull request that changes one. Outside the design document and its requirements register, describe what a decision requires rather than citing its number, since decisions may be renumbered or removed. In new or modified code that handles DICOM data:
    - never put source attribute values, keys, or original paths in logs, standard output or standard error, warnings, exception messages, output file or directory names, or reports; use attribute paths and opaque identifiers;
    - never describe output as "anonymised", or as "de-identified" without naming the PS3.15 edition, profile, and options it has been validated against;
-   - never claim the Clean Pixel Data or Clean Recognizable Visual Features Options, or change Burned In Annotation or Recognizable Visual Features to NO;
+   - never claim the Clean Pixel Data Option, or change Burned In Annotation to NO; claim the Clean Recognizable Visual Features Option, and set Recognizable Visual Features to NO, only in an instance that satisfies the option as the design document specifies;
    - regenerate rule tables generated from the DICOM standard, and vocabularies converted from source spreadsheets, with their generators; never edit them by hand.
 
 ## Common Development Patterns

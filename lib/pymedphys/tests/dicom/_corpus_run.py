@@ -38,6 +38,7 @@ leaves its value to the engine, such as a cleaner's output, and says why.
 import contextlib
 import dataclasses
 import functools
+import hashlib
 import types
 from collections.abc import Callable, Iterator, Mapping
 from typing import Any
@@ -49,6 +50,7 @@ from pymedphys._nomenclature import tg263
 from pymedphys._dicom.deidentify import pixel_decoding, roi_names, run, standard
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
+from pymedphys._dicom.deidentify.face_review import FaceReview
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
@@ -74,6 +76,8 @@ from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 from . import _synthetic_compressed as compressed
 
 KEY = DeidKey(bytes(range(32)))
+# An invented reference of a QC pack.
+FACE_REVIEW_REFERENCE = "A-" + "0123456789abcdef" * 2
 
 # The CID 7050 code of the Basic Application Level Confidentiality Profile
 # and of each option of Table E.1-1 (PS3.16 CID 7050), written out here
@@ -92,6 +96,13 @@ OPTION_CODES: Mapping[str, str] = types.MappingProxyType(
         "clean_descriptors": "113105",
         "clean_structured_content": "113104",
         "clean_graphics": "113103",
+    }
+)
+# The codes of the pixel options, which Table E.1-1 does not list.
+PIXEL_OPTION_CODES: Mapping[str, str] = types.MappingProxyType(
+    {
+        "clean_pixel_data": "113101",
+        "clean_recognizable_visual_features": "113102",
     }
 )
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -293,6 +304,9 @@ class CorpusRun:
     finder : TextFinder or None
         What finds text in each frame under Clean Pixel Data; or None for a
         run without that option.
+    face_review : callable or None
+        Returns the face review of the corpus it is given, for a run under
+        Clean Recognizable Visual Features; or None for any other run.
     withheld : Mapping of str to Withheld
         Each instance the run must withhold, by its file name in the
         corpus. Every other instance must be released.
@@ -328,6 +342,7 @@ class CorpusRun:
         Callable[[corpus_module.SyntheticCorpus], ReviewedNames] | None
     ) = None
     finder: TextFinder | None = None
+    face_review: Callable[[corpus_module.SyntheticCorpus], FaceReview] | None = None
     # A factory, since dataclasses refuse a default they cannot hash, which
     # a mapping proxy is before Python 3.12.
     withheld: Mapping[str, Withheld] = dataclasses.field(
@@ -375,7 +390,10 @@ class CorpusRun:
     def method_codes(self) -> frozenset[tuple[str, str]]:
         """The codes every released instance claims, with their designator."""
         values = (
-            {BASIC_PROFILE_CODE, *(OPTION_CODES[o] for o in self.selected)}
+            {
+                BASIC_PROFILE_CODE,
+                *({**OPTION_CODES, **PIXEL_OPTION_CODES}[o] for o in self.selected),
+            }
             if self.codes is None
             else self.codes
         )
@@ -392,13 +410,14 @@ class CorpusRun:
 
 @dataclasses.dataclass(frozen=True)
 class Prepared:
-    """A run's corpus, and what its transform cleans descriptors and finds
-    text with."""
+    """A run's corpus, what its transform cleans descriptors and finds text
+    with, and its face review."""
 
     corpus: corpus_module.SyntheticCorpus
     reviewed: ReviewedNames | None
     cleaning: DescriptorCleaning | None
     finder: TextFinder | None = None
+    face_review: FaceReview | None = None
 
     def transform(self, policy: Policy) -> InstanceTransform:
         """The run's instance transform, which applies a policy not yet enabled."""
@@ -407,21 +426,25 @@ class Prepared:
             KEY,
             cleaning=self.cleaning,
             finder=self.finder,
+            face_review=self.face_review,
             unvalidated_policy=True,
         )
 
 
 def prepare(corpus_run: CorpusRun) -> Prepared:
-    """Build the corpus a run is over, its reviewed-names list, and its finder."""
+    """Build the corpus a run is over, its reviewed-names list, its finder, and
+    its face review."""
     corpus = corpus_run.corpus(corpus_module.build_corpus())
+    faces = None if corpus_run.face_review is None else corpus_run.face_review(corpus)
     if corpus_run.reviewed_roi_names is None:
-        return Prepared(corpus, None, None, corpus_run.finder)
+        return Prepared(corpus, None, None, finder=corpus_run.finder, face_review=faces)
     reviewed = corpus_run.reviewed_roi_names(corpus)
     return Prepared(
         corpus,
         reviewed,
         DescriptorCleaning(VOCABULARY, reviewed),
-        corpus_run.finder,
+        finder=corpus_run.finder,
+        face_review=faces,
     )
 
 
@@ -480,3 +503,13 @@ def decoders_installed() -> bool:
         pixel_decoding.decoder_available(syntax)
         for syntax in compressed.CORPUS_SYNTAXES
     )
+
+
+def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
+    """Return a face review that marks every file of the corpus free of a face.
+
+    It is matched by each file's SHA-256, as an attested review's verdicts
+    are, so each instance that can show a face satisfies the option.
+    """
+    digests = frozenset(hashlib.sha256(file.data).digest() for file in corpus.files)
+    return FaceReview(FACE_REVIEW_REFERENCE, digests, frozenset())

@@ -48,7 +48,12 @@ from . import release_report as report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
 from .pixel_risk import Indicator
-from .policy import CLEAN_PIXEL_DATA, FULL_DATES, MODIFIED_DATES
+from .policy import (
+    CLEAN_PIXEL_DATA,
+    CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    FULL_DATES,
+    MODIFIED_DATES,
+)
 from .qc_retained import _NOT_REVIEWED_TAGS, RETAINED_TEXT_VRS
 from .reasons import TransformReason
 from .release_gate import ReasonCode
@@ -214,6 +219,11 @@ HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
             "Clean Pixel Data blacked out the text that it found in the "
             "instance's pixel data, or found none, and review must look for "
             "text that it missed (D-037)"
+        ),
+        "visual-features": (
+            "under Clean Recognizable Visual Features, the instance can show a "
+            "face, and its source file is in a series that the face review "
+            "marked as showing one, or in none that it reviewed"
         ),
         "release": (
             "the release gate requires QC review, for other text that the "
@@ -574,11 +584,18 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
 
 def _pixel_data(statement: ConformanceStatement) -> str:
     """Return the sentences on how the engine writes Pixel Data."""
-    if CLEAN_PIXEL_DATA not in statement.options:
-        return (
-            "The engine writes Pixel Data (7FE0,0010) unchanged and claims "
-            "neither Clean Pixel Data nor Clean Recognizable Visual Features. "
+    if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in statement.options:
+        claims = (
+            "claims Clean Recognizable Visual Features only for an instance "
+            "that cannot show a face or whose source file a reviewer found "
+            "free of one, and never Clean Pixel Data. "
         )
+    else:
+        claims = (
+            "claims neither Clean Pixel Data nor Clean Recognizable Visual Features. "
+        )
+    if CLEAN_PIXEL_DATA not in statement.options:
+        return "The engine writes Pixel Data (7FE0,0010) unchanged and " + claims
     return (
         "Under the Clean Pixel Data Option, the engine replaces each region "
         "of text that its text finder finds in each frame of native Pixel "
@@ -596,8 +613,7 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         "values, hold more than the value's sign in the bits above Bits "
         "Stored, such as an overlay, or differ when written from its source "
         "other than in those regions. It writes other Pixel Data unchanged, "
-        "and claims neither Clean Pixel Data nor Clean Recognizable Visual "
-        "Features. "
+        "and " + claims
     )
 
 
