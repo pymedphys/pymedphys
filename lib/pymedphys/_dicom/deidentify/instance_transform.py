@@ -1221,12 +1221,16 @@ def _with_redaction(
 
 
 def _redaction_material(redaction: Redaction, source: bytes) -> RedactionMaterial:
-    """The QC material of what Clean Pixel Data did, for the reviewer."""
+    """The QC material of what Clean Pixel Data did, for the reviewer.
+
+    The source is kept only where a frame has regions, since only those
+    frames are shown as received.
+    """
     return RedactionMaterial(
         redaction.reason,
         redaction.layout.frames,
         tuple((regions.frame, regions.boxes) for regions in redaction.regions),
-        source,
+        source if redaction.regions else None,
     )
 
 

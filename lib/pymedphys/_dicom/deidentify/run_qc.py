@@ -147,7 +147,8 @@ class RedactionMaterial:
     """What the Clean Pixel Data Option did to an instance's Pixel Data.
 
     The pack lists it with its regions, if the instance was released or held
-    for review, and previews each of its frames, as received and as written.
+    for review, and previews each of its frames as written, and each frame
+    with regions also as received.
 
     Attributes
     ----------
@@ -156,15 +157,16 @@ class RedactionMaterial:
     regions : tuple of (int, tuple of ~.text_detection.TextBox)
         As :class:`~pymedphys._dicom.deidentify.qc_pack.RedactionEntry`
         gives them.
-    source : bytes
+    source : bytes or None
         The source file, from which each frame with regions is shown as
-        received.
+        received, or None where no frame has regions, so that a run keeps no
+        source that no preview shows.
     """
 
     reason: PixelDataReason
     frames: int
     regions: tuple[tuple[int, tuple[TextBox, ...]], ...]
-    source: bytes
+    source: bytes | None
 
     def __repr__(self) -> str:
         return (

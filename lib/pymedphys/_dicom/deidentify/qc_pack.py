@@ -65,9 +65,13 @@ A pack holds, for one run:
   localizer, the head or neck, or unreadable evidence of any of them, with
   the instances that show each (D-015, D-017);
 - ``redactions``: each released or held instance whose Pixel Data the
-  Clean Pixel Data Option cleaned, with why it is held and the regions
-  blacked out in each frame, by frame index from 0, for the review of every
-  frame that the option requires;
+  Clean Pixel Data Option cleaned, with why it is held, its number of
+  frames, and the regions blacked out in each frame, by frame index from 0,
+  each as ``[top, left, bottom, right]`` in pixels from the frame's top left
+  corner, with the bottom row and right column excluded, for the review of
+  every frame that the option requires. Each frame with regions is
+  previewed as received, so under the option the pack holds the burned-in
+  text that the release lacks;
 - ``previews``: each image preview, by its file in the previews directory
   beside the pack, with what it shows and the file's SHA-256, so that an
   attestation of the pack covers them; and ``not_previewed``: each instance
@@ -800,6 +804,10 @@ class NotPreviewedReason(enum.Enum):
     NO_PIXEL_DATA = "no-pixel-data"
     # a released or held instance whose written file the run did not hand over
     NOT_AVAILABLE = "file-not-available"
+    # an instance that Clean Pixel Data cleaned whose source cannot be shown
+    # beside its written file: unreadable, undecodable, or of another shape,
+    # number of frames, or colour
+    SOURCE_NOT_SHOWN = "source-not-shown"
 
 
 PREVIEW_NAME = re.compile(r"P-[0-9]{4,}\.png")
@@ -1169,7 +1177,9 @@ class QcPack:
         released nor held for review; or if the same holds of ``series``, or
         a series has an instance without its source's SHA-256; or if an
         instance is listed twice as cleaned, out of order, or neither
-        released nor held for review.
+        released nor held for review; or if a cleaned instance that is not
+        listed as not previewed lacks a redaction preview of each frame, in
+        order, or a redaction preview shows anything else.
     """
 
     reference: str
@@ -1304,6 +1314,34 @@ class QcPack:
                 "a preview shows an instance that was neither released nor held "
                 "for review"
             )
+        self._check_redaction_previews()
+
+    def _check_redaction_previews(self) -> None:
+        """Each cleaned instance has a redaction preview of each frame, in
+        order, unless it is listed as not previewed, and no other has one."""
+        cleaned = {entry.position: entry.frames for entry in self.redactions}
+        unshown = {entry.position for entry in self.not_previewed}
+        shown: dict[int, list[int]] = {}
+        for preview in self.previews:
+            if preview.kind is not PreviewKind.REDACTION:
+                continue
+            if (
+                len(preview.frames) != 1
+                or cleaned.get(preview.frames[0][0]) != preview.total_frames
+            ):
+                raise QcPackError(
+                    "a redaction preview must show one frame of a cleaned "
+                    "instance, with its number of frames"
+                )
+            position, frame = preview.frames[0]
+            shown.setdefault(position, []).append(frame)
+        for position, frames in cleaned.items():
+            expected = [] if position in unshown else list(range(frames))
+            if shown.get(position, []) != expected:
+                raise QcPackError(
+                    "a cleaned instance needs a redaction preview of each "
+                    "frame, in order, unless it is listed as not previewed"
+                )
 
     def _check_names(self) -> None:
         labels = [entry.label for entry in self.instances if entry.label is not None]

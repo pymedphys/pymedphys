@@ -30,7 +30,9 @@ from pymedphys._dicom.deidentify.instance_transform import ReleaseGate
 from pymedphys._dicom.deidentify.qc_pack import (
     Disposition,
     InstanceEntry,
+    NotPreviewedEntry,
     NotPreviewedReason,
+    Preview,
     PreviewKind,
     QcPackError,
     RedactionEntry,
@@ -54,7 +56,7 @@ pytestmark = [pytest.mark.pydicom, pytest.mark.usefixtures("pydicom_behaviour")]
 
 # Large enough to have pixels inside it that its outline leaves alone.
 BOX = TextBox(1, 1, 5, 6)
-YELLOW = (255, 255, 0)
+OUTLINE = (255, 0, 255)
 GUTTER = 8
 BLACKED_OUT = PixelDataReason.TEXT_BLACKED_OUT
 NOTHING_FOUND = PixelDataReason.NO_TEXT_FOUND
@@ -114,10 +116,10 @@ def test_the_transform_gives_the_regions_and_source_for_review():
     assert "source" not in repr(material) and str(data[:16]) not in repr(material)
 
 
-def test_a_frame_without_text_gives_no_regions():
+def test_a_frame_without_text_gives_no_regions_and_keeps_no_source():
     _, _, material = _cleaned(_ct(_frame()), Finder(()))
     assert material.reason is NOTHING_FOUND
-    assert (material.frames, material.regions) == (1, ())
+    assert (material.frames, material.regions, material.source) == (1, (), None)
 
 
 # The pack's entries.
@@ -159,6 +161,11 @@ def test_a_redaction_entry_is_checked(fields):
         RedactionEntry(0, *fields)
 
 
+def _unshown(position=0):
+    """A cleaned instance that the pack lists as not previewed."""
+    return (NotPreviewedEntry(position, NotPreviewedReason.SOURCE_NOT_SHOWN),)
+
+
 def _held(position=0):
     return InstanceEntry(
         position,
@@ -172,26 +179,34 @@ def test_the_pack_lists_each_cleaned_instance_once_in_order():
     entry = RedactionEntry(0, BLACKED_OUT, 1, ((0, (BOX,)),))
     later = RedactionEntry(1, NOTHING_FOUND, 1, ())
     instances = (_held(0), _held(1))
-    assert _pack(instances=instances, redactions=(entry, later)).redactions
+    unshown = _unshown(0) + _unshown(1)
+    assert _pack(
+        instances=instances, redactions=(entry, later), not_previewed=unshown
+    ).redactions
     for redactions in ((later, entry), (entry, entry)):
         with pytest.raises(QcPackError, match="redactions must list"):
-            _pack(instances=instances, redactions=redactions)
+            _pack(instances=instances, redactions=redactions, not_previewed=unshown)
     with pytest.raises(QcPackError, match="run position without"):
         _pack(instances=(_held(),), redactions=(later,))
 
 
 def test_the_pack_lists_no_redaction_of_a_sequestered_instance():
     entry = RedactionEntry(0, NOTHING_FOUND, 1, ())
-    assert _pack(instances=(_written(),), redactions=(entry,)).redactions
+    assert _pack(
+        instances=(_written(),), redactions=(entry,), not_previewed=_unshown()
+    ).redactions
     with pytest.raises(QcPackError, match="neither released nor held"):
-        _pack(instances=(_sequestered(),), redactions=(entry,))
+        _pack(
+            instances=(_sequestered(),), redactions=(entry,), not_previewed=_unshown()
+        )
 
 
 def test_the_document_gives_each_frames_boxes():
     entry = RedactionEntry(
         0, BLACKED_OUT, 3, ((0, (BOX,)), (2, (TextBox(0, 0, 1, 2), BOX)))
     )
-    document = qc_pack.pack_document(_pack(instances=(_held(),), redactions=(entry,)))
+    pack = _pack(instances=(_held(),), redactions=(entry,), not_previewed=_unshown())
+    document = qc_pack.pack_document(pack)
     assert document["redactions"] == [
         {
             "position": 0,
@@ -203,7 +218,50 @@ def test_the_document_gives_each_frames_boxes():
             ],
         }
     ]
-    assert "redactions=1" in repr(_pack(instances=(_held(),), redactions=(entry,)))
+    assert "redactions=1" in repr(pack)
+
+
+def _redaction_preview(number, frames, total=2):
+    return Preview(
+        f"P-{number:04d}.png",
+        PreviewKind.REDACTION,
+        frames,
+        total,
+        qc_previews.png(np.zeros((1, 1), np.uint8)),
+    )
+
+
+@pytest.mark.parametrize(
+    "previews, not_previewed",
+    [
+        ((), ()),
+        ((_redaction_preview(1, ((0, 0),)),), ()),
+        ((_redaction_preview(1, ((0, 1),)), _redaction_preview(2, ((0, 0),))), ()),
+        ((_redaction_preview(1, ((0, 0), (0, 1))),), ()),
+        ((_redaction_preview(1, ((0, 0),), total=1),), ()),
+        ((_redaction_preview(1, ((0, 0),)),), _unshown()),
+    ],
+    ids=["none", "a-frame-missing", "out-of-order", "two-frames", "total", "unshown"],
+)
+def test_the_pack_previews_each_frame_of_a_cleaned_instance_or_says_why_not(
+    previews, not_previewed
+):
+    entry = RedactionEntry(0, NOTHING_FOUND, 2, ())
+    shown = (_redaction_preview(1, ((0, 0),)), _redaction_preview(2, ((0, 1),)))
+    assert _pack(instances=(_held(),), redactions=(entry,), previews=shown).previews
+
+    with pytest.raises(QcPackError, match="redaction preview"):
+        _pack(
+            instances=(_held(),),
+            redactions=(entry,),
+            previews=previews,
+            not_previewed=not_previewed,
+        )
+
+
+def test_the_pack_has_no_redaction_preview_of_an_instance_not_cleaned():
+    with pytest.raises(QcPackError, match="redaction preview"):
+        _pack(instances=(_held(),), previews=(_redaction_preview(1, ((0, 0),), 1),))
 
 
 # The previews.
@@ -219,11 +277,9 @@ def test_every_frame_is_previewed_and_one_with_regions_beside_its_source():
     (_, first), (_, second) = shown
     rows, columns = frames.shape[1:]
     assert first.shape == (rows, 2 * columns + GUTTER, 3)
-    assert second.shape == (rows, columns, 3)
     assert np.all(first[:, columns : columns + GUTTER] == 128)
-    # The second frame has no region, so nothing is outlined in it.
-    assert not np.all(second == YELLOW, axis=2).any()
-    assert np.array_equal(second[..., 0], second[..., 2])
+    # The second frame has no region, so it is shown in grey alone.
+    assert second.shape == (rows, columns)
 
 
 def test_regions_are_outlined_inside_their_own_edges_and_nothing_else_changes():
@@ -235,8 +291,8 @@ def test_regions_are_outlined_inside_their_own_edges_and_nothing_else_changes():
     before, after = image[:, :columns], image[:, columns + GUTTER :]
     edge, interior = _outline(frame.shape), _interior(frame.shape)
     for panel in (before, after):
-        assert np.all(panel[edge] == YELLOW)
-        assert not np.all(panel[~edge] == YELLOW, axis=1).any()
+        assert np.all(panel[edge] == OUTLINE)
+        assert not np.all(panel[~edge] == OUTLINE, axis=1).any()
     outside = ~(edge | interior)
     # Both panels are windowed together, so what the region left alone is
     # shown the same in both.
@@ -247,9 +303,52 @@ def test_regions_are_outlined_inside_their_own_edges_and_nothing_else_changes():
     assert np.any(before[interior] != 0)
 
 
-def test_an_rgb_frame_is_shown_in_colour_with_its_regions_outlined():
+def _panels(image, columns):
+    """The frame as received, and as written, of a preview with regions."""
+    return image[:, :columns], image[:, columns + GUTTER :]
+
+
+@pytest.mark.parametrize("photometric", ["MONOCHROME1", "MONOCHROME2"])
+def test_the_fill_shows_black_whatever_the_photometric_interpretation(photometric):
+    frame = _frame()
+    previews = _previews(_ct(frame, photometric=photometric), Finder((BOX,)))
+
+    ((_, image),) = _redaction_images(previews)
+    before, after = _panels(image, frame.shape[1])
+    interior = _interior(frame.shape)
+    assert np.all(after[interior] == 0)
+    assert np.any(before[interior] != 0)
+    outside = ~(_outline(frame.shape) | interior)
+    assert np.array_equal(before[outside], after[outside])
+
+
+def test_signed_rescaled_values_are_shown_through_one_window_from_the_source():
+    frame = _frame() - 2000
+    dataset = _ct(frame, signed=True)
+    dataset.RescaleSlope, dataset.RescaleIntercept = 2, -1024
+    previews = _previews(dataset, Finder((BOX,)))
+
+    ((_, image),) = _redaction_images(previews)
+    before, after = _panels(image, frame.shape[1])
+    interior = _interior(frame.shape)
+    outside = ~(_outline(frame.shape) | interior)
+    # The fill changes the written frame's percentiles, so equal pixels
+    # outside the regions show that one window, the source's, was used.
+    assert np.array_equal(before[outside], after[outside])
+    window = qc_previews._window(  # pylint: disable = protected-access
+        (frame * 2 - 1024).astype(np.float32)
+    )
+    expected = qc_previews._grey(  # pylint: disable = protected-access
+        (frame * 2 - 1024).astype(np.float32), window, False
+    )
+    assert np.array_equal(before[outside][:, 0], expected[outside])
+    assert np.all(after[interior] == 0)
+
+
+@pytest.mark.parametrize("planar", [0, 1])
+def test_an_rgb_frame_is_shown_in_colour_with_its_regions_outlined(planar):
     frame = (np.arange(6 * 8 * 3).reshape(6, 8, 3) * 5 + 40) % 256
-    previews = _previews(_rgb(frame, planar=0), Finder((BOX,)))
+    previews = _previews(_rgb(frame, planar=planar), Finder((BOX,)))
 
     ((_, image),) = _redaction_images(previews)
     before, after = image[:, :8], image[:, 8 + GUTTER :]
@@ -257,7 +356,7 @@ def test_an_rgb_frame_is_shown_in_colour_with_its_regions_outlined():
     assert np.array_equal(before[outside], frame[outside])
     assert np.array_equal(after[outside], frame[outside])
     assert np.all(after[_interior(frame.shape[:2])] == 0)
-    assert np.all(before[_outline(frame.shape[:2])] == YELLOW)
+    assert np.all(before[_outline(frame.shape[:2])] == OUTLINE)
 
 
 def test_an_instance_whose_source_does_not_match_is_listed_not_previewed():
@@ -268,16 +367,27 @@ def test_an_instance_whose_source_does_not_match_is_listed_not_previewed():
     )
     assert not _redaction_images(previews)
     assert [entry.reason for entry in previews.not_previewed] == [
-        NotPreviewedReason.UNREADABLE
+        NotPreviewedReason.SOURCE_NOT_SHOWN
     ]
     assert data != other
+
+
+def test_an_instance_with_regions_and_no_source_is_listed_not_previewed():
+    _, result, material = _cleaned(_ct(_frame()), Finder((BOX,)))
+    previews = qc_previews.previews_of(
+        {0: result.data}, (), {0: (None, _entry(material))}
+    )
+    assert not _redaction_images(previews)
+    assert [entry.reason for entry in previews.not_previewed] == [
+        NotPreviewedReason.SOURCE_NOT_SHOWN
+    ]
 
 
 def test_an_instance_without_text_found_is_previewed_as_written():
     previews = _previews(_ct(_frame()), Finder(()))
     ((preview, image),) = _redaction_images(previews)
     assert preview.frames == ((0, 0),)
-    assert image.shape == (6, 8, 3)
+    assert image.shape == (6, 8)
 
 
 # A run.

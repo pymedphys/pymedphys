@@ -48,13 +48,17 @@ neither GDCM nor pylibjpeg-openjpeg; the engine then sequesters the images as
 """
 
 import dataclasses
+import io
+import json
 import logging
 import re
 import shutil
+import struct
 import tempfile
 import warnings
 from pathlib import Path
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
@@ -67,7 +71,11 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import ReleaseGate
 from pymedphys._dicom.deidentify.method_digest import method_digest
 from pymedphys._dicom.deidentify.policy import PRESETS
-from pymedphys._dicom.deidentify.reasons import HeldRoiName
+from pymedphys._dicom.deidentify.reasons import (
+    HeldPixelData,
+    HeldRoiName,
+    PixelDataReason,
+)
 from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.roi_names import Reason
 from pymedphys._dicom.deidentify.run_report import (
@@ -235,6 +243,7 @@ def _run(spec):
             shown_messages,
             _published(result),
             digest,
+            *_redaction_review(directory / "qc"),
         )
     finally:
         shutil.rmtree(directory, ignore_errors=True)
@@ -251,6 +260,20 @@ class _Run:
     messages: "_Messages"
     published: dict
     method_digest: str
+    qc_pack: dict
+    # The size of each redaction preview, as (columns, rows), by its file.
+    redaction_previews: dict
+
+
+def _redaction_review(qc):
+    """Return the run's QC pack, and the size of each redaction preview."""
+    pack = json.loads((qc / "qc-pack.json").read_text(encoding="ascii"))
+    sizes = {}
+    for preview in pack["previews"]:
+        if preview["kind"] == "redaction":
+            header = (qc / preview["file"]).read_bytes()[16:24]
+            sizes[preview["file"]] = struct.unpack(">II", header)
+    return pack, sizes
 
 
 @dataclasses.dataclass(frozen=True)
@@ -416,6 +439,49 @@ def test_each_run_releases_all_but_the_instances_it_must_withhold(policy_run):
             assert {runs.reason_key(r) for r in outcome.reasons} == expected.reasons
         else:
             assert outcome.status is run.Status.RELEASED, (name, outcome.reasons[:5])
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01")
+def test_each_cleaned_image_is_listed_and_previewed_frame_by_frame(policy_run):
+    spec, corpus, pack = policy_run.spec, policy_run.corpus, policy_run.qc_pack
+    blacked_out = HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT)
+    cleaned = [
+        outcome.position
+        for outcome in policy_run.result.outcomes
+        if blacked_out in outcome.reasons
+    ]
+    assert [entry["position"] for entry in pack["redactions"]] == cleaned
+    assert bool(cleaned) == (spec.finder is not None)
+    # Every cleaned image is previewed, whatever its IOD and layout.
+    assert not {entry["position"] for entry in pack["not_previewed"]} & set(cleaned)
+    previews = [entry for entry in pack["previews"] if entry["kind"] == "redaction"]
+    shown = [
+        (frame["position"], frame["frame"])
+        for entry in previews
+        for frame in entry["frames"]
+    ]
+    assert shown == [
+        (entry["position"], frame)
+        for entry in pack["redactions"]
+        for frame in range(entry["frames"])
+    ]
+    sizes = iter(policy_run.redaction_previews[entry["file"]] for entry in previews)
+    for entry in pack["redactions"]:
+        data = corpus.files[entry["position"]].data
+        source = pydicom.dcmread(io.BytesIO(data), stop_before_pixels=True)
+        assert entry["frames"] == int(source.get("NumberOfFrames") or 1)
+        regions = {region["frame"]: region["boxes"] for region in entry["regions"]}
+        rows, columns = source.Rows, source.Columns
+        frames = pydicom.pixels.iter_pixels(io.BytesIO(data), raw=True)
+        for index, frame in enumerate(frames):
+            # Each box is clipped to the frame.
+            found = [
+                [box.top, box.left, min(box.bottom, rows), min(box.right, columns)]
+                for box in spec.finder.find(np.asarray(frame))
+            ]
+            assert regions.get(index, []) == found
+            # A frame with regions is shown beside its source, with a gutter.
+            assert next(sizes) == (columns * 2 + 8 if found else columns, rows)
 
 
 @pytest.mark.deid_requirement(
