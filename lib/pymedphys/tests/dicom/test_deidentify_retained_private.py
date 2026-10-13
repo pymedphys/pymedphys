@@ -33,7 +33,7 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.references import InstanceRecord
-from pymedphys._dicom.deidentify.retained_private import private_actions
+from pymedphys._dicom.deidentify.retained_private import private_actions, private_plan
 from pymedphys._dicom.deidentify.run_qc import RetainedText
 from pymedphys._dicom.deidentify.safe_private import Handling, load_safe_private_rules
 from pymedphys._dicom.deidentify.source import read_source
@@ -354,27 +354,162 @@ def test_a_private_sequence_is_parsed_and_each_element_judged(transfer_syntax):
     assert ElementPath(item, "(0010,0010)") not in actions
 
 
-@pytest.mark.deid_requirement("PS3.15-E.3.10-03")
-@pytest.mark.parametrize("transfer_syntax", TRANSFER_SYNTAXES)
-def test_a_private_sequence_without_a_rule_is_removed_whole(transfer_syntax):
-    # Until such a sequence is parsed, as E.3.10 asks, it goes with
-    # everything in it, even an element whose own rule would keep it.
+def _unlisted(*items):
+    """A PET block with an unlisted sequence (7053,10F0) of ``items``."""
+    return _slice((0x70530010, "LO", PET), (0x705310F0, "SQ", pydicom.Sequence(items)))
+
+
+def _pet_item(*elements):
+    """An item with the PET creator and the given elements, each (tag, VR, value)."""
     item = pydicom.Dataset()
     item.add_new(0x70530010, "LO", PET)
-    item.add_new(0x70531000, "DS", "1.25")
-    item.add_new(0x705310FE, "LO", "SENTINEL TEXT")
+    for tag, vr, value in elements:
+        item.add_new(tag, vr, value)
+    return item
+
+
+def _in_private(data):
+    """Return each element of a file in or under a private group, as text.
+
+    The file's own structure is read, so that a private sequence that no
+    dictionary lists reads as items in implicit VR too.
+    """
+    return {
+        str(path)
+        for path in read_source(data).paths()
+        if any(int(tag[1:5], 16) % 2 for tag in (*(t for t, _ in path.items), path.tag))
+    }
+
+
+def _qc_private_strings(result):
+    return [
+        text
+        for text in result.qc
+        if isinstance(text, RetainedText) and int(text.path.tag[1:5], 16) % 2
+    ]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-03")
+@pytest.mark.parametrize("transfer_syntax", TRANSFER_SYNTAXES)
+def test_a_private_sequence_without_a_rule_is_parsed(transfer_syntax):
+    # E.3.10: a sequence not known to hold only safe content is parsed, and
+    # each nested attribute handled on its own merits.
+    item = _pet_item((0x70531000, "DS", "1.25"), (0x705310FE, "LO", "SENTINEL"))
+    item.PatientName = "SENTINEL^NAME"
+    item.SliceThickness = "2.5"
+    data = synthetic.written(_unlisted(item), transfer_syntax)
+
+    actions = _actions(None, data=data)
+    result = _transform()(data, InstanceRecord.from_file(data))
+
+    within = (("(7053,10F0)", 0),)
+    assert actions[_top("(7053,10F0)")] == "K"
+    assert actions[_top("(7053,0010)")] == "K"
+    assert actions[ElementPath(within, "(7053,1000)")] == "K"
+    assert actions[ElementPath(within, "(7053,10FE)")] == "X"
+    assert isinstance(result, run.Transformed), result
+    assert b"SENTINEL" not in result.data
+    assert _in_private(result.data) == {
+        "(7053,0010)",
+        "(7053,10F0)",
+        "(7053,10F0)[0] > (7053,0010)",
+        "(7053,10F0)[0] > (7053,1000)",
+        "(7053,10F0)[0] > (0010,0010)",  # emptied
+        "(7053,10F0)[0] > (0018,0050)",
+    }
+    assert _qc_private_strings(result) == [
+        RetainedText(PET, _top("(7053,0010)")),
+        RetainedText(PET, ElementPath(within, "(7053,0010)")),
+        RetainedText("1.25", ElementPath(within, "(7053,1000)")),
+    ]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-03")
+@pytest.mark.parametrize("transfer_syntax", TRANSFER_SYNTAXES)
+def test_a_parsed_sequence_that_keeps_nothing_goes_with_its_creator(transfer_syntax):
+    # What is emptied, given a dummy value, or removed, and a creator kept
+    # only for a nested sequence that itself keeps nothing, keep nothing.
+    inner = _pet_item((0x705310FE, "LO", "SENTINEL"))
+    item = _pet_item(
+        (0x705310FE, "LO", "SENTINEL"), (0x705310F1, "SQ", pydicom.Sequence([inner]))
+    )
+    item.PatientName = "SENTINEL^NAME"
+    data = synthetic.written(_unlisted(item), transfer_syntax)
+
+    written = _written(_transform(), data)
+
+    assert b"SENTINEL" not in written
+    assert not _in_private(written)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-03")
+@pytest.mark.parametrize("transfer_syntax", TRANSFER_SYNTAXES)
+def test_a_kept_value_keeps_each_parsed_sequence_that_holds_it(transfer_syntax):
+    deepest = _pet_item((0x70531000, "DS", "1.25"))
+    inner = _pet_item((0x705310F1, "SQ", pydicom.Sequence([deepest])))
+    empty = _pet_item((0x705310FE, "LO", "SENTINEL"))
+    dataset = _unlisted(inner)
+    dataset.add_new(0x705310F2, "SQ", pydicom.Sequence([empty]))
+    data = synthetic.written(dataset, transfer_syntax)
+
+    written = _written(_transform(), data)
+
+    assert b"SENTINEL" not in written
+    within = "(7053,10F0)[0] > "
+    assert _in_private(written) == {
+        "(7053,0010)",
+        "(7053,10F0)",
+        within + "(7053,0010)",
+        within + "(7053,10F1)",
+        within + "(7053,10F1)[0] > (7053,0010)",
+        within + "(7053,10F1)[0] > (7053,1000)",
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-03")
+@pytest.mark.parametrize("transfer_syntax", TRANSFER_SYNTAXES)
+def test_a_parsed_sequence_keeps_a_creator_that_no_rule_names_for_review(
+    transfer_syntax,
+):
+    # A standard attribute that its own rule keeps is kept in the items of
+    # a private sequence of any creator that is compared; the creator,
+    # which no rule has reviewed, is listed among the retained strings.
+    item = pydicom.Dataset()
+    item.SliceThickness = "2.5"
     dataset = _slice(
-        (0x70530010, "LO", PET), (0x705310F0, "SQ", pydicom.Sequence([item]))
+        (0x00190010, "LO", "ACME 1.0"), (0x00191001, "SQ", pydicom.Sequence([item]))
     )
     data = synthetic.written(dataset, transfer_syntax)
 
-    actions = _actions(dataset, data=data)
-    output = pydicom.dcmread(io.BytesIO(_written(_transform(), data)))
+    result = _transform()(data, InstanceRecord.from_file(data))
 
-    assert actions[_top("(7053,10F0)")] == "X"
-    assert actions[_top("(7053,0010)")] == "X"
-    assert not _private(output)
-    assert b"SENTINEL" not in _written(_transform(), data)
+    assert isinstance(result, run.Transformed), result
+    assert _in_private(result.data) == {
+        "(0019,0010)",
+        "(0019,1001)",
+        "(0019,1001)[0] > (0018,0050)",
+    }
+    assert _qc_private_strings(result) == [
+        RetainedText("ACME 1.0", _top("(0019,0010)"))
+    ]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-03")
+@pytest.mark.parametrize("creator", [None, b"SENTINEL \xc9"], ids=["none", "latin-1"])
+def test_a_private_sequence_without_a_compared_creator_is_removed_whole(creator):
+    item = _pet_item((0x70531000, "DS", "1.25"))
+    item.SliceThickness = "2.5"
+    dataset = _slice((0x00191001, "SQ", pydicom.Sequence([item])))
+    if creator is not None:
+        dataset.add_new(0x00190010, "LO", creator)
+    data = synthetic.written(dataset)
+
+    actions = _actions(None, data=data)
+    written = _written(_transform(), data)
+
+    assert actions[_top("(0019,1001)")] == "X"
+    assert b"SENTINEL" not in written
+    assert not _in_private(written)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")
@@ -506,6 +641,66 @@ def test_each_kept_private_string_is_given_to_the_qc_pack(transfer_syntax, vr):
         RetainedText(PET, _top("(7053,0010)")),
         RetainedText("1.25", _top("(7053,1000)")),
     ]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01", "MIDI-BP-17")
+@pytest.mark.parametrize(
+    "transfer_syntax, vr",
+    [
+        (synthetic.EXPLICIT_VR_LITTLE_ENDIAN, None),
+        (synthetic.EXPLICIT_VR_LITTLE_ENDIAN, "UN"),
+        (synthetic.IMPLICIT_VR_LITTLE_ENDIAN, None),
+    ],
+    ids=["explicit", "explicit-UN", "implicit"],
+)
+def test_each_value_of_a_kept_private_string_is_reviewed(transfer_syntax, vr):
+    # A creator padded to an even length with a NUL, and integer and
+    # decimal strings of more than one value, each value listed on its own.
+    pet = PET.encode() + b"\x00"
+    dataset = _slice(
+        (0x20010010, vr or "LO", PHILIPS.encode() if vr else PHILIPS),
+        (0x20011043, vr or "IS", b"3\\7 " if vr else ["3", "7"]),
+        (0x20011074, vr or "DS", b"1.5\\2.5\\3.5 " if vr else ["1.5", "2.5", "3.5"]),
+        (0x70530010, vr or "LO", pet),
+        (0x70531000, vr or "DS", b"1.25" if vr else "1.25"),
+    )
+    data = synthetic.written(dataset, transfer_syntax)
+
+    result = _transform()(data, InstanceRecord.from_file(data))
+
+    assert isinstance(result, run.Transformed), result
+    assert _qc_private_strings(result) == [
+        RetainedText(PHILIPS, _top("(2001,0010)")),
+        RetainedText("3", _top("(2001,1043)")),
+        RetainedText("7", _top("(2001,1043)")),
+        RetainedText("1.5", _top("(2001,1074)")),
+        RetainedText("2.5", _top("(2001,1074)")),
+        RetainedText("3.5", _top("(2001,1074)")),
+        RetainedText(PET, _top("(7053,0010)")),
+        RetainedText("1.25", _top("(7053,1000)")),
+    ]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01")
+def test_the_plan_gives_the_vr_that_reads_each_kept_value_without_one():
+    # A sequence holds no value of its own, so is given none.
+    dataset = _philips_sequence()
+    data = synthetic.written(dataset, synthetic.IMPLICIT_VR_LITTLE_ENDIAN)
+
+    plan = private_plan(read_source(data), load_safe_private_rules())
+
+    item = (("(2001,105F)", 0),)
+    assert dict(plan.vrs) == {
+        _top("(2001,0010)"): "LO",
+        ElementPath(item, "(2001,0010)"): "LO",
+        ElementPath(item, "(2001,1003)"): "FL",
+        ElementPath((*item, ("(2001,1065)", 0)), "(2001,0010)"): "LO",
+        ElementPath((*item, ("(2001,1065)", 0)), "(2001,1003)"): "FL",
+    }
+    explicit = private_plan(
+        read_source(synthetic.written(dataset)), load_safe_private_rules()
+    )
+    assert not explicit.vrs
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-04")

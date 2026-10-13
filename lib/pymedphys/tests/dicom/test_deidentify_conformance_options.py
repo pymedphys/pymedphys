@@ -161,7 +161,6 @@ def test_the_pixel_options_outside_table_e1_1_can_be_composed_and_described(
     for option in standard.PIXEL_OPTIONS:
         code = conformance.OPTION_CODES[option]
         named = f"{meanings[code]} (DCM {code})"
-        applied = option in policy.ENGINE_OPTIONS
         assert named in lines["- Options that PyMedPhys can compose into a policy"]
         assert (named in applied) is (option != unapplied)
         assert (named in unsupported) is (option == unapplied)
