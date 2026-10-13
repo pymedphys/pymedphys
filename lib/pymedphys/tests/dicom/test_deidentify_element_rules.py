@@ -387,7 +387,7 @@ def test_retain_safe_private_is_refused_until_reviewed_rules_exist():
 # test runs whatever the engine applies. Retain Safe Private is refused first
 # by its own rule (test_retain_safe_private_is_refused_until_reviewed_rules_exist).
 @pytest.mark.parametrize(
-    "option", [o for o in standard.OPTIONS if o != RETAIN_SAFE_PRIVATE]
+    "option", [o for o in standard.ALL_OPTIONS if o != RETAIN_SAFE_PRIVATE]
 )
 def test_an_option_the_engine_does_not_yet_apply_is_refused(option, monkeypatch):
     monkeypatch.setattr(
