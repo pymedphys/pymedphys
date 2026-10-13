@@ -483,8 +483,8 @@ def held_instances(
     Raises
     ------
     TypeError
-        For a held outcome's reason that is neither a held ROI Name nor a
-        release gate's reason.
+        For a held outcome's reason that is neither a held ROI Name, why a
+        pixel option held it, nor a release gate's reason.
     """
     return release_report.held_for_review(
         getattr(outcome, "reasons")

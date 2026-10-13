@@ -127,8 +127,9 @@ ENGINE_APPLIES: Mapping[str, bool] = types.MappingProxyType(
         CLEAN_STRUCTURED_CONTENT: True,
         # Clean Graphics: its rows take their Basic Profile actions (D-041).
         CLEAN_GRAPHICS: True,
-        # Clean Pixel Data.
-        CLEAN_PIXEL_DATA: False,
+        # Clean Pixel Data: text found in native Pixel Data is blacked out,
+        # and the instance held for review (D-037).
+        CLEAN_PIXEL_DATA: True,
         # Clean Recognizable Visual Features.
         CLEAN_RECOGNIZABLE_VISUAL_FEATURES: False,
     }

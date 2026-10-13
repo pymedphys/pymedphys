@@ -48,7 +48,7 @@ from . import release_report as report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
 from .pixel_risk import Indicator
-from .policy import FULL_DATES, MODIFIED_DATES
+from .policy import CLEAN_PIXEL_DATA, FULL_DATES, MODIFIED_DATES
 from .qc_retained import _NOT_REVIEWED_TAGS, RETAINED_TEXT_VRS
 from .reasons import TransformReason
 from .release_gate import ReasonCode
@@ -210,6 +210,11 @@ REVIEW_CODES = frozenset(
 HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
     {
         "roi-names": "descriptor cleaning sent one of its ROI Names to review",
+        "pixel-data": (
+            "Clean Pixel Data blacked out the text that it found in the "
+            "instance's pixel data, or found none, and review must look for "
+            "text that it missed (D-037)"
+        ),
         "release": (
             "the release gate requires QC review, for other text that the "
             "residual search found inside the data set, or a value that could "
@@ -506,7 +511,7 @@ _RELEASE_REPORT_MARKDOWN = "release-report.md"
 _CONFORMANCE_STATEMENT = "conformance-statement.md"
 
 
-def qc_pack(named: Callable[[str], str]) -> list[str]:
+def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> list[str]:
     """Return the lines of the section on what the QC pack lists for review."""
     vrs = join(sorted(RETAINED_TEXT_VRS), "or")
     exempt = join(named(tag) for tag in sorted(_NOT_REVIEWED_TAGS))
@@ -532,9 +537,8 @@ def qc_pack(named: Callable[[str], str]) -> list[str]:
         "outside ISO 646 where no Specific Character Set applies, by "
         f"{unreviewable}, rather than releasing it unreviewed.",
         "",
-        "The engine writes Pixel Data (7FE0,0010) unchanged and claims "
-        "neither Clean Pixel Data nor Clean Recognizable Visual Features. "
-        "The QC pack lists each instance whose source's attributes show an "
+        _pixel_data(statement)
+        + "The QC pack lists each instance whose source's attributes show an "
         "indicator of text burned into its pixel data, of a face that could "
         "be reconstructed, or of values that may disclose the patient's body "
         "weight, with those indicators, and, where the "
@@ -566,6 +570,35 @@ def qc_pack(named: Callable[[str], str]) -> list[str]:
         "only the released and held instances, so a series with just one "
         "single-frame image among them is not a volume (D-015).",
     ]
+
+
+def _pixel_data(statement: ConformanceStatement) -> str:
+    """Return the sentences on how the engine writes Pixel Data."""
+    if CLEAN_PIXEL_DATA not in statement.options:
+        return (
+            "The engine writes Pixel Data (7FE0,0010) unchanged and claims "
+            "neither Clean Pixel Data nor Clean Recognizable Visual Features. "
+        )
+    return (
+        "Under the Clean Pixel Data Option, the engine replaces each region "
+        "of text that its text finder finds in each frame of native Pixel "
+        "Data (7FE0,0010) with one stored value, in place: the frame's "
+        "smallest for MONOCHROME2, its largest for MONOCHROME1, or zero for "
+        "RGB. This erases the text's pattern, but how bright the region is "
+        "displayed depends on the Modality and VOI LUT attributes, which are "
+        "kept, so it is not always black. The engine holds every instance "
+        "whose Pixel Data it searched for review, whether or not it found "
+        "text, until a reviewer has checked the regions and looked for text "
+        "that the finder missed. It sequesters an instance with top-level "
+        "Float or Double Float Pixel Data, or whose Pixel Data are "
+        "compressed, have a photometric interpretation other than MONOCHROME1, MONOCHROME2, or "
+        "8-bit RGB or another layout that cannot be read as frames of stored "
+        "values, hold more than the value's sign in the bits above Bits "
+        "Stored, such as an overlay, or differ when written from its source "
+        "other than in those regions. It writes other Pixel Data unchanged, "
+        "and claims neither Clean Pixel Data nor Clean Recognizable Visual "
+        "Features. "
+    )
 
 
 def release_report() -> list[str]:
@@ -648,8 +681,8 @@ def release_report() -> list[str]:
         + ", each instance once for each, an identical copy counting as the "
         "instance it copies, and names none of them (D-015). The indicators "
         "are read from the instances' attributes, and a volume's from its "
-        "series; the pixel data are not inspected, so an instance without an "
-        "indicator may still show the risk.",
+        "series; the pixel data are not inspected for them, so an instance "
+        "without an indicator may still show the risk.",
         "",
         "The report summarises the engine's structural checks of the "
         "release, as "
