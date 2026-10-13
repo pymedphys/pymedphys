@@ -139,9 +139,10 @@ def safe_private_section(statement: ConformanceStatement) -> list[str]:
         "in an odd group that PS3.5 Section 7.8.1 does not allow. A private "
         "creator is kept where an attribute of its block in the same data set "
         "or item is kept or replaced, and removed otherwise. Private Data "
-        "Element Characteristics Sequence (0008,0300) is not followed, since "
-        "nothing checks what the instance's maker wrote in it, and is removed "
-        "by its supplementary rule.",
+        "Element Characteristics Sequence (0008,0300) is not yet followed, and "
+        "is removed by its supplementary rule; this and the private sequences "
+        "that no rule lists are among what the statement does not yet "
+        "describe.",
         "",
         f"These are the {len(statement.safe_private)} rules that can retain "
         f"an attribute, for Table E.3.10-1 of PS3.15 {statement.edition} and "

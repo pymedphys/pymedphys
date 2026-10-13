@@ -353,6 +353,29 @@ def test_a_private_sequence_is_parsed_and_each_element_judged(transfer_syntax):
     assert ElementPath(item, "(0010,0010)") not in actions
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-03")
+@pytest.mark.parametrize("transfer_syntax", TRANSFER_SYNTAXES)
+def test_a_private_sequence_without_a_rule_is_removed_whole(transfer_syntax):
+    # Until such a sequence is parsed, as E.3.10 asks, it goes with
+    # everything in it, even an element whose own rule would keep it.
+    item = pydicom.Dataset()
+    item.add_new(0x70530010, "LO", PET)
+    item.add_new(0x70531000, "DS", "1.25")
+    item.add_new(0x705310FE, "LO", "SENTINEL TEXT")
+    dataset = _slice(
+        (0x70530010, "LO", PET), (0x705310F0, "SQ", pydicom.Sequence([item]))
+    )
+    data = synthetic.written(dataset, transfer_syntax)
+
+    actions = _actions(dataset, data=data)
+    output = pydicom.dcmread(io.BytesIO(_written(_transform(), data)))
+
+    assert actions[_top("(7053,10F0)")] == "X"
+    assert actions[_top("(7053,0010)")] == "X"
+    assert not _private(output)
+    assert b"SENTINEL" not in _written(_transform(), data)
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")
 def test_a_sequence_rule_without_items_is_removed():
     dataset = _slice((0x20010010, "LO", PHILIPS), (0x2001105F, "OB", b"\x00\x00"))
@@ -443,10 +466,11 @@ def test_the_statement_lists_the_safe_private_attributes_retained():
     listed = [rule for rule in rules.retained() if rule.handling is not Handling.TEXT]
     assert statement.safe_private == tuple(listed)
     assert len(listed) == 280 + 65 + 7 + 55
-    assert not statement.pending
+    # It says what the routes of E.3.10 not yet applied would retain.
+    assert statement.pending == (conformance.PENDING_SAFE_PRIVATE_ROUTES,)
     text = conformance_markdown.render_markdown(statement)
     assert "## Safe private attributes" in text
-    assert "## Not yet described" not in text
+    assert conformance.PENDING_SAFE_PRIVATE_ROUTES in text
     rows = [line for line in text.splitlines() if line.startswith(f"| {PET} |")]
     assert rows == [
         f"| {PET} | (7053,xx00) | DS | 1 | numeric | SUV Factor - Multiplying "

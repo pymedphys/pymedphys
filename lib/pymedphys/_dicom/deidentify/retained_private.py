@@ -63,13 +63,15 @@ settles its C, K, U, or X, from its rule and its value as the file holds it:
   that PS3.5 Section 7.8.1 does not allow, at (gggg,0001) to (gggg,000F) and
   (gggg,0100) to (gggg,0FFF).
 
-Private Data Element Characteristics Sequence (0008,0300) is not followed:
-E.3.10 lets a de-identifier take a block whose Block Identifying Information
-Status (0008,0303) is SAFE as known to be safe, but whatever made the
-instance wrote that status, and nothing checks it, so only the reviewed
-rules retain a private attribute, and removing every other meets E.3.10's
-"removed or processed". The sequence itself is removed by its supplementary
-rule, as under every policy.
+Two routes of E.3.10 are not yet applied, so what they would retain is
+removed. Private Data Element Characteristics Sequence (0008,0300) is not
+yet followed: a block that it marks SAFE in Block Identifying Information
+Status (0008,0303), and an attribute that it lists in Nonidentifying Private
+Elements (0008,0304), are retained only where a reviewed rule retains them,
+and the sequence itself is removed by its supplementary rule, as under every
+policy. A private sequence that no rule lists is removed whole, where E.3.10
+asks for it to be parsed and each nested attribute handled on its own
+merits. Removing what is not retained meets E.3.10's "removed or processed".
 
 The actions name paths, never values. The values that decide them are read
 from the source file's own bytes, and only those of private creators and of
