@@ -81,9 +81,12 @@ file holds it:
     where the file does not write it, the VR that Private Data Element
     Value Representation (0008,030A) defines for it, and it is removed
     where neither gives one or the two differ. Its values are checked
-    against that VR, with any number of values. So a declared number or
-    code string is kept, a declared UID replaced, and declared text, dates,
-    times, names, and bulk binary data removed, as E.3.10's "removed or
+    against that VR, and their number against the VM that Private Data
+    Element Value Multiplicity (0008,0309) defines with it, or against a
+    single value where (0008,0310) defines none, or one that PS3.6 has no
+    form for. So a declared number or code string is kept, a declared UID
+    replaced, and declared text and every value of another VR, such as a
+    date, a name, or OB, OW, or UN data, removed, as E.3.10's "removed or
     processed" allows.
   - A sequence is parsed whatever (0008,0300) says of it, so that each
     element in its items is settled on its own merits.
@@ -168,6 +171,7 @@ _ACTIONS = "(0008,0305)"
 _IDENTIFYING = "(0008,0306)"
 _DEFINITIONS = "(0008,0310)"
 _DEFINED_ELEMENT = "(0008,0308)"
+_DEFINED_VM = "(0008,0309)"
 _DEFINED_VR = "(0008,030A)"
 # The Enumerated Values of Block Identifying Information Status (0008,0303).
 _SAFE, _MIXED, _UNSAFE = "SAFE", "MIXED", "UNSAFE"
@@ -175,8 +179,10 @@ _SAFE, _MIXED, _UNSAFE = "SAFE", "MIXED", "UNSAFE"
 _BLOCK_ELEMENTS = frozenset(range(0x100))
 # A declared block's key: its group and its private creator.
 _Described = tuple[int, str]
-# The VM of a declared element, whose values are checked against its VR only.
-_DECLARED_VM = "1-n"
+# The VM of a declared element that (0008,0310) does not define.
+_UNDEFINED_VM = "1"
+# The VR and VM that (0008,0310) defines for an element.
+_Defined = tuple[str, str]
 
 
 def is_private(tag: str) -> bool:
@@ -204,13 +210,13 @@ class _Declaration:
 
     ``safe`` holds the elements that it marks safe and no item of it marks
     identifying; ``identifying`` those that some item marks as possibly
-    identifying; ``vrs`` the VR that it defines for an element, where its
-    items agree on one.
+    identifying; ``defined`` the VR and VM that it defines for an element,
+    where every definition of the element in its items agrees.
     """
 
     safe: frozenset[int]
     identifying: frozenset[int]
-    vrs: Mapping[int, str]
+    defined: Mapping[int, _Defined]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -365,7 +371,8 @@ def _rule(
     A reviewed rule settles its element unless the instance declares that
     the element may be identifying. An element without one that the
     instance declares safe takes the handling of its VR, as written or as
-    the instance defines it where the file does not write it. The
+    the instance defines it where the file does not write it, and the VM
+    that the instance defines, or a single value where it defines none. The
     declaration settles only an element that holds a value: a sequence is
     parsed whatever it says.
     """
@@ -377,10 +384,10 @@ def _rule(
         return None
     if rule is not None or element not in declaration.safe:
         return rule
-    defined = declaration.vrs.get(element)
+    defined_vr, vm = declaration.defined.get(element, (None, _UNDEFINED_VM))
     if extent.vr in _UNWRITTEN:
-        vr = defined
-    elif defined in (None, extent.vr):
+        vr = defined_vr
+    elif defined_vr in (None, extent.vr):
         vr = extent.vr
     else:
         vr = None
@@ -391,7 +398,7 @@ def _rule(
         group,
         element,
         vr,
-        _DECLARED_VM,
+        vm,
         default_handling(vr),
         Basis.DECLARED,
     )
@@ -402,30 +409,35 @@ def _declarations(source: SourceEvidence) -> Mapping[_Described, _Declaration]:
 
     Only the sequence at the top level, in the SOP Common Module, is read.
     Where several items describe one block, an element is safe only where
-    one marks it safe and none marks it possibly identifying.
+    one marks it safe and none marks it possibly identifying, and it is
+    defined only where every definition of it agrees.
     """
     sequence = ElementPath((), _CHARACTERISTICS)
     if sequence not in source or not source.element(sequence).items:
         return {}
     safe: dict[_Described, set[int]] = {}
     identifying: dict[_Described, set[int]] = {}
-    vrs: dict[_Described, dict[int, str | None]] = {}
+    definitions: dict[_Described, dict[int, _Defined | None]] = {}
     for index in range(source.element(sequence).items or 0):
         read = _declared(source, ((_CHARACTERISTICS, index),))
         if read is None:
             continue
-        key, item_safe, item_identifying, item_vrs = read
+        key, item_safe, item_identifying, item_defined = read
         safe.setdefault(key, set()).update(item_safe)
         identifying.setdefault(key, set()).update(item_identifying)
-        defined = vrs.setdefault(key, {})
-        for element, vr in item_vrs.items():
-            defined[element] = vr if defined.get(element, vr) == vr else None
+        defined = definitions.setdefault(key, {})
+        for element, definition in item_defined.items():
+            defined[element] = _agreed(defined, element, definition)
     return {
         key: _Declaration(
             frozenset(elements - identifying[key]),
             frozenset(identifying[key]),
             types.MappingProxyType(
-                {element: vr for element, vr in vrs[key].items() if vr is not None}
+                {
+                    element: definition
+                    for element, definition in definitions[key].items()
+                    if definition is not None
+                }
             ),
         )
         for key, elements in safe.items()
@@ -434,17 +446,21 @@ def _declarations(source: SourceEvidence) -> Mapping[_Described, _Declaration]:
 
 def _declared(
     source: SourceEvidence, item: tuple
-) -> tuple[_Described, frozenset[int], frozenset[int], dict[int, str]] | None:
+) -> (
+    tuple[_Described, frozenset[int], frozenset[int], dict[int, _Defined | None]] | None
+):
     """Return the block that one item of (0008,0300) describes, and what it says.
 
     That is the block's key, the elements it marks safe, those it marks as
-    possibly identifying, and the VR it defines for each element; or None
-    where the item does not name a compared creator of a private group.
+    possibly identifying, and the VR and VM it defines for each element,
+    None where its definitions of an element disagree or one cannot be read;
+    or None where the item does not name a compared creator of a private
+    group.
     Where it names one but its status is not one of the Enumerated Values,
     or a list of elements in it cannot be read, it marks no element safe
     and every element possibly identifying.
     """
-    group = _shorts(_field(source, ElementPath(item, _GROUP_REFERENCE), "US"))
+    group = _unsigned(_field(source, ElementPath(item, _GROUP_REFERENCE), "US"))
     creator_field = _field(source, ElementPath(item, _CREATOR_REFERENCE), "LO")
     creator = None if creator_field is None else _compared(creator_field)
     if (
@@ -476,21 +492,63 @@ def _declared(
         if listed is None:
             return unread
         identifying |= listed
-    defined: dict[int, str | None] = {}
+    defined: dict[int, _Defined | None] = {}
     for each in _items(source, ElementPath(item, _DEFINITIONS)):
-        if each is None:
+        elements = (
+            None
+            if each is None
+            else _elements(source, ElementPath(each, _DEFINED_ELEMENT))
+        )
+        if elements is None or len(elements) != 1:
             continue
-        elements = _elements(source, ElementPath(each, _DEFINED_ELEMENT))
+        (element,) = elements
         vr = _code(_field(source, ElementPath(each, _DEFINED_VR), "CS"))
-        if elements is not None and len(elements) == 1 and vr in VRS:
-            (element,) = elements
-            defined[element] = vr if defined.get(element, vr) == vr else None
-    return (
-        key,
-        frozenset(safe - identifying),
-        frozenset(identifying),
-        {element: vr for element, vr in defined.items() if vr is not None},
-    )
+        definition = None
+        if vr in VRS:
+            multiplicity = _unsigned(
+                _field(source, ElementPath(each, _DEFINED_VM), "UL"), "L"
+            )
+            definition = (vr, _vm(multiplicity) or _UNDEFINED_VM)
+        defined[element] = _agreed(defined, element, definition)
+    return (key, frozenset(safe - identifying), frozenset(identifying), defined)
+
+
+def _agreed(
+    defined: Mapping[int, _Defined | None], element: int, definition: _Defined | None
+) -> _Defined | None:
+    """Return an element's definition where it agrees with any earlier one."""
+    if element in defined and defined[element] != definition:
+        return None
+    return definition
+
+
+def _vm(multiplicity: tuple[int, ...] | None) -> str | None:
+    """Return the VM, as PS3.6 writes it, that (0008,0309) gives, or None.
+
+    PS3.3 Section C.12.1.1.7.1 gives a fixed multiplicity as one value, and
+    a variable one as its least, its greatest (0 where it is open-ended),
+    and its stride (1 where it is omitted). None where the values are not
+    of that form, or give a VM that PS3.6 has no form for.
+    """
+    if (
+        multiplicity is None
+        or len(multiplicity) not in (1, 2, 3)
+        or multiplicity == (0,)
+    ):
+        return None
+    if len(multiplicity) == 1:
+        multiplicity = (multiplicity[0], multiplicity[0])
+    least, greatest, stride = (*multiplicity, 1)[:3]
+    # An attribute may be empty whatever its VM, so a least of 0 adds nothing.
+    least = least or stride
+    if not stride or least % stride:
+        return None
+    if not greatest:
+        # Open-ended: a stride of 1, or one equal to the least, as in 2-2n.
+        return {least: f"{least}-{least}n", 1: f"{least}-n"}.get(stride)
+    if greatest < least or stride != 1:
+        return None
+    return str(least) if least == greatest else f"{least}-{greatest}"
 
 
 def _items(source: SourceEvidence, path: ElementPath) -> list[tuple | None]:
@@ -523,11 +581,15 @@ def _field(source: SourceEvidence, path: ElementPath, vr: str) -> bytes | None:
     return source.value_field(path)
 
 
-def _shorts(value: bytes | None) -> tuple[int, ...] | None:
-    """Return the values of a US Value Field, or None if it holds none."""
-    if not value or len(value) % 2:
+def _unsigned(value: bytes | None, code: str = "H") -> tuple[int, ...] | None:
+    """Return the values of a US or UL Value Field, or None if it holds none.
+
+    ``code`` is the :mod:`struct` code of one value: H for US, L for UL.
+    """
+    size = struct.calcsize(f"<{code}")
+    if not value or len(value) % size:
         return None
-    return struct.unpack(f"<{len(value) // 2}H", value)
+    return struct.unpack(f"<{len(value) // size}{code}", value)
 
 
 def _elements(source: SourceEvidence, path: ElementPath) -> frozenset[int] | None:
@@ -535,7 +597,7 @@ def _elements(source: SourceEvidence, path: ElementPath) -> frozenset[int] | Non
 
     None where it is absent, holds no value, or lists a value above 00FFH.
     """
-    values = _shorts(_field(source, path, "US"))
+    values = _unsigned(_field(source, path, "US"))
     if values is None or not set(values) <= _BLOCK_ELEMENTS:
         return None
     return frozenset(values)

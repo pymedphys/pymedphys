@@ -162,10 +162,13 @@ def safe_private_section(statement: ConformanceStatement) -> list[str]:
         "declared safe that no rule lists takes the handling of its VR, as "
         "written or, where the file does not write it, as Private Data Element "
         "Value Representation (0008,030A) defines it, and is removed where "
-        "neither gives one or the two differ: a number or code string is "
-        "checked as above, with any number of values, and kept, a UID is "
-        "replaced, and text, dates, times, names, and bulk binary data are "
-        "removed. A sequence is parsed as above whatever the instance declares "
+        "neither gives one or the two differ. Its number of values must fit "
+        "the VM that Private Data Element Value Multiplicity (0008,0309) "
+        "defines with that VR, or be one where none is defined or the VM has "
+        "no form in PS3.6: a number or code string is checked as above and "
+        "kept, a UID is replaced, and text and every value of another VR, "
+        "such as a date, a name, or OB, OW, or UN data, are removed. "
+        "A sequence is parsed as above whatever the instance declares "
         "of it.",
         "",
         "Every other private attribute is removed: one whose rule is for text, "

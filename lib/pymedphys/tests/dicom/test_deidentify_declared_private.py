@@ -27,6 +27,11 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.references import InstanceRecord
+from pymedphys._dicom.deidentify.release_gate import (
+    Decision,
+    ReasonCode,
+    release_condition,
+)
 from pymedphys._dicom.deidentify.retained_private import private_actions, private_plan
 from pymedphys._dicom.deidentify.run_qc import RetainedText
 from pymedphys._dicom.deidentify.safe_private import load_safe_private_rules
@@ -61,9 +66,11 @@ def _declaration(
 ):
     """An item of (0008,0300) for one block.
 
-    ``defined`` gives (element, VR) pairs for Private Data Element
-    Definition Sequence (0008,0310), and ``identifying`` the elements of one
-    item of Deidentification Action Sequence (0008,0305).
+    ``defined`` gives (element, VR) pairs, or (element, VR, VM values)
+    triples, for Private Data Element Definition Sequence (0008,0310), whose
+    VM is a single value where none is given and absent where it is None,
+    and ``identifying`` the
+    elements of one item of Deidentification Action Sequence (0008,0305).
     """
     item = pydicom.Dataset()
     item.add_new(0x00080301, "US", group)
@@ -78,13 +85,15 @@ def _declaration(
         item.add_new(0x00080305, "SQ", pydicom.Sequence([action]))
     if defined:
         definitions = []
-        for element, vr in defined:
+        for element, vr, *vm in defined:
             definition = pydicom.Dataset()
             definition.add_new(0x00080308, "US", element)
-            definition.add_new(0x00080309, "US", 1)
+            multiplicity = vm[0] if vm else [1]
+            if multiplicity is not None:
+                definition.add_new(0x00080309, "UL", multiplicity)
             definition.add_new(0x0008030A, "CS", vr)
-            definition.add_new(0x0008030D, "LO", f"Acme{element:02X}")
-            definition.add_new(0x0008030C, "LO", f"Acme {element:02X}")
+            definition.add_new(0x0008030D, "UC", f"Acme{element:02X}")
+            definition.add_new(0x0008030C, "UC", f"Acme {element:02X}")
             definitions.append(definition)
         item.add_new(0x00080310, "SQ", pydicom.Sequence(definitions))
     return item
@@ -296,6 +305,58 @@ def test_a_declared_element_is_removed_where_its_vr_is_unknown_or_disputed():
     assert set(implicit.values()) == {"X"}
 
 
+def test_definitions_that_disagree_in_one_item_define_nothing():
+    # A second item's agreeing definition does not settle the dispute.
+    dataset = _acme(
+        _declaration("SAFE", defined=[(0x01, "US"), (0x01, "SS")]),
+        _declaration("SAFE", defined=[(0x01, "US")]),
+        elements=[(0x00111001, "US", 5)],
+    )
+
+    actions = _acme_actions(_actions(dataset, synthetic.IMPLICIT_VR_LITTLE_ENDIAN))
+
+    assert actions == {"(0011,0010)": "X", "(0011,1001)": "X"}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01")
+@pytest.mark.parametrize("transfer_syntax", TRANSFER_SYNTAXES)
+@pytest.mark.parametrize(
+    "multiplicity, values, kept",
+    [
+        (None, [5], True),  # no VM is defined, so one value
+        (None, [5, 6], False),
+        ([1], [5, 6], False),
+        ([2], [5, 6], True),
+        ([1, 0], [5, 6, 7], True),  # 1-n
+        ([1, 3], [5, 6, 7, 8], False),  # 1-3
+        ([0, 0, 3], [1, 2, 3, 4, 5, 6], True),  # 3-3n
+        ([3, 0, 3], [1, 2, 3, 4], False),
+        ([2, 6, 2], [5, 6, 7, 8], False),  # no PS3.6 form, so one value
+        ([2, 6, 2], [5], True),
+        ([1, 0, 0], [5, 6], False),  # a stride of 0 is not allowed
+    ],
+)
+def test_a_declared_number_has_at_most_the_values_its_vm_allows(
+    transfer_syntax, multiplicity, values, kept
+):
+    dataset = _acme(
+        _declaration("SAFE", defined=[(0x01, "US", multiplicity)]),
+        elements=[(0x00111001, "US", values)],
+    )
+
+    actions = _acme_actions(_actions(dataset, transfer_syntax))
+
+    assert actions["(0011,1001)"] == ("K" if kept else "X")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01")
+def test_an_element_that_no_item_defines_has_one_value():
+    # Explicit VR gives the VR, but nothing gives the VM.
+    dataset = _acme(_declaration("SAFE"), elements=[(0x00111006, "SS", [-3, 4])])
+
+    assert _acme_actions(_actions(dataset))["(0011,1006)"] == "X"
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")
 @pytest.mark.parametrize("transfer_syntax", TRANSFER_SYNTAXES)
 def test_a_declared_value_that_is_not_valid_for_its_vr_is_removed(transfer_syntax):
@@ -339,6 +400,26 @@ def test_a_declaration_applies_to_its_block_in_the_items_of_a_sequence(
     }
     assert b"SENTINEL" not in written
     assert not _in_private(removed)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01")
+@pytest.mark.parametrize("transfer_syntax", TRANSFER_SYNTAXES)
+def test_a_declaration_in_the_items_of_a_sequence_is_ignored_and_removed(
+    transfer_syntax,
+):
+    # Only the top-level (0008,0300), in the SOP Common Module, is read.
+    item = pydicom.Dataset()
+    item.add_new(
+        0x00080300, "SQ", pydicom.Sequence([_declaration("SAFE", defined=ACME_VRS)])
+    )
+    item.add_new(0x00110010, "LO", ACME)
+    item.add_new(0x00111001, "US", 5)
+    dataset = _acme(elements=[(0x00111010, "SQ", pydicom.Sequence([item]))])
+
+    written = _written(synthetic.written(dataset, transfer_syntax))
+
+    assert not _in_private(written)
+    assert not any(path.tag == CHARACTERISTICS for path in read_source(written).paths())
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-03")
@@ -401,6 +482,34 @@ def test_the_option_keeps_declared_attributes_end_to_end(transfer_syntax):
         RetainedText(ACME, _top("(0011,0010)")),
         RetainedText("1.25", _top("(0011,1002)")),
     ]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01", "MIDI-BP-01")
+@pytest.mark.parametrize("transfer_syntax", TRANSFER_SYNTAXES)
+def test_a_declared_vendor_block_is_released_and_another_reviewed(transfer_syntax):
+    # (0008,0302) is removed with (0008,0300), and found in the kept creator.
+    vendor = synthetic.ct_slice(0)
+    vendor.add_new(0x70530010, "LO", PET)
+    vendor.add_new(0x70531000, "DS", "1.25")
+    vendor.add_new(
+        0x00080300,
+        "SQ",
+        pydicom.Sequence([_declaration("SAFE", group=0x7053, creator=PET)]),
+    )
+    other = _acme(_declaration("SAFE", defined=ACME_VRS))
+
+    conditions = {}
+    for name, dataset in (("vendor", vendor), ("other", other)):
+        data = synthetic.written(dataset, transfer_syntax)
+        result = _transform()(data, InstanceRecord.from_file(data))
+        assert isinstance(result, run.Transformed), result
+        conditions[name] = release_condition(result.evidence, result.data)
+
+    assert conditions["vendor"].decision is Decision.RELEASE
+    assert conditions["other"].decision is Decision.QC_REVIEW
+    assert {
+        (reason.code, reason.path.tag) for reason in conditions["other"].reasons
+    } == {(ReasonCode.RESIDUAL_TEXT, "(0008,0302)")}
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-04")
