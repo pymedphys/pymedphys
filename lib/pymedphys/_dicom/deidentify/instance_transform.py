@@ -173,6 +173,7 @@ from .pixel_cleaning import (
     Redaction,
     TextFinder,
     black_out,
+    finder_description,
     redaction_problem,
 )
 from .pixel_risk import assess_pixel_risk, series_evidence
@@ -653,9 +654,11 @@ class InstanceTransform:
         What finds the regions of text in each frame, such as a
         :class:`~pymedphys._dicom.deidentify.text_detection.TextDetector`,
         which a policy selecting Clean Pixel Data needs, and no other policy
-        takes. The description of its method, read once when the transform
-        is made, is an input to the method digest that the markers and the
-        release report record.
+        takes. Its class and a copy of the description of its method, read
+        once when the transform is made
+        (:func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`),
+        are an input to the method digest that the markers and the release
+        report record.
     unvalidated_policy : bool, default False
         Allow a policy that is not enabled, such as a preset whose behaviour
         is not yet validated. For tests and validation runs only; nothing
@@ -670,8 +673,9 @@ class InstanceTransform:
         it; or if the policy's other options cannot be composed into the
         policy whose actions descriptors take where they are not cleaned.
     TypeError
-        If ``finder`` does not describe its method as a mapping, or its
-        description has a type that the method digest does not define.
+        If ``finder`` does not describe its method as a mapping that is not
+        empty, or its description has a type that the method digest does not
+        define.
 
     Attributes
     ----------
@@ -745,11 +749,9 @@ class InstanceTransform:
                 "Pixel Data"
             )
         self._finder = finder
-        finder_method = None
-        if finder is not None:
-            finder_method = getattr(finder, "method", None)
-            if not isinstance(finder_method, Mapping):
-                raise TypeError("a text finder must describe its method as a mapping")
+        # One description of the finder, for both the markers' digest and
+        # the release report's.
+        finder_method = None if finder is None else finder_description(finder)
         if cleaning is not None:
             # One version of each list, for both cleaning and its digest.
             cleaning = dataclasses.replace(

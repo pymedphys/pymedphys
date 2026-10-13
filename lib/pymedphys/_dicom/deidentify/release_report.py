@@ -922,11 +922,11 @@ def release_report(
         The SHA-256 of the technique vocabulary that descriptor cleaning
         applies to technique descriptors, or None, the default, without one.
     text_finder : Mapping of str to object, or None, optional
-        The description of the method of the text finder that the Clean
-        Pixel Data Option applies, as
-        :attr:`~pymedphys._dicom.deidentify.text_detection.TextDetector.method`
-        gives it, or None, the default, without one. The report records only
-        its digest.
+        The class and description of the method of the text finder that the
+        Clean Pixel Data Option applies, as
+        :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
+        gives them, or None, the default, without one. The report records
+        only their digest.
     qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord, optional
         The run's QC pack by its reference, with its attestation's outcome
         and the releaser's confirmations, from

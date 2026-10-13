@@ -24,17 +24,24 @@ import re
 import subprocess
 import sys
 import textwrap
+import types
 import zipfile
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import text_detection
+from pymedphys._dicom.deidentify import (
+    method_digest,
+    pixel_cleaning,
+    policy,
+    text_detection,
+)
 from pymedphys._dicom.deidentify.text_detection import (
     DetectionParameters,
     PinnedModel,
     TextBox,
     TextDetectionError,
+    TextDetector,
 )
 
 from . import _synthetic_text as synthetic
@@ -546,5 +553,50 @@ def test_the_method_names_the_model_runtime_and_parameters(detector):
     method = detector.method
     assert method["model_sha256"] == text_detection.PP_OCRV6_DET_SMALL.member_sha256
     assert method["onnxruntime"]
+    assert "onnxruntime" in method["onnxruntime_distributions"]
+    assert method["numpy"] == np.__version__
+    assert method["scipy"]
     assert method["parameters"] == dataclasses.asdict(DetectionParameters())
     assert method["renderings"] == list(text_detection.RENDERINGS)
+
+
+def _unloaded_detector(monkeypatch) -> TextDetector:
+    """A detector with the default parameters and no model or ONNX Runtime."""
+    monkeypatch.setattr(
+        text_detection,
+        "_onnxruntime",
+        lambda: types.SimpleNamespace(__version__="1.31.0"),
+    )
+    monkeypatch.setattr(
+        text_detection, "_installed_onnxruntime", lambda: (("onnxruntime",), "1.31.0")
+    )
+    detector = object.__new__(TextDetector)
+    detector._parameters = DetectionParameters()  # pylint: disable = protected-access
+    detector._model_sha256 = "0" * 64  # pylint: disable = protected-access
+    return detector
+
+
+def test_the_detectors_description_has_a_canonical_form(monkeypatch):
+    detector = _unloaded_detector(monkeypatch)
+
+    description = pixel_cleaning.finder_description(detector)
+
+    assert description["finder"] == (
+        "pymedphys._dicom.deidentify.text_detection.TextDetector"
+    )
+    assert description["method"]["onnxruntime_distributions"] == ("onnxruntime",)
+    components = method_digest.method_digest_components(
+        policy.compose_custom_policy((policy.CLEAN_PIXEL_DATA,)),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        text_finder=description,
+    )
+    assert components.text_finder_digest is not None
+
+
+def test_what_decides_the_detectors_boxes_cannot_be_reassigned(monkeypatch):
+    detector = _unloaded_detector(monkeypatch)
+    with pytest.raises(AttributeError):
+        detector.parameters = DetectionParameters(threshold=0.1)  # type: ignore[misc]
+    with pytest.raises(AttributeError):
+        detector.model_sha256 = "1" * 64  # type: ignore[misc]

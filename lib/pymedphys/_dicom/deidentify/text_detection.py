@@ -318,24 +318,40 @@ class TextDetector:
         model: bytes | None = None,
         parameters: DetectionParameters | None = None,
     ):
-        self.parameters = DetectionParameters() if parameters is None else parameters
+        self._parameters = DetectionParameters() if parameters is None else parameters
         content = model_bytes() if model is None else model
-        self.model_sha256 = _sha256(content)
+        self._model_sha256 = _sha256(content)
         self._session = _session(content)
         self._input = self._session.get_inputs()[0].name
+
+    @property
+    def parameters(self) -> DetectionParameters:
+        """The settings of detection, fixed when the detector is made."""
+        return self._parameters
+
+    @property
+    def model_sha256(self) -> str:
+        """The SHA-256 of the model that runs, fixed when the detector is made."""
+        return self._model_sha256
 
     @property
     def method(self) -> Mapping[str, object]:
         """What decides the boxes: the model, the runtime, and the parameters.
 
-        It is an input to the method digest of a run under the Clean Pixel
-        Data Option, as
-        :func:`~pymedphys._dicom.deidentify.method_digest.digest_inputs`
-        takes it.
+        The runtime is ONNX Runtime's version and the distributions that
+        install it, since ``onnxruntime`` and ``onnxruntime-gpu`` give the
+        same version, and the versions of NumPy and SciPy, which scale,
+        render, and box every frame. It is an input to the method digest of
+        a run under the Clean Pixel Data Option, as
+        :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
+        reads it.
         """
         return {
             "model_sha256": self.model_sha256,
             "onnxruntime": _onnxruntime().__version__,
+            "onnxruntime_distributions": list(_installed_onnxruntime()[0]),
+            "numpy": np.__version__,
+            "scipy": scipy.__version__,
             "parameters": dataclasses.asdict(self.parameters),
             "renderings": list(RENDERINGS),
         }

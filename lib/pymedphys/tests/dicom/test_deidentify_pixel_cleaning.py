@@ -42,6 +42,7 @@ from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.pixel_cleaning import (
     PixelDataRefused,
     black_out,
+    finder_description,
     redaction_problem,
 )
 from pymedphys._dicom.deidentify.policy import PolicyError
@@ -426,16 +427,92 @@ class _Unencodable(Finder):
     method = {"finder": True}
 
 
-@pytest.mark.parametrize("finder", [_Undescribed(), _Unencodable()])
-def test_a_finder_must_describe_its_method_for_the_digest(finder):
-    with pytest.raises(TypeError, match="method|bool"):
+class _Empty(Finder):
+    """Describes its method as nothing."""
+
+    method: dict = {}
+
+
+class _SameDescription(Finder):
+    """Another finder that gives Finder's description of its method."""
+
+
+@pytest.mark.parametrize(
+    "finder, error",
+    [
+        (_Undescribed(), "must describe its method as a mapping that is not empty"),
+        (_Empty(), "must describe its method as a mapping that is not empty"),
+        (_Unencodable(), "a bool has no canonical form"),
+    ],
+)
+def test_a_finder_must_describe_its_method_for_the_digest(finder, error):
+    with pytest.raises(TypeError, match=error):
         _transform(finder)
+
+
+def test_the_finders_class_and_a_copy_of_its_method_are_described():
+    finder = Finder()
+    finder.method = {"finder": "fixed regions", "sizes": [1, {"rows": 2}]}
+
+    described = finder_description(finder)
+
+    assert dict(described) == {
+        "finder": f"{__name__}.Finder",
+        "method": {"finder": "fixed regions", "sizes": (1, {"rows": 2})},
+    }
+    finder.method["sizes"][1]["rows"] = 3
+    assert described["method"]["sizes"][1]["rows"] == 2
+    with pytest.raises(TypeError):
+        described["method"]["sizes"][1]["rows"] = 3  # type: ignore[index]
+
+
+def test_a_finder_with_another_finders_description_has_another_digest():
+    clean = policy.compose_custom_policy((CLEAN_PIXEL_DATA,))
+    digests = {
+        method_digest.method_digest(
+            clean,
+            vocabulary=None,
+            reviewed_roi_names=None,
+            text_finder=finder_description(finder),
+        )
+        for finder in (Finder(), _SameDescription())
+    }
+    assert len(digests) == 2
+
+
+def test_a_change_to_the_finder_after_the_transform_is_made_changes_no_digest(
+    tmp_path,
+):
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "0.dcm").write_bytes(synthetic.written(synthetic.rt_plan()))
+    finder = Finder()
+    finder.method = {"finder": "fixed regions", "version": 1}
+    transform = _transform(finder)
+    finder.method["version"] = 2
+
+    run.run(
+        run.discover(source),
+        tmp_path / "release",
+        transform,
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+        reporter=transform.reporter,
+    )
+
+    (written,) = (tmp_path / "release").rglob("*.dcm")
+    report = json.loads((tmp_path / "release" / RELEASE_REPORT).read_text("utf-8"))
+    digest = report["method"]["method_digest"]
+    assert digest in pydicom.dcmread(written).DeidentificationMethod
 
 
 def test_the_finders_method_is_an_input_to_the_method_digest():
     clean = policy.compose_custom_policy((CLEAN_PIXEL_DATA,))
     digest = method_digest.method_digest(
-        clean, vocabulary=None, reviewed_roi_names=None, text_finder=Finder.method
+        clean,
+        vocabulary=None,
+        reviewed_roi_names=None,
+        text_finder=finder_description(Finder()),
     )
 
     result = _transformed(_transform(), synthetic.written(synthetic.rt_plan()))
@@ -645,7 +722,7 @@ def test_a_run_holds_its_images_and_reports_why(tmp_path):
         policy.compose_custom_policy((CLEAN_PIXEL_DATA,)),
         vocabulary=None,
         reviewed_roi_names=None,
-        text_finder=Finder.method,
+        text_finder=finder_description(Finder()),
     )
     assert report["method"]["method_digest"] == components.method_digest
     assert report["method"]["text_finder_digest"] == components.text_finder_digest

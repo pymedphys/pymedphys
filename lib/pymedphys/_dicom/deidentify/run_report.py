@@ -145,8 +145,8 @@ class ReleaseReporter:
         as :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
     text_finder : Mapping of str to object, or None, optional
-        The description of the method of the text finder that the Clean
-        Pixel Data Option applies, or None, the default, without one, as
+        The class and description of the method of the text finder that the
+        Clean Pixel Data Option applies, or None, the default, without one, as
         :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
     """

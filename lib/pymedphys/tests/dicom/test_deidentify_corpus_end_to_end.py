@@ -59,6 +59,7 @@ from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     dummy_values,
+    pixel_cleaning,
     run,
     standard,
 )
@@ -226,7 +227,11 @@ def _run(spec):
                 if cleaning is None or cleaning.technique is None
                 else cleaning.technique.sha256
             ),
-            text_finder=None if spec.finder is None else spec.finder.method,
+            text_finder=(
+                None
+                if spec.finder is None
+                else pixel_cleaning.finder_description(spec.finder)
+            ),
         )
         return _Run(
             spec,

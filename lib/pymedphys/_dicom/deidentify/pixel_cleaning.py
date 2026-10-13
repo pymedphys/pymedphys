@@ -50,6 +50,7 @@ Data cannot be cleaned (:class:`PixelDataRefused`).
 from __future__ import annotations
 
 import dataclasses
+import types
 from collections.abc import Mapping, Sequence
 from typing import Protocol
 
@@ -82,11 +83,66 @@ class TextFinder(Protocol):
     def method(self) -> Mapping[str, object]:
         """What decides the regions, as
         :attr:`~pymedphys._dicom.deidentify.text_detection.TextDetector.method`
-        gives it: text, integers, and floats, in mappings and lists."""
+        gives it: a mapping that is not empty, whose values are text,
+        integers, floats, bytes, or UUIDs, in mappings, sequences, and sets."""
 
     def find(self, frame: np.ndarray) -> Sequence[TextBox]:
         """Return the regions of text in a frame of stored values: rows by
         columns, or rows by columns by 3 for RGB."""
+
+
+def finder_description(finder: TextFinder) -> Mapping[str, object]:
+    """Return what decides a finder's regions, as the method digest takes it.
+
+    That is the finder's class, by module and qualified name, so that another
+    finder that gives the text detector's description is not taken for it,
+    and a copy of the finder's own description of its method, so that a
+    change to the finder afterwards changes neither the digest that the
+    markers record nor the one that the release report records.
+
+    Parameters
+    ----------
+    finder : TextFinder
+
+    Returns
+    -------
+    Mapping of str to object
+        ``{"finder": "<module>.<qualified name>", "method": <description>}``,
+        read-only, with each mapping, sequence, and set in the description
+        copied.
+
+    Raises
+    ------
+    TypeError
+        If the finder does not describe its method as a mapping, or describes
+        it as an empty one.
+    """
+    method = getattr(finder, "method", None)
+    if not isinstance(method, Mapping) or not method:
+        raise TypeError(
+            "a text finder must describe its method as a mapping that is not empty"
+        )
+    kind = type(finder)
+    return types.MappingProxyType(
+        {"finder": f"{kind.__module__}.{kind.__qualname__}", "method": _frozen(method)}
+    )
+
+
+def _frozen(value: object) -> object:
+    """Return a read-only copy of mappings, sequences, and sets, at any depth.
+
+    Other values are kept as they are, for the method digest to accept or
+    refuse.
+    """
+    if isinstance(value, Mapping):
+        return types.MappingProxyType(
+            {key: _frozen(item) for key, item in value.items()}
+        )
+    if isinstance(value, (tuple, list)):
+        return tuple(_frozen(item) for item in value)
+    if isinstance(value, (set, frozenset)):
+        return frozenset(_frozen(item) for item in value)
+    return value
 
 
 class PixelDataRefused(Exception):

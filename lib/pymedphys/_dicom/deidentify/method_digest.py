@@ -51,11 +51,11 @@ apply, whether or not the policy's options use it:
   among the engine's files below, but a run can apply another vocabulary or
   none;
 - what decides the regions that the Clean Pixel Data Option blacks out: the
-  text finder's own description of its method, which
-  :attr:`~pymedphys._dicom.deidentify.text_detection.TextDetector.method`
-  gives as the SHA-256 of its model, the version of ONNX Runtime that runs
-  it, its detection parameters, and its renderings, or the absence of a
-  finder;
+  text finder's class and its own description of its method, as
+  :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
+  gives them, which for the text detector is the SHA-256 of its model, the
+  versions of ONNX Runtime, NumPy, and SciPy that run it, its detection
+  parameters, and its renderings, or the absence of a finder;
 - the parameters of generated values: the derivation version and domains of
   keyed values, the root and namespace of replacement UIDs, the prefix, family
   name, and code length of patient pseudonyms, the prefix and length of the
@@ -208,9 +208,9 @@ class MethodDigestInputs:
         The SHA-256 of the effective technique vocabulary, or None without
         one.
     text_finder : Mapping of str to object, or None
-        The text finder's description of its method, as
-        :attr:`~pymedphys._dicom.deidentify.text_detection.TextDetector.method`
-        gives it, or None without a text finder.
+        The text finder's class and description of its method, as
+        :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
+        gives them, or None without a text finder.
     generated_values : Mapping of str to object
         Each parameter of generated values, by module and name, such as
         ``"dates.MIN_OFFSET_WEEKS"``.
@@ -595,10 +595,10 @@ def digest_inputs(
         :attr:`~pymedphys._dicom.deidentify.technique_descriptors.TechniqueVocabulary.sha256`
         gives it, or None, the default, without one.
     text_finder : Mapping of str to object, or None, optional
-        The description of the method of the text finder that the Clean
-        Pixel Data Option applies, as
-        :attr:`~pymedphys._dicom.deidentify.text_detection.TextDetector.method`
-        gives it, or None, the default, without one.
+        The class and description of the method of the text finder that the
+        Clean Pixel Data Option applies, as
+        :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
+        gives them, or None, the default, without one.
 
     Returns
     -------
@@ -720,10 +720,10 @@ def method_digest(
         :attr:`~pymedphys._dicom.deidentify.technique_descriptors.TechniqueVocabulary.sha256`
         gives it, or None, the default, without one.
     text_finder : Mapping of str to object, or None, optional
-        The description of the method of the text finder that the Clean
-        Pixel Data Option applies, as
-        :attr:`~pymedphys._dicom.deidentify.text_detection.TextDetector.method`
-        gives it, or None, the default, without one.
+        The class and description of the method of the text finder that the
+        Clean Pixel Data Option applies, as
+        :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
+        gives them, or None, the default, without one.
 
     Returns
     -------
@@ -809,10 +809,10 @@ def method_digest_components(
         :attr:`~pymedphys._dicom.deidentify.technique_descriptors.TechniqueVocabulary.sha256`
         gives it, or None, the default, without one.
     text_finder : Mapping of str to object, or None, optional
-        The description of the method of the text finder that the Clean
-        Pixel Data Option applies, as
-        :attr:`~pymedphys._dicom.deidentify.text_detection.TextDetector.method`
-        gives it, or None, the default, without one.
+        The class and description of the method of the text finder that the
+        Clean Pixel Data Option applies, as
+        :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
+        gives them, or None, the default, without one.
 
     Returns
     -------
