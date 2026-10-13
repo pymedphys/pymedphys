@@ -208,19 +208,27 @@ def test_the_option_can_go_unsatisfied_in_an_instance_held_for_its_face_review()
     ]
 
 
-def test_the_markers_set_recognizable_visual_features_only_to_no():
+def test_the_markers_set_recognizable_visual_features_to_no_with_the_code():
     policy = _policy()
     digest = method_digest(policy, vocabulary=None, reviewed_roi_names=None)
     found = markers.markers_for(policy, digest, satisfied=[OPTION])
+    unsatisfied = markers.markers_for(policy, digest, satisfied=[])
     dataset = pydicom.Dataset()
     dataset.RecognizableVisualFeatures = "YES"
 
+    assert found.recognizable_visual_features == "NO"
+    # Added whether or not the IOD defines it, as in an empty data set.
+    assert (
+        markers.apply_markers(pydicom.Dataset(), found).RecognizableVisualFeatures
+        == "NO"
+    )
     assert "RecognizableVisualFeatures" not in markers.apply_markers(
-        pydicom.Dataset(), found
+        pydicom.Dataset(), unsatisfied
     )
-    marked = markers.apply_markers(
-        dataset, dataclasses.replace(found, recognizable_visual_features="NO")
+    assert (
+        markers.apply_markers(dataset, unsatisfied).RecognizableVisualFeatures == "YES"
     )
+    marked = markers.apply_markers(dataset, found)
     assert marked.RecognizableVisualFeatures == "NO"
     assert dataset.RecognizableVisualFeatures == "YES"
     with pytest.raises(ValueError, match=r"\(0028,0302\) is not NO"):
@@ -263,7 +271,10 @@ def test_the_statement_gives_the_code_only_after_the_face_review():
         "then Clean Recognizable Visual Features Option (DCM 113102) only in an "
         "instance that cannot show a face" in text
     )
-    assert "Recognizable Visual Features (0028,0302) also has it set to NO" in text
+    assert (
+        "also has Recognizable Visual Features (0028,0302) set to NO, as PS3.15 "
+        "E.3.2 requires, including in an IOD that does not define the attribute"
+    ) in text
 
 
 def test_the_statement_of_the_option_alone_has_one_review_code():
@@ -315,6 +326,7 @@ def test_the_report_refuses_a_face_review_that_is_not_a_reference(reference):
 
 _CT = ("01-ct-1.dcm", "02-ct-2.dcm")
 _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
+_STRUCTURE_SET = "04-rtstruct.dcm"
 
 
 @pytest.fixture(name="second_run", scope="module")
@@ -341,6 +353,7 @@ def fixture_second_run():
             pack_directory,
             {
                 by_first[_CT[0]]["positions"][0]: Face.ABSENT,
+                by_first[_STRUCTURE_SET]["positions"][0]: Face.ABSENT,
                 by_first[_DOSE[0]]["positions"][0]: Face.PRESENT,
             },
         )
@@ -389,7 +402,9 @@ def _codes(dataset):
 def test_a_series_marked_absent_is_released_with_the_option(second_run):
     _, outcomes, _, _ = second_run
 
-    for name in _CT:
+    # The RT Structure Set's IOD does not define the attribute, but E.3.2
+    # adds it with the option's code all the same.
+    for name in (*_CT, _STRUCTURE_SET):
         disposition, dataset = outcomes[name]
         assert disposition == "released", name
         assert dataset.RecognizableVisualFeatures == "NO"
@@ -402,12 +417,12 @@ def test_every_other_instance_that_can_show_a_face_is_held(second_run):
     can_show = {
         name
         for name in outcomes
-        if name not in _CT
+        if name not in (*_CT, _STRUCTURE_SET)
         and name != corpus_module.SEQUESTERED_FILE
         and name not in ("05-rtplan.dcm", "14-mr-spectroscopy.dcm")
     }
 
-    assert can_show >= {"04-rtstruct.dcm", *_DOSE}
+    assert can_show >= set(_DOSE)
     for name in can_show:
         assert outcomes[name] == ("held-for-review", None), name
     held = {
@@ -436,8 +451,9 @@ def test_an_instance_that_cannot_show_a_face_satisfies_the_option(second_run):
         disposition, dataset = outcomes[name]
         assert disposition == "released", name
         assert CODE in _codes(dataset)
-        # Neither IOD defines Recognizable Visual Features.
-        assert "RecognizableVisualFeatures" not in dataset
+        # Neither IOD defines Recognizable Visual Features, but E.3.2 adds
+        # it with the option's code all the same.
+        assert dataset.RecognizableVisualFeatures == "NO"
 
 
 def test_the_report_names_the_attested_pack(second_run):

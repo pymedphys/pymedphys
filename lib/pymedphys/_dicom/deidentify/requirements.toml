@@ -352,7 +352,7 @@ implementation = [
 ]
 note = '''
 Applies only with the Clean Recognizable Visual Features Option.
-An instance that satisfies the option has Recognizable Visual Features set to NO, replacing any value present, where its IOD defines the attribute; the RT Plan and MR Spectroscopy IODs do not, so their instances gain only the option's code (D-046).
+An instance that satisfies the option has Recognizable Visual Features set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, and MR Spectroscopy IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-046).
 Under any other policy, Recognizable Visual Features is kept as received and never set to NO (D-015).
 '''
 

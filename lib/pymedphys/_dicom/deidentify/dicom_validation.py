@@ -110,7 +110,8 @@ PREMISES = {
 class Category(enum.Enum):
     """Why a known difference is not a conformance failure of the output."""
 
-    # The action that the profile names for the attribute gives it.
+    # The action that the profile names for the attribute, or another
+    # requirement of the profile or of a selected option, gives it.
     PROFILE = "profile"
     # A limitation or heuristic of the validator.
     VALIDATOR = "validator"

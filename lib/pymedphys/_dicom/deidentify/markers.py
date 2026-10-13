@@ -50,6 +50,10 @@ to a copy of a data set and changes nothing else in it:
   with Modified Dates, and otherwise REMOVED, or the value already present
   where that is stricter, in the order UNMODIFIED, MODIFIED, REMOVED. A value already
   present that is not one of these is refused.
+- Recognizable Visual Features (0028,0302) is NO, replacing any value
+  already present, in an instance that satisfies the Clean Recognizable
+  Visual Features Option, as PS3.15 E.3.2 requires whether or not the
+  instance's IOD defines the attribute, and is otherwise left as it is.
 - Contributing Equipment Sequence (0018,A001) keeps the items already present
   and, unless one of them has the same Manufacturer, Software Versions in the
   same order, and purpose of reference, gains one that names PyMedPhys as its
@@ -226,9 +230,9 @@ class Markers:
         109104 "De-identifying Equipment".
     recognizable_visual_features : str or None
         Recognizable Visual Features (0028,0302): ``"NO"`` in an instance
-        that satisfies the Clean Recognizable Visual Features Option and
-        whose IOD defines the attribute (PS3.15 E.3.2), or None, which
-        leaves it as it is.
+        that satisfies the Clean Recognizable Visual Features Option,
+        whether or not its IOD defines the attribute (PS3.15 E.3.2), or
+        None, which leaves it as it is.
     """
 
     patient_identity_removed: str
@@ -502,6 +506,9 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         manufacturer=MANUFACTURER,
         software_versions=software_versions,
         purpose_of_reference=_code(7005, DEIDENTIFYING_EQUIPMENT),
+        recognizable_visual_features=(
+            "NO" if policy.claims_conformance and _VISUAL_FEATURES in options else None
+        ),
     )
     _check(found)
     return found

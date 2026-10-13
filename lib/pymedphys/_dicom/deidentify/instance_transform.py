@@ -693,12 +693,13 @@ class InstanceTransform:
     Under Clean Recognizable Visual Features, an instance that can show a
     face (:func:`~.face_review.carries_visual_features`) satisfies the
     option only where the SHA-256 of its source file is in a series that the
-    face review marks absent; it is then marked with the option's code and,
-    where its IOD defines Recognizable Visual Features (0028,0302), that
-    attribute set to NO. Any other such instance is written without them,
-    and its evidence is a :class:`HeldEvidence` with its
-    :class:`~.reasons.HeldVisualFeatures`, so it is never released. An
-    instance that cannot show a face satisfies the option.
+    face review marks absent, and an instance that cannot show a face
+    satisfies it. Each is marked with the option's code and Recognizable
+    Visual Features (0028,0302) set to NO, which PS3.15 E.3.2 adds whether
+    or not its IOD defines the attribute. Any other instance that can show a
+    face is written without them, and its evidence is a
+    :class:`HeldEvidence` with its :class:`~.reasons.HeldVisualFeatures`, so
+    it is never released.
     """
 
     def __init__(
@@ -861,10 +862,7 @@ class InstanceTransform:
         reason = review.hold_reason(hashlib.sha256(data).digest())
         if reason is not None:
             return self._markers[(cleaned, False)], HeldVisualFeatures(reason)
-        markers = self._markers[(cleaned, True)]
-        if iod.lookup(_RECOGNIZABLE_VISUAL_FEATURES):
-            markers = dataclasses.replace(markers, recognizable_visual_features="NO")
-        return markers, None
+        return self._markers[(cleaned, True)], None
 
     def __call__(
         self, data: bytes, record: InstanceRecord
