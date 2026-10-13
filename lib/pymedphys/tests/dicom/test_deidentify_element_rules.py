@@ -26,14 +26,13 @@ import itertools
 import pathlib
 import re
 
-from pymedphys._imports import hypothesis, pydicom, pytest
+from pymedphys._imports import hypothesis, pytest
 
 from pymedphys._dicom.deidentify import (
     compound_actions,
     element_rules,
     iods,
     policy,
-    private_attributes,
     scope,
     standard,
     supplementary_actions,
@@ -57,7 +56,6 @@ DEFAULT = RuleSource.DEFAULT
 NOT_IN_DICTIONARY = RuleSource.NOT_IN_DICTIONARY
 
 PRIVATE_ROW = standard.PRIVATE_ATTRIBUTES_TAG
-RETAIN_SAFE_PRIVATE = "retain_safe_private"
 CLEAN_DESCRIPTORS = "clean_descriptors"
 SUPPORTED_IODS = tuple(sorted(scope.SUPPORTED_IODS))
 TEXT_VRS = {"LO", "SH", "LT", "ST", "UC", "UT"}
@@ -254,7 +252,7 @@ def _rules(preset="basic"):
 
 
 def _usable_policies():
-    """Every preset, and custom set of its options, without Retain Safe Private."""
+    """Every preset, and custom set of its options."""
     preset_options = [
         option
         for option in standard.OPTIONS
@@ -264,14 +262,11 @@ def _usable_policies():
         options
         for size in range(len(preset_options) + 1)
         for options in itertools.combinations(preset_options, size)
-        if RETAIN_SAFE_PRIVATE not in options
-        and not {policy.DEVICE_IDENTITY, policy.MODIFIED_DATES} <= set(options)
+        if not {policy.DEVICE_IDENTITY, policy.MODIFIED_DATES} <= set(options)
     ]
-    return [
-        policy.compose_policy(name)
-        for name, options in policy.PRESETS.items()
-        if RETAIN_SAFE_PRIVATE not in options
-    ] + [policy.compose_custom_policy(options) for options in custom]
+    return [policy.compose_policy(name) for name in policy.PRESETS] + [
+        policy.compose_custom_policy(options) for options in custom
+    ]
 
 
 def _instance(tag):
@@ -370,19 +365,6 @@ def test_a_sequence_given_c_takes_its_basic_profile_action():
                 assert rules.rule(_instance(attribute.tag)).action != "C"
 
 
-def test_retain_safe_private_is_refused_until_reviewed_rules_exist():
-    refused = [policy.compose_policy("public-release")] + [
-        policy.compose_custom_policy(options)
-        for options in [
-            (RETAIN_SAFE_PRIVATE,),
-            (RETAIN_SAFE_PRIVATE, CLEAN_DESCRIPTORS),
-        ]
-    ]
-    for composed in refused:
-        with pytest.raises(policy.PolicyError, match="Retain Safe Private"):
-            ElementRules(composed)
-
-
 @pytest.mark.parametrize(
     "option", [o for o in standard.OPTIONS if o not in policy.ENGINE_OPTIONS]
 )
@@ -395,19 +377,6 @@ def test_an_option_the_engine_does_not_yet_apply_is_refused(option):
 
     assert str(by_rules.value) == str(by_policy.value)
     assert option in str(by_rules.value)
-
-
-def test_retain_safe_private_is_refused_as_private_attribute_removal_refuses_it():
-    # One refusal, so the rules and the removal cannot disagree about why.
-    composed = policy.compose_policy("public-release")
-    with pytest.raises(policy.PolicyError) as by_rules:
-        ElementRules(composed)
-    with pytest.raises(policy.PolicyError) as by_removal:
-        private_attributes.private_attribute_paths(pydicom.Dataset(), composed)
-    with pytest.raises(policy.PolicyError) as by_policy:
-        policy.refuse_retain_safe_private(composed)
-
-    assert str(by_rules.value) == str(by_removal.value) == str(by_policy.value)
 
 
 def test_a_policy_composed_from_another_table_is_refused():

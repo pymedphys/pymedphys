@@ -42,9 +42,11 @@ from .conformance import (
     ConformanceStatement,
 )
 from .conformance_values import code as _code
+from .conformance_safe_private import safe_private_section
 from .conformance_values import join as _join
 from .markers import PROFILE_CODE
 from .policy import ENGINE_OPTIONS, UIDS
+from .reviewed_descriptors import CLEAN_DESCRIPTORS
 from .reviewed_roi_names import Outcome, Review
 from .roi_names import Reason
 from .source import ENCAPSULATED_TRANSFER_SYNTAXES
@@ -56,6 +58,7 @@ from .standard import (
     load_table_e1_1a,
 )
 from .supplementary_actions import load_supplementary_actions
+from .technique_descriptors import load_technique_vocabulary
 
 _ROI_NAME_NAMED = "ROI Name (3006,0026)"
 # Why the automatic tier sends a ROI Name to review rather than renaming it.
@@ -226,8 +229,10 @@ def _claim(
 
 
 def _private(statement: ConformanceStatement) -> list[str]:
-    """Describe the removal of private attributes, where the policy removes them."""
+    """Describe the removal or retention of private attributes (D-028, D-035)."""
     row = next(e for e in statement.attributes if e.tag == PRIVATE_ATTRIBUTES_TAG)
+    if statement.safe_private:
+        return safe_private_section(statement)
     if row.action != "X":
         return []
     return [
@@ -358,8 +363,10 @@ def _superseded(statement: ConformanceStatement) -> list[str]:
                 f"{_ROI_NAME_NAMED} to which the policy gives {_code(given)} "
                 "takes the action that the policy gives it without Clean "
                 "Descriptors, at each place, which the maintainer decided on "
-                "6 October 2026 (D-009); the table gives that action for each "
-                f"of these {len(names)} attributes. Where that action removes "
+                "6 October 2026 (D-009), unless it is a free-text descriptor "
+                "that cleaning writes, as Cleaning free-text descriptors "
+                "describes; the table gives that action for each of these "
+                f"{len(names)} attributes. Where that action removes "
                 "or replaces the attribute, the instance still meets the "
                 "option, since PS3.15 E.3.5 specifies what the option removes, "
                 "and Table E.1-1 gives the minimum actions; where it keeps the "
@@ -522,6 +529,94 @@ def _roi_names(statement: ConformanceStatement) -> list[str]:
     ]
 
 
+# The rules by which the technique vocabulary keeps a value (D-036), as
+# technique_descriptors applies them.
+TECHNIQUE_RULES = (
+    "it is printable ISO 646 (ASCII), without control characters, and holds "
+    "no `^`, which separates the components of a person's name;",
+    "it holds no date or time, with any separators, including a clock time "
+    "written with an hour unit, as in `14H30` or `1430HRS`, no run of five or "
+    "more digits, and no digits that run on across separators from one word "
+    "into the next to five or more;",
+    "it has at most one bare number, a word of only digits, of at most three "
+    "digits before its decimal point and three after, other than two digits, "
+    "a point, and two digits from `10.00` up, which could be a time;",
+    "every other word is a reconstruction kernel of a reviewed prefix, two "
+    "digits, and at most one of the suffixes D, F, H, S, and U, as in "
+    "`B70f`, or is made of letter runs that are each a vocabulary word, or "
+    "two or three vocabulary words of at least three letters joined, and "
+    "digit runs of at most four digits before any decimal point and three "
+    "after that are not a year from 1900 to 2099, with at most one digit run "
+    "in a word, as in `T2`, `120KV`, and `0.625MM`;",
+    "a single letter after digits, in a word or as the next word, is a unit "
+    "or the `D` of `2D`, `3D`, or `4D`, and no two single-letter words are "
+    "next to each other, as initials are;",
+    "no letter run is a common personal name that is not a reviewed "
+    "exception, and no title (`MR`, `MRS`, or `MS`) comes before an "
+    "exception that is also a common name; and",
+    "it has a vocabulary word of at least two letters.",
+)
+
+
+def _descriptors(
+    statement: ConformanceStatement, named: Callable[[str], str]
+) -> list[str]:
+    """Describe how free-text descriptors are cleaned, under Clean Descriptors."""
+    if CLEAN_DESCRIPTORS not in statement.options:
+        return []
+    technique = sorted(load_technique_vocabulary().attributes)
+    reviews = _join((f"`{review.value}`" for review in Review), "or")
+    return [
+        "## Cleaning free-text descriptors",
+        "",
+        f"Each attribute other than {_ROI_NAME_NAMED} to which the policy "
+        "gives C under Clean Descriptors and whose VR is SH, LO, ST, LT, UC, "
+        "or UT, such as Series Description (0008,103E) or Protocol Name "
+        "(0018,1030), is a free-text descriptor, and its values are cleaned "
+        "where they can be, in two tiers (D-009, D-036). Each value of such "
+        "an element, once its padding is removed, takes the reviewer's "
+        f"decision, {reviews}, that the reviewed descriptors list holds for "
+        "exactly that value of that attribute; `empty` writes an empty value. "
+        "The list is the site's or project's, which the custodian keeps with "
+        "the key since it holds source values verbatim, and it is never "
+        "written to the output. A run records the list's keyed digest in its "
+        "method digest.",
+        "",
+        "A value that the list does not cover is kept without review only "
+        "where it is a value of a technique descriptor and every word of it "
+        "is in the reviewed technique vocabulary that PyMedPhys bundles, of "
+        "technique, anatomy, and equipment words, units, and the prefixes of "
+        "reconstruction kernels, whose SHA-256 the run's method digest "
+        "records (D-036). The technique descriptors are "
+        f"{_join(named(tag) for tag in technique)}. A value is read as "
+        "words, the runs of letters and digits between other characters, "
+        "with any decimal places, and kept only where it echoes no "
+        "identifier, as below, and:",
+        "",
+        *(f"- {rule}" for rule in TECHNIQUE_RULES),
+        "",
+        "The rules hold a value rather than keep it wherever they are unsure. "
+        "A value made only of vocabulary words can still be a person's name, "
+        "such as `HAND`, which is the residual risk of this tier.",
+        "",
+        "What a kept or mapped value would write is checked for echoes of the "
+        "instance's patient and other person identifiers, as for ROI Names, "
+        "and also for a whole identifier, or a word of one, of at least four "
+        "letters and digits among the value's letters and digits; a value "
+        "that echoes one is not cleaned. An element is written with what "
+        "cleaning gives its values only where every value is cleaned, at "
+        "least one is written with text, and no kept value is written beside "
+        "one that a reviewer mapped or emptied, whose source the residual "
+        "search must still look for. Every other such element takes the action that the "
+        "policy gives it without Clean Descriptors, as the Actions table "
+        "shows, and the confidential QC pack lists its values, so that a "
+        "reviewer can record decisions for later runs. A value kept is "
+        "left out of the residual search, as other retained values are "
+        "(D-027).",
+        "",
+    ]
+
+
 def _cleaned(
     statement: ConformanceStatement,
     named: Callable[[str], str],
@@ -561,7 +656,8 @@ def _inserted(
                 f"{_join(coded(c) for c in found.review_codes)} only in an "
                 f"instance in which every {_ROI_NAME_NAMED} was renamed by "
                 "the automatic tier, was empty, or took a reviewer's "
-                "decision. Every other attribute given C takes the action "
+                "decision. Every other attribute given C is a free-text "
+                "descriptor that cleaning writes, or takes the action "
                 "that the policy gives it without Clean Descriptors, as the "
                 "Actions table shows (D-009); where that action removes "
                 "or replaces it, the instance still meets the option, since "
@@ -719,9 +815,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         + ".",
         "- Options whose policies the engine applies: "
         + _join(option(o) for o in ENGINE_OPTIONS)
-        + "; it refuses a policy that selects any other, and one that "
-        "selects Retain Safe Private until reviewed rules say which private "
-        "attributes are safe (D-028).",
+        + "; it refuses a policy that selects any other.",
         "- Options that are not supported, since the engine does not yet "
         "apply them: "
         + (_join(option(o) for o in ALL_OPTIONS if o not in ENGINE_OPTIONS) or "none")
@@ -826,6 +920,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         *_other(statement, named),
         *_local_codes(named),
         *_roi_names(statement),
+        *_descriptors(statement, named),
         *_cleaned(statement, named, option),
         *conformance_values.values_written(named),
         "",

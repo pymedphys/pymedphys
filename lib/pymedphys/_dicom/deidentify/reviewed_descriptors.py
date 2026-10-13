@@ -38,15 +38,17 @@ Name cleaning checks it, and held if it echoes one, since a reviewer may have
 decided on it for another patient. A value that the list does not cover is
 held too, unless the automatic tier of technique descriptors
 (:mod:`.technique_descriptors`) keeps it and it echoes no identifier: the
-list's decisions take precedence over that tier. The caller holds an instance with a held value for review and does
-not release it, unless the user chooses explicitly to empty held values so
-that the run proceeds. :class:`DescriptorReviewQueue` collects the distinct
-held values of a run for the confidential QC material.
+list's decisions take precedence over that tier. Descriptor cleaning
+(:mod:`.descriptor_cleaning`) writes no element with a held value: the
+element takes its action without Clean Descriptors, and the confidential QC
+pack lists its values for a reviewer to decide on for later runs.
+:class:`DescriptorReviewQueue` counts a run's values and the distinct values
+it held for the release report.
 
 The list holds source values verbatim, so it is confidential state: the
 custodian keeps it with the key and subject profiles, outside output and QC
 directories. Its ``repr``, the results, and every error message hold no
-value. It changes what the engine writes, so the method digest is to cover it
+value. It changes what the engine writes, so the method digest covers it
 through its keyed digest (:meth:`ReviewedDescriptors.keyed_digest`), which
 reveals neither a value nor whether a list holds one to anyone without the
 key.
@@ -655,11 +657,15 @@ class DescriptorCounts:
     outcomes : Mapping of Outcome to int
         How many values had each outcome, counting every value of every
         element added. Read-only.
+    fell_back : int, optional
+        How many elements were not written with what cleaning gave their
+        values, and took their action without Clean Descriptors instead.
     """
 
     # Mappings are not hashable, so they are left out of the hash.
     held: Mapping[Held, int] = dataclasses.field(hash=False)
     outcomes: Mapping[Outcome, int] = dataclasses.field(hash=False)
+    fell_back: int = 0
 
     def __post_init__(self) -> None:
         for field in ("held", "outcomes"):
@@ -679,11 +685,21 @@ class DescriptorReviewQueue:
         self._reasons: dict[tuple[str, str], set[Held]] = collections.defaultdict(set)
         self._counts: collections.Counter[tuple[str, str]] = collections.Counter()
         self._outcomes: collections.Counter[Outcome] = collections.Counter()
+        self._fell_back = 0
 
     def add(
-        self, tag: str, values: Sequence[str], results: Sequence[CleanedDescriptor]
+        self,
+        tag: str,
+        values: Sequence[str],
+        results: Sequence[CleanedDescriptor],
+        *,
+        applied: bool = True,
     ) -> None:
         """Add the values of one element, with what is written for each.
+
+        ``applied`` is whether the element was written with what cleaning
+        gave its values; one that took its action without Clean Descriptors
+        instead is counted as having fallen back.
 
         Raises
         ------
@@ -700,6 +716,8 @@ class DescriptorReviewQueue:
             self._reasons[(tag, value)] |= reasons
             self._counts[(tag, value)] += 1
         self._outcomes.update(result.outcome for result in results)
+        if not applied:
+            self._fell_back += 1
 
     def entries(self) -> tuple[PendingDescriptor, ...]:
         """Return each distinct held value, sorted by tag, then value."""
@@ -711,11 +729,13 @@ class DescriptorReviewQueue:
         )
 
     def report_counts(self) -> DescriptorCounts:
-        """Return the held values by reason and every value by outcome, without values."""
+        """Return the counts of the values and elements added, without values."""
         held: collections.Counter[Held] = collections.Counter()
         for reasons in self._reasons.values():
             held.update(reasons)
-        return DescriptorCounts(held=dict(held), outcomes=dict(self._outcomes))
+        return DescriptorCounts(
+            held=dict(held), outcomes=dict(self._outcomes), fell_back=self._fell_back
+        )
 
     def __repr__(self) -> str:
         return f"DescriptorReviewQueue(values={len(self._reasons)})"

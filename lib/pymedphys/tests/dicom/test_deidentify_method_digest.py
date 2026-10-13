@@ -92,6 +92,8 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
     },
     vocabulary=None,
     reviewed_roi_names=None,
+    reviewed_descriptors=None,
+    technique_vocabulary=None,
     generated_values={
         "uids.UID_ROOT": "2.25.",
         "uids.UID_NAMESPACE": uuid.UUID("6f71d76c-0573-58b6-bfda-7c5b4ee304f1"),
@@ -105,7 +107,7 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
 SYNTHETIC_CANONICAL_BYTES = (
     '{"engine_version":"0.42.0.dev1",'
     '"files":{"policy.py":"' + "f" * 64 + '"},'
-    '"format":"pymedphys-deid-method-digest/2",'
+    '"format":"pymedphys-deid-method-digest/3",'
     '"generated_values":{'
     '"dates.MIN_OFFSET_WEEKS":["int",52],'
     '"dummy_values.CONSTANTS":["map",{"FL":["list",'
@@ -122,11 +124,13 @@ SYNTHETIC_CANONICAL_BYTES = (
     '"policy":{"actions":{"(0010,0010)":"Z"},"edition":"2026d","enabled":false,'
     '"options":[],"preset":"basic","resolved":[],'
     '"supplementary_actions":{"(300A,00C2)":"X/Z/D"}},'
+    '"reviewed_descriptors":null,'
     '"reviewed_roi_names":null,'
     '"tables":{"e1_1.json":"' + "0" * 64 + '"},'
+    '"technique_vocabulary":null,'
     '"vocabulary":null}'
 ).encode("utf-8")
-SYNTHETIC_SHA256 = "1df94ac28b2f41430e85c3e1115196e88bdcfbeb2ab27b9cc17c4e36208a33fa"
+SYNTHETIC_SHA256 = "e0e700017d1ef746e190b3f99263780a20ccfd8dcbb604efa27797ab5c7ca258"
 
 # Each parameter of generated values, and another value for it.
 GENERATED_VALUE_CHANGES = {
@@ -160,6 +164,8 @@ CANONICAL_MEMBERS = {
     "l3_rules",
     "vocabulary",
     "reviewed_roi_names",
+    "reviewed_descriptors",
+    "technique_vocabulary",
     "generated_values",
     "files",
 }
@@ -1004,6 +1010,8 @@ COMPONENT_FIELDS = (
     "l3_rules",
     "vocabulary_digest",
     "reviewed_roi_names",
+    "reviewed_descriptors",
+    "technique_vocabulary_digest",
     "generated_values_digest",
     "engine_files",
 )
@@ -1026,13 +1034,15 @@ def test_the_components_of_a_small_synthetic_input_are_digests_of_its_members():
     )
     assert components == method_digest.MethodDigestComponents(
         method_digest=SYNTHETIC_SHA256,
-        method_digest_format="pymedphys-deid-method-digest/2",
+        method_digest_format="pymedphys-deid-method-digest/3",
         engine_version="0.42.0.dev1",
         table_digests={"e1_1.json": "0" * 64},
         l2_rules_digest=SYNTHETIC_L2_RULES_SHA256,
         l3_rules=None,
         vocabulary_digest=None,
         reviewed_roi_names=None,
+        reviewed_descriptors=None,
+        technique_vocabulary_digest=None,
         generated_values_digest=SYNTHETIC_GENERATED_VALUES_SHA256,
         engine_files={"policy.py": "f" * 64},
     )
@@ -1311,3 +1321,101 @@ def test_every_call_states_the_reviewed_names_digest_by_name(basic):
         method_digest.digest_inputs(None, REVIEWED_ROI_NAMES)  # type: ignore[misc]
     with pytest.raises(TypeError, match="positional"):
         method_digest.method_digest(basic, None, REVIEWED_ROI_NAMES)  # type: ignore[misc]
+
+
+# The digests of a run's free-text descriptor cleaning, by the parameter that
+# takes each and the component that records it: the keyed digest of a
+# reviewed descriptors list, and the SHA-256 of a technique vocabulary.
+DESCRIPTOR_DIGESTS = {
+    "reviewed_descriptors": "reviewed_descriptors",
+    "technique_vocabulary": "technique_vocabulary_digest",
+}
+DESCRIPTOR_DIGEST = "6d1f0f2f3f86e7a3ffb6d0f0c1d4d0c2f8b6e5a4d3c2b1a0f9e8d7c6b5a49382"
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-05")
+@pytest.mark.parametrize(("name", "component"), DESCRIPTOR_DIGESTS.items())
+def test_each_descriptor_digest_is_an_input_that_shows_only_in_its_component(
+    basic, name, component
+):
+    before = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
+
+    after = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=None, **{name: DESCRIPTOR_DIGEST}
+    )
+
+    assert getattr(after, component) == DESCRIPTOR_DIGEST
+    assert getattr(before, component) is None
+    assert after.method_digest != before.method_digest
+    assert after.method_digest == method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=None, **{name: DESCRIPTOR_DIGEST}
+    )
+    assert (
+        dataclasses.replace(
+            after, method_digest=before.method_digest, **{component: None}
+        )
+        == before
+    )
+
+
+@pytest.mark.parametrize("name", DESCRIPTOR_DIGESTS)
+def test_each_descriptor_digest_is_held_as_given_and_changes_the_digest(basic, name):
+    document = json.loads(
+        method_digest.canonical_bytes(
+            basic,
+            method_digest.digest_inputs(
+                vocabulary=None, reviewed_roi_names=None, **{name: DESCRIPTOR_DIGEST}
+            ),
+        )
+    )
+    digests = {
+        method_digest.method_digest(
+            basic, vocabulary=None, reviewed_roi_names=None, **{name: value}
+        )
+        for value in (None, DESCRIPTOR_DIGEST, "0" * 64, "f" * 64)
+    }
+
+    assert document[name] == DESCRIPTOR_DIGEST
+    assert len(digests) == 4
+
+
+def test_the_descriptor_digests_are_distinct_members(basic):
+    reviewed = method_digest.method_digest(
+        basic,
+        vocabulary=None,
+        reviewed_roi_names=None,
+        reviewed_descriptors=DESCRIPTOR_DIGEST,
+    )
+    technique = method_digest.method_digest(
+        basic,
+        vocabulary=None,
+        reviewed_roi_names=None,
+        technique_vocabulary=DESCRIPTOR_DIGEST,
+    )
+    names = method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=DESCRIPTOR_DIGEST
+    )
+
+    assert len({reviewed, technique, names}) == 3
+
+
+@pytest.mark.parametrize("name", DESCRIPTOR_DIGESTS)
+@pytest.mark.parametrize(
+    "value",
+    ["A" * 64, "0" * 63, "0" * 65, " " + "0" * 63, "SENTINEL" * 8, b"0" * 64, 0],
+)
+def test_each_descriptor_digest_must_be_64_lowercase_hexadecimal_digits(
+    basic, name, value
+):
+    with pytest.raises((TypeError, ValueError), match=name) as raised:
+        method_digest.digest_inputs(
+            vocabulary=None, reviewed_roi_names=None, **{name: value}
+        )
+    with pytest.raises((TypeError, ValueError), match=name):
+        method_digest.method_digest(
+            basic, vocabulary=None, reviewed_roi_names=None, **{name: value}
+        )
+
+    assert "SENTINEL" not in str(raised.value) and "AAAA" not in str(raised.value)

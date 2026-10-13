@@ -103,9 +103,7 @@ CLEAN_RECOGNIZABLE_VISUAL_FEATURES = "clean_recognizable_visual_features"
 # that selects one that it does not apply (refuse_unapplied_options). An
 # option is marked applied once the engine implements its actions, by its own
 # entry alone, which a line naming the option separates from the others', so
-# that options implemented in parallel change no line in common. Retain Safe
-# Private is applied, but refused on its own until reviewed rules say which
-# private attributes are safe (refuse_retain_safe_private).
+# that options implemented in parallel change no line in common.
 ENGINE_APPLIES: Mapping[str, bool] = types.MappingProxyType(
     {
         # Retain Safe Private.
@@ -552,26 +550,6 @@ def _selected_preset(preset: str) -> Policy:
             f"implemented and validated; {status}"
         )
     return policy
-
-
-def refuse_retain_safe_private(policy: Policy) -> None:
-    """Refuse a policy that selects the Retain Safe Private Option.
-
-    The Option keeps the private attributes that are known to be safe, and
-    no reviewed rules yet say which are. The rule of every element and the
-    removal of private attributes both refuse it with this.
-
-    Raises
-    ------
-    PolicyError
-        If ``policy`` selects the Retain Safe Private Option.
-    """
-    if SAFE_PRIVATE in policy.options:
-        raise PolicyError(
-            "the Retain Safe Private Option keeps the private attributes that "
-            "are known to be safe, and no reviewed rules yet say which are, so "
-            "a policy that selects it cannot yet be applied"
-        )
 
 
 def refuse_unapplied_options(policy: Policy) -> None:

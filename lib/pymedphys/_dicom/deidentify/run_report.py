@@ -24,7 +24,8 @@ with its human-readable form as :data:`RELEASE_REPORT_MARKDOWN` beside it
 pack by its reference, not yet attested, since a reviewer attests to it
 after the run (D-016); each released instance by its output name, and each
 sequestered input by its label and reasons (D-026); how many instances
-were held for review by reason (D-009), how many instances have each kind
+were held for review by reason (D-009), what descriptor cleaning wrote for
+ROI Names and free-text descriptors, by count, how many instances have each kind
 of reference finding that the run reports without acting on it, from the
 material that the run adds for them, how many released and held instances
 show each risk in their pixel data, and each indicator of it, from the
@@ -60,8 +61,10 @@ from .qc_attestation import AttestationRecord, Outcome
 from .reasons import RunReason
 from .residuals import NotSearched, Unsearched, UnsearchedReason
 from .iod_conformance import SourceGap
+from .reviewed_descriptors import DescriptorCounts, DescriptorReviewQueue
 from .reviewed_roi_names import CleanedRoiName, ReviewQueue, RoiNameCounts
 from .run_qc import (
+    DescriptorMaterial,
     Dropped,
     PixelRiskMaterial,
     ReferenceFindingMaterial,
@@ -130,6 +133,17 @@ class ReleaseReporter:
         applies to ROI Names, or None without one, as
         :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
+    reviewed_descriptors : str or None, optional
+        The keyed digest of the reviewed descriptors list that descriptor
+        cleaning applies to free-text descriptors, or None, the default,
+        without one, as
+        :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        takes it.
+    technique_vocabulary : str or None, optional
+        The SHA-256 of the technique vocabulary that descriptor cleaning
+        applies to technique descriptors, or None, the default, without one,
+        as :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        takes it.
     """
 
     def __init__(
@@ -138,12 +152,16 @@ class ReleaseReporter:
         *,
         vocabulary: tg263.Nomenclature | None,
         reviewed_roi_names: str | None,
+        reviewed_descriptors: str | None = None,
+        technique_vocabulary: str | None = None,
     ):
         if not isinstance(policy, Policy):
             raise TypeError("policy must be a Policy")
         self._policy = policy
         self._vocabulary = vocabulary
         self._reviewed_roi_names = reviewed_roi_names
+        self._reviewed_descriptors = reviewed_descriptors
+        self._technique_vocabulary = technique_vocabulary
 
     def __repr__(self) -> str:
         return "ReleaseReporter()"
@@ -189,6 +207,7 @@ class ReleaseReporter:
                 coverage_records(material[position]) for position in sorted(material)
             ),
             roi_names=roi_name_counts(material),
+            descriptors=descriptor_counts(material),
             findings=reference_findings(outcomes, material),
             pixel=pixel_risks(outcomes, material),
             gaps=release_report.source_gaps(
@@ -226,6 +245,8 @@ class ReleaseReporter:
             self._policy,
             vocabulary=self._vocabulary,
             reviewed_roi_names=self._reviewed_roi_names,
+            reviewed_descriptors=self._reviewed_descriptors,
+            technique_vocabulary=self._technique_vocabulary,
             **run,  # type: ignore[arg-type]
         )
 
@@ -515,4 +536,26 @@ def roi_name_counts(material: Mapping[int, Sequence[object]]) -> RoiNameCounts:
                 for name in names
             ],
         )
+    return queue.report_counts()
+
+
+def descriptor_counts(material: Mapping[int, Sequence[object]]) -> DescriptorCounts:
+    """Return what descriptor cleaning wrote for a run's descriptors, by count.
+
+    ``material`` is each input's QC material, by its position. Each
+    :class:`~.run_qc.DescriptorMaterial` is the values of one descriptor
+    element that descriptor cleaning read, as the QC pack lists them, so
+    every value counts by its outcome, each distinct value held for review,
+    of one attribute, once for each of its reasons, and each element that
+    took its action without Clean Descriptors once, as
+    :meth:`~pymedphys._dicom.deidentify.reviewed_descriptors.DescriptorReviewQueue.report_counts`
+    gives, without a value.
+    """
+    queue = DescriptorReviewQueue()
+    for position in sorted(material):
+        for item in material[position]:
+            if isinstance(item, DescriptorMaterial):
+                queue.add(
+                    item.path.tag, item.sources, item.results, applied=item.applied
+                )
     return queue.report_counts()

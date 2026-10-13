@@ -31,7 +31,8 @@ which names no one, and the residual search already accounts for those
 ROI Name that descriptor cleaning writes is the ROI name material's
 (D-009). An element kept with no known VR, as for a private element in
 implicit VR, cannot be read as text, and is left to the residual search's
-own account.
+own account, unless a reviewed safe private rule keeps it, which gives
+the VR by which it is read.
 """
 
 from __future__ import annotations

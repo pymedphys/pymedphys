@@ -40,6 +40,9 @@ writes it as CommonMark:
 - how the cleaner of each selected option that has one cleans the attributes
   that the policy gives C (:mod:`~pymedphys._dicom.deidentify.cleaners`,
   D-034);
+- under the Retain Safe Private Option, the safe private attributes that
+  the reviewed rules can retain
+  (:mod:`~pymedphys._dicom.deidentify.retained_private`);
 - the values that Z, D, and U write (D-003, D-005, and D-021);
 - how dates and times are handled, by the policy's Retain Longitudinal
   Temporal Information Option, or without one (D-006, D-007, and D-023);
@@ -89,10 +92,12 @@ from .policy import (
     PolicyError,
     ResolvedConflict,
 )
+from .safe_private import Handling, SafePrivateRule
 from .scope import SUPPORTED_IODS, SUPPORTED_TRANSFER_SYNTAXES, classify
 from .sop_classes import load_storage_sop_classes
 from .standard import (
     MUTUALLY_EXCLUSIVE,
+    PRIVATE_ATTRIBUTES_TAG,
     dictionary_attribute,
     load_data_dictionary,
     load_table_e1_1,
@@ -150,14 +155,6 @@ PENDING_UNAPPLIED = (
     "are those that the policy gives, and the rules for elements that no row "
     "covers are not listed."
 )
-# Pending only for a policy whose element rules the engine refuses because
-# it selects Retain Safe Private.
-PENDING_REFUSED = (
-    "The actions that the engine applies under this policy, which it refuses "
-    "until reviewed rules say which private attributes are safe to retain: "
-    "the actions above are those that the policy gives, and the rules for "
-    "elements that no row covers are not listed."
-)
 # Pending only for a policy that gives C to an attribute other than ROI Name
 # that neither a cleaner of a selected option (D-034) nor Clean Descriptors'
 # fallback (D-009) settles.
@@ -174,10 +171,22 @@ PENDING_FALLBACK = (
     "that the policy gives it without Clean Descriptors, and its other "
     "options cannot be composed into a policy without that option (D-009)."
 )
-# Pending only for a policy that selects Retain Safe Private.
+# Pending only for a policy that selects Retain Safe Private and an option
+# that the engine does not yet apply, whose element rules it refuses.
 PENDING_SAFE_PRIVATE = (
     "The safe private attributes that the policy retains, and the basis on "
     "which each is retained (PS3.15 E.3.10)."
+)
+# Pending only for a policy that selects Retain Safe Private and whose
+# element rules the engine applies, until it applies every route of E.3.10.
+PENDING_SAFE_PRIVATE_ROUTES = (
+    "The private attributes that the routes of PS3.15 E.3.10 that the engine "
+    "does not yet apply would retain, which it removes: a private sequence "
+    "that no reviewed rule lists is removed whole, where E.3.10 asks for it "
+    "to be parsed and each nested attribute handled on its own merits; and a "
+    "block that Private Data Element Characteristics Sequence (0008,0300) "
+    "marks SAFE, or an attribute that it lists as nonidentifying, is "
+    "retained only where a reviewed rule retains it (D-035)."
 )
 # Pending only for tps-import, whose Z writes a synthetic birth date.
 PENDING_BIRTH_DATES = (
@@ -477,6 +486,11 @@ class ConformanceStatement:
         How the cleaner of each selected option that has one cleans the
         attributes that the policy gives C, in the order of the options in
         Table E.1-1.
+    safe_private : tuple of SafePrivateRule
+        Under the Retain Safe Private Option, the reviewed rules that can
+        retain a private attribute, other than those for text, which no
+        reviewed cleaner cleans, in the rules file's order; otherwise
+        ``()``.
     markers : InsertedMarkers
         The parts of the markers that the policy decides.
     temporal : TemporalHandling
@@ -502,6 +516,7 @@ class ConformanceStatement:
     other_elements: OtherElements | None
     roi_names: RoiNameCleaning | None
     cleaned: tuple[CleanedAttributes, ...]
+    safe_private: tuple[SafePrivateRule, ...]
     markers: InsertedMarkers
     temporal: TemporalHandling
     pending: tuple[str, ...]
@@ -779,6 +794,17 @@ def _roi_names(
     return RoiNameCleaning(edition)
 
 
+def _safe_private(rules: ElementRules | None) -> tuple[SafePrivateRule, ...]:
+    """Return the safe private rules that can retain an attribute, but for text."""
+    if rules is None or rules.safe_private is None:
+        return ()
+    return tuple(
+        rule
+        for rule in rules.safe_private.retained()
+        if rule.handling is not Handling.TEXT
+    )
+
+
 def _cleaned(
     policy: Policy, attributes: Iterable[AttributeAction]
 ) -> tuple[CleanedAttributes, ...]:
@@ -886,7 +912,10 @@ def conformance_statement(
     attributes = tuple(_fallen_back(policy, rules, _attributes(policy, rules)))
     safe_private = SAFE_PRIVATE in policy.options
     cleaned = _cleaned(policy, attributes)
-    by_cleaner = {tag for each in cleaned for tag in each.tags}
+    # The safe private rules settle the C of private attributes.
+    by_cleaner = {tag for each in cleaned for tag in each.tags} | (
+        {PRIVATE_ATTRIBUTES_TAG} if rules is not None and safe_private else set()
+    )
     actions = {
         entry.action
         for entry in attributes
@@ -895,11 +924,11 @@ def conformance_statement(
     pending = PENDING + tuple(
         item
         for item, applies in (
-            (PENDING_UNAPPLIED, rules is None and not safe_private),
-            (PENDING_REFUSED, rules is None and safe_private),
+            (PENDING_UNAPPLIED, rules is None),
             (PENDING_CLEANING, "C" in actions),
             (PENDING_FALLBACK, not _falls_back(policy)),
-            (PENDING_SAFE_PRIVATE, safe_private),
+            (PENDING_SAFE_PRIVATE, rules is None and safe_private),
+            (PENDING_SAFE_PRIVATE_ROUTES, rules is not None and safe_private),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
             (PENDING_PIXEL_DATA, CLEAN_PIXEL_DATA in policy.options),
         )
@@ -935,6 +964,7 @@ def conformance_statement(
         other_elements=None if rules is None else _other_elements(),
         roi_names=_roi_names(attributes, vocabulary),
         cleaned=cleaned,
+        safe_private=_safe_private(rules),
         markers=_markers(policy, digest),
         temporal=_temporal(policy, attributes),
         pending=pending,

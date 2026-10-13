@@ -62,11 +62,21 @@ _METHOD = {
     "l3_rules": "L3 rules",
     "vocabulary_digest": "Vocabulary digest",
     "reviewed_roi_names": "Reviewed ROI names digest",
+    "reviewed_descriptors": "Reviewed descriptors digest",
+    "technique_vocabulary_digest": "Technique vocabulary digest",
     "generated_values_digest": "Generated values digest",
     "engine_files": None,
 }
 # The method's fields that are null where the run has none.
-_OPTIONAL_METHOD = frozenset({"l3_rules", "vocabulary_digest", "reviewed_roi_names"})
+_OPTIONAL_METHOD = frozenset(
+    {
+        "l3_rules",
+        "vocabulary_digest",
+        "reviewed_roi_names",
+        "reviewed_descriptors",
+        "technique_vocabulary_digest",
+    }
+)
 _RUNTIME = {
     "pymedphys_version": "PyMedPhys",
     "python_implementation": "Python implementation",
@@ -88,6 +98,7 @@ _SECTIONS = (
     "sequestered",
     "held_for_review",
     "roi_names",
+    "descriptors",
     "reference_findings",
     "pixel_risks",
     "search_coverage",
@@ -151,6 +162,7 @@ def to_markdown(report: str) -> str:
         *_sequestered(document["sequestered"]),
         *_held(document["held_for_review"]),
         *_roi_names(document["roi_names"]),
+        *_descriptors(document["descriptors"]),
         *_reference_findings(document["reference_findings"]),
         *_pixel_risks(document["pixel_risks"]),
         *_coverage(document["search_coverage"]),
@@ -393,23 +405,29 @@ def _held(section: object) -> list[Block]:
     ]
 
 
-def _roi_names(section: object) -> list[Block]:
-    section = _fields("roi_names", section, ("outcomes", "held"))
+def _code_tables(name: str, section: dict, counted: str) -> list[Block]:
+    """Return the tables of a section's ``outcomes`` and ``held`` counts."""
     tables = []
     for field, key, header in (
-        ("outcomes", "outcome", ("Outcome", "Names")),
-        ("held", "reason", ("Reason", "Distinct names")),
+        ("outcomes", "outcome", ("Outcome", counted.capitalize())),
+        ("held", "reason", ("Reason", f"Distinct {counted}")),
     ):
         rows = []
-        for entry in _list(f"roi_names {field}", section[field]):
-            entry = _fields(f"roi_names {field}", entry, (key, "count"))
+        for entry in _list(f"{name} {field}", section[field]):
+            entry = _fields(f"{name} {field}", entry, (key, "count"))
             rows.append(
                 (
-                    _code(f"roi_names {key}", entry[key]),
-                    _count(f"roi_names {field} count", entry["count"]),
+                    _code(f"{name} {key}", entry[key]),
+                    _count(f"{name} {field} count", entry["count"]),
                 )
             )
         tables.append(_table(header, rows) if rows else [_NONE])
+    return tables
+
+
+def _roi_names(section: object) -> list[Block]:
+    section = _fields("roi_names", section, ("outcomes", "held"))
+    tables = _code_tables("roi_names", section, "names")
     return [
         ["## ROI names"],
         [
@@ -423,6 +441,31 @@ def _roi_names(section: object) -> list[Block]:
         tables[0],
         ["### Distinct names sent for review"],
         tables[1],
+    ]
+
+
+def _descriptors(section: object) -> list[Block]:
+    section = _fields("descriptors", section, ("outcomes", "held", "fell_back"))
+    tables = _code_tables("descriptors", section, "values")
+    return [
+        ["## Descriptors"],
+        [
+            "The outcome of each value of the free-text descriptors that "
+            "descriptor cleaning read, every value counted, how many distinct "
+            "values, each of one attribute, it sent for review for each "
+            "reason, and how many elements were not written with what "
+            "cleaning gave their values and took their action without Clean "
+            "Descriptors instead. Only the confidential QC pack lists the "
+            "values."
+        ],
+        ["### Outcome of each value"],
+        tables[0],
+        ["### Distinct values sent for review"],
+        tables[1],
+        [
+            "Elements that took their action without Clean Descriptors: "
+            f"{_tally('descriptors fell_back', section['fell_back'])}."
+        ],
     ]
 
 
