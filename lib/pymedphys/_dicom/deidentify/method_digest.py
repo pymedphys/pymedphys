@@ -96,13 +96,13 @@ The runtime environment is not an input, apart from the text finder's
 runtime. The Python implementation and version, and the versions of pydicom,
 tomlkit, and other libraries, run the method but are not part of it, so the
 same inputs give the same digest in every environment. A text finder's
-regions are what the method writes, and ONNX Runtime does not promise the
-same output from one version to the next, so the text detector's description
-includes its version. The engine is to record those versions separately, as
-provenance of each run. Runtime software can affect execution, so equal
-digests show that these inputs are equal, not that two runs executed
-identically or wrote the same output; reproducing or auditing a run also
-needs its recorded runtime environment.
+regions are what the method writes, and neither ONNX Runtime nor NumPy and
+SciPy promise the same output from one version to the next, so the text
+detector's description includes their versions. The engine is to record the
+runtime's versions separately, as provenance of each run. Runtime software
+can affect execution, so equal digests show that these inputs are equal, not
+that two runs executed identically or wrote the same output; reproducing or
+auditing a run also needs its recorded runtime environment.
 
 :func:`method_digest_components` gives the digest with the components it is
 computed from, which a release report records so that two digests can be
@@ -776,7 +776,7 @@ def method_digest_components(
     the digests of the supplementary and user rules, the vocabulary's
     content digest, the keyed digests of the reviewed-names and reviewed
     descriptors lists, the technique vocabulary's digest, the digest of
-    the text finder's description, the digest of the parameters of
+    the text finder's class and description, the digest of the parameters of
     generated values, and the digest of each source and rule file. They come
     from one call of :func:`digest_inputs`, so the digest is the one
     :func:`method_digest` gives for the same policy, vocabularies, reviewed

@@ -41,8 +41,8 @@ on the instances of a run:
 as text; each first checks every field's form, as :func:`report_document`
 lists. Every field is built from the policy, the engine's own files, the
 versions that run it, the keyed digests of the reviewed-names and reviewed
-descriptors lists, the digest of the text finder's description of its
-method, the QC pack's opaque reference, the replacement identifiers that
+descriptors lists, the digest of the text finder's class and description of
+its method, the QC pack's opaque reference, the replacement identifiers that
 name released instances, the run's labels, and codes and attribute tags that
 the engine defines, never from DICOM data directly, and the check is a
 backstop: a field of another form, which could be a source value or a path

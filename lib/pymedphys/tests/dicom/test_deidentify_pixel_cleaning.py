@@ -638,6 +638,7 @@ def _statement(monkeypatch, options):
 
 
 UNCHANGED = "The engine writes Pixel Data (7FE0,0010) unchanged"
+WITHOUT_A_FINDER = "and without a text finder, is"
 BLACKED_OUT = "Under the Clean Pixel Data Option, the engine replaces each region"
 
 
@@ -656,6 +657,8 @@ def test_the_statement_says_how_pixel_data_are_cleaned_and_claims_no_code(
     assert CLEAN_PIXEL_DATA_CODE not in statement.markers.review_codes
     assert BLACKED_OUT in text
     assert UNCHANGED not in text
+    # The statement's digest is the one without a finder, which no run has.
+    assert f"{WITHOUT_A_FINDER} `{statement.method_digest}`" in text
 
 
 def test_the_statement_of_a_policy_without_the_option_keeps_pixel_data(
@@ -666,6 +669,7 @@ def test_the_statement_of_a_policy_without_the_option_keeps_pixel_data(
     assert conformance.PENDING_PIXEL_DATA not in statement.pending
     assert UNCHANGED in text
     assert BLACKED_OUT not in text
+    assert WITHOUT_A_FINDER not in text
 
 
 def test_the_release_report_counts_the_held_instances_by_reason():

@@ -553,7 +553,7 @@ def test_the_method_names_the_model_runtime_and_parameters(detector):
     method = detector.method
     assert method["model_sha256"] == text_detection.PP_OCRV6_DET_SMALL.member_sha256
     assert method["onnxruntime"]
-    assert "onnxruntime" in method["onnxruntime_distributions"]
+    assert {"onnxruntime", "onnxruntime-gpu"} & set(method["onnxruntime_distributions"])
     assert method["numpy"] == np.__version__
     assert method["scipy"]
     assert method["parameters"] == dataclasses.asdict(DetectionParameters())

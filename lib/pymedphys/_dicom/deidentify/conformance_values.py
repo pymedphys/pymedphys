@@ -598,9 +598,9 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         "other than in those regions. It writes other Pixel Data unchanged, "
         "and claims neither Clean Pixel Data nor Clean Recognizable Visual "
         "Features. A run's method digest also covers its text finder's "
-        "description of its method, such as the text detector's model, "
-        "ONNX Runtime version, and parameters, so it is not the digest that "
-        "this statement gives. "
+        "class and description of its method, such as the text detector's "
+        "model, ONNX Runtime, NumPy, and SciPy versions, and parameters, so it "
+        "is not the digest that this statement gives. "
     )
 
 

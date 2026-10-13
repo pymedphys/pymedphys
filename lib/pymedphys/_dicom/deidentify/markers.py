@@ -62,13 +62,14 @@ to a copy of a data set and changes nothing else in it:
   one value, such as ``CPython 3.14.0``; ``pydicom <version>``; and
   ``tomlkit <version>``. They are read from the running process each time
   the markers are computed, and record the runtime that ran, which the
-  method digest does not cover.
+  method digest does not cover, apart from the text finder's runtime under
+  the Clean Pixel Data Option.
 
 So output de-identified twice by the same release and policy in the same
 runtime carries the markers of one run. A run with another digest adds its
 own pair of De-identification Method values, and a run in another runtime,
-whose digest is the same, adds only its own Contributing Equipment Sequence
-item.
+whose digest is the same unless its text finder's runtime differs, adds only
+its own Contributing Equipment Sequence item.
 
 Each value is checked against its VR and VM in the pinned data dictionary,
 Patient Identity Removed is checked to be YES, and the first
