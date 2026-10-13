@@ -45,7 +45,7 @@ from .conformance_values import code as _code
 from .conformance_safe_private import safe_private_section
 from .conformance_values import join as _join
 from .markers import PROFILE_CODE
-from .policy import ENGINE_OPTIONS, UIDS
+from .policy import CLEAN_STRUCTURED_CONTENT, ENGINE_OPTIONS, UIDS
 from .reviewed_descriptors import CLEAN_DESCRIPTORS
 from .reviewed_roi_names import Outcome, Review
 from .roi_names import Reason
@@ -625,13 +625,18 @@ def _cleaned(
     """Describe how each selected option's cleaner cleans its attributes."""
     lines: list[str] = []
     for cleaned in statement.cleaned:
+        tags = _join(named(tag) for tag in cleaned.tags)
+        settled = (
+            f"{tags}, which hold content items, and the engine cleans them by "
+            "their concept names (D-047)."
+            if cleaned.option == CLEAN_STRUCTURED_CONTENT
+            else f"{tags}, wherever they are in the data set, and a reviewed "
+            "cleaner settles them (D-034)."
+        )
         lines += [
             f"## Cleaning under the {option(cleaned.option)}",
             "",
-            f"The policy gives C under this option to "
-            f"{_join(named(tag) for tag in cleaned.tags)}, wherever they are "
-            f"in the data set, and a reviewed cleaner settles them (D-034). "
-            f"{cleaned.method}",
+            f"The policy gives C under this option to {settled} {cleaned.method}",
             "",
         ]
     return lines
@@ -827,10 +832,11 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "",
         "## Method digest",
         "",
-        f"The method digest of {preset}, {vocabulary} and without a "
-        f"reviewed-names list, is "
-        f"`{statement.method_digest}` (D-024). It identifies the policy and "
-        "the PyMedPhys implementation and resources that apply it.",
+        f"The method digest of {preset}, {vocabulary}, without the technique "
+        "vocabulary of free-text descriptors, and without a reviewed-names "
+        f"or reviewed descriptors list, is `{statement.method_digest}` "
+        "(D-024). It identifies the policy and the PyMedPhys implementation "
+        "and resources that apply it.",
         "",
         "## Supported instances",
         "",

@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One statement describes every option the engine applies, so it is long.
+
 """Generate the conformance statement of a policy, as PS3.15 E.1.3 requires.
 
 The statement is generated from the policy, the pinned tables, and the
@@ -25,7 +28,8 @@ writes it as CommonMark:
   codes, and the options that are not supported;
 - whether the policy can claim conformance, and why not where it cannot;
 - the method digest of the policy (D-024), the vocabulary it covers, and
-  the absence of a reviewed-names list;
+  the absence of the technique vocabulary and of a reviewed-names or
+  reviewed descriptors list;
 - the supported IODs, their Storage SOP Classes, and the transfer
   syntaxes they are read in (D-010);
 - the action that the engine applies to each attribute of Table E.1-1, of
@@ -73,6 +77,8 @@ from pymedphys._nomenclature import tg263
 from . import compound_actions, markers, roi_names
 from .cleaners import cleaners_for
 from .codes import load_context_group
+from .content_items import CONTENT_ITEM_SEQUENCES
+from .content_items import METHOD as CONTENT_ITEMS_METHOD
 from .descriptor_cleaning import fallback_policy
 from .element_rules import (
     _ENGINE_GROUPS,
@@ -87,6 +93,7 @@ from .iods import IOD, load_iod_tables
 from .method_digest import digest_inputs, method_digest
 from .policy import (
     CLEAN_PIXEL_DATA,
+    CLEAN_STRUCTURED_CONTENT,
     SAFE_PRIVATE,
     Policy,
     PolicyError,
@@ -431,13 +438,18 @@ class RoiNameCleaning:
 class CleanedAttributes:
     """How the cleaner of a selected option cleans the attributes given C (D-034).
 
+    Under Clean Structured Content, it is how the engine cleans the content
+    items of the sequences that the policy gives C (D-047).
+
     Attributes
     ----------
     option : str
         The option, such as ``"retain_device_identity"``.
     tags : tuple of str
         The attributes that the policy gives C and the cleaner cleans,
-        wherever they are in the data set, in the order of their tags.
+        wherever they are in the data set, or, under Clean Structured
+        Content, the sequences whose content items are cleaned, in the order
+        of their tags.
     method : str
         How the cleaner cleans them, naming no value.
     """
@@ -466,8 +478,9 @@ class ConformanceStatement:
     resolved : tuple of ResolvedConflict
         The conflicts between options that the preset resolves.
     method_digest : str
-        The policy's method digest under the vocabulary given, without a
-        reviewed-names list (D-024).
+        The policy's method digest under the vocabulary given, without the
+        technique vocabulary or a reviewed-names or reviewed descriptors
+        list (D-024).
     vocabulary_digest : str or None
         The content digest of the vocabulary's entries, or None without one.
     iods, sop_classes, transfer_syntaxes : tuple
@@ -627,6 +640,11 @@ def _attribute(  # pylint: disable=too-many-arguments
     # places; one that stays masked, such as (50xx,xxxx), takes the action
     # that the rules give its row, which applies to every tag it covers.
     concrete = _REPEATING.sub(r"(\g<1>00,", tag)
+    if rules is not None and given == "C" and tag in CONTENT_ITEM_SEQUENCES:
+        # The engine cleans the sequence's content items by their concept
+        # names, and gives it its Basic Profile action where it cannot keep
+        # them (D-047).
+        return AttributeAction(tag, name, rule, given)
     if rules is not None and _CONCRETE_TAG.fullmatch(concrete):
         applied = rules.rule(concrete)
     elif rules is not None and rule == TABLE_E1_1:
@@ -808,15 +826,28 @@ def _safe_private(rules: ElementRules | None) -> tuple[SafePrivateRule, ...]:
 def _cleaned(
     policy: Policy, attributes: Iterable[AttributeAction]
 ) -> tuple[CleanedAttributes, ...]:
-    """Return how each cleaner of the policy cleans the attributes given C."""
+    """Return how each cleaner of the policy cleans the attributes given C.
+
+    Under Clean Structured Content, the content items of the sequences that
+    hold them are cleaned by their concept names (D-047), after the
+    cleaners of the options before it in Table E.1-1.
+    """
     given_c = {entry.tag for entry in attributes if entry.action == "C"}
-    return tuple(
+    cleaned = [
         CleanedAttributes(
             cleaner.option, tuple(sorted(cleaner.tags & given_c)), cleaner.method
         )
         for cleaner in cleaners_for(policy)
         if cleaner.tags & given_c
-    )
+    ]
+    sequences = given_c & CONTENT_ITEM_SEQUENCES.keys()
+    if CLEAN_STRUCTURED_CONTENT in policy.options and sequences:
+        cleaned.append(
+            CleanedAttributes(
+                CLEAN_STRUCTURED_CONTENT, tuple(sorted(sequences)), CONTENT_ITEMS_METHOD
+            )
+        )
+    return tuple(cleaned)
 
 
 def _markers(policy: Policy, digest: str) -> InsertedMarkers:
@@ -858,8 +889,10 @@ def conformance_statement(
         the published baseline digest of a preset (D-024). It must be given
         by name, as for
         :func:`~pymedphys._dicom.deidentify.method_digest.method_digest`.
-        The digest is always computed without a reviewed-names list, which
-        is a site's confidential resource, and the statement says so.
+        The digest is always computed without a reviewed-names list or a
+        reviewed descriptors list, which are a site's confidential
+        resources, and without the technique vocabulary, as D-024's
+        published baseline is, and the statement says so.
 
     Returns
     -------
@@ -944,7 +977,8 @@ def conformance_statement(
         load_context_group(7050),
         load_context_group(7005),
     )
-    # A statement describes a policy, never a site's reviewed-names list.
+    # A statement describes a policy, never a site's reviewed lists, and
+    # gives D-024's baseline, without the technique vocabulary.
     digest = method_digest(policy, vocabulary=vocabulary, reviewed_roi_names=None)
     return ConformanceStatement(
         engine_version=_version.__version__,

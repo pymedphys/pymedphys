@@ -35,6 +35,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.method_digest import method_digest
 from pymedphys._dicom.deidentify.policy import compose_policy
+from pymedphys._dicom.deidentify.qc_pack import DropReason
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.residuals import SourceValue
 from pymedphys._dicom.deidentify.reviewed_descriptors import (
@@ -43,6 +44,7 @@ from pymedphys._dicom.deidentify.reviewed_descriptors import (
     descriptor_attributes,
 )
 from pymedphys._dicom.deidentify.reviewed_roi_names import Review, ReviewedNames
+from pymedphys._dicom.deidentify.run_qc import Dropped
 from pymedphys._dicom.deidentify.run_report import RELEASE_REPORT
 from pymedphys._dicom.deidentify.technique_descriptors import (
     load_technique_vocabulary,
@@ -515,3 +517,107 @@ def test_a_kept_descriptor_of_a_withheld_instance_does_not_hold_its_series(tmp_p
         run.Status.SEQUESTERED,
         run.Status.RELEASED,
     ]
+
+
+IMAGE_COMMENTS = "(0020,4000)"
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+@pytest.mark.parametrize(
+    "descriptors, decisions, tag, left_out",
+    [
+        # Neither tier cleans it.
+        ({"SeriesDescription": "SENTINEL SERIES"}, (), SERIES_DESCRIPTION, False),
+        # The vocabulary keeps it, but it echoes the patient's name.
+        (
+            {"SeriesDescription": "AXIAL CHEST", "PatientName": "CHEST^SENTINEL"},
+            (),
+            SERIES_DESCRIPTION,
+            False,
+        ),
+        # A kept value beside a mapped one in one element.
+        (
+            {"AdmittingDiagnosesDescription": ["STUDY ONE", "SENTINEL ONE"]},
+            (
+                (ADMITTING_DIAGNOSES_DESCRIPTION, "STUDY ONE", Review.KEEP),
+                (ADMITTING_DIAGNOSES_DESCRIPTION, "SENTINEL ONE", Review.MAP, "X"),
+            ),
+            ADMITTING_DIAGNOSES_DESCRIPTION,
+            False,
+        ),
+        # In LT, a backslash is part of the one value that a reviewer keeps.
+        (
+            {"ImageComments": "LEFT\\RIGHT"},
+            ((IMAGE_COMMENTS, "LEFT\\RIGHT", Review.KEEP),),
+            IMAGE_COMMENTS,
+            True,
+        ),
+    ],
+)
+def test_a_withheld_instance_leaves_out_a_descriptor_only_where_it_would_be_kept(
+    descriptors, decisions, tag, left_out
+):
+    result = _transformed(
+        _transform(_reviewed(*decisions)), _withheld_slice(**descriptors)
+    )
+
+    assert isinstance(result, run.Sequestered)
+    assert _collected(result, tag) == ([] if left_out else [tag])
+    retained = Dropped(ElementPath((), tag), DropReason.RETAINED)
+    assert (retained in result.qc) is left_out
+
+
+def _series(*descriptions):
+    items = []
+    for position, description in enumerate(descriptions):
+        item = pydicom.Dataset()
+        item.SeriesInstanceUID = f"2.25.{position + 1}"
+        item.Modality = "CT"
+        item.SeriesDescription = description
+        items.append(item)
+    return items
+
+
+def _items(paths):
+    return sorted(path.items[0][1] for path in paths)
+
+
+def _collected_items(result):
+    return _items(
+        value.source
+        for value in result.evidence.collected
+        if value.source.tag == SERIES_DESCRIPTION
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+@pytest.mark.parametrize(
+    "descriptions, left_out",
+    [
+        (["AXIAL CHEST", "AXIAL CHEST"], [0, 1]),
+        # The value that is not cleaned is removed, which removes the
+        # sequence (D-020), and the kept value with it.
+        (["AXIAL CHEST", "SENTINEL SERIES"], []),
+    ],
+)
+def test_a_withheld_instance_keeps_in_a_kept_descriptor_that_its_sequence_may_lose(
+    descriptions, left_out
+):
+    """A kept descriptor stays in the search beside one that falls back.
+
+    Series Description is Type 1 in Source Series Information Sequence.
+    """
+    sources = _structure_set(SourceSeriesInformationSequence=_series(*descriptions))
+    withheld = _structure_set(
+        SourceSeriesInformationSequence=_series(*descriptions),
+        ResponsiblePerson="ROLE^PERSON",
+        ResponsibleOrganization="SENTINEL ORGANISATION",
+    )
+
+    written = _transformed(_transform(), sources)
+    result = _transformed(_transform(), withheld)
+
+    assert isinstance(written, run.Transformed)
+    assert _items(path for _, path in _retained(written)) == left_out
+    assert isinstance(result, run.Sequestered)
+    assert _collected_items(result) == sorted({0, 1} - set(left_out))
