@@ -56,7 +56,11 @@ action. Nor is a cleaner of overlays and curves, so a masked row to which
 the policy gives C, which only Clean Graphics does, to Curve Data
 (50xx,xxxx), Overlay Data (60xx,3000), and Overlay Comments (60xx,4000),
 takes its Basic Profile action too, X, which removes the attribute, and
-for Overlay Data its overlay group (D-020, D-041). An attribute
+for Overlay Data its overlay group (D-020, D-041). Under Clean Structured
+Content, the walker is given K in place of that action for each sequence of
+content items that can be kept, with the actions of its content items'
+concept names (:mod:`~pymedphys._dicom.deidentify.content_items`, D-047),
+which come from the source's values rather than from a rule. An attribute
 whose alternative VRs include a binary VR, such as LUT Data (0028,3006),
 US or OW, is kept only where the IOD defines it.
 
@@ -111,6 +115,10 @@ class RuleSource(enum.Enum):
     UNCOVERED_TEXT = "uncovered-text"
     DEFAULT = "default"
     NOT_IN_DICTIONARY = "not-in-dictionary"
+    # Under Clean Structured Content, the action that a content item's
+    # concept name gives its sequence or its value, which the walker is given
+    # in place of the rule's (D-047).
+    CONTENT_ITEM = "content-item"
 
 
 @dataclasses.dataclass(frozen=True)

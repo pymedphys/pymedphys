@@ -73,6 +73,8 @@ from pymedphys._nomenclature import tg263
 from . import compound_actions, markers, roi_names
 from .cleaners import cleaners_for
 from .codes import load_context_group
+from .content_items import CONTENT_ITEM_SEQUENCES
+from .content_items import METHOD as CONTENT_ITEMS_METHOD
 from .descriptor_cleaning import fallback_policy
 from .element_rules import (
     _ENGINE_GROUPS,
@@ -85,7 +87,13 @@ from .element_rules import (
 )
 from .iods import IOD, load_iod_tables
 from .method_digest import digest_inputs, method_digest
-from .policy import SAFE_PRIVATE, Policy, PolicyError, ResolvedConflict
+from .policy import (
+    CLEAN_STRUCTURED_CONTENT,
+    SAFE_PRIVATE,
+    Policy,
+    PolicyError,
+    ResolvedConflict,
+)
 from .safe_private import Handling, SafePrivateRule
 from .scope import SUPPORTED_IODS, SUPPORTED_TRANSFER_SYNTAXES, classify
 from .sop_classes import load_storage_sop_classes
@@ -414,13 +422,18 @@ class RoiNameCleaning:
 class CleanedAttributes:
     """How the cleaner of a selected option cleans the attributes given C (D-034).
 
+    Under Clean Structured Content, it is how the engine cleans the content
+    items of the sequences that the policy gives C (D-047).
+
     Attributes
     ----------
     option : str
         The option, such as ``"retain_device_identity"``.
     tags : tuple of str
         The attributes that the policy gives C and the cleaner cleans,
-        wherever they are in the data set, in the order of their tags.
+        wherever they are in the data set, or, under Clean Structured
+        Content, the sequences whose content items are cleaned, in the order
+        of their tags.
     method : str
         How the cleaner cleans them, naming no value.
     """
@@ -610,6 +623,11 @@ def _attribute(  # pylint: disable=too-many-arguments
     # places; one that stays masked, such as (50xx,xxxx), takes the action
     # that the rules give its row, which applies to every tag it covers.
     concrete = _REPEATING.sub(r"(\g<1>00,", tag)
+    if rules is not None and given == "C" and tag in CONTENT_ITEM_SEQUENCES:
+        # The engine cleans the sequence's content items by their concept
+        # names, and gives it its Basic Profile action where it cannot keep
+        # them (D-047).
+        return AttributeAction(tag, name, rule, given)
     if rules is not None and _CONCRETE_TAG.fullmatch(concrete):
         applied = rules.rule(concrete)
     elif rules is not None and rule == TABLE_E1_1:
@@ -791,15 +809,28 @@ def _safe_private(rules: ElementRules | None) -> tuple[SafePrivateRule, ...]:
 def _cleaned(
     policy: Policy, attributes: Iterable[AttributeAction]
 ) -> tuple[CleanedAttributes, ...]:
-    """Return how each cleaner of the policy cleans the attributes given C."""
+    """Return how each cleaner of the policy cleans the attributes given C.
+
+    Under Clean Structured Content, the content items of the sequences that
+    hold them are cleaned by their concept names (D-047), after the
+    cleaners of the options before it in Table E.1-1.
+    """
     given_c = {entry.tag for entry in attributes if entry.action == "C"}
-    return tuple(
+    cleaned = [
         CleanedAttributes(
             cleaner.option, tuple(sorted(cleaner.tags & given_c)), cleaner.method
         )
         for cleaner in cleaners_for(policy)
         if cleaner.tags & given_c
-    )
+    ]
+    sequences = given_c & CONTENT_ITEM_SEQUENCES.keys()
+    if CLEAN_STRUCTURED_CONTENT in policy.options and sequences:
+        cleaned.append(
+            CleanedAttributes(
+                CLEAN_STRUCTURED_CONTENT, tuple(sorted(sequences)), CONTENT_ITEMS_METHOD
+            )
+        )
+    return tuple(cleaned)
 
 
 def _markers(policy: Policy, digest: str) -> InsertedMarkers:

@@ -102,10 +102,15 @@ def test_the_statement_says_when_every_option_is_supported(monkeypatch):
     ) in text
 
 
-@pytest.mark.parametrize(
-    "option", [o for o in standard.ALL_OPTIONS if o not in policy.ENGINE_OPTIONS]
-)
-def test_a_policy_with_an_option_the_engine_does_not_yet_apply_is_described(option):
+# Each option in turn is taken out of the options the engine applies, so the
+# test runs whatever the engine applies.
+@pytest.mark.parametrize("option", standard.ALL_OPTIONS)
+def test_a_policy_with_an_option_the_engine_does_not_yet_apply_is_described(
+    option, monkeypatch
+):
+    unapplied = tuple(o for o in policy.ENGINE_OPTIONS if o != option)
+    monkeypatch.setattr(policy, "ENGINE_OPTIONS", unapplied)
+    monkeypatch.setattr(conformance_markdown, "ENGINE_OPTIONS", unapplied)
     composed = policy.compose_custom_policy([option])
     statement = conformance.conformance_statement(composed, vocabulary=None)
 
@@ -115,6 +120,15 @@ def test_a_policy_with_an_option_the_engine_does_not_yet_apply_is_described(opti
     assert [(e.tag, e.action) for e in table] == list(composed.actions.items())
     text = conformance_markdown.render_markdown(statement)
     assert conformance.PENDING_UNAPPLIED in text
+    meanings = {
+        c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
+    }
+    (unsupported,) = [
+        line
+        for line in text.splitlines()
+        if line.startswith("- Options that are not supported")
+    ]
+    assert meanings[conformance.OPTION_CODES[option]] in unsupported
 
 
 def test_the_pixel_options_outside_table_e1_1_can_be_composed_but_are_not_supported(
