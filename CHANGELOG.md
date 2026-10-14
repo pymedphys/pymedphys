@@ -12,6 +12,12 @@ This project adheres to
 
 ## Unreleased
 
+### TRF archive integrity
+
+TRF indexing now checks the archived logfile checksum before removing an incoming
+duplicate when Python runs with `-O` or `-OO`. A checksum mismatch raises the
+existing error and preserves the incoming logfile.
+
 ### Corrected DICOM RT Dose coordinates
 
 Corrected patient coordinates and dose ordering for non-HFS orientations and
