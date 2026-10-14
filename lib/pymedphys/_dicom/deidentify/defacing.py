@@ -20,9 +20,10 @@ recognition". This module finds the region to remove, the face block, in
 the patient's coordinates: every point anterior to a vertical plane
 :data:`MARGIN` millimetres posterior to the centres of the two eye globes,
 facing the way the eyes face, and superior to an axial plane at the lower
-of the globes' inferior edges, lowered by a voxel or by the spacing of the
-slices there, whichever is larger, for the sampling. It reaches the edges of the field of
-view, so that an immobilisation mask or anything else resting on the face
+of the globes' inferior edges, lowered for the sampling by a voxel or by
+the largest spacing of the volume's slices, rows, or columns along the
+patient's superior axis across the globes' height, whichever is larger. It
+reaches the edges of the field of view, so that an immobilisation mask or anything else resting on the face
 is inside it. It keeps the nose below the eyes, the mouth, and the jaw,
 which most head and neck targets and organs at risk need. Nothing here
 changes pixel data.
@@ -134,6 +135,9 @@ _ORBIT_HALF_WIDTH = 6.0
 # Half the height of the region checked for tissue behind and in front of
 # the eyes, in millimetres; it is as wide as the globes are apart.
 _CHECKED_HALF_HEIGHT = 10.0
+# How many sampled voxels along the superior axis each slab of the distance
+# transform holds, besides its overlap with the slabs either side.
+_SLAB = 32
 
 
 class FaceBlockProblem(enum.Enum):
@@ -275,20 +279,30 @@ class FaceFinder:
         ------
         ValueError
             If there are no positions, or ``orientation`` does not hold six
-            values or each position three.
+            finite numbers, each position three, ``spacing`` two positive
+            ones, or ``shape`` two positive integers.
         FaceBlockRefused
             With :attr:`FaceBlockProblem.NOT_ALONG_PATIENT_AXES` unless the
             rows and the columns each lie along a patient axis, with unit
             direction cosines, and the slices are stacked along the third,
             with no two at one position.
         """
-        if len(orientation) != 6:
+        cosines = _finite(orientation, "Image Orientation (Patient)")
+        if cosines.shape != (6,):
             raise ValueError("Image Orientation (Patient) holds six values")
-        origins = np.asarray(positions, dtype=float)
+        origins = _finite(positions, "a slice's position")
         if origins.ndim != 2 or origins.shape[1] != 3 or not len(origins):
             raise ValueError("a face block needs a position of three values per slice")
-        along_row = np.asarray(orientation[:3], dtype=float)
-        down_column = np.asarray(orientation[3:], dtype=float)
+        if _finite(spacing, "Pixel Spacing").shape != (2,) or min(spacing) <= 0:
+            raise ValueError("Pixel Spacing holds two positive values")
+        if len(shape) != 2 or not all(
+            isinstance(size, (int, np.integer))
+            and not isinstance(size, bool)
+            and size > 0
+            for size in shape
+        ):
+            raise ValueError("a slice's rows and columns are two positive integers")
+        along_row, down_column = cosines[:3], cosines[3:]
         normal = np.cross(along_row, down_column)
         offsets = origins @ normal
         in_plane = (origins - origins[0]) - np.outer(offsets - offsets[0], normal)
@@ -442,7 +456,7 @@ class FaceFinder:
         """The balls of soft tissue, mostly bordered by other tissue or air,
         that may be globes, as the module describes."""
         soft = (values >= SOFT_TISSUE[0]) & (values <= SOFT_TISSUE[1])
-        depth = scipy.ndimage.distance_transform_edt(soft) * self._voxel
+        depth = _depths(soft, GLOBE_DIAMETER[1] / 2 / self._voxel) * self._voxel
         # A ball's depth at its centre falls short of its radius by up to
         # about a voxel, from the sampling and the averaging, so a ball's
         # radius, taken as its depth and a voxel, runs from half the least
@@ -611,6 +625,50 @@ class FaceFinder:
                 for row in rows
             )
         return enclosed["above"] > enclosed["below"]
+
+
+def _finite(values: object, name: str) -> np.ndarray:
+    """``values`` as an array of finite numbers.
+
+    Raises
+    ------
+    ValueError
+        Naming ``name``, but not the values, which are not finite numbers in
+        a regular array.
+    """
+    try:
+        array = np.asarray(values, dtype=float)
+    except (TypeError, ValueError):
+        raise ValueError(f"{name} is not of finite numbers") from None
+    if not np.isfinite(array).all():
+        raise ValueError(f"{name} is not of finite numbers")
+    return array
+
+
+def _depths(soft: np.ndarray, deepest: float) -> np.ndarray:
+    """The distance, in voxels, from each voxel of ``soft`` to the nearest
+    voxel outside it, wherever it is no more than ``deepest`` and three
+    voxels.
+
+    Found in slabs along the first axis, so that a long volume needs no
+    more memory than a slab does. Each slab overlaps those either side by
+    that reach, so a distance within it is exact, as the nearest voxel
+    outside is in the slab; one beyond it is given as the reach, which is
+    beyond every depth that :meth:`FaceFinder._regions` compares, even
+    with its neighbours.
+    """
+    reach = math.ceil(deepest) + 3
+    depths = np.full(soft.shape, float(reach))
+    for start in range(0, soft.shape[0], _SLAB):
+        stop = min(soft.shape[0], start + _SLAB)
+        low, high = max(0, start - reach), min(soft.shape[0], stop + reach)
+        slab = soft[low:high]
+        # A slab without a voxel outside has none within its reach.
+        if slab.all():
+            continue
+        found = scipy.ndimage.distance_transform_edt(slab)[start - low : stop - low]
+        depths[start:stop] = np.minimum(found, reach)
+    return depths
 
 
 def _spacing_over(heights: np.ndarray, low: float, high: float) -> float:

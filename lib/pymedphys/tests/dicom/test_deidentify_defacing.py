@@ -388,3 +388,62 @@ def test_a_slice_beyond_the_last_is_an_error():
 
     with pytest.raises(ValueError, match="every slice"):
         finder.add(np.zeros(scan.shape, np.float32))
+
+
+@pytest.mark.parametrize(
+    "scan", [head.axial(), head.sagittal()], ids=["axial", "sagittal"]
+)
+def test_the_distance_transform_in_slabs_gives_the_block_of_the_whole(
+    scan, monkeypatch
+):
+    anatomy = head.Head(noise=0.0)
+    monkeypatch.setattr(defacing, "_SLAB", 10**6)
+    whole = _block(scan, anatomy)
+    monkeypatch.setattr(defacing, "_SLAB", 3)
+
+    assert _block(scan, anatomy) == whole
+
+
+def test_an_orientation_of_other_than_six_values_is_an_error():
+    with pytest.raises(ValueError, match="six values"):
+        defacing.FaceFinder((1, 0, 0, 0, 1), [(0, 0, 0)], (1.0, 1.0), (10, 10))
+
+
+@pytest.mark.parametrize(
+    "positions",
+    [[(0.0, 0.0)], [(0.0, 0.0, 0.0), (0.0, 0.0)], [[(0.0, 0.0, 0.0)]]],
+    ids=["two-values", "ragged", "nested"],
+)
+def test_positions_not_of_three_values_are_an_error(positions):
+    with pytest.raises(ValueError, match="position"):
+        defacing.FaceFinder((1, 0, 0, 0, 1, 0), positions, (1.0, 1.0), (10, 10))
+
+
+@pytest.mark.parametrize(
+    "orientation, positions, spacing, shape",
+    [
+        ((1, 0, 0, 0, 1, math.nan), [(0, 0, 0)], (1.0, 1.0), (10, 10)),
+        ((1, 0, 0, 0, 1, 0), [(0, 0, math.inf)], (1.0, 1.0), (10, 10)),
+        ((1, 0, 0, 0, 1, 0), [(0, 0, "a")], (1.0, 1.0), (10, 10)),
+        ((1, 0, 0, 0, 1, 0), [(0, 0, 0)], (1.0, math.nan), (10, 10)),
+        ((1, 0, 0, 0, 1, 0), [(0, 0, 0)], (1.0,), (10, 10)),
+        ((1, 0, 0, 0, 1, 0), [(0, 0, 0)], (0.0, 1.0), (10, 10)),
+        ((1, 0, 0, 0, 1, 0), [(0, 0, 0)], (1.0, 1.0), (10,)),
+        ((1, 0, 0, 0, 1, 0), [(0, 0, 0)], (1.0, 1.0), (10, 0)),
+    ],
+    ids=[
+        "orientation-nan",
+        "position-infinite",
+        "position-text",
+        "spacing-nan",
+        "spacing-one-value",
+        "spacing-zero",
+        "shape-one-value",
+        "shape-zero",
+    ],
+)
+def test_geometry_that_is_not_finite_and_positive_is_an_error(
+    orientation, positions, spacing, shape
+):
+    with pytest.raises(ValueError):
+        defacing.FaceFinder(orientation, positions, spacing, shape)
