@@ -17,6 +17,7 @@ This project adheres to
 TRF indexing now checks the archived logfile checksum before removing an incoming
 duplicate when Python runs with `-O` or `-OO`. A checksum mismatch raises the
 existing error and preserves the incoming logfile.
+[PR #2394](https://github.com/pymedphys/pymedphys/pull/2394)
 
 ### Corrected DICOM RT Dose coordinates
 
