@@ -26,8 +26,12 @@ codestreams.
 """
 
 import dataclasses
+import functools
 import io
+import os
 import struct
+import subprocess
+import sys
 from collections.abc import Sequence
 
 from pymedphys._imports import numpy as np
@@ -131,6 +135,32 @@ def with_jfif_version(codestream: bytes, version: tuple[int, int]) -> bytes:
     after its Start of Image marker."""
     jfif = b"JFIF\x00" + bytes(version) + b"\x00\x00\x01\x00\x01\x00\x00"
     return codestream[:2] + _segment(0xE0, jfif) + codestream[2:]
+
+
+# Decodes the file on standard input with GDCM, as the engine pins it.
+_GDCM_DECODE = (
+    "import io, sys, pydicom\n"
+    "dataset = pydicom.dcmread(io.BytesIO(sys.stdin.buffer.read()))\n"
+    "for _ in pydicom.pixels.iter_pixels(dataset, raw=True, decoding_plugin='gdcm'):\n"
+    "    pass\n"
+)
+
+
+@functools.lru_cache(maxsize=None)
+def gdcm_aborts(data: bytes) -> bool:
+    """Return whether the installed GDCM ends the process that decodes the
+    file ``data``, as GDCM 3.2 does for a JPEG frame whose header makes
+    libjpeg warn, rather than decoding it or raising."""
+    completed = subprocess.run(
+        [sys.executable, "-c", _GDCM_DECODE],
+        input=data,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+        timeout=300,
+    )
+    # An exception that Python reports exits with 1.
+    return completed.returncode not in (0, 1)
 
 
 def jpeg_extended_mid_grey(rows: int, columns: int) -> bytes:

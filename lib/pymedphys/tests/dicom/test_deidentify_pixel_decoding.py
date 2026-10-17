@@ -20,7 +20,9 @@ Every image is synthetic, encoded by ``_synthetic_compressed``.
 import functools
 import io
 import logging
+import os
 import struct
+import sys
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
@@ -674,8 +676,8 @@ def test_a_frame_that_does_not_decode_is_refused_without_quoting_anything(caplog
 
 
 def test_a_frame_whose_decoder_ends_its_process_is_undecodable_and_the_next_decodes():
-    # GDCM aborts its process when libjpeg warns while reading a header, as
-    # it does for a JFIF version other than 1.
+    # GDCM 3.2 aborts its process when libjpeg warns while reading a header,
+    # as it does for a JFIF version other than 1. Another GDCM may decode it.
     _needs(compressed.JPEG_LOSSLESS_SV1)
     (frame,) = _frames(1)
     codestream = compressed.jpeg_lossless(frame)
@@ -688,11 +690,25 @@ def test_a_frame_whose_decoder_ends_its_process_is_undecodable_and_the_next_deco
     )
     known = read_source(image([compressed.with_jfif_version(codestream, (1, 2))]))
     unknown = read_source(image([compressed.with_jfif_version(codestream, (2, 1))]))
+    aborts = compressed.gdcm_aborts(unknown.data)
 
-    assert frames_problem(unknown) is TransformReason.UNDECODABLE_PIXEL_DATA
+    assert frames_problem(unknown) is (
+        TransformReason.UNDECODABLE_PIXEL_DATA if aborts else None
+    )
     assert frames_problem(known) is None
-    assert not same_pixels(unknown, unknown)
+    assert same_pixels(unknown, unknown) is not aborts
     assert same_pixels(known, known)
+
+
+def test_where_the_decoding_process_cannot_start_the_decoder_is_unavailable(
+    monkeypatch, tmp_path
+):
+    data = _lossless()
+    pixel_decoding.isolated_decoding._discard()  # pylint: disable = protected-access
+    monkeypatch.setattr(sys, "executable", os.fspath(tmp_path / "no-python"))
+
+    assert frames_problem(read_source(data)) is TransformReason.NO_DECODER
+    assert not same_pixels(read_source(data), read_source(data))
 
 
 def test_without_its_decoder_an_instance_is_refused(monkeypatch):

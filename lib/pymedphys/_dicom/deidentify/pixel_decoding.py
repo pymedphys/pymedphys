@@ -69,7 +69,11 @@ GDCM and pylibjpeg, :data:`ISOLATED_PLUGINS`, decode in a child process, by
 process that calls them on a malformed codestream, as GDCM does for a JPEG
 frame whose header makes libjpeg warn. A frame whose decoder ends the child
 is undecodable, like any other, and the next instance is decoded by a new
-child. The offset tables and codestream headers are checked in process.
+child; where :func:`same_pixels` decodes it, the frames are not the same.
+Where the child cannot be started, the instance is sequestered as
+:attr:`.reasons.TransformReason.NO_DECODER`, as where the plugin is not
+installed, since its frames cannot be decoded either way. The offset tables
+and codestream headers are checked in process.
 """
 
 from __future__ import annotations
@@ -161,6 +165,9 @@ def frames_problem(source: SourceEvidence) -> TransformReason | None:
     try:
         with redacted_diagnostics():
             return _decoded_problem(source, plugin)
+    # The plugin is installed, but the process that runs it cannot be.
+    except isolated_decoding.DecoderUnavailable:
+        return TransformReason.NO_DECODER
     # pydicom and its plugins raise many types for pixel data they cannot
     # decode, and a message can quote a value.
     except Exception:  # pylint: disable = broad-exception-caught
@@ -215,9 +222,9 @@ def _decoded(
 
 def _dataset(data: bytes) -> pydicom.Dataset:
     """Return the data set that ``data`` holds, as
-    :meth:`.source.SourceEvidence.dataset` reads it."""
-    with redacted_diagnostics():
-        return pydicom.dcmread(io.BytesIO(data), defer_size=None)
+    :meth:`.source.SourceEvidence.dataset` reads it, but in the child, whose
+    warnings and log records the caller redacts as it issues them again."""
+    return pydicom.dcmread(io.BytesIO(data), defer_size=None)
 
 
 def _expected(dataset: pydicom.Dataset) -> tuple[int, tuple[int, ...]] | None:
