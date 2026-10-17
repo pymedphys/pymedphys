@@ -78,7 +78,9 @@ judged it from the defaced CT's previews
 the run can clean it too (:class:`Defaced`). So is one that names no Frame
 of Reference, in a run that defaces any series, or that refers to a defaced
 slice, whatever frame it declares. A structure set that names no Frame of
-Reference is likewise searched for targets in the block of every series.
+Reference is likewise searched for targets in the block of every series,
+and one that refers to a series' slices, as its Contour Image Sequence
+does, is searched in that series' block whatever frame it declares.
 """
 
 from __future__ import annotations
@@ -255,24 +257,39 @@ def find_face_blocks(
         if it can no longer be read or has changed.
     """
     series: dict[str, list[int]] = collections.defaultdict(list)
+    slices: dict[str, set[str]] = collections.defaultdict(set)
     structure_sets: dict[str, list[int]] = collections.defaultdict(list)
     # Structure sets that name no Frame of Reference, which may be in any.
     frameless: list[int] = []
+    # What each structure set refers to, such as the slices it is drawn on.
+    referred: dict[int, set[str]] = {}
     for position, record in sorted(records.items()):
         if record.iod == CT_IMAGE and record.series is not None:
             series[record.series].append(position)
+            if record.sop_instance:
+                slices[record.series].add(record.sop_instance)
         elif record.iod == RT_STRUCTURE_SET:
             frames = frames_of(record)
             for frame in frames:
                 structure_sets[frame].append(position)
             if not frames:
                 frameless.append(position)
+            referred[position] = {reference.target for reference in record.references}
     outcomes = {}
     for uid, positions in series.items():
         outcome, frame = _series_outcome(positions, read)
         if outcome.block is not None and frame:
             searched = sorted({*structure_sets.get(frame, []), *frameless})
-            if _target_in(outcome.block, frame, searched, read):
+            # One drawn on the series' slices is searched whatever frame it
+            # declares, each of its targets as if in the series' frame.
+            drawn = sorted(
+                position
+                for position, targets in referred.items()
+                if not targets.isdisjoint(slices[uid])
+            )
+            if _target_in(outcome.block, frame, searched, read) or _target_in(
+                outcome.block, None, drawn, read
+            ):
                 outcome = SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK)
         outcomes[uid] = outcome
     return outcomes
@@ -536,12 +553,13 @@ def _hounsfield(data: bytes | None, each: _Slice) -> np.ndarray:
 
 def _target_in(
     block: FaceBlock,
-    frame: str,
+    frame: str | None,
     positions: list[int],
     read: Callable[[int], bytes | None],
 ) -> bool:
     """Whether a target of any of these structure sets, in this Frame of
-    Reference, has a contour point in the block, or one cannot be read."""
+    Reference, or in any if None, has a contour point in the block, or one
+    cannot be read."""
     for position in positions:
         try:
             with redacted_diagnostics():
@@ -555,11 +573,15 @@ def _target_in(
     return False
 
 
-def _targets_reach(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bool:
-    """Whether a target's contour in this Frame of Reference has a point in
-    the block."""
+def _targets_reach(
+    dataset: pydicom.Dataset, frame: str | None, block: FaceBlock
+) -> bool:
+    """Whether a target's contour in this Frame of Reference, or in any if
+    None, has a point in the block."""
     frames = {
-        int(item.ROINumber): str(item.get("ReferencedFrameOfReferenceUID", "")).strip()
+        int(item.ROINumber): normalise_uid(
+            str(item.get("ReferencedFrameOfReferenceUID") or "")
+        )
         for item in dataset.get("StructureSetROISequence", [])
     }
     targets = {
@@ -570,7 +592,9 @@ def _targets_reach(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bo
     for item in dataset.get("ROIContourSequence", []):
         number = int(item.ReferencedROINumber)
         # A target that names no Frame of Reference may be in this one.
-        if number not in targets or frames.get(number) not in ("", None, frame):
+        if number not in targets or (
+            frame is not None and frames.get(number) not in ("", None, frame)
+        ):
             continue
         for contour in item.get("ContourSequence", []):
             points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)

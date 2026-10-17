@@ -551,6 +551,29 @@ def test_a_target_in_a_structure_set_that_names_no_frame_holds_the_series():
     assert _outcome(data).problem is SeriesProblem.TARGET_IN_BLOCK
 
 
+def test_a_target_in_another_frame_drawn_on_the_series_slices_holds_the_series():
+    elsewhere = files.ROOT + ".8"
+    rtss = pydicom.dcmread(
+        io.BytesIO(
+            files.structure_set(
+                [("PTV", files.square(_EYES_FRONT[0]))], frame=elsewhere
+            )
+        )
+    )
+    unreferenced = files.written(rtss)
+    image = pydicom.Dataset()
+    image.ReferencedSOPClassUID = files.CT_IMAGE_STORAGE
+    image.ReferencedSOPInstanceUID = InstanceRecord.from_file(
+        _head_files()[0]
+    ).sop_instance
+    rtss.ROIContourSequence[0].ContourSequence[0].ContourImageSequence = [image]
+    drawn = files.written(rtss)
+
+    assert face_blocks.frames_of(InstanceRecord.from_file(drawn)) == {elsewhere}
+    assert _outcome(unreferenced).problem is None
+    assert _outcome(drawn).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
 def test_the_cavity_is_kept_only_above_its_floor():
     block = _outcome().block
     kept = {}

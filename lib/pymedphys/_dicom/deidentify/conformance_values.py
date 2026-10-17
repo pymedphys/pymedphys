@@ -223,8 +223,10 @@ HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
         "visual-features": (
             "under Clean Recognizable Visual Features, the instance can show a "
             "face, and its source file is in a series that the face review "
-            "marked as showing one, or in none that it reviewed, or the run "
-            "writes other pixel data of it than the reviewed run did; or it is "
+            "marked as showing one, or in none that it reviewed, or the "
+            "reviewed run held it beside a CT series that it defaced, or the "
+            "run writes other pixel data of it than the reviewed run did; or "
+            "it is "
             "a CT slice of a series with a treatment target in the region that "
             "defacing would set to air; or it is an RT Structure Set, RT Dose, "
             "or PET instance beside a CT series that the run defaced, which the "

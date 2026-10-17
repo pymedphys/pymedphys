@@ -74,7 +74,8 @@ class FaceReview:
         which the release report records.
     absent : frozenset of bytes
         The SHA-256 of each source file of each series that the reviewer
-        marked :attr:`~.qc_attestation.Face.ABSENT`.
+        marked :attr:`~.qc_attestation.Face.ABSENT`, other than one that the
+        reviewed run held because it defaced the file's frame.
     present : frozenset of bytes
         Likewise, of each series marked :attr:`~.qc_attestation.Face.PRESENT`.
     absent_pixels : frozenset of (bytes, bytes)
@@ -218,7 +219,7 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
             raise malformed
         position, digest = instance.get("position"), instance.get("source_sha256")
         pixels = instance.get("pixel_sha256")
-        reasons = instance.get("reasons", [])
+        reasons = instance.get("reasons")
         if isinstance(position, int) and isinstance(digest, str):
             if (
                 not _SHA256.fullmatch(digest)
