@@ -93,11 +93,11 @@ def _sha(*numbers):
     return frozenset(bytes.fromhex(_digest(n)) for n in numbers)
 
 
-def _attest(directory, faces):
+def _attest(directory, faces, outcome=Outcome.ATTESTED):
     return qc_attestation.attest(
         directory,
         reviewer="Quokka Wombatson",
-        outcome=Outcome.ATTESTED,
+        outcome=outcome,
         coverage=COMPLETE,
         attested_at=WHEN,
         faces=faces,
@@ -132,6 +132,13 @@ def test_a_series_without_a_verdict_gives_no_digests(pack):
 
 def test_a_pack_that_is_not_attested_gives_no_review(pack):
     with pytest.raises(QcPackError, match="has not been attested"):
+        read_face_review(pack)
+
+
+def test_a_rejected_attestation_gives_no_review(pack):
+    _attest(pack, {1: Face.ABSENT}, Outcome.REJECTED)
+
+    with pytest.raises(QcPackError, match="verdicts release nothing"):
         read_face_review(pack)
 
 

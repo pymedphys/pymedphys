@@ -312,7 +312,7 @@ implementation = [
 ]
 note = '''
 Text that a text finder finds in native Pixel Data is blacked out, whatever it says, and every instance cleaned is held for review (D-037).
-A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted or gave in their place, without the finder, and releases the instance with the option's code; an instance that the reviewer rejected is sequestered (D-048).
+A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; an instance that the reviewer rejected is sequestered (D-048).
 Compressed Pixel Data is sequestered.
 '''
 

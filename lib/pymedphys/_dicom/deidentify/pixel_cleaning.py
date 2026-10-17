@@ -237,21 +237,26 @@ def black_out_reviewed(
 
     As :func:`black_out`, but each frame's regions are those given, by frame
     index from 0, rather than a finder's, and a frame not given has none.
-    Each region is clipped to the frame, as a finder's is.
+    A reviewed region is never clipped: one that goes past the frame's rows
+    or columns refuses the instance, since a mistyped or transposed region
+    would otherwise leave the text it was meant to cover.
 
     Raises
     ------
     PixelDataRefused
         For any reason that :func:`black_out` gives, and with
         :attr:`~.reasons.TransformReason.REDACTION_MISMATCH` where a frame
-        given is not one that the Pixel Data hold, so that the review does
-        not fit them.
+        given is not one that the Pixel Data hold, or a region goes past
+        the frame, so that the review does not fit them.
     """
     by_frame = {index: tuple(boxes) for index, boxes in regions}
 
     def reviewed(index: int, frame: np.ndarray) -> Sequence[TextBox]:
-        del frame
-        return by_frame.get(index, ())
+        rows, columns = frame.shape[:2]
+        boxes = by_frame.get(index, ())
+        if any(box.bottom > rows or box.right > columns for box in boxes):
+            raise PixelDataRefused(TransformReason.REDACTION_MISMATCH)
+        return boxes
 
     redaction = _blacked_out(source, dataset, reviewed)
     if redaction is not None and any(

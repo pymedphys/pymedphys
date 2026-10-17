@@ -43,6 +43,7 @@ from pymedphys._dicom.deidentify import (
     release_report_markdown,
     run,
 )
+from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
     ReleaseGate,
@@ -74,6 +75,7 @@ from pymedphys._dicom.deidentify.redaction_review import (
     RedactionReview,
     read_redaction_review,
 )
+from pymedphys._dicom.deidentify.scope import SUPPORTED_IODS
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
 from . import _synthetic_references as synthetic
@@ -120,7 +122,7 @@ def _codes(dataset):
 
 
 # The synthetic files of a first run under the option, by file name: three
-# CT slices and one more, each with its own stored values, and two instances
+# CT slices and two more, each with its own stored values, and two instances
 # without pixel data.
 _ACCEPTED, _REVISED, _REJECTED, _UNJUDGED = (
     "0-accepted.dcm",
@@ -129,7 +131,9 @@ _ACCEPTED, _REVISED, _REJECTED, _UNJUDGED = (
     "3-unjudged.dcm",
 )
 _PLAN, _STRUCTURE_SET = "4-plan.dcm", "5-structure-set.dcm"
-_IMAGES = (_ACCEPTED, _REVISED, _REJECTED, _UNJUDGED)
+# An image whose added region goes past its eight columns.
+_PAST = "6-past.dcm"
+_IMAGES = (_ACCEPTED, _REVISED, _REJECTED, _UNJUDGED, _PAST)
 
 
 def _image(number):
@@ -209,6 +213,7 @@ def _sha(data):
         {"position": 0, "redaction": "accepted"},
         {"position": 0, "redaction": Redaction.ACCEPTED, "regions": ((0, (BOX,)),)},
         {"position": 0, "redaction": Redaction.REJECTED, "regions": ((0, (BOX,)),)},
+        {"position": 0, "redaction": Redaction.REVISED},
         {"position": 0, "redaction": Redaction.REVISED, "regions": [(0, (BOX,))]},
         {"position": 0, "redaction": Redaction.REVISED, "regions": ((0, ()),)},
         {"position": 0, "redaction": Redaction.REVISED, "regions": ((-1, (BOX,)),)},
@@ -304,17 +309,19 @@ def test_a_review_gives_each_verdicts_regions_by_source_digest(first_run):
     assert dict(review.approved) == {
         # The pack's regions, which the finder found.
         _sha(files[_ACCEPTED]): ((0, (BOX,)),),
-        # The reviewer's own, in their place.
-        _sha(files[_REVISED]): ((0, (REVISED,)),),
+        # The pack's, with the reviewer's own added.
+        _sha(files[_REVISED]): ((0, (REVISED, BOX)),),
     }
     assert review.rejected == frozenset({_sha(files[_REJECTED])})
 
 
-def test_a_revised_verdict_may_give_no_region(first_run):
-    pack, positions = first_run
-    _attest(pack, [RedactionVerdict(positions[_REVISED], Redaction.REVISED)])
+def test_a_revised_verdict_adds_to_the_packs_regions_in_any_frame():
+    regions = ((0, (BOX,)), (2, (REVISED,)))
 
-    assert dict(read_redaction_review(pack).approved) == {_sha(_files()[_REVISED]): ()}
+    # pylint: disable-next = protected-access
+    added = redaction_review._added(regions, ((0, (REVISED, BOX)), (1, (BOX,))))
+
+    assert added == ((0, (REVISED, BOX)), (1, (BOX,)), (2, (REVISED,)))
 
 
 def test_a_pack_that_is_not_attested_gives_no_review(first_run):
@@ -324,9 +331,33 @@ def test_a_pack_that_is_not_attested_gives_no_review(first_run):
         read_redaction_review(pack)
 
 
-def _with_pack(monkeypatch, attestation, instances, redactions):
+def test_a_rejected_attestation_gives_no_review(first_run):
+    pack, positions = first_run
+    qc_attestation.attest(
+        pack,
+        reviewer="Quokka Wombatson",
+        outcome=Outcome.REJECTED,
+        coverage=COMPLETE,
+        attested_at=WHEN,
+        redactions=_verdicts(positions),
+    )
+
+    with pytest.raises(QcPackError, match="verdicts release nothing"):
+        read_redaction_review(pack)
+
+
+def _with_pack(monkeypatch, attestation, instances, redactions, unshown=()):
     """Have the review read ``attestation`` with a pack of the entries given."""
-    data = json.dumps({"instances": instances, "redactions": redactions}).encode()
+    data = json.dumps(
+        {
+            "instances": instances,
+            "redactions": redactions,
+            "not_previewed": [
+                {"position": position, "reason": "source-not-shown"}
+                for position in unshown
+            ],
+        }
+    ).encode()
     monkeypatch.setattr(
         redaction_review, "attested_pack", lambda _: (attestation, data)
     )
@@ -375,25 +406,59 @@ def test_verdicts_that_agree_on_one_source_file_are_read_once(first_run, monkeyp
 
 
 @pytest.mark.parametrize(
-    "instances, redactions",
+    "instances, redactions, unshown",
     [
         # The instance is not listed as cleaned.
-        ([_entry(0)], []),
+        ([_entry(0)], [], ()),
         # Or is listed without its source's digest.
-        ([{"position": 0}], [_cleaned(0)]),
+        ([{"position": 0}], [_cleaned(0)], ()),
+        # Or was not previewed, so the reviewer cannot have seen its frames.
+        ([_entry(0)], [_cleaned(0)], (0,)),
     ],
 )
-def test_a_verdict_on_an_instance_without_a_cleaned_source_is_refused(
-    first_run, monkeypatch, instances, redactions
+def test_a_verdict_on_an_instance_without_a_cleaned_previewed_source_is_refused(
+    first_run, monkeypatch, instances, redactions, unshown
 ):
     pack, _ = first_run
     attestation = dataclasses.replace(
         _attest(pack), redactions=(RedactionVerdict(0, Redaction.ACCEPTED),)
     )
-    _with_pack(monkeypatch, attestation, instances, redactions)
+    _with_pack(monkeypatch, attestation, instances, redactions, unshown)
 
-    with pytest.raises(QcPackError, match="does not list as cleaned"):
+    with pytest.raises(QcPackError, match="does not list as cleaned and previewed"):
         read_redaction_review(pack)
+
+
+def test_only_a_previewed_cleaned_instance_can_be_given_a_verdict():
+    data = json.dumps(
+        {
+            "redactions": [_cleaned(0), _cleaned(1), {**_cleaned(2), "frames": 3}],
+            "not_previewed": [{"position": 1, "reason": "source-not-shown"}],
+        }
+    ).encode()
+
+    assert qc_attestation.previewed_redactions(data) == {0: 1, 2: 3}
+
+
+def test_attesting_refuses_a_verdict_on_an_instance_that_was_not_previewed(
+    first_run, monkeypatch
+):
+    pack, positions = first_run
+    previewed = qc_attestation.previewed_redactions
+    # As though the pack had listed the accepted image as not previewed.
+    monkeypatch.setattr(
+        qc_attestation,
+        "previewed_redactions",
+        lambda data: {
+            position: frames
+            for position, frames in previewed(data).items()
+            if position != positions[_ACCEPTED]
+        },
+    )
+
+    with pytest.raises(QcPackError, match="does not list as cleaned and previewed"):
+        _attest(pack, [RedactionVerdict(positions[_ACCEPTED], Redaction.ACCEPTED)])
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
 
 
 @pytest.mark.parametrize(
@@ -450,11 +515,23 @@ def test_reviewed_regions_are_blacked_out_alone():
     assert np.array_equal(pixels[1][~inside], frames[1][~inside])
 
 
-def test_a_reviewed_region_in_a_frame_that_the_pixel_data_do_not_hold_is_refused():
+@pytest.mark.parametrize(
+    "regions",
+    [
+        # A frame that the Pixel Data do not hold.
+        [(1, (BOX,))],
+        # A region past the frame's six rows or eight columns, which is never
+        # clipped, since a mistyped region would then miss its text.
+        [(0, (TextBox(0, 0, 2, 9),))],
+        [(0, (TextBox(5, 0, 7, 2),))],
+        [(0, (TextBox(6, 0, 7, 2),))],
+    ],
+)
+def test_a_reviewed_region_that_does_not_fit_the_pixel_data_is_refused(regions):
     source = _source(_ct(_frame()))
 
     with pytest.raises(PixelDataRefused) as raised:
-        black_out_reviewed(source, source.dataset(), [(1, (BOX,))])
+        black_out_reviewed(source, source.dataset(), regions)
     assert raised.value.reason is TransformReason.REDACTION_MISMATCH
 
 
@@ -516,6 +593,15 @@ def test_the_statement_gives_the_code_only_after_review():
         "claims Clean Pixel Data only for an instance without top-level pixel "
         "data or whose regions a reviewer approved"
     ) in text
+
+
+def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
+    tables = load_iod_tables()
+    lacking = {
+        name for name in SUPPORTED_IODS if not tables.iods[name].lookup("(0028,0301)")
+    }
+
+    assert lacking == {"RT Plan", "RT Structure Set", "MR Spectroscopy"}
 
 
 def test_the_report_names_the_reviewed_pack_by_its_reference():
@@ -597,8 +683,10 @@ def test_the_command_records_each_redaction_verdict(first_run):
     )
     lines = stdout.splitlines()
     assert "  cleaned instances with their regions accepted: 1" in lines
-    assert "  cleaned instances with the reviewer's regions: 1" in lines
+    assert "  cleaned instances with the reviewer's regions added: 1" in lines
     assert "  cleaned instances rejected: 1" in lines
+    # Each added region, for the reviewer to check.
+    assert f"    instance {revised}, frame 0: adds [0, 0, 2, 2]" in lines
     assert "Quokka" not in stdout + stderr
 
 
@@ -621,7 +709,8 @@ def test_the_command_records_each_redaction_verdict(first_run):
             ("--redaction-revised", "{0}", "--redaction-region", "{0}", "-1", *"0022"),
             "before the first",
         ),
-        (("--redaction-accepted", "{1}"), "does not list as cleaned"),
+        (("--redaction-revised", "{0}"), "no region to add"),
+        (("--redaction-accepted", "{1}"), "does not list as cleaned and previewed"),
     ],
 )
 def test_the_command_refuses_verdicts_that_cannot_be_recorded(
@@ -668,7 +757,10 @@ def _second_run():
             Path(entry["source"]).name: entry["position"]
             for entry in document["instances"]
         }
-        attestation = _attest(pack, _verdicts(positions))
+        past = RedactionVerdict(
+            positions[_PAST], Redaction.REVISED, ((0, (TextBox(0, 0, 2, 9),)),)
+        )
+        attestation = _attest(pack, (*_verdicts(positions), past))
         # The verdicts follow the files' contents alone.
         again = {
             f"{number}{name}": files[name]
@@ -704,9 +796,13 @@ def _second_run():
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.1-01", "PS3.15-E.3.1-02")
-@pytest.mark.parametrize("name, region", [(_ACCEPTED, BOX), (_REVISED, REVISED)])
+@pytest.mark.parametrize(
+    "name, regions",
+    # A revised image has the reviewer's region as well as the finder's.
+    [(_ACCEPTED, (BOX,)), (_REVISED, (BOX, REVISED))],
+)
 def test_an_approved_image_is_released_with_its_reviewed_regions(
-    second_run, name, region
+    second_run, name, regions
 ):
     _, outcomes, _, _, _ = second_run
     number = _IMAGES.index(name)
@@ -718,7 +814,7 @@ def test_an_approved_image_is_released_with_its_reviewed_regions(
     assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
     assert dataset.BurnedInAnnotation == "NO"
     pixels = pydicom.pixels.pixel_array(dataset)
-    inside = _inside(frame.shape, region)
+    inside = np.logical_or.reduce([_inside(frame.shape, r) for r in regions])
     assert np.all(pixels[inside] == frame.min())
     assert np.array_equal(pixels[~inside], frame[~inside])
 
@@ -734,7 +830,19 @@ def test_a_rejected_image_is_sequestered(second_run):
     codes = [
         reason["code"] for entry in report["sequestered"] for reason in entry["reasons"]
     ]
-    assert codes == ["redaction-rejected"]
+    assert sorted(codes) == ["redaction-mismatch", "redaction-rejected"]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01")
+def test_an_image_whose_reviewed_region_goes_past_its_frame_is_sequestered(
+    second_run,
+):
+    _, outcomes, _, result, entries = second_run
+    names = {entry["position"]: Path(entry["source"]).name[1:] for entry in entries}
+
+    assert outcomes[_PAST] == ("sequestered", None)
+    (past,) = [o for o in result.outcomes if names[o.position] == _PAST]
+    assert past.reasons == (TransformReason.REDACTION_MISMATCH,)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.1-01")

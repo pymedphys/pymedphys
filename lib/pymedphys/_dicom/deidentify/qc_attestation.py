@@ -39,11 +39,12 @@ verdict is bound, through the pack, to the files the reviewer saw. A series
 without a verdict has none; the outcome does not depend on the verdicts.
 
 The attestation may likewise give a redaction verdict for any instance whose
-Pixel Data the Clean Pixel Data Option cleaned, by its run position, as the
-pack's ``redactions`` lists it, from the previews of each of its frames:
-:attr:`Redaction.ACCEPTED` where the pack's regions cover every burned-in
-text and may be blacked out, :attr:`Redaction.REVISED` with the reviewer's
-own regions, which are blacked out in their place, and
+Pixel Data the Clean Pixel Data Option cleaned and the pack previewed, by
+its run position, as the pack's ``redactions`` lists it, from the previews
+of each of its frames: :attr:`Redaction.ACCEPTED` where the pack's regions
+cover every burned-in text and may be blacked out, :attr:`Redaction.REVISED`
+with regions of the reviewer's own, which are blacked out as well as the
+pack's, so that together they cover every burned-in text, and
 :attr:`Redaction.REJECTED` where the instance is not to be released. Each
 is bound to the instance's source file as a face verdict is to its series'.
 
@@ -135,7 +136,7 @@ class Redaction(enum.Enum):
 
     # the pack's regions cover every burned-in text, and may be blacked out
     ACCEPTED = "accepted"
-    # the reviewer's own regions are to be blacked out in their place
+    # the reviewer's own regions are to be blacked out as well as the pack's
     REVISED = "revised"
     # the instance is not to be released
     REJECTED = "rejected"
@@ -151,10 +152,10 @@ class RedactionVerdict:
         The instance's run position, as the pack's ``redactions`` lists it.
     redaction : Redaction
     regions : tuple of (int, tuple of TextBox)
-        Under :attr:`Redaction.REVISED`, the regions to black out in place
-        of the pack's: each frame with a region, by index from 0, in order,
-        with its regions, sorted, each once, as the pack gives them; none
-        where the reviewer found no text. Empty under any other verdict.
+        Under :attr:`Redaction.REVISED`, the regions to black out as well as
+        the pack's, which the finder missed: each frame with a region, by
+        index from 0, in order, with its regions, sorted, each once, as the
+        pack gives them; at least one. Empty under any other verdict.
     """
 
     position: int
@@ -185,10 +186,10 @@ class RedactionVerdict:
                 f"the redaction verdict on instance {self.position} must list each "
                 "frame once, in order"
             )
-        if self.regions and self.redaction is not Redaction.REVISED:
+        if bool(self.regions) != (self.redaction is Redaction.REVISED):
             raise QcPackError(
                 f"the redaction verdict on instance {self.position} gives regions "
-                "only where it revises them"
+                "exactly where it revises them"
             )
 
 
@@ -448,7 +449,8 @@ def attest(
         none if not given.
     redactions : iterable of RedactionVerdict, optional
         A redaction verdict for each instance that the reviewer judged, of
-        those that the pack's ``redactions`` lists; none if not given.
+        those that the pack's ``redactions`` lists and that it previewed;
+        none if not given.
 
     Returns
     -------
@@ -461,8 +463,9 @@ def attest(
         preview that it lists is missing or changed, a face verdict names a
         run position that does not begin one of the pack's series, a
         redaction verdict names an instance that the pack's ``redactions``
-        does not list or gives a region in a frame that its Pixel Data do
-        not hold, or it has already been attested; or for any reason that
+        does not list, or lists as not previewed, or gives a region in a
+        frame that its Pixel Data do not hold, or it has already been
+        attested; or for any reason that
         :class:`Attestation` gives.
     """
     directory = Path(pack_directory)
@@ -479,13 +482,13 @@ def attest(
             + ", ".join(str(series) for series in unknown)
             + ", which begins none of the QC pack's series"
         )
-    cleaned = _redaction_frames(data)
+    cleaned = previewed_redactions(data)
     by_position = _redaction_verdicts(redactions)
     for verdict in by_position:
         if verdict.position not in cleaned:
             raise QcPackError(
                 f"a redaction verdict names run position {verdict.position}, "
-                "which the QC pack does not list as cleaned"
+                "which the QC pack does not list as cleaned and previewed"
             )
         if any(index >= cleaned[verdict.position] for index, _ in verdict.regions):
             raise QcPackError(
@@ -540,19 +543,39 @@ def _redaction_verdicts(
     return tuple(sorted(verdicts, key=lambda verdict: verdict.position))
 
 
-def _redaction_frames(data: bytes) -> dict[int, int]:
-    """Return how many frames each cleaned instance holds, by run position."""
-    document = json.loads(data.decode("ascii"))  # _reference_of has parsed it
+def previewed_redactions(data: bytes) -> dict[int, int]:
+    """Return how many frames each cleaned instance holds, by run position,
+    for the instances that the QC pack ``data`` previewed.
+
+    A cleaned instance that the pack lists as not previewed is left out,
+    since a reviewer cannot have seen its frames, and so can give it no
+    verdict.
+
+    Raises
+    ------
+    QcPackError
+        If the pack's ``redactions`` or ``not_previewed`` is not of its
+        format.
+    """
+    document = json.loads(data.decode("ascii"))
     redactions = document.get("redactions")
-    if not isinstance(redactions, list):
+    unshown = document.get("not_previewed")
+    if not isinstance(redactions, list) or not isinstance(unshown, list):
         raise QcPackError("the QC pack is not of its format")
+    hidden = set()
+    for entry in unshown:
+        position = entry.get("position") if isinstance(entry, dict) else None
+        if not isinstance(position, int):
+            raise QcPackError("the QC pack is not of its format")
+        hidden.add(position)
     frames = {}
     for entry in redactions:
         position = entry.get("position") if isinstance(entry, dict) else None
         count = entry.get("frames") if isinstance(entry, dict) else None
         if not isinstance(position, int) or not isinstance(count, int):
             raise QcPackError("the QC pack is not of its format")
-        frames[position] = count
+        if position not in hidden:
+            frames[position] = count
     return frames
 
 

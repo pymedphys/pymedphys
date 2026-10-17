@@ -21,14 +21,17 @@ frame and previews every frame, and records the SHA-256 of each source
 file. The reviewer gives a verdict on each instance that they judged, by its
 run position, in the pack's attestation
 (:mod:`~pymedphys._dicom.deidentify.qc_attestation`): the pack's regions
-accepted, their own regions in their place, or the instance rejected. A
-second run of the same files under a policy that selects the option is given
-that pack (:func:`read_redaction_review`). An instance whose source file
-has, by its SHA-256, an accepted or revised verdict has exactly the reviewed
-regions blacked out, without the finder, and satisfies the option; one with
-a rejected verdict is sequestered; and any other is cleaned by the finder
-and held for review, as in the first run, so a source file changed since the
-review no longer matches.
+accepted, the pack's regions with the reviewer's own added to them, or the
+instance rejected. A cleaned instance that the pack lists as not previewed
+can have no verdict, since the reviewer has not seen its frames. A second
+run of the same files under a policy that selects the option is given that
+pack (:func:`read_redaction_review`), and an attestation whose outcome is
+rejected is refused. An instance whose source file has, by its SHA-256, an
+accepted or revised verdict has exactly the reviewed regions blacked out,
+without the finder, and satisfies the option; one with a rejected verdict is
+sequestered; and any other is cleaned by the finder and held for review, as
+in the first run, so a source file changed since the review no longer
+matches.
 
 The verdicts are read by digest, never by path or run position, so the
 second run may discover the files in another order, or among others, which
@@ -45,7 +48,7 @@ import re
 import types
 from collections.abc import Mapping
 
-from .qc_attestation import Redaction, attested_pack
+from .qc_attestation import Outcome, Redaction, attested_pack, previewed_redactions
 from .qc_pack import QcPackError
 from .text_detection import TextBox
 
@@ -69,8 +72,8 @@ class RedactionReview:
     approved : mapping of bytes to regions
         The regions to black out in each source file whose instance the
         reviewer accepted or revised, by its SHA-256: each frame with a
-        region, by index from 0, in order, with its regions; none where the
-        reviewer found no text.
+        region, by index from 0, in order, with its regions; none where
+        neither the finder nor the reviewer found text.
     rejected : frozenset of bytes
         The SHA-256 of each source file whose instance the reviewer
         rejected.
@@ -149,20 +152,25 @@ def read_redaction_review(pack_directory: os.PathLike | str) -> RedactionReview:
     RedactionReview
         Empty of files where the attestation gives no verdict. An accepted
         instance's regions are those that the pack lists for it, and a
-        revised one's those that the verdict gives.
+        revised one's those and the ones that the verdict adds, in each
+        frame.
 
     Raises
     ------
     QcPackError
         If the directory holds no QC pack, or the pack has not been
-        attested; if either is not of its format, or the attestation is for
-        another pack; if the pack or a preview changed after it was attested;
-        if a verdict names an instance that the pack does not list as
-        cleaned, or that it lists without its source's SHA-256; or if
-        verdicts disagree on one source file. The message names no path and
-        no value.
+        attested, or its attestation's outcome is rejected; if either is not
+        of its format, or the attestation is for another pack; if the pack
+        or a preview changed after it was attested; if a verdict names an
+        instance that the pack does not list as cleaned and previewed, or
+        that it lists without its source's SHA-256; or if verdicts disagree
+        on one source file. The message names no path and no value.
     """
     attestation, data = attested_pack(pack_directory)
+    if attestation.outcome is not Outcome.ATTESTED:
+        raise QcPackError(
+            "the QC pack's attestation rejected it, so its verdicts release nothing"
+        )
     digests, cleaned = _cleaned(data)
     # The regions to black out in each source file, or None to reject it.
     decisions: dict[bytes, Regions | None] = {}
@@ -170,7 +178,7 @@ def read_redaction_review(pack_directory: os.PathLike | str) -> RedactionReview:
         if verdict.position not in cleaned or verdict.position not in digests:
             raise QcPackError(
                 "a redaction verdict names an instance that the QC pack does not "
-                "list as cleaned"
+                "list as cleaned and previewed"
             )
         digest = digests[verdict.position]
         if verdict.redaction is Redaction.REJECTED:
@@ -178,7 +186,7 @@ def read_redaction_review(pack_directory: os.PathLike | str) -> RedactionReview:
         elif verdict.redaction is Redaction.ACCEPTED:
             decided = cleaned[verdict.position]
         else:
-            decided = verdict.regions
+            decided = _added(cleaned[verdict.position], verdict.regions)
         if decisions.setdefault(digest, decided) != decided:
             raise QcPackError(
                 "the redaction verdicts disagree on a source file that the QC "
@@ -195,9 +203,18 @@ def read_redaction_review(pack_directory: os.PathLike | str) -> RedactionReview:
     )
 
 
+def _added(regions: Regions, more: Regions) -> Regions:
+    """Return ``regions`` with ``more`` added, each frame's boxes sorted and
+    distinct."""
+    by_frame: dict[int, set[TextBox]] = {}
+    for index, boxes in (*regions, *more):
+        by_frame.setdefault(index, set()).update(boxes)
+    return tuple((index, tuple(sorted(by_frame[index]))) for index in sorted(by_frame))
+
+
 def _cleaned(data: bytes) -> tuple[dict[int, bytes], dict[int, Regions]]:
-    """Return each instance's source digest, and each cleaned instance's
-    regions, by run position."""
+    """Return each instance's source digest, and the regions of each cleaned
+    instance that the pack previewed, by run position."""
     malformed = QcPackError("the QC pack is not of its format")
     document = json.loads(data.decode("ascii"))  # attested_pack has parsed it
     instances = document.get("instances")
@@ -229,4 +246,9 @@ def _cleaned(data: bytes) -> tuple[dict[int, bytes], dict[int, Regions]]:
         raise malformed from None
     if not all(_is_regions(regions) for regions in cleaned.values()):
         raise malformed
-    return digests, cleaned
+    previewed = previewed_redactions(data)
+    return digests, {
+        position: regions
+        for position, regions in cleaned.items()
+        if position in previewed
+    }
