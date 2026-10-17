@@ -221,7 +221,7 @@ def test_the_described_fallback_is_the_maintainers_decision():
     assert (
         "takes the action that the policy gives it without Clean Descriptors"
     ) in actions
-    assert "decided on 6 October 2026 (D-009)" in actions
+    assert "decided on 6 October 2026, unless" in actions
     inserted = _section(text, "Attributes inserted")
     assert "not yet described" not in inserted
 
