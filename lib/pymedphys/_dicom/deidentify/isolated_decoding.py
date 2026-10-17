@@ -42,11 +42,12 @@ to them as they would in process: a warning that the caller's filters turn
 into an error makes the call raise it. Each warning keeps its message and
 line, its category where that is one of Python's built-in warning classes,
 and else is a :class:`UserWarning`, and the module that issued it where
-the caller has imported a module of that name; nothing in the child shows
-or handles either. The child takes from the caller whether pydicom
-imitates its future behaviour, its validation mode for reading, and the
-level of its logger, and reads with pydicom's configuration as it is when
-pydicom is imported for the rest.
+the caller has imported a plain module of that name, not a lazy one, whose
+attributes would import what it stands for; nothing in the child shows or
+handles either. The child takes from the caller whether pydicom imitates
+its future behaviour, its validation mode for reading, and the level of
+its logger, and reads with pydicom's configuration as it is when pydicom
+is imported for the rest.
 
 What the child sends back is read as JSON, never unpickled, and is checked
 to have the form that :func:`_serve` gives it, in no more than 16 MiB, so
@@ -59,10 +60,9 @@ dict of them, with a tuple returned as a list. What the child does other
 than send data back is not contained: what a native library writes to the
 standard output or error stream goes to the caller's standard error
 stream, unredacted, as it would in process, and the child runs with the
-caller's permissions. The
-child's core file size limit is zero, where the platform has one, so that
-a decoder that aborts writes no core file holding the file it was
-decoding. Where the system passes core files to a program instead, as a
+caller's permissions. The child's core file size limit is zero, where the
+platform has one, so that a decoder that aborts writes no core file
+holding the file it was decoding. Where the system passes core files to a program instead, as a
 ``core_pattern`` that starts with ``|`` does on Linux, the kernel leaves
 that limit to the program: systemd-coredump keeps no core file under it.
 
@@ -74,7 +74,8 @@ in a process that it does, logs a warning saying so, which names only the
 type of the error. Before anything is imported in the child, its standard
 output is set aside for results, so that nothing written as a module is
 imported can be read as one. A process forked from the caller starts its
-own child, rather than sharing the caller's pipes to it. A call that does
+own child, rather than sharing the caller's pipes to it, and the child is
+ended as the caller exits. A call that does
 not return, such as a decoder that loops forever, is waited for, as it
 would be in process: a time limit would make the outcome depend on the
 machine's speed. Calls are made one at a time, whichever thread makes them.
@@ -82,6 +83,7 @@ machine's speed. Calls are made one at a time, whichever thread makes them.
 
 from __future__ import annotations
 
+import atexit
 import builtins
 import dataclasses
 import json
@@ -96,6 +98,7 @@ import struct
 import subprocess
 import sys
 import threading
+import types
 import warnings
 from collections.abc import Callable, Sequence
 from typing import IO, Any
@@ -112,6 +115,8 @@ _CATEGORIES: dict[str, type[Warning]] = {
     for name, value in vars(builtins).items()
     if isinstance(value, type) and issubclass(value, Warning)
 }
+# The largest line that a warning can be issued from.
+_LINES = (1 << 31) - 1
 # Where a warning is said to be from when the caller has not imported the
 # module that the child names.
 _ELSEWHERE = "<decoding process>"
@@ -199,6 +204,8 @@ class _Child:
             If the child ended first, or sent more than 16 MiB.
         ValueError
             If what it sent is not JSON.
+        RecursionError
+            If what it sent is JSON nested too deeply to read.
         """
         return json.loads(_received(self.stdout, _RESULT_BYTES))
 
@@ -256,8 +263,9 @@ _inherited: list[_Child] = []
 def _after_fork() -> None:
     """Start afresh in a forked process, which shares its parent's pipes to
     the child, and may have been forked while another thread held the lock."""
-    global _LOCK, _child  # pylint: disable = global-statement
+    global _LOCK, _child, _unavailable_logged  # pylint: disable = global-statement
     _LOCK = threading.Lock()
+    _unavailable_logged = False
     if _child is not None:
         _inherited.append(_child)
     _child = None
@@ -379,7 +387,7 @@ def _warned(entry: Any) -> _Warned:
         and isinstance(category, str)
         and (module is None or isinstance(module, str))
         and _is_int(lineno)
-        and lineno >= 0
+        and 0 <= lineno <= _LINES
     ):
         raise ValueError()
     return _Warned(text, _CATEGORIES.get(category, UserWarning), module, lineno)
@@ -417,9 +425,8 @@ def _reissue(returned: _Returned) -> None:
     turn into an exception raises it, as in process.
     """
     for warned in returned.warned:
-        imported = sys.modules.get(warned.module) if warned.module else None
-        filename = getattr(imported, "__file__", None)
-        if isinstance(filename, str):
+        filename = _file_of(sys.modules.get(warned.module)) if warned.module else None
+        if filename is not None:
             module = warned.module
         else:
             module = filename = _ELSEWHERE
@@ -432,7 +439,28 @@ def _reissue(returned: _Returned) -> None:
             _REGISTRIES.setdefault(module, {}),
         )
     for logged in returned.logged:
-        logging.getLogger(logged.name).log(logged.level, "%s", logged.text)
+        _logger_named(logged.name).log(logged.level, "%s", logged.text)
+
+
+def _logger_named(name: str) -> logging.Logger:
+    """Return the caller's logger of that name, if it has one, or else
+    pydicom's, so that the names the child sends create no loggers."""
+    logger = logging.Logger.manager.loggerDict.get(name)
+    return logger if isinstance(logger, logging.Logger) else logging.getLogger(_LOGGER)
+
+
+def _file_of(module: object) -> str | None:
+    """Return the file that ``module`` was imported from, if it is a plain
+    module that has one.
+
+    Only a plain module's own attributes are read: a lazy module, such as
+    those of :mod:`pymedphys._imports`, imports what it stands for when an
+    attribute of it is read.
+    """
+    if type(module) is not types.ModuleType:  # pylint: disable = unidiomatic-typecheck
+        return None
+    filename = module.__dict__.get("__file__")
+    return filename if isinstance(filename, str) else None
 
 
 def _discard() -> None:
@@ -441,6 +469,10 @@ def _discard() -> None:
     if _child is not None:
         _child.close()
         _child = None
+
+
+# So that the child ends with the process, not as the interpreter is torn down.
+atexit.register(_discard)
 
 
 def _send(stream: IO[bytes], message: object) -> None:
@@ -569,7 +601,7 @@ def _category_name(category: type[Warning]) -> str:
 def _module_named(filename: str) -> str | None:
     """Return the name of the imported module that ``filename`` holds, if any."""
     for name, module in list(sys.modules.items()):
-        if getattr(module, "__file__", None) == filename:
+        if _file_of(module) == filename:
             return name
     return None
 

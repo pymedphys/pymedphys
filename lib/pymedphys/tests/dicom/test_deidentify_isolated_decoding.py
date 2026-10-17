@@ -22,6 +22,7 @@ import os
 import re
 import subprocess
 import sys
+import types
 import warnings
 
 from pymedphys._imports import pydicom, pytest
@@ -52,6 +53,25 @@ def reading_mode():
 def logger_level():
     """Return the level of pydicom's logger, in the child."""
     return logging.getLogger("pydicom").level
+
+
+def modules():
+    """Return the names of the modules imported in the child."""
+    return sorted(sys.modules)
+
+
+def _unimported_alias():
+    """Return the name of a lazy module of pymedphys._imports whose target
+    has not been imported."""
+    for name, module in list(sys.modules.items()):
+        target = name.removeprefix("pymedphys._imports.")
+        if (
+            target != name
+            and type(module) is not types.ModuleType  # pylint: disable = unidiomatic-typecheck
+            and target.split(".")[0] not in sys.modules
+        ):
+            return name
+    return pytest.skip("every lazy module's target is imported")
 
 
 def _reissued(*warned):
@@ -116,6 +136,7 @@ def test_a_result_is_returned_as_json_gives_it():
         [True, None, [["text", "UserWarning", None]], []],
         [True, None, [["text", "UserWarning", None, True]], []],
         [True, None, [["text", "UserWarning", None, -1]], []],
+        [True, None, [["text", "UserWarning", None, 1 << 31]], []],
         [True, None, [[b"text".hex(), 1, None, 1]], []],
         [True, None, [], [["os", 30, "text"]]],
         [True, None, [], [["pydicomx", 30, "text"]]],
@@ -173,6 +194,41 @@ def test_a_warning_is_from_the_callers_module_of_that_name_or_from_elsewhere():
     assert elsewhere.filename == unnamed.filename == "<decoding process>"
 
 
+def test_a_lazy_module_named_by_the_child_is_not_imported_from():
+    alias = _unimported_alias()
+    imported = set(sys.modules)
+
+    (lazy,) = _reissued(["text", "UserWarning", alias, 1])
+
+    assert lazy.filename == "<decoding process>"
+    assert set(sys.modules) == imported
+
+
+def test_the_child_names_the_module_that_warned_without_importing_others():
+    before = run(modules)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        run(warnings.warn, SENTINEL)
+
+    (warned,) = caught
+    assert warned.filename == isolated_decoding.__file__
+    assert run(modules) == before
+
+
+def test_a_log_record_of_a_logger_that_the_caller_lacks_is_pydicoms(caplog):
+    name = "pydicom.no_such_logger"
+    assert name not in logging.Logger.manager.loggerDict
+    returned = isolated_decoding._returned(  # pylint: disable = protected-access
+        [True, None, [], [[name, logging.WARNING, SENTINEL]]]
+    )
+
+    with caplog.at_level(logging.WARNING, logger="pydicom"):
+        isolated_decoding._reissue(returned)  # pylint: disable = protected-access
+
+    assert [record.name for record in caplog.records] == ["pydicom"]
+    assert name not in logging.Logger.manager.loggerDict
+
+
 def test_a_warning_from_each_module_is_shown_once_for_that_module():
     caught = _reissued(
         ["text", "UserWarning", "json", 1],
@@ -197,7 +253,7 @@ def test_the_child_does_not_run_the_main_module_again(tmp_path):
     )
 
     completed = subprocess.run(
-        [sys.executable, os.fspath(script)],
+        [sys.executable, "-W", "always::ResourceWarning", os.fspath(script)],
         capture_output=True,
         check=False,
         env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
@@ -207,6 +263,8 @@ def test_the_child_does_not_run_the_main_module_again(tmp_path):
 
     assert completed.returncode == 0
     assert completed.stdout.split() == ["3"]
+    # The child is ended as the script exits.
+    assert "ResourceWarning" not in completed.stderr
 
 
 def test_a_warning_in_the_child_is_issued_again_in_the_caller():
@@ -343,14 +401,19 @@ def test_what_is_written_to_standard_output_as_the_child_starts_is_not_read(
 
 @pytest.mark.skipif(not hasattr(os, "fork"), reason="no fork")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
-def test_a_forked_process_starts_its_own_child():
+def test_a_forked_process_starts_its_own_child(monkeypatch):
     run(operator.add, 1, 2)
+    monkeypatch.setattr(isolated_decoding, "_unavailable_logged", True)
 
     pid = os.fork()
     if pid == 0:
         code = 1
         try:
-            if isolated_decoding._child is None and run(operator.add, 2, 2) == 4:  # pylint: disable = protected-access
+            if (
+                isolated_decoding._child is None  # pylint: disable = protected-access
+                and not isolated_decoding._unavailable_logged  # pylint: disable = protected-access
+                and run(operator.add, 2, 2) == 4
+            ):
                 code = 0
         finally:
             os._exit(code)  # pylint: disable = protected-access
