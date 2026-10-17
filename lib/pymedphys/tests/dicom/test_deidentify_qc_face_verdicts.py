@@ -422,9 +422,12 @@ def test_the_command_records_each_verdict(pack):
         {"series": 0, "face": "absent"},
         {"series": 1, "face": "present"},
     ]
-    assert stdout.splitlines()[-3:] == [
+    assert stdout.splitlines()[-6:] == [
         "  series without a recognisable face: 1",
         "  series with a recognisable face: 1",
+        "  cleaned instances with their regions accepted: 0",
+        "  cleaned instances with the reviewer's regions: 0",
+        "  cleaned instances rejected: 0",
         "the release report published with the run is unchanged",
     ]
     _assert_quotes_nothing(stdout, stderr)

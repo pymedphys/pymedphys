@@ -38,6 +38,15 @@ the pack records the SHA-256 of each source file of the series, so the
 verdict is bound, through the pack, to the files the reviewer saw. A series
 without a verdict has none; the outcome does not depend on the verdicts.
 
+The attestation may likewise give a redaction verdict for any instance whose
+Pixel Data the Clean Pixel Data Option cleaned, by its run position, as the
+pack's ``redactions`` lists it, from the previews of each of its frames:
+:attr:`Redaction.ACCEPTED` where the pack's regions cover every burned-in
+text and may be blacked out, :attr:`Redaction.REVISED` with the reviewer's
+own regions, which are blacked out in their place, and
+:attr:`Redaction.REJECTED` where the instance is not to be released. Each
+is bound to the instance's source file as a face verdict is to its series'.
+
 The person releasing the data may also confirm, yes or no, that the output
 was checked for its intended use and that its residual risk was accepted
 under the institution's governance. Each confirmation is optional, holds no
@@ -62,14 +71,15 @@ import json
 import os
 import re
 import stat
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 
 from . import qc_pack, qc_store
 from .qc_pack import QcPackError
+from .text_detection import TextBox
 
 # The format of the attestation document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-attestation/2"
+FORMAT = "pymedphys-deid-qc-attestation/3"
 ATTESTATION_FILE = "attestation.json"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
@@ -118,6 +128,90 @@ class FaceVerdict:
             raise QcPackError("a face verdict needs its series' first run position")
         if not isinstance(self.face, Face):
             raise QcPackError(f"the face verdict on series {self.series} needs a Face")
+
+
+class Redaction(enum.Enum):
+    """A reviewer's verdict on an instance whose Pixel Data were cleaned."""
+
+    # the pack's regions cover every burned-in text, and may be blacked out
+    ACCEPTED = "accepted"
+    # the reviewer's own regions are to be blacked out in their place
+    REVISED = "revised"
+    # the instance is not to be released
+    REJECTED = "rejected"
+
+
+@dataclasses.dataclass(frozen=True)
+class RedactionVerdict:
+    """A reviewer's redaction verdict on one instance of the pack.
+
+    Attributes
+    ----------
+    position : int
+        The instance's run position, as the pack's ``redactions`` lists it.
+    redaction : Redaction
+    regions : tuple of (int, tuple of TextBox)
+        Under :attr:`Redaction.REVISED`, the regions to black out in place
+        of the pack's: each frame with a region, by index from 0, in order,
+        with its regions, sorted, each once, as the pack gives them; none
+        where the reviewer found no text. Empty under any other verdict.
+    """
+
+    position: int
+    redaction: Redaction
+    regions: tuple[tuple[int, tuple[TextBox, ...]], ...] = ()
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.position, int)
+            or isinstance(self.position, bool)
+            or self.position < 0
+        ):
+            raise QcPackError("a redaction verdict needs its instance's run position")
+        if not isinstance(self.redaction, Redaction):
+            raise QcPackError(
+                f"the redaction verdict on instance {self.position} needs a Redaction"
+            )
+        if not isinstance(self.regions, tuple) or not all(
+            _is_frame_regions(entry) for entry in self.regions
+        ):
+            raise QcPackError(
+                f"the redaction verdict on instance {self.position} needs regions "
+                "of its frames, each a frame index with sorted, distinct boxes"
+            )
+        frames = [index for index, _ in self.regions]
+        if frames != sorted(set(frames)):
+            raise QcPackError(
+                f"the redaction verdict on instance {self.position} must list each "
+                "frame once, in order"
+            )
+        if self.regions and self.redaction is not Redaction.REVISED:
+            raise QcPackError(
+                f"the redaction verdict on instance {self.position} gives regions "
+                "only where it revises them"
+            )
+
+
+def _is_frame_regions(entry: object) -> bool:
+    if not (isinstance(entry, tuple) and len(entry) == 2):
+        return False
+    index, boxes = entry
+    return (
+        isinstance(index, int)
+        and not isinstance(index, bool)
+        and index >= 0
+        and isinstance(boxes, tuple)
+        and bool(boxes)
+        and all(_is_box(box) for box in boxes)
+        and list(boxes) == sorted(set(boxes))
+    )
+
+
+def _is_box(box: object) -> bool:
+    return isinstance(box, TextBox) and all(
+        isinstance(end, int) and not isinstance(end, bool)
+        for end in dataclasses.astuple(box)
+    )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -173,6 +267,9 @@ class Attestation:
     faces : tuple of FaceVerdict
         The face verdicts, by series in run position order, each series
         once; empty where the reviewer gave none.
+    redactions : tuple of RedactionVerdict
+        The redaction verdicts, by instance in run position order, each
+        instance once; empty where the reviewer gave none.
     """
 
     reference: str
@@ -184,6 +281,7 @@ class Attestation:
     intended_use_checked: bool | None = None
     residual_risk_accepted: bool | None = None
     faces: tuple[FaceVerdict, ...] = ()
+    redactions: tuple[RedactionVerdict, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -217,6 +315,18 @@ class Attestation:
         if series != sorted(set(series)):
             raise QcPackError(
                 "an attestation gives each series at most one face verdict, in order"
+            )
+        if not isinstance(self.redactions, tuple) or not all(
+            isinstance(verdict, RedactionVerdict) for verdict in self.redactions
+        ):
+            raise QcPackError(
+                "an attestation's redaction verdicts must be RedactionVerdicts"
+            )
+        positions = [verdict.position for verdict in self.redactions]
+        if positions != sorted(set(positions)):
+            raise QcPackError(
+                "an attestation gives each instance at most one redaction verdict, "
+                "in order"
             )
 
     def __repr__(self) -> str:
@@ -284,6 +394,22 @@ def attestation_document(attestation: Attestation) -> dict:
             {"series": verdict.series, "face": verdict.face.value}
             for verdict in attestation.faces
         ],
+        "redactions": [
+            {
+                "position": verdict.position,
+                "redaction": verdict.redaction.value,
+                "regions": [
+                    {
+                        "frame": index,
+                        "boxes": [
+                            [box.top, box.left, box.bottom, box.right] for box in boxes
+                        ],
+                    }
+                    for index, boxes in verdict.regions
+                ],
+            }
+            for verdict in attestation.redactions
+        ],
     }
 
 
@@ -297,6 +423,7 @@ def attest(
     intended_use_checked: bool | None = None,
     residual_risk_accepted: bool | None = None,
     faces: Mapping[int, Face] | None = None,
+    redactions: Iterable[RedactionVerdict] = (),
 ) -> Attestation:
     """Attest to a QC pack, and write the attestation beside it.
 
@@ -319,6 +446,9 @@ def attest(
         A face verdict for each series that the reviewer judged, by the run
         position of its first instance, as the pack's ``series`` lists it;
         none if not given.
+    redactions : iterable of RedactionVerdict, optional
+        A redaction verdict for each instance that the reviewer judged, of
+        those that the pack's ``redactions`` lists; none if not given.
 
     Returns
     -------
@@ -329,8 +459,10 @@ def attest(
     QcPackError
         If the directory holds no QC pack, the pack is not of its format, a
         preview that it lists is missing or changed, a face verdict names a
-        run position that does not begin one of the pack's series, or it has
-        already been attested; or for any reason that
+        run position that does not begin one of the pack's series, a
+        redaction verdict names an instance that the pack's ``redactions``
+        does not list or gives a region in a frame that its Pixel Data do
+        not hold, or it has already been attested; or for any reason that
         :class:`Attestation` gives.
     """
     directory = Path(pack_directory)
@@ -347,6 +479,19 @@ def attest(
             + ", ".join(str(series) for series in unknown)
             + ", which begins none of the QC pack's series"
         )
+    cleaned = _redaction_frames(data)
+    by_position = _redaction_verdicts(redactions)
+    for verdict in by_position:
+        if verdict.position not in cleaned:
+            raise QcPackError(
+                f"a redaction verdict names run position {verdict.position}, "
+                "which the QC pack does not list as cleaned"
+            )
+        if any(index >= cleaned[verdict.position] for index, _ in verdict.regions):
+            raise QcPackError(
+                f"the redaction verdict on run position {verdict.position} gives "
+                "a region in a frame that its Pixel Data do not hold"
+            )
     attestation = Attestation(
         reference=reference,
         pack_digest=hashlib.sha256(data).hexdigest(),
@@ -361,6 +506,7 @@ def attest(
         intended_use_checked=intended_use_checked,
         residual_risk_accepted=residual_risk_accepted,
         faces=verdicts,
+        redactions=by_position,
     )
     text = json.dumps(attestation_document(attestation), indent=2, ensure_ascii=True)
     try:
@@ -378,6 +524,36 @@ def _face_verdicts(faces: Mapping[int, Face]) -> tuple[FaceVerdict, ...]:
         raise QcPackError("faces must map a series' first run position to a Face")
     verdicts = [FaceVerdict(series, face) for series, face in faces.items()]
     return tuple(sorted(verdicts, key=lambda verdict: verdict.series))
+
+
+def _redaction_verdicts(
+    redactions: Iterable[RedactionVerdict],
+) -> tuple[RedactionVerdict, ...]:
+    """Return redaction verdicts in run position order, after checking them."""
+    if isinstance(redactions, (str, bytes, Mapping)) or not isinstance(
+        redactions, Iterable
+    ):
+        raise QcPackError("redactions must be RedactionVerdicts")
+    verdicts = list(redactions)
+    if not all(isinstance(verdict, RedactionVerdict) for verdict in verdicts):
+        raise QcPackError("redactions must be RedactionVerdicts")
+    return tuple(sorted(verdicts, key=lambda verdict: verdict.position))
+
+
+def _redaction_frames(data: bytes) -> dict[int, int]:
+    """Return how many frames each cleaned instance holds, by run position."""
+    document = json.loads(data.decode("ascii"))  # _reference_of has parsed it
+    redactions = document.get("redactions")
+    if not isinstance(redactions, list):
+        raise QcPackError("the QC pack is not of its format")
+    frames = {}
+    for entry in redactions:
+        position = entry.get("position") if isinstance(entry, dict) else None
+        count = entry.get("frames") if isinstance(entry, dict) else None
+        if not isinstance(position, int) or not isinstance(count, int):
+            raise QcPackError("the QC pack is not of its format")
+        frames[position] = count
+    return frames
 
 
 def _firsts(data: bytes) -> frozenset[int]:
@@ -477,10 +653,12 @@ def _attestation_from(content: bytes) -> Attestation:
             # has none, which reads as not stated.
             releaser = document.get("releaser", {})
             faces = document["faces"]
+            redactions = document["redactions"]
             if (
                 isinstance(coverage, dict)
                 and isinstance(releaser, dict)
                 and isinstance(faces, list)
+                and isinstance(redactions, list)
             ):
                 if set(releaser) - {"intended_use_checked", "residual_risk_accepted"}:
                     raise QcPackError("the attestation is not of its format")
@@ -499,12 +677,29 @@ def _attestation_from(content: bytes) -> Attestation:
                         FaceVerdict(verdict["series"], Face(verdict["face"]))
                         for verdict in faces
                     ),
+                    redactions=tuple(map(_redaction_verdict_from, redactions)),
                 )
     # UnicodeError and QcPackError are ValueErrors; TypeError covers wrong
     # types and Coverage's unknown or missing fields.
     except (ValueError, KeyError, TypeError):
         pass
     raise QcPackError("the attestation is not of its format")
+
+
+def _redaction_verdict_from(verdict: dict) -> RedactionVerdict:
+    """Rebuild a written redaction verdict; malformed input raises as
+    :func:`_attestation_from` expects."""
+    return RedactionVerdict(
+        verdict["position"],
+        Redaction(verdict["redaction"]),
+        tuple(
+            (
+                regions["frame"],
+                tuple(TextBox(*box) for box in regions["boxes"]),
+            )
+            for regions in verdict["regions"]
+        ),
+    )
 
 
 def _pack_bytes(directory: Path) -> bytes:

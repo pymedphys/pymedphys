@@ -47,6 +47,10 @@ neither GDCM nor pylibjpeg-openjpeg; the engine then sequesters the images as
 ``no-decoder``, which the instance transform tests cover.
 """
 
+# Every check runs over every policy run's output, so they stay in one
+# module.
+# pylint: disable = too-many-lines
+
 import dataclasses
 import io
 import json
@@ -451,7 +455,8 @@ def test_each_cleaned_image_is_listed_and_previewed_frame_by_frame(policy_run):
         if blacked_out in outcome.reasons
     ]
     assert [entry["position"] for entry in pack["redactions"]] == cleaned
-    assert bool(cleaned) == (spec.finder is not None)
+    # A run given a review applies the reviewed regions and holds nothing.
+    assert bool(cleaned) == (spec.finder is not None and spec.redaction_review is None)
     # Every cleaned image is previewed, whatever its IOD and layout.
     assert not {entry["position"] for entry in pack["not_previewed"]} & set(cleaned)
     previews = [entry for entry in pack["previews"] if entry["kind"] == "redaction"]
@@ -570,7 +575,17 @@ def test_released_images_keep_their_transfer_syntax_and_pixels(policy_run):
         if "PixelData" not in source:
             continue
         images += 1
-        assert (dataset.pixel_array == source.pixel_array).all(), file.name
+        pixels, expected = dataset.pixel_array, source.pixel_array
+        if policy_run.spec.redaction_review is not None:
+            # Each frame's reviewed corner holds one value, its fill.
+            frames = int(source.get("NumberOfFrames") or 1)
+            rgb = source.get("SamplesPerPixel", 1) > 1
+            shape = (frames, *pixels.shape[-3 if rgb else -2 :])
+            pixels, expected = pixels.reshape(shape), expected.reshape(shape).copy()
+            corners = pixels[:, :2, :3].reshape(frames, -1)
+            assert (corners == corners[:, :1]).all(), file.name
+            expected[:, :2, :3] = pixels[:, :2, :3]
+        assert (pixels == expected).all(), file.name
         if text in file.data:
             # Cut from the codestreams, which were not recompressed.
             assert text not in data
@@ -724,6 +739,22 @@ def test_recognizable_visual_features_is_no_exactly_where_the_option_is_claimed(
             assert written == "NO", corpus.files[position].manifest.iod
         else:
             assert written == source.get("RecognizableVisualFeatures")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-02")
+def test_burned_in_annotation_is_no_exactly_where_the_option_is_claimed(policy_run):
+    corpus, released = policy_run.corpus, policy_run.released
+    claimed = "clean_pixel_data" in policy_run.spec.selected
+    assert released
+
+    for position, data in released.items():
+        source = _read(corpus.files[position].data)
+        written = _read(data).get("BurnedInAnnotation")
+        if claimed:
+            # In every IOD, whether or not it defines the attribute.
+            assert written == "NO", corpus.files[position].manifest.iod
+        else:
+            assert written == source.get("BurnedInAnnotation")
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-05", "PS3.15-E.2-01")

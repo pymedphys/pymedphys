@@ -659,6 +659,24 @@ _REVIEW_CONDITIONS = {
         "name, a name emptied without review, or another attribute "
         "given C that that action keeps does not gain that code"
     ),
+    markers.OPTION_CODES["clean_pixel_data"]: (
+        "only in an instance that has nothing for the option to clean, having "
+        "no Pixel Data, Float Pixel Data, or Double Float Pixel Data at the top "
+        "level of its data set, or whose source file is, by its SHA-256, one "
+        "whose blacked-out regions a reviewer accepted, or replaced with their "
+        "own, in the attested QC pack of an earlier run of the same files. The "
+        "engine then blacks out exactly the regions that the reviewer approved, "
+        "without its text finder. Such an instance also has Burned In "
+        "Annotation (0028,0301) set to NO, as PS3.15 E.3.1 requires, including "
+        "in an IOD that does not define the attribute, which of the supported "
+        "IODs are RT Plan, RT Structure Set, and MR Spectroscopy. There it is a "
+        "standard attribute of a Standard Extended SOP Class (PS3.2 Section "
+        "7.3), added to the top level of the data set as an attribute of the "
+        "instance, where every PS3.3 module that defines it, such as the "
+        "General Image Module, places it. Any other instance with Pixel Data "
+        "does not gain that code: it is held for review, or sequestered where "
+        "the reviewer rejected it, so it is never released"
+    ),
     markers.OPTION_CODES["clean_recognizable_visual_features"]: (
         "only in an instance that cannot show a face, having no Pixel Data, "
         "Float Pixel Data, or Double Float Pixel Data and not being an RT "

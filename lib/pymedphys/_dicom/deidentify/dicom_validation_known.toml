@@ -50,6 +50,35 @@ empty components and their delimiters may be omitted.
 validator = "dciodvfy"
 severity = "warning"
 message = "Attribute is not present in standard DICOM IOD"
+paths = ["(0028,0301)"]
+category = "profile"
+requires = "clean-pixel-data-claimed"
+reason = """
+PS3.15 E.3.1 has the Clean Pixel Data Option add Burned In Annotation with
+the value NO, without an exception for an IOD that does not define it, such
+as RT Plan, RT Structure Set, or MR Spectroscopy. There it is a standard
+attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), which the
+conformance statement describes. The entry applies only to an output that
+claims the option by its code, so the attribute added to any other output
+stays unexplained.
+"""
+
+[[difference]]
+validator = "dicom-validator"
+severity = "error"
+message = "TagUnexpected (Type Undefined)"
+paths = ["(0028,0301)"]
+category = "profile"
+requires = "clean-pixel-data-claimed"
+reason = """
+As for dciodvfy's warning: E.3.1 adds Burned In Annotation with the
+option's code even where the IOD does not define it.
+"""
+
+[[difference]]
+validator = "dciodvfy"
+severity = "warning"
+message = "Attribute is not present in standard DICOM IOD"
 paths = ["(0028,0302)"]
 category = "profile"
 requires = "clean-recognizable-visual-features-claimed"

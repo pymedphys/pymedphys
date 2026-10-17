@@ -303,15 +303,16 @@ When this Option is specified in addition to the Basic Application Level Confide
 '''
 status = "partial"
 milestone = "M3"
-decisions = ["D-015", "D-037"]
+decisions = ["D-015", "D-037", "D-048"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/pixel_cleaning.py",
+  "_dicom/deidentify/redaction_review.py",
   "_dicom/deidentify/text_detection.py",
 ]
 note = '''
 Text that a text finder finds in native Pixel Data is blacked out, whatever it says, and every instance cleaned is held for review (D-037).
-No instance is released with its Pixel Data cleaned, or claims the option, until a reviewer's decision can be applied.
+A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted or gave in their place, without the finder, and releases the instance with the option's code; an instance that the reviewer rejected is sequestered (D-048).
 Compressed Pixel Data is sequestered.
 '''
 
@@ -321,12 +322,16 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The Attribute Burned In Annotation (0028,0301) shall be added to the Data Set with a Value of "NO".
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-015", "D-037"]
+status = "implemented"
+decisions = ["D-012", "D-015", "D-048"]
+implementation = [
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/markers.py",
+]
 note = '''
 Applies only with the Clean Pixel Data Option.
-Burned In Annotation is kept as received (D-015) until a reviewer's decision on an instance's cleaned Pixel Data can be applied, which is then to set it to NO (D-037).
+An instance that satisfies the option, because it holds no top-level pixel data or a reviewer approved its regions, has Burned In Annotation set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, and MR Spectroscopy IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-048).
+Any other instance keeps Burned In Annotation as received, and it is never set to NO otherwise (D-015).
 '''
 
 [[requirement]]

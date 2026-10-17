@@ -39,6 +39,7 @@ import contextlib
 import dataclasses
 import functools
 import hashlib
+import io
 import types
 from collections.abc import Callable, Iterator, Mapping
 from typing import Any
@@ -55,6 +56,7 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.pixel_cleaning import TextFinder
+from pymedphys._dicom.deidentify.redaction_review import RedactionReview
 from pymedphys._dicom.deidentify.policy import (
     PRESETS,
     Policy,
@@ -71,6 +73,7 @@ from pymedphys._dicom.deidentify.reviewed_roi_names import (
     ReviewedName,
     ReviewedNames,
 )
+from pymedphys._dicom.deidentify.text_detection import TextBox
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 
 from . import _synthetic_compressed as compressed
@@ -78,6 +81,12 @@ from . import _synthetic_compressed as compressed
 KEY = DeidKey(bytes(range(32)))
 # An invented reference of a QC pack.
 FACE_REVIEW_REFERENCE = "A-" + "0123456789abcdef" * 2
+# An invented reference of the QC pack whose redaction verdicts a run applies.
+REDACTION_REVIEW_REFERENCE = "A-" + "fedcba9876543210" * 2
+# The region that the Clean Pixel Data run's finder marks in every frame: the
+# top left corner, two rows by three columns, which every frame of the corpus
+# has.
+CORNER = TextBox(0, 0, 2, 3)
 
 # The CID 7050 code of the Basic Application Level Confidentiality Profile
 # and of each option of Table E.1-1 (PS3.16 CID 7050), written out here
@@ -307,6 +316,9 @@ class CorpusRun:
     face_review : callable or None
         Returns the face review of the corpus it is given, for a run under
         Clean Recognizable Visual Features; or None for any other run.
+    redaction_review : callable or None
+        Returns the redaction review of the corpus it is given, for a run
+        under Clean Pixel Data; or None for a run without one.
     withheld : Mapping of str to Withheld
         Each instance the run must withhold, by its file name in the
         corpus. Every other instance must be released.
@@ -343,6 +355,9 @@ class CorpusRun:
     ) = None
     finder: TextFinder | None = None
     face_review: Callable[[corpus_module.SyntheticCorpus], FaceReview] | None = None
+    redaction_review: (
+        Callable[[corpus_module.SyntheticCorpus], RedactionReview] | None
+    ) = None
     # A factory, since dataclasses refuse a default they cannot hash, which
     # a mapping proxy is before Python 3.12.
     withheld: Mapping[str, Withheld] = dataclasses.field(
@@ -411,13 +426,14 @@ class CorpusRun:
 @dataclasses.dataclass(frozen=True)
 class Prepared:
     """A run's corpus, what its transform cleans descriptors and finds text
-    with, and its face review."""
+    with, and its face and redaction reviews."""
 
     corpus: corpus_module.SyntheticCorpus
     reviewed: ReviewedNames | None
     cleaning: DescriptorCleaning | None
     finder: TextFinder | None = None
     face_review: FaceReview | None = None
+    redaction_review: RedactionReview | None = None
 
     def transform(self, policy: Policy) -> InstanceTransform:
         """The run's instance transform, which applies a policy not yet enabled."""
@@ -427,24 +443,33 @@ class Prepared:
             cleaning=self.cleaning,
             finder=self.finder,
             face_review=self.face_review,
+            redaction_review=self.redaction_review,
             unvalidated_policy=True,
         )
 
 
 def prepare(corpus_run: CorpusRun) -> Prepared:
     """Build the corpus a run is over, its reviewed-names list, its finder, and
-    its face review."""
+    its face and redaction reviews."""
     corpus = corpus_run.corpus(corpus_module.build_corpus())
     faces = None if corpus_run.face_review is None else corpus_run.face_review(corpus)
-    if corpus_run.reviewed_roi_names is None:
-        return Prepared(corpus, None, None, finder=corpus_run.finder, face_review=faces)
-    reviewed = corpus_run.reviewed_roi_names(corpus)
+    redactions = (
+        None
+        if corpus_run.redaction_review is None
+        else corpus_run.redaction_review(corpus)
+    )
+    reviewed = (
+        None
+        if corpus_run.reviewed_roi_names is None
+        else corpus_run.reviewed_roi_names(corpus)
+    )
     return Prepared(
         corpus,
         reviewed,
-        DescriptorCleaning(VOCABULARY, reviewed),
+        None if reviewed is None else DescriptorCleaning(VOCABULARY, reviewed),
         finder=corpus_run.finder,
         face_review=faces,
+        redaction_review=redactions,
     )
 
 
@@ -513,3 +538,22 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
     """
     digests = frozenset(hashlib.sha256(file.data).digest() for file in corpus.files)
     return FaceReview(FACE_REVIEW_REFERENCE, digests, frozenset())
+
+
+def every_corner_accepted(corpus: corpus_module.SyntheticCorpus) -> RedactionReview:
+    """Return a redaction review that accepts :data:`CORNER` in every frame of
+    every file of the corpus with Pixel Data.
+
+    It is matched by each file's SHA-256, as an attested review's verdicts
+    are, so each instance with Pixel Data has its corner blacked out, and
+    satisfies the option, without the finder.
+    """
+    approved = {}
+    for file in corpus.files:
+        dataset = pydicom.dcmread(io.BytesIO(file.data))
+        if "PixelData" in dataset:
+            frames = int(dataset.get("NumberOfFrames", 1) or 1)
+            approved[hashlib.sha256(file.data).digest()] = tuple(
+                (index, (CORNER,)) for index in range(frames)
+            )
+    return RedactionReview(REDACTION_REVIEW_REFERENCE, approved, frozenset())

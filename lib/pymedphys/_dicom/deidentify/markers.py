@@ -53,6 +53,10 @@ to a copy of a data set and changes nothing else in it:
   with Modified Dates, and otherwise REMOVED, or the value already present
   where that is stricter, in the order UNMODIFIED, MODIFIED, REMOVED. A value already
   present that is not one of these is refused.
+- Burned In Annotation (0028,0301) is NO, replacing any value already
+  present, in an instance that satisfies the Clean Pixel Data Option, as
+  PS3.15 E.3.1 requires whether or not the instance's IOD defines the
+  attribute, and is otherwise left as it is.
 - Recognizable Visual Features (0028,0302) is NO, replacing any value
   already present, in an instance that satisfies the Clean Recognizable
   Visual Features Option, as PS3.15 E.3.2 requires whether or not the
@@ -151,13 +155,11 @@ OPTION_CODES = types.MappingProxyType(
         "clean_recognizable_visual_features": "113102",
     }
 )
-# The codes of the options whose policies the engine applies, but Clean Pixel
-# Data's, which no instance yet claims (D-037): the only option codes that the
-# markers write in a run, since the engine refuses any other option. The
-# residual search leaves out these alone (residuals.written_constants).
-WRITTEN_OPTION_CODES = frozenset(
-    OPTION_CODES[o] for o in ENGINE_OPTIONS if o != "clean_pixel_data"
-)
+# The codes of the options whose policies the engine applies: the only option
+# codes that the markers write in a run, since the engine refuses any other
+# option. The residual search leaves out these alone
+# (residuals.written_constants).
+WRITTEN_OPTION_CODES = frozenset(OPTION_CODES[o] for o in ENGINE_OPTIONS)
 # The CID 7005 code of De-identifying Equipment.
 DEIDENTIFYING_EQUIPMENT = "109104"
 # The values of Longitudinal Temporal Information Modified, from the least
@@ -177,6 +179,7 @@ _PATIENT_IDENTITY_REMOVED = "(0012,0062)"
 _DEIDENTIFICATION_METHOD = "(0012,0063)"
 _DEIDENTIFICATION_METHOD_CODES = "(0012,0064)"
 _TEMPORAL_INFORMATION_MODIFIED = "(0028,0303)"
+_BURNED_IN_ANNOTATION = "(0028,0301)"
 _RECOGNIZABLE_VISUAL_FEATURES = "(0028,0302)"
 _CONTRIBUTING_EQUIPMENT = "(0018,A001)"
 _MANUFACTURER = "(0008,0070)"
@@ -241,6 +244,11 @@ class Markers:
         that satisfies the Clean Recognizable Visual Features Option,
         whether or not its IOD defines the attribute (PS3.15 E.3.2), or
         None, which leaves it as it is.
+    burned_in_annotation : str or None
+        Burned In Annotation (0028,0301): ``"NO"`` in an instance that
+        satisfies the Clean Pixel Data Option, whether or not its IOD
+        defines the attribute (PS3.15 E.3.1), or None, which leaves it as
+        it is.
     """
 
     patient_identity_removed: str
@@ -251,6 +259,7 @@ class Markers:
     software_versions: tuple[str, ...]
     purpose_of_reference: CodedConcept
     recognizable_visual_features: str | None = None
+    burned_in_annotation: str | None = None
 
 
 @functools.cache
@@ -367,9 +376,12 @@ def _check(found: Markers) -> None:
     if found.patient_identity_removed != "YES":
         name = _dictionary()[_PATIENT_IDENTITY_REMOVED].name
         problems.append(f"{name} {_PATIENT_IDENTITY_REMOVED} is not YES")
-    if found.recognizable_visual_features not in (None, "NO"):
-        name = _dictionary()[_RECOGNIZABLE_VISUAL_FEATURES].name
-        problems.append(f"{name} {_RECOGNIZABLE_VISUAL_FEATURES} is not NO")
+    for tag, value in (
+        (_BURNED_IN_ANNOTATION, found.burned_in_annotation),
+        (_RECOGNIZABLE_VISUAL_FEATURES, found.recognizable_visual_features),
+    ):
+        if value not in (None, "NO"):
+            problems.append(f"{_dictionary()[tag].name} {tag} is not NO")
     if found.temporal_information_modified not in TEMPORAL_VALUES:
         name = _dictionary()[_TEMPORAL_INFORMATION_MODIFIED].name
         problems.append(
@@ -519,6 +531,9 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         purpose_of_reference=_code(7005, DEIDENTIFYING_EQUIPMENT),
         recognizable_visual_features=(
             "NO" if policy.claims_conformance and _VISUAL_FEATURES in options else None
+        ),
+        burned_in_annotation=(
+            "NO" if policy.claims_conformance and _PIXEL_DATA in options else None
         ),
     )
     _check(found)
@@ -776,10 +791,10 @@ def _marked(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset:
         marked.pop(_int_tag(_DEIDENTIFICATION_METHOD_CODES), None)
     _set(marked, _TEMPORAL_INFORMATION_MODIFIED, [temporal])
     _set(marked, _CONTRIBUTING_EQUIPMENT, equipment_items)
-    if markers.recognizable_visual_features is not None:
-        _set(
-            marked,
-            _RECOGNIZABLE_VISUAL_FEATURES,
-            [markers.recognizable_visual_features],
-        )
+    for tag, value in (
+        (_BURNED_IN_ANNOTATION, markers.burned_in_annotation),
+        (_RECOGNIZABLE_VISUAL_FEATURES, markers.recognizable_visual_features),
+    ):
+        if value is not None:
+            _set(marked, tag, [value])
     return marked

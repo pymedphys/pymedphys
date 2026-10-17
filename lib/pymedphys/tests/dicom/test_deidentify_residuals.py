@@ -1638,10 +1638,9 @@ def test_only_the_codes_of_the_options_that_the_markers_write_are_constants():
         row.code_value: row.code_meaning for row in load_context_group(7050).rows
     }
     for option, code in markers.OPTION_CODES.items():
-        # The engine refuses a policy with any other option, and no instance
-        # yet claims Clean Pixel Data (D-037), so the markers never write its
-        # code.
-        written = option in policy.ENGINE_OPTIONS and option != "clean_pixel_data"
+        # The engine refuses a policy with any other option, so the markers
+        # never write its code.
+        written = option in policy.ENGINE_OPTIONS
         assert (("SH", code) in constants) is written, option
         assert (("LO", meanings[code]) in constants) is written, option
 

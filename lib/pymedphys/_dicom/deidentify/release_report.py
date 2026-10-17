@@ -61,6 +61,9 @@ and codes that the engine defines, never by a source value or path:
 - ``face_review``: under the Clean Recognizable Visual Features Option, the
   opaque reference of the earlier run's attested QC pack whose face verdicts
   the run applied; None otherwise.
+- ``redaction_review``: under the Clean Pixel Data Option, the opaque
+  reference of the earlier run's attested QC pack whose redaction verdicts
+  the run applied; None otherwise.
 - ``released``: each released instance by its output name, the path below
   the release directory that
   :func:`~pymedphys._dicom.deidentify.output_names.instance_path` gives
@@ -167,7 +170,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/16"
+FORMAT = "pymedphys-deid-release-report/18"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -536,6 +539,7 @@ class ReleaseReport:
     runtime : ~pymedphys._dicom.deidentify.runtime.RuntimeEnvironment
     qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord or None
     face_review : str or None
+    redaction_review : str or None
     released : tuple of pathlib.PurePosixPath
     sequestered : tuple of SequesteredInstance
     search_coverage : tuple of SearchCoverage
@@ -553,6 +557,7 @@ class ReleaseReport:
     runtime: RuntimeEnvironment
     qc_review: AttestationRecord | None = None
     face_review: str | None = None
+    redaction_review: str | None = None
     released: tuple[PurePosixPath, ...] = ()
     sequestered: tuple[SequesteredInstance, ...] = ()
     search_coverage: tuple[SearchCoverage, ...] = ()
@@ -906,6 +911,7 @@ def release_report(
     technique_vocabulary: str | None = None,
     qc_review: AttestationRecord | None = None,
     face_review: str | None = None,
+    redaction_review: str | None = None,
     released: Iterable[PurePosixPath] = (),
     sequestered: Iterable[SequesteredInstance] = (),
     coverage: Iterable[SearchCoverage] = (),
@@ -951,6 +957,11 @@ def release_report(
         the attested QC pack whose face verdicts the run applied, from
         :class:`~pymedphys._dicom.deidentify.face_review.FaceReview`; None,
         the default, otherwise.
+    redaction_review : str, optional
+        Under the Clean Pixel Data Option, the reference of the attested QC
+        pack whose redaction verdicts the run applied, from
+        :class:`~pymedphys._dicom.deidentify.redaction_review.RedactionReview`;
+        None, the default, otherwise.
     released : iterable of pathlib.PurePosixPath, optional
         The output name of each released instance, as
         :func:`~pymedphys._dicom.deidentify.output_names.instance_path`
@@ -1007,7 +1018,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'qc_review', 'face_review', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'source_gaps', 'structural_checks']
+    ['format', 'policy', 'method', 'runtime', 'qc_review', 'face_review', 'redaction_review', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'source_gaps', 'structural_checks']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -1028,6 +1039,7 @@ def release_report(
         runtime=runtime_environment(),
         qc_review=qc_review,
         face_review=face_review,
+        redaction_review=redaction_review,
         released=tuple(released),
         sequestered=tuple(sequestered),
         search_coverage=tuple(coverage),
@@ -1222,11 +1234,12 @@ def _qc_review_section(record: AttestationRecord | None) -> dict | None:
     }
 
 
-def _face_review_section(reference: str | None) -> dict | None:
+def _review_section(field: str, reference: str | None) -> dict | None:
+    """Return a section that names an earlier run's attested QC pack."""
     if reference is None:
         return None
     if _string(reference) is None or not _REFERENCE.fullmatch(reference):
-        raise _refuse("face_review", "is not a QC pack's reference")
+        raise _refuse(field, "is not a QC pack's reference")
     return {"reference": reference}
 
 
@@ -1506,13 +1519,14 @@ def report_document(report: ReleaseReport) -> dict:
 
     The document is an object with the members ``format`` (:data:`FORMAT`),
     ``policy``, ``method``, ``runtime``, ``qc_review``, ``face_review``,
-    ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
+    ``redaction_review``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
     ``descriptors``,
     ``reference_findings``, ``pixel_risks``, ``search_coverage``,
     ``source_gaps``, and ``structural_checks``, in that order, each section's
     fields in the order of its class, the digests of tables and files sorted
     by name, ``qc_review`` null where the run wrote no QC pack,
-    ``face_review`` null or an object with the reference, the released
+    ``face_review`` and ``redaction_review`` each null or an object with
+    the reference, the released
     output names sorted, the sequestered instances by label, each with its
     reasons once, in the order given, the held counts by stage and code, the
     ROI Names' and the descriptors' ``outcomes`` and ``held`` counts each by
@@ -1557,7 +1571,10 @@ def report_document(report: ReleaseReport) -> dict:
         "method": _method_section(report.method),
         "runtime": _runtime_section(report.runtime),
         "qc_review": _qc_review_section(report.qc_review),
-        "face_review": _face_review_section(report.face_review),
+        "face_review": _review_section("face_review", report.face_review),
+        "redaction_review": _review_section(
+            "redaction_review", report.redaction_review
+        ),
         "released": _released_section(report.released),
         "sequestered": _sequestered_section(report.sequestered),
         "held_for_review": _held_section(report.held_for_review),
