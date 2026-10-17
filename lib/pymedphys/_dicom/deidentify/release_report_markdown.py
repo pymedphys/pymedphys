@@ -310,7 +310,19 @@ def _qc_review(section: object) -> list[Block]:
 def _face_review(section: object) -> list[Block]:
     if section is None:
         return []
-    section = _fields("face_review", section, ("reference",))
+    section = _fields("face_review", section, ("reference", "ct_series"))
+    series = _fields(
+        "face_review ct_series", section["ct_series"], ("defaced", "not_defaced")
+    )
+    rows = []
+    for entry in _list("face_review ct_series not_defaced", series["not_defaced"]):
+        entry = _fields("face_review ct_series not_defaced", entry, ("reason", "count"))
+        rows.append(
+            (
+                _code("face_review ct_series reason", entry["reason"]),
+                _count("face_review ct_series count", entry["count"]),
+            )
+        )
     return [
         ["## Face review"],
         [
@@ -321,6 +333,14 @@ def _face_review(section: object) -> list[Block]:
             + _code("face_review reference", section["reference"])
             + "."
         ],
+        [
+            "Series of CT Image instances whose face block the run wrote as "
+            "air: "
+            + _tally("face_review ct_series defaced", series["defaced"])
+            + ". Those it did not deface, by reason, which the reviewer's "
+            "verdict decides, or, for a target in the block, holds for review:"
+        ],
+        _table(("Reason", "Series"), rows) if rows else [_NONE],
     ]
 
 

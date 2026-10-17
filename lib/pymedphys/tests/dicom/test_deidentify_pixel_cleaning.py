@@ -601,3 +601,128 @@ def test_a_run_holds_its_images_and_reports_why(tmp_path):
     assert report["held_for_review"] == [
         {"stage": "pixel-data", "code": "text-blacked-out", "count": 1}
     ]
+
+
+# A defacer's masks.
+
+
+class Defacer:
+    """Gives a fixed region and stored value in the frames it names, and
+    records each frame's stored values."""
+
+    def __init__(self, region, value, frames=None, frame=None):
+        self.region, self.value = region, value
+        self.frames, self.frame = frames, frame
+        self.seen = []
+
+    def mask(self, frame, stored):
+        self.seen.append(np.array(stored))
+        if self.frames is not None and frame not in self.frames:
+            return None
+        given = frame if self.frame is None else self.frame
+        return pixel_cleaning.FrameMask(given, self.region, self.value)
+
+
+def _region(shape=(6, 8)):
+    region = np.zeros(shape, dtype=bool)
+    region[:, :3] = True
+    return region
+
+
+def _defaced(dataset, defacer, finder=None):
+    source = _source(dataset)
+    return source, black_out(source, source.dataset(), finder, defacer)
+
+
+def test_a_mask_is_written_as_its_stored_value_and_the_rest_kept():
+    frame = _frame()
+    defacer = Defacer(_region(), 24)
+    source, redaction = _defaced(_ct(frame), defacer)
+
+    output = _replaced(source, redaction)
+    pixels = _pixels(output)
+    assert np.all(pixels[_region()] == 24)
+    assert np.array_equal(pixels[~_region()], frame[~_region()])
+    (seen,) = defacer.seen
+    assert np.array_equal(seen, frame)
+    assert redaction.changed and not redaction.regions
+    assert not redaction_problem(source, output, redaction)
+
+
+def test_a_negative_value_keeps_its_sign_in_the_unused_bits():
+    frame = _frame() - 2048
+    source, redaction = _defaced(
+        _ct(frame % 65536, signed=True), Defacer(_region(), -1000)
+    )
+
+    output = _replaced(source, redaction)
+    pixels = _pixels(output)
+    assert np.all(pixels[_region()] == -1000)
+    assert np.array_equal(pixels[~_region()], frame[~_region()])
+    written = np.frombuffer(redaction.value, "<u2").reshape(frame.shape)
+    assert np.all(written[_region()] == -1000 % 65536)
+    assert not redaction_problem(source, output, redaction)
+
+
+def test_a_mask_is_written_over_the_text_regions():
+    frame = _frame()
+    source, redaction = _defaced(_ct(frame), Defacer(_region(), 4000), Finder())
+
+    pixels = _pixels(_replaced(source, redaction))
+    text = _inside(frame.shape) & ~_region()
+    assert np.all(pixels[_region()] == 4000)
+    assert np.all(pixels[text] == frame.min())
+    assert redaction.reason is PixelDataReason.TEXT_BLACKED_OUT
+
+
+def test_each_frame_has_its_own_mask():
+    frames = np.stack([_frame(start=100), _frame(start=900), _frame(start=50)])
+    source, redaction = _defaced(_ct(frames), Defacer(_region(), 7, frames={1}))
+
+    pixels = _pixels(_replaced(source, redaction))
+    assert np.array_equal(pixels[[0, 2]], frames[[0, 2]])
+    assert np.all(pixels[1][_region()] == 7)
+    assert [mask.frame for mask in redaction.masks] == [1]
+
+
+def test_no_mask_and_no_text_changes_nothing():
+    source, redaction = _defaced(_ct(_frame()), Defacer(_region(), 7, frames=set()))
+
+    assert not redaction.changed
+    assert redaction.value == source.value_field(pixel_cleaning.PIXEL_DATA)
+
+
+@pytest.mark.parametrize(
+    "defacer",
+    [
+        Defacer(_region(), 7, frame=1),
+        Defacer(_region((6, 7)), 7),
+        Defacer(_region(), 4096),
+        Defacer(_region(), -1),
+    ],
+    ids=["another-frame", "another-shape", "too-large", "negative-when-unsigned"],
+)
+def test_a_mask_that_cannot_be_written_is_refused(defacer):
+    source = _source(_ct(_frame()))
+
+    with pytest.raises(PixelDataRefused) as refused:
+        black_out(source, source.dataset(), None, defacer)
+    assert refused.value.reason is TransformReason.UNCLEANABLE_PIXEL_DATA
+
+
+def test_a_mask_in_colour_is_refused():
+    frame = np.random.default_rng(0).integers(1, 256, size=(6, 8, 3))
+    source = _source(_rgb(frame, 0))
+
+    with pytest.raises(PixelDataRefused):
+        black_out(source, source.dataset(), None, Defacer(_region(), 0))
+
+
+@pytest.mark.parametrize("where", [0, 4], ids=["inside-the-mask", "outside-the-mask"])
+def test_written_pixel_data_that_differs_from_the_mask_is_found(where):
+    source, redaction = _defaced(_ct(_frame()), Defacer(_region(), 7))
+    dataset = source.dataset()
+    dataset.PixelData = _changed_word(redaction, where)
+    output = read_source(synthetic.written(dataset))
+
+    assert redaction_problem(source, output, redaction)

@@ -176,6 +176,18 @@ class VisualFeaturesReason(enum.Enum):
     # no reviewer's verdict covers its source file: its series has no
     # verdict, or the file is not one that the review saw
     NO_FACE_VERDICT = "no-face-verdict"
+    # its series is marked absent, but the run writes other pixel data of it
+    # than the reviewed run did, such as a CT slice defaced since the
+    # reviewer saw it as received, so the verdict is not of what it releases
+    OTHER_PIXEL_DATA = "face-verdict-on-other-pixel-data"
+    # an RT Structure Set, RT Dose, or PET instance in the Frame of
+    # Reference of a CT series that the run defaces, whose outline or pixel
+    # data the run does not yet clean of the face, and which a reviewer may
+    # have judged from the defaced CT
+    UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
+    # a CT slice of a series whose face block holds a point of a target's
+    # contour, so that the series is not defaced
+    TARGET_IN_FACE_BLOCK = "target-in-face-block"
 
 
 @dataclasses.dataclass(frozen=True)

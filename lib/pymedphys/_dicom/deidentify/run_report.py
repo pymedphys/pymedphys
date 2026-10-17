@@ -56,6 +56,7 @@ from typing import Protocol
 from pymedphys._nomenclature import tg263
 
 from . import conformance, conformance_markdown, release_report, release_report_markdown
+from .face_blocks import FaceBlockCounts
 from .policy import Policy
 from .qc_attestation import AttestationRecord, Outcome
 from .reasons import RunReason
@@ -148,6 +149,12 @@ class ReleaseReporter:
         applies to technique descriptors, or None, the default, without one,
         as :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
+    face_blocks : ~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts, optional
+        With ``face_review``, the counts of the run's CT series that the
+        transform defaced and did not, which it fills in before the run
+        writes any instance, as
+        :meth:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform.prepare`
+        does; None, the default, without one.
     """
 
     def __init__(
@@ -159,6 +166,7 @@ class ReleaseReporter:
         face_review: str | None = None,
         reviewed_descriptors: str | None = None,
         technique_vocabulary: str | None = None,
+        face_blocks: FaceBlockCounts | None = None,
     ):
         if not isinstance(policy, Policy):
             raise TypeError("policy must be a Policy")
@@ -168,6 +176,7 @@ class ReleaseReporter:
         self._face_review = face_review
         self._reviewed_descriptors = reviewed_descriptors
         self._technique_vocabulary = technique_vocabulary
+        self._face_blocks = face_blocks
 
     def __repr__(self) -> str:
         return "ReleaseReporter()"
@@ -252,6 +261,7 @@ class ReleaseReporter:
             vocabulary=self._vocabulary,
             reviewed_roi_names=self._reviewed_roi_names,
             face_review=self._face_review,
+            face_blocks=self._face_blocks,
             reviewed_descriptors=self._reviewed_descriptors,
             technique_vocabulary=self._technique_vocabulary,
             **run,  # type: ignore[arg-type]
