@@ -236,6 +236,17 @@ def test_a_verdict_of_present_still_covers_a_file_held_because_its_frame_was_def
     assert read_face_review(directory).present == _sha(1, 4)
 
 
+def test_a_pack_entry_without_its_reasons_gives_no_review(pack):
+    written = pack / "qc-pack.json"
+    document = json.loads(written.read_text("ascii"))
+    del document["instances"][0]["reasons"]
+    written.write_text(json.dumps(document), "ascii")
+    _attest(pack, {1: Face.ABSENT})
+
+    with pytest.raises(QcPackError, match="not of its format"):
+        read_face_review(pack)
+
+
 def test_the_frame_hold_is_matched_as_the_run_words_it():
     assert UNDEFACED_TEXT == run_qc.reason_text(
         HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)

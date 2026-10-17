@@ -38,9 +38,11 @@ masks. A series is defaced only where all of these hold:
   and
 - no contour of a target, an ROI whose RT ROI Interpreted Type is
   :data:`TARGET_TYPES`, of an RT Structure Set of the run in the series'
-  Frame of Reference has a point in the block, a target that names no Frame
-  of Reference counting as one in it, and every such structure set can be
-  read.
+  Frame of Reference, or naming none, has a point in the block, a target
+  that names no Frame of Reference counting as one in it; no structure set
+  that refers to the series' slices while declaring another frame has a
+  target at all, since its contours cannot be placed; and every such
+  structure set can be read.
 
 Anything else that a series' data raises leaves the series undefaced, as
 unreadable, rather than stopping the run, and no message of it, which could
@@ -80,7 +82,7 @@ of Reference, in a run that defaces any series, or that refers to a defaced
 slice, whatever frame it declares. A structure set that names no Frame of
 Reference is likewise searched for targets in the block of every series,
 and one that refers to a series' slices, as its Contour Image Sequence
-does, is searched in that series' block whatever frame it declares.
+does, while declaring another frame holds that series if it has any target.
 """
 
 from __future__ import annotations
@@ -280,15 +282,16 @@ def find_face_blocks(
         outcome, frame = _series_outcome(positions, read)
         if outcome.block is not None and frame:
             searched = sorted({*structure_sets.get(frame, []), *frameless})
-            # One drawn on the series' slices is searched whatever frame it
-            # declares, each of its targets as if in the series' frame.
+            # One drawn on the series' slices while declaring another frame
+            # has contours that cannot be placed without a registration, so
+            # any target in it might reach the block.
             drawn = sorted(
                 position
                 for position, targets in referred.items()
-                if not targets.isdisjoint(slices[uid])
+                if not targets.isdisjoint(slices[uid]) and position not in searched
             )
-            if _target_in(outcome.block, frame, searched, read) or _target_in(
-                outcome.block, None, drawn, read
+            if _target_in(outcome.block, frame, searched, read) or _any_target(
+                drawn, read
             ):
                 outcome = SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK)
         outcomes[uid] = outcome
@@ -553,13 +556,12 @@ def _hounsfield(data: bytes | None, each: _Slice) -> np.ndarray:
 
 def _target_in(
     block: FaceBlock,
-    frame: str | None,
+    frame: str,
     positions: list[int],
     read: Callable[[int], bytes | None],
 ) -> bool:
     """Whether a target of any of these structure sets, in this Frame of
-    Reference, or in any if None, has a contour point in the block, or one
-    cannot be read."""
+    Reference, has a contour point in the block, or one cannot be read."""
     for position in positions:
         try:
             with redacted_diagnostics():
@@ -573,28 +575,44 @@ def _target_in(
     return False
 
 
-def _targets_reach(
-    dataset: pydicom.Dataset, frame: str | None, block: FaceBlock
-) -> bool:
-    """Whether a target's contour in this Frame of Reference, or in any if
-    None, has a point in the block."""
+def _any_target(positions: list[int], read: Callable[[int], bytes | None]) -> bool:
+    """Whether any of these structure sets has a target, or one cannot be
+    read."""
+    for position in positions:
+        try:
+            with redacted_diagnostics():
+                dataset = pydicom.dcmread(io.BytesIO(read(position) or b""))
+                if _targets(dataset):
+                    return True
+        # As in _target_in, a target in it cannot be ruled out.
+        except Exception:  # pylint: disable = broad-exception-caught
+            return True
+    return False
+
+
+def _targets(dataset: pydicom.Dataset) -> set[int]:
+    """The ROI Numbers of a structure set's targets."""
+    return {
+        int(item.ReferencedROINumber)
+        for item in dataset.get("RTROIObservationsSequence", [])
+        if str(item.get("RTROIInterpretedType") or "").strip().upper() in TARGET_TYPES
+    }
+
+
+def _targets_reach(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bool:
+    """Whether a target's contour in this Frame of Reference has a point in
+    the block."""
     frames = {
         int(item.ROINumber): normalise_uid(
             str(item.get("ReferencedFrameOfReferenceUID") or "")
         )
         for item in dataset.get("StructureSetROISequence", [])
     }
-    targets = {
-        int(item.ReferencedROINumber)
-        for item in dataset.get("RTROIObservationsSequence", [])
-        if str(item.get("RTROIInterpretedType") or "").strip().upper() in TARGET_TYPES
-    }
+    targets = _targets(dataset)
     for item in dataset.get("ROIContourSequence", []):
         number = int(item.ReferencedROINumber)
         # A target that names no Frame of Reference may be in this one.
-        if number not in targets or (
-            frame is not None and frames.get(number) not in ("", None, frame)
-        ):
+        if number not in targets or frames.get(number) not in ("", None, frame):
             continue
         for contour in item.get("ContourSequence", []):
             points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)

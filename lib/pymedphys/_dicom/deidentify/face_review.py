@@ -75,7 +75,9 @@ class FaceReview:
     absent : frozenset of bytes
         The SHA-256 of each source file of each series that the reviewer
         marked :attr:`~.qc_attestation.Face.ABSENT`, other than one that the
-        reviewed run held because it defaced the file's frame.
+        reviewed run held beside a CT series that it defaced
+        (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
+        by its frame or a reference to a defaced slice.
     present : frozenset of bytes
         Likewise, of each series marked :attr:`~.qc_attestation.Face.PRESENT`.
     absent_pixels : frozenset of (bytes, bytes)
@@ -180,7 +182,7 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
                 "a face verdict names a series that the QC pack does not list"
             )
         by_face[verdict.face].update(files[verdict.series])
-    # A file that the reviewed run held because it defaced the file's frame
+    # A file that the reviewed run held beside a CT series that it defaced
     # was judged beside defaced images, while its own outlines or pixel data
     # were left as they were, so a verdict of absent does not cover it,
     # whatever a later run defaces.
@@ -196,7 +198,7 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
 
 
 # A source file's SHA-256, that of the pixel data written of it, if any, and
-# whether the run held it because it defaced the file's frame.
+# whether the run held it beside a CT series that it defaced.
 _File = tuple[bytes, bytes | None, bool]
 # That hold's reason as the QC pack words it, which run_qc.reason_text gives.
 UNDEFACED_TEXT = (

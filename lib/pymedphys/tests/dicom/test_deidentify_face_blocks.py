@@ -551,15 +551,18 @@ def test_a_target_in_a_structure_set_that_names_no_frame_holds_the_series():
     assert _outcome(data).problem is SeriesProblem.TARGET_IN_BLOCK
 
 
-def test_a_target_in_another_frame_drawn_on_the_series_slices_holds_the_series():
+@pytest.mark.parametrize(
+    ("rois", "held"),
+    [
+        ([("PTV", files.square(_EYES_FRONT[0]))], True),
+        ([("PTV", files.square((0, 0, 40)))], True),
+        ([("ORGAN", files.square(_EYES_FRONT[0]))], False),
+    ],
+    ids=["target-in-block", "target-behind", "organ"],
+)
+def test_a_structure_set_in_another_frame_drawn_on_the_series_slices(rois, held):
     elsewhere = files.ROOT + ".8"
-    rtss = pydicom.dcmread(
-        io.BytesIO(
-            files.structure_set(
-                [("PTV", files.square(_EYES_FRONT[0]))], frame=elsewhere
-            )
-        )
-    )
+    rtss = pydicom.dcmread(io.BytesIO(files.structure_set(rois, frame=elsewhere)))
     unreferenced = files.written(rtss)
     image = pydicom.Dataset()
     image.ReferencedSOPClassUID = files.CT_IMAGE_STORAGE
@@ -571,7 +574,9 @@ def test_a_target_in_another_frame_drawn_on_the_series_slices_holds_the_series()
 
     assert face_blocks.frames_of(InstanceRecord.from_file(drawn)) == {elsewhere}
     assert _outcome(unreferenced).problem is None
-    assert _outcome(drawn).problem is SeriesProblem.TARGET_IN_BLOCK
+    # Its contours cannot be placed without a registration, so any target
+    # in it holds the series.
+    assert _outcome(drawn).problem is (SeriesProblem.TARGET_IN_BLOCK if held else None)
 
 
 def test_the_cavity_is_kept_only_above_its_floor():
