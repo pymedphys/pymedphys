@@ -137,6 +137,10 @@ class ReleaseReporter:
         The reference of the attested QC pack whose face verdicts the run
         applies under the Clean Recognizable Visual Features Option, or
         None, the default, without one.
+    redaction_review : str, optional
+        The reference of the attested QC pack whose redaction verdicts the
+        run applies under the Clean Pixel Data Option, or None, the
+        default, without one.
     reviewed_descriptors : str or None, optional
         The keyed digest of the reviewed descriptors list that descriptor
         cleaning applies to free-text descriptors, or None, the default,
@@ -159,6 +163,7 @@ class ReleaseReporter:
         face_review: str | None = None,
         reviewed_descriptors: str | None = None,
         technique_vocabulary: str | None = None,
+        redaction_review: str | None = None,
     ):
         if not isinstance(policy, Policy):
             raise TypeError("policy must be a Policy")
@@ -168,6 +173,7 @@ class ReleaseReporter:
         self._face_review = face_review
         self._reviewed_descriptors = reviewed_descriptors
         self._technique_vocabulary = technique_vocabulary
+        self._redaction_review = redaction_review
 
     def __repr__(self) -> str:
         return "ReleaseReporter()"
@@ -252,6 +258,7 @@ class ReleaseReporter:
             vocabulary=self._vocabulary,
             reviewed_roi_names=self._reviewed_roi_names,
             face_review=self._face_review,
+            redaction_review=self._redaction_review,
             reviewed_descriptors=self._reviewed_descriptors,
             technique_vocabulary=self._technique_vocabulary,
             **run,  # type: ignore[arg-type]

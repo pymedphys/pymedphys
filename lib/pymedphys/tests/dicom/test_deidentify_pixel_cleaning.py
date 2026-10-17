@@ -441,7 +441,8 @@ def test_a_ct_image_is_written_blacked_out_and_held_for_review():
     assert np.all(pixels[inside] == frame.min())
     assert np.array_equal(pixels[~inside], frame[~inside])
     assert written.file_meta.TransferSyntaxUID == synthetic.EXPLICIT_VR_LITTLE_ENDIAN
-    # Burned In Annotation is kept as received until a reviewer's decision.
+    # Burned In Annotation is kept as received until a reviewer approves the
+    # regions on a later run.
     assert "BurnedInAnnotation" not in written
     assert _codes(written) == [BASIC_PROFILE_CODE]
 
@@ -477,7 +478,8 @@ def test_an_image_without_text_found_is_still_held_for_review():
     assert written.PixelData == pydicom.dcmread(io.BytesIO(data)).PixelData
 
 
-def test_an_instance_without_pixel_data_is_written_without_the_options_code():
+@pytest.mark.deid_requirement("PS3.15-E.3.1-02")
+def test_an_instance_without_pixel_data_claims_the_option():
     finder = Finder()
     result = _transformed(_transform(finder), synthetic.written(synthetic.rt_plan()))
 
@@ -485,7 +487,9 @@ def test_an_instance_without_pixel_data_is_written_without_the_options_code():
     assert not isinstance(result.evidence, HeldEvidence)
     assert not finder.seen
     written = pydicom.dcmread(io.BytesIO(result.data))
-    assert CLEAN_PIXEL_DATA_CODE not in _codes(written)
+    assert _codes(written) == [BASIC_PROFILE_CODE, CLEAN_PIXEL_DATA_CODE]
+    # Added although the RT Plan IOD does not define it, as E.3.1 requires.
+    assert written.BurnedInAnnotation == "NO"
 
 
 def test_compressed_pixel_data_sequesters_the_instance():
@@ -525,18 +529,15 @@ BLACKED_OUT = "Under the Clean Pixel Data Option, the engine replaces each regio
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
-def test_the_statement_says_how_pixel_data_are_cleaned_and_claims_no_code(
+def test_the_statement_says_how_pixel_data_are_cleaned_and_claims_after_review(
     monkeypatch,
 ):
     statement, text = _statement(monkeypatch, [CLEAN_PIXEL_DATA])
 
-    # Pending until the option's claim is described, so the statement claims
-    # no conformance; the markers' codes are the policy's.
-    assert not statement.claims_conformance
-    assert conformance.PENDING_PIXEL_DATA in statement.pending
-    assert BASIC_PROFILE_CODE in statement.markers.codes
-    assert CLEAN_PIXEL_DATA_CODE not in statement.markers.codes
-    assert CLEAN_PIXEL_DATA_CODE not in statement.markers.review_codes
+    assert statement.claims_conformance
+    assert not statement.pending
+    assert statement.markers.codes == (BASIC_PROFILE_CODE,)
+    assert statement.markers.review_codes == (CLEAN_PIXEL_DATA_CODE,)
     assert BLACKED_OUT in text
     assert UNCHANGED not in text
 
@@ -546,7 +547,7 @@ def test_the_statement_of_a_policy_without_the_option_keeps_pixel_data(
 ):
     statement, text = _statement(monkeypatch, [])
 
-    assert conformance.PENDING_PIXEL_DATA not in statement.pending
+    assert CLEAN_PIXEL_DATA_CODE not in statement.markers.review_codes
     assert UNCHANGED in text
     assert BLACKED_OUT not in text
 

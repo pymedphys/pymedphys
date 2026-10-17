@@ -102,6 +102,9 @@ def test_an_attestation_is_recorded_beside_the_pack(pack):
         "  residual risk accepted: not stated",
         "  series without a recognisable face: 0",
         "  series with a recognisable face: 0",
+        "  cleaned instances with their regions accepted: 0",
+        "  cleaned instances with the reviewer's regions added: 0",
+        "  cleaned instances rejected: 0",
         "the release report published with the run is unchanged",
     ]
     _assert_quotes_nothing(stdout, stderr)
@@ -214,6 +217,22 @@ def test_a_directory_with_a_pack_but_no_marker_is_refused(pack):
 
     assert status == command.EXIT_NOT_RECORDED
     assert "holds no QC pack" in stderr
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
+
+
+@pytest.mark.parametrize("content", [b"\xff", b"not json", b"[]"])
+def test_a_pack_that_is_not_a_json_object_is_refused(pack, content):
+    path = pack / qc_store.PACK_FILE
+    path.chmod(0o600)
+    path.write_bytes(content)
+
+    status, stdout, stderr = _run(
+        str(pack), "--reviewer", REVIEWER, "--outcome", "rejected"
+    )
+
+    assert status == command.EXIT_NOT_RECORDED
+    assert "not of its format; nothing was recorded" in stderr
+    assert not stdout
     assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
 
 

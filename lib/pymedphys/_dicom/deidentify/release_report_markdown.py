@@ -95,6 +95,7 @@ _SECTIONS = (
     "runtime",
     "qc_review",
     "face_review",
+    "redaction_review",
     "released",
     "sequestered",
     "held_for_review",
@@ -160,6 +161,7 @@ def to_markdown(report: str) -> str:
         *_runtime(document["runtime"]),
         *_qc_review(document["qc_review"]),
         *_face_review(document["face_review"]),
+        *_redaction_review(document["redaction_review"]),
         *_released(document["released"]),
         *_sequestered(document["sequestered"]),
         *_held(document["held_for_review"]),
@@ -319,6 +321,23 @@ def _face_review(section: object) -> list[Block]:
             "recognisable face in its series, in the earlier run's confidential "
             "QC pack with this opaque reference: "
             + _code("face_review reference", section["reference"])
+            + "."
+        ],
+    ]
+
+
+def _redaction_review(section: object) -> list[Block]:
+    if section is None:
+        return []
+    section = _fields("redaction_review", section, ("reference",))
+    return [
+        ["## Redaction review"],
+        [
+            "Under the Clean Pixel Data Option, an instance with Pixel Data is "
+            "released only where a reviewer accepted its blacked-out regions, "
+            "or gave their own, in the earlier run's confidential QC pack with "
+            "this opaque reference: "
+            + _code("redaction_review reference", section["reference"])
             + "."
         ],
     ]

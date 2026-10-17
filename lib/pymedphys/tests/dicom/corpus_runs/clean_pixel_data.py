@@ -17,8 +17,8 @@
 Every instance with Pixel Data has the corner blacked out and is held for
 review (D-037): the RT Dose that the Basic Profile's run holds for residual
 text is held for both, and the CT slice that it sequesters is sequestered
-first. No instance claims the option until a reviewer's decision can release
-its pixel data, so every released instance claims the Basic Profile alone.
+first. Without a redaction review, only an instance without Pixel Data is
+released, and it claims the option, since it has nothing to clean.
 """
 
 from pymedphys._dicom.deidentify import run
@@ -26,12 +26,13 @@ from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.reasons import HeldPixelData, PixelDataReason
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
-from .._corpus_run import BASIC_PROFILE_CODE, BASIC_WITHHELD, CorpusRun, Withheld
+from .._corpus_run import BASIC_WITHHELD, CorpusRun, Withheld
 
 
 class _CornerFinder:
     """Finds text in the top left corner of every frame, two rows by three
-    columns, which every frame of the corpus has."""
+    columns, which cleaning clips to the corpus's frames, each two by two
+    pixels, so that every pixel of each frame is blacked out."""
 
     def find(self, frame):
         del frame
@@ -71,6 +72,4 @@ RUN = CorpusRun(
             run.Status.HELD_FOR_REVIEW, _REVIEW.reasons | _BLACKED_OUT.reasons
         ),
     },
-    # No instance claims Clean Pixel Data yet (D-037).
-    codes=frozenset({BASIC_PROFILE_CODE}),
 )

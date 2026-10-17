@@ -50,7 +50,7 @@ Data cannot be cleaned (:class:`PixelDataRefused`).
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Protocol
 
 from pymedphys._imports import numpy as np
@@ -225,6 +225,54 @@ def black_out(
         :attr:`~.reasons.TransformReason.UNCLEANABLE_PIXEL_DATA` for float
         pixel data, or native Pixel Data that cannot be read as frames.
     """
+    return _blacked_out(source, dataset, lambda _, frame: finder.find(frame))
+
+
+def black_out_reviewed(
+    source: SourceEvidence,
+    dataset: pydicom.Dataset,
+    regions: Sequence[tuple[int, Sequence[TextBox]]],
+) -> Redaction | None:
+    """Return the instance's Pixel Data with a reviewer's regions blacked out.
+
+    As :func:`black_out`, but each frame's regions are those given, by frame
+    index from 0, rather than a finder's, and a frame not given has none.
+    A reviewed region is never clipped: one that goes past the frame's rows
+    or columns refuses the instance, since a mistyped or transposed region
+    would otherwise leave the text it was meant to cover.
+
+    Raises
+    ------
+    PixelDataRefused
+        For any reason that :func:`black_out` gives, and with
+        :attr:`~.reasons.TransformReason.REDACTION_MISMATCH` where a frame
+        given is not one that the Pixel Data hold, or a region goes past
+        the frame, so that the review does not fit them.
+    """
+    by_frame = {index: tuple(boxes) for index, boxes in regions}
+
+    def reviewed(index: int, frame: np.ndarray) -> Sequence[TextBox]:
+        rows, columns = frame.shape[:2]
+        boxes = by_frame.get(index, ())
+        if any(box.bottom > rows or box.right > columns for box in boxes):
+            raise PixelDataRefused(TransformReason.REDACTION_MISMATCH)
+        return boxes
+
+    redaction = _blacked_out(source, dataset, reviewed)
+    if redaction is not None and any(
+        not 0 <= index < redaction.layout.frames for index in by_frame
+    ):
+        raise PixelDataRefused(TransformReason.REDACTION_MISMATCH)
+    return redaction
+
+
+def _blacked_out(
+    source: SourceEvidence,
+    dataset: pydicom.Dataset,
+    boxes_of: Callable[[int, np.ndarray], Sequence[TextBox]],
+) -> Redaction | None:
+    """Return the instance's Pixel Data with the regions that ``boxes_of``
+    gives each frame, by its index and stored values, blacked out."""
     if any(path in source for path in FLOAT_PIXEL_DATA):
         raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
     if PIXEL_DATA not in source:
@@ -245,7 +293,7 @@ def black_out(
     regions = []
     for index in range(layout.frames):
         frame = _frame(layout, _stored_values(layout, stored[index]))
-        boxes = tuple(sorted(set(_checked(finder.find(frame), layout))))
+        boxes = tuple(sorted(set(_checked(boxes_of(index, frame), layout))))
         if not boxes:
             continue
         fill = layout.fill(frame)
