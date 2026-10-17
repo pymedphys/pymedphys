@@ -30,12 +30,13 @@ from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import face_blocks, markers, run
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
-from pymedphys._dicom.deidentify.face_review import read_face_review
+from pymedphys._dicom.deidentify.face_review import FaceReview, read_face_review
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
     ReleaseGate,
 )
 from pymedphys._dicom.deidentify.policy import CLEAN_PIXEL_DATA, compose_policy
+from pymedphys._dicom.deidentify.qc_pack import new_reference
 from pymedphys._dicom.deidentify.qc_attestation import Face
 from pymedphys._dicom.deidentify.reasons import (
     HeldPixelData,
@@ -64,6 +65,7 @@ _SCAN = head.axial(
 _CT_FILES = ("01-ct-1.dcm", "02-ct-2.dcm", corpus_module.SEQUESTERED_FILE)
 _STRUCTURE_SET = "04-rtstruct.dcm"
 _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
+_PET = "15-pet.dcm"
 _IN_THE_BLOCK = (-32.0, -76.0, 20.0)
 
 
@@ -72,10 +74,11 @@ def _head_name(index):
 
 
 @contextlib.contextmanager
-def _runs(*others, target=False):
+def _runs(*others, first=None, target=False):
     """Run the collection, with its CT slices replaced by the head's, under
-    ``basic``; attest the pack with the head's series alone marked absent;
-    and run it again under the option and ``others``."""
+    ``basic``, or under the option and ``first`` with a face review that
+    gives no verdicts; attest the pack with the head's series alone marked
+    absent; and run it again under the option and ``others``."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -102,28 +105,26 @@ def _runs(*others, target=False):
                     template=rtss,
                 )
             )
-        first = run.run(
+        reviewed = run.run(
             run.discover(instances),
             directory / "r1",
-            InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True),
+            InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
+            if first is None
+            else _transform(
+                first, FaceReview(new_reference(), frozenset(), frozenset())
+            ),
             ReleaseGate(),
             qc_destination=directory / "qc1",
         )
-        entries = json.loads(first.qc_pack.read_text("utf-8"))
+        entries = json.loads(reviewed.qc_pack.read_text("utf-8"))
         names = {e["position"]: Path(e["source"]).name for e in entries["instances"]}
         (series,) = [
             s
             for s in entries["series"]
             if names[s["positions"][0]].startswith("01-head")
         ]
-        _attest(first.qc_pack.parent, {series["positions"][0]: Face.ABSENT})
-        transform = InstanceTransform(
-            _policy(*others),
-            KEY,
-            face_review=read_face_review(first.qc_pack.parent),
-            finder=_CornerFinder() if CLEAN_PIXEL_DATA in others else None,
-            unvalidated_policy=True,
-        )
+        _attest(reviewed.qc_pack.parent, {series["positions"][0]: Face.ABSENT})
+        transform = _transform(others, read_face_review(reviewed.qc_pack.parent))
         second = run.run(
             run.discover(instances),
             directory / "r2",
@@ -154,8 +155,24 @@ def _runs(*others, target=False):
         shutil.rmtree(directory, ignore_errors=True)
 
 
+def _transform(options, face_review):
+    return InstanceTransform(
+        _policy(*options),
+        KEY,
+        face_review=face_review,
+        finder=_CornerFinder() if CLEAN_PIXEL_DATA in options else None,
+        unvalidated_policy=True,
+    )
+
+
 @pytest.fixture(name="defaced", scope="module")
 def fixture_defaced():
+    with _runs(first=()) as found:
+        yield found
+
+
+@pytest.fixture(name="as_received", scope="module")
+def fixture_as_received():
     with _runs() as found:
         yield found
 
@@ -168,7 +185,7 @@ def fixture_targeted():
 
 @pytest.fixture(name="with_pixel_data", scope="module")
 def fixture_with_pixel_data():
-    with _runs(CLEAN_PIXEL_DATA) as found:
+    with _runs(CLEAN_PIXEL_DATA, first=(CLEAN_PIXEL_DATA,)) as found:
         yield found
 
 
@@ -182,7 +199,9 @@ def _block(slices):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
-def test_a_head_ct_marked_absent_is_released_defaced_with_the_option(defaced):
+def test_a_head_ct_marked_absent_as_defaced_is_released_defaced_with_the_option(
+    defaced,
+):
     slices, outcomes, _, _ = defaced
     block = _block(slices)
     changed = kept = 0
@@ -218,13 +237,45 @@ def test_a_head_ct_marked_absent_is_released_defaced_with_the_option(defaced):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_a_head_ct_marked_absent_as_received_is_held_where_defaced(
+    as_received, defaced
+):
+    slices, outcomes, reasons, report = as_received
+    _, written, _, _ = defaced
+    held = HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+    changed = 0
+
+    # The reviewer saw the slices as received. A slice that the run writes
+    # defaced is not what the verdict was of, so it is held; one with
+    # nothing in the block is written as received, and released.
+    for index, data in enumerate(slices):
+        name = _head_name(index)
+        before = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+        if written[name][1].PixelData != before.PixelData:
+            changed += 1
+            assert outcomes[name] == ("held-for-review", None), index
+            assert reasons[name] == {held}, index
+        else:
+            assert outcomes[name][0] == "released", index
+            assert _codes(outcomes[name][1])[-2:] == [markers.PROFILE_CODE, CODE]
+    assert 0 < changed < len(slices)
+    assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
+    counts = {
+        entry["code"]: entry["count"]
+        for entry in report["held_for_review"]
+        if entry["stage"] == "visual-features"
+    }
+    assert counts[VisualFeaturesReason.OTHER_PIXEL_DATA.value] == changed
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
 def test_rt_instances_in_the_defaced_frame_keep_their_own_face_review(defaced):
     _, outcomes, reasons, report = defaced
 
-    # Without verdicts of their own, the RT Structure Set and RT Dose in the
-    # head's Frame of Reference are held, and nothing claims the option for
-    # them because their CT was defaced.
-    for name in (_STRUCTURE_SET, *_DOSE):
+    # Without verdicts of their own, the RT Structure Set, RT Dose, and PET
+    # in the head's Frame of Reference are held, and nothing claims the
+    # option for them because their CT was defaced.
+    for name in (_STRUCTURE_SET, *_DOSE, _PET):
         assert outcomes[name] == ("held-for-review", None), name
         assert HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT) in reasons[name]
     assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
@@ -255,7 +306,8 @@ def test_with_clean_pixel_data_the_head_ct_is_held_for_its_pixel_data(
 ):
     slices, outcomes, reasons, report = with_pixel_data
 
-    # Marked absent, and defaced, but its text regions still await review.
+    # Marked absent as defaced and blacked out, as the second run writes it,
+    # but its text regions still await review.
     for index in range(len(slices)):
         name = _head_name(index)
         assert outcomes[name] == ("held-for-review", None), index

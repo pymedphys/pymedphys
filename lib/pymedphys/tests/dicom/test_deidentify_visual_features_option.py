@@ -19,6 +19,7 @@ Every name, path, and data set here is invented or synthetic.
 
 import dataclasses
 import datetime
+import hashlib
 import json
 import contextlib
 import shutil
@@ -41,6 +42,7 @@ from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.face_review import (
     FaceReview,
     carries_visual_features,
+    pixel_data_sha256,
     read_face_review,
 )
 from pymedphys._dicom.deidentify.iods import load_iod_tables
@@ -80,10 +82,18 @@ WHEN = datetime.datetime(2026, 10, 12, 22, 0, tzinfo=datetime.timezone.utc)
 
 @pytest.fixture(name="pack")
 def fixture_pack(tmp_path):
-    """A QC pack of five released instances in two series, (0, 2, 3) and (1, 4)."""
+    """A QC pack of five released instances in two series, (0, 2, 3) and (1, 4),
+    with the pixel data written of each but 3, whose file the gate did not
+    hand over."""
     release = tmp_path / "release"
     release.mkdir()
-    written = QcPack(REFERENCE, tuple(_released(n) for n in range(5)), series=SERIES)
+    instances = tuple(
+        _released(n)
+        if n == 3
+        else dataclasses.replace(_released(n), pixel_sha256=_pixel_digest(n))
+        for n in range(5)
+    )
+    written = QcPack(REFERENCE, instances, series=SERIES)
     return qc_store.write_qc_pack(
         written, tmp_path / "secretdir-qc", release_directory=release
     ).parent
@@ -91,6 +101,21 @@ def fixture_pack(tmp_path):
 
 def _sha(*numbers):
     return frozenset(bytes.fromhex(_digest(n)) for n in numbers)
+
+
+def _pixel_digest(n):
+    return _digest(100 + n)
+
+
+def _pairs(*numbers):
+    return frozenset(
+        (bytes.fromhex(_digest(n)), bytes.fromhex(_pixel_digest(n))) for n in numbers
+    )
+
+
+def _one(digests):
+    (digest,) = digests
+    return digest
 
 
 def _attest(directory, faces):
@@ -118,6 +143,9 @@ def test_each_verdict_gives_its_series_source_digests(pack):
 
     assert review.absent == _sha(0, 2, 3)
     assert review.present == _sha(1, 4)
+    # With the pixel data written of each file marked absent, where the pack
+    # has them.
+    assert review.absent_pixels == _pairs(0, 2)
     assert review.reference == REFERENCE
 
 
@@ -127,6 +155,7 @@ def test_a_series_without_a_verdict_gives_no_digests(pack):
     review = read_face_review(pack)
 
     assert review.absent == _sha(1, 4)
+    assert review.absent_pixels == _pairs(1, 4)
     assert not review.present
 
 
@@ -146,14 +175,61 @@ def test_a_pack_changed_after_its_verdicts_gives_no_review(pack):
 
 
 def test_a_source_file_is_released_only_from_a_series_marked_absent():
-    review = FaceReview(REFERENCE, _sha(0), _sha(1))
+    review = FaceReview(REFERENCE, _sha(0, 3), _sha(1), _pairs(0))
+    pixels = bytes.fromhex(_pixel_digest(0))
 
-    assert review.hold_reason(next(iter(_sha(0)))) is None
-    assert review.hold_reason(next(iter(_sha(1)))) is VisualFeaturesReason.FACE_PRESENT
+    assert review.hold_reason(_one(_sha(0)), pixels) is None
+    assert (
+        review.hold_reason(_one(_sha(1)), pixels) is VisualFeaturesReason.FACE_PRESENT
+    )
     # Any other file, such as one changed since the review, has no verdict.
     assert (
-        review.hold_reason(next(iter(_sha(2)))) is VisualFeaturesReason.NO_FACE_VERDICT
+        review.hold_reason(_one(_sha(2)), pixels)
+        is VisualFeaturesReason.NO_FACE_VERDICT
     )
+
+
+@pytest.mark.parametrize(
+    "pixels",
+    [bytes.fromhex(_pixel_digest(1)), hashlib.sha256().digest(), None],
+    ids=["other", "none written", "unreadable"],
+)
+def test_a_verdict_releases_only_the_pixel_data_that_the_reviewed_run_wrote(pixels):
+    review = FaceReview(REFERENCE, _sha(0, 3), frozenset(), _pairs(0))
+
+    # Such as a CT slice defaced since the reviewer saw it as received, or
+    # blacked out in other regions, or a file whose written pixel data the
+    # pack does not have.
+    assert (
+        review.hold_reason(_one(_sha(0)), pixels)
+        is VisualFeaturesReason.OTHER_PIXEL_DATA
+    )
+    assert (
+        review.hold_reason(_one(_sha(3)), bytes.fromhex(_pixel_digest(3)))
+        is VisualFeaturesReason.OTHER_PIXEL_DATA
+    )
+
+
+def test_pixel_data_are_digested_by_tag_and_value():
+    def digest(**elements):
+        dataset = pydicom.Dataset()
+        for keyword, value in elements.items():
+            setattr(dataset, keyword, value)
+        return pixel_data_sha256(dataset)
+
+    values = b"\x01\x02\x03\x04"
+    assert digest(PixelData=values) == digest(PixelData=values)
+    assert digest(PixelData=values) != digest(PixelData=b"\x01\x02\x03\x05")
+    assert digest(PixelData=values) != digest(FloatPixelData=values)
+    # Both elements count, so that values cannot move from one to the other.
+    assert digest(FloatPixelData=values, PixelData=values) not in {
+        digest(PixelData=values + values),
+        digest(FloatPixelData=values + values),
+    }
+    # A file pads an odd value with a null byte, which the digest takes.
+    assert digest(PixelData=b"\x01\x02\x03") == digest(PixelData=b"\x01\x02\x03\x00")
+    assert digest() == hashlib.sha256().digest()
+    assert digest(Rows=2) == digest()
 
 
 @pytest.mark.parametrize(
@@ -164,6 +240,10 @@ def test_a_source_file_is_released_only_from_a_series_marked_absent():
         {"absent": {bytes(32)}},
         {"present": frozenset({bytes(31)})},
         {"absent": frozenset({"0" * 64})},
+        {"absent_pixels": _pairs(0)},
+        {"absent": _sha(0), "absent_pixels": {next(iter(_pairs(0)))}},
+        {"absent": _sha(0), "absent_pixels": frozenset({(_one(_sha(0)), bytes(31))})},
+        {"absent": _sha(0), "absent_pixels": frozenset({_one(_sha(0))})},
     ],
     ids=repr,
 )
@@ -524,7 +604,7 @@ def test_every_other_instance_that_can_show_a_face_is_held(second_run):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
-def test_with_clean_pixel_data_a_pixel_hold_outranks_a_face_verdict(
+def test_with_clean_pixel_data_a_verdict_covers_only_the_pixel_data_seen(
     second_run_with_pixel_data,
 ):
     _, outcomes, _, result = second_run_with_pixel_data
@@ -533,12 +613,16 @@ def test_with_clean_pixel_data_a_pixel_hold_outranks_a_face_verdict(
     reasons = {names[o.position]: set(o.reasons) for o in result.outcomes}
     blacked_out = HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT)
 
-    # A CT series marked absent is cleared of faces, but its pixel data
-    # still await review, so it is held, for its pixel data alone.
+    # A CT series marked absent is held for its pixel data, which still
+    # await review; and since their corners are blacked out, they are not
+    # the pixel data that the reviewer saw, so its verdict does not cover
+    # them.
     for name in _CT:
         assert outcomes[name] == ("held-for-review", None), name
-        assert blacked_out in reasons[name]
-        assert not any(isinstance(r, HeldVisualFeatures) for r in reasons[name])
+        assert reasons[name] == {
+            blacked_out,
+            HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA),
+        }
     # A series marked present is held for both.
     assert blacked_out in reasons[_DOSE[0]]
     assert HeldVisualFeatures(VisualFeaturesReason.FACE_PRESENT) in reasons[_DOSE[0]]

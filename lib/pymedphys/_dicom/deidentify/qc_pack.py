@@ -30,7 +30,10 @@ A pack holds, for one run:
 - ``instances``: each input by its run position and source path, with the
   SHA-256 of the source file as the run read it, its output path if
   written, or the opaque per-run label by which the release report refers
-  to it if sequestered, and why (D-026);
+  to it if sequestered, and why (D-026), and, for each released or held
+  instance whose written file the gate handed over, the SHA-256 of that
+  file's pixel data, which binds a face verdict to the pixel data that the
+  reviewer saw (D-046);
 - ``residual_findings``: each residual that the search of a written file
   found, by instance and place, with a contextual excerpt of the bytes
   around it (D-027);
@@ -121,7 +124,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/5"
+FORMAT = "pymedphys-deid-qc-pack/6"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 
@@ -233,6 +236,12 @@ class InstanceEntry:
         The SHA-256 of the source file as the run's first pass read it, in
         lower-case hexadecimal, which binds a series' face verdict to the
         files the reviewer saw; ``None`` for an input that was not read.
+    pixel_sha256 : str, optional
+        The :func:`~.face_review.pixel_data_sha256` of the file written of
+        a released or held input, as the gate read it, in lower-case
+        hexadecimal, which binds a series' face verdict to the pixel data
+        that the run wrote; ``None`` for any other input, or one whose
+        written file the gate did not hand over or could not be read.
     """
 
     position: int
@@ -242,6 +251,7 @@ class InstanceEntry:
     label: str | None = None
     reasons: tuple[str, ...] = ()
     source_sha256: str | None = None
+    pixel_sha256: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("an instance", self.position)
@@ -260,6 +270,15 @@ class InstanceEntry:
             raise QcPackError(
                 f"instance {self.position} needs its source's SHA-256 as 64 "
                 "lower-case hexadecimal digits"
+            )
+        if self.pixel_sha256 is not None and not (
+            isinstance(self.pixel_sha256, str)
+            and _SHA256.fullmatch(self.pixel_sha256)
+            and self.disposition in _REVIEWED
+        ):
+            raise QcPackError(
+                f"instance {self.position} needs its pixel data's SHA-256 as 64 "
+                "lower-case hexadecimal digits, and only if released or held"
             )
         problem = self._problem()
         if problem:
@@ -1595,6 +1614,7 @@ def _instance(entry: InstanceEntry) -> dict:
         "label": entry.label,
         "reasons": list(entry.reasons),
         "source_sha256": entry.source_sha256,
+        "pixel_sha256": entry.pixel_sha256,
     }
 
 

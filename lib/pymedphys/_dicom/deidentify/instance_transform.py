@@ -136,7 +136,12 @@ from .elements import (
     new_items,
     read_element,
 )
-from .face_review import FaceReview, carries_visual_features
+from .face_review import (
+    PIXEL_DATA_TAGS,
+    FaceReview,
+    carries_visual_features,
+    pixel_data_sha256,
+)
 from .file_layout import ElementPath
 from .iod_conformance import lost_requirements, source_gaps
 from .iods import IOD, IODTables, load_iod_tables
@@ -768,8 +773,10 @@ class InstanceTransform:
     instance that can show a
     face (:func:`~.face_review.carries_visual_features`) satisfies the
     option only where the SHA-256 of its source file is in a series that the
-    face review marks absent, and an instance that cannot show a face
-    satisfies it. Each is marked with the option's code and Recognizable
+    face review marks absent, and the pixel data that it is written with are
+    those that the reviewed run wrote of that file
+    (:attr:`~.reasons.VisualFeaturesReason.OTHER_PIXEL_DATA` otherwise), and
+    an instance that cannot show a face satisfies it. Each is marked with the option's code and Recognizable
     Visual Features (0028,0302) set to NO, which PS3.15 E.3.2 adds whether
     or not its IOD defines the attribute. Any other instance that can show a
     face is written without them, and its evidence is a
@@ -964,17 +971,20 @@ class InstanceTransform:
         return _Identifiers(written[_SOP_INSTANCE], names)
 
     def _face_hold(
-        self, data: bytes, dataset: pydicom.Dataset, iod: IOD
+        self, data: bytes, dataset: pydicom.Dataset, iod: IOD, writing: WriterPlan
     ) -> HeldVisualFeatures | None:
         """Return why the face review holds an instance, if it does.
 
         Nothing holds an instance without a face review, or one that cannot
-        show a face.
+        show a face. The review is of the source file and of the pixel data
+        that ``writing`` writes.
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
             return None
-        reason = review.hold_reason(hashlib.sha256(data).digest())
+        reason = review.hold_reason(
+            hashlib.sha256(data).digest(), _pixel_digest(writing, dataset)
+        )
         return None if reason is None else HeldVisualFeatures(reason)
 
     def _defacing(self, iod: IOD, record: InstanceRecord) -> SeriesDefacing | None:
@@ -1130,33 +1140,36 @@ class InstanceTransform:
             evidence = coverage_of(plan, edits, retained, self._options)
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
-        face = self._face_hold(data, dataset, iod)
         defacing = self._defacing(iod, record)
-        if defacing is not None and defacing.held:
-            face = HeldVisualFeatures(VisualFeaturesReason.TARGET_IN_FACE_BLOCK)
-        if face is not None:
-            evidence = _held(evidence, face)
         qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         # No instance claims Clean Pixel Data until a reviewer's decision
         # can release its pixel data with Burned In Annotation set to NO
         # (D-037).
         chosen = {CLEAN_DESCRIPTORS} if satisfied else set()
-        if self._face_review is not None and face is None:
-            chosen.add(CLEAN_RECOGNIZABLE_VISUAL_FEATURES)
         try:
             qc = (*qc, *_retained(source, plan))
             redaction = self._black_out(source, dataset, defacing)
+            # The markers write no pixel data, so the face review is of the
+            # pixel data that this plan writes.
+            writing = _without_bitstream_metadata(
+                writer_plan(plan, edits, codecs), source
+            )
+            writing = _with_redaction(writing, dataset, redaction)
+            face = (
+                HeldVisualFeatures(VisualFeaturesReason.TARGET_IN_FACE_BLOCK)
+                if defacing is not None and defacing.held
+                else self._face_hold(data, dataset, iod, writing)
+            )
+            if face is not None:
+                evidence = _held(evidence, face)
+            elif self._face_review is not None:
+                chosen.add(CLEAN_RECOGNIZABLE_VISUAL_FEATURES)
             if redaction is not None and self._finder is not None:
                 evidence = _held(evidence, HeldPixelData(redaction.reason))
                 qc = (*qc, _redaction_material(redaction, data))
             writing = with_markers(
-                writer_plan(plan, edits, codecs),
-                source,
-                dataset,
-                self._markers[frozenset(chosen)],
+                writing, source, dataset, self._markers[frozenset(chosen)]
             )
-            writing = _without_bitstream_metadata(writing, source)
-            writing = _with_redaction(writing, dataset, redaction)
             identifiers = self._identifiers(writing, dataset, source)
             return Transformed(
                 *_written(source, writing, iod, identifiers, redaction), evidence, qc
@@ -1318,6 +1331,26 @@ def _written(
     elif _PIXEL_DATA in writing.replacements and not same_pixels(source, output):
         raise _Refused(TransformReason.CUT_CHANGED_PIXELS)
     return path, data
+
+
+def _pixel_digest(writing: WriterPlan, dataset: pydicom.Dataset) -> bytes | None:
+    """Return the SHA-256 of the pixel data that the writer's plan writes.
+
+    As :func:`~.face_review.pixel_data_sha256` gives it of the file written,
+    each element being the plan's replacement, or the source's where the
+    plan keeps it; None where a value is not bytes.
+    """
+    planned = pydicom.Dataset()
+    for tag in PIXEL_DATA_TAGS:
+        path = ElementPath((), _tag_text(tag))
+        if path in writing.replacements:
+            planned.add(writing.replacements[path])
+        elif path in writing.kept and tag in dataset:
+            planned.add(dataset[tag])
+    try:
+        return pixel_data_sha256(planned)
+    except ValueError:
+        return None
 
 
 def _with_redaction(

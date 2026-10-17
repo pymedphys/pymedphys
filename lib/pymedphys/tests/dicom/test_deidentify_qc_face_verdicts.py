@@ -26,11 +26,12 @@ import shutil
 import tempfile
 from pathlib import Path, PurePosixPath
 
-from pymedphys._imports import pytest
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import attestation_command as command
 from pymedphys._dicom.deidentify import qc_attestation, qc_store, run, run_qc
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
+from pymedphys._dicom.deidentify.face_review import pixel_data_sha256
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
     ReleaseGate,
@@ -245,6 +246,13 @@ def test_a_run_binds_each_series_to_the_digests_of_its_source_files(tmp_path):
             ).hexdigest()
             for file in corpus.files
         }
+        # The Basic Profile writes each file's pixel data as received.
+        pixels = {
+            file.manifest.name: pixel_data_sha256(
+                pydicom.dcmread(instances / file.manifest.name)
+            ).hex()
+            for file in corpus.files
+        }
     finally:
         shutil.rmtree(directory, ignore_errors=True)
 
@@ -259,6 +267,13 @@ def test_a_run_binds_each_series_to_the_digests_of_its_source_files(tmp_path):
         for entry in entries
         if entry["disposition"] in ("released", "held-for-review")
     ]
+    for entry in entries:
+        expected = (
+            pixels[Path(entry["source"]).name]
+            if entry["position"] in reviewed
+            else None
+        )
+        assert entry["pixel_sha256"] == expected, entry["position"]
     listed = [position for series in pack["series"] for position in series["positions"]]
     assert sorted(listed) == reviewed
     # Every series with risks is one of the series a verdict can name.
