@@ -126,6 +126,7 @@ from .descriptor_cleaning import (
 )
 from .edits import Edit, EditKind, InstanceEdits, edit_instance, read_values
 from .element_rules import ElementRules
+from .safe_private import SafePrivateList
 from .elements import (
     DEFAULT_CODECS,
     UndecodableElement,
@@ -681,6 +682,11 @@ class InstanceTransform:
         :func:`~pymedphys._dicom.deidentify.face_review.read_face_review`,
         which a policy selecting Clean Recognizable Visual Features needs,
         and no other policy takes.
+    safe_private_list : SafePrivateList, optional
+        Under the Retain Safe Private Option, the list whose rules settle
+        private attributes: the reviewed rules, the default, or TCIA's
+        Private Tag Dictionary. The method digest, the release report, and
+        the conformance statement record which.
     unvalidated_policy : bool, default False
         Allow a policy that is not enabled, such as a preset whose behaviour
         is not yet validated. For tests and validation runs only; nothing
@@ -693,9 +699,10 @@ class InstanceTransform:
         if ``cleaning`` is given without Clean Descriptors, or left out with
         it; if ``finder`` is given without Clean Pixel Data, or left out with
         it; if ``face_review`` is given without Clean Recognizable Visual
-        Features, or left out with it; or if the policy's other options
-        cannot be composed into the policy whose actions descriptors take
-        where they are not cleaned.
+        Features, or left out with it; if ``safe_private_list`` chooses
+        TCIA's dictionary without the Retain Safe Private Option; or if the
+        policy's other options cannot be composed into the policy whose
+        actions descriptors take where they are not cleaned.
 
     Attributes
     ----------
@@ -763,6 +770,7 @@ class InstanceTransform:
         cleaning: DescriptorCleaning | None = None,
         finder: TextFinder | None = None,
         face_review: FaceReview | None = None,
+        safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
         unvalidated_policy: bool = False,
     ) -> None:
         if not (policy.enabled or unvalidated_policy):
@@ -795,7 +803,7 @@ class InstanceTransform:
                 reviewed=cleaning.reviewed.snapshot(),
                 reviewed_descriptors=cleaning.reviewed_descriptors.snapshot(),
             )
-        self._rules = ElementRules(policy)
+        self._rules = ElementRules(policy, safe_private_list=safe_private_list)
         self._policy = policy
         self._options = policy.options
         self._key = key
@@ -806,7 +814,11 @@ class InstanceTransform:
         )
         self._cleaning = cleaning
         self._fallback = (
-            None if cleaning is None else ElementRules(fallback_policy(policy))
+            None
+            if cleaning is None
+            else ElementRules(
+                fallback_policy(policy), safe_private_list=safe_private_list
+            )
         )
         self._vocabulary = None if cleaning is None else cleaning.vocabulary
         self.review_queue = ReviewQueue()
@@ -823,6 +835,7 @@ class InstanceTransform:
             reviewed_roi_names=reviewed,
             reviewed_descriptors=descriptors,
             technique_vocabulary=technique,
+            safe_private_list=safe_private_list,
         )
         satisfied = satisfied_options(policy)
         # The markers of each set of per-instance options that an instance
@@ -845,6 +858,7 @@ class InstanceTransform:
             reviewed_descriptors=descriptors,
             technique_vocabulary=technique,
             face_review=None if face_review is None else face_review.reference,
+            safe_private_list=safe_private_list,
         )
 
     def __repr__(self) -> str:

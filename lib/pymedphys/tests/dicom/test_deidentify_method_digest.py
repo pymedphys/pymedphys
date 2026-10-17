@@ -60,6 +60,7 @@ from pymedphys._dicom.deidentify import (
     uids,
     values,
 )
+from pymedphys._dicom.deidentify.safe_private import SafePrivateList
 from pymedphys._dicom.deidentify.temporal_roles import TemporalRole
 from pymedphys._nomenclature import tg263
 
@@ -94,6 +95,7 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
     reviewed_roi_names=None,
     reviewed_descriptors=None,
     technique_vocabulary=None,
+    safe_private_list=SafePrivateList.REVIEWED,
     generated_values={
         "uids.UID_ROOT": "2.25.",
         "uids.UID_NAMESPACE": uuid.UUID("6f71d76c-0573-58b6-bfda-7c5b4ee304f1"),
@@ -107,7 +109,7 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
 SYNTHETIC_CANONICAL_BYTES = (
     '{"engine_version":"0.42.0.dev1",'
     '"files":{"policy.py":"' + "f" * 64 + '"},'
-    '"format":"pymedphys-deid-method-digest/3",'
+    '"format":"pymedphys-deid-method-digest/5",'
     '"generated_values":{'
     '"dates.MIN_OFFSET_WEEKS":["int",52],'
     '"dummy_values.CONSTANTS":["map",{"FL":["list",'
@@ -126,11 +128,12 @@ SYNTHETIC_CANONICAL_BYTES = (
     '"supplementary_actions":{"(300A,00C2)":"X/Z/D"}},'
     '"reviewed_descriptors":null,'
     '"reviewed_roi_names":null,'
+    '"safe_private_list":null,'
     '"tables":{"e1_1.json":"' + "0" * 64 + '"},'
     '"technique_vocabulary":null,'
     '"vocabulary":null}'
 ).encode("utf-8")
-SYNTHETIC_SHA256 = "e0e700017d1ef746e190b3f99263780a20ccfd8dcbb604efa27797ab5c7ca258"
+SYNTHETIC_SHA256 = "066aff689a2b9f5fe9f4d0bc2a068f08c7bd63c6c83eb5aea7446b0eec2e74e7"
 
 # Each parameter of generated values, and another value for it.
 GENERATED_VALUE_CHANGES = {
@@ -166,6 +169,7 @@ CANONICAL_MEMBERS = {
     "reviewed_roi_names",
     "reviewed_descriptors",
     "technique_vocabulary",
+    "safe_private_list",
     "generated_values",
     "files",
 }
@@ -1012,6 +1016,7 @@ COMPONENT_FIELDS = (
     "reviewed_roi_names",
     "reviewed_descriptors",
     "technique_vocabulary_digest",
+    "safe_private_list",
     "generated_values_digest",
     "engine_files",
 )
@@ -1034,7 +1039,7 @@ def test_the_components_of_a_small_synthetic_input_are_digests_of_its_members():
     )
     assert components == method_digest.MethodDigestComponents(
         method_digest=SYNTHETIC_SHA256,
-        method_digest_format="pymedphys-deid-method-digest/3",
+        method_digest_format="pymedphys-deid-method-digest/5",
         engine_version="0.42.0.dev1",
         table_digests={"e1_1.json": "0" * 64},
         l2_rules_digest=SYNTHETIC_L2_RULES_SHA256,
@@ -1043,6 +1048,7 @@ def test_the_components_of_a_small_synthetic_input_are_digests_of_its_members():
         reviewed_roi_names=None,
         reviewed_descriptors=None,
         technique_vocabulary_digest=None,
+        safe_private_list=None,
         generated_values_digest=SYNTHETIC_GENERATED_VALUES_SHA256,
         engine_files={"policy.py": "f" * 64},
     )

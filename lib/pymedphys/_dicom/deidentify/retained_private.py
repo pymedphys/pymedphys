@@ -20,7 +20,9 @@ Private Creator IDs that are required to fully define" them, and removes
 every other, or processes it as Deidentification Action (0008,0307)
 recommends. Table E.1-1 gives Private Attributes C under the Option, and the
 reviewed rules of ``safe_private.toml`` say how each listed attribute is
-cleaned (:mod:`~pymedphys._dicom.deidentify.safe_private`). An instance may
+cleaned (:mod:`~pymedphys._dicom.deidentify.safe_private`), unless the run
+chooses TCIA's Private Tag Dictionary in their place
+(:mod:`~pymedphys._dicom.deidentify.tcia_private_tags`). An instance may
 also declare which of its private attributes are safe, in Private Data
 Element Characteristics Sequence (0008,0300), which E.3.10 counts as a way
 of knowing. :func:`private_actions` gives every element of a private group
@@ -31,7 +33,8 @@ file holds it:
 - A data element (gggg,xxyy), with xx from 10 to FF, is in the block that
   the private creator (gggg,00xx) of the same data set or item reserves
   (PS3.5 Section 7.8.1), and its rule is the one for that creator, group,
-  and yy (:meth:`~.safe_private.SafePrivateRules.rule_for`), wherever the
+  and yy in the run's list, given the VR as written, or none where it is
+  not written (:meth:`~.safe_private.RuleList.rule_for`), wherever the
   creator's block is and however deep its data set is nested. A creator is
   compared only where its Value Field, once trailing spaces and NULs are
   removed, holds printable ISO 646 bytes, 0x20 to 0x7E, and no backslash:
@@ -134,8 +137,8 @@ from .file_layout import ElementPath, Extent
 from .safe_private import (
     Basis,
     Handling,
+    RuleList,
     SafePrivateRule,
-    SafePrivateRules,
     default_handling,
 )
 from .source import SourceEvidence
@@ -245,7 +248,7 @@ class PrivatePlan:
 
 
 def private_actions(
-    source: SourceEvidence, rules: SafePrivateRules
+    source: SourceEvidence, rules: RuleList
 ) -> Mapping[ElementPath, str]:
     """Return the action that settles the C of each private element of a source file.
 
@@ -254,9 +257,11 @@ def private_actions(
     source : SourceEvidence
         The source file, from
         :func:`~pymedphys._dicom.deidentify.source.read_source`.
-    rules : SafePrivateRules
-        The reviewed rules, from
-        :func:`~pymedphys._dicom.deidentify.safe_private.load_safe_private_rules`.
+    rules : RuleList
+        The run's list of rules: the reviewed rules, from
+        :func:`~pymedphys._dicom.deidentify.safe_private.load_safe_private_rules`,
+        or TCIA's, from
+        :func:`~pymedphys._dicom.deidentify.tcia_private_tags.tcia_safe_private_rules`.
 
     Returns
     -------
@@ -271,7 +276,7 @@ def private_actions(
 
 def private_plan(
     source: SourceEvidence,
-    rules: SafePrivateRules,
+    rules: RuleList,
     unkept: frozenset[ElementPath] = frozenset(),
 ) -> PrivatePlan:
     """Return the actions of :func:`private_actions`, with the VRs that read them.
@@ -279,7 +284,7 @@ def private_plan(
     Parameters
     ----------
     source : SourceEvidence
-    rules : SafePrivateRules
+    rules : RuleList
     unkept : frozenset of ElementPath, optional
         The private sequences that no rule lists, and that the plan found
         nothing kept in, which are removed. Defaults to none.
@@ -364,15 +369,16 @@ def _compared(value: bytes) -> str | None:
 
 
 def _rule(
-    rules: SafePrivateRules,
+    rules: RuleList,
     declaration: _Declaration | None,
     key: tuple[int, str, int],
     extent: Extent,
 ) -> SafePrivateRule | None:
     """Return the rule that settles a private data element, or None if none does.
 
-    A reviewed rule settles its element unless the instance declares that
-    the element may be identifying. An element without one that the
+    The rule of the run's list for the element as written settles it unless
+    the instance declares that the element may be identifying. An element
+    without one that the
     instance declares safe takes the handling of its VR, as written or as
     the instance defines it where the file does not write it, and the VM
     that the instance defines, or a single value where it defines none; it
@@ -381,7 +387,8 @@ def _rule(
     parsed whatever it says.
     """
     group, creator, element = key
-    rule = rules.rule_for(group, creator, element)
+    written = None if extent.vr in _UNWRITTEN else extent.vr
+    rule = rules.rule_for(group, creator, element, written)
     if declaration is None or extent.items is not None:
         return rule
     if element in declaration.identifying:

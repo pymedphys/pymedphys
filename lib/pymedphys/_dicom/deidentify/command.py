@@ -80,6 +80,7 @@ from .keys import DeidKey
 from .qc_pack import QcPackError
 from .reviewed_descriptors import ReviewedDescriptors, ReviewedDescriptorsError
 from .reviewed_roi_names import ReviewedNames, ReviewedNamesError
+from .safe_private import SafePrivateList
 from .standard import ALL_OPTIONS
 
 EXIT_RELEASED = 0
@@ -435,6 +436,16 @@ def build_parser(
             "a reviewer's decisions in it"
         ),
     )
+    parser.add_argument(
+        "--safe-private-list",
+        choices=[each.value for each in SafePrivateList],
+        default=SafePrivateList.REVIEWED.value,
+        help=(
+            "under Retain Safe Private, the list whose rules settle private "
+            "attributes: the reviewed rules (reviewed, the default) or TCIA's "
+            "Private Tag Dictionary (tcia)"
+        ),
+    )
     return parser
 
 
@@ -448,6 +459,7 @@ def build_transform(
     *,
     options: Collection[str] | None = None,
     cleaning: DescriptorCleaning | None = None,
+    safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
 ) -> instance_transform.InstanceTransform:
     """Return the run's transform under ``preset``, or ``options``, and ``key``.
 
@@ -464,16 +476,23 @@ def build_transform(
     cleaning : DescriptorCleaning, optional
         What ROI Names are cleaned with, which a policy with Clean
         Descriptors needs and no other policy takes.
+    safe_private_list : SafePrivateList, optional
+        Under Retain Safe Private, the list whose rules settle private
+        attributes: the reviewed rules, the default, or TCIA's Private Tag
+        Dictionary, which no other policy takes.
 
     Raises
     ------
     PolicyError
-        If the preset or option set is not enabled, or ``cleaning`` does not
-        fit it, with a message that quotes nothing but the names of presets
-        and options.
+        If the preset or option set is not enabled, or ``cleaning`` or
+        ``safe_private_list`` does not fit it, with a message that quotes
+        nothing but the names of presets and options.
     """
     return instance_transform.InstanceTransform(
-        policy.select_policy(preset, options=options), key, cleaning=cleaning
+        policy.select_policy(preset, options=options),
+        key,
+        cleaning=cleaning,
+        safe_private_list=safe_private_list,
     )
 
 
@@ -571,6 +590,7 @@ def transform_for(  # pylint: disable = too-many-arguments
     empty_held_roi_names: bool = False,
     roi_list_path: str | os.PathLike[str] | None = None,
     reviewed_descriptors: str | os.PathLike[str] | None = None,
+    safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
 ) -> instance_transform.InstanceTransform:
     """Return :func:`build_transform`'s transform for a run's options.
 
@@ -586,7 +606,9 @@ def transform_for(  # pylint: disable = too-many-arguments
     descriptors are cleaned with the custodian's ``reviewed_descriptors``
     list, which must exist and lie outside the same directories, and the
     bundled technique vocabulary (D-036). Under any other policy, these
-    options are not read.
+    options are not read. Under Retain Safe Private, ``safe_private_list``
+    chooses the list whose rules settle private attributes, and no other
+    policy takes TCIA's.
 
     Raises
     ------
@@ -619,6 +641,7 @@ def transform_for(  # pylint: disable = too-many-arguments
             key,
             options=None if options is None else selected.options,
             cleaning=cleaning,
+            safe_private_list=safe_private_list,
         )
     except policy.PolicyError as error:
         raise TransformNotBuilt(str(error)) from None
@@ -656,6 +679,7 @@ def _built(
         empty_held_roi_names=arguments.empty_held_roi_names,
         roi_list_path=arguments.roi_list,
         reviewed_descriptors=arguments.reviewed_descriptors,
+        safe_private_list=SafePrivateList(arguments.safe_private_list),
     )
 
 
