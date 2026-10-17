@@ -20,10 +20,13 @@ Private Creator IDs that are required to fully define" them, and removes
 every other, or processes it as Deidentification Action (0008,0307)
 recommends. Table E.1-1 gives Private Attributes C under the Option, and the
 reviewed rules of ``safe_private.toml`` say how each listed attribute is
-cleaned (:mod:`~pymedphys._dicom.deidentify.safe_private`).
-:func:`private_actions` gives every element of a private group of a source
-file, at the top level and in the items of every sequence, the action that
-settles its C, K, U, or X, from its rule and its value as the file holds it:
+cleaned (:mod:`~pymedphys._dicom.deidentify.safe_private`). An instance may
+also declare which of its private attributes are safe, in Private Data
+Element Characteristics Sequence (0008,0300), which E.3.10 counts as a way
+of knowing. :func:`private_actions` gives every element of a private group
+of a source file, at the top level and in the items of every sequence, the
+action that settles its C, K, U, or X, from its rule and its value as the
+file holds it:
 
 - A data element (gggg,xxyy), with xx from 10 to FF, is in the block that
   the private creator (gggg,00xx) of the same data set or item reserves
@@ -47,7 +50,8 @@ settles its C, K, U, or X, from its rule and its value as the file holds it:
     letters, digits, spaces, and underscores, and the number of values is
     one that the rule's VM allows;
   - ``uid``: replaced, as every other UID is, where it is written
-    as UI, and otherwise removed, since its value cannot be read as UIDs;
+    as UI and the number of values is one that the rule's VM allows, and
+    otherwise removed, since its value cannot be read as UIDs;
   - ``sequence``: kept as a container where the source holds its items, so
     that each element in them takes its own rule (E.3.10), and otherwise
     removed;
@@ -56,6 +60,38 @@ settles its C, K, U, or X, from its rule and its value as the file holds it:
 
   A value that does not pass its handling's check, a value where the rule
   expects items, and items where it expects a value, are removed.
+- An instance's (0008,0300), at the top level, describes blocks by Private
+  Group Reference (0008,0301) and Private Creator Reference (0008,0302),
+  the creator compared as above, so that it applies to that creator's block
+  in that group wherever the block is. A data element that holds a value
+  is declared safe where its block is marked SAFE in Block Identifying
+  Information Status (0008,0303), or MIXED with the element listed in
+  Nonidentifying Private Elements (0008,0304); it is declared possibly
+  identifying where its block is marked UNSAFE, or MIXED without it listed,
+  or an item of Deidentification Action Sequence (0008,0305) lists it in
+  Identifying Private Elements (0008,0306). Where items disagree, possibly
+  identifying wins. An item that names a block but whose status is not one
+  of those Enumerated Values, or whose list of elements cannot be read,
+  declares every element of the block possibly identifying; one that names
+  no group open to private use, or no creator that is compared, is ignored.
+
+  - An element declared possibly identifying is removed, even where a
+    reviewed rule would keep it, since it is then not known to be safe.
+  - An element declared safe that no reviewed rule lists takes the handling
+    of its VR, as a row of Table E.3.10-1 does: its VR as written, or,
+    where the file does not write it, the VR that Private Data Element
+    Value Representation (0008,030A) defines for it, and it is removed
+    where neither gives one, the two differ, or the definitions of it in
+    (0008,0300) disagree or one cannot be read. Its values are checked
+    against that VR, and their number against the VM that Private Data
+    Element Value Multiplicity (0008,0309) defines with it, or against a
+    single value where (0008,0310) defines none, or one that PS3.6 has no
+    form for. So a declared number or code string is kept, a declared UID
+    replaced, and declared text and every value of another VR, such as a
+    date, a name, or OB, OW, or UN data, removed, as E.3.10's "removed or
+    processed" allows.
+  - A sequence is parsed whatever (0008,0300) says of it, so that each
+    element in its items is settled on its own merits.
 - A private sequence that no rule lists, in a block whose creator is
   compared, is parsed, as E.3.10 asks of a sequence "not known to always
   only contain safe content": it is kept as a container, so that each
@@ -66,39 +102,44 @@ settles its C, K, U, or X, from its rule and its value as the file holds it:
   :attr:`PrivatePlan.parsed`.
 - A private creator is kept where an element of its block in the same data
   set or item is kept or replaced, and removed otherwise.
-- Every other element of a private group is removed: a data element without
-  a rule that is not a sequence, one whose block has no creator that is
-  compared, and each element that PS3.5 Section 7.8.1 does not allow, at
+- Every other element of a private group is removed: a data element that
+  is not a sequence and that neither a rule nor (0008,0300) declares safe,
+  one whose block has no creator that is compared, and each element that PS3.5 Section 7.8.1 does not allow, at
   (gggg,0001) to (gggg,000F) and (gggg,0100) to (gggg,0FFF).
 
-One route of E.3.10 is not yet applied, so what it would retain is removed.
-Private Data Element Characteristics Sequence (0008,0300) is not yet
-followed: a block that it marks SAFE in Block Identifying Information Status
-(0008,0303), and an attribute that it lists in Nonidentifying Private
-Elements (0008,0304), are retained only where a reviewed rule retains them,
-and the sequence itself is removed by its supplementary rule, as under every
-policy. Removing what is not retained meets E.3.10's "removed or processed".
+An element that Deidentification Action (0008,0307) asks to be processed
+is removed, which meets E.3.10's "removed or processed". (0008,0300) itself
+is removed by its supplementary rule, as under every policy.
 
 The actions name paths, never values. The values that decide them are read
-from the source file's own bytes, and only those of private creators and of
-elements that a rule would keep. :func:`private_plan` also gives the VR by
-which each kept value whose VR the file does not write is read: the rule's,
-or LO for a private creator, so that a creator, code, or number string kept
-from Implicit VR Little Endian, or written as UN, is reviewed as the same
-value written with its VR would be. A sequence holds no value of its own, so
-none is given for one.
+from the source file's own bytes, and only those of private creators, of
+elements that a rule would keep, and of the attributes of (0008,0300) named
+above, which describe private blocks rather than the patient.
+:func:`private_plan` also gives the VR by which each kept value whose VR the
+file does not write is read: the rule's, the VR that (0008,0300) defines for
+a declared element, or LO for a private creator, so that a creator, code, or
+number string kept from Implicit VR Little Endian, or written as UN, is
+reviewed as the same value written with its VR would be. A sequence holds
+no value of its own, so none is given for one.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import struct
 import types
 from collections.abc import Mapping
 
-from .file_layout import ElementPath
-from .safe_private import Handling, SafePrivateRule, SafePrivateRules
+from .file_layout import ElementPath, Extent
+from .safe_private import (
+    Basis,
+    Handling,
+    SafePrivateRule,
+    SafePrivateRules,
+    default_handling,
+)
 from .source import SourceEvidence
-from .standard import _RESERVED_ODD_GROUPS
+from .standard import _RESERVED_ODD_GROUPS, VRS
 from .values import values_problem, vm_problem
 
 KEEP = "K"
@@ -120,6 +161,30 @@ _SIZES = types.MappingProxyType(
 )
 # A block's key: the items that hold it, its group, and its creator's element.
 _Block = tuple[tuple, int, int]
+# Private Data Element Characteristics Sequence (0008,0300), and the
+# attributes of its items that say which elements of a block are safe
+# (PS3.3 Section C.12.1).
+_CHARACTERISTICS = "(0008,0300)"
+_GROUP_REFERENCE = "(0008,0301)"
+_CREATOR_REFERENCE = "(0008,0302)"
+_STATUS = "(0008,0303)"
+_NONIDENTIFYING = "(0008,0304)"
+_ACTIONS = "(0008,0305)"
+_IDENTIFYING = "(0008,0306)"
+_DEFINITIONS = "(0008,0310)"
+_DEFINED_ELEMENT = "(0008,0308)"
+_DEFINED_VM = "(0008,0309)"
+_DEFINED_VR = "(0008,030A)"
+# The Enumerated Values of Block Identifying Information Status (0008,0303).
+_SAFE, _MIXED, _UNSAFE = "SAFE", "MIXED", "UNSAFE"
+# The elements of a block, by the low byte of their element numbers.
+_BLOCK_ELEMENTS = frozenset(range(0x100))
+# A declared block's key: its group and its private creator.
+_Described = tuple[int, str]
+# The VM of a declared element that (0008,0310) does not define.
+_UNDEFINED_VM = "1"
+# The VR and VM that (0008,0310) defines for an element.
+_Defined = tuple[str, str]
 
 
 def is_private(tag: str) -> bool:
@@ -139,6 +204,22 @@ def is_private_creator(tag: str) -> bool:
     7.8.1).
     """
     return is_private(tag) and 0x0010 <= int(tag[6:10], 16) <= 0x00FF
+
+
+@dataclasses.dataclass(frozen=True)
+class _Declaration:
+    """What an instance's (0008,0300) says of the elements of one block.
+
+    ``safe`` holds the elements that it marks safe and no item of it marks
+    identifying; ``identifying`` those that some item marks as possibly
+    identifying; ``defined`` the VR and VM that it defines for an element,
+    where every definition of the element in its items agrees, and None
+    where two disagree or one cannot be read.
+    """
+
+    safe: frozenset[int]
+    identifying: frozenset[int]
+    defined: Mapping[int, _Defined | None]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -213,6 +294,7 @@ def private_plan(
     parsed: set[ElementPath] = set()
     creators: dict[_Block, str | None] = {}
     kept: set[_Block] = set()
+    declarations = _declarations(source)
     for path in source.paths():
         if not is_private(path.tag):
             continue
@@ -224,10 +306,15 @@ def private_plan(
             block = (path.items, group, element >> 8)
             # A block's creator comes before its elements, in tag order.
             creator = creators.get(block)
+            extent = source.element(path)
             rule = None
             if creator is not None:
-                rule = rules.rule_for(group, creator, element & 0xFF)
-            extent = source.element(path)
+                rule = _rule(
+                    rules,
+                    declarations.get((group, creator)),
+                    (group, creator, element & 0xFF),
+                    extent,
+                )
             if creator is not None and rule is None and extent.items is not None:
                 if path not in unkept:
                     actions[path] = KEEP
@@ -265,10 +352,264 @@ def _creator(source: SourceEvidence, path: ElementPath) -> str | None:
         or extent.vr not in _UNWRITTEN | {_CREATOR_VR}
     ):
         return None
-    value = source.value_field(path).rstrip(_PADDING)
+    return _compared(source.value_field(path))
+
+
+def _compared(value: bytes) -> str | None:
+    """Return a private creator's Value Field as the text that is compared, or None."""
+    value = value.rstrip(_PADDING)
     if not value or not set(value) <= _CREATOR_BYTES:
         return None
     return value.decode("ascii")
+
+
+def _rule(
+    rules: SafePrivateRules,
+    declaration: _Declaration | None,
+    key: tuple[int, str, int],
+    extent: Extent,
+) -> SafePrivateRule | None:
+    """Return the rule that settles a private data element, or None if none does.
+
+    A reviewed rule settles its element unless the instance declares that
+    the element may be identifying. An element without one that the
+    instance declares safe takes the handling of its VR, as written or as
+    the instance defines it where the file does not write it, and the VM
+    that the instance defines, or a single value where it defines none; it
+    is removed where the instance's definitions of it are disputed. The
+    declaration settles only an element that holds a value: a sequence is
+    parsed whatever it says.
+    """
+    group, creator, element = key
+    rule = rules.rule_for(group, creator, element)
+    if declaration is None or extent.items is not None:
+        return rule
+    if element in declaration.identifying:
+        return None
+    if rule is not None or element not in declaration.safe:
+        return rule
+    defined = declaration.defined.get(element, (None, _UNDEFINED_VM))
+    if defined is None:
+        return None
+    defined_vr, vm = defined
+    if extent.vr in _UNWRITTEN:
+        vr = defined_vr
+    elif defined_vr in (None, extent.vr):
+        vr = extent.vr
+    else:
+        vr = None
+    if vr is None:
+        return None
+    return SafePrivateRule(
+        creator,
+        group,
+        element,
+        vr,
+        vm,
+        default_handling(vr),
+        Basis.DECLARED,
+    )
+
+
+def _declarations(source: SourceEvidence) -> Mapping[_Described, _Declaration]:
+    """Return what the instance's (0008,0300) says of each block it describes.
+
+    Only the sequence at the top level, in the SOP Common Module, is read.
+    Where several items describe one block, an element is safe only where
+    one marks it safe and none marks it possibly identifying, and it is
+    defined only where every definition of it agrees.
+    """
+    sequence = ElementPath((), _CHARACTERISTICS)
+    if sequence not in source or not source.element(sequence).items:
+        return {}
+    safe: dict[_Described, set[int]] = {}
+    identifying: dict[_Described, set[int]] = {}
+    definitions: dict[_Described, dict[int, _Defined | None]] = {}
+    for index in range(source.element(sequence).items or 0):
+        read = _declared(source, ((_CHARACTERISTICS, index),))
+        if read is None:
+            continue
+        key, item_safe, item_identifying, item_defined = read
+        safe.setdefault(key, set()).update(item_safe)
+        identifying.setdefault(key, set()).update(item_identifying)
+        defined = definitions.setdefault(key, {})
+        for element, definition in item_defined.items():
+            defined[element] = _agreed(defined, element, definition)
+    return {
+        key: _Declaration(
+            frozenset(elements - identifying[key]),
+            frozenset(identifying[key]),
+            types.MappingProxyType(definitions[key]),
+        )
+        for key, elements in safe.items()
+    }
+
+
+def _declared(
+    source: SourceEvidence, item: tuple
+) -> (
+    tuple[_Described, frozenset[int], frozenset[int], dict[int, _Defined | None]] | None
+):
+    """Return the block that one item of (0008,0300) describes, and what it says.
+
+    That is the block's key, the elements it marks safe, those it marks as
+    possibly identifying, and the VR and VM it defines for each element,
+    None where its definitions of an element disagree or one cannot be read;
+    or None where the item does not name a compared creator of a private
+    group.
+    Where it names one but its status is not one of the Enumerated Values,
+    or a list of elements in it cannot be read, it marks no element safe
+    and every element possibly identifying.
+    """
+    group = _unsigned(_field(source, ElementPath(item, _GROUP_REFERENCE), "US"))
+    creator_field = _field(source, ElementPath(item, _CREATOR_REFERENCE), "LO")
+    creator = None if creator_field is None else _compared(creator_field)
+    if (
+        group is None
+        or len(group) != 1
+        or not is_private(f"({group[0]:04X},0000)")
+        or creator is None
+    ):
+        return None
+    key = (group[0], creator)
+    unread = (key, frozenset(), _BLOCK_ELEMENTS, {})
+    status = _code(_field(source, ElementPath(item, _STATUS), "CS"))
+    if status == _SAFE:
+        safe = _BLOCK_ELEMENTS
+    elif status == _MIXED:
+        listed = _elements(source, ElementPath(item, _NONIDENTIFYING))
+        if listed is None:
+            return unread
+        safe = listed
+    elif status == _UNSAFE:
+        safe = frozenset()
+    else:
+        return unread
+    identifying = set(_BLOCK_ELEMENTS - safe)
+    for each in _items(source, ElementPath(item, _ACTIONS)):
+        listed = (
+            None if each is None else _elements(source, ElementPath(each, _IDENTIFYING))
+        )
+        if listed is None:
+            return unread
+        identifying |= listed
+    defined: dict[int, _Defined | None] = {}
+    for each in _items(source, ElementPath(item, _DEFINITIONS)):
+        elements = (
+            None
+            if each is None
+            else _elements(source, ElementPath(each, _DEFINED_ELEMENT))
+        )
+        if elements is None:
+            continue
+        vr = _code(_field(source, ElementPath(each, _DEFINED_VR), "CS"))
+        definition = None
+        # A definition of several elements cannot be read for any of them.
+        if len(elements) == 1 and vr in VRS:
+            multiplicity = _unsigned(
+                _field(source, ElementPath(each, _DEFINED_VM), "UL"), "L"
+            )
+            definition = (vr, _vm(multiplicity) or _UNDEFINED_VM)
+        for element in elements:
+            defined[element] = _agreed(defined, element, definition)
+    return (key, frozenset(safe - identifying), frozenset(identifying), defined)
+
+
+def _agreed(
+    defined: Mapping[int, _Defined | None], element: int, definition: _Defined | None
+) -> _Defined | None:
+    """Return an element's definition where it agrees with any earlier one."""
+    if element in defined and defined[element] != definition:
+        return None
+    return definition
+
+
+def _vm(multiplicity: tuple[int, ...] | None) -> str | None:
+    """Return the VM, as PS3.6 writes it, that (0008,0309) gives, or None.
+
+    PS3.3 Section C.12.1.1.7.1 gives a fixed multiplicity as one value, and
+    a variable one as its least, its greatest (0 where it is open-ended),
+    and its stride (1 where it is omitted). None where the values are not
+    of that form, or give a VM that PS3.6 has no form for.
+    """
+    if (
+        multiplicity is None
+        or len(multiplicity) not in (1, 2, 3)
+        or multiplicity == (0,)
+    ):
+        return None
+    if len(multiplicity) == 1:
+        multiplicity = (multiplicity[0], multiplicity[0])
+    least, greatest, stride = (*multiplicity, 1)[:3]
+    # An attribute may be empty whatever its VM, so a least of 0 adds nothing.
+    least = least or stride
+    if not stride or least % stride:
+        return None
+    if not greatest:
+        # Open-ended: a stride of 1, or one equal to the least, as in 2-2n.
+        return {least: f"{least}-{least}n", 1: f"{least}-n"}.get(stride)
+    if greatest < least or stride != 1:
+        return None
+    return str(least) if least == greatest else f"{least}-{greatest}"
+
+
+def _items(source: SourceEvidence, path: ElementPath) -> list[tuple | None]:
+    """Return the items of a sequence of (0008,0300), each as the path to it.
+
+    An absent sequence has none; one that does not hold its value in items
+    has one, None, which cannot be read.
+    """
+    if path not in source:
+        return []
+    count = source.element(path).items
+    if count is None:
+        return [None]
+    return [(*path.items, (path.tag, index)) for index in range(count)]
+
+
+def _field(source: SourceEvidence, path: ElementPath, vr: str) -> bytes | None:
+    """Return the Value Field of an attribute of (0008,0300), or None.
+
+    None where it is absent or holds items, or its VR as written is not the
+    one that PS3.6 gives it.
+    """
+    if path not in source:
+        return None
+    extent = source.element(path)
+    if extent.items is not None or extent.undefined_length:
+        return None
+    if extent.vr not in (None, vr):
+        return None
+    return source.value_field(path)
+
+
+def _unsigned(value: bytes | None, code: str = "H") -> tuple[int, ...] | None:
+    """Return the values of a US or UL Value Field, or None if it holds none.
+
+    ``code`` is the :mod:`struct` code of one value: H for US, L for UL.
+    """
+    size = struct.calcsize(f"<{code}")
+    if not value or len(value) % size:
+        return None
+    return struct.unpack(f"<{len(value) // size}{code}", value)
+
+
+def _elements(source: SourceEvidence, path: ElementPath) -> frozenset[int] | None:
+    """Return the elements within a block that a US attribute lists, or None.
+
+    None where it is absent, holds no value, or lists a value above 00FFH.
+    """
+    values = _unsigned(_field(source, path, "US"))
+    if values is None or not set(values) <= _BLOCK_ELEMENTS:
+        return None
+    return frozenset(values)
+
+
+def _code(value: bytes | None) -> str | None:
+    """Return a single-valued CS without its padding, or None if it is not one."""
+    if value is None or not set(value) <= _STRING_BYTES or b"\\" in value:
+        return None
+    return value.decode("ascii").strip(" ")
 
 
 def _action(
@@ -287,9 +628,13 @@ def _action(
         return KEEP
     if extent.undefined_length or rule.handling is Handling.TEXT:
         return REMOVE
+    value = source.value_field(path)
     if rule.handling is Handling.UID:
-        return REPLACE if extent.vr == "UI" else REMOVE
-    return KEEP if _valid(source.value_field(path), rule.vr, rule.vm) else REMOVE
+        uids = value.rstrip(_PADDING)
+        count = len(uids.split(b"\\")) if uids else 0
+        replaceable = extent.vr == "UI" and vm_problem(rule.vm, count) is None
+        return REPLACE if replaceable else REMOVE
+    return KEEP if _valid(value, rule.vr, rule.vm) else REMOVE
 
 
 def _valid(value: bytes, vr: str, vm: str) -> bool:

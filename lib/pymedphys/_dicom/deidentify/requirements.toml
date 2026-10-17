@@ -272,7 +272,7 @@ Under Clean Descriptors, it describes how ROI Name is cleaned in two tiers: auto
 Each run with a release reporter writes the statement of its policy, as `conformance-statement.md` beside the release report at the root of the release, since it holds no instance value; it describes the policy and vocabulary that the report records, and the report gives the run's own method digest and reviewed-names digest.
 The statements of `basic` and `basic-clean-descriptors`, the presets of the first supported release, list nothing as pending.
 For each selected option that has a cleaner, it gives the attributes that the policy gives C and the cleaner settles, with its method: the AE titles under Retain Device Identity (D-034), the free text under Retain Patient Characteristics, which holds its instance unless it has no value (D-038, PS3.15-E.3.7-02), and the dates and times that Modified Dates modifies (D-039, PS3.15-E.3.6-04).
-A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; the private attributes that Retain Safe Private does not yet retain by the route of E.3.10 that the engine has yet to apply, the blocks that Private Data Element Characteristics Sequence marks SAFE; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset.
+A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset.
 Under Retain Safe Private, it describes how the reviewed safe private rules are matched and applied, and lists each rule that can retain an attribute (D-035, PS3.15-E.3.10-04).
 '''
 
@@ -345,7 +345,7 @@ implementation = [
 note = '''
 The engine removes no face from pixel data, so it claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file, or one that cannot show a face (D-046).
 Every other instance that can show a face, with pixel data or as an RT Structure Set, is held for review and never released, so no released instance that claims the option has the visual information that the paragraph requires to be removed or distorted.
-Defacing CT, so that the option can be claimed for an instance whose face was removed, is a later step.
+Defacing CT is a later step; an instance whose face was removed would still claim the option only where a reviewer, shown its surface as cleaned, found no recognisable face.
 '''
 
 [[requirement]]
@@ -652,8 +652,9 @@ implementation = [
 note = '''
 Reviewed rules give every row of Table E.3.10-1 a handling, keyed by private creator and element within the block: numbers and code strings are checked and kept, UIDs replaced, text cleaned as descriptors where a reviewed cleaner applies and otherwise removed, private sequences parsed, and bulk binary data and three timestamps removed (D-035).
 Under the Option, the engine settles each private attribute by its rule, at the top level and in the items of every sequence that is kept, matching creators only in printable ISO 646 and checking each kept value against its VR and VM; it keeps a private creator only where its block keeps something, and removes every other private attribute, which E.3.10 allows in place of following Deidentification Action (0008,0307) (D-035).
+An attribute that the instance's Private Data Element Characteristics Sequence (0008,0300) declares safe, in a block whose Block Identifying Information Status is SAFE or in Nonidentifying Private Elements, and that no rule lists, takes the handling of its VR, as written or as the sequence defines it; one that the sequence declares may identify is removed, even where a rule would keep it (D-035).
 TCIA's Private Tag Dictionary ships unchanged, pinned by its length and SHA-256 and compared with TCIA's file by a monthly edition check, as a second list that a run is to be able to choose; its keep is a basis for retention, and kept values still pass the handling of their VR (D-035).
-Remaining: honouring the blocks that Private Data Element Characteristics Sequence marks SAFE and its Nonidentifying Private Elements, which are retained only by a reviewed rule until then, and choosing TCIA's dictionary for a run (D-035) (M3).
+Remaining: choosing TCIA's dictionary for a run (D-035) (M3).
 '''
 
 [[requirement]]
@@ -864,7 +865,7 @@ Every person name in the pinned dictionary has an action that removes or replace
 Every text attribute that a supported IOD uses is removed or replaced too, other than coded and technical values and De-identification Method, which the engine adds to; the names and identifiers of people, organisations, records, and networks, and identifiers that a device reads, among those that Table E.1-1 omits are removed under every option, and accessory and equipment identifiers are kept only under Retain Device Identity (D-022).
 URN Code Value and Coding Scheme URL, which name coding concepts and schemes, are kept.
 Every other URI and URL attribute that Table E.1-1 omits is removed by Type under every option, as are seven sequences that it omits whose content can identify an institution or other patients or say something about the patient, such as Requesting Service Code Sequence (0032,1034), Issuer of Patient ID Qualifiers Sequence (0010,0024), and Group of Patients Identification Sequence (0010,0027), and three measures of the patient's body, Patient's Body Mass Index (0010,1022), Measured AP Dimension (0010,1023), and Measured Lateral Dimension (0010,1024) (D-022).
-Private Data Element Characteristics Sequence (0008,0300) is removed by Type under every option: without Retain Safe Private no private attribute is kept, so the private creators of removed private blocks do not survive in its items (D-028), and under the Option it is not yet followed (D-035).
+Private Data Element Characteristics Sequence (0008,0300) is removed by Type under every option: without Retain Safe Private no private attribute is kept, so the private creators of removed private blocks do not survive in its items (D-028), and under the Option it is read to find the private attributes that the instance declares safe, and then removed, since its descriptions and the creators of blocks that are not kept can name the institution's software (D-035).
 The conformance statement says that the kept codes of local coding schemes can carry an institution's name or abbreviation, a local scheme's Coding Scheme URL its host, and an in-house device's Manufacturer its name, and that each kept value is listed among the QC pack's retained strings.
 It also says that the engine does not itself assess the residual risk of these values, which `public-release` has a person review, and that for the first release the design assigns to whoever releases the data the confirmation that the output's residual risk, these values included, is acceptable, which the QC pack's attestation records when they give it (D-016).
 The maintainer decided on 6 October 2026 that the kept codes of local coding schemes need no further rule beyond that disclosure (D-022).
@@ -1033,9 +1034,9 @@ implementation = [
 note = '''
 Without Retain Safe Private, every private data element and private creator is removed from a data set, at every level (D-028).
 The run's instance transform removes them from each instance it writes.
-The reviewed rules evaluate every row of PS3.15 Table E.3.10-1, and retain only values that can be checked; under the Option, the engine applies them and removes every private attribute that they do not retain (D-035).
+The reviewed rules evaluate every row of PS3.15 Table E.3.10-1, and retain only values that can be checked; under the Option, the engine applies them, and the instance's own declarations of safe private attributes in Private Data Element Characteristics Sequence, with the same checks, and removes every private attribute that neither retains, or that the instance declares may identify (D-035).
 TCIA's Private Tag Dictionary, shipped unchanged and pinned by its SHA-256, is a second source that a run is to be able to choose, and its kept values are to pass the same checks (D-035).
-Remaining: honouring the blocks that Private Data Element Characteristics Sequence marks SAFE, and choosing TCIA's dictionary for a run (M3).
+Remaining: choosing TCIA's dictionary for a run (M3).
 '''
 
 [[requirement]]

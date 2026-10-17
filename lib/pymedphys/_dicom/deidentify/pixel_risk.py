@@ -18,11 +18,12 @@
 
 The engine changes pixel data only under the Clean Pixel Data Option, which
 blacks out the text that a text finder finds and holds the instance for
-review (D-037), and it does not yet claim the Clean Pixel Data or Clean
-Recognizable Visual Features Options. It reports indicators of risk
-for review instead: of text burned into the pixel data, of a face that
-could be reconstructed and recognised, and of values that may disclose the
-patient's body weight. :func:`assess_pixel_risk` reads them
+review, and no instance claims that option yet. It claims the Clean
+Recognizable Visual Features Option only for an instance that cannot show a
+face or whose source file a reviewer found free of one. Whatever the options,
+it reports indicators of risk for review: of text burned into the pixel data,
+of a face that could be reconstructed and recognised, and of values that may
+disclose the patient's body weight. :func:`assess_pixel_risk` reads them
 from one instance's attributes; it never inspects the pixel data, so the
 absence of an indicator is not evidence that the risk is absent.
 
