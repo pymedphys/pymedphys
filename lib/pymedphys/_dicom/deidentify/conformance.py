@@ -74,7 +74,7 @@ from collections.abc import Callable, Iterable, Iterator, Mapping
 from pymedphys import _version
 from pymedphys._nomenclature import tg263
 
-from . import compound_actions, markers, roi_names
+from . import compound_actions, markers, roi_names, tcia_private_tags
 from .cleaners import cleaners_for
 from .codes import load_context_group
 from .content_items import CONTENT_ITEM_SEQUENCES
@@ -100,7 +100,7 @@ from .policy import (
     PolicyError,
     ResolvedConflict,
 )
-from .safe_private import Handling, SafePrivateRule
+from .safe_private import Handling, SafePrivateList, SafePrivateRule
 from .scope import SUPPORTED_IODS, SUPPORTED_TRANSFER_SYNTAXES, classify
 from .sop_classes import load_storage_sop_classes
 from .standard import (
@@ -500,10 +500,13 @@ class ConformanceStatement:
         attributes that the policy gives C, in the order of the options in
         Table E.1-1.
     safe_private : tuple of SafePrivateRule
-        Under the Retain Safe Private Option, the reviewed rules that can
-        retain a private attribute, other than those for text, which no
-        reviewed cleaner cleans, in the rules file's order; otherwise
+        Under the Retain Safe Private Option, the rules of the chosen list
+        that can retain a private attribute, other than those for text,
+        which no reviewed cleaner cleans, in their file's order; otherwise
         ``()``.
+    safe_private_list : SafePrivateList or None
+        Under the Retain Safe Private Option, the list whose rules settle
+        private attributes; otherwise None.
     markers : InsertedMarkers
         The parts of the markers that the policy decides.
     temporal : TemporalHandling
@@ -530,6 +533,7 @@ class ConformanceStatement:
     roi_names: RoiNameCleaning | None
     cleaned: tuple[CleanedAttributes, ...]
     safe_private: tuple[SafePrivateRule, ...]
+    safe_private_list: SafePrivateList | None
     markers: InsertedMarkers
     temporal: TemporalHandling
     pending: tuple[str, ...]
@@ -880,7 +884,10 @@ def _markers(policy: Policy, digest: str) -> InsertedMarkers:
 
 
 def conformance_statement(
-    policy: Policy, *, vocabulary: tg263.Nomenclature | None
+    policy: Policy,
+    *,
+    vocabulary: tg263.Nomenclature | None,
+    safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
 ) -> ConformanceStatement:
     """Gather what the conformance statement of a policy describes.
 
@@ -898,6 +905,10 @@ def conformance_statement(
         reviewed descriptors list, which are a site's confidential
         resources, and without the technique vocabulary, as D-024's
         published baseline is, and the statement says so.
+    safe_private_list : SafePrivateList, optional
+        Under the Retain Safe Private Option, the list whose rules settle
+        private attributes: the reviewed rules, the default, or TCIA's
+        Private Tag Dictionary. The digest is computed with it.
 
     Returns
     -------
@@ -906,12 +917,15 @@ def conformance_statement(
     Raises
     ------
     TypeError
-        If ``policy`` is not a Policy, or for any reason
+        If ``policy`` is not a Policy, ``safe_private_list`` is not a
+        SafePrivateList, or for any reason
         :func:`~pymedphys._dicom.deidentify.method_digest.method_digest`
         gives.
     ValueError
         If the policy was not composed from the pinned Table E.1-1, such as
-        one composed from an altered table.
+        one composed from an altered table, or ``safe_private_list`` chooses
+        TCIA's dictionary for a policy without the Retain Safe Private
+        Option.
     MarkerError
         If the markers cannot be written as valid values, as
         :func:`~pymedphys._dicom.deidentify.markers.markers_for` refuses
@@ -920,6 +934,15 @@ def conformance_statement(
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
+    if not isinstance(safe_private_list, SafePrivateList):
+        raise TypeError("safe_private_list must be a SafePrivateList")
+    if SAFE_PRIVATE not in policy.options and (
+        safe_private_list is not SafePrivateList.REVIEWED
+    ):
+        raise ValueError(
+            "a safe private list can be chosen only under the Retain Safe "
+            "Private Option"
+        )
     table = load_table_e1_1()
     if policy.edition != table.edition or list(policy.actions) != [
         row.tag for row in table.attributes
@@ -944,7 +967,9 @@ def conformance_statement(
         if row.uid in SUPPORTED_TRANSFER_SYNTAXES
     )
     try:
-        rules: ElementRules | None = ElementRules(policy)
+        rules: ElementRules | None = ElementRules(
+            policy, safe_private_list=safe_private_list
+        )
     except PolicyError:
         rules = None
     attributes = tuple(_fallen_back(policy, rules, _attributes(policy, rules)))
@@ -983,7 +1008,12 @@ def conformance_statement(
     )
     # A statement describes a policy, never a site's reviewed lists, and
     # gives D-024's baseline, without the technique vocabulary.
-    digest = method_digest(policy, vocabulary=vocabulary, reviewed_roi_names=None)
+    digest = method_digest(
+        policy,
+        vocabulary=vocabulary,
+        reviewed_roi_names=None,
+        safe_private_list=safe_private_list,
+    )
     return ConformanceStatement(
         engine_version=_version.__version__,
         edition=policy.edition,
@@ -1003,8 +1033,14 @@ def conformance_statement(
         roi_names=_roi_names(attributes, vocabulary),
         cleaned=cleaned,
         safe_private=_safe_private(rules),
+        safe_private_list=None if rules is None else rules.safe_private_list,
         markers=_markers(policy, digest),
         temporal=_temporal(policy, attributes),
         pending=pending,
-        acknowledgements=tuple(dict.fromkeys(t.acknowledgement for t in tables)),
+        acknowledgements=tuple(dict.fromkeys(t.acknowledgement for t in tables))
+        + (
+            (tcia_private_tags.ACKNOWLEDGEMENT,)
+            if rules is not None and rules.safe_private_list is SafePrivateList.TCIA
+            else ()
+        ),
     )

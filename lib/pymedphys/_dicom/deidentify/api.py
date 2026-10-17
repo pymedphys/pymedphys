@@ -37,9 +37,10 @@ import dataclasses
 import os
 from collections.abc import Collection
 
-from . import command, instance_transform, run
+from . import command, instance_transform, policy, run
 from .diagnostics import RedactionCounts, redacted_diagnostics
 from .keys import DeidKey
+from .safe_private import SafePrivateList
 
 
 class DeidentifyError(Exception):
@@ -100,6 +101,7 @@ def deidentify(  # pylint: disable = too-many-arguments
     empty_held_roi_names: bool = False,
     roi_list: str | os.PathLike[str] | None = None,
     reviewed_descriptors: str | os.PathLike[str] | None = None,
+    safe_private_list: str = "reviewed",
 ) -> Deidentified:
     """De-identify the DICOM files below a source directory into a new release.
 
@@ -150,6 +152,12 @@ def deidentify(  # pylint: disable = too-many-arguments
         pymedphys._dicom.deidentify.reviewed_descriptors_command``. By
         default, none, so only technique descriptors made of reviewed
         vocabulary words are kept (D-036).
+    safe_private_list : str, optional
+        Under Retain Safe Private, the list whose rules settle private
+        attributes: ``"reviewed"``, the default, for the reviewed rules of
+        Table E.3.10-1 and their additions, or ``"tcia"`` for the Private
+        Tag Dictionary of The Cancer Imaging Archive. The method digest,
+        the release report, and the conformance statement record which.
 
     Returns
     -------
@@ -167,8 +175,9 @@ def deidentify(  # pylint: disable = too-many-arguments
         If both ``preset`` and ``options`` are given, or if
         ``tg263_spreadsheet``, ``reviewed_names``, ``empty_held_roi_names``,
         ``roi_list``, or ``reviewed_descriptors`` is given with a policy
-        without Clean Descriptors.
-        Nothing is read or created.
+        without Clean Descriptors, or if ``safe_private_list`` is not
+        ``"reviewed"`` or ``"tcia"``, or is ``"tcia"`` with a policy without
+        Retain Safe Private. Nothing is read or created.
     DeidentifyError
         If the preset or an option is unknown or not enabled, the options
         cannot be composed, or the TG-263 edition, the reviewed-names list,
@@ -209,6 +218,17 @@ def deidentify(  # pylint: disable = too-many-arguments
             "basic-clean-descriptors preset, or options that include "
             "clean_descriptors"
         )
+    try:
+        chosen_list = SafePrivateList(safe_private_list)
+    except ValueError:
+        raise ValueError('safe_private_list must be "reviewed" or "tcia"') from None
+    if chosen_list is not SafePrivateList.REVIEWED and not _safe_private_applies(
+        preset, chosen
+    ):
+        raise ValueError(
+            'safe_private_list "tcia" applies only under Retain Safe Private: '
+            "with a preset or options that include retain_safe_private"
+        )
     with redacted_diagnostics() as counts:
         try:
             transform = command.transform_for(
@@ -223,6 +243,7 @@ def deidentify(  # pylint: disable = too-many-arguments
                 empty_held_roi_names=empty_held_roi_names,
                 roi_list_path=roi_list,
                 reviewed_descriptors=reviewed_descriptors,
+                safe_private_list=chosen_list,
             )
         except command.TransformNotBuilt as error:
             raise DeidentifyError(str(error)) from None
@@ -236,3 +257,12 @@ def deidentify(  # pylint: disable = too-many-arguments
             written_check=transform.written_check,
         )
     return Deidentified(result, counts)
+
+
+def _safe_private_applies(preset: str | None, options: tuple[str, ...] | None) -> bool:
+    """Return whether the run's policy selects Retain Safe Private."""
+    if options is not None:
+        return policy.SAFE_PRIVATE in options
+    return policy.SAFE_PRIVATE in policy.PRESETS.get(
+        policy.DEFAULT_PRESET if preset is None else preset, ()
+    )

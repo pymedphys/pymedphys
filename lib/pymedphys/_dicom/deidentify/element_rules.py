@@ -78,7 +78,7 @@ from collections.abc import Sequence
 from .file_layout import TAG_PATTERN
 from .iods import IOD
 from .policy import Policy, PolicyError, refuse_unapplied_options
-from .safe_private import SafePrivateRules, load_safe_private_rules
+from .safe_private import RuleList, SafePrivateList, load_safe_private_rules
 from .standard import (
     _RESERVED_ODD_GROUPS,
     PRIVATE_ATTRIBUTES_TAG,
@@ -87,6 +87,7 @@ from .standard import (
     load_table_e1_1,
 )
 from .supplementary_actions import TEXT_VRS, UNCOVERED_TEXT_ACTION
+from .tcia_private_tags import tcia_safe_private_rules
 from .uid_roles import load_uid_roles
 
 REMOVE = "X"
@@ -188,20 +189,35 @@ class ElementRules:
     policy : Policy
         A validated policy, composed from the pinned Table E.1-1, such as
         that of :func:`~pymedphys._dicom.deidentify.policy.compose_policy`.
+    safe_private_list : SafePrivateList, optional
+        Under the Retain Safe Private Option, the list whose rules settle
+        private attributes: the reviewed rules, the default, or TCIA's
+        Private Tag Dictionary (D-035).
 
     Attributes
     ----------
     policy : Policy
-    safe_private : SafePrivateRules or None
-        The reviewed rules that settle the C that the policy gives private
-        attributes, under the Retain Safe Private Option; otherwise ``None``.
+    safe_private_list : SafePrivateList or None
+        The list chosen under the Retain Safe Private Option; otherwise
+        ``None``.
+    safe_private : RuleList or None
+        That list's rules, which settle the C that the policy gives private
+        attributes: the reviewed rules
+        (:class:`~pymedphys._dicom.deidentify.safe_private.SafePrivateRules`)
+        or TCIA's
+        (:class:`~pymedphys._dicom.deidentify.tcia_private_tags.TciaSafePrivateRules`);
+        otherwise ``None``.
 
     Raises
     ------
     PolicyError
         If the policy selects an option that the engine does not yet apply
         (:func:`~pymedphys._dicom.deidentify.policy.refuse_unapplied_options`),
-        or was not composed from the pinned Table E.1-1.
+        or was not composed from the pinned Table E.1-1; or if
+        ``safe_private_list`` chooses TCIA's dictionary for a policy without
+        the Retain Safe Private Option.
+    TypeError
+        If ``safe_private_list`` is not a SafePrivateList.
 
     Examples
     --------
@@ -216,17 +232,32 @@ class ElementRules:
     'X/Z/D'
     """
 
-    def __init__(self, policy: Policy) -> None:
+    def __init__(
+        self,
+        policy: Policy,
+        *,
+        safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+    ) -> None:
         refuse_unapplied_options(policy)
+        if not isinstance(safe_private_list, SafePrivateList):
+            raise TypeError("safe_private_list must be a SafePrivateList")
         table = load_table_e1_1()
         rows = {row.tag: row for row in table.attributes}
         if table.edition != policy.edition or rows.keys() != policy.actions.keys():
             raise PolicyError("the policy was not composed from the pinned Table E.1-1")
         self.policy = policy
         self._private = policy.actions[PRIVATE_ATTRIBUTES_TAG]
-        self.safe_private: SafePrivateRules | None = (
-            load_safe_private_rules() if self._private == "C" else None
-        )
+        if self._private != "C" and safe_private_list is not SafePrivateList.REVIEWED:
+            raise PolicyError(
+                "a safe private list can be chosen only under the Retain Safe "
+                "Private Option"
+            )
+        self.safe_private_list = safe_private_list if self._private == "C" else None
+        self.safe_private: RuleList | None = None
+        if self.safe_private_list is SafePrivateList.REVIEWED:
+            self.safe_private = load_safe_private_rules()
+        elif self.safe_private_list is SafePrivateList.TCIA:
+            self.safe_private = tcia_safe_private_rules()
         self._table = {
             tag: rows[tag].basic_profile
             if action == "C" and (_is_sequence(tag) or _is_masked(tag))
