@@ -81,8 +81,10 @@ and codes that the engine defines, never by a source value or path:
   reason (D-009), from :func:`held_for_review`: a ROI Name that descriptor
   cleaning held, why a pixel option held its pixel data (D-037), an
   instance that can show a face without a face verdict of absent for its
-  source file, a CT slice of a series with a target in its face block
-  (D-050), or a release gate's reason that requires QC review. A held
+  source file and the pixel data that the run writes of it (D-046), a CT
+  slice of a series with a target in its face block, an RT Structure Set,
+  RT Dose, or PET instance in a defaced series' Frame of Reference (D-050),
+  or a release gate's reason that requires QC review. A held
   instance has neither an output name nor a label.
 - ``roi_names``: the outcome of each ROI Name of the structure sets that
   descriptor cleaning cleaned, every name counted, and how many distinct

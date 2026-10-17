@@ -220,6 +220,32 @@ def test_a_series_has_a_block_or_a_problem():
         SeriesDefacing(None, None)
 
 
+def test_a_defaced_series_has_its_frame_of_reference_and_no_other_does():
+    outcome = _outcome()
+    held = _outcome(files.structure_set([("PTV", files.square(_EYES_FRONT[0]))]))
+
+    assert outcome.frame == files.FRAME
+    assert held.frame is None
+    assert face_blocks.defaced_frames([outcome, held]) == {files.FRAME}
+    with pytest.raises(ValueError, match="Frame of Reference UID"):
+        SeriesDefacing(outcome.block, None)
+    with pytest.raises(ValueError, match="Frame of Reference UID"):
+        SeriesDefacing(outcome.block, None, "")
+    with pytest.raises(ValueError, match="Frame of Reference UID"):
+        SeriesDefacing(None, FaceBlockProblem.NO_EYES, files.FRAME)
+
+
+def test_a_records_frames_are_its_own_and_its_structure_sets():
+    rtss = files.structure_set(
+        [("ORGAN", files.square((0, 0, 0)))], frame=files.ROOT + ".8"
+    )
+
+    assert face_blocks.frames_of(InstanceRecord.from_file(_head_files()[0])) == {
+        files.FRAME
+    }
+    assert face_blocks.frames_of(InstanceRecord.from_file(rtss)) == {files.ROOT + ".8"}
+
+
 # Writing air.
 
 
@@ -424,6 +450,18 @@ def test_a_target_that_names_no_frame_of_reference_holds_the_series():
     unnamed(rtss)
 
     assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def test_a_target_in_a_structure_set_that_names_no_frame_holds_the_series():
+    rtss = pydicom.dcmread(
+        io.BytesIO(files.structure_set([("PTV", files.square(_EYES_FRONT[0]))]))
+    )
+    del rtss.ReferencedFrameOfReferenceSequence
+    rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
+    data = files.written(rtss)
+
+    assert not face_blocks.frames_of(InstanceRecord.from_file(data))
+    assert _outcome(data).problem is SeriesProblem.TARGET_IN_BLOCK
 
 
 def test_the_cavity_is_kept_only_above_its_floor():

@@ -69,10 +69,15 @@ air's stored value is itself padding, the pixels written are padding, which
 a viewer shows as outside the image, as the air before the face is in most
 scans.
 
-Only CT Image instances are defaced. An RT Dose, RT Structure Set, or PET
-instance in the same Frame of Reference keeps its pixel data and contours,
-and the face review's verdict on its own series decides whether it is
-released, as before.
+Only CT Image instances are defaced. An RT Structure Set, RT Dose, or PET
+instance (:data:`UNDEFACED_IODS`) in the Frame of Reference of a defaced
+series keeps its contours or pixel data, which can still outline the face,
+so it is held for review whatever its verdict, since a reviewer may have
+judged it from the defaced CT's previews
+(:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), until
+the run can clean it too. So is one that names no Frame of Reference, in a
+run that defaces any series. A structure set that names no Frame of
+Reference is likewise searched for targets in the block of every series.
 """
 
 from __future__ import annotations
@@ -112,6 +117,17 @@ HEAD_REACH = 400.0  # millimetres below the volume's superior end
 # placeholder, to be set by validation.
 CAVITY_FLOOR = defacing.GLOBE_DIAMETER[1]
 TARGET_TYPES = frozenset({"PTV", "CTV", "GTV"})
+# The IODs whose instances in a defaced series' Frame of Reference the run
+# does not yet clean of the face.
+UNDEFACED_IODS = frozenset(
+    {
+        RT_STRUCTURE_SET,
+        "RT Dose",
+        "Positron Emission Tomography Image",
+        "Enhanced PET Image",
+        "Legacy Converted Enhanced PET Image",
+    }
+)
 # How far two slices' direction cosines, or spacings in millimetres, may
 # differ and still be one stack's.
 _SAME = 1e-4
@@ -146,14 +162,19 @@ class SeriesDefacing:
         The block written as air, or None where the series is not defaced.
     problem : FaceBlockProblem or SeriesProblem or None
         Why the series is not defaced, or None where it is.
+    frame : str, optional
+        The Frame of Reference UID of a defaced series; None for any other.
     """
 
     block: FaceBlock | None
     problem: FaceBlockProblem | SeriesProblem | None
+    frame: str | None = None
 
     def __post_init__(self) -> None:
         if (self.block is None) == (self.problem is None):
             raise ValueError("a series has a block or a problem, not both")
+        if (self.frame is None) != (self.block is None) or self.frame == "":
+            raise ValueError("a defaced series has its Frame of Reference UID")
 
     @property
     def held(self) -> bool:
@@ -233,24 +254,42 @@ def find_face_blocks(
     """
     series: dict[str, list[int]] = collections.defaultdict(list)
     structure_sets: dict[str, list[int]] = collections.defaultdict(list)
+    # Structure sets that name no Frame of Reference, which may be in any.
+    frameless: list[int] = []
     for position, record in sorted(records.items()):
         if record.iod == CT_IMAGE and record.series is not None:
             series[record.series].append(position)
         elif record.iod == RT_STRUCTURE_SET:
-            for frame in {*record.roi_frames, *(use.frame for use in record.frames)}:
-                if frame:
-                    structure_sets[frame].append(position)
+            frames = frames_of(record)
+            for frame in frames:
+                structure_sets[frame].append(position)
+            if not frames:
+                frameless.append(position)
     outcomes = {}
     for uid, positions in series.items():
         outcome, frame = _series_outcome(positions, read)
-        if (
-            outcome.block is not None
-            and frame
-            and _target_in(outcome.block, frame, structure_sets.get(frame, []), read)
-        ):
-            outcome = SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK)
+        if outcome.block is not None and frame:
+            searched = sorted({*structure_sets.get(frame, []), *frameless})
+            if _target_in(outcome.block, frame, searched, read):
+                outcome = SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK)
         outcomes[uid] = outcome
     return outcomes
+
+
+def frames_of(record: InstanceRecord) -> frozenset[str]:
+    """Return every Frame of Reference UID that an instance's record names:
+    its own, its structure set's referenced frames, and its ROIs'."""
+    named = {
+        record.frame_of_reference,
+        *record.roi_frames,
+        *(use.frame for use in record.frames),
+    }
+    return frozenset(frame for frame in named if frame)
+
+
+def defaced_frames(outcomes: Iterable[SeriesDefacing]) -> frozenset[str]:
+    """Return the Frame of Reference UID of each defaced series."""
+    return frozenset(outcome.frame for outcome in outcomes if outcome.frame is not None)
 
 
 def _series_outcome(
@@ -285,7 +324,7 @@ def _series_outcome(
         )
         for index in kept:
             finder.add(_hounsfield(read(positions[index]), slices[index]))
-        return SeriesDefacing(finder.block(), None), frame
+        return SeriesDefacing(finder.block(), None, frame), frame
     except _Unusable as unusable:
         return SeriesDefacing(None, unusable.problem), frame
     except FaceBlockRefused as refused:

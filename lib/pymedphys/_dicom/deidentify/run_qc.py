@@ -46,7 +46,7 @@ from .release_report import REPORTED_FINDINGS
 from .reviewed_descriptors import CleanedDescriptor
 from .run_written import REPORTED_ONLY
 from .roi_names import Reason
-from .source import SourceRefused, read_source
+from .source import read_source
 from .text_detection import TextBox
 from .written_references import WrittenFinding, WrittenFindingKind
 
@@ -517,7 +517,9 @@ def _pixel_sha256(written: bytes) -> str | None:
     """Return the SHA-256 of a written file's pixel data, or None if unreadable."""
     try:
         return pixel_data_sha256(read_source(written).dataset()).hex()
-    except (SourceRefused, ValueError):
+    # Whatever reading the file raises, its instance has no pixel digest, so
+    # no verdict clears it, and the pack is still written.
+    except Exception:  # pylint: disable = broad-exception-caught
         return None
 
 

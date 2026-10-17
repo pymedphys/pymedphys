@@ -20,6 +20,7 @@ Every name, path, and data set here is invented or synthetic.
 import dataclasses
 import datetime
 import hashlib
+import io
 import json
 import contextlib
 import shutil
@@ -47,9 +48,11 @@ from pymedphys._dicom.deidentify.face_review import (
 )
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.instance_transform import (
+    HeldEvidence,
     InstanceTransform,
     ReleaseGate,
 )
+from pymedphys._dicom.deidentify.run_results import Transformed
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.method_digest import method_digest
 from pymedphys._dicom.deidentify.policy import (
@@ -61,7 +64,9 @@ from pymedphys._dicom.deidentify.policy import (
 )
 from pymedphys._dicom.deidentify.qc_attestation import Coverage, Face, Outcome
 from pymedphys._dicom.deidentify.qc_pack import QcPack, QcPackError
+from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.scope import SUPPORTED_IODS
+from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.reasons import (
     HeldPixelData,
     HeldVisualFeatures,
@@ -70,6 +75,8 @@ from pymedphys._dicom.deidentify.reasons import (
 )
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
+from . import _synthetic_compressed as compressed
+from ._corpus_run import decoders_installed
 from .test_deidentify_qc_face_verdicts import SERIES, _digest, _released
 
 REFERENCE = "A-" + "0123456789abcdef" * 2
@@ -671,3 +678,48 @@ def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
 def test_a_held_reason_is_a_visual_features_reason():
     with pytest.raises(TypeError):
         HeldVisualFeatures("face-present")  # type: ignore[arg-type]
+
+
+@pytest.mark.skipif(
+    not decoders_installed(), reason="needs a decoder of each compressed syntax"
+)
+def test_a_verdict_releases_compressed_pixel_data_as_the_reviewed_run_wrote_them():
+    corpus = compressed.compressed_corpus(corpus_module.build_corpus())
+    held = HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+    released = cut = 0
+
+    for file in corpus.files:
+        if file.manifest.transfer_syntax not in compressed.CORPUS_SYNTAXES:
+            continue
+        record = InstanceRecord.from_file(file.data)
+        source = hashlib.sha256(file.data).digest()
+        unseen = InstanceTransform(
+            _policy(),
+            KEY,
+            face_review=FaceReview(REFERENCE, frozenset({source}), frozenset()),
+            unvalidated_policy=True,
+        )(file.data, record)
+        if not isinstance(unseen, Transformed):
+            continue
+        # Marked absent, but with no pixel data seen, it is held; given the
+        # pixel data that this run wrote, with each codestream's metadata
+        # cut, it is released.
+        assert isinstance(unseen.evidence, HeldEvidence)
+        assert held in getattr(unseen.evidence, "held")
+        written = pixel_data_sha256(read_source(unseen.data).dataset())
+        seen = InstanceTransform(
+            _policy(),
+            KEY,
+            face_review=FaceReview(
+                REFERENCE,
+                frozenset({source}),
+                frozenset(),
+                frozenset({(source, written)}),
+            ),
+            unvalidated_policy=True,
+        )(file.data, record)
+        assert not isinstance(seen.evidence, HeldEvidence), file.name
+        assert CODE in _codes(pydicom.dcmread(io.BytesIO(seen.data)))
+        released += 1
+        cut += written != pixel_data_sha256(read_source(file.data).dataset())
+    assert released and cut

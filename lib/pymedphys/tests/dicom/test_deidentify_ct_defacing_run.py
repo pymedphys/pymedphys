@@ -65,7 +65,8 @@ _SCAN = head.axial(
 _CT_FILES = ("01-ct-1.dcm", "02-ct-2.dcm", corpus_module.SEQUESTERED_FILE)
 _STRUCTURE_SET = "04-rtstruct.dcm"
 _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
-_PET = "15-pet.dcm"
+_PET = ("15-pet.dcm", "16-pet-enhanced.dcm", "17-pet-legacy-enhanced.dcm")
+_IN_FRAME = (_STRUCTURE_SET, *_DOSE, *_PET)
 _IN_THE_BLOCK = (-32.0, -76.0, 20.0)
 
 
@@ -77,8 +78,9 @@ def _head_name(index):
 def _runs(*others, first=None, target=False):
     """Run the collection, with its CT slices replaced by the head's, under
     ``basic``, or under the option and ``first`` with a face review that
-    gives no verdicts; attest the pack with the head's series alone marked
-    absent; and run it again under the option and ``others``."""
+    gives no verdicts; attest the pack with the head's series, and those of
+    the RT Structure Set, RT Dose, and PET in its frame, marked absent; and
+    run it again under the option and ``others``."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -118,12 +120,15 @@ def _runs(*others, first=None, target=False):
         )
         entries = json.loads(reviewed.qc_pack.read_text("utf-8"))
         names = {e["position"]: Path(e["source"]).name for e in entries["instances"]}
-        (series,) = [
-            s
+        marked = [
+            s["positions"][0]
             for s in entries["series"]
-            if names[s["positions"][0]].startswith("01-head")
+            if any(
+                names[p].startswith("01-head") or names[p] in _IN_FRAME
+                for p in s["positions"]
+            )
         ]
-        _attest(reviewed.qc_pack.parent, {series["positions"][0]: Face.ABSENT})
+        _attest(reviewed.qc_pack.parent, dict.fromkeys(marked, Face.ABSENT))
         transform = _transform(others, read_face_review(reviewed.qc_pack.parent))
         second = run.run(
             run.discover(instances),
@@ -269,16 +274,30 @@ def test_a_head_ct_marked_absent_as_received_is_held_where_defaced(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
-def test_rt_instances_in_the_defaced_frame_keep_their_own_face_review(defaced):
-    _, outcomes, reasons, report = defaced
+@pytest.mark.parametrize("fixture", ["defaced", "as_received"])
+def test_rt_instances_in_the_defaced_frame_are_held_whatever_their_verdict(
+    fixture, request
+):
+    _, outcomes, reasons, report = request.getfixturevalue(fixture)
+    held = HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
 
-    # Without verdicts of their own, the RT Structure Set, RT Dose, and PET
-    # in the head's Frame of Reference are held, and nothing claims the
-    # option for them because their CT was defaced.
-    for name in (_STRUCTURE_SET, *_DOSE, _PET):
+    # Marked absent, the RT Structure Set's outline, and the RT Dose and
+    # PET in the head's Frame of Reference, still trace the face that the
+    # defaced CT no longer shows, so none is released, and nothing claims
+    # the option for them because their CT was defaced.
+    for name in _IN_FRAME:
         assert outcomes[name] == ("held-for-review", None), name
-        assert HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT) in reasons[name]
+        # The RT Dose for review is held by its release gate as well.
+        assert {r for r in reasons[name] if isinstance(r, HeldVisualFeatures)} == {
+            held
+        }, name
     assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
+    counts = {
+        entry["code"]: entry["count"]
+        for entry in report["held_for_review"]
+        if entry["stage"] == "visual-features"
+    }
+    assert counts[held.reason.value] == len(_IN_FRAME)
 
 
 def test_a_target_in_the_block_holds_the_head_ct(targeted):
@@ -298,6 +317,14 @@ def test_a_target_in_the_block_holds_the_head_ct(targeted):
         if entry["stage"] == "visual-features"
     }
     assert counts["target-in-face-block"] == len(slices)
+    # With no series defaced, the RT instances marked absent are released,
+    # but for the RT Dose that its release gate holds for review.
+    for name in _IN_FRAME:
+        assert not any(isinstance(r, HeldVisualFeatures) for r in reasons[name])
+        if name != _DOSE[1]:
+            disposition, dataset = outcomes[name]
+            assert disposition == "released", name
+            assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.1-01", "PS3.15-E.3.2-01")

@@ -192,10 +192,13 @@ from .pixel_cleaning import (
 )
 from .face_blocks import (
     CT_IMAGE,
+    UNDEFACED_IODS,
     CtDefacer,
     FaceBlockCounts,
     SeriesDefacing,
+    defaced_frames,
     find_face_blocks,
+    frames_of,
 )
 from .pixel_risk import assess_pixel_risk, series_evidence
 from .run_qc import (
@@ -769,7 +772,11 @@ class InstanceTransform:
     :class:`~.face_blocks.CtDefacer`'s masks, checked as a redaction is; a
     slice that cannot be is sequestered. A slice of a series with a
     target's contour in its block is not defaced, and is held for review
-    (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`). An
+    (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`). An RT
+    Structure Set, RT Dose, or PET instance in a defaced series' Frame of
+    Reference, or naming none, is held whatever its verdict
+    (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
+    since the run does not yet clean it of the face. An
     instance that can show a
     face (:func:`~.face_review.carries_visual_features`) satisfies the
     option only where the SHA-256 of its source file is in a series that the
@@ -868,6 +875,7 @@ class InstanceTransform:
         }
         self._face_review = face_review
         self._face_blocks: dict[str, SeriesDefacing] = {}
+        self._defaced_frames: frozenset[str] = frozenset()
         self._face_block_counts = None if face_review is None else FaceBlockCounts()
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
         self.reporter = ReleaseReporter(
@@ -901,6 +909,7 @@ class InstanceTransform:
             return
         self._face_blocks = find_face_blocks(records, read)
         self._face_block_counts.record(self._face_blocks.values())
+        self._defaced_frames = defaced_frames(self._face_blocks.values())
 
     def written_check(
         self, graph: ReferenceGraph, written: Mapping[int, InstanceRecord]
@@ -986,6 +995,19 @@ class InstanceTransform:
             hashlib.sha256(data).digest(), _pixel_digest(writing, dataset)
         )
         return None if reason is None else HeldVisualFeatures(reason)
+
+    def _frame_hold(
+        self, iod: IOD, record: InstanceRecord
+    ) -> HeldVisualFeatures | None:
+        """Return why an instance in a defaced series' Frame of Reference,
+        or one naming none in a run that defaces a series, is held, if its
+        IOD is one that the run does not yet clean of the face."""
+        if not self._defaced_frames or iod.name not in UNDEFACED_IODS:
+            return None
+        frames = frames_of(record)
+        if frames and frames.isdisjoint(self._defaced_frames):
+            return None
+        return HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
 
     def _defacing(self, iod: IOD, record: InstanceRecord) -> SeriesDefacing | None:
         """Return the outcome of a CT slice's series, if it has one."""
@@ -1160,9 +1182,14 @@ class InstanceTransform:
                 if defacing is not None and defacing.held
                 else self._face_hold(data, dataset, iod, writing)
             )
-            if face is not None:
-                evidence = _held(evidence, face)
-            elif self._face_review is not None:
+            holds = [
+                held
+                for held in (face, self._frame_hold(iod, record))
+                if held is not None
+            ]
+            for held in holds:
+                evidence = _held(evidence, held)
+            if not holds and self._face_review is not None:
                 chosen.add(CLEAN_RECOGNIZABLE_VISUAL_FEATURES)
             if redaction is not None and self._finder is not None:
                 evidence = _held(evidence, HeldPixelData(redaction.reason))

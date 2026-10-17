@@ -289,6 +289,25 @@ def test_a_run_binds_each_series_to_the_digests_of_its_source_files(tmp_path):
     assert attestation.faces == (FaceVerdict(volume[0], Face.ABSENT),)
 
 
+def test_a_written_file_whose_pixel_data_cannot_be_read_has_no_digest(monkeypatch):
+    def fails(dataset):
+        raise RuntimeError("anything")
+
+    data = next(
+        file.data
+        for file in corpus_module.build_corpus().files
+        if "PixelData" in pydicom.dcmread(io.BytesIO(file.data))
+    )
+    expected = pixel_data_sha256(pydicom.dcmread(io.BytesIO(data))).hex()
+    digest = run_qc._pixel_sha256  # pylint: disable = protected-access
+    assert digest(data) == expected
+    monkeypatch.setattr(run_qc, "pixel_data_sha256", fails)
+    # Whatever reading it raises, the pack is still built, and no verdict
+    # can clear the instance.
+    assert digest(data) is None
+    assert digest(b"not DICOM") is None
+
+
 # The attestation's verdicts.
 
 

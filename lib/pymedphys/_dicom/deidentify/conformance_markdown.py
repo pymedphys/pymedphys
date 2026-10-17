@@ -680,9 +680,11 @@ _REVIEW_CONDITIONS = {
         "centres of the eyes, from their lower edge up, of each CT Image "
         "series in which it finds both eyes, keeping the cranial cavity "
         "above the orbits; this alone never gains the code, a verdict on "
-        "a series seen before it was defaced does not cover it defaced, and "
-        "a series with a PTV, CTV, or GTV contour in that region is held "
-        "for review"
+        "a series seen before it was defaced does not cover it defaced, a "
+        "series with a PTV, CTV, or GTV contour in that region is held for "
+        "review, and so is each RT Structure Set, RT Dose, and PET instance "
+        "in a defaced series' Frame of Reference, which the run does not "
+        "yet clean"
     ),
 }
 
