@@ -113,6 +113,9 @@ class Basis(enum.Enum):
 
     TABLE = "table"  # PS3.15 Table E.3.10-1 lists it
     REVIEWED = "reviewed"  # a reviewed public document shows it is safe
+    # The instance's own Private Data Element Characteristics Sequence
+    # (0008,0300) marks its block SAFE or lists it as nonidentifying.
+    DECLARED = "declared"
 
 
 # The VRs whose values each retaining handling can check. Every other VR, an

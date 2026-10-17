@@ -43,11 +43,12 @@ reason that such a finding is not a reason for review (D-032), or returns
   coincides with it (D-039, :mod:`~pymedphys._dicom.deidentify.residual_shifts`).
   It applies to a finding that would otherwise withhold the file.
 - :attr:`Exemption.VENDOR_CREATOR`: the finding's source is a private
-  creator element, (gggg,0010) to (gggg,00FF) of an odd group, and each
-  of its values collected for the subject is, without trailing spaces and
-  NULs, exactly one of the private creators that the pinned PS3.15 Table
-  E.3.10-1 lists (:func:`vendor_creators`), wherever in the data set the
-  finding is.
+  creator element, (gggg,0010) to (gggg,00FF) of an odd group, or Private
+  Creator Reference (0008,0302) in an item of Private Data Element
+  Characteristics Sequence (0008,0300), which names one, and each of its values
+  collected for the subject is, without trailing spaces and NULs, exactly
+  one of the private creators that the pinned PS3.15 Table E.3.10-1 lists
+  (:func:`vendor_creators`), wherever in the data set the finding is.
 - :attr:`Exemption.RETAINED_TEXT`: the finding is in a text attribute that
   a selected option keeps, such as Station Name (0008,1010) under Retain
   Device Identity, and its source is a private data element or an attribute
@@ -89,6 +90,10 @@ from .standard import load_table_e3_10_1
 from .uid_registry import RegistryTable, RegistryTableSpec, load_registry_table
 
 _DESIGNATOR = "(0008,0102)"
+# Private Creator Reference, in an item of Private Data Element
+# Characteristics Sequence.
+_CREATOR_REFERENCE = "(0008,0302)"
+_CHARACTERISTICS = "(0008,0300)"
 BODY_PART_EXAMINED = "(0018,0015)"
 # Code Value, Coding Scheme Version, Code Meaning, Long Code Value, and URN
 # Code Value, which the designator in their item qualifies.
@@ -406,11 +411,19 @@ def _vendor_creator(
 ) -> bool:
     """Return whether every value of a private creator source is a vendor's.
 
-    The values of a source are pooled across the subject, so a finding of
-    the source could be any of them.
+    A source names a private creator where it is one, or where it is
+    Private Creator Reference (0008,0302) in Private Data Element
+    Characteristics Sequence (0008,0300). The values of a source are pooled
+    across the subject, so a finding of the source could be any of them.
     """
     group, element = int(source.tag[1:5], 16), int(source.tag[6:10], 16)
-    if group % 2 == 0 or not 0x0010 <= element <= 0x00FF:
+    creator = group % 2 == 1 and 0x0010 <= element <= 0x00FF
+    reference = (
+        source.tag == _CREATOR_REFERENCE
+        and bool(source.items)
+        and source.items[-1][0] == _CHARACTERISTICS
+    )
+    if not creator and not reference:
         return False
     values = sources.get(source, ())
     return bool(values) and all(
