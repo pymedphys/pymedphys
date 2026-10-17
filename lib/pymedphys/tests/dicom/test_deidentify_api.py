@@ -149,7 +149,7 @@ def test_an_image_whose_decoder_ends_its_process_is_sequestered_and_the_run_comp
         columns=8,
         name=str(datasets[0].PatientName),
     )
-    if not compressed.gdcm_aborts(datasets[0]):
+    if compressed.gdcm_outcome(datasets[0]) != "aborts":
         pytest.skip("the installed GDCM does not abort on the frame")
     _write(tmp_path / "source", datasets)
 

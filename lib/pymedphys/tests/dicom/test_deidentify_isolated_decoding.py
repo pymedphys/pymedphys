@@ -15,6 +15,7 @@
 """Calls made in a child process, which can end without ending the caller."""
 
 import fractions
+import json
 import logging
 import operator
 import os
@@ -43,6 +44,28 @@ def future_behaviour():
     return pydicom.config._use_future  # pylint: disable = protected-access
 
 
+def reading_mode():
+    """Return pydicom's validation mode for reading, in the child."""
+    return pydicom.config.settings.reading_validation_mode
+
+
+def logger_level():
+    """Return the level of pydicom's logger, in the child."""
+    return logging.getLogger("pydicom").level
+
+
+def _reissued(*warned):
+    """Return the warnings recorded as those that the child sends are issued
+    again, with every warning shown once for each place it is from."""
+    returned = isolated_decoding._returned(  # pylint: disable = protected-access
+        [True, None, [list(each) for each in warned], []]
+    )
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("default")
+        isolated_decoding._reissue(returned)  # pylint: disable = protected-access
+    return caught
+
+
 def test_a_call_returns_its_result():
     assert run(operator.add, 1, 2) == 3
 
@@ -67,11 +90,97 @@ def test_a_call_that_ends_the_child_fails_and_the_next_call_starts_another():
     assert isolated_decoding._child.process.pid != ended  # pylint: disable = protected-access
 
 
-def test_a_result_of_another_class_ends_the_child_and_is_not_loaded():
-    with pytest.raises(DecoderEnded):
+def test_a_result_that_json_cannot_encode_fails_the_call_and_keeps_the_child():
+    run(operator.add, 1, 2)
+    kept = isolated_decoding._child.process.pid  # pylint: disable = protected-access
+
+    with pytest.raises(DecodingFailed) as failed:
         run(fractions.Fraction, 1, 2)
 
+    assert not isinstance(failed.value, DecoderEnded)
     assert run(operator.add, 1, 2) == 3
+    assert isolated_decoding._child.process.pid == kept  # pylint: disable = protected-access
+
+
+def test_a_result_is_returned_as_json_gives_it():
+    assert run(divmod, 7, 2) == [3, 1]
+
+
+@pytest.mark.parametrize(
+    "sent",
+    [
+        None,
+        [True, None, [], []][:3],
+        [1, None, [], []],
+        [True, None, {}, []],
+        [True, None, [["text", "UserWarning", None]], []],
+        [True, None, [["text", "UserWarning", None, True]], []],
+        [True, None, [["text", "UserWarning", None, -1]], []],
+        [True, None, [[b"text".hex(), 1, None, 1]], []],
+        [True, None, [], [["os", 30, "text"]]],
+        [True, None, [], [["pydicomx", 30, "text"]]],
+        [True, None, [], [["pydicom", "30", "text"]]],
+        [True, None, [], [["pydicom", 30, None]]],
+    ],
+)
+def test_what_the_child_sends_back_must_have_the_form_it_gives(sent):
+    with pytest.raises(ValueError):
+        isolated_decoding._returned(sent)  # pylint: disable = protected-access
+
+
+def test_a_child_that_sends_back_anything_else_is_replaced(monkeypatch):
+    run(operator.add, 1, 2)
+    ended = isolated_decoding._child.process.pid  # pylint: disable = protected-access
+
+    def malformed(sent):
+        raise ValueError()
+
+    monkeypatch.setattr(isolated_decoding, "_returned", malformed)
+    with pytest.raises(DecoderEnded):
+        run(operator.add, 1, 2)
+    monkeypatch.undo()
+
+    assert run(operator.add, 1, 2) == 3
+    assert isolated_decoding._child.process.pid != ended  # pylint: disable = protected-access
+
+
+def test_a_pickle_is_not_read_as_what_the_child_sends_back():
+    # A pickle of protocol 4 that would load None.
+    with pytest.raises(ValueError):
+        json.loads(b"\x80\x04N.")
+
+
+def test_a_warning_category_is_a_builtin_named_by_the_child_or_a_user_warning():
+    sent = ["text", "DeprecationWarning", None, 1]
+    imported = set(sys.modules)
+
+    (builtin,) = _reissued(sent)
+    (named,) = _reissued(["text", "pymedphys._imports.tkinter", None, 1])
+    (other,) = _reissued(["text", "__subclasses__", None, 1])
+
+    assert builtin.category is DeprecationWarning
+    assert named.category is UserWarning
+    assert other.category is UserWarning
+    assert set(sys.modules) == imported
+
+
+def test_a_warning_is_from_the_callers_module_of_that_name_or_from_elsewhere():
+    (imported,) = _reissued(["text", "UserWarning", "json", 1])
+    (elsewhere,) = _reissued(["text", "UserWarning", "no_such_module", 1])
+    (unnamed,) = _reissued(["text", "UserWarning", None, 1])
+
+    assert imported.filename == json.__file__
+    assert elsewhere.filename == unnamed.filename == "<decoding process>"
+
+
+def test_a_warning_from_each_module_is_shown_once_for_that_module():
+    caught = _reissued(
+        ["text", "UserWarning", "json", 1],
+        ["text", "UserWarning", "json", 1],
+        ["text", "UserWarning", "os", 1],
+    )
+
+    assert [each.filename for each in caught] == [json.__file__, os.__file__]
 
 
 def test_what_the_child_writes_to_standard_output_is_not_read_as_a_result():
@@ -146,6 +255,23 @@ def test_the_child_imitates_pydicoms_future_behaviour_as_the_caller_does(future)
         pydicom.config.future_behavior(was_future)
 
 
+def test_the_child_reads_with_the_callers_validation_mode(monkeypatch):
+    settings = pydicom.config.settings
+    monkeypatch.setattr(settings, "reading_validation_mode", pydicom.config.RAISE)
+
+    assert run(reading_mode) == pydicom.config.RAISE
+
+
+def test_the_childs_pydicom_logger_has_the_callers_level():
+    logger = logging.getLogger("pydicom")
+    was = logger.level
+    logger.setLevel(logging.DEBUG)
+    try:
+        assert run(logger_level) == logging.DEBUG
+    finally:
+        logger.setLevel(was)
+
+
 def test_a_child_that_ended_between_calls_is_replaced_before_the_next():
     run(operator.add, 1, 2)
     isolated_decoding._child.process.kill()  # pylint: disable = protected-access
@@ -158,7 +284,7 @@ def test_a_child_that_ended_between_calls_is_replaced_before_the_next():
 def test_the_child_writes_no_core_file():
     import resource  # pylint: disable = import-outside-toplevel, import-error
 
-    assert run(resource.getrlimit, resource.RLIMIT_CORE) == (0, 0)
+    assert run(resource.getrlimit, resource.RLIMIT_CORE) == [0, 0]
 
 
 def test_a_child_that_cannot_start_leaves_the_decoder_unavailable(
@@ -169,6 +295,24 @@ def test_a_child_that_cannot_start_leaves_the_decoder_unavailable(
 
     with pytest.raises(DecoderUnavailable):
         run(operator.add, 1, 2)
+
+
+def test_a_child_that_cannot_start_is_logged_once_without_its_message(
+    monkeypatch, tmp_path, caplog
+):
+    isolated_decoding._discard()  # pylint: disable = protected-access
+    monkeypatch.setattr(isolated_decoding, "_unavailable_logged", False)
+    missing = os.fspath(tmp_path / "no-python")
+    monkeypatch.setattr(sys, "executable", missing)
+
+    with caplog.at_level(logging.WARNING, logger=isolated_decoding.__name__):
+        for _ in range(2):
+            with pytest.raises(DecoderUnavailable):
+                run(operator.add, 1, 2)
+
+    (record,) = caplog.records
+    assert "FileNotFoundError" in record.getMessage()
+    assert missing not in record.getMessage()
 
 
 def test_a_child_that_ends_before_it_is_ready_leaves_the_decoder_unavailable(

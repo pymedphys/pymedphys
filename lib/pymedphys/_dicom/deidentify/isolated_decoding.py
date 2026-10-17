@@ -39,41 +39,57 @@ warnings that the call gave, and the records of pydicom's loggers, and
 :func:`run` issues them again in the caller, so that the caller's warning
 filters, log handlers, and :func:`.diagnostics.redacted_diagnostics` apply
 to them as they would in process: a warning that the caller's filters turn
-into an error makes the call raise it. Each warning keeps its message, its
-category where the caller has imported its module, and where it was
-issued; nothing in the child shows or handles either. The child takes from
-the caller whether pydicom imitates its future behaviour, its validation
-mode for reading, and the level of its logger, and reads with pydicom's
-configuration as it is when pydicom is imported for the rest. A result is
-unpickled allowing no class but :class:`~.reasons.TransformReason`, and no
-more than 16 MiB, so that a child whose decoder a codestream subverted
-cannot make the caller run code. What a native library writes to the
+into an error makes the call raise it. Each warning keeps its message and
+line, its category where that is one of Python's built-in warning classes,
+and else is a :class:`UserWarning`, and the module that issued it where
+the caller has imported a module of that name; nothing in the child shows
+or handles either. The child takes from the caller whether pydicom
+imitates its future behaviour, its validation mode for reading, and the
+level of its logger, and reads with pydicom's configuration as it is when
+pydicom is imported for the rest.
+
+What the child sends back is read as JSON, never unpickled, and is checked
+to have the form that :func:`_serve` gives it, in no more than 16 MiB, so
+that a child whose decoder a codestream subverted can give the caller only
+that data: through what it sends back, it cannot make the caller run code,
+import a module, or change an object, and showing one of its warnings reads
+at most a line of a module that the caller has already imported. A result
+is therefore JSON's: ``None``, a bool, a number, a string, or a list or
+dict of them, with a tuple returned as a list. What the child does other
+than send data back is not contained: what a native library writes to the
 standard output or error stream goes to the caller's standard error
-stream, unredacted, as it would in process. The child's core file size
-limit is zero, where the platform has one, so that a decoder that aborts
-writes no core file holding the file it was decoding.
+stream, unredacted, as it would in process, and the child runs with the
+caller's permissions. The
+child's core file size limit is zero, where the platform has one, so that
+a decoder that aborts writes no core file holding the file it was
+decoding. Where the system passes core files to a program instead, as a
+``core_pattern`` that starts with ``|`` does on Linux, the kernel leaves
+that limit to the program: systemd-coredump keeps no core file under it.
 
 If the child ends during a call, :func:`run` raises :class:`DecoderEnded`,
 and the next call starts a new child, as does a call after the child ended
 between calls. If it cannot be started, or ends before it is ready for
-calls, :func:`run` raises :class:`DecoderUnavailable`. Before anything is
-imported in the child, its standard output is set aside for results, so
-that nothing written as a module is imported can be read as one. A process
-forked from the caller starts its own child, rather than sharing the
-caller's pipes to it. A call that
-does not return, such as a decoder that loops forever, is waited for, as it
+calls, :func:`run` raises :class:`DecoderUnavailable`, and the first time
+in a process that it does, logs a warning saying so, which names only the
+type of the error. Before anything is imported in the child, its standard
+output is set aside for results, so that nothing written as a module is
+imported can be read as one. A process forked from the caller starts its
+own child, rather than sharing the caller's pipes to it. A call that does
+not return, such as a decoder that loops forever, is waited for, as it
 would be in process: a time limit would make the outcome depend on the
 machine's speed. Calls are made one at a time, whichever thread makes them.
 """
 
 from __future__ import annotations
 
-import io
+import builtins
+import dataclasses
+import json
 import logging
 import os
 
-# Calls are unpickled only by the child, from the parent that started it, and
-# results only by _Results, which loads no class but those it allows.
+# Pickles are loaded only by the child, from the parent that started it. The
+# parent reads what the child sends back as JSON.
 import pickle  # nosec B403
 import signal
 import struct
@@ -82,23 +98,29 @@ import sys
 import threading
 import warnings
 from collections.abc import Callable, Sequence
-from typing import IO, Any, TypeVar
+from typing import IO, Any
 
 from pymedphys._imports import pydicom
 
-_Result = TypeVar("_Result")
 _LOGGER = "pydicom"
-# The only class that a result may hold, besides values that pickle builds
-# without one, such as None, bool, int, and tuple, so that a child whose
-# decoder a codestream subverted cannot make the parent run code.
-_RESULT_CLASSES = frozenset(
-    {("pymedphys._dicom.deidentify.reasons", "TransformReason")}
-)
+_log = logging.getLogger(__name__)
+# The warning categories that the child can name: Python's built-in warning
+# classes, found by name in this fixed table rather than looked up, which
+# could import a module. pydicom defines none of its own.
+_CATEGORIES: dict[str, type[Warning]] = {
+    name: value
+    for name, value in vars(builtins).items()
+    if isinstance(value, type) and issubclass(value, Warning)
+}
+# Where a warning is said to be from when the caller has not imported the
+# module that the child names.
+_ELSEWHERE = "<decoding process>"
 # Far more than any result, with its warnings and log records, needs.
 _RESULT_BYTES = 1 << 24
-# Where the warnings that the child returns are registered as shown, as each
-# module's own registry would register them in process.
-_REGISTRY: dict = {}
+# Where the warnings that the child returns are registered as shown, for each
+# module that they are said to be from, as its own registry would register
+# them in process.
+_REGISTRIES: dict[str, dict] = {}
 _LENGTH = struct.Struct("<Q")
 # Run by the child. Results go to what was standard output, and anything
 # else written to it, as by a module as it is imported or by a native
@@ -163,17 +185,22 @@ class _Child:
         assert self.process.stdout is not None
         return self.process.stdout
 
-    def call(
-        self, task: Callable[..., Any], args: tuple
-    ) -> tuple[bool, Any, Sequence[tuple], Sequence[tuple]]:
-        """Return whether ``task(*args)`` returned, what, and the warnings
-        and log records it gave, as :func:`_serve` describes them."""
+    def call(self, task: Callable[..., Any], args: tuple) -> _Returned:
+        """Return what ``task(*args)`` gave in the child."""
         _send(self.stdin, (task, args, _configuration()))
-        return self.result()
+        return _returned(self.result())
 
     def result(self) -> Any:
-        """Read what the child sent, allowing only :data:`_RESULT_CLASSES`."""
-        return _Results(io.BytesIO(_received(self.stdout, _RESULT_BYTES))).load()
+        """Read what the child sent, as JSON.
+
+        Raises
+        ------
+        EOFError
+            If the child ended first, or sent more than 16 MiB.
+        ValueError
+            If what it sent is not JSON.
+        """
+        return json.loads(_received(self.stdout, _RESULT_BYTES))
 
     def close(self) -> None:
         """End the child, if it has not ended, and close its pipes."""
@@ -187,8 +214,40 @@ class _Child:
         self.process.wait()
 
 
+@dataclasses.dataclass(frozen=True)
+class _Warned:
+    """A warning that a call gave in the child."""
+
+    text: str
+    category: type[Warning]
+    module: str | None
+    lineno: int
+
+
+@dataclasses.dataclass(frozen=True)
+class _Logged:
+    """A record of one of pydicom's loggers that a call gave in the child."""
+
+    name: str
+    level: int
+    text: str
+
+
+@dataclasses.dataclass(frozen=True)
+class _Returned:
+    """What a call gave in the child: whether it returned, what, and the
+    warnings and log records it gave."""
+
+    succeeded: bool
+    result: Any
+    warned: Sequence[_Warned]
+    logged: Sequence[_Logged]
+
+
 _LOCK = threading.Lock()
 _child: _Child | None = None
+# Whether a failure to start the child has been logged in this process.
+_unavailable_logged = False
 # The children of the processes that this one was forked from, which it
 # leaves to them.
 _inherited: list[_Child] = []
@@ -208,23 +267,25 @@ if hasattr(os, "register_at_fork"):
     os.register_at_fork(after_in_child=_after_fork)
 
 
-def run(task: Callable[..., _Result], *args: Any) -> _Result:
-    """Return ``task(*args)``, called in the child.
+def run(task: Callable[..., Any], *args: Any) -> Any:
+    """Return ``task(*args)``, called in the child, as JSON gives it back.
 
     ``task`` must be a function defined at the top level of a module, and
-    ``args`` and the result must be picklable.
+    ``args`` must be picklable. A result that JSON cannot encode makes the
+    call fail; a tuple is returned as a list, and the caller checks the
+    result's type before relying on it.
 
     Raises
     ------
     DecodingFailed
         If the call raised an :class:`Exception`.
     DecoderEnded
-        If the child ended during the call, or returned a result of a class
-        that results may not hold.
+        If the child ended during the call, or sent back something other
+        than :func:`_serve` gives.
     DecoderUnavailable
         If the child could not be started.
     """
-    global _child  # pylint: disable = global-statement
+    global _child, _unavailable_logged  # pylint: disable = global-statement
     with _LOCK:
         # A child that ended between calls, as by the system ending it,
         # ended during none of them.
@@ -235,11 +296,20 @@ def run(task: Callable[..., _Result], *args: Any) -> _Result:
                 _child = _Child()
             # As where Python cannot be run, or cannot import this package,
             # or a daemonic process may not start another.
-            except Exception:  # pylint: disable = broad-exception-caught
+            except Exception as error:  # pylint: disable = broad-exception-caught
+                if not _unavailable_logged:
+                    _unavailable_logged = True
+                    _log.warning(
+                        "The process that decodes with GDCM and pylibjpeg "
+                        "could not be started (%s), so instances that need "
+                        "them are withheld.",
+                        type(error).__name__,
+                    )
                 raise DecoderUnavailable() from None
         try:
-            succeeded, result, warned, logged = _child.call(task, args)
-        except (EOFError, OSError, pickle.UnpicklingError):
+            returned = _child.call(task, args)
+        # RecursionError is for JSON nested too deeply to read.
+        except (EOFError, OSError, ValueError, RecursionError):
             _discard()
             raise DecoderEnded() from None
         # A call cut short, as by KeyboardInterrupt, would leave its result
@@ -247,10 +317,10 @@ def run(task: Callable[..., _Result], *args: Any) -> _Result:
         except BaseException:
             _discard()
             raise
-    _reissue(warned, logged)
-    if not succeeded:
+    _reissue(returned)
+    if not returned.succeeded:
         raise DecodingFailed()
-    return result
+    return returned.result
 
 
 def _configuration() -> tuple[bool, int, int]:
@@ -274,40 +344,95 @@ def _configure(configuration: tuple[bool, int, int]) -> None:
     logging.getLogger(_LOGGER).setLevel(level)
 
 
-def _reissue(warned: Sequence[tuple], logged: Sequence[tuple]) -> None:
+def _returned(sent: Any) -> _Returned:
+    """Return what :func:`_serve` sent, once checked to have its form.
+
+    Raises
+    ------
+    ValueError
+        If it does not have that form.
+    """
+    if not (isinstance(sent, list) and len(sent) == 4):
+        raise ValueError()
+    succeeded, result, warned, logged = sent
+    if not (
+        isinstance(succeeded, bool)
+        and isinstance(warned, list)
+        and isinstance(logged, list)
+    ):
+        raise ValueError()
+    return _Returned(
+        succeeded,
+        result,
+        [_warned(entry) for entry in warned],
+        [_logged(entry) for entry in logged],
+    )
+
+
+def _warned(entry: Any) -> _Warned:
+    """Return a warning that :func:`_serve` sent, once checked."""
+    if not (isinstance(entry, list) and len(entry) == 4):
+        raise ValueError()
+    text, category, module, lineno = entry
+    if not (
+        isinstance(text, str)
+        and isinstance(category, str)
+        and (module is None or isinstance(module, str))
+        and _is_int(lineno)
+        and lineno >= 0
+    ):
+        raise ValueError()
+    return _Warned(text, _CATEGORIES.get(category, UserWarning), module, lineno)
+
+
+def _logged(entry: Any) -> _Logged:
+    """Return a log record that :func:`_serve` sent, once checked."""
+    if not (isinstance(entry, list) and len(entry) == 3):
+        raise ValueError()
+    name, level, text = entry
+    if not (
+        isinstance(name, str)
+        and (name == _LOGGER or name.startswith(f"{_LOGGER}."))
+        and _is_int(level)
+        and isinstance(text, str)
+    ):
+        raise ValueError()
+    return _Logged(name, level, text)
+
+
+def _is_int(value: object) -> bool:
+    """Return whether ``value`` is an int, and not a bool."""
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _reissue(returned: _Returned) -> None:
     """Issue in the caller the warnings and log records that a call gave in
     the child, so that the caller's filters, handlers, and redaction apply to
     them as they would have in process.
 
-    A warning's category is found among the modules that the caller has
-    imported, and is :class:`UserWarning` where it is not; its message is
-    issued as text. A warning that the caller's filters turn into an
-    exception raises it, as in process.
+    A warning is issued as from the module that the child names, and from
+    the file that the caller imported it from, where the caller has imported
+    a module of that name, so that filters on modules match it; otherwise it
+    is issued as from :data:`_ELSEWHERE`. A warning that the caller's filters
+    turn into an exception raises it, as in process.
     """
-    for text, (module, qualname), filename, lineno, origin in warned:
-        category = _category(module, qualname)
-        try:
-            message = category(text)
-        # A category whose constructor needs other arguments.
-        except Exception:  # pylint: disable = broad-exception-caught
-            message = UserWarning(text)
+    for warned in returned.warned:
+        imported = sys.modules.get(warned.module) if warned.module else None
+        filename = getattr(imported, "__file__", None)
+        if isinstance(filename, str):
+            module = warned.module
+        else:
+            module = filename = _ELSEWHERE
         warnings.warn_explicit(
-            message, type(message), filename, lineno, origin, _REGISTRY
+            warned.category(warned.text),
+            warned.category,
+            filename,
+            warned.lineno,
+            module,
+            _REGISTRIES.setdefault(module, {}),
         )
-    for name, level, text in logged:
-        if name == _LOGGER or name.startswith(f"{_LOGGER}."):
-            logging.getLogger(name).log(level, "%s", text)
-
-
-def _category(module: str, qualname: str) -> type[Warning]:
-    """Return the warning category of that name, if the caller has imported
-    its module, or else :class:`UserWarning`."""
-    found: object = sys.modules.get(module)
-    for part in qualname.split("."):
-        found = getattr(found, part, None)
-    if isinstance(found, type) and issubclass(found, Warning):
-        return found
-    return UserWarning
+    for logged in returned.logged:
+        logging.getLogger(logged.name).log(logged.level, "%s", logged.text)
 
 
 def _discard() -> None:
@@ -326,17 +451,22 @@ def _send(stream: IO[bytes], message: object) -> None:
     stream.flush()
 
 
-class _Results(pickle.Unpickler):
-    """Unpickles a result, refusing any class but :data:`_RESULT_CLASSES`."""
+def _send_json(stream: IO[bytes], message: object) -> None:
+    """Write ``message`` as JSON, after its length, as :func:`_send` does.
 
-    def find_class(self, module: str, name: str) -> Any:
-        if (module, name) not in _RESULT_CLASSES:
-            raise pickle.UnpicklingError("a result may not hold that class")
-        return super().find_class(module, name)
+    Raises
+    ------
+    TypeError, ValueError
+        If JSON cannot encode ``message``.
+    """
+    encoded = json.dumps(message).encode()
+    stream.write(_LENGTH.pack(len(encoded)))
+    stream.write(encoded)
+    stream.flush()
 
 
 def _received(stream: IO[bytes], limit: int | None = None) -> bytes:
-    """Read a pickled message that :func:`_send` wrote.
+    """Read a message that :func:`_send` or :func:`_send_json` wrote.
 
     Raises
     ------
@@ -349,10 +479,10 @@ def _received(stream: IO[bytes], limit: int | None = None) -> bytes:
     (length,) = _LENGTH.unpack(header)
     if limit is not None and length > limit:
         raise EOFError()
-    pickled = stream.read(length)
-    if len(pickled) < length:
+    message = stream.read(length)
+    if len(message) < length:
         raise EOFError()
-    return pickled
+    return message
 
 
 class _Records(logging.Handler):
@@ -374,11 +504,14 @@ class _Records(logging.Handler):
 def _serve(results: IO[bytes]) -> None:
     """Make each call that the parent sends, until it closes the pipe.
 
-    Each result is whether the call returned, what it returned or ``None``,
-    the warnings it gave, as their message's text, their category's module
-    and qualified name, and where they were issued, and the records of
-    pydicom's loggers that it gave, as their logger's name, level, and
-    message.
+    Each result is sent as JSON: a list of whether the call returned, what
+    it returned or ``None``, the warnings it gave, and the records of
+    pydicom's loggers that it gave. Each warning is a list of its message's
+    text, its category's name where that is a built-in warning class, or
+    else ``""``, the name of the module that issued it, or ``None``, and its
+    line. Each record is a list of its logger's name, its level, and its
+    message. A call whose result JSON cannot encode is sent as one that
+    raised.
     """
     _no_core_files()
     # An interrupt is the parent's to handle, which ends the child.
@@ -393,7 +526,7 @@ def _serve(results: IO[bytes]) -> None:
     records = _Records()
     pydicom_logger.addHandler(records)
     calls = sys.stdin.buffer
-    _send(results, _READY)
+    _send_json(results, _READY)
     while True:
         try:
             # From the parent that started the child, which is trusted.
@@ -411,16 +544,26 @@ def _serve(results: IO[bytes]) -> None:
             except Exception:  # pylint: disable = broad-exception-caught
                 succeeded, result = False, None
         warned = [
-            (
+            [
                 str(each.message),
-                (each.category.__module__, each.category.__qualname__),
-                each.filename,
-                each.lineno,
+                _category_name(each.category),
                 _module_named(each.filename),
-            )
+                each.lineno,
+            ]
             for each in caught
         ]
-        _send(results, (succeeded, result, warned, records.kept))
+        logged = [list(record) for record in records.kept]
+        try:
+            _send_json(results, [succeeded, result, warned, logged])
+        except (TypeError, ValueError):
+            _send_json(results, [False, None, warned, logged])
+
+
+def _category_name(category: type[Warning]) -> str:
+    """Return the name of ``category`` if it is a built-in warning class,
+    or else ``""``."""
+    name = category.__name__
+    return name if _CATEGORIES.get(name) is category else ""
 
 
 def _module_named(filename: str) -> str | None:

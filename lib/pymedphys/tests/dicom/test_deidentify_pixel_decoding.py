@@ -690,13 +690,13 @@ def test_a_frame_whose_decoder_ends_its_process_is_undecodable_and_the_next_deco
     )
     known = read_source(image([compressed.with_jfif_version(codestream, (1, 2))]))
     unknown = read_source(image([compressed.with_jfif_version(codestream, (2, 1))]))
-    aborts = compressed.gdcm_aborts(unknown.data)
+    decodes = compressed.gdcm_outcome(unknown.data) == "decodes"
 
     assert frames_problem(unknown) is (
-        TransformReason.UNDECODABLE_PIXEL_DATA if aborts else None
+        None if decodes else TransformReason.UNDECODABLE_PIXEL_DATA
     )
     assert frames_problem(known) is None
-    assert same_pixels(unknown, unknown) is not aborts
+    assert same_pixels(unknown, unknown) is decodes
     assert same_pixels(known, known)
 
 

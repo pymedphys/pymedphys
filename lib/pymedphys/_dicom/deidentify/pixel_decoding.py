@@ -195,16 +195,21 @@ def _decoded_problem(source: SourceEvidence, plugin: str) -> TransformReason | N
     if headers is not None:
         return headers
     if plugin in ISOLATED_PLUGINS:
-        return isolated_decoding.run(_file_decoded, source.data, plugin, frames, shape)
+        # The child sends back only data, so anything but True is a mismatch.
+        matched = isolated_decoding.run(
+            _file_decoded, source.data, plugin, frames, shape
+        )
+        return None if matched is True else TransformReason.FRAME_MISMATCH
     return _decoded(dataset, plugin, frames, shape)
 
 
 def _file_decoded(
     data: bytes, plugin: str, frames: int, shape: tuple[int, ...]
-) -> TransformReason | None:
-    """Return :func:`_decoded` of the data set that ``data`` holds, read as
-    :meth:`.source.SourceEvidence.dataset` reads it."""
-    return _decoded(_dataset(data), plugin, frames, shape)
+) -> bool:
+    """Return whether :func:`_decoded` of the data set that ``data`` holds,
+    read as :meth:`.source.SourceEvidence.dataset` reads it, finds no
+    problem."""
+    return _decoded(_dataset(data), plugin, frames, shape) is None
 
 
 def _decoded(
@@ -369,8 +374,10 @@ def same_pixels(source: SourceEvidence, output: SourceEvidence) -> bool:
     try:
         with redacted_diagnostics():
             if plugin in ISOLATED_PLUGINS:
-                return isolated_decoding.run(
-                    _same_files, source.data, output.data, plugin
+                # The child sends back only data.
+                return (
+                    isolated_decoding.run(_same_files, source.data, output.data, plugin)
+                    is True
                 )
             return _same(source.dataset(), output.dataset(), plugin)
     # pydicom and its plugins raise many types for pixel data they cannot

@@ -147,10 +147,11 @@ _GDCM_DECODE = (
 
 
 @functools.lru_cache(maxsize=None)
-def gdcm_aborts(data: bytes) -> bool:
-    """Return whether the installed GDCM ends the process that decodes the
-    file ``data``, as GDCM 3.2 does for a JPEG frame whose header makes
-    libjpeg warn, rather than decoding it or raising."""
+def gdcm_outcome(data: bytes) -> str:
+    """Return what the installed GDCM does with the file ``data`` in a
+    process of its own: ``"decodes"`` it, ``"raises"``, or ``"aborts"`` the
+    process, as GDCM 3.2 does for a JPEG frame whose header makes libjpeg
+    warn."""
     completed = subprocess.run(
         [sys.executable, "-c", _GDCM_DECODE],
         input=data,
@@ -160,7 +161,7 @@ def gdcm_aborts(data: bytes) -> bool:
         timeout=300,
     )
     # An exception that Python reports exits with 1.
-    return completed.returncode not in (0, 1)
+    return {0: "decodes", 1: "raises"}.get(completed.returncode, "aborts")
 
 
 def jpeg_extended_mid_grey(rows: int, columns: int) -> bytes:
