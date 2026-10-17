@@ -220,6 +220,22 @@ def test_a_directory_with_a_pack_but_no_marker_is_refused(pack):
     assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
 
 
+@pytest.mark.parametrize("content", [b"\xff", b"not json", b"[]"])
+def test_a_pack_that_is_not_a_json_object_is_refused(pack, content):
+    path = pack / qc_store.PACK_FILE
+    path.chmod(0o600)
+    path.write_bytes(content)
+
+    status, stdout, stderr = _run(
+        str(pack), "--reviewer", REVIEWER, "--outcome", "rejected"
+    )
+
+    assert status == command.EXIT_NOT_RECORDED
+    assert "not of its format; nothing was recorded" in stderr
+    assert not stdout
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
+
+
 def test_a_pack_of_another_format_is_refused(pack):
     path = pack / qc_store.PACK_FILE
     document = json.loads(path.read_text(encoding="ascii"))

@@ -475,8 +475,8 @@ def attest(
     if not _previews_intact(directory, data):
         raise QcPackError("a preview of the QC pack is missing or changed")
     verdicts = _face_verdicts({} if faces is None else faces)
-    redactions = tuple(redactions)
-    if outcome is Outcome.REJECTED and (verdicts or redactions):
+    by_position = _redaction_verdicts(redactions)
+    if outcome is Outcome.REJECTED and (verdicts or by_position):
         # A rejected attestation's verdicts release nothing, and a pack is
         # attested once, so a verdict given with it is refused (D-016).
         raise QcPackError(
@@ -491,7 +491,6 @@ def attest(
             + ", which begins none of the QC pack's series"
         )
     cleaned = previewed_redactions(data)
-    by_position = _redaction_verdicts(redactions)
     for verdict in by_position:
         if verdict.position not in cleaned:
             raise QcPackError(
@@ -601,7 +600,9 @@ def redaction_previews(pack_directory: os.PathLike | str) -> dict[tuple[int, int
         If the directory holds no QC pack, or its ``previews`` are not of its
         format.
     """
-    document = json.loads(_pack_bytes(Path(pack_directory)).decode("ascii"))
+    data = _pack_bytes(Path(pack_directory))
+    _reference_of(data)  # refuses a pack that is not of its format
+    document = json.loads(data.decode("ascii"))
     previews = document.get("previews")
     if not isinstance(previews, list):
         raise QcPackError("the QC pack is not of its format")

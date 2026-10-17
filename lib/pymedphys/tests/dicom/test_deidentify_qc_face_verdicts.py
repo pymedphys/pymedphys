@@ -464,6 +464,17 @@ def test_the_command_refuses_a_verdict_it_cannot_record(pack, verdicts, message)
     _assert_quotes_nothing(stdout, stderr)
 
 
+def test_the_command_refuses_a_verdict_with_an_outcome_of_rejected(pack):
+    status, stdout, stderr = _run(
+        str(pack), "--reviewer", REVIEWER, "--outcome", "rejected", "--face-absent", "0"
+    )
+
+    assert status == command.EXIT_NOT_RECORDED
+    assert "would release nothing; nothing was recorded" in stderr
+    assert not stdout
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
+
+
 def test_a_position_that_is_not_a_number_is_a_usage_error(pack):
     with pytest.raises(SystemExit) as raised:
         _run(

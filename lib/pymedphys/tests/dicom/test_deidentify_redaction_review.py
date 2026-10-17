@@ -19,6 +19,10 @@ finder is a stand-in that gives fixed regions, so no model is downloaded and
 no network is reached.
 """
 
+# The tests share one first run, its verdicts, and its second run, so they
+# stay in one module.
+# pylint: disable = too-many-lines
+
 import contextlib
 import dataclasses
 import datetime
@@ -38,6 +42,7 @@ from pymedphys._dicom.deidentify import (
     conformance_markdown,
     markers,
     qc_attestation,
+    qc_pack,
     redaction_review,
     release_report,
     release_report_markdown,
@@ -376,6 +381,63 @@ def test_each_frame_of_each_cleaned_instance_names_its_preview(first_run):
     assert {position for position, _ in previews} == {
         positions[name] for name in _IMAGES
     }
+
+
+def _pack_with_previews(monkeypatch, previews):
+    """Have the attestation read a pack that lists ``previews``."""
+    document = {"format": qc_pack.FORMAT, "reference": REFERENCE, "previews": previews}
+    monkeypatch.setattr(
+        qc_attestation,
+        "_pack_bytes",
+        lambda directory: json.dumps(document).encode("ascii"),
+    )
+
+
+def _preview(number, kind, *frames):
+    return {
+        "file": f"previews/P-{number:04d}.png",
+        "kind": kind,
+        "frames": [
+            {"position": position, "frame": frame} for position, frame in frames
+        ],
+    }
+
+
+def test_each_frame_of_a_multi_frame_instance_names_its_own_preview(monkeypatch):
+    _pack_with_previews(
+        monkeypatch,
+        [
+            _preview(1, "instance", (0, 0)),
+            _preview(2, "redaction", (0, 0)),
+            _preview(3, "redaction", (4, 0)),
+            _preview(4, "redaction", (4, 1)),
+            _preview(5, "redaction", (4, 2)),
+        ],
+    )
+
+    assert qc_attestation.redaction_previews("pack") == {
+        (0, 0): "previews/P-0002.png",
+        (4, 0): "previews/P-0003.png",
+        (4, 1): "previews/P-0004.png",
+        (4, 2): "previews/P-0005.png",
+    }
+
+
+@pytest.mark.parametrize(
+    "previews",
+    [
+        None,
+        ["previews/P-0001.png"],
+        [{"file": None, "kind": "redaction", "frames": []}],
+        [{"file": "previews/P-0001.png", "kind": "redaction", "frames": [[0, 0]]}],
+        [_preview(1, "redaction", (0, "0"))],
+    ],
+)
+def test_previews_not_of_the_packs_format_are_refused(monkeypatch, previews):
+    _pack_with_previews(monkeypatch, previews)
+
+    with pytest.raises(QcPackError, match="not of its format"):
+        qc_attestation.redaction_previews("pack")
 
 
 def _with_pack(monkeypatch, attestation, instances, redactions, unshown=()):
