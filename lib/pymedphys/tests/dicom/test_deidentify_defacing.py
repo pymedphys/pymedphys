@@ -47,15 +47,15 @@ def _block(scan: head.Scan, *heads: head.Head) -> defacing.FaceBlock:
     return finder.block()
 
 
-def _assert_around_the_globes(block: defacing.FaceBlock) -> None:
+def _assert_around_the_globes(block: defacing.FaceBlock, within: float = 1.5) -> None:
     expected = (
         (-head.GLOBE_X, head.GLOBE_Y, head.GLOBE_Z),
         (head.GLOBE_X, head.GLOBE_Y, head.GLOBE_Z),
     )
-    np.testing.assert_allclose(block.globes, expected, atol=1.5)
+    np.testing.assert_allclose(block.globes, expected, atol=within)
     np.testing.assert_allclose(block.anterior, (0, -1, 0), atol=0.02)
     np.testing.assert_allclose(
-        block.origin, (0, head.GLOBE_Y + defacing.MARGIN, head.GLOBE_Z), atol=1.5
+        block.origin, (0, head.GLOBE_Y + defacing.MARGIN, head.GLOBE_Z), atol=within
     )
     # From the globes' inferior edge, or lower by up to two slices, up.
     inferior_edge = head.GLOBE_Z - head.GLOBE_RADIUS
@@ -447,3 +447,25 @@ def test_geometry_that_is_not_finite_and_positive_is_an_error(
 ):
     with pytest.raises(ValueError):
         defacing.FaceFinder(orientation, positions, spacing, shape)
+
+
+def test_a_large_volume_is_sampled_more_coarsely_within_the_bound(monkeypatch):
+    scan = head.axial(spacing=1.5, thickness=3.0)
+    # About 2 mm voxels for the analytic head's volume.
+    monkeypatch.setattr(defacing, "MAXIMUM_SAMPLED", 1 << 20)
+
+    finder = _finder(scan)
+
+    voxel = finder._voxel  # pylint: disable = protected-access
+    assert defacing.MINIMUM_VOXEL < voxel <= defacing.MAXIMUM_VOXEL
+    # Each globe within a voxel.
+    _assert_around_the_globes(_block(scan), within=voxel)
+
+
+def test_a_volume_that_needs_voxels_too_large_is_refused(monkeypatch):
+    monkeypatch.setattr(defacing, "MAXIMUM_SAMPLED", 1 << 18)
+
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        _finder(head.axial(spacing=1.5, thickness=3.0))
+
+    assert refused.value.problem is defacing.FaceBlockProblem.TOO_LARGE

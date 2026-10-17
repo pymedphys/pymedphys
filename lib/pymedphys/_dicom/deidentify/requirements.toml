@@ -336,16 +336,19 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, if there is sufficient visual information within the Pixel Data of a set of instances to allow an individual to be recognized from the instances themselves or a reconstruction of a set of instances, then sufficient removal or distortion of the Pixel Data shall be applied to prevent recognition.
 '''
 status = "implemented"
-decisions = ["D-015", "D-016", "D-017", "D-046"]
+decisions = ["D-015", "D-016", "D-017", "D-046", "D-050"]
 implementation = [
+  "_dicom/deidentify/defacing.py",
+  "_dicom/deidentify/face_blocks.py",
   "_dicom/deidentify/face_review.py",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/pixel_cleaning.py",
   "_dicom/deidentify/qc_attestation.py",
 ]
 note = '''
-The engine removes no face from pixel data, so it claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file, or one that cannot show a face (D-046).
+The engine claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file, or one that cannot show a face (D-046).
 Every other instance that can show a face, with pixel data or as an RT Structure Set, is held for review and never released, so no released instance that claims the option has the visual information that the paragraph requires to be removed or distorted.
-Defacing CT is a later step; an instance whose face was removed would still claim the option only where a reviewer, shown its surface as cleaned, found no recognisable face.
+Under the option, the engine also writes air into the face block of each CT series in which it finds one, keeping the cranial cavity above the orbits, and holds a series with a target in its block (D-050); a defaced instance still claims the option only where a reviewer found no recognisable face.
 '''
 
 [[requirement]]

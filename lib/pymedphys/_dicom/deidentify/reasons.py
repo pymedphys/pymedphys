@@ -176,6 +176,9 @@ class VisualFeaturesReason(enum.Enum):
     # no reviewer's verdict covers its source file: its series has no
     # verdict, or the file is not one that the review saw
     NO_FACE_VERDICT = "no-face-verdict"
+    # a CT slice of a series whose face block holds a point of a target's
+    # contour, so that the series is not defaced
+    TARGET_IN_FACE_BLOCK = "target-in-face-block"
 
 
 @dataclasses.dataclass(frozen=True)

@@ -672,9 +672,13 @@ _REVIEW_CONDITIONS = {
         "Standard Extended SOP Class (PS3.2 Section 7.3), added to the top "
         "level of the data set as an attribute of the instance, where every "
         "PS3.3 module that defines it, such as the General Image Module, "
-        "places it. The face review removes no face from the pixel data, so "
-        "any other instance that can show a face does not gain that code, "
-        "and is held for review, so it is never released"
+        "places it. Any other instance that can show a face does not gain "
+        "that code, and is held for review, so it is never released. The "
+        "run also sets to air the region in front of the eyes, from their "
+        "lower edge up, of each CT Image series in which it finds both eyes, "
+        "keeping the cranial cavity above the orbits; this alone never gains "
+        "the code, and a series with a PTV, CTV, or GTV contour in that "
+        "region is held for review"
     ),
 }
 

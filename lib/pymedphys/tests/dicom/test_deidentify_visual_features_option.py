@@ -345,7 +345,10 @@ def test_the_report_names_the_reviewed_pack_by_its_reference():
     report = dataclasses.replace(report, held_for_review=held)
     document = release_report.report_document(report)
 
-    assert document["face_review"] == {"reference": REFERENCE}
+    assert document["face_review"] == {
+        "reference": REFERENCE,
+        "ct_series": {"defaced": 0, "not_defaced": []},
+    }
     assert document["held_for_review"] == [
         {"stage": "visual-features", "code": "no-face-verdict", "count": 1}
     ]
@@ -566,8 +569,19 @@ def test_an_instance_that_cannot_show_a_face_satisfies_the_option(second_run):
 def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
-    assert report["face_review"] == {"reference": attestation.reference}
-    assert report["format"] == "pymedphys-deid-release-report/16"
+    assert report["face_review"]["reference"] == attestation.reference
+    assert report["format"] == "pymedphys-deid-release-report/17"
+
+
+def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
+    _, _, report, _ = second_run
+
+    # The collection's one CT series, of slices two pixels square, holds no
+    # head to find.
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 0,
+        "not_defaced": [{"reason": "no-eyes", "count": 1}],
+    }
 
 
 def test_a_held_reason_is_a_visual_features_reason():

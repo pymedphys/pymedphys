@@ -47,7 +47,9 @@ tilt, rather than place a block that the tilt would shift. It samples the
 volume slice by slice, in Hounsfield units, to cubic voxels along the
 patient's axes, as
 :class:`~pymedphys._dicom.deidentify.qc_surfaces.Surface` does, of
-:data:`MINIMUM_VOXEL` millimetres or more. It then:
+:data:`MINIMUM_VOXEL` millimetres or more, and larger where needed to keep
+to :data:`MAXIMUM_SAMPLED` voxels in all; it refuses a volume that would
+need voxels larger than :data:`MAXIMUM_VOXEL`. It then:
 
 1. averages each voxel with its neighbours, and marks the soft tissue, at
    :data:`SOFT_TISSUE` Hounsfield units, which includes the vitreous and
@@ -101,6 +103,13 @@ from . import qc_surfaces
 
 MINIMUM_VOXEL = 1.5  # millimetres
 MAXIMUM_VOXELS = 512
+# The most sampled voxels in all, so that the finder's memory is bounded
+# whatever the volume's size: about 0.6 GB at most for its arrays.
+MAXIMUM_SAMPLED = 1 << 24
+# The largest voxel, in millimetres, at which the globes are still found
+# reliably in the analytic head of the tests: a volume that would need
+# larger ones to keep to MAXIMUM_SAMPLED is refused.
+MAXIMUM_VOXEL = 2.5
 ALIGNMENT_TOLERANCE = 1e-4  # of a direction cosine off its patient axis
 STACKING_TOLERANCE = 0.01  # millimetres of a slice's offset within the plane
 SOFT_TISSUE = (-40.0, 160.0)  # Hounsfield units
@@ -148,6 +157,7 @@ class FaceBlockProblem(enum.Enum):
     AMBIGUOUS_EYES = "ambiguous-eyes"  # more than one pair
     HEAD_NOT_BEHIND_EYES = "head-not-behind-eyes"  # as for a wrong position
     CRANIUM_NOT_ABOVE_EYES = "cranium-not-above-eyes"  # as for a head upside down
+    TOO_LARGE = "too-large"  # needs voxels larger than MAXIMUM_VOXEL
 
 
 class FaceBlockRefused(Exception):
@@ -285,7 +295,9 @@ class FaceFinder:
             With :attr:`FaceBlockProblem.NOT_ALONG_PATIENT_AXES` unless the
             rows and the columns each lie along a patient axis, with unit
             direction cosines, and the slices are stacked along the third,
-            with no two at one position.
+            with no two at one position; with
+            :attr:`FaceBlockProblem.TOO_LARGE` for a volume that would need
+            voxels larger than :data:`MAXIMUM_VOXEL`.
         """
         cosines = _finite(orientation, "Image Orientation (Patient)")
         if cosines.shape != (6,):
@@ -332,11 +344,16 @@ class FaceFinder:
         )
         self._shape = (int(shape[0]), int(shape[1]))
         # Sorted, since the slices may be added in any order.
-        self._voxel = qc_surfaces.voxel_side(
-            [sorted(coordinates) for coordinates in self._grid.coordinates],
-            MINIMUM_VOXEL,
-            MAXIMUM_VOXELS,
+        self._voxel = _voxel_within(
+            qc_surfaces.voxel_side(
+                [sorted(coordinates) for coordinates in self._grid.coordinates],
+                MINIMUM_VOXEL,
+                MAXIMUM_VOXELS,
+            ),
+            [max(values) - min(values) for values in self._grid.coordinates],
         )
+        if self._voxel > MAXIMUM_VOXEL:
+            raise FaceBlockRefused(FaceBlockProblem.TOO_LARGE)
         # As in qc_surfaces.Surface: for each of the volume's axes, the index
         # sampled at each voxel along its patient axis.
         self._taken = tuple(
@@ -625,6 +642,18 @@ class FaceFinder:
                 for row in rows
             )
         return enclosed["above"] > enclosed["below"]
+
+
+def _voxel_within(voxel: float, extents: Sequence[float]) -> float:
+    """``voxel``, enlarged where needed so that a volume of these extents
+    is sampled to no more than :data:`MAXIMUM_SAMPLED` voxels."""
+
+    def sampled(side: float) -> int:
+        return math.prod(math.floor(extent / side + 1e-6) + 1 for extent in extents)
+
+    while sampled(voxel) > MAXIMUM_SAMPLED:
+        voxel *= 1.01
+    return voxel
 
 
 def _finite(values: object, name: str) -> np.ndarray:
