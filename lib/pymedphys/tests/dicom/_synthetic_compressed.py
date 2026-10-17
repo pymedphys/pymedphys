@@ -126,6 +126,13 @@ def jpeg_lossless(frame, precision: int = 16, predictor: int = 1) -> bytes:
     return header + bytes(entropy) + b"\xff\xd9"
 
 
+def with_jfif_version(codestream: bytes, version: tuple[int, int]) -> bytes:
+    """Return a JPEG codestream with a JFIF segment (APP0) of ``version``
+    after its Start of Image marker."""
+    jfif = b"JFIF\x00" + bytes(version) + b"\x00\x00\x01\x00\x01\x00\x00"
+    return codestream[:2] + _segment(0xE0, jfif) + codestream[2:]
+
+
 def jpeg_extended_mid_grey(rows: int, columns: int) -> bytes:
     """Return a 12-bit JPEG Extended (SOF1) codestream whose every sample
     is 2048.

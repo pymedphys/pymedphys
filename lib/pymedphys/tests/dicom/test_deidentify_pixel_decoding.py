@@ -17,6 +17,7 @@
 Every image is synthetic, encoded by ``_synthetic_compressed``.
 """
 
+import functools
 import io
 import logging
 import struct
@@ -672,6 +673,28 @@ def test_a_frame_that_does_not_decode_is_refused_without_quoting_anything(caplog
     assert "SENTINEL" not in caplog.text
 
 
+def test_a_frame_whose_decoder_ends_its_process_is_undecodable_and_the_next_decodes():
+    # GDCM aborts its process when libjpeg warns while reading a header, as
+    # it does for a JFIF version other than 1.
+    _needs(compressed.JPEG_LOSSLESS_SV1)
+    (frame,) = _frames(1)
+    codestream = compressed.jpeg_lossless(frame)
+    image = functools.partial(
+        compressed.ct_image,
+        compressed.JPEG_LOSSLESS_SV1,
+        rows=ROWS,
+        columns=COLUMNS,
+        name=SENTINEL,
+    )
+    known = read_source(image([compressed.with_jfif_version(codestream, (1, 2))]))
+    unknown = read_source(image([compressed.with_jfif_version(codestream, (2, 1))]))
+
+    assert frames_problem(unknown) is TransformReason.UNDECODABLE_PIXEL_DATA
+    assert frames_problem(known) is None
+    assert not same_pixels(unknown, unknown)
+    assert same_pixels(known, known)
+
+
 def test_without_its_decoder_an_instance_is_refused(monkeypatch):
     data = compressed.rle_ct_image(_frames(1)[0])
     monkeypatch.setattr(
@@ -694,6 +717,10 @@ def test_the_pinned_decoder_is_used_whatever_else_is_installed(monkeypatch):
         return iter_pixels(*args, **kwargs)
 
     monkeypatch.setattr(pydicom.pixels, "iter_pixels", recording)
+    # The child would not see the recording, so the call is made here.
+    monkeypatch.setattr(
+        pixel_decoding.isolated_decoding, "run", lambda task, *args: task(*args)
+    )
 
     assert frames_problem(read_source(data)) is None
     assert plugins == ["gdcm"]

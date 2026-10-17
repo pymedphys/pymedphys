@@ -63,10 +63,18 @@ frame of an instance. pydicom's warnings and log records while it decodes
 are redacted by :func:`.diagnostics.redacted_diagnostics`, and an error it
 raises is replaced by a reason, never chained, since its message can quote
 a value.
+
+GDCM and pylibjpeg, :data:`ISOLATED_PLUGINS`, decode in a child process, by
+:func:`.isolated_decoding.run`, since their native libraries can end the
+process that calls them on a malformed codestream, as GDCM does for a JPEG
+frame whose header makes libjpeg warn. A frame whose decoder ends the child
+is undecodable, like any other, and the next instance is decoded by a new
+child. The offset tables and codestream headers are checked in process.
 """
 
 from __future__ import annotations
 
+import io
 import itertools
 import struct
 import types
@@ -75,6 +83,7 @@ from collections.abc import Mapping
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
+from . import isolated_decoding
 from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
 from .frame_headers import Declared, header_problem
@@ -109,6 +118,11 @@ pylibjpeg-openjpeg, for JPEG 2000 and HTJ2K; and pydicom's own for RLE
 Lossless. Each is licensed at least as permissively as PyMedPhys's Apache
 License 2.0, which is why JPEG and JPEG-LS are not decoded by
 pylibjpeg-libjpeg, under the GNU GPL version 3."""
+ISOLATED_PLUGINS = frozenset({_GDCM, _PYLIBJPEG})
+"""The plugins of :data:`DECODING_PLUGINS` whose native libraries can end
+the process that calls them on a malformed codestream, and so decode in a
+child process (:mod:`.isolated_decoding`). pydicom's own decoder of RLE
+Lossless is Python, and decodes in process."""
 
 
 def decoder_available(transfer_syntax: str) -> bool:
@@ -173,12 +187,37 @@ def _decoded_problem(source: SourceEvidence, plugin: str) -> TransformReason | N
     headers = _headers_problem(source, dataset, frames)
     if headers is not None:
         return headers
+    if plugin in ISOLATED_PLUGINS:
+        return isolated_decoding.run(_file_decoded, source.data, plugin, frames, shape)
+    return _decoded(dataset, plugin, frames, shape)
+
+
+def _file_decoded(
+    data: bytes, plugin: str, frames: int, shape: tuple[int, ...]
+) -> TransformReason | None:
+    """Return :func:`_decoded` of the data set that ``data`` holds, read as
+    :meth:`.source.SourceEvidence.dataset` reads it."""
+    return _decoded(_dataset(data), plugin, frames, shape)
+
+
+def _decoded(
+    dataset: pydicom.Dataset, plugin: str, frames: int, shape: tuple[int, ...]
+) -> TransformReason | None:
+    """Return :attr:`~.reasons.TransformReason.FRAME_MISMATCH` unless
+    ``plugin`` decodes ``frames`` frames, each of ``shape``."""
     decoded = 0
     for frame in pydicom.pixels.iter_pixels(dataset, raw=True, decoding_plugin=plugin):
         if decoded == frames or frame.shape != shape:
             return TransformReason.FRAME_MISMATCH
         decoded += 1
     return None if decoded == frames else TransformReason.FRAME_MISMATCH
+
+
+def _dataset(data: bytes) -> pydicom.Dataset:
+    """Return the data set that ``data`` holds, as
+    :meth:`.source.SourceEvidence.dataset` reads it."""
+    with redacted_diagnostics():
+        return pydicom.dcmread(io.BytesIO(data), defer_size=None)
 
 
 def _expected(dataset: pydicom.Dataset) -> tuple[int, tuple[int, ...]] | None:
@@ -320,25 +359,36 @@ def same_pixels(source: SourceEvidence, output: SourceEvidence) -> bool:
     plugin = DECODING_PLUGINS.get(source.transfer_syntax)
     if plugin is None or output.transfer_syntax != source.transfer_syntax:
         return False
-    sentinel = object()
     try:
         with redacted_diagnostics():
-            pairs = itertools.zip_longest(
-                pydicom.pixels.iter_pixels(
-                    source.dataset(), raw=True, decoding_plugin=plugin
-                ),
-                pydicom.pixels.iter_pixels(
-                    output.dataset(), raw=True, decoding_plugin=plugin
-                ),
-                fillvalue=sentinel,
-            )
-            for before, after in pairs:
-                if before is sentinel or after is sentinel:
-                    return False
-                if before.dtype != after.dtype or not np.array_equal(before, after):
-                    return False
+            if plugin in ISOLATED_PLUGINS:
+                return isolated_decoding.run(
+                    _same_files, source.data, output.data, plugin
+                )
+            return _same(source.dataset(), output.dataset(), plugin)
     # pydicom and its plugins raise many types for pixel data they cannot
     # decode, and a message can quote a value.
     except Exception:  # pylint: disable = broad-exception-caught
         return False
+
+
+def _same_files(before: bytes, after: bytes, plugin: str) -> bool:
+    """Return :func:`_same` of the data sets that ``before`` and ``after`` hold."""
+    return _same(_dataset(before), _dataset(after), plugin)
+
+
+def _same(before: pydicom.Dataset, after: pydicom.Dataset, plugin: str) -> bool:
+    """Return whether ``plugin`` decodes ``before`` and ``after`` to the same
+    frames, as :func:`same_pixels` describes."""
+    sentinel = object()
+    pairs = itertools.zip_longest(
+        pydicom.pixels.iter_pixels(before, raw=True, decoding_plugin=plugin),
+        pydicom.pixels.iter_pixels(after, raw=True, decoding_plugin=plugin),
+        fillvalue=sentinel,
+    )
+    for first, second in pairs:
+        if first is sentinel or second is sentinel:
+            return False
+        if first.dtype != second.dtype or not np.array_equal(first, second):
+            return False
     return True
