@@ -38,9 +38,11 @@ from pymedphys._dicom.deidentify import (
     release_report,
     release_report_markdown,
     run,
+    run_qc,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.face_review import (
+    UNDEFACED_TEXT,
     FaceReview,
     carries_visual_features,
     pixel_data_sha256,
@@ -63,7 +65,12 @@ from pymedphys._dicom.deidentify.policy import (
     compose_policy,
 )
 from pymedphys._dicom.deidentify.qc_attestation import Coverage, Face, Outcome
-from pymedphys._dicom.deidentify.qc_pack import QcPack, QcPackError
+from pymedphys._dicom.deidentify.qc_pack import (
+    Disposition,
+    InstanceEntry,
+    QcPack,
+    QcPackError,
+)
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.scope import SUPPORTED_IODS
 from pymedphys._dicom.deidentify.source import read_source
@@ -164,6 +171,75 @@ def test_a_series_without_a_verdict_gives_no_digests(pack):
     assert review.absent == _sha(1, 4)
     assert review.absent_pixels == _pairs(1, 4)
     assert not review.present
+
+
+def test_a_verdict_of_absent_leaves_out_a_file_held_because_its_frame_was_defaced(
+    tmp_path,
+):
+    # Position 2, an RT Structure Set, say, was held beside the defaced
+    # slices that the reviewer judged, with its own outlines left as they
+    # were.
+    held = InstanceEntry(
+        2,
+        "/imports/2.dcm",
+        Disposition.HELD_FOR_REVIEW,
+        reasons=("ReleaseReason.RT_DOSE", UNDEFACED_TEXT),
+        source_sha256=_digest(2),
+        pixel_sha256=_pixel_digest(2),
+    )
+    instances = tuple(
+        held
+        if n == 2
+        else dataclasses.replace(_released(n), pixel_sha256=_pixel_digest(n))
+        for n in range(5)
+    )
+    release = tmp_path / "release"
+    release.mkdir()
+    directory = qc_store.write_qc_pack(
+        QcPack(REFERENCE, instances, series=SERIES),
+        tmp_path / "qc",
+        release_directory=release,
+    ).parent
+    _attest(directory, {0: Face.ABSENT, 1: Face.PRESENT})
+
+    review = read_face_review(directory)
+
+    assert review.absent == _sha(0, 3)
+    assert review.absent_pixels == _pairs(0, 3)
+    assert review.present == _sha(1, 4)
+    assert (
+        review.hold_reason(_one(_sha(2)), bytes.fromhex(_pixel_digest(2)))
+        is VisualFeaturesReason.NO_FACE_VERDICT
+    )
+
+
+def test_a_verdict_of_present_still_covers_a_file_held_because_its_frame_was_defaced(
+    tmp_path,
+):
+    held = InstanceEntry(
+        4,
+        "/imports/4.dcm",
+        Disposition.HELD_FOR_REVIEW,
+        reasons=(UNDEFACED_TEXT,),
+        source_sha256=_digest(4),
+    )
+    instances = tuple(held if n == 4 else _released(n) for n in range(5))
+    release = tmp_path / "release"
+    release.mkdir()
+    directory = qc_store.write_qc_pack(
+        QcPack(REFERENCE, instances, series=SERIES),
+        tmp_path / "qc",
+        release_directory=release,
+    ).parent
+    _attest(directory, {1: Face.PRESENT})
+
+    assert read_face_review(directory).present == _sha(1, 4)
+
+
+def test_the_frame_hold_is_matched_as_the_run_words_it():
+    assert UNDEFACED_TEXT == run_qc.reason_text(
+        HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
+    )
 
 
 def test_a_pack_that_is_not_attested_gives_no_review(pack):

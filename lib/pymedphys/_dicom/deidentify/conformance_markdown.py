@@ -681,10 +681,13 @@ _REVIEW_CONDITIONS = {
         "series in which it finds both eyes, keeping the cranial cavity "
         "above the orbits; this alone never gains the code, a verdict on "
         "a series seen before it was defaced does not cover it defaced, a "
-        "series with a PTV, CTV, or GTV contour in that region is held for "
-        "review, and so is each RT Structure Set, RT Dose, and PET instance "
-        "in a defaced series' Frame of Reference, which the run does not "
-        "yet clean"
+        "series with a PTV, CTV, or GTV contour in that region, including "
+        "one in a structure set that names no Frame of Reference, is held "
+        "for review, and so is each RT Structure Set, RT Dose, and PET "
+        "instance, with or without pixel data, that is in a defaced series' "
+        "Frame of Reference, names none, or refers to a defaced slice, which "
+        "the run does not yet clean. A verdict on such an instance, given "
+        "beside the defaced images, does not cover it in a later run"
     ),
 }
 

@@ -45,6 +45,7 @@ from pymedphys._dicom.deidentify.reasons import (
     VisualFeaturesReason,
 )
 from pymedphys._dicom.deidentify.references import InstanceRecord
+from pymedphys._dicom.deidentify.release_gate import ReleaseReason
 
 from . import _synthetic_head as head
 from . import _synthetic_head_dicom as files
@@ -75,12 +76,13 @@ def _head_name(index):
 
 
 @contextlib.contextmanager
-def _runs(*others, first=None, target=False):
+def _runs(*others, first=None, target=False, without_ct=False):
     """Run the collection, with its CT slices replaced by the head's, under
     ``basic``, or under the option and ``first`` with a face review that
     gives no verdicts; attest the pack with the head's series, and those of
     the RT Structure Set, RT Dose, and PET in its frame, marked absent; and
-    run it again under the option and ``others``."""
+    run it again under the option and ``others``, without the head's slices
+    if ``without_ct``."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -129,6 +131,9 @@ def _runs(*others, first=None, target=False):
             )
         ]
         _attest(reviewed.qc_pack.parent, dict.fromkeys(marked, Face.ABSENT))
+        if without_ct:
+            for index in range(len(slices)):
+                (instances / _head_name(index)).unlink()
         transform = _transform(others, read_face_review(reviewed.qc_pack.parent))
         second = run.run(
             run.discover(instances),
@@ -185,6 +190,12 @@ def fixture_as_received():
 @pytest.fixture(name="targeted", scope="module")
 def fixture_targeted():
     with _runs(target=True) as found:
+        yield found
+
+
+@pytest.fixture(name="without_ct", scope="module")
+def fixture_without_ct():
+    with _runs(first=(), without_ct=True) as found:
         yield found
 
 
@@ -280,6 +291,11 @@ def test_rt_instances_in_the_defaced_frame_are_held_whatever_their_verdict(
 ):
     _, outcomes, reasons, report = request.getfixturevalue(fixture)
     held = HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
+    # Where the reviewed run defaced their frame too, it held them for it,
+    # so the verdict of absent on them does not count either.
+    expected = {held}
+    if fixture == "defaced":
+        expected.add(HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT))
 
     # Marked absent, the RT Structure Set's outline, and the RT Dose and
     # PET in the head's Frame of Reference, still trace the face that the
@@ -288,9 +304,9 @@ def test_rt_instances_in_the_defaced_frame_are_held_whatever_their_verdict(
     for name in _IN_FRAME:
         assert outcomes[name] == ("held-for-review", None), name
         # The RT Dose for review is held by its release gate as well.
-        assert {r for r in reasons[name] if isinstance(r, HeldVisualFeatures)} == {
-            held
-        }, name
+        assert {
+            r for r in reasons[name] if not isinstance(r, ReleaseReason)
+        } == expected, name
     assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
     counts = {
         entry["code"]: entry["count"]
@@ -298,6 +314,24 @@ def test_rt_instances_in_the_defaced_frame_are_held_whatever_their_verdict(
         if entry["stage"] == "visual-features"
     }
     assert counts[held.reason.value] == len(_IN_FRAME)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_rt_instances_judged_beside_a_defaced_ct_are_held_in_a_run_without_it(
+    without_ct,
+):
+    _, outcomes, reasons, report = without_ct
+    held = HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
+
+    # The reviewed run held them because it defaced their frame, so the
+    # verdict of absent on them was given beside the defaced CT. A run
+    # without that CT defaces nothing, and must not release them on it.
+    for name in _IN_FRAME:
+        assert outcomes[name] == ("held-for-review", None), name
+        assert {r for r in reasons[name] if not isinstance(r, ReleaseReason)} == {
+            held
+        }, name
+    assert report["face_review"]["ct_series"] == {"defaced": 0, "not_defaced": []}
 
 
 def test_a_target_in_the_block_holds_the_head_ct(targeted):

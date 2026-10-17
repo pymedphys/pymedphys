@@ -156,7 +156,10 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
     Returns
     -------
     FaceReview
-        Empty of files where the attestation gives no verdict.
+        Empty of files where the attestation gives no verdict. A file that
+        the pack lists as held because the run defaced its frame is not
+        taken as absent, since its verdict was on the defaced images beside
+        it.
 
     Raises
     ------
@@ -176,20 +179,29 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
                 "a face verdict names a series that the QC pack does not list"
             )
         by_face[verdict.face].update(files[verdict.series])
+    # A file that the reviewed run held because it defaced the file's frame
+    # was judged beside defaced images, while its own outlines or pixel data
+    # were left as they were, so a verdict of absent does not cover it,
+    # whatever a later run defaces.
+    absent = {each for each in by_face[Face.ABSENT] if not each[2]}
     return FaceReview(
         attestation.reference,
-        frozenset(source for source, _ in by_face[Face.ABSENT]),
-        frozenset(source for source, _ in by_face[Face.PRESENT]),
+        frozenset(source for source, _, _ in absent),
+        frozenset(source for source, _, _ in by_face[Face.PRESENT]),
         frozenset(
-            (source, pixels)
-            for source, pixels in by_face[Face.ABSENT]
-            if pixels is not None
+            (source, pixels) for source, pixels, _ in absent if pixels is not None
         ),
     )
 
 
-# A source file's SHA-256, and that of the pixel data written of it, if any.
-_File = tuple[bytes, bytes | None]
+# A source file's SHA-256, that of the pixel data written of it, if any, and
+# whether the run held it because it defaced the file's frame.
+_File = tuple[bytes, bytes | None, bool]
+# That hold's reason as the QC pack words it, which run_qc.reason_text gives.
+UNDEFACED_TEXT = (
+    "HeldVisualFeatures(reason="
+    f"{VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME.value})"
+)
 
 
 def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
@@ -206,15 +218,21 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
             raise malformed
         position, digest = instance.get("position"), instance.get("source_sha256")
         pixels = instance.get("pixel_sha256")
+        reasons = instance.get("reasons", [])
         if isinstance(position, int) and isinstance(digest, str):
-            if not _SHA256.fullmatch(digest) or not (
-                pixels is None
-                or (isinstance(pixels, str) and _SHA256.fullmatch(pixels))
+            if (
+                not _SHA256.fullmatch(digest)
+                or not (
+                    pixels is None
+                    or (isinstance(pixels, str) and _SHA256.fullmatch(pixels))
+                )
+                or not isinstance(reasons, list)
             ):
                 raise malformed
             digests[position] = (
                 bytes.fromhex(digest),
                 None if pixels is None else bytes.fromhex(pixels),
+                UNDEFACED_TEXT in reasons,
             )
     files: dict[int, frozenset[_File]] = {}
     for entry in series:

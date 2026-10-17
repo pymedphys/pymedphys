@@ -226,7 +226,17 @@ def test_a_defaced_series_has_its_frame_of_reference_and_no_other_does():
 
     assert outcome.frame == files.FRAME
     assert held.frame is None
-    assert face_blocks.defaced_frames([outcome, held]) == {files.FRAME}
+    records = {
+        position: InstanceRecord.from_file(each)
+        for position, each in enumerate(_head_files())
+    }
+    series = next(iter(_outcomes()))
+    found = face_blocks.find_defaced(
+        records, {series: outcome, files.ROOT + ".9": held}
+    )
+    assert found.frames == {files.FRAME}
+    assert found.instances == {record.sop_instance for record in records.values()}
+    assert repr(found) == f"Defaced(frames=1, instances={len(records)})"
     with pytest.raises(ValueError, match="Frame of Reference UID"):
         SeriesDefacing(outcome.block, None)
     with pytest.raises(ValueError, match="Frame of Reference UID"):
@@ -244,6 +254,83 @@ def test_a_records_frames_are_its_own_and_its_structure_sets():
         files.FRAME
     }
     assert face_blocks.frames_of(InstanceRecord.from_file(rtss)) == {files.ROOT + ".8"}
+
+
+def _defaced() -> face_blocks.Defaced:
+    records = {
+        position: InstanceRecord.from_file(each)
+        for position, each in enumerate(_head_files())
+    }
+    return face_blocks.find_defaced(records, _outcomes())
+
+
+def _record(data: bytes) -> InstanceRecord:
+    return InstanceRecord.from_file(data)
+
+
+def _frameless_structure_set() -> bytes:
+    dataset = pydicom.dcmread(
+        io.BytesIO(files.structure_set([("ORGAN", files.square((0, 0, 0)))]))
+    )
+    del dataset.ReferencedFrameOfReferenceSequence
+    for roi in dataset.StructureSetROISequence:
+        del roi.ReferencedFrameOfReferenceUID
+    return files.written(dataset)
+
+
+def _structure_set_on_slice(sop_instance: str) -> bytes:
+    dataset = pydicom.dcmread(
+        io.BytesIO(
+            files.structure_set(
+                [("ORGAN", files.square((0, 0, 0)))], frame=files.ROOT + ".8"
+            )
+        )
+    )
+    image = pydicom.Dataset()
+    image.ReferencedSOPClassUID = files.CT_IMAGE_STORAGE
+    image.ReferencedSOPInstanceUID = sop_instance
+    dataset.ROIContourSequence[0].ContourSequence[0].ContourImageSequence = [image]
+    return files.written(dataset)
+
+
+def test_an_rt_instance_in_a_defaced_frame_or_naming_none_is_held():
+    found = _defaced()
+    in_frame = _record(files.structure_set([("ORGAN", files.square((0, 0, 0)))]))
+    frameless = _record(_frameless_structure_set())
+
+    assert face_blocks.frames_of(frameless) == frozenset()
+    for iod in sorted(face_blocks.UNDEFACED_IODS):
+        assert found.holds(iod, in_frame)
+        assert found.holds(iod, frameless)
+
+
+def test_an_rt_instance_in_another_frame_is_held_only_if_it_refers_to_a_defaced_slice():
+    found = _defaced()
+    (target, *_) = sorted(found.instances)
+    elsewhere = _record(
+        files.structure_set(
+            [("ORGAN", files.square((0, 0, 0)))], frame=files.ROOT + ".8"
+        )
+    )
+    on_slice = _record(_structure_set_on_slice(target))
+    on_other = _record(_structure_set_on_slice(files.ROOT + ".99"))
+
+    assert any(reference.target == target for reference in on_slice.references)
+    assert not found.holds(face_blocks.RT_STRUCTURE_SET, elsewhere)
+    assert found.holds(face_blocks.RT_STRUCTURE_SET, on_slice)
+    assert not found.holds(face_blocks.RT_STRUCTURE_SET, on_other)
+
+
+def test_only_rt_and_pet_instances_are_held_and_only_where_a_series_is_defaced():
+    found = _defaced()
+    in_frame = _record(_head_files()[0])
+    frameless = _record(_frameless_structure_set())
+
+    assert not found.holds(face_blocks.CT_IMAGE, in_frame)
+    assert not found.holds("MR Image", in_frame)
+    assert not found.holds(None, frameless)
+    assert not face_blocks.Defaced().holds(face_blocks.RT_STRUCTURE_SET, frameless)
+    assert not face_blocks.Defaced().holds("RT Dose", in_frame)
 
 
 # Writing air.

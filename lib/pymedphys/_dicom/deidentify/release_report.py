@@ -83,8 +83,9 @@ and codes that the engine defines, never by a source value or path:
   instance that can show a face without a face verdict of absent for its
   source file and the pixel data that the run writes of it (D-046), a CT
   slice of a series with a target in its face block, an RT Structure Set,
-  RT Dose, or PET instance in a defaced series' Frame of Reference (D-050),
-  or a release gate's reason that requires QC review. A held
+  RT Dose, or PET instance in a defaced series' Frame of Reference, naming
+  none, or referring to a defaced slice (D-050), or a release gate's
+  reason that requires QC review. A held
   instance has neither an output name nor a label.
 - ``roi_names``: the outcome of each ROI Name of the structure sets that
   descriptor cleaning cleaned, every name counted, and how many distinct
@@ -408,8 +409,9 @@ class HeldForReview:
         ``"roi-names"`` (descriptor cleaning held a ROI Name),
         ``"pixel-data"`` (a pixel option held the instance's pixel data),
         ``"visual-features"`` (an instance that can show a face does not
-        satisfy Clean Recognizable Visual Features, or a CT slice's series
-        has a target in its face block), or ``"release"`` (the
+        satisfy Clean Recognizable Visual Features, a CT slice's series has
+        a target in its face block, or an RT Structure Set, RT Dose, or PET
+        instance is beside a defaced CT series), or ``"release"`` (the
         release gate requires QC review).
     code : str
         The stage's reason code, such as ``"unmatched"``.

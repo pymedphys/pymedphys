@@ -75,8 +75,9 @@ series keeps its contours or pixel data, which can still outline the face,
 so it is held for review whatever its verdict, since a reviewer may have
 judged it from the defaced CT's previews
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), until
-the run can clean it too. So is one that names no Frame of Reference, in a
-run that defaces any series. A structure set that names no Frame of
+the run can clean it too (:class:`Defaced`). So is one that names no Frame
+of Reference, in a run that defaces any series, or that refers to a defaced
+slice, whatever frame it declares. A structure set that names no Frame of
 Reference is likewise searched for targets in the block of every series.
 """
 
@@ -106,6 +107,7 @@ from .pixel_cleaning import (
 from .reasons import TransformReason
 from .references import InstanceRecord
 from .source import NATIVE_TRANSFER_SYNTAXES
+from .uids import normalise_uid
 
 CT_IMAGE = "CT Image"
 RT_STRUCTURE_SET = "RT Structure Set"
@@ -287,9 +289,65 @@ def frames_of(record: InstanceRecord) -> frozenset[str]:
     return frozenset(frame for frame in named if frame)
 
 
-def defaced_frames(outcomes: Iterable[SeriesDefacing]) -> frozenset[str]:
-    """Return the Frame of Reference UID of each defaced series."""
-    return frozenset(outcome.frame for outcome in outcomes if outcome.frame is not None)
+@dataclasses.dataclass(frozen=True, repr=False)
+class Defaced:
+    """What a run defaces, by which it holds the instances it does not yet
+    clean of the face.
+
+    Its ``repr`` shows only the counts.
+
+    Attributes
+    ----------
+    frames : frozenset of str
+        The Frame of Reference UID of each defaced series.
+    instances : frozenset of str
+        The SOP Instance UID of each slice of a defaced series.
+    """
+
+    frames: frozenset[str] = frozenset()
+    instances: frozenset[str] = frozenset()
+
+    def __repr__(self) -> str:
+        return f"Defaced(frames={len(self.frames)}, instances={len(self.instances)})"
+
+    def holds(self, iod: str | None, record: InstanceRecord) -> bool:
+        """Whether an instance is held because the run defaces its frame.
+
+        Only an instance of :data:`UNDEFACED_IODS`, in a run that defaces a
+        series, where it names a defaced series' Frame of Reference, names
+        none, or refers to a defaced slice, as a structure set's Contour
+        Image Sequence does, whatever frame it declares.
+        """
+        if not self.frames or iod not in UNDEFACED_IODS:
+            return False
+        frames = frames_of(record)
+        return (
+            not frames
+            or not frames.isdisjoint(self.frames)
+            or any(
+                reference.target in self.instances for reference in record.references
+            )
+        )
+
+
+def find_defaced(
+    records: Mapping[int, InstanceRecord], outcomes: Mapping[str, SeriesDefacing]
+) -> Defaced:
+    """Return what a run defaces, from its records and
+    :func:`find_face_blocks`' outcomes."""
+    series = {uid for uid, outcome in outcomes.items() if outcome.frame is not None}
+    return Defaced(
+        frozenset(
+            outcome.frame for outcome in outcomes.values() if outcome.frame is not None
+        ),
+        frozenset(
+            record.sop_instance
+            for record in records.values()
+            if record.iod == CT_IMAGE
+            and record.series in series
+            and record.sop_instance
+        ),
+    )
 
 
 def _series_outcome(
@@ -617,5 +675,5 @@ def _described(dataset: pydicom.Dataset, layout: Layout) -> _Slice:
         rescale=(slope[0], intercept[0]),
         padding=_padding(dataset, layout),
         air=int(air),
-        frame=None if frame is None else str(frame).strip(),
+        frame=None if frame is None else normalise_uid(str(frame)) or None,
     )

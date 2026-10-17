@@ -192,13 +192,12 @@ from .pixel_cleaning import (
 )
 from .face_blocks import (
     CT_IMAGE,
-    UNDEFACED_IODS,
     CtDefacer,
     FaceBlockCounts,
     SeriesDefacing,
-    defaced_frames,
+    Defaced,
+    find_defaced,
     find_face_blocks,
-    frames_of,
 )
 from .pixel_risk import assess_pixel_risk, series_evidence
 from .run_qc import (
@@ -774,7 +773,8 @@ class InstanceTransform:
     target's contour in its block is not defaced, and is held for review
     (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`). An RT
     Structure Set, RT Dose, or PET instance in a defaced series' Frame of
-    Reference, or naming none, is held whatever its verdict
+    Reference, naming none, or referring to a defaced slice, is held
+    whatever its verdict
     (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
     since the run does not yet clean it of the face. An
     instance that can show a
@@ -875,7 +875,7 @@ class InstanceTransform:
         }
         self._face_review = face_review
         self._face_blocks: dict[str, SeriesDefacing] = {}
-        self._defaced_frames: frozenset[str] = frozenset()
+        self._defaced = Defaced()
         self._face_block_counts = None if face_review is None else FaceBlockCounts()
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
         self.reporter = ReleaseReporter(
@@ -909,7 +909,7 @@ class InstanceTransform:
             return
         self._face_blocks = find_face_blocks(records, read)
         self._face_block_counts.record(self._face_blocks.values())
-        self._defaced_frames = defaced_frames(self._face_blocks.values())
+        self._defaced = find_defaced(records, self._face_blocks)
 
     def written_check(
         self, graph: ReferenceGraph, written: Mapping[int, InstanceRecord]
@@ -999,13 +999,10 @@ class InstanceTransform:
     def _frame_hold(
         self, iod: IOD, record: InstanceRecord
     ) -> HeldVisualFeatures | None:
-        """Return why an instance in a defaced series' Frame of Reference,
-        or one naming none in a run that defaces a series, is held, if its
-        IOD is one that the run does not yet clean of the face."""
-        if not self._defaced_frames or iod.name not in UNDEFACED_IODS:
-            return None
-        frames = frames_of(record)
-        if frames and frames.isdisjoint(self._defaced_frames):
+        """Return why an instance that the run does not yet clean of the
+        face is held, where it defaces the instance's frame
+        (:meth:`~.face_blocks.Defaced.holds`)."""
+        if not self._defaced.holds(iod.name, record):
             return None
         return HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
 
