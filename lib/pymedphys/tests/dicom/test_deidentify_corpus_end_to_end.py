@@ -582,9 +582,14 @@ def test_released_images_keep_their_transfer_syntax_and_pixels(policy_run):
             rgb = source.get("SamplesPerPixel", 1) > 1
             shape = (frames, *pixels.shape[-3 if rgb else -2 :])
             pixels, expected = pixels.reshape(shape), expected.reshape(shape).copy()
-            corners = pixels[:, :2, :3].reshape(frames, -1)
+            corner = (
+                slice(None),
+                slice(0, runs.CORNER.bottom),
+                slice(0, runs.CORNER.right),
+            )
+            corners = pixels[corner].reshape(frames, -1)
             assert (corners == corners[:, :1]).all(), file.name
-            expected[:, :2, :3] = pixels[:, :2, :3]
+            expected[corner] = pixels[corner]
         assert (pixels == expected).all(), file.name
         if text in file.data:
             # Cut from the codestreams, which were not recompressed.

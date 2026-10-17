@@ -83,10 +83,11 @@ KEY = DeidKey(bytes(range(32)))
 FACE_REVIEW_REFERENCE = "A-" + "0123456789abcdef" * 2
 # An invented reference of the QC pack whose redaction verdicts a run applies.
 REDACTION_REVIEW_REFERENCE = "A-" + "fedcba9876543210" * 2
-# The region that the Clean Pixel Data run's finder marks in every frame: the
-# top left corner, two rows by three columns, which every frame of the corpus
-# has.
-CORNER = TextBox(0, 0, 2, 3)
+# The region that a reviewed Clean Pixel Data run blacks out in every frame:
+# the top left corner, one row by two columns, which lies within every frame
+# of the corpus, each two by two pixels, since a reviewed region past its
+# frame refuses the instance, and leaves the frame's second row as it was.
+CORNER = TextBox(0, 0, 1, 2)
 
 # The CID 7050 code of the Basic Application Level Confidentiality Profile
 # and of each option of Table E.1-1 (PS3.16 CID 7050), written out here
