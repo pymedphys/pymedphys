@@ -87,7 +87,7 @@ def ct_files(
         words = stored.astype("<i2" if signed else "<u2")
         dataset.PixelData = words.tobytes()
         dataset["PixelData"].VR = "OW"
-        files.append(_written(dataset))
+        files.append(written(dataset))
     return files
 
 
@@ -130,7 +130,7 @@ def structure_set(
         observation.RTROIInterpretedType = kind
         observation.ROIInterpreter = ""
         dataset.RTROIObservationsSequence.append(observation)
-    return _written(dataset)
+    return written(dataset)
 
 
 def square(centre: Sequence[float], half: float = 2.0) -> np.ndarray:
@@ -171,7 +171,7 @@ def _dataset(
     return dataset
 
 
-def _written(dataset: pydicom.Dataset) -> bytes:
+def written(dataset: pydicom.Dataset) -> bytes:
     buffer = io.BytesIO()
     dataset.save_as(buffer, enforce_file_format=True)
     return buffer.getvalue()

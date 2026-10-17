@@ -26,18 +26,25 @@ masks. A series is defaced only where all of these hold:
   native Pixel Data of one frame, one sample, and whole bytes
   (:func:`~pymedphys._dicom.deidentify.pixel_cleaning.layout_of`), and
   finite Image Position (Patient), Image Orientation (Patient), Pixel
-  Spacing, Rescale Slope, and Rescale Intercept;
+  Spacing, Rescale Slope, and Rescale Intercept, and a readable Pixel
+  Padding Value and Pixel Padding Range Limit where present;
 - the slices share their orientation, rows, columns, spacing, and Frame of
-  Reference UID, and the stored values of each can hold air, -1000
-  Hounsfield units, as one stored value, rounded, without clipping;
+  Reference UID, which they have, and the stored values of each can hold
+  air, -1000 Hounsfield units, as one stored value, rounded, without
+  clipping;
 - :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` finds the
   block from the slices within :data:`HEAD_REACH` millimetres of the
   volume's superior end, which bounds the memory that a long volume needs;
   and
 - no contour of a target, an ROI whose RT ROI Interpreted Type is
   :data:`TARGET_TYPES`, of an RT Structure Set of the run in the series'
-  Frame of Reference has a point in the block, and every such structure set
-  can be read.
+  Frame of Reference has a point in the block, a target that names no Frame
+  of Reference counting as one in it, and every such structure set can be
+  read.
+
+Anything else that a series' data raises leaves the series undefaced, as
+unreadable, rather than stopping the run, and no message of it, which could
+quote a value, is kept.
 
 A series with a target in its block is not defaced, and each of its slices
 is held for review (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`),
@@ -48,18 +55,19 @@ other instance that can show a face. The outcome of each series is counted
 for the release report (:class:`FaceBlockCounts`), by series, never naming
 one.
 
-Within the block, :class:`CtDefacer` keeps each pixel inside the cranial
-cavity, which bone at :data:`~pymedphys._dicom.deidentify.defacing.BONE`
-Hounsfield units or more encloses within the slice, so that the brain in
-front of the block's plane is kept, and each pixel of Pixel Padding Value
-or its range. The cavity is kept only more than :data:`CAVITY_FLOOR`
-millimetres above the higher globe's centre, above the orbits, so that
-bone enclosing an orbit within a slice, or a thin orbital roof that the
-slice's bone does not seal, keeps no part of an eye. Where no bone
-encloses the cavity within a slice, the block is air to the top of the
-slice. Where air's stored value is itself in that range, the pixels
-written are padding, which a viewer shows as outside the image, as the air
-before the face is in most scans.
+Within the block, :class:`CtDefacer` keeps each pixel of Pixel Padding
+Value or its range, and each pixel inside the cranial cavity, which bone at
+:data:`~pymedphys._dicom.deidentify.defacing.BONE` Hounsfield units or more
+encloses within the slice, so that the brain in front of the block's plane
+is kept. Padding is never taken for bone, so it cannot close a ring around
+the face. The cavity is kept only more than :data:`CAVITY_FLOOR`
+millimetres above the higher globe's centre, above the orbits, so that bone
+enclosing an orbit within a slice, or a thin orbital roof that the slice's
+bone does not seal, keeps no part of an eye. Where no bone encloses the
+cavity within a slice, the block is air to the top of the slice. Where
+air's stored value is itself padding, the pixels written are padding, which
+a viewer shows as outside the image, as the air before the face is in most
+scans.
 
 Only CT Image instances are defaced. An RT Dose, RT Structure Set, or PET
 instance in the same Frame of Reference keeps its pixel data and contours,
@@ -159,7 +167,9 @@ class FaceBlockCounts:
     """How many CT series a run defaced, and how many it did not, by why.
 
     Filled by :meth:`record`, once a run has found its face blocks, for the
-    release report's ``face_blocks`` section.
+    release report's ``face_review.ct_series``. A series counts as defaced
+    where the run found its block and set out to deface it, whatever then
+    became of its slices.
     """
 
     defaced: int = 0
@@ -233,9 +243,10 @@ def find_face_blocks(
     outcomes = {}
     for uid, positions in series.items():
         outcome, frame = _series_outcome(positions, read)
-        if outcome.block is not None and (
-            not frame
-            or _target_in(outcome.block, frame, structure_sets.get(frame, []), read)
+        if (
+            outcome.block is not None
+            and frame
+            and _target_in(outcome.block, frame, structure_sets.get(frame, []), read)
         ):
             outcome = SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK)
         outcomes[uid] = outcome
@@ -253,6 +264,10 @@ def _series_outcome(
         _check_stack(slices)
         first = slices[0]
         frame = first.frame
+        # Without one, no structure set's targets can be checked against
+        # the block.
+        if not frame:
+            raise _Unusable(SeriesProblem.UNREADABLE)
         normal = np.cross(first.orientation[:3], first.orientation[3:])
         # Along the patient's superior axis, the slices within HEAD_REACH of
         # the top; for a stack along another axis, every slice, since each
@@ -275,9 +290,11 @@ def _series_outcome(
         return SeriesDefacing(None, unusable.problem), frame
     except FaceBlockRefused as refused:
         return SeriesDefacing(None, refused.problem), frame
-    # The finder raises these for geometry that it cannot use, and numpy and
-    # scipy MemoryError for a volume too large to sample.
-    except (ValueError, TypeError, IndexError, MemoryError):
+    # Whatever else a series' data raises, such as the finder's ValueError
+    # for geometry that it cannot use, or MemoryError for a volume too large
+    # to sample, leaves the series undefaced rather than stopping the run;
+    # its message, which can quote a value, is dropped.
+    except Exception:  # pylint: disable = broad-exception-caught
         return SeriesDefacing(None, SeriesProblem.UNREADABLE), frame
 
 
@@ -372,7 +389,13 @@ def _padding(dataset: pydicom.Dataset, layout: Layout) -> tuple[int, int] | None
     for keyword in ("PixelPaddingValue", "PixelPaddingRangeLimit"):
         if keyword not in dataset:
             continue
-        value = dataset[keyword].value
+        try:
+            with redacted_diagnostics():
+                value = dataset[keyword].value
+        # pydicom raises many types for a value of the wrong length, and a
+        # message can quote its bytes.
+        except Exception:  # pylint: disable = broad-exception-caught
+            raise _Unusable(SeriesProblem.UNREADABLE) from None
         if isinstance(value, bytes) and len(value) == layout.bits_allocated // 8:
             value = int.from_bytes(value, "little", signed=layout.signed)
         if isinstance(value, bool) or not isinstance(value, int):
@@ -449,7 +472,8 @@ def _targets_reach(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bo
     }
     for item in dataset.get("ROIContourSequence", []):
         number = int(item.ReferencedROINumber)
-        if number not in targets or frames.get(number, frame) != frame:
+        # A target that names no Frame of Reference may be in this one.
+        if number not in targets or frames.get(number) not in ("", None, frame):
             continue
         for contour in item.get("ContourSequence", []):
             points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
@@ -482,7 +506,9 @@ class CtDefacer:
                 raise _Unusable(SeriesProblem.COMPRESSED)
             layout = layout_of(dataset)
             self._slice = _described(dataset, layout)
-        except (_Unusable, PixelDataRefused):
+        # As for a series, whatever the data set raises refuses the slice,
+        # without its message.
+        except Exception:  # pylint: disable = broad-exception-caught
             raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA) from None
         self._block = block
 
@@ -499,13 +525,16 @@ class CtDefacer:
         if not inside.any():
             return None
         slope, intercept = each.rescale
-        bone = stored * slope + intercept >= defacing.BONE
-        cavity = scipy.ndimage.binary_fill_holes(bone) & ~bone
-        floor = max(globe[2] for globe in self._block.globes) + CAVITY_FLOOR
-        inside &= ~(cavity & (_heights(each) > floor))
+        padded = np.zeros(each.shape, dtype=bool)
         if each.padding is not None:
             low, high = each.padding
-            inside &= ~((stored >= low) & (stored <= high))
+            padded = (stored >= low) & (stored <= high)
+        # Padding is never bone, whatever Hounsfield units its stored value
+        # would give, so that it cannot close a ring around the face.
+        bone = (stored * slope + intercept >= defacing.BONE) & ~padded
+        cavity = scipy.ndimage.binary_fill_holes(bone) & ~bone
+        floor = max(globe[2] for globe in self._block.globes) + CAVITY_FLOOR
+        inside &= ~(cavity & (_heights(each) > floor)) & ~padded
         if not inside.any():
             return None
         return FrameMask(frame, inside, each.air)
@@ -534,10 +563,12 @@ def _described(dataset: pydicom.Dataset, layout: Layout) -> _Slice:
     intercept = _numbers(dataset, "RescaleIntercept", 1, default=(0.0,))
     if min(spacing) <= 0 or slope[0] <= 0:
         raise _Unusable(SeriesProblem.UNREADABLE)
-    air = round((AIR - intercept[0]) / slope[0])
+    exact = (AIR - intercept[0]) / slope[0]
     low, high = stored_range(layout)
-    if not low <= air <= high:
+    # A finite but tiny slope gives an infinite stored value.
+    if not math.isfinite(exact) or not low <= round(exact) <= high:
         raise _Unusable(SeriesProblem.AIR_NOT_STORED)
+    air = round(exact)
     frame = dataset.get("FrameOfReferenceUID")
     return _Slice(
         position=(position[0], position[1], position[2]),

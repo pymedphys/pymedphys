@@ -17,6 +17,7 @@ analytic head. Every UID and value here is invented."""
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 import io
 
@@ -316,3 +317,168 @@ def test_a_slice_whose_air_cannot_be_stored_is_refused():
 
     with pytest.raises(PixelDataRefused):
         CtDefacer(block, dataset)
+
+
+# Malformed slices leave a series undefaced, and never stop a run.
+
+
+def _changed(change, *, every=False) -> tuple[bytes, ...]:
+    """The head's slices, with ``change`` made to the tenth, or to each."""
+    changed = []
+    for index, data in enumerate(_head_files()):
+        if every or index == 10:
+            dataset = pydicom.dcmread(io.BytesIO(data))
+            change(dataset)
+            data = files.written(dataset)
+        changed.append(data)
+    return tuple(changed)
+
+
+def _set(keyword, value):
+    def change(dataset):
+        if value is None:
+            del dataset[keyword]
+        else:
+            setattr(dataset, keyword, value)
+
+    return change
+
+
+def _raw(tag, vr, value):
+    def change(dataset):
+        dataset[tag] = pydicom.dataelem.RawDataElement(
+            pydicom.tag.Tag(tag), vr, len(value), value, 0, False, True
+        )
+
+    return change
+
+
+def _padded_limit(value):
+    def change(dataset):
+        dataset.PixelPaddingValue = -2000
+        dataset["PixelPaddingValue"].VR = "SS"
+        _raw(0x00280121, "SS", value)(dataset)
+
+    return change
+
+
+def _truncated(dataset):
+    dataset.PixelData = dataset.PixelData[: len(dataset.PixelData) // 2]
+
+
+def _colour(dataset):
+    dataset.SamplesPerPixel = 3
+    dataset.PhotometricInterpretation = "RGB"
+    dataset.PlanarConfiguration = 0
+    dataset.BitsAllocated = dataset.BitsStored = 8
+    dataset.HighBit = 7
+    dataset.PixelRepresentation = 0
+    dataset.PixelData = bytes(3 * dataset.Rows * dataset.Columns)
+
+
+@pytest.mark.parametrize(
+    "change, problem",
+    [
+        (_set("ImagePositionPatient", None), SeriesProblem.UNREADABLE),
+        (
+            _set("ImageOrientationPatient", ["1", "0", "0", "0", "1"]),
+            SeriesProblem.UNREADABLE,
+        ),
+        (_set("PixelSpacing", ["NaN", "2"]), SeriesProblem.UNREADABLE),
+        (_set("ImagePositionPatient", ["0", "inf", "0"]), SeriesProblem.UNREADABLE),
+        (_set("RescaleSlope", "1e-310"), SeriesProblem.AIR_NOT_STORED),
+        (_raw(0x00280120, "SS", b"\x00\x00\x00"), SeriesProblem.UNREADABLE),
+        (_padded_limit(b"\x00"), SeriesProblem.UNREADABLE),
+        (_truncated, SeriesProblem.UNREADABLE),
+        (_colour, SeriesProblem.NOT_ONE_STACK),
+    ],
+    ids=[
+        "no-position",
+        "five-direction-cosines",
+        "nan-spacing",
+        "infinite-position",
+        "tiny-slope",
+        "short-padding-value",
+        "short-padding-limit",
+        "truncated-pixel-data",
+        "colour",
+    ],
+)
+def test_a_malformed_slice_leaves_its_series_undefaced(change, problem):
+    assert _outcome(slices=_changed(change)).problem is problem
+
+
+def test_a_series_without_a_frame_of_reference_is_not_defaced():
+    slices = _changed(_set("FrameOfReferenceUID", None), every=True)
+
+    assert _outcome(slices=slices).problem is SeriesProblem.UNREADABLE
+
+
+def test_a_target_that_names_no_frame_of_reference_holds_the_series():
+    def unnamed(dataset):
+        dataset.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
+
+    rtss = pydicom.dcmread(
+        io.BytesIO(files.structure_set([("PTV", files.square(_EYES_FRONT[0]))]))
+    )
+    unnamed(rtss)
+
+    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def test_the_cavity_is_kept_only_above_its_floor():
+    block = _outcome().block
+    kept = {}
+    for height in (head.GLOBE_Z + 27, head.GLOBE_Z + 33):
+        scan, dataset, stored = _slice_at(height)
+        points = scan.points(0)
+        brain = (head.hounsfield(points) == head.BRAIN) & block.contains(points)
+        mask = CtDefacer(block, dataset).mask(0, stored)
+        assert brain.any()
+        kept[height] = not mask.mask[brain].any()
+
+    assert kept == {head.GLOBE_Z + 27: False, head.GLOBE_Z + 33: True}
+
+
+def test_the_floor_is_above_the_higher_globe():
+    block = _outcome().block
+    (right, left) = block.globes
+    raised = dataclasses.replace(
+        block, globes=(right, (left[0], left[1], left[2] + 10))
+    )
+    scan, dataset, stored = _slice_at(head.GLOBE_Z + 35)
+    points = scan.points(0)
+    brain = (head.hounsfield(points) == head.BRAIN) & block.contains(points)
+
+    assert not CtDefacer(block, dataset).mask(0, stored).mask[brain].any()
+    assert CtDefacer(raised, dataset).mask(0, stored).mask[brain].all()
+
+
+def test_a_skull_open_in_the_slice_keeps_no_brain():
+    block = _outcome().block
+    scan, dataset, stored = _slice_at(60.0)
+    points = scan.points(0)
+    # A gap through the frontal bone, at the midline.
+    gap = (np.abs(points[..., 0]) < 3) & (points[..., 1] < -60)
+    bone = stored >= 300 + 1024
+    stored[gap & bone] = 40 + 1024
+    brain = (head.hounsfield(points) == head.BRAIN) & block.contains(points)
+
+    assert CtDefacer(block, dataset).mask(0, stored).mask[brain].all()
+
+
+def test_padding_that_reads_as_bone_closes_no_ring():
+    block = _outcome().block
+    scan, dataset, stored = _slice_at(60.0, padding=2000)
+    points = scan.points(0)
+    # A frame of padding, which as Hounsfield units would be bone, around
+    # the head.
+    edge = np.zeros(stored.shape, dtype=bool)
+    edge[[0, -1], :] = edge[:, [0, -1]] = True
+    stored[edge] = 2000
+    skin = (head.hounsfield(points) == head.SOFT_TISSUE) & block.contains(points)
+
+    mask = CtDefacer(block, dataset).mask(0, stored)
+
+    assert skin.any()
+    assert mask.mask[skin].all()
