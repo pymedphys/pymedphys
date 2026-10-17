@@ -350,7 +350,7 @@ implementation = [
 note = '''
 The engine removes no face from pixel data, so it claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file, or one that cannot show a face (D-046).
 Every other instance that can show a face, with pixel data or as an RT Structure Set, is held for review and never released, so no released instance that claims the option has the visual information that the paragraph requires to be removed or distorted.
-Defacing CT, so that the option can be claimed for an instance whose face was removed, is a later step.
+Defacing CT is a later step; an instance whose face was removed would still claim the option only where a reviewer, shown its surface as cleaned, found no recognisable face.
 '''
 
 [[requirement]]
