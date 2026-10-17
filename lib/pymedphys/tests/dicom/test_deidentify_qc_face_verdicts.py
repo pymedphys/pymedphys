@@ -291,12 +291,17 @@ def test_verdicts_are_written_by_series_in_order(pack):
     ]
 
 
-@pytest.mark.parametrize("outcome", [Outcome.ATTESTED, Outcome.REJECTED])
-def test_the_record_is_unchanged_by_verdicts(pack, outcome):
-    _attest(pack, {0: Face.PRESENT}, outcome)
+def test_the_record_is_unchanged_by_verdicts(pack):
+    _attest(pack, {0: Face.PRESENT}, Outcome.ATTESTED)
     assert qc_attestation.attestation_record(pack) == AttestationRecord(
-        REFERENCE, outcome
+        REFERENCE, Outcome.ATTESTED
     )
+
+
+def test_an_outcome_of_rejected_takes_no_verdict(pack):
+    with pytest.raises(QcPackError, match="would release nothing"):
+        _attest(pack, {0: Face.ABSENT}, Outcome.REJECTED)
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
 
 
 def test_a_reviewer_need_give_no_verdict(pack):

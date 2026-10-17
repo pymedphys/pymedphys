@@ -36,7 +36,8 @@ reviewer who could not complete them records a rejection.
 A face verdict is the reviewer's judgement of what the previews show, and
 the pack records the SHA-256 of each source file of the series, so the
 verdict is bound, through the pack, to the files the reviewer saw. A series
-without a verdict has none; the outcome does not depend on the verdicts.
+without a verdict has none. An attestation whose outcome is rejected gives no
+verdict of either kind, since its verdicts would release nothing.
 
 The attestation may likewise give a redaction verdict for any instance whose
 Pixel Data the Clean Pixel Data Option cleaned and the pack previewed, by
@@ -465,8 +466,8 @@ def attest(
         redaction verdict names an instance that the pack's ``redactions``
         does not list, or lists as not previewed, or gives a region in a
         frame that its Pixel Data do not hold, or it has already been
-        attested; or for any reason that
-        :class:`Attestation` gives.
+        attested; if an outcome of rejected is given a verdict; or for any
+        reason that :class:`Attestation` gives.
     """
     directory = Path(pack_directory)
     data = _pack_bytes(directory)
@@ -474,6 +475,13 @@ def attest(
     if not _previews_intact(directory, data):
         raise QcPackError("a preview of the QC pack is missing or changed")
     verdicts = _face_verdicts({} if faces is None else faces)
+    redactions = tuple(redactions)
+    if outcome is Outcome.REJECTED and (verdicts or redactions):
+        # A rejected attestation's verdicts release nothing, and a pack is
+        # attested once, so a verdict given with it is refused (D-016).
+        raise QcPackError(
+            "an outcome of rejected is given a verdict, which would release nothing"
+        )
     firsts = _firsts(data)
     unknown = [verdict.series for verdict in verdicts if verdict.series not in firsts]
     if unknown:
@@ -577,6 +585,42 @@ def previewed_redactions(data: bytes) -> dict[int, int]:
         if position not in hidden:
             frames[position] = count
     return frames
+
+
+def redaction_previews(pack_directory: os.PathLike | str) -> dict[tuple[int, int], str]:
+    """Return the preview that shows each frame of each cleaned instance, as
+    a file name within the QC pack, by run position and frame.
+
+    The attestation command names it beside each region that a revised
+    verdict adds, so that the reviewer can check the region against the
+    frame it was read from (D-048).
+
+    Raises
+    ------
+    QcPackError
+        If the directory holds no QC pack, or its ``previews`` are not of its
+        format.
+    """
+    document = json.loads(_pack_bytes(Path(pack_directory)).decode("ascii"))
+    previews = document.get("previews")
+    if not isinstance(previews, list):
+        raise QcPackError("the QC pack is not of its format")
+    files = {}
+    for preview in previews:
+        if not isinstance(preview, dict):
+            raise QcPackError("the QC pack is not of its format")
+        if preview.get("kind") != qc_pack.PreviewKind.REDACTION.value:
+            continue
+        name, frames = preview.get("file"), preview.get("frames")
+        if not isinstance(name, str) or not isinstance(frames, list):
+            raise QcPackError("the QC pack is not of its format")
+        for shown in frames:
+            position = shown.get("position") if isinstance(shown, dict) else None
+            frame = shown.get("frame") if isinstance(shown, dict) else None
+            if not isinstance(position, int) or not isinstance(frame, int):
+                raise QcPackError("the QC pack is not of its format")
+            files[(position, frame)] = name
+    return files
 
 
 def _firsts(data: bytes) -> frozenset[int]:

@@ -136,10 +136,22 @@ def test_a_pack_that_is_not_attested_gives_no_review(pack):
 
 
 def test_a_rejected_attestation_gives_no_review(pack):
-    _attest(pack, {1: Face.ABSENT}, Outcome.REJECTED)
+    _attest(pack, {1: Face.ABSENT})
+    # Attesting refuses verdicts with a rejection, so the file is changed by
+    # hand, as it might be outside the command.
+    path = pack / qc_attestation.ATTESTATION_FILE
+    document = json.loads(path.read_text("ascii"))
+    path.chmod(0o600)
+    path.write_text(json.dumps({**document, "outcome": "rejected"}), encoding="ascii")
 
     with pytest.raises(QcPackError, match="verdicts release nothing"):
         read_face_review(pack)
+
+
+def test_attesting_refuses_a_face_verdict_with_an_outcome_of_rejected(pack):
+    with pytest.raises(QcPackError, match="would release nothing"):
+        _attest(pack, {1: Face.ABSENT}, Outcome.REJECTED)
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
 
 
 def test_a_pack_changed_after_its_verdicts_gives_no_review(pack):

@@ -333,17 +333,49 @@ def test_a_pack_that_is_not_attested_gives_no_review(first_run):
 
 def test_a_rejected_attestation_gives_no_review(first_run):
     pack, positions = first_run
-    qc_attestation.attest(
-        pack,
-        reviewer="Quokka Wombatson",
-        outcome=Outcome.REJECTED,
-        coverage=COMPLETE,
-        attested_at=WHEN,
-        redactions=_verdicts(positions),
-    )
+    _attest(pack, _verdicts(positions))
+    # Attesting refuses verdicts with a rejection, so the file is changed by
+    # hand, as it might be outside the command.
+    path = pack / qc_attestation.ATTESTATION_FILE
+    document = json.loads(path.read_text("ascii"))
+    path.chmod(0o600)
+    path.write_text(json.dumps({**document, "outcome": "rejected"}), encoding="ascii")
 
     with pytest.raises(QcPackError, match="verdicts release nothing"):
         read_redaction_review(pack)
+
+
+def test_attesting_refuses_a_verdict_with_an_outcome_of_rejected(first_run):
+    pack, positions = first_run
+
+    with pytest.raises(QcPackError, match="would release nothing"):
+        qc_attestation.attest(
+            pack,
+            reviewer="Quokka Wombatson",
+            outcome=Outcome.REJECTED,
+            coverage=COMPLETE,
+            attested_at=WHEN,
+            redactions=_verdicts(positions)[:1],
+        )
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
+
+
+def test_each_frame_of_each_cleaned_instance_names_its_preview(first_run):
+    pack, positions = first_run
+    document = json.loads((pack / "qc-pack.json").read_text("utf-8"))
+    shown = {
+        (frame["position"], frame["frame"]): preview["file"]
+        for preview in document["previews"]
+        if preview["kind"] == "redaction"
+        for frame in preview["frames"]
+    }
+
+    previews = qc_attestation.redaction_previews(pack)
+
+    assert previews == shown
+    assert {position for position, _ in previews} == {
+        positions[name] for name in _IMAGES
+    }
 
 
 def _with_pack(monkeypatch, attestation, instances, redactions, unshown=()):
@@ -685,8 +717,13 @@ def test_the_command_records_each_redaction_verdict(first_run):
     assert "  cleaned instances with their regions accepted: 1" in lines
     assert "  cleaned instances with the reviewer's regions added: 1" in lines
     assert "  cleaned instances rejected: 1" in lines
-    # Each added region, for the reviewer to check.
-    assert f"    instance {revised}, frame 0: adds [0, 0, 2, 2]" in lines
+    # Each added region, with the preview of its frame, for the reviewer to
+    # check.
+    shown = qc_attestation.redaction_previews(pack)[positions[_REVISED], 0]
+    assert shown.endswith(".png")
+    assert f"    instance {revised}, frame 0, shown in {shown}: adds [0, 0, 2, 2]" in (
+        lines
+    )
     assert "Quokka" not in stdout + stderr
 
 
@@ -723,6 +760,24 @@ def test_the_command_refuses_verdicts_that_cannot_be_recorded(
 
     assert status == attestation_command.EXIT_NOT_RECORDED
     assert message in stderr
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
+
+
+def test_the_command_refuses_a_verdict_with_an_outcome_of_rejected(first_run):
+    pack, positions = first_run
+
+    status, _, stderr = _command(
+        str(pack),
+        "--reviewer",
+        "Quokka Wombatson",
+        "--outcome",
+        "rejected",
+        "--redaction-rejected",
+        str(positions[_REJECTED]),
+    )
+
+    assert status == attestation_command.EXIT_NOT_RECORDED
+    assert "would release nothing; nothing was recorded" in stderr
     assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
 
 

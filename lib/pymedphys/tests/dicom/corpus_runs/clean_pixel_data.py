@@ -31,7 +31,8 @@ from .._corpus_run import BASIC_WITHHELD, CorpusRun, Withheld
 
 class _CornerFinder:
     """Finds text in the top left corner of every frame, two rows by three
-    columns, which every frame of the corpus has."""
+    columns, which cleaning clips to the corpus's frames, each two by two
+    pixels, so that every pixel of each frame is blacked out."""
 
     def find(self, frame):
         del frame

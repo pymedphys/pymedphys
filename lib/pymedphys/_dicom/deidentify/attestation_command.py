@@ -35,7 +35,8 @@ own are to be blacked out as well as the pack's, so that together they
 cover every burned-in text, each given as ``--redaction-region POSITION
 FRAME TOP LEFT BOTTOM RIGHT``, in pixels from the frame's top left corner
 with the bottom row and right column excluded; a revised instance needs at
-least one. Each is repeatable. It is not
+least one. Each is repeatable. An outcome of rejected takes no verdict,
+since its verdicts would release nothing. It is not
 registered with the ``pymedphys`` command: nothing de-identification related
 joins the public command line before the first supported release.
 
@@ -46,7 +47,8 @@ previews by their SHA-256, and only once: a pack that has been attested, a
 directory that holds no QC pack, a pack of another format, a pack whose
 previews are missing or changed, an outcome of attested without all three
 reviews, a face verdict on a position that begins none of the pack's series,
-a series given both verdicts, a redaction verdict on a position that the
+a series given both verdicts, a verdict with an outcome of rejected, a
+redaction verdict on a position that the
 pack does not list as cleaned and previewed, an instance given more than
 one redaction verdict, a revised instance without a region, and a region
 that is empty, in a frame that the instance does not hold, or given for an
@@ -64,8 +66,12 @@ The reviewer's name and the pack's path can identify people, so neither the
 summary nor any message quotes them; the summary gives the outcome, the
 reviews done, how many series have each face verdict, how many instances
 have each redaction verdict, each region that a revised verdict adds, by
-run position and frame, so that the reviewer can check it, and the pack's
-opaque reference.
+run position and frame, with the preview of that frame, so that the
+reviewer can check the region against the frame it was read from, and the
+pack's opaque reference. A region inside its frame but misplaced, such as
+one with its coordinates transposed or given for another frame, is not
+refused, and would leave the text it was meant to cover, so the check is
+the reviewer's (D-048).
 
 Exit statuses:
 
@@ -79,7 +85,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TextIO
 
@@ -93,6 +99,7 @@ from .qc_attestation import (
     Redaction,
     RedactionVerdict,
     attest,
+    redaction_previews,
 )
 from .qc_pack import QcPackError
 from .text_detection import TextBox
@@ -107,15 +114,19 @@ _OUTCOMES = {outcome.value: outcome for outcome in (Outcome.ATTESTED, Outcome.RE
 _ANSWERS = {"yes": True, "no": False}
 
 
-def summary_lines(attestation: Attestation) -> list[str]:
+def summary_lines(
+    attestation: Attestation, previews: Mapping[tuple[int, int], str] | None = None
+) -> list[str]:
     """Return the summary that the command prints, which names no one.
 
     It gives the pack's reference, the outcome, whether each review that
     D-017 requires was done, the releaser's confirmations, how many series
     have each face verdict, how many instances have each redaction verdict,
-    each region that a revised verdict adds, and that the published release
-    report is unchanged.
+    each region that a revised verdict adds, with the file in the pack that
+    previews its frame where ``previews``, by run position and frame, names
+    one, and that the published release report is unchanged.
     """
+    previews = {} if previews is None else previews
     coverage = attestation.coverage
     faces = [verdict.face for verdict in attestation.faces]
     redactions = [verdict.redaction for verdict in attestation.redactions]
@@ -150,7 +161,13 @@ def summary_lines(attestation: Attestation) -> list[str]:
             )
         ),
         *(
-            f"    instance {verdict.position}, frame {index}: adds "
+            f"    instance {verdict.position}, frame {index}"
+            + (
+                f", shown in {previews[verdict.position, index]}"
+                if (verdict.position, index) in previews
+                else ""
+            )
+            + ": adds "
             + ", ".join(
                 f"[{box.top}, {box.left}, {box.bottom}, {box.right}]" for box in boxes
             )
@@ -359,6 +376,7 @@ def main(
         _print(f"error: {error}; nothing was recorded", stderr)
         return EXIT_NOT_RECORDED
     try:
+        previews = redaction_previews(Path(arguments.pack))
         attestation = attest(
             Path(arguments.pack),
             reviewer=arguments.reviewer,
@@ -380,7 +398,7 @@ def main(
         # QcPackError and the OSErrors it replaces name a check, never a path.
         _print(f"error: {error}; nothing was recorded", stderr)
         return EXIT_NOT_RECORDED
-    _print("\n".join(summary_lines(attestation)), stdout)
+    _print("\n".join(summary_lines(attestation, previews)), stdout)
     return EXIT_RECORDED
 
 
