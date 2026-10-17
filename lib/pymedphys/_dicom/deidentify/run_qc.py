@@ -39,11 +39,13 @@ from . import pixel_risk, qc_pack, qc_previews, residuals
 from .iod_conformance import SourceGap
 from .file_layout import ElementPath
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
+from .reasons import PixelDataReason
 from .reference_graph import Finding, FindingKind
 from .release_report import REPORTED_FINDINGS
 from .reviewed_descriptors import CleanedDescriptor
 from .run_written import REPORTED_ONLY
 from .roi_names import Reason
+from .text_detection import TextBox
 from .written_references import WrittenFinding, WrittenFindingKind
 
 
@@ -138,6 +140,39 @@ class PixelRiskMaterial:
     """
 
     assessment: pixel_risk.PixelRiskAssessment
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class RedactionMaterial:
+    """What the Clean Pixel Data Option did to an instance's Pixel Data.
+
+    The pack lists it with its regions, if the instance was released or held
+    for review, and previews each of its frames as written, and each frame
+    with regions also as received.
+
+    Attributes
+    ----------
+    reason : ~pymedphys._dicom.deidentify.reasons.PixelDataReason
+    frames : int
+    regions : tuple of (int, tuple of ~.text_detection.TextBox)
+        As :class:`~pymedphys._dicom.deidentify.qc_pack.RedactionEntry`
+        gives them.
+    source : bytes or None
+        The source file, from which each frame with regions is shown as
+        received, or None where no frame has regions, so that a run keeps no
+        source that no preview shows.
+    """
+
+    reason: PixelDataReason
+    frames: int
+    regions: tuple[tuple[int, tuple[TextBox, ...]], ...]
+    source: bytes | None
+
+    def __repr__(self) -> str:
+        return (
+            f"RedactionMaterial(reason={self.reason.value!r}, frames={self.frames}, "
+            f"regions={len(self.regions)})"
+        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -273,8 +308,10 @@ def qc_pack_of(
     The pack's image previews (:func:`~.qc_previews.previews_of`) are made
     from the file that each released or held instance's gate searched, in
     its :class:`SearchMaterial`, with the instances that a
-    :class:`PixelRiskMaterial` gives findings for as high-risk. A released or
-    held instance without one is listed as not previewed.
+    :class:`PixelRiskMaterial` gives findings for as high-risk, and the
+    frames of each instance that a :class:`RedactionMaterial` gives, which
+    the pack lists in ``redactions``. A released or held instance without
+    one is listed as not previewed.
 
     The released and held instances that give :class:`SeriesEvidence` are
     grouped by series, in run position order, and each series is assessed
@@ -309,6 +346,7 @@ def qc_pack_of(
     risks: dict[int, list[pixel_risk.Finding]] = {}
     gaps: dict[int, list[SourceGap]] = {}
     series: dict[int, SeriesEvidence] = {}
+    redactions: dict[int, RedactionMaterial] = {}
     for position in sorted(material):
         for item in material[position]:
             if isinstance(item, PixelRiskMaterial):
@@ -317,6 +355,9 @@ def qc_pack_of(
                 gaps.setdefault(position, []).append(item)
             elif isinstance(item, SeriesEvidence):
                 series.setdefault(position, item)
+            elif isinstance(item, RedactionMaterial):
+                if instances[position].disposition in _PREVIEWED:
+                    redactions.setdefault(position, item)
             elif isinstance(item, SearchMaterial):
                 if instances[position].disposition in _PREVIEWED:
                     written.setdefault(position, item.written)
@@ -358,7 +399,14 @@ def qc_pack_of(
             else:
                 raise TypeError("QC material must be of the run's QC material types")
     high_risk = {position: tuple(found) for position, found in risks.items() if found}
-    previews = qc_previews.previews_of(written, high_risk)
+    cleaned = {
+        position: (
+            item.source,
+            qc_pack.RedactionEntry(position, item.reason, item.frames, item.regions),
+        )
+        for position, item in redactions.items()
+    }
+    previews = qc_previews.previews_of(written, high_risk, cleaned)
     # A released or held file that no gate handed over is listed, not lost.
     missing = [
         qc_pack.NotPreviewedEntry(
@@ -385,6 +433,7 @@ def qc_pack_of(
             for position, found in sorted(high_risk.items())
         ),
         series_risks=_series_risks(instances, series),
+        redactions=tuple(cleaned[position][1] for position in sorted(cleaned)),
         series=tuple(
             qc_pack.SeriesEntry(grouped)
             for grouped in _series_groups(_reviewed(instances, series), series)

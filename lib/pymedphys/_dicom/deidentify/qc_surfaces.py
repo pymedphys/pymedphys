@@ -171,12 +171,12 @@ class Surface:
 
     def __init__(self, volume: Grid) -> None:
         self._grid = volume
-        voxel = _voxel(volume.coordinates)
+        voxel = voxel_side(volume.coordinates)
         # For each of the volume's axes, the index sampled at each voxel
         # along its patient axis: from superior, anterior, and the patient's
         # right.
         self._taken = tuple(
-            _sampled(np.asarray(coordinates), axis, voxel)
+            sampled_indices(np.asarray(coordinates), axis, voxel)
             for coordinates, axis in zip(volume.coordinates, volume.axes)
         )
         self._samples = np.full(
@@ -235,21 +235,33 @@ class Surface:
         return _otsu(self._samples, padding=True)
 
 
-def _voxel(coordinates: Sequence[Sequence[float]]) -> float:
-    """The side of a cubic voxel, in millimetres, as the module describes."""
+def voxel_side(
+    coordinates: Sequence[Sequence[float]],
+    minimum: float = MINIMUM_VOXEL,
+    maximum_voxels: int = MAXIMUM_VOXELS,
+) -> float:
+    """The side of a cubic voxel, in millimetres, to sample a volume to.
+
+    ``minimum``, or the volume's smallest spacing where that is larger,
+    enlarged where needed to keep each axis within ``maximum_voxels``
+    voxels. ``coordinates`` are a :class:`Grid`'s.
+    """
     spacings = [
         float(np.abs(np.diff(values)).min())
         for values in coordinates
         if len(values) > 1
     ]
-    voxel = max(MINIMUM_VOXEL, min(spacings, default=MINIMUM_VOXEL))
+    voxel = max(minimum, min(spacings, default=minimum))
     extent = max(max(values) - min(values) for values in coordinates)
-    return max(voxel, extent / (MAXIMUM_VOXELS - 1))
+    return max(voxel, extent / (maximum_voxels - 1))
 
 
-def _sampled(coordinates: np.ndarray, axis: int, voxel: float) -> np.ndarray:
+def sampled_indices(coordinates: np.ndarray, axis: int, voxel: float) -> np.ndarray:
     """The index nearest each voxel along one axis, from superior, anterior,
     and the patient's right, which have the highest z and the lowest x and y.
+
+    The voxels are ``voxel`` millimetres apart, from the highest coordinate
+    along z and from the lowest along x and y.
     """
     low, high = float(coordinates.min()), float(coordinates.max())
     # The end is kept, though the division may fall a little short of it.

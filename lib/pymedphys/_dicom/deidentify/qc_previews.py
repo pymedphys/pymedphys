@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module makes every kind of preview, which share their decoding and
+# windowing, so it is long.
 """Image previews for the confidential QC pack's human review (D-016, D-017).
 
 D-017 asks a reviewer to look at every series, by maximum intensity
@@ -20,7 +23,8 @@ and blocks release on facial information that could be reconstructed unless
 a risk assessment is recorded.
 :func:`previews_of` makes those images, as PNG files, from the files that a
 run wrote, so that a reviewer sees the pixel data as written, with any
-region that the Clean Pixel Data Option blacked out (D-037):
+region that the Clean Pixel Data Option blacked out, and, for each
+frame with such regions, also from the file as received:
 
 - a cine strip of each series: up to :data:`CINE_FRAMES` of its frames,
   evenly spaced through the series from its first frame to its last, each
@@ -41,7 +45,23 @@ region that the Clean Pixel Data Option blacked out (D-037):
   :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes;
 - each high-risk instance at full resolution: every frame, or
   :data:`CINE_FRAMES` evenly spaced, unscaled, since burned-in text may be
-  small.
+  small;
+- each frame of each instance whose Pixel Data the Clean Pixel Data Option
+  cleaned, at full resolution, since the option's review must see every
+  frame for text that the finder missed: as written, in grey for a
+  monochrome frame, and, for a frame with regions, in colour, first as
+  received, then an 8-pixel grey gutter, then as written, so that the
+  reviewer can judge what each region covered. Each region is outlined in
+  magenta, a colour that burned-in text rarely has, along its own edge
+  pixels, inside the region, so that the outline hides nothing next to a
+  region, where text that a region only partly covered would show; the two
+  images are windowed together, from the frame as received, so the fill
+  appears as it would beside the rest. Each file is decoded once, frame by
+  frame, and each frame's image is encoded as soon as it is drawn, so only
+  one frame of an instance is held decoded at a time. An instance whose
+  source cannot be shown beside it, because the source cannot be read or
+  decoded, or differs from the file written in its frames' shape, number,
+  or colour, is reported rather than shown in part.
 
 A series is the instances that share a Series Instance UID, or an instance
 alone without one. Its instances are ordered by their positions along the
@@ -87,7 +107,13 @@ from pymedphys._imports import pydicom
 
 from .pixel_decoding import DECODING_PLUGINS, decoder_available
 from . import qc_surfaces
-from .qc_pack import NotPreviewedEntry, NotPreviewedReason, Preview, PreviewKind
+from .qc_pack import (
+    NotPreviewedEntry,
+    NotPreviewedReason,
+    Preview,
+    PreviewKind,
+    RedactionEntry,
+)
 
 CINE_FRAMES = 16
 CINE_COLUMNS = 4
@@ -109,6 +135,11 @@ _ORIENTATION_TOLERANCE = 1e-4
 # or a dose grid's frame from even spacing.
 _STACKING_TOLERANCE = 0.01
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+# The outline of a region in a redaction preview, and the columns between
+# the frame as received and as written.
+_OUTLINE = (255, 0, 255)
+_GUTTER_PIXELS = 8
+_GUTTER = (128, 128, 128)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -153,8 +184,9 @@ class PreviewSet:
         Each series' cine strip, then its projection and its surface render
         if it forms a volume, then the surface render of each RT Dose grid
         in it, series in the order of their first run position; then each
-        high-risk instance, in run position order. Named ``P-0001.png``
-        onwards in that order.
+        high-risk instance, in run position order; then each frame of each
+        instance that Clean Pixel Data cleaned, in run position and frame
+        order. Named ``P-0001.png`` onwards in that order.
     not_previewed : tuple of ~pymedphys._dicom.deidentify.qc_pack.NotPreviewedEntry
         In run position order.
     """
@@ -163,7 +195,11 @@ class PreviewSet:
     not_previewed: tuple[NotPreviewedEntry, ...]
 
 
-def previews_of(written: Mapping[int, bytes], high_risk: Collection[int]) -> PreviewSet:
+def previews_of(
+    written: Mapping[int, bytes],
+    high_risk: Collection[int],
+    redactions: Mapping[int, tuple[bytes | None, RedactionEntry]] | None = None,
+) -> PreviewSet:
     """Return the previews of the files that a run wrote, as the module describes.
 
     Parameters
@@ -173,11 +209,16 @@ def previews_of(written: Mapping[int, bytes], high_risk: Collection[int]) -> Pre
     high_risk : collection of int
         The run positions of the instances in high-risk categories. A
         position without a file is ignored, since nothing of it is released.
+    redactions : mapping of int to (bytes or None, RedactionEntry), optional
+        The source file of each instance that Clean Pixel Data cleaned, or
+        None where no frame has regions, and what it cleaned, by run
+        position. A position without a written file is ignored.
 
     Returns
     -------
     PreviewSet
     """
+    redactions = {} if redactions is None else redactions
     instances: list[_Instance] = []
     refused: dict[int, NotPreviewedReason] = {}
     for position in sorted(written):
@@ -188,19 +229,24 @@ def previews_of(written: Mapping[int, bytes], high_risk: Collection[int]) -> Pre
             refused[position] = found
         elif position in high_risk:
             refused[position] = NotPreviewedReason.NO_PIXEL_DATA
-    images: list[tuple[PreviewKind, tuple[tuple[int, int], ...], int, np.ndarray]] = []
+    # Each image is encoded as it is made, so that only its PNG is kept.
+    images: list[_Encoded] = []
     decoded = _Decoder(refused)
     for series in _series(instances):
-        images.extend(_series_images(series, decoded))
+        images.extend(_encoded(_series_images(series, decoded)))
     for instance in instances:
         if instance.position in high_risk:
             image = _instance_image(instance, decoded)
             if image is not None:
-                images.append(image)
+                images.extend(_encoded([image]))
+    for instance in instances:
+        if instance.position in redactions:
+            source, entry = redactions[instance.position]
+            images.extend(_redaction_images(instance, source, entry, decoded))
     width = max(4, len(str(len(images))))
     previews = tuple(
-        Preview(f"P-{number:0{width}d}.png", kind, frames, total, png(image))
-        for number, (kind, frames, total, image) in enumerate(images, start=1)
+        Preview(f"P-{number:0{width}d}.png", kind, frames, total, encoded)
+        for number, (kind, frames, total, encoded) in enumerate(images, start=1)
     )
     return PreviewSet(
         previews,
@@ -209,6 +255,17 @@ def previews_of(written: Mapping[int, bytes], high_risk: Collection[int]) -> Pre
             for position, reason in sorted(refused.items())
         ),
     )
+
+
+# An image's kind, the frames it shows by run position and index, how many
+# frames its series or instance has, and its PNG.
+_Encoded = tuple[PreviewKind, tuple[tuple[int, int], ...], int, bytes]
+
+
+def _encoded(images) -> Iterator[_Encoded]:
+    """Encode each image as a PNG as it is made."""
+    for kind, frames, total, image in images:
+        yield kind, frames, total, png(image)
 
 
 def _instance(position: int, data: bytes) -> _Instance | NotPreviewedReason | None:
@@ -412,6 +469,10 @@ class _Decoder:
     def __init__(self, refused: dict[int, NotPreviewedReason]) -> None:
         self._refused = refused
 
+    def refuse(self, position: int, reason: NotPreviewedReason) -> None:
+        """Record that an instance's pixel data cannot be previewed."""
+        self._refused.setdefault(position, reason)
+
     def frame(self, instance: _Instance, index: int) -> np.ndarray | None:
         """Return one frame as (row, column[, sample]), or None.
 
@@ -431,9 +492,40 @@ class _Decoder:
         except Exception:  # pylint: disable = broad-exception-caught
             self._refused[instance.position] = NotPreviewedReason.UNREADABLE
             return None
+        return self._shown(instance, pixels, NotPreviewedReason.UNREADABLE)
+
+    def frames(
+        self,
+        instance: _Instance,
+        indices: Sequence[int] | None = None,
+        reason: NotPreviewedReason = NotPreviewedReason.UNREADABLE,
+    ) -> Iterator[np.ndarray]:
+        """Yield an instance's frames, or those at ``indices``, in order, as
+        :meth:`frame` gives them, reading its file once.
+
+        Stops at a frame that cannot be decoded, recording ``reason``.
+        """
+        if instance.position in self._refused:
+            return
+        try:
+            for pixels in pydicom.pixels.iter_pixels(
+                io.BytesIO(instance.data),
+                indices=indices,
+                decoding_plugin=instance.plugin,
+            ):
+                shown = self._shown(instance, np.asarray(pixels), reason)
+                if shown is None:
+                    return
+                yield shown
+        except Exception:  # pylint: disable = broad-exception-caught
+            self._refused.setdefault(instance.position, reason)
+
+    def _shown(
+        self, instance: _Instance, pixels: np.ndarray, reason: NotPreviewedReason
+    ) -> np.ndarray | None:
         shape = instance.shape + ((3,) if instance.colour else ())
         if pixels.size != math.prod(shape):
-            self._refused[instance.position] = NotPreviewedReason.UNREADABLE
+            self._refused[instance.position] = reason
             return None
         pixels = pixels.reshape(shape)
         if instance.colour:
@@ -589,6 +681,85 @@ def _instance_image(instance: _Instance, decoder: _Decoder):
         instance.frames,
         _sheet(tiles, tiles[0].shape[0], tiles[0].shape[1]),
     )
+
+
+def _redaction_images(
+    instance: _Instance, source: bytes | None, entry: RedactionEntry, decoder: _Decoder
+) -> list[_Encoded]:
+    """Each frame of a cleaned instance, as written, beside the frame as
+    received where it has regions; none if a frame cannot be decoded."""
+    regions = dict(entry.regions)
+    received = None
+    if regions:
+        received = None if source is None else _instance(instance.position, source)
+        if not (
+            isinstance(received, _Instance)
+            and received.shape == instance.shape
+            and received.frames == instance.frames
+            and received.colour == instance.colour
+        ):
+            decoder.refuse(instance.position, NotPreviewedReason.SOURCE_NOT_SHOWN)
+            return []
+    written = decoder.frames(instance)
+    sources = iter(())
+    if isinstance(received, _Instance):
+        sources = decoder.frames(
+            received, sorted(regions), NotPreviewedReason.SOURCE_NOT_SHOWN
+        )
+    images = []
+    for index in range(instance.frames):
+        after = next(written, None)
+        boxes = regions.get(index, ())
+        before = next(sources, None) if boxes else None
+        if after is None or (boxes and before is None):
+            return []
+        images.append(
+            (
+                PreviewKind.REDACTION,
+                ((instance.position, index),),
+                instance.frames,
+                png(_redaction_image(instance, after, before, boxes)),
+            )
+        )
+    return images
+
+
+def _redaction_image(
+    instance: _Instance, after: np.ndarray, before: np.ndarray | None, boxes
+) -> np.ndarray:
+    """A frame as written, in grey if monochrome, or, with regions, in
+    colour beside the frame as received, both windowed from it."""
+    if before is None:
+        if instance.colour:
+            return after
+        return _grey(after, _window(after), instance.inverted)
+    shown = [before, after]
+    if not instance.colour:
+        window = _window(before)
+        shown = [
+            np.repeat(
+                _grey(image, window, instance.inverted)[..., np.newaxis], 3, axis=2
+            )
+            for image in shown
+        ]
+    shown = [_outlined(image, boxes) for image in shown]
+    gutter = np.empty((shown[0].shape[0], _GUTTER_PIXELS, 3), np.uint8)
+    gutter[...] = _GUTTER
+    return np.hstack([shown[0], gutter, shown[1]])
+
+
+def _outlined(image: np.ndarray, boxes) -> np.ndarray:
+    """Draw each box's edge pixels in the outline colour, clipped to the image."""
+    outlined = image.copy()
+    rows, columns = image.shape[:2]
+    for box in boxes:
+        top, left = min(box.top, rows - 1), min(box.left, columns - 1)
+        bottom, right = min(box.bottom, rows), min(box.right, columns)
+        outlined[top, left:right] = _OUTLINE
+        outlined[bottom - 1, left:right] = _OUTLINE
+        outlined[top:bottom, left] = _OUTLINE
+        outlined[top:bottom, right - 1] = _OUTLINE
+    return outlined
 
 
 def _fitted(frame: np.ndarray, instance: _Instance) -> np.ndarray:
