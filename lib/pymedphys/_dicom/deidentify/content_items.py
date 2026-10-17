@@ -145,7 +145,7 @@ METHOD = (
     "options give it, or else its Basic Profile action, on the attribute "
     "that holds its value; C under Clean Descriptors takes the action "
     "without that option, as for an attribute that descriptor cleaning "
-    "does not write (D-009), and C under "
+    "does not write, and C under "
     "Retain Longitudinal Temporal Information with Modified Dates modifies "
     "the date, time, or datetime by its temporal role. Every other element "
     "of an item, and the value of an item whose concept name the table does "
@@ -155,7 +155,7 @@ METHOD = (
     "name is coded in LOINC, NCDR, NCIt, or UMLS, whose rows PyMedPhys does "
     "not include, or by a retired SNOMED designator, SRT, SNM3, or 99SDM, "
     "the whole sequence takes its Basic Profile action instead, since a "
-    "single item is not removed on its own (D-047)."
+    "single item is not removed on its own."
 )
 
 

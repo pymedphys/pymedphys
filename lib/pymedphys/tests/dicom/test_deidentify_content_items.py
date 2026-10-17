@@ -543,4 +543,4 @@ def test_the_statement_describes_the_cleaning_of_content_items():
     assert not statement.pending
     markdown = conformance_markdown.render_markdown(statement)
     assert "which hold content items, and the engine cleans them" in markdown
-    assert "D-047" in markdown
+    assert "since a single item is not removed on its own." in markdown

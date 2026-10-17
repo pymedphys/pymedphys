@@ -126,7 +126,10 @@ def test_attested_needs_every_review_that_d_017_requires(pack):
             **{**qc_attestation.dataclasses.asdict(COMPLETE), missing: False}
         )
         assert not partial.complete
-        with pytest.raises(QcPackError, match="every review that D-017 requires"):
+        with pytest.raises(
+            QcPackError,
+            match="needs every retained string, series, and high-risk instance reviewed",
+        ):
             _attest(pack, Outcome.ATTESTED, partial)
     assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
     rejected = _attest(pack, Outcome.REJECTED, Coverage(False, False, False))

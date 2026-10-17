@@ -16,6 +16,7 @@
 
 import dataclasses
 import io
+import re
 
 from pymedphys._imports import pydicom, pytest
 
@@ -109,6 +110,20 @@ def test_a_published_vocabulary_is_named_with_its_edition(monkeypatch):
     )
     assert "TG263 vInvented" in section
     assert statement.vocabulary_digest in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize("published", [False, True])
+def test_the_statement_with_a_vocabulary_cites_no_decision_number(
+    monkeypatch, published
+):
+    # The ROI Name text differs with a vocabulary, which the preset and option
+    # statements of test_deidentify_conformance_values.py render without.
+    vocabulary = _published_vocabulary(monkeypatch) if published else VOCABULARY
+    text = conformance_markdown.render_markdown(
+        _statement("basic-clean-descriptors", vocabulary)
+    )
+    assert re.search(r"\bD-\d{3}\b", text) is None
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01", "PS3.15-E.3.5-02")
@@ -221,7 +236,7 @@ def test_the_described_fallback_is_the_maintainers_decision():
     assert (
         "takes the action that the policy gives it without Clean Descriptors"
     ) in actions
-    assert "decided on 6 October 2026 (D-009)" in actions
+    assert "decided on 6 October 2026, unless" in actions
     inserted = _section(text, "Attributes inserted")
     assert "not yet described" not in inserted
 
