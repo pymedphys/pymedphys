@@ -179,7 +179,13 @@ from .pixel_cleaning import (
     redaction_problem,
 )
 from .pixel_risk import assess_pixel_risk, series_evidence
-from .run_qc import Dropped, PixelRiskMaterial, SearchMaterial, SeriesEvidence
+from .run_qc import (
+    Dropped,
+    PixelRiskMaterial,
+    RedactionMaterial,
+    SearchMaterial,
+    SeriesEvidence,
+)
 from .run_report import ReleaseReporter
 from .scope import Classification, classify
 from .source import SourceEvidence, SourceRefused, read_source
@@ -1081,6 +1087,7 @@ class InstanceTransform:
             redaction = self._black_out(source, dataset)
             if redaction is not None:
                 evidence = _held(evidence, HeldPixelData(redaction.reason))
+                qc = (*qc, _redaction_material(redaction, data))
             writing = with_markers(
                 writer_plan(plan, edits, codecs),
                 source,
@@ -1273,6 +1280,20 @@ def _with_redaction(
         writing,
         kept=writing.kept - {_PIXEL_DATA},
         replacements={**writing.replacements, _PIXEL_DATA: element},
+    )
+
+
+def _redaction_material(redaction: Redaction, source: bytes) -> RedactionMaterial:
+    """The QC material of what Clean Pixel Data did, for the reviewer.
+
+    The source is kept only where a frame has regions, since only those
+    frames are shown as received.
+    """
+    return RedactionMaterial(
+        redaction.reason,
+        redaction.layout.frames,
+        tuple((regions.frame, regions.boxes) for regions in redaction.regions),
+        source if redaction.regions else None,
     )
 
 

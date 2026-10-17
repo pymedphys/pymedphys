@@ -64,6 +64,14 @@ A pack holds, for one run:
   findings of its series assessment, a CT, MR, PET, or RT Dose volume, a
   localizer, the head or neck, or unreadable evidence of any of them, with
   the instances that show each (D-015, D-017);
+- ``redactions``: each released or held instance whose Pixel Data the
+  Clean Pixel Data Option cleaned, with why it is held, its number of
+  frames, and the regions blacked out in each frame, by frame index from 0,
+  each as ``[top, left, bottom, right]`` in pixels from the frame's top left
+  corner, with the bottom row and right column excluded, for the review of
+  every frame that the option requires. Each frame with regions is
+  previewed as received, so under the option the pack holds the burned-in
+  text that the release lacks;
 - ``previews``: each image preview, by its file in the previews directory
   beside the pack, with what it shows and the file's SHA-256, so that an
   attestation of the pack covers them; and ``not_previewed``: each instance
@@ -99,6 +107,7 @@ from pathlib import PurePosixPath
 from . import pixel_risk, residuals, roi_names
 from .file_layout import TAG_PATTERN, ElementPath, Location
 from .iod_conformance import SourceGap
+from .reasons import PixelDataReason
 from .reference_graph import FindingKind
 from .run_written import REPORTED_ONLY
 from .written_references import WrittenFindingKind
@@ -109,9 +118,10 @@ from .reviewed_descriptors import Held as DescriptorHeld
 from .reviewed_descriptors import Outcome as DescriptorOutcome
 from .reviewed_descriptors import stripped
 from .reviewed_roi_names import Outcome
+from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/4"
+FORMAT = "pymedphys-deid-qc-pack/5"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 
@@ -778,6 +788,9 @@ class PreviewKind(enum.Enum):
     # renders of a volume's skin surface, from the front, obliques, and profiles
     SERIES_SURFACE = "series-surface"
     INSTANCE = "instance"  # a high-risk instance at full resolution
+    # a frame that Clean Pixel Data cleaned, at full resolution, with its
+    # regions outlined: as received beside as written where it has any
+    REDACTION = "redaction"
 
 
 class NotPreviewedReason(enum.Enum):
@@ -791,6 +804,10 @@ class NotPreviewedReason(enum.Enum):
     NO_PIXEL_DATA = "no-pixel-data"
     # a released or held instance whose written file the run did not hand over
     NOT_AVAILABLE = "file-not-available"
+    # an instance that Clean Pixel Data cleaned whose source cannot be shown
+    # beside its written file: unreadable, undecodable, or of another shape,
+    # number of frames, or colour
+    SOURCE_NOT_SHOWN = "source-not-shown"
 
 
 PREVIEW_NAME = re.compile(r"P-[0-9]{4,}\.png")
@@ -929,6 +946,77 @@ class PixelRiskEntry:
 
 
 @dataclasses.dataclass(frozen=True)
+class RedactionEntry:
+    """An instance whose Pixel Data the Clean Pixel Data Option cleaned.
+
+    Attributes
+    ----------
+    position : int
+        The instance's run position.
+    reason : ~pymedphys._dicom.deidentify.reasons.PixelDataReason
+        Why it is held for review.
+    frames : int
+        How many frames its Pixel Data holds.
+    regions : tuple of (int, tuple of TextBox)
+        Each frame with a region, by frame index from 0, in order, with its
+        regions, sorted, each once; none where no text was found.
+    """
+
+    position: int
+    reason: PixelDataReason
+    frames: int
+    regions: tuple[tuple[int, tuple[TextBox, ...]], ...]
+
+    def __post_init__(self) -> None:
+        _check_position("a cleaned instance", self.position)
+        if not isinstance(self.reason, PixelDataReason):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs a PixelDataReason"
+            )
+        if (
+            not isinstance(self.frames, int)
+            or isinstance(self.frames, bool)
+            or self.frames < 1
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs its number of frames"
+            )
+        if not isinstance(self.regions, tuple) or not all(
+            _is_frame_regions(entry, self.frames) for entry in self.regions
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs regions of its frames, "
+                "each a frame index with sorted, distinct boxes"
+            )
+        indices = [index for index, _ in self.regions]
+        if indices != sorted(set(indices)):
+            raise QcPackError(
+                f"cleaned instance {self.position} must list each frame once, in order"
+            )
+        found = self.reason is PixelDataReason.TEXT_BLACKED_OUT
+        if found != bool(self.regions):
+            raise QcPackError(
+                f"cleaned instance {self.position} has regions exactly where "
+                "text was blacked out"
+            )
+
+
+def _is_frame_regions(entry: object, frames: int) -> bool:
+    if not (isinstance(entry, tuple) and len(entry) == 2):
+        return False
+    index, boxes = entry
+    return (
+        isinstance(index, int)
+        and not isinstance(index, bool)
+        and 0 <= index < frames
+        and isinstance(boxes, tuple)
+        and bool(boxes)
+        and all(isinstance(box, TextBox) for box in boxes)
+        and list(boxes) == sorted(set(boxes))
+    )
+
+
+@dataclasses.dataclass(frozen=True)
 class SourceGapEntry:
     """An instance whose source lacks attributes that its IOD requires.
 
@@ -1058,6 +1146,9 @@ class QcPack:
     series_risks : tuple of SeriesRiskEntry
         Each instance in at most one, by its first run position in order;
         each instance released or held for review.
+    redactions : tuple of RedactionEntry
+        Each instance once, in run position order; each instance released
+        or held for review.
     previews : tuple of Preview
         Named ``P-0001.png`` onwards, in order, at one width.
     not_previewed : tuple of NotPreviewedEntry
@@ -1084,7 +1175,11 @@ class QcPack:
         gaps, or out of order; or if an instance is in two series with risks,
         the series are out of order, or one has an instance that was neither
         released nor held for review; or if the same holds of ``series``, or
-        a series has an instance without its source's SHA-256.
+        a series has an instance without its source's SHA-256; or if an
+        instance is listed twice as cleaned, out of order, or neither
+        released nor held for review; or if a cleaned instance that is not
+        listed as not previewed lacks a redaction preview of each frame, in
+        order, or a redaction preview shows anything else.
     """
 
     reference: str
@@ -1098,6 +1193,7 @@ class QcPack:
     reference_findings: tuple[ReferenceFindingEntry, ...] = ()
     pixel_risks: tuple[PixelRiskEntry, ...] = ()
     series_risks: tuple[SeriesRiskEntry, ...] = ()
+    redactions: tuple[RedactionEntry, ...] = ()
     previews: tuple[Preview, ...] = ()
     not_previewed: tuple[NotPreviewedEntry, ...] = ()
     source_gaps: tuple[SourceGapEntry, ...] = ()
@@ -1119,6 +1215,7 @@ class QcPack:
             "reference_findings": ReferenceFindingEntry,
             "pixel_risks": PixelRiskEntry,
             "series_risks": SeriesRiskEntry,
+            "redactions": RedactionEntry,
             "previews": Preview,
             "not_previewed": NotPreviewedEntry,
             "source_gaps": SourceGapEntry,
@@ -1144,6 +1241,7 @@ class QcPack:
             "descriptors",
             "reference_findings",
             "pixel_risks",
+            "redactions",
             "not_previewed",
             "source_gaps",
         ):
@@ -1160,12 +1258,20 @@ class QcPack:
         values = [retained.value for retained in self.retained_strings]
         if len(set(values)) != len(values):
             raise QcPackError("retained_strings must hold each value once")
-        for name in ("pixel_risks", "not_previewed", "source_gaps"):
+        for name in ("pixel_risks", "redactions", "not_previewed", "source_gaps"):
             listed = [entry.position for entry in getattr(self, name)]
             if listed != sorted(set(listed)):
                 raise QcPackError(f"{name} must list each instance once, in order")
         self._check_series()
         self._check_previews()
+        if any(
+            self.instances[entry.position].disposition not in _REVIEWED
+            for entry in self.redactions
+        ):
+            raise QcPackError(
+                "redactions names an instance that was neither released nor "
+                "held for review"
+            )
 
     def _check_series(self) -> None:
         for name in ("series", "series_risks"):
@@ -1208,6 +1314,34 @@ class QcPack:
                 "a preview shows an instance that was neither released nor held "
                 "for review"
             )
+        self._check_redaction_previews()
+
+    def _check_redaction_previews(self) -> None:
+        """Each cleaned instance has a redaction preview of each frame, in
+        order, unless it is listed as not previewed, and no other has one."""
+        cleaned = {entry.position: entry.frames for entry in self.redactions}
+        unshown = {entry.position for entry in self.not_previewed}
+        shown: dict[int, list[int]] = {}
+        for preview in self.previews:
+            if preview.kind is not PreviewKind.REDACTION:
+                continue
+            if (
+                len(preview.frames) != 1
+                or cleaned.get(preview.frames[0][0]) != preview.total_frames
+            ):
+                raise QcPackError(
+                    "a redaction preview must show one frame of a cleaned "
+                    "instance, with its number of frames"
+                )
+            position, frame = preview.frames[0]
+            shown.setdefault(position, []).append(frame)
+        for position, frames in cleaned.items():
+            expected = [] if position in unshown else list(range(frames))
+            if shown.get(position, []) != expected:
+                raise QcPackError(
+                    "a cleaned instance needs a redaction preview of each "
+                    "frame, in order, unless it is listed as not previewed"
+                )
 
     def _check_names(self) -> None:
         labels = [entry.label for entry in self.instances if entry.label is not None]
@@ -1241,7 +1375,8 @@ class QcPack:
             f"descriptors={len(self.descriptors)}, "
             f"reference_findings={len(self.reference_findings)}, "
             f"pixel_risks={len(self.pixel_risks)}, "
-            f"series_risks={len(self.series_risks)}, previews={len(self.previews)}, "
+            f"series_risks={len(self.series_risks)}, "
+            f"redactions={len(self.redactions)}, previews={len(self.previews)}, "
             f"not_previewed={len(self.not_previewed)}, "
             f"source_gaps={len(self.source_gaps)}, series={len(self.series)})"
         )
@@ -1404,6 +1539,23 @@ def pack_document(pack: QcPack) -> dict:
                 ],
             }
             for entry in pack.series_risks
+        ],
+        "redactions": [
+            {
+                "position": entry.position,
+                "reason": entry.reason.value,
+                "frames": entry.frames,
+                "regions": [
+                    {
+                        "frame": index,
+                        "boxes": [
+                            [box.top, box.left, box.bottom, box.right] for box in boxes
+                        ],
+                    }
+                    for index, boxes in entry.regions
+                ],
+            }
+            for entry in pack.redactions
         ],
         "previews": [
             {
