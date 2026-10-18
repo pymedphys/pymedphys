@@ -38,8 +38,9 @@ masks. A series is defaced only where all of these hold:
   and
 - no contour of a target, an ROI whose RT ROI Interpreted Type is
   :data:`TARGET_TYPES`, of an RT Structure Set of the run in the series'
-  Frame of Reference, or naming none, has a point in the block, a target
-  that names no Frame of Reference counting as one in it; no structure set
+  Frame of Reference, or naming none, reaches the block, at a vertex or
+  between two (:func:`_contour_reaches`), a target that names no Frame of
+  Reference counting as one in it; no structure set
   that refers to the series' slices while declaring another frame has a
   target at all, since its contours cannot be placed; and every such
   structure set can be read.
@@ -561,7 +562,8 @@ def _target_in(
     read: Callable[[int], bytes | None],
 ) -> bool:
     """Whether a target of any of these structure sets, in this Frame of
-    Reference, has a contour point in the block, or one cannot be read."""
+    Reference, has a contour that reaches the block, or one cannot be
+    read."""
     for position in positions:
         try:
             with redacted_diagnostics():
@@ -600,8 +602,8 @@ def _targets(dataset: pydicom.Dataset) -> set[int]:
 
 
 def _targets_reach(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bool:
-    """Whether a target's contour in this Frame of Reference has a point in
-    the block."""
+    """Whether a target's contour in this Frame of Reference reaches the
+    block."""
     frames = {
         int(item.ROINumber): normalise_uid(
             str(item.get("ReferencedFrameOfReferenceUID") or "")
@@ -616,9 +618,52 @@ def _targets_reach(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bo
             continue
         for contour in item.get("ContourSequence", []):
             points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-            if block.contains(points).any():
+            kind = str(contour.get("ContourGeometricType") or "").strip().upper()
+            if _contour_reaches(block, points, closed=kind not in _UNCLOSED):
                 return True
     return False
+
+
+# Contour Geometric Types whose last point is not joined to the first.
+_UNCLOSED = frozenset({"POINT", "OPEN_PLANAR", "OPEN_NONPLANAR"})
+
+
+def _contour_reaches(block: FaceBlock, points: np.ndarray, *, closed: bool) -> bool:
+    """Whether a contour has a point in the block or on its boundary.
+
+    Each vertex, each segment between consecutive vertices, and, where the
+    contour is closed, the segment from the last back to the first, is
+    tested against both of the block's half-spaces, so that a contour that
+    crosses the block between its vertices, as a sagittal or oblique one
+    can, reaches it. The block is unbounded, so where a closed planar
+    contour's interior meets it, so does one of its segments. A coordinate
+    that is not finite cannot be placed, so the contour reaches the block.
+    """
+    if not np.isfinite(points).all():
+        return True
+    if len(points) == 0:
+        return False
+    ends = np.roll(points, -1, axis=0) if closed else points[1:]
+    starts = np.concatenate([points, points[: len(ends)]])
+    ends = np.concatenate([points, ends])
+    low = np.zeros(len(starts))
+    high = np.ones(len(starts))
+    reaches = np.ones(len(starts), dtype=bool)
+    anterior, origin = np.array(block.anterior), np.array(block.origin)
+    for at_start, at_end in (
+        ((starts - origin) @ anterior, (ends - origin) @ anterior),
+        (starts[:, 2] - block.inferior_limit, ends[:, 2] - block.inferior_limit),
+    ):
+        # Where the segment is in this half-space: from or until the
+        # crossing, all of it, or none.
+        reaches &= (at_start >= 0) | (at_end >= 0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            crossing = at_start / (at_start - at_end)
+        low = np.where((at_start < 0) & (at_end >= 0), np.maximum(low, crossing), low)
+        high = np.where(
+            (at_start >= 0) & (at_end < 0), np.minimum(high, crossing), high
+        )
+    return bool((reaches & (low <= high)).any())
 
 
 class CtDefacer:

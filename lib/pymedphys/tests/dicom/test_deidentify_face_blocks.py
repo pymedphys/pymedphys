@@ -25,7 +25,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import face_blocks
-from pymedphys._dicom.deidentify.defacing import FaceBlockProblem
+from pymedphys._dicom.deidentify.defacing import FaceBlock, FaceBlockProblem
 from pymedphys._dicom.deidentify.face_blocks import (
     CtDefacer,
     FaceBlockCounts,
@@ -549,6 +549,51 @@ def test_a_target_in_a_structure_set_that_names_no_frame_holds_the_series():
 
     assert not face_blocks.frames_of(InstanceRecord.from_file(data))
     assert _outcome(data).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+# A block of the points with y < 0 and z > 0.
+_CORNER = FaceBlock((0.0, 0.0, 0.0), (0.0, -1.0, 0.0), 0.0, ((0, 0, 0), (0, 0, 0)))
+# A sagittal triangle with no vertex in that block, whose first segment and
+# interior cross it.
+_ACROSS = np.array([(0.0, -10.0, -1.0), (0.0, 1.0, 10.0), (0.0, 1.0, -1.0)])
+
+
+def test_a_contour_reaches_the_block_between_its_vertices():
+    reaches = face_blocks._contour_reaches  # pylint: disable = protected-access
+
+    assert not _CORNER.contains(_ACROSS).any()
+    assert _CORNER.contains(np.array([(0.0, -4.5, 4.5), (0.0, -8 / 3, 8 / 3)])).all()
+    assert reaches(_CORNER, _ACROSS, closed=True)
+    # Where only the segment that closes it crosses the block, an open
+    # contour does not reach it, and a closed one does.
+    closing = np.roll(_ACROSS, -1, axis=0)
+    assert reaches(_CORNER, closing, closed=True)
+    assert not reaches(_CORNER, closing, closed=False)
+    assert reaches(_CORNER, closing[:1] * [1, -1, 1], closed=False)
+    assert not reaches(_CORNER, closing[:1], closed=False)
+    assert not reaches(_CORNER, _ACROSS[:0], closed=True)
+    assert reaches(_CORNER, np.array([(0.0, np.nan, 50.0)]), closed=True)
+
+
+def test_a_sagittal_target_crossing_the_block_between_its_vertices_holds_the_series():
+    block = _outcome().block
+    x, y, _ = block.origin
+    ax, ay, _ = block.anterior
+    globe_x = block.globes[0][0]
+    # The point on the block's plane at the right globe's x and its
+    # inferior limit, and a millimetre ahead of the plane in y.
+    corner = np.array([globe_x, y - ax * (globe_x - x) / ay, block.inferior_limit])
+    ahead = np.array([0.0, 1 / ay, 0.0])
+    up = np.array([0.0, 0.0, 1.0])
+    triangle = np.array(
+        [corner + 10 * ahead - up, corner - ahead + 10 * up, corner - ahead - up]
+    )
+
+    assert not block.contains(triangle).any()
+    assert block.contains(corner + 4.5 * (ahead + up))
+    outcome = _outcome(files.structure_set([("PTV", triangle)]))
+    assert outcome.problem is SeriesProblem.TARGET_IN_BLOCK
+    assert outcome.held
 
 
 @pytest.mark.parametrize(
