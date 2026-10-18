@@ -383,6 +383,9 @@ _STRUCTURE_SET = "04-rtstruct.dcm"
 class _CornerFinder:
     """Finds text in the top left corner of every frame."""
 
+    # What decides its regions, as the method digest takes it.
+    method = {"finder": "top left corner"}
+
     def find(self, frame):
         del frame
         return (TextBox(0, 0, 2, 3),)
@@ -567,7 +570,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"] == {"reference": attestation.reference}
-    assert report["format"] == "pymedphys-deid-release-report/16"
+    assert report["format"] == "pymedphys-deid-release-report/17"
 
 
 def test_a_held_reason_is_a_visual_features_reason():

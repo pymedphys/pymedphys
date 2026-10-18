@@ -176,6 +176,7 @@ from .pixel_cleaning import (
     Redaction,
     TextFinder,
     black_out,
+    finder_description,
     redaction_problem,
 )
 from .pixel_risk import assess_pixel_risk, series_evidence
@@ -675,7 +676,11 @@ class InstanceTransform:
         What finds the regions of text in each frame, such as a
         :class:`~pymedphys._dicom.deidentify.text_detection.TextDetector`,
         which a policy selecting Clean Pixel Data needs, and no other policy
-        takes.
+        takes. Its class and a copy of the description of its method, read
+        once when the transform is made
+        (:func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`),
+        are an input to the method digest that the markers and the release
+        report record.
     face_review : FaceReview, optional
         The face verdicts of an earlier run's attested QC pack, from
         :func:`~pymedphys._dicom.deidentify.face_review.read_face_review`,
@@ -696,6 +701,10 @@ class InstanceTransform:
         Features, or left out with it; or if the policy's other options
         cannot be composed into the policy whose actions descriptors take
         where they are not cleaned.
+    TypeError
+        If ``finder`` does not describe its method as a mapping that is not
+        empty, or its description has a type that the method digest does not
+        define.
 
     Attributes
     ----------
@@ -788,6 +797,9 @@ class InstanceTransform:
                 "a face review is given exactly when the policy selects Clean "
                 "Recognizable Visual Features"
             )
+        # One description of the finder, for both the markers' digest and
+        # the release report's.
+        finder_method = None if finder is None else finder_description(finder)
         if cleaning is not None:
             # One version of each list, for both cleaning and its digest.
             cleaning = dataclasses.replace(
@@ -823,6 +835,7 @@ class InstanceTransform:
             reviewed_roi_names=reviewed,
             reviewed_descriptors=descriptors,
             technique_vocabulary=technique,
+            text_finder=finder_method,
         )
         satisfied = satisfied_options(policy)
         # The markers of each set of per-instance options that an instance
@@ -844,6 +857,7 @@ class InstanceTransform:
             reviewed_roi_names=reviewed,
             reviewed_descriptors=descriptors,
             technique_vocabulary=technique,
+            text_finder=finder_method,
             face_review=None if face_review is None else face_review.reference,
         )
 
