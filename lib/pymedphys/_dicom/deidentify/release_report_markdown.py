@@ -64,6 +64,7 @@ _METHOD = {
     "reviewed_roi_names": "Reviewed ROI names digest",
     "reviewed_descriptors": "Reviewed descriptors digest",
     "technique_vocabulary_digest": "Technique vocabulary digest",
+    "text_finder_digest": "Text finder digest",
     "safe_private_list": "Safe private list",
     "generated_values_digest": "Generated values digest",
     "engine_files": None,
@@ -76,6 +77,7 @@ _OPTIONAL_METHOD = frozenset(
         "reviewed_roi_names",
         "reviewed_descriptors",
         "technique_vocabulary_digest",
+        "text_finder_digest",
         "safe_private_list",
     }
 )

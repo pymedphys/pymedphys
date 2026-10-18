@@ -95,6 +95,7 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
     reviewed_roi_names=None,
     reviewed_descriptors=None,
     technique_vocabulary=None,
+    text_finder=None,
     safe_private_list=SafePrivateList.REVIEWED,
     generated_values={
         "uids.UID_ROOT": "2.25.",
@@ -131,9 +132,10 @@ SYNTHETIC_CANONICAL_BYTES = (
     '"safe_private_list":null,'
     '"tables":{"e1_1.json":"' + "0" * 64 + '"},'
     '"technique_vocabulary":null,'
+    '"text_finder":null,'
     '"vocabulary":null}'
 ).encode("utf-8")
-SYNTHETIC_SHA256 = "066aff689a2b9f5fe9f4d0bc2a068f08c7bd63c6c83eb5aea7446b0eec2e74e7"
+SYNTHETIC_SHA256 = "8940e6d15d6a285c9c62e436ef6d33fd528e5cdefd49381ee60cef4c2d40daf2"
 
 # Each parameter of generated values, and another value for it.
 GENERATED_VALUE_CHANGES = {
@@ -169,6 +171,7 @@ CANONICAL_MEMBERS = {
     "reviewed_roi_names",
     "reviewed_descriptors",
     "technique_vocabulary",
+    "text_finder",
     "safe_private_list",
     "generated_values",
     "files",
@@ -1016,6 +1019,7 @@ COMPONENT_FIELDS = (
     "reviewed_roi_names",
     "reviewed_descriptors",
     "technique_vocabulary_digest",
+    "text_finder_digest",
     "safe_private_list",
     "generated_values_digest",
     "engine_files",
@@ -1048,6 +1052,7 @@ def test_the_components_of_a_small_synthetic_input_are_digests_of_its_members():
         reviewed_roi_names=None,
         reviewed_descriptors=None,
         technique_vocabulary_digest=None,
+        text_finder_digest=None,
         safe_private_list=None,
         generated_values_digest=SYNTHETIC_GENERATED_VALUES_SHA256,
         engine_files={"policy.py": "f" * 64},
@@ -1425,3 +1430,67 @@ def test_each_descriptor_digest_must_be_64_lowercase_hexadecimal_digits(
         )
 
     assert "SENTINEL" not in str(raised.value) and "AAAA" not in str(raised.value)
+
+
+# A text finder's description of its method, as TextDetector.method gives it.
+TEXT_FINDER = {
+    "model_sha256": "0" * 64,
+    "onnxruntime": "1.23.2",
+    "parameters": {"limit_side": 736, "threshold": 0.3},
+    "renderings": ["full-range"],
+}
+
+
+def test_the_text_finder_is_a_typed_member_that_shows_only_in_its_component(basic):
+    before = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
+    inputs = method_digest.digest_inputs(
+        vocabulary=None, reviewed_roi_names=None, text_finder=TEXT_FINDER
+    )
+
+    after = method_digest.digest_components(basic, inputs)
+
+    document = json.loads(method_digest.canonical_bytes(basic, inputs))
+    member = {
+        "model_sha256": ["str", "0" * 64],
+        "onnxruntime": ["str", "1.23.2"],
+        "parameters": [
+            "map",
+            {"limit_side": ["int", 736], "threshold": ["float", (0.3).hex()]},
+        ],
+        "renderings": ["list", [["str", "full-range"]]],
+    }
+    assert document["text_finder"] == member
+    assert (
+        after.text_finder_digest
+        == hashlib.sha256(
+            json.dumps(member, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+    )
+    assert before.text_finder_digest is None
+    assert after.method_digest != before.method_digest
+    assert after.method_digest == method_digest.method_digest(
+        basic, vocabulary=None, reviewed_roi_names=None, text_finder=TEXT_FINDER
+    )
+    assert (
+        dataclasses.replace(
+            after, method_digest=before.method_digest, text_finder_digest=None
+        )
+        == before
+    )
+
+
+@pytest.mark.parametrize(
+    "description, error",
+    [
+        (["model"], "text_finder must be a mapping"),
+        ({"cuda": True}, "bool"),
+        ({1: "model"}, "key that is not text"),
+    ],
+)
+def test_a_text_finder_without_a_canonical_form_is_refused(basic, description, error):
+    with pytest.raises(TypeError, match=error):
+        method_digest.method_digest(
+            basic, vocabulary=None, reviewed_roi_names=None, text_finder=description
+        )

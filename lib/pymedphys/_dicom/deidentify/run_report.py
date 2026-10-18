@@ -149,6 +149,11 @@ class ReleaseReporter:
         applies to technique descriptors, or None, the default, without one,
         as :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
+    text_finder : Mapping of str to object, or None, optional
+        The class and description of the method of the text finder that the
+        Clean Pixel Data Option applies, or None, the default, without one, as
+        :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        takes it.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes, the reviewed rules by default, as
@@ -166,6 +171,7 @@ class ReleaseReporter:
         face_review: str | None = None,
         reviewed_descriptors: str | None = None,
         technique_vocabulary: str | None = None,
+        text_finder: Mapping[str, object] | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     ):
         if not isinstance(policy, Policy):
@@ -176,6 +182,7 @@ class ReleaseReporter:
         self._face_review = face_review
         self._reviewed_descriptors = reviewed_descriptors
         self._technique_vocabulary = technique_vocabulary
+        self._text_finder = text_finder
         self._safe_private_list = safe_private_list
 
     def __repr__(self) -> str:
@@ -265,6 +272,7 @@ class ReleaseReporter:
             face_review=self._face_review,
             reviewed_descriptors=self._reviewed_descriptors,
             technique_vocabulary=self._technique_vocabulary,
+            text_finder=self._text_finder,
             safe_private_list=self._safe_private_list,
             **run,  # type: ignore[arg-type]
         )

@@ -50,6 +50,12 @@ apply, whether or not the policy's options use it:
   gives, or the absence of one. The bundled vocabulary's files are also
   among the engine's files below, but a run can apply another vocabulary or
   none;
+- what decides the regions that the Clean Pixel Data Option blacks out: the
+  text finder's class and its own description of its method, as
+  :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
+  gives them, which for the text detector is the SHA-256 of its model, the
+  versions of ONNX Runtime, NumPy, and SciPy that run it, its detection
+  parameters, and its renderings, or the absence of a finder;
 - under the Retain Safe Private Option, the list whose rules settle private
   attributes: the reviewed rules or TCIA's Private Tag Dictionary (D-035),
   or the absence of a list without the Option. Both lists are also among the
@@ -90,14 +96,17 @@ that this package imports, ``pymedphys._version``, ``pymedphys._config``,
 ``pymedphys._nomenclature.tg263``, the digest covers only PyMedPhys's
 version, which a development build keeps across commits.
 
-The runtime environment is not an input. The Python implementation and
-version, and the versions of pydicom, tomlkit, and other libraries, run the
-method but are not part of it, so the same inputs give the same digest in
-every environment. The engine is to record those versions separately, as
-provenance of each run. Runtime software can affect execution, so equal
-digests show that these inputs are equal, not that two runs executed
-identically or wrote the same output; reproducing or auditing a run also
-needs its recorded runtime environment.
+The runtime environment is not an input, apart from the text finder's
+runtime. The Python implementation and version, and the versions of pydicom,
+tomlkit, and other libraries, run the method but are not part of it, so the
+same inputs give the same digest in every environment. A text finder's
+regions are what the method writes, and neither ONNX Runtime nor NumPy and
+SciPy promise the same output from one version to the next, so the text
+detector's description includes their versions. The engine is to record the
+runtime's versions separately, as provenance of each run. Runtime software
+can affect execution, so equal digests show that these inputs are equal, not
+that two runs executed identically or wrote the same output; reproducing or
+auditing a run also needs its recorded runtime environment.
 
 :func:`method_digest_components` gives the digest with the components it is
 computed from, which a release report records so that two digests can be
@@ -105,8 +114,9 @@ compared component by component: the format, PyMedPhys's version, each
 table's content digest, the SHA-256 of the canonical bytes of the
 ``l2_rules``, ``l3_rules`` (None while there are none), and
 ``generated_values`` members, the vocabulary's content digest, the
-reviewed-names list's keyed digest, the safe private list, and each source
-and rule file's digest.
+reviewed-names list's keyed digest, the SHA-256 of the canonical bytes of
+the ``text_finder`` member (None without a text finder), the safe private
+list, and each source and rule file's digest.
 """
 
 from __future__ import annotations
@@ -202,6 +212,10 @@ class MethodDigestInputs:
     technique_vocabulary : str or None
         The SHA-256 of the effective technique vocabulary, or None without
         one.
+    text_finder : Mapping of str to object, or None
+        The text finder's class and description of its method, as
+        :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
+        gives them, or None without a text finder.
     safe_private_list : SafePrivateList
         The list whose rules settle private attributes under the Retain Safe
         Private Option, which the canonical form records only for a policy
@@ -223,6 +237,7 @@ class MethodDigestInputs:
     reviewed_roi_names: str | None
     reviewed_descriptors: str | None
     technique_vocabulary: str | None
+    text_finder: Mapping[str, object] | None = dataclasses.field(hash=False)
     safe_private_list: SafePrivateList
     generated_values: Mapping[str, object] = dataclasses.field(hash=False)
     files: Mapping[str, str] = dataclasses.field(hash=False)
@@ -268,6 +283,9 @@ class MethodDigestComponents:
     technique_vocabulary_digest : str or None
         The SHA-256 of the effective technique vocabulary, or None without
         one.
+    text_finder_digest : str or None
+        The SHA-256 of the canonical bytes of the ``text_finder`` member, or
+        None without a text finder.
     safe_private_list : str or None
         The list whose rules settle private attributes under the Retain Safe
         Private Option, ``"reviewed"`` or ``"tcia"``, or None without the
@@ -292,6 +310,7 @@ class MethodDigestComponents:
     reviewed_roi_names: str | None
     reviewed_descriptors: str | None
     technique_vocabulary_digest: str | None
+    text_finder_digest: str | None
     safe_private_list: str | None
     generated_values_digest: str
     engine_files: Mapping[str, str] = dataclasses.field(hash=False)
@@ -382,6 +401,9 @@ def _document(policy: Policy, inputs: MethodDigestInputs) -> dict:
     """Return the canonical form of a policy and its inputs as JSON values."""
     _check_policy(policy)
     generated = {_key(n): _typed(v) for n, v in inputs.generated_values.items()}
+    finder = None
+    if inputs.text_finder is not None:
+        finder = {_key(n): _typed(v) for n, v in inputs.text_finder.items()}
     document = {
         "format": FORMAT,
         "engine_version": inputs.engine_version,
@@ -395,6 +417,7 @@ def _document(policy: Policy, inputs: MethodDigestInputs) -> dict:
         "technique_vocabulary": inputs.technique_vocabulary,
         "safe_private_list": _safe_private_list(policy, inputs),
         # Already JSON values, which _plain keeps as they are.
+        "text_finder": finder,
         "generated_values": generated,
         "files": inputs.files,
     }
@@ -407,14 +430,15 @@ def canonical_bytes(policy: Policy, inputs: MethodDigestInputs) -> bytes:
     The form is one JSON object (RFC 8259), with the members ``format``
     (:data:`FORMAT`), ``engine_version``, ``policy``, ``tables``,
     ``l2_rules``, ``l3_rules``, ``vocabulary``, ``reviewed_roi_names``,
-    ``reviewed_descriptors``, ``technique_vocabulary``,
+    ``reviewed_descriptors``, ``technique_vocabulary``, ``text_finder``,
     ``safe_private_list``, ``generated_values``, and ``files``.
     ``l3_rules`` is ``null``, since there are no user rules yet, and so are
     ``vocabulary``, ``reviewed_roi_names``, ``reviewed_descriptors``,
-    ``technique_vocabulary``, and ``safe_private_list`` without a
-    vocabulary, a reviewed-names list, a reviewed descriptors list, a
-    technique vocabulary, or the Retain Safe Private Option, under which
-    ``safe_private_list`` is ``"reviewed"`` or ``"tcia"``. It
+    ``technique_vocabulary``, ``text_finder``, and ``safe_private_list``
+    without a vocabulary, a reviewed-names list, a reviewed descriptors
+    list, a technique vocabulary, a text finder, or the Retain Safe Private
+    Option, under which ``safe_private_list`` is ``"reviewed"`` or
+    ``"tcia"``. It
     is encoded so that the same inputs give the same bytes on every platform
     and Python version:
 
@@ -428,8 +452,9 @@ def canonical_bytes(policy: Policy, inputs: MethodDigestInputs) -> bytes:
 
     A dataclass, such as the policy, is an object of its fields; a mapping
     is an object; a tuple or list is an array in its own order; and an
-    enumeration member is its value. Each parameter of generated values,
-    whose types differ, is a pair ``[type, value]``: ``["str", text]``,
+    enumeration member is its value. Each parameter of generated values, and
+    each member of the text finder's description, whose types differ, is a
+    pair ``[type, value]``: ``["str", text]``,
     ``["int", integer]``, ``["float", float.hex()]``, ``["bytes", lowercase
     hexadecimal]``, ``["uuid", hyphenated lowercase hexadecimal]``, ``["map",
     object of pairs]``, ``["list", array of pairs]``, or ``["set", array of
@@ -451,8 +476,9 @@ def canonical_bytes(policy: Policy, inputs: MethodDigestInputs) -> bytes:
     TypeError
         If ``policy`` is not a :class:`~pymedphys._dicom.deidentify.policy.Policy`,
         or if an input has a type the form does not define, such as a float
-        outside the parameters of generated values, or a mapping key that is
-        not text. The message names the type, never the value.
+        outside the parameters of generated values and the text finder's
+        description, or a mapping key that is not text. The message names
+        the type, never the value.
     ValueError
         If an input has text that cannot be encoded as UTF-8, such as a lone
         surrogate. The message does not quote it.
@@ -495,6 +521,7 @@ def digest_components(
     """
     document = _document(policy, inputs)
     l3_rules = document["l3_rules"]
+    finder = document["text_finder"]
     return MethodDigestComponents(
         method_digest=_sha256(document),
         method_digest_format=FORMAT,
@@ -506,6 +533,7 @@ def digest_components(
         reviewed_roi_names=inputs.reviewed_roi_names,
         reviewed_descriptors=inputs.reviewed_descriptors,
         technique_vocabulary_digest=inputs.technique_vocabulary,
+        text_finder_digest=None if finder is None else _sha256(finder),
         safe_private_list=document["safe_private_list"],
         generated_values_digest=_sha256(document["generated_values"]),
         engine_files=_read_only(inputs.files),
@@ -569,6 +597,7 @@ def digest_inputs(
     reviewed_roi_names: str | None,
     reviewed_descriptors: str | None = None,
     technique_vocabulary: str | None = None,
+    text_finder: Mapping[str, object] | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
 ) -> MethodDigestInputs:
     """Gather everything the method digest covers apart from the policy.
@@ -599,6 +628,11 @@ def digest_inputs(
         applies to technique descriptors, as
         :attr:`~pymedphys._dicom.deidentify.technique_descriptors.TechniqueVocabulary.sha256`
         gives it, or None, the default, without one.
+    text_finder : Mapping of str to object, or None, optional
+        The class and description of the method of the text finder that the
+        Clean Pixel Data Option applies, as
+        :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
+        gives them, or None, the default, without one.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
@@ -614,7 +648,8 @@ def digest_inputs(
     TypeError
         If ``vocabulary`` is not a TG-263 nomenclature or None, or
         ``reviewed_roi_names``, ``reviewed_descriptors``, or
-        ``technique_vocabulary`` is not text or None.
+        ``technique_vocabulary`` is not text or None, or ``text_finder`` is
+        not a mapping or None.
     ValueError
         If the vocabulary's entries have text that cannot be encoded as
         UTF-8, or ``reviewed_roi_names``, ``reviewed_descriptors``, or
@@ -640,6 +675,8 @@ def digest_inputs(
             raise TypeError(f"{name} must be a digest or None")
         if not _DIGEST.fullmatch(digest):
             raise ValueError(f"{name} must be 64 lowercase hexadecimal digits")
+    if text_finder is not None and not isinstance(text_finder, Mapping):
+        raise TypeError("text_finder must be a mapping or None")
     entries = None
     if vocabulary is not None:
         structures = [dataclasses.asdict(s) for s in vocabulary.structures]
@@ -666,6 +703,9 @@ def digest_inputs(
         reviewed_roi_names=reviewed_roi_names,
         reviewed_descriptors=reviewed_descriptors,
         technique_vocabulary=technique_vocabulary,
+        text_finder=(
+            None if text_finder is None else types.MappingProxyType(dict(text_finder))
+        ),
         safe_private_list=safe_private_list,
         generated_values={
             f"{module.__name__.rpartition('.')[2]}.{name}": getattr(module, name)
@@ -683,6 +723,7 @@ def method_digest(
     reviewed_roi_names: str | None,
     reviewed_descriptors: str | None = None,
     technique_vocabulary: str | None = None,
+    text_finder: Mapping[str, object] | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
 ) -> str:
     """Return the method digest of a policy, as 64 lowercase hexadecimal digits.
@@ -719,6 +760,11 @@ def method_digest(
         applies to technique descriptors, as
         :attr:`~pymedphys._dicom.deidentify.technique_descriptors.TechniqueVocabulary.sha256`
         gives it, or None, the default, without one.
+    text_finder : Mapping of str to object, or None, optional
+        The class and description of the method of the text finder that the
+        Clean Pixel Data Option applies, as
+        :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
+        gives them, or None, the default, without one.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
@@ -754,6 +800,7 @@ def method_digest(
                 reviewed_roi_names=reviewed_roi_names,
                 reviewed_descriptors=reviewed_descriptors,
                 technique_vocabulary=technique_vocabulary,
+                text_finder=text_finder,
                 safe_private_list=safe_private_list,
             ),
         )
@@ -767,6 +814,7 @@ def method_digest_components(
     reviewed_roi_names: str | None,
     reviewed_descriptors: str | None = None,
     technique_vocabulary: str | None = None,
+    text_finder: Mapping[str, object] | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
 ) -> MethodDigestComponents:
     """Return the method digest of a policy with the components it is computed from.
@@ -776,10 +824,11 @@ def method_digest_components(
     the digests of the supplementary and user rules, the vocabulary's
     content digest, the keyed digests of the reviewed-names and reviewed
     descriptors lists, the technique vocabulary's digest, the digest of
-    the parameters of generated values, and the digest of each source and
-    rule file. They come from one call of
-    :func:`digest_inputs`, so the digest is the one :func:`method_digest`
-    gives for the same policy, vocabularies, and reviewed lists in the same
+    the text finder's class and description, the digest of the parameters of
+    generated values, and the digest of each source and rule file. They come
+    from one call of :func:`digest_inputs`, so the digest is the one
+    :func:`method_digest` gives for the same policy, vocabularies, reviewed
+    lists, and text finder in the same
     process.
 
     Parameters
@@ -807,6 +856,11 @@ def method_digest_components(
         applies to technique descriptors, as
         :attr:`~pymedphys._dicom.deidentify.technique_descriptors.TechniqueVocabulary.sha256`
         gives it, or None, the default, without one.
+    text_finder : Mapping of str to object, or None, optional
+        The class and description of the method of the text finder that the
+        Clean Pixel Data Option applies, as
+        :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
+        gives them, or None, the default, without one.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
@@ -846,6 +900,7 @@ def method_digest_components(
             reviewed_roi_names=reviewed_roi_names,
             reviewed_descriptors=reviewed_descriptors,
             technique_vocabulary=technique_vocabulary,
+            text_finder=text_finder,
             safe_private_list=safe_private_list,
         ),
     )
