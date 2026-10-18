@@ -54,7 +54,8 @@ reviewed rules:
   so a value that it keeps still passes that check, and with a single value.
   Where a reviewed rule has the same private creator, group, element, and
   VR, the rule takes that rule's handling and VM instead. Any other row
-  makes a rule that removes its attribute.
+  makes a rule that removes its attribute, as do rows for one VR that
+  disagree.
 """
 
 from __future__ import annotations
@@ -234,8 +235,9 @@ class TciaPrivateTags:
         In the file's order.
     top_level : mapping of (str, int, int) to tuple of TciaPrivateTag
         The rows of each private attribute at the top level, keyed by private
-        creator, group, and element within the block; one attribute can have
-        a row for each of several VRs. Read-only.
+        creator without trailing spaces and NULs, group, and element within
+        the block; one attribute can have a row for each of several VRs.
+        Read-only.
     """
 
     pin: Pin
@@ -382,7 +384,8 @@ def parse_tcia_private_tags(content: bytes, name: str) -> TciaPrivateTags:
         rows.append(row)
         (step, *nested) = row.path
         if not nested and step.private_creator is not None:
-            key = (step.private_creator, step.group, step.element)
+            creator = step.private_creator.rstrip(" \x00")
+            key = (creator, step.group, step.element)
             top_level.setdefault(key, []).append(row)
     return TciaPrivateTags(
         pin=PIN,

@@ -88,6 +88,8 @@ DICTIONARY = (
     ('(0011,"ACME 1.0  ",09)', "Acme Padded", "US", " K"),
     ('(0011,"ACME 1.0",0B)', "Acme Gain", "US", "d"),
     ('(0011,"ACME 1.0 ",0B)', "Acme Gain", "US", "k"),
+    ('(0011,"ACME 1.0 ",0C)', "Acme Bias", "US", "d"),
+    ('(0011,"ACME 1.0",0C)', "Acme Bias", "US", "k"),
     ('(0011,"ACMÉ 1.0",01)', "Acme Accented", "US", "k"),
     ('(0043,"GEMS_PARM_01",39)', "Slop Integer 6 To Slop Integer 9", "IS", "k"),
     ('(0043,"GEMS_PARM_01",39)', "Slop Integer 6 To Slop Integer 9", "DS", "k"),
@@ -188,9 +190,11 @@ def test_a_creator_is_compared_without_padding():
     padded = _rule(rules, ("ACME 1.0 \x00", 0x0011, 0x09), "US")
 
     assert padded is not None and padded.private_creator == ACME
-    # Rows for two spellings of one creator meet as one attribute's rows.
-    assert _rule(rules, (ACME, 0x0011, 0x0B), "US").handling is Handling.REMOVE
-    assert _rule(rules, (ACME, 0x0011, 0x0B)).handling is Handling.REMOVE
+    # Rows for two spellings of one creator meet as one attribute's rows,
+    # in either order.
+    for element in (0x0B, 0x0C):
+        assert _rule(rules, (ACME, 0x0011, element), "US").handling is Handling.REMOVE
+        assert _rule(rules, (ACME, 0x0011, element)).handling is Handling.REMOVE
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")

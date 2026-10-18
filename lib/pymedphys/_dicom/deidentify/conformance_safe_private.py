@@ -229,7 +229,8 @@ def _source(statement: ConformanceStatement) -> list[str]:
         "give several. A row that keeps its attribute gives it the handling "
         "of its VR, with a single value, or the handling and VM of the "
         "reviewed rule for the same private creator, group, element, and VR "
-        "where there is one; any other row removes it.",
+        "where there is one; any other row removes it, as do rows for one "
+        "VR that disagree.",
     ]
 
 
