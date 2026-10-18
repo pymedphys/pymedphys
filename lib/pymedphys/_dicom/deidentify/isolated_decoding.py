@@ -75,11 +75,13 @@ in a process that it does, logs a warning saying so, which names only the
 type of the error. Before anything is imported in the child, its standard
 output is set aside for results, so that nothing written as a module is
 imported can be read as one. A process forked from the caller starts its
-own child, rather than sharing the caller's pipes to it, and the child is
-ended as the caller exits. A call that does
-not return, such as a decoder that loops forever, is waited for, as it
-would be in process: a time limit would make the outcome depend on the
-machine's speed. Calls are made one at a time, whichever thread makes them.
+own child, rather than sharing the caller's pipes to it. As the caller
+exits, the child is ended, so that a call that another thread is waiting
+on raises :class:`DecoderEnded`, and any later call
+:class:`DecoderUnavailable`. A call that does not return, such as a
+decoder that loops forever, is otherwise waited for, as it would be in
+process: a time limit would make the outcome depend on the machine's
+speed. Calls are made one at a time, whichever thread makes them.
 """
 
 from __future__ import annotations
@@ -260,6 +262,8 @@ _LOCK = threading.Lock()
 _child: _Child | None = None
 # Whether a failure to start the child has been logged in this process.
 _unavailable_logged = False
+# Whether the process is exiting, so that no child is to be started.
+_exiting = False
 # The children of the processes that this one was forked from, which it
 # leaves to them.
 _inherited: list[_Child] = []
@@ -296,10 +300,12 @@ def run(task: Callable[..., Any], *args: Any) -> Any:
         If the child ended during the call, or sent back something other
         than :func:`_serve` gives.
     DecoderUnavailable
-        If the child could not be started.
+        If the child could not be started, or the process is exiting.
     """
     global _child, _unavailable_logged  # pylint: disable = global-statement
     with _LOCK:
+        if _exiting:
+            raise DecoderUnavailable()
         # A child that ended between calls, as by the system ending it,
         # ended during none of them.
         if _child is not None and _child.process.poll() is not None:
@@ -319,8 +325,10 @@ def run(task: Callable[..., Any], *args: Any) -> Any:
                         type(error).__name__,
                     )
                 raise DecoderUnavailable() from None
+        # Bound here, as the exit hook can discard the child without the lock.
+        child = _child
         try:
-            returned = _child.call(task, args)
+            returned = child.call(task, args)
         # RecursionError is for JSON nested too deeply to read.
         except (EOFError, OSError, ValueError, RecursionError):
             _discard()
@@ -478,8 +486,15 @@ def _discard() -> None:
         child.close()
 
 
-# So that the child ends with the process, not as the interpreter is torn down.
-atexit.register(_discard)
+def _exit() -> None:
+    """End the child as the process exits, rather than as the interpreter is
+    torn down, and start no other."""
+    global _exiting  # pylint: disable = global-statement
+    _exiting = True
+    _discard()
+
+
+atexit.register(_exit)
 
 
 def _send(stream: IO[bytes], message: object) -> None:

@@ -62,8 +62,8 @@ def modules():
 
 
 class _Lazy(types.ModuleType):
-    """A module whose attributes cannot be read, as a lazy module's import
-    what it stands for."""
+    """A module whose attributes cannot be read, as reading a lazy module's
+    attributes imports what it stands for."""
 
     def __getattribute__(self, name):
         raise AssertionError(f"read {name}")
@@ -244,10 +244,15 @@ def test_the_process_and_its_child_end_at_once_while_a_thread_waits_on_a_call(
     script.write_text(
         "import operator, threading, time\n"
         "from pymedphys._dicom.deidentify import isolated_decoding\n"
+        "def call():\n"
+        "    try:\n"
+        "        isolated_decoding.run(time.sleep, 120)\n"
+        # Unhandled, the error's traceback can be printed as the interpreter
+        # shuts down, which can then abort waiting for standard error.
+        "    except isolated_decoding.DecoderEnded:\n"
+        "        pass\n"
         "isolated_decoding.run(operator.add, 1, 2)\n"
-        "threading.Thread(\n"
-        "    target=isolated_decoding.run, args=(time.sleep, 120), daemon=True\n"
-        ").start()\n"
+        "threading.Thread(target=call, daemon=True).start()\n"
         "time.sleep(1)\n"
     )
 
@@ -392,6 +397,16 @@ def test_a_child_that_cannot_start_is_logged_once_without_its_message(
     (record,) = caplog.records
     assert "FileNotFoundError" in record.getMessage()
     assert missing not in record.getMessage()
+
+
+def test_no_child_is_started_once_the_process_is_exiting(monkeypatch):
+    isolated_decoding._discard()  # pylint: disable = protected-access
+    monkeypatch.setattr(isolated_decoding, "_exiting", True)
+
+    with pytest.raises(DecoderUnavailable):
+        run(operator.add, 1, 2)
+
+    assert isolated_decoding._child is None  # pylint: disable = protected-access
 
 
 def test_a_child_that_ends_before_it_is_ready_leaves_the_decoder_unavailable(
