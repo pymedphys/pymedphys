@@ -26,11 +26,12 @@ import shutil
 import tempfile
 from pathlib import Path, PurePosixPath
 
-from pymedphys._imports import pytest
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import attestation_command as command
 from pymedphys._dicom.deidentify import qc_attestation, qc_store, run, run_qc
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
+from pymedphys._dicom.deidentify.face_review import pixel_data_sha256
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
     ReleaseGate,
@@ -245,6 +246,13 @@ def test_a_run_binds_each_series_to_the_digests_of_its_source_files(tmp_path):
             ).hexdigest()
             for file in corpus.files
         }
+        # The Basic Profile writes each file's pixel data as received.
+        pixels = {
+            file.manifest.name: pixel_data_sha256(
+                pydicom.dcmread(instances / file.manifest.name)
+            ).hex()
+            for file in corpus.files
+        }
     finally:
         shutil.rmtree(directory, ignore_errors=True)
 
@@ -259,6 +267,13 @@ def test_a_run_binds_each_series_to_the_digests_of_its_source_files(tmp_path):
         for entry in entries
         if entry["disposition"] in ("released", "held-for-review")
     ]
+    for entry in entries:
+        expected = (
+            pixels[Path(entry["source"]).name]
+            if entry["position"] in reviewed
+            else None
+        )
+        assert entry["pixel_sha256"] == expected, entry["position"]
     listed = [position for series in pack["series"] for position in series["positions"]]
     assert sorted(listed) == reviewed
     # Every series with risks is one of the series a verdict can name.
@@ -272,6 +287,25 @@ def test_a_run_binds_each_series_to_the_digests_of_its_source_files(tmp_path):
         _attest(result.qc_pack.parent, {volume[1]: Face.ABSENT})
     attestation = _attest(result.qc_pack.parent, {volume[0]: Face.ABSENT})
     assert attestation.faces == (FaceVerdict(volume[0], Face.ABSENT),)
+
+
+def test_a_written_file_whose_pixel_data_cannot_be_read_has_no_digest(monkeypatch):
+    def fails(dataset):
+        raise RuntimeError("anything")
+
+    data = next(
+        file.data
+        for file in corpus_module.build_corpus().files
+        if "PixelData" in pydicom.dcmread(io.BytesIO(file.data))
+    )
+    expected = pixel_data_sha256(pydicom.dcmread(io.BytesIO(data))).hex()
+    digest = run_qc._pixel_sha256  # pylint: disable = protected-access
+    assert digest(data) == expected
+    monkeypatch.setattr(run_qc, "pixel_data_sha256", fails)
+    # Whatever reading it raises, the pack is still built, and no verdict
+    # can clear the instance.
+    assert digest(data) is None
+    assert digest(b"not DICOM") is None
 
 
 # The attestation's verdicts.

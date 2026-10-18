@@ -37,6 +37,7 @@ from pymedphys._imports import pydicom
 
 from . import pixel_risk, qc_pack, qc_previews, residuals
 from .iod_conformance import SourceGap
+from .face_review import pixel_data_sha256
 from .file_layout import ElementPath
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .reasons import PixelDataReason
@@ -45,6 +46,7 @@ from .release_report import REPORTED_FINDINGS
 from .reviewed_descriptors import CleanedDescriptor
 from .run_written import REPORTED_ONLY
 from .roi_names import Reason
+from .source import read_source
 from .text_detection import TextBox
 from .written_references import WrittenFinding, WrittenFindingKind
 
@@ -311,7 +313,9 @@ def qc_pack_of(
     :class:`PixelRiskMaterial` gives findings for as high-risk, and the
     frames of each instance that a :class:`RedactionMaterial` gives, which
     the pack lists in ``redactions``. A released or held instance without
-    one is listed as not previewed.
+    one is listed as not previewed. Each such file's pixel data are recorded
+    with its instance as :func:`~.face_review.pixel_data_sha256` gives
+    them, unless the file cannot be read again.
 
     The released and held instances that give :class:`SeriesEvidence` are
     grouped by series, in run position order, and each series is assessed
@@ -406,6 +410,12 @@ def qc_pack_of(
         )
         for position, item in redactions.items()
     }
+    instances = tuple(
+        dataclasses.replace(entry, pixel_sha256=_pixel_sha256(written[position]))
+        if position in written
+        else entry
+        for position, entry in enumerate(instances)
+    )
     previews = qc_previews.previews_of(written, high_risk, cleaned)
     # A released or held file that no gate handed over is listed, not lost.
     missing = [
@@ -501,6 +511,16 @@ def assessed_series(
         if found:
             assessed.append((grouped, found))
     return assessed
+
+
+def _pixel_sha256(written: bytes) -> str | None:
+    """Return the SHA-256 of a written file's pixel data, or None if unreadable."""
+    try:
+        return pixel_data_sha256(read_source(written).dataset()).hex()
+    # Whatever reading the file raises, its instance has no pixel digest, so
+    # no verdict clears it, and the pack is still written.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
 
 
 def _instance(

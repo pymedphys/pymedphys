@@ -43,7 +43,9 @@ each instance it may process. It joins the engine's per-instance steps:
    :func:`~pymedphys._dicom.deidentify.descriptor_cleaning.clean_descriptors`,
    settle the attributes that the policy gives C, and under Clean Pixel Data,
    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out` blacks out
-   the text found in native Pixel Data (D-037);
+   the text found in native Pixel Data (D-037), and under Clean Recognizable
+   Visual Features writes air in the face block of a CT slice
+   (:mod:`~pymedphys._dicom.deidentify.face_blocks`);
 5. :func:`writer_plan` turns those edits into what the byte-preserving
    writer takes, and
    :func:`~pymedphys._dicom.deidentify.preserving_writer.write_data_set` and
@@ -134,7 +136,12 @@ from .elements import (
     new_items,
     read_element,
 )
-from .face_review import FaceReview, carries_visual_features
+from .face_review import (
+    PIXEL_DATA_TAGS,
+    FaceReview,
+    carries_visual_features,
+    pixel_data_sha256,
+)
 from .file_layout import ElementPath
 from .iod_conformance import lost_requirements, source_gaps
 from .iods import IOD, IODTables, load_iod_tables
@@ -152,7 +159,12 @@ from .preservation import Expectations, PreservationFailed, verify_preservation
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
-from .reasons import HeldPixelData, HeldVisualFeatures, TransformReason
+from .reasons import (
+    HeldPixelData,
+    HeldVisualFeatures,
+    TransformReason,
+    VisualFeaturesReason,
+)
 from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
@@ -178,6 +190,15 @@ from .pixel_cleaning import (
     black_out,
     finder_description,
     redaction_problem,
+)
+from .face_blocks import (
+    CT_IMAGE,
+    CtDefacer,
+    FaceBlockCounts,
+    SeriesDefacing,
+    Defaced,
+    find_defaced,
+    find_face_blocks,
 )
 from .pixel_risk import assess_pixel_risk, series_evidence
 from .run_qc import (
@@ -751,11 +772,27 @@ class InstanceTransform:
     Annotation (0028,0301) set to NO until a reviewer's decision can be
     applied.
 
-    Under Clean Recognizable Visual Features, an instance that can show a
+    Under Clean Recognizable Visual Features, :meth:`prepare` finds the face
+    block of each series of CT Image instances before the run writes any
+    (:func:`~.face_blocks.find_face_blocks`), and each slice of a series
+    with one is written with air in its block, as
+    :func:`~.pixel_cleaning.black_out` writes a
+    :class:`~.face_blocks.CtDefacer`'s masks, checked as a redaction is; a
+    slice that cannot be is sequestered. A slice of a series with a
+    target's contour in its block is not defaced, and is held for review
+    (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`). An RT
+    Structure Set, RT Dose, or PET instance in a defaced series' Frame of
+    Reference, naming none, or referring to a defaced slice, is held
+    whatever its verdict
+    (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
+    since the run does not yet clean it of the face. An
+    instance that can show a
     face (:func:`~.face_review.carries_visual_features`) satisfies the
     option only where the SHA-256 of its source file is in a series that the
-    face review marks absent, and an instance that cannot show a face
-    satisfies it. Each is marked with the option's code and Recognizable
+    face review marks absent, and the pixel data that it is written with are
+    those that the reviewed run wrote of that file
+    (:attr:`~.reasons.VisualFeaturesReason.OTHER_PIXEL_DATA` otherwise), and
+    an instance that cannot show a face satisfies it. Each is marked with the option's code and Recognizable
     Visual Features (0028,0302) set to NO, which PS3.15 E.3.2 adds whether
     or not its IOD defines the attribute. Any other instance that can show a
     face is written without them, and its evidence is a
@@ -850,6 +887,9 @@ class InstanceTransform:
             for chosen in _subsets(per_instance)
         }
         self._face_review = face_review
+        self._face_blocks: dict[str, SeriesDefacing] = {}
+        self._defaced = Defaced()
+        self._face_block_counts = None if face_review is None else FaceBlockCounts()
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
         self.reporter = ReleaseReporter(
             policy,
@@ -859,10 +899,31 @@ class InstanceTransform:
             technique_vocabulary=technique,
             text_finder=finder_method,
             face_review=None if face_review is None else face_review.reference,
+            face_blocks=self._face_block_counts,
         )
 
     def __repr__(self) -> str:
         return "InstanceTransform()"
+
+    def prepare(
+        self,
+        records: Mapping[int, InstanceRecord],
+        read: Callable[[int], bytes | None],
+    ) -> None:
+        """Find the face block of each CT series of a run, before it writes any.
+
+        Only under Clean Recognizable Visual Features, as
+        :func:`~pymedphys._dicom.deidentify.face_blocks.find_face_blocks`
+        finds them, and counted for the release report. A run calls it with
+        the records of the instances that it will transform, by run
+        position, and a function that gives each file as its first pass
+        read it, once, before it transforms any.
+        """
+        if self._face_block_counts is None:
+            return
+        self._face_blocks = find_face_blocks(records, read)
+        self._face_block_counts.record(self._face_blocks.values())
+        self._defaced = find_defaced(records, self._face_blocks)
 
     def written_check(
         self, graph: ReferenceGraph, written: Mapping[int, InstanceRecord]
@@ -933,36 +994,62 @@ class InstanceTransform:
         return _Identifiers(written[_SOP_INSTANCE], names)
 
     def _face_hold(
-        self, data: bytes, dataset: pydicom.Dataset, iod: IOD
+        self, data: bytes, dataset: pydicom.Dataset, iod: IOD, writing: WriterPlan
     ) -> HeldVisualFeatures | None:
         """Return why the face review holds an instance, if it does.
 
         Nothing holds an instance without a face review, or one that cannot
-        show a face.
+        show a face. The review is of the source file and of the pixel data
+        that ``writing`` writes.
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
             return None
-        reason = review.hold_reason(hashlib.sha256(data).digest())
+        reason = review.hold_reason(
+            hashlib.sha256(data).digest(), _pixel_digest(writing, dataset)
+        )
         return None if reason is None else HeldVisualFeatures(reason)
 
-    def _black_out(
-        self, source: SourceEvidence, dataset: pydicom.Dataset
-    ) -> Redaction | None:
-        """Return the instance's Pixel Data blacked out under Clean Pixel Data.
+    def _frame_hold(
+        self, iod: IOD, record: InstanceRecord
+    ) -> HeldVisualFeatures | None:
+        """Return why an instance that the run does not yet clean of the
+        face is held, where it defaces the instance's frame
+        (:meth:`~.face_blocks.Defaced.holds`)."""
+        if not self._defaced.holds(iod.name, record):
+            return None
+        return HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
 
-        None without the option, or where the instance has no top-level
-        pixel data.
+    def _defacing(self, iod: IOD, record: InstanceRecord) -> SeriesDefacing | None:
+        """Return the outcome of a CT slice's series, if it has one."""
+        if iod.name != CT_IMAGE or record.series is None:
+            return None
+        return self._face_blocks.get(record.series)
+
+    def _black_out(
+        self,
+        source: SourceEvidence,
+        dataset: pydicom.Dataset,
+        defacing: SeriesDefacing | None,
+    ) -> Redaction | None:
+        """Return the instance's Pixel Data blacked out under Clean Pixel Data,
+        and its face block written as air under Clean Recognizable Visual
+        Features.
+
+        None where neither applies, or the instance has no top-level pixel
+        data.
 
         Raises
         ------
         _Refused
             With the reason of :class:`~.pixel_cleaning.PixelDataRefused`.
         """
-        if self._finder is None:
+        block = None if defacing is None else defacing.block
+        if self._finder is None and block is None:
             return None
         try:
-            return black_out(source, dataset, self._finder)
+            defacer = None if block is None else CtDefacer(block, dataset)
+            return black_out(source, dataset, self._finder, defacer)
         except PixelDataRefused as refused:
             raise _Refused(refused.reason) from None
 
@@ -1086,30 +1173,41 @@ class InstanceTransform:
             evidence = coverage_of(plan, edits, retained, self._options)
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
-        face = self._face_hold(data, dataset, iod)
-        if face is not None:
-            evidence = _held(evidence, face)
+        defacing = self._defacing(iod, record)
         qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         # No instance claims Clean Pixel Data until a reviewer's decision
         # can release its pixel data with Burned In Annotation set to NO
         # (D-037).
         chosen = {CLEAN_DESCRIPTORS} if satisfied else set()
-        if self._face_review is not None and face is None:
-            chosen.add(CLEAN_RECOGNIZABLE_VISUAL_FEATURES)
         try:
             qc = (*qc, *_retained(source, plan))
-            redaction = self._black_out(source, dataset)
-            if redaction is not None:
+            redaction = self._black_out(source, dataset, defacing)
+            # The markers write no pixel data, so the face review is of the
+            # pixel data that this plan writes.
+            writing = _without_bitstream_metadata(
+                writer_plan(plan, edits, codecs), source
+            )
+            writing = _with_redaction(writing, dataset, redaction)
+            face = (
+                HeldVisualFeatures(VisualFeaturesReason.TARGET_IN_FACE_BLOCK)
+                if defacing is not None and defacing.held
+                else self._face_hold(data, dataset, iod, writing)
+            )
+            holds = [
+                held
+                for held in (face, self._frame_hold(iod, record))
+                if held is not None
+            ]
+            for held in holds:
+                evidence = _held(evidence, held)
+            if not holds and self._face_review is not None:
+                chosen.add(CLEAN_RECOGNIZABLE_VISUAL_FEATURES)
+            if redaction is not None and self._finder is not None:
                 evidence = _held(evidence, HeldPixelData(redaction.reason))
                 qc = (*qc, _redaction_material(redaction, data))
             writing = with_markers(
-                writer_plan(plan, edits, codecs),
-                source,
-                dataset,
-                self._markers[frozenset(chosen)],
+                writing, source, dataset, self._markers[frozenset(chosen)]
             )
-            writing = _without_bitstream_metadata(writing, source)
-            writing = _with_redaction(writing, dataset, redaction)
             identifiers = self._identifiers(writing, dataset, source)
             return Transformed(
                 *_written(source, writing, iod, identifiers, redaction), evidence, qc
@@ -1273,6 +1371,26 @@ def _written(
     return path, data
 
 
+def _pixel_digest(writing: WriterPlan, dataset: pydicom.Dataset) -> bytes | None:
+    """Return the SHA-256 of the pixel data that the writer's plan writes.
+
+    As :func:`~.face_review.pixel_data_sha256` gives it of the file written,
+    each element being the plan's replacement, or the source's where the
+    plan keeps it; None where a value is not bytes.
+    """
+    planned = pydicom.Dataset()
+    for tag in PIXEL_DATA_TAGS:
+        path = ElementPath((), _tag_text(tag))
+        if path in writing.replacements:
+            planned.add(writing.replacements[path])
+        elif path in writing.kept and tag in dataset:
+            planned.add(dataset[tag])
+    try:
+        return pixel_data_sha256(planned)
+    except ValueError:
+        return None
+
+
 def _with_redaction(
     writing: WriterPlan, dataset: pydicom.Dataset, redaction: Redaction | None
 ) -> WriterPlan:
@@ -1284,7 +1402,7 @@ def _with_redaction(
     to black out is kept, and Pixel Data that the plan does not keep is left
     as planned, which :func:`_written` refuses.
     """
-    if redaction is None or not redaction.regions or _PIXEL_DATA not in writing.kept:
+    if redaction is None or not redaction.changed or _PIXEL_DATA not in writing.kept:
         return writing
     vr = dataset[0x7FE00010].VR
     if vr not in ("OB", "OW"):

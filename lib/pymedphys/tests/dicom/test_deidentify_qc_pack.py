@@ -64,6 +64,7 @@ RETAINED = "QUILLON CLINIC CT"
 REFERENCE = "A-" + "0123456789abcdef" * 2
 OUTPUT = PurePosixPath("ZQ0001/2.25.1/2.25.2/2.25.3.dcm")
 SOURCE_SHA256 = "0f" * 32
+PIXEL_SHA256 = "1e" * 32
 
 POSIX_ONLY = pytest.mark.skipif(os.name != "posix", reason="POSIX file modes")
 
@@ -75,13 +76,16 @@ def _path(tag, *items):
 NAME_PATH = _path("(0010,0010)")
 
 
-def _written(position=0, output=OUTPUT, source=SOURCE_PATH, source_sha256=None):
+def _written(
+    position=0, output=OUTPUT, source=SOURCE_PATH, source_sha256=None, pixel_sha256=None
+):
     return InstanceEntry(
         position,
         source,
         Disposition.RELEASED,
         output=output,
         source_sha256=source_sha256,
+        pixel_sha256=pixel_sha256,
     )
 
 
@@ -116,7 +120,10 @@ def _full_pack():
     search = find_residuals(data, [SourceValue(NAME_PATH, "PN", NAME)])
     findings, omissions = qc_pack.entries_for_search(0, search, data)
     return _pack(
-        instances=(_written(source_sha256=SOURCE_SHA256), _sequestered(1)),
+        instances=(
+            _written(source_sha256=SOURCE_SHA256, pixel_sha256=PIXEL_SHA256),
+            _sequestered(1),
+        ),
         series=(SeriesEntry((0,)),),
         residual_findings=findings,
         drops=(DropEntry(0, _path("(0008,1030)"), DropReason.RETAINED),),
@@ -217,6 +224,34 @@ def test_a_written_instance_is_checked(fields, match):
     fields = {"output": OUTPUT, **fields}
     with pytest.raises(QcPackError, match=match):
         InstanceEntry(0, SOURCE_PATH, Disposition.RELEASED, **fields)
+
+
+@pytest.mark.parametrize("digest", ["0F" * 32, "0f" * 31, b"\x0f" * 32, ""])
+def test_a_pixel_digest_is_64_lower_case_hexadecimal_digits(digest):
+    with pytest.raises(QcPackError, match="pixel data's SHA-256"):
+        _written(pixel_sha256=digest)
+
+
+@pytest.mark.parametrize(
+    "disposition, fields",
+    [
+        (Disposition.DUPLICATE, {"output": OUTPUT}),
+        (Disposition.SEQUESTERED, {"label": "S-0001", "reasons": ("x",)}),
+        (Disposition.REFUSED, {"reasons": ("x",)}),
+    ],
+)
+def test_only_a_released_or_held_instance_has_a_pixel_digest(disposition, fields):
+    with pytest.raises(QcPackError, match="only if released or held"):
+        InstanceEntry(0, SOURCE_PATH, disposition, pixel_sha256=PIXEL_SHA256, **fields)
+    held = InstanceEntry(
+        0,
+        SOURCE_PATH,
+        Disposition.HELD_FOR_REVIEW,
+        reasons=("x",),
+        pixel_sha256=PIXEL_SHA256,
+    )
+    assert held.pixel_sha256 == PIXEL_SHA256
+    assert PIXEL_SHA256 not in repr(held)
 
 
 @pytest.mark.parametrize(
@@ -514,7 +549,7 @@ def test_a_search_gives_entries_with_excerpts_and_omissions():
 @pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_document_holds_every_section():
     document = json.loads(qc_pack.to_json(_full_pack()))
-    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/5"
+    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/6"
     assert document["reference"] == REFERENCE
     assert document["instances"] == [
         {
@@ -525,6 +560,7 @@ def test_the_document_holds_every_section():
             "label": None,
             "reasons": [],
             "source_sha256": SOURCE_SHA256,
+            "pixel_sha256": PIXEL_SHA256,
         },
         {
             "position": 1,
@@ -534,6 +570,7 @@ def test_the_document_holds_every_section():
             "label": "S-0001",
             "reasons": ["conflicting instance"],
             "source_sha256": None,
+            "pixel_sha256": None,
         },
     ]
     (residual,) = document["residual_findings"]
