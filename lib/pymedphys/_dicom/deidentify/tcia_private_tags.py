@@ -487,11 +487,13 @@ def _rules(tags: TciaPrivateTags) -> TciaSafePrivateRules:
     reviewed = load_safe_private_rules().rules
     rules: dict[_Key, Mapping[str, SafePrivateRule]] = {}
     unwritten: dict[_Key, SafePrivateRule] = {}
+    # Spellings of a creator that differ only by padding are one creator.
+    keyed: dict[_Key, list[TciaPrivateTag]] = {}
     for (creator, group, element), rows in tags.top_level.items():
         creator = creator.rstrip(_CREATOR_PADDING)
-        if not creator or not set(creator) <= _CREATOR_CHARACTERS:
-            continue
-        key = (creator, group, element)
+        if creator and set(creator) <= _CREATOR_CHARACTERS:
+            keyed.setdefault((creator, group, element), []).extend(rows)
+    for key, rows in keyed.items():
         by_vr: dict[str, SafePrivateRule] = {}
         for row in rows:
             if row.vr:

@@ -608,19 +608,28 @@ def transform_for(  # pylint: disable = too-many-arguments
     bundled technique vocabulary (D-036). Under any other policy, these
     options are not read. Under Retain Safe Private, ``safe_private_list``
     chooses the list whose rules settle private attributes, and no other
-    policy takes TCIA's.
+    policy takes TCIA's, which is refused before anything is loaded.
 
     Raises
     ------
     TransformNotBuilt
-        If the preset or option set is not enabled, or what ROI Names or
-        descriptors are cleaned with cannot be used, with a message that
-        quotes nothing but the names of presets and options.
+        If the preset or option set is not enabled, ``safe_private_list``
+        does not fit it, or what ROI Names or descriptors are cleaned with
+        cannot be used, with a message that quotes nothing but the names of
+        presets and options.
     """
     try:
         selected = policy.select_policy(preset, options=options)
     except policy.PolicyError as error:
         raise TransformNotBuilt(str(error)) from None
+    if (
+        safe_private_list is not SafePrivateList.REVIEWED
+        and policy.SAFE_PRIVATE not in selected.options
+    ):
+        raise TransformNotBuilt(
+            "a safe private list can be chosen only under the Retain Safe "
+            "Private Option"
+        )
     cleaning = (
         _descriptor_cleaning(
             source=source,

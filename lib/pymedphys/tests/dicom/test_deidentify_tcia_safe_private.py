@@ -86,6 +86,8 @@ DICTIONARY = (
     ('(0011,"ACME 1.0",0A)', "Acme State", "CS", "d"),
     ('(0011,"ACME 1.0",0A)', "Acme State", "CS", "k"),
     ('(0011,"ACME 1.0  ",09)', "Acme Padded", "US", " K"),
+    ('(0011,"ACME 1.0",0B)', "Acme Gain", "US", "d"),
+    ('(0011,"ACME 1.0 ",0B)', "Acme Gain", "US", "k"),
     ('(0011,"ACMÉ 1.0",01)', "Acme Accented", "US", "k"),
     ('(0043,"GEMS_PARM_01",39)', "Slop Integer 6 To Slop Integer 9", "IS", "k"),
     ('(0043,"GEMS_PARM_01",39)', "Slop Integer 6 To Slop Integer 9", "DS", "k"),
@@ -186,6 +188,9 @@ def test_a_creator_is_compared_without_padding():
     padded = _rule(rules, ("ACME 1.0 \x00", 0x0011, 0x09), "US")
 
     assert padded is not None and padded.private_creator == ACME
+    # Rows for two spellings of one creator meet as one attribute's rows.
+    assert _rule(rules, (ACME, 0x0011, 0x0B), "US").handling is Handling.REMOVE
+    assert _rule(rules, (ACME, 0x0011, 0x0B)).handling is Handling.REMOVE
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")
@@ -201,6 +206,9 @@ def test_the_shipped_dictionary_gives_tcia_rules():
     assert _rule(rules, FRAME_OF_REFERENCE).vr == "DS"
     assert _rule(rules, SLOP_INTEGERS, "IS").vm == "4"
     # TCIA keeps a timestamp that a reviewed rule removes, with a note.
+    timestamp = tcia_private_tags.load_tcia_private_tags().top_level[TIMESTAMP]
+    assert [row.keeps for row in timestamp if row.vr == "DS"] == [True]
+    assert _rule(reviewed, TIMESTAMP).handling is Handling.REMOVE
     assert _rule(rules, TIMESTAMP, "DS").handling is Handling.REMOVE
     # A reviewed rule keeps it; TCIA's dictionary does not.
     assert _rule(reviewed, SHAPE).handling is Handling.CODE
@@ -433,6 +441,10 @@ def test_the_default_statement_lists_the_reviewed_rules():
             vocabulary=None,
             safe_private_list=SafePrivateList.TCIA,
         )
+    with pytest.raises(TypeError, match="SafePrivateList"):
+        conformance.conformance_statement(
+            SAFE_PRIVATE_POLICY, vocabulary=None, safe_private_list="tcia"
+        )
 
 
 def test_the_command_line_chooses_the_list():
@@ -447,6 +459,34 @@ def test_the_command_line_chooses_the_list():
         ).safe_private_list
         == "tcia"
     )
+
+
+def test_the_command_line_refuses_a_list_it_cannot_apply(tmp_path, capsys, monkeypatch):
+    # No release enables a preset yet.
+    monkeypatch.setattr(
+        policy, "ENABLED_PRESETS", frozenset({"basic", "basic-clean-descriptors"})
+    )
+    monkeypatch.setattr(policy, "ENABLED_OPTIONS", frozenset({"clean_descriptors"}))
+    arguments = [str(tmp_path / "s"), str(tmp_path / "r"), "--qc-pack", "q"]
+
+    with pytest.raises(SystemExit) as unknown:
+        command.main([*arguments, "--safe-private-list", "TCIA"])
+    status = command.main([*arguments, "--safe-private-list", "tcia"])
+    # Refused before the Clean Descriptors resources, which do not exist.
+    with pytest.raises(command.TransformNotBuilt, match="Retain Safe Private"):
+        command.transform_for(
+            "basic-clean-descriptors",
+            DeidKey.generate(),
+            source=tmp_path / "s",
+            release=tmp_path / "r",
+            qc_pack=tmp_path / "q",
+            safe_private_list=SafePrivateList.TCIA,
+        )
+
+    assert unknown.value.code == command.EXIT_USAGE
+    assert status == command.EXIT_NOT_RUN
+    assert "only under the Retain Safe Private Option" in capsys.readouterr().err
+    assert not any(tmp_path.iterdir())
 
 
 @pytest.mark.parametrize(

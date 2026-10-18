@@ -394,6 +394,10 @@ def _engine_files(report, path):
         (lambda r: _with_method(r, vocabulary_digest=SENTINEL), "vocabulary_digest"),
         (lambda r: _with_method(r, l3_rules=SENTINEL), "l3_rules"),
         (
+            lambda r: _with_method(r, safe_private_list=SENTINEL),
+            "safe_private_list",
+        ),
+        (
             lambda r: _with_method(r, reviewed_roi_names=SENTINEL),
             "reviewed_roi_names",
         ),
@@ -451,6 +455,7 @@ def _engine_files(report, path):
         "digest",
         "vocabulary-digest",
         "l3-rules",
+        "safe-private-list",
         "reviewed-names-digest",
         "uppercase-reviewed-names-digest",
         "uppercase-digest",
