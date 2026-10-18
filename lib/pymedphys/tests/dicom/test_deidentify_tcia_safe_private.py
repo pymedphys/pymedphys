@@ -206,13 +206,17 @@ def test_the_shipped_dictionary_gives_tcia_rules():
     assert _rule(rules, FRAME_OF_REFERENCE).vr == "DS"
     assert _rule(rules, SLOP_INTEGERS, "IS").vm == "4"
     # TCIA keeps a timestamp that a reviewed rule removes, with a note.
-    timestamp = tcia_private_tags.load_tcia_private_tags().top_level[TIMESTAMP]
+    top_level = tcia_private_tags.load_tcia_private_tags().top_level
+    timestamp = top_level[TIMESTAMP]
     assert [row.keeps for row in timestamp if row.vr == "DS"] == [True]
     assert _rule(reviewed, TIMESTAMP).handling is Handling.REMOVE
     assert _rule(rules, TIMESTAMP, "DS").handling is Handling.REMOVE
     # A reviewed rule keeps it; TCIA's dictionary does not.
     assert _rule(reviewed, SHAPE).handling is Handling.CODE
     assert _rule(rules, SHAPE, "CS").handling is Handling.REMOVE
+    # No creator is spelt two ways that differ only by padding.
+    unpadded = [(c.rstrip(" \x00"), g, e) for c, g, e in top_level]
+    assert len(set(unpadded)) == len(unpadded)
 
 
 def test_element_rules_apply_the_chosen_list():
