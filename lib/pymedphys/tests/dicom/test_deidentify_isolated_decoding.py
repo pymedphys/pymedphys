@@ -22,6 +22,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import types
 import warnings
 
@@ -60,18 +61,12 @@ def modules():
     return sorted(sys.modules)
 
 
-def _unimported_alias():
-    """Return the name of a lazy module of pymedphys._imports whose target
-    has not been imported."""
-    for name, module in list(sys.modules.items()):
-        target = name.removeprefix("pymedphys._imports.")
-        if (
-            target != name
-            and type(module) is not types.ModuleType  # pylint: disable = unidiomatic-typecheck
-            and target.split(".")[0] not in sys.modules
-        ):
-            return name
-    return pytest.skip("every lazy module's target is imported")
+class _Lazy(types.ModuleType):
+    """A module whose attributes cannot be read, as a lazy module's import
+    what it stands for."""
+
+    def __getattribute__(self, name):
+        raise AssertionError(f"read {name}")
 
 
 def _reissued(*warned):
@@ -194,14 +189,12 @@ def test_a_warning_is_from_the_callers_module_of_that_name_or_from_elsewhere():
     assert elsewhere.filename == unnamed.filename == "<decoding process>"
 
 
-def test_a_lazy_module_named_by_the_child_is_not_imported_from():
-    alias = _unimported_alias()
-    imported = set(sys.modules)
+def test_a_lazy_module_named_by_the_child_is_not_read(monkeypatch):
+    monkeypatch.setitem(sys.modules, "lazy_module", _Lazy("lazy_module"))
 
-    (lazy,) = _reissued(["text", "UserWarning", alias, 1])
+    (lazy,) = _reissued(["text", "UserWarning", "lazy_module", 1])
 
     assert lazy.filename == "<decoding process>"
-    assert set(sys.modules) == imported
 
 
 def test_the_child_names_the_module_that_warned_without_importing_others():
@@ -242,6 +235,34 @@ def test_a_warning_from_each_module_is_shown_once_for_that_module():
 def test_what_the_child_writes_to_standard_output_is_not_read_as_a_result():
     assert run(os.write, 1, b"\x00" * 64) == 64
     assert run(operator.add, 1, 2) == 3
+
+
+def test_the_process_and_its_child_end_at_once_while_a_thread_waits_on_a_call(
+    tmp_path,
+):
+    script = tmp_path / "exits.py"
+    script.write_text(
+        "import operator, threading, time\n"
+        "from pymedphys._dicom.deidentify import isolated_decoding\n"
+        "isolated_decoding.run(operator.add, 1, 2)\n"
+        "threading.Thread(\n"
+        "    target=isolated_decoding.run, args=(time.sleep, 120), daemon=True\n"
+        ").start()\n"
+        "time.sleep(1)\n"
+    )
+
+    started = time.monotonic()
+    # The child shares the script's standard error, so the run waits for both.
+    completed = subprocess.run(
+        [sys.executable, os.fspath(script)],
+        capture_output=True,
+        check=False,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+        timeout=300,
+    )
+
+    assert completed.returncode == 0
+    assert time.monotonic() - started < 60
 
 
 def test_the_child_does_not_run_the_main_module_again(tmp_path):

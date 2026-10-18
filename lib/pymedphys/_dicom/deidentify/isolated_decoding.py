@@ -62,9 +62,10 @@ standard output or error stream goes to the caller's standard error
 stream, unredacted, as it would in process, and the child runs with the
 caller's permissions. The child's core file size limit is zero, where the
 platform has one, so that a decoder that aborts writes no core file
-holding the file it was decoding. Where the system passes core files to a program instead, as a
-``core_pattern`` that starts with ``|`` does on Linux, the kernel leaves
-that limit to the program: systemd-coredump keeps no core file under it.
+holding the file it was decoding. Where the system passes core files to a
+program instead, as a ``core_pattern`` that starts with ``|`` does on
+Linux, the kernel leaves that limit to the program: systemd-coredump keeps
+no core file under it.
 
 If the child ends during a call, :func:`run` raises :class:`DecoderEnded`,
 and the next call starts a new child, as does a call after the child ended
@@ -210,14 +211,18 @@ class _Child:
         return json.loads(_received(self.stdout, _RESULT_BYTES))
 
     def close(self) -> None:
-        """End the child, if it has not ended, and close its pipes."""
+        """End the child, if it has not ended, and close its pipes.
+
+        The child is ended first, since a thread that is reading its result
+        holds the lock that closing the pipe waits for, until the read ends.
+        """
+        if self.process.poll() is None:
+            self.process.kill()
         for stream in (self.stdin, self.stdout):
             try:
                 stream.close()
             except OSError:
                 pass
-        if self.process.poll() is None:
-            self.process.kill()
         self.process.wait()
 
 
@@ -420,9 +425,9 @@ def _reissue(returned: _Returned) -> None:
 
     A warning is issued as from the module that the child names, and from
     the file that the caller imported it from, where the caller has imported
-    a module of that name, so that filters on modules match it; otherwise it
-    is issued as from :data:`_ELSEWHERE`. A warning that the caller's filters
-    turn into an exception raises it, as in process.
+    a plain module of that name, so that filters on modules match it;
+    otherwise it is issued as from :data:`_ELSEWHERE`. A warning that the
+    caller's filters turn into an exception raises it, as in process.
     """
     for warned in returned.warned:
         filename = _file_of(sys.modules.get(warned.module)) if warned.module else None
@@ -466,9 +471,11 @@ def _file_of(module: object) -> str | None:
 def _discard() -> None:
     """End the child, if there is one, so that the next call starts another."""
     global _child  # pylint: disable = global-statement
-    if _child is not None:
-        _child.close()
-        _child = None
+    # Taken first, so that another thread discarding it at the same time,
+    # as one that was reading its result as the process exits, finds none.
+    child, _child = _child, None
+    if child is not None:
+        child.close()
 
 
 # So that the child ends with the process, not as the interpreter is torn down.
