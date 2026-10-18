@@ -152,6 +152,11 @@ class ReleaseReporter:
         applies to technique descriptors, or None, the default, without one,
         as :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
+    text_finder : Mapping of str to object, or None, optional
+        The class and description of the method of the text finder that the
+        Clean Pixel Data Option applies, or None, the default, without one, as
+        :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        takes it.
     """
 
     def __init__(
@@ -164,6 +169,7 @@ class ReleaseReporter:
         reviewed_descriptors: str | None = None,
         technique_vocabulary: str | None = None,
         redaction_review: str | None = None,
+        text_finder: Mapping[str, object] | None = None,
     ):
         if not isinstance(policy, Policy):
             raise TypeError("policy must be a Policy")
@@ -174,6 +180,7 @@ class ReleaseReporter:
         self._reviewed_descriptors = reviewed_descriptors
         self._technique_vocabulary = technique_vocabulary
         self._redaction_review = redaction_review
+        self._text_finder = text_finder
 
     def __repr__(self) -> str:
         return "ReleaseReporter()"
@@ -261,6 +268,7 @@ class ReleaseReporter:
             redaction_review=self._redaction_review,
             reviewed_descriptors=self._reviewed_descriptors,
             technique_vocabulary=self._technique_vocabulary,
+            text_finder=self._text_finder,
             **run,  # type: ignore[arg-type]
         )
 

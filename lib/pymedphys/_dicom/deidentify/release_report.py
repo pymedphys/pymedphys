@@ -41,12 +41,12 @@ on the instances of a run:
 as text; each first checks every field's form, as :func:`report_document`
 lists. Every field is built from the policy, the engine's own files, the
 versions that run it, the keyed digests of the reviewed-names and reviewed
-descriptors lists, the QC
-pack's opaque reference, the replacement identifiers that name released
-instances, the run's labels, and codes and attribute tags that the engine
-defines, never from DICOM data directly, and the check is a backstop: a
-field of another form, which could be a source value or a path outside the
-package, is refused. A field that fails is named, never quoted.
+descriptors lists, the digest of the text finder's class and description of
+its method, the QC pack's opaque reference, the replacement identifiers that
+name released instances, the run's labels, and codes and attribute tags that
+the engine defines, never from DICOM data directly, and the check is a
+backstop: a field of another form, which could be a source value or a path
+outside the package, is refused. A field that fails is named, never quoted.
 
 Eleven sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
@@ -909,6 +909,7 @@ def release_report(
     reviewed_roi_names: str | None,
     reviewed_descriptors: str | None = None,
     technique_vocabulary: str | None = None,
+    text_finder: Mapping[str, object] | None = None,
     qc_review: AttestationRecord | None = None,
     face_review: str | None = None,
     redaction_review: str | None = None,
@@ -947,6 +948,12 @@ def release_report(
     technique_vocabulary : str or None, optional
         The SHA-256 of the technique vocabulary that descriptor cleaning
         applies to technique descriptors, or None, the default, without one.
+    text_finder : Mapping of str to object, or None, optional
+        The class and description of the method of the text finder that the
+        Clean Pixel Data Option applies, as
+        :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
+        gives them, or None, the default, without one. The report records
+        only their digest.
     qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord, optional
         The run's QC pack by its reference, with its attestation's outcome
         and the releaser's confirmations, from
@@ -1035,6 +1042,7 @@ def release_report(
             reviewed_roi_names=reviewed_roi_names,
             reviewed_descriptors=reviewed_descriptors,
             technique_vocabulary=technique_vocabulary,
+            text_finder=text_finder,
         ),
         runtime=runtime_environment(),
         qc_review=qc_review,
@@ -1135,6 +1143,9 @@ def _method_section(method: MethodDigestComponents) -> dict:
         ),
         "technique_vocabulary_digest": _optional_digest(
             "technique_vocabulary_digest", method.technique_vocabulary_digest
+        ),
+        "text_finder_digest": _optional_digest(
+            "text_finder_digest", method.text_finder_digest
         ),
         "generated_values_digest": _digest(
             "generated_values_digest", method.generated_values_digest

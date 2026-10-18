@@ -27,6 +27,7 @@ from pymedphys._imports import pydicom, pytest
 from pymedphys._dicom.deidentify import (
     conformance,
     conformance_markdown,
+    method_digest,
     pixel_cleaning,
     policy,
     release_report,
@@ -41,6 +42,7 @@ from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.pixel_cleaning import (
     PixelDataRefused,
     black_out,
+    finder_description,
     redaction_problem,
 )
 from pymedphys._dicom.deidentify.policy import PolicyError
@@ -69,6 +71,9 @@ BOX = TextBox(1, 2, 3, 5)
 
 class Finder:
     """Gives fixed regions in the frames it names, and records each frame."""
+
+    # What decides its regions, as the method digest takes it.
+    method = {"finder": "fixed regions", "version": 1, "fraction": 0.5}
 
     def __init__(self, boxes=(BOX,), frames=None):
         self.boxes = tuple(boxes)
@@ -408,6 +413,118 @@ def test_the_engine_applies_clean_pixel_data():
     assert CLEAN_PIXEL_DATA not in policy.ENABLED_OPTIONS
 
 
+class _Undescribed:  # pylint: disable = too-few-public-methods
+    """Finds no text, and does not describe its method."""
+
+    def find(self, frame):
+        del frame
+        return ()
+
+
+class _Unencodable(Finder):
+    """Describes its method with a value that the digest has no form for."""
+
+    method = {"finder": True}
+
+
+class _Empty(Finder):
+    """Describes its method as nothing."""
+
+    method: dict = {}
+
+
+class _SameDescription(Finder):
+    """Another finder that gives Finder's description of its method."""
+
+
+@pytest.mark.parametrize(
+    "finder, error",
+    [
+        (_Undescribed(), "must describe its method as a mapping that is not empty"),
+        (_Empty(), "must describe its method as a mapping that is not empty"),
+        (_Unencodable(), "a bool has no canonical form"),
+    ],
+)
+def test_a_finder_must_describe_its_method_for_the_digest(finder, error):
+    with pytest.raises(TypeError, match=error):
+        _transform(finder)
+
+
+def test_the_finders_class_and_a_copy_of_its_method_are_described():
+    finder = Finder()
+    finder.method = {"finder": "fixed regions", "sizes": [1, {"rows": 2}]}
+
+    described = finder_description(finder)
+
+    assert dict(described) == {
+        "finder": f"{__name__}.Finder",
+        "method": {"finder": "fixed regions", "sizes": (1, {"rows": 2})},
+    }
+    finder.method["sizes"][1]["rows"] = 3
+    assert described["method"]["sizes"][1]["rows"] == 2
+    with pytest.raises(TypeError):
+        described["method"]["sizes"][1]["rows"] = 3  # type: ignore[index]
+
+
+def test_a_finder_with_another_finders_description_has_another_digest():
+    clean = policy.compose_custom_policy((CLEAN_PIXEL_DATA,))
+    digests = {
+        method_digest.method_digest(
+            clean,
+            vocabulary=None,
+            reviewed_roi_names=None,
+            text_finder=finder_description(finder),
+        )
+        for finder in (Finder(), _SameDescription())
+    }
+    assert len(digests) == 2
+
+
+def test_a_change_to_the_finder_after_the_transform_is_made_changes_no_digest(
+    tmp_path,
+):
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "0.dcm").write_bytes(synthetic.written(synthetic.rt_plan()))
+    finder = Finder()
+    finder.method = {"finder": "fixed regions", "version": 1}
+    transform = _transform(finder)
+    finder.method["version"] = 2
+
+    run.run(
+        run.discover(source),
+        tmp_path / "release",
+        transform,
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+        reporter=transform.reporter,
+    )
+
+    (written,) = (tmp_path / "release").rglob("*.dcm")
+    report = json.loads((tmp_path / "release" / RELEASE_REPORT).read_text("utf-8"))
+    digest = report["method"]["method_digest"]
+    assert digest in pydicom.dcmread(written).DeidentificationMethod
+
+
+def test_the_finders_method_is_an_input_to_the_method_digest():
+    clean = policy.compose_custom_policy((CLEAN_PIXEL_DATA,))
+    digest = method_digest.method_digest(
+        clean,
+        vocabulary=None,
+        reviewed_roi_names=None,
+        text_finder=finder_description(Finder()),
+    )
+
+    result = _transformed(_transform(), synthetic.written(synthetic.rt_plan()))
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert digest in written.DeidentificationMethod
+    assert digest != method_digest.method_digest(
+        clean, vocabulary=None, reviewed_roi_names=None
+    )
+
+
 def test_a_finder_is_given_exactly_with_clean_pixel_data():
     with pytest.raises(PolicyError, match="text finder"):
         InstanceTransform(
@@ -525,6 +642,7 @@ def _statement(monkeypatch, options):
 
 
 UNCHANGED = "The engine writes Pixel Data (7FE0,0010) unchanged"
+WITHOUT_A_FINDER = "and without a text finder, is"
 BLACKED_OUT = "Under the Clean Pixel Data Option, the engine replaces each region"
 
 
@@ -540,6 +658,8 @@ def test_the_statement_says_how_pixel_data_are_cleaned_and_claims_after_review(
     assert statement.markers.review_codes == (CLEAN_PIXEL_DATA_CODE,)
     assert BLACKED_OUT in text
     assert UNCHANGED not in text
+    # The statement's digest is the one without a finder, which no run has.
+    assert f"{WITHOUT_A_FINDER} `{statement.method_digest}`" in text
 
 
 def test_the_statement_of_a_policy_without_the_option_keeps_pixel_data(
@@ -550,6 +670,7 @@ def test_the_statement_of_a_policy_without_the_option_keeps_pixel_data(
     assert CLEAN_PIXEL_DATA_CODE not in statement.markers.review_codes
     assert UNCHANGED in text
     assert BLACKED_OUT not in text
+    assert WITHOUT_A_FINDER not in text
 
 
 def test_the_release_report_counts_the_held_instances_by_reason():
@@ -602,3 +723,12 @@ def test_a_run_holds_its_images_and_reports_why(tmp_path):
     assert report["held_for_review"] == [
         {"stage": "pixel-data", "code": "text-blacked-out", "count": 1}
     ]
+    components = method_digest.method_digest_components(
+        policy.compose_custom_policy((CLEAN_PIXEL_DATA,)),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        text_finder=finder_description(Finder()),
+    )
+    assert report["method"]["method_digest"] == components.method_digest
+    assert report["method"]["text_finder_digest"] == components.text_finder_digest
+    assert components.text_finder_digest is not None

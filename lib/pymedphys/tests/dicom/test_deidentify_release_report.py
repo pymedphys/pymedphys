@@ -63,6 +63,7 @@ METHOD_FIELDS = [
     "reviewed_roi_names",
     "reviewed_descriptors",
     "technique_vocabulary_digest",
+    "text_finder_digest",
     "generated_values_digest",
     "engine_files",
 ]

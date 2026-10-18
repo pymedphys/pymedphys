@@ -34,6 +34,9 @@ class _CornerFinder:
     columns, which cleaning clips to the corpus's frames, each two by two
     pixels, so that every pixel of each frame is blacked out."""
 
+    # What decides its regions, as the method digest takes it.
+    method = {"finder": "top left corner"}
+
     def find(self, frame):
         del frame
         return (TextBox(0, 0, 2, 3),)
