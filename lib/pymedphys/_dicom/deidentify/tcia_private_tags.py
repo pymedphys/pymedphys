@@ -256,7 +256,9 @@ class TciaPrivateTags:
         and NULs, which are padding. The dictionary writes some creators in
         upper case, and such a row matches only a creator in upper case.
         """
-        return self.top_level.get((private_creator.rstrip(" \x00"), group, element), ())
+        return self.top_level.get(
+            (private_creator.rstrip(_CREATOR_PADDING), group, element), ()
+        )
 
 
 def _step(text: str) -> Step | None:
@@ -384,7 +386,7 @@ def parse_tcia_private_tags(content: bytes, name: str) -> TciaPrivateTags:
         rows.append(row)
         (step, *nested) = row.path
         if not nested and step.private_creator is not None:
-            creator = step.private_creator.rstrip(" \x00")
+            creator = step.private_creator.rstrip(_CREATOR_PADDING)
             key = (creator, step.group, step.element)
             top_level.setdefault(key, []).append(row)
     return TciaPrivateTags(
@@ -490,13 +492,12 @@ def _rules(tags: TciaPrivateTags) -> TciaSafePrivateRules:
     reviewed = load_safe_private_rules().rules
     rules: dict[_Key, Mapping[str, SafePrivateRule]] = {}
     unwritten: dict[_Key, SafePrivateRule] = {}
-    # Spellings of a creator that differ only by padding are one creator.
-    keyed: dict[_Key, list[TciaPrivateTag]] = {}
-    for (creator, group, element), rows in tags.top_level.items():
-        creator = creator.rstrip(_CREATOR_PADDING)
-        if creator and set(creator) <= _CREATOR_CHARACTERS:
-            keyed.setdefault((creator, group, element), []).extend(rows)
-    for key, rows in keyed.items():
+    # The parser keys top_level by the creator without its padding, so rows
+    # for spellings that differ only by padding already share a key.
+    for key, rows in tags.top_level.items():
+        creator = key[0]
+        if not creator or not set(creator) <= _CREATOR_CHARACTERS:
+            continue
         by_vr: dict[str, SafePrivateRule] = {}
         for row in rows:
             if row.vr:

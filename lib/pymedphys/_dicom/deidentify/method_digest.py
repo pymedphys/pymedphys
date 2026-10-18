@@ -415,9 +415,9 @@ def _document(policy: Policy, inputs: MethodDigestInputs) -> dict:
         "reviewed_roi_names": inputs.reviewed_roi_names,
         "reviewed_descriptors": inputs.reviewed_descriptors,
         "technique_vocabulary": inputs.technique_vocabulary,
-        "safe_private_list": _safe_private_list(policy, inputs),
         # Already JSON values, which _plain keeps as they are.
         "text_finder": finder,
+        "safe_private_list": _safe_private_list(policy, inputs),
         "generated_values": generated,
         "files": inputs.files,
     }

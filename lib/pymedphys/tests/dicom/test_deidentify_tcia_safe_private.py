@@ -90,6 +90,10 @@ DICTIONARY = (
     ('(0011,"ACME 1.0 ",0B)', "Acme Gain", "US", "k"),
     ('(0011,"ACME 1.0 ",0C)', "Acme Bias", "US", "d"),
     ('(0011,"ACME 1.0",0C)', "Acme Bias", "US", "k"),
+    ('(0011,"ACME 1.0",0D)', "Acme Offset", "US", "k"),
+    ('(0011,"ACME 1.0 ",0D)', "Acme Offset", "US", "d"),
+    ('(0011,"ACME 1.0 ",0E)', "Acme Scale", "US", "k"),
+    ('(0011,"ACME 1.0",0E)', "Acme Scale", "US", "d"),
     ('(0011,"ACMÉ 1.0",01)', "Acme Accented", "US", "k"),
     ('(0043,"GEMS_PARM_01",39)', "Slop Integer 6 To Slop Integer 9", "IS", "k"),
     ('(0043,"GEMS_PARM_01",39)', "Slop Integer 6 To Slop Integer 9", "DS", "k"),
@@ -192,7 +196,7 @@ def test_a_creator_is_compared_without_padding():
     assert padded is not None and padded.private_creator == ACME
     # Rows for two spellings of one creator meet as one attribute's rows,
     # in either order.
-    for element in (0x0B, 0x0C):
+    for element in (0x0B, 0x0C, 0x0D, 0x0E):
         assert _rule(rules, (ACME, 0x0011, element), "US").handling is Handling.REMOVE
         assert _rule(rules, (ACME, 0x0011, element)).handling is Handling.REMOVE
 
@@ -210,7 +214,8 @@ def test_the_shipped_dictionary_gives_tcia_rules():
     assert _rule(rules, FRAME_OF_REFERENCE).vr == "DS"
     assert _rule(rules, SLOP_INTEGERS, "IS").vm == "4"
     # TCIA keeps a timestamp that a reviewed rule removes, with a note.
-    top_level = tcia_private_tags.load_tcia_private_tags().top_level
+    tags = tcia_private_tags.load_tcia_private_tags()
+    top_level = tags.top_level
     timestamp = top_level[TIMESTAMP]
     assert [row.keeps for row in timestamp if row.vr == "DS"] == [True]
     assert _rule(reviewed, TIMESTAMP).handling is Handling.REMOVE
@@ -219,8 +224,12 @@ def test_the_shipped_dictionary_gives_tcia_rules():
     assert _rule(reviewed, SHAPE).handling is Handling.CODE
     assert _rule(rules, SHAPE, "CS").handling is Handling.REMOVE
     # No creator is spelt two ways that differ only by padding.
-    unpadded = [(c.rstrip(" \x00"), g, e) for c, g, e in top_level]
-    assert len(set(unpadded)) == len(unpadded)
+    spelt = {
+        (step.private_creator, step.group, step.element)
+        for (step, *nested) in (row.path for row in tags.rows)
+        if not nested and step.private_creator is not None
+    }
+    assert len(spelt) == len(top_level)
 
 
 def test_element_rules_apply_the_chosen_list():
