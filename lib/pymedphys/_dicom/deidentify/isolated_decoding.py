@@ -327,6 +327,12 @@ def run(task: Callable[..., Any], *args: Any) -> Any:
                 raise DecoderUnavailable() from None
         # Bound here, as the exit hook can discard the child without the lock.
         child = _child
+        # Read again once the child is bound, since the exit hook can run
+        # while one starts. As the hook marks the process as exiting before it
+        # discards the child, either the hook ends this child, or this does.
+        if _exiting:
+            _discard()
+            raise DecoderUnavailable()
         try:
             returned = child.call(task, args)
         # RecursionError is for JSON nested too deeply to read.

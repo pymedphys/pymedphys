@@ -409,6 +409,62 @@ def test_no_child_is_started_once_the_process_is_exiting(monkeypatch):
     assert isolated_decoding._child is None  # pylint: disable = protected-access
 
 
+def test_a_child_started_as_the_process_begins_to_exit_is_ended(monkeypatch):
+    isolated_decoding._discard()  # pylint: disable = protected-access
+    started = []
+
+    class _ExitingAsStarted(isolated_decoding._Child):  # pylint: disable = protected-access
+        """A child whose start the exit hook overtakes, having found no child
+        to end."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            started.append(self.process)
+            monkeypatch.setattr(isolated_decoding, "_exiting", True)
+
+    monkeypatch.setattr(isolated_decoding, "_Child", _ExitingAsStarted)
+
+    with pytest.raises(DecoderUnavailable):
+        run(operator.add, 1, 2)
+
+    assert isolated_decoding._child is None  # pylint: disable = protected-access
+    (process,) = started
+    assert process.returncode is not None
+
+
+def test_the_exit_hook_ends_the_child_and_starts_no_other(tmp_path):
+    script = tmp_path / "exits.py"
+    script.write_text(
+        "import atexit, operator, sys\n"
+        "def check():\n"
+        "    isolated_decoding = sys.modules[\n"
+        "        'pymedphys._dicom.deidentify.isolated_decoding'\n"
+        "    ]\n"
+        "    print(process.returncode is not None)\n"
+        "    try:\n"
+        "        isolated_decoding.run(operator.add, 1, 2)\n"
+        "    except isolated_decoding.DecoderUnavailable:\n"
+        "        print('unavailable')\n"
+        # Registered before the module's own hook, so run after it.
+        "atexit.register(check)\n"
+        "from pymedphys._dicom.deidentify import isolated_decoding\n"
+        "print(isolated_decoding.run(operator.add, 1, 2))\n"
+        "process = isolated_decoding._child.process\n"
+    )
+
+    completed = subprocess.run(
+        [sys.executable, os.fspath(script)],
+        capture_output=True,
+        check=False,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+        text=True,
+        timeout=300,
+    )
+
+    assert completed.returncode == 0
+    assert completed.stdout.split() == ["3", "True", "unavailable"]
+
+
 def test_a_child_that_ends_before_it_is_ready_leaves_the_decoder_unavailable(
     monkeypatch,
 ):
