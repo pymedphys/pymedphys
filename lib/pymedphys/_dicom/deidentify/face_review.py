@@ -77,7 +77,7 @@ class FaceReview:
         marked :attr:`~.qc_attestation.Face.ABSENT`, other than one that the
         reviewed run held beside a CT series that it defaced
         (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
-        by its frame or a reference to a defaced slice.
+        by its frame, by naming none, or by a reference to a defaced slice.
     present : frozenset of bytes
         Likewise, of each series marked :attr:`~.qc_attestation.Face.PRESENT`.
     absent_pixels : frozenset of (bytes, bytes)

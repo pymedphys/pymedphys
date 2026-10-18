@@ -38,12 +38,13 @@ masks. A series is defaced only where all of these hold:
   and
 - no contour of a target, an ROI whose RT ROI Interpreted Type is
   :data:`TARGET_TYPES`, of an RT Structure Set of the run in the series'
-  Frame of Reference, or naming none, reaches the block, at a vertex or
-  between two (:func:`_contour_reaches`), a target that names no Frame of
-  Reference counting as one in it; no structure set
-  that refers to the series' slices while declaring another frame has a
-  target at all, since its contours cannot be placed; and every such
-  structure set can be read.
+  Frame of Reference, or naming none, reaches the block, or has anything
+  between its contours that does, as the convex hull of its contours
+  judges it (:func:`_hull_reaches`), a target that names no Frame of
+  Reference counting as one in it; no target in another frame, whose
+  contours cannot be placed without a registration, is in a structure set
+  that ties that frame to the series' slices (:func:`_targets_reach`); and
+  every such structure set can be read.
 
 Anything else that a series' data raises leaves the series undefaced, as
 unreadable, rather than stopping the run, and no message of it, which could
@@ -82,8 +83,8 @@ the run can clean it too (:class:`Defaced`). So is one that names no Frame
 of Reference, in a run that defaces any series, or that refers to a defaced
 slice, whatever frame it declares. A structure set that names no Frame of
 Reference is likewise searched for targets in the block of every series,
-and one that refers to a series' slices, as its Contour Image Sequence
-does, while declaring another frame holds that series if it has any target.
+and a target in another frame holds a series whose slices its structure
+set ties to that frame, whatever other frames the set declares.
 """
 
 from __future__ import annotations
@@ -282,18 +283,15 @@ def find_face_blocks(
     for uid, positions in series.items():
         outcome, frame = _series_outcome(positions, read)
         if outcome.block is not None and frame:
-            searched = sorted({*structure_sets.get(frame, []), *frameless})
-            # One drawn on the series' slices while declaring another frame
-            # has contours that cannot be placed without a registration, so
-            # any target in it might reach the block.
-            drawn = sorted(
+            # Those in its frame, those that name none, and those drawn on
+            # its slices whatever frames they declare.
+            drawn = {
                 position
                 for position, targets in referred.items()
-                if not targets.isdisjoint(slices[uid]) and position not in searched
-            )
-            if _target_in(outcome.block, frame, searched, read) or _any_target(
-                drawn, read
-            ):
+                if not targets.isdisjoint(slices[uid])
+            }
+            searched = sorted({*structure_sets.get(frame, []), *frameless, *drawn})
+            if _target_in(outcome.block, frame, slices[uid], searched, read):
                 outcome = SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK)
         outcomes[uid] = outcome
     return outcomes
@@ -558,35 +556,21 @@ def _hounsfield(data: bytes | None, each: _Slice) -> np.ndarray:
 def _target_in(
     block: FaceBlock,
     frame: str,
+    slices: set[str],
     positions: list[int],
     read: Callable[[int], bytes | None],
 ) -> bool:
-    """Whether a target of any of these structure sets, in this Frame of
-    Reference, has a contour that reaches the block, or one cannot be
-    read."""
+    """Whether a target of any of these structure sets may reach the block
+    of the series with this Frame of Reference and these slices, as
+    :func:`_targets_reach` judges it, or one cannot be read."""
     for position in positions:
         try:
             with redacted_diagnostics():
                 dataset = pydicom.dcmread(io.BytesIO(read(position) or b""))
-                if _targets_reach(dataset, frame, block):
+                if _targets_reach(dataset, frame, slices, block):
                     return True
         # pydicom raises many types for a file it cannot read, and a message
         # can quote a value: a target in it cannot be ruled out.
-        except Exception:  # pylint: disable = broad-exception-caught
-            return True
-    return False
-
-
-def _any_target(positions: list[int], read: Callable[[int], bytes | None]) -> bool:
-    """Whether any of these structure sets has a target, or one cannot be
-    read."""
-    for position in positions:
-        try:
-            with redacted_diagnostics():
-                dataset = pydicom.dcmread(io.BytesIO(read(position) or b""))
-                if _targets(dataset):
-                    return True
-        # As in _target_in, a target in it cannot be ruled out.
         except Exception:  # pylint: disable = broad-exception-caught
             return True
     return False
@@ -601,9 +585,21 @@ def _targets(dataset: pydicom.Dataset) -> set[int]:
     }
 
 
-def _targets_reach(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bool:
-    """Whether a target's contour in this Frame of Reference reaches the
-    block."""
+def _targets_reach(
+    dataset: pydicom.Dataset, frame: str, slices: set[str], block: FaceBlock
+) -> bool:
+    """Whether a target of a structure set may reach the block of the series
+    with this Frame of Reference and these slices.
+
+    A target in that frame, or naming none, reaches it where the convex
+    hull of its contours does (:func:`_hull_reaches`).
+    One in another frame cannot be placed in the series' without a
+    registration, so it is taken to reach the block where the structure set
+    ties that frame to the series' slices: a contour of an ROI in that frame
+    is drawn on one of them, or the frame's own list of contour images names
+    one. A target in another frame that the structure set does not tie to
+    them, such as one of another scan, does not.
+    """
     frames = {
         int(item.ROINumber): normalise_uid(
             str(item.get("ReferencedFrameOfReferenceUID") or "")
@@ -611,59 +607,98 @@ def _targets_reach(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bo
         for item in dataset.get("StructureSetROISequence", [])
     }
     targets = _targets(dataset)
+    tied = _tied_frames(dataset, frames, slices)
     for item in dataset.get("ROIContourSequence", []):
         number = int(item.ReferencedROINumber)
-        # A target that names no Frame of Reference may be in this one.
-        if number not in targets or frames.get(number) not in ("", None, frame):
+        if number not in targets:
             continue
-        for contour in item.get("ContourSequence", []):
-            points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-            kind = str(contour.get("ContourGeometricType") or "").strip().upper()
-            if _contour_reaches(block, points, closed=kind not in _UNCLOSED):
+        # A target that names no Frame of Reference may be in this one.
+        if frames.get(number) not in ("", None, frame):
+            if frames[number] in tied:
                 return True
+            continue
+        points = [
+            np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
+            for contour in item.get("ContourSequence", [])
+        ]
+        if points and _hull_reaches(block, np.concatenate(points)):
+            return True
     return False
 
 
-# Contour Geometric Types whose last point is not joined to the first.
-_UNCLOSED = frozenset({"POINT", "OPEN_PLANAR", "OPEN_NONPLANAR"})
+def _tied_frames(
+    dataset: pydicom.Dataset, frames: Mapping[int, str], slices: set[str]
+) -> set[str]:
+    """Return the Frames of Reference that a structure set ties to any of
+    these slices: by an ROI in the frame with a contour drawn on one, or by
+    the frame's own list of contour images naming one."""
+    tied = set()
+    for item in dataset.get("ROIContourSequence", []):
+        if any(
+            _images(contour) & slices for contour in item.get("ContourSequence", [])
+        ):
+            tied.add(frames.get(int(item.ReferencedROINumber)))
+    for use in dataset.get("ReferencedFrameOfReferenceSequence", []):
+        images = {
+            uid
+            for study in use.get("RTReferencedStudySequence", [])
+            for series in study.get("RTReferencedSeriesSequence", [])
+            for uid in _images(series)
+        }
+        if images & slices:
+            tied.add(normalise_uid(str(use.get("FrameOfReferenceUID") or "")))
+    return {frame for frame in tied if frame}
 
 
-def _contour_reaches(block: FaceBlock, points: np.ndarray, *, closed: bool) -> bool:
-    """Whether a contour has a point in the block or on its boundary.
+def _images(item: pydicom.Dataset) -> set[str]:
+    """The SOP Instance UIDs of an item's Contour Image Sequence."""
+    return {
+        normalise_uid(str(image.get("ReferencedSOPInstanceUID") or ""))
+        for image in item.get("ContourImageSequence", [])
+    }
 
-    Each vertex, each segment between consecutive vertices, and, where the
-    contour is closed, the segment from the last back to the first, is
-    tested against both of the block's half-spaces, so that a contour that
-    crosses the block between its vertices, as a sagittal or oblique one
-    can, reaches it. The block is unbounded, so where a closed planar
-    contour's interior meets it, so does one of its segments. A coordinate
-    that is not finite cannot be placed, so the contour reaches the block.
+
+# The largest magnitude, in millimetres, of a coordinate of a target that
+# is placed; a larger one, or one not finite, cannot be.
+_FARTHEST = 1e6
+
+
+def _hull_reaches(block: FaceBlock, points: np.ndarray) -> bool:
+    """Whether the convex hull of a target's points meets the block or its
+    boundary.
+
+    Whatever a planning system interpolates between a target's contours,
+    such as between two drawn on PET slices between the CT's, or between
+    sagittal ones, lies within their convex hull, as does each contour's
+    every segment and interior. The block is the intersection of two closed
+    half-spaces, and the distances into each are affine, so the hull meets
+    it exactly where, in the plane of each point's two distances, the
+    points' hull meets the closed quadrant where both are not negative:
+    where a point lies in it, or else, since the quadrant is unbounded,
+    where an edge crosses it, which must run from a point behind the plane
+    and not below the limit to one ahead of the plane and below the limit.
+    There is such a pair exactly where the steepest of the first kind, its
+    height above the limit over its distance behind the plane, is at least
+    the shallowest of the second, its depth below over its distance ahead,
+    which takes one pass over the points. This holds a target wherever any
+    part of its hull reaches the block, as the hull of one that wraps around
+    the block without entering it can, which errs towards holding. A point
+    that cannot be placed reaches the block.
     """
-    if not np.isfinite(points).all():
+    if not (np.abs(points) <= _FARTHEST).all():
         return True
-    if len(points) == 0:
-        return False
-    ends = np.roll(points, -1, axis=0) if closed else points[1:]
-    starts = np.concatenate([points, points[: len(ends)]])
-    ends = np.concatenate([points, ends])
-    low = np.zeros(len(starts))
-    high = np.ones(len(starts))
-    reaches = np.ones(len(starts), dtype=bool)
     anterior, origin = np.array(block.anterior), np.array(block.origin)
-    for at_start, at_end in (
-        ((starts - origin) @ anterior, (ends - origin) @ anterior),
-        (starts[:, 2] - block.inferior_limit, ends[:, 2] - block.inferior_limit),
-    ):
-        # Where the segment is in this half-space: from or until the
-        # crossing, all of it, or none.
-        reaches &= (at_start >= 0) | (at_end >= 0)
-        with np.errstate(divide="ignore", invalid="ignore"):
-            crossing = at_start / (at_start - at_end)
-        low = np.where((at_start < 0) & (at_end >= 0), np.maximum(low, crossing), low)
-        high = np.where(
-            (at_start >= 0) & (at_end < 0), np.minimum(high, crossing), high
-        )
-    return bool((reaches & (low <= high)).any())
+    ahead = (points - origin) @ anterior
+    above = points[:, 2] - block.inferior_limit
+    if ((ahead >= 0) & (above >= 0)).any():
+        return True
+    behind = (ahead < 0) & (above >= 0)
+    below = (ahead > 0) & (above < 0)
+    if not (behind.any() and below.any()):
+        return False
+    first = np.flatnonzero(behind)[np.argmax(above[behind] / -ahead[behind])]
+    second = np.flatnonzero(below)[np.argmin(-above[below] / ahead[below])]
+    return bool(ahead[second] * above[first] - ahead[first] * above[second] >= 0)
 
 
 class CtDefacer:

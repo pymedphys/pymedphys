@@ -558,21 +558,64 @@ _CORNER = FaceBlock((0.0, 0.0, 0.0), (0.0, -1.0, 0.0), 0.0, ((0, 0, 0), (0, 0, 0
 _ACROSS = np.array([(0.0, -10.0, -1.0), (0.0, 1.0, 10.0), (0.0, 1.0, -1.0)])
 
 
-def test_a_contour_reaches_the_block_between_its_vertices():
-    reaches = face_blocks._contour_reaches  # pylint: disable = protected-access
+def _square(y: tuple[float, float], z: float) -> np.ndarray:
+    return np.array([(0.0, y[0], z), (1.0, y[0], z), (1.0, y[1], z), (0.0, y[1], z)])
+
+
+def test_a_target_reaches_the_block_where_the_hull_of_its_contours_does():
+    reaches = face_blocks._hull_reaches  # pylint: disable = protected-access
 
     assert not _CORNER.contains(_ACROSS).any()
     assert _CORNER.contains(np.array([(0.0, -4.5, 4.5), (0.0, -8 / 3, 8 / 3)])).all()
-    assert reaches(_CORNER, _ACROSS, closed=True)
-    # Where only the segment that closes it crosses the block, an open
-    # contour does not reach it, and a closed one does.
-    closing = np.roll(_ACROSS, -1, axis=0)
-    assert reaches(_CORNER, closing, closed=True)
-    assert not reaches(_CORNER, closing, closed=False)
-    assert reaches(_CORNER, closing[:1] * [1, -1, 1], closed=False)
-    assert not reaches(_CORNER, closing[:1], closed=False)
-    assert not reaches(_CORNER, _ACROSS[:0], closed=True)
-    assert reaches(_CORNER, np.array([(0.0, np.nan, 50.0)]), closed=True)
+    assert reaches(_CORNER, _ACROSS)
+    assert reaches(_CORNER, np.array([(5.0, 0.0, 0.0)]))
+    # Two axial contours, one ahead of the plane and below the limit, the
+    # other behind it and above, neither reaching the block, between which
+    # a planning system's interpolation does.
+    ahead, behind = _square((-10.0, -6.0), -1.0), _square((2.0, 6.0), 3.0)
+    assert not _CORNER.contains(np.concatenate([ahead, behind])).any()
+    assert _CORNER.contains(np.mean([ahead, behind], axis=0)).any()
+    assert not reaches(_CORNER, ahead)
+    assert not reaches(_CORNER, behind)
+    assert reaches(_CORNER, np.concatenate([ahead, behind]))
+    assert not reaches(_CORNER, np.concatenate([behind, behind - [0, 0, 4]]))
+    # Whose hull passes below the block's corner.
+    assert not reaches(
+        _CORNER, np.concatenate([_square((-2.0, -1.0), -10.0), _square((9, 10), 1)])
+    )
+    assert not reaches(_CORNER, _ACROSS[:0])
+    assert reaches(_CORNER, np.array([(0.0, np.nan, 50.0)]))
+    # Far enough that the distances would overflow, it holds, as the same
+    # segment scaled down does.
+    far = np.array([(0.0, -1.5e308, -10.0), (0.0, 1.5e308, 30.0)])
+    assert reaches(_CORNER, far / 1e308)
+    assert reaches(_CORNER, far)
+    assert reaches(_CORNER, np.array([(0.0, 2e6, -10.0)]))
+
+
+def test_two_target_contours_with_the_block_between_them_hold_the_series():
+    block = _outcome().block
+    x, y, _ = block.origin
+    ax, ay, _ = block.anterior
+    globe_x = block.globes[0][0]
+    corner = np.array([globe_x, y - ax * (globe_x - x) / ay, block.inferior_limit])
+    ahead = np.array([0.0, 1 / ay, 0.0])
+    up = np.array([0.0, 0.0, 1.0])
+    below = files.square(corner + 8 * ahead - 2 * up)
+    behind = files.square(corner - 8 * ahead + 4 * up)
+    rtss = files.structure_set([("PTV", below)])
+    # One ROI with both contours.
+    data = pydicom.dcmread(io.BytesIO(rtss))
+    contour = pydicom.Dataset()
+    contour.ContourGeometricType = "CLOSED_PLANAR"
+    contour.NumberOfContourPoints = len(behind)
+    contour.ContourData = [f"{v:.6f}" for v in np.ravel(behind)]
+    data.ROIContourSequence[0].ContourSequence.append(contour)
+
+    assert not block.contains(np.concatenate([below, behind])).any()
+    assert _outcome(rtss).problem is None
+    assert _outcome(files.structure_set([("PTV", behind)])).problem is None
+    assert _outcome(files.written(data)).problem is SeriesProblem.TARGET_IN_BLOCK
 
 
 def test_a_sagittal_target_crossing_the_block_between_its_vertices_holds_the_series():
@@ -609,12 +652,9 @@ def test_a_structure_set_in_another_frame_drawn_on_the_series_slices(rois, held)
     elsewhere = files.ROOT + ".8"
     rtss = pydicom.dcmread(io.BytesIO(files.structure_set(rois, frame=elsewhere)))
     unreferenced = files.written(rtss)
-    image = pydicom.Dataset()
-    image.ReferencedSOPClassUID = files.CT_IMAGE_STORAGE
-    image.ReferencedSOPInstanceUID = InstanceRecord.from_file(
-        _head_files()[0]
-    ).sop_instance
-    rtss.ROIContourSequence[0].ContourSequence[0].ContourImageSequence = [image]
+    rtss.ROIContourSequence[0].ContourSequence[0].ContourImageSequence = [
+        _slice_image()
+    ]
     drawn = files.written(rtss)
 
     assert face_blocks.frames_of(InstanceRecord.from_file(drawn)) == {elsewhere}
@@ -622,6 +662,75 @@ def test_a_structure_set_in_another_frame_drawn_on_the_series_slices(rois, held)
     # Its contours cannot be placed without a registration, so any target
     # in it holds the series.
     assert _outcome(drawn).problem is (SeriesProblem.TARGET_IN_BLOCK if held else None)
+
+
+def _slice_image() -> pydicom.Dataset:
+    image = pydicom.Dataset()
+    image.ReferencedSOPClassUID = files.CT_IMAGE_STORAGE
+    image.ReferencedSOPInstanceUID = InstanceRecord.from_file(
+        _head_files()[0]
+    ).sop_instance
+    return image
+
+
+def _mixed(tie: str) -> bytes:
+    """A structure set with an organ in the series' frame drawn on one of
+    its slices, and a target behind the block in another frame, tied to
+    the series' slices as ``tie`` says."""
+    elsewhere = files.ROOT + ".8"
+    behind = files.square((0, 0, 40))
+    rtss = pydicom.dcmread(
+        io.BytesIO(
+            files.structure_set([("ORGAN", behind), ("ORGAN", behind), ("PTV", behind)])
+        )
+    )
+    for roi in rtss.StructureSetROISequence[1:]:
+        roi.ReferencedFrameOfReferenceUID = elsewhere
+    other = pydicom.Dataset()
+    other.FrameOfReferenceUID = elsewhere
+    rtss.ReferencedFrameOfReferenceSequence.append(other)
+    organ, other_organ, target = (
+        item.ContourSequence[0] for item in rtss.ROIContourSequence
+    )
+    organ.ContourImageSequence = [_slice_image()]
+    if tie == "target":
+        target.ContourImageSequence = [_slice_image()]
+    elif tie == "organ-in-its-frame":
+        other_organ.ContourImageSequence = [_slice_image()]
+    elif tie == "frame":
+        series = pydicom.Dataset()
+        series.SeriesInstanceUID = files.ROOT + ".9"
+        series.ContourImageSequence = [_slice_image()]
+        study = pydicom.Dataset()
+        study.ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.1"
+        study.ReferencedSOPInstanceUID = files.ROOT + ".10"
+        study.RTReferencedSeriesSequence = [series]
+        other.RTReferencedStudySequence = [study]
+    return files.written(rtss)
+
+
+@pytest.mark.parametrize(
+    ("tie", "held"),
+    [
+        ("target", True),
+        ("organ-in-its-frame", True),
+        ("frame", True),
+        ("none", False),
+    ],
+)
+def test_a_target_in_another_frame_holds_the_series_only_if_tied_to_its_slices(
+    tie, held
+):
+    rtss = _mixed(tie)
+
+    assert face_blocks.frames_of(InstanceRecord.from_file(rtss)) == {
+        files.FRAME,
+        files.ROOT + ".8",
+    }
+    # A target in another frame cannot be placed without a registration, so
+    # one tied to the series' slices holds it even though another ROI of
+    # the set is in its frame, and one of another scan does not.
+    assert _outcome(rtss).problem is (SeriesProblem.TARGET_IN_BLOCK if held else None)
 
 
 def test_the_cavity_is_kept_only_above_its_floor():
