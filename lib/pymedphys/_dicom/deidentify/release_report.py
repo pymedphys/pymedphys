@@ -48,7 +48,7 @@ the engine defines, never from DICOM data directly, and the check is a
 backstop: a field of another form, which could be a source value or a path
 outside the package, is refused. A field that fails is named, never quoted.
 
-Eleven sections describe a run, by replacement identifiers, attribute tags,
+Twelve sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
 
 - ``qc_review``: the run's QC pack by its opaque reference, with the outcome
@@ -60,7 +60,10 @@ and codes that the engine defines, never by a source value or path:
   names the reviewer, stay confidential.
 - ``face_review``: under the Clean Recognizable Visual Features Option, the
   opaque reference of the earlier run's attested QC pack whose face verdicts
-  the run applied; None otherwise.
+  the run applied, and how many series of CT Image instances the run
+  defaced, and how many it did not, by why
+  (:class:`~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts`);
+  None otherwise.
 - ``redaction_review``: under the Clean Pixel Data Option, the opaque
   reference of the earlier run's attested QC pack whose redaction verdicts
   the run applied; None otherwise.
@@ -81,7 +84,11 @@ and codes that the engine defines, never by a source value or path:
   reason (D-009), from :func:`held_for_review`: a ROI Name that descriptor
   cleaning held, why a pixel option held its pixel data (D-037), an
   instance that can show a face without a face verdict of absent for its
-  source file, or a release gate's reason that requires QC review. A held
+  source file and the pixel data that the run writes of it (D-046), a CT
+  slice of a series with a target in its face block, an RT Structure Set,
+  RT Dose, or PET instance in a defaced series' Frame of Reference, naming
+  none, or referring to a defaced slice (D-050), or a release gate's
+  reason that requires QC review. A held
   instance has neither an output name nor a label.
 - ``roi_names``: the outcome of each ROI Name of the structure sets that
   descriptor cleaning cleaned, every name counted, and how many distinct
@@ -136,6 +143,8 @@ from pymedphys._nomenclature import tg263
 
 from . import method_digest, output_names
 from .method_digest import MethodDigestComponents
+from .defacing import FaceBlockProblem
+from .face_blocks import FaceBlockCounts, SeriesProblem
 from .file_layout import TAG_PATTERN, ElementPath
 from .iod_conformance import SourceGap
 from .pixel_risk import Indicator, Risk
@@ -170,7 +179,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/18"
+FORMAT = "pymedphys-deid-release-report/19"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -403,7 +412,9 @@ class HeldForReview:
         ``"roi-names"`` (descriptor cleaning held a ROI Name),
         ``"pixel-data"`` (a pixel option held the instance's pixel data),
         ``"visual-features"`` (an instance that can show a face does not
-        satisfy Clean Recognizable Visual Features), or ``"release"`` (the
+        satisfy Clean Recognizable Visual Features, a CT slice's series has
+        a target in its face block, or an RT Structure Set, RT Dose, or PET
+        instance is beside a defaced CT series), or ``"release"`` (the
         release gate requires QC review).
     code : str
         The stage's reason code, such as ``"unmatched"``.
@@ -539,6 +550,7 @@ class ReleaseReport:
     runtime : ~pymedphys._dicom.deidentify.runtime.RuntimeEnvironment
     qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord or None
     face_review : str or None
+    face_blocks : ~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts or None
     redaction_review : str or None
     released : tuple of pathlib.PurePosixPath
     sequestered : tuple of SequesteredInstance
@@ -557,6 +569,7 @@ class ReleaseReport:
     runtime: RuntimeEnvironment
     qc_review: AttestationRecord | None = None
     face_review: str | None = None
+    face_blocks: FaceBlockCounts | None = None
     redaction_review: str | None = None
     released: tuple[PurePosixPath, ...] = ()
     sequestered: tuple[SequesteredInstance, ...] = ()
@@ -912,6 +925,7 @@ def release_report(
     text_finder: Mapping[str, object] | None = None,
     qc_review: AttestationRecord | None = None,
     face_review: str | None = None,
+    face_blocks: FaceBlockCounts | None = None,
     redaction_review: str | None = None,
     released: Iterable[PurePosixPath] = (),
     sequestered: Iterable[SequesteredInstance] = (),
@@ -964,6 +978,10 @@ def release_report(
         the attested QC pack whose face verdicts the run applied, from
         :class:`~pymedphys._dicom.deidentify.face_review.FaceReview`; None,
         the default, otherwise.
+    face_blocks : ~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts, optional
+        With ``face_review``, how many series of CT Image instances the run
+        defaced, and how many it did not, by why; None, the default, counts
+        none.
     redaction_review : str, optional
         Under the Clean Pixel Data Option, the reference of the attested QC
         pack whose redaction verdicts the run applied, from
@@ -1047,6 +1065,7 @@ def release_report(
         runtime=runtime_environment(),
         qc_review=qc_review,
         face_review=face_review,
+        face_blocks=face_blocks,
         redaction_review=redaction_review,
         released=tuple(released),
         sequestered=tuple(sequestered),
@@ -1245,12 +1264,46 @@ def _qc_review_section(record: AttestationRecord | None) -> dict | None:
     }
 
 
-def _review_section(field: str, reference: str | None) -> dict | None:
-    """Return a section that names an earlier run's attested QC pack."""
+def _face_review_section(
+    reference: str | None, counts: FaceBlockCounts | None
+) -> dict | None:
+    if reference is None:
+        if counts is not None:
+            raise _refuse("face_review", "counts CT series without a face review")
+        return None
+    if _string(reference) is None or not _REFERENCE.fullmatch(reference):
+        raise _refuse("face_review", "is not a QC pack's reference")
+    counts = FaceBlockCounts() if counts is None else counts
+    if not isinstance(counts, FaceBlockCounts):
+        raise _refuse("face_review ct_series", "is not counts of CT series")
+    defaced = counts.defaced
+    if type(defaced) is not int:  # pylint: disable = unidiomatic-typecheck
+        raise _refuse("face_review ct_series defaced", "is not a whole number")
+    if defaced < 0:
+        raise _refuse("face_review ct_series defaced", "is negative")
+    return {
+        "reference": reference,
+        "ct_series": {
+            "defaced": defaced,
+            "not_defaced": [
+                {"reason": code, "count": count}
+                for code, count in _code_counts(
+                    "face_review ct_series reason",
+                    counts.not_defaced,
+                    (FaceBlockProblem, SeriesProblem),
+                )
+            ],
+        },
+    }
+
+
+def _redaction_review_section(reference: str | None) -> dict | None:
+    """Return the section that names the earlier run's attested QC pack whose
+    redaction verdicts the run applied."""
     if reference is None:
         return None
     if _string(reference) is None or not _REFERENCE.fullmatch(reference):
-        raise _refuse(field, "is not a QC pack's reference")
+        raise _refuse("redaction_review", "is not a QC pack's reference")
     return {"reference": reference}
 
 
@@ -1351,14 +1404,17 @@ def _code_counts(
     codes: type[RoiNameOutcome]
     | type[RoiNameReason]
     | type[DescriptorOutcome]
-    | type[DescriptorHeld],
+    | type[DescriptorHeld]
+    | tuple[type[FaceBlockProblem], type[SeriesProblem]],
 ) -> list[tuple[str, int]]:
-    """Return the counts of one kind of code, sorted by code."""
+    """Return the counts of one kind of code, or of any of several, sorted by
+    code."""
     if not isinstance(counts, Mapping):
         raise _refuse(field, "is not counts by code")
+    kinds = codes if isinstance(codes, tuple) else (codes,)
     entries = []
     for code, count in counts.items():
-        if type(code) is not codes:  # pylint: disable = unidiomatic-typecheck
+        if type(code) not in kinds:
             raise _refuse(field, "is not a code that the engine defines")
         if type(count) is not int:  # pylint: disable = unidiomatic-typecheck
             raise _refuse(f"{field} count", "is not a whole number")
@@ -1536,8 +1592,9 @@ def report_document(report: ReleaseReport) -> dict:
     ``source_gaps``, and ``structural_checks``, in that order, each section's
     fields in the order of its class, the digests of tables and files sorted
     by name, ``qc_review`` null where the run wrote no QC pack,
-    ``face_review`` and ``redaction_review`` each null or an object with
-    the reference, the released
+    ``face_review`` null or an object with the reference and the CT series'
+    ``ct_series`` counts, ``defaced`` and ``not_defaced`` by code,
+    ``redaction_review`` null or an object with the reference, the released
     output names sorted, the sequestered instances by label, each with its
     reasons once, in the order given, the held counts by stage and code, the
     ROI Names' and the descriptors' ``outcomes`` and ``held`` counts each by
@@ -1582,10 +1639,8 @@ def report_document(report: ReleaseReport) -> dict:
         "method": _method_section(report.method),
         "runtime": _runtime_section(report.runtime),
         "qc_review": _qc_review_section(report.qc_review),
-        "face_review": _review_section("face_review", report.face_review),
-        "redaction_review": _review_section(
-            "redaction_review", report.redaction_review
-        ),
+        "face_review": _face_review_section(report.face_review, report.face_blocks),
+        "redaction_review": _redaction_review_section(report.redaction_review),
         "released": _released_section(report.released),
         "sequestered": _sequestered_section(report.sequestered),
         "held_for_review": _held_section(report.held_for_review),

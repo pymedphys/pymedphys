@@ -40,10 +40,16 @@ unused bits hold more than the value's sign is not cleaned: each stored word
 must have those bits all zero, or all one where the value is negative. A
 value written into a region has them as its sign gives them.
 
+Under Clean Recognizable Visual Features, :func:`black_out` also writes
+the masks that a :class:`Defacer` gives each frame, such as the face block
+of a head CT (:mod:`~pymedphys._dicom.deidentify.face_blocks`), each pixel
+of a mask set to its one stored value after any region of text is filled,
+so that one new value of Pixel Data holds both.
+
 :func:`redaction_problem` then checks the file written: pydicom must read
-the same stored values from it as from the source outside the regions, and
-the fill inside them, and every byte outside the regions must be
-the source's. An instance that fails is sequestered, as one is whose Pixel
+the same stored values from it as from the source outside the regions and
+masks, the fill inside each region outside the masks, and each mask's value
+inside it, and every byte outside them must be the source's. An instance that fails is sequestered, as one is whose Pixel
 Data cannot be cleaned (:class:`PixelDataRefused`).
 """
 
@@ -89,6 +95,15 @@ class TextFinder(Protocol):
     def find(self, frame: np.ndarray) -> Sequence[TextBox]:
         """Return the regions of text in a frame of stored values: rows by
         columns, or rows by columns by 3 for RGB."""
+
+
+class Defacer(Protocol):
+    """Gives the pixels of each frame to set to one stored value, as
+    :class:`~pymedphys._dicom.deidentify.face_blocks.CtDefacer` does."""
+
+    def mask(self, frame: int, stored: np.ndarray) -> FrameMask | None:
+        """Return the mask of one frame, given its stored values, rows by
+        columns, or None where it has none."""
 
 
 def finder_description(finder: TextFinder) -> Mapping[str, object]:
@@ -236,6 +251,19 @@ class FrameRegions:
 
 
 @dataclasses.dataclass(frozen=True)
+class FrameMask:
+    """The pixels of one frame set to one stored value.
+
+    ``mask`` is of bool, rows by columns, and ``value`` a stored pixel
+    value; neither is reported or logged.
+    """
+
+    frame: int
+    mask: np.ndarray = dataclasses.field(repr=False, compare=False)
+    value: int = dataclasses.field(repr=False)
+
+
+@dataclasses.dataclass(frozen=True)
 class Redaction:
     """What :func:`black_out` did to an instance's Pixel Data.
 
@@ -246,11 +274,20 @@ class Redaction:
         Each frame with a region, by index from 0.
     value : bytes
         The new value field of Pixel Data.
+    masks : tuple of FrameMask
+        Each frame with a mask that a :class:`Defacer` gave, by index from
+        0, written after the regions.
     """
 
     layout: Layout
     regions: tuple[FrameRegions, ...]
     value: bytes = dataclasses.field(repr=False)
+    masks: tuple[FrameMask, ...] = ()
+
+    @property
+    def changed(self) -> bool:
+        """Whether any pixel was set: a region or a mask."""
+        return bool(self.regions or self.masks)
 
     @property
     def reason(self) -> PixelDataReason:
@@ -261,16 +298,22 @@ class Redaction:
 
 
 def black_out(
-    source: SourceEvidence, dataset: pydicom.Dataset, finder: TextFinder
+    source: SourceEvidence,
+    dataset: pydicom.Dataset,
+    finder: TextFinder | None,
+    defacer: Defacer | None = None,
 ) -> Redaction | None:
-    """Return the instance's Pixel Data with the finder's regions blacked out.
+    """Return the instance's Pixel Data with the finder's regions blacked out,
+    and the defacer's masks written.
 
     Parameters
     ----------
     source : SourceEvidence
     dataset : pydicom.Dataset
         The source's data set, as :meth:`SourceEvidence.dataset` reads it.
-    finder : TextFinder
+    finder : TextFinder or None
+        None where no text is looked for.
+    defacer : Defacer, optional
 
     Returns
     -------
@@ -287,15 +330,22 @@ def black_out(
         :attr:`~.reasons.TransformReason.UNCLEANABLE_PIXEL_DATA` for float
         pixel data, or native Pixel Data that cannot be read as frames.
     """
-    return _blacked_out(source, dataset, lambda _, frame: finder.find(frame))
+    return _blacked_out(
+        source,
+        dataset,
+        None if finder is None else lambda _, frame: finder.find(frame),
+        defacer,
+    )
 
 
 def black_out_reviewed(
     source: SourceEvidence,
     dataset: pydicom.Dataset,
     regions: Sequence[tuple[int, Sequence[TextBox]]],
+    defacer: Defacer | None = None,
 ) -> Redaction | None:
-    """Return the instance's Pixel Data with a reviewer's regions blacked out.
+    """Return the instance's Pixel Data with a reviewer's regions blacked out,
+    and the defacer's masks written.
 
     As :func:`black_out`, but each frame's regions are those given, by frame
     index from 0, rather than a finder's, and a frame not given has none.
@@ -320,7 +370,7 @@ def black_out_reviewed(
             raise PixelDataRefused(TransformReason.REDACTION_MISMATCH)
         return boxes
 
-    redaction = _blacked_out(source, dataset, reviewed)
+    redaction = _blacked_out(source, dataset, reviewed, defacer)
     if redaction is not None and any(
         not 0 <= index < redaction.layout.frames for index in by_frame
     ):
@@ -331,10 +381,12 @@ def black_out_reviewed(
 def _blacked_out(
     source: SourceEvidence,
     dataset: pydicom.Dataset,
-    boxes_of: Callable[[int, np.ndarray], Sequence[TextBox]],
+    boxes_of: Callable[[int, np.ndarray], Sequence[TextBox]] | None,
+    defacer: Defacer | None,
 ) -> Redaction | None:
     """Return the instance's Pixel Data with the regions that ``boxes_of``
-    gives each frame, by its index and stored values, blacked out."""
+    gives each frame, by its index and stored values, blacked out, none
+    where it is None, and the defacer's masks written."""
     if any(path in source for path in FLOAT_PIXEL_DATA):
         raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
     if PIXEL_DATA not in source:
@@ -353,19 +405,37 @@ def _blacked_out(
         raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
     written = stored.copy()
     regions = []
+    masks = []
     for index in range(layout.frames):
         frame = _frame(layout, _stored_values(layout, stored[index]))
-        boxes = tuple(sorted(set(_checked(boxes_of(index, frame), layout))))
-        if not boxes:
-            continue
-        fill = layout.fill(frame)
-        for box in boxes:
-            for sample, value in enumerate(fill):
-                written[layout.word_index(index, box, sample)] = layout.word_of(value)
-        regions.append(FrameRegions(index, boxes, fill))
+        boxes = (
+            ()
+            if boxes_of is None
+            else tuple(sorted(set(_checked(boxes_of(index, frame), layout))))
+        )
+        if boxes:
+            fill = layout.fill(frame)
+            for box in boxes:
+                for sample, value in enumerate(fill):
+                    written[layout.word_index(index, box, sample)] = layout.word_of(
+                        value
+                    )
+            regions.append(FrameRegions(index, boxes, fill))
+        mask = None if defacer is None else defacer.mask(index, frame)
+        if mask is not None:
+            if (
+                mask.frame != index
+                or layout.samples != 1
+                or np.shape(mask.mask) != (layout.rows, layout.columns)
+                or not _storable(layout, mask.value)
+            ):
+                raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
+            mask = dataclasses.replace(mask, mask=np.asarray(mask.mask, dtype=bool))
+            written[index, mask.mask, 0] = layout.word_of(mask.value)
+            masks.append(mask)
     size = layout.words * layout.dtype.itemsize
     value = written.tobytes() + field[size:]
-    return Redaction(layout, tuple(regions), value)
+    return Redaction(layout, tuple(regions), value, tuple(masks))
 
 
 def layout_of(dataset: pydicom.Dataset) -> Layout:
@@ -454,6 +524,8 @@ def redaction_problem(
                 expected[layout.word_index(regions.frame, box, sample)] = (
                     layout.word_of(value)
                 )
+    for mask in redaction.masks:
+        expected[mask.frame, mask.mask, 0] = layout.word_of(mask.value)
     size = expected.nbytes
     if expected.tobytes() != after[:size] or after[size:] != before[size:]:
         return True
@@ -466,6 +538,7 @@ def _reads_as_planned(
     """Whether pydicom reads the planned stored values from the output."""
     layout = redaction.layout
     planned = {regions.frame: regions for regions in redaction.regions}
+    masks = {mask.frame: mask for mask in redaction.masks}
     try:
         with redacted_diagnostics():
             pairs = zip(
@@ -478,19 +551,42 @@ def _reads_as_planned(
                 regions = planned.get(index)
                 for box in () if regions is None else regions.boxes:
                     inside[box.top : box.bottom, box.left : box.right] = True
+                mask = masks.get(index)
+                masked = (
+                    np.zeros_like(inside) if mask is None else np.asarray(mask.mask)
+                )
                 if before.shape != after.shape:
                     return False
-                if not np.array_equal(before[~inside], after[~inside]):
+                changed = inside | masked
+                if not np.array_equal(before[~changed], after[~changed]):
                     return False
+                filled = inside & ~masked
                 if regions is not None and not np.all(
-                    after[inside] == np.array(regions.value, dtype=after.dtype)
+                    after[filled] == np.array(regions.value, dtype=after.dtype)
                 ):
+                    return False
+                if mask is not None and not np.all(after[masked] == mask.value):
                     return False
     # pydicom raises many types for pixel data it cannot read, and a message
     # can quote a value.
     except Exception:  # pylint: disable = broad-exception-caught
         return False
     return True
+
+
+def stored_range(layout: Layout) -> tuple[int, int]:
+    """The least and greatest stored value that the layout can hold."""
+    if layout.signed:
+        return -(1 << (layout.bits_stored - 1)), (1 << (layout.bits_stored - 1)) - 1
+    return 0, (1 << layout.bits_stored) - 1
+
+
+def _storable(layout: Layout, value: object) -> bool:
+    """Whether ``value`` is an integer that the layout can store."""
+    if isinstance(value, bool) or not isinstance(value, (int, np.integer)):
+        return False
+    low, high = stored_range(layout)
+    return low <= int(value) <= high
 
 
 def _integer(dataset: pydicom.Dataset, keyword: str, default: int | None = None) -> int:

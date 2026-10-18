@@ -51,7 +51,7 @@ from pymedphys._nomenclature import tg263
 from pymedphys._dicom.deidentify import pixel_decoding, roi_names, run, standard
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
-from pymedphys._dicom.deidentify.face_review import FaceReview
+from pymedphys._dicom.deidentify.face_review import FaceReview, pixel_data_sha256
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
@@ -73,6 +73,7 @@ from pymedphys._dicom.deidentify.reviewed_roi_names import (
     ReviewedName,
     ReviewedNames,
 )
+from pymedphys._dicom.deidentify.source import SourceRefused, read_source
 from pymedphys._dicom.deidentify.text_detection import TextBox
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 
@@ -534,11 +535,26 @@ def decoders_installed() -> bool:
 def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
     """Return a face review that marks every file of the corpus free of a face.
 
-    It is matched by each file's SHA-256, as an attested review's verdicts
-    are, so each instance that can show a face satisfies the option.
+    It is matched by each file's SHA-256, and the SHA-256 of the pixel data
+    that a run writes of it unchanged, as an attested review's verdicts
+    are, so each instance that can show a face, and whose pixel data the
+    run does not change, satisfies the option.
     """
     digests = frozenset(hashlib.sha256(file.data).digest() for file in corpus.files)
-    return FaceReview(FACE_REVIEW_REFERENCE, digests, frozenset())
+    pixels = frozenset(
+        (hashlib.sha256(file.data).digest(), digest)
+        for file in corpus.files
+        if (digest := _pixel_data_sha256(file.data)) is not None
+    )
+    return FaceReview(FACE_REVIEW_REFERENCE, digests, frozenset(), pixels)
+
+
+def _pixel_data_sha256(data: bytes) -> bytes | None:
+    """The SHA-256 of a file's pixel data, or None where it cannot be read."""
+    try:
+        return pixel_data_sha256(read_source(data).dataset())
+    except (SourceRefused, ValueError):
+        return None
 
 
 def every_corner_accepted(corpus: corpus_module.SyntheticCorpus) -> RedactionReview:

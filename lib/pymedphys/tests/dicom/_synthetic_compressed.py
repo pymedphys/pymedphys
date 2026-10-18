@@ -26,8 +26,12 @@ codestreams.
 """
 
 import dataclasses
+import functools
 import io
+import os
 import struct
+import subprocess
+import sys
 from collections.abc import Sequence
 
 from pymedphys._imports import numpy as np
@@ -124,6 +128,40 @@ def jpeg_lossless(frame, precision: int = 16, predictor: int = 1) -> bytes:
         if byte == 0xFF:
             entropy.append(0x00)
     return header + bytes(entropy) + b"\xff\xd9"
+
+
+def with_jfif_version(codestream: bytes, version: tuple[int, int]) -> bytes:
+    """Return a JPEG codestream with a JFIF segment (APP0) of ``version``
+    after its Start of Image marker."""
+    jfif = b"JFIF\x00" + bytes(version) + b"\x00\x00\x01\x00\x01\x00\x00"
+    return codestream[:2] + _segment(0xE0, jfif) + codestream[2:]
+
+
+# Decodes the file on standard input with GDCM, as the engine pins it.
+_GDCM_DECODE = (
+    "import io, sys, pydicom\n"
+    "dataset = pydicom.dcmread(io.BytesIO(sys.stdin.buffer.read()))\n"
+    "for _ in pydicom.pixels.iter_pixels(dataset, raw=True, decoding_plugin='gdcm'):\n"
+    "    pass\n"
+)
+
+
+@functools.lru_cache(maxsize=None)
+def gdcm_outcome(data: bytes) -> str:
+    """Return what the installed GDCM does with the file ``data`` in a
+    process of its own: ``"decodes"`` it, ``"raises"``, or ``"aborts"`` the
+    process, as GDCM 3.2 does for a JPEG frame whose header makes libjpeg
+    warn."""
+    completed = subprocess.run(
+        [sys.executable, "-c", _GDCM_DECODE],
+        input=data,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+        timeout=300,
+    )
+    # An exception that Python reports exits with 1.
+    return {0: "decodes", 1: "raises"}.get(completed.returncode, "aborts")
 
 
 def jpeg_extended_mid_grey(rows: int, columns: int) -> bytes:

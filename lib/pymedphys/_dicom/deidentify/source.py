@@ -144,6 +144,11 @@ class SourceEvidence:
         }
 
     @property
+    def data(self) -> bytes:
+        """The file's bytes."""
+        return self._data
+
+    @property
     def size(self) -> int:
         """The file's length in bytes."""
         return len(self._data)

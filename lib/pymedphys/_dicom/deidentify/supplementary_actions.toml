@@ -50,7 +50,7 @@ note = "The value is kept as received, and a received NO is not taken as evidenc
 tag = "(0028,0302)"
 keyword = "RecognizableVisualFeatures"
 action = "K"
-note = "The engine removes no face from pixel data, so the value is kept as received, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under the Clean Recognizable Visual Features Option, which the markers then write in an instance that a reviewer found free of a recognisable face or that cannot show one."
+note = "Without the Clean Recognizable Visual Features Option the engine removes no face from pixel data, so the value is kept as received, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under the Clean Recognizable Visual Features Option, which the markers then write in an instance that a reviewer found free of a recognisable face or that cannot show one."
 
 [[attribute]]
 tag = "(0040,A067)"

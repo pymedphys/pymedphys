@@ -341,16 +341,19 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, if there is sufficient visual information within the Pixel Data of a set of instances to allow an individual to be recognized from the instances themselves or a reconstruction of a set of instances, then sufficient removal or distortion of the Pixel Data shall be applied to prevent recognition.
 '''
 status = "implemented"
-decisions = ["D-015", "D-016", "D-017", "D-046"]
+decisions = ["D-015", "D-016", "D-017", "D-046", "D-050"]
 implementation = [
+  "_dicom/deidentify/defacing.py",
+  "_dicom/deidentify/face_blocks.py",
   "_dicom/deidentify/face_review.py",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/pixel_cleaning.py",
   "_dicom/deidentify/qc_attestation.py",
 ]
 note = '''
-The engine removes no face from pixel data, so it claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file, or one that cannot show a face (D-046).
+The engine claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file and of the pixel data that the run writes of it, or one that cannot show a face (D-046).
 Every other instance that can show a face, with pixel data or as an RT Structure Set, is held for review and never released, so no released instance that claims the option has the visual information that the paragraph requires to be removed or distorted.
-Defacing CT is a later step; an instance whose face was removed would still claim the option only where a reviewer, shown its surface as cleaned, found no recognisable face.
+Under the option, the engine also writes air into the face block of each CT series in which it finds one, keeping the cranial cavity above the orbits, and holds a series with a target in its block, and each RT Structure Set, RT Dose, or PET instance in a defaced series' Frame of Reference, naming none, or referring to a defaced slice, which it does not yet clean (D-050); a defaced instance still claims the option only where a reviewer found no recognisable face in it as defaced.
 '''
 
 [[requirement]]
@@ -1133,7 +1136,7 @@ For the first release, the design assigns to whoever releases the data the confi
 The QC pack is built and written: each instance by run position and source path, with its source file's SHA-256 and its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); and what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009).
 It is written only to a designated, owner-only location outside the source, release, and staging directories, and is marked so that no release includes it (D-016).
 A reviewer attests to a pack once, stating whether they reviewed every distinct retained string, every series, and every instance in high-risk categories, and an outcome of attested needs all three; the attestation is bound to the pack by its digest, and gives the release report only the pack's opaque reference and the outcome (D-016, D-017).
-The pack lists each series of released or held instances, and the attestation may give any of them, by its first run position, a face verdict, absent or present, from its previews; the pack's source digests bind the verdict to the files the reviewer saw, and the release report does not record it (D-016, D-017).
+The pack lists each series of released or held instances, and the attestation may give any of them, by its first run position, a face verdict, absent or present, from its previews; the pack's source digests, and the digests of the pixel data written of them, bind the verdict to the files the reviewer saw and to what the run wrote of them, and the release report does not record it (D-016, D-017, D-046).
 Each run writes its pack before it publishes the release, to a QC destination that the caller must name and that is checked before anything is created; a pack that cannot be written publishes nothing, and the pack of a release that cannot be published is removed, or named if it cannot be.
 The run's instance transform and release gate adapter give it this material.
 The pack lists every input from its outcome, each sequestered one by the random label that the run gives it, and the transform's and gate's material by run position: each residual search with its excerpts, each source value they left out of the search with its reason, what descriptor cleaning wrote for each ROI Name, and each retained string with its places.

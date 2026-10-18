@@ -300,7 +300,8 @@ class Attestation:
             raise QcPackError("an attestation needs its Coverage")
         if self.outcome is Outcome.ATTESTED and not self.coverage.complete:
             raise QcPackError(
-                "an outcome of attested needs every review that D-017 requires"
+                "an outcome of attested needs every retained string, series, "
+                "and high-risk instance reviewed"
             )
         if not isinstance(self.reviewer, str) or not self.reviewer.strip():
             raise QcPackError("an attestation needs its reviewer")

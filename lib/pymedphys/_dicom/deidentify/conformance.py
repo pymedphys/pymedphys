@@ -169,7 +169,7 @@ PENDING_UNAPPLIED = (
 PENDING_CLEANING = (
     "The manner of cleaning each attribute other than ROI Name (3006,0026) "
     "to which the policy gives C and which no cleaner above cleans (PS3.15 "
-    "Table E.1-1a; D-009, D-034)."
+    "Table E.1-1a)."
 )
 # Pending only for a policy that selects Clean Descriptors and whose other
 # options cannot be composed without it.
@@ -177,7 +177,7 @@ PENDING_FALLBACK = (
     "A run under this policy, which the engine refuses: an attribute other "
     "than ROI Name (3006,0026) to which the policy gives C takes the action "
     "that the policy gives it without Clean Descriptors, and its other "
-    "options cannot be composed into a policy without that option (D-009)."
+    "options cannot be composed into a policy without that option."
 )
 # Pending only for a policy that selects Retain Safe Private and an option
 # that the engine does not yet apply, whose element rules it refuses.
@@ -188,7 +188,7 @@ PENDING_SAFE_PRIVATE = (
 # Pending only for tps-import, whose Z writes a synthetic birth date.
 PENDING_BIRTH_DATES = (
     "The synthetic birth date that Z writes to Patient's Birth Date "
-    "(0010,0030) in place of a zero-length value (D-008, D-021)."
+    "(0010,0030) in place of a zero-length value."
 )
 _TPS_IMPORT = "tps-import"
 _FULL_DATES = "retain_longitudinal_full_dates"

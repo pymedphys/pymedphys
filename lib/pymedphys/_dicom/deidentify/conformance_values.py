@@ -218,12 +218,19 @@ HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
         "pixel-data": (
             "Clean Pixel Data blacked out the text that it found in the "
             "instance's pixel data, or found none, and review must look for "
-            "text that it missed (D-037)"
+            "text that it missed"
         ),
         "visual-features": (
             "under Clean Recognizable Visual Features, the instance can show a "
             "face, and its source file is in a series that the face review "
-            "marked as showing one, or in none that it reviewed"
+            "marked as showing one, or in none that it reviewed, or the "
+            "reviewed run held it beside a CT series that it defaced, or the "
+            "run writes other pixel data of it than the reviewed run did; or "
+            "it is "
+            "a CT slice of a series with a treatment target in the region that "
+            "defacing would set to air; or it is an RT Structure Set, RT Dose, "
+            "or PET instance beside a CT series that the run defaced, which the "
+            "run does not yet clean"
         ),
         "release": (
             "the release gate requires QC review, for other text that the "
@@ -257,7 +264,7 @@ def _reviewed_items(named: Callable[[str], str]) -> list[str]:
             + join((named(t) for t in sorted(compared)), "or")
             + " equals the item's, as D compares values, the item has "
             + join(changed)
-            + " instead (D-021)."
+            + " instead."
         )
     lines.append(_icc_profile(named))
     return lines
@@ -275,7 +282,7 @@ def _procedure_step_items(
         f"Performed Procedure Step SOP Class, and {named(uid)} the keyed "
         "replacement of the source item's, as D writes for a UI attribute. "
         f"Where the sequence has no item, or an item has no {named(uid)}, "
-        "the instance is sequestered (D-021)."
+        "the instance is sequestered."
     )
 
 
@@ -290,7 +297,7 @@ def _icc_profile(named: Callable[[str], str]) -> str:
         "data colour space to be RGB, so where the source is not an RGB "
         "profile, the instance is sequestered. Pixel values are preserved, "
         "but the source profile's colorants and tone curves are not, so colour "
-        "rendering can change substantially (D-021)."
+        "rendering can change substantially."
     )
 
 
@@ -331,7 +338,7 @@ def values_written(named: Callable[[str], str]) -> list[str]:
         "whatever the source value. Where any source value equals the first "
         "constant, as the VR defines equality, D writes the second, so the "
         "value always changes. It writes the fewest values that the "
-        "attribute's VM allows (D-021).",
+        "attribute's VM allows.",
         "",
         "| VR | Value | Value where the source equals the first |",
         "| --- | --- | --- |",
@@ -340,11 +347,11 @@ def values_written(named: Callable[[str], str]) -> list[str]:
         "D on a UI attribute writes the keyed replacement of each source UID. "
         "D on an attribute of any other VR, such as CS or SQ, "
         "needs a reviewed rule for that attribute; without one, the instance "
-        "is sequestered (D-021).",
+        "is sequestered.",
         *(item for line in _reviewed_items(named) for item in ("", line)),
         "",
         f"At the top level of the data set, {pseudonym_tags} take the "
-        "subject's keyed pseudonyms wherever Z or D applies to them (D-005); "
+        "subject's keyed pseudonyms wherever Z or D applies to them; "
         "elsewhere, as in an item of a sequence, Z and D write as above. "
         f"Patient ID takes `{pseudonyms.PATIENT_ID_PREFIX}` followed by the "
         f"subject's code, {patient_id_length} characters in all, and "
@@ -362,12 +369,12 @@ def values_written(named: Callable[[str], str]) -> list[str]:
         "and the number does not. A value that is not one Integer String, or "
         "has no rank, as where the run holds no instance of its series, is "
         "emptied under Z and takes D's constant under D. The numbering spans "
-        "one run (D-022).",
+        "one run.",
         "",
         f"U replaces a UID with `{uids.UID_ROOT}` followed by the decimal form "
         f"of a name-based (version 5) UUID, at most {uid_length} characters "
         f"in all. The UUID's namespace is `{uids.UID_NAMESPACE}`, and its name "
-        "is the HMAC-SHA256 of the unpadded source UID under the key (D-003). "
+        "is the HMAC-SHA256 of the unpadded source UID under the key. "
         "A UID that the pinned tables of PS3.6 Annex A and PS3.16 register, "
         "such as a well-known frame of reference, is retained, because it "
         "names a public definition rather than an instance; this interprets "
@@ -378,7 +385,7 @@ def values_written(named: Callable[[str], str]) -> list[str]:
         + (
             f", except the {join(exceptions)} of the item that D writes in "
             f"{named(dummy_values.PERSON_IDENTIFICATION_CODE_SEQUENCE)}, which "
-            "names who defines its code (D-021)."
+            "names who defines its code."
             if exceptions
             else "."
         ),
@@ -418,7 +425,7 @@ def dates_and_times(
             "own, equals a whole kept value, the residual search finds it in "
             "the kept element, and the kept value explains it, so it does not "
             "withhold the instance; found inside a longer kept value, such as "
-            "the date of a kept datetime, it still does (D-042 and D-043). "
+            "the date of a kept datetime, it still does. "
             f"{named(TEMPORAL_MODIFIED)} is `{statement.markers.temporal}`, as "
             "Attributes inserted describes.",
         ]
@@ -431,8 +438,8 @@ def dates_and_times(
             f"The policy selects {option(temporal.option)}. {covered} The "
             f"policy gives C to {cleaned} of them, which are, by their "
             f"temporal roles, {roles}. Each is modified by its role, as "
-            f"Cleaning under the {option(temporal.option)} describes (D-006 "
-            "and D-007): a subject-event or radiation-source value moves "
+            f"Cleaning under the {option(temporal.option)} describes: "
+            "a subject-event or radiation-source value moves "
             "backwards by its subject's offset in whole weeks, a device, "
             "vocabulary-version, or other value takes D's dummy value, and a "
             f"time zone offset becomes `{dates.NOMINAL_UTC_OFFSET}`. The "
@@ -449,16 +456,16 @@ def dates_and_times(
         "",
         "The policy selects no Retain Longitudinal Temporal Information "
         "Option, so no date or time is shifted or otherwise modified: the "
-        "Basic Profile's actions apply (D-006). "
+        "Basic Profile's actions apply. "
         f"{covered} Those of the attributes that Table E.1-1 omits take their "
-        "supplementary rules (D-023), and the temporal roles apply only under "
-        "Modified Dates (D-007).",
+        "supplementary rules, and the temporal roles apply only under "
+        "Modified Dates.",
         "",
         f"D writes, whatever the source value, {firsts}, or, where the source "
         f"equals that value, {seconds} respectively, as Values written gives "
         "them. Z "
         "writes a zero-length value, or D's constant where the attribute is "
-        "Type 1 or 1C at its place (D-020). "
+        "Type 1 or 1C at its place. "
         f"{named(timezone)} takes {code(actions[timezone])}, and "
         f"{named(TEMPORAL_MODIFIED)} is "
         f"`{statement.markers.temporal}`, as Attributes inserted describes.",
@@ -478,8 +485,8 @@ def residual_search(named: Callable[[str], str]) -> list[str]:
         "sequence, for the residual search, which searches every byte of a "
         "written file for them before the file is released: the "
         "preamble, the File Meta Information, every element, Data Set "
-        "Trailing Padding, and the bytes after the last readable element "
-        "(D-027). Values of VR "
+        "Trailing Padding, and the bytes after the last readable element. "
+        "Values of VR "
         + join(sorted(_SEARCHED_VRS))
         + f" are searched in {codecs}, and in the source's character set, "
         "in several forms of each, such as each name of a person name and "
@@ -542,7 +549,7 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
         "distinct retained string, each distinct string that an instance's "
         "plan keeps as it is, in an element of VR "
         f"{vrs} outside any removed sequence, other than {exempt}, with every "
-        "place where it was kept (D-017). The run sequesters an instance "
+        "place where it was kept. The run sequesters an instance "
         "with such a value that cannot be decoded for review, such as text "
         "outside ISO 646 where no Specific Character Set applies, by "
         f"{unreviewable}, rather than releasing it unreviewed.",
@@ -556,7 +563,7 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
         "at full resolution or records why it could not. The engine reads "
         "these indicators from the "
         "instance's attributes, never from its pixel data, so the absence "
-        "of an indicator is not evidence that the risk is absent (D-015).",
+        "of an indicator is not evidence that the risk is absent.",
         "",
         "The QC pack also lists each CT, MR, PET, and RT Dose volume among "
         "the instances that are "
@@ -578,7 +585,7 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
         "The run groups instances into series by their source's "
         f"{named(_SERIES_INSTANCE_UID)}, which it never writes, and assesses "
         "only the released and held instances, so a series with just one "
-        "single-frame image among them is not a volume (D-015).",
+        "single-frame image among them is not a volume.",
     ]
 
 
@@ -656,8 +663,8 @@ def release_report() -> list[str]:
         f"`{report.FORMAT}`, names a sequestered instance, which has no "
         f"output name, by a label for the run, from `{first}` to `S-n` for `n` "
         "sequestered instances, assigned in an order drawn at random, so that "
-        "a label says nothing of the instance or its place in the run "
-        "(D-026). With each label, the report gives each reason that one of "
+        "a label says nothing of the instance or its place in the run. "
+        "With each label, the report gives each reason that one of "
         "these stages sequestered the instance, as the stage and its reason "
         "code:",
         "",
@@ -669,7 +676,7 @@ def release_report() -> list[str]:
         "in the same way where it names an attribute. A reason of scope "
         "`unsupported-iod` also gives the instance's IOD by its name in "
         "PS3.4 Table B.5-1, such as `Comprehensive SR` for the Comprehensive "
-        "SR IOD (D-010).",
+        "SR IOD.",
         "",
         "An instance outside the supported scope whose IOD the pinned tables "
         "define, such as a nuclear medicine image or a spatial registration, "
@@ -681,13 +688,13 @@ def release_report() -> list[str]:
         "Character Set could not be decoded, its transform raised an error, "
         "or its source file changed during the run, makes "
         "the release gate withhold every other file of its subject, by "
-        "`not-reported`, since its values were not searched for in them "
-        "(D-027). An input that the first pass sequesters for a sequence it "
+        "`not-reported`, since its values were not searched for in them. "
+        "An input that the first pass sequesters for a sequence it "
         "cannot read has no known subject and withholds no other file.",
         "",
         "The report counts the instances held for review, by the stage that "
         "held each and its reason code, an instance once for each stage and "
-        "code however many of its names or attributes have it (D-009):",
+        "code however many of its names or attributes have it:",
         "",
         *holding,
         "",
@@ -698,12 +705,12 @@ def release_report() -> list[str]:
         + ", and the distinct names it sent for review, whether then held "
         "or emptied unreviewed, each once for each of its reasons, by the "
         f"reason codes of {code('roi-names')} above, naming "
-        "none of them (D-009).",
+        "none of them.",
         "",
         "The report counts the instances that have each kind of first-pass "
         "reference finding that the run reports without acting on it, as "
         + join(sorted(code(kind.value) for kind in report.REPORTED_FINDINGS), "or")
-        + ", each instance once for each kind, naming none of them (D-026).",
+        + ", each instance once for each kind, naming none of them.",
         "",
         "The report counts the released instances, and those held for "
         "review, that show each risk in their pixel data, as "
@@ -711,7 +718,7 @@ def release_report() -> list[str]:
         + ", and each indicator of it, as "
         + join((code(indicator.value) for indicator in pixel_risk.Indicator), "or")
         + ", each instance once for each, an identical copy counting as the "
-        "instance it copies, and names none of them (D-015). The indicators "
+        "instance it copies, and names none of them. The indicators "
         "are read from the instances' attributes, and a volume's from its "
         "series; the pixel data are not inspected for them, so an instance "
         "without an indicator may still show the risk.",
@@ -727,12 +734,12 @@ def release_report() -> list[str]:
         "instance once, an identical copy counting as the instance it "
         "copies, naming none of them. The checks show that the release is consistent "
         "and well formed, not that it suits a particular use, which the "
-        "person releasing the data confirms (D-016).",
+        "person releasing the data confirms.",
         "",
         "The report counts the source values that the residual search did "
         "not search, in full or in part, by attribute, as tags from the "
         "outermost sequence without items, and by reason, each value once for "
-        "each reason however many of its forms that reason left out (D-027). "
+        "each reason however many of its forms that reason left out. "
         f"A reason is one of those listed under Residual search, as {omissions}, "
         "or one by which the value is not given to the search at all:",
         "",
@@ -751,7 +758,7 @@ def release_report() -> list[str]:
         "and nothing else of them. Every run writes a QC pack, so a report "
         "that a run writes always gives one. A report written before the pack "
         "is reviewed gives the outcome `not-attested`, with neither "
-        "confirmation stated (D-016, D-026). An input that the run refuses, as "
+        "confirmation stated. An input that the run refuses, as "
         "not an instance that it can read, such as a symbolic link, a "
         "DICOMDIR, or a file not readable as DICOM, is neither labelled nor "
         "counted in the report; only the QC pack lists it. A run writes the "
@@ -771,5 +778,5 @@ def release_report() -> list[str]:
         "false, the report's or the method digest's format label, or none, and "
         "the report refuses any other. Only the confidential QC pack maps "
         "labels to source instances and lists each value not searched by "
-        "instance and place (D-016).",
+        "instance and place.",
     ]
