@@ -119,7 +119,7 @@ def safe_private_section(statement: ConformanceStatement) -> list[str]:
         "Under the Retain Safe Private Option, Table E.1-1 gives Private "
         "Attributes C, which the reviewed rules of `safe_private.toml` settle "
         "for each private attribute, at the top level and in the items of "
-        "every sequence that is kept (PS3.15 E.3.10, D-035). A rule is keyed "
+        "every sequence that is kept (PS3.15 E.3.10). A rule is keyed "
         "by the private creator that reserves the attribute's block, the odd "
         "group, and the element within the block, written (gggg,xxee), so it "
         "applies in whichever block the creator reserves. A private creator "
@@ -174,7 +174,7 @@ def safe_private_section(statement: ConformanceStatement) -> list[str]:
         "of it.",
         "",
         "Every other private attribute is removed: one whose rule is for text, "
-        "since no reviewed cleaner cleans private text (D-009), or removes it; "
+        "since no reviewed cleaner cleans private text, or removes it; "
         "one that is not such a sequence and that neither a rule nor the "
         "instance declares safe; one in a block without such a creator; one "
         "whose value does not pass its handling's check; and each element in "

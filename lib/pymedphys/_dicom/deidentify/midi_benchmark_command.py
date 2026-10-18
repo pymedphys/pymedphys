@@ -50,7 +50,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         prog="python -m pymedphys._dicom.deidentify.midi_benchmark_command",
         description=(
             "Score the de-identification engine against an NCI MIDI test data "
-            "set (D-018). For development only."
+            "set. For development only."
         ),
     )
     commands = parser.add_subparsers(dest="command", required=True)
