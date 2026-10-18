@@ -673,15 +673,33 @@ def _slice_image() -> pydicom.Dataset:
     return image
 
 
-def _mixed(tie: str) -> bytes:
+def _frame_images(frame: pydicom.Dataset) -> None:
+    """List one of the series' slices as a contour image of the frame."""
+    series = pydicom.Dataset()
+    series.SeriesInstanceUID = files.ROOT + ".9"
+    series.ContourImageSequence = [_slice_image()]
+    study = pydicom.Dataset()
+    study.ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.1"
+    study.ReferencedSOPInstanceUID = files.ROOT + ".10"
+    study.RTReferencedSeriesSequence = [series]
+    frame.RTReferencedStudySequence = [study]
+
+
+def _mixed(tie: str, target_at=(0, 0, 40)) -> bytes:
     """A structure set with an organ in the series' frame drawn on one of
-    its slices, and a target behind the block in another frame, tied to
-    the series' slices as ``tie`` says."""
+    its slices, and a target in another frame, behind the block unless
+    placed elsewhere, tied to the series' slices as ``tie`` says."""
     elsewhere = files.ROOT + ".8"
     behind = files.square((0, 0, 40))
     rtss = pydicom.dcmread(
         io.BytesIO(
-            files.structure_set([("ORGAN", behind), ("ORGAN", behind), ("PTV", behind)])
+            files.structure_set(
+                [
+                    ("ORGAN", behind),
+                    ("ORGAN", behind),
+                    ("PTV", files.square(target_at)),
+                ]
+            )
         )
     )
     for roi in rtss.StructureSetROISequence[1:]:
@@ -698,14 +716,7 @@ def _mixed(tie: str) -> bytes:
     elif tie == "organ-in-its-frame":
         other_organ.ContourImageSequence = [_slice_image()]
     elif tie == "frame":
-        series = pydicom.Dataset()
-        series.SeriesInstanceUID = files.ROOT + ".9"
-        series.ContourImageSequence = [_slice_image()]
-        study = pydicom.Dataset()
-        study.ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.1"
-        study.ReferencedSOPInstanceUID = files.ROOT + ".10"
-        study.RTReferencedSeriesSequence = [series]
-        other.RTReferencedStudySequence = [study]
+        _frame_images(other)
     return files.written(rtss)
 
 
@@ -731,6 +742,41 @@ def test_a_target_in_another_frame_holds_the_series_only_if_tied_to_its_slices(
     # one tied to the series' slices holds it even though another ROI of
     # the set is in its frame, and one of another scan does not.
     assert _outcome(rtss).problem is (SeriesProblem.TARGET_IN_BLOCK if held else None)
+
+
+def test_an_untied_target_in_another_frame_does_not_hold_the_series_from_the_block():
+    # Its coordinates are of another frame, so its being where the series'
+    # block would be says nothing.
+    assert _outcome(_mixed("none", _EYES_FRONT[0])).problem is None
+    assert _outcome(_mixed("target", _EYES_FRONT[0])).problem is (
+        SeriesProblem.TARGET_IN_BLOCK
+    )
+
+
+def _elsewhere_only(rois) -> pydicom.Dataset:
+    return pydicom.dcmread(
+        io.BytesIO(files.structure_set(rois, frame=files.ROOT + ".8"))
+    )
+
+
+def test_a_set_in_another_frame_tied_only_by_its_frame_images_holds_the_series():
+    rtss = _elsewhere_only([("PTV", files.square((0, 0, 40)))])
+    _frame_images(rtss.ReferencedFrameOfReferenceSequence[0])
+
+    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def test_a_target_naming_no_frame_in_a_set_in_another_frame_drawn_on_the_slices():
+    rtss = _elsewhere_only([("PTV", files.square((0, 0, 40)))])
+    rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
+    unreferenced = files.written(rtss)
+    rtss.ROIContourSequence[0].ContourSequence[0].ContourImageSequence = [
+        _slice_image()
+    ]
+
+    # Its hull misses the block, and it may be in the set's frame.
+    assert _outcome(unreferenced).problem is None
+    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
 
 
 def test_the_cavity_is_kept_only_above_its_floor():

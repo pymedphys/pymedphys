@@ -40,11 +40,12 @@ masks. A series is defaced only where all of these hold:
   :data:`TARGET_TYPES`, of an RT Structure Set of the run in the series'
   Frame of Reference, or naming none, reaches the block, or has anything
   between its contours that does, as the convex hull of its contours
-  judges it (:func:`_hull_reaches`), a target that names no Frame of
-  Reference counting as one in it; no target in another frame, whose
-  contours cannot be placed without a registration, is in a structure set
-  that ties that frame to the series' slices (:func:`_targets_reach`); and
-  every such structure set can be read.
+  judges it (:func:`_hull_reaches`); no target in another frame, whose
+  contours cannot be placed without a registration, has a structure set
+  that ties that frame to the series' slices (:func:`_targets_reach`), a
+  target whose ROI names no frame counting as one in the series' frame and
+  in each frame that its structure set declares; and every such structure
+  set can be read.
 
 Anything else that a series' data raises leaves the series undefaced, as
 unreadable, rather than stopping the run, and no message of it, which could
@@ -156,7 +157,7 @@ class SeriesProblem(enum.Enum):
     NOT_ONE_STACK = "not-one-stack"
     # stored values that cannot hold air without clipping
     AIR_NOT_STORED = "air-not-stored"
-    # a target's contour in the block
+    # a target that may reach the block
     TARGET_IN_BLOCK = "target-in-block"
 
 
@@ -591,43 +592,54 @@ def _targets_reach(
     """Whether a target of a structure set may reach the block of the series
     with this Frame of Reference and these slices.
 
-    A target in that frame, or naming none, reaches it where the convex
-    hull of its contours does (:func:`_hull_reaches`).
-    One in another frame cannot be placed in the series' without a
-    registration, so it is taken to reach the block where the structure set
-    ties that frame to the series' slices: a contour of an ROI in that frame
-    is drawn on one of them, or the frame's own list of contour images names
-    one. A target in another frame that the structure set does not tie to
-    them, such as one of another scan, does not.
+    A target in that frame reaches it where the convex hull of its contours
+    does (:func:`_hull_reaches`). One in another frame cannot be placed in
+    the series' without a registration, so it is taken to reach the block
+    where its structure set ties that frame to the series' slices: a contour
+    of an ROI in that frame is drawn on one of them, or the frame's own list
+    of contour images names one. A target in another frame that its
+    structure set does not tie to them, such as one of another scan, does
+    not. A target whose ROI names no frame may be in the series' or in any
+    frame that its structure set declares, so it is taken as each.
     """
-    frames = {
+    named = {
         int(item.ROINumber): normalise_uid(
             str(item.get("ReferencedFrameOfReferenceUID") or "")
         )
         for item in dataset.get("StructureSetROISequence", [])
     }
+    declared = {
+        normalise_uid(str(item.get("FrameOfReferenceUID") or ""))
+        for item in dataset.get("ReferencedFrameOfReferenceSequence", [])
+    } - {""}
+
+    def frames_of_roi(number: int) -> set[str]:
+        return {named[number]} if named.get(number) else {"", *declared}
+
     targets = _targets(dataset)
-    tied = _tied_frames(dataset, frames, slices)
+    tied = _tied_frames(dataset, frames_of_roi, slices)
     for item in dataset.get("ROIContourSequence", []):
         number = int(item.ReferencedROINumber)
         if number not in targets:
             continue
-        # A target that names no Frame of Reference may be in this one.
-        if frames.get(number) not in ("", None, frame):
-            if frames[number] in tied:
-                return True
-            continue
-        points = [
-            np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-            for contour in item.get("ContourSequence", [])
-        ]
-        if points and _hull_reaches(block, np.concatenate(points)):
+        frames = frames_of_roi(number)
+        if (frames - {"", frame}) & tied:
             return True
+        # A target that names no Frame of Reference may be in this one.
+        if frames & {"", frame}:
+            points = [
+                np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
+                for contour in item.get("ContourSequence", [])
+            ]
+            if points and _hull_reaches(block, np.concatenate(points)):
+                return True
     return False
 
 
 def _tied_frames(
-    dataset: pydicom.Dataset, frames: Mapping[int, str], slices: set[str]
+    dataset: pydicom.Dataset,
+    frames_of_roi: Callable[[int], set[str]],
+    slices: set[str],
 ) -> set[str]:
     """Return the Frames of Reference that a structure set ties to any of
     these slices: by an ROI in the frame with a contour drawn on one, or by
@@ -637,7 +649,7 @@ def _tied_frames(
         if any(
             _images(contour) & slices for contour in item.get("ContourSequence", [])
         ):
-            tied.add(frames.get(int(item.ReferencedROINumber)))
+            tied |= frames_of_roi(int(item.ReferencedROINumber))
     for use in dataset.get("ReferencedFrameOfReferenceSequence", []):
         images = {
             uid
@@ -647,7 +659,7 @@ def _tied_frames(
         }
         if images & slices:
             tied.add(normalise_uid(str(use.get("FrameOfReferenceUID") or "")))
-    return {frame for frame in tied if frame}
+    return tied - {""}
 
 
 def _images(item: pydicom.Dataset) -> set[str]:
