@@ -620,7 +620,12 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         "values, hold more than the value's sign in the bits above Bits "
         "Stored, such as an overlay, or differ when written from its source "
         "other than in those regions. It writes other Pixel Data unchanged, "
-        "and " + claims
+        "and "
+        + claims
+        + "A run's method digest also covers its text finder's class and "
+        "description of its method, such as the text detector's model, ONNX "
+        "Runtime, NumPy, and SciPy versions, and parameters, so it is not the "
+        "digest that this statement gives. "
     )
 
 

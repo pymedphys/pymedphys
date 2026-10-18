@@ -560,6 +560,9 @@ _STRUCTURE_SET = "04-rtstruct.dcm"
 class _CornerFinder:
     """Finds text in the top left corner of every frame."""
 
+    # What decides its regions, as the method digest takes it.
+    method = {"finder": "top left corner"}
+
     def find(self, frame):
         del frame
         return (TextBox(0, 0, 2, 3),)
@@ -748,7 +751,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/19"
+    assert report["format"] == "pymedphys-deid-release-report/18"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):

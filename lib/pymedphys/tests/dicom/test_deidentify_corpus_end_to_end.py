@@ -47,6 +47,10 @@ neither GDCM nor pylibjpeg-openjpeg; the engine then sequesters the images as
 ``no-decoder``, which the instance transform tests cover.
 """
 
+# Each policy's run and its checks share the corpus and its helpers, so they
+# stay in one module.
+# pylint: disable = too-many-lines
+
 import dataclasses
 import io
 import json
@@ -63,6 +67,7 @@ from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     dummy_values,
+    pixel_cleaning,
     run,
     standard,
 )
@@ -233,6 +238,11 @@ def _run(spec):
                 None
                 if cleaning is None or cleaning.technique is None
                 else cleaning.technique.sha256
+            ),
+            text_finder=(
+                None
+                if spec.finder is None
+                else pixel_cleaning.finder_description(spec.finder)
             ),
         )
         return _Run(

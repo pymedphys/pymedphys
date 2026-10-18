@@ -47,7 +47,7 @@ from .conformance_values import code as _code
 from .conformance_safe_private import safe_private_section
 from .conformance_values import join as _join
 from .markers import PROFILE_CODE
-from .policy import CLEAN_STRUCTURED_CONTENT, ENGINE_OPTIONS, UIDS
+from .policy import CLEAN_PIXEL_DATA, CLEAN_STRUCTURED_CONTENT, ENGINE_OPTIONS, UIDS
 from .reviewed_descriptors import CLEAN_DESCRIPTORS
 from .reviewed_roi_names import Outcome, Review
 from .roi_names import Reason
@@ -871,8 +871,14 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "## Method digest",
         "",
         f"The method digest of {preset}, {vocabulary}, without the technique "
-        "vocabulary of free-text descriptors, and without a reviewed-names "
-        f"or reviewed descriptors list, is `{statement.method_digest}` "
+        "vocabulary of free-text descriptors, "
+        + (
+            "without a reviewed-names or reviewed descriptors list, and "
+            "without a text finder, "
+            if CLEAN_PIXEL_DATA in statement.options
+            else "and without a reviewed-names or reviewed descriptors list, "
+        )
+        + f"is `{statement.method_digest}` "
         "(D-024). It identifies the policy and the PyMedPhys implementation "
         "and resources that apply it.",
         "",
