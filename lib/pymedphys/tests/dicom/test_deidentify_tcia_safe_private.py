@@ -22,6 +22,7 @@ dictionaries other than the shipped one are written here.
 import csv
 import io
 import json
+import re
 
 from pymedphys._imports import pydicom, pytest
 
@@ -441,6 +442,8 @@ def test_the_run_s_report_and_statement_record_tcia_s_dictionary():
         statement
     )
     assert "reviewed rules of `safe_private.toml` settle" not in statement
+    # A reader of the statement has no design document to look a number up in.
+    assert re.search(r"\bD-\d{3}\b", statement) is None
 
 
 def test_the_default_statement_lists_the_reviewed_rules():

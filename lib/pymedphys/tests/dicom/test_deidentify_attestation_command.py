@@ -168,7 +168,9 @@ def test_attested_without_every_review_records_nothing(pack, missing):
     )
 
     assert status == command.EXIT_NOT_RECORDED
-    assert "every review that D-017 requires" in stderr
+    assert (
+        "needs every retained string, series, and high-risk instance reviewed" in stderr
+    )
     assert "nothing was recorded" in stderr
     assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
     assert not stdout

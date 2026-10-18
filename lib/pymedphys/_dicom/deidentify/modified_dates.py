@@ -271,10 +271,9 @@ VRS = frozenset({"DA", "DT", "OB", "SH", "TM"})
 TIMEZONE_OFFSET = "(0008,0201)"
 FRAME_ORIGIN_TIMESTAMP = "(0034,0007)"
 METHOD = (
-    "Each value is modified by its attribute's temporal role (D-007), and "
+    "Each value is modified by its attribute's temporal role, and "
     "each subject's dates move backwards by one whole number of weeks, from "
-    f"{dates.MIN_OFFSET_WEEKS} to {dates.MAX_OFFSET_WEEKS} and never zero "
-    "(D-006): "
+    f"{dates.MIN_OFFSET_WEEKS} to {dates.MAX_OFFSET_WEEKS} and never zero: "
     f"{dates.MIN_OFFSET_WEEKS} plus the first 64 bits of the HMAC-SHA256 of "
     "the subject's identity, its Patient ID with its issuer, in the "
     "`date-offset` domain of the run's key, modulo "

@@ -169,7 +169,7 @@ def safe_private_section(statement: ConformanceStatement) -> list[str]:
         "of it.",
         "",
         "Every other private attribute is removed: one whose rule is for text, "
-        "since no reviewed cleaner cleans private text (D-009), or removes it; "
+        "since no reviewed cleaner cleans private text, or removes it; "
         "one that is not such a sequence and that neither a rule nor the "
         "instance declares safe; one in a block without such a creator; one "
         "whose value does not pass its handling's check; and each element in "

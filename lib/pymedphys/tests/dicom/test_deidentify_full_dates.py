@@ -195,6 +195,6 @@ def test_the_statement_describes_kept_dates_and_needs_nothing_else():
     assert "no date or time is shifted or otherwise modified" in section
     assert f"The {kept} that take `K` keep their source values" in section
     assert "the kept value explains it" in section
-    assert "it still does (D-042 and D-043)" in section
+    assert "it still does." in section
     assert "`UNMODIFIED`" in section
     assert "not yet described" not in section
