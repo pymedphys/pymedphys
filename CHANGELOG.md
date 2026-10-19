@@ -243,6 +243,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** UID replacement property tests retain valid and invalid inputs while allowing distinct pairs to shrink to small examples. They now pass the input-generation health checks in Hypothesis 6.170.2 used by dependency-update validation. [Comparison](https://github.com/pymedphys/pymedphys/compare/main...fix/2405-hypothesis-uid-generation)
 - **[Contributor facing only]** The de-identification tests, including the
   series-numbering run test, use short, resolved temporary paths on Windows
   and compact case names for large residual-search inputs. Nested CLI tests
