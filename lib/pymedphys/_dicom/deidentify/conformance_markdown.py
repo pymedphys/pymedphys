@@ -30,6 +30,7 @@ import types
 from collections.abc import Callable, Iterable, Mapping
 
 from . import compound_actions, conformance_values, keys, markers
+from .dose_defacing import DOSE_FRACTION
 from .codes import load_context_group
 from .conformance import (
     CLEAN_DESCRIPTORS_FALLBACK,
@@ -657,6 +658,25 @@ _REVIEW_CONDITIONS = {
         "name, a name emptied without review, or another attribute "
         "given C that that action keeps does not gain that code"
     ),
+    markers.OPTION_CODES["clean_pixel_data"]: (
+        "only in an instance that has nothing for the option to clean, having "
+        "no Pixel Data, Float Pixel Data, or Double Float Pixel Data at the top "
+        "level of its data set, or whose source file is, by its SHA-256, one "
+        "whose blacked-out regions a reviewer accepted, or added to, after "
+        "seeing every frame, in the attested QC pack of an earlier run of the "
+        "same files. The engine then blacks out exactly the regions that the "
+        "reviewer approved, without its text finder, and sequesters the "
+        "instance where one goes past its frame. Such an instance also has Burned In "
+        "Annotation (0028,0301) set to NO, as PS3.15 E.3.1 requires, including "
+        "in an IOD that does not define the attribute, which of the supported "
+        "IODs are RT Plan, RT Structure Set, and MR Spectroscopy. There it is a "
+        "standard attribute of a Standard Extended SOP Class (PS3.2 Section "
+        "7.3), added to the top level of the data set as an attribute of the "
+        "instance, where every PS3.3 module that defines it, such as the "
+        "General Image Module, places it. Any other instance with Pixel Data "
+        "does not gain that code: it is held for review, or sequestered where "
+        "the reviewer rejected it, so it is never released"
+    ),
     markers.OPTION_CODES["clean_recognizable_visual_features"]: (
         "only in an instance that cannot show a face, having no Pixel Data, "
         "Float Pixel Data, or Double Float Pixel Data and not being an RT "
@@ -696,10 +716,19 @@ _REVIEW_CONDITIONS = {
         "while a target in another "
         "Frame of Reference that its structure set does not tie to them, "
         "such as one on a registered MR, does not hold it, and so is "
-        "each RT Structure Set, RT Dose, and PET "
-        "instance, with or without pixel data, that is in a defaced series' "
+        "each RT Structure Set, RT Dose with pixel data, and PET "
+        "instance that is in a defaced series' "
         "Frame of Reference, names none, or refers to a defaced slice, which "
-        "the run does not yet clean. A verdict on such an instance, given "
+        "the run does not yet clean. An RT Dose in the Frame of Reference of "
+        "only one defaced series, with native pixel data of no negative value "
+        "on a grid placed as PS3.3 Section C.8.8.3.2 defines, is cleaned "
+        "instead: its dose in that region, "
+        "less the cranial cavity kept, is set to zero, never recalculated, "
+        "and its dose-volume histograms are kept as received; where the "
+        f"greatest dose set to zero would be more than {DOSE_FRACTION:.0%} of "
+        "the grid's "
+        "greatest, it is not set to zero, and the RT Dose is held for review. "
+        "A verdict on an instance held for either reason, given "
         "beside the defaced images, does not cover it in a later run"
     ),
 }

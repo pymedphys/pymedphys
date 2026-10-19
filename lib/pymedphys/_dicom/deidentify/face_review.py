@@ -49,7 +49,7 @@ import re
 
 from pymedphys._imports import pydicom
 
-from .qc_attestation import Face, attested_pack
+from .qc_attestation import Face, Outcome, attested_pack
 from .qc_pack import QcPackError
 from .reasons import VisualFeaturesReason
 
@@ -77,7 +77,9 @@ class FaceReview:
         marked :attr:`~.qc_attestation.Face.ABSENT`, other than one that the
         reviewed run held beside a CT series that it defaced
         (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
-        by its frame, by naming none, or by a reference to a defaced slice.
+        by its frame, by naming none, or by a reference to a defaced slice,
+        or held as an RT Dose with too much dose in that series' block to
+        set to zero (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`).
     present : frozenset of bytes
         Likewise, of each series marked :attr:`~.qc_attestation.Face.PRESENT`.
     absent_pixels : frozenset of (bytes, bytes)
@@ -160,7 +162,8 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
     -------
     FaceReview
         Empty of files where the attestation gives no verdict. A file that
-        the pack lists as held because the run defaced its frame is not
+        the pack lists as held because the run defaced its frame, or as an
+        RT Dose with too much dose in the face block to set to zero, is not
         taken as absent, since its verdict was on the defaced images beside
         it.
 
@@ -168,12 +171,17 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
     ------
     QcPackError
         If the directory holds no QC pack, or the pack has not been
-        attested; if either is not of its format, or the attestation is for
-        another pack; if the pack or a preview changed after it was attested;
-        or if a verdict names a series that the pack does not list. The
-        message names no path and no value.
+        attested, or its attestation's outcome is rejected, whose verdicts
+        release nothing; if either is not of its format, or the attestation
+        is for another pack; if the pack or a preview changed after it was
+        attested; or if a verdict names a series that the pack does not
+        list. The message names no path and no value.
     """
     attestation, data = attested_pack(pack_directory)
+    if attestation.outcome is not Outcome.ATTESTED:
+        raise QcPackError(
+            "the QC pack's attestation rejected it, so its verdicts release nothing"
+        )
     files = _series_files(data)
     by_face: dict[Face, set[_File]] = {face: set() for face in Face}
     for verdict in attestation.faces:
@@ -198,12 +206,16 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
 
 
 # A source file's SHA-256, that of the pixel data written of it, if any, and
-# whether the run held it beside a CT series that it defaced.
+# whether the run held it beside a CT series that it defaced, as received.
 _File = tuple[bytes, bytes | None, bool]
-# That hold's reason as the QC pack words it, which run_qc.reason_text gives.
+# Those holds' reasons as the QC pack words them, which run_qc.reason_text
+# gives.
 UNDEFACED_TEXT = (
     "HeldVisualFeatures(reason="
     f"{VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME.value})"
+)
+DOSE_IN_FACE_BLOCK_TEXT = (
+    f"HeldVisualFeatures(reason={VisualFeaturesReason.DOSE_IN_FACE_BLOCK.value})"
 )
 
 
@@ -235,7 +247,7 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
             digests[position] = (
                 bytes.fromhex(digest),
                 None if pixels is None else bytes.fromhex(pixels),
-                UNDEFACED_TEXT in reasons,
+                UNDEFACED_TEXT in reasons or DOSE_IN_FACE_BLOCK_TEXT in reasons,
             )
     files: dict[int, frozenset[_File]] = {}
     for entry in series:

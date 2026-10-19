@@ -42,6 +42,7 @@ from pymedphys._dicom.deidentify import (
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.face_review import (
+    DOSE_IN_FACE_BLOCK_TEXT,
     UNDEFACED_TEXT,
     FaceReview,
     carries_visual_features,
@@ -132,14 +133,15 @@ def _one(digests):
     return digest
 
 
-def _attest(directory, faces):
+def _attest(directory, faces, outcome=Outcome.ATTESTED, redactions=()):
     return qc_attestation.attest(
         directory,
         reviewer="Quokka Wombatson",
-        outcome=Outcome.ATTESTED,
+        outcome=outcome,
         coverage=COMPLETE,
         attested_at=WHEN,
         faces=faces,
+        redactions=redactions,
     )
 
 
@@ -173,17 +175,18 @@ def test_a_series_without_a_verdict_gives_no_digests(pack):
     assert not review.present
 
 
+@pytest.mark.parametrize("reason", [UNDEFACED_TEXT, DOSE_IN_FACE_BLOCK_TEXT])
 def test_a_verdict_of_absent_leaves_out_a_file_held_because_its_frame_was_defaced(
-    tmp_path,
+    tmp_path, reason
 ):
-    # Position 2, an RT Structure Set, say, was held beside the defaced
-    # slices that the reviewer judged, with its own outlines left as they
-    # were.
+    # Position 2, an RT Structure Set or RT Dose, say, was held beside the
+    # defaced slices that the reviewer judged, with its own outlines or dose
+    # left as they were.
     held = InstanceEntry(
         2,
         "/imports/2.dcm",
         Disposition.HELD_FOR_REVIEW,
-        reasons=("ReleaseReason.RT_DOSE", UNDEFACED_TEXT),
+        reasons=("ReleaseReason.RT_DOSE", reason),
         source_sha256=_digest(2),
         pixel_sha256=_pixel_digest(2),
     )
@@ -251,11 +254,33 @@ def test_the_frame_hold_is_matched_as_the_run_words_it():
     assert UNDEFACED_TEXT == run_qc.reason_text(
         HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
     )
+    assert DOSE_IN_FACE_BLOCK_TEXT == run_qc.reason_text(
+        HeldVisualFeatures(VisualFeaturesReason.DOSE_IN_FACE_BLOCK)
+    )
 
 
 def test_a_pack_that_is_not_attested_gives_no_review(pack):
     with pytest.raises(QcPackError, match="has not been attested"):
         read_face_review(pack)
+
+
+def test_a_rejected_attestation_gives_no_review(pack):
+    _attest(pack, {1: Face.ABSENT})
+    # Attesting refuses verdicts with a rejection, so the file is changed by
+    # hand, as it might be outside the command.
+    path = pack / qc_attestation.ATTESTATION_FILE
+    document = json.loads(path.read_text("ascii"))
+    path.chmod(0o600)
+    path.write_text(json.dumps({**document, "outcome": "rejected"}), encoding="ascii")
+
+    with pytest.raises(QcPackError, match="verdicts release nothing"):
+        read_face_review(pack)
+
+
+def test_attesting_refuses_a_face_verdict_with_an_outcome_of_rejected(pack):
+    with pytest.raises(QcPackError, match="would release nothing"):
+        _attest(pack, {1: Face.ABSENT}, Outcome.REJECTED)
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
 
 
 def test_a_pack_changed_after_its_verdicts_gives_no_review(pack):
@@ -479,23 +504,40 @@ def test_the_statement_of_the_option_alone_has_one_review_code():
     assert statement.markers.review_codes == (CODE,)
 
 
-def test_with_clean_pixel_data_only_the_option_is_claimed_after_review():
+def test_with_clean_pixel_data_both_options_are_claimed_after_review():
     statement = conformance.conformance_statement(
         _policy("clean_pixel_data"), vocabulary=None
     )
 
     assert statement.markers.codes == (markers.PROFILE_CODE,)
-    assert statement.markers.review_codes == (CODE,)
+    # In the policy's order, which puts Clean Pixel Data first.
+    assert statement.markers.review_codes == ("113101", CODE)
 
 
-@pytest.mark.parametrize("pixel", [(), ("clean_pixel_data",)])
-def test_the_statement_says_the_option_is_claimed_only_after_review(pixel):
-    claims = (
-        "claims Clean Recognizable Visual Features only for an instance that "
-        "cannot show a face or whose source file a reviewer found free of one, "
-        "and never Clean Pixel Data."
+@pytest.mark.parametrize(
+    "pixel, claims",
+    [
+        (
+            (),
+            "claims Clean Recognizable Visual Features only for an instance that "
+            "cannot show a face or whose source file a reviewer found free of "
+            "one, and never Clean Pixel Data.",
+        ),
+        (
+            ("clean_pixel_data",),
+            "claims Clean Pixel Data only for an instance without top-level "
+            "pixel data or whose regions a reviewer approved, and Clean "
+            "Recognizable Visual Features only for one that cannot show a face "
+            "or whose source file a reviewer found free of one.",
+        ),
+    ],
+)
+def test_the_statement_says_the_option_is_claimed_only_after_review(pixel, claims):
+    neither = (
+        "claims neither Clean Pixel Data nor Clean Recognizable Visual Features."
+        if not pixel
+        else "and never Clean Recognizable Visual Features."
     )
-    neither = "claims neither Clean Pixel Data nor Clean Recognizable Visual Features."
     under = conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(*pixel), vocabulary=None)
     )
@@ -723,15 +765,18 @@ def test_with_clean_pixel_data_a_verdict_covers_only_the_pixel_data_seen(
     # A series marked present is held for both.
     assert blacked_out in reasons[_DOSE[0]]
     assert HeldVisualFeatures(VisualFeaturesReason.FACE_PRESENT) in reasons[_DOSE[0]]
-    # What has no pixel data is released as without Clean Pixel Data, and no
-    # instance claims that option.
-    for name in (_STRUCTURE_SET, "05-rtplan.dcm", "14-mr-spectroscopy.dcm"):
+    # What has no pixel data is released, and claims both options, since
+    # it has nothing for Clean Pixel Data to clean.
+    released = (_STRUCTURE_SET, "05-rtplan.dcm", "14-mr-spectroscopy.dcm")
+    for name in released:
         disposition, dataset = outcomes[name]
         assert disposition == "released", name
         assert dataset.RecognizableVisualFeatures == "NO"
-        assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
-    for _, dataset in outcomes.values():
-        assert dataset is None or "113101" not in _codes(dataset)
+        assert dataset.BurnedInAnnotation == "NO"
+        assert _codes(dataset)[-3:] == [markers.PROFILE_CODE, "113101", CODE]
+    assert {
+        name for name, (_, dataset) in outcomes.items() if dataset is not None
+    } == set(released)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-02")
@@ -751,7 +796,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/19"
+    assert report["format"] == "pymedphys-deid-release-report/21"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):

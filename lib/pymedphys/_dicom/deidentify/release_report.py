@@ -64,6 +64,9 @@ and codes that the engine defines, never by a source value or path:
   defaced, and how many it did not, by why
   (:class:`~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts`);
   None otherwise.
+- ``redaction_review``: under the Clean Pixel Data Option, the opaque
+  reference of the earlier run's attested QC pack whose redaction verdicts
+  the run applied; None otherwise.
 - ``released``: each released instance by its output name, the path below
   the release directory that
   :func:`~pymedphys._dicom.deidentify.output_names.instance_path` gives
@@ -84,7 +87,9 @@ and codes that the engine defines, never by a source value or path:
   source file and the pixel data that the run writes of it (D-046), a CT
   slice of a series with a target in its face block, an RT Structure Set,
   RT Dose, or PET instance in a defaced series' Frame of Reference, naming
-  none, or referring to a defaced slice (D-050), or a release gate's
+  none, or referring to a defaced slice (D-050), an RT Dose with too much
+  dose in a defaced series' face block to set to zero there (D-051), or a
+  release gate's
   reason that requires QC review. A held
   instance has neither an output name nor a label.
 - ``roi_names``: the outcome of each ROI Name of the structure sets that
@@ -177,7 +182,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/19"
+FORMAT = "pymedphys-deid-release-report/21"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -549,6 +554,7 @@ class ReleaseReport:
     qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord or None
     face_review : str or None
     face_blocks : ~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts or None
+    redaction_review : str or None
     released : tuple of pathlib.PurePosixPath
     sequestered : tuple of SequesteredInstance
     search_coverage : tuple of SearchCoverage
@@ -567,6 +573,7 @@ class ReleaseReport:
     qc_review: AttestationRecord | None = None
     face_review: str | None = None
     face_blocks: FaceBlockCounts | None = None
+    redaction_review: str | None = None
     released: tuple[PurePosixPath, ...] = ()
     sequestered: tuple[SequesteredInstance, ...] = ()
     search_coverage: tuple[SearchCoverage, ...] = ()
@@ -923,6 +930,7 @@ def release_report(
     qc_review: AttestationRecord | None = None,
     face_review: str | None = None,
     face_blocks: FaceBlockCounts | None = None,
+    redaction_review: str | None = None,
     released: Iterable[PurePosixPath] = (),
     sequestered: Iterable[SequesteredInstance] = (),
     coverage: Iterable[SearchCoverage] = (),
@@ -983,6 +991,11 @@ def release_report(
         With ``face_review``, how many series of CT Image instances the run
         defaced, and how many it did not, by why; None, the default, counts
         none.
+    redaction_review : str, optional
+        Under the Clean Pixel Data Option, the reference of the attested QC
+        pack whose redaction verdicts the run applied, from
+        :class:`~pymedphys._dicom.deidentify.redaction_review.RedactionReview`;
+        None, the default, otherwise.
     released : iterable of pathlib.PurePosixPath, optional
         The output name of each released instance, as
         :func:`~pymedphys._dicom.deidentify.output_names.instance_path`
@@ -1039,7 +1052,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'qc_review', 'face_review', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'source_gaps', 'structural_checks']
+    ['format', 'policy', 'method', 'runtime', 'qc_review', 'face_review', 'redaction_review', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'source_gaps', 'structural_checks']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -1063,6 +1076,7 @@ def release_report(
         qc_review=qc_review,
         face_review=face_review,
         face_blocks=face_blocks,
+        redaction_review=redaction_review,
         released=tuple(released),
         sequestered=tuple(sequestered),
         search_coverage=tuple(coverage),
@@ -1300,6 +1314,16 @@ def _face_review_section(
             ],
         },
     }
+
+
+def _redaction_review_section(reference: str | None) -> dict | None:
+    """Return the section that names the earlier run's attested QC pack whose
+    redaction verdicts the run applied."""
+    if reference is None:
+        return None
+    if _string(reference) is None or not _REFERENCE.fullmatch(reference):
+        raise _refuse("redaction_review", "is not a QC pack's reference")
+    return {"reference": reference}
 
 
 def _is_output_name(path: object) -> bool:
@@ -1581,14 +1605,15 @@ def report_document(report: ReleaseReport) -> dict:
 
     The document is an object with the members ``format`` (:data:`FORMAT`),
     ``policy``, ``method``, ``runtime``, ``qc_review``, ``face_review``,
-    ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
+    ``redaction_review``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
     ``descriptors``,
     ``reference_findings``, ``pixel_risks``, ``search_coverage``,
     ``source_gaps``, and ``structural_checks``, in that order, each section's
     fields in the order of its class, the digests of tables and files sorted
     by name, ``qc_review`` null where the run wrote no QC pack,
     ``face_review`` null or an object with the reference and the CT series'
-    ``ct_series`` counts, ``defaced`` and ``not_defaced`` by code, the released
+    ``ct_series`` counts, ``defaced`` and ``not_defaced`` by code,
+    ``redaction_review`` null or an object with the reference, the released
     output names sorted, the sequestered instances by label, each with its
     reasons once, in the order given, the held counts by stage and code, the
     ROI Names' and the descriptors' ``outcomes`` and ``held`` counts each by
@@ -1634,6 +1659,7 @@ def report_document(report: ReleaseReport) -> dict:
         "runtime": _runtime_section(report.runtime),
         "qc_review": _qc_review_section(report.qc_review),
         "face_review": _face_review_section(report.face_review, report.face_blocks),
+        "redaction_review": _redaction_review_section(report.redaction_review),
         "released": _released_section(report.released),
         "sequestered": _sequestered_section(report.sequestered),
         "held_for_review": _held_section(report.held_for_review),

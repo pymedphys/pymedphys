@@ -18,7 +18,8 @@
 
 The engine changes pixel data only under the Clean Pixel Data Option, which
 blacks out the text that a text finder finds and holds the instance for
-review, and no instance claims that option yet. It claims the Clean
+review, and claims that option only for an instance that a reviewer cleared
+or that has nothing for the option to clean. It claims the Clean
 Recognizable Visual Features Option only for an instance that cannot show a
 face or whose source file a reviewer found free of one. Whatever the options,
 it reports indicators of risk for review: of text burned into the pixel data,

@@ -120,8 +120,12 @@ class TransformReason(enum.Enum):
     # sign, such as an overlay (D-037)
     UNCLEANABLE_PIXEL_DATA = "uncleanable-pixel-data"
     # under Clean Pixel Data, written Pixel Data that differs from its source
-    # other than by the blacked-out regions (D-037)
+    # other than by the blacked-out regions (D-037), or reviewed regions in a
+    # frame that the Pixel Data does not hold
     REDACTION_MISMATCH = "redaction-mismatch"
+    # under Clean Pixel Data, an instance whose cleaned Pixel Data a reviewer
+    # rejected in an attested QC pack, so that it is never released
+    REDACTION_REJECTED = "redaction-rejected"
 
 
 class DescriptorReason(enum.Enum):
@@ -182,6 +186,10 @@ class VisualFeaturesReason(enum.Enum):
     # than the reviewed run did, such as a CT slice defaced since the
     # reviewer saw it as received, so the verdict is not of what it releases
     OTHER_PIXEL_DATA = "face-verdict-on-other-pixel-data"
+    # an RT Dose in the Frame of Reference of a CT series that the run
+    # defaces, whose dose in the series' face block is too great to set to
+    # zero there, so that it is written as received
+    DOSE_IN_FACE_BLOCK = "dose-in-face-block"
     # an RT Structure Set, RT Dose, or PET instance in the Frame of
     # Reference of a CT series that the run defaces, whose outline or pixel
     # data the run does not yet clean of the face, and which a reviewer may
