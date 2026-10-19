@@ -218,6 +218,24 @@ def test_an_eye_in_another_frame_leaves_the_head_ct_defaced():
     assert _outcome(rtss).problem is None
 
 
+def test_an_eye_naming_no_frame_in_a_set_of_another_frame_is_not_checked():
+    # The set is searched for targets, being of the same patient, but an
+    # eye of it naming no frame is of the scan that its set declares.
+    dataset = pydicom.dcmread(
+        io.BytesIO(
+            _rtss(
+                ("Eye_L", "ORGAN", _eye(np.add(_GLOBES[1], (0, 0, -40)))),
+                frame=files.ROOT + ".8",
+            )
+        )
+    )
+    del dataset.StructureSetROISequence[0].ReferencedFrameOfReferenceUID
+    buffer = io.BytesIO()
+    dataset.save_as(buffer, enforce_file_format=True)
+
+    assert _outcome(buffer.getvalue()).problem is None
+
+
 def test_a_target_in_the_block_is_the_reason_before_the_eyes():
     rtss = _rtss(
         ("PTV", "PTV", files.square((-32.0, -76.0, 20.0))),

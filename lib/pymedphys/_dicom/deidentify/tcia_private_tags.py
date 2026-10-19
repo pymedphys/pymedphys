@@ -31,9 +31,31 @@ Only the disposition ``k`` keeps an attribute. A ``k`` records that TCIA
 keeps the attribute in its own curation; it checks no value, so a value that
 it keeps must still pass the handling of its VR.
 
-Nothing uses the dictionary yet: the reviewed rules of ``safe_private.toml``
-are the default list, this is the list a run may choose instead, and the
-engine refuses a policy that selects the Option until it applies them.
+The reviewed rules of ``safe_private.toml`` are the default list, and this
+is the list that a run may choose instead (D-035).
+:func:`tcia_safe_private_rules` gives its rules
+(:class:`TciaSafePrivateRules`), which the engine applies as it applies the
+reviewed rules:
+
+- A rule is made from each row at the top level that names a private
+  creator in printable ISO 646, without a backslash, as an instance's
+  creators are compared. A row below the top level makes none, so an
+  attribute that only such a row keeps is removed; a rule made from a
+  top-level row applies wherever its creator's block is, as a reviewed rule
+  does.
+- The dictionary gives an attribute a row for each VR that TCIA has seen it
+  with, such as DS, and OB or UN where a file held it without a readable
+  VR. An attribute written with a VR takes the rule of the row for that VR,
+  and has none where no row gives it. One whose VR is not written, in
+  Implicit VR or as UN, takes the rule of the one VR other than OB, UN, or
+  none that its rows give, and has none where they give several or none.
+- A row that keeps its attribute (``k``) makes a rule with the handling of
+  its VR (:func:`~pymedphys._dicom.deidentify.safe_private.default_handling`),
+  so a value that it keeps still passes that check, and with a single value.
+  Where a reviewed rule has the same private creator, group, element, and
+  VR, the rule takes that rule's handling and VM instead. Any other row
+  makes a rule that removes its attribute, as do rows for one VR that
+  disagree.
 """
 
 from __future__ import annotations
@@ -48,6 +70,13 @@ import re
 import types
 from collections.abc import Mapping
 
+from .safe_private import (
+    Basis,
+    Handling,
+    SafePrivateRule,
+    default_handling,
+    load_safe_private_rules,
+)
 from .standard import VRS
 
 TCIA_DIR = pathlib.Path(__file__).resolve().parent / "_tcia"
@@ -69,6 +98,16 @@ _PRIVATE_STEP = re.compile(r'\(([0-9A-Fa-f]{4}),"?(.*?)"?,([0-9A-Fa-f]{2})\)')
 # an item of a top-level sequence, [<1>] one level down, and so on.
 _DEPTH = re.compile(r"\[<([0-9]+)>\]")
 _RESERVED_ODD_GROUPS = frozenset({0x0001, 0x0003, 0x0005, 0x0007, 0xFFFF})
+# The padding that PS3.5 Section 6.2 allows after a private creator.
+_CREATOR_PADDING = " \x00"
+# The characters of a private creator that an instance's creators are
+# compared in: printable ISO 646 without a backslash (retained_private).
+_CREATOR_CHARACTERS = frozenset(map(chr, range(0x20, 0x7F))) - {"\\"}
+# The VRs of rows that say nothing of how a value is read: those of an
+# attribute that a file held as bytes, without a VR, or as UN.
+_UNREAD_VRS = frozenset({"OB", "UN", ""})
+# The VM of a rule that keeps an attribute that no reviewed rule gives a VM.
+_SINGLE_VALUE = "1"
 
 
 class TciaPrivateTagError(ValueError):
@@ -117,6 +156,13 @@ PIN = Pin(
     sha256="68e38b67778ddb8ffa60f46bef894f3931330781e375c52bc06fc86cad44d111",
     size=674200,
     retrieved="2026-10-12",
+)
+
+# The attribution that CC BY 3.0 asks of anything that reproduces the
+# dictionary, such as a conformance statement that lists its rules.
+ACKNOWLEDGEMENT = (
+    "Private Tag Dictionary of The Cancer Imaging Archive (TCIA), "
+    "CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/)"
 )
 
 
@@ -189,8 +235,9 @@ class TciaPrivateTags:
         In the file's order.
     top_level : mapping of (str, int, int) to tuple of TciaPrivateTag
         The rows of each private attribute at the top level, keyed by private
-        creator, group, and element within the block; one attribute can have
-        a row for each of several VRs. Read-only.
+        creator without trailing spaces and NULs, group, and element within
+        the block; one attribute can have a row for each of several VRs.
+        Read-only.
     """
 
     pin: Pin
@@ -209,7 +256,9 @@ class TciaPrivateTags:
         and NULs, which are padding. The dictionary writes some creators in
         upper case, and such a row matches only a creator in upper case.
         """
-        return self.top_level.get((private_creator.rstrip(" \x00"), group, element), ())
+        return self.top_level.get(
+            (private_creator.rstrip(_CREATOR_PADDING), group, element), ()
+        )
 
 
 def _step(text: str) -> Step | None:
@@ -337,7 +386,8 @@ def parse_tcia_private_tags(content: bytes, name: str) -> TciaPrivateTags:
         rows.append(row)
         (step, *nested) = row.path
         if not nested and step.private_creator is not None:
-            key = (step.private_creator, step.group, step.element)
+            creator = step.private_creator.rstrip(_CREATOR_PADDING)
+            key = (creator, step.group, step.element)
             top_level.setdefault(key, []).append(row)
     return TciaPrivateTags(
         pin=PIN,
@@ -345,4 +395,142 @@ def parse_tcia_private_tags(content: bytes, name: str) -> TciaPrivateTags:
         top_level=types.MappingProxyType(
             {key: tuple(each) for key, each in top_level.items()}
         ),
+    )
+
+
+# The key of an attribute: its private creator, group, and element within
+# the block.
+_Key = tuple[str, int, int]
+
+
+@dataclasses.dataclass(frozen=True)
+class TciaSafePrivateRules:
+    """TCIA's dictionary as safe private rules, for a run that chooses it.
+
+    Attributes
+    ----------
+    pin : Pin
+        Where the dictionary came from.
+    rules : mapping of (str, int, int) to mapping of str to SafePrivateRule
+        The rule of each attribute at the top level for each VR that its
+        rows give, keyed by private creator, group, and element within the
+        block, then by VR, in the file's order. Read-only.
+    unwritten : mapping of (str, int, int) to SafePrivateRule
+        The rule of each attribute whose VR is not written, where its rows
+        give one VR other than OB, UN, or none. Read-only.
+    """
+
+    pin: Pin
+    # Mappings are not hashable, so they are left out of the hash.
+    rules: Mapping[_Key, Mapping[str, SafePrivateRule]] = dataclasses.field(hash=False)
+    unwritten: Mapping[_Key, SafePrivateRule] = dataclasses.field(hash=False)
+
+    def rule_for(
+        self, group: int, private_creator: str, element: int, vr: str | None = None
+    ) -> SafePrivateRule | None:
+        """Return the rule for a private data element, or None if it has none.
+
+        Parameters
+        ----------
+        group : int
+            The element's group.
+        private_creator : str
+            The value of the private creator that reserves the element's
+            block. Trailing spaces and NULs are padding; the comparison is
+            otherwise exact, as for a reviewed rule.
+        element : int
+            The element within the block, ``0x00`` to ``0xFF``.
+        vr : str, optional
+            The element's VR as written, or None, the default, where it is
+            not written, in Implicit VR or as UN.
+        """
+        key = (private_creator.rstrip(_CREATOR_PADDING), group, element)
+        if vr is None:
+            return self.unwritten.get(key)
+        return self.rules.get(key, {}).get(vr)
+
+    def retained(self) -> tuple[SafePrivateRule, ...]:
+        """Return the rules that can retain a value, in the file's order."""
+        return tuple(
+            rule
+            for by_vr in self.rules.values()
+            for rule in by_vr.values()
+            if rule.handling.retains
+        )
+
+
+def tcia_safe_private_rules(
+    tags: TciaPrivateTags | None = None,
+) -> TciaSafePrivateRules:
+    """Return the rules that TCIA's dictionary gives, as the module describes.
+
+    Parameters
+    ----------
+    tags : TciaPrivateTags, optional
+        The dictionary. Defaults to the one shipped with PyMedPhys, whose
+        rules are made once and cached.
+
+    Raises
+    ------
+    TciaPrivateTagError
+        If the shipped dictionary cannot be used, as
+        :func:`load_tcia_private_tags` refuses it.
+    ~pymedphys._dicom.deidentify.safe_private.SafePrivateRuleError
+        If the reviewed rules cannot be loaded.
+    """
+    if tags is None:
+        return _shipped_rules()
+    return _rules(tags)
+
+
+@functools.lru_cache(maxsize=None)
+def _shipped_rules() -> TciaSafePrivateRules:
+    return _rules(load_tcia_private_tags())
+
+
+def _rules(tags: TciaPrivateTags) -> TciaSafePrivateRules:
+    reviewed = load_safe_private_rules().rules
+    rules: dict[_Key, Mapping[str, SafePrivateRule]] = {}
+    unwritten: dict[_Key, SafePrivateRule] = {}
+    # The parser keys top_level by the creator without its padding, so rows
+    # for spellings that differ only by padding already share a key.
+    for key, rows in tags.top_level.items():
+        creator = key[0]
+        if not creator or not set(creator) <= _CREATOR_CHARACTERS:
+            continue
+        by_vr: dict[str, SafePrivateRule] = {}
+        for row in rows:
+            if row.vr:
+                rule = _rule(key, row, reviewed.get(key))
+                # Rows that disagree about one VR keep nothing.
+                if by_vr.get(row.vr, rule).handling is not rule.handling:
+                    rule = dataclasses.replace(
+                        rule, vm=_SINGLE_VALUE, handling=Handling.REMOVE
+                    )
+                by_vr[row.vr] = rule
+        readable = [vr for vr in by_vr if vr not in _UNREAD_VRS]
+        if by_vr:
+            rules[key] = types.MappingProxyType(by_vr)
+        if len(readable) == 1:
+            unwritten[key] = by_vr[readable[0]]
+    return TciaSafePrivateRules(
+        pin=tags.pin,
+        rules=types.MappingProxyType(rules),
+        unwritten=types.MappingProxyType(unwritten),
+    )
+
+
+def _rule(
+    key: _Key, row: TciaPrivateTag, reviewed: SafePrivateRule | None
+) -> SafePrivateRule:
+    """Return the rule that one row of the dictionary makes."""
+    creator, group, element = key
+    if not row.keeps:
+        handling, vm = Handling.REMOVE, _SINGLE_VALUE
+    elif reviewed is not None and reviewed.vr == row.vr:
+        handling, vm = reviewed.handling, reviewed.vm
+    else:
+        handling, vm = default_handling(row.vr), _SINGLE_VALUE
+    return SafePrivateRule(
+        creator, group, element, row.vr, vm, handling, Basis.TCIA, note=row.name
     )

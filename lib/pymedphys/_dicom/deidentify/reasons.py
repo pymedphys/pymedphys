@@ -197,8 +197,8 @@ class VisualFeaturesReason(enum.Enum):
     # too or that cannot be cut, and which a reviewer may have judged from
     # the defaced CT
     UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
-    # a CT slice of a series whose face block holds a point of a target's
-    # contour, so that the series is not defaced
+    # a CT slice of a series whose face block a target may reach, so that
+    # the series is not defaced
     TARGET_IN_FACE_BLOCK = "target-in-face-block"
     # a CT slice of a series whose structure set draws an eye away from the
     # globes that its face block was found from, so that the series is not

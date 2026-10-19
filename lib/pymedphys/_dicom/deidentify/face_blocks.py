@@ -41,20 +41,24 @@ masks. A series is defaced only where all of these hold:
   volume's superior end, which bounds the memory that a long volume needs;
   and
 - no contour of a target, an ROI whose RT ROI Interpreted Type is
-  :data:`TARGET_TYPES`, of an RT Structure Set of the run in the series'
-  Frame of Reference, or naming none, reaches the block, or has anything
+  :data:`TARGET_TYPES`, of any RT Structure Set of the run searched for the
+  series (:func:`_searched`), in the series' Frame of Reference, or naming
+  none, reaches the block, or has anything
   between its contours that does, as the convex hull of its contours
-  judges it (:func:`_hull_reaches`), a target that names no Frame of
-  Reference counting as one in it; no target in another frame, whose
-  contours cannot be placed without a registration, is in a structure set
-  that ties that frame to the series' slices (:func:`_targets_reach`);
+  judges it (:func:`_hull_reaches`); no target in another frame, whose
+  contours cannot be placed without a registration, has a structure set
+  that ties that frame to the series' slices (:func:`_targets_reach`), a
+  target whose ROI names no frame, or one that is malformed, counting as
+  one in the series' frame and in each frame that its structure set
+  declares;
 - every point of each eye, an ROI in the series' Frame of Reference or
   naming none whose ROI Name names an eye, a globe, or an eyeball
-  (:func:`_is_eye`), of those structure sets lies within
+  (:func:`_is_eye`), of those structure sets in the series' frame, naming
+  no valid frame, or drawn on its slices (:func:`_placed`), lies within
   :data:`EYE_REACH` millimetres of the nearer globe that the finder found
   (:func:`_eyes_far`), so that a block placed from something else taken
   for the globes is not written; and
-- every such structure set can be read.
+- every structure set searched for it can be read.
 
 Anything else that a series' data raises leaves the series undefaced, as
 unreadable, rather than stopping the run, and no message of it, which could
@@ -98,10 +102,12 @@ it from the defaced CT's previews
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), until
 the run can clean it too (:class:`Defaced`). So is one that names no Frame
 of Reference, in a run that defaces any series, or that refers to a defaced
-slice, whatever frame it declares. A structure set that names no Frame of
-Reference is likewise searched for targets in the block of every series,
-and a target in another frame holds a series whose slices its structure
-set ties to that frame, whatever other frames the set declares.
+slice, whatever frame it declares. A structure set is searched for targets
+in the block of a series where it is in the series' frame, names no valid
+frame, or is drawn on its slices, and otherwise unless it and every slice
+give Patient IDs that differ, and a target in another frame holds a series
+whose slices its structure set ties to that frame, whatever other frames
+the set declares.
 """
 
 from __future__ import annotations
@@ -128,9 +134,11 @@ from .pixel_cleaning import (
     layout_of,
     stored_range,
 )
+from .pseudonyms import SubjectIdentity
 from .reasons import TransformReason
 from .references import InstanceRecord
 from .source import NATIVE_TRANSFER_SYNTAXES
+from .uid_registry import is_uid
 from .uids import normalise_uid
 
 CT_IMAGE = "CT Image"
@@ -181,7 +189,7 @@ class SeriesProblem(enum.Enum):
     NOT_ONE_STACK = "not-one-stack"
     # stored values that cannot hold air without clipping
     AIR_NOT_STORED = "air-not-stored"
-    # a target's contour in the block
+    # a target that may reach the block
     TARGET_IN_BLOCK = "target-in-block"
     # an eye's contour in the series' frame away from the globes found
     EYES_DISAGREE = "eyes-disagree-with-rois"
@@ -293,41 +301,98 @@ def find_face_blocks(
     """
     series: dict[str, list[int]] = collections.defaultdict(list)
     slices: dict[str, set[str]] = collections.defaultdict(set)
-    structure_sets: dict[str, list[int]] = collections.defaultdict(list)
-    # Structure sets that name no Frame of Reference, which may be in any.
-    frameless: list[int] = []
-    # What each structure set refers to, such as the slices it is drawn on.
-    referred: dict[int, set[str]] = {}
+    structure_sets: list[int] = []
     for position, record in sorted(records.items()):
         if record.iod == CT_IMAGE and record.series is not None:
             series[record.series].append(position)
             if record.sop_instance:
                 slices[record.series].add(record.sop_instance)
         elif record.iod == RT_STRUCTURE_SET:
-            frames = frames_of(record)
-            for frame in frames:
-                structure_sets[frame].append(position)
-            if not frames:
-                frameless.append(position)
-            referred[position] = {reference.target for reference in record.references}
+            structure_sets.append(position)
     outcomes = {}
     for uid, positions in series.items():
         outcome, frame = _series_outcome(positions, read)
         if outcome.block is not None and frame:
-            # Those in its frame, those that name none, and those drawn on
-            # its slices whatever frames they declare.
-            drawn = {
+            searched = [
                 position
-                for position, targets in referred.items()
-                if not targets.isdisjoint(slices[uid])
-            }
-            searched = sorted({*structure_sets.get(frame, []), *frameless, *drawn})
+                for position in structure_sets
+                if _searched(records[position], frame, slices[uid], positions, records)
+            ]
             if _target_in(outcome.block, frame, slices[uid], searched, read):
                 outcome = SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK)
-            elif _eyes_disagree(outcome.block, frame, searched, read):
+            elif _eyes_disagree(
+                outcome.block,
+                frame,
+                [
+                    position
+                    for position in searched
+                    if _placed(records[position], frame, slices[uid])
+                ],
+                read,
+            ):
                 outcome = SeriesDefacing(None, SeriesProblem.EYES_DISAGREE)
         outcomes[uid] = outcome
     return outcomes
+
+
+def _searched(
+    structure_set: InstanceRecord,
+    frame: str,
+    slices: set[str],
+    positions: list[int],
+    records: Mapping[int, InstanceRecord],
+) -> bool:
+    """Whether a structure set is searched for targets in a series' block.
+
+    One in the series' Frame of Reference, naming no valid frame, or drawn
+    on its slices always is. So is any other of the same patient as a
+    slice of the series (:func:`_same_patient`), since a target in it that
+    names no frame, or a malformed one, may be in the series' frame
+    whatever frames the set declares; one in another frame that the set
+    does not tie to the series' slices is passed over
+    (:func:`_targets_reach`).
+    """
+    if _placed(structure_set, frame, slices):
+        return True
+    return any(
+        _same_patient(structure_set.patient, records[position].patient)
+        for position in positions
+    )
+
+
+def _placed(structure_set: InstanceRecord, frame: str, slices: set[str]) -> bool:
+    """Whether a structure set is in a series' Frame of Reference, names no
+    valid frame, or is drawn on the series' slices, so that an ROI of it
+    naming no frame may be placed in the series' frame."""
+    frames = frames_of(structure_set)
+    if frame in frames or not any(is_uid(each) for each in frames):
+        return True
+    return not slices.isdisjoint(ref.target for ref in structure_set.references)
+
+
+def _same_patient(one: SubjectIdentity | None, other: SubjectIdentity | None) -> bool:
+    """Whether two instances may be of the same patient.
+
+    They may unless both give one Patient ID of printable ASCII
+    characters alone, without its padding, and the two differ without
+    case. A Patient ID that is absent, empty, not text, of several values,
+    or holds any other character, such as a control character, a letter
+    outside ASCII, or a fullwidth form, matches any, since text that may
+    be the same in another spelling cannot tell patients apart. The Issuer
+    of Patient ID is not compared, since planning systems write their own
+    or none. So only a structure set that is clearly another patient's is
+    passed over.
+    """
+    if one is None or other is None:
+        return True
+    ids = (one.identifier, other.identifier)
+    if not all(each.isascii() and each.isprintable() for each in ids):
+        return True
+    # An empty value or several values, which a backslash separates, tell
+    # nothing apart either.
+    if not all(each and "\\" not in each for each in ids):
+        return True
+    return ids[0].casefold() == ids[1].casefold()
 
 
 def frames_of(record: InstanceRecord) -> frozenset[str]:
@@ -699,43 +764,67 @@ def _targets_reach(
     """Whether a target of a structure set may reach the block of the series
     with this Frame of Reference and these slices.
 
-    A target in that frame, or naming none, reaches it where the convex
-    hull of its contours does (:func:`_hull_reaches`).
-    One in another frame cannot be placed in the series' without a
-    registration, so it is taken to reach the block where the structure set
-    ties that frame to the series' slices: a contour of an ROI in that frame
-    is drawn on one of them, or the frame's own list of contour images names
-    one. A target in another frame that the structure set does not tie to
-    them, such as one of another scan, does not.
+    A target in that frame reaches it where the convex hull of its contours
+    does (:func:`_hull_reaches`). One in another frame cannot be placed in
+    the series' without a registration, so it is taken to reach the block
+    where its structure set ties that frame to the series' slices: a contour
+    of an ROI in that frame is drawn on one of them, or the frame's own list
+    of contour images names one. A target in another frame that its
+    structure set does not tie to them, such as one of another scan, does
+    not. A target whose ROI names no frame may be in the series' or in any
+    frame that its structure set declares, so it is taken as each. So is
+    one whose ROI's frame is not one UID that its set declares alone, as
+    one UID in one item, or whose
+    ROI Number is repeated with another frame, which is also taken as each
+    value it names, so that a malformed frame that the set ties to the
+    series' slices still holds it.
     """
-    frames = {
-        int(item.ROINumber): normalise_uid(
-            str(item.get("ReferencedFrameOfReferenceUID") or "")
+    named: dict[int, set[str]] = collections.defaultdict(set)
+    for item in dataset.get("StructureSetROISequence", []):
+        named[int(item.ROINumber)] |= _frames(item, "ReferencedFrameOfReferenceUID")
+    declarations = [
+        _frames(item, "FrameOfReferenceUID")
+        for item in dataset.get("ReferencedFrameOfReferenceSequence", [])
+    ]
+    # Every label a declaration gives may be a frame, but only one UID
+    # declared alone makes an ROI's frame certain.
+    declared = set().union(*declarations) - {""}
+    certain = {frame for each in declarations if "" not in each for frame in each}
+
+    def frames_of_roi(number: int) -> set[str]:
+        frames = named.get(number, {""})
+        # An ROI's frame is one that its set declares (PS3.3 C.8.8.5), so
+        # one that is not is malformed too.
+        return (
+            frames
+            if len(frames) == 1 and frames <= certain
+            else {"", *declared, *frames}
         )
-        for item in dataset.get("StructureSetROISequence", [])
-    }
+
     targets = _targets(dataset)
-    tied = _tied_frames(dataset, frames, slices)
+    tied = _tied_frames(dataset, frames_of_roi, slices)
     for item in dataset.get("ROIContourSequence", []):
         number = int(item.ReferencedROINumber)
         if number not in targets:
             continue
-        # A target that names no Frame of Reference may be in this one.
-        if frames.get(number) not in ("", None, frame):
-            if frames[number] in tied:
-                return True
-            continue
-        points = [
-            np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-            for contour in item.get("ContourSequence", [])
-        ]
-        if points and _hull_reaches(block, np.concatenate(points)):
+        frames = frames_of_roi(number)
+        if (frames - {"", frame}) & tied:
             return True
+        # A target that names no Frame of Reference may be in this one.
+        if frames & {"", frame}:
+            points = [
+                np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
+                for contour in item.get("ContourSequence", [])
+            ]
+            if points and _hull_reaches(block, np.concatenate(points)):
+                return True
     return False
 
 
 def _tied_frames(
-    dataset: pydicom.Dataset, frames: Mapping[int, str], slices: set[str]
+    dataset: pydicom.Dataset,
+    frames_of_roi: Callable[[int], set[str]],
+    slices: set[str],
 ) -> set[str]:
     """Return the Frames of Reference that a structure set ties to any of
     these slices: by an ROI in the frame with a contour drawn on one, or by
@@ -745,7 +834,7 @@ def _tied_frames(
         if any(
             _images(contour) & slices for contour in item.get("ContourSequence", [])
         ):
-            tied.add(frames.get(int(item.ReferencedROINumber)))
+            tied |= frames_of_roi(int(item.ReferencedROINumber))
     for use in dataset.get("ReferencedFrameOfReferenceSequence", []):
         images = {
             uid
@@ -754,8 +843,30 @@ def _tied_frames(
             for uid in _images(series)
         }
         if images & slices:
-            tied.add(normalise_uid(str(use.get("FrameOfReferenceUID") or "")))
-    return {frame for frame in tied if frame}
+            tied |= _frames(use, "FrameOfReferenceUID")
+    return tied - {""}
+
+
+def _frames(item: pydicom.Dataset, keyword: str) -> set[str]:
+    """The Frames of Reference that an item's Frame of Reference UID may
+    name: the UID alone, where it is one; otherwise each of its values
+    without padding, as labels that can still tie a target to a frame, and
+    ``""`` for no frame, where it is absent, empty, of more than one value,
+    or not a UID."""
+    value = item.get(keyword)
+    if value is None:
+        values = []
+    elif isinstance(value, (str, bytes)):
+        values = [value]
+    else:
+        try:
+            values = list(value)
+        except TypeError:
+            values = [value]
+    labels = {normalise_uid(str(each)) for each in values} - {""}
+    if len(values) == 1 and len(labels) == 1 and is_uid(next(iter(labels))):
+        return labels
+    return {"", *labels}
 
 
 def _images(item: pydicom.Dataset) -> set[str]:
