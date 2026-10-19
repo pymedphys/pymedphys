@@ -341,7 +341,7 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, if there is sufficient visual information within the Pixel Data of a set of instances to allow an individual to be recognized from the instances themselves or a reconstruction of a set of instances, then sufficient removal or distortion of the Pixel Data shall be applied to prevent recognition.
 '''
 status = "implemented"
-decisions = ["D-015", "D-016", "D-017", "D-046", "D-050", "D-051"]
+decisions = ["D-015", "D-016", "D-017", "D-046", "D-050", "D-051", "D-052"]
 implementation = [
   "_dicom/deidentify/defacing.py",
   "_dicom/deidentify/dose_defacing.py",
@@ -350,11 +350,12 @@ implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/pixel_cleaning.py",
   "_dicom/deidentify/qc_attestation.py",
+  "_dicom/deidentify/region_defacing.py",
 ]
 note = '''
-The engine claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file and of the pixel data that the run writes of it, or one that cannot show a face (D-046).
+The engine claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file and of the pixel data, and an RT Structure Set's contours, that the run writes of it, or one that cannot show a face (D-046).
 Every other instance that can show a face, with pixel data or as an RT Structure Set, is held for review and never released, so no released instance that claims the option has the visual information that the paragraph requires to be removed or distorted.
-Under the option, the engine also writes air into the face block of each CT series in which it finds one, keeping the cranial cavity above the orbits, and holds a series with a target in its block, and each RT Structure Set, RT Dose with pixel data, or PET instance in a defaced series' Frame of Reference, naming none, or referring to a defaced slice, which it does not yet clean (D-050), but for an RT Dose in the frame of only one defaced series, whose dose in that series' block, less the cavity kept, it sets to zero, or holds where that dose is too great (D-051); a defaced instance still claims the option only where a reviewer found no recognisable face in it as defaced.
+Under the option, the engine also writes air into the face block of each CT series in which it finds one, keeping the cranial cavity above the orbits, and holds a series with a target in its block or an eye ROI away from the globes it found, and each RT Structure Set, RT Dose with pixel data, or PET instance in a defaced series' Frame of Reference, naming none, or referring to a defaced slice, which it does not clean (D-050), but for an RT Dose in the frame of only one defaced series, whose dose in that series' block, less the cavity kept, it sets to zero, or holds where that dose is too great (D-051), and an RT Structure Set or single-frame PET image in such a frame, whose contours that reach the face it cuts by the block, and whose activity in the block, less the cavity kept, it sets to zero (D-052); a defaced instance still claims the option only where a reviewer found no recognisable face in it as defaced.
 '''
 
 [[requirement]]
@@ -651,15 +652,18 @@ When this Option is specified in addition to the Basic Application Level Confide
 status = "implemented"
 decisions = ["D-001", "D-028", "D-035"]
 implementation = [
+  "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/retained_private.py",
+  "_dicom/deidentify/reviewed_descriptors.py",
   "_dicom/deidentify/safe_private.py",
   "_dicom/deidentify/tcia_private_tags.py",
   "_dicom/deidentify/walker.py",
 ]
 note = '''
-Reviewed rules give every row of Table E.3.10-1 a handling, keyed by private creator and element within the block: numbers and code strings are checked and kept, UIDs replaced, text cleaned as descriptors where a reviewed cleaner applies and otherwise removed, private sequences parsed, and bulk binary data and three timestamps removed (D-035).
+Reviewed rules give every row of Table E.3.10-1 a handling, keyed by private creator and element within the block: numbers and code strings are checked and kept, UIDs replaced, text cleaned as descriptors under Clean Descriptors and otherwise removed, private sequences parsed, and bulk binary data and three timestamps removed (D-035).
 Under the Option, the engine settles each private attribute by its rule, at the top level and in the items of every sequence that is kept, matching creators only in printable ISO 646 and checking each kept value against its VR and VM; it keeps a private creator only where its block keeps something, and removes every other private attribute, which E.3.10 allows in place of following Deidentification Action (0008,0307) (D-035).
+Under Clean Descriptors too, text that a rule retains, written with its VR and within its VM, is cleaned by the reviewed descriptors list's decisions on its private creator, group, element within the block, and VR, and removed where they do not clean it, where it cannot be decoded, or where it is written without its VR (D-009, D-035).
 An attribute that the instance's Private Data Element Characteristics Sequence (0008,0300) declares safe, in a block whose Block Identifying Information Status is SAFE or in Nonidentifying Private Elements, and that no rule lists, takes the handling of its VR, as written or as the sequence defines it; one that the sequence declares may identify is removed, even where a rule would keep it (D-035).
 TCIA's Private Tag Dictionary ships unchanged, pinned by its length and SHA-256 and compared with TCIA's file by a monthly edition check, as a second list that a run may choose in place of the reviewed rules; its keep is a basis for retention, its rules are chosen by the VR that reads each value, and kept values still pass the handling of their VR, with a single value unless a reviewed rule gives the VM; the method digest, the release report, and the conformance statement record which list a run used (D-024, D-035).
 '''
@@ -697,7 +701,7 @@ implementation = [
 ]
 note = '''
 Under the Option, every private sequence in a block whose private creator is compared is parsed, whether or not a reviewed rule lists it, and each attribute in its items, standard or private, takes its own rule, at every depth (D-035).
-A private sequence that no rule lists is kept, with its creator, only where an attribute in its items other than a private creator is kept or replaced, and is otherwise removed with everything in it; a kept creator is among the retained strings that the QC pack lists for review (D-017, D-035).
+A private sequence that no rule lists is kept, with its creator, only where an attribute in its items other than a private creator is kept, replaced, or cleaned, and is otherwise removed with everything in it; a kept creator is among the retained strings that the QC pack lists for review (D-017, D-035).
 Without the Option, every private sequence is removed with everything in it (D-028).
 '''
 
@@ -714,7 +718,7 @@ implementation = [
   "_dicom/deidentify/conformance_safe_private.py",
 ]
 note = '''
-Under the Option, the conformance statement describes how the reviewed rules are matched and how each handling settles an attribute, and lists every rule that can retain one, with its private creator, tag, VR, VM, and handling, and the meaning that Table E.3.10-1 gives it or the source of a reviewed addition (D-035).
+Under the Option, the conformance statement describes how the reviewed rules are matched and how each handling settles an attribute, and lists every rule that can retain one, with its private creator, tag, VR, VM, and handling, and the meaning that Table E.3.10-1 gives it or the source of a reviewed addition; the rules for text are among them only under Clean Descriptors, which cleans private text (D-035).
 '''
 
 [[requirement]]

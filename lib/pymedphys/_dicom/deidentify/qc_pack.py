@@ -53,7 +53,10 @@ A pack holds, for one run:
   mapped, emptied, or held for review, with why, and whether the element
   was written with those values or took its action without Clean
   Descriptors instead, for the audit of every value retained or changed and
-  the reviewer's list of values to decide on for later runs (D-009, D-036);
+  the reviewer's list of values to decide on for later runs (D-009, D-036),
+  each by the attribute that a decision on it names: its tag, or, for
+  private text under the Retain Safe Private Option, its private creator,
+  group, element within the block, and VR (D-035);
 - ``reference_findings``: each reference finding that the run reports
   without acting on it, such as a dangling reference, or a written reference
   to an instance that was not written, at each instance it names, with the
@@ -120,7 +123,7 @@ from .residuals import UnsearchedReason
 from .reviewed_descriptors import CleanedDescriptor
 from .reviewed_descriptors import Held as DescriptorHeld
 from .reviewed_descriptors import Outcome as DescriptorOutcome
-from .reviewed_descriptors import stripped
+from .reviewed_descriptors import is_private_descriptor, stripped
 from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
@@ -243,6 +246,10 @@ class InstanceEntry:
         hexadecimal, which binds a series' face verdict to the pixel data
         that the run wrote; ``None`` for any other input, or one whose
         written file the gate did not hand over or could not be read.
+    contour_sha256 : str, optional
+        Likewise, the :func:`~.face_review.contour_data_sha256` of the file
+        written, which binds a series' face verdict to the contours that
+        the run wrote.
     """
 
     position: int
@@ -253,6 +260,7 @@ class InstanceEntry:
     reasons: tuple[str, ...] = ()
     source_sha256: str | None = None
     pixel_sha256: str | None = None
+    contour_sha256: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("an instance", self.position)
@@ -279,6 +287,15 @@ class InstanceEntry:
         ):
             raise QcPackError(
                 f"instance {self.position} needs its pixel data's SHA-256 as 64 "
+                "lower-case hexadecimal digits, and only if released or held"
+            )
+        if self.contour_sha256 is not None and not (
+            isinstance(self.contour_sha256, str)
+            and _SHA256.fullmatch(self.contour_sha256)
+            and self.disposition in _REVIEWED
+        ):
+            raise QcPackError(
+                f"instance {self.position} needs its contours' SHA-256 as 64 "
                 "lower-case hexadecimal digits, and only if released or held"
             )
         problem = self._problem()
@@ -726,6 +743,12 @@ class DescriptorEntry:
         because a value was held, no value had text, or a kept value was
         beside a mapped or emptied one, or because another attribute's action removed
         its sequence, it took its action without Clean Descriptors.
+    attribute : str or None
+        For private text under the Retain Safe Private Option, the key by
+        which a reviewer decides on its values
+        (:func:`~pymedphys._dicom.deidentify.reviewed_descriptors.private_descriptor`),
+        since its tag depends on the block that its creator reserves; None
+        for an attribute of the standard, which its tag names.
     """
 
     position: int
@@ -733,6 +756,7 @@ class DescriptorEntry:
     sources: tuple[str, ...]
     results: tuple[CleanedDescriptor, ...]
     applied: bool
+    attribute: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("a descriptor", self.position)
@@ -759,6 +783,13 @@ class DescriptorEntry:
             raise QcPackError(
                 f"a descriptor of instance {self.position} needs whether it was "
                 "applied as True or False"
+            )
+        if self.attribute is not None and not (
+            isinstance(self.attribute, str) and is_private_descriptor(self.attribute)
+        ):
+            raise QcPackError(
+                f"a descriptor of instance {self.position} needs None or a private "
+                "attribute's key as its attribute"
             )
         for source, result in zip(self.sources, self.results):
             problem = _descriptor_problem(source, result)
@@ -1527,6 +1558,7 @@ def pack_document(pack: QcPack) -> dict:
             {
                 "position": entry.position,
                 "element": str(entry.path),
+                "attribute": entry.attribute or entry.path.tag,
                 "applied": entry.applied,
                 "values": [
                     {
@@ -1641,6 +1673,7 @@ def _instance(entry: InstanceEntry) -> dict:
         "reasons": list(entry.reasons),
         "source_sha256": entry.source_sha256,
         "pixel_sha256": entry.pixel_sha256,
+        "contour_sha256": entry.contour_sha256,
     }
 
 

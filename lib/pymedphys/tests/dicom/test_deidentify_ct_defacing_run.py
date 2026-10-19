@@ -13,9 +13,10 @@
 # limitations under the License.
 
 """A run under Clean Recognizable Visual Features that defaces a CT series
-of the analytic head, beside the synthetic collection's RT Structure Set and
-RT Dose in the same Frame of Reference, one RT Dose replaced by a grid over
-the head. Every UID and value here is invented."""
+of the analytic head, beside the synthetic collection's RT Structure Set, RT
+Dose, and PET in the same Frame of Reference, the RT Structure Set replaced
+by one of the head, one RT Dose by a grid over the head, and the PET Image
+by two slices of the head. Every UID and value here is invented."""
 
 from __future__ import annotations
 
@@ -27,7 +28,7 @@ import tempfile
 from pathlib import Path
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pydicom, pytest
+from pymedphys._imports import pydicom, pytest, shapely
 
 from pymedphys._dicom.deidentify import dose_defacing, face_blocks, markers, run
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
@@ -76,9 +77,21 @@ _CT_FILES = ("01-ct-1.dcm", "02-ct-2.dcm", corpus_module.SEQUESTERED_FILE)
 _STRUCTURE_SET = "04-rtstruct.dcm"
 _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
 _PET = ("15-pet.dcm", "16-pet-enhanced.dcm", "17-pet-legacy-enhanced.dcm")
-_IN_FRAME = (_STRUCTURE_SET, *_DOSE, *_PET)
-_UNDEFACED = (_STRUCTURE_SET, *_PET)
+# A second PET slice of the head, in the first's series.
+_PET_ABOVE = "15-pet-above.dcm"
+_IN_FRAME = (_STRUCTURE_SET, *_DOSE, *_PET, _PET_ABOVE)
+# The PET instances that the run does not clean.
+_UNDEFACED = _PET[1:]
+# The PET slices of the head, by file name, at heights below and above the
+# floor of the kept cavity.
+_PET_SLICES = {_PET[0]: 20.0, _PET_ABOVE: 70.0}
+_PET_GRID = {"position": (-100.0, -130.0), "spacing": (5.0, 5.0), "shape": (49, 41)}
+_UPTAKE = 100
 _IN_THE_BLOCK = (-32.0, -76.0, 20.0)
+_GLOBES = [(-head.GLOBE_X, head.GLOBE_Y), (head.GLOBE_X, head.GLOBE_Y)]
+# The head's outline and brain, from the analytic head's ellipsoids.
+_OUTLINE = ((0.0, 0.0, 10.0), (75.0, 95.0, 130.0))
+_BRAIN = ((0.0, 0.0, 40.0), (62.0, 82.0, 79.0))
 # A dose grid over the head, on the CT's pixels and every other slice, with
 # its greatest dose behind the head, and DOSE_FRACTION of it, or all of it,
 # everywhere else.
@@ -101,6 +114,72 @@ def _dose(low):
 
 def _head_name(index):
     return f"01-head-{index:03d}.dcm"
+
+
+def _section(ellipsoid, z, scale=1.0):
+    """An ellipsoid's outline on the axial slice at ``z``, scaled about its
+    axis."""
+    (x, y, centre), (a, b, c) = ellipsoid
+    factor = scale * np.sqrt(1 - ((z - centre) / c) ** 2)
+    return files.ellipse((x, y, z), (a * factor, b * factor))
+
+
+def _eye(side, *, below=0.0):
+    """An eye's contours on the slices through its globe, ``below`` its
+    centre by that many millimetres."""
+    x, y = _GLOBES[side]
+    return [
+        files.circle(
+            (x, y, head.GLOBE_Z - below + dz), np.sqrt(head.GLOBE_RADIUS**2 - dz**2)
+        )
+        for dz in (-5.0, 0.0, 5.0)
+    ]
+
+
+# The head's ROIs: its outline, which the block cuts on each slice; its
+# brain, within the kept cavity, above the floor; its eyes, whose backs lie
+# behind the block's plane; a lens, wholly in the block; and a target
+# behind the block.
+_ROIS = {
+    "External": ("EXTERNAL", [_section(_OUTLINE, z) for z in (20.0, 60.0, 80.0)]),
+    "Brain": ("ORGAN", [_section(_BRAIN, z, 0.9) for z in (60.0, 80.0)]),
+    "Eye_R": ("ORGAN", _eye(0)),
+    "Eye_L": ("ORGAN", _eye(1)),
+    "Lens_L": (
+        "ORGAN",
+        [files.circle((head.GLOBE_X, head.GLOBE_Y - 8.0, head.GLOBE_Z), 3.0)],
+    ),
+    "PTV": ("PTV", [files.square((0.0, 30.0, 40.0))]),
+}
+
+
+def _head_structure_set(template, *, eyes_away=False):
+    rois = dict(_ROIS)
+    if eyes_away:
+        # The left eye drawn 40 mm below its globe, where the finder found
+        # none.
+        rois["Eye_L"] = ("ORGAN", _eye(1, below=40.0))
+    return files.structure_set(
+        list(rois.values()),
+        frame=corpus_module.FRAME_OF_REFERENCE,
+        template=template,
+        names=list(rois),
+    )
+
+
+def _pet_points(z):
+    rows, columns = _PET_GRID["shape"]
+    x0, y0 = _PET_GRID["position"]
+    spacing = _PET_GRID["spacing"][0]
+    x = x0 + spacing * np.arange(columns)[None, :]
+    y = y0 + spacing * np.arange(rows)[:, None]
+    x, y = np.broadcast_arrays(x, y)
+    return np.stack([x, y, np.full(x.shape, z)], axis=-1)
+
+
+def _pet_uptake(z):
+    """Uptake throughout the head, and none outside it."""
+    return np.where(head.hounsfield(_pet_points(z)) > head.AIR, _UPTAKE, 0)
 
 
 # Grids that cannot be placed, by file name: direction cosines that PS3.3
@@ -156,23 +235,26 @@ def _runs(
     *others,
     first=None,
     target=False,
+    eyes_away=False,
     without_ct=False,
     accepted=False,
     revised=None,
     dose=None,
     edges=False,
 ):
-    """Run the collection, with its CT slices replaced by the head's, and
-    its first RT Dose by a grid over the head of ``dose`` where given, with
-    the RT Dose instances of :data:`_UNPLACEABLE` and :data:`_DVH_ONLY` in
-    its series if ``edges``, under
-    ``basic``, or under the option and ``first`` with a face review that
-    gives no verdicts; attest the pack with the head's series, and those of
-    the RT Structure Set, RT Dose, and PET in its frame, marked absent, and,
-    if ``accepted``, the regions of each of the head's slices that the pack
-    previews accepted, or, if ``revised``, revised with that region added in
-    their first frame; and run it again under the option and ``others``,
-    given those verdicts, without the head's slices if ``without_ct``."""
+    """Run the collection, with its CT slices replaced by the head's, its RT
+    Structure Set by the head's ROIs, or by a target in the block if
+    ``target``, its PET Image by :data:`_PET_SLICES`, and its first RT Dose
+    by a grid over the head of ``dose`` where given, with the RT Dose
+    instances of :data:`_UNPLACEABLE` and :data:`_DVH_ONLY` in its series if
+    ``edges``, under ``basic``, or under the option and ``first`` with a
+    face review that gives no verdicts; attest the pack with the head's
+    series, and those of the RT Structure Set, RT Dose, and PET in its
+    frame, marked absent, and, if ``accepted``, the regions of each of the
+    head's slices that the pack previews accepted, or, if ``revised``,
+    revised with that region added in their first frame; and run it again
+    under the option and ``others``, given those verdicts, without the
+    head's slices if ``without_ct``."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -215,13 +297,26 @@ def _runs(
                 (instances / _DVH_ONLY).write_bytes(
                     _dvh_only(grid, f"{grid.SOPInstanceUID}.9")
                 )
-        if target:
-            rtss = pydicom.dcmread(instances / _STRUCTURE_SET)
-            (instances / _STRUCTURE_SET).write_bytes(
-                files.structure_set(
-                    [("PTV", files.square(_IN_THE_BLOCK))],
+        rtss = pydicom.dcmread(instances / _STRUCTURE_SET)
+        (instances / _STRUCTURE_SET).write_bytes(
+            files.structure_set(
+                [("PTV", files.square(_IN_THE_BLOCK))],
+                frame=corpus_module.FRAME_OF_REFERENCE,
+                template=rtss,
+            )
+            if target
+            else _head_structure_set(rtss, eyes_away=eyes_away)
+        )
+        pet = pydicom.dcmread(instances / _PET[0])
+        for index, (name, z) in enumerate(_PET_SLICES.items()):
+            (instances / name).write_bytes(
+                files.pet(
+                    _pet_uptake(z),
+                    position=(*_PET_GRID["position"], z),
+                    spacing=_PET_GRID["spacing"],
                     frame=corpus_module.FRAME_OF_REFERENCE,
-                    template=rtss,
+                    instance=pet.SOPInstanceUID + ("" if index == 0 else ".1"),
+                    template=pet,
                 )
             )
         reviewed = run.run(
@@ -341,6 +436,12 @@ def fixture_targeted():
         yield found
 
 
+@pytest.fixture(name="eyes_away", scope="module")
+def fixture_eyes_away():
+    with _runs(first=(), eyes_away=True) as found:
+        yield found
+
+
 @pytest.fixture(name="without_ct", scope="module")
 def fixture_without_ct():
     with _runs(first=(), without_ct=True, dose=_dose(_LOW)) as found:
@@ -445,12 +546,15 @@ def test_a_head_ct_marked_absent_as_received_is_held_where_defaced(
         for entry in report["held_for_review"]
         if entry["stage"] == "visual-features"
     }
-    assert counts[VisualFeaturesReason.OTHER_PIXEL_DATA.value] == changed
+    # So are the PET slices, which the run sets to zero in the block.
+    assert counts[VisualFeaturesReason.OTHER_PIXEL_DATA.value] == changed + len(
+        _PET_SLICES
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
 @pytest.mark.parametrize("fixture", ["defaced", "as_received"])
-def test_rt_instances_in_the_defaced_frame_are_held_whatever_their_verdict(
+def test_pet_instances_in_the_defaced_frame_that_are_not_cleaned_are_held(
     fixture, request
 ):
     _, outcomes, reasons, report = request.getfixturevalue(fixture)
@@ -461,10 +565,10 @@ def test_rt_instances_in_the_defaced_frame_are_held_whatever_their_verdict(
     if fixture == "defaced":
         expected.add(HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT))
 
-    # Marked absent, the RT Structure Set's outline and the PET in the
-    # head's Frame of Reference still trace the face that the defaced CT no
-    # longer shows, so neither is released, and nothing claims the option
-    # for them because their CT was defaced.
+    # Marked absent, the enhanced PET images in the head's Frame of
+    # Reference, which the run does not clean, still trace the face that the
+    # defaced CT no longer shows, so neither is released, and nothing claims
+    # the option for them because their CT was defaced.
     for name in _UNDEFACED:
         assert outcomes[name] == ("held-for-review", None), name
         assert reasons[name] == expected, name
@@ -475,6 +579,123 @@ def test_rt_instances_in_the_defaced_frame_are_held_whatever_their_verdict(
         if entry["stage"] == "visual-features"
     }
     assert counts[held.reason.value] == len(_UNDEFACED)
+
+
+def _contours(dataset):
+    """Each ROI's contours by its name in :data:`_ROIS`, as points, or None
+    where it has no Contour Sequence.
+
+    The ROIs are known by their numbers, from 1 in that order, since the run
+    cleans their names."""
+    names = list(_ROIS)
+    return {
+        names[int(item.ReferencedROINumber) - 1]: (
+            [
+                np.array([float(v) for v in contour.ContourData]).reshape(-1, 3)
+                for contour in item.ContourSequence
+            ]
+            if "ContourSequence" in item
+            else None
+        )
+        for item in dataset.ROIContourSequence
+    }
+
+
+def _behind(block, z):
+    """The axial plane at ``z`` behind the block's vertical plane, or all of
+    it below the block, as a polygon."""
+    if z <= block.inferior_limit:
+        return shapely.geometry.box(-1e4, -1e4, 1e4, 1e4)
+    origin = np.array(block.origin[:2])
+    anterior = np.array(block.anterior[:2]) / np.linalg.norm(block.anterior[:2])
+    along = np.array([-anterior[1], anterior[0]])
+    return shapely.geometry.Polygon(
+        [
+            origin + 1e4 * along,
+            origin - 1e4 * along,
+            origin - 1e4 * along - 1e4 * anterior,
+            origin + 1e4 * along - 1e4 * anterior,
+        ]
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_the_head_structure_set_is_cut_by_the_block_and_released(defaced):
+    slices, outcomes, reasons, _ = defaced
+    block = _block(slices)
+    disposition, dataset = outcomes[_STRUCTURE_SET]
+
+    assert disposition == "released", reasons[_STRUCTURE_SET]
+    assert dataset.RecognizableVisualFeatures == "NO"
+    assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+    written = _contours(dataset)
+    # The outline and the eyes lose their parts in the block, on each slice,
+    # the forehead above the kept brain's floor included; each slice's
+    # contour is one polygon, which is its part behind the block's plane, as
+    # the CT keeps the backs of the globes.
+    for name in ("External", "Eye_R", "Eye_L"):
+        for source, cut in zip(_ROIS[name][1], written[name], strict=True):
+            z = source[0, 2]
+            assert not block.contains(cut).any(), (name, z)
+            expected = shapely.geometry.Polygon(source[:, :2]).intersection(
+                _behind(block, z)
+            )
+            got = shapely.geometry.Polygon(cut[:, :2])
+            assert got.symmetric_difference(expected).area < 1e-3 * expected.area
+            assert got.area < shapely.geometry.Polygon(source[:, :2]).area, name
+    # The brain, in the kept cavity, and the target behind the block, are as
+    # they were; the lens, wholly in the block, is gone, without a Contour
+    # Sequence.
+    for name in ("Brain", "PTV"):
+        for source, kept in zip(_ROIS[name][1], written[name], strict=True):
+            assert np.allclose(kept, source, atol=1e-4), name
+    assert written["Lens_L"] is None
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_the_head_pet_is_set_to_zero_activity_in_the_block_and_released(defaced):
+    slices, outcomes, reasons, _ = defaced
+    block = _block(slices)
+    floor = head.GLOBE_Z + face_blocks.CAVITY_FLOOR
+
+    for name, z in _PET_SLICES.items():
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", reasons[name]
+        assert dataset.RecognizableVisualFeatures == "NO"
+        assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+        points = _pet_points(z)
+        source, written = _pet_uptake(z), dataset.pixel_array
+        inside = block.contains(points)
+        # Outside the block, nothing changes; within it, zero but for the
+        # brain above the floor.
+        assert np.array_equal(written[~inside], source[~inside]), name
+        assert np.all((written[inside] == 0) | (written[inside] == source[inside]))
+        changed = written != source
+        assert changed.any(), name
+        brain = inside & (head.hounsfield(points) == head.BRAIN)
+        if z <= floor:
+            assert np.all(written[inside] == 0), name
+        else:
+            assert brain.any() and np.array_equal(written[brain], source[brain])
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_the_head_structure_set_and_pet_seen_as_received_are_held_once_cut(
+    as_received,
+):
+    _, outcomes, reasons, _ = as_received
+
+    # The reviewer saw them as received, which the run, cutting them by the
+    # block, no longer writes.
+    assert outcomes[_STRUCTURE_SET] == ("held-for-review", None)
+    assert reasons[_STRUCTURE_SET] == {
+        HeldVisualFeatures(VisualFeaturesReason.OTHER_CONTOURS)
+    }
+    for name in _PET_SLICES:
+        assert outcomes[name] == ("held-for-review", None), name
+        assert reasons[name] == {
+            HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+        }, name
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
@@ -589,6 +810,18 @@ def test_rt_instances_judged_beside_a_defaced_ct_are_held_in_a_run_without_it(
     for name in _UNDEFACED:
         assert outcomes[name] == ("held-for-review", None), name
         assert reasons[name] == {held}, name
+    # The verdicts on the structure set cut by the block and the PET set to
+    # zero in it are of what that run wrote, which this run, writing them as
+    # received, does not.
+    assert outcomes[_STRUCTURE_SET] == ("held-for-review", None)
+    assert reasons[_STRUCTURE_SET] == {
+        HeldVisualFeatures(VisualFeaturesReason.OTHER_CONTOURS)
+    }
+    for name in _PET_SLICES:
+        assert outcomes[name] == ("held-for-review", None), name
+        assert reasons[name] == {
+            HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+        }, name
     # The verdict on the dose set to zero is of what that run wrote, which
     # this run, writing it as received, does not.
     assert outcomes[_DOSE[0]] == ("held-for-review", None)
@@ -623,6 +856,31 @@ def test_a_target_in_the_block_holds_the_head_ct(targeted):
             disposition, dataset = outcomes[name]
             assert disposition == "released", name
             assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+
+
+def test_an_eye_drawn_away_from_the_globes_holds_the_head_ct(eyes_away):
+    slices, outcomes, reasons, report = eyes_away
+    held = HeldVisualFeatures(VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS)
+
+    # The structure set draws the left eye where the finder found no globe,
+    # so the block may be wrong: the series is not defaced, and is held.
+    for index in range(len(slices)):
+        assert outcomes[_head_name(index)] == ("held-for-review", None), index
+        assert held in reasons[_head_name(index)]
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 0,
+        "not_defaced": [{"reason": "eyes-disagree-with-rois", "count": 1}],
+    }
+    counts = {
+        entry["code"]: entry["count"]
+        for entry in report["held_for_review"]
+        if entry["stage"] == "visual-features"
+    }
+    assert counts[held.reason.value] == len(slices)
+    # With no series defaced, the structure set is written as received.
+    disposition, dataset = outcomes[_STRUCTURE_SET]
+    assert disposition == "released", reasons[_STRUCTURE_SET]
+    assert all(contours is not None for contours in _contours(dataset).values())
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.1-01", "PS3.15-E.3.2-01")

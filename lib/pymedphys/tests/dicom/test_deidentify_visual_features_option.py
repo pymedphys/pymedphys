@@ -46,6 +46,7 @@ from pymedphys._dicom.deidentify.face_review import (
     UNDEFACED_TEXT,
     FaceReview,
     carries_visual_features,
+    contour_data_sha256,
     pixel_data_sha256,
     read_face_review,
 )
@@ -98,15 +99,12 @@ WHEN = datetime.datetime(2026, 10, 12, 22, 0, tzinfo=datetime.timezone.utc)
 @pytest.fixture(name="pack")
 def fixture_pack(tmp_path):
     """A QC pack of five released instances in two series, (0, 2, 3) and (1, 4),
-    with the pixel data written of each but 3, whose file the gate did not
-    hand over."""
+    with the pixel data and contours written of each but 3, whose file the
+    gate did not hand over."""
     release = tmp_path / "release"
     release.mkdir()
     instances = tuple(
-        _released(n)
-        if n == 3
-        else dataclasses.replace(_released(n), pixel_sha256=_pixel_digest(n))
-        for n in range(5)
+        _released(n) if n == 3 else _with_written(_released(n), n) for n in range(5)
     )
     written = QcPack(REFERENCE, instances, series=SERIES)
     return qc_store.write_qc_pack(
@@ -122,9 +120,25 @@ def _pixel_digest(n):
     return _digest(100 + n)
 
 
+def _contour_digest(n):
+    return _digest(200 + n)
+
+
+def _with_written(entry, n):
+    return dataclasses.replace(
+        entry, pixel_sha256=_pixel_digest(n), contour_sha256=_contour_digest(n)
+    )
+
+
 def _pairs(*numbers):
     return frozenset(
         (bytes.fromhex(_digest(n)), bytes.fromhex(_pixel_digest(n))) for n in numbers
+    )
+
+
+def _contour_pairs(*numbers):
+    return frozenset(
+        (bytes.fromhex(_digest(n)), bytes.fromhex(_contour_digest(n))) for n in numbers
     )
 
 
@@ -159,9 +173,10 @@ def test_each_verdict_gives_its_series_source_digests(pack):
 
     assert review.absent == _sha(0, 2, 3)
     assert review.present == _sha(1, 4)
-    # With the pixel data written of each file marked absent, where the pack
-    # has them.
+    # With the pixel data and contours written of each file marked absent,
+    # where the pack has them.
     assert review.absent_pixels == _pairs(0, 2)
+    assert review.absent_contours == _contour_pairs(0, 2)
     assert review.reference == REFERENCE
 
 
@@ -172,6 +187,7 @@ def test_a_series_without_a_verdict_gives_no_digests(pack):
 
     assert review.absent == _sha(1, 4)
     assert review.absent_pixels == _pairs(1, 4)
+    assert review.absent_contours == _contour_pairs(1, 4)
     assert not review.present
 
 
@@ -189,12 +205,10 @@ def test_a_verdict_of_absent_leaves_out_a_file_held_because_its_frame_was_deface
         reasons=("ReleaseReason.RT_DOSE", reason),
         source_sha256=_digest(2),
         pixel_sha256=_pixel_digest(2),
+        contour_sha256=_contour_digest(2),
     )
     instances = tuple(
-        held
-        if n == 2
-        else dataclasses.replace(_released(n), pixel_sha256=_pixel_digest(n))
-        for n in range(5)
+        held if n == 2 else _with_written(_released(n), n) for n in range(5)
     )
     release = tmp_path / "release"
     release.mkdir()
@@ -209,9 +223,14 @@ def test_a_verdict_of_absent_leaves_out_a_file_held_because_its_frame_was_deface
 
     assert review.absent == _sha(0, 3)
     assert review.absent_pixels == _pairs(0, 3)
+    assert review.absent_contours == _contour_pairs(0, 3)
     assert review.present == _sha(1, 4)
     assert (
-        review.hold_reason(_one(_sha(2)), bytes.fromhex(_pixel_digest(2)))
+        review.hold_reason(
+            _one(_sha(2)),
+            bytes.fromhex(_pixel_digest(2)),
+            bytes.fromhex(_contour_digest(2)),
+        )
         is VisualFeaturesReason.NO_FACE_VERDICT
     )
 
@@ -294,16 +313,16 @@ def test_a_pack_changed_after_its_verdicts_gives_no_review(pack):
 
 
 def test_a_source_file_is_released_only_from_a_series_marked_absent():
-    review = FaceReview(REFERENCE, _sha(0, 3), _sha(1), _pairs(0))
-    pixels = bytes.fromhex(_pixel_digest(0))
+    review = FaceReview(REFERENCE, _sha(0, 3), _sha(1), _pairs(0), _contour_pairs(0))
+    written = bytes.fromhex(_pixel_digest(0)), bytes.fromhex(_contour_digest(0))
 
-    assert review.hold_reason(_one(_sha(0)), pixels) is None
+    assert review.hold_reason(_one(_sha(0)), *written) is None
     assert (
-        review.hold_reason(_one(_sha(1)), pixels) is VisualFeaturesReason.FACE_PRESENT
+        review.hold_reason(_one(_sha(1)), *written) is VisualFeaturesReason.FACE_PRESENT
     )
     # Any other file, such as one changed since the review, has no verdict.
     assert (
-        review.hold_reason(_one(_sha(2)), pixels)
+        review.hold_reason(_one(_sha(2)), *written)
         is VisualFeaturesReason.NO_FACE_VERDICT
     )
 
@@ -314,19 +333,117 @@ def test_a_source_file_is_released_only_from_a_series_marked_absent():
     ids=["other", "none written", "unreadable"],
 )
 def test_a_verdict_releases_only_the_pixel_data_that_the_reviewed_run_wrote(pixels):
-    review = FaceReview(REFERENCE, _sha(0, 3), frozenset(), _pairs(0))
+    review = FaceReview(
+        REFERENCE, _sha(0, 3), frozenset(), _pairs(0), _contour_pairs(0, 3)
+    )
 
     # Such as a CT slice defaced since the reviewer saw it as received, or
     # blacked out in other regions, or a file whose written pixel data the
     # pack does not have.
     assert (
-        review.hold_reason(_one(_sha(0)), pixels)
+        review.hold_reason(_one(_sha(0)), pixels, bytes.fromhex(_contour_digest(0)))
         is VisualFeaturesReason.OTHER_PIXEL_DATA
     )
     assert (
-        review.hold_reason(_one(_sha(3)), bytes.fromhex(_pixel_digest(3)))
+        review.hold_reason(
+            _one(_sha(3)),
+            bytes.fromhex(_pixel_digest(3)),
+            bytes.fromhex(_contour_digest(3)),
+        )
         is VisualFeaturesReason.OTHER_PIXEL_DATA
     )
+
+
+@pytest.mark.parametrize(
+    "contours",
+    [bytes.fromhex(_contour_digest(1)), contour_data_sha256(pydicom.Dataset()), None],
+    ids=["other", "none written", "unreadable"],
+)
+def test_a_verdict_releases_only_the_contours_that_the_reviewed_run_wrote(contours):
+    review = FaceReview(
+        REFERENCE, _sha(0, 3), frozenset(), _pairs(0, 3), _contour_pairs(0)
+    )
+    pixels = bytes.fromhex(_pixel_digest(0))
+
+    # Such as a structure set cut by a face block since the reviewer saw it
+    # as received, or one that the reviewed run cut and this run does not,
+    # or a file whose written contours the pack does not have.
+    assert (
+        review.hold_reason(_one(_sha(0)), pixels, contours)
+        is VisualFeaturesReason.OTHER_CONTOURS
+    )
+    assert (
+        review.hold_reason(
+            _one(_sha(3)),
+            bytes.fromhex(_pixel_digest(3)),
+            bytes.fromhex(_contour_digest(3)),
+        )
+        is VisualFeaturesReason.OTHER_CONTOURS
+    )
+    assert (
+        review.hold_reason(_one(_sha(0)), pixels, bytes.fromhex(_contour_digest(0)))
+        is None
+    )
+
+
+def _contoured(*rois):
+    """A data set with an ROI Contour Sequence item for each ROI, each a
+    list of contours as (Contour Geometric Type, Contour Data)."""
+    dataset = pydicom.Dataset()
+    dataset.ROIContourSequence = []
+    for contours in rois:
+        item = pydicom.Dataset()
+        item.ContourSequence = []
+        for kind, data in contours:
+            contour = pydicom.Dataset()
+            contour.ContourGeometricType = kind
+            contour.ContourData = data
+            item.ContourSequence.append(contour)
+        dataset.ROIContourSequence.append(item)
+    return dataset
+
+
+def test_contours_are_digested_by_roi_type_and_value():
+    square = ["0", "0", "1", "1", "0", "1", "1", "1", "1"]
+    one = contour_data_sha256(_contoured([("CLOSED_PLANAR", square)]))
+
+    assert one == contour_data_sha256(_contoured([("CLOSED_PLANAR", square)]))
+    # The values are compared as numbers, as written in either form.
+    assert one == contour_data_sha256(
+        _contoured([("CLOSED_PLANAR", ["0.0", *square[1:]])])
+    )
+    assert one != contour_data_sha256(
+        _contoured([("CLOSED_PLANAR", ["0.5", *square[1:]])])
+    )
+    assert one != contour_data_sha256(_contoured([("OPEN_PLANAR", square)]))
+    # Contours moved to another ROI, or split otherwise, differ.
+    assert contour_data_sha256(
+        _contoured([("POINT", square[:3]), ("POINT", square[3:6])])
+    ) != contour_data_sha256(
+        _contoured([("POINT", square[:3])], [("POINT", square[3:6])])
+    )
+    assert contour_data_sha256(
+        _contoured([("OPEN_PLANAR", square[:6]), ("OPEN_PLANAR", square[6:])])
+    ) != contour_data_sha256(
+        _contoured([("OPEN_PLANAR", square[:3]), ("OPEN_PLANAR", square[3:])])
+    )
+    # Without contours, every data set gives one digest, as one with an
+    # empty ROI Contour Sequence does.
+    assert contour_data_sha256(pydicom.Dataset()) == contour_data_sha256(_contoured())
+    assert one != contour_data_sha256(pydicom.Dataset())
+
+
+def test_contours_that_cannot_be_read_have_no_digest():
+    dataset = _contoured([("CLOSED_PLANAR", ["0", "0", "1"])])
+    contour = dataset.ROIContourSequence[0].ContourSequence[0]
+    # As a file that holds it would be read, converted only when used.
+    contour[0x30060050] = pydicom.dataelem.RawDataElement(
+        pydicom.tag.Tag(0x30060050), "DS", 6, b"secret", 0, True, True
+    )
+
+    with pytest.raises(ValueError) as raised:
+        contour_data_sha256(dataset)
+    assert "secret" not in str(raised.value)
 
 
 def test_pixel_data_are_digested_by_tag_and_value():
@@ -363,6 +480,11 @@ def test_pixel_data_are_digested_by_tag_and_value():
         {"absent": _sha(0), "absent_pixels": {next(iter(_pairs(0)))}},
         {"absent": _sha(0), "absent_pixels": frozenset({(_one(_sha(0)), bytes(31))})},
         {"absent": _sha(0), "absent_pixels": frozenset({_one(_sha(0))})},
+        {"absent_contours": _contour_pairs(0)},
+        {
+            "absent": _sha(0),
+            "absent_contours": frozenset({(_one(_sha(0)), bytes(31))}),
+        },
     ],
     ids=repr,
 )
@@ -549,6 +671,10 @@ def test_the_statement_says_the_option_is_claimed_only_after_review(pixel, claim
 
     assert claims in under and neither not in under
     assert neither in without and claims not in without
+    # Pixel Data are not said to be written unchanged where the option
+    # defaces them.
+    face = "unchanged, but for the face region that the Clean Recognizable"
+    assert face in under and face not in without
 
 
 def test_the_report_names_the_reviewed_pack_by_its_reference():
@@ -796,7 +922,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/21"
+    assert report["format"] == "pymedphys-deid-release-report/22"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
@@ -842,6 +968,7 @@ def test_a_verdict_releases_compressed_pixel_data_as_the_reviewed_run_wrote_them
         assert isinstance(unseen.evidence, HeldEvidence)
         assert held in getattr(unseen.evidence, "held")
         written = pixel_data_sha256(read_source(unseen.data).dataset())
+        contours = contour_data_sha256(read_source(unseen.data).dataset())
         seen = InstanceTransform(
             _policy(),
             KEY,
@@ -850,6 +977,7 @@ def test_a_verdict_releases_compressed_pixel_data_as_the_reviewed_run_wrote_them
                 frozenset({source}),
                 frozenset(),
                 frozenset({(source, written)}),
+                frozenset({(source, contours)}),
             ),
             unvalidated_policy=True,
         )(file.data, record)

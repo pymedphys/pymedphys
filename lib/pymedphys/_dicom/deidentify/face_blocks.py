@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module finds each series' block and checks it against the run's
+# structure sets, so it is long.
+
 """The face block of each CT series of a run, and the air written there.
 
 Under the Clean Recognizable Visual Features Option, a run finds, before it
@@ -46,7 +50,15 @@ masks. A series is defaced only where all of these hold:
   that ties that frame to the series' slices (:func:`_targets_reach`), a
   target whose ROI names no frame, or one that is malformed, counting as
   one in the series' frame and in each frame that its structure set
-  declares; and every structure set searched for it can be read.
+  declares;
+- every point of each eye, an ROI in the series' Frame of Reference or
+  naming none, a malformed frame counting as none
+  (:func:`_roi_frames`), whose ROI Name names an eye, a globe, or an eyeball
+  (:func:`_is_eye`), of those structure sets lies within
+  :data:`EYE_REACH` millimetres of the nearer globe that the finder found
+  (:func:`_eyes_far`), so that a block placed from something else taken
+  for the globes is not written; and
+- every structure set searched for it can be read.
 
 Anything else that a series' data raises leaves the series undefaced, as
 unreadable, rather than stopping the run, and no message of it, which could
@@ -54,7 +66,9 @@ quote a value, is kept.
 
 A series with a target in its block is not defaced, and each of its slices
 is held for review (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`),
-so that a release never loses a target to defacing unseen. Any other series
+so that a release never loses a target to defacing unseen, and so is one
+with an eye that disagrees with its globes
+(:attr:`~.reasons.VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS`). Any other series
 that is not defaced, such as one without a head, is written as it would be
 without a block, and the face review's verdict on it decides, as for every
 other instance that can show a face. The outcome of each series is counted
@@ -75,13 +89,16 @@ air's stored value is itself padding, the pixels written are padding, which
 a viewer shows as outside the image, as the air before the face is in most
 scans.
 
-Only CT Image instances are defaced, but for an RT Dose that
-:mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero in the same
-region. An RT Structure Set, other RT Dose with pixel data, or PET
-instance (:data:`UNDEFACED_IODS`) in the Frame of Reference of a defaced
-series keeps its contours or pixel data, which can still outline the face,
-so it is held for review whatever its verdict, since a reviewer may have
-judged it from the defaced CT's previews
+Beyond CT Image instances, the run cleans the same region of an RT Dose
+that :mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero there,
+and of an RT Structure Set whose contours, or a PET image whose activity,
+:mod:`~pymedphys._dicom.deidentify.region_defacing` cuts or sets to zero
+there, each with that series' Frame of Reference as its only one. Any other
+RT Structure Set, RT Dose with pixel data, or PET instance
+(:data:`UNDEFACED_IODS`) in the Frame of Reference of a defaced series
+keeps its contours or pixel data, which can still outline the face, so it
+is held for review whatever its verdict, since a reviewer may have judged
+it from the defaced CT's previews
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), until
 the run can clean it too (:class:`Defaced`). So is one that names no Frame
 of Reference, in a run that defaces any series, or that refers to a defaced
@@ -100,6 +117,7 @@ import dataclasses
 import enum
 import io
 import math
+import re
 from collections.abc import Callable, Iterable, Mapping
 
 from pymedphys._imports import numpy as np
@@ -125,6 +143,7 @@ from .uids import normalise_uid
 
 CT_IMAGE = "CT Image"
 RT_STRUCTURE_SET = "RT Structure Set"
+PET_IMAGE = "Positron Emission Tomography Image"
 AIR = -1000.0  # Hounsfield units
 HEAD_REACH = 400.0  # millimetres below the volume's superior end
 # How far above the higher globe's centre, in millimetres, the cranial
@@ -133,13 +152,19 @@ HEAD_REACH = 400.0  # millimetres below the volume's superior end
 # placeholder, to be set by validation.
 CAVITY_FLOOR = defacing.GLOBE_DIAMETER[1]
 TARGET_TYPES = frozenset({"PTV", "CTV", "GTV"})
-# The IODs whose instances in a defaced series' Frame of Reference the run
-# does not yet clean of the face.
+# How far, in millimetres, each point of an eye's contour may lie from the
+# nearer centre of the globes that the finder found: the largest globe
+# radius that it accepts, half of GLOBE_DIAMETER's upper end, and 10 mm
+# more for an eye drawn with a margin, or a globe found off its centre. A
+# placeholder, to be set by validation.
+EYE_REACH = defacing.GLOBE_DIAMETER[1] / 2 + 10.0
+# The IODs whose instances in a defaced series' Frame of Reference are held
+# unless the run cleans them of the face.
 UNDEFACED_IODS = frozenset(
     {
         RT_STRUCTURE_SET,
         "RT Dose",
-        "Positron Emission Tomography Image",
+        PET_IMAGE,
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
     }
@@ -166,6 +191,8 @@ class SeriesProblem(enum.Enum):
     AIR_NOT_STORED = "air-not-stored"
     # a target that may reach the block
     TARGET_IN_BLOCK = "target-in-block"
+    # an eye's contour in the series' frame away from the globes found
+    EYES_DISAGREE = "eyes-disagree-with-rois"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -195,8 +222,12 @@ class SeriesDefacing:
     @property
     def held(self) -> bool:
         """Whether the series' slices are held for review: a target lies in
-        its block."""
-        return self.problem is SeriesProblem.TARGET_IN_BLOCK
+        its block, or an eye's contour away from the globes that its block
+        was found from."""
+        return self.problem in (
+            SeriesProblem.TARGET_IN_BLOCK,
+            SeriesProblem.EYES_DISAGREE,
+        )
 
 
 @dataclasses.dataclass
@@ -289,6 +320,8 @@ def find_face_blocks(
             ]
             if _target_in(outcome.block, frame, slices[uid], searched, read):
                 outcome = SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK)
+            elif _eyes_disagree(outcome.block, frame, searched, read):
+                outcome = SeriesDefacing(None, SeriesProblem.EYES_DISAGREE)
         outcomes[uid] = outcome
     return outcomes
 
@@ -625,6 +658,84 @@ def _target_in(
     return False
 
 
+def _eyes_disagree(
+    block: FaceBlock,
+    frame: str,
+    positions: list[int],
+    read: Callable[[int], bytes | None],
+) -> bool:
+    """Whether an eye of any of these structure sets disagrees with the
+    globes that the block of the series with this Frame of Reference was
+    found from, as :func:`_eyes_far` judges it, or a set cannot be read."""
+    for position in positions:
+        try:
+            with redacted_diagnostics():
+                dataset = pydicom.dcmread(io.BytesIO(read(position) or b""))
+                if _eyes_far(dataset, frame, block):
+                    return True
+        # As for a target, an eye in a file that cannot be read cannot be
+        # checked.
+        except Exception:  # pylint: disable = broad-exception-caught
+            return True
+    return False
+
+
+# A word of an ROI Name that names an eye, alone or with its side.
+_EYE = re.compile(
+    r"(?:l|r|lt|rt|left|right)?(?:eye|eyeball|globe)s?(?:l|r|lt|rt|left|right)?"
+)
+# Words that make an ROI named for an eye a part of it, or a region around
+# it, whose points need not lie near its centre.
+_NOT_EYE = frozenset({"lens", "lenses", "cornea", "ring", "avoid"})
+
+
+def _is_eye(name: str) -> bool:
+    """Whether an ROI Name names an eye or both eyes, by its words, which an
+    underscore, a space, other punctuation, or a change of case parts."""
+    words = {
+        word.lower()
+        for word in re.findall(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+", name)
+    }
+    return any(_EYE.fullmatch(word) for word in words) and not words & _NOT_EYE
+
+
+def _eyes_far(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bool:
+    """Whether a point of the contours of an ROI in this Frame of Reference,
+    or naming none, whose name is an eye's (:func:`_is_eye`) lies farther
+    than :data:`EYE_REACH` from both of the block's globes' centres, or
+    cannot be placed.
+
+    So an eye drawn where the finder found no globe, as where it took
+    something else for one, holds the series. Each eye is checked alone,
+    or both together in one ROI, but an eye that the structure set does
+    not draw, or names otherwise, is not checked, nor is one in another
+    frame, which cannot be placed in the series' without a registration.
+    An ROI's frame is taken as for a target (:func:`_roi_frames`), so one
+    that is malformed, or that its set does not declare, counts as naming
+    none, and the eye is checked.
+    """
+    frames_of_roi = _roi_frames(dataset)
+    eyes = {
+        int(item.ROINumber)
+        for item in dataset.get("StructureSetROISequence") or []
+        if frames_of_roi(int(item.ROINumber)) & {"", frame}
+        and _is_eye(str(item.get("ROIName") or ""))
+    }
+    globes = np.asarray(block.globes, dtype=float)
+    for item in dataset.get("ROIContourSequence") or []:
+        if int(item.ReferencedROINumber) not in eyes:
+            continue
+        for contour in item.get("ContourSequence") or []:
+            points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
+            nearest = np.min(
+                np.linalg.norm(points[:, np.newaxis, :] - globes, axis=2), axis=1
+            )
+            # Written so that a coordinate that is not a number fails it too.
+            if not (nearest <= EYE_REACH).all():
+                return True
+    return False
+
+
 def _targets(dataset: pydicom.Dataset) -> set[int]:
     """The ROI Numbers of a structure set's targets."""
     return {
@@ -655,28 +766,7 @@ def _targets_reach(
     value it names, so that a malformed frame that the set ties to the
     series' slices still holds it.
     """
-    named: dict[int, set[str]] = collections.defaultdict(set)
-    for item in dataset.get("StructureSetROISequence", []):
-        named[int(item.ROINumber)] |= _frames(item, "ReferencedFrameOfReferenceUID")
-    declarations = [
-        _frames(item, "FrameOfReferenceUID")
-        for item in dataset.get("ReferencedFrameOfReferenceSequence", [])
-    ]
-    # Every label a declaration gives may be a frame, but only one UID
-    # declared alone makes an ROI's frame certain.
-    declared = set().union(*declarations) - {""}
-    certain = {frame for each in declarations if "" not in each for frame in each}
-
-    def frames_of_roi(number: int) -> set[str]:
-        frames = named.get(number, {""})
-        # An ROI's frame is one that its set declares (PS3.3 C.8.8.5), so
-        # one that is not is malformed too.
-        return (
-            frames
-            if len(frames) == 1 and frames <= certain
-            else {"", *declared, *frames}
-        )
-
+    frames_of_roi = _roi_frames(dataset)
     targets = _targets(dataset)
     tied = _tied_frames(dataset, frames_of_roi, slices)
     for item in dataset.get("ROIContourSequence", []):
@@ -721,6 +811,37 @@ def _tied_frames(
         if images & slices:
             tied |= _frames(use, "FrameOfReferenceUID")
     return tied - {""}
+
+
+def _roi_frames(dataset: pydicom.Dataset) -> Callable[[int], set[str]]:
+    """The Frames of Reference that each ROI of a structure set, by its ROI
+    Number, may be in: its own, where it is one UID that the set declares
+    alone, as one UID in one item; otherwise ``""``, for none, with each
+    frame that the set declares and each label that the ROI gives, as for
+    an ROI Number repeated with another frame (:func:`_targets_reach`)."""
+    named: dict[int, set[str]] = collections.defaultdict(set)
+    for item in dataset.get("StructureSetROISequence", []):
+        named[int(item.ROINumber)] |= _frames(item, "ReferencedFrameOfReferenceUID")
+    declarations = [
+        _frames(item, "FrameOfReferenceUID")
+        for item in dataset.get("ReferencedFrameOfReferenceSequence", [])
+    ]
+    # Every label a declaration gives may be a frame, but only one UID
+    # declared alone makes an ROI's frame certain.
+    declared = set().union(*declarations) - {""}
+    certain = {frame for each in declarations if "" not in each for frame in each}
+
+    def frames_of_roi(number: int) -> set[str]:
+        frames = named.get(number, {""})
+        # An ROI's frame is one that its set declares (PS3.3 C.8.8.5), so
+        # one that is not is malformed too.
+        return (
+            frames
+            if len(frames) == 1 and frames <= certain
+            else {"", *declared, *frames}
+        )
+
+    return frames_of_roi
 
 
 def _frames(item: pydicom.Dataset, keyword: str) -> set[str]:

@@ -64,8 +64,8 @@ def extract_tar(archive_path, destination):
       leading ``/``, so an absolute name is extracted inside ``destination``.
 
     The members are then extracted with the ``data`` filter. It relies on a
-    Python with CPython's June 2025 tarfile fixes (3.11.13, 3.12.11, 3.13.4,
-    or later, or a distribution build that includes them).
+    Python with CPython's June 2025 tarfile fixes (3.12.11, 3.13.4, or later,
+    or a distribution build that includes them).
     """
     # Leave member names out of the errors: Pinnacle paths contain patient
     # numbers.

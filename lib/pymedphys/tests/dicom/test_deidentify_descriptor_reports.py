@@ -135,6 +135,7 @@ def test_the_pack_lists_each_descriptor_with_its_values_and_whether_written():
         {
             "position": 1,
             "element": "(0008,103E)",
+            "attribute": "(0008,103E)",
             "applied": False,
             "values": [
                 {
