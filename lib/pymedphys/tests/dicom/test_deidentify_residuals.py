@@ -1410,30 +1410,32 @@ def test_a_set_of_values_is_grouped_once_and_judged_in_the_order_given(monkeypat
     as_utf_8 = _source("(0010,0010)", "PN", "MüLLER^ANNA")
     data = b"by " + "MüLLER^ANNA".encode("utf-8") + b" on"
     monkeypatch.setattr(residuals, "_PLAN", [])
-    prepared = mock.Mock(wraps=residuals._prepared)  # pylint: disable = protected-access
-    monkeypatch.setattr(residuals, "_prepared", prepared)
+    kept = residuals._PLAN  # pylint: disable = protected-access
 
     def encodings(*values):
         return [f.encoding for f in find_residuals(data, values).findings]
 
     assert encodings(as_latin_1, as_utf_8) == ["latin-1"]
+    (plan,) = kept
     assert encodings(as_utf_8, as_latin_1) == ["utf-8"]
     assert encodings(as_latin_1, as_utf_8, as_utf_8) == ["latin-1"]
     # Grouped for the first search alone.
-    assert prepared.call_count == 2
+    assert len(kept) == 1 and kept[0] is plan
 
 
 def test_another_set_of_values_is_grouped_afresh(monkeypatch):
     monkeypatch.setattr(residuals, "_PLAN", [])
-    prepared = mock.Mock(wraps=residuals._prepared)  # pylint: disable = protected-access
-    monkeypatch.setattr(residuals, "_prepared", prepared)
+    kept = residuals._PLAN  # pylint: disable = protected-access
     first = _source("(0010,0020)", "LO", "ID00001")
     second = _source("(0010,0020)", "LO", "ID00002")
+    plans = []
 
-    for values in ([first], [first, second], [second], [first]):
+    for values in ([first], [first, second], [second], [first], [first]):
         find_residuals(b"", values)
+        plans.append(kept[0])
 
-    assert prepared.call_count == 5
+    assert len({id(plan) for plan in plans[:4]}) == 4
+    assert plans[4] is plans[3]
 
 
 def test_grouped_forms_are_dropped_once_a_value_is_gone(monkeypatch):

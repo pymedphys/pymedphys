@@ -1012,9 +1012,21 @@ def _search(  # pylint: disable = too-many-arguments, too-many-positional-argume
     """
     needles, owners, ranks = plan.needles, plan.owners, plan.ranks
 
-    def given(index: int) -> int:
-        """Return a needle's index in the order of the values as given."""
-        return bases[owners[index]] + ranks[index]
+    # Each form's needles in the order of the values as given, by the scope
+    # of their group and the form, sorted the first time that it is found.
+    ordered: dict[tuple[int, bytes], list[int]] = {}
+
+    def judged(
+        scope: int, forms: dict[bytes, tuple[int, ...]], hit: bytes
+    ) -> list[int]:
+        """Return the needles of a form found, in the order of the values as given."""
+        indices = ordered.get((scope, hit))
+        if indices is None:
+            indices = ordered[scope, hit] = sorted(
+                forms.get(hit, ()),
+                key=lambda index: bases[owners[index]] + ranks[index],
+            )
+        return indices
 
     starts = [span.start for span in spans]
     numbers = [*samples] + [
@@ -1050,20 +1062,18 @@ def _search(  # pylint: disable = too-many-arguments, too-many-positional-argume
             for shortest, where in scopes.items()
         }
         searches = (
-            (group.prefix, group.forms, group.sizes, low, high)
+            (group.prefix, group.scope, group.forms, group.sizes, low, high)
             for group in groups
             for low, high in ranges[group.scope]
         )
-        for prefix, forms, sizes, low, high in searches:
+        for prefix, scope, forms, sizes, low, high in searches:
             end = high - chunk + len(prefix) - 1  # matches start before high
             position = block.find(prefix, low - chunk, end)
             while position != -1:
                 offset = chunk + position
                 hits = (block[position : position + size] for size in sizes)
                 for index in [
-                    index
-                    for hit in hits
-                    for index in sorted(forms.get(hit, ()), key=given)
+                    index for hit in hits for index in judged(scope, forms, hit)
                 ]:
                     if resume[index] <= offset:
                         span = spans[bisect.bisect_right(starts, offset) - 1]
