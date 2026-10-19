@@ -33,8 +33,9 @@ The grid is placed by Image Position (Patient), Image Orientation
 defines: offsets along the normal from the first frame's position where the
 first offset is zero, or, only for an orientation of (1, 0, 0, 0, 1, 0)
 whose first offset is the position's z, the frames' z coordinates. A grid
-placed otherwise, compressed, of more than one sample, or with a negative
-stored value, as an RT Dose of Dose Type ERROR can hold, is not set to
+placed otherwise, whose direction cosines are not two orthogonal unit
+vectors, as PS3.3 C.7.6.2.1.1 requires, within :data:`_UNIT`, compressed,
+of more than one sample, or with a negative stored value, as an RT Dose of Dose Type ERROR can hold, is not set to
 zero, and stays held as an instance in a defaced frame
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`).
 
@@ -89,6 +90,10 @@ DOSE_FRACTION = 0.05
 # How far, in millimetres, an absolute Grid Frame Offset Vector's first
 # offset may lie from Image Position (Patient)'s z.
 _SAME_Z = 1e-3
+# How far each direction cosine vector's length may lie from 1, and their
+# dot product from 0. Cosines written to six decimal places lie well within
+# it, and over a grid 500 mm across it moves a voxel by no more than 0.05 mm.
+_UNIT = 1e-4
 _AXIAL = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 
 
@@ -258,6 +263,7 @@ class RtDoseDefacer:
             with redacted_diagnostics():
                 position = _numbers(dataset, "ImagePositionPatient", 3)
                 orientation = _numbers(dataset, "ImageOrientationPatient", 6)
+                _check_directions(orientation)
                 spacing = _numbers(dataset, "PixelSpacing", 2)
                 offsets = (
                     _numbers(dataset, "GridFrameOffsetVector", layout.frames)
@@ -335,6 +341,25 @@ def _numbers(dataset: pydicom.Dataset, keyword: str, count: int) -> tuple[float,
     if len(values) != count or not all(math.isfinite(v) for v in values):
         raise ValueError("not finite numbers")
     return values
+
+
+def _check_directions(orientation: tuple[float, ...]) -> None:
+    """Check that Image Orientation (Patient) is two orthogonal unit
+    vectors, within :data:`_UNIT`, as PS3.3 C.7.6.2.1.1 requires.
+
+    Raises
+    ------
+    ValueError
+        Where it is not.
+    """
+    along_row = np.asarray(orientation[:3], dtype=float)
+    down_column = np.asarray(orientation[3:], dtype=float)
+    if (
+        abs(float(np.linalg.norm(along_row)) - 1) > _UNIT
+        or abs(float(np.linalg.norm(down_column)) - 1) > _UNIT
+        or abs(float(along_row @ down_column)) > _UNIT
+    ):
+        raise ValueError("direction cosines not orthogonal unit vectors")
 
 
 def _origins(

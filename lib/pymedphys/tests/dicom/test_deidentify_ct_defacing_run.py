@@ -20,6 +20,7 @@ the head. Every UID and value here is invented."""
 from __future__ import annotations
 
 import contextlib
+import copy
 import json
 import shutil
 import tempfile
@@ -95,10 +96,54 @@ def _head_name(index):
     return f"01-head-{index:03d}.dcm"
 
 
+# Direction cosines that PS3.3 C.7.6.2.1.1 does not allow, by file name.
+_UNPLACEABLE = {
+    "06-rtdose-zero-cosines.dcm": (0.0,) * 6,
+    "06-rtdose-non-unit-cosines.dcm": (2.0, 0.0, 0.0, 0.0, 1.0, 0.0),
+    "06-rtdose-non-orthogonal-cosines.dcm": (1.0, 0.0, 0.0, 0.6, 0.8, 0.0),
+}
+_DVH_ONLY = "06-rtdose-dvh-only.dcm"
+# Pixel Data and the Image Plane and Image Pixel modules' attributes, which
+# Table A.18.3-1 of PS3.3 requires only of a grid.
+_GRID_ONLY = (
+    "PixelData",
+    "ImagePositionPatient",
+    "ImageOrientationPatient",
+    "PixelSpacing",
+    "SliceThickness",
+    "GridFrameOffsetVector",
+    "FrameIncrementPointer",
+    "NumberOfFrames",
+    "Rows",
+    "Columns",
+    "SamplesPerPixel",
+    "PhotometricInterpretation",
+    "BitsAllocated",
+    "BitsStored",
+    "HighBit",
+    "PixelRepresentation",
+    "DoseGridScaling",
+)
+
+
+def _dvh_only(grid, instance):
+    """The corpus' RT Dose without its grid, as one of dose-volume
+    histograms alone is."""
+    dataset = copy.deepcopy(grid)
+    for keyword in _GRID_ONLY:
+        if keyword in dataset:
+            delattr(dataset, keyword)
+    dataset.SOPInstanceUID = instance
+    dataset.file_meta.MediaStorageSOPInstanceUID = instance
+    return files.written(dataset)
+
+
 @contextlib.contextmanager
-def _runs(*others, first=None, target=False, without_ct=False, dose=None):
+def _runs(*others, first=None, target=False, without_ct=False, dose=None, edges=False):
     """Run the collection, with its CT slices replaced by the head's, and
-    its first RT Dose by a grid over the head of ``dose`` where given, under
+    its first RT Dose by a grid over the head of ``dose`` where given, with
+    the RT Dose instances of :data:`_UNPLACEABLE` and :data:`_DVH_ONLY` in
+    its series if ``edges``, under
     ``basic``, or under the option and ``first`` with a face review that
     gives no verdicts; attest the pack with the head's series, and those of
     the RT Structure Set, RT Dose, and PET in its frame, marked absent; and
@@ -132,6 +177,21 @@ def _runs(*others, first=None, target=False, without_ct=False, dose=None):
                     template=grid,
                 )
             )
+            if edges:
+                for index, (name, orientation) in enumerate(_UNPLACEABLE.items()):
+                    (instances / name).write_bytes(
+                        files.dose(
+                            dose,
+                            **_GRID,
+                            orientation=orientation,
+                            frame=corpus_module.FRAME_OF_REFERENCE,
+                            instance=f"{grid.SOPInstanceUID}.{index + 1}",
+                            template=grid,
+                        )
+                    )
+                (instances / _DVH_ONLY).write_bytes(
+                    _dvh_only(grid, f"{grid.SOPInstanceUID}.9")
+                )
         if target:
             rtss = pydicom.dcmread(instances / _STRUCTURE_SET)
             (instances / _STRUCTURE_SET).write_bytes(
@@ -210,6 +270,12 @@ def _transform(options, face_review):
 @pytest.fixture(name="defaced", scope="module")
 def fixture_defaced():
     with _runs(first=(), dose=_dose(_LOW)) as found:
+        yield found
+
+
+@pytest.fixture(name="edges", scope="module")
+def fixture_edges():
+    with _runs(first=(), dose=_dose(_LOW), edges=True) as found:
         yield found
 
 
@@ -419,6 +485,35 @@ def test_high_dose_in_the_block_holds_the_dose_as_received(hot):
         if entry["stage"] == "visual-features"
     }
     assert counts[held.reason.value] == 1
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_a_grid_whose_direction_cosines_are_not_allowed_is_held_as_received(
+    edges,
+):
+    _, outcomes, reasons, _ = edges
+    held = HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
+
+    # It cannot be placed, so it is not set to zero, and stays held for its
+    # frame, in this run as in the reviewed one.
+    for name in _UNPLACEABLE:
+        assert outcomes[name] == ("held-for-review", None), name
+        assert held in reasons[name], name
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_an_rt_dose_of_dose_volume_histograms_alone_is_not_held_for_its_frame(
+    edges,
+):
+    _, outcomes, reasons, _ = edges
+
+    # Without a grid, it shows no face, in a defaced frame or not, so the
+    # verdict of absent on its series releases it.
+    assert not any(isinstance(r, HeldVisualFeatures) for r in reasons[_DVH_ONLY])
+    disposition, dataset = outcomes[_DVH_ONLY]
+    assert disposition == "released", reasons[_DVH_ONLY]
+    assert "PixelData" not in dataset
+    assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")

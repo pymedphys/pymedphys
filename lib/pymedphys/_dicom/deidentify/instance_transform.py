@@ -1045,10 +1045,17 @@ class InstanceTransform:
             return None
         return HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
 
-    def _dose_block(self, iod: IOD, record: InstanceRecord) -> DoseBlock | None:
+    def _dose_block(
+        self, iod: IOD, record: InstanceRecord, dataset: pydicom.Dataset
+    ) -> DoseBlock | None:
         """Return the block of an RT Dose's only Frame of Reference, if the
-        run sets its dose to zero there."""
-        if iod.name != RT_DOSE:
+        run sets its dose to zero there.
+
+        None for an RT Dose without pixel data, such as one of dose-volume
+        histograms alone, which has no grid to place and need not have the
+        attributes that would place one.
+        """
+        if iod.name != RT_DOSE or not any(tag in dataset for tag in PIXEL_DATA_TAGS):
             return None
         frames = frames_of(record)
         if len(frames) != 1:
@@ -1228,7 +1235,7 @@ class InstanceTransform:
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
         defacing = self._defacing(iod, record)
-        dose = self._dose_block(iod, record)
+        dose = self._dose_block(iod, record, dataset)
         qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         # No instance claims Clean Pixel Data until a reviewer's decision
         # can release its pixel data with Burned In Annotation set to NO

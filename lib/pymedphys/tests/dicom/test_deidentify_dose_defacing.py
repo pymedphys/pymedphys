@@ -150,6 +150,26 @@ def test_any_orientation_with_relative_offsets_is_placed_by_its_direction_cosine
     assert np.array_equal(masks, _expected(dataset))
 
 
+def test_direction_cosines_rounded_to_six_places_are_accepted():
+    # An oblique grid as a system writes it, its cosines rounded, so that
+    # each vector's length and their dot product are off by about 1e-7.
+    dataset = _dataset(
+        position=(0.0, -40.0, 10.0),
+        orientation=(0.707107, 0.707107, 0.0, -0.707107, 0.707107, 0.0),
+        offsets=(0.0, 10.0, 20.0),
+    )
+
+    masks, _ = _masks(dataset)
+
+    # The voxels lie off the slices' pixels and, by the normal's length, a
+    # few micrometres off their planes, so each is kept by the pixel and
+    # slice nearest it.
+    points = rtdose.voxel_positions(dataset)
+    kept = _expected_kept(np.rint(points))
+    assert masks.any() and kept.any()
+    assert np.array_equal(masks, _BLOCK.contains(points) & ~kept)
+
+
 def test_dose_beyond_the_slices_is_not_kept():
     # Frames at 30 and 40 mm: the slices are 10 mm apart, so 40 mm is beyond
     # their reach, and nothing there is kept.
@@ -259,6 +279,11 @@ def _with(**values) -> pydicom.Dataset:
         _with(PixelSpacing=["1e999", "2"]),
         _with(ImagePositionPatient=["0", "0"]),
         _with(ImageOrientationPatient=["1", "0", "0", "0", "1"]),
+        # PS3.3 C.7.6.2.1.1 requires two orthogonal unit vectors.
+        _with(ImageOrientationPatient=["0"] * 6),
+        _with(ImageOrientationPatient=["2", "0", "0", "0", "1", "0"]),
+        _with(ImageOrientationPatient=["1", "0", "0", "0", "1.001", "0"]),
+        _with(ImageOrientationPatient=["1", "0", "0", "0.6", "0.8", "0"]),
         _with(SamplesPerPixel=3),
     ],
     ids=[
@@ -273,6 +298,10 @@ def _with(**values) -> pydicom.Dataset:
         "infinite-spacing",
         "short-position",
         "five-cosines",
+        "zero-cosines",
+        "non-unit-cosines",
+        "nearly-unit-cosines",
+        "non-orthogonal-cosines",
         "colour",
     ],
 )
