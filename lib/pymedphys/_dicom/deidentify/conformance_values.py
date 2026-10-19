@@ -225,12 +225,13 @@ HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
             "face, and its source file is in a series that the face review "
             "marked as showing one, or in none that it reviewed, or the "
             "reviewed run held it beside a CT series that it defaced, or the "
-            "run writes other pixel data of it than the reviewed run did; or "
-            "it is "
+            "run writes other pixel data or contours of it than the reviewed "
+            "run did; or it is "
             "a CT slice of a series with a treatment target in the region that "
-            "defacing would set to air; or it is an RT Structure Set, RT Dose, "
+            "defacing would set to air, or with an eye drawn away from the eyes "
+            "that the run found; or it is an RT Structure Set, RT Dose, "
             "or PET instance beside a CT series that the run defaced, which the "
-            "run does not yet clean, or an RT Dose beside one with too much dose "
+            "run does not clean, or an RT Dose beside one with too much dose "
             "in the region set to air to set that dose to zero"
         ),
         "release": (
@@ -593,6 +594,14 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
 def _pixel_data(statement: ConformanceStatement) -> str:
     """Return the sentences on how the engine writes Pixel Data."""
     visual = CLEAN_RECOGNIZABLE_VISUAL_FEATURES in statement.options
+    face = (
+        ", but for the face region that the Clean Recognizable Visual "
+        "Features Option sets to air in CT, and to zero dose or zero "
+        "activity in RT Dose and PET beside a defaced CT series, as its "
+        "condition for the option's code describes,"
+        if visual
+        else ""
+    )
     if CLEAN_PIXEL_DATA not in statement.options:
         claims = (
             "claims Clean Recognizable Visual Features only for an instance "
@@ -602,7 +611,7 @@ def _pixel_data(statement: ConformanceStatement) -> str:
             else "claims neither Clean Pixel Data nor Clean Recognizable Visual "
             "Features. "
         )
-        return "The engine writes Pixel Data (7FE0,0010) unchanged and " + claims
+        return f"The engine writes Pixel Data (7FE0,0010) unchanged{face} and " + claims
     claims = "claims Clean Pixel Data only for an instance " + (
         "without top-level pixel data or whose regions a reviewer approved, "
         "and Clean Recognizable Visual Features only for one that cannot show "
@@ -631,8 +640,8 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         "8-bit RGB or another layout that cannot be read as frames of stored "
         "values, hold more than the value's sign in the bits above Bits "
         "Stored, such as an overlay, or differ when written from its source "
-        "other than in those regions. It writes other Pixel Data unchanged, "
-        "and "
+        "other than in those regions. It writes other Pixel Data "
+        f"unchanged{face or ','} and "
         + claims
         + "A run's method digest also covers its text finder's class and "
         "description of its method, such as the text detector's model, ONNX "

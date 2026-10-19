@@ -127,7 +127,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/7"
+FORMAT = "pymedphys-deid-qc-pack/8"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 
@@ -245,6 +245,10 @@ class InstanceEntry:
         hexadecimal, which binds a series' face verdict to the pixel data
         that the run wrote; ``None`` for any other input, or one whose
         written file the gate did not hand over or could not be read.
+    contour_sha256 : str, optional
+        Likewise, the :func:`~.face_review.contour_data_sha256` of the file
+        written, which binds a series' face verdict to the contours that
+        the run wrote.
     """
 
     position: int
@@ -255,6 +259,7 @@ class InstanceEntry:
     reasons: tuple[str, ...] = ()
     source_sha256: str | None = None
     pixel_sha256: str | None = None
+    contour_sha256: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("an instance", self.position)
@@ -281,6 +286,15 @@ class InstanceEntry:
         ):
             raise QcPackError(
                 f"instance {self.position} needs its pixel data's SHA-256 as 64 "
+                "lower-case hexadecimal digits, and only if released or held"
+            )
+        if self.contour_sha256 is not None and not (
+            isinstance(self.contour_sha256, str)
+            and _SHA256.fullmatch(self.contour_sha256)
+            and self.disposition in _REVIEWED
+        ):
+            raise QcPackError(
+                f"instance {self.position} needs its contours' SHA-256 as 64 "
                 "lower-case hexadecimal digits, and only if released or held"
             )
         problem = self._problem()
@@ -1633,6 +1647,7 @@ def _instance(entry: InstanceEntry) -> dict:
         "reasons": list(entry.reasons),
         "source_sha256": entry.source_sha256,
         "pixel_sha256": entry.pixel_sha256,
+        "contour_sha256": entry.contour_sha256,
     }
 
 

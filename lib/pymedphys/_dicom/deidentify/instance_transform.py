@@ -144,6 +144,7 @@ from .face_review import (
     PIXEL_DATA_TAGS,
     FaceReview,
     carries_visual_features,
+    contour_data_sha256,
     pixel_data_sha256,
 )
 from .file_layout import ElementPath
@@ -200,15 +201,24 @@ from .pixel_cleaning import (
 from .dose_defacing import RT_DOSE, DoseBlock, RtDoseDefacer, find_dose_blocks
 from .face_blocks import (
     CT_IMAGE,
+    PET_IMAGE,
+    RT_STRUCTURE_SET,
     CtDefacer,
     FaceBlockCounts,
     SeriesDefacing,
+    SeriesProblem,
     Defaced,
     find_defaced,
     find_face_blocks,
     frames_of,
 )
 from .pixel_risk import assess_pixel_risk, series_evidence
+from .region_defacing import (
+    ContoursRefused,
+    PetDefacer,
+    WrittenContour,
+    cut_contours,
+)
 from .run_qc import (
     Dropped,
     PixelRiskMaterial,
@@ -238,6 +248,13 @@ _PATIENT_ID = ElementPath((), "(0010,0020)")
 _PIXEL_DATA = ElementPath((), "(7FE0,0010)")
 _BURNED_IN_ANNOTATION = "(0028,0301)"
 _RECOGNIZABLE_VISUAL_FEATURES = "(0028,0302)"
+_ROI_CONTOURS = "(3006,0039)"  # ROI Contour Sequence
+_CONTOURS = "(3006,0040)"  # Contour Sequence
+# Why each slice of a CT series that is held rather than defaced is held.
+_HELD_SERIES = {
+    SeriesProblem.TARGET_IN_BLOCK: VisualFeaturesReason.TARGET_IN_FACE_BLOCK,
+    SeriesProblem.EYES_DISAGREE: VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS,
+}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -811,23 +828,31 @@ class InstanceTransform:
     :class:`~.face_blocks.CtDefacer`'s masks, checked as a redaction is; a
     slice that cannot be is sequestered. A slice of a series with a
     target's contour in its block is not defaced, and is held for review
-    (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`). An RT
+    (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`), as is
+    one of a series whose structure set draws an eye away from the globes
+    that its block was found from
+    (:attr:`~.reasons.VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS`). An RT
     Dose whose only Frame of Reference is that of one defaced series is
     written with its dose set to zero in the series' block, less the
     cavity that defacing keeps (:class:`~.dose_defacing.RtDoseDefacer`), or,
     where the dose there is too great, written as received and held
-    (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`). Any other
-    RT Structure Set, RT Dose with pixel data, or PET instance in a defaced
-    series' Frame of Reference, naming none, or referring to a defaced
-    slice, is held whatever its verdict
-    (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
-    since the run does not yet clean it of the face. An
-    instance that can show a
-    face (:func:`~.face_review.carries_visual_features`) satisfies the
+    (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`). An RT
+    Structure Set whose only Frame of Reference is that of one defaced
+    series is written with its contours cut by the block
+    (:func:`~.region_defacing.cut_contours`), and a PET image's activity in
+    the block, less that cavity, is set to zero
+    (:class:`~.region_defacing.PetDefacer`). Any other RT Structure Set, RT
+    Dose with pixel data, or PET instance in a defaced series' Frame of
+    Reference, naming none, or referring to a defaced slice, such as one
+    whose contours or pixel data cannot be cut, is held whatever its
+    verdict (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
+    since the run does not clean it of the face. An instance that can show
+    a face (:func:`~.face_review.carries_visual_features`) satisfies the
     option only where the SHA-256 of its source file is in a series that the
-    face review marks absent, and the pixel data that it is written with are
-    those that the reviewed run wrote of that file
-    (:attr:`~.reasons.VisualFeaturesReason.OTHER_PIXEL_DATA` otherwise), and
+    face review marks absent, and the pixel data and contours that it is
+    written with are those that the reviewed run wrote of that file
+    (:attr:`~.reasons.VisualFeaturesReason.OTHER_PIXEL_DATA` or
+    :attr:`~.reasons.VisualFeaturesReason.OTHER_CONTOURS` otherwise), and
     an instance that cannot show a face satisfies it. Each is marked with the option's code and Recognizable
     Visual Features (0028,0302) set to NO, which PS3.15 E.3.2 adds whether
     or not its IOD defines the attribute. Any other instance that can show a
@@ -980,7 +1005,9 @@ class InstanceTransform:
         self._face_blocks = find_face_blocks(records, read)
         self._face_block_counts.record(self._face_blocks.values())
         self._defaced = find_defaced(records, self._face_blocks)
-        self._dose_blocks = find_dose_blocks(records, read, self._face_blocks)
+        self._dose_blocks = find_dose_blocks(
+            records, read, self._face_blocks, (RT_DOSE, RT_STRUCTURE_SET, PET_IMAGE)
+        )
 
     def written_check(
         self, graph: ReferenceGraph, written: Mapping[int, InstanceRecord]
@@ -1056,14 +1083,16 @@ class InstanceTransform:
         """Return why the face review holds an instance, if it does.
 
         Nothing holds an instance without a face review, or one that cannot
-        show a face. The review is of the source file and of the pixel data
-        that ``writing`` writes.
+        show a face. The review is of the source file, and of the pixel data
+        and contours that ``writing`` writes.
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
             return None
         reason = review.hold_reason(
-            hashlib.sha256(data).digest(), _pixel_digest(writing, dataset)
+            hashlib.sha256(data).digest(),
+            _pixel_digest(writing, dataset),
+            _contour_digest(writing, dataset),
         )
         return None if reason is None else HeldVisualFeatures(reason)
 
@@ -1074,13 +1103,14 @@ class InstanceTransform:
         dataset: pydicom.Dataset,
         dose: DoseBlock | None,
     ) -> HeldVisualFeatures | None:
-        """Return why an instance that the run does not yet clean of the
-        face is held, where it defaces the instance's frame
+        """Return why an instance that the run does not clean of the face is
+        held, where it defaces the instance's frame
         (:meth:`~.face_blocks.Defaced.holds`).
 
         An RT Dose without pixel data is not held for its frame, nor one
-        that the run sets to zero in its frame's block, unless it refers to
-        a defaced slice of another series.
+        that the run sets to zero in its frame's block, nor an RT Structure
+        Set or PET instance that it cleans there, unless it refers to a
+        defaced slice of another series.
         """
         if iod.name == RT_DOSE and not any(tag in dataset for tag in PIXEL_DATA_TAGS):
             return None
@@ -1108,6 +1138,17 @@ class InstanceTransform:
             return None
         return self._dose_blocks.get(next(iter(frames)))
 
+    def _region(self, iod: IOD, record: InstanceRecord) -> DoseBlock | None:
+        """Return the block of an RT Structure Set's or PET image's only Frame
+        of Reference, if the run cleans it there
+        (:mod:`~pymedphys._dicom.deidentify.region_defacing`)."""
+        if iod.name not in (RT_STRUCTURE_SET, PET_IMAGE):
+            return None
+        frames = frames_of(record)
+        if len(frames) != 1:
+            return None
+        return self._dose_blocks.get(next(iter(frames)))
+
     def _defacing(self, iod: IOD, record: InstanceRecord) -> SeriesDefacing | None:
         """Return the outcome of a CT slice's series, if it has one."""
         if iod.name != CT_IMAGE or record.series is None:
@@ -1121,18 +1162,22 @@ class InstanceTransform:
         dataset: pydicom.Dataset,
         defacing: SeriesDefacing | None,
         dose: DoseBlock | None,
+        pet: DoseBlock | None = None,
     ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool]:
         """Return the instance's Pixel Data blacked out under Clean Pixel Data,
         and, under Clean Recognizable Visual Features, a CT slice's face
-        block written as air or an RT Dose's set to zero, with why an RT
-        Dose's is not, and whether a reviewer approved the regions.
+        block written as air, an RT Dose's set to zero, or a PET image's set
+        to zero activity, with why an RT Dose's or PET image's is not, and
+        whether a reviewer approved the regions.
 
         The redaction is None where nothing applies, or the instance has no
         top-level pixel data. The regions are those that the redaction
         review approved for the source file, by its SHA-256, otherwise those
         that the finder finds, and none without Clean Pixel Data. An RT Dose
         whose grid :class:`~.dose_defacing.RtDoseDefacer` cannot set to
-        zero, or holds, is blacked out as though it had no block, with
+        zero, or holds, or a PET image that
+        :class:`~.region_defacing.PetDefacer` cannot clean, is blacked out
+        as though it had no block, with
         :attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME` or
         the defacer's reason.
 
@@ -1144,7 +1189,7 @@ class InstanceTransform:
             :class:`~.pixel_cleaning.PixelDataRefused`.
         """
         block = None if defacing is None else defacing.block
-        if self._finder is None and block is None and dose is None:
+        if self._finder is None and block is None and dose is None and pet is None:
             return None, None, False
         approved = None
         if self._finder is not None and self._redaction_review is not None:
@@ -1154,9 +1199,13 @@ class InstanceTransform:
             approved = self._redaction_review.approved.get(digest)
         reviewed = approved is not None
         try:
-            if dose is not None:
+            if dose is not None or pet is not None:
                 try:
-                    defacer = RtDoseDefacer(dose, dataset)
+                    defacer = (
+                        RtDoseDefacer(dose, dataset)
+                        if dose is not None
+                        else PetDefacer(pet, dataset)  # type: ignore[arg-type]
+                    )
                     redaction = (
                         black_out(source, dataset, self._finder, defacer)
                         if approved is None
@@ -1308,12 +1357,18 @@ class InstanceTransform:
                 evidence = HeldEvidence(evidence, cleaned.held)
         defacing = self._defacing(iod, record)
         dose = self._dose_block(iod, record, dataset)
+        region = self._region(iod, record)
         qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         chosen = {CLEAN_DESCRIPTORS} if satisfied else set()
         try:
             qc = (*qc, *_retained(source, plan, edits))
             redaction, undefaced, reviewed = self._black_out(
-                data, source, dataset, defacing, dose
+                data,
+                source,
+                dataset,
+                defacing,
+                dose,
+                region if iod.name == PET_IMAGE else None,
             )
             # The markers write no pixel data, so the face review is of the
             # pixel data that this plan writes.
@@ -1321,13 +1376,25 @@ class InstanceTransform:
                 writer_plan(plan, edits, codecs), source
             )
             writing = _with_redaction(writing, dataset, redaction)
+            if region is not None and iod.name == RT_STRUCTURE_SET:
+                try:
+                    writing = _with_cut_contours(
+                        writing,
+                        source,
+                        dataset,
+                        cut_contours(region, dataset, next(iter(frames_of(record)))),
+                    )
+                except ContoursRefused:
+                    undefaced = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
             face = (
-                HeldVisualFeatures(VisualFeaturesReason.TARGET_IN_FACE_BLOCK)
+                HeldVisualFeatures(_HELD_SERIES[defacing.problem])
                 if defacing is not None and defacing.held
                 else self._face_hold(data, dataset, iod, writing)
             )
             frame = (
-                self._frame_hold(iod, record, dataset, dose)
+                self._frame_hold(
+                    iod, record, dataset, dose if dose is not None else region
+                )
                 if undefaced is None
                 else HeldVisualFeatures(undefaced)
             )
@@ -1537,6 +1604,146 @@ def _pixel_digest(writing: WriterPlan, dataset: pydicom.Dataset) -> bytes | None
         return pixel_data_sha256(planned)
     except ValueError:
         return None
+
+
+def _contour_digest(writing: WriterPlan, dataset: pydicom.Dataset) -> bytes | None:
+    """Return the SHA-256 of the contours that the writer's plan writes.
+
+    As :func:`~.face_review.contour_data_sha256` gives it of the file
+    written, each ROI's Contour Sequence being the plan's replacement, or
+    the source's where the plan keeps it; None where a value cannot be read.
+    """
+    planned = pydicom.Dataset()
+    top = ElementPath((), _ROI_CONTOURS)
+    try:
+        if top in writing.replacements:
+            planned.add(writing.replacements[top])
+        elif top in writing.kept and _int_tag(_ROI_CONTOURS) in dataset:
+            items = []
+            for index, item in enumerate(dataset[_int_tag(_ROI_CONTOURS)].value):
+                path = ElementPath(((_ROI_CONTOURS, index),), _CONTOURS)
+                written = pydicom.Dataset()
+                if path in writing.replacements:
+                    written.add(writing.replacements[path])
+                elif path in writing.kept and _int_tag(_CONTOURS) in item:
+                    written.add(item[_int_tag(_CONTOURS)])
+                items.append(written)
+            planned.ROIContourSequence = items
+        return contour_data_sha256(planned)
+    # pydicom raises many types for an item it cannot read.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
+
+
+def _with_cut_contours(
+    writing: WriterPlan,
+    source: SourceEvidence,
+    dataset: pydicom.Dataset,
+    cut: Mapping[int, tuple[WrittenContour, ...]],
+) -> WriterPlan:
+    """Return the writer's plan with each ROI's Contour Sequence that the
+    face block cuts written as :func:`~.region_defacing.cut_contours` gives
+    it.
+
+    Each contour is written from its source item, with the plan's own
+    edits inside that item, and the Contour Data and Number of Contour
+    Points of a cut one; the source's elements inside the sequence are
+    removed, and those written are introduced. An ROI left with no contour
+    is written without its Contour Sequence.
+
+    Raises
+    ------
+    ContoursRefused
+        Where the plan does not keep a sequence that is cut as a container,
+        or plans no action for an element inside it.
+    """
+    kept, removed = set(writing.kept), set(writing.removed)
+    replacements = dict(writing.replacements)
+    introduced = set(writing.introduced)
+    for index, contours in cut.items():
+        path = ElementPath(((_ROI_CONTOURS, index),), _CONTOURS)
+        if path not in writing.kept:
+            raise ContoursRefused()
+        items = dataset[_int_tag(_ROI_CONTOURS)].value[index][_int_tag(_CONTOURS)].value
+        written = []
+        for each in contours:
+            within = (*path.items, (_CONTOURS, each.contour))
+            item = _planned_item(items[each.contour], within, writing)
+            if each.values is not None:
+                item.ContourData = list(each.values)
+                item.NumberOfContourPoints = len(each.values) // 3
+            if not each.numbered and "ContourNumber" in item:
+                del item.ContourNumber
+            written.append(item)
+        inside = {other for other in source.paths() if _within(other, path)}
+        kept -= inside | {path}
+        removed |= inside
+        introduced = {other for other in introduced if not _within(other, path)}
+        replacements = {
+            other: element
+            for other, element in replacements.items()
+            if not _within(other, path)
+        }
+        if written:
+            element = pydicom.DataElement(
+                _int_tag(_CONTOURS), "SQ", pydicom.Sequence(written)
+            )
+            replacements[path] = element
+            introduced.update(_paths_within(element, path.items))
+        else:
+            removed.add(path)
+    return WriterPlan(
+        frozenset(kept), frozenset(removed), replacements, frozenset(introduced)
+    )
+
+
+def _within(other: ElementPath, path: ElementPath) -> bool:
+    """Whether ``other`` is inside an item of the sequence at ``path``."""
+    depth = len(path.items)
+    return (
+        len(other.items) > depth
+        and other.items[:depth] == path.items
+        and other.items[depth][0] == path.tag
+    )
+
+
+def _planned_item(
+    item: pydicom.Dataset, within: tuple[tuple[str, int], ...], writing: WriterPlan
+) -> pydicom.Dataset:
+    """Return a sequence item as the writer's plan writes it: each element
+    replaced, kept, or left out as the plan has it, at the item's path.
+
+    Raises
+    ------
+    ContoursRefused
+        Where the plan has no action for an element.
+    """
+    planned = pydicom.Dataset()
+    for element in item:
+        path = ElementPath(within, _tag_text(element.tag))
+        if path in writing.replacements:
+            planned.add(copy.deepcopy(writing.replacements[path]))
+        elif path in writing.removed:
+            continue
+        elif path not in writing.kept:
+            raise ContoursRefused()
+        elif element.VR == "SQ":
+            planned.add(
+                pydicom.DataElement(
+                    element.tag,
+                    "SQ",
+                    pydicom.Sequence(
+                        _planned_item(each, (*within, (path.tag, number)), writing)
+                        for number, each in enumerate(element.value)
+                    ),
+                )
+            )
+        else:
+            planned.add(copy.deepcopy(element))
+    for path, element in writing.replacements.items():
+        if path.items == within and _int_tag(path.tag) not in item:
+            planned.add(copy.deepcopy(element))
+    return planned
 
 
 def _with_redaction(
