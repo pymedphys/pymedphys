@@ -34,9 +34,11 @@ defines: offsets along the normal from the first frame's position where the
 first offset is zero, or, only for an orientation of (1, 0, 0, 0, 1, 0)
 whose first offset is the position's z, the frames' z coordinates. A grid
 placed otherwise, whose direction cosines are not two orthogonal unit
-vectors, as PS3.3 C.7.6.2.1.1 requires, within :data:`_UNIT`, compressed,
-of more than one sample, or with a negative stored value, as an RT Dose of Dose Type ERROR can hold, is not set to
-zero, and stays held as an instance in a defaced frame
+vectors, as PS3.3 C.7.6.2.1.1 requires, within :data:`_UNIT`, with a
+spacing or a corner of a frame farther than :data:`_FARTHEST`, compressed,
+of more than one sample, or with a negative stored value, as an RT Dose of
+Dose Type ERROR can hold, is not set to zero, and stays held as an
+instance in a defaced frame
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`).
 
 Setting dose to zero must never take dose from a target that the
@@ -79,7 +81,7 @@ from .face_blocks import (
     frames_of,
     kept_slices,
 )
-from .pixel_cleaning import FrameMask, PixelDataRefused, layout_of
+from .pixel_cleaning import FrameMask, Layout, PixelDataRefused, layout_of
 from .reasons import TransformReason, VisualFeaturesReason
 from .references import InstanceRecord
 
@@ -92,8 +94,13 @@ DOSE_FRACTION = 0.05
 _SAME_Z = 1e-3
 # How far each direction cosine vector's length may lie from 1, and their
 # dot product from 0. Cosines written to six decimal places lie well within
-# it, and over a grid 500 mm across it moves a voxel by no more than 0.05 mm.
+# it. It bounds the vectors, not the voxels' positions, whose error also
+# grows with their distance from the grid's first voxel.
 _UNIT = 1e-4
+# The largest magnitude, in millimetres, of a corner of a frame of a grid
+# that is placed, or of its spacing, as face_blocks bounds a target's; a
+# larger one, finite, could put the block anywhere on the grid.
+_FARTHEST = 1e6
 _AXIAL = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 
 
@@ -271,6 +278,7 @@ class RtDoseDefacer:
                     else (0.0,)
                 )
             self._origins = _origins(position, orientation, offsets)
+            _check_reach(self._origins, orientation, spacing, layout)
         # Whatever the data set raises refuses the grid, without its message,
         # which could quote a value.
         except Exception:  # pylint: disable = broad-exception-caught
@@ -354,12 +362,40 @@ def _check_directions(orientation: tuple[float, ...]) -> None:
     """
     along_row = np.asarray(orientation[:3], dtype=float)
     down_column = np.asarray(orientation[3:], dtype=float)
-    if (
-        abs(float(np.linalg.norm(along_row)) - 1) > _UNIT
-        or abs(float(np.linalg.norm(down_column)) - 1) > _UNIT
-        or abs(float(along_row @ down_column)) > _UNIT
+    # Written so that a value that is not a number fails it too.
+    if not (
+        abs(float(np.linalg.norm(along_row)) - 1) <= _UNIT
+        and abs(float(np.linalg.norm(down_column)) - 1) <= _UNIT
+        and abs(float(along_row @ down_column)) <= _UNIT
     ):
         raise ValueError("direction cosines not orthogonal unit vectors")
+
+
+def _check_reach(
+    origins: tuple[tuple[float, float, float], ...],
+    orientation: tuple[float, ...],
+    spacing: tuple[float, ...],
+    layout: Layout,
+) -> None:
+    """Check that the grid's spacing, and each corner of each of its
+    frames, are within :data:`_FARTHEST`.
+
+    Raises
+    ------
+    ValueError
+        Where they are not.
+    """
+    across = (layout.columns - 1) * spacing[1] * np.asarray(orientation[:3])
+    down = (layout.rows - 1) * spacing[0] * np.asarray(orientation[3:])
+    corners = np.asarray(origins, dtype=float)[:, None, :] + np.array(
+        [np.zeros(3), across, down, across + down]
+    )
+    # Written so that a value that is not a number fails it too.
+    if not (
+        np.all(np.abs(corners) <= _FARTHEST)
+        and all(abs(value) <= _FARTHEST for value in spacing)
+    ):
+        raise ValueError("grid beyond the bound")
 
 
 def _origins(

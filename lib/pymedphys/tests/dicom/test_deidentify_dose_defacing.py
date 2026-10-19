@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import functools
 import io
+import math
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
@@ -284,6 +285,12 @@ def _with(**values) -> pydicom.Dataset:
         _with(ImageOrientationPatient=["2", "0", "0", "0", "1", "0"]),
         _with(ImageOrientationPatient=["1", "0", "0", "0", "1.001", "0"]),
         _with(ImageOrientationPatient=["1", "0", "0", "0.6", "0.8", "0"]),
+        # Finite but too far to place, which would put the block elsewhere.
+        _with(PixelSpacing=["1e300", "1e300"]),
+        _with(GridFrameOffsetVector=["0", "7e299", "1.4e300"]),
+        _with(ImagePositionPatient=["1e300", "0", "0"]),
+        # A frame placed beyond the bound, though each value is within it.
+        _dataset(position=(-20.0, -20.0, 10.0), offsets=(0.0, 10.0, 1e6)),
         _with(SamplesPerPixel=3),
     ],
     ids=[
@@ -302,12 +309,22 @@ def _with(**values) -> pydicom.Dataset:
         "non-unit-cosines",
         "nearly-unit-cosines",
         "non-orthogonal-cosines",
+        "huge-spacing",
+        "huge-offsets",
+        "huge-position",
+        "frame-too-far",
         "colour",
     ],
 )
 def test_a_grid_that_cannot_be_placed_is_refused(dataset):
     with pytest.raises(PixelDataRefused):
         RtDoseDefacer(_DOSE_BLOCK, dataset)
+
+
+def test_direction_cosines_that_are_not_numbers_are_refused():
+    # pylint: disable = protected-access
+    with pytest.raises(ValueError):
+        dose_defacing._check_directions((math.nan,) * 6)
 
 
 def test_the_reprs_show_nothing_of_the_grid():

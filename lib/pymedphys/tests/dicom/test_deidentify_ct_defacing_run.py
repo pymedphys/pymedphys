@@ -96,11 +96,17 @@ def _head_name(index):
     return f"01-head-{index:03d}.dcm"
 
 
-# Direction cosines that PS3.3 C.7.6.2.1.1 does not allow, by file name.
+# Grids that cannot be placed, by file name: direction cosines that PS3.3
+# C.7.6.2.1.1 does not allow, and finite geometry too far to place.
 _UNPLACEABLE = {
-    "06-rtdose-zero-cosines.dcm": (0.0,) * 6,
-    "06-rtdose-non-unit-cosines.dcm": (2.0, 0.0, 0.0, 0.0, 1.0, 0.0),
-    "06-rtdose-non-orthogonal-cosines.dcm": (1.0, 0.0, 0.0, 0.6, 0.8, 0.0),
+    "06-rtdose-zero-cosines.dcm": {"orientation": (0.0,) * 6},
+    "06-rtdose-non-unit-cosines.dcm": {"orientation": (2.0, 0.0, 0.0, 0.0, 1.0, 0.0)},
+    "06-rtdose-non-orthogonal-cosines.dcm": {
+        "orientation": (1.0, 0.0, 0.0, 0.6, 0.8, 0.0)
+    },
+    "06-rtdose-huge-spacing.dcm": {"spacing": (1e300, 1e300)},
+    "06-rtdose-huge-offsets.dcm": {"offsets": tuple(1e299 * k for k in range(15))},
+    "06-rtdose-huge-position.dcm": {"position": (1e300, -130.0, -30.0)},
 }
 _DVH_ONLY = "06-rtdose-dvh-only.dcm"
 # Pixel Data and the Image Plane and Image Pixel modules' attributes, which
@@ -178,12 +184,11 @@ def _runs(*others, first=None, target=False, without_ct=False, dose=None, edges=
                 )
             )
             if edges:
-                for index, (name, orientation) in enumerate(_UNPLACEABLE.items()):
+                for index, (name, geometry) in enumerate(_UNPLACEABLE.items()):
                     (instances / name).write_bytes(
                         files.dose(
                             dose,
-                            **_GRID,
-                            orientation=orientation,
+                            **{**_GRID, **geometry},
                             frame=corpus_module.FRAME_OF_REFERENCE,
                             instance=f"{grid.SOPInstanceUID}.{index + 1}",
                             template=grid,
@@ -488,14 +493,13 @@ def test_high_dose_in_the_block_holds_the_dose_as_received(hot):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
-def test_a_grid_whose_direction_cosines_are_not_allowed_is_held_as_received(
-    edges,
-):
+def test_a_grid_that_cannot_be_placed_is_held_as_received(edges):
     _, outcomes, reasons, _ = edges
     held = HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
 
-    # It cannot be placed, so it is not set to zero, and stays held for its
-    # frame, in this run as in the reviewed one.
+    # Its direction cosines are not allowed, or it lies too far to place,
+    # so it is not set to zero, and stays held for its frame, in this run as
+    # in the reviewed one.
     for name in _UNPLACEABLE:
         assert outcomes[name] == ("held-for-review", None), name
         assert held in reasons[name], name
@@ -507,8 +511,9 @@ def test_an_rt_dose_of_dose_volume_histograms_alone_is_not_held_for_its_frame(
 ):
     _, outcomes, reasons, _ = edges
 
-    # Without a grid, it shows no face, in a defaced frame or not, so the
-    # verdict of absent on its series releases it.
+    # Without a grid, it shows no face, in a defaced frame or not, so it
+    # needs no verdict, and is released, as in the reviewed run, which gave
+    # none.
     assert not any(isinstance(r, HeldVisualFeatures) for r in reasons[_DVH_ONLY])
     disposition, dataset = outcomes[_DVH_ONLY]
     assert disposition == "released", reasons[_DVH_ONLY]
