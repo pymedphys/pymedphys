@@ -29,6 +29,7 @@ from pymedphys._dicom.deidentify.dose_defacing import DoseBlock
 from pymedphys._dicom.deidentify.face_blocks import KeptSlice
 from pymedphys._dicom.deidentify.pixel_cleaning import PixelDataRefused
 from pymedphys._dicom.deidentify import region_defacing
+from pymedphys._geometry.polygons import coplanar
 from pymedphys._dicom.deidentify.region_defacing import (
     ContoursRefused,
     PetDefacer,
@@ -291,8 +292,11 @@ def test_contours_in_parallel_planes_either_side_of_the_origin_are_apart(reverse
     mirrored = _rectangle(-4, 4, -9, -2, -20)
     mirrored = mirrored[::-1] if reverse else mirrored
 
-    assert sorted(region_defacing._coplanar([ring, mirrored])[0]) == [[0], [1]]
-    assert region_defacing._coplanar([ring, ring[::-1]])[0] == [[0, 1]]
+    assert sorted(coplanar([ring, mirrored], region_defacing._COPLANAR)[0]) == [
+        [0],
+        [1],
+    ]
+    assert coplanar([ring, ring[::-1]], region_defacing._COPLANAR)[0] == [[0, 1]]
 
 
 def _turned(points, about_x, about_y, shift):
@@ -328,9 +332,9 @@ def test_oblique_contours_written_to_a_tenth_of_a_millimetre_share_a_plane():
             for points in (outer, hole, beside)
         )
 
-        assert region_defacing._coplanar([hole, ring])[0] == [[0, 1]]
-        assert region_defacing._coplanar([ring, hole[::-1]])[0] == [[0, 1]]
-        assert sorted(region_defacing._coplanar([ring, hole, beside])[0]) == [
+        assert coplanar([hole, ring], region_defacing._COPLANAR)[0] == [[0, 1]]
+        assert coplanar([ring, hole[::-1]], region_defacing._COPLANAR)[0] == [[0, 1]]
+        assert sorted(coplanar([ring, hole, beside], region_defacing._COPLANAR)[0]) == [
             [0, 1],
             [2],
         ]
@@ -355,7 +359,7 @@ def test_a_hole_is_cut_with_its_contour_whatever_else_lies_near_their_plane(orde
     )
     rings = [(outer, hole, small)[each] for each in order]
 
-    groups, _ = region_defacing._coplanar(rings)
+    groups, _ = coplanar(rings, region_defacing._COPLANAR)
     written = _roi([("CLOSEDPLANAR_XOR", ring) for ring in rings])
 
     assert sorted(sorted(group) for group in groups) == sorted(
