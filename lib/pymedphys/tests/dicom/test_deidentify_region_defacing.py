@@ -18,6 +18,7 @@ invented."""
 
 from __future__ import annotations
 
+import itertools
 import math
 
 from pymedphys._imports import numpy as np
@@ -309,11 +310,12 @@ def _turned(points, about_x, about_y, shift):
 def test_oblique_contours_written_to_a_tenth_of_a_millimetre_share_a_plane():
     # pylint: disable = protected-access
     rng = np.random.default_rng(2404)
-    for _ in range(300):
+    for size in [0.3, 0.5, 2.5] * 100:
         about_x, about_y = rng.uniform(-60, 60, 2)
         shift = rng.uniform(-500, 500, 3)
-        # A hole 2.5 mm across, whose rounded normal is the least certain.
-        hole = _rectangle(-1.5, 1, -1, 1.5, 0) + (
+        # A hole a few tenths of a millimetre to 2.5 mm across, whose own
+        # rounded normal is uncertain or meaningless.
+        hole = _rectangle(0, size, 0, size, 0) + (
             rng.uniform(-40, 40),
             rng.uniform(-60, 60),
             0,
@@ -332,6 +334,36 @@ def test_oblique_contours_written_to_a_tenth_of_a_millimetre_share_a_plane():
             [0, 1],
             [2],
         ]
+
+
+@pytest.mark.parametrize("order", list(itertools.permutations(range(3))))
+def test_a_hole_is_cut_with_its_contour_whatever_else_lies_near_their_plane(order):
+    # pylint: disable = protected-access
+    outer = _rectangle(-15, 15, -15, 15, 20)
+    hole = _rectangle(-4, 4, -9, -2, 20)
+    # A small contour half a millimetre below them, turned 5 degrees about x
+    # so that its plane passes through the outer contour's centre.
+    turn = np.radians(5)
+    normal = np.array([0, -np.sin(turn), np.cos(turn)])
+    centre = np.array([0, -0.5 / np.tan(turn), 19.5])
+    across = np.cross(normal, (1, 0, 0))
+    small = np.array(
+        [
+            centre + 0.75 * (x * np.array([1, 0, 0]) + y * across)
+            for x, y in [(-1, -1), (1, -1), (1, 1), (-1, 1)]
+        ]
+    )
+    rings = [(outer, hole, small)[each] for each in order]
+
+    groups, _ = region_defacing._coplanar(rings)
+    written = _roi([("CLOSEDPLANAR_XOR", ring) for ring in rings])
+
+    assert sorted(sorted(group) for group in groups) == sorted(
+        [sorted([order.index(0), order.index(1)]), [order.index(2)]]
+    )
+    got = _region_of([points for index, points in written if index != order.index(2)])
+    expected = _region_of([outer, hole]).difference(_FACE_SIDE)
+    assert got.symmetric_difference(expected).area < 1e-6
 
 
 def _even_odd(rings, x, y):

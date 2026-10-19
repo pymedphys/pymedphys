@@ -54,8 +54,7 @@ masks. A series is defaced only where all of these hold:
 - every point of each eye, an ROI in the series' Frame of Reference or
   naming none, a malformed frame counting as none
   (:func:`_roi_frames`), whose ROI Name names an eye, a globe, or an eyeball
-  (:func:`_is_eye`), of those structure sets in the series' frame, naming
-  no valid frame, or drawn on its slices (:func:`_placed`), lies within
+  (:func:`_is_eye`), of those structure sets lies within
   :data:`EYE_REACH` millimetres of the nearer globe that the finder found
   (:func:`_eyes_far`), so that a block placed from something else taken
   for the globes is not written; and
@@ -321,16 +320,7 @@ def find_face_blocks(
             ]
             if _target_in(outcome.block, frame, slices[uid], searched, read):
                 outcome = SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK)
-            elif _eyes_disagree(
-                outcome.block,
-                frame,
-                [
-                    position
-                    for position in searched
-                    if _placed(records[position], frame, slices[uid])
-                ],
-                read,
-            ):
+            elif _eyes_disagree(outcome.block, frame, searched, read):
                 outcome = SeriesDefacing(None, SeriesProblem.EYES_DISAGREE)
         outcomes[uid] = outcome
     return outcomes
@@ -353,22 +343,15 @@ def _searched(
     does not tie to the series' slices is passed over
     (:func:`_targets_reach`).
     """
-    if _placed(structure_set, frame, slices):
+    frames = frames_of(structure_set)
+    if frame in frames or not any(is_uid(each) for each in frames):
+        return True
+    if not slices.isdisjoint(ref.target for ref in structure_set.references):
         return True
     return any(
         _same_patient(structure_set.patient, records[position].patient)
         for position in positions
     )
-
-
-def _placed(structure_set: InstanceRecord, frame: str, slices: set[str]) -> bool:
-    """Whether a structure set is in a series' Frame of Reference, names no
-    valid frame, or is drawn on the series' slices, so that an ROI of it
-    naming no frame may be placed in the series' frame."""
-    frames = frames_of(structure_set)
-    if frame in frames or not any(is_uid(each) for each in frames):
-        return True
-    return not slices.isdisjoint(ref.target for ref in structure_set.references)
 
 
 def _same_patient(one: SubjectIdentity | None, other: SubjectIdentity | None) -> bool:

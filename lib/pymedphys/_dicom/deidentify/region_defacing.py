@@ -87,6 +87,7 @@ and every Enhanced PET or Legacy Converted Enhanced PET image, stays held.
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import math
 
@@ -112,14 +113,13 @@ _FARTHEST = 1e6
 # The interval, in millimetres, at which a segment is sampled within the
 # block where the block reaches no slice.
 _STEP = 0.5
-# How far apart, in millimetres, and how far from parallel, as one less the
-# cosine of the angle between their normals, two closed contours may lie and
-# still be taken to lie in one plane, and so to bound one region together.
-# Each is loose enough for contours whose coordinates are written to 0.1 mm,
-# a small hole's normal included, and still far tighter than any two slices
-# lie apart; grouping too much only cuts more.
-_COPLANAR = 0.1
-_PARALLEL = 0.01
+# How far, in millimetres, each point of a closed contour may lie from
+# another's plane, or from its own, and still be taken to lie in it. It
+# allows for coordinates written to 0.1 mm, which move a point up to 0.087 mm
+# off its plane, and is far less than half of any slice spacing. Grouping
+# too much cuts more of the kept cavity; grouping too little can leave a
+# hole whole within a contour that is cut.
+_COPLANAR = 0.15
 
 
 class ContoursRefused(Exception):
@@ -267,40 +267,57 @@ def _coplanar(polygons: list[np.ndarray]) -> tuple[list[list[int]], list[int]]:
     the direction in which they spread least, so that it is found for any
     winding, and for a polygon that crosses itself, such as a bow tie,
     whose signed area may be zero. Two polygons lie in one plane where
-    their normals are within :data:`_PARALLEL` of parallel and the line
-    between their centres leaves the plane of one or the other by no more
-    than :data:`_COPLANAR`. The distance is taken between the polygons,
-    not from the origin, so that a normal's error, larger for a small
-    polygon, is not scaled by how far from the origin they lie. A polygon
-    whose points lie on one line bounds nothing and is alone; one with a
-    point farther than :data:`_COPLANAR` from its plane lies in none.
+    every point of one lies within :data:`_COPLANAR` of the other's plane,
+    which holds for a small hole, whose own normal is uncertain, in a
+    large contour's plane. Each pair is compared, and groups that share a
+    polygon are joined, so that no polygon is kept from a group by the
+    order in which they are given. A polygon whose points lie on one line
+    bounds nothing and is alone; one with a point farther than
+    :data:`_COPLANAR` from its own plane lies in none.
     """
-    groups: list[tuple[np.ndarray, np.ndarray, list[int]]] = []
+    planes: dict[int, tuple[np.ndarray, np.ndarray]] = {}
     alone: list[list[int]] = []
     unplaced: list[int] = []
     for index, points in enumerate(polygons):
         centre = points.mean(axis=0)
-        centred = points - centre
-        _, spread, axes = np.linalg.svd(centred, full_matrices=False)
+        _, spread, axes = np.linalg.svd(points - centre, full_matrices=False)
         if len(spread) < 3 or not spread[1] > 1e-9 * spread[0]:
             alone.append([index])
-            continue
-        normal = axes[2]
-        if not np.max(np.abs(centred @ normal)) <= _COPLANAR:
+        elif not np.max(np.abs((points - centre) @ axes[2])) <= _COPLANAR:
             unplaced.append(index)
-            continue
-        for other, other_centre, members in groups:
-            apart = centre - other_centre
-            if (
-                abs(float(normal @ other)) >= 1 - _PARALLEL
-                and min(abs(float(normal @ apart)), abs(float(other @ apart)))
-                <= _COPLANAR
-            ):
-                members.append(index)
-                break
         else:
-            groups.append((normal, centre, [index]))
-    return [members for _, _, members in groups] + alone, unplaced
+            planes[index] = (axes[2], centre)
+
+    def within(polygon: int, plane: int) -> bool:
+        normal, centre = planes[plane]
+        return bool(np.max(np.abs((polygons[polygon] - centre) @ normal)) <= _COPLANAR)
+
+    root = {index: index for index in planes}
+
+    def find(index: int) -> int:
+        while root[index] != index:
+            root[index] = root[root[index]]
+            index = root[index]
+        return index
+
+    placed = sorted(planes)
+    for position, one in enumerate(placed):
+        for other in placed[position + 1 :]:
+            # A polygon's centre's signed distance from a plane is the mean
+            # of its points', so where the centre lies farther, so does some
+            # point, and the polygon is not in that plane.
+            near = (
+                abs(float(planes[other][0] @ (planes[one][1] - planes[other][1])))
+                <= _COPLANAR
+                or abs(float(planes[one][0] @ (planes[other][1] - planes[one][1])))
+                <= _COPLANAR
+            )
+            if near and (within(one, other) or within(other, one)):
+                root[find(one)] = find(other)
+    groups: dict[int, list[int]] = collections.defaultdict(list)
+    for index in placed:
+        groups[find(index)].append(index)
+    return sorted(groups.values()) + alone, unplaced
 
 
 def _contour(contour: pydicom.Dataset) -> tuple[str, np.ndarray]:
