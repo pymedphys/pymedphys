@@ -492,24 +492,60 @@ def test_what_is_written_to_standard_output_as_the_child_starts_is_not_read(
 
 
 @pytest.mark.skipif(not hasattr(os, "fork"), reason="no fork")
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
-def test_a_forked_process_starts_its_own_child(monkeypatch):
-    run(operator.add, 1, 2)
-    monkeypatch.setattr(isolated_decoding, "_unavailable_logged", True)
+def test_a_forked_process_starts_its_own_child(tmp_path):
+    """Check real fork handling without inheriting the pytest worker's state."""
+    script = tmp_path / "forks.py"
+    # Test collection imports scientific libraries and runner plugins. Fork
+    # from a fresh interpreter so that their state is not inherited, while
+    # retaining the ownership checks on both sides of a real fork.
+    script.write_text(
+        "import operator, os, signal, time, traceback\n"
+        "from pymedphys._dicom.deidentify import isolated_decoding as decoder\n"
+        "assert decoder.run(operator.add, 1, 2) == 3\n"
+        "parent_decoder = decoder._child\n"
+        "decoder._unavailable_logged = True\n"
+        "pid = os.fork()\n"
+        "if pid == 0:\n"
+        "    code = 1\n"
+        "    try:\n"
+        "        assert decoder._child is None\n"
+        "        assert not decoder._unavailable_logged\n"
+        "        assert decoder.run(operator.add, 2, 2) == 4\n"
+        "        assert decoder._child.process.pid != parent_decoder.process.pid\n"
+        "        code = 0\n"
+        "    except BaseException:\n"
+        "        traceback.print_exc()\n"
+        "    finally:\n"
+        "        try:\n"
+        "            decoder._exit()\n"
+        "        finally:\n"
+        "            os._exit(code)\n"
+        "try:\n"
+        "    deadline = time.monotonic() + 60\n"
+        "    while True:\n"
+        "        finished, status = os.waitpid(pid, os.WNOHANG)\n"
+        "        if finished:\n"
+        "            break\n"
+        "        if time.monotonic() >= deadline:\n"
+        "            os.kill(pid, signal.SIGKILL)\n"
+        "            os.waitpid(pid, 0)\n"
+        "            raise AssertionError('forked process did not finish')\n"
+        "        time.sleep(0.01)\n"
+        "    assert os.waitstatus_to_exitcode(status) == 0, status\n"
+        "    assert decoder._child is parent_decoder\n"
+        "    assert parent_decoder.process.poll() is None\n"
+        "    assert decoder.run(operator.add, 1, 2) == 3\n"
+        "finally:\n"
+        "    decoder._exit()\n"
+    )
 
-    pid = os.fork()
-    if pid == 0:
-        code = 1
-        try:
-            if (
-                isolated_decoding._child is None  # pylint: disable = protected-access
-                and not isolated_decoding._unavailable_logged  # pylint: disable = protected-access
-                and run(operator.add, 2, 2) == 4
-            ):
-                code = 0
-        finally:
-            os._exit(code)  # pylint: disable = protected-access
-    _, status = os.waitpid(pid, 0)
+    completed = subprocess.run(
+        [sys.executable, os.fspath(script)],
+        capture_output=True,
+        check=False,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+        text=True,
+        timeout=120,
+    )
 
-    assert os.waitstatus_to_exitcode(status) == 0
-    assert run(operator.add, 1, 2) == 3
+    assert completed.returncode == 0, (completed.stdout, completed.stderr)
