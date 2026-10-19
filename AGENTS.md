@@ -541,7 +541,10 @@ tests with NumPy and pandas at their declared minimum versions, and the
 declared minimum. When a change needs a newer NumPy, pandas, or pydicom, or a
 minimum is raised for another reason such as a security fix, raise the minimum
 in `pyproject.toml` and the version pinned in that job together, rather than
-working around a failure there.
+working around a failure there. When `dependency-floors` fails because the
+lock moved another package to a release that requires a newer NumPy or pandas,
+add that package to the job's overlay instead, so that the job installs its
+latest release that accepts the minimums.
 
 ### GitHub Actions Pins and Dependabot
 
