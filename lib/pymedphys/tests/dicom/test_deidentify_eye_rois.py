@@ -159,6 +159,27 @@ def test_an_eye_that_names_no_frame_is_checked():
     assert face_blocks._eyes_far(dataset, files.FRAME, _BLOCK)
 
 
+@pytest.mark.parametrize(
+    "value",
+    [
+        "Eye",
+        [files.FRAME, files.ROOT + ".8"],
+        [files.FRAME, files.FRAME],
+        files.ROOT + ".01",
+        files.ROOT + ".9",
+    ],
+    ids=["not-a-uid", "two-frames", "given-twice", "leading-zero", "undeclared"],
+)
+def test_an_eye_whose_frame_is_malformed_is_checked(value):
+    away = _eye(np.add(_GLOBES[1], (0, -40, 0)))
+    dataset = _structure_set(("Eye_L", away))
+    dataset.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = value
+
+    # As a target's, a malformed frame may be the series'.
+    # pylint: disable = protected-access
+    assert face_blocks._eyes_far(dataset, files.FRAME, _BLOCK)
+
+
 # On the analytic head.
 
 

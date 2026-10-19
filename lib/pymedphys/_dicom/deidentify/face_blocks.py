@@ -52,7 +52,8 @@ masks. A series is defaced only where all of these hold:
   one in the series' frame and in each frame that its structure set
   declares;
 - every point of each eye, an ROI in the series' Frame of Reference or
-  naming none whose ROI Name names an eye, a globe, or an eyeball
+  naming none, a malformed frame counting as none
+  (:func:`_roi_frames`), whose ROI Name names an eye, a globe, or an eyeball
   (:func:`_is_eye`), of those structure sets in the series' frame, naming
   no valid frame, or drawn on its slices (:func:`_placed`), lies within
   :data:`EYE_REACH` millimetres of the nearer globe that the finder found
@@ -726,12 +727,15 @@ def _eyes_far(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bool:
     or both together in one ROI, but an eye that the structure set does
     not draw, or names otherwise, is not checked, nor is one in another
     frame, which cannot be placed in the series' without a registration.
+    An ROI's frame is taken as for a target (:func:`_roi_frames`), so one
+    that is malformed, or that its set does not declare, counts as naming
+    none, and the eye is checked.
     """
+    frames_of_roi = _roi_frames(dataset)
     eyes = {
         int(item.ROINumber)
         for item in dataset.get("StructureSetROISequence") or []
-        if normalise_uid(str(item.get("ReferencedFrameOfReferenceUID") or ""))
-        in ("", frame)
+        if frames_of_roi(int(item.ROINumber)) & {"", frame}
         and _is_eye(str(item.get("ROIName") or ""))
     }
     globes = np.asarray(block.globes, dtype=float)
@@ -779,28 +783,7 @@ def _targets_reach(
     value it names, so that a malformed frame that the set ties to the
     series' slices still holds it.
     """
-    named: dict[int, set[str]] = collections.defaultdict(set)
-    for item in dataset.get("StructureSetROISequence", []):
-        named[int(item.ROINumber)] |= _frames(item, "ReferencedFrameOfReferenceUID")
-    declarations = [
-        _frames(item, "FrameOfReferenceUID")
-        for item in dataset.get("ReferencedFrameOfReferenceSequence", [])
-    ]
-    # Every label a declaration gives may be a frame, but only one UID
-    # declared alone makes an ROI's frame certain.
-    declared = set().union(*declarations) - {""}
-    certain = {frame for each in declarations if "" not in each for frame in each}
-
-    def frames_of_roi(number: int) -> set[str]:
-        frames = named.get(number, {""})
-        # An ROI's frame is one that its set declares (PS3.3 C.8.8.5), so
-        # one that is not is malformed too.
-        return (
-            frames
-            if len(frames) == 1 and frames <= certain
-            else {"", *declared, *frames}
-        )
-
+    frames_of_roi = _roi_frames(dataset)
     targets = _targets(dataset)
     tied = _tied_frames(dataset, frames_of_roi, slices)
     for item in dataset.get("ROIContourSequence", []):
@@ -845,6 +828,37 @@ def _tied_frames(
         if images & slices:
             tied |= _frames(use, "FrameOfReferenceUID")
     return tied - {""}
+
+
+def _roi_frames(dataset: pydicom.Dataset) -> Callable[[int], set[str]]:
+    """The Frames of Reference that each ROI of a structure set, by its ROI
+    Number, may be in: its own, where it is one UID that the set declares
+    alone, as one UID in one item; otherwise ``""``, for none, with each
+    frame that the set declares and each label that the ROI gives, as for
+    an ROI Number repeated with another frame (:func:`_targets_reach`)."""
+    named: dict[int, set[str]] = collections.defaultdict(set)
+    for item in dataset.get("StructureSetROISequence", []):
+        named[int(item.ROINumber)] |= _frames(item, "ReferencedFrameOfReferenceUID")
+    declarations = [
+        _frames(item, "FrameOfReferenceUID")
+        for item in dataset.get("ReferencedFrameOfReferenceSequence", [])
+    ]
+    # Every label a declaration gives may be a frame, but only one UID
+    # declared alone makes an ROI's frame certain.
+    declared = set().union(*declarations) - {""}
+    certain = {frame for each in declarations if "" not in each for frame in each}
+
+    def frames_of_roi(number: int) -> set[str]:
+        frames = named.get(number, {""})
+        # An ROI's frame is one that its set declares (PS3.3 C.8.8.5), so
+        # one that is not is malformed too.
+        return (
+            frames
+            if len(frames) == 1 and frames <= certain
+            else {"", *declared, *frames}
+        )
+
+    return frames_of_roi
 
 
 def _frames(item: pydicom.Dataset, keyword: str) -> set[str]:
