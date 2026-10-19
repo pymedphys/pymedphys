@@ -1228,7 +1228,7 @@ def _in_sinus(points):
     return (x / a) ** 2 + (y / b) ** 2 + (z / c) ** 2 <= 1
 
 
-def test_bone_that_the_kept_brain_encloses_is_kept():
+def test_bone_that_the_kept_brain_encloses_is_written_as_air():
     block = _outcome().block
     scan, dataset, stored = _slice_at(60.0)
     points = scan.points(0)
@@ -1239,8 +1239,10 @@ def test_bone_that_the_kept_brain_encloses_is_kept():
 
     mask = CtDefacer(block, dataset).mask(0, stored)
 
+    # Bone is never cavity, so the brain around it keeps none of it.
     assert island.any() and (island <= brain).all()
-    assert not mask.mask[brain].any()
+    assert mask.mask[island].all()
+    assert not mask.mask[brain & ~island].any()
 
 
 def test_padding_that_reads_as_bone_closes_no_ring():

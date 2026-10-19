@@ -81,10 +81,16 @@ which bone at :data:`~pymedphys._dicom.deidentify.defacing.BONE` Hounsfield
 units or more encloses within the slice, so that the brain in front of the
 block's plane is kept: the cavity's pixels above
 :data:`~pymedphys._dicom.deidentify.defacing.BODY` Hounsfield units that
-join, within the slice, such pixels behind the plane, and the pixels that
-they enclose. So the air of a frontal sinus, which bone also encloses, is
-written as air, as is any tissue lining it. Padding is never taken for
-bone, so it cannot close a ring around the face. The cavity is kept only
+join, within the slice, such pixels behind the plane, and the cavity's
+pixels that they enclose, so never bone, which is written as air. So the
+air of a frontal sinus, which bone also encloses, is written as air, as is
+any tissue lining it, where bone parts the sinus from the brain within the
+slice; where its back wall reads below
+:data:`~pymedphys._dicom.deidentify.defacing.BONE` Hounsfield units in a
+slice, as a thin wall can, its lining can join the brain, and the sinus is
+kept. A slice with no brain behind the plane, such as a coronal slice
+ahead of it, keeps none. Padding is never taken for bone, so it cannot
+close a ring around the face. The cavity is kept only
 more than :data:`CAVITY_FLOOR` millimetres above the higher globe's centre,
 above the orbits, so that bone enclosing an orbit within a slice, or a thin
 orbital roof that the slice's bone does not seal, keeps no part of an eye.
@@ -987,16 +993,18 @@ def _kept(
     floor = max(globe[2] for globe in block.globes) + CAVITY_FLOOR
     cavity = scipy.ndimage.binary_fill_holes(bone) & ~bone & (_heights(each) > floor)
     # Of the cavity, only the brain: its tissue that joins, within the slice,
-    # its tissue behind the block's plane, with what that encloses, such as
-    # bone within it. Bone also encloses the air of a frontal sinus in its
-    # wall, which, kept, would differ from air written around it only by
-    # noise, and any tissue lining it, which joins none behind the plane.
+    # its tissue behind the block's plane, with the cavity that it encloses,
+    # so that nothing is kept that the cavity alone would not keep. Bone
+    # also encloses the air of a frontal sinus in its wall, which, kept,
+    # would differ from air written around it only by noise, and any tissue
+    # lining it, which joins none behind the plane where bone parts it from
+    # the brain.
     tissue = cavity & (hounsfield > defacing.BODY)
     labels, _ = scipy.ndimage.label(tissue)
     inside = block.slice_mask(each.position, each.orientation, each.spacing, each.shape)
     joined = np.unique(labels[tissue & ~inside])
     brain = np.isin(labels, joined[joined > 0])
-    return scipy.ndimage.binary_fill_holes(brain) & ~padded, padded
+    return scipy.ndimage.binary_fill_holes(brain) & cavity & ~padded, padded
 
 
 def _heights(each: _Slice) -> np.ndarray:
