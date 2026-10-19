@@ -47,6 +47,7 @@ import pathlib
 import re
 import types
 from collections.abc import Callable, Mapping
+from typing import Protocol
 
 from pymedphys._imports import tomlkit
 
@@ -116,6 +117,17 @@ class Basis(enum.Enum):
     # The instance's own Private Data Element Characteristics Sequence
     # (0008,0300) marks its block SAFE or lists it as nonidentifying.
     DECLARED = "declared"
+    # TCIA's Private Tag Dictionary keeps it, in a run that chooses that list.
+    TCIA = "tcia"
+
+
+class SafePrivateList(enum.Enum):
+    """The list whose rules settle private attributes in a run under the Option."""
+
+    # safe_private.toml: Table E.3.10-1 and the reviewed additions, the default.
+    REVIEWED = "reviewed"
+    # TCIA's Private Tag Dictionary, which a run may choose instead (D-035).
+    TCIA = "tcia"
 
 
 # The VRs whose values each retaining handling can check. Every other VR, an
@@ -173,6 +185,7 @@ class SafePrivateRule:
     note : str
         Why the rule departs from its VR's handling, or about a reviewed
         addition; may be ``""`` for a table row that takes its VR's handling.
+        For a rule of TCIA's dictionary, TCIA's name for the attribute.
     source : str
         The public document that shows a reviewed addition is safe, or ``""``
         for a table row.
@@ -214,7 +227,11 @@ class SafePrivateRules:
     rules: Mapping[_Key, SafePrivateRule] = dataclasses.field(hash=False)
 
     def rule_for(
-        self, group: int, private_creator: str, element: int
+        self,
+        group: int,
+        private_creator: str,
+        element: int,
+        vr: str | None = None,  # pylint: disable = unused-argument
     ) -> SafePrivateRule | None:
         """Return the rule for a private data element, or None if it has none.
 
@@ -230,6 +247,10 @@ class SafePrivateRules:
         element : int
             The element within the block, ``0x00`` to ``0xFF``: the low byte
             of the element number.
+        vr : str, optional
+            The element's VR as written, or None where it is not written.
+            A reviewed rule is keyed without a VR, so it does not choose the
+            rule, as it does for :class:`RuleList`'s other lists.
 
         Raises
         ------
@@ -248,6 +269,27 @@ class SafePrivateRules:
     def retained(self) -> tuple[SafePrivateRule, ...]:
         """Return the rules that can retain a value, in the file's order."""
         return tuple(rule for rule in self.rules.values() if rule.handling.retains)
+
+
+class RuleList(Protocol):
+    """A list of safe private rules, as the engine applies it.
+
+    :class:`SafePrivateRules` is the default list; a run may choose TCIA's
+    dictionary instead
+    (:class:`~pymedphys._dicom.deidentify.tcia_private_tags.TciaSafePrivateRules`).
+    """
+
+    def rule_for(
+        self, group: int, private_creator: str, element: int, vr: str | None = None
+    ) -> SafePrivateRule | None:
+        """Return the rule for a private data element written with ``vr``, or None.
+
+        ``vr`` is None where the element's VR is not written, in Implicit VR
+        or as UN.
+        """
+
+    def retained(self) -> tuple[SafePrivateRule, ...]:
+        """Return the rules that can retain a value."""
 
 
 def _text(value: object) -> bool:

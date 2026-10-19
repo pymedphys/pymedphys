@@ -642,8 +642,7 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, Private Attributes that are known by the de-identifier to be safe from identity leakage shall be retained, together with the Private Creator IDs that are required to fully define the retained Private Attributes; all other Private Attributes shall be removed or processed in the element-specific manner recommended by Deidentification Action (0008,0307), if present within Private Data Element Characteristics Sequence (0008,0300) (see PS3.3 Section C.12.1).
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-001", "D-028", "D-035"]
 implementation = [
   "_dicom/deidentify/element_rules.py",
@@ -656,8 +655,7 @@ note = '''
 Reviewed rules give every row of Table E.3.10-1 a handling, keyed by private creator and element within the block: numbers and code strings are checked and kept, UIDs replaced, text cleaned as descriptors where a reviewed cleaner applies and otherwise removed, private sequences parsed, and bulk binary data and three timestamps removed (D-035).
 Under the Option, the engine settles each private attribute by its rule, at the top level and in the items of every sequence that is kept, matching creators only in printable ISO 646 and checking each kept value against its VR and VM; it keeps a private creator only where its block keeps something, and removes every other private attribute, which E.3.10 allows in place of following Deidentification Action (0008,0307) (D-035).
 An attribute that the instance's Private Data Element Characteristics Sequence (0008,0300) declares safe, in a block whose Block Identifying Information Status is SAFE or in Nonidentifying Private Elements, and that no rule lists, takes the handling of its VR, as written or as the sequence defines it; one that the sequence declares may identify is removed, even where a rule would keep it (D-035).
-TCIA's Private Tag Dictionary ships unchanged, pinned by its length and SHA-256 and compared with TCIA's file by a monthly edition check, as a second list that a run is to be able to choose; its keep is a basis for retention, and kept values still pass the handling of their VR (D-035).
-Remaining: choosing TCIA's dictionary for a run (D-035) (M3).
+TCIA's Private Tag Dictionary ships unchanged, pinned by its length and SHA-256 and compared with TCIA's file by a monthly edition check, as a second list that a run may choose in place of the reviewed rules; its keep is a basis for retention, its rules are chosen by the VR that reads each value, and kept values still pass the handling of their VR, with a single value unless a reviewed rule gives the VM; the method digest, the release report, and the conformance statement record which list a run used (D-024, D-035).
 '''
 
 [[requirement]]
@@ -1025,8 +1023,7 @@ id = "MIDI-BP-13"
 text = '''
 Retain private data elements only after evaluating their risk against a reliable source of elements known to be safe, such as PS3.15 E.3.10 or manufacturers' documentation; otherwise remove them selectively or entirely.
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-001", "D-028", "D-035"]
 implementation = [
   "_dicom/deidentify/private_attributes.py",
@@ -1038,8 +1035,7 @@ note = '''
 Without Retain Safe Private, every private data element and private creator is removed from a data set, at every level (D-028).
 The run's instance transform removes them from each instance it writes.
 The reviewed rules evaluate every row of PS3.15 Table E.3.10-1, and retain only values that can be checked; under the Option, the engine applies them, and the instance's own declarations of safe private attributes in Private Data Element Characteristics Sequence, with the same checks, and removes every private attribute that neither retains, or that the instance declares may identify (D-035).
-TCIA's Private Tag Dictionary, shipped unchanged and pinned by its SHA-256, is a second source that a run is to be able to choose, and its kept values are to pass the same checks (D-035).
-Remaining: choosing TCIA's dictionary for a run (M3).
+TCIA's Private Tag Dictionary, shipped unchanged and pinned by its SHA-256, is a second source that a run may choose in place of the reviewed rules, and its kept values pass the same checks (D-035).
 '''
 
 [[requirement]]
