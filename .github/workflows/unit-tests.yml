@@ -198,6 +198,8 @@ jobs:
           "${overlay[@]}" python -c 'import os, numpy, pandas; assert (numpy.__version__, pandas.__version__) == (os.environ["NUMPY_FLOOR"], os.environ["PANDAS_FLOOR"]), (numpy.__version__, pandas.__version__)'
           # Fail if an installed package's requirements are not met, such as
           # a newly locked package that requires NumPy 2; add it to the overlay.
+          # Requirements that only an extra adds are skipped, since which
+          # extras were installed is not recorded.
           "${overlay[@]}" python - <<'EOF'
           import importlib.metadata
           import sys
@@ -216,9 +218,9 @@ jobs:
                   if requirement.marker and not requirement.marker.evaluate({"extra": ""}):
                       continue
                   required = found.get(canonicalize_name(requirement.name))
-                  if required and not requirement.specifier.contains(
-                      required.version, prereleases=True
-                  ):
+                  if required is None:
+                      unmet.append(f"{name} {dist.version} requires {requirement}; not installed")
+                  elif not requirement.specifier.contains(required.version, prereleases=True):
                       unmet.append(
                           f"{name} {dist.version} requires {requirement}; found {required.version}"
                       )
