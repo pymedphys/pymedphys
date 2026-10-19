@@ -311,15 +311,11 @@ def fixture_defaced():
         yield found
 
 
-@pytest.fixture(name="edges", scope="module")
-def fixture_edges():
-    with _runs(first=(), dose=_dose(_LOW), edges=True) as found:
-        yield found
-
-
+# With the RT Dose instances that cannot be placed or have no grid, which
+# its run holds or releases alike, so that one run tests them all.
 @pytest.fixture(name="hot", scope="module")
 def fixture_hot():
-    with _runs(first=(), dose=_dose(_HIGHEST)) as found:
+    with _runs(first=(), dose=_dose(_HIGHEST), edges=True) as found:
         yield found
 
 
@@ -532,8 +528,8 @@ def test_high_dose_in_the_block_holds_the_dose_as_received(hot):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
-def test_a_grid_that_cannot_be_placed_is_held_as_received(edges):
-    _, outcomes, reasons, _ = edges
+def test_a_grid_that_cannot_be_placed_is_held_as_received(hot):
+    _, outcomes, reasons, _ = hot
     held = HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
 
     # Its direction cosines are not allowed, or it lies too far to place,
@@ -546,9 +542,9 @@ def test_a_grid_that_cannot_be_placed_is_held_as_received(edges):
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
 def test_an_rt_dose_of_dose_volume_histograms_alone_is_not_held_for_its_frame(
-    edges,
+    hot,
 ):
-    _, outcomes, reasons, _ = edges
+    _, outcomes, reasons, _ = hot
 
     # Without a grid, it shows no face, in a defaced frame or not, so it
     # needs no verdict, and is released, as in the reviewed run, which gave
