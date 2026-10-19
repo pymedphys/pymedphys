@@ -116,7 +116,7 @@ _STEP = 0.5
 # How far, in millimetres, each point of a closed contour may lie from
 # another's plane, or from its own, and still be taken to lie in it. It
 # allows for coordinates written to 0.1 mm, which move a point up to 0.087 mm
-# off its plane, and is far less than half of any slice spacing. Grouping
+# off its plane, and is less than any slice spacing in use. Grouping
 # too much cuts more of the kept cavity; grouping too little can leave a
 # hole whole within a contour that is cut.
 _COPLANAR = 0.15
@@ -233,11 +233,14 @@ def _written(
     """
     parsed = [_contour(contour) for contour in contours]
     cutting = [_reaches_face(region, kind, points, step) for kind, points in parsed]
+    # Grouping only spreads a cut, so an ROI with none needs no grouping.
+    if not any(cutting):
+        return None
     closed = [index for index, (kind, _) in enumerate(parsed) if kind in CLOSED]
     groups, unplaced = coplanar([parsed[index][1] for index in closed], _COPLANAR)
     # A closed contour in no one plane cannot be decided with those it may
     # bound a region with, so an ROI that is cut with one is refused.
-    if unplaced and any(cutting):
+    if unplaced:
         raise ContoursRefused()
     for group in groups:
         if any(cutting[closed[member]] for member in group):
