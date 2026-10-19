@@ -1024,7 +1024,7 @@ def test_a_destination_that_cannot_be_checked_is_refused(places, monkeypatch):
             _pack(), root / "ZEBEDEE" / "qc", release_directory=release
         )
     assert _shows_no_path(raised.value, root)
-    monkeypatch.undo()  # before Python 3.12, Path.exists raises for EACCES
+    monkeypatch.undo()  # Path.exists needs the real os.stat to look
     assert not (root / "ZEBEDEE").exists()
 
 

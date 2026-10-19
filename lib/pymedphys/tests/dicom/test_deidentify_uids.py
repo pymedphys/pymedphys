@@ -71,13 +71,6 @@ def test_replacements_are_pinned():
     )
 
 
-@hypothesis.given(st.uuids(), st.text())
-def test_version_5_uuids_match_the_standard_library(namespace, name):
-    # uuid.uuid5 accepts only text names before Python 3.12, and the token
-    # is bytes, so the module builds the UUID itself.
-    assert uids.uuid5(namespace, name.encode("utf-8")) == uuid.uuid5(namespace, name)
-
-
 @pytest.mark.deid_requirement("PS3.15-E.1.1-04")
 @hypothesis.given(any_key, any_uid)
 def test_a_replacement_is_a_valid_uid_from_a_version_5_uuid(key, uid):
