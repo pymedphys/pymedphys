@@ -27,6 +27,7 @@ from pymedphys._dicom.deidentify.defacing import FaceBlock
 from pymedphys._dicom.deidentify.dose_defacing import DoseBlock
 from pymedphys._dicom.deidentify.face_blocks import KeptSlice
 from pymedphys._dicom.deidentify.pixel_cleaning import PixelDataRefused
+from pymedphys._dicom.deidentify import region_defacing
 from pymedphys._dicom.deidentify.region_defacing import (
     ContoursRefused,
     PetDefacer,
@@ -232,6 +233,105 @@ def test_a_hole_in_the_cavity_is_cut_with_the_contour_around_it(kind):
     expected = source.difference(_FACE_SIDE)
     assert got.symmetric_difference(expected).area < 1e-6
     assert not got.contains(shapely.geometry.Point(0, -5))
+
+
+def _shifted(dz):
+    """The region, block and kept slices alike, moved ``dz`` mm along z."""
+    block = FaceBlock((0.0, 0.0, dz), (0.0, -1.0, 0.0), dz, ((0, 0, dz), (0, 0, dz)))
+    slices = tuple(
+        KeptSlice(
+            (each.position[0], each.position[1], each.position[2] + dz),
+            each.orientation,
+            each.spacing,
+            each.kept,
+        )
+        for each in _REGION.slices
+    )
+    return DoseBlock(block, slices)
+
+
+@pytest.mark.parametrize("dz", [0.0, -40.0], ids=["at 20 mm", "at -20 mm"])
+@pytest.mark.parametrize("hole_first", [False, True], ids=["outer first", "hole first"])
+@pytest.mark.parametrize("reverse_hole", [False, True], ids=["hole", "hole reversed"])
+@pytest.mark.parametrize(
+    "reverse_outer", [False, True], ids=["outer", "outer reversed"]
+)
+def test_a_hole_is_cut_with_its_contour_whatever_their_winding_order_or_place(
+    reverse_outer, reverse_hole, hole_first, dz
+):
+    z = 20.0 + dz
+    outer = _rectangle(-15, 15, -15, 15, z)
+    hole = _rectangle(-4, 4, -9, -2, z)
+    outer = outer[::-1] if reverse_outer else outer
+    hole = hole[::-1] if reverse_hole else hole
+    rings = [hole, outer] if hole_first else [outer, hole]
+    contours = [("CLOSEDPLANAR_XOR", ring) for ring in rings]
+
+    cut = cut_contours(_shifted(dz), _structure_set(contours), _FRAME)
+
+    ((_, written),) = list(cut.items())
+    got = _region_of(
+        [
+            rings[each.contour]
+            if each.values is None
+            else np.array([float(v) for v in each.values]).reshape(-1, 3)
+            for each in written
+        ]
+    )
+    expected = _region_of(rings).difference(_FACE_SIDE)
+    assert got.symmetric_difference(expected).area < 1e-6
+    assert not got.contains(shapely.geometry.Point(0, -5))
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_contours_in_parallel_planes_either_side_of_the_origin_are_apart(reverse):
+    # pylint: disable = protected-access
+    ring = _rectangle(-4, 4, -9, -2, 20)
+    mirrored = _rectangle(-4, 4, -9, -2, -20)
+    mirrored = mirrored[::-1] if reverse else mirrored
+
+    assert sorted(region_defacing._coplanar([ring, mirrored])) == [[0], [1]]
+    assert region_defacing._coplanar([ring, ring[::-1]]) == [[0, 1]]
+
+
+def _turned(points, about_x, about_y, shift):
+    """``points`` turned ``about_x`` then ``about_y`` degrees and shifted."""
+    a, b = np.radians(about_x), np.radians(about_y)
+    turn_x = np.array(
+        [[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]]
+    )
+    turn_y = np.array(
+        [[np.cos(b), 0, np.sin(b)], [0, 1, 0], [-np.sin(b), 0, np.cos(b)]]
+    )
+    return points @ (turn_y @ turn_x).T + shift
+
+
+def test_oblique_contours_written_to_a_tenth_of_a_millimetre_share_a_plane():
+    # pylint: disable = protected-access
+    rng = np.random.default_rng(2404)
+    for _ in range(300):
+        about_x, about_y = rng.uniform(-60, 60, 2)
+        shift = rng.uniform(-500, 500, 3)
+        # A hole 2.5 mm across, whose rounded normal is the least certain.
+        hole = _rectangle(-1.5, 1, -1, 1.5, 0) + (
+            rng.uniform(-40, 40),
+            rng.uniform(-60, 60),
+            0,
+        )
+        outer = _rectangle(-60, 60, -80, 80, 0)
+        # The next slice, half a millimetre away.
+        beside = _rectangle(-60, 60, -80, 80, 0.5)
+        ring, hole, beside = (
+            np.round(_turned(points, about_x, about_y, shift), 1)
+            for points in (outer, hole, beside)
+        )
+
+        assert region_defacing._coplanar([hole, ring]) == [[0, 1]]
+        assert region_defacing._coplanar([ring, hole[::-1]]) == [[0, 1]]
+        assert sorted(region_defacing._coplanar([ring, hole, beside])) == [
+            [0, 1],
+            [2],
+        ]
 
 
 def test_a_hole_that_crosses_the_plane_is_cut_with_the_contour_around_it():

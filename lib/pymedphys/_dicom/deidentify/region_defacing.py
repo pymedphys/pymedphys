@@ -112,8 +112,11 @@ _STEP = 0.5
 # How far apart, in millimetres, and how far from parallel, as one less the
 # cosine of the angle between their normals, two closed contours may lie and
 # still be taken to lie in one plane, and so to bound one region together.
-_COPLANAR = 0.01
-_PARALLEL = 1e-6
+# Each is loose enough for contours whose coordinates are written to 0.1 mm,
+# a small hole's normal included, and still far tighter than any two slices
+# lie apart; grouping too much only cuts more.
+_COPLANAR = 0.1
+_PARALLEL = 0.01
 
 
 class ContoursRefused(Exception):
@@ -243,11 +246,20 @@ def _written(
 
 def _coplanar(polygons: list[np.ndarray]) -> list[list[int]]:
     """Group polygons, by their indices, into those that lie in one plane,
-    within :data:`_COPLANAR` millimetres; a polygon without area is alone."""
-    groups: list[tuple[np.ndarray, float, list[int]]] = []
+    within :data:`_COPLANAR` millimetres; a polygon without area is alone.
+
+    Two polygons lie in one plane where their normals are within
+    :data:`_PARALLEL` of parallel and the line between their centres leaves
+    the plane of one or the other by no more than :data:`_COPLANAR`. The
+    distance is taken between the polygons, not from the origin, so that a
+    normal's error, larger for a small polygon, is not scaled by how far
+    from the origin they lie.
+    """
+    groups: list[tuple[np.ndarray, np.ndarray, list[int]]] = []
     alone: list[list[int]] = []
     for index, points in enumerate(polygons):
-        centred = points - points.mean(axis=0)
+        centre = points.mean(axis=0)
+        centred = points - centre
         # Newell's method gives the polygon's normal, scaled by twice its area.
         normal = np.cross(centred, np.roll(centred, -1, axis=0)).sum(axis=0)
         length = float(np.linalg.norm(normal))
@@ -255,17 +267,17 @@ def _coplanar(polygons: list[np.ndarray]) -> list[list[int]]:
             alone.append([index])
             continue
         normal /= length
-        offset = float(normal @ points.mean(axis=0))
-        for other, other_offset, members in groups:
-            cosine = float(normal @ other)
+        for other, other_centre, members in groups:
+            apart = centre - other_centre
             if (
-                abs(cosine) >= 1 - _PARALLEL
-                and abs(math.copysign(offset, cosine) - other_offset) <= _COPLANAR
+                abs(float(normal @ other)) >= 1 - _PARALLEL
+                and min(abs(float(normal @ apart)), abs(float(other @ apart)))
+                <= _COPLANAR
             ):
                 members.append(index)
                 break
         else:
-            groups.append((normal, offset, [index]))
+            groups.append((normal, centre, [index]))
     return [members for _, _, members in groups] + alone
 
 
