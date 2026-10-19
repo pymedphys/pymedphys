@@ -766,9 +766,15 @@ def test_a_set_in_another_frame_tied_only_by_its_frame_images_holds_the_series()
     assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
 
 
-def test_a_target_naming_no_frame_in_a_set_in_another_frame_drawn_on_the_slices():
+@pytest.mark.parametrize("unnamed", ["empty", "absent"])
+def test_a_target_naming_no_frame_in_a_set_in_another_frame_drawn_on_the_slices(
+    unnamed,
+):
     rtss = _elsewhere_only([("PTV", files.square((0, 0, 40)))])
-    rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
+    if unnamed == "empty":
+        rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
+    else:
+        del rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID
     unreferenced = files.written(rtss)
     rtss.ROIContourSequence[0].ContourSequence[0].ContourImageSequence = [
         _slice_image()
@@ -777,6 +783,83 @@ def test_a_target_naming_no_frame_in_a_set_in_another_frame_drawn_on_the_slices(
     # Its hull misses the block, and it may be in the set's frame.
     assert _outcome(unreferenced).problem is None
     assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def test_a_target_naming_no_frame_tied_only_by_its_frame_images_holds_the_series():
+    rtss = _elsewhere_only([("PTV", files.square((0, 0, 40)))])
+    del rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID
+    unreferenced = files.written(rtss)
+    _frame_images(rtss.ReferencedFrameOfReferenceSequence[0])
+
+    assert _outcome(unreferenced).problem is None
+    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def test_a_target_naming_no_frame_holds_the_series_where_another_frame_is_tied():
+    # In a set of the series' frame and another, whose own list of contour
+    # images ties it to the series' slices, a target behind the plane that
+    # names no frame may be in the other, so it holds the series, although
+    # its hull misses the block.
+    rtss = pydicom.dcmread(
+        io.BytesIO(files.structure_set([("PTV", files.square((0, 0, 40)))]))
+    )
+    rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
+    other = pydicom.Dataset()
+    other.FrameOfReferenceUID = files.ROOT + ".8"
+    rtss.ReferencedFrameOfReferenceSequence.append(other)
+    untied = files.written(rtss)
+    _frame_images(other)
+
+    assert _outcome(untied).problem is None
+    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def _several(roi: pydicom.Dataset) -> None:
+    roi.ReferencedFrameOfReferenceUID = [files.FRAME, files.ROOT + ".8"]
+
+
+def _not_a_uid(roi: pydicom.Dataset) -> None:
+    roi.ReferencedFrameOfReferenceUID = "FRAME"
+
+
+@pytest.mark.parametrize(
+    "malformed",
+    ["several-frames", "not-a-uid", "repeated-roi-number"],
+)
+def test_a_target_in_the_block_with_a_malformed_frame_holds_the_series(malformed):
+    rtss = pydicom.dcmread(
+        io.BytesIO(files.structure_set([("PTV", files.square(_EYES_FRONT[0]))]))
+    )
+    (roi,) = rtss.StructureSetROISequence
+    if malformed == "several-frames":
+        _several(roi)
+    elif malformed == "not-a-uid":
+        _not_a_uid(roi)
+    else:
+        # A second item for the same ROI Number, naming another frame: which
+        # one the target is in cannot be told.
+        repeated = pydicom.Dataset()
+        repeated.ROINumber = roi.ROINumber
+        repeated.ReferencedFrameOfReferenceUID = files.ROOT + ".8"
+        repeated.ROIName = "R2"
+        repeated.ROIGenerationAlgorithm = "MANUAL"
+        rtss.StructureSetROISequence.append(repeated)
+
+    # It may be in the series' frame, so its hull is judged, and reaches
+    # the block.
+    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def test_a_structure_set_naming_frames_that_are_not_uids_is_searched_as_frameless():
+    rtss = pydicom.dcmread(
+        io.BytesIO(files.structure_set([("PTV", files.square(_EYES_FRONT[0]))]))
+    )
+    rtss.ReferencedFrameOfReferenceSequence[0].FrameOfReferenceUID = "FRAME"
+    _not_a_uid(rtss.StructureSetROISequence[0])
+    data = files.written(rtss)
+
+    assert face_blocks.frames_of(InstanceRecord.from_file(data)) == {"FRAME"}
+    assert _outcome(data).problem is SeriesProblem.TARGET_IN_BLOCK
 
 
 def test_the_cavity_is_kept_only_above_its_floor():

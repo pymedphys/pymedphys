@@ -114,6 +114,7 @@ from .pixel_cleaning import (
 from .reasons import TransformReason
 from .references import InstanceRecord
 from .source import NATIVE_TRANSFER_SYNTAXES
+from .uid_registry import is_uid
 from .uids import normalise_uid
 
 CT_IMAGE = "CT Image"
@@ -277,7 +278,8 @@ def find_face_blocks(
             frames = frames_of(record)
             for frame in frames:
                 structure_sets[frame].append(position)
-            if not frames:
+            # A value that is not a UID names no frame.
+            if not any(is_uid(frame) for frame in frames):
                 frameless.append(position)
             referred[position] = {reference.target for reference in record.references}
     outcomes = {}
@@ -600,21 +602,25 @@ def _targets_reach(
     of contour images names one. A target in another frame that its
     structure set does not tie to them, such as one of another scan, does
     not. A target whose ROI names no frame may be in the series' or in any
-    frame that its structure set declares, so it is taken as each.
+    frame that its structure set declares, so it is taken as each. So is
+    one whose ROI's frame is not one UID, or whose ROI Number is repeated
+    with another frame, which is also taken as each frame it names.
     """
-    named = {
-        int(item.ROINumber): normalise_uid(
-            str(item.get("ReferencedFrameOfReferenceUID") or "")
-        )
-        for item in dataset.get("StructureSetROISequence", [])
-    }
+    named: dict[int, set[str]] = collections.defaultdict(set)
+    for item in dataset.get("StructureSetROISequence", []):
+        named[int(item.ROINumber)].add(_frame(item, "ReferencedFrameOfReferenceUID"))
     declared = {
-        normalise_uid(str(item.get("FrameOfReferenceUID") or ""))
+        _frame(item, "FrameOfReferenceUID")
         for item in dataset.get("ReferencedFrameOfReferenceSequence", [])
     } - {""}
 
     def frames_of_roi(number: int) -> set[str]:
-        return {named[number]} if named.get(number) else {"", *declared}
+        frames = named.get(number, {""})
+        return (
+            frames
+            if len(frames) == 1 and "" not in frames
+            else {"", *declared, *frames}
+        )
 
     targets = _targets(dataset)
     tied = _tied_frames(dataset, frames_of_roi, slices)
@@ -658,8 +664,18 @@ def _tied_frames(
             for uid in _images(series)
         }
         if images & slices:
-            tied.add(normalise_uid(str(use.get("FrameOfReferenceUID") or "")))
+            tied.add(_frame(use, "FrameOfReferenceUID"))
     return tied - {""}
+
+
+def _frame(item: pydicom.Dataset, keyword: str) -> str:
+    """An item's Frame of Reference UID without padding, or ``""`` where it
+    is absent, empty, of more than one value, or not a UID."""
+    value = item.get(keyword)
+    if not isinstance(value, str):
+        return ""
+    uid = normalise_uid(value)
+    return uid if is_uid(uid) else ""
 
 
 def _images(item: pydicom.Dataset) -> set[str]:
