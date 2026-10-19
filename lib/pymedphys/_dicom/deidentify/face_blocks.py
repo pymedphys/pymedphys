@@ -73,7 +73,9 @@ air's stored value is itself padding, the pixels written are padding, which
 a viewer shows as outside the image, as the air before the face is in most
 scans.
 
-Only CT Image instances are defaced. An RT Structure Set, RT Dose, or PET
+Only CT Image instances are defaced, but for an RT Dose that
+:mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero in the same
+region. An RT Structure Set, other RT Dose with pixel data, or PET
 instance (:data:`UNDEFACED_IODS`) in the Frame of Reference of a defaced
 series keeps its contours or pixel data, which can still outline the face,
 so it is held for review whatever its verdict, since a reviewer may have
@@ -743,20 +745,29 @@ class CtDefacer:
         )
         if not inside.any():
             return None
-        slope, intercept = each.rescale
-        padded = np.zeros(each.shape, dtype=bool)
-        if each.padding is not None:
-            low, high = each.padding
-            padded = (stored >= low) & (stored <= high)
-        # Padding is never bone, whatever Hounsfield units its stored value
-        # would give, so that it cannot close a ring around the face.
-        bone = (stored * slope + intercept >= defacing.BONE) & ~padded
-        cavity = scipy.ndimage.binary_fill_holes(bone) & ~bone
-        floor = max(globe[2] for globe in self._block.globes) + CAVITY_FLOOR
-        inside &= ~(cavity & (_heights(each) > floor)) & ~padded
+        kept, padded = _kept(self._block, each, stored)
+        inside &= ~kept & ~padded
         if not inside.any():
             return None
         return FrameMask(frame, inside, each.air)
+
+
+def _kept(
+    block: FaceBlock, each: _Slice, stored: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return a slice's pixels of the cranial cavity that defacing keeps, and
+    those of padding, each of bool, rows by columns."""
+    slope, intercept = each.rescale
+    padded = np.zeros(each.shape, dtype=bool)
+    if each.padding is not None:
+        low, high = each.padding
+        padded = (stored >= low) & (stored <= high)
+    # Padding is never bone, whatever Hounsfield units its stored value
+    # would give, so that it cannot close a ring around the face.
+    bone = (stored * slope + intercept >= defacing.BONE) & ~padded
+    cavity = scipy.ndimage.binary_fill_holes(bone) & ~bone
+    floor = max(globe[2] for globe in block.globes) + CAVITY_FLOOR
+    return cavity & (_heights(each) > floor), padded
 
 
 def _heights(each: _Slice) -> np.ndarray:
@@ -799,3 +810,73 @@ def _described(dataset: pydicom.Dataset, layout: Layout) -> _Slice:
         air=int(air),
         frame=None if frame is None else normalise_uid(str(frame)) or None,
     )
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class KeptSlice:
+    """A slice of a defaced series that its face block reaches, with the
+    pixels of the block that :class:`CtDefacer` keeps as cranial cavity.
+
+    Its ``repr`` shows nothing of it.
+
+    Attributes
+    ----------
+    position : tuple of float
+        Image Position (Patient), in millimetres.
+    orientation : tuple of float
+        Image Orientation (Patient).
+    spacing : tuple of float
+        Pixel Spacing: between rows, then between columns, in millimetres.
+    kept : numpy.ndarray
+        Of bool, rows by columns: the pixels in the block that defacing
+        keeps, which no pixel of padding is.
+    """
+
+    position: tuple[float, float, float]
+    orientation: tuple[float, ...]
+    spacing: tuple[float, float]
+    kept: np.ndarray
+
+    def __repr__(self) -> str:
+        return "KeptSlice()"
+
+
+def kept_slices(
+    block: FaceBlock, positions: Iterable[int], read: Callable[[int], bytes | None]
+) -> tuple[KeptSlice, ...]:
+    """Return each slice of a defaced series that its block reaches, with
+    the pixels that defacing keeps there, in the order of ``positions``.
+
+    Parameters
+    ----------
+    block : FaceBlock
+        The series' block.
+    positions : iterable of int
+        The run positions of the series' slices.
+    read : callable
+        Gives the file at a run position as the first pass read it, or None.
+
+    Raises
+    ------
+    ValueError
+        Where a slice can no longer be read, without its message.
+    """
+    slices = []
+    for position in positions:
+        data = read(position)
+        try:
+            each = _slice(data)
+            inside = block.slice_mask(
+                each.position, each.orientation, each.spacing, each.shape
+            )
+            if not inside.any():
+                continue
+            kept, padded = _kept(block, each, _stored(data, each.shape))
+        except _Unusable:
+            raise ValueError("a slice can no longer be read") from None
+        slices.append(
+            KeptSlice(
+                each.position, each.orientation, each.spacing, inside & kept & ~padded
+            )
+        )
+    return tuple(slices)

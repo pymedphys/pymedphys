@@ -14,8 +14,8 @@
 
 """A run under Clean Recognizable Visual Features that defaces a CT series
 of the analytic head, beside the synthetic collection's RT Structure Set and
-RT Dose in the same Frame of Reference. Every UID and value here is
-invented."""
+RT Dose in the same Frame of Reference, one RT Dose replaced by a grid over
+the head. Every UID and value here is invented."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ from pathlib import Path
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import face_blocks, markers, run
+from pymedphys._dicom.deidentify import dose_defacing, face_blocks, markers, run
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.face_review import FaceReview, read_face_review
 from pymedphys._dicom.deidentify.instance_transform import (
@@ -49,6 +49,7 @@ from pymedphys._dicom.deidentify.release_gate import ReleaseReason
 
 from . import _synthetic_head as head
 from . import _synthetic_head_dicom as files
+from . import _synthetic_rtdose as rtdose
 from .test_deidentify_visual_features_option import (
     CODE,
     KEY,
@@ -68,7 +69,26 @@ _STRUCTURE_SET = "04-rtstruct.dcm"
 _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
 _PET = ("15-pet.dcm", "16-pet-enhanced.dcm", "17-pet-legacy-enhanced.dcm")
 _IN_FRAME = (_STRUCTURE_SET, *_DOSE, *_PET)
+_UNDEFACED = (_STRUCTURE_SET, *_PET)
 _IN_THE_BLOCK = (-32.0, -76.0, 20.0)
+# A dose grid over the head, on the CT's pixels and every other slice, with
+# its greatest dose behind the head, and DOSE_FRACTION of it, or all of it,
+# everywhere else.
+_GRID = {
+    "position": (-100.0, -130.0, -30.0),
+    "spacing": (5.0, 5.0),
+    "offsets": tuple(10.0 * k for k in range(15)),
+}
+_HIGHEST = 20000
+_LOW = round(dose_defacing.DOSE_FRACTION * _HIGHEST)
+
+
+def _dose(low):
+    stored = np.full((15, 49, 41), low, dtype=np.uint32)
+    # Rows from y = -130 mm at 5 mm: those from 50 mm are behind the head's
+    # centre.
+    stored[:, 36:, :] = _HIGHEST
+    return stored
 
 
 def _head_name(index):
@@ -76,8 +96,9 @@ def _head_name(index):
 
 
 @contextlib.contextmanager
-def _runs(*others, first=None, target=False, without_ct=False):
-    """Run the collection, with its CT slices replaced by the head's, under
+def _runs(*others, first=None, target=False, without_ct=False, dose=None):
+    """Run the collection, with its CT slices replaced by the head's, and
+    its first RT Dose by a grid over the head of ``dose`` where given, under
     ``basic``, or under the option and ``first`` with a face review that
     gives no verdicts; attest the pack with the head's series, and those of
     the RT Structure Set, RT Dose, and PET in its frame, marked absent; and
@@ -100,6 +121,17 @@ def _runs(*others, first=None, target=False, without_ct=False):
         )
         for index, data in enumerate(slices):
             (instances / _head_name(index)).write_bytes(data)
+        if dose is not None:
+            grid = pydicom.dcmread(instances / _DOSE[0])
+            (instances / _DOSE[0]).write_bytes(
+                files.dose(
+                    dose,
+                    **_GRID,
+                    frame=corpus_module.FRAME_OF_REFERENCE,
+                    instance=grid.SOPInstanceUID,
+                    template=grid,
+                )
+            )
         if target:
             rtss = pydicom.dcmread(instances / _STRUCTURE_SET)
             (instances / _STRUCTURE_SET).write_bytes(
@@ -177,7 +209,13 @@ def _transform(options, face_review):
 
 @pytest.fixture(name="defaced", scope="module")
 def fixture_defaced():
-    with _runs(first=()) as found:
+    with _runs(first=(), dose=_dose(_LOW)) as found:
+        yield found
+
+
+@pytest.fixture(name="hot", scope="module")
+def fixture_hot():
+    with _runs(first=(), dose=_dose(_HIGHEST)) as found:
         yield found
 
 
@@ -195,7 +233,7 @@ def fixture_targeted():
 
 @pytest.fixture(name="without_ct", scope="module")
 def fixture_without_ct():
-    with _runs(first=(), without_ct=True) as found:
+    with _runs(first=(), without_ct=True, dose=_dose(_LOW)) as found:
         yield found
 
 
@@ -297,23 +335,90 @@ def test_rt_instances_in_the_defaced_frame_are_held_whatever_their_verdict(
     if fixture == "defaced":
         expected.add(HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT))
 
-    # Marked absent, the RT Structure Set's outline, and the RT Dose and
-    # PET in the head's Frame of Reference, still trace the face that the
-    # defaced CT no longer shows, so none is released, and nothing claims
-    # the option for them because their CT was defaced.
-    for name in _IN_FRAME:
+    # Marked absent, the RT Structure Set's outline and the PET in the
+    # head's Frame of Reference still trace the face that the defaced CT no
+    # longer shows, so neither is released, and nothing claims the option
+    # for them because their CT was defaced.
+    for name in _UNDEFACED:
         assert outcomes[name] == ("held-for-review", None), name
-        # The RT Dose for review is held by its release gate as well.
-        assert {
-            r for r in reasons[name] if not isinstance(r, ReleaseReason)
-        } == expected, name
+        assert reasons[name] == expected, name
     assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
     counts = {
         entry["code"]: entry["count"]
         for entry in report["held_for_review"]
         if entry["stage"] == "visual-features"
     }
-    assert counts[held.reason.value] == len(_IN_FRAME)
+    assert counts[held.reason.value] == len(_UNDEFACED)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+@pytest.mark.parametrize("fixture", ["defaced", "as_received"])
+def test_rt_dose_behind_the_block_is_released_unchanged(fixture, request):
+    _, outcomes, reasons, _ = request.getfixturevalue(fixture)
+    names = _DOSE[1:] if fixture == "defaced" else _DOSE
+
+    # The synthetic collection's grids lie behind the block, so nothing of
+    # them is set to zero, and the verdicts of absent on them, on the pixel
+    # data written, release them. The RT Dose for review is held by its
+    # release gate alone.
+    for name in names:
+        assert not any(isinstance(r, HeldVisualFeatures) for r in reasons[name])
+        if name == _DOSE[1]:
+            assert outcomes[name] == ("held-for-review", None)
+            assert reasons[name]
+            assert all(isinstance(r, ReleaseReason) for r in reasons[name])
+        else:
+            disposition, dataset = outcomes[name]
+            assert disposition == "released", name
+            assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_low_dose_in_the_block_is_set_to_zero_there_and_released(defaced):
+    slices, outcomes, reasons, _ = defaced
+    block = _block(slices)
+    disposition, dataset = outcomes[_DOSE[0]]
+
+    assert disposition == "released", reasons[_DOSE[0]]
+    assert dataset.RecognizableVisualFeatures == "NO"
+    assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+    points = rtdose.voxel_positions(dataset)
+    written = dataset.pixel_array
+    source = _dose(_LOW)
+    inside = block.contains(points)
+    # Outside the block, the dose is as it was; within it, zero, but for the
+    # brain above the floor, which defacing keeps on the CT slices that each
+    # voxel lies on.
+    assert np.array_equal(written[~inside], source[~inside])
+    assert np.all((written[inside] == 0) | (written[inside] == source[inside]))
+    floor = head.GLOBE_Z + face_blocks.CAVITY_FLOOR
+    assert np.all(written[inside & (points[..., 2] <= floor)] == 0)
+    values = head.hounsfield(points)
+    brain = inside & (values == head.BRAIN) & (points[..., 2] > floor + 5)
+    assert brain.any() and np.array_equal(written[brain], source[brain])
+    assert np.count_nonzero(written[inside] == 0) > np.count_nonzero(brain)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_high_dose_in_the_block_holds_the_dose_as_received(hot):
+    _, outcomes, reasons, report = hot
+    held = HeldVisualFeatures(VisualFeaturesReason.DOSE_IN_FACE_BLOCK)
+
+    # Setting it to zero would take more than the fraction of the grid's
+    # greatest dose, which may be a target's, so it is held as it is; the
+    # reviewed run held it so too, beside the defaced CT, so the verdict of
+    # absent on it does not count.
+    assert outcomes[_DOSE[0]] == ("held-for-review", None)
+    assert reasons[_DOSE[0]] == {
+        held,
+        HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT),
+    }
+    counts = {
+        entry["code"]: entry["count"]
+        for entry in report["held_for_review"]
+        if entry["stage"] == "visual-features"
+    }
+    assert counts[held.reason.value] == 1
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
@@ -326,11 +431,15 @@ def test_rt_instances_judged_beside_a_defaced_ct_are_held_in_a_run_without_it(
     # The reviewed run held them because it defaced their frame, so the
     # verdict of absent on them was given beside the defaced CT. A run
     # without that CT defaces nothing, and must not release them on it.
-    for name in _IN_FRAME:
+    for name in _UNDEFACED:
         assert outcomes[name] == ("held-for-review", None), name
-        assert {r for r in reasons[name] if not isinstance(r, ReleaseReason)} == {
-            held
-        }, name
+        assert reasons[name] == {held}, name
+    # The verdict on the dose set to zero is of what that run wrote, which
+    # this run, writing it as received, does not.
+    assert outcomes[_DOSE[0]] == ("held-for-review", None)
+    assert reasons[_DOSE[0]] == {
+        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+    }
     assert report["face_review"]["ct_series"] == {"defaced": 0, "not_defaced": []}
 
 

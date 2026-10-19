@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""CT Image and RT Structure Set files of the analytic head, for the
-defacing tests. Every UID and value here is invented."""
+"""CT Image, RT Structure Set, and RT Dose files of the analytic head, for
+the defacing tests. Every UID and value here is invented."""
 
 from __future__ import annotations
 
@@ -28,6 +28,8 @@ from . import _synthetic_head as head
 
 CT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.2"
 RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
+RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
+AXIAL = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 EXPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2.1"
 ROOT = "2.25.1234567890123456789"
 FRAME = ROOT + ".1"
@@ -130,6 +132,54 @@ def structure_set(
         observation.RTROIInterpretedType = kind
         observation.ROIInterpreter = ""
         dataset.RTROIObservationsSequence.append(observation)
+    return written(dataset)
+
+
+def dose(
+    stored: np.ndarray,
+    *,
+    position: Sequence[float],
+    spacing: Sequence[float],
+    offsets: Sequence[float] | None,
+    orientation: Sequence[float] = AXIAL,
+    frame: str = FRAME,
+    instance: str = ROOT + ".6.1",
+    template: pydicom.Dataset | None = None,
+) -> bytes:
+    """An RT Dose of 32-bit stored values, frames by rows by columns,
+    signed where ``stored`` is, with Dose Grid Scaling 0.001.
+
+    ``spacing`` is Pixel Spacing, between rows then between columns, and
+    ``offsets`` Grid Frame Offset Vector, left out where None. ``template``,
+    such as the synthetic corpus' RT Dose, gives every other attribute.
+    """
+    stored = np.asarray(stored)
+    signed = bool(np.issubdtype(stored.dtype, np.signedinteger))
+    dataset = _dataset(RT_DOSE_STORAGE, instance, template)
+    dataset.Modality = "RTDOSE"
+    dataset.FrameOfReferenceUID = frame
+    dataset.ImagePositionPatient = [_ds(v) for v in position]
+    dataset.ImageOrientationPatient = [_ds(v) for v in orientation]
+    dataset.PixelSpacing = [_ds(v) for v in spacing]
+    if offsets is not None:
+        dataset.GridFrameOffsetVector = [_ds(v) for v in offsets]
+    elif "GridFrameOffsetVector" in dataset:
+        del dataset.GridFrameOffsetVector
+    dataset.NumberOfFrames = stored.shape[0]
+    dataset.FrameIncrementPointer = 0x3004000C
+    dataset.Rows, dataset.Columns = stored.shape[1:]
+    dataset.SamplesPerPixel = 1
+    dataset.PhotometricInterpretation = "MONOCHROME2"
+    dataset.BitsAllocated = 32
+    dataset.BitsStored = 32
+    dataset.HighBit = 31
+    dataset.PixelRepresentation = int(signed)
+    dataset.DoseUnits = "GY"
+    dataset.DoseType = "PHYSICAL"
+    dataset.DoseSummationType = "PLAN"
+    dataset.DoseGridScaling = "0.001"
+    dataset.PixelData = stored.astype("<i4" if signed else "<u4").tobytes()
+    dataset["PixelData"].VR = "OW"
     return written(dataset)
 
 

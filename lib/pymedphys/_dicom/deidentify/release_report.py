@@ -84,7 +84,9 @@ and codes that the engine defines, never by a source value or path:
   source file and the pixel data that the run writes of it (D-046), a CT
   slice of a series with a target in its face block, an RT Structure Set,
   RT Dose, or PET instance in a defaced series' Frame of Reference, naming
-  none, or referring to a defaced slice (D-050), or a release gate's
+  none, or referring to a defaced slice (D-050), an RT Dose with too much
+  dose in a defaced series' face block to set to zero there (D-051), or a
+  release gate's
   reason that requires QC review. A held
   instance has neither an output name nor a label.
 - ``roi_names``: the outcome of each ROI Name of the structure sets that
@@ -176,7 +178,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/18"
+FORMAT = "pymedphys-deid-release-report/19"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")

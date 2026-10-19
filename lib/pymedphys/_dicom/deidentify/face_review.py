@@ -77,7 +77,9 @@ class FaceReview:
         marked :attr:`~.qc_attestation.Face.ABSENT`, other than one that the
         reviewed run held beside a CT series that it defaced
         (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
-        by its frame, by naming none, or by a reference to a defaced slice.
+        by its frame, by naming none, or by a reference to a defaced slice,
+        or held as an RT Dose with too much dose in that series' block to
+        set to zero (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`).
     present : frozenset of bytes
         Likewise, of each series marked :attr:`~.qc_attestation.Face.PRESENT`.
     absent_pixels : frozenset of (bytes, bytes)
@@ -160,7 +162,8 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
     -------
     FaceReview
         Empty of files where the attestation gives no verdict. A file that
-        the pack lists as held because the run defaced its frame is not
+        the pack lists as held because the run defaced its frame, or as an
+        RT Dose with too much dose in the face block to set to zero, is not
         taken as absent, since its verdict was on the defaced images beside
         it.
 
@@ -198,12 +201,16 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
 
 
 # A source file's SHA-256, that of the pixel data written of it, if any, and
-# whether the run held it beside a CT series that it defaced.
+# whether the run held it beside a CT series that it defaced, as received.
 _File = tuple[bytes, bytes | None, bool]
-# That hold's reason as the QC pack words it, which run_qc.reason_text gives.
+# Those holds' reasons as the QC pack words them, which run_qc.reason_text
+# gives.
 UNDEFACED_TEXT = (
     "HeldVisualFeatures(reason="
     f"{VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME.value})"
+)
+DOSE_IN_FACE_BLOCK_TEXT = (
+    f"HeldVisualFeatures(reason={VisualFeaturesReason.DOSE_IN_FACE_BLOCK.value})"
 )
 
 
@@ -235,7 +242,7 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
             digests[position] = (
                 bytes.fromhex(digest),
                 None if pixels is None else bytes.fromhex(pixels),
-                UNDEFACED_TEXT in reasons,
+                UNDEFACED_TEXT in reasons or DOSE_IN_FACE_BLOCK_TEXT in reasons,
             )
     files: dict[int, frozenset[_File]] = {}
     for entry in series:
