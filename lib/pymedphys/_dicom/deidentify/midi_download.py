@@ -637,8 +637,8 @@ def main(
     parser = argparse.ArgumentParser(
         prog="python -m pymedphys._dicom.deidentify.midi_download",
         description=(
-            "Download a MIDI-B test data set from TCIA for the MIDI benchmark "
-            "(D-018). For development only."
+            "Download a MIDI-B test data set from TCIA for the MIDI benchmark. "
+            "For development only."
         ),
     )
     parser.add_argument("--subset", required=True, choices=sorted(subsets))

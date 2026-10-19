@@ -265,11 +265,16 @@ def _definitions_of(tags, names=None):
 
 
 def _custom_option_sets():
-    """Every set of the targeted options that a custom policy accepts."""
+    """Every set of the presets' options that a custom policy accepts."""
+    preset_options = [
+        option
+        for option in standard.OPTIONS
+        if any(option in options for options in policy.PRESETS.values())
+    ]
     return [
         subset
-        for size in range(len(policy.TARGET_OPTIONS) + 1)
-        for subset in itertools.combinations(policy.TARGET_OPTIONS, size)
+        for size in range(len(preset_options) + 1)
+        for subset in itertools.combinations(preset_options, size)
         if not {DEVICE_IDENTITY, MODIFIED_DATES} <= set(subset)
     ]
 
@@ -788,8 +793,9 @@ def test_a_policy_rejects_a_conflict_between_the_options_of_a_rule(monkeypatch):
         # Retired, like the other (Trial) person names, which Table E.1-1
         # removes.
         ("(0040,A067)", "DocumentAuthorTrial", "X"),
-        # Kept as received and never set to NO, since the pixel data are
-        # unchanged.
+        # Kept as received, since the pixel data are unchanged. Burned In
+        # Annotation is never set to NO, and Recognizable Visual Features
+        # only by the markers, under its option.
         ("(0028,0301)", "BurnedInAnnotation", "K"),
         ("(0028,0302)", "RecognizableVisualFeatures", "K"),
     ],

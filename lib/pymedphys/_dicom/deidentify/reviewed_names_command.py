@@ -152,29 +152,16 @@ def read_decisions(path: str | os.PathLike) -> tuple[Decision, ...]:
         fit its decision, or a name given different decisions. The message
         names lines by number, never a name, a cell, or the path.
     """
-    try:
-        with open(path, encoding="utf-8-sig", newline="") as file:
-            reader = csv.reader(file, strict=True)
-            # Rows whose cells are all empty are left out, each other row
-            # with the line it ends on.
-            rows = [
-                (reader.line_num, row)
-                for row in reader
-                if any(cell.strip(_CELL_PADDING) for cell in row)
-            ]
-    except UnicodeDecodeError:
-        raise ReviewedNamesError("the decisions file is not UTF-8") from None
-    except csv.Error:
-        # Not chained, since the error can quote the file's text.
-        raise ReviewedNamesError(
-            "the decisions file could not be read as CSV"
-        ) from None
-    except OSError:
-        raise ReviewedNamesError("the decisions file could not be read") from None
-    if not rows:
-        raise ReviewedNamesError("the decisions file has no header")
-    (_, header), body = rows[0], rows[1:]
-    columns = _columns(header)
+    header, body = read_rows(path, ReviewedNamesError)
+    columns = read_columns(
+        header,
+        _COLUMNS,
+        _REQUIRED,
+        ReviewedNamesError(
+            "the decisions file needs the columns roi_name and decision, and to "
+            "for a mapping"
+        ),
+    )
     decisions: dict[str, Decision] = {}
     for line, cells in body:
         if len(cells) > len(header):
@@ -190,28 +177,91 @@ def read_decisions(path: str | os.PathLike) -> tuple[Decision, ...]:
     return tuple(decisions.values())
 
 
-def _columns(header: list[str]) -> dict[str, int]:
+def read_rows(
+    path: str | os.PathLike,
+    error: type[ValueError],
+    *,
+    field_size_limit: int | None = None,
+) -> tuple[list[str], list[tuple[int, list[str]]]]:
+    """Return a decisions file's header, and each other row with its line.
+
+    Rows whose cells are all empty are left out. ``field_size_limit``, if
+    given, is the most characters a cell may hold while the file is read, in
+    place of the :mod:`csv` module's limit, which is restored afterwards.
+
+    Raises
+    ------
+    ValueError
+        ``error``, if the file cannot be read as UTF-8 CSV, or has no
+        header. The message quotes neither the file's text nor its path.
+    """
+    previous_limit = csv.field_size_limit()
+    try:
+        if field_size_limit is not None:
+            csv.field_size_limit(field_size_limit)
+        with open(path, encoding="utf-8-sig", newline="") as file:
+            reader = csv.reader(file, strict=True)
+            # Each row with the line it ends on.
+            rows = [
+                (reader.line_num, row)
+                for row in reader
+                if any(cell.strip(_CELL_PADDING) for cell in row)
+            ]
+    except UnicodeDecodeError:
+        raise error("the decisions file is not UTF-8") from None
+    except csv.Error:
+        # Not chained, since the error can quote the file's text.
+        raise error("the decisions file could not be read as CSV") from None
+    except OSError:
+        raise error("the decisions file could not be read") from None
+    finally:
+        csv.field_size_limit(previous_limit)
+    if not rows:
+        raise error("the decisions file has no header")
+    (_, header), body = rows[0], rows[1:]
+    return header, body
+
+
+def read_columns(
+    header: list[str],
+    known: Sequence[str],
+    required: Sequence[str],
+    missing: ValueError,
+) -> dict[str, int]:
+    """Return the index of each known column that a header names.
+
+    Columns are named in any case, with spaces around them disregarded, and
+    other columns are ignored.
+
+    Raises
+    ------
+    ValueError
+        ``missing``, if a required column is not named, or one of the same
+        type as ``missing`` if a known column is named twice.
+    """
     names = [cell.strip(_CELL_PADDING).casefold() for cell in header]
     columns = {}
     for index, name in enumerate(names):
-        if name in _COLUMNS:
+        if name in known:
             if name in columns:
-                raise ReviewedNamesError("the decisions file's header repeats a column")
+                raise type(missing)("the decisions file's header repeats a column")
             columns[name] = index
-    if not all(name in columns for name in _REQUIRED):
-        raise ReviewedNamesError(
-            "the decisions file needs the columns roi_name and decision, and to "
-            "for a mapping"
-        )
+    if not all(name in columns for name in required):
+        raise missing
     return columns
+
+
+def read_cell(cells: list[str], columns: dict[str, int], column: str) -> str:
+    """Return a row's cell in ``column``, without surrounding spaces, or ``""``."""
+    index = columns.get(column)
+    if index is None or index >= len(cells):
+        return ""
+    return cells[index].strip(_CELL_PADDING)
 
 
 def _decision(line: int, cells: list[str], columns: dict[str, int]) -> Decision:
     def cell(column: str) -> str:
-        index = columns.get(column)
-        if index is None or index >= len(cells):
-            return ""
-        return cells[index].strip(_CELL_PADDING)
+        return read_cell(cells, columns, column)
 
     review = cell("decision").casefold()
     if review not in {r.value for r in Review}:

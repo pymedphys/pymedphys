@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+
 """The release report's record of the method and the runtime environment.
 
 The sentinel tests put recognisable text where a report could leak it, in
@@ -38,6 +40,7 @@ from pymedphys._dicom.deidentify import (
     qc_attestation,
     reference_graph,
     release_report,
+    release_report_markdown,
     residuals,
     runtime,
     scope,
@@ -58,6 +61,10 @@ METHOD_FIELDS = [
     "l3_rules",
     "vocabulary_digest",
     "reviewed_roi_names",
+    "reviewed_descriptors",
+    "technique_vocabulary_digest",
+    "text_finder_digest",
+    "safe_private_list",
     "generated_values_digest",
     "engine_files",
 ]
@@ -152,6 +159,19 @@ def test_the_policy_section_names_the_edition_preset_and_options(preset):
     }
 
 
+@pytest.mark.parametrize("option", standard.PIXEL_OPTIONS)
+def test_the_policy_section_names_a_pixel_option(option):
+    custom = policy.compose_custom_policy((option, "clean_descriptors"))
+    report = release_report.release_report(
+        custom, vocabulary=None, reviewed_roi_names=None
+    )
+
+    document = release_report.report_document(report)
+
+    assert document["policy"]["options"] == ["clean_descriptors", option]
+    assert option in release_report_markdown.to_markdown(release_report.to_json(report))
+
+
 def test_a_custom_option_set_has_no_preset():
     custom = policy.compose_custom_policy(("clean_descriptors",))
 
@@ -175,17 +195,20 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "method",
         "runtime",
         "qc_review",
+        "face_review",
+        "redaction_review",
         "released",
         "sequestered",
         "held_for_review",
         "roi_names",
+        "descriptors",
         "reference_findings",
         "pixel_risks",
         "search_coverage",
         "source_gaps",
         "structural_checks",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/12"
+    assert document["format"] == "pymedphys-deid-release-report/22"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
@@ -373,6 +396,10 @@ def _engine_files(report, path):
         (lambda r: _with_method(r, vocabulary_digest=SENTINEL), "vocabulary_digest"),
         (lambda r: _with_method(r, l3_rules=SENTINEL), "l3_rules"),
         (
+            lambda r: _with_method(r, safe_private_list=SENTINEL),
+            "safe_private_list",
+        ),
+        (
             lambda r: _with_method(r, reviewed_roi_names=SENTINEL),
             "reviewed_roi_names",
         ),
@@ -430,6 +457,7 @@ def _engine_files(report, path):
         "digest",
         "vocabulary-digest",
         "l3-rules",
+        "safe-private-list",
         "reviewed-names-digest",
         "uppercase-reviewed-names-digest",
         "uppercase-digest",

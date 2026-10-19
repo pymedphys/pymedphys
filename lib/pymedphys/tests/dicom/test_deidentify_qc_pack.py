@@ -47,6 +47,7 @@ from pymedphys._dicom.deidentify.qc_pack import (
     RetainedString,
     RoiNameEntry,
     RoiNameOutcome,
+    SeriesEntry,
 )
 from pymedphys._dicom.deidentify.residuals import (
     Finding,
@@ -62,6 +63,9 @@ SOURCE_PATH = "/imports/ZEBEDEE QUILLON/CT.1.dcm"
 RETAINED = "QUILLON CLINIC CT"
 REFERENCE = "A-" + "0123456789abcdef" * 2
 OUTPUT = PurePosixPath("ZQ0001/2.25.1/2.25.2/2.25.3.dcm")
+SOURCE_SHA256 = "0f" * 32
+PIXEL_SHA256 = "1e" * 32
+CONTOUR_SHA256 = "2f" * 32
 
 POSIX_ONLY = pytest.mark.skipif(os.name != "posix", reason="POSIX file modes")
 
@@ -73,8 +77,23 @@ def _path(tag, *items):
 NAME_PATH = _path("(0010,0010)")
 
 
-def _written(position=0, output=OUTPUT, source=SOURCE_PATH):
-    return InstanceEntry(position, source, Disposition.RELEASED, output=output)
+def _written(
+    position=0,
+    output=OUTPUT,
+    source=SOURCE_PATH,
+    source_sha256=None,
+    pixel_sha256=None,
+    contour_sha256=None,
+):
+    return InstanceEntry(
+        position,
+        source,
+        Disposition.RELEASED,
+        output=output,
+        source_sha256=source_sha256,
+        pixel_sha256=pixel_sha256,
+        contour_sha256=contour_sha256,
+    )
 
 
 def _sequestered(position=0, label="S-0001"):
@@ -108,7 +127,15 @@ def _full_pack():
     search = find_residuals(data, [SourceValue(NAME_PATH, "PN", NAME)])
     findings, omissions = qc_pack.entries_for_search(0, search, data)
     return _pack(
-        instances=(_written(), _sequestered(1)),
+        instances=(
+            _written(
+                source_sha256=SOURCE_SHA256,
+                pixel_sha256=PIXEL_SHA256,
+                contour_sha256=CONTOUR_SHA256,
+            ),
+            _sequestered(1),
+        ),
+        series=(SeriesEntry((0,)),),
         residual_findings=findings,
         drops=(DropEntry(0, _path("(0008,1030)"), DropReason.RETAINED),),
         not_searched=omissions,
@@ -208,6 +235,45 @@ def test_a_written_instance_is_checked(fields, match):
     fields = {"output": OUTPUT, **fields}
     with pytest.raises(QcPackError, match=match):
         InstanceEntry(0, SOURCE_PATH, Disposition.RELEASED, **fields)
+
+
+_DIGESTS = {
+    "pixel_sha256": (PIXEL_SHA256, "pixel data's SHA-256"),
+    "contour_sha256": (CONTOUR_SHA256, "contours' SHA-256"),
+}
+
+
+@pytest.mark.parametrize("field", _DIGESTS)
+@pytest.mark.parametrize("digest", ["0F" * 32, "0f" * 31, b"\x0f" * 32, ""])
+def test_a_written_digest_is_64_lower_case_hexadecimal_digits(field, digest):
+    with pytest.raises(QcPackError, match=_DIGESTS[field][1]):
+        _written(**{field: digest})
+
+
+@pytest.mark.parametrize("field", _DIGESTS)
+@pytest.mark.parametrize(
+    "disposition, fields",
+    [
+        (Disposition.DUPLICATE, {"output": OUTPUT}),
+        (Disposition.SEQUESTERED, {"label": "S-0001", "reasons": ("x",)}),
+        (Disposition.REFUSED, {"reasons": ("x",)}),
+    ],
+)
+def test_only_a_released_or_held_instance_has_a_written_digest(
+    field, disposition, fields
+):
+    digest = _DIGESTS[field][0]
+    with pytest.raises(QcPackError, match="only if released or held"):
+        InstanceEntry(0, SOURCE_PATH, disposition, **{field: digest}, **fields)
+    held = InstanceEntry(
+        0,
+        SOURCE_PATH,
+        Disposition.HELD_FOR_REVIEW,
+        reasons=("x",),
+        **{field: digest},
+    )
+    assert getattr(held, field) == digest
+    assert digest not in repr(held)
 
 
 @pytest.mark.parametrize(
@@ -505,7 +571,7 @@ def test_a_search_gives_entries_with_excerpts_and_omissions():
 @pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_document_holds_every_section():
     document = json.loads(qc_pack.to_json(_full_pack()))
-    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/1"
+    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/8"
     assert document["reference"] == REFERENCE
     assert document["instances"] == [
         {
@@ -515,6 +581,9 @@ def test_the_document_holds_every_section():
             "output": OUTPUT.as_posix(),
             "label": None,
             "reasons": [],
+            "source_sha256": SOURCE_SHA256,
+            "pixel_sha256": PIXEL_SHA256,
+            "contour_sha256": CONTOUR_SHA256,
         },
         {
             "position": 1,
@@ -523,6 +592,9 @@ def test_the_document_holds_every_section():
             "output": None,
             "label": "S-0001",
             "reasons": ["conflicting instance"],
+            "source_sha256": None,
+            "pixel_sha256": None,
+            "contour_sha256": None,
         },
     ]
     (residual,) = document["residual_findings"]
@@ -577,6 +649,7 @@ def test_the_document_holds_every_section():
             "count": 2,
         }
     ]
+    assert document["series"] == [{"positions": [0]}]
     assert list(document) == [
         "format",
         "reference",
@@ -586,9 +659,12 @@ def test_the_document_holds_every_section():
         "not_searched",
         "retained_strings",
         "roi_names",
+        "descriptors",
         "reference_findings",
         "pixel_risks",
+        "series",
         "series_risks",
+        "redactions",
         "previews",
         "not_previewed",
         "source_gaps",
@@ -972,7 +1048,7 @@ def test_a_destination_that_cannot_be_checked_is_refused(places, monkeypatch):
             _pack(), root / "ZEBEDEE" / "qc", release_directory=release
         )
     assert _shows_no_path(raised.value, root)
-    monkeypatch.undo()  # before Python 3.12, Path.exists raises for EACCES
+    monkeypatch.undo()  # Path.exists needs the real os.stat to look
     assert not (root / "ZEBEDEE").exists()
 
 

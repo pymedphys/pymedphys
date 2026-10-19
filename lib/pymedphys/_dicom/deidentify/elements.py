@@ -73,6 +73,7 @@ from __future__ import annotations
 import dataclasses
 import decimal
 import functools
+import types
 from collections.abc import Sequence
 from typing import cast
 
@@ -80,13 +81,31 @@ from pymedphys._imports import pydicom
 
 from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
+from .retained_private import is_private
 from .sequences import UnreadableItems, decode_items
 from .source import SourceEvidence
 from .sop_classes import load_storage_sop_classes
-from .standard import VRS, dictionary_attribute
+from .standard import VRS, DictionaryAttribute, dictionary_attribute
 from .uids import normalise_uid
 from .values import values_problem
 
+# A private UID, which the Retain Safe Private Option replaces, as written.
+_PRIVATE_UID = DictionaryAttribute("(gggg,eeee)", "", "", "UI", "1-n", "")
+# Private text that descriptor cleaning writes under the Retain Safe Private
+# Option, with the VMs that each text VR allows.
+_PRIVATE_TEXT = types.MappingProxyType(
+    {
+        vr: DictionaryAttribute("(gggg,eeee)", "", "", vr, vm, "")
+        for vr, vm in (
+            ("SH", "1-n"),
+            ("LO", "1-n"),
+            ("UC", "1-n"),
+            ("ST", "1"),
+            ("LT", "1"),
+            ("UT", "1"),
+        )
+    }
+)
 # The codecs of the Default Character Repertoire, as pydicom names them.
 DEFAULT_CODECS = ("iso8859",)
 # Not a Defined Term, but it names the Default Character Repertoire.
@@ -205,12 +224,15 @@ def dataset_codecs(
 
     ``inherited`` are those of the data set that holds it, which apply unless
     it has its own Specific Character Set (0008,0005) (PS3.5 Section 7.5.3),
-    and ``items`` the items that hold it, as in :class:`ElementPath`. It
-    raises :class:`UndecodableElement` unless each value is a Defined Term of
-    PS3.3 Section C.12.1.1.2 that pydicom can decode, or the only value is
-    ``ISO_IR 6``, which gives the Default Character Repertoire as an absent
-    value does; only the first is empty; and several all use ISO 2022 code
-    extensions.
+    and ``items`` the items that hold it, as in :class:`ElementPath`. Each
+    value must be a Defined Term of PS3.3 Section C.12.1.1.2 that pydicom can
+    decode, or the only value ``ISO_IR 6``, which gives the Default Character
+    Repertoire as an absent value does; only the first may be empty; and
+    several must all use ISO 2022 code extensions. Any other value gives the
+    Default Character Repertoire too, so that the data set's text is read only
+    where it is in ISO 646, without a byte from 0x80 or an escape. The current
+    pydicom codecs read those bytes as the same characters; text outside it is
+    then read as it is where no value is given (Architecture item 5).
 
     Given the ``source`` that the data set was read from, the value is read
     from the source's bytes, as :func:`read_element` reads it, and a data
@@ -238,7 +260,7 @@ def dataset_codecs(
         or (term in _TERMS and (single or term.startswith("ISO 2022")))
         for index, term in enumerate(terms)
     ):
-        raise UndecodableElement(path, "is not a supported Specific Character Set")
+        return DEFAULT_CODECS
     return tuple(pydicom.charset.python_encoding[term] for term in terms)
 
 
@@ -860,14 +882,20 @@ def new_element(
     ``vr`` is one the pinned dictionary gives the attribute, of alternatives
     the one :func:`read_element` gives; ``values`` are as in
     :class:`ElementValue`, or a sequence's items; and ``codecs`` are those of
-    the data set it is written in. It raises :class:`ValueError` without the
-    value for any other VR, an item that is not a data set, or a problem that
+    the data set it is written in. A private UID, which the dictionary does
+    not list, takes VR UI and VM 1-n, as the Retain Safe Private Option
+    replaces it, and private text of VR SH, LO, ST, LT, UC, or UT, which
+    descriptor cleaning writes under that Option, the VMs that its VR
+    allows. It raises :class:`ValueError` without the value for any
+    other VR, an item that is not a data set, or a problem that
     :func:`written_value_problem` finds. A LUT Descriptor (0028,3002) or Red,
     Green, or Blue Palette Color Lookup Table Descriptor (0028,1101-1103) of
     VR SS takes its first and third values as US, as :func:`read_element`
     gives them.
     """
     attribute = dictionary_attribute(path.tag)
+    if attribute is None and is_private(path.tag):
+        attribute = _PRIVATE_TEXT.get(vr, _PRIVATE_UID if vr == "UI" else None)
     if attribute is None or vr not in attribute.vrs:
         raise ValueError(f"{path} does not have VR {vr} in the pinned data dictionary")
     value: object

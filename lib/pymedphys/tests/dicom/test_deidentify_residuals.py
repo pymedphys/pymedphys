@@ -19,6 +19,7 @@
 # pylint: disable = too-many-lines
 
 import dataclasses
+import gc
 import io
 import json
 import logging
@@ -30,7 +31,16 @@ from unittest import mock
 from pymedphys._imports import hypothesis, pydicom, pytest
 from pymedphys._imports import numpy as np
 
-from pymedphys._dicom.deidentify import dates, dummy_values, pseudonyms, residuals, uids
+from pymedphys._dicom.deidentify import (
+    dates,
+    dummy_values,
+    markers,
+    policy,
+    pseudonyms,
+    residuals,
+    uids,
+)
+from pymedphys._dicom.deidentify.codes import load_context_group
 from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.residuals import (
@@ -1392,6 +1402,101 @@ def test_the_same_value_from_two_instances_is_reported_once_per_place():
     assert len(result.findings) == 1
 
 
+def test_a_set_of_values_is_grouped_once_and_judged_in_the_order_given(monkeypatch):
+    # Two names from the same attribute, one of them the other's UTF-8 bytes
+    # read as ISO 8859-1, match at the same byte as the same form, and the
+    # value given first decides the encoding reported.
+    as_latin_1 = _source("(0010,0010)", "PN", "MÃ¼LLER^ANNA")
+    as_utf_8 = _source("(0010,0010)", "PN", "MüLLER^ANNA")
+    data = b"by " + "MüLLER^ANNA".encode("utf-8") + b" on"
+    monkeypatch.setattr(residuals, "_PLAN", [])
+    kept = residuals._PLAN  # pylint: disable = protected-access
+
+    def encodings(*values):
+        return [f.encoding for f in find_residuals(data, values).findings]
+
+    assert encodings(as_latin_1, as_utf_8) == ["latin-1"]
+    (plan,) = kept
+    assert encodings(as_utf_8, as_latin_1) == ["utf-8"]
+    assert encodings(as_latin_1, as_utf_8, as_utf_8) == ["latin-1"]
+    # Grouped for the first search alone.
+    assert len(kept) == 1 and kept[0] is plan
+
+
+def test_groups_are_searched_in_the_order_given(monkeypatch):
+    # The same bytes match a form of each name, in groups of their own, and
+    # the name given first decides the encoding reported, on a kept plan too.
+    as_latin_1 = _source("(0010,0010)", "PN", "MÃ¼LLER")
+    as_utf_8 = _source("(0010,0010)", "PN", "MüLLER^ANNA")
+    data = b"by " + "MüLLER^ANNA".encode("utf-8") + b" on"
+    monkeypatch.setattr(residuals, "_PLAN", [])
+    kept = residuals._PLAN  # pylint: disable = protected-access
+
+    def encodings(*values):
+        return [f.encoding for f in find_residuals(data, values).findings]
+
+    assert encodings(as_latin_1, as_utf_8) == ["latin-1"]
+    (plan,) = kept
+    assert encodings(as_utf_8, as_latin_1) == ["utf-8"]
+    assert encodings(as_latin_1, as_utf_8) == ["latin-1"]
+    assert kept[0] is plan
+
+
+def test_only_forms_found_are_ordered_and_each_once(monkeypatch):
+    # Bytes that start as the form does, but are not it, keep nothing.
+    orders = []
+    results = []
+
+    class Recorded(residuals._Order):  # pylint: disable = protected-access
+        def __init__(self, *args):
+            super().__init__(*args)
+            orders.append(self)
+
+        def __call__(self, *args):
+            result = super().__call__(*args)
+            if result:
+                results.append(result)
+            return result
+
+    monkeypatch.setattr(residuals, "_Order", Recorded)
+    misses = b"".join(f"QUOKK{index:05d} ".encode() for index in range(200))
+    data = misses + b"QUOKKA0042 and QUOKKA0042"
+
+    find_residuals(data, [_source("(0010,0020)", "LO", "QUOKKA0042")])
+
+    (order,) = orders
+    assert len(order.found) == 1
+    assert len(results) == 2 and results[0] is results[1]
+
+
+def test_another_set_of_values_is_grouped_afresh(monkeypatch):
+    monkeypatch.setattr(residuals, "_PLAN", [])
+    kept = residuals._PLAN  # pylint: disable = protected-access
+    first = _source("(0010,0020)", "LO", "ID00001")
+    second = _source("(0010,0020)", "LO", "ID00002")
+    plans = []
+
+    for values in ([first], [first, second], [second], [first], [first]):
+        find_residuals(b"", values)
+        plans.append(kept[0])
+
+    assert len({id(plan) for plan in plans[:4]}) == 4
+    assert plans[4] is plans[3]
+
+
+def test_grouped_forms_are_dropped_once_a_value_is_gone(monkeypatch):
+    monkeypatch.setattr(residuals, "_PLAN", [])
+    kept = residuals._PLAN  # pylint: disable = protected-access
+    value = _source("(0010,0010)", "PN", "OKAPI^XENOCRATES")
+    find_residuals(b"", [value])
+    assert kept
+
+    del value
+    gc.collect()
+
+    assert not kept
+
+
 # What is not searched, and robustness.
 
 
@@ -1621,6 +1726,19 @@ def test_a_source_value_that_differs_from_every_constant_is_searched(vr, value):
 
     assert result.findings
     assert not result.unsearched
+
+
+def test_only_the_codes_of_the_options_that_the_markers_write_are_constants():
+    constants = set(residuals.written_constants())
+    meanings = {
+        row.code_value: row.code_meaning for row in load_context_group(7050).rows
+    }
+    for option, code in markers.OPTION_CODES.items():
+        # The engine refuses a policy with any other option, so the markers
+        # never write its code.
+        written = option in policy.ENGINE_OPTIONS
+        assert (("SH", code) in constants) is written, option
+        assert (("LO", meanings[code]) in constants) is written, option
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")

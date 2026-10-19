@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module derives, searches for, and reports every form of a value.
+
 """Search a written DICOM file for source values that should not be in it.
 
 A source value that de-identification had to remove or replace can survive
@@ -143,6 +146,7 @@ import functools
 import mmap
 import re
 import string
+import threading
 import unicodedata
 import weakref
 from collections.abc import Iterable, Iterator, Sequence
@@ -460,6 +464,11 @@ def find_residuals(
         that the engine writes are not searched. Each value's forms are
         reused while the cached SourceValue object remains alive; an equal
         object can reuse that entry, but does not extend its lifetime.
+        The forms of the set of values searched most recently are kept
+        grouped until a search for another set, and only while every one of
+        those values is alive, so that a subject's values, searched for in
+        each of its files in an order that puts the file's own first, are
+        grouped once, not once for each file.
 
     Returns
     -------
@@ -481,17 +490,25 @@ def find_residuals(
     after the last readable element at byte 3
     """
     layout = read_file_layout(data)
-    needles: list[_Needle] = []
+    given = tuple(dict.fromkeys(values))
+    if not all(isinstance(value, SourceValue) for value in given):
+        raise TypeError("each value to search for must be a SourceValue")
+    plan, places = _plan(given)
     omitted: list[NotSearched] = []
     unsearched: list[Unsearched] = []
-    for value in dict.fromkeys(values):
-        prepared = _prepared(value)
-        needles += prepared.needles
+    # Where each value's needles start, by its place in the plan, when the
+    # needles of the values as given are put one after another.
+    bases = [0] * len(given)
+    total = 0
+    for place in places:
+        prepared = plan.prepared[place]
+        bases[place] = total
+        total += len(prepared.needles)
         omitted += prepared.omitted
         unsearched += prepared.unsearched
     with memoryview(data) as view, view.cast("B") as octets:
         found = _search(
-            octets, layout.spans, layout.size, needles, *_coded(octets, layout)
+            octets, layout.spans, layout.size, plan, bases, *_coded(octets, layout)
         )
     order = sorted(
         found.values(), key=lambda f: (f.offset, str(f.source), f.kind.value)
@@ -536,7 +553,7 @@ def written_constants() -> tuple[tuple[str, str], ...]:
     # The markers write MODIFIED or REMOVED, never the least strict value.
     found += [("CS", value) for value in markers.TEMPORAL_VALUES[1:]]
     codes = {
-        7050: {markers.PROFILE_CODE, *markers.OPTION_CODES.values()},
+        7050: {markers.PROFILE_CODE, *markers.WRITTEN_OPTION_CODES},
         7005: {markers.DEIDENTIFYING_EQUIPMENT},
     }
     for cid, values in codes.items():
@@ -656,6 +673,153 @@ def _prepared(value: SourceValue) -> _Prepared:
     return prepared
 
 
+@dataclasses.dataclass(frozen=True)
+class _Group:
+    """Needles whose forms start with the same bytes, searched in the same ranges."""
+
+    prefix: bytes  # the first _PREFIX_BYTES bytes of each form
+    scope: int  # the key of the ranges searched, as _search names them
+    sizes: tuple[int, ...]  # the lengths of the forms, shortest first
+    forms: dict[bytes, tuple[int, ...]]  # each form's needles, by index in the plan
+    # Each value with a needle here: its place in the plan, and the index of
+    # its first needle here among its own needles.
+    firsts: tuple[tuple[int, int], ...]
+
+
+@dataclasses.dataclass(frozen=True)
+class _Plan:
+    """The needles of a set of values, grouped once for any order of the values.
+
+    A search takes the values in the order that it is given them, which can
+    differ from the plan's own: each needle's index in the plan maps to its
+    index in that order by where its value's needles start in it.
+    """
+
+    # Each value's place in the plan, held weakly, as in _PREPARED.
+    places: weakref.WeakKeyDictionary[SourceValue, int]
+    prepared: tuple[_Prepared, ...]  # by place
+    needles: tuple[_Needle, ...]  # each value's needles, by place
+    owners: tuple[int, ...]  # the place of each needle's value
+    ranks: tuple[int, ...]  # and its index among that value's needles
+    groups: tuple[_Group, ...]
+    longest: int  # the length of the longest form, or 1 if none
+    # A reference to each value, which drops the plan, by its token, once the
+    # value is gone.
+    watches: tuple[weakref.ref[SourceValue], ...]
+    token: object
+
+
+# The plan of the set of values searched most recently, since a subject's
+# values are searched for in each of its files. It is kept only while every
+# one of its values is alive, so, as with _PREPARED, it never keeps a value
+# or its needles; and only one is kept, since a plan takes as much memory
+# as its needles. The lock is reentrant, since a value can be collected, and
+# its plan dropped, while the lock is held.
+_PLAN: list[_Plan] = []
+_PLAN_LOCK = threading.RLock()
+
+
+def _drop(token: object, _: object) -> None:
+    """Drop the kept plan, if it is the one with ``token``."""
+    with _PLAN_LOCK:
+        if _PLAN and _PLAN[0].token is token:
+            _PLAN.clear()
+
+
+def _plan(
+    values: tuple[SourceValue, ...],
+) -> tuple[_Plan, list[int]]:
+    """Return the plan of a set of distinct values, given in any order, and
+    the place of each value in it.
+
+    It is grouped the first time, and kept after, as :data:`_PLAN` describes.
+    """
+    with _PLAN_LOCK:
+        kept = _PLAN[0] if _PLAN else None
+    if kept is not None and len(kept.places) == len(values):
+        try:
+            return kept, [kept.places[value] for value in values]
+        except KeyError:
+            pass
+    prepared = tuple(_prepared(value) for value in values)
+    needles: list[_Needle] = []
+    owners: list[int] = []
+    ranks: list[int] = []
+    for place, each in enumerate(prepared):
+        needles += each.needles
+        owners += [place] * len(each.needles)
+        ranks += range(len(each.needles))
+    forms: dict[tuple[bytes, int], dict[bytes, list[int]]] = {}
+    firsts: dict[tuple[bytes, int], dict[int, int]] = {}
+    for index, needle in enumerate(needles):
+        # The ranges that a needle is searched in, by the shortest form that
+        # each holds: everywhere, outside values that hold numbers, and
+        # outside those values and the entropy-coded data.
+        scope = max(
+            shortest
+            for shortest in (MIN_BYTES_IN_NUMBERS, MIN_BYTES_IN_CODED, 0)
+            if not shortest or (not needle.wide and len(needle.folded) >= shortest)
+        )
+        group_key = (needle.folded[:_PREFIX_BYTES], scope)
+        forms.setdefault(group_key, {}).setdefault(needle.folded, []).append(index)
+        firsts.setdefault(group_key, {}).setdefault(owners[index], ranks[index])
+    token = object()
+    plan = _Plan(
+        weakref.WeakKeyDictionary((value, place) for place, value in enumerate(values)),
+        prepared,
+        tuple(needles),
+        tuple(owners),
+        tuple(ranks),
+        tuple(
+            _Group(
+                prefix,
+                scope,
+                tuple(sorted(set(map(len, group)))),
+                {form: tuple(indices) for form, indices in group.items()},
+                tuple(firsts[prefix, scope].items()),
+            )
+            for (prefix, scope), group in forms.items()
+        ),
+        max((len(needle.folded) for needle in needles), default=1),
+        tuple(weakref.ref(value, functools.partial(_drop, token)) for value in values),
+        token,
+    )
+    with _PLAN_LOCK:
+        _PLAN[:] = [plan]
+    return plan, list(range(len(values)))
+
+
+class _Order:
+    """The needles of each form that a search finds, in the order of the
+    values as given, sorted the first time that the form is found.
+
+    Only forms found are kept, by the scope of their group and the form, so
+    that bytes that start as a form does, but are none, keep nothing.
+    """
+
+    def __init__(self, plan: _Plan, bases: Sequence[int]) -> None:
+        self.owners = plan.owners
+        self.ranks = plan.ranks
+        self.bases = bases
+        self.found: dict[tuple[int, bytes], list[int]] = {}
+
+    def __call__(
+        self, scope: int, forms: dict[bytes, tuple[int, ...]], hit: bytes
+    ) -> Sequence[int]:
+        """Return the needles of ``hit`` in ``forms``, if it is one, in order."""
+        indices = forms.get(hit)
+        if indices is None:
+            return ()
+        ordered = self.found.get((scope, hit))
+        if ordered is None:
+            ordered = self.found[scope, hit] = sorted(indices, key=self.given)
+        return ordered
+
+    def given(self, index: int) -> int:
+        """Return a needle's index in the order of the values as given."""
+        return self.bases[self.owners[index]] + self.ranks[index]
+
+
 @functools.cache
 def _constant_keys(vr: str) -> frozenset[object]:
     """Return the written constants as D compares them for ``vr``."""
@@ -702,21 +866,18 @@ def _derive(value: SourceValue) -> Iterator[_Needle | NotSearched | Unsearched]:
         before = _edge(text[0], word)
         after = frozenset() if open_end else _edge(text[-1], word)
         digits = text.isascii() and text.isdigit()
-        for codec, encoded in _encodings(text, value.codecs):
-            escaped = b"\x1b" in encoded or (extended and not text.isascii())
-            if encoded.lower() in seen:
+        for codec, folded, run in _folded(text, value.codecs):
+            escaped = b"\x1b" in folded or (extended and not text.isascii())
+            if folded in seen:
                 continue
             if escaped and codec not in CODECS:
                 yield omission(form, Omission.CODE_EXTENSIONS, codec)
-            seen.add(encoded.lower())
+            seen.add(folded)
             origin, wide = (value.source, kind, form, codec), codec == "utf-16-le"
-            yield _Needle(encoded.lower(), origin, wide, before, after, digits)
-            # A run that the codec designates and resets is also searched
-            # without them, as it is written inside a longer run.
-            run = _RUN.fullmatch(encoded)
-            if run and run[1].lower() not in seen:
-                seen.add(run[1].lower())
-                yield _Needle(run[1].lower(), origin, wide, before, after, digits)
+            yield _Needle(folded, origin, wide, before, after, digits)
+            if run is not None and run not in seen:
+                seen.add(run)
+                yield _Needle(run, origin, wide, before, after, digits)
 
 
 def _forms(text: str, vr: str, kind: ValueKind) -> Iterator[tuple[Form, str]]:
@@ -794,6 +955,20 @@ def _encodings(text: str, codecs: tuple[str, ...]) -> Iterator[tuple[str, bytes]
             yield codec, encoded
 
 
+def _folded(
+    text: str, codecs: tuple[str, ...]
+) -> Iterator[tuple[str, bytes, bytes | None]]:
+    """Yield each codec, and the bytes searched for each case of ``text`` in it.
+
+    Each encoding, and the run inside it where the codec designates and
+    resets one, which is also searched without its escape sequences, as it
+    is written inside a longer run; both with ASCII letters in lower case.
+    """
+    for codec, encoded in _encodings(text, codecs):
+        run = _RUN.fullmatch(encoded)
+        yield codec, encoded.lower(), run[1].lower() if run else None
+
+
 def _holds_numbers(span: Span) -> bool:
     where, path = span.location, span.location.element
     if where.region is not Region.DATA_SET or path is None or where.item is not None:
@@ -846,7 +1021,8 @@ def _search(  # pylint: disable = too-many-arguments, too-many-positional-argume
     octets: memoryview,
     spans: tuple[Span, ...],
     size: int,
-    needles: list[_Needle],
+    plan: _Plan,
+    bases: Sequence[int],
     coded: Sequence[tuple[int, int]],
     codestreams: Sequence[tuple[int, int]],
     samples: Sequence[tuple[int, int]],
@@ -860,16 +1036,22 @@ def _search(  # pylint: disable = too-many-arguments, too-many-positional-argume
     ``coded``, nor UTF-16LE forms in either, and a match wholly in those
     values or in ``codestreams`` is judged as binary. ``samples`` are
     searched as values that hold numbers.
+
+    Groups are searched, and needles judged at a match, in the order of
+    their needles' values as given, which ``bases`` holds: where the
+    needles of the value at each place in ``plan`` start in that order.
     """
+    needles = plan.needles
+    judged = _Order(plan, bases)
+
     starts = [span.start for span in spans]
     numbers = [*samples] + [
         (span.value_start, span.end)
         for span in spans
         if span.value_start is not None and _holds_numbers(span)
     ]
-    # The ranges that each needle is searched in, by the shortest form that
-    # each holds: everywhere, outside values that hold numbers, and outside
-    # those values and the entropy-coded data.
+    # The ranges that each group's needles are searched in, by the shortest
+    # form that each holds (_plan).
     scopes = {
         MIN_BYTES_IN_NUMBERS: [(0, size)],
         MIN_BYTES_IN_CODED: _between(numbers, size),
@@ -877,21 +1059,16 @@ def _search(  # pylint: disable = too-many-arguments, too-many-positional-argume
     }
     binary = sorted([*numbers, *codestreams])
     lows = [low for low, _ in binary]
-    groups: dict[tuple[bytes, int], dict[bytes, list[int]]] = {}
-    for index, needle in enumerate(needles):
-        scope = max(
-            shortest
-            for shortest in scopes
-            if not shortest or (not needle.wide and len(needle.folded) >= shortest)
-        )
-        group = groups.setdefault((needle.folded[:_PREFIX_BYTES], scope), {})
-        group.setdefault(needle.folded, []).append(index)
+    # By the first of each group's needles, in the order as given.
+    groups = sorted(
+        plan.groups,
+        key=lambda group: min(bases[place] + rank for place, rank in group.firsts),
+    )
     resume = [0] * len(needles)  # where each needle's next match can start
     found: _Found = {}
-    longest = max((len(needle.folded) for needle in needles), default=1)
     for chunk in range(0, size if needles else 0, CHUNK_BYTES):
         stop = min(chunk + CHUNK_BYTES, size)
-        block = bytes(octets[chunk : stop + longest - 1]).lower()
+        block = bytes(octets[chunk : stop + plan.longest - 1]).lower()
         ranges = {
             shortest: [
                 (max(low, chunk), min(high, stop))
@@ -901,17 +1078,19 @@ def _search(  # pylint: disable = too-many-arguments, too-many-positional-argume
             for shortest, where in scopes.items()
         }
         searches = (
-            (key[0], group, sorted(set(map(len, group))), low, high)
-            for key, group in groups.items()
-            for low, high in ranges[key[1]]
+            (group.prefix, group.scope, group.forms, group.sizes, low, high)
+            for group in groups
+            for low, high in ranges[group.scope]
         )
-        for prefix, group, sizes, low, high in searches:
+        for prefix, scope, forms, sizes, low, high in searches:
             end = high - chunk + len(prefix) - 1  # matches start before high
             position = block.find(prefix, low - chunk, end)
             while position != -1:
                 offset = chunk + position
                 hits = (block[position : position + size] for size in sizes)
-                for index in [index for hit in hits for index in group.get(hit, ())]:
+                for index in [
+                    index for hit in hits for index in judged(scope, forms, hit)
+                ]:
                     if resume[index] <= offset:
                         span = spans[bisect.bisect_right(starts, offset) - 1]
                         within = bisect.bisect_right(lows, offset) - 1

@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module runs a whole run's passes, staging, and release, so it is long.
+
 """Run de-identification over a directory of source files, through a staging area.
 
 A run has five steps:
@@ -105,6 +108,7 @@ from __future__ import annotations
 import collections
 import dataclasses
 import enum
+import functools
 import hashlib
 import os
 import shutil
@@ -295,7 +299,12 @@ def run(
         The release directory, which must not exist. Its parent must.
     transform : Transform
         Called once for each instance with a record, in run order, other
-        than identical copies and inputs that changed during the run.
+        than identical copies and inputs that changed during the run. One
+        with a ``prepare`` method, such as an
+        :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`,
+        is first given the records of the instances that it will be called
+        for, by run position, and a function that gives the file at a
+        position as the first pass read it, or None if it has changed.
     gate : Gate
         Called once for each staged file, in run order, after every
         instance has been transformed.
@@ -404,6 +413,21 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
     )
     if stopping:
         raise RunStopped(stopping)
+    # A transform that needs more than one instance at a time, such as one
+    # that finds each CT series' face block, is given the run's records and
+    # its files, as the first pass read them, before it writes any.
+    prepare = getattr(transform, "prepare", None)
+    if callable(prepare):
+        # Each identical copy but the first is written as the first is.
+        copied = {position for group in first.copies.values() for position in group[1:]}
+        prepare(
+            {
+                position: record
+                for position, record in first.records.items()
+                if position not in first.settled and position not in copied
+            },
+            functools.partial(_second_read, discovery, first),
+        )
 
     try:
         staging.mkdir(mode=0o700)
@@ -419,7 +443,9 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         if reporter is not None:
             outcomes = _admitted(outcomes, reporter)
         outcomes = _labelled(outcomes)
-        pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
+        pack = run_qc.qc_pack_of(
+            discovery.paths, outcomes, material, digests=first.digests
+        )
         # Built before the pack is written, so a failure leaves no QC material.
         files = run_report.documents(reporter, outcomes, material, pack.reference)
         staged_release = staging / _STAGED_RELEASE

@@ -872,27 +872,25 @@ def test_each_defined_term_that_pydicom_decodes_is_accepted(term):
         ["ISO 2022 IR 100", ""],
     ],
 )
-def test_an_unsupported_character_set_is_refused(value):
+def test_an_unsupported_character_set_gives_the_default_repertoire(value):
+    # Text in ISO 646, with no byte from 0x80 and no escape, reads the same in
+    # every character set, so it is read as if no value were given; text
+    # outside it is refused or read as ISO 8859-1 as it is then.
     encoded = "\\".join([value] if isinstance(value, str) else value).encode()
     item = pydicom.Dataset()
     item[0x00080005] = _raw("(0008,0005)", None, encoded)
     items = ((RT_ASSERTIONS, 2),)
 
-    with pytest.raises(elements.UndecodableElement) as raised:
-        elements.dataset_codecs(item, elements.DEFAULT_CODECS, items)
+    codecs = elements.dataset_codecs(item, ("UTF8",), items)
 
-    assert raised.value.path == ElementPath(items, "(0008,0005)")
-    assert "Specific Character Set" in str(raised.value)
-    assert SENTINEL not in str(raised.value)
-    assert not isinstance(raised.value, ValueError)
+    assert codecs == elements.DEFAULT_CODECS
 
 
-def test_a_specific_character_set_not_in_the_default_repertoire_is_refused():
+def test_a_specific_character_set_not_in_the_default_repertoire_gives_it():
     item = pydicom.Dataset()
     item[0x00080005] = _raw("(0008,0005)", None, "ISO_IR 1ØØ".encode("latin-1"))
 
-    with pytest.raises(elements.UndecodableElement, match="Specific Character Set"):
-        elements.dataset_codecs(item)
+    assert elements.dataset_codecs(item, ("UTF8",)) == elements.DEFAULT_CODECS
 
 
 @pytest.mark.usefixtures("pydicom_behaviour")
@@ -1531,7 +1529,7 @@ def test_a_written_value_in_its_character_set_has_no_problem(vr, values, codecs)
 
 @pytest.mark.parametrize(
     "tag, vr",
-    [("(0010,0010)", "LO"), ("(0028,0120)", "OW"), ("(0009,1010)", "LO")],
+    [("(0010,0010)", "LO"), ("(0028,0120)", "OW"), ("(0009,1010)", "DS")],
     ids=["not-the-pinned-vr", "not-an-alternative", "not-in-the-dictionary"],
 )
 def test_a_new_element_takes_only_a_vr_the_pinned_dictionary_gives(tag, vr):

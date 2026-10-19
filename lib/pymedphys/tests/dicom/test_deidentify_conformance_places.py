@@ -191,9 +191,9 @@ def test_a_plain_z_on_a_type_1_attribute_gives_d(preset):
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_plain_actions_by_type_are_no_longer_pending(preset):
-    assert not any("D-020" in item for item in conformance.PENDING)
+    assert not any("Type" in item for item in conformance.PENDING)
     pending = _statement(preset).pending
-    assert not any("D-020" in item for item in pending)
+    assert not any("Type" in item for item in pending)
     section = _section(
         conformance_markdown.render_markdown(_statement(preset)), "Actions"
     )
@@ -380,9 +380,12 @@ def test_places_within_a_sequence_that_the_policy_removes_are_not_listed():
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
-def test_places_within_a_removed_sequence_follow_the_policy_without_rules():
-    # The engine refuses public-release's element rules, so the policy's own
+def test_places_within_a_removed_sequence_follow_the_policy_without_rules(
+    monkeypatch,
+):
+    # Where the engine refuses a policy's element rules, the policy's own
     # actions decide which sequences are removed.
+    monkeypatch.setattr(policy, "ENGINE_OPTIONS", ())
     composed = policy.compose_policy("public-release")
     assert composed.actions[ORIGINAL_ATTRIBUTES] == "X"
     statement = conformance.conformance_statement(composed, vocabulary=None)

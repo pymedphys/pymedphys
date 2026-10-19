@@ -17,7 +17,8 @@
 :func:`deidentify` is the library API that the design document's Scope
 says the first supported release ships beside the command line. It runs a
 directory exactly as :func:`~pymedphys._dicom.deidentify.command.main`
-does: a new run-scoped key that nothing keeps, the preset's transform from
+does: a new run-scoped key that nothing keeps, the transform of its preset
+or custom option set (D-033) from
 :func:`~pymedphys._dicom.deidentify.command.transform_for`, the release
 gate, the transform's release report, and the reference graph's second
 pass under its key. Where the command prints a
@@ -26,25 +27,27 @@ summary and returns an exit status, it prints nothing and returns
 start, it raises.
 
 It is private until the release, which is to export it as
-``pymedphys.dicom.deidentify``; nothing exports it yet. No preset is
-enabled yet, so until one is, it raises :class:`DeidentifyError`.
+``pymedphys.dicom.deidentify``; nothing exports it yet. No preset or option
+is enabled yet, so until one is, it raises :class:`DeidentifyError`.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import os
+from collections.abc import Collection
 
 from . import command, instance_transform, policy, run
 from .diagnostics import RedactionCounts, redacted_diagnostics
 from .keys import DeidKey
+from .safe_private import SafePrivateList
 
 
 class DeidentifyError(Exception):
     """A run that could not start, with a message that quotes no path or value.
 
-    Its preset is not enabled, or what it cleans ROI Names with cannot be
-    used. Nothing was created.
+    Its preset or option set is not enabled, or what it cleans ROI Names
+    with cannot be used. Nothing was created.
     """
 
 
@@ -91,11 +94,14 @@ def deidentify(  # pylint: disable = too-many-arguments
     release: str | os.PathLike[str],
     *,
     qc_pack: str | os.PathLike[str],
-    preset: str = policy.DEFAULT_PRESET,
+    preset: str | None = None,
+    options: Collection[str] | None = None,
     tg263_spreadsheet: str | os.PathLike[str] | None = None,
     reviewed_names: str | os.PathLike[str] | None = None,
     empty_held_roi_names: bool = False,
     roi_list: str | os.PathLike[str] | None = None,
+    reviewed_descriptors: str | os.PathLike[str] | None = None,
+    safe_private_list: str = "reviewed",
 ) -> Deidentified:
     """De-identify the DICOM files below a source directory into a new release.
 
@@ -115,24 +121,43 @@ def deidentify(  # pylint: disable = too-many-arguments
         ``source`` and ``release``, which must not exist or must be empty.
     preset : str, optional
         The de-identification policy: ``"basic"``, the Basic Profile alone
-        (the default), or ``"basic-clean-descriptors"``, with Clean
-        Descriptors.
+        (the default, unless ``options`` is given), or
+        ``"basic-clean-descriptors"``, with Clean Descriptors.
+    options : collection of str, optional
+        A custom option set in place of a preset (D-033): the names of
+        options of PS3.15 Table E.1-1, such as ``"clean_descriptors"``, or
+        of the Clean Pixel Data and Clean Recognizable Visual Features
+        Options, to apply with the Basic Profile. The run is refused unless
+        each is enabled.
     tg263_spreadsheet : str or os.PathLike, optional
-        With ``basic-clean-descriptors``, a copy of the pinned TG-263
-        spreadsheet to read; by default, PyMedPhys's cached download.
+        Under Clean Descriptors, a copy of the pinned TG-263 spreadsheet to
+        read; by default, PyMedPhys's cached download.
     reviewed_names : str or os.PathLike, optional
-        With ``basic-clean-descriptors``, the custodian's reviewed-names
-        list, which must exist, outside ``source``, ``release``, and
-        ``qc_pack``. By default, none, so every ROI Name that cleaning does
-        not rename is held for review.
+        Under Clean Descriptors, the custodian's reviewed-names list, which
+        must exist, outside ``source``, ``release``, and ``qc_pack``. By
+        default, none, so every ROI Name that cleaning does not rename is
+        held for review.
     empty_held_roi_names : bool, optional
-        With ``basic-clean-descriptors``, empty each ROI Name that would be
-        held for review, so that its instance can be released.
+        Under Clean Descriptors, empty each ROI Name that would be held for
+        review, so that its instance can be released.
     roi_list : str or os.PathLike, optional
-        With ``basic-clean-descriptors``, an institutional list of ROI
-        names, converted from CSV by ``python -m pymedphys._nomenclature
+        Under Clean Descriptors, an institutional list of ROI names,
+        converted from CSV by ``python -m pymedphys._nomenclature
         roi-list``. It renames nothing: the QC pack shows the reviewer of a
         held ROI Name the list's names that it matches (D-009).
+    reviewed_descriptors : str or os.PathLike, optional
+        Under Clean Descriptors, the custodian's reviewed descriptors list,
+        which must exist, outside ``source``, ``release``, and ``qc_pack``,
+        recorded by ``python -m
+        pymedphys._dicom.deidentify.reviewed_descriptors_command``. By
+        default, none, so only technique descriptors made of reviewed
+        vocabulary words are kept (D-036).
+    safe_private_list : str, optional
+        Under Retain Safe Private, the list whose rules settle private
+        attributes: ``"reviewed"``, the default, for the reviewed rules of
+        Table E.3.10-1 and their additions, or ``"tcia"`` for the Private
+        Tag Dictionary of The Cancer Imaging Archive. The method digest,
+        the release report, and the conformance statement record which.
 
     Returns
     -------
@@ -143,14 +168,21 @@ def deidentify(  # pylint: disable = too-many-arguments
 
     Raises
     ------
+    TypeError
+        If ``options`` is a single string rather than a collection of
+        names. Nothing is read or created.
     ValueError
-        If ``tg263_spreadsheet``, ``reviewed_names``,
-        ``empty_held_roi_names``, or ``roi_list`` is given with a preset
-        without Clean Descriptors. Nothing is read or created.
+        If both ``preset`` and ``options`` are given, or if
+        ``tg263_spreadsheet``, ``reviewed_names``, ``empty_held_roi_names``,
+        ``roi_list``, or ``reviewed_descriptors`` is given with a policy
+        without Clean Descriptors, or if ``safe_private_list`` is not
+        ``"reviewed"`` or ``"tcia"``, or is ``"tcia"`` with a policy without
+        Retain Safe Private. Nothing is read or created.
     DeidentifyError
-        If the preset is not enabled, or the TG-263 edition, the
-        reviewed-names list, or the institutional list cannot be used.
-        Nothing is created.
+        If the preset or an option is unknown or not enabled, the options
+        cannot be composed, or the TG-263 edition, the reviewed-names list,
+        the institutional list, or the reviewed descriptors list cannot be
+        used. Nothing is created.
     ~pymedphys._dicom.deidentify.run.RunError
     ~pymedphys._dicom.deidentify.run.RunStopped
     ~pymedphys._dicom.deidentify.qc_pack.QcPackError
@@ -164,22 +196,45 @@ def deidentify(  # pylint: disable = too-many-arguments
     :func:`~pymedphys._dicom.deidentify.run.staging_path` of ``release``,
     which may hold output that still identifies people.
     """
+    if preset is not None and options is not None:
+        raise ValueError("give a preset or options, not both")
+    if isinstance(options, str):
+        raise TypeError(
+            "options must be a collection of option names, not a single string"
+        )
+    # Read once, so that the check below and the run see the same options.
+    chosen = None if options is None else tuple(options)
     roi_name_options = (
         tg263_spreadsheet is not None
         or reviewed_names is not None
         or empty_held_roi_names
         or roi_list is not None
+        or reviewed_descriptors is not None
     )
-    if roi_name_options and not command.roi_name_options_apply(preset):
+    if roi_name_options and not command.roi_name_options_apply(preset, chosen):
         raise ValueError(
-            "tg263_spreadsheet, reviewed_names, empty_held_roi_names, and "
-            "roi_list apply only with the basic-clean-descriptors preset"
+            "tg263_spreadsheet, reviewed_names, empty_held_roi_names, roi_list, "
+            "and reviewed_descriptors apply only under Clean Descriptors: with the "
+            "basic-clean-descriptors preset, or options that include "
+            "clean_descriptors"
+        )
+    try:
+        chosen_list = SafePrivateList(safe_private_list)
+    except ValueError:
+        raise ValueError('safe_private_list must be "reviewed" or "tcia"') from None
+    if chosen_list is not SafePrivateList.REVIEWED and not _safe_private_applies(
+        preset, chosen
+    ):
+        raise ValueError(
+            'safe_private_list "tcia" applies only under Retain Safe Private: '
+            "with a preset or options that include retain_safe_private"
         )
     with redacted_diagnostics() as counts:
         try:
             transform = command.transform_for(
                 preset,
                 DeidKey.generate(),
+                options=chosen,
                 source=source,
                 release=release,
                 qc_pack=qc_pack,
@@ -187,6 +242,8 @@ def deidentify(  # pylint: disable = too-many-arguments
                 reviewed_names=reviewed_names,
                 empty_held_roi_names=empty_held_roi_names,
                 roi_list_path=roi_list,
+                reviewed_descriptors=reviewed_descriptors,
+                safe_private_list=chosen_list,
             )
         except command.TransformNotBuilt as error:
             raise DeidentifyError(str(error)) from None
@@ -200,3 +257,12 @@ def deidentify(  # pylint: disable = too-many-arguments
             written_check=transform.written_check,
         )
     return Deidentified(result, counts)
+
+
+def _safe_private_applies(preset: str | None, options: tuple[str, ...] | None) -> bool:
+    """Return whether the run's policy selects Retain Safe Private."""
+    if options is not None:
+        return policy.SAFE_PRIVATE in options
+    return policy.SAFE_PRIVATE in policy.PRESETS.get(
+        policy.DEFAULT_PRESET if preset is None else preset, ()
+    )

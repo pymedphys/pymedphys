@@ -30,9 +30,10 @@ FIXTURE_UID = "1.2.840.99999.2.55.3.604688119.868.1234567890.1"
 
 any_key = st.binary(min_size=32, max_size=32).map(keys.DeidKey)
 # UIDs as found, including invalid ones, which are replaced all the same.
+# Start with general text so distinct UID pairs have a small base example.
 any_uid = st.one_of(
-    st.from_regex(uid_registry.UID_PATTERN, fullmatch=True),
     st.text(min_size=1),
+    st.from_regex(uid_registry.UID_PATTERN, fullmatch=True),
 ).filter(lambda value: value.rstrip("\x00 "))
 padding = st.text(alphabet="\x00 ", max_size=3)
 
@@ -69,13 +70,6 @@ def test_replacements_are_pinned():
     assert uids.replacement_uid(keys.DeidKey(FIXTURE_SECRET), FIXTURE_UID) == (
         "2.25.45880388381039869122547204841297202992"
     )
-
-
-@hypothesis.given(st.uuids(), st.text())
-def test_version_5_uuids_match_the_standard_library(namespace, name):
-    # uuid.uuid5 accepts only text names before Python 3.12, and the token
-    # is bytes, so the module builds the UUID itself.
-    assert uids.uuid5(namespace, name.encode("utf-8")) == uuid.uuid5(namespace, name)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-04")

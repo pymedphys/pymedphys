@@ -86,6 +86,7 @@ implementation = [
 note = '''
 Replacement UIDs are derived from the key, so every occurrence of a UID is replaced consistently, and every UI attribute has a reviewed role.
 The run's instance transform replaces each SOP Instance UID and each reference to another SOP Instance in a data set, at the top level and in sequences, with the same replacement in every instance of the run.
+Under the Retain UIDs Option, the SOP Instance UID and the references that Table E.1-1 gives K under it are kept instead (PS3.15-E.3.9-01, D-040).
 '''
 
 [[requirement]]
@@ -263,14 +264,16 @@ implementation = [
 note = '''
 The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters.
 It lists the action that the engine applies to each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020), and why where the engine's own removals, the File Meta Information that it writes in place of the source's (D-025), or a sequence given C supersede the policy's action; the rules that give every other element its action (D-022); the values that Z, D, and U write, including the reviewed item of Person Identification Code Sequence, the keyed pseudonyms at the top level of the data set, and replacement UIDs of at most 44 characters (D-003, D-005, D-021); how dates and times are handled: without a Retain Longitudinal Temporal Information Option, by the listed actions of the attributes that have a temporal role, unshifted (D-006, D-007, D-023); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); the attributes and values that the markers insert, as the engine computes them for the policy (D-012); the removal of private attributes at every level of nesting; what the residual search covers, and each reason it lists a value as not searched (D-027); how the release report names each sequestered instance by a label drawn at random for the run, with each stage and reason code (D-026), including the release gate's withholding of every file of a subject one of whose instances gave no values to search, counts the instances held for review by the codes that can hold one, and counts the values that the residual search does not search by attribute and reason, with per-instance detail only in the confidential QC pack (D-027); and the options applied, those that can be composed, and those that are not supported.
-It describes what each run's QC pack lists for review: each distinct retained string (D-017), each instance whose attributes show an indicator of risk in its pixel data, and each CT, MR, and PET volume among the released and held instances, with whether it names the head or neck (D-015).
+It describes what each run's QC pack lists for review: each distinct retained string (D-017), each instance whose attributes show an indicator of risk in its pixel data, and each CT, MR, PET, and RT Dose volume and CT, MR, and PET localizer among the released and held instances, with whether it names the head or neck (D-015).
 A statement lists what it cannot yet describe and then claims nothing.
 Plain X, Z, and D are resolved by Type at every place too (D-020), except within a sequence that the engine removes with its contents, and the resolved Z and D are checked against the walker's plan of a synthetic instance.
 Where an IOD requires an attribute given a plain X, the statement names the enclosing sequence or overlay group that D-020 removes with it, or that the instance is sequestered, and each is checked against the walker's plan of a synthetic instance.
 Under Clean Descriptors, it describes how ROI Name is cleaned in two tiers: automatic renaming against a published TG-263 edition, which it names, and reviewers' decisions, with every reason a name is held, what is written for each, and the condition on which an instance gains the Clean Descriptors code, each checked against the engine (D-009).
 Each run with a release reporter writes the statement of its policy, as `conformance-statement.md` beside the release report at the root of the release, since it holds no instance value; it describes the policy and vocabulary that the report records, and the report gives the run's own method digest and reviewed-names digest.
 The statements of `basic` and `basic-clean-descriptors`, the presets of the first supported release, list nothing as pending.
-A statement still lists as pending, and so claims nothing for, the manner of cleaning an attribute to which the policy gives C other than under Clean Descriptors alone, including how Modified Dates modifies dates and times; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; the safe private attributes retained, for a policy that selects Retain Safe Private; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset (PS3.15-E.3.6-04, PS3.15-E.3.7-02, PS3.15-E.3.10-04).
+For each selected option that has a cleaner, it gives the attributes that the policy gives C and the cleaner settles, with its method: the AE titles under Retain Device Identity (D-034), the free text under Retain Patient Characteristics, which holds its instance unless it has no value (D-038, PS3.15-E.3.7-02), and the dates and times that Modified Dates modifies (D-039, PS3.15-E.3.6-04).
+A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset.
+Under Retain Safe Private, it describes how the reviewed safe private rules are matched and applied, and lists each rule that can retain an attribute (D-035, PS3.15-E.3.10-04).
 '''
 
 [[requirement]]
@@ -298,10 +301,19 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information burned in to the Pixel Data (7FE0,0010) corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
-status = "out-of-scope"
-decisions = ["D-015"]
+status = "partial"
+milestone = "M3"
+decisions = ["D-015", "D-037", "D-048"]
+implementation = [
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/pixel_cleaning.py",
+  "_dicom/deidentify/redaction_review.py",
+  "_dicom/deidentify/text_detection.py",
+]
 note = '''
-The Clean Pixel Data Option is not supported.
+Text that a text finder finds in native Pixel Data is blacked out, whatever it says, and every instance cleaned is held for review (D-037).
+A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; an instance that the reviewer rejected is sequestered (D-048).
+Compressed Pixel Data is sequestered.
 '''
 
 [[requirement]]
@@ -310,11 +322,16 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The Attribute Burned In Annotation (0028,0301) shall be added to the Data Set with a Value of "NO".
 '''
-status = "out-of-scope"
-decisions = ["D-015"]
+status = "implemented"
+decisions = ["D-012", "D-015", "D-048"]
+implementation = [
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/markers.py",
+]
 note = '''
 Applies only with the Clean Pixel Data Option.
-Burned In Annotation is kept as received and never set to NO (D-015).
+An instance that satisfies the option, because it holds no top-level pixel data or a reviewer approved its regions, has Burned In Annotation set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, and MR Spectroscopy IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-048).
+Any other instance keeps Burned In Annotation as received, and it is never set to NO otherwise (D-015).
 '''
 
 [[requirement]]
@@ -323,10 +340,22 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, if there is sufficient visual information within the Pixel Data of a set of instances to allow an individual to be recognized from the instances themselves or a reconstruction of a set of instances, then sufficient removal or distortion of the Pixel Data shall be applied to prevent recognition.
 '''
-status = "out-of-scope"
-decisions = ["D-015"]
+status = "implemented"
+decisions = ["D-015", "D-016", "D-017", "D-046", "D-050", "D-051", "D-052"]
+implementation = [
+  "_dicom/deidentify/defacing.py",
+  "_dicom/deidentify/dose_defacing.py",
+  "_dicom/deidentify/face_blocks.py",
+  "_dicom/deidentify/face_review.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/pixel_cleaning.py",
+  "_dicom/deidentify/qc_attestation.py",
+  "_dicom/deidentify/region_defacing.py",
+]
 note = '''
-The Clean Recognizable Visual Features Option is not supported.
+The engine claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file and of the pixel data, and an RT Structure Set's contours, that the run writes of it, or one that cannot show a face (D-046).
+Every other instance that can show a face, with pixel data or as an RT Structure Set, is held for review and never released, so no released instance that claims the option has the visual information that the paragraph requires to be removed or distorted.
+Under the option, the engine also writes air into the face block of each CT series in which it finds one, keeping the cranial cavity above the orbits, and holds a series with a target in its block or an eye ROI away from the globes it found, and each RT Structure Set, RT Dose with pixel data, or PET instance in a defaced series' Frame of Reference, naming none, or referring to a defaced slice, which it does not clean (D-050), but for an RT Dose in the frame of only one defaced series, whose dose in that series' block, less the cavity kept, it sets to zero, or holds where that dose is too great (D-051), and an RT Structure Set or single-frame PET image in such a frame, whose contours that reach the face it cuts by the block, and whose activity in the block, less the cavity kept, it sets to zero (D-052); a defaced instance still claims the option only where a reviewer found no recognisable face in it as defaced.
 '''
 
 [[requirement]]
@@ -335,11 +364,16 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The Attribute Recognizable Visual Features (0028,0302) shall be added to the Data Set with a Value of "NO".
 '''
-status = "out-of-scope"
-decisions = ["D-015"]
+status = "implemented"
+decisions = ["D-012", "D-015", "D-046"]
+implementation = [
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/markers.py",
+]
 note = '''
 Applies only with the Clean Recognizable Visual Features Option.
-Recognizable Visual Features is kept as received and never set to NO (D-015).
+An instance that satisfies the option has Recognizable Visual Features set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, and MR Spectroscopy IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-046).
+Under any other policy, Recognizable Visual Features is kept as received and never set to NO (D-015).
 '''
 
 [[requirement]]
@@ -348,9 +382,19 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information encoded in graphics, text annotations or overlays corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
-status = "out-of-scope"
+status = "implemented"
+decisions = ["D-041"]
+implementation = [
+  "_dicom/deidentify/clean_graphics.py",
+  "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/conformance.py",
+]
 note = '''
-The Clean Graphics Option is not supported.
+The engine applies the Clean Graphics Option to a custom option set; no preset selects it (D-041).
+No cleaner of graphics exists yet, so each of the four rows that Table E.1-1 gives C under the option takes its Basic Profile action: Curve Data, Overlay Data, and Overlay Comments are removed, Overlay Data with its overlay group where the IOD's Overlay Plane Module is user-optional, and Graphic Annotation Sequence takes D, which removes it from every supported IOD.
+Every instance written under the option claims it, since E.3.3 specifies what the option removes and Table E.1-1 gives the minimum actions, as for Clean Descriptors (D-009).
+An instance with an overlay group that has no Overlay Data, whose overlay may lie in unused bits of Pixel Data, which the engine does not change, is sequestered under the option as overlay-in-pixel-data.
+The conformance statement gives each row its Basic Profile action and why.
 '''
 
 [[requirement]]
@@ -359,11 +403,22 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information encoded in SR Content Items or Acquisition Context or Specimen Preparation Sequence Items corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed.
 '''
-status = "out-of-scope"
-decisions = ["D-010"]
+status = "implemented"
+decisions = ["D-001", "D-010", "D-047"]
+implementation = [
+  "_dicom/deidentify/content_items.py",
+  "_dicom/deidentify/structured_content.py",
+  "_dicom/deidentify/walker.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/policy.py",
+]
 note = '''
-The Clean Structured Content Option is later work.
-Until then, Structured Reports are sequestered (D-010).
+The engine applies the Clean Structured Content Option to a custom option set; no preset selects it (D-047).
+Structured Reports are sequestered (D-010), and no supported IOD defines Content Sequence or Waveform Annotation Sequence, so each takes its Basic Profile action.
+Acquisition Context Sequence and Specimen Preparation Sequence are kept where the IOD defines them, and each content item is cleaned by its Value Type and concept name, as Table E.3.4-1 gives them, generated for the concept names that DICOM and SNOMED CT code (D-001).
+An item whose concept name the table does not list keeps its codes and numbers, and its other values take their own rules, as in any kept sequence.
+Where the table removes an item, where an item cannot be read as one Value Type and one concept name, or where its concept name is coded in a scheme whose rows the table does not hold, including the retired SNOMED designators, the whole sequence takes its Basic Profile action, since a single item is not removed on its own.
 '''
 
 [[requirement]]
@@ -373,13 +428,19 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information that is embedded in text or string Attributes corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-009", "D-022"]
+decisions = ["D-009", "D-022", "D-036"]
 implementation = [
   "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/roi_names.py",
   "_dicom/deidentify/reviewed_roi_names.py",
   "_dicom/deidentify/reviewed_names_command.py",
+  "_dicom/deidentify/reviewed_descriptors.py",
+  "_dicom/deidentify/reviewed_descriptors_command.py",
+  "_dicom/deidentify/technique_descriptors.py",
+  "_dicom/deidentify/common_names.py",
   "_dicom/deidentify/run_report.py",
+  "_dicom/deidentify/run_qc.py",
+  "_dicom/deidentify/qc_pack.py",
 ]
 note = '''
 The first supported release includes the Option for ROI names (D-009).
@@ -393,6 +454,11 @@ A private command records a reviewer's decisions from a CSV file in the list, al
 The release report counts the ROI Names of the structure sets that descriptor cleaning cleaned, each by its outcome, and the distinct names sent for review by reason, whether then held or emptied unreviewed, without a name.
 A run can also be given an institutional list converted from CSV, as the maintainer decided on 6 October 2026; it renames nothing, and the QC pack shows the reviewer of a held name the list's names it matched.
 A ROI Name kept or mapped by a reviewer's decision in the reviewed-names list has passed pooled human review, since each distinct name is reviewed once for the collection.
+A reviewed descriptors list, kept as the reviewed-names list is and filled by a private command of its own, records a reviewer's decision to keep, map, or empty one value of each other text attribute given C, and the reviewed tier for those values checks what a kept or mapped value would write for echoes of identifiers, also within its letters and digits, and holds every other value.
+For the technique descriptors of D-036, such as Series Description and Protocol Name, an automatic tier keeps a value that the list has no decision on where every word of it is in the reviewed technique vocabulary, which leaves out common personal names that are not reviewed exceptions, and it echoes no identifier.
+In a run, descriptor cleaning applies both tiers to each such descriptor whose decoded value it collected in its dictionary VR, each value of a multi-valued VR alone, and writes the element with what they give only where every value is cleaned, at least one has text, and no kept value is beside a mapped or emptied one; every other such element takes its action without the Option, and still claims it where that action removes or replaces it.
+A kept value is left out of the residual search and listed among the retained strings; the QC pack lists each element's values, outcomes, and whether it was written; the release report counts them without a value; and the method digest takes the list's keyed digest and the vocabulary's SHA-256 (D-024).
+An instance withheld before cleaning leaves the descriptors that cleaning would keep out of its subject's search in the same way, so they do not hold the rest of its series.
 '''
 
 [[requirement]]
@@ -402,7 +468,7 @@ text = '''
 The manner of cleaning shall be described in the Conformance Statement.
 '''
 status = "implemented"
-decisions = ["D-009"]
+decisions = ["D-009", "D-036"]
 implementation = [
   "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/conformance_markdown.py",
@@ -410,8 +476,9 @@ implementation = [
 note = '''
 The conformance statement describes how ROI Name (3006,0026) is cleaned under Clean Descriptors: automatic renaming against the published TG-263 edition that it names, or none without such a vocabulary, the reasons a name goes to review, the reviewers' decisions, the checks of what a reviewed decision would write, that a run's method digest covers its reviewed list (D-024), and what cleaning writes for each name, including that a held name holds its instance for review.
 It also says that a run can be given an institutional list of ROI names, which renames nothing and only shows the reviewer of a held name the list's names it matched.
-Every other attribute given C under Clean Descriptors takes the action that the policy gives it without that option, as the maintainer decided on 6 October 2026 (D-009); the statement lists that action for each, at each place, as the one the engine applies, so for `basic-clean-descriptors` it lists no manner of cleaning as pending.
-The manner of cleaning an attribute to which the policy gives C without Clean Descriptors too, such as the dates and times under Modified Dates (E.3.6) and the patient characteristics under Retain Patient Characteristics (E.3.7), which no preset of the first supported release selects, is listed as pending until those options are implemented (PS3.15-E.3.6-04, PS3.15-E.3.7-02).
+It describes how free-text descriptors are cleaned: the reviewed descriptors list's decisions, the technique descriptors and the rules by which the technique vocabulary keeps a value (D-036), the echo checks, and when an element is written with what cleaning gives it.
+Every other attribute given C under Clean Descriptors, and a free-text descriptor that cleaning does not write, takes the action that the policy gives it without that option, as the maintainer decided on 6 October 2026 (D-009); the statement lists that action for each, at each place, as the one the engine applies, so for `basic-clean-descriptors` it lists no manner of cleaning as pending.
+The manner of cleaning an attribute to which the policy gives C without Clean Descriptors too and that no cleaner cleans is listed as pending until its option is implemented; the dates and times under Modified Dates are described with their cleaner (PS3.15-E.3.6-04), and the free text that Retain Patient Characteristics gives C is described with the Option's cleaner, which settles Allergies, Patient State, and Sex Parameters for Clinical Use Category Comment before Clean Descriptors where both are selected (PS3.15-E.3.7-02).
 '''
 
 [[requirement]]
@@ -420,9 +487,18 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When the Retain Longitudinal Temporal Information With Full Dates Option is specified in addition to the Basic Application Level Confidentiality Profile, any dates and times present in the Attributes shall be retained, as described in Table E.1-1. The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "UNMODIFIED".
 '''
-status = "out-of-scope"
+status = "implemented"
+decisions = ["D-012", "D-023", "D-042", "D-043"]
+implementation = [
+  "_dicom/deidentify/actions.py",
+  "_dicom/deidentify/markers.py",
+  "_dicom/deidentify/option_kept.py",
+  "_dicom/deidentify/policy.py",
+]
 note = '''
-The Retain Longitudinal Temporal Information with Full Dates Option is not supported.
+A custom policy can select Full Dates, which keeps every date and time that Table E.1-1 gives K under it and the supplementary rules keep under it (D-023); it cannot be selected with Modified Dates.
+Longitudinal Temporal Information Modified is UNMODIFIED, unless MODIFIED or REMOVED is already present from an earlier run, which is kept because the dates that run modified or removed are not restored (D-012).
+A removed or replaced source value, other than the kept element's own, that equals the whole of a kept date is explained by it and does not withhold the instance; one found inside a longer kept value, such as the date of a kept datetime, still does (D-042, D-043).
 '''
 
 [[requirement]]
@@ -435,20 +511,22 @@ When the Retain Longitudinal Temporal Information With Modified Dates Option is 
 - preserves the gross longitudinal temporal relationships between images obtained on different dates to the extent necessary for the application
 - preserves the fine temporal relationships between images and real-world events to the extent necessary for analysis of the images for the application
 '''
-status = "partial"
-milestone = "M3"
-decisions = ["D-006", "D-007"]
+status = "implemented"
+decisions = ["D-006", "D-007", "D-034", "D-039"]
 implementation = [
+  "_dicom/deidentify/cleaners.py",
   "_dicom/deidentify/dates.py",
-  "_dicom/deidentify/policy.py",
-  "_dicom/deidentify/profiles.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/modified_dates.py",
   "_dicom/deidentify/temporal_roles.py",
 ]
 note = '''
-Each subject's offset is persisted in its profile, DA and DT values are shifted by whole weeks, keeping intervals, weekdays, and times, and every attribute that Table E.1-1 cleans under Modified Dates has a reviewed role that decides whether it is shifted or replaced by a dummy value.
-Time zone offsets become a nominal +0000 once each DT value with its own offset is in the instance's local time, which keeps every interval within the instance.
+Under Modified Dates, a cleaner of the whole instance modifies every value of the 184 attributes that Table E.1-1 and the supplementary rules give C, by its attribute's reviewed temporal role (D-007, D-039).
+A subject-event or radiation-source DA or DT value moves back by the subject's whole-week offset, derived from the run's key and the subject's identity, which keeps intervals, weekdays, times, and decay intervals; a TM value is kept, since whole weeks keep the time of day (D-006); and Frame Origin Timestamp moves its seconds.
+Device, vocabulary-version, and other values take D's dummy value, which discloses nothing of the offset; time zone offsets become a nominal +0000 once each DT value with its own offset is in the instance's local time, which keeps every interval within the instance.
+A value that cannot be modified so, such as a DT value without a full date, sequesters its instance.
 Under `tps-import`, the eleven device and beam hold dates and times that Retain Device Identity would keep are modified by their role instead.
-Remaining: modifying every date and time in a data set (M3).
+Each run has its own key, so offsets are consistent within a run only; reading them from a project key's subject profiles comes with project keys (D-004).
 '''
 
 [[requirement]]
@@ -457,18 +535,15 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of "MODIFIED".
 '''
-status = "partial"
-milestone = "M4"
-decisions = ["D-012"]
+status = "implemented"
+decisions = ["D-012", "D-039"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/markers.py",
 ]
 note = '''
 Every policy that applies Modified Dates, including `tps-import`, sets Longitudinal Temporal Information Modified to MODIFIED in its markers, unless REMOVED is already present from an earlier run, which is kept because the dates that run removed are not restored (D-012).
-The run's instance transform adds it to each instance it de-identifies.
-Neither preset of the first supported release applies Modified Dates, so the end-to-end test of `basic` and `basic-clean-descriptors` does not reach this marker.
-Remaining: validating `tps-import` and `public-release`, which apply Modified Dates, end to end, once they modify every date and time in a data set (PS3.15-E.3.6-02) (M4).
+The run's instance transform adds it to each instance it de-identifies, which under Modified Dates is written only once every date and time in it is modified (D-039).
 '''
 
 [[requirement]]
@@ -477,11 +552,15 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The manner of date modification shall be described in the Conformance Statement.
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-006", "D-007"]
+status = "implemented"
+decisions = ["D-006", "D-007", "D-039"]
+implementation = [
+  "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/conformance_values.py",
+  "_dicom/deidentify/modified_dates.py",
+]
 note = '''
-No preset of the first supported release selects Modified Dates, so the conformance statement describes how dates are modified once the Option is implemented (PS3.15-E.3.6-02).
+The statement of a policy that selects Modified Dates gives the attributes that its cleaner modifies and the cleaner's method: the offset's range and derivation, how each role's values are modified, how local time is chosen, and which values sequester their instance; under Dates and times, it counts the attributes given C by role (D-039).
 '''
 
 [[requirement]]
@@ -490,9 +569,19 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about age, sex, height and weight and other characteristics present in the Attributes shall be retained, as described in Table E.1-1.
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-011"]
+status = "implemented"
+decisions = ["D-011", "D-012", "D-022", "D-034", "D-038"]
+implementation = [
+  "_dicom/deidentify/cleaners.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/patient_characteristics.py",
+]
+note = '''
+The fourteen attributes that the Option gives K are kept as read, wherever they are in the data set, with the Option's code (D-038).
+Its five attributes of free text, which it gives C, are written with no value where they have none, and otherwise hold their instance, so a released instance retains every characteristic it held (PS3.15-E.3.7-02).
+The measures of the body that Table E.1-1 omits, such as Patient's Body Mass Index, are removed under every option (D-022).
+No preset of the first supported release selects the Option; `tps-import` selects it with options that are not yet all implemented.
+'''
 
 [[requirement]]
 id = "PS3.15-E.3.7-02"
@@ -500,10 +589,17 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The manner of cleaning of retained Attributes shall be described in the Conformance Statement.
 '''
-status = "planned"
-milestone = "M3"
+status = "implemented"
+decisions = ["D-034", "D-038"]
+implementation = [
+  "_dicom/deidentify/cleaners.py",
+  "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/conformance_markdown.py",
+  "_dicom/deidentify/patient_characteristics.py",
+]
 note = '''
-No preset of the first supported release selects Retain Patient Characteristics, so the conformance statement describes how retained attributes are cleaned once the Option is implemented (PS3.15-E.3.7-01).
+The statement of a policy that selects the Option lists the fourteen attributes that it keeps, with K, and gives the five that it gives C with their method: none of their values is written, an instance in which one has a value is held, and one with no value is written with none (D-038).
+No method yet cleans their free text automatically; a reviewed list could later keep a reviewed value, which the maintainer has not decided.
 '''
 
 [[requirement]]
@@ -512,10 +608,18 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about the identity of the device in the Attributes shall be retained, as described in Table E.1-1.
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-003", "D-007", "D-022"]
+status = "implemented"
+decisions = ["D-003", "D-007", "D-022", "D-034", "D-042"]
+implementation = [
+  "_dicom/deidentify/ae_titles.py",
+  "_dicom/deidentify/cleaners.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/option_kept.py",
+  "_dicom/deidentify/policy.py",
+]
 note = '''
+The attributes that the Option gives K are kept, and the eleven AE titles that it gives C are each replaced by a keyed token, the same for the same application entity throughout a run (D-034).
+A removed AE title or private value found in a text attribute that the Option keeps, such as an AE title equal to the Station Name, does not send the file to review (D-042).
 `tps-import` also selects Modified Dates, which conflicts with this Option for device dates, so its output claims neither (D-007).
 '''
 
@@ -525,9 +629,18 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to an Application Level Confidentiality Profile, UIDs shall be retained, as described in Table E.1-1.
 '''
-status = "out-of-scope"
+status = "implemented"
+decisions = ["D-003", "D-040"]
+implementation = [
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/retained_uids.py",
+  "_dicom/deidentify/written_references.py",
+]
 note = '''
-The Retain UIDs Option is not supported.
+The 55 UIDs that Table E.1-1 gives K under the Option are kept wherever they occur, and its five reference sequences are kept as containers whose items' elements take their own rules; every other UID is replaced with the run's key, including those the table omits, such as Multi-frame Source SOP Instance UID (D-040).
+Media Storage SOP Instance UID is the kept SOP Instance UID, output files are named by the kept UIDs' keyed replacements, the reference graph's second pass expects the kept UIDs, and the residual search leaves a kept UID out where its enclosing sequence is removed.
+No preset selects the Option.
 '''
 
 [[requirement]]
@@ -536,11 +649,23 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, Private Attributes that are known by the de-identifier to be safe from identity leakage shall be retained, together with the Private Creator IDs that are required to fully define the retained Private Attributes; all other Private Attributes shall be removed or processed in the element-specific manner recommended by Deidentification Action (0008,0307), if present within Private Data Element Characteristics Sequence (0008,0300) (see PS3.3 Section C.12.1).
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-001", "D-028"]
+status = "implemented"
+decisions = ["D-001", "D-028", "D-035"]
+implementation = [
+  "_dicom/deidentify/descriptor_cleaning.py",
+  "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/retained_private.py",
+  "_dicom/deidentify/reviewed_descriptors.py",
+  "_dicom/deidentify/safe_private.py",
+  "_dicom/deidentify/tcia_private_tags.py",
+  "_dicom/deidentify/walker.py",
+]
 note = '''
-Until reviewed rules say which private attributes are safe, a policy that selects the Option is refused (D-028).
+Reviewed rules give every row of Table E.3.10-1 a handling, keyed by private creator and element within the block: numbers and code strings are checked and kept, UIDs replaced, text cleaned as descriptors under Clean Descriptors and otherwise removed, private sequences parsed, and bulk binary data and three timestamps removed (D-035).
+Under the Option, the engine settles each private attribute by its rule, at the top level and in the items of every sequence that is kept, matching creators only in printable ISO 646 and checking each kept value against its VR and VM; it keeps a private creator only where its block keeps something, and removes every other private attribute, which E.3.10 allows in place of following Deidentification Action (0008,0307) (D-035).
+Under Clean Descriptors too, text that a rule retains, written with its VR and within its VM, is cleaned by the reviewed descriptors list's decisions on its private creator, group, element within the block, and VR, and removed where they do not clean it, where it cannot be decoded, or where it is written without its VR (D-009, D-035).
+An attribute that the instance's Private Data Element Characteristics Sequence (0008,0300) declares safe, in a block whose Block Identifying Information Status is SAFE or in Nonidentifying Private Elements, and that no rule lists, takes the handling of its VR, as written or as the sequence defines it; one that the sequence declares may identify is removed, even where a rule would keep it (D-035).
+TCIA's Private Tag Dictionary ships unchanged, pinned by its length and SHA-256 and compared with TCIA's file by a monthly edition check, as a second list that a run may choose in place of the reviewed rules; its keep is a basis for retention, its rules are chosen by the VR that reads each value, and kept values still pass the handling of their VR, with a single value unless a reviewed rule gives the VM; the method digest, the release report, and the conformance statement record which list a run used (D-024, D-035).
 '''
 
 [[requirement]]
@@ -568,11 +693,16 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When an entire Sequence (SQ VR) Private Attribute is not known to always only contain safe content, whether that content consists of Standard Attributes or Private Attributes or a combination of both, then when the Retain Safe Private Option is used, any such Sequence Attribute shall be parsed in its entirety and each of the nested Attributes handled on its own merits, rather than removing the Sequence in its entirety without further consideration. Reviewing the content may be a sensible practice to apply even to nominally known safe Private Sequence Attributes.
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-028"]
+status = "implemented"
+decisions = ["D-028", "D-035"]
+implementation = [
+  "_dicom/deidentify/retained_private.py",
+  "_dicom/deidentify/walker.py",
+]
 note = '''
-Without the Option, a private sequence is removed with everything in it, and a policy that selects the Option is refused until reviewed rules say which private attributes are safe (D-028).
+Under the Option, every private sequence in a block whose private creator is compared is parsed, whether or not a reviewed rule lists it, and each attribute in its items, standard or private, takes its own rule, at every depth (D-035).
+A private sequence that no rule lists is kept, with its creator, only where an attribute in its items other than a private creator is kept, replaced, or cleaned, and is otherwise removed with everything in it; a kept creator is among the retained strings that the QC pack lists for review (D-017, D-035).
+Without the Option, every private sequence is removed with everything in it (D-028).
 '''
 
 [[requirement]]
@@ -581,10 +711,14 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 The safe Private Attributes that are retained shall be described in the Conformance Statement.
 '''
-status = "planned"
-milestone = "M3"
+status = "implemented"
+decisions = ["D-035"]
+implementation = [
+  "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/conformance_safe_private.py",
+]
 note = '''
-No preset of the first supported release selects Retain Safe Private, so the conformance statement describes the safe private attributes retained once the Option is implemented (PS3.15-E.3.10-01).
+Under the Option, the conformance statement describes how the reviewed rules are matched and how each handling settles an attribute, and lists every rule that can retain one, with its private creator, tag, VR, VM, and handling, and the meaning that Table E.3.10-1 gives it or the source of a reviewed addition; the rules for text are among them only under Clean Descriptors, which cleans private text (D-035).
 '''
 
 [[requirement]]
@@ -593,9 +727,18 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about the identity of the institution in the Attributes shall be retained, as described in Table E.1-1.
 '''
-status = "out-of-scope"
+status = "implemented"
+decisions = ["D-011", "D-020", "D-022", "D-044"]
+implementation = [
+  "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/policy.py",
+]
 note = '''
-The Retain Institution Identity Option is not supported.
+The ten attributes that the Option gives K are kept as read, wherever they are in the data set, including Institution Name in the items of Contributing Equipment Sequence, with the Option's code (D-044).
+Clinical Trial Protocol Ethics Committee Name, which the Option gives K, is still removed, since its Type 1C condition needs the approval number that Table E.1-1 removes under every option, and keeping it would make the instance invalid (D-020); the instance still claims the Option, and the conformance statement says so.
+The attributes that Table E.1-1 omits and that name other organisations, such as Coding Scheme Responsible Organization, are removed under every option (D-022).
+No preset selects the Option.
 '''
 
 # MIDI Task Group report, section 1.6, summarised in PyMedPhys's words.
@@ -607,11 +750,13 @@ For public sharing, remove or replace all known direct identifiers and relevant 
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027"]
+decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027", "D-032", "D-042"]
 implementation = [
   "_dicom/deidentify/file_layout.py",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/option_kept.py",
   "_dicom/deidentify/release_gate.py",
+  "_dicom/deidentify/residual_exemptions.py",
   "_dicom/deidentify/residuals.py",
 ]
 note = '''
@@ -620,6 +765,8 @@ Every byte of a written file, from the preamble to any bytes after its last read
 A source value, or a form of one, equal to a constant that the engine writes is not searched, and is recorded by its source attribute (D-027).
 The release gate runs that search itself, for exactly the values collected across the file's subject, and checks the collection against the values the walker planned to collect.
 It withholds any output file that still holds a source person name, UID, date, datetime, or direct identifier, or a source value outside its data set, or whose collection of person names, UIDs, dates, datetimes, direct identifiers, or sequences was incomplete, and sends other text findings and other incomplete collection, including of private values, to confidential review; a search that finds nothing does not on its own release a file (D-027).
+A text finding is not sent to review where it is in a kept CS value made only of its attribute's terms in the pinned PS3.3 (for Body Part Examined, PS3.16 Annex L), in a code item of a scheme that PS3.16 Table 8-1 lists, or in Manufacturer, Manufacturer's Model Name, or Software Versions with a private or equipment source, or where its source is a private creator that PS3.15 Table E.3.10-1 lists, and the QC pack still lists it (D-032).
+Nor is a finding inside a value that a selected option keeps, where its source is a private data element or an attribute of that option, or where it equals a whole kept date or time, and in that case a date finding does not withhold the file either (D-042).
 `public-release` retains indirect identifiers only after its statistical assessment.
 A deterministic synthetic collection, with an instance of each IOD of the first supported release, plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released, and the Enhanced PET Image's Radiopharmaceutical Start DateTime, whose removal sequesters it, in none.
 The run's instance transform removes and replaces identifiers in each data set and gives the gate its coverage, including each value read as ISO 8859-1, and the run acts on the gate's decision.
@@ -729,7 +876,7 @@ Every person name in the pinned dictionary has an action that removes or replace
 Every text attribute that a supported IOD uses is removed or replaced too, other than coded and technical values and De-identification Method, which the engine adds to; the names and identifiers of people, organisations, records, and networks, and identifiers that a device reads, among those that Table E.1-1 omits are removed under every option, and accessory and equipment identifiers are kept only under Retain Device Identity (D-022).
 URN Code Value and Coding Scheme URL, which name coding concepts and schemes, are kept.
 Every other URI and URL attribute that Table E.1-1 omits is removed by Type under every option, as are seven sequences that it omits whose content can identify an institution or other patients or say something about the patient, such as Requesting Service Code Sequence (0032,1034), Issuer of Patient ID Qualifiers Sequence (0010,0024), and Group of Patients Identification Sequence (0010,0027), and three measures of the patient's body, Patient's Body Mass Index (0010,1022), Measured AP Dimension (0010,1023), and Measured Lateral Dimension (0010,1024) (D-022).
-Private Data Element Characteristics Sequence (0008,0300) is removed by Type under every option, since no policy keeps a private attribute, so the private creators of removed private blocks do not survive in its items (D-028).
+Private Data Element Characteristics Sequence (0008,0300) is removed by Type under every option: without Retain Safe Private no private attribute is kept, so the private creators of removed private blocks do not survive in its items (D-028), and under the Option it is read to find the private attributes that the instance declares safe, and then removed, since its descriptions and the creators of blocks that are not kept can name the institution's software (D-035).
 The conformance statement says that the kept codes of local coding schemes can carry an institution's name or abbreviation, a local scheme's Coding Scheme URL its host, and an in-house device's Manufacturer its name, and that each kept value is listed among the QC pack's retained strings.
 It also says that the engine does not itself assess the residual risk of these values, which `public-release` has a person review, and that for the first release the design assigns to whoever releases the data the confirmation that the output's residual risk, these values included, is acceptable, which the QC pack's attestation records when they give it (D-016).
 The maintainer decided on 6 October 2026 that the kept codes of local coding schemes need no further rule beyond that disclosure (D-022).
@@ -787,7 +934,7 @@ status = "planned"
 milestone = "M4"
 decisions = ["D-017"]
 note = '''
-`tps-import` retains patient characteristics for non-clinical databases, not for public sharing.
+`tps-import` retains patient characteristics for non-clinical databases, not for public sharing, and `public-release` does not select Retain Patient Characteristics (D-038).
 '''
 
 [[requirement]]
@@ -830,7 +977,7 @@ implementation = [
 ]
 note = '''
 Every instance's attributes are read for indicators of burned-in text, whatever its IOD: Burned In Annotation of YES, a secondary or converted image, and an overlay without Overlay Data, which may lie in the pixel data; an attribute that cannot be read is itself reported, and a received NO counts for nothing.
-The pixel data are never inspected or changed (D-015).
+The indicators are read from attributes, never from the pixel data (D-015), which only the Clean Pixel Data Option changes (D-037).
 Each run gives the indicators of each source it can decode to the confidential QC pack, which lists the instances at high risk and previews those released or held.
 The release report counts the released and held instances with each risk and each indicator, naming none, as the QC pack lists them (D-015).
 Remaining: pixel review before `public-release` (M4).
@@ -860,7 +1007,7 @@ Under the Basic Profile, every text attribute that a supported IOD uses is remov
 Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocabulary only where it matches one of its names and echoes no known patient or other person identifier, and goes to review otherwise; a reviewer's decision to keep or map a name is applied only where what it would write echoes no such identifier (D-009).
 The run's instance transform applies the actions to each data set, and descriptor cleaning holds for review a ROI name whose decision would echo an identifier.
 A reviewer's decision on a ROI name applies to every ROI Name of that spelling, in the collection and in later runs, and each run searches every written file for the source values that had to be removed or replaced (MIDI-BP-01).
-Indicators of burned-in text are reported in the confidential QC pack, since the engine does not change pixel data (D-015).
+Indicators of burned-in text are reported in the confidential QC pack (D-015); only under the Clean Pixel Data Option does the engine black out text, and it then holds the instance for review (D-037).
 Remaining: human review of the instances whose indicators show burned-in text, before `public-release` (M4, with MIDI-BP-10).
 '''
 
@@ -886,14 +1033,19 @@ id = "MIDI-BP-13"
 text = '''
 Retain private data elements only after evaluating their risk against a reliable source of elements known to be safe, such as PS3.15 E.3.10 or manufacturers' documentation; otherwise remove them selectively or entirely.
 '''
-status = "partial"
-milestone = "M3"
-decisions = ["D-001", "D-028"]
-implementation = ["_dicom/deidentify/private_attributes.py"]
+status = "implemented"
+decisions = ["D-001", "D-028", "D-035"]
+implementation = [
+  "_dicom/deidentify/private_attributes.py",
+  "_dicom/deidentify/retained_private.py",
+  "_dicom/deidentify/safe_private.py",
+  "_dicom/deidentify/tcia_private_tags.py",
+]
 note = '''
-Without Retain Safe Private, every private data element and private creator is removed from a data set, at every level, and a policy that selects the Option, which retains those known to be safe, is refused until reviewed rules say which are (D-028).
+Without Retain Safe Private, every private data element and private creator is removed from a data set, at every level (D-028).
 The run's instance transform removes them from each instance it writes.
-Remaining: the reviewed rules that `public-release` needs (M3).
+The reviewed rules evaluate every row of PS3.15 Table E.3.10-1, and retain only values that can be checked; under the Option, the engine applies them, and the instance's own declarations of safe private attributes in Private Data Element Characteristics Sequence, with the same checks, and removes every private attribute that neither retains, or that the instance declares may identify (D-035).
+TCIA's Private Tag Dictionary, shipped unchanged and pinned by its SHA-256, is a second source that a run may choose in place of the reviewed rules, and its kept values pass the same checks (D-035).
 '''
 
 [[requirement]]
@@ -934,10 +1086,13 @@ implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/run_qc.py",
   "_dicom/deidentify/qc_pack.py",
+  "_dicom/deidentify/qc_previews.py",
+  "_dicom/deidentify/qc_surfaces.py",
 ]
 note = '''
-Recognizable Visual Features of YES, an RT Structure Set's contours of an ROI whose interpreted type or name is EXTERNAL, BODY, or SKIN, the patient's outline, and every CT, MR, and PET volume, single-frame or enhanced, whatever its slice spacing, are reported as indicators of a reconstructable face, and a volume that names a region of the head or neck as showing it.
+Recognizable Visual Features of YES, an RT Structure Set's contours of an ROI whose interpreted type or name is EXTERNAL, BODY, or SKIN, the patient's outline, or BOLUS or FIXATION, which lie on it, every CT, MR, PET, and RT Dose volume, single-frame or enhanced, whatever its slice spacing, and every CT, MR, and PET localizer, which can show the face in profile, are reported as indicators of a reconstructable face, and a volume or localizer that names a region of the head or neck as showing it.
 Each run lists each instance's indicators and each series' indicators, assessed over its released and held instances, in its QC pack for review.
+The QC pack renders the skin surface of each volume that it projects, and the 5% isodose surface of each RT Dose grid of two or more frames, from the front, both obliques, and both profiles, so that the reviewer sees the face that a recognition system would. A dose render that shows no face is inconclusive, since lower doses can keep an outline that the 5% isodose misses.
 Remaining: the `public-release` assessment and face review (M4).
 '''
 
@@ -968,6 +1123,7 @@ implementation = [
   "_dicom/deidentify/qc_previews.py",
   "_dicom/deidentify/qc_retained.py",
   "_dicom/deidentify/qc_store.py",
+  "_dicom/deidentify/qc_surfaces.py",
   "_dicom/deidentify/release_report.py",
   "_dicom/deidentify/release_report_markdown.py",
   "_dicom/deidentify/run.py",
@@ -978,14 +1134,15 @@ implementation = [
 note = '''
 D-016 provides the confidential QC pack, to which the release gate sends the residual search's text findings inside the data set, and files whose collection for the search was incomplete for other text or for private values or values to which the pinned dictionary gives no VR (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation.
 For the first release, the design assigns to whoever releases the data the confirmation that utility is preserved and that the residual risk is acceptable (decided 6 October 2026).
-The QC pack is built and written: each instance by run position and source path, with its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); and what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009).
+The QC pack is built and written: each instance by run position and source path, with its source file's SHA-256 and its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); and what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009).
 It is written only to a designated, owner-only location outside the source, release, and staging directories, and is marked so that no release includes it (D-016).
 A reviewer attests to a pack once, stating whether they reviewed every distinct retained string, every series, and every instance in high-risk categories, and an outcome of attested needs all three; the attestation is bound to the pack by its digest, and gives the release report only the pack's opaque reference and the outcome (D-016, D-017).
+The pack lists each series of released or held instances, and the attestation may give any of them, by its first run position, a face verdict, absent or present, from its previews; the pack's source digests, and the digests of the pixel data written of them, bind the verdict to the files the reviewer saw and to what the run wrote of them, and the release report does not record it (D-016, D-017, D-046).
 Each run writes its pack before it publishes the release, to a QC destination that the caller must name and that is checked before anything is created; a pack that cannot be written publishes nothing, and the pack of a release that cannot be published is removed, or named if it cannot be.
 The run's instance transform and release gate adapter give it this material.
 The pack lists every input from its outcome, each sequestered one by the random label that the run gives it, and the transform's and gate's material by run position: each residual search with its excerpts, each source value they left out of the search with its reason, what descriptor cleaning wrote for each ROI Name, and each retained string with its places.
 The retained strings of an instance are the values that its plan keeps as they are, in elements with a text VR other than UI, outside any removed sequence, and other than Specific Character Set, and a value that was not read for review, or could not be decoded, is refused rather than left out, and the run's transform sequesters an instance with such a value.
-The pack previews each series released or held for review, by a cine strip and, for a volume, a frontal maximum intensity projection, and each instance whose source shows an indicator of risk in its pixel data at full resolution, with those indicators, and lists each series whose released and held instances are a CT, MR, or PET volume or name the head or neck, with the instances that show each; it decodes compressed pixel data by the plugin pinned to its transfer syntax; it lists each instance it could not preview, with why, and records each preview's SHA-256, so that an attestation covers the previews too (D-017).
+The pack previews each series released or held for review, by a cine strip and, for a volume, a frontal maximum intensity projection and renders of its skin surface from five directions; renders the skin surface of each RT Dose grid of two or more frames; previews each instance whose source shows an indicator of risk in its pixel data at full resolution, with those indicators; and lists each series whose released and held instances are a CT, MR, PET, or RT Dose volume, are localizers, or name the head or neck, with the instances that show each; it decodes compressed pixel data by the plugin pinned to its transfer syntax; it lists each instance it could not preview, with why, and records each preview's SHA-256, so that an attestation covers the previews too (D-017).
 A reviewer records an attestation of a pack with a command, which refuses a directory that holds no QC pack and quotes neither the reviewer nor a path; the release report published with the run keeps the record it was written with.
 The person releasing the data may confirm in the attestation, yes or no, that the output was checked for its intended use and that its residual risk was accepted under the institution's governance, and the record that a release report takes carries those outcomes alone; the report's QC review gives each as true, false, or not stated, and refuses one without an attestation.
 Each run's release report summarises the engine's structural checks of its output, the first pass's references, the IOD requirements, and the written references: for each, how many instances it sequestered and how many it reported without acting on them, naming none, so that a recipient sees the output is consistent, though not that it suits a use (decided 6 October 2026).
@@ -1011,7 +1168,7 @@ implementation = [
 note = '''
 Each instance's markers record the process in the instance itself: De-identification Method names PyMedPhys, its version, the PS3.15 edition, and the preset, and gives the method digest; the CID 7050 codes name the profile and each Option the instance satisfies; and a Contributing Equipment Sequence item names PyMedPhys as the de-identifying equipment, and gives in Software Versions its version and the runtime environment that ran, which the method digest does not cover (D-012, D-024).
 The validated policy records the edition, preset, and options.
-The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers and without a reviewed-names list, and the markers that each instance gains, and the same policy and engine always give the same text.
+The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers, without the technique vocabulary, and without a reviewed-names or reviewed descriptors list, and the markers that each instance gains, and the same policy and engine always give the same text.
 The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016).
 Its sections on a run give the QC pack's opaque reference with its attestation's outcome (D-016), list each released instance by its output name, name each sequestered instance by a random label for the run, with each reason's stage and code, and the attribute, action, and VR where the walker sequestered it, or the attribute where the release gate's reason names one (D-026); count the instances held for review by stage and reason, naming none (D-009); count the ROI Names that descriptor cleaning cleaned by outcome, and the distinct names sent for review by reason, naming none (D-009); count the instances with each kind of reference finding that the run reports without acting on it, naming none (D-026); count the released and held instances that show each risk in their pixel data, and each indicator of it, naming none (D-015); count the source values that the residual search did not search, in full or in part, by attribute and reason (D-027); and summarise the engine's structural checks, each with how many instances it sequestered and how many it reported, naming none; the conformance statement describes them, generated from the report's format, labels, and reason codes.
 A run given a reporter writes the report as `release-report.json` at the root of the release before it publishes it, with its QC pack by reference, not yet attested, its released instances by output name, its sequestered instances by label, its held instances by reason, an identical copy counting as the instance it copies, and the values that the residual searches did not search, each counted once at the instance that holds it, and a report that cannot be built publishes nothing and leaves no QC pack; an input whose reasons the report cannot give is sequestered for an invalid reason instead, which the report gives alone and the QC pack lists before its own reasons, so that it never stops the release.

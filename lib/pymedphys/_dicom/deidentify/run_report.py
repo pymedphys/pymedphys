@@ -24,7 +24,8 @@ with its human-readable form as :data:`RELEASE_REPORT_MARKDOWN` beside it
 pack by its reference, not yet attested, since a reviewer attests to it
 after the run (D-016); each released instance by its output name, and each
 sequestered input by its label and reasons (D-026); how many instances
-were held for review by reason (D-009), how many instances have each kind
+were held for review by reason (D-009), what descriptor cleaning wrote for
+ROI Names and free-text descriptors, by count, how many instances have each kind
 of reference finding that the run reports without acting on it, from the
 material that the run adds for them, how many released and held instances
 show each risk in their pixel data, and each indicator of it, from the
@@ -55,13 +56,17 @@ from typing import Protocol
 from pymedphys._nomenclature import tg263
 
 from . import conformance, conformance_markdown, release_report, release_report_markdown
+from .face_blocks import FaceBlockCounts
 from .policy import Policy
 from .qc_attestation import AttestationRecord, Outcome
 from .reasons import RunReason
 from .residuals import NotSearched, Unsearched, UnsearchedReason
 from .iod_conformance import SourceGap
+from .reviewed_descriptors import DescriptorCounts, DescriptorReviewQueue
 from .reviewed_roi_names import CleanedRoiName, ReviewQueue, RoiNameCounts
+from .safe_private import SafePrivateList
 from .run_qc import (
+    DescriptorMaterial,
     Dropped,
     PixelRiskMaterial,
     ReferenceFindingMaterial,
@@ -130,6 +135,42 @@ class ReleaseReporter:
         applies to ROI Names, or None without one, as
         :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
+    face_review : str, optional
+        The reference of the attested QC pack whose face verdicts the run
+        applies under the Clean Recognizable Visual Features Option, or
+        None, the default, without one.
+    redaction_review : str, optional
+        The reference of the attested QC pack whose redaction verdicts the
+        run applies under the Clean Pixel Data Option, or None, the
+        default, without one.
+    reviewed_descriptors : str or None, optional
+        The keyed digest of the reviewed descriptors list that descriptor
+        cleaning applies to free-text descriptors, or None, the default,
+        without one, as
+        :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        takes it.
+    technique_vocabulary : str or None, optional
+        The SHA-256 of the technique vocabulary that descriptor cleaning
+        applies to technique descriptors, or None, the default, without one,
+        as :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        takes it.
+    face_blocks : ~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts, optional
+        With ``face_review``, the counts of the run's CT series that the
+        transform defaced and did not, which it fills in before the run
+        writes any instance, as
+        :meth:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform.prepare`
+        does; None, the default, without one.
+    text_finder : Mapping of str to object, or None, optional
+        The class and description of the method of the text finder that the
+        Clean Pixel Data Option applies, or None, the default, without one, as
+        :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        takes it.
+    safe_private_list : SafePrivateList, optional
+        Under the Retain Safe Private Option, the list whose rules settle
+        private attributes, the reviewed rules by default, as
+        :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        and :func:`~pymedphys._dicom.deidentify.conformance.conformance_statement`
+        take it.
     """
 
     def __init__(
@@ -138,12 +179,26 @@ class ReleaseReporter:
         *,
         vocabulary: tg263.Nomenclature | None,
         reviewed_roi_names: str | None,
+        face_review: str | None = None,
+        reviewed_descriptors: str | None = None,
+        technique_vocabulary: str | None = None,
+        face_blocks: FaceBlockCounts | None = None,
+        redaction_review: str | None = None,
+        text_finder: Mapping[str, object] | None = None,
+        safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     ):
         if not isinstance(policy, Policy):
             raise TypeError("policy must be a Policy")
         self._policy = policy
         self._vocabulary = vocabulary
         self._reviewed_roi_names = reviewed_roi_names
+        self._face_review = face_review
+        self._reviewed_descriptors = reviewed_descriptors
+        self._technique_vocabulary = technique_vocabulary
+        self._face_blocks = face_blocks
+        self._redaction_review = redaction_review
+        self._text_finder = text_finder
+        self._safe_private_list = safe_private_list
 
     def __repr__(self) -> str:
         return "ReleaseReporter()"
@@ -189,6 +244,7 @@ class ReleaseReporter:
                 coverage_records(material[position]) for position in sorted(material)
             ),
             roi_names=roi_name_counts(material),
+            descriptors=descriptor_counts(material),
             findings=reference_findings(outcomes, material),
             pixel=pixel_risks(outcomes, material),
             gaps=release_report.source_gaps(
@@ -217,7 +273,9 @@ class ReleaseReporter:
             gives.
         """
         statement = conformance.conformance_statement(
-            self._policy, vocabulary=self._vocabulary
+            self._policy,
+            vocabulary=self._vocabulary,
+            safe_private_list=self._safe_private_list,
         )
         return conformance_markdown.render_markdown(statement)
 
@@ -226,6 +284,13 @@ class ReleaseReporter:
             self._policy,
             vocabulary=self._vocabulary,
             reviewed_roi_names=self._reviewed_roi_names,
+            face_review=self._face_review,
+            face_blocks=self._face_blocks,
+            redaction_review=self._redaction_review,
+            reviewed_descriptors=self._reviewed_descriptors,
+            technique_vocabulary=self._technique_vocabulary,
+            text_finder=self._text_finder,
+            safe_private_list=self._safe_private_list,
             **run,  # type: ignore[arg-type]
         )
 
@@ -462,8 +527,8 @@ def held_instances(
     Raises
     ------
     TypeError
-        For a held outcome's reason that is neither a held ROI Name nor a
-        release gate's reason.
+        For a held outcome's reason that is not a held ROI Name, why a pixel
+        option held it, held visual features, or a release gate's reason.
     """
     return release_report.held_for_review(
         getattr(outcome, "reasons")
@@ -515,4 +580,29 @@ def roi_name_counts(material: Mapping[int, Sequence[object]]) -> RoiNameCounts:
                 for name in names
             ],
         )
+    return queue.report_counts()
+
+
+def descriptor_counts(material: Mapping[int, Sequence[object]]) -> DescriptorCounts:
+    """Return what descriptor cleaning wrote for a run's descriptors, by count.
+
+    ``material`` is each input's QC material, by its position. Each
+    :class:`~.run_qc.DescriptorMaterial` is the values of one descriptor
+    element that descriptor cleaning read, as the QC pack lists them, so
+    every value counts by its outcome, each distinct value held for review,
+    of one attribute, once for each of its reasons, and each element that
+    took its action without Clean Descriptors once, as
+    :meth:`~pymedphys._dicom.deidentify.reviewed_descriptors.DescriptorReviewQueue.report_counts`
+    gives, without a value.
+    """
+    queue = DescriptorReviewQueue()
+    for position in sorted(material):
+        for item in material[position]:
+            if isinstance(item, DescriptorMaterial):
+                queue.add(
+                    item.attribute or item.path.tag,
+                    item.sources,
+                    item.results,
+                    applied=item.applied,
+                )
     return queue.report_counts()

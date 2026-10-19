@@ -15,8 +15,7 @@
 """Compose the presets, and validate a policy's options before processing.
 
 A preset names a set of DICOM PS3.15 Options on top of the Basic Application
-Level Confidentiality Profile, chosen from the Options that the design
-document's Scope targets:
+Level Confidentiality Profile:
 
 - ``basic``, the default: the Basic Profile alone;
 - ``basic-clean-descriptors``: Clean Descriptors, so that cleaned
@@ -33,9 +32,15 @@ and each reviewed supplementary rule, for an attribute that the table omits,
 its action under the same options
 (:func:`~pymedphys._dicom.deidentify.actions.effective_supplementary_actions`),
 such as C for Beam Name under Clean Descriptors. It first checks that the
-options are within the supported scope and that the table is of the same
-edition as the data dictionary, against which the supplementary rules were
-reviewed.
+options are options of Table E.1-1, or the Clean Pixel Data or Clean
+Recognizable Visual Features Option, which the table has no column for and
+which give no attribute an action; that they are not both Retain
+Longitudinal Temporal Information Options, which PS3.15 E.3.6 makes mutually
+exclusive; and that the table is of the same edition as the data dictionary,
+against which the supplementary rules were reviewed. Any of these options
+can be composed, so that its policy can be described; the engine applies
+only a policy whose options are all in :data:`ENGINE_OPTIONS`
+(:func:`refuse_unapplied_options`), those that :data:`ENGINE_APPLIES` marks.
 
 PS3.15 defines no precedence between options, so an attribute to which two
 selected options give different actions makes the policy invalid. The one
@@ -49,10 +54,13 @@ table adds, are rejected.
 
 A preset is enabled only once its behaviour is implemented and validated. No
 preset is enabled yet; the first supported release is to enable ``basic`` and
-``basic-clean-descriptors``. The engine takes its policy from
-:func:`select_policy`, which refuses a preset that is not enabled. A policy
-composed from a given table is never enabled, and a custom option set is
-validated but not enabled.
+``basic-clean-descriptors``. A run can select a custom option set in place
+of a preset (D-033), which is enabled only once ``basic``, whose Basic
+Profile it applies, is enabled, and each of its options is in
+:data:`ENABLED_OPTIONS`, which an option joins once its behaviour is
+implemented and validated; none has yet. The engine takes its policy from
+:func:`select_policy`, which refuses a policy that is not enabled. A policy
+composed from a given table is never enabled.
 """
 
 from __future__ import annotations
@@ -63,37 +71,87 @@ from collections.abc import Iterable, Mapping
 
 from .actions import OptionConflict, effective_actions, effective_supplementary_actions
 from .attribute_roles import AttributeRoles
-from .standard import OPTIONS, ProfileTable, load_data_dictionary, load_table_e1_1
+from .standard import (
+    ALL_OPTIONS,
+    MUTUALLY_EXCLUSIVE,
+    OPTIONS,
+    ProfileTable,
+    load_data_dictionary,
+    load_table_e1_1,
+)
 from .temporal_roles import TemporalRole, load_temporal_roles
 
+# The options of Table E.1-1, in its order.
 SAFE_PRIVATE = "retain_safe_private"
+UIDS = "retain_uids"
 DEVICE_IDENTITY = "retain_device_identity"
+INSTITUTION_IDENTITY = "retain_institution_identity"
+PATIENT_CHARACTERISTICS = "retain_patient_characteristics"
+FULL_DATES = "retain_longitudinal_full_dates"
 MODIFIED_DATES = "retain_longitudinal_modified_dates"
+CLEAN_DESCRIPTORS = "clean_descriptors"
+CLEAN_STRUCTURED_CONTENT = "clean_structured_content"
+CLEAN_GRAPHICS = "clean_graphics"
+# The options that Table E.1-1 has no column for (standard.PIXEL_OPTIONS),
+# which give no attribute an action.
+CLEAN_PIXEL_DATA = "clean_pixel_data"
+CLEAN_RECOGNIZABLE_VISUAL_FEATURES = "clean_recognizable_visual_features"
 
-# The Options that the design document's Scope targets, in Table E.1-1's order.
-TARGET_OPTIONS = (
-    SAFE_PRIVATE,
-    DEVICE_IDENTITY,
-    "retain_patient_characteristics",
-    MODIFIED_DATES,
-    "clean_descriptors",
+# Whether the engine applies each option's actions, in Table E.1-1's order,
+# then the options that the table has no column for.
+# Every option can be composed into a policy, but the engine refuses a policy
+# that selects one that it does not apply (refuse_unapplied_options). An
+# option is marked applied once the engine implements its actions, by its own
+# entry alone, which a line naming the option separates from the others', so
+# that options implemented in parallel change no line in common.
+ENGINE_APPLIES: Mapping[str, bool] = types.MappingProxyType(
+    {
+        # Retain Safe Private.
+        SAFE_PRIVATE: True,
+        # Retain UIDs.
+        UIDS: True,
+        # Retain Device Identity.
+        DEVICE_IDENTITY: True,
+        # Retain Institution Identity.
+        INSTITUTION_IDENTITY: True,
+        # Retain Patient Characteristics.
+        PATIENT_CHARACTERISTICS: True,
+        # Retain Longitudinal Temporal Information with Full Dates.
+        FULL_DATES: True,
+        # Retain Longitudinal Temporal Information with Modified Dates.
+        MODIFIED_DATES: True,
+        # Clean Descriptors.
+        CLEAN_DESCRIPTORS: True,
+        # Clean Structured Content: content items by their concept names
+        # (D-047).
+        CLEAN_STRUCTURED_CONTENT: True,
+        # Clean Graphics: its rows take their Basic Profile actions (D-041).
+        CLEAN_GRAPHICS: True,
+        # Clean Pixel Data: text found in native Pixel Data is blacked out,
+        # and the instance held for review (D-037).
+        CLEAN_PIXEL_DATA: True,
+        # Clean Recognizable Visual Features.
+        CLEAN_RECOGNIZABLE_VISUAL_FEATURES: True,
+    }
 )
+# The options whose policies the engine accepts, in the order of ALL_OPTIONS.
+ENGINE_OPTIONS = tuple(option for option in ALL_OPTIONS if ENGINE_APPLIES[option])
 
 # Each preset's options, in Table E.1-1's order.
 PRESETS: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
     {
         "basic": (),
-        "basic-clean-descriptors": ("clean_descriptors",),
+        "basic-clean-descriptors": (CLEAN_DESCRIPTORS,),
         "tps-import": (
             DEVICE_IDENTITY,
-            "retain_patient_characteristics",
+            PATIENT_CHARACTERISTICS,
             MODIFIED_DATES,
-            "clean_descriptors",
+            CLEAN_DESCRIPTORS,
         ),
         "public-release": (
             SAFE_PRIVATE,
             MODIFIED_DATES,
-            "clean_descriptors",
+            CLEAN_DESCRIPTORS,
         ),
     }
 )
@@ -101,7 +159,14 @@ DEFAULT_PRESET = "basic"
 # The presets whose behaviour is implemented and validated. None is yet; the
 # first supported release is to enable ``basic`` and ``basic-clean-descriptors``.
 ENABLED_PRESETS: frozenset[str] = frozenset()
+# The options whose behaviour is implemented and validated, each one of
+# ENGINE_OPTIONS, which a custom option set may select once the basic preset
+# is enabled too (D-033). None is yet. Enabling a preset does not enable its
+# options.
+ENABLED_OPTIONS: frozenset[str] = frozenset()
 
+# The preset of the Basic Profile alone, which every custom option set applies.
+_BASIC = "basic"
 # The preset that resolves the conflicts below, and the actions it resolves.
 _TPS_IMPORT = "tps-import"
 _RESOLVABLE = types.MappingProxyType({DEVICE_IDENTITY: "K", MODIFIED_DATES: "C"})
@@ -147,7 +212,10 @@ class Policy:
     edition : str
         The edition of Table E.1-1, such as ``"2026d"``.
     options : tuple of str
-        The selected options, in the table's order.
+        The selected options, in the order of
+        :data:`~pymedphys._dicom.deidentify.standard.ALL_OPTIONS`: Table
+        E.1-1's, then Clean Pixel Data and Clean Recognizable Visual
+        Features, which give no attribute an action.
     actions : Mapping of str to str
         Each attribute's action code, keyed by its tag as Table E.1-1 gives
         it, in the table's order, including the attributes in
@@ -165,9 +233,11 @@ class Policy:
         to it. Read-only.
     enabled : bool
         Whether the engine may use the policy: only for an enabled preset,
-        composed from the pinned tables. Only :func:`compose_policy` sets it,
-        so a policy constructed directly, or copied with
-        :func:`dataclasses.replace`, is not enabled.
+        or a custom option set whose options are all enabled (D-033),
+        composed from the pinned tables. Only :func:`compose_policy` and
+        :func:`compose_custom_policy` set it, so a policy constructed
+        directly, or copied with :func:`dataclasses.replace`, is not
+        enabled.
     """
 
     preset: str | None
@@ -201,30 +271,24 @@ def _join(values: Iterable[str]) -> str:
 
 
 def _checked_options(options: Iterable[str]) -> tuple[str, ...]:
-    """Return ``options`` in the table's order, once each, after checking them."""
+    """Return ``options`` in the order of ``ALL_OPTIONS``, once each, after checking them."""
     if isinstance(options, str):
         raise TypeError(
             "options must be a collection of option names, not a single string"
         )
     chosen = set(options)
-    unknown = sorted(chosen.difference(OPTIONS))
+    unknown = sorted(chosen.difference(ALL_OPTIONS))
     if unknown:
         raise PolicyError(
-            f"unknown options {unknown}; the options of Table E.1-1 are "
-            + ", ".join(OPTIONS)
+            f"unknown options {unknown}; the options are " + ", ".join(ALL_OPTIONS)
         )
-    unsupported = [o for o in OPTIONS if o in chosen and o not in TARGET_OPTIONS]
-    if unsupported:
-        named = (
-            f"the option {unsupported[0]} is"
-            if len(unsupported) == 1
-            else f"the options {_join(unsupported)} are"
-        )
-        raise PolicyError(
-            f"{named} outside the supported scope; "
-            f"the supported options are {_join(TARGET_OPTIONS)}"
-        )
-    return tuple(option for option in OPTIONS if option in chosen)
+    for exclusive in MUTUALLY_EXCLUSIVE:
+        if exclusive <= chosen:
+            raise PolicyError(
+                f"the options {_join(o for o in ALL_OPTIONS if o in exclusive)} "
+                "are mutually exclusive (PS3.15 E.3.6)"
+            )
+    return tuple(option for option in ALL_OPTIONS if option in chosen)
 
 
 def _resolution(
@@ -278,8 +342,10 @@ def _compose(
             f"and the rules reviewed against it are of edition {dictionary.edition}"
         )
 
-    effective = effective_actions(selected, table=table)
-    supplementary = effective_supplementary_actions(selected)
+    # Only Table E.1-1's options give attributes actions.
+    columns = tuple(option for option in selected if option in OPTIONS)
+    effective = effective_actions(columns, table=table)
+    supplementary = effective_supplementary_actions(columns)
     conflicts = effective.conflicts + supplementary.conflicts
     resolved: dict[str, ResolvedConflict] = {}
     unresolved: list[OptionConflict] = []
@@ -312,10 +378,26 @@ def _compose(
         resolved=tuple(resolved.values()),
         supplementary_actions=supplementary.actions,
     )
-    if preset in ENABLED_PRESETS and pinned:
+    if pinned and _enabled(preset, selected):
         # The way a frozen dataclass sets a field that is not an argument.
         object.__setattr__(composed, "enabled", True)
     return composed
+
+
+def _enabled(preset: str | None, options: tuple[str, ...]) -> bool:
+    """Return whether ``preset``, or a custom set of ``options``, is enabled."""
+    if preset is not None:
+        return preset in ENABLED_PRESETS
+    return _BASIC in ENABLED_PRESETS and ENABLED_OPTIONS.issuperset(options)
+
+
+def _enabled_status(enabled: list[str], kind: str) -> str:
+    """Say which of a ``kind`` of name are enabled: ``"only basic is enabled"``."""
+    if not enabled:
+        return f"no {kind} is enabled yet"
+    if len(enabled) == 1:
+        return f"only {enabled[0]} is enabled"
+    return f"only {_join(enabled)} are enabled"
 
 
 def compose_policy(
@@ -362,7 +444,7 @@ def compose_policy(
 def compose_custom_policy(
     options: Iterable[str], *, table: ProfileTable | None = None
 ) -> Policy:
-    """Validate a custom set of options as a policy, which is not enabled.
+    """Validate a custom set of options as a policy, whether enabled or not.
 
     A custom policy must be able to conform, so every conflict between its
     options is rejected, including those the ``tps-import`` preset resolves.
@@ -370,60 +452,100 @@ def compose_custom_policy(
     Parameters
     ----------
     options : iterable of str
-        The selected options, from :data:`TARGET_OPTIONS`.
+        The selected options, from those of Table E.1-1 and the Clean
+        Pixel Data and Clean Recognizable Visual Features Options. The
+        engine applies the policy only if every one is in
+        :data:`ENGINE_OPTIONS`.
     table : ProfileTable, optional
         Table E.1-1. Defaults to
-        :func:`~pymedphys._dicom.deidentify.standard.load_table_e1_1`.
+        :func:`~pymedphys._dicom.deidentify.standard.load_table_e1_1`. A
+        policy composed from a given table is never enabled.
 
     Returns
     -------
     Policy
-        With no preset, and not enabled.
+        With no preset. Enabled only where composed from the pinned table,
+        while ``basic`` is in :data:`ENABLED_PRESETS` and each option is in
+        :data:`ENABLED_OPTIONS` (D-033).
 
     Raises
     ------
     TypeError
         If ``options`` is a single string rather than a collection of names.
     PolicyError
-        If an option is not one of Table E.1-1's options, or is outside
-        :data:`TARGET_OPTIONS`; if the table is of another edition than the
-        data dictionary; or if two of the options give an attribute
-        different actions.
+        If an option is not one of
+        :data:`~pymedphys._dicom.deidentify.standard.ALL_OPTIONS`; if the options
+        include both Retain Longitudinal Temporal Information Options; if
+        the table is of another edition than the data dictionary; or if two
+        of the options give an attribute different actions.
     """
     return _compose(None, options, table)
 
 
-def select_policy(preset: str = DEFAULT_PRESET) -> Policy:
-    """Return the policy of an enabled preset, for the engine to apply.
+def select_policy(
+    preset: str | None = None, *, options: Iterable[str] | None = None
+) -> Policy:
+    """Return the policy of an enabled preset or custom option set, for the engine.
 
     Parameters
     ----------
     preset : str, optional
-        One of :data:`ENABLED_PRESETS`. Defaults to ``"basic"``.
+        One of :data:`ENABLED_PRESETS`. Defaults to ``"basic"``, unless
+        ``options`` is given.
+    options : iterable of str, optional
+        A custom option set, in place of a preset (D-033): options of
+        :data:`~pymedphys._dicom.deidentify.standard.ALL_OPTIONS`, each in
+        :data:`ENABLED_OPTIONS`, which the Basic Profile is applied with.
 
     Returns
     -------
     Policy
-        The preset's policy, composed from the pinned tables.
+        The policy, composed from the pinned tables.
 
     Raises
     ------
     TypeError
-        If ``preset`` is not a string.
+        If ``preset`` is not a string, or ``options`` is a single string
+        rather than a collection of names.
     PolicyError
-        For any reason :func:`compose_policy` gives, or if the preset is not
-        enabled because its behaviour is not yet implemented and validated.
-        No preset is enabled yet, so every preset is refused.
+        If both ``preset`` and ``options`` are given; for any reason
+        :func:`compose_policy` or :func:`compose_custom_policy` gives; or if
+        the policy is not enabled, because the behaviour of its preset, or
+        of the Basic Profile or one of its options, is not yet implemented
+        and validated. Nothing is enabled yet, so every policy is refused.
     """
+    if options is None:
+        return _selected_preset(DEFAULT_PRESET if preset is None else preset)
+    if preset is not None:
+        raise PolicyError(
+            "a policy is that of a preset or of a custom option set, not both"
+        )
+    custom = compose_custom_policy(options)
+    if not custom.enabled:
+        unenabled = (
+            []
+            if _BASIC in ENABLED_PRESETS
+            else [f"the Basic Profile (the {_BASIC} preset)"]
+        )
+        unenabled += [
+            f"the option {o}" for o in custom.options if o not in ENABLED_OPTIONS
+        ]
+        enabled = [o for o in ALL_OPTIONS if o in ENABLED_OPTIONS]
+        raise PolicyError(
+            "the custom option set is not enabled: the behaviour of "
+            f"{_join(unenabled)} is not yet implemented and validated; "
+            + _enabled_status(enabled, "option")
+        )
+    return custom
+
+
+def _selected_preset(preset: str) -> Policy:
+    """Return the policy of ``preset``, as :func:`select_policy` does."""
     policy = compose_policy(preset)
     if not policy.enabled:
-        enabled = [name for name in PRESETS if name in ENABLED_PRESETS]
-        if not enabled:
-            status = "no preset is enabled yet"
-        elif len(enabled) == 1:
-            status = f"only {enabled[0]} is enabled"
-        else:
-            status = f"only {_join(enabled)} are enabled"
+        status = _enabled_status(
+            [name for name in PRESETS if name in ENABLED_PRESETS], "preset"
+        )
         raise PolicyError(
             f"the {preset} preset is not enabled: its behaviour is not yet "
             f"implemented and validated; {status}"
@@ -431,21 +553,31 @@ def select_policy(preset: str = DEFAULT_PRESET) -> Policy:
     return policy
 
 
-def refuse_retain_safe_private(policy: Policy) -> None:
-    """Refuse a policy that selects the Retain Safe Private Option.
+def refuse_unapplied_options(policy: Policy) -> None:
+    """Refuse a policy that selects an option the engine does not yet apply.
 
-    The Option keeps the private attributes that are known to be safe, and
-    no reviewed rules yet say which are. The rule of every element and the
-    removal of private attributes both refuse it with this.
+    Every option of
+    :data:`~pymedphys._dicom.deidentify.standard.ALL_OPTIONS` can be
+    composed into a policy, so that it can be described, but the engine
+    applies only the options in
+    :data:`ENGINE_OPTIONS`. The rule of every element refuses any other with
+    this, before anything is transformed.
 
     Raises
     ------
     PolicyError
-        If ``policy`` selects the Retain Safe Private Option.
+        If ``policy`` selects an option outside :data:`ENGINE_OPTIONS`. The
+        message names each such option.
     """
-    if SAFE_PRIVATE in policy.options:
+    unapplied = [o for o in policy.options if o not in ENGINE_OPTIONS]
+    if unapplied:
+        named = (
+            f"the option {unapplied[0]}"
+            if len(unapplied) == 1
+            else f"the options {_join(unapplied)}"
+        )
         raise PolicyError(
-            "the Retain Safe Private Option keeps the private attributes that "
-            "are known to be safe, and no reviewed rules yet say which are, so "
-            "a policy that selects it cannot yet be applied"
+            f"the engine does not yet apply {named}, so a policy that selects "
+            f"{'it' if len(unapplied) == 1 else 'them'} can be composed and "
+            "described but not applied; the engine applies " + _join(ENGINE_OPTIONS)
         )

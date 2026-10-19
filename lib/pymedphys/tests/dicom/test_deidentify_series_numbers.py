@@ -37,6 +37,11 @@ from pymedphys._dicom.deidentify.series_numbers import (
 
 from . import _synthetic_references as synthetic
 
+# A run needs a base directory short enough for Windows' output path limit.
+from .test_deidentify_run import (  # noqa: F401  # pylint: disable = unused-import
+    _short_tmp_path,
+)
+
 pytestmark = pytest.mark.pydicom
 
 KEY = DeidKey(bytes(range(32)))

@@ -44,13 +44,13 @@ note = "A person's name. PS3.6 marks it DICONDE, and none of the IODs whose Type
 tag = "(0028,0301)"
 keyword = "BurnedInAnnotation"
 action = "K"
-note = "The engine does not change pixel data, so the value is kept as received and never set to NO, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under the Clean Pixel Data Option."
+note = "The value is kept as received, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under the Clean Pixel Data Option, which the markers then write in an instance whose blacked-out regions a reviewer approved or that has no pixel data to clean."
 
 [[attribute]]
 tag = "(0028,0302)"
 keyword = "RecognizableVisualFeatures"
 action = "K"
-note = "The engine does not change pixel data, so the value is kept as received and never set to NO, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under the Clean Recognizable Visual Features Option."
+note = "Without the Clean Recognizable Visual Features Option the engine removes no face from pixel data, so the value is kept as received, and a received NO is not taken as evidence of safety. PS3.15 sets it to NO only under the Clean Recognizable Visual Features Option, which the markers then write in an instance that a reviewer found free of a recognisable face or that cannot show one."
 
 [[attribute]]
 tag = "(0040,A067)"
@@ -923,7 +923,7 @@ note = "The value of a coded entry written as a URN or URL, used instead of Code
 tag = "(0008,0116)"
 keyword = "CodingSchemeResponsibleOrganization"
 action = "X/Z/D"
-note = "The organisation responsible for a coding scheme, which PS3.3 says may include contact information, so for a local scheme it names the institution and can name a person. Table E.1-1 removes names of people and organisations, such as Operators' Name, Institution Name, and Clinical Trial Sponsor Name, under every supported option, so it is removed by Type under every option too."
+note = "The organisation responsible for a coding scheme, which PS3.3 says may include contact information, so for a local scheme it names the institution and can name a person. Table E.1-1 removes names of people and organisations, such as Operators' Name and Clinical Trial Sponsor Name, under every option, and keeps Institution Name only under Retain Institution Identity, which retains the institution where the acquisition was performed, not the owner of a coding scheme, so it is removed by Type under every option too."
 
 [[attribute]]
 tag = "(0008,0122)"
@@ -941,7 +941,7 @@ note = "The stock number of a non-human subject's strain, issued by the organisa
 tag = "(0010,0217)"
 keyword = "StrainSource"
 action = "X/Z/D"
-note = "The organisation that supplied a non-human subject, which can be the institution's own colony. Table E.1-1 removes names of organisations, such as Institution Name and Clinical Trial Sponsor Name, under every supported option, so it is removed by Type under every option too."
+note = "The organisation that supplied a non-human subject, which can be the institution's own colony. Table E.1-1 removes names of organisations, such as Clinical Trial Sponsor Name, under every option, and keeps Institution Name only under Retain Institution Identity, which retains the institution where the acquisition was performed, not a supplier, so it is removed by Type under every option too."
 
 [[attribute]]
 tag = "(0010,2295)"
@@ -959,7 +959,7 @@ note = "The IP address of the time server, which identifies a network and so usu
 tag = "(0024,0202)"
 keyword = "AlgorithmSource"
 action = "X/Z/D"
-note = "The source of an algorithm, which PS3.3 says can be a manufacturer, researcher, or university, so it can name a person or the institution. Table E.1-1 removes names of people and organisations, such as Operators' Name and Institution Name, under every supported option, so it is removed by Type under every option too."
+note = "The source of an algorithm, which PS3.3 says can be a manufacturer, researcher, or university, so it can name a person or the institution. Table E.1-1 removes names of people and organisations, such as Operators' Name and Clinical Trial Sponsor Name, under every option, and keeps Institution Name only under Retain Institution Identity, which retains the institution where the acquisition was performed, not an algorithm's source, so it is removed by Type under every option too."
 
 [[attribute]]
 tag = "(0040,0031)"
@@ -1300,4 +1300,4 @@ note = "Describes how the Message Authentication Codes of digital signatures wer
 tag = "(0008,0300)"
 keyword = "PrivateDataElementCharacteristicsSequence"
 action = "X/Z/D"
-note = "Describes the instance's private blocks, by their private creators, and how to de-identify them. Without the Retain Safe Private Option, which every policy refuses until reviewed rules say which private attributes are safe, every private attribute is removed, so the sequence describes only blocks that are gone, and its Private Creator Reference values can name the institution's own software. It is removed by Type under every option. It is Type 3 in the SOP Common Module."
+note = "Describes the instance's private blocks, by their private creators, and how to de-identify them. Without the Retain Safe Private Option, every private attribute is removed, so the sequence describes only blocks that are gone, and its Private Creator Reference values can name the institution's own software. Under the Option, the engine reads it to find the private attributes that the instance declares safe, and it is removed, since its descriptions and the creators of blocks that are not kept can name the same software. It is removed by Type under every option. It is Type 3 in the SOP Common Module."

@@ -723,9 +723,10 @@ def _with_character_set(term):
     [
         (_with_character_set(b"ISO_IR 100"), _element("PatientName", "山田^太郎")),
         (_with_character_set(b""), _element("PatientName", "MÜLLER")),
-        (_with_character_set(b"ISO_IR 999"), _element("PatientName", "MULLER")),
+        # An unknown term gives the Default Character Repertoire.
+        (_with_character_set(b"ISO_IR 999"), _element("PatientName", "MÜLLER")),
     ],
-    ids=["cjk-in-latin-1", "non-ascii-in-the-default", "unknown-term"],
+    ids=["cjk-in-latin-1", "non-ascii-in-the-default", "non-ascii-in-an-unknown-term"],
 )
 def test_text_that_cannot_be_written_in_its_character_set_is_refused(data, element):
     source = read_source(data)

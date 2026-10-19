@@ -6,9 +6,9 @@
 # exactly, and by its attribute path against any of the fnmatch patterns in
 # paths. The category is one of:
 #
-# - profile: the action that PS3.15 Table E.1-1 names for the attribute
-#   gives the finding, and the engine applies that action as the profile
-#   requires;
+# - profile: the action that PS3.15 Table E.1-1 names for the attribute,
+#   or another requirement of the profile or of a selected option, gives
+#   the finding, and the engine applies it as PS3.15 requires;
 # - validator: a limitation or heuristic of the validator, where the output
 #   conforms;
 # - engine: a defect of the engine's output, recorded here until it is
@@ -44,6 +44,64 @@ dciodvfy warns about every Person Name without a component delimiter, as a
 retired form. The engine's dummy Person Name, DEIDENTIFIED, is
 a family name component alone, which PS3.5 Section 6.2 allows, since trailing
 empty components and their delimiters may be omitted.
+"""
+
+[[difference]]
+validator = "dciodvfy"
+severity = "warning"
+message = "Attribute is not present in standard DICOM IOD"
+paths = ["(0028,0301)"]
+category = "profile"
+requires = "clean-pixel-data-claimed"
+reason = """
+PS3.15 E.3.1 has the Clean Pixel Data Option add Burned In Annotation with
+the value NO, without an exception for an IOD that does not define it, such
+as RT Plan, RT Structure Set, or MR Spectroscopy. There it is a standard
+attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), which the
+conformance statement describes. The entry applies only to an output that
+claims the option by its code, so the attribute added to any other output
+stays unexplained.
+"""
+
+[[difference]]
+validator = "dicom-validator"
+severity = "error"
+message = "TagUnexpected (Type Undefined)"
+paths = ["(0028,0301)"]
+category = "profile"
+requires = "clean-pixel-data-claimed"
+reason = """
+As for dciodvfy's warning: E.3.1 adds Burned In Annotation with the
+option's code even where the IOD does not define it.
+"""
+
+[[difference]]
+validator = "dciodvfy"
+severity = "warning"
+message = "Attribute is not present in standard DICOM IOD"
+paths = ["(0028,0302)"]
+category = "profile"
+requires = "clean-recognizable-visual-features-claimed"
+reason = """
+PS3.15 E.3.2 has the Clean Recognizable Visual Features Option add
+Recognizable Visual Features with the value NO, without an exception for an
+IOD that does not define it, such as RT Plan, RT Structure Set, or MR
+Spectroscopy. There it is a standard attribute of a Standard Extended SOP
+Class (PS3.2 Section 7.3), which the conformance statement describes.
+The entry applies only to an output that claims the option by its code, so
+the attribute added to any other output stays unexplained.
+"""
+
+[[difference]]
+validator = "dicom-validator"
+severity = "error"
+message = "TagUnexpected (Type Undefined)"
+paths = ["(0028,0302)"]
+category = "profile"
+requires = "clean-recognizable-visual-features-claimed"
+reason = """
+As for dciodvfy's warning: E.3.2 adds Recognizable Visual Features with the
+option's code even where the IOD does not define it.
 """
 
 [[difference]]

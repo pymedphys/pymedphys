@@ -36,7 +36,7 @@ def render_markdown(document: Mapping[str, object]) -> str:
         "",
         f"Format `{document['format']}`. Development results: the NCI "
         "validation script's own results, from the mapping files that the "
-        "run wrote, are the published figures (D-018).",
+        "run wrote, are the published figures.",
         "",
         "## Versions",
         "",

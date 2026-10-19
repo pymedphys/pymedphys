@@ -21,7 +21,9 @@ the JSON text that
 nothing else, so that it can hold no value or path that the JSON lacks.
 Every value of the document, and each file name that keys a digest, is shown
 once for each time the document holds it, as a code span; everything outside
-the code spans is fixed text that depends only on the document's shape. The
+the code spans is fixed text that depends only on the document's shape, but
+for the caution that follows the policy where it selects the Retain UIDs
+Option, since kept UIDs link the release to its source (PS3.15 E.3.9). The
 sections follow the document's order, with a table for each, and the same
 text always gives the same form. The JSON remains the record.
 
@@ -40,6 +42,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence
 
+from .policy import UIDS
 from .release_report import FORMAT, STRUCTURAL_CHECKS
 
 # The name of each field of a section, as a reader sees it, in the order of
@@ -59,11 +62,25 @@ _METHOD = {
     "l3_rules": "L3 rules",
     "vocabulary_digest": "Vocabulary digest",
     "reviewed_roi_names": "Reviewed ROI names digest",
+    "reviewed_descriptors": "Reviewed descriptors digest",
+    "technique_vocabulary_digest": "Technique vocabulary digest",
+    "text_finder_digest": "Text finder digest",
+    "safe_private_list": "Safe private list",
     "generated_values_digest": "Generated values digest",
     "engine_files": None,
 }
 # The method's fields that are null where the run has none.
-_OPTIONAL_METHOD = frozenset({"l3_rules", "vocabulary_digest", "reviewed_roi_names"})
+_OPTIONAL_METHOD = frozenset(
+    {
+        "l3_rules",
+        "vocabulary_digest",
+        "reviewed_roi_names",
+        "reviewed_descriptors",
+        "technique_vocabulary_digest",
+        "text_finder_digest",
+        "safe_private_list",
+    }
+)
 _RUNTIME = {
     "pymedphys_version": "PyMedPhys",
     "python_implementation": "Python implementation",
@@ -81,10 +98,13 @@ _SECTIONS = (
     "method",
     "runtime",
     "qc_review",
+    "face_review",
+    "redaction_review",
     "released",
     "sequestered",
     "held_for_review",
     "roi_names",
+    "descriptors",
     "reference_findings",
     "pixel_risks",
     "search_coverage",
@@ -144,10 +164,13 @@ def to_markdown(report: str) -> str:
         *_method(document["method"]),
         *_runtime(document["runtime"]),
         *_qc_review(document["qc_review"]),
+        *_face_review(document["face_review"]),
+        *_redaction_review(document["redaction_review"]),
         *_released(document["released"]),
         *_sequestered(document["sequestered"]),
         *_held(document["held_for_review"]),
         *_roi_names(document["roi_names"]),
+        *_descriptors(document["descriptors"]),
         *_reference_findings(document["reference_findings"]),
         *_pixel_risks(document["pixel_risks"]),
         *_coverage(document["search_coverage"]),
@@ -193,6 +216,23 @@ def _policy(section: object) -> list[Block]:
                 ),
             ],
         ),
+        *_kept_uids(options),
+    ]
+
+
+def _kept_uids(options: list[object]) -> list[Block]:
+    """Warn that kept UIDs link the release to its source (PS3.15 E.3.9)."""
+    if UIDS not in options:
+        return []
+    return [
+        [
+            "Under the Retain UIDs Option, the released instances keep their "
+            "source UIDs, such as their SOP Instance, Series Instance, and "
+            "Study Instance UIDs, as Table E.1-1 lists them. Anyone with access "
+            "to the source images, or to a database of them, can link each "
+            "released instance to its source by them, and so recover the "
+            "patient's identity (PS3.15 E.3.9)."
+        ]
     ]
 
 
@@ -270,6 +310,60 @@ def _qc_review(section: object) -> list[Block]:
                 ),
             ],
         ),
+    ]
+
+
+def _face_review(section: object) -> list[Block]:
+    if section is None:
+        return []
+    section = _fields("face_review", section, ("reference", "ct_series"))
+    series = _fields(
+        "face_review ct_series", section["ct_series"], ("defaced", "not_defaced")
+    )
+    rows = []
+    for entry in _list("face_review ct_series not_defaced", series["not_defaced"]):
+        entry = _fields("face_review ct_series not_defaced", entry, ("reason", "count"))
+        rows.append(
+            (
+                _code("face_review ct_series reason", entry["reason"]),
+                _count("face_review ct_series count", entry["count"]),
+            )
+        )
+    return [
+        ["## Face review"],
+        [
+            "Under the Clean Recognizable Visual Features Option, an instance "
+            "that can show a face is released only where a reviewer saw no "
+            "recognisable face in its series, in the earlier run's confidential "
+            "QC pack with this opaque reference: "
+            + _code("face_review reference", section["reference"])
+            + "."
+        ],
+        [
+            "Series of CT Image instances whose face block the run wrote as "
+            "air: "
+            + _tally("face_review ct_series defaced", series["defaced"])
+            + ". Those it did not deface, by reason, which the reviewer's "
+            "verdict decides, or, for a target in the block, holds for review:"
+        ],
+        _table(("Reason", "Series"), rows) if rows else [_NONE],
+    ]
+
+
+def _redaction_review(section: object) -> list[Block]:
+    if section is None:
+        return []
+    section = _fields("redaction_review", section, ("reference",))
+    return [
+        ["## Redaction review"],
+        [
+            "Under the Clean Pixel Data Option, an instance with Pixel Data is "
+            "released only where a reviewer accepted its blacked-out regions, "
+            "or gave their own, in the earlier run's confidential QC pack with "
+            "this opaque reference: "
+            + _code("redaction_review reference", section["reference"])
+            + "."
+        ],
     ]
 
 
@@ -373,23 +467,29 @@ def _held(section: object) -> list[Block]:
     ]
 
 
-def _roi_names(section: object) -> list[Block]:
-    section = _fields("roi_names", section, ("outcomes", "held"))
+def _code_tables(name: str, section: dict, counted: str) -> list[Block]:
+    """Return the tables of a section's ``outcomes`` and ``held`` counts."""
     tables = []
     for field, key, header in (
-        ("outcomes", "outcome", ("Outcome", "Names")),
-        ("held", "reason", ("Reason", "Distinct names")),
+        ("outcomes", "outcome", ("Outcome", counted.capitalize())),
+        ("held", "reason", ("Reason", f"Distinct {counted}")),
     ):
         rows = []
-        for entry in _list(f"roi_names {field}", section[field]):
-            entry = _fields(f"roi_names {field}", entry, (key, "count"))
+        for entry in _list(f"{name} {field}", section[field]):
+            entry = _fields(f"{name} {field}", entry, (key, "count"))
             rows.append(
                 (
-                    _code(f"roi_names {key}", entry[key]),
-                    _count(f"roi_names {field} count", entry["count"]),
+                    _code(f"{name} {key}", entry[key]),
+                    _count(f"{name} {field} count", entry["count"]),
                 )
             )
         tables.append(_table(header, rows) if rows else [_NONE])
+    return tables
+
+
+def _roi_names(section: object) -> list[Block]:
+    section = _fields("roi_names", section, ("outcomes", "held"))
+    tables = _code_tables("roi_names", section, "names")
     return [
         ["## ROI names"],
         [
@@ -403,6 +503,31 @@ def _roi_names(section: object) -> list[Block]:
         tables[0],
         ["### Distinct names sent for review"],
         tables[1],
+    ]
+
+
+def _descriptors(section: object) -> list[Block]:
+    section = _fields("descriptors", section, ("outcomes", "held", "fell_back"))
+    tables = _code_tables("descriptors", section, "values")
+    return [
+        ["## Descriptors"],
+        [
+            "The outcome of each value of the free-text descriptors that "
+            "descriptor cleaning read, every value counted, how many distinct "
+            "values, each of one attribute, it sent for review for each "
+            "reason, and how many elements were not written with what "
+            "cleaning gave their values and took their action without Clean "
+            "Descriptors instead. Only the confidential QC pack lists the "
+            "values."
+        ],
+        ["### Outcome of each value"],
+        tables[0],
+        ["### Distinct values sent for review"],
+        tables[1],
+        [
+            "Elements that took their action without Clean Descriptors: "
+            f"{_tally('descriptors fell_back', section['fell_back'])}."
+        ],
     ]
 
 
@@ -456,7 +581,7 @@ def _pixel_risks(section: object) -> list[Block]:
             "each risk in their pixel data, and each indicator of it, each "
             "instance once for each. The indicators are read from the "
             "instances' attributes, and a volume's from its series; the "
-            "pixel data are not inspected or changed, so an instance without "
+            "pixel data are not inspected for them, so an instance without "
             "an indicator may still show the risk. Only the confidential QC "
             "pack lists the instances."
         ],
