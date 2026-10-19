@@ -325,12 +325,17 @@ def test_verdicts_are_written_by_series_in_order(pack):
     ]
 
 
-@pytest.mark.parametrize("outcome", [Outcome.ATTESTED, Outcome.REJECTED])
-def test_the_record_is_unchanged_by_verdicts(pack, outcome):
-    _attest(pack, {0: Face.PRESENT}, outcome)
+def test_the_record_is_unchanged_by_verdicts(pack):
+    _attest(pack, {0: Face.PRESENT}, Outcome.ATTESTED)
     assert qc_attestation.attestation_record(pack) == AttestationRecord(
-        REFERENCE, outcome
+        REFERENCE, Outcome.ATTESTED
     )
+
+
+def test_an_outcome_of_rejected_takes_no_verdict(pack):
+    with pytest.raises(QcPackError, match="would release nothing"):
+        _attest(pack, {0: Face.ABSENT}, Outcome.REJECTED)
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
 
 
 def test_a_reviewer_need_give_no_verdict(pack):
@@ -456,9 +461,12 @@ def test_the_command_records_each_verdict(pack):
         {"series": 0, "face": "absent"},
         {"series": 1, "face": "present"},
     ]
-    assert stdout.splitlines()[-3:] == [
+    assert stdout.splitlines()[-6:] == [
         "  series without a recognisable face: 1",
         "  series with a recognisable face: 1",
+        "  cleaned instances with their regions accepted: 0",
+        "  cleaned instances with the reviewer's regions added: 0",
+        "  cleaned instances rejected: 0",
         "the release report published with the run is unchanged",
     ]
     _assert_quotes_nothing(stdout, stderr)
@@ -488,6 +496,17 @@ def test_the_command_refuses_a_verdict_it_cannot_record(pack, verdicts, message)
     assert not stdout
     assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
     _assert_quotes_nothing(stdout, stderr)
+
+
+def test_the_command_refuses_a_verdict_with_an_outcome_of_rejected(pack):
+    status, stdout, stderr = _run(
+        str(pack), "--reviewer", REVIEWER, "--outcome", "rejected", "--face-absent", "0"
+    )
+
+    assert status == command.EXIT_NOT_RECORDED
+    assert "would release nothing; nothing was recorded" in stderr
+    assert not stdout
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
 
 
 def test_a_position_that_is_not_a_number_is_a_usage_error(pack):
