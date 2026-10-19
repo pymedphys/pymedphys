@@ -3,7 +3,7 @@ name = "pymedphys"
 version = "0.42.0.dev1"
 description = "Medical Physics library"
 readme = "README.rst"
-requires-python = ">=3.11.4"
+requires-python = ">=3.12"
 # PEP 639 SPDX expression. The package bundles MIT-licensed code alongside its
 # own Apache-2.0 code: the Pinnacle exporter (LICENSE-MIT), a copy of pydicom's
 # DICOM dictionary, and the vendored apipkg and deprecated modules. It also
@@ -26,7 +26,6 @@ classifiers = [
     "Intended Audience :: Healthcare Industry",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
@@ -57,7 +56,7 @@ user = [
   "natsort",
   "numba",
   "numpy>=1.26",
-  "pandas>=2.0",
+  "pandas>=2.1.1",
   "plotly",
   "pydicom>=3.0.2",
   "pylibjpeg>=2.0",  # pydicom decodes JPEG 2000 and HTJ2K through it
@@ -149,7 +148,7 @@ text-detection = [
 mosaiq = [
   "keyring",
   "numpy>=1.26",
-  "pandas>=2.0",
+  "pandas>=2.1.1",
   "pymssql",
 ]
 
@@ -164,7 +163,7 @@ icom = [
 trf = [
   "attrs",
   "numpy>=1.26",
-  "pandas>=2.0",
+  "pandas>=2.1.1",
   "python-dateutil",
   "toml",
 ]

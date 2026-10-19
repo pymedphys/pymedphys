@@ -204,7 +204,7 @@ Fast unit tests with smart matrix strategy.
 
 - **Features**:
   - Full OS and Python matrix on main pushes and releases (Ubuntu, Windows,
-    macOS; Python 3.11, 3.12, 3.13, 3.14)
+    macOS; Python 3.12, 3.13, 3.14)
   - Quick mode for merge groups and other PRs (Ubuntu + Python 3.14). The selector's
     `run-full-matrix` output decides, and only an explicit `false` keeps the
     quick matrix
@@ -223,12 +223,16 @@ Fast unit tests with smart matrix strategy.
 
 The `dependency-floors` job runs the unit tests (`-m "not slow"`, with the
 data cache) at the declared minimum versions of NumPy (1.26.4) and pandas
-(2.0.3), alongside both the quick and full matrices. It runs on Ubuntu with
-Python 3.11, the only supported version with wheels for both: NumPy 1.26 has
-none for Python 3.13 or later, and pandas 2.0 none for 3.12 or later. It
-installs the same locked environment as the unit tests, overlays the two
-packages with `uv run --no-sync --with numpy==1.26.4 --with pandas==2.0.3`,
-and fails first if the overlay did not take effect. It uploads its JUnit
+(2.1.1), alongside both the quick and full matrices. It runs on Ubuntu with
+Python 3.12, the only supported version with wheels for both: NumPy 1.26 has
+none for Python 3.13 or later, and pandas 2.1.1 none for 3.13 or later. It
+installs the same locked environment as the unit tests and overlays the two
+packages with `uv run --no-sync --with numpy==1.26.4 --with pandas==2.1.1`.
+The overlay also takes SciPy, contourpy, tifffile, and pylibjpeg-openjpeg,
+whose locked versions require NumPy 2, at their latest releases that accept
+NumPy 1.26. The job fails first if the overlay did not take effect, and then if
+any installed package's requirements are not met; when a newly locked package
+requires NumPy 2, add it to the overlay. It uploads its JUnit
 report as `junit-dependency-floors`. A failure fails the unit-test workflow and
 therefore the required CI or release summary.
 
@@ -906,7 +910,7 @@ uv run pymedphys dev docs
 
 ## Version Compatibility
 
-- **Python**: 3.11, 3.12, 3.13, 3.14 (all in the full unit-test matrix; 3.14 runs the quick matrix and every other job except the NumPy and pandas minimum-version check, which uses 3.11; 3.11 reaches end of life in October 2027)
+- **Python**: 3.12, 3.13, 3.14 (all in the full unit-test matrix; 3.14 runs the quick matrix and every other job except the NumPy and pandas minimum-version check, which uses 3.12; 3.12 reaches end of life in October 2028)
 - **uv**: 0.12.15, pinned in CI (`setup-uv`) and in the pre-commit `uv-lock` hook
 - **GitHub Actions**: Latest Ubuntu, Windows, and macOS runner images
 - **SQL Server**: 2022 Latest (for Mosaiq tests)

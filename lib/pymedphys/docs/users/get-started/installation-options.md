@@ -3,7 +3,7 @@
 This page explains what the different ways of installing PyMedPhys give you.
 For almost everyone, the answer is `pymedphys[user]`.
 
-PyMedPhys currently supports Python 3.11, 3.12, 3.13, and 3.14.
+PyMedPhys currently supports Python 3.12, 3.13, and 3.14.
 
 ## Recommended approach
 
