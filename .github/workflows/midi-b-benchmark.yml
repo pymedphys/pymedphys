@@ -48,15 +48,16 @@ on:
         type: string
         default: ''
   # Temporary, for the first runs before this workflow is on the default
-  # branch; removed before review.
-  push:
-    branches: [claude/deid-midi-b-ci-ko3ghq]
-    paths:
-      - .github/workflows/midi-b-benchmark.yml
-      - .github/scripts/midi_b_tcia_answer_keys.py
-      - lib/pymedphys/_dicom/deidentify/midi_data.toml
-      - lib/pymedphys/_dicom/deidentify/midi_download.py
-      - lib/pymedphys/_dicom/deidentify/midi_benchmark*.py
+  # branch; removed before review. Off until TCIA's change to its rate
+  # limits is live.
+  # push:
+  #   branches: [claude/deid-midi-b-ci-ko3ghq]
+  #   paths:
+  #     - .github/workflows/midi-b-benchmark.yml
+  #     - .github/scripts/midi_b_tcia_answer_keys.py
+  #     - lib/pymedphys/_dicom/deidentify/midi_data.toml
+  #     - lib/pymedphys/_dicom/deidentify/midi_download.py
+  #     - lib/pymedphys/_dicom/deidentify/midi_benchmark*.py
 
 permissions:
   contents: read
@@ -96,11 +97,7 @@ jobs:
       ASPERA_GEM_SHA256: 562eb4214e8910b03b6618eb862ef8065362b501504bf35a270aa514279b3f6c
       ANSWER_KEY_URL: ${{ inputs.answer-key-url }}
       ANSWER_KEY_SHA256: ${{ inputs.answer-key-sha256 }}
-      # A push (temporary, above) benchmarks #2339's engine fix with this
-      # branch, to measure it before it merges.
-      ENGINE_REF: >-
-        ${{ inputs.engine-ref
-        || (github.event_name == 'push' && 'refs/pull/2339/head' || '') }}
+      ENGINE_REF: ${{ inputs.engine-ref }}
       # NCI's validation script (https://github.com/CBIIT/midi_validation_script,
       # Apache-2.0) at a pinned commit. It pins pydicom 2.2.1, so it runs in
       # an environment of its own, on Python 3.10.
