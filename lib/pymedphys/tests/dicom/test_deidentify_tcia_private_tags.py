@@ -125,6 +125,19 @@ def test_top_level_rows_are_found_by_creator_group_and_element(dictionary):
     )
 
 
+def test_rows_whose_creators_differ_only_by_padding_are_keyed_together():
+    parsed = _parse(
+        ('(0011,"ACME 1.0 ",01)', "Acme Count", "US", "k"),
+        ('(0011,"ACME 1.0",01)', "Acme Count", "OB", "d"),
+    )
+
+    rows = parsed.rows_for(0x0011, "ACME 1.0", 0x01)
+
+    assert {row.vr for row in rows} == {"US", "OB"}
+    assert parsed.rows_for(0x0011, "ACME 1.0 \x00", 0x01) == rows
+    assert list(parsed.top_level) == [("ACME 1.0", 0x0011, 0x01)]
+
+
 def test_a_creator_in_upper_case_matches_only_upper_case(dictionary):
     upper = dictionary.rows_for(0x2005, "PHILIPS MR IMAGING DD 001", 0x35)
     mixed = dictionary.rows_for(0x2005, "Philips MR Imaging DD 001", 0x35)
