@@ -30,9 +30,10 @@ FIXTURE_UID = "1.2.840.99999.2.55.3.604688119.868.1234567890.1"
 
 any_key = st.binary(min_size=32, max_size=32).map(keys.DeidKey)
 # UIDs as found, including invalid ones, which are replaced all the same.
+# Start with general text so distinct UID pairs have a small base example.
 any_uid = st.one_of(
-    st.from_regex(uid_registry.UID_PATTERN, fullmatch=True),
     st.text(min_size=1),
+    st.from_regex(uid_registry.UID_PATTERN, fullmatch=True),
 ).filter(lambda value: value.rstrip("\x00 "))
 padding = st.text(alphabet="\x00 ", max_size=3)
 
