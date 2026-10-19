@@ -840,8 +840,15 @@ def test_a_premise_holds_where_a_listed_instance_is_referenced_elsewhere(tmp_pat
     assert dicom_validation.output_premises(tmp_path / "missing.dcm") == set()
 
 
-def test_a_premise_holds_where_the_output_claims_clean_recognizable_visual_features(
-    tmp_path,
+@pytest.mark.parametrize(
+    "code, premise",
+    [
+        ("113101", dicom_validation.PIXEL_DATA_CLAIMED),
+        ("113102", dicom_validation.VISUAL_FEATURES_CLAIMED),
+    ],
+)
+def test_a_premise_holds_where_the_output_claims_a_pixel_option(
+    tmp_path, code, premise
 ):
     def written(name, *codes):
         dataset = pydicom.Dataset()
@@ -854,13 +861,11 @@ def test_a_premise_holds_where_the_output_claims_clean_recognizable_visual_featu
         dataset.save_as(tmp_path / name, enforce_file_format=False)
         return tmp_path / name
 
-    claimed = written("claimed.dcm", ("113100", "DCM"), ("113102", "DCM"))
+    claimed = written("claimed.dcm", ("113100", "DCM"), (code, "DCM"))
     unclaimed = written("unclaimed.dcm", ("113100", "DCM"))
-    elsewhere = written("elsewhere.dcm", ("113102", "99LOCAL"))
+    elsewhere = written("elsewhere.dcm", (code, "99LOCAL"))
 
-    assert dicom_validation.output_premises(claimed) == {
-        dicom_validation.VISUAL_FEATURES_CLAIMED
-    }
+    assert dicom_validation.output_premises(claimed) == {premise}
     assert dicom_validation.output_premises(unclaimed) == set()
     assert dicom_validation.output_premises(elsewhere) == set()
 

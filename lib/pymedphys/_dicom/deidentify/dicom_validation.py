@@ -91,9 +91,11 @@ _REFERENCED_SERIES = 0x00081115
 _OTHER_STUDIES = 0x00081200
 _REFERENCED_SOP_INSTANCE_UID = 0x00081155
 _METHOD_CODES = 0x00120064
+_PIXEL_DATA_CODE = ("113101", "DCM")
 _VISUAL_FEATURES_CODE = ("113102", "DCM")
 THIS_STUDY_REFERENCED = "instances-of-this-study-referenced-elsewhere"
 OTHER_STUDIES_REFERENCED = "instances-of-other-studies-referenced-elsewhere"
+PIXEL_DATA_CLAIMED = "clean-pixel-data-claimed"
 VISUAL_FEATURES_CLAIMED = "clean-recognizable-visual-features-claimed"
 # The properties of an output that a known difference can require, each
 # with what it means.
@@ -106,6 +108,10 @@ PREMISES = {
         "an instance that Studies Containing Other Referenced Instances "
         "Sequence (0008,1200) lists is referenced outside the Common Instance "
         "Reference Module"
+    ),
+    PIXEL_DATA_CLAIMED: (
+        "De-identification Method Code Sequence (0012,0064) holds DCM 113101, "
+        "the Clean Pixel Data Option's code"
     ),
     VISUAL_FEATURES_CLAIMED: (
         "De-identification Method Code Sequence (0012,0064) holds DCM 113102, "
@@ -392,6 +398,8 @@ def output_premises(path: Path) -> frozenset[str]:
         premises.add(THIS_STUDY_REFERENCED)
     if listed[_OTHER_STUDIES] & elsewhere:
         premises.add(OTHER_STUDIES_REFERENCED)
+    if _PIXEL_DATA_CODE in codes:
+        premises.add(PIXEL_DATA_CLAIMED)
     if _VISUAL_FEATURES_CODE in codes:
         premises.add(VISUAL_FEATURES_CLAIMED)
     return frozenset(premises)
