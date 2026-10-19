@@ -144,15 +144,20 @@ def test_a_point_kept_whole_or_removed_by_where_it_lies():
 
 
 @pytest.mark.parametrize("kind", ["CLOSED_PLANAR", "CLOSEDPLANAR_XOR"])
-def test_a_contour_that_reaches_the_face_is_cut_by_the_whole_block(kind):
-    # It reaches beyond the kept cavity, so its part ahead of the plane,
-    # the cavity's included, is cut away.
+def test_a_contour_that_reaches_the_face_keeps_its_part_in_the_kept_brain(kind):
+    # It reaches beyond the kept cavity, so its part ahead of the plane is
+    # cut away, but for the pixels that defacing keeps: the cavity's, and
+    # those whose centres lie on the plane.
     points = _rectangle(-10, 10, -15, 10, 20)
 
     (written,) = _cut(kind, points)
 
-    assert _polygon(written).equals(_polygon(_rectangle(-10, 10, 0, 10, 20)))
-    assert _outside(written).all()
+    expected = _polygon(points).difference(_removed(20.0))
+    assert _polygon(written).symmetric_difference(expected).area < 1e-9
+    assert _polygon(written).area < _polygon(points).area
+    # Its corners outside the block are written as they were.
+    assert {(-10.0, 10.0), (10.0, 10.0)} <= set(map(tuple, written[:, :2].tolist()))
+    assert (written[:, 2] == 20).all()
 
 
 def test_a_contour_below_the_cavity_floor_is_cut_where_it_enters_the_block():
@@ -217,6 +222,19 @@ def _region_of(polygons):
 
 
 _FACE_SIDE = shapely.geometry.box(-1000, -1000, 1000, 0)
+# The squares of the pixels kept in the block.
+_CAVITY = shapely.geometry.box(-5.5, -10.5, 5.5, -0.5)
+
+
+def _removed(z):
+    """What a cut removes of the plane at ``z``: the block, less, where the
+    nearest slice keeps pixels in the block, the squares of the pixels that
+    defacing does not write as air there, those kept and those whose
+    centres, at y = 0 or more, lie outside the block."""
+    if z not in (20.0, 30.0):
+        return _FACE_SIDE
+    spared = _CAVITY.union(shapely.geometry.box(-20.5, -0.5, 20.5, 0))
+    return _FACE_SIDE.difference(spared)
 
 
 @pytest.mark.parametrize("kind", ["CLOSEDPLANAR_XOR", "CLOSED_PLANAR"])
@@ -230,9 +248,11 @@ def test_a_hole_in_the_cavity_is_cut_with_the_contour_around_it(kind):
 
     written = _roi([(kind, outer), (kind, hole)])
 
-    assert [index for index, _ in written] == [0]
+    # The hole meets nothing that the cut removes, so it is written as it
+    # was, and still excludes its region from the outer contour's.
+    assert [index for index, _ in written] == [0, 1]
     got = _region_of([points for _, points in written])
-    expected = source.difference(_FACE_SIDE)
+    expected = source.difference(_removed(20.0))
     assert got.symmetric_difference(expected).area < 1e-6
     assert not got.contains(shapely.geometry.Point(0, -5))
 
@@ -280,7 +300,7 @@ def test_a_hole_is_cut_with_its_contour_whatever_their_winding_order_or_place(
             for each in written
         ]
     )
-    expected = _region_of(rings).difference(_FACE_SIDE)
+    expected = _region_of(rings).difference(_removed(z - dz))
     assert got.symmetric_difference(expected).area < 1e-6
     assert not got.contains(shapely.geometry.Point(0, -5))
 
@@ -366,7 +386,7 @@ def test_a_hole_is_cut_with_its_contour_whatever_else_lies_near_their_plane(orde
         [sorted([order.index(0), order.index(1)]), [order.index(2)]]
     )
     got = _region_of([points for index, points in written if index != order.index(2)])
-    expected = _region_of([outer, hole]).difference(_FACE_SIDE)
+    expected = _region_of([outer, hole]).difference(_removed(20.0))
     assert got.symmetric_difference(expected).area < 1e-6
 
 
@@ -442,7 +462,7 @@ def test_a_hole_that_crosses_the_plane_is_cut_with_the_contour_around_it():
     written = _roi([("CLOSEDPLANAR_XOR", outer), ("CLOSEDPLANAR_XOR", hole)])
 
     got = _region_of([points for _, points in written])
-    expected = _region_of([outer, hole]).difference(_FACE_SIDE)
+    expected = _region_of([outer, hole]).difference(_removed(20.0))
     assert got.symmetric_difference(expected).area < 1e-6
     assert not got.contains(shapely.geometry.Point(0, 3))
 
@@ -486,23 +506,24 @@ def test_random_holes_leave_the_roi_its_part_outside_the_block():
             continue
         cut += 1
         got = _region_of([points for _, points in written])
-        expected = source.difference(_FACE_SIDE)
+        expected = source.difference(_removed(20.0))
         assert got.symmetric_difference(expected).area < 1e-6
     assert cut > 100, cut
 
 
 def test_a_contour_cut_in_two_is_written_as_two_numbered_once():
-    # A U whose base is in the block leaves its two arms behind the plane.
+    # A U whose base is in the block leaves its two arms behind the plane,
+    # on the slice at 10 mm, where defacing keeps nothing.
     points = np.array(
         [
-            (-15, -15, 20),
-            (15, -15, 20),
-            (15, 10, 20),
-            (8, 10, 20),
-            (8, -8, 20),
-            (-8, -8, 20),
-            (-8, 10, 20),
-            (-15, 10, 20),
+            (-15, -15, 10),
+            (15, -15, 10),
+            (15, 10, 10),
+            (8, 10, 10),
+            (8, -8, 10),
+            (-8, -8, 10),
+            (-8, 10, 10),
+            (-15, 10, 10),
         ],
         float,
     )
@@ -571,6 +592,55 @@ def test_random_simple_polygons_lose_exactly_their_part_in_the_block():
         assert got.symmetric_difference(expected).area < 1e-3 * max(expected.area, 1)
         cut += 1
     assert cut > 100, (cut, kept_whole)
+
+
+def test_random_simple_polygons_keep_exactly_their_part_in_the_kept_brain():
+    # As above, on the slice at 20 mm, where defacing keeps pixels in the
+    # block, so each loses exactly what defacing writes as air.
+    rng = np.random.default_rng(20261020)
+    removed = _removed(20.0)
+    spared = kept_whole = 0
+    for _ in range(200):
+        count = int(rng.integers(3, 30))
+        angles = np.sort(rng.uniform(0, 2 * np.pi, count))
+        radii = rng.uniform(2, 15, count)
+        centre = rng.uniform(-8, 8, 2)
+        points = np.column_stack(
+            [
+                centre[0] + radii * np.cos(angles),
+                centre[1] + radii * np.sin(angles),
+                np.full(count, 20.0),
+            ]
+        )
+        points = np.round(points, 4)
+        source = _polygon(points)
+        if not source.is_valid:
+            continue
+        written = _cut("CLOSED_PLANAR", points)
+        if written is None:
+            # A contour is judged by points sampled along its edges at half
+            # a pixel, so one kept whole can graze a pixel written as air.
+            assert source.intersection(removed).area < 0.25
+            kept_whole += 1
+            continue
+        got = _region_of(written)
+        expected = source.difference(removed)
+        assert got.symmetric_difference(expected).area < 1e-6 * max(expected.area, 1)
+        assert all((piece[:, 2] == 20).all() for piece in written)
+        spared += got.intersection(_CAVITY).area > 1
+    assert spared > 100, (spared, kept_whole)
+
+
+def test_contours_of_a_plane_at_more_than_one_z_are_cut_by_the_whole_block():
+    # The hole lies 0.1 mm above the outer contour, in its plane by the
+    # grouping, but not in one slice's, so neither keeps the kept brain.
+    outer = _rectangle(-15, 15, -15, 15, 20)
+    hole = _rectangle(-4, 4, -9, -2, 20.1)
+
+    written = _roi([("CLOSEDPLANAR_XOR", outer), ("CLOSEDPLANAR_XOR", hole)])
+
+    assert [index for index, _ in written] == [0]
+    assert _polygon(written[0][1]).equals(_polygon(_rectangle(-15, 15, 0, 15, 20)))
 
 
 def test_a_sagittal_contour_is_cut_by_both_planes():

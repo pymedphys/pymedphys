@@ -34,36 +34,54 @@ is kept whole. Each segment is sampled within the block at intervals of
 half the smallest pixel spacing of those slices. A point with no such pixel
 counts where it lies in the block.
 
-Any other contour is cut by the block's two planes, so that what is written
-of it lies outside the block or on its boundary, the kept cavity being cut
-away with the rest: a closed contour, of Contour Geometric Type
-CLOSED_PLANAR or CLOSEDPLANAR_XOR, is written as each polygon of its part
-behind the block's vertical plane, and of its part ahead of that plane and
-not above the block's axial plane, each its own contour of the same type;
-an open contour, OPEN_PLANAR or OPEN_NONPLANAR, as each piece of it outside
-the block; and a POINT contour not at all. A part of a polygon is found by
-clipping it against one plane at a time, and its pieces are separated where
-the plane cuts it into more than one, by pairing the points at which its
-edges cross the plane along their line, as a simple polygon's do. Since
-each of the two parts lies on its own side of the vertical plane, each
-piece is disjoint from the others but for that plane, so the pieces of a
-CLOSEDPLANAR_XOR contour combine as the contour's own part outside the
-block does. The closed contours of an ROI in one plane bound one region
-together, as a hole's contour does within its outer one, so where one of
-them is cut, each of them that enters the block is cut too, even one that
-enters only the kept cavity, so that a hole kept whole within the cavity
-never becomes a region that the cut outer contour no longer surrounds.
-Since each is cut to its part outside the same block, the region that they
-bound together, whether by exclusive or or by union, is cut to its part
-outside the block. A contour's plane is the one that best fits its points,
-found for any winding and for a contour that crosses itself, and where a
-closed contour of an ROI that is cut lies in no one plane, the structure
-set is refused. Where the crossings cannot be paired, as for a polygon that
-crosses itself, the part is written as one polygon joined along the plane,
-which still lies outside the block. The first piece written of a contour
-keeps its Contour Number, and the others have none, since a number names
-one contour of its ROI. An ROI left with no contour is written without a
-Contour Sequence, which is Type 3.
+A closed contour that reaches the face loses only what defacing writes as
+air, as the CT does, where it can be cut so (:class:`_Spare`): where the
+closed contours of its ROI in its plane are each simple, all lie at one z
+above the block's axial plane, and have one nearest slice, an axial one
+with pixels that defacing keeps in the block. Each of them is then written
+as its part behind the block's vertical plane joined with its part ahead
+of that plane within the squares of that slice's pixels that defacing does
+not write as air, those of the kept cavity and those whose centres lie
+outside the block, each square being the points whose nearest pixel it
+is. The part within the squares is found exactly, a row of pixels at a
+time (:func:`~pymedphys._geometry.pixel_grids.within_pixels`), and the
+pieces are joined into rings along the edges that they share
+(:func:`~pymedphys._geometry.polygons.dissolve`), outer rings
+anticlockwise and holes clockwise, each its own contour of the same type,
+or written as they are where they cannot be joined, which still covers the
+same region. A contour whose region loses no area by this is written as
+received.
+
+Any other contour that reaches the face is cut by the block's two planes,
+so that what is written of it lies outside the block or on its boundary,
+the kept cavity being cut away with the rest: a closed contour, of Contour
+Geometric Type CLOSED_PLANAR or CLOSEDPLANAR_XOR, is written as each
+polygon of its part behind the block's vertical plane, and of its part
+ahead of that plane and not above the block's axial plane, each its own
+contour of the same type; an open contour, OPEN_PLANAR or OPEN_NONPLANAR,
+as each piece of it outside the block; and a POINT contour not at all. A
+part of a polygon is found by clipping it against one plane at a time, and
+its pieces are separated where the plane cuts it into more than one, by
+pairing the points at which its edges cross the plane along their line, as
+a simple polygon's do. Since each of the two parts lies on its own side of
+the vertical plane, each piece is disjoint from the others but for that
+plane, so the pieces of a CLOSEDPLANAR_XOR contour combine as the contour's
+own part outside the block does. The closed contours of an ROI in one plane
+bound one region together, as a hole's contour does within its outer one,
+so where one of them is cut, each of them is cut the same way, by the same
+region, so that a hole within the cavity never becomes a region that the
+cut outer contour no longer surrounds; cut by the whole block, each that
+enters the block is cut, even one that enters only the kept cavity. Since
+each is cut by the same region, the region that they bound together,
+whether by exclusive or or by union, is cut by it. A contour's plane is the
+one that best fits its points, found for any winding and for a contour that
+crosses itself, and where a closed contour of an ROI that is cut lies in no
+one plane, the structure set is refused. Where the crossings cannot be
+paired, as for a polygon that crosses itself, the part is written as one
+polygon joined along the plane, which still lies outside the block. The
+first piece written of a contour keeps its Contour Number, and the others
+have none, since a number names one contour of its ROI. An ROI left with no
+contour is written without a Contour Sequence, which is Type 3.
 
 A structure set is cut only where each of its ROIs names the defaced
 series' frame, and each contour has a known Contour Geometric Type, Contour
@@ -90,11 +108,18 @@ from __future__ import annotations
 import dataclasses
 import math
 
-from pymedphys._geometry.polygons import clip, coplanar
+from pymedphys._geometry.pixel_grids import PixelGrid, within_pixels
+from pymedphys._geometry.polygons import (
+    clip,
+    coplanar,
+    dissolve,
+    is_simple,
+    signed_area,
+)
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
-from .defacing import FaceBlock
+from .defacing import ALIGNMENT_TOLERANCE, FaceBlock
 from .diagnostics import redacted_diagnostics
 from .dose_defacing import DoseBlock, _check_directions, _check_reach, _numbers
 from .face_blocks import _padding
@@ -120,6 +145,13 @@ _STEP = 0.5
 # too much cuts more of the kept cavity; grouping too little can leave a
 # hole whole within a contour that is cut.
 _COPLANAR = 0.15
+# The area, in square millimetres, of a contour's part in the block, or in
+# the brain kept there, at or below which it is taken for an artefact of
+# floating point.
+_SLIVER = 1e-9
+# How far apart, in millimetres, two points of the pieces of a cut contour
+# may be and be joined as one.
+_SAME_POINT = 1e-9
 
 
 class ContoursRefused(Exception):
@@ -242,12 +274,22 @@ def _written(
     # bound a region with, so an ROI that is cut with one is refused.
     if unplaced:
         raise ContoursRefused()
+    spared: dict[int, list[np.ndarray]] = {}
     for group in groups:
-        if any(cutting[closed[member]] for member in group):
-            for member in group:
-                cutting[closed[member]] = _enters(
-                    region.block, parsed[closed[member]][1]
-                )
+        members = [closed[member] for member in group]
+        if not any(cutting[index] for index in members):
+            continue
+        # Every contour of a plane is cut by the same region, the block less
+        # the brain that defacing keeps where the plane allows, or the whole
+        # block, so that the region they bound together loses just its part
+        # in it.
+        spare = _Spare.of(region, [parsed[index][1] for index in members])
+        for index in members:
+            points = parsed[index][1]
+            if spare is None:
+                cutting[index] = _enters(region.block, points)
+            else:
+                cutting[index], spared[index] = spare.cut(points)
     if not any(cutting):
         return None
     written: list[WrittenContour] = []
@@ -255,11 +297,92 @@ def _written(
         if not cut:
             written.append(WrittenContour(index))
             continue
+        pieces = (
+            spared[index] if index in spared else _pieces(region.block, kind, points)
+        )
         written.extend(
             WrittenContour(index, _decimals(piece), first == 0)
-            for first, piece in enumerate(_pieces(region.block, kind, points))
+            for first, piece in enumerate(pieces)
         )
     return tuple(written)
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class _Spare:
+    """The pixels of the slice nearest one axial plane of an ROI's closed
+    contours that defacing does not write as air, those of the brain kept
+    in the block and those whose centres lie outside it, whose squares a
+    contour cut in that plane keeps.
+
+    Its ``repr`` shows nothing of it.
+    """
+
+    block: FaceBlock
+    grid: PixelGrid
+    spared: np.ndarray
+
+    def __repr__(self) -> str:
+        return "_Spare()"
+
+    @classmethod
+    def of(cls, region: DoseBlock, polygons: list[np.ndarray]) -> _Spare | None:
+        """Return the kept brain of the plane of ``polygons``, or None where
+        they are cut by the whole block: where they are not all simple and
+        in one axial plane above the block's axial plane, nearest one axial
+        slice of the series within half its spacing, with pixels kept in
+        the block."""
+        z = float(polygons[0][0, 2])
+        if not z > region.block.inferior_limit or any(
+            (points[:, 2] != z).any() or not is_simple(points) for points in polygons
+        ):
+            return None
+        # A point beyond the slice's pixels has none kept, as for the cut.
+        found = np.unique(region.pixels(np.concatenate(polygons))[0])
+        found = found[found >= 0]
+        if len(found) != 1:
+            return None
+        each = region.slices[int(found[0])]
+        orientation = np.asarray(each.orientation, dtype=float)
+        normal = np.cross(orientation[:3], orientation[3:])
+        if not each.kept.any() or abs(abs(normal[2]) - 1) > ALIGNMENT_TOLERANCE:
+            return None
+        inside = region.block.slice_mask(
+            each.position, each.orientation, each.spacing, each.kept.shape
+        )
+        return cls(
+            region.block,
+            PixelGrid(each.position, each.orientation, each.spacing),
+            each.kept | ~inside,
+        )
+
+    def cut(self, points: np.ndarray) -> tuple[bool, list[np.ndarray]]:
+        """Return whether a closed contour's region meets the block where
+        defacing writes air, and so is cut, and the polygons written in its
+        place: its part outside the block (:func:`_pieces`), joined with
+        its part in the block in the squares of the pixels that defacing
+        does not write as air, where it has one, into rings, outer ones
+        anticlockwise and holes clockwise.
+        """
+        ring = points if signed_area(points) > 0 else points[::-1]
+        outside = _pieces(self.block, CLOSED_PLANAR, ring)
+        ahead = clip(ring, *_ahead(self.block))
+        kept = [
+            piece
+            for part in ahead
+            for piece in within_pixels(part, self.grid, self.spared)
+        ]
+        removed = sum(map(signed_area, ahead)) - sum(map(signed_area, kept))
+        if not removed > _SLIVER:
+            return False, []
+        if not sum(map(signed_area, kept)) > _SLIVER:
+            return True, outside
+        rings = dissolve(
+            [piece[:, :2] for piece in outside + kept], ring[:, :2], _SAME_POINT
+        )
+        if rings is None:
+            return True, outside + kept
+        z = float(ring[0, 2])
+        return True, [np.column_stack([each, np.full(len(each), z)]) for each in rings]
 
 
 def _contour(contour: pydicom.Dataset) -> tuple[str, np.ndarray]:
