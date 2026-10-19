@@ -220,6 +220,10 @@ def _check(sha256: str, pinned: str, what: str) -> Checked:
     return Checked(sha256, pinned)
 
 
+def _utc_now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
 def _failure(error: BaseException) -> str:
     """Name a failed fetch by its type, status, and cause, never its message.
 
@@ -242,8 +246,13 @@ def _fetch(
     *,
     what: str,
     sleep: Callable[[float], None] | None = None,
+    say: Callable[[str], None] | None = None,
 ) -> str:
-    """Fetch ``url`` to ``destination``, retrying, and return its SHA-256."""
+    """Fetch ``url`` to ``destination``, retrying, and return its SHA-256.
+
+    Each retry is reported to ``say`` with the time, in UTC, and the failure's
+    type, so that a server's refusals can be matched with its own logs.
+    """
     for attempt in range(1, ATTEMPTS + 1):
         digest = hashlib.sha256()
         try:
@@ -261,7 +270,13 @@ def _fetch(
                     f"the {what} could not be fetched after {ATTEMPTS} "
                     f"attempts ({_failure(error)})"
                 ) from None
-            (sleep or time.sleep)(WAITS[attempt - 1])
+            wait = WAITS[attempt - 1]
+            if say is not None:
+                say(
+                    f"Fetching the {what}: attempt {attempt} of {ATTEMPTS} failed "
+                    f"at {_utc_now()} ({_failure(error)}); trying again in {wait:g} s"
+                )
+            (sleep or time.sleep)(wait)
     raise AssertionError("unreachable")
 
 
@@ -313,11 +328,12 @@ def _series(
     scratch: Path,
     opener: Opener,
     total: int,
+    say: Callable[[str], None],
 ) -> tuple[list[str], int, int]:
     what = f"series {index} of {total}"
     archive = scratch / f"{index:04d}.zip"
     url = f"{NBIA_IMAGES}?{urllib.parse.urlencode({'SeriesInstanceUID': uid})}"
-    _fetch(url, archive, opener, what=what)
+    _fetch(url, archive, opener, what=what, say=say)
     try:
         return _extract(archive, images / f"{index:04d}", what)
     finally:
@@ -354,7 +370,8 @@ def download(  # pylint: disable = too-many-locals
     opener : callable, optional
         Opens a URL for reading; the tests replace it.
     progress : callable, optional
-        Called with a line of progress, which quotes no value.
+        Called with a line of progress, or with a failed fetch that will be
+        tried again, which quotes no value.
 
     Returns
     -------
@@ -394,13 +411,15 @@ def download(  # pylint: disable = too-many-locals
         scratch = Path(scratch_name)
         # The answer key first: a wrong one fails before the images download.
         answer_key = _answer_key(
-            answer_key_file, key_url, key_pin, scratch, destination, opener
+            answer_key_file, key_url, key_pin, scratch, destination, opener, say
         )
         if answer_key is not None:
             answer_key = {"source": key_source, **answer_key}
         manifest_path = scratch / "manifest.tcia"
         manifest = _check(
-            _fetch(subset.manifest_url, manifest_path, opener, what="manifest"),
+            _fetch(
+                subset.manifest_url, manifest_path, opener, what="manifest", say=say
+            ),
             subset.manifest_sha256,
             "manifest",
         )
@@ -415,7 +434,9 @@ def download(  # pylint: disable = too-many-locals
         pool = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
         try:
             futures = [
-                pool.submit(_series, index, uid, images, scratch, opener, len(uids))
+                pool.submit(
+                    _series, index, uid, images, scratch, opener, len(uids), say
+                )
                 for index, uid in enumerate(uids, start=1)
             ]
             for future in concurrent.futures.as_completed(futures):
@@ -462,6 +483,7 @@ def _answer_key(
     scratch: Path,
     destination: Path,
     opener: Opener,
+    say: Callable[[str], None],
 ) -> dict[str, object] | None:
     """Copy or fetch the answer key, check it, and unpack its database."""
     received = scratch / "answer-key"
@@ -470,7 +492,7 @@ def _answer_key(
     elif url:
         if not url.startswith("https://"):
             raise DownloadError("the answer key's URL is not HTTPS")
-        sha256 = _fetch(url, received, opener, what="answer key")
+        sha256 = _fetch(url, received, opener, what="answer key", say=say)
     else:
         return None
     checked = _check(sha256, pinned, "answer key")

@@ -242,6 +242,8 @@ The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchm
 
 Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, the mapping files, and the NCI script's logs and results database, which quote values from the files. The standard error and standard output of the benchmark and of the DICOM validation, where libraries log, go to files on the runner, and the job prints the result files instead. It prints the benchmark's and the DICOM validation's results before NCI's script starts, as well as at the end, so that a runner lost in the script, which takes longest, still leaves them in the log. A crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.
 
+TCIA's site has at times stopped answering a runner for most of an hour while answering others. So that TCIA can match a failure with its own logs, the log also records, before the job first asks TCIA for anything and again after a failure, the runner's public address and whether each of TCIA's addresses accepts a connection from it, and it records each request to TCIA that is tried again, with the time in UTC and the failure's type. The address is that of the GitHub-hosted runner, which GitHub assigns to the job.
+
 ## 10. Where the data come from, and how to check them
 
 Anyone reading a MIDI-B result should be able to ask "were these really NCI's files?" and check the answer without trusting PyMedPhys. The benchmark is built so that they can.

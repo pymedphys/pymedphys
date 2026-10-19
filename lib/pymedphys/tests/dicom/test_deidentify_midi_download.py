@@ -21,6 +21,7 @@ manifest, archive, and file is made up for the tests.
 import hashlib
 import io
 import json
+import re
 import urllib.error
 import urllib.parse
 import zipfile
@@ -275,6 +276,35 @@ def test_a_failed_fetch_is_retried(tmp_path, no_sleep):
     server = Server(failures=midi_download.ATTEMPTS - 1)
     midi_download.download(_subset(), tmp_path / "midi", opener=server, workers=1)
     assert no_sleep == list(midi_download.WAITS)
+
+
+def test_each_retry_is_reported_with_its_time_and_no_url(tmp_path, no_sleep):
+    class Flaky(Server):
+        series_failed = False
+
+        def __call__(self, url):
+            if SERIES[1] in url and not self.series_failed:
+                self.series_failed = True
+                raise urllib.error.HTTPError(url, 503, "busy", {}, None)
+            return super().__call__(url)
+
+    lines: list[str] = []
+    midi_download.download(
+        _subset(answer_key_url="", answer_key_sha256=""),
+        tmp_path / "midi",
+        opener=Flaky(failures=1),
+        workers=1,
+        progress=lines.append,
+    )
+    stamp = r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ"
+    assert [re.sub(stamp, "<time>", line) for line in lines if "failed" in line] == [
+        "Fetching the manifest: attempt 1 of 6 failed at <time> (URLError); "
+        "trying again in 10 s",
+        "Fetching the series 2 of 2: attempt 1 of 6 failed at <time> "
+        "(HTTPError 503); trying again in 10 s",
+    ]
+    assert len(no_sleep) == 2
+    assert not any("example" in line or "2.25.900" in line for line in lines)
 
 
 def test_a_fetch_that_keeps_failing_names_no_url(tmp_path, no_sleep):

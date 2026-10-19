@@ -177,6 +177,16 @@ jobs:
               > "${RUNNER_TEMP}/midi-b/results/engine.txt"
           fi
 
+      # Where the runner reaches TCIA from, and whether each of TCIA's
+      # addresses answers it, before the job first asks TCIA for anything and
+      # again after a failure: TCIA's site has stopped answering some runners
+      # for most of an hour, and TCIA can match these with its own logs. They
+      # hold no MIDI-B data.
+      - name: Record how the runner reaches TCIA
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python3 -I .github/scripts/midi_b_tcia_answer_keys.py network
+
       # TCIA publishes the answer keys only as Faspex packages. Fetch them
       # with IBM's client, list their files' names, sizes, and digests, and
       # hand this subset's ZIP file to the downloader, which checks it
@@ -197,8 +207,18 @@ jobs:
             || { tail -n 40 "${RUNNER_TEMP}/gem.log"; exit 1; }
           PATH="$(ruby -e 'print Gem.user_dir')/bin:${PATH}"
           export PATH
-          ascli config transferd install > "${RUNNER_TEMP}/transferd.log" 2>&1 \
-            || { tail -n 40 "${RUNNER_TEMP}/transferd.log"; exit 1; }
+          # IBM's download site has not answered some runners: three tries.
+          for attempt in 1 2 3; do
+            if ascli config transferd install > "${RUNNER_TEMP}/transferd.log" 2>&1; then
+              break
+            fi
+            tail -n 40 "${RUNNER_TEMP}/transferd.log"
+            if (( attempt == 3 )); then
+              exit 1
+            fi
+            echo "Installing IBM's transfer daemon: attempt ${attempt} of 3 failed at $(date -u +%FT%TZ); trying again in $((60 * attempt)) s."
+            sleep $((60 * attempt))
+          done
           python3 -I .github/scripts/midi_b_tcia_answer_keys.py fetch "${RUNNER_TEMP}/midi-b/tcia"
           python3 -I .github/scripts/midi_b_tcia_answer_keys.py list "${RUNNER_TEMP}/midi-b/tcia" \
             | tee "${RUNNER_TEMP}/midi-b/results/tcia-answer-keys.txt"
@@ -228,6 +248,12 @@ jobs:
             pymedphys._dicom.deidentify.midi_download "${args[@]}"
           cp "${RUNNER_TEMP}/midi-b/data/download.json" "${RUNNER_TEMP}/midi-b/results/"
           df -h /
+
+      - name: Record how the runner reaches TCIA after a failure
+        if: failure()
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python3 -I .github/scripts/midi_b_tcia_answer_keys.py network
 
       - name: Run the benchmark
         id: benchmark

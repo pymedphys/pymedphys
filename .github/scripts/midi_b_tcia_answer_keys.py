@@ -10,6 +10,12 @@ Usage:
   package, name, size, and SHA-256; for a ZIP file, each member's name,
   size, and SHA-256; and, for an SQLite database, its tables and their row
   counts.
+- ``python midi_b_tcia_answer_keys.py network``: print the time, in UTC,
+  the runner's public address, as a web service sees it, and, for each of
+  TCIA's hosts that the workflow uses, the addresses it resolves to and
+  whether a TCP connection to each opens on port 443, and how fast. TCIA's
+  site sometimes stops answering a runner, and TCIA can match these with
+  its own logs. It never fails.
 
 TCIA publishes MIDI-B's answer keys (https://doi.org/10.7937/cf2p-aw56,
 CC BY 4.0) only as Faspex packages. The MIDI-B Benchmark workflow uses this
@@ -23,8 +29,11 @@ from __future__ import annotations
 
 import hashlib
 import html
+import http.client
+import ipaddress
 import random
 import re
+import socket
 import sqlite3
 import subprocess
 import sys
@@ -45,6 +54,35 @@ CHUNK = 1 << 20
 ATTEMPTS = 10
 PAUSE = 30.0
 LONGEST_PAUSE = 300.0
+HOSTS = (
+    "www.cancerimagingarchive.net",
+    "services.cancerimagingarchive.net",
+    "faspex.cancerimagingarchive.net",
+)
+PORT = 443
+CONNECT_TIMEOUT = 10.0
+# Services that answer with the address that a request came from.
+ADDRESS_SERVICES = ("https://checkip.amazonaws.com/", "https://api.ipify.org/")
+
+
+def utc_now() -> str:
+    """The time, in UTC, to the second."""
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def failure(error: BaseException) -> str:
+    """Name an error by its type, and by its reason's type for a URL error.
+
+    >>> import urllib.error
+    >>> failure(urllib.error.URLError(TimeoutError("timed out")))
+    'URLError: TimeoutError'
+    >>> failure(ConnectionRefusedError())
+    'ConnectionRefusedError'
+    """
+    reason = getattr(error, "reason", None)
+    if isinstance(reason, BaseException):
+        return f"{type(error).__name__}: {type(reason).__name__}"
+    return type(error).__name__
 
 
 def public_links(page: str) -> list[str]:
@@ -72,12 +110,15 @@ def _page(attempts: int = ATTEMPTS, pause: float = PAUSE) -> str:
         except OSError as error:
             if attempt == attempts:
                 raise
-            print(
-                f"Reading TCIA's MIDI-B page, attempt {attempt} of {attempts}: "
-                f"{type(error).__name__}; trying again."
-            )
             wait = min(pause * 2 ** (attempt - 1), LONGEST_PAUSE)
-            time.sleep(wait * random.uniform(0.75, 1.25))  # nosec B311
+            wait *= random.uniform(0.75, 1.25)  # nosec B311
+            print(
+                f"Reading TCIA's MIDI-B page: attempt {attempt} of {attempts} "
+                f"failed at {utc_now()} ({failure(error)}); trying again in "
+                f"{wait:.0f} s.",
+                flush=True,
+            )
+            time.sleep(wait)
     raise AssertionError("unreachable")
 
 
@@ -108,10 +149,70 @@ def fetch(destination: Path) -> int:
                 check=False,
             )
         print(
-            f"Package {index} of {len(links)}: ascli exited with {completed.returncode}"
+            f"Package {index} of {len(links)}: ascli exited with "
+            f"{completed.returncode} at {utc_now()}",
+            flush=True,
         )
         if completed.returncode:
             return completed.returncode
+    return 0
+
+
+def public_address() -> str:
+    """The runner's public address, as a web service sees it, or why not."""
+    reasons = []
+    for url in ADDRESS_SERVICES:
+        request = urllib.request.Request(
+            url, headers={"User-Agent": "pymedphys-midi-b"}
+        )
+        try:
+            # Constant HTTPS URLs.
+            with urllib.request.urlopen(  # nosec B310
+                request, timeout=CONNECT_TIMEOUT
+            ) as response:
+                # Only an address is printed, never what else a service sends.
+                return str(ipaddress.ip_address(response.read(64).decode().strip()))
+        except (OSError, ValueError, http.client.HTTPException) as error:
+            reasons.append(failure(error))
+    return f"unknown ({', '.join(reasons)})"
+
+
+def connect(host: str, port: int = PORT) -> list[str]:
+    """Each address that ``host`` resolves to, and how a TCP connection fares."""
+    try:
+        found = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except OSError as error:
+        return [f"{host} does not resolve ({failure(error)})"]
+    lines = []
+    tried: set[str] = set()
+    for family, kind, protocol, _, address in found:
+        if address[0] in tried:
+            continue
+        tried.add(address[0])
+        started = time.monotonic()
+        try:
+            with socket.socket(family, kind, protocol) as connection:
+                connection.settimeout(CONNECT_TIMEOUT)
+                connection.connect(address)
+            outcome = f"connected in {(time.monotonic() - started) * 1000:.0f} ms"
+        except OSError as error:
+            outcome = (
+                f"no connection after {time.monotonic() - started:.1f} s "
+                f"({failure(error)})"
+            )
+        lines.append(f"{host} at {address[0]} port {port}: {outcome}")
+    return lines
+
+
+def network() -> int:
+    """Print the runner's public address, and how each of TCIA's hosts answers."""
+    print(
+        f"At {utc_now()}, this runner's public address is {public_address()}.",
+        flush=True,
+    )
+    for host in HOSTS:
+        for line in connect(host):
+            print(line, flush=True)
     return 0
 
 
@@ -192,8 +293,10 @@ def listing(destination: Path) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
+    if argv == ["network"]:
+        return network()
     if len(argv) != 2 or argv[0] not in {"fetch", "list"}:
-        print("usage: midi_b_tcia_answer_keys.py {fetch,list} DEST")
+        print("usage: midi_b_tcia_answer_keys.py {fetch,list} DEST | network")
         return 2
     destination = Path(argv[1])
     if argv[0] == "fetch":
