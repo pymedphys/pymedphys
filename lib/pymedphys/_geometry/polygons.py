@@ -274,19 +274,21 @@ def is_simple(points: np.ndarray) -> bool:
 def _cross(origin: np.ndarray, one: np.ndarray, other: np.ndarray) -> np.ndarray:
     """The z of the cross product of ``one - origin`` and ``other - origin``,
     broadcast."""
-    return (one[..., 0] - origin[..., 0]) * (other[..., 1] - origin[..., 1]) - (
-        one[..., 1] - origin[..., 1]
-    ) * (other[..., 0] - origin[..., 0])
+    cross: np.ndarray = (one[..., 0] - origin[..., 0]) * (
+        other[..., 1] - origin[..., 1]
+    ) - (one[..., 1] - origin[..., 1]) * (other[..., 0] - origin[..., 0])
+    return cross
 
 
 def _between(start: np.ndarray, end: np.ndarray, point: np.ndarray) -> np.ndarray:
     """Whether a point collinear with a segment lies on it, ends included."""
-    return (
+    between: np.ndarray = (
         (np.minimum(start[..., 0], end[..., 0]) <= point[..., 0])
         & (point[..., 0] <= np.maximum(start[..., 0], end[..., 0]))
         & (np.minimum(start[..., 1], end[..., 1]) <= point[..., 1])
         & (point[..., 1] <= np.maximum(start[..., 1], end[..., 1]))
     )
+    return between
 
 
 def _meet(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> np.ndarray:
@@ -302,7 +304,8 @@ def _meet(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> np.ndar
         | ((third == 0) & _between(c, d, a))
         | ((fourth == 0) & _between(c, d, b))
     )
-    return proper | touching
+    meet: np.ndarray = proper | touching
+    return meet
 
 
 def _overlap(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> np.ndarray:
@@ -313,7 +316,8 @@ def _overlap(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> np.n
     forward = (b[..., 0] - a[..., 0]) * (d[..., 0] - c[..., 0]) + (
         b[..., 1] - a[..., 1]
     ) * (d[..., 1] - c[..., 1])
-    return collinear & (forward < 0)
+    overlap: np.ndarray = collinear & (forward < 0)
+    return overlap
 
 
 def dissolve(
@@ -352,7 +356,7 @@ def dissolve(
     identity = _cluster(points, tolerance)
     first = len(np.asarray(kept).reshape(-1, 2))
     original = set(identity[:first].tolist())
-    position = {}
+    position: dict[int, np.ndarray] = {}
     for index, each in enumerate(identity.tolist()):
         position.setdefault(each, points[index])
     edges: list[tuple[int, int]] = []
@@ -423,7 +427,7 @@ def _split(
     """Split each edge at every point that lies on it, in order along it."""
     ids = np.array(sorted(position))
     where = np.array([position[each] for each in ids])
-    split = []
+    split: list[tuple[int, int]] = []
     for start, end in edges:
         a, b = position[start], position[end]
         direction = b - a
