@@ -120,8 +120,12 @@ class TransformReason(enum.Enum):
     # sign, such as an overlay (D-037)
     UNCLEANABLE_PIXEL_DATA = "uncleanable-pixel-data"
     # under Clean Pixel Data, written Pixel Data that differs from its source
-    # other than by the blacked-out regions (D-037)
+    # other than by the blacked-out regions (D-037), or reviewed regions in a
+    # frame that the Pixel Data does not hold
     REDACTION_MISMATCH = "redaction-mismatch"
+    # under Clean Pixel Data, an instance whose cleaned Pixel Data a reviewer
+    # rejected in an attested QC pack, so that it is never released
+    REDACTION_REJECTED = "redaction-rejected"
 
 
 class DescriptorReason(enum.Enum):

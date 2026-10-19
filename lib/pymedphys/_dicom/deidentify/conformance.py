@@ -190,12 +190,6 @@ PENDING_BIRTH_DATES = (
     "The synthetic birth date that Z writes to Patient's Birth Date "
     "(0010,0030) in place of a zero-length value."
 )
-# Pending only for a policy that selects Clean Pixel Data.
-PENDING_PIXEL_DATA = (
-    "When an instance claims the Clean Pixel Data Option, and how a "
-    "reviewer's decisions on its blacked-out regions are applied (PS3.15 "
-    "E.3.1)."
-)
 _TPS_IMPORT = "tps-import"
 _FULL_DATES = "retain_longitudinal_full_dates"
 _ROI_NAME = "(3006,0026)"
@@ -207,9 +201,6 @@ _REVIEWED_OPTIONS = (
     CLEAN_PIXEL_DATA,
     CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
 )
-# Those whose codes an instance gains once it satisfies them, since no
-# instance yet claims Clean Pixel Data.
-_CLAIMED_AFTER_REVIEW = (_CLEAN_DESCRIPTORS, CLEAN_RECOGNIZABLE_VISUAL_FEATURES)
 # The Retain Longitudinal Temporal Information Options, and the VRs of a date,
 # time, or datetime.
 _TEMPORAL_OPTIONS = next(o for o in MUTUALLY_EXCLUSIVE if _FULL_DATES in o)
@@ -394,15 +385,16 @@ class InsertedMarkers:
         Code Sequence (0012,0064) gains in every instance: the Basic
         Profile's and each selected option's that the policy applies, but
         Clean Descriptors', Clean Pixel Data's, and Clean Recognizable Visual
-        Features', or none for a policy that claims no conformance. No
-        instance yet claims Clean Pixel Data (D-037).
+        Features', or none for a policy that claims no conformance.
     review_codes : tuple of str
         The Code Values that it gains only in an instance that satisfies
         their options, in the policy's order, where the policy can claim
         conformance: Clean Descriptors', where the policy selects it, in an
         instance in which every ROI Name was renamed, was empty, or took a
         reviewer's decision, and whose other attributes given C are removed
-        or replaced; and Clean Recognizable Visual Features', where the
+        or replaced; Clean Pixel Data's, where the policy selects it, in an
+        instance without top-level pixel data or whose blacked-out regions a
+        reviewer approved; and Clean Recognizable Visual Features', where the
         policy selects it, in an instance that cannot show a face or whose
         source file the face review found free of one.
     temporal : str
@@ -501,9 +493,9 @@ class ConformanceStatement:
         Table E.1-1.
     safe_private : tuple of SafePrivateRule
         Under the Retain Safe Private Option, the rules of the chosen list
-        that can retain a private attribute, other than those for text,
-        which no reviewed cleaner cleans, in their file's order; otherwise
-        ``()``.
+        that can retain a private attribute, other than those for text
+        without the Clean Descriptors Option, whose cleaning alone retains
+        private text, in their file's order; otherwise ``()``.
     safe_private_list : SafePrivateList or None
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes; otherwise None.
@@ -817,13 +809,17 @@ def _roi_names(
 
 
 def _safe_private(rules: ElementRules | None) -> tuple[SafePrivateRule, ...]:
-    """Return the safe private rules that can retain an attribute, but for text."""
+    """Return the safe private rules that can retain an attribute.
+
+    Rules for text retain one only under Clean Descriptors, which cleans it.
+    """
     if rules is None or rules.safe_private is None:
         return ()
+    cleaned = _CLEAN_DESCRIPTORS in rules.policy.options
     return tuple(
         rule
         for rule in rules.safe_private.retained()
-        if rule.handling is not Handling.TEXT
+        if cleaned or rule.handling is not Handling.TEXT
     )
 
 
@@ -859,9 +855,8 @@ def _markers(policy: Policy, digest: str) -> InsertedMarkers:
 
     They are those that :func:`markers.markers_for` gives an instance that
     satisfies every selected option it can without review: all but Clean
-    Descriptors, Clean Pixel Data, which no instance yet claims (D-037),
-    Clean Recognizable Visual Features, and any option that the policy
-    records as unmet.
+    Descriptors, Clean Pixel Data, Clean Recognizable Visual Features, and
+    any option that the policy records as unmet.
     """
     unmet = {option for resolution in policy.resolved for option in resolution.unmet}
     satisfied = [
@@ -870,7 +865,7 @@ def _markers(policy: Policy, digest: str) -> InsertedMarkers:
         if option not in _REVIEWED_OPTIONS and option not in unmet
     ]
     found = markers.markers_for(policy, digest, satisfied=satisfied)
-    reviewed = [o for o in policy.options if o in _CLAIMED_AFTER_REVIEW]
+    reviewed = [o for o in policy.options if o in _REVIEWED_OPTIONS]
     return InsertedMarkers(
         method=found.method[1],
         codes=tuple(code.code_value for code in found.method_codes),
@@ -992,7 +987,6 @@ def conformance_statement(
             (PENDING_FALLBACK, not _falls_back(policy)),
             (PENDING_SAFE_PRIVATE, rules is None and safe_private),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
-            (PENDING_PIXEL_DATA, CLEAN_PIXEL_DATA in policy.options),
         )
         if applies
     )

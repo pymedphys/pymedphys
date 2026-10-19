@@ -114,6 +114,7 @@ class DescriptorMaterial:
     sources: tuple[str, ...]
     results: tuple[CleanedDescriptor, ...]
     applied: bool
+    attribute: str | None = None
 
     def __repr__(self) -> str:
         return f"DescriptorMaterial(path={str(self.path)!r}, applied={self.applied!r})"
@@ -391,7 +392,12 @@ def qc_pack_of(
             elif isinstance(item, DescriptorMaterial):
                 descriptors.append(
                     qc_pack.DescriptorEntry(
-                        position, item.path, item.sources, item.results, item.applied
+                        position,
+                        item.path,
+                        item.sources,
+                        item.results,
+                        item.applied,
+                        item.attribute,
                     )
                 )
             elif isinstance(item, (ReferenceFindingMaterial, WrittenFindingMaterial)):

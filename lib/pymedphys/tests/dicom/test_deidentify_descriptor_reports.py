@@ -130,11 +130,12 @@ def test_the_pack_lists_each_descriptor_with_its_values_and_whether_written():
 
     document = qc_pack.pack_document(pack)
 
-    assert document["format"] == "pymedphys-deid-qc-pack/7"
+    assert document["format"] == "pymedphys-deid-qc-pack/8"
     assert document["descriptors"] == [
         {
             "position": 1,
             "element": "(0008,103E)",
+            "attribute": "(0008,103E)",
             "applied": False,
             "values": [
                 {

@@ -53,7 +53,7 @@ import struct
 
 from pymedphys._imports import pydicom
 
-from .qc_attestation import Face, attested_pack
+from .qc_attestation import Face, Outcome, attested_pack
 from .qc_pack import QcPackError
 from .reasons import VisualFeaturesReason
 
@@ -187,12 +187,17 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
     ------
     QcPackError
         If the directory holds no QC pack, or the pack has not been
-        attested; if either is not of its format, or the attestation is for
-        another pack; if the pack or a preview changed after it was attested;
-        or if a verdict names a series that the pack does not list. The
-        message names no path and no value.
+        attested, or its attestation's outcome is rejected, whose verdicts
+        release nothing; if either is not of its format, or the attestation
+        is for another pack; if the pack or a preview changed after it was
+        attested; or if a verdict names a series that the pack does not
+        list. The message names no path and no value.
     """
     attestation, data = attested_pack(pack_directory)
+    if attestation.outcome is not Outcome.ATTESTED:
+        raise QcPackError(
+            "the QC pack's attestation rejected it, so its verdicts release nothing"
+        )
     files = _series_files(data)
     by_face: dict[Face, set[_File]] = {face: set() for face in Face}
     for verdict in attestation.faces:

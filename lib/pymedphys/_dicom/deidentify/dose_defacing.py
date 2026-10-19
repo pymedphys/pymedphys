@@ -35,10 +35,10 @@ first offset is zero, or, only for an orientation of (1, 0, 0, 0, 1, 0)
 whose first offset is the position's z, the frames' z coordinates. A grid
 placed otherwise, whose direction cosines are not two orthogonal unit
 vectors, as PS3.3 C.7.6.2.1.1 requires, within :data:`_UNIT`, with a
-spacing or a corner of a frame farther than :data:`_FARTHEST`, compressed,
-of more than one sample, or with a negative stored value, as an RT Dose of
-Dose Type ERROR can hold, is not set to zero, and stays held as an
-instance in a defaced frame
+spacing, or a coordinate of a corner of a frame, of magnitude above
+:data:`_FARTHEST`, compressed, of more than one sample, or with a negative
+stored value, as an RT Dose of Dose Type ERROR can hold, is not set to
+zero, and stays held as an instance in a defaced frame
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`).
 
 Setting dose to zero must never take dose from a target that the
@@ -97,9 +97,10 @@ _SAME_Z = 1e-3
 # it. It bounds the vectors, not the voxels' positions, whose error also
 # grows with their distance from the grid's first voxel.
 _UNIT = 1e-4
-# The largest magnitude, in millimetres, of a corner of a frame of a grid
-# that is placed, or of its spacing, as face_blocks bounds a target's; a
-# larger one, finite, could put the block anywhere on the grid.
+# The largest magnitude, in millimetres, of each coordinate of a corner of
+# a frame of a grid that is placed, or of its spacing, as face_blocks bounds
+# each coordinate of a target's points; a larger one, finite, could put the
+# block anywhere on the grid.
 _FARTHEST = 1e6
 _AXIAL = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 

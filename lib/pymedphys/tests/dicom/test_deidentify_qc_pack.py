@@ -571,7 +571,7 @@ def test_a_search_gives_entries_with_excerpts_and_omissions():
 @pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_document_holds_every_section():
     document = json.loads(qc_pack.to_json(_full_pack()))
-    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/7"
+    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/8"
     assert document["reference"] == REFERENCE
     assert document["instances"] == [
         {
@@ -1048,7 +1048,7 @@ def test_a_destination_that_cannot_be_checked_is_refused(places, monkeypatch):
             _pack(), root / "ZEBEDEE" / "qc", release_directory=release
         )
     assert _shows_no_path(raised.value, root)
-    monkeypatch.undo()  # before Python 3.12, Path.exists raises for EACCES
+    monkeypatch.undo()  # Path.exists needs the real os.stat to look
     assert not (root / "ZEBEDEE").exists()
 
 

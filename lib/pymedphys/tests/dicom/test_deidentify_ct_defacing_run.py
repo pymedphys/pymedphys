@@ -39,13 +39,19 @@ from pymedphys._dicom.deidentify.instance_transform import (
 )
 from pymedphys._dicom.deidentify.policy import CLEAN_PIXEL_DATA, compose_policy
 from pymedphys._dicom.deidentify.qc_pack import new_reference
-from pymedphys._dicom.deidentify.qc_attestation import Face
+from pymedphys._dicom.deidentify.qc_attestation import (
+    Face,
+    Redaction,
+    RedactionVerdict,
+    previewed_redactions,
+)
 from pymedphys._dicom.deidentify.reasons import (
     HeldPixelData,
     HeldVisualFeatures,
     PixelDataReason,
     VisualFeaturesReason,
 )
+from pymedphys._dicom.deidentify.redaction_review import read_redaction_review
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.release_gate import ReleaseReason
 
@@ -230,6 +236,7 @@ def _runs(
     target=False,
     eyes_away=False,
     without_ct=False,
+    accepted=False,
     dose=None,
     edges=False,
 ):
@@ -241,8 +248,10 @@ def _runs(
     ``edges``, under ``basic``, or under the option and ``first`` with a
     face review that gives no verdicts; attest the pack with the head's
     series, and those of the RT Structure Set, RT Dose, and PET in its
-    frame, marked absent; and run it again under the option and
-    ``others``, without the head's slices if ``without_ct``."""
+    frame, marked absent, and, if ``accepted``, the regions of each of the
+    head's slices that the pack previews accepted; and run it again under
+    the option and ``others``, given those verdicts, without the head's
+    slices if ``without_ct``."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -328,11 +337,28 @@ def _runs(
                 for p in s["positions"]
             )
         ]
-        _attest(reviewed.qc_pack.parent, dict.fromkeys(marked, Face.ABSENT))
+        redactions = (
+            [
+                RedactionVerdict(position, Redaction.ACCEPTED)
+                for position in previewed_redactions(reviewed.qc_pack.read_bytes())
+                if names[position].startswith("01-head")
+            ]
+            if accepted
+            else []
+        )
+        _attest(
+            reviewed.qc_pack.parent,
+            dict.fromkeys(marked, Face.ABSENT),
+            redactions=redactions,
+        )
         if without_ct:
             for index in range(len(slices)):
                 (instances / _head_name(index)).unlink()
-        transform = _transform(others, read_face_review(reviewed.qc_pack.parent))
+        transform = _transform(
+            others,
+            read_face_review(reviewed.qc_pack.parent),
+            read_redaction_review(reviewed.qc_pack.parent) if accepted else None,
+        )
         second = run.run(
             run.discover(instances),
             directory / "r2",
@@ -363,12 +389,13 @@ def _runs(
         shutil.rmtree(directory, ignore_errors=True)
 
 
-def _transform(options, face_review):
+def _transform(options, face_review, redaction_review=None):
     return InstanceTransform(
         _policy(*options),
         KEY,
         face_review=face_review,
         finder=_CornerFinder() if CLEAN_PIXEL_DATA in options else None,
+        redaction_review=redaction_review,
         unvalidated_policy=True,
     )
 
@@ -379,15 +406,11 @@ def fixture_defaced():
         yield found
 
 
-@pytest.fixture(name="edges", scope="module")
-def fixture_edges():
-    with _runs(first=(), dose=_dose(_LOW), edges=True) as found:
-        yield found
-
-
+# With the RT Dose instances that cannot be placed or have no grid, which
+# its run holds or releases alike, so that one run tests them all.
 @pytest.fixture(name="hot", scope="module")
 def fixture_hot():
-    with _runs(first=(), dose=_dose(_HIGHEST)) as found:
+    with _runs(first=(), dose=_dose(_HIGHEST), edges=True) as found:
         yield found
 
 
@@ -418,6 +441,12 @@ def fixture_without_ct():
 @pytest.fixture(name="with_pixel_data", scope="module")
 def fixture_with_pixel_data():
     with _runs(CLEAN_PIXEL_DATA, first=(CLEAN_PIXEL_DATA,)) as found:
+        yield found
+
+
+@pytest.fixture(name="accepted", scope="module")
+def fixture_accepted():
+    with _runs(CLEAN_PIXEL_DATA, first=(CLEAN_PIXEL_DATA,), accepted=True) as found:
         yield found
 
 
@@ -720,8 +749,8 @@ def test_high_dose_in_the_block_holds_the_dose_as_received(hot):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
-def test_a_grid_that_cannot_be_placed_is_held_as_received(edges):
-    _, outcomes, reasons, _ = edges
+def test_a_grid_that_cannot_be_placed_is_held_as_received(hot):
+    _, outcomes, reasons, _ = hot
     held = HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
 
     # Its direction cosines are not allowed, or it lies too far to place,
@@ -734,9 +763,9 @@ def test_a_grid_that_cannot_be_placed_is_held_as_received(edges):
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
 def test_an_rt_dose_of_dose_volume_histograms_alone_is_not_held_for_its_frame(
-    edges,
+    hot,
 ):
-    _, outcomes, reasons, _ = edges
+    _, outcomes, reasons, _ = hot
 
     # Without a grid, it shows no face, in a defaced frame or not, so it
     # needs no verdict, and is released, as in the reviewed run, which gave
@@ -848,3 +877,32 @@ def test_with_clean_pixel_data_the_head_ct_is_held_for_its_pixel_data(
         assert HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT) in reasons[name]
         assert not any(isinstance(r, HeldVisualFeatures) for r in reasons[name])
     assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01", "PS3.15-E.3.2-01")
+def test_with_both_options_reviewed_the_head_ct_is_released_with_both(accepted):
+    slices, outcomes, reasons, report = accepted
+    block = _block(slices)
+    corner = np.zeros(_SCAN.shape, dtype=bool)
+    corner[0:2, 0:3] = True
+
+    # The reviewer accepted the regions and saw the slices as the first run
+    # wrote them, defaced and blacked out. The second run writes the same
+    # pixel data, from the pack's regions without the finder, so each slice
+    # is released with both options' codes and both attributes NO.
+    for index, data in enumerate(slices):
+        name = _head_name(index)
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", (index, reasons[name])
+        assert dataset.BurnedInAnnotation == "NO"
+        assert dataset.RecognizableVisualFeatures == "NO"
+        assert _codes(dataset)[-3:] == [markers.PROFILE_CODE, "113101", CODE]
+        before = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+        source = pydicom.pixels.pixel_array(before)
+        written = pydicom.pixels.pixel_array(dataset)
+        inside = block.contains(_SCAN.points(index))
+        untouched = ~inside & ~corner
+        assert np.array_equal(written[untouched], source[untouched]), index
+        assert len(np.unique(written[corner])) == 1, index
+    assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
+    assert report["redaction_review"] is not None

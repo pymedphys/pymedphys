@@ -50,6 +50,16 @@ the rest for one instance:
   option's cleaner cleans, such as Allergies (0010,2110) under Retain
   Patient Characteristics, is left to that cleaner, and what it leaves
   pending is not cleaned here (D-038).
+- Under the Retain Safe Private Option, each value of private text that a
+  safe private rule retains, which the plan gives C
+  (:mod:`~pymedphys._dicom.deidentify.retained_private`), is cleaned in the
+  same way by the reviewed descriptors list's decisions on its private
+  attribute's key (:attr:`~.walker.InstancePlan.private_texts`), never by
+  the technique vocabulary, where the edits collected it as its VR and
+  character set read it. Every other such value, including one read as
+  ISO 8859-1 since no Specific Character Set applies, is removed, as it is
+  without Clean Descriptors, and so is a private creator that the
+  instance kept only for text that is removed.
 - Every other attribute given C takes its action under the policy without
   Clean Descriptors. Where that action removes or replaces it, the instance
   still satisfies the option, since PS3.15 E.3.5 specifies what the option
@@ -72,6 +82,7 @@ from __future__ import annotations
 
 import dataclasses
 import functools
+import types
 from collections.abc import Callable, Collection, Mapping, Sequence
 
 from pymedphys._nomenclature import roi_list, tg263
@@ -81,11 +92,12 @@ from .file_layout import ElementPath
 from .policy import Policy, compose_custom_policy, compose_policy
 from .qc_pack import RoiNameOutcome
 from .reasons import DescriptorReason, HeldRoiName
+from .retained_private import creator_of, is_private, is_private_creator
 from .reviewed_descriptors import (
     CleanedDescriptor,
     ReviewedDescriptors,
     clean_descriptor_values,
-    descriptor_attributes,
+    descriptor_vr,
 )
 from .reviewed_descriptors import Outcome as DescriptorOutcome
 from .reviewed_roi_names import (
@@ -98,9 +110,12 @@ from .reviewed_roi_names import (
 from .roi_names import InstitutionalNames, RoiNameVocabulary
 from .run_qc import DescriptorMaterial, RetainedText, RoiNameMaterial
 from .technique_descriptors import TechniqueVocabulary, load_technique_vocabulary
+from .values import vm_problem
 from .walker import InstancePlan
 
 CLEAN_DESCRIPTORS = "clean_descriptors"
+# No private text to clean.
+_NO_PRIVATE_TEXTS: Mapping[ElementPath, str] = types.MappingProxyType({})
 _ROI_SEQUENCE = "(3006,0020)"
 _ROI_NAME = "(3006,0026)"
 # Identifiers that are not person names: Patient ID, Issuer of Patient ID,
@@ -273,6 +288,8 @@ def clean_descriptors(  # pylint: disable = too-many-locals
     fallback: Callable[[], InstanceEdits],
     *,
     cleaned_elsewhere: Collection[str],
+    private_texts: Mapping[ElementPath, str] = _NO_PRIVATE_TEXTS,
+    private_text_vms: Mapping[ElementPath, str] = _NO_PRIVATE_TEXTS,
 ) -> CleanedDescriptors:
     """Settle each edit that the policy's C leaves pending in one instance.
 
@@ -296,6 +313,12 @@ def clean_descriptors(  # pylint: disable = too-many-locals
         them that its cleaner left pending is not cleaned, so it takes its
         action without Clean Descriptors, which is that other option's C, so
         it is left unsettled, as for Retain Patient Characteristics (D-038).
+    private_texts : mapping of ElementPath to str, optional
+        The key of each private element whose text the plan cleans, from
+        :attr:`~.walker.InstancePlan.private_texts`. Defaults to none.
+    private_text_vms : mapping of ElementPath to str, optional
+        The VM that the decoded values of each must meet, from
+        :attr:`~.walker.InstancePlan.private_text_vms`. Defaults to none.
 
     Raises
     ------
@@ -311,10 +334,12 @@ def clean_descriptors(  # pylint: disable = too-many-locals
     names = [edit for edit in pending if _is_roi_name(edit.path)]
     others = [edit for edit in pending if not _is_roi_name(edit.path)]
     identifiers = _identifiers(edits)
-    texts_of = _descriptor_texts(edits, [edit.path for edit in others])
+    texts_of = _descriptor_texts(
+        edits, [edit.path for edit in others], private_texts, private_text_vms
+    )
     described = {
         edit.path: clean_descriptor_values(
-            edit.path.tag,
+            private_texts.get(edit.path, edit.path.tag),
             texts_of[edit.path],
             cleaning.reviewed_descriptors,
             identifiers=identifiers,
@@ -356,8 +381,10 @@ def clean_descriptors(  # pylint: disable = too-many-locals
     settled.update(cleaned)
     others = [edit for edit in others if edit.path not in cleaned]
     if others:
-        instead = _fallen_back(others, fallback())
+        without = fallback()
+        instead = _fallen_back(others, without)
         settled.update(instead)
+        settled.update(_creators_left(edits, settled, without))
         # A descriptor that its action without the option removes or
         # replaces still meets it, since E.3.5 specifies what the option
         # removes, not what it retains; one that the action keeps does not.
@@ -368,7 +395,15 @@ def clean_descriptors(  # pylint: disable = too-many-locals
         # A cleaned descriptor in a sequence that another's action removes
         # (D-020) goes with it.
         applied = path in cleaned and settled[path] is cleaned[path]
-        qc.append(DescriptorMaterial(path, tuple(texts_of[path]), outcomes, applied))
+        qc.append(
+            DescriptorMaterial(
+                path,
+                tuple(texts_of[path]),
+                outcomes,
+                applied,
+                private_texts.get(path),
+            )
+        )
         kept = [
             result.value
             for result in outcomes
@@ -377,6 +412,17 @@ def clean_descriptors(  # pylint: disable = too-many-locals
         if kept:
             retained.add(path)
             qc.extend(RetainedText(value, path) for value in kept)
+    # The plan collects each private creator that it keeps where it cleans
+    # private text, since a creator can be removed with that text; one that
+    # is still written is retained.
+    collected = {value.source for value in edits.source_values}
+    retained.update(
+        edit.path
+        for edit in edits.edits
+        if edit.path in collected
+        and is_private_creator(edit.path.tag)
+        and settled.get(edit.path, edit).kind is not EditKind.REMOVE
+    )
     if names:
         # Only once the instance is settled, so that a refused instance adds
         # nothing to the review.
@@ -433,28 +479,38 @@ def _identifiers(edits: InstanceEdits) -> list[str]:
 
 
 def _descriptor_texts(
-    edits: InstanceEdits, paths: Sequence[ElementPath]
+    edits: InstanceEdits,
+    paths: Sequence[ElementPath],
+    private_texts: Mapping[ElementPath, str] = _NO_PRIVATE_TEXTS,
+    private_text_vms: Mapping[ElementPath, str] = _NO_PRIVATE_TEXTS,
 ) -> dict[ElementPath, list[str]]:
     """Return the values of each free-text descriptor that cleaning can read.
 
     A descriptor is read where the edits collected its decoded source value
-    in the VR that the data dictionary gives it, split at backslashes where
-    that VR holds several values. Any other, such as one read as UN, takes
-    its action without the option.
+    in the VR that the data dictionary gives it, or, for private text, its
+    rule, split at backslashes where that VR holds several values. Any
+    other, such as one read as UN, private text read as ISO 8859-1, or
+    private text whose decoded values do not meet its rule's VM, takes its
+    action without the option.
     """
-    attributes = descriptor_attributes()
     sources = {value.source: value for value in edits.source_values}
+    guessed = frozenset(edits.read_as_latin_1)
     texts = {}
     for path in paths:
         source = sources.get(path)
-        vr = attributes.get(path.tag)
-        if source is None or vr is None or source.vr != vr:
+        vr = descriptor_vr(private_texts.get(path, path.tag))
+        if source is None or vr is None or source.vr != vr or path in guessed:
             continue
         if not isinstance(source.value, str):
             continue
-        texts[path] = (
-            source.value.split("\\") if vr in _MULTI_VALUED else [source.value]
-        )
+        values = source.value.split("\\") if vr in _MULTI_VALUED else [source.value]
+        vm = private_text_vms.get(path)
+        # The plan counted the raw bytes, at each 5CH, which a character of
+        # a multi-byte character set can hold.
+        count = len(values) if source.value else 0
+        if vm is not None and vm_problem(vm, count) is not None:
+            continue
+        texts[path] = values
     return texts
 
 
@@ -478,7 +534,8 @@ def kept_descriptors(
     So does a kept value in a sequence that also holds an attribute given C
     that cleaning would not write, since that attribute's action without the
     option may remove the sequence with both (D-020), which only an instance
-    that is written settles.
+    that is written settles. A private creator that the plan keeps is left
+    out where something else in its block would be written for certain.
 
     Parameters
     ----------
@@ -503,12 +560,15 @@ def kept_descriptors(
     ]
     identifiers = _identifiers(edits)
     texts_of = _descriptor_texts(
-        edits, [path for path in paths if path.tag not in cleaned_elsewhere]
+        edits,
+        [path for path in paths if path.tag not in cleaned_elsewhere],
+        plan.private_texts,
+        plan.private_text_vms,
     )
     written, kept = set(), set()
     for path, texts in texts_of.items():
         results = clean_descriptor_values(
-            path.tag,
+            plan.private_texts.get(path, path.tag),
             texts,
             cleaning.reviewed_descriptors,
             identifiers=identifiers,
@@ -522,11 +582,28 @@ def kept_descriptors(
         ):
             kept.add(path)
     fallen_back = [path for path in paths if path not in written]
-    return frozenset(
-        path
-        for path in kept
-        if not any(_shares_a_sequence(path, other) for other in fallen_back)
-    )
+
+    def stays(path: ElementPath) -> bool:
+        return not any(_shares_a_sequence(path, other) for other in fallen_back)
+
+    # A kept private creator, which the plan collects where it cleans
+    # private text, is retained where something else in its block would be
+    # written for certain.
+    holding = {
+        creator_of(element.path)
+        for element in plan.elements
+        if element.action != "X"
+        and is_private(element.path.tag)
+        and not is_private_creator(element.path.tag)
+        and (element.path in written or element.path not in plan.private_texts)
+        and stays(element.path)
+    }
+    creators = {
+        element.path
+        for element in plan.elements
+        if element.action == "K" and element.path in holding
+    }
+    return frozenset(path for path in kept if stays(path)) | frozenset(creators)
 
 
 def _shares_a_sequence(path: ElementPath, other: ElementPath) -> bool:
@@ -606,6 +683,40 @@ def _fallen_back(
                 (path, by_path[path]) for path in by_path if _within(path, removed)
             )
     return settled
+
+
+def _creators_left(
+    edits: InstanceEdits,
+    settled: Mapping[ElementPath, Edit],
+    fallback: InstanceEdits,
+) -> dict[ElementPath, Edit]:
+    """Return the fallback's edit of each private creator kept only for text removed.
+
+    A private creator is kept only for what its block keeps (D-035), so
+    one that the plan kept for private text to clean, but whose block keeps
+    nothing once that text takes its action without the option, takes the
+    fallback's action too. Only a creator that the fallback does not keep
+    can be.
+    """
+    final = {edit.path: settled.get(edit.path, edit) for edit in edits.edits}
+    removed = {
+        edit.path: edit for edit in fallback.edits if edit.kind is EditKind.REMOVE
+    }
+    holding = {
+        (path.items, path.tag[1:5], path.tag[6:8])
+        for path, edit in final.items()
+        if edit.kind is not EditKind.REMOVE
+        and not is_private_creator(path.tag)
+        and int(path.tag[6:10], 16) >= 0x1000
+    }
+    return {
+        path: removed[path]
+        for path, edit in final.items()
+        if path in removed
+        and is_private_creator(path.tag)
+        and edit.kind is not EditKind.REMOVE
+        and (path.items, path.tag[1:5], path.tag[8:10]) not in holding
+    }
 
 
 def _removed_sequence(

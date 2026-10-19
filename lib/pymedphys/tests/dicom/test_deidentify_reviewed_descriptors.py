@@ -249,6 +249,8 @@ GOOD = {
         [],
         {**GOOD, "format": "pymedphys-deid-reviewed-descriptors/0"},
         {**GOOD, "format": "pymedphys-deid-reviewed-roi-names/1"},
+        {**GOOD, "format": []},
+        {**GOOD, "format": {}},
         {**GOOD, "extra": 1},
         {"format": reviewed.FORMAT},
         {**GOOD, "attributes": []},

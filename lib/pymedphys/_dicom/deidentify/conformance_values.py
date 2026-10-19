@@ -593,25 +593,33 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
 
 def _pixel_data(statement: ConformanceStatement) -> str:
     """Return the sentences on how the engine writes Pixel Data."""
-    if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in statement.options:
+    visual = CLEAN_RECOGNIZABLE_VISUAL_FEATURES in statement.options
+    face = (
+        ", but for the face region that the Clean Recognizable Visual "
+        "Features Option sets to air in CT, and to zero dose or zero "
+        "activity in RT Dose and PET beside a defaced CT series, as its "
+        "condition for the option's code describes,"
+        if visual
+        else ""
+    )
+    if CLEAN_PIXEL_DATA not in statement.options:
         claims = (
             "claims Clean Recognizable Visual Features only for an instance "
             "that cannot show a face or whose source file a reviewer found "
             "free of one, and never Clean Pixel Data. "
+            if visual
+            else "claims neither Clean Pixel Data nor Clean Recognizable Visual "
+            "Features. "
         )
-        face = (
-            ", but for the face region that the Clean Recognizable Visual "
-            "Features Option sets to air in CT, and to zero dose or zero "
-            "activity in RT Dose and PET beside a defaced CT series, as its "
-            "condition for the option's code describes,"
-        )
-    else:
-        claims = (
-            "claims neither Clean Pixel Data nor Clean Recognizable Visual Features. "
-        )
-        face = ""
-    if CLEAN_PIXEL_DATA not in statement.options:
         return f"The engine writes Pixel Data (7FE0,0010) unchanged{face} and " + claims
+    claims = "claims Clean Pixel Data only for an instance " + (
+        "without top-level pixel data or whose regions a reviewer approved, "
+        "and Clean Recognizable Visual Features only for one that cannot show "
+        "a face or whose source file a reviewer found free of one. "
+        if visual
+        else "without top-level pixel data or whose regions a reviewer "
+        "approved, and never Clean Recognizable Visual Features. "
+    )
     return (
         "Under the Clean Pixel Data Option, the engine replaces each region "
         "of text that its text finder finds in each frame of native Pixel "
@@ -622,8 +630,12 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         "kept, so it is not always black. The engine holds every instance "
         "whose Pixel Data it searched for review, whether or not it found "
         "text, until a reviewer has checked the regions and looked for text "
-        "that the finder missed. It sequesters an instance with top-level "
-        "Float or Double Float Pixel Data, or whose Pixel Data are "
+        "that the finder missed. A later run of the same files, given the "
+        "reviewer's verdicts in the attested QC pack, blacks out exactly the "
+        "finder's regions that the reviewer accepted, with any that the "
+        "reviewer added, without the finder, and releases the instance, and it "
+        "sequesters an instance that the reviewer rejected. It sequesters an instance with "
+        "top-level Float or Double Float Pixel Data, or whose Pixel Data are "
         "compressed, have a photometric interpretation other than MONOCHROME1, MONOCHROME2, or "
         "8-bit RGB or another layout that cannot be read as frames of stored "
         "values, hold more than the value's sign in the bits above Bits "

@@ -157,6 +157,7 @@ def _clear_written_constants():
     residuals.written_constants.cache_clear()
     residuals._constant_keys.cache_clear()  # pylint: disable = protected-access
     residuals._PREPARED.clear()  # pylint: disable = protected-access
+    residuals._PLAN.clear()  # pylint: disable = protected-access
 
 
 @pytest.fixture(name="refused")

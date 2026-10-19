@@ -31,6 +31,7 @@ takes it in place of the paragraph on the removal of private attributes.
 from __future__ import annotations
 
 from .conformance import ConformanceStatement
+from .policy import CLEAN_DESCRIPTORS
 from .safe_private import Basis, SafePrivateList
 from .tcia_private_tags import PIN
 from .standard import PRIVATE_TAG_PATTERN, load_table_e3_10_1
@@ -134,8 +135,8 @@ def safe_private_section(statement: ConformanceStatement) -> list[str]:
         "creator is printable ISO 646 without a backslash, written as LO or "
         "without a VR: each attribute in its items takes its own rule, and the "
         "sequence is kept only where one of them, at any depth, other than a "
-        "private creator, is kept or replaced, and is otherwise removed with "
-        "everything in it. A creator that no rule names, kept for such a "
+        f"private creator, is {_retained(statement)}, and is otherwise removed "
+        "with everything in it. A creator that no rule names, kept for such a "
         "sequence, is among the retained strings that the QC pack lists for "
         "review.",
         "",
@@ -165,25 +166,84 @@ def safe_private_section(statement: ConformanceStatement) -> list[str]:
         "no form in PS3.6: a number or code string is checked as above and "
         "kept, a UID is replaced, and text and every value of another VR, "
         "such as a date, a name, or OB, OW, or UN data, are removed. "
+        f"{_declared_text(statement)}"
         "A sequence is parsed as above whatever the instance declares "
         "of it.",
         "",
-        "Every other private attribute is removed: one whose rule is for text, "
-        "since no reviewed cleaner cleans private text, or removes it; "
+        *_text(statement),
+        "Every other private attribute is removed: "
+        f"{_removed_text(statement)}"
         "one that is not such a sequence and that neither a rule nor the "
         "instance declares safe; one in a block without such a creator; one "
         "whose value does not pass its handling's check; and each element in "
         "an odd group that PS3.5 Section 7.8.1 does not allow. So an attribute "
         "that Deidentification Action (0008,0307) asks to be processed is "
         "removed, as E.3.10 allows. A private creator is kept where an "
-        "attribute of its block in the same data set or item is kept or "
-        "replaced, and removed otherwise. (0008,0300) itself is removed by its "
+        "attribute of its block in the same data set or item is kept, "
+        "replaced, or cleaned, and removed otherwise. (0008,0300) itself is "
+        "removed by its "
         "supplementary rule, as under every policy.",
         "",
         _listed(statement),
         "",
         *rows,
     ]
+
+
+def _retained(statement: ConformanceStatement) -> str:
+    """Return what the policy can do to an attribute that it retains."""
+    if CLEAN_DESCRIPTORS not in statement.options:
+        return "kept or replaced"
+    return "kept, replaced, or cleaned"
+
+
+def _declared_text(statement: ConformanceStatement) -> str:
+    """Return the sentence on declared text, under Clean Descriptors only."""
+    if CLEAN_DESCRIPTORS not in statement.options:
+        return ""
+    return "Declared text is cleaned as a rule's text is, below. "
+
+
+def _text(statement: ConformanceStatement) -> list[str]:
+    """Return the paragraph on cleaning private text, under Clean Descriptors only."""
+    if CLEAN_DESCRIPTORS not in statement.options:
+        return []
+    return [
+        "Since the policy also selects the Clean Descriptors Option, text that "
+        "a rule retains, of VR SH, LO, ST, LT, UC, or UT, is cleaned (C) as "
+        "the free-text descriptors of that Option are, where it is written "
+        "with the rule's "
+        "VR and with a number of values that the rule's VM allows: each value "
+        "is kept, mapped, or emptied by the custodian's reviewed descriptors "
+        "list, whose decision names the attribute by its private creator, "
+        "group, element within the block, and VR, as "
+        '`(0019,"GEMS_ACQU_01",9E) LO` does, since its tag depends on the '
+        "block that its creator reserves, and what a kept or mapped value "
+        "would write is checked for echoes of the instance's patient and other "
+        "person identifiers. The "
+        "technique vocabulary keeps no private text. The attribute is written "
+        "with what cleaning gives its values where every value is cleaned, at "
+        "least one is written with text, and no kept value is beside a mapped "
+        "or emptied one, and is otherwise removed, and its values are listed "
+        "in the QC pack for a reviewer to decide on for later runs. Text that "
+        "cannot be decoded in its character set, or that is outside ISO 646 "
+        "where no Specific Character Set applies, is removed.",
+        "",
+    ]
+
+
+def _removed_text(statement: ConformanceStatement) -> str:
+    """Return the clause on the private text that is removed."""
+    if CLEAN_DESCRIPTORS not in statement.options:
+        return (
+            "one whose rule is for text, since private text is cleaned only "
+            "under the Clean Descriptors Option; "
+        )
+    return (
+        "one whose rule is for text, but that is written without its VR or "
+        "with more values than its VM allows, or that cleaning does not "
+        "write; "
+    )
 
 
 def _source(statement: ConformanceStatement) -> list[str]:
