@@ -173,13 +173,14 @@ from .reviewed_roi_names import RoiNameCounts
 from .roi_names import Reason as RoiNameReason
 from .residuals import NotSearched, Omission, Unsearched, UnsearchedReason
 from .runtime import RuntimeEnvironment, runtime_environment
+from .safe_private import SafePrivateList
 from .scope import Disposition, UnsupportedIod, unsupported_iods
 from .source import SourceReason
 from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/19"
+FORMAT = "pymedphys-deid-release-report/20"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -923,6 +924,7 @@ def release_report(
     reviewed_descriptors: str | None = None,
     technique_vocabulary: str | None = None,
     text_finder: Mapping[str, object] | None = None,
+    safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     qc_review: AttestationRecord | None = None,
     face_review: str | None = None,
     face_blocks: FaceBlockCounts | None = None,
@@ -968,6 +970,11 @@ def release_report(
         :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
         gives them, or None, the default, without one. The report records
         only their digest.
+    safe_private_list : SafePrivateList, optional
+        Under the Retain Safe Private Option, the list whose rules settle
+        private attributes: the reviewed rules, the default, or TCIA's
+        Private Tag Dictionary. The report records which, and nothing
+        without the Option.
     qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord, optional
         The run's QC pack by its reference, with its attestation's outcome
         and the releaser's confirmations, from
@@ -1061,6 +1068,7 @@ def release_report(
             reviewed_descriptors=reviewed_descriptors,
             technique_vocabulary=technique_vocabulary,
             text_finder=text_finder,
+            safe_private_list=safe_private_list,
         ),
         runtime=runtime_environment(),
         qc_review=qc_review,
@@ -1165,6 +1173,15 @@ def _method_section(method: MethodDigestComponents) -> dict:
         ),
         "text_finder_digest": _optional_digest(
             "text_finder_digest", method.text_finder_digest
+        ),
+        "safe_private_list": (
+            None
+            if method.safe_private_list is None
+            else _code(
+                "safe_private_list",
+                method.safe_private_list,
+                (each.value for each in SafePrivateList),
+            )
         ),
         "generated_values_digest": _digest(
             "generated_values_digest", method.generated_values_digest

@@ -129,6 +129,10 @@ SHORTEST_FORM = 4
 # is found only where no digit or full stop is before it.
 DIGITS_ONLY = re.compile(r"[0-9.]+")
 DATE_DIGITS = 8
+# A file holds an encoded form only if it holds the form's first GRAM bytes,
+# so a set of each run of GRAM bytes in a file rules out most forms without
+# scanning the file for each.
+GRAM = 4
 CLEAN_DESCRIPTORS_CODE = ("113105", "DCM")
 PERFORMED_PROCEDURE_STEP_SEQUENCE = "(0008,1111)"
 IMAGE_COMMENTS = "(0020,4000)"
@@ -354,15 +358,27 @@ def _encodings(form):
     }
 
 
-def _holds(data, form):
+def _grams(data):
+    """Return each run of :data:`GRAM` bytes in a file's bytes."""
+    return frozenset(data[i : i + GRAM] for i in range(len(data) - GRAM + 1))
+
+
+def _within(encoded, data, grams):
+    """Return whether ``encoded`` is in ``data``, whose runs are ``grams``."""
+    return (len(encoded) < GRAM or encoded[:GRAM] in grams) and encoded in data
+
+
+def _holds(data, grams, form):
     """Return whether a file's bytes hold a form of a placement's values."""
     if DIGITS_ONLY.fullmatch(form):
         encoded = form.encode("ascii")
         # The search for the bytes alone is the quicker, and rarely finds them.
-        if encoded in data and re.search(rb"(?<![0-9.])" + re.escape(encoded), data):
+        if _within(encoded, data, grams) and re.search(
+            rb"(?<![0-9.])" + re.escape(encoded), data
+        ):
             return True
-        return form.encode("utf-16-le") in data
-    return any(encoded in data for encoded in _encodings(form))
+        return _within(form.encode("utf-16-le"), data, grams)
+    return any(_within(encoded, data, grams) for encoded in _encodings(form))
 
 
 def _instances(result, released):
@@ -381,23 +397,29 @@ def _markers_in(spec, corpus, instances, published):
     place, which are blanked, once for each place that holds one, before the
     instance is searched like every other published file.
     """
+    searched = [
+        (file.name, placement.path, _forms(placement))
+        for file in corpus.files
+        for placement in file.manifest.placements
+        if _searched(placement)
+    ]
+    for file_name, path, forms in searched:
+        assert forms, (file_name, path)
     found = []
     for name, data in published.items():
         if name in instances:
             data = _without_kept(data, corpus.files[instances[name]], spec)
+        grams = _grams(data)
         found.extend(
             (name, signature)
             for signature in MARKER_SIGNATURES
-            if any(encoded in data for encoded in _encodings(signature))
+            if any(_within(encoded, data, grams) for encoded in _encodings(signature))
         )
-        for file in corpus.files:
-            for placement in file.manifest.placements:
-                if not _searched(placement):
-                    continue
-                forms = _forms(placement)
-                assert forms, (file.name, placement.path)
-                if any(_holds(data, form) for form in forms):
-                    found.append((name, file.name, placement.path))
+        found.extend(
+            (name, file_name, path)
+            for file_name, path, forms in searched
+            if any(_holds(data, grams, form) for form in forms)
+        )
     return found
 
 

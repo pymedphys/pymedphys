@@ -64,6 +64,7 @@ from .residuals import NotSearched, Unsearched, UnsearchedReason
 from .iod_conformance import SourceGap
 from .reviewed_descriptors import DescriptorCounts, DescriptorReviewQueue
 from .reviewed_roi_names import CleanedRoiName, ReviewQueue, RoiNameCounts
+from .safe_private import SafePrivateList
 from .run_qc import (
     DescriptorMaterial,
     Dropped,
@@ -164,6 +165,12 @@ class ReleaseReporter:
         Clean Pixel Data Option applies, or None, the default, without one, as
         :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
+    safe_private_list : SafePrivateList, optional
+        Under the Retain Safe Private Option, the list whose rules settle
+        private attributes, the reviewed rules by default, as
+        :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        and :func:`~pymedphys._dicom.deidentify.conformance.conformance_statement`
+        take it.
     """
 
     def __init__(
@@ -178,6 +185,7 @@ class ReleaseReporter:
         face_blocks: FaceBlockCounts | None = None,
         redaction_review: str | None = None,
         text_finder: Mapping[str, object] | None = None,
+        safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     ):
         if not isinstance(policy, Policy):
             raise TypeError("policy must be a Policy")
@@ -190,6 +198,7 @@ class ReleaseReporter:
         self._face_blocks = face_blocks
         self._redaction_review = redaction_review
         self._text_finder = text_finder
+        self._safe_private_list = safe_private_list
 
     def __repr__(self) -> str:
         return "ReleaseReporter()"
@@ -264,7 +273,9 @@ class ReleaseReporter:
             gives.
         """
         statement = conformance.conformance_statement(
-            self._policy, vocabulary=self._vocabulary
+            self._policy,
+            vocabulary=self._vocabulary,
+            safe_private_list=self._safe_private_list,
         )
         return conformance_markdown.render_markdown(statement)
 
@@ -279,6 +290,7 @@ class ReleaseReporter:
             reviewed_descriptors=self._reviewed_descriptors,
             technique_vocabulary=self._technique_vocabulary,
             text_finder=self._text_finder,
+            safe_private_list=self._safe_private_list,
             **run,  # type: ignore[arg-type]
         )
 
