@@ -42,6 +42,7 @@ from pymedphys._dicom.deidentify import (
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.face_review import (
+    DOSE_IN_FACE_BLOCK_TEXT,
     UNDEFACED_TEXT,
     FaceReview,
     carries_visual_features,
@@ -173,17 +174,18 @@ def test_a_series_without_a_verdict_gives_no_digests(pack):
     assert not review.present
 
 
+@pytest.mark.parametrize("reason", [UNDEFACED_TEXT, DOSE_IN_FACE_BLOCK_TEXT])
 def test_a_verdict_of_absent_leaves_out_a_file_held_because_its_frame_was_defaced(
-    tmp_path,
+    tmp_path, reason
 ):
-    # Position 2, an RT Structure Set, say, was held beside the defaced
-    # slices that the reviewer judged, with its own outlines left as they
-    # were.
+    # Position 2, an RT Structure Set or RT Dose, say, was held beside the
+    # defaced slices that the reviewer judged, with its own outlines or dose
+    # left as they were.
     held = InstanceEntry(
         2,
         "/imports/2.dcm",
         Disposition.HELD_FOR_REVIEW,
-        reasons=("ReleaseReason.RT_DOSE", UNDEFACED_TEXT),
+        reasons=("ReleaseReason.RT_DOSE", reason),
         source_sha256=_digest(2),
         pixel_sha256=_pixel_digest(2),
     )
@@ -250,6 +252,9 @@ def test_a_pack_entry_without_its_reasons_gives_no_review(pack):
 def test_the_frame_hold_is_matched_as_the_run_words_it():
     assert UNDEFACED_TEXT == run_qc.reason_text(
         HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
+    )
+    assert DOSE_IN_FACE_BLOCK_TEXT == run_qc.reason_text(
+        HeldVisualFeatures(VisualFeaturesReason.DOSE_IN_FACE_BLOCK)
     )
 
 
@@ -751,7 +756,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/19"
+    assert report["format"] == "pymedphys-deid-release-report/20"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):

@@ -182,6 +182,10 @@ class VisualFeaturesReason(enum.Enum):
     # than the reviewed run did, such as a CT slice defaced since the
     # reviewer saw it as received, so the verdict is not of what it releases
     OTHER_PIXEL_DATA = "face-verdict-on-other-pixel-data"
+    # an RT Dose in the Frame of Reference of a CT series that the run
+    # defaces, whose dose in the series' face block is too great to set to
+    # zero there, so that it is written as received
+    DOSE_IN_FACE_BLOCK = "dose-in-face-block"
     # an RT Structure Set, RT Dose, or PET instance in the Frame of
     # Reference of a CT series that the run defaces, whose outline or pixel
     # data the run does not yet clean of the face, and which a reviewer may
