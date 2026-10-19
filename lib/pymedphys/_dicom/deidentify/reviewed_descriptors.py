@@ -491,6 +491,7 @@ def _read(path: pathlib.Path) -> dict[str, dict[str, ReviewedDescriptor]]:
     if (
         not isinstance(document, dict)
         or document.keys() != {"format", "attributes"}
+        or not isinstance(document["format"], str)
         or document["format"] not in _FORMATS
         or not isinstance(document["attributes"], dict)
     ):

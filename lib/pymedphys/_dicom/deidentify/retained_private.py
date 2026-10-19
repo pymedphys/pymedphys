@@ -264,12 +264,19 @@ class PrivatePlan:
     texts : mapping of ElementPath to str
         The key (:func:`~.reviewed_descriptors.private_descriptor`) of each
         private element whose text is cleaned.
+    text_vms : mapping of ElementPath to str
+        The VM of the rule of each private element whose text is cleaned,
+        which its decoded values are checked against, since its raw bytes
+        are counted before they are decoded.
     """
 
     actions: Mapping[ElementPath, str]
     vrs: Mapping[ElementPath, str]
     parsed: frozenset[ElementPath] = frozenset()
     texts: Mapping[ElementPath, str] = dataclasses.field(
+        default_factory=lambda: types.MappingProxyType({})
+    )
+    text_vms: Mapping[ElementPath, str] = dataclasses.field(
         default_factory=lambda: types.MappingProxyType({})
     )
 
@@ -333,6 +340,7 @@ def private_plan(
     vrs: dict[ElementPath, str] = {}
     parsed: set[ElementPath] = set()
     texts: dict[ElementPath, str] = {}
+    text_vms: dict[ElementPath, str] = {}
     creators: dict[_Block, str | None] = {}
     kept: set[_Block] = set()
     declarations = _declarations(source)
@@ -367,6 +375,7 @@ def private_plan(
                 texts[path] = private_descriptor(
                     group, creator, element & 0xFF, rule.vr
                 )
+                text_vms[path] = rule.vm
             if actions[path] != REMOVE:
                 kept.add(block)
                 if (
@@ -387,6 +396,7 @@ def private_plan(
         types.MappingProxyType(vrs),
         frozenset(parsed),
         types.MappingProxyType(texts),
+        types.MappingProxyType(text_vms),
     )
 
 

@@ -508,6 +508,42 @@ def test_text_that_an_instance_declares_safe_is_cleaned():
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")
+@pytest.mark.parametrize(
+    "multiplicity, value, written",
+    [
+        ([2], "AX\\T1", True),
+        # GBK writes U+4E57 as 81H 5CH, so its bytes count two values.
+        ([2], "\u4e57", False),
+        ([2, 0, 2], "AX\\T1\\\u4e57", False),
+    ],
+)
+def test_declared_text_is_cleaned_only_where_its_decoded_values_meet_the_vm(
+    multiplicity, value, written
+):
+    dataset = _slice((0x00191099, "LO", value))
+    dataset.SpecificCharacterSet = "GBK"
+    definition = pydicom.Dataset()
+    definition.add_new(0x00080308, "US", 0x99)
+    definition.add_new(0x00080309, "UL", multiplicity)
+    definition.add_new(0x0008030A, "CS", "LO")
+    item = pydicom.Dataset()
+    item.PrivateGroupReference = 0x0019
+    item.PrivateCreatorReference = GE
+    item.BlockIdentifyingInformationStatus = "SAFE"
+    item.add_new(0x00080310, "SQ", pydicom.Sequence([definition]))
+    dataset.PrivateDataElementCharacteristicsSequence = pydicom.Sequence([item])
+    key = '(0019,"GEMS_ACQU_01",99) LO'
+    reviewed = _reviewed(*((key, each, Review.KEEP) for each in ("AX", "T1", "\u4e57")))
+
+    plan = _plan(dataset)
+    result = _result(_transform(reviewed), dataset)
+
+    # The plan counts the raw bytes; cleaning counts the decoded values.
+    assert plan.private_texts == {ElementPath((), "(0019,1099)"): key}
+    assert ("(0019,1099)" in _private(_written(result))) is written
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01")
 def test_text_that_tcia_s_dictionary_keeps_is_cleaned():
     reviewed = _reviewed((SEQUENCE_NAME, "FSE", Review.KEEP))
     transform = _transform(reviewed, safe_private_list=SafePrivateList.TCIA)

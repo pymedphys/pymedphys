@@ -1172,6 +1172,7 @@ class InstanceTransform:
                     fallen_back,
                     cleaned_elsewhere=self._cleaned_elsewhere,
                     private_texts=plan.private_texts,
+                    private_text_vms=plan.private_text_vms,
                 )
             except DescriptorsRefused as refused:
                 withheld = retained | self._kept_descriptors(plan, edits)

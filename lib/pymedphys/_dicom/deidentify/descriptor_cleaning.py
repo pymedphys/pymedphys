@@ -110,6 +110,7 @@ from .reviewed_roi_names import (
 from .roi_names import InstitutionalNames, RoiNameVocabulary
 from .run_qc import DescriptorMaterial, RetainedText, RoiNameMaterial
 from .technique_descriptors import TechniqueVocabulary, load_technique_vocabulary
+from .values import vm_problem
 from .walker import InstancePlan
 
 CLEAN_DESCRIPTORS = "clean_descriptors"
@@ -288,6 +289,7 @@ def clean_descriptors(  # pylint: disable = too-many-locals
     *,
     cleaned_elsewhere: Collection[str],
     private_texts: Mapping[ElementPath, str] = _NO_PRIVATE_TEXTS,
+    private_text_vms: Mapping[ElementPath, str] = _NO_PRIVATE_TEXTS,
 ) -> CleanedDescriptors:
     """Settle each edit that the policy's C leaves pending in one instance.
 
@@ -314,6 +316,9 @@ def clean_descriptors(  # pylint: disable = too-many-locals
     private_texts : mapping of ElementPath to str, optional
         The key of each private element whose text the plan cleans, from
         :attr:`~.walker.InstancePlan.private_texts`. Defaults to none.
+    private_text_vms : mapping of ElementPath to str, optional
+        The VM that the decoded values of each must meet, from
+        :attr:`~.walker.InstancePlan.private_text_vms`. Defaults to none.
 
     Raises
     ------
@@ -329,7 +334,9 @@ def clean_descriptors(  # pylint: disable = too-many-locals
     names = [edit for edit in pending if _is_roi_name(edit.path)]
     others = [edit for edit in pending if not _is_roi_name(edit.path)]
     identifiers = _identifiers(edits)
-    texts_of = _descriptor_texts(edits, [edit.path for edit in others], private_texts)
+    texts_of = _descriptor_texts(
+        edits, [edit.path for edit in others], private_texts, private_text_vms
+    )
     described = {
         edit.path: clean_descriptor_values(
             private_texts.get(edit.path, edit.path.tag),
@@ -475,14 +482,16 @@ def _descriptor_texts(
     edits: InstanceEdits,
     paths: Sequence[ElementPath],
     private_texts: Mapping[ElementPath, str] = _NO_PRIVATE_TEXTS,
+    private_text_vms: Mapping[ElementPath, str] = _NO_PRIVATE_TEXTS,
 ) -> dict[ElementPath, list[str]]:
     """Return the values of each free-text descriptor that cleaning can read.
 
     A descriptor is read where the edits collected its decoded source value
     in the VR that the data dictionary gives it, or, for private text, its
     rule, split at backslashes where that VR holds several values. Any
-    other, such as one read as UN, or private text read as ISO 8859-1, takes
-    its action without the option.
+    other, such as one read as UN, private text read as ISO 8859-1, or
+    private text whose decoded values do not meet its rule's VM, takes its
+    action without the option.
     """
     sources = {value.source: value for value in edits.source_values}
     guessed = frozenset(edits.read_as_latin_1)
@@ -494,9 +503,14 @@ def _descriptor_texts(
             continue
         if not isinstance(source.value, str):
             continue
-        texts[path] = (
-            source.value.split("\\") if vr in _MULTI_VALUED else [source.value]
-        )
+        values = source.value.split("\\") if vr in _MULTI_VALUED else [source.value]
+        vm = private_text_vms.get(path)
+        # The plan counted the raw bytes, at each 5CH, which a character of
+        # a multi-byte character set can hold.
+        count = len(values) if source.value else 0
+        if vm is not None and vm_problem(vm, count) is not None:
+            continue
+        texts[path] = values
     return texts
 
 
@@ -549,6 +563,7 @@ def kept_descriptors(
         edits,
         [path for path in paths if path.tag not in cleaned_elsewhere],
         plan.private_texts,
+        plan.private_text_vms,
     )
     written, kept = set(), set()
     for path, texts in texts_of.items():

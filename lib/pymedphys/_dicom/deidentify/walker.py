@@ -334,12 +334,18 @@ class InstancePlan:
         by which each private element that the plan cleans is decided on;
         empty otherwise. A plain dictionary, so that the plan pickles; it is
         not to be changed.
+    private_text_vms : mapping of ElementPath to str
+        The VM of the rule of each private element that the plan cleans,
+        which its decoded values must meet; as ``private_texts`` otherwise.
     """
 
     elements: tuple[ElementPlan, ...]
     sequestrations: tuple[Sequestration, ...]
     # A mapping is not hashable, so it is left out of the hash.
     private_texts: Mapping[ElementPath, str] = dataclasses.field(
+        default_factory=dict, hash=False
+    )
+    private_text_vms: Mapping[ElementPath, str] = dataclasses.field(
         default_factory=dict, hash=False
     )
 
@@ -523,13 +529,14 @@ def _plan(
         elements.append(
             ElementPlan(path, vr, rule, action, None, consumers, removed_for, lapses)
         )
-    texts = {}
+    texts, vms = {}, {}
     if private is not None and private.texts:
         texts = {
             element.path: private.texts[element.path]
             for element in elements
             if element.action == "C" and element.path in private.texts
         }
+        vms = {path: private.text_vms[path] for path in texts}
     if texts:
         # Cleaning may remove a private creator that the plan keeps, with
         # the text that it was kept for, so each is collected; cleaning
@@ -543,7 +550,7 @@ def _plan(
             else element
             for element in elements
         ]
-    return InstancePlan(tuple(elements), tuple(sequestrations), texts), found
+    return InstancePlan(tuple(elements), tuple(sequestrations), texts, vms), found
 
 
 def _keeps_a_reference(plan: InstancePlan, source: SourceEvidence) -> bool:
