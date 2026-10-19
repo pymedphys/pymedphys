@@ -324,10 +324,32 @@ def test_an_argument_error_quotes_no_argument(tmp_path):
         ("(0010,0010)", None),
         ("0008103E", None),
         ("", None),
+        ('(0019,"GEMS_ACQU_01",9E) LO', '(0019,"GEMS_ACQU_01",9E) LO'),
+        ('(0019,"GEMS_ACQU_01",9e) LO', None),
+        ('(0019,"GEMS_ACQU_01",23) DS', None),
     ],
 )
 def test_an_attribute_is_named_by_its_tag_or_keyword(text, tag):
     assert command.attribute_tag(text) == tag
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01")
+def test_a_decision_on_private_text_is_recorded_by_its_key(tmp_path, custodian):
+    decisions = _csv(
+        tmp_path / "secretdir-decisions.csv",
+        "attribute,value,decision\r\n"
+        '"(0019,""GEMS_ACQU_01"",9E) LO",Quokka FSE,keep\r\n',
+    )
+    listed = custodian / "reviewed.json"
+
+    status, stdout, stderr = _run(listed, decisions)
+
+    assert status == command.EXIT_RECORDED
+    _assert_quotes_nothing(stdout, stderr)
+    opened = reviewed.ReviewedDescriptors.open(listed)
+    assert opened.get('(0019,"GEMS_ACQU_01",9E) LO', "Quokka FSE") == (
+        ReviewedDescriptor(Review.KEEP)
+    )
 
 
 def test_it_runs_as_a_module_of_the_private_package(tmp_path, custodian):

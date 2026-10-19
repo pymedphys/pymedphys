@@ -238,6 +238,13 @@ class TciaPrivateTags:
         creator without trailing spaces and NULs, group, and element within
         the block; one attribute can have a row for each of several VRs.
         Read-only.
+
+    Raises
+    ------
+    TciaPrivateTagError
+        If a key of ``top_level`` holds a creator with trailing spaces or
+        NULs, since the rules made from it would then be split between two
+        spellings of one creator.
     """
 
     pin: Pin
@@ -246,6 +253,15 @@ class TciaPrivateTags:
     top_level: Mapping[tuple[str, int, int], tuple[TciaPrivateTag, ...]] = (
         dataclasses.field(hash=False)
     )
+
+    def __post_init__(self) -> None:
+        if any(
+            creator != creator.rstrip(_CREATOR_PADDING)
+            for creator, _, _ in self.top_level
+        ):
+            raise TciaPrivateTagError(
+                "the rows at the top level are keyed by a creator with padding"
+            )
 
     def rows_for(
         self, group: int, private_creator: str, element: int

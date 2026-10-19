@@ -26,14 +26,20 @@ list (D-009). The file is read as the reviewed-names command reads its own
 
 - ``attribute``: the attribute, by its keyword, such as
   ``SeriesDescription``, or its tag, such as ``(0008,103E)``, which holds a
-  comma, so is quoted in the file, as ``"(0008,103E)"``;
+  comma, so is quoted in the file, as ``"(0008,103E)"``; or private text,
+  under the Retain Safe Private Option, by its key
+  (:func:`~.reviewed_descriptors.private_descriptor`), as the QC pack gives
+  it, such as ``(0019,"GEMS_ACQU_01",9E) LO``, which is quoted in the file
+  with each of its quotation marks doubled, as
+  ``"(0019,""GEMS_ACQU_01"",9E) LO"``;
 - ``value``: one value of the attribute, without padding;
 - ``decision``: ``keep``, ``map``, or ``empty``;
 - ``to``: for ``map``, the value to write instead; otherwise empty. The
   column may be left out of a file without a mapping.
 
 Only the attributes that
-:func:`~.reviewed_descriptors.descriptor_attributes` gives can be decided on.
+:func:`~.reviewed_descriptors.descriptor_attributes` gives, and private
+text, can be decided on.
 The list is started at ``LIST`` on first use, and never inside the PyMedPhys
 configuration directory or a directory given with ``--protect``. Recording is
 all or nothing, as for ROI Names: a value of one attribute given different
@@ -63,6 +69,7 @@ from .reviewed_descriptors import (
     ReviewedDescriptors,
     ReviewedDescriptorsError,
     descriptor_attributes,
+    is_private_descriptor,
 )
 from .reviewed_names_command import (
     EXIT_NOT_RECORDED,
@@ -151,8 +158,12 @@ def attribute_tag(text: str) -> str | None:
     """Return the tag of a descriptor attribute named by its tag or keyword, or None.
 
     A tag is given as ``(gggg,eeee)``, in either case; a keyword in its own
-    case.
+    case. Private text's key is given as
+    :func:`~.reviewed_descriptors.private_descriptor` writes it, and returned
+    as it is.
     """
+    if is_private_descriptor(text):
+        return text
     match = _TAG.fullmatch(text)
     tag = f"({match[1]},{match[2]})".upper() if match else _keywords().get(text)
     return tag if tag in descriptor_attributes() else None

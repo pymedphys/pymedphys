@@ -73,6 +73,7 @@ from __future__ import annotations
 import dataclasses
 import decimal
 import functools
+import types
 from collections.abc import Sequence
 from typing import cast
 
@@ -90,6 +91,21 @@ from .values import values_problem
 
 # A private UID, which the Retain Safe Private Option replaces, as written.
 _PRIVATE_UID = DictionaryAttribute("(gggg,eeee)", "", "", "UI", "1-n", "")
+# Private text that descriptor cleaning writes under the Retain Safe Private
+# Option, with the VMs that each text VR allows.
+_PRIVATE_TEXT = types.MappingProxyType(
+    {
+        vr: DictionaryAttribute("(gggg,eeee)", "", "", vr, vm, "")
+        for vr, vm in (
+            ("SH", "1-n"),
+            ("LO", "1-n"),
+            ("UC", "1-n"),
+            ("ST", "1"),
+            ("LT", "1"),
+            ("UT", "1"),
+        )
+    }
+)
 # The codecs of the Default Character Repertoire, as pydicom names them.
 DEFAULT_CODECS = ("iso8859",)
 # Not a Defined Term, but it names the Default Character Repertoire.
@@ -868,7 +884,9 @@ def new_element(
     :class:`ElementValue`, or a sequence's items; and ``codecs`` are those of
     the data set it is written in. A private UID, which the dictionary does
     not list, takes VR UI and VM 1-n, as the Retain Safe Private Option
-    replaces it. It raises :class:`ValueError` without the value for any
+    replaces it, and private text of VR SH, LO, ST, LT, UC, or UT, which
+    descriptor cleaning writes under that Option, the VMs that its VR
+    allows. It raises :class:`ValueError` without the value for any
     other VR, an item that is not a data set, or a problem that
     :func:`written_value_problem` finds. A LUT Descriptor (0028,3002) or Red,
     Green, or Blue Palette Color Lookup Table Descriptor (0028,1101-1103) of
@@ -876,8 +894,8 @@ def new_element(
     gives them.
     """
     attribute = dictionary_attribute(path.tag)
-    if attribute is None and vr == "UI" and is_private(path.tag):
-        attribute = _PRIVATE_UID
+    if attribute is None and is_private(path.tag):
+        attribute = _PRIVATE_TEXT.get(vr, _PRIVATE_UID if vr == "UI" else None)
     if attribute is None or vr not in attribute.vrs:
         raise ValueError(f"{path} does not have VR {vr} in the pinned data dictionary")
     value: object

@@ -138,6 +138,14 @@ def test_rows_whose_creators_differ_only_by_padding_are_keyed_together():
     assert list(parsed.top_level) == [("ACME 1.0", 0x0011, 0x01)]
 
 
+def test_rows_keyed_by_a_padded_creator_are_refused():
+    parsed = _parse(('(0011,"ACME 1.0",01)', "Acme Count", "US", "k"))
+    padded = {("ACME 1.0 ", 0x0011, 0x01): parsed.top_level[("ACME 1.0", 0x0011, 0x01)]}
+
+    with pytest.raises(tcia_private_tags.TciaPrivateTagError, match="padding"):
+        tcia_private_tags.TciaPrivateTags(parsed.pin, parsed.rows, padded)
+
+
 def test_a_creator_in_upper_case_matches_only_upper_case(dictionary):
     upper = dictionary.rows_for(0x2005, "PHILIPS MR IMAGING DD 001", 0x35)
     mixed = dictionary.rows_for(0x2005, "Philips MR Imaging DD 001", 0x35)

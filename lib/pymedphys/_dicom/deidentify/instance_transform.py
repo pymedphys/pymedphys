@@ -1288,6 +1288,8 @@ class InstanceTransform:
                     self.review_queue,
                     fallen_back,
                     cleaned_elsewhere=self._cleaned_elsewhere,
+                    private_texts=plan.private_texts,
+                    private_text_vms=plan.private_text_vms,
                 )
             except DescriptorsRefused as refused:
                 withheld = retained | self._kept_descriptors(plan, edits)
@@ -1309,7 +1311,7 @@ class InstanceTransform:
         qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         chosen = {CLEAN_DESCRIPTORS} if satisfied else set()
         try:
-            qc = (*qc, *_retained(source, plan))
+            qc = (*qc, *_retained(source, plan, edits))
             redaction, undefaced, reviewed = self._black_out(
                 data, source, dataset, defacing, dose
             )
@@ -1420,8 +1422,14 @@ def transform_for(
     )
 
 
-def _retained(source: SourceEvidence, plan: InstancePlan) -> tuple[object, ...]:
+def _retained(
+    source: SourceEvidence, plan: InstancePlan, edits: InstanceEdits
+) -> tuple[object, ...]:
     """Return the QC material of each string that the plan keeps (D-017).
+
+    A string that ``edits`` removes after all, such as a private creator
+    kept only for private text that cleaning did not write (D-035), is not
+    written, so it is left out.
 
     Raises
     ------
@@ -1432,7 +1440,8 @@ def _retained(source: SourceEvidence, plan: InstancePlan) -> tuple[object, ...]:
     kept = read_values(source, plan, retained_paths(plan))
     if None in kept.values():
         raise _Refused(TransformReason.UNREVIEWABLE_RETAINED_TEXT)
-    return retained_text(plan, kept)
+    removed = {edit.path for edit in edits.edits if edit.kind is EditKind.REMOVE}
+    return tuple(item for item in retained_text(plan, kept) if item.path not in removed)
 
 
 @dataclasses.dataclass(frozen=True)

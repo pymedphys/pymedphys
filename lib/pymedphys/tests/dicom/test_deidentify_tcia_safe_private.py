@@ -91,8 +91,8 @@ DICTIONARY = (
     ('(0011,"ACME 1.0 ",0B)', "Acme Gain", "US", "k"),
     ('(0011,"ACME 1.0 ",0C)', "Acme Bias", "US", "d"),
     ('(0011,"ACME 1.0",0C)', "Acme Bias", "US", "k"),
-    ('(0011,"ACME 1.0",0D)', "Acme Offset", "US", "k"),
-    ('(0011,"ACME 1.0 ",0D)', "Acme Offset", "US", "d"),
+    ('(0011,"ACME 1.0",0D)', "Acme Shift", "US", "k"),
+    ('(0011,"ACME 1.0 ",0D)', "Acme Shift", "US", "d"),
     ('(0011,"ACME 1.0 ",0E)', "Acme Scale", "US", "k"),
     ('(0011,"ACME 1.0",0E)', "Acme Scale", "US", "d"),
     ('(0011,"ACMÉ 1.0",01)', "Acme Accented", "US", "k"),
@@ -131,7 +131,7 @@ def test_a_kept_row_takes_the_handling_of_its_vr_and_one_value():
 
     assert (count.vr, count.vm, count.handling) == ("US", "1", Handling.NUMERIC)
     assert (count.basis, count.note) == (Basis.TCIA, "Acme Count")
-    # Text is kept by the dictionary, but no reviewed cleaner cleans it.
+    # Text is kept by the dictionary, to be cleaned under Clean Descriptors.
     assert label.handling is Handling.TEXT
     assert count in rules.retained() and label in rules.retained()
 
@@ -224,7 +224,7 @@ def test_the_shipped_dictionary_gives_tcia_rules():
     # A reviewed rule keeps it; TCIA's dictionary does not.
     assert _rule(reviewed, SHAPE).handling is Handling.CODE
     assert _rule(rules, SHAPE, "CS").handling is Handling.REMOVE
-    # No creator is spelt two ways that differ only by padding.
+    # No attribute's creator is spelt two ways that differ only by padding.
     spelt = {
         (step.private_creator, step.group, step.element)
         for (step, *nested) in (row.path for row in tags.rows)

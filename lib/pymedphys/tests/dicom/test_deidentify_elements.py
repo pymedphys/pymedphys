@@ -1529,7 +1529,7 @@ def test_a_written_value_in_its_character_set_has_no_problem(vr, values, codecs)
 
 @pytest.mark.parametrize(
     "tag, vr",
-    [("(0010,0010)", "LO"), ("(0028,0120)", "OW"), ("(0009,1010)", "LO")],
+    [("(0010,0010)", "LO"), ("(0028,0120)", "OW"), ("(0009,1010)", "DS")],
     ids=["not-the-pinned-vr", "not-an-alternative", "not-in-the-dictionary"],
 )
 def test_a_new_element_takes_only_a_vr_the_pinned_dictionary_gives(tag, vr):
