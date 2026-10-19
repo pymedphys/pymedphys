@@ -48,7 +48,10 @@ Every element whose value is removed or replaced, a descendant of a removed
 sequence included, is collected for the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`), whatever its VR: what
 is searched, and what is listed as not searched, is for that search's own
-contract to decide. A sequence holds no value of its own to collect. The plan
+contract to decide. A sequence holds no value of its own to collect. So is
+each private creator that the plan keeps where it cleans private text,
+since cleaning may remove a creator with the text that it was kept for;
+cleaning leaves out each creator that it writes. The plan
 records the VR that the element is read by, as
 :attr:`~pymedphys._dicom.deidentify.file_layout.Location.vr` gives it: as
 written, or, in implicit VR and in place of UN, the one VR that the pinned
@@ -192,7 +195,8 @@ class Consumer(enum.Enum):
     # a dummy value, which must differ from the source's (D-021)
     DUMMY_COMPARISON = "dummy-comparison"
     CLEANING = "cleaning"  # C
-    # a value removed or replaced, to search the output for
+    # a value removed or replaced, or a private creator that cleaning may
+    # remove, to search the output for
     RESIDUAL_COLLECTION = "residual-collection"
 
 
@@ -526,6 +530,19 @@ def _plan(
             for element in elements
             if element.action == "C" and element.path in private.texts
         }
+    if texts:
+        # Cleaning may remove a private creator that the plan keeps, with
+        # the text that it was kept for, so each is collected; cleaning
+        # leaves out each that it writes (D-027).
+        elements = [
+            dataclasses.replace(
+                element,
+                consumers=element.consumers | {Consumer.RESIDUAL_COLLECTION},
+            )
+            if element.action == "K" and is_private_creator(element.path.tag)
+            else element
+            for element in elements
+        ]
     return InstancePlan(tuple(elements), tuple(sequestrations), texts), found
 
 

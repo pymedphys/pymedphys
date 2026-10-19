@@ -92,7 +92,7 @@ from .file_layout import ElementPath
 from .policy import Policy, compose_custom_policy, compose_policy
 from .qc_pack import RoiNameOutcome
 from .reasons import DescriptorReason, HeldRoiName
-from .retained_private import is_private_creator
+from .retained_private import creator_of, is_private, is_private_creator
 from .reviewed_descriptors import (
     CleanedDescriptor,
     ReviewedDescriptors,
@@ -405,6 +405,17 @@ def clean_descriptors(  # pylint: disable = too-many-locals
         if kept:
             retained.add(path)
             qc.extend(RetainedText(value, path) for value in kept)
+    # The plan collects each private creator that it keeps where it cleans
+    # private text, since a creator can be removed with that text; one that
+    # is still written is retained.
+    collected = {value.source for value in edits.source_values}
+    retained.update(
+        edit.path
+        for edit in edits.edits
+        if edit.path in collected
+        and is_private_creator(edit.path.tag)
+        and settled.get(edit.path, edit).kind is not EditKind.REMOVE
+    )
     if names:
         # Only once the instance is settled, so that a refused instance adds
         # nothing to the review.
@@ -509,7 +520,8 @@ def kept_descriptors(
     So does a kept value in a sequence that also holds an attribute given C
     that cleaning would not write, since that attribute's action without the
     option may remove the sequence with both (D-020), which only an instance
-    that is written settles.
+    that is written settles. A private creator that the plan keeps is left
+    out where something else in its block would be written for certain.
 
     Parameters
     ----------
@@ -555,11 +567,28 @@ def kept_descriptors(
         ):
             kept.add(path)
     fallen_back = [path for path in paths if path not in written]
-    return frozenset(
-        path
-        for path in kept
-        if not any(_shares_a_sequence(path, other) for other in fallen_back)
-    )
+
+    def stays(path: ElementPath) -> bool:
+        return not any(_shares_a_sequence(path, other) for other in fallen_back)
+
+    # A kept private creator, which the plan collects where it cleans
+    # private text, is retained where something else in its block would be
+    # written for certain.
+    holding = {
+        creator_of(element.path)
+        for element in plan.elements
+        if element.action != "X"
+        and is_private(element.path.tag)
+        and not is_private_creator(element.path.tag)
+        and (element.path in written or element.path not in plan.private_texts)
+        and stays(element.path)
+    }
+    creators = {
+        element.path
+        for element in plan.elements
+        if element.action == "K" and element.path in holding
+    }
+    return frozenset(path for path in kept if stays(path)) | frozenset(creators)
 
 
 def _shares_a_sequence(path: ElementPath, other: ElementPath) -> bool:

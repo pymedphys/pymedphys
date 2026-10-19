@@ -320,8 +320,10 @@ def test_private_text_that_a_reviewer_keeps_is_kept_with_its_creator():
     assert [r.outcome for r in material.results] == [Outcome.KEPT]
     assert RetainedText("FSE-XL", TEXT) in result.qc
     # Its source is left out of the residual search, as a kept descriptor's
-    # is, so the kept value is not found in what is written.
+    # is, so the kept value is not found in what is written; so is its
+    # creator's.
     assert TEXT not in _collected(result)
+    assert CREATOR not in _collected(result)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")
@@ -369,7 +371,8 @@ def test_private_text_that_no_reviewer_decided_on_is_removed_and_listed():
     (material,) = _material(result)
     assert material.attribute == SEQUENCE_NAME
     assert material.sources == ("SENTINEL",) and not material.applied
-    assert TEXT in _collected(result)
+    # The creator removed with it is searched for, as a removed one is.
+    assert {TEXT, CREATOR} <= set(_collected(result))
     assert [(r.outcome, r.held_because) for r in material.results] == [
         (Outcome.HELD, Held.UNREVIEWED)
     ]
@@ -386,9 +389,10 @@ def test_a_creator_removed_with_its_text_is_not_listed_as_retained():
 def test_a_creator_is_kept_for_what_else_its_block_keeps():
     dataset = _slice((0x00191023, "DS", "39.375"), (0x0019109E, "LO", "SENTINEL"))
 
-    written = _written(_result(_transform(), dataset))
+    result = _result(_transform(), dataset)
 
-    assert _private(written) == {"(0019,0010)": GE, "(0019,1023)": "39.375"}
+    assert _private(_written(result)) == {"(0019,0010)": GE, "(0019,1023)": "39.375"}
+    assert CREATOR not in _collected(result)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")
@@ -521,14 +525,18 @@ def test_a_withheld_instance_leaves_out_only_private_text_that_would_be_kept():
     # the profile removes them, so the instance is withheld before cleaning.
     reviewed = _reviewed((SEQUENCE_NAME, "FSE", Review.KEEP))
     kept, unreviewed = _named("FSE"), _named("SENTINEL")
-    for dataset in (kept, unreviewed):
+    held = _slice((0x00191023, "DS", "39.375"), (0x0019109E, "LO", "SENTINEL"))
+    datasets = (kept, unreviewed, held)
+    for dataset in datasets:
         dataset.ResponsiblePerson = "ROLE^PERSON"
         dataset.ResponsibleOrganization = "SENTINEL ORGANISATION"
 
-    results = [_result(_transform(reviewed), each) for each in (kept, unreviewed)]
+    results = [_result(_transform(reviewed), each) for each in datasets]
 
     assert all(isinstance(result, run.Sequestered) for result in results)
-    assert [TEXT in _collected(result) for result in results] == [False, True]
+    assert [TEXT in _collected(result) for result in results] == [False, True, True]
+    # The creator is left out only where its block would still be written.
+    assert [CREATOR in _collected(r) for r in results] == [False, True, False]
 
 
 def test_the_qc_pack_and_report_name_private_text_by_its_key():

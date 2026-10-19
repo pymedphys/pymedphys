@@ -221,6 +221,15 @@ def is_private_creator(tag: str) -> bool:
     return is_private(tag) and 0x0010 <= int(tag[6:10], 16) <= 0x00FF
 
 
+def creator_of(path: ElementPath) -> ElementPath:
+    """Return the path of the private creator that reserves an element's block.
+
+    It is in the same data set or item, at (gggg,00bb) for an element at
+    (gggg,bbee) (PS3.5 Section 7.8.1).
+    """
+    return ElementPath(path.items, f"({path.tag[1:5]},00{path.tag[6:8]})")
+
+
 @dataclasses.dataclass(frozen=True)
 class _Declaration:
     """What an instance's (0008,0300) says of the elements of one block.
