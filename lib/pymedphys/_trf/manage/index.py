@@ -98,9 +98,7 @@ def file_already_in_index(indexed_filepath, to_be_indexed_filepath, filehash):
             "Indexed logfile can't be found in its declared location."
         )
 
-    try:
-        assert new_hash == filehash
-    except AssertionError:
+    if new_hash != filehash:
         raise AssertionError("The located file doesn't agree with the index hash.")
 
     print("Already exists in index")
