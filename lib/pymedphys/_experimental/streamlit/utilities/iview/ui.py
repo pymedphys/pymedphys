@@ -130,7 +130,7 @@ def iview_and_icom_filter_and_align(
                 )
             ).configure_point(size=10)
 
-            st.altair_chart(device_angle_chart, use_container_width=True)
+            st.altair_chart(device_angle_chart, width="stretch")
 
     if advanced_mode:
         field_size_chart = (
@@ -146,7 +146,7 @@ def iview_and_icom_filter_and_align(
             .properties(title="iCom Field Size")
             .interactive(bind_x=False)
         )
-        st.altair_chart(field_size_chart, use_container_width=True)
+        st.altair_chart(field_size_chart, width="stretch")
 
         st.write(icom_datasets)
 
