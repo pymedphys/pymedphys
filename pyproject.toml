@@ -55,8 +55,8 @@ user = [
   "matplotlib",
   "natsort",
   "numba",
-  "numpy>=1.26",
-  "pandas>=2.1.1",
+  "numpy>=2.0",
+  "pandas>=2.2.2",
   "plotly",
   "pydicom>=3.0.2",
   "pylibjpeg>=2.0",  # pydicom decodes JPEG 2000 and HTJ2K through it
@@ -117,14 +117,14 @@ all = ["pymedphys[user,ai,tests]"]
 # interpolation; SciPy the "scipy" option and unevenly spaced axes.
 gamma = [
   "numba",
-  "numpy>=1.26",
+  "numpy>=2.0",
   "scipy",
 ]
 # DICOM: pymedphys.dicom and the pymedphys dicom commands, including listen and
 # send. toml reads ~/.pymedphys/config.toml, which every command reads when it
 # exists.
 dicom = [
-  "numpy>=1.26",
+  "numpy>=2.0",
   "pydicom>=3.0.2",
   "pynetdicom",
   "scipy",
@@ -138,7 +138,7 @@ dicom = [
 # MPL-2.0 AND MIT, is installed. On Windows, ORT_DISABLE_TELEMETRY turns off
 # ONNX Runtime's telemetry only from 1.31, whose wheels moved from ETW to 1DS.
 text-detection = [
-  "numpy>=1.26",
+  "numpy>=2.0",
   "onnxruntime>=1.20; sys_platform != 'win32' and (sys_platform != 'darwin' or platform_machine != 'x86_64')",
   "onnxruntime>=1.31; sys_platform == 'win32'",
   "scipy",
@@ -147,14 +147,14 @@ text-detection = [
 # credentials that connect() asks for when none are given.
 mosaiq = [
   "keyring",
-  "numpy>=1.26",
-  "pandas>=2.1.1",
+  "numpy>=2.0",
+  "pandas>=2.2.2",
   "pymssql",
 ]
 
 # iCOM: pymedphys icom listen and Delivery.from_icom.
 icom = [
-  "numpy>=1.26",
+  "numpy>=2.0",
   "toml",
 ]
 # TRF: pymedphys.trf.read, Delivery.from_trf, and the trf to-csv and detect
@@ -162,8 +162,8 @@ icom = [
 # they need "pymedphys[trf,mosaiq]".
 trf = [
   "attrs",
-  "numpy>=1.26",
-  "pandas>=2.1.1",
+  "numpy>=2.0",
+  "pandas>=2.2.2",
   "python-dateutil",
   "toml",
 ]
@@ -191,7 +191,7 @@ docs = [
   "jupyter-book>=0.12.0,<2.0.0",
   "matplotlib",
   "numba",
-  "numpy>=1.26",
+  "numpy>=2.0",
   "pydicom>=3.0.2",
   "scipy",
   "sphinx-argparse",

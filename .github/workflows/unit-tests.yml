@@ -160,10 +160,9 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # The declared minimum versions of NumPy (1.26) and pandas (2.1.1) are
+  # The declared minimum versions of NumPy (2.0) and pandas (2.2.2) are
   # checked together, whichever matrix runs. Python 3.12 is the only supported
-  # version with wheels for both: NumPy 1.26 has none for Python 3.13 or later,
-  # and pandas 2.1.1 none for 3.13 or later or built against NumPy 2.
+  # version with wheels for both: neither has any for Python 3.13 or later.
   dependency-floors:
     name: NumPy and pandas minimum versions
     timeout-minutes: 30
@@ -187,20 +186,21 @@ jobs:
         id: tests
         shell: bash
         env:
-          NUMPY_FLOOR: '1.26.4'
-          PANDAS_FLOOR: '2.1.1'
+          NUMPY_FLOOR: '2.0.2'
+          PANDAS_FLOOR: '2.2.2'
         run: |
           set -euxo pipefail
           mkdir -p test-results
           # Reuse the locked environment and overlay NumPy and pandas, together
-          # with the locked packages that require NumPy 2, which the overlay
-          # resolves to their latest releases that accept the NumPy minimum.
-          # Invoke Python so it imports them from uv's overlay environment,
-          # and fail if the overlay did not take effect.
-          overlay=(uv run --no-sync --with "numpy==${NUMPY_FLOOR}" --with "pandas==${PANDAS_FLOOR}" --with scipy --with contourpy --with tifffile --with pylibjpeg-openjpeg --)
+          # with the locked packages that require a newer NumPy, which the
+          # overlay resolves to their latest releases that accept the NumPy
+          # minimum. Invoke Python so it imports them from uv's overlay
+          # environment, and fail if the overlay did not take effect.
+          overlay=(uv run --no-sync --with "numpy==${NUMPY_FLOOR}" --with "pandas==${PANDAS_FLOOR}" --with tifffile --)
           "${overlay[@]}" python -c 'import os, numpy, pandas; assert (numpy.__version__, pandas.__version__) == (os.environ["NUMPY_FLOOR"], os.environ["PANDAS_FLOOR"]), (numpy.__version__, pandas.__version__)'
           # Fail if an installed package's requirements are not met, such as
-          # a newly locked package that requires NumPy 2; add it to the overlay.
+          # a newly locked package that requires a newer NumPy; add it to the
+          # overlay.
           "${overlay[@]}" python - <<'EOF'
           import importlib.metadata
           import os

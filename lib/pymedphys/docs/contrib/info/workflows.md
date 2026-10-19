@@ -222,19 +222,19 @@ Fast unit tests with smart matrix strategy.
   - JUnit XML report generation
 
 The `dependency-floors` job runs the unit tests (`-m "not slow"`, with the
-data cache) at the declared minimum versions of NumPy (1.26.4) and pandas
-(2.1.1), alongside both the quick and full matrices. It runs on Ubuntu with
-Python 3.12, the only supported version with wheels for both: NumPy 1.26 has
-none for Python 3.13 or later, and pandas 2.1.1 none for 3.13 or later. It
-installs the same locked environment as the unit tests and overlays the two
-packages with `uv run --no-sync --with numpy==1.26.4 --with pandas==2.1.1`.
-The overlay also takes SciPy, contourpy, tifffile, and pylibjpeg-openjpeg,
-whose locked versions require NumPy 2, at their latest releases that accept
-NumPy 1.26. The job fails first if the overlay did not take effect, and then if
-any installed package's requirements are missing or not met, including those
-of the extras the job installs PyMedPhys with and of the extras that those
-requirements request; when a newly locked package requires NumPy 2, add it to
-the overlay. It uploads its JUnit report as `junit-dependency-floors`. A
+data cache) at the declared minimum versions of NumPy (2.0.2) and pandas
+(2.2.2), alongside both the quick and full matrices. It runs on Ubuntu with
+Python 3.12, the only supported version with wheels for both: neither has any
+for Python 3.13 or later. It installs the same locked environment as the unit
+tests and overlays the two packages with
+`uv run --no-sync --with numpy==2.0.2 --with pandas==2.2.2`. The overlay also
+takes tifffile, whose locked version requires NumPy 2.1, at its latest release
+that accepts NumPy 2.0. The job fails first if the overlay did not take effect,
+and then if any installed package's requirements are missing or not met,
+including those of the extras the job installs PyMedPhys with and of the
+extras that those requirements request; when a newly locked package requires a
+newer NumPy or pandas, add it to the overlay. It uploads its JUnit report as
+`junit-dependency-floors`. A
 failure fails the unit-test workflow and therefore the required CI or release
 summary.
 
