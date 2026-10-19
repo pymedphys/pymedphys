@@ -65,6 +65,7 @@ from pymedphys._dicom.deidentify.policy import (
     compose_policy,
 )
 from pymedphys._dicom.deidentify.qc_attestation import (
+    CleanedShape,
     Coverage,
     Outcome,
     Redaction,
@@ -300,6 +301,30 @@ def test_attesting_refuses_a_region_in_a_frame_that_the_instance_does_not_hold(
         _attest(pack, [verdict])
 
 
+@pytest.mark.parametrize(
+    "box",
+    # The images are of 6 Rows and 8 Columns.
+    [TextBox(4, 0, 7, 2), TextBox(0, 6, 2, 9)],
+)
+def test_attesting_refuses_a_region_past_the_rows_or_columns_of_its_frame(
+    first_run, box
+):
+    pack, positions = first_run
+    verdict = RedactionVerdict(positions[_REVISED], Redaction.REVISED, ((0, (box,)),))
+
+    with pytest.raises(QcPackError, match="a region past its 6 Rows or 8 Columns"):
+        _attest(pack, [verdict])
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
+
+
+def test_attesting_accepts_a_region_that_reaches_the_edge_of_its_frame(first_run):
+    pack, positions = first_run
+    edge = TextBox(4, 6, 6, 8)
+    verdict = RedactionVerdict(positions[_REVISED], Redaction.REVISED, ((0, (edge,)),))
+
+    assert _attest(pack, [verdict]).redactions == (verdict,)
+
+
 # Reading the verdicts.
 
 
@@ -462,7 +487,7 @@ def _entry(position, digest=DIGEST):
 
 
 def _cleaned(position):
-    return {"position": position, "frames": 1, "regions": []}
+    return {"position": position, "frames": 1, "rows": 6, "columns": 8, "regions": []}
 
 
 def test_verdicts_that_disagree_on_one_source_file_are_refused(first_run, monkeypatch):
@@ -531,7 +556,10 @@ def test_only_a_previewed_cleaned_instance_can_be_given_a_verdict():
         }
     ).encode()
 
-    assert qc_attestation.previewed_redactions(data) == {0: 1, 2: 3}
+    assert qc_attestation.previewed_redactions(data) == {
+        0: CleanedShape(1, 6, 8),
+        2: CleanedShape(3, 6, 8),
+    }
 
 
 def test_attesting_refuses_a_verdict_on_an_instance_that_was_not_previewed(
@@ -544,8 +572,8 @@ def test_attesting_refuses_a_verdict_on_an_instance_that_was_not_previewed(
         qc_attestation,
         "previewed_redactions",
         lambda data: {
-            position: frames
-            for position, frames in previewed(data).items()
+            position: shape
+            for position, shape in previewed(data).items()
             if position != positions[_ACCEPTED]
         },
     )
@@ -877,7 +905,24 @@ def _second_run():
         past = RedactionVerdict(
             positions[_PAST], Redaction.REVISED, ((0, (TextBox(0, 0, 2, 9),)),)
         )
-        attestation = _attest(pack, (*_verdicts(positions), past))
+        # Attesting refuses that region, given the pack's Rows and Columns;
+        # this pack is made to list more Columns for the image, so that the
+        # run's own check is what meets it.
+        previewed = qc_attestation.previewed_redactions
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(
+                qc_attestation,
+                "previewed_redactions",
+                lambda data: {
+                    position: (
+                        dataclasses.replace(shape, columns=9)
+                        if position == positions[_PAST]
+                        else shape
+                    )
+                    for position, shape in previewed(data).items()
+                },
+            )
+            attestation = _attest(pack, (*_verdicts(positions), past))
         # The verdicts follow the files' contents alone.
         again = {
             f"{number}{name}": files[name]
@@ -994,3 +1039,60 @@ def test_the_report_names_the_reviewed_pack(second_run):
 
     assert report["redaction_review"] == {"reference": attestation.reference}
     assert report["format"] == "pymedphys-deid-release-report/21"
+
+
+class _Blind(Finder):
+    """A finder of another method, which finds no text."""
+
+    method = {"finder": "none", "version": 1}
+
+    def __init__(self):
+        super().__init__(boxes=())
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01")
+def test_a_rerun_writes_the_reviewed_regions_whatever_its_finder(first_run, tmp_path):
+    pack, positions = first_run
+    _attest(pack, _verdicts(positions))
+    finder = _Blind()
+    transform = InstanceTransform(
+        _policy(),
+        KEY,
+        finder=finder,
+        redaction_review=read_redaction_review(pack),
+        unvalidated_policy=True,
+    )
+
+    result = _run(tmp_path / "second", tmp_path / "source", transform)
+
+    entries = json.loads(result.qc_pack.read_text("utf-8"))["instances"]
+    released = {
+        Path(entry["source"]).name: pydicom.dcmread(
+            tmp_path / "second" / "release" / entry["output"]
+        )
+        for entry in entries
+        if entry["disposition"] == "released"
+    }
+    for name, regions in [(_ACCEPTED, (BOX,)), (_REVISED, (BOX, REVISED))]:
+        frame = _frame(start=100 * (_IMAGES.index(name) + 1))
+        inside = np.logical_or.reduce([_inside(frame.shape, r) for r in regions])
+        pixels = pydicom.pixels.pixel_array(released[name])
+        assert np.all(pixels[inside] == frame.min())
+        assert np.array_equal(pixels[~inside], frame[~inside])
+    # The finder was shown the two images without a verdict, and neither an
+    # approved image nor the rejected one.
+    assert len(finder.seen) == 2
+    approved = [_frame(start=100 * (_IMAGES.index(n) + 1)) for n in _IMAGES[:2]]
+    assert not any(
+        np.array_equal(seen, frame) for seen in finder.seen for frame in approved
+    )
+    # The images without an approving verdict are not released, though this
+    # finder finds no text in them.
+    dispositions = {
+        Path(entry["source"]).name: entry["disposition"] for entry in entries
+    }
+    assert [dispositions[name] for name in (_REJECTED, _UNJUDGED, _PAST)] == [
+        "sequestered",
+        "held-for-review",
+        "held-for-review",
+    ]

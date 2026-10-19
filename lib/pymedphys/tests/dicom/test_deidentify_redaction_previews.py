@@ -16,8 +16,8 @@
 
 The pack lists the regions that the option blacked out in each frame of each
 instance it cleaned, and previews every frame of it at full resolution, as
-received beside as written where the frame has regions. Every image is
-synthetic.
+received beside as written where the frame has regions, and a monochrome
+frame as written again over its full range. Every image is synthetic.
 """
 
 import json
@@ -72,7 +72,14 @@ def _cleaned(dataset, finder):
 
 
 def _entry(material, position=0):
-    return RedactionEntry(position, material.reason, material.frames, material.regions)
+    return RedactionEntry(
+        position,
+        material.reason,
+        material.frames,
+        material.rows,
+        material.columns,
+        material.regions,
+    )
 
 
 def _previews(dataset, finder):
@@ -110,7 +117,7 @@ def test_the_transform_gives_the_regions_and_source_for_review():
     data, _, material = _cleaned(_ct(frames), Finder((BOX,), frames={1}))
 
     assert material.reason is BLACKED_OUT
-    assert material.frames == 2
+    assert (material.frames, material.rows, material.columns) == (2, 6, 8)
     assert material.regions == ((1, (BOX,)),)
     assert material.source == data
     assert "source" not in repr(material) and str(data[:16]) not in repr(material)
@@ -128,23 +135,31 @@ def test_a_frame_without_text_gives_no_regions_and_keeps_no_source():
 @pytest.mark.parametrize(
     "fields",
     [
-        ("text-blacked-out", 1, ((0, (BOX,)),)),
-        (BLACKED_OUT, 0, ()),
-        (BLACKED_OUT, True, ((0, (BOX,)),)),
-        (BLACKED_OUT, 1, ((1, (BOX,)),)),
-        (BLACKED_OUT, 1, ((0, ()),)),
-        (BLACKED_OUT, 1, ((0, (TextBox(2, 2, 3, 3), BOX)),)),
-        (BLACKED_OUT, 1, ((0, (BOX, BOX)),)),
-        (BLACKED_OUT, 1, ((0, ((1, 1, 5, 6),)),)),
-        (BLACKED_OUT, 2, ((1, (BOX,)), (0, (BOX,)))),
-        (BLACKED_OUT, 2, ((0, (BOX,)), (0, (TextBox(0, 0, 1, 1),)))),
-        (BLACKED_OUT, 1, ()),
-        (NOTHING_FOUND, 1, ((0, (BOX,)),)),
+        ("text-blacked-out", 1, 6, 8, ((0, (BOX,)),)),
+        (BLACKED_OUT, 0, 6, 8, ()),
+        (BLACKED_OUT, True, 6, 8, ((0, (BOX,)),)),
+        (BLACKED_OUT, 1, 0, 8, ((0, (BOX,)),)),
+        (BLACKED_OUT, 1, 6, True, ((0, (BOX,)),)),
+        (BLACKED_OUT, 1, 4, 8, ((0, (BOX,)),)),
+        (BLACKED_OUT, 1, 6, 5, ((0, (BOX,)),)),
+        (BLACKED_OUT, 1, 6, 8, ((1, (BOX,)),)),
+        (BLACKED_OUT, 1, 6, 8, ((0, ()),)),
+        (BLACKED_OUT, 1, 6, 8, ((0, (TextBox(2, 2, 3, 3), BOX)),)),
+        (BLACKED_OUT, 1, 6, 8, ((0, (BOX, BOX)),)),
+        (BLACKED_OUT, 1, 6, 8, ((0, ((1, 1, 5, 6),)),)),
+        (BLACKED_OUT, 2, 6, 8, ((1, (BOX,)), (0, (BOX,)))),
+        (BLACKED_OUT, 2, 6, 8, ((0, (BOX,)), (0, (TextBox(0, 0, 1, 1),)))),
+        (BLACKED_OUT, 1, 6, 8, ()),
+        (NOTHING_FOUND, 1, 6, 8, ((0, (BOX,)),)),
     ],
     ids=[
         "reason",
         "no-frames",
         "boolean-frames",
+        "no-rows",
+        "boolean-columns",
+        "box-past-rows",
+        "box-past-columns",
         "frame-out-of-range",
         "no-boxes",
         "unsorted-boxes",
@@ -176,8 +191,8 @@ def _held(position=0):
 
 
 def test_the_pack_lists_each_cleaned_instance_once_in_order():
-    entry = RedactionEntry(0, BLACKED_OUT, 1, ((0, (BOX,)),))
-    later = RedactionEntry(1, NOTHING_FOUND, 1, ())
+    entry = RedactionEntry(0, BLACKED_OUT, 1, 6, 8, ((0, (BOX,)),))
+    later = RedactionEntry(1, NOTHING_FOUND, 1, 6, 8, ())
     instances = (_held(0), _held(1))
     unshown = _unshown(0) + _unshown(1)
     assert _pack(
@@ -191,7 +206,7 @@ def test_the_pack_lists_each_cleaned_instance_once_in_order():
 
 
 def test_the_pack_lists_no_redaction_of_a_sequestered_instance():
-    entry = RedactionEntry(0, NOTHING_FOUND, 1, ())
+    entry = RedactionEntry(0, NOTHING_FOUND, 1, 6, 8, ())
     assert _pack(
         instances=(_written(),), redactions=(entry,), not_previewed=_unshown()
     ).redactions
@@ -203,7 +218,7 @@ def test_the_pack_lists_no_redaction_of_a_sequestered_instance():
 
 def test_the_document_gives_each_frames_boxes():
     entry = RedactionEntry(
-        0, BLACKED_OUT, 3, ((0, (BOX,)), (2, (TextBox(0, 0, 1, 2), BOX)))
+        0, BLACKED_OUT, 3, 6, 8, ((0, (BOX,)), (2, (TextBox(0, 0, 1, 2), BOX)))
     )
     pack = _pack(instances=(_held(),), redactions=(entry,), not_previewed=_unshown())
     document = qc_pack.pack_document(pack)
@@ -212,6 +227,8 @@ def test_the_document_gives_each_frames_boxes():
             "position": 0,
             "reason": "text-blacked-out",
             "frames": 3,
+            "rows": 6,
+            "columns": 8,
             "regions": [
                 {"frame": 0, "boxes": [[1, 1, 5, 6]]},
                 {"frame": 2, "boxes": [[0, 0, 1, 2], [1, 1, 5, 6]]},
@@ -246,7 +263,7 @@ def _redaction_preview(number, frames, total=2):
 def test_the_pack_previews_each_frame_of_a_cleaned_instance_or_says_why_not(
     previews, not_previewed
 ):
-    entry = RedactionEntry(0, NOTHING_FOUND, 2, ())
+    entry = RedactionEntry(0, NOTHING_FOUND, 2, 6, 8, ())
     shown = (_redaction_preview(1, ((0, 0),)), _redaction_preview(2, ((0, 1),)))
     assert _pack(instances=(_held(),), redactions=(entry,), previews=shown).previews
 
@@ -276,10 +293,14 @@ def test_every_frame_is_previewed_and_one_with_regions_beside_its_source():
     assert all(preview.total_frames == 2 for preview, _ in shown)
     (_, first), (_, second) = shown
     rows, columns = frames.shape[1:]
-    assert first.shape == (rows, 2 * columns + GUTTER, 3)
-    assert np.all(first[:, columns : columns + GUTTER] == 128)
-    # The second frame has no region, so it is shown in grey alone.
-    assert second.shape == (rows, columns)
+    # As received, as written, and as written over its full range.
+    assert first.shape == (rows, 3 * columns + 2 * GUTTER, 3)
+    for start in (columns, 2 * columns + GUTTER):
+        assert np.all(first[:, start : start + GUTTER] == 128)
+    # The second frame has no region, so it is shown in grey, as written
+    # and over its full range.
+    assert second.shape == (rows, 2 * columns + GUTTER)
+    assert np.all(second[:, columns : columns + GUTTER] == 128)
 
 
 def test_regions_are_outlined_inside_their_own_edges_and_nothing_else_changes():
@@ -287,10 +308,9 @@ def test_regions_are_outlined_inside_their_own_edges_and_nothing_else_changes():
     previews = _previews(_ct(frame), Finder((BOX,)))
 
     ((_, image),) = _redaction_images(previews)
-    columns = frame.shape[1]
-    before, after = image[:, :columns], image[:, columns + GUTTER :]
+    before, after, full = _panels(image, frame.shape[1])
     edge, interior = _outline(frame.shape), _interior(frame.shape)
-    for panel in (before, after):
+    for panel in (before, after, full):
         assert np.all(panel[edge] == OUTLINE)
         assert not np.all(panel[~edge] == OUTLINE, axis=1).any()
     outside = ~(edge | interior)
@@ -304,8 +324,11 @@ def test_regions_are_outlined_inside_their_own_edges_and_nothing_else_changes():
 
 
 def _panels(image, columns):
-    """The frame as received, and as written, of a preview with regions."""
-    return image[:, :columns], image[:, columns + GUTTER :]
+    """Each image of a preview, from left to right."""
+    step = columns + GUTTER
+    return tuple(
+        image[:, start : start + columns] for start in range(0, image.shape[1], step)
+    )
 
 
 @pytest.mark.parametrize("photometric", ["MONOCHROME1", "MONOCHROME2"])
@@ -314,9 +337,10 @@ def test_the_fill_shows_black_whatever_the_photometric_interpretation(photometri
     previews = _previews(_ct(frame, photometric=photometric), Finder((BOX,)))
 
     ((_, image),) = _redaction_images(previews)
-    before, after = _panels(image, frame.shape[1])
+    before, after, full = _panels(image, frame.shape[1])
     interior = _interior(frame.shape)
     assert np.all(after[interior] == 0)
+    assert np.all(full[interior] == 0)
     assert np.any(before[interior] != 0)
     outside = ~(_outline(frame.shape) | interior)
     assert np.array_equal(before[outside], after[outside])
@@ -329,7 +353,7 @@ def test_signed_rescaled_values_are_shown_through_one_window_from_the_source():
     previews = _previews(dataset, Finder((BOX,)))
 
     ((_, image),) = _redaction_images(previews)
-    before, after = _panels(image, frame.shape[1])
+    before, after, _ = _panels(image, frame.shape[1])
     interior = _interior(frame.shape)
     outside = ~(_outline(frame.shape) | interior)
     # The fill changes the written frame's percentiles, so equal pixels
@@ -351,7 +375,9 @@ def test_an_rgb_frame_is_shown_in_colour_with_its_regions_outlined(planar):
     previews = _previews(_rgb(frame, planar=planar), Finder((BOX,)))
 
     ((_, image),) = _redaction_images(previews)
-    before, after = image[:, :8], image[:, 8 + GUTTER :]
+    # Colour has no window to widen, so it has no full-range image.
+    assert image.shape == (6, 2 * 8 + GUTTER, 3)
+    before, after = _panels(image, 8)
     outside = ~(_outline(frame.shape[:2]) | _interior(frame.shape[:2]))
     assert np.array_equal(before[outside], frame[outside])
     assert np.array_equal(after[outside], frame[outside])
@@ -387,7 +413,28 @@ def test_an_instance_without_text_found_is_previewed_as_written():
     previews = _previews(_ct(_frame()), Finder(()))
     ((preview, image),) = _redaction_images(previews)
     assert preview.frames == ((0, 0),)
-    assert image.shape == (6, 8)
+    assert image.shape == (6, 2 * 8 + GUTTER)
+
+
+def test_text_that_the_percentile_window_saturates_stands_apart_over_the_full_range():
+    # Anatomy from 0 to 1,500, bone at 1,600 in 2% of the frame, so that
+    # the 99.5th percentile falls on it, and a pixel of missed text at the
+    # largest stored value.
+    frame = np.tile(np.linspace(0, 1500, 20).round().astype(int), (20, 1))
+    frame[10, 2:10] = 1600
+    frame[10, 12] = 4095
+    previews = _previews(_ct(frame), Finder(()))
+
+    ((_, image),) = _redaction_images(previews)
+    windowed, full = _panels(image, 20)
+    bone, text = (10, 3), (10, 12)
+    assert windowed[bone] == windowed[text] == 255
+    assert full[text] == 255 and full[bone] < 128
+    values = frame.astype(np.float32)
+    expected = qc_previews._grey(  # pylint: disable = protected-access
+        values, (0.0, 4095.0), False
+    )
+    assert np.array_equal(full, expected)
 
 
 # A run.
@@ -417,12 +464,14 @@ def test_a_runs_pack_lists_each_cleaned_instance_and_previews_its_frames(tmp_pat
         run.Status.RELEASED,
     ]
     pack = json.loads((tmp_path / "qc" / "qc-pack.json").read_text(encoding="ascii"))
-    assert pack["format"] == "pymedphys-deid-qc-pack/6"
+    assert pack["format"] == "pymedphys-deid-qc-pack/9"
     assert pack["redactions"] == [
         {
             "position": 0,
             "reason": "text-blacked-out",
             "frames": 2,
+            "rows": 6,
+            "columns": 8,
             "regions": [{"frame": 1, "boxes": [[1, 1, 5, 6]]}],
         }
     ]

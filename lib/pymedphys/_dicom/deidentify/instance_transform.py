@@ -1563,6 +1563,8 @@ def _redaction_material(redaction: Redaction, source: bytes) -> RedactionMateria
     return RedactionMaterial(
         redaction.reason,
         redaction.layout.frames,
+        redaction.layout.rows,
+        redaction.layout.columns,
         tuple((regions.frame, regions.boxes) for regions in redaction.regions),
         source if redaction.regions else None,
     )
