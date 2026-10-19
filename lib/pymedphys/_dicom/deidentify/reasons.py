@@ -182,18 +182,28 @@ class VisualFeaturesReason(enum.Enum):
     # than the reviewed run did, such as a CT slice defaced since the
     # reviewer saw it as received, so the verdict is not of what it releases
     OTHER_PIXEL_DATA = "face-verdict-on-other-pixel-data"
+    # its series is marked absent, but the run writes other contours of it
+    # than the reviewed run did, such as a structure set cut by a face block
+    # that the reviewed run did not find, so the verdict is not of what it
+    # releases
+    OTHER_CONTOURS = "face-verdict-on-other-contours"
     # an RT Dose in the Frame of Reference of a CT series that the run
     # defaces, whose dose in the series' face block is too great to set to
     # zero there, so that it is written as received
     DOSE_IN_FACE_BLOCK = "dose-in-face-block"
     # an RT Structure Set, RT Dose, or PET instance in the Frame of
     # Reference of a CT series that the run defaces, whose outline or pixel
-    # data the run does not yet clean of the face, and which a reviewer may
-    # have judged from the defaced CT
+    # data the run does not clean of the face, such as one in other frames
+    # too or that cannot be cut, and which a reviewer may have judged from
+    # the defaced CT
     UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
     # a CT slice of a series whose face block holds a point of a target's
     # contour, so that the series is not defaced
     TARGET_IN_FACE_BLOCK = "target-in-face-block"
+    # a CT slice of a series whose structure set draws an eye away from the
+    # globes that its face block was found from, so that the series is not
+    # defaced
+    EYES_DISAGREE_WITH_ROIS = "eyes-disagree-with-rois"
 
 
 @dataclasses.dataclass(frozen=True)

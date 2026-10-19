@@ -37,7 +37,7 @@ from pymedphys._imports import pydicom
 
 from . import pixel_risk, qc_pack, qc_previews, residuals
 from .iod_conformance import SourceGap
-from .face_review import pixel_data_sha256
+from .face_review import contour_data_sha256, pixel_data_sha256
 from .file_layout import ElementPath
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .reasons import PixelDataReason
@@ -313,9 +313,11 @@ def qc_pack_of(
     :class:`PixelRiskMaterial` gives findings for as high-risk, and the
     frames of each instance that a :class:`RedactionMaterial` gives, which
     the pack lists in ``redactions``. A released or held instance without
-    one is listed as not previewed. Each such file's pixel data are recorded
-    with its instance as :func:`~.face_review.pixel_data_sha256` gives
-    them, unless the file cannot be read again.
+    one is listed as not previewed. Each such file's pixel data and
+    contours are recorded with its instance as
+    :func:`~.face_review.pixel_data_sha256` and
+    :func:`~.face_review.contour_data_sha256` give them, unless the file
+    cannot be read again.
 
     The released and held instances that give :class:`SeriesEvidence` are
     grouped by series, in run position order, and each series is assessed
@@ -411,7 +413,7 @@ def qc_pack_of(
         for position, item in redactions.items()
     }
     instances = tuple(
-        dataclasses.replace(entry, pixel_sha256=_pixel_sha256(written[position]))
+        dataclasses.replace(entry, **_written_sha256(written[position]))
         if position in written
         else entry
         for position, entry in enumerate(instances)
@@ -513,14 +515,26 @@ def assessed_series(
     return assessed
 
 
-def _pixel_sha256(written: bytes) -> str | None:
-    """Return the SHA-256 of a written file's pixel data, or None if unreadable."""
+def _written_sha256(written: bytes) -> dict[str, str | None]:
+    """Return the SHA-256 of a written file's pixel data and contours, as an
+    instance entry's fields, each None if unreadable."""
+    digests: dict[str, str | None] = {"pixel_sha256": None, "contour_sha256": None}
     try:
-        return pixel_data_sha256(read_source(written).dataset()).hex()
-    # Whatever reading the file raises, its instance has no pixel digest, so
-    # no verdict clears it, and the pack is still written.
+        dataset = read_source(written).dataset()
+    # Whatever reading the file raises, its instance has no digests, so no
+    # verdict clears it, and the pack is still written.
     except Exception:  # pylint: disable = broad-exception-caught
-        return None
+        return digests
+    for field, digest in (
+        ("pixel_sha256", pixel_data_sha256),
+        ("contour_sha256", contour_data_sha256),
+    ):
+        try:
+            digests[field] = digest(dataset).hex()
+        # Likewise, for the digest that cannot be taken.
+        except Exception:  # pylint: disable = broad-exception-caught
+            pass
+    return digests
 
 
 def _instance(

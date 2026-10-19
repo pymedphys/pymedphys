@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""CT Image, RT Structure Set, and RT Dose files of the analytic head, for
-the defacing tests. Every UID and value here is invented."""
+"""CT Image, RT Structure Set, RT Dose, and PET Image files of the analytic
+head, for the defacing tests. Every UID and value here is invented."""
 
 from __future__ import annotations
 
@@ -29,6 +29,7 @@ from . import _synthetic_head as head
 CT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.2"
 RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
+PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.128"
 AXIAL = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 EXPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2.1"
 ROOT = "2.25.1234567890123456789"
@@ -94,13 +95,16 @@ def ct_files(
 
 
 def structure_set(
-    rois: Sequence[tuple[str, np.ndarray]],
+    rois: Sequence[tuple[str, np.ndarray | list[np.ndarray]]],
     *,
     frame: str = FRAME,
     template: pydicom.Dataset | None = None,
+    names: Sequence[str] | None = None,
 ) -> bytes:
     """An RT Structure Set with one ROI for each RT ROI Interpreted Type
-    and its points, x, y, and z in rows, as one closed planar contour."""
+    and its points, x, y, and z in rows, as one closed planar contour, or
+    for each type and list of such contours; each ROI is named by
+    ``names``, or ``R1`` onwards."""
     dataset = _dataset(RT_STRUCTURE_SET_STORAGE, ROOT + ".4.1", template)
     dataset.Modality = "RTSTRUCT"
     dataset.StructureSetLabel = "S"
@@ -114,17 +118,19 @@ def structure_set(
         roi = pydicom.Dataset()
         roi.ROINumber = number
         roi.ReferencedFrameOfReferenceUID = frame
-        roi.ROIName = f"R{number}"
+        roi.ROIName = f"R{number}" if names is None else names[number - 1]
         roi.ROIGenerationAlgorithm = "MANUAL"
         dataset.StructureSetROISequence.append(roi)
-        contour = pydicom.Dataset()
-        contour.ContourGeometricType = "CLOSED_PLANAR"
-        contour.NumberOfContourPoints = len(points)
-        contour.ContourData = [_ds(v) for v in np.ravel(points)]
         item = pydicom.Dataset()
         item.ReferencedROINumber = number
         item.ROIDisplayColor = [255, 0, 0]
-        item.ContourSequence = [contour]
+        item.ContourSequence = []
+        for each in points if isinstance(points, list) else [points]:
+            contour = pydicom.Dataset()
+            contour.ContourGeometricType = "CLOSED_PLANAR"
+            contour.NumberOfContourPoints = len(each)
+            contour.ContourData = [_ds(v) for v in np.ravel(each)]
+            item.ContourSequence.append(contour)
         dataset.ROIContourSequence.append(item)
         observation = pydicom.Dataset()
         observation.ObservationNumber = number
@@ -181,6 +187,63 @@ def dose(
     dataset.PixelData = stored.astype("<i4" if signed else "<u4").tobytes()
     dataset["PixelData"].VR = "OW"
     return written(dataset)
+
+
+def pet(
+    stored: np.ndarray,
+    *,
+    position: Sequence[float],
+    spacing: Sequence[float],
+    frame: str = FRAME,
+    instance: str = ROOT + ".7.1",
+    template: pydicom.Dataset | None = None,
+) -> bytes:
+    """A PET Image slice in the axial plane of 16-bit unsigned stored
+    values, rows by columns, with Rescale Slope 1 and Rescale Intercept 0.
+
+    ``spacing`` is Pixel Spacing, between rows then between columns.
+    ``template``, such as the synthetic corpus' PET Image, gives every
+    other attribute.
+    """
+    dataset = _dataset(PET_IMAGE_STORAGE, instance, template)
+    dataset.Modality = "PT"
+    dataset.FrameOfReferenceUID = frame
+    dataset.ImagePositionPatient = [_ds(v) for v in position]
+    dataset.ImageOrientationPatient = [_ds(v) for v in AXIAL]
+    dataset.PixelSpacing = [_ds(v) for v in spacing]
+    dataset.Rows, dataset.Columns = np.shape(stored)
+    dataset.SamplesPerPixel = 1
+    dataset.PhotometricInterpretation = "MONOCHROME2"
+    dataset.BitsAllocated = 16
+    dataset.BitsStored = 16
+    dataset.HighBit = 15
+    dataset.PixelRepresentation = 0
+    dataset.RescaleSlope = "1"
+    dataset.RescaleIntercept = "0"
+    dataset.PixelData = np.asarray(stored).astype("<u2").tobytes()
+    dataset["PixelData"].VR = "OW"
+    return written(dataset)
+
+
+def ellipse(
+    centre: Sequence[float], axes: Sequence[float], count: int = 72
+) -> np.ndarray:
+    """An elliptical contour in the axial plane about ``centre``, of
+    semi-axes along x and y."""
+    x, y, z = centre
+    angles = 2 * np.pi * np.arange(count) / count
+    return np.column_stack(
+        [
+            x + axes[0] * np.cos(angles),
+            y + axes[1] * np.sin(angles),
+            np.full(count, z),
+        ]
+    )
+
+
+def circle(centre: Sequence[float], radius: float, count: int = 24) -> np.ndarray:
+    """A circular contour in the axial plane about ``centre``."""
+    return ellipse(centre, (radius, radius), count)
 
 
 def square(centre: Sequence[float], half: float = 2.0) -> np.ndarray:

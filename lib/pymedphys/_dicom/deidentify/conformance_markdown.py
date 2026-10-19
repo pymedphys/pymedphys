@@ -31,6 +31,7 @@ from collections.abc import Callable, Iterable, Mapping
 
 from . import compound_actions, conformance_values, keys, markers
 from .dose_defacing import DOSE_FRACTION
+from .face_blocks import EYE_REACH
 from .codes import load_context_group
 from .conformance import (
     CLEAN_DESCRIPTORS_FALLBACK,
@@ -664,8 +665,9 @@ _REVIEW_CONDITIONS = {
         "Structure Set, or whose source file is, by its SHA-256, in a series "
         "that a reviewer marked free of a recognisable face in the attested "
         "QC pack of an earlier run of the same files, and whose pixel data, "
-        "by their SHA-256, are written as that run wrote them, which its "
-        "previews showed. Such an instance also "
+        "and an RT Structure Set's contours, by their SHA-256, are written "
+        "as that run wrote them, which its review showed. Such an instance "
+        "also "
         "has Recognizable Visual Features (0028,0302) set to NO, as PS3.15 "
         "E.3.2 requires, including in an IOD that does not define the "
         "attribute, which of the supported IODs are RT Plan, RT Structure "
@@ -686,11 +688,21 @@ _REVIEW_CONDITIONS = {
         "no Frame of Reference, or with "
         "such a target anywhere in another Frame of Reference that a "
         "structure set ties to its slices by a contour image, is held for "
-        "review, and so is "
+        "review, as is a series whose structure set draws an eye, by its "
+        f"ROI Name, more than {EYE_REACH:.0f} mm from the nearer of the eyes "
+        "that the run "
+        "found, and so is "
         "each RT Structure Set, RT Dose with pixel data, and PET "
         "instance that is in a defaced series' "
         "Frame of Reference, names none, or refers to a defaced slice, which "
-        "the run does not yet clean. An RT Dose in the Frame of Reference of "
+        "the run does not clean. An RT Structure Set in the Frame of "
+        "Reference of only one defaced series, each of whose ROIs is in that "
+        "frame, is cleaned instead: each contour that reaches the region "
+        "where it is set to air, other than the cranial cavity kept, is cut "
+        "by the region's two planes, a contour wholly within it being "
+        "removed, and every other contour is kept as received; so is a "
+        "single-frame PET image there, whose activity in that region, less "
+        "the cranial cavity kept, is set to zero. An RT Dose in the Frame of "
         "only one defaced series, with native pixel data of no negative value "
         "on a grid placed as PS3.3 Section C.8.8.3.2 defines, is cleaned "
         "instead: its dose in that region, "

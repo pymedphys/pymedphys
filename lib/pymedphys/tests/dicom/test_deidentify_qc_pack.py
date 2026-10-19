@@ -65,6 +65,7 @@ REFERENCE = "A-" + "0123456789abcdef" * 2
 OUTPUT = PurePosixPath("ZQ0001/2.25.1/2.25.2/2.25.3.dcm")
 SOURCE_SHA256 = "0f" * 32
 PIXEL_SHA256 = "1e" * 32
+CONTOUR_SHA256 = "2f" * 32
 
 POSIX_ONLY = pytest.mark.skipif(os.name != "posix", reason="POSIX file modes")
 
@@ -77,7 +78,12 @@ NAME_PATH = _path("(0010,0010)")
 
 
 def _written(
-    position=0, output=OUTPUT, source=SOURCE_PATH, source_sha256=None, pixel_sha256=None
+    position=0,
+    output=OUTPUT,
+    source=SOURCE_PATH,
+    source_sha256=None,
+    pixel_sha256=None,
+    contour_sha256=None,
 ):
     return InstanceEntry(
         position,
@@ -86,6 +92,7 @@ def _written(
         output=output,
         source_sha256=source_sha256,
         pixel_sha256=pixel_sha256,
+        contour_sha256=contour_sha256,
     )
 
 
@@ -121,7 +128,11 @@ def _full_pack():
     findings, omissions = qc_pack.entries_for_search(0, search, data)
     return _pack(
         instances=(
-            _written(source_sha256=SOURCE_SHA256, pixel_sha256=PIXEL_SHA256),
+            _written(
+                source_sha256=SOURCE_SHA256,
+                pixel_sha256=PIXEL_SHA256,
+                contour_sha256=CONTOUR_SHA256,
+            ),
             _sequestered(1),
         ),
         series=(SeriesEntry((0,)),),
@@ -226,12 +237,20 @@ def test_a_written_instance_is_checked(fields, match):
         InstanceEntry(0, SOURCE_PATH, Disposition.RELEASED, **fields)
 
 
+_DIGESTS = {
+    "pixel_sha256": (PIXEL_SHA256, "pixel data's SHA-256"),
+    "contour_sha256": (CONTOUR_SHA256, "contours' SHA-256"),
+}
+
+
+@pytest.mark.parametrize("field", _DIGESTS)
 @pytest.mark.parametrize("digest", ["0F" * 32, "0f" * 31, b"\x0f" * 32, ""])
-def test_a_pixel_digest_is_64_lower_case_hexadecimal_digits(digest):
-    with pytest.raises(QcPackError, match="pixel data's SHA-256"):
-        _written(pixel_sha256=digest)
+def test_a_written_digest_is_64_lower_case_hexadecimal_digits(field, digest):
+    with pytest.raises(QcPackError, match=_DIGESTS[field][1]):
+        _written(**{field: digest})
 
 
+@pytest.mark.parametrize("field", _DIGESTS)
 @pytest.mark.parametrize(
     "disposition, fields",
     [
@@ -240,18 +259,21 @@ def test_a_pixel_digest_is_64_lower_case_hexadecimal_digits(digest):
         (Disposition.REFUSED, {"reasons": ("x",)}),
     ],
 )
-def test_only_a_released_or_held_instance_has_a_pixel_digest(disposition, fields):
+def test_only_a_released_or_held_instance_has_a_written_digest(
+    field, disposition, fields
+):
+    digest = _DIGESTS[field][0]
     with pytest.raises(QcPackError, match="only if released or held"):
-        InstanceEntry(0, SOURCE_PATH, disposition, pixel_sha256=PIXEL_SHA256, **fields)
+        InstanceEntry(0, SOURCE_PATH, disposition, **{field: digest}, **fields)
     held = InstanceEntry(
         0,
         SOURCE_PATH,
         Disposition.HELD_FOR_REVIEW,
         reasons=("x",),
-        pixel_sha256=PIXEL_SHA256,
+        **{field: digest},
     )
-    assert held.pixel_sha256 == PIXEL_SHA256
-    assert PIXEL_SHA256 not in repr(held)
+    assert getattr(held, field) == digest
+    assert digest not in repr(held)
 
 
 @pytest.mark.parametrize(
@@ -549,7 +571,7 @@ def test_a_search_gives_entries_with_excerpts_and_omissions():
 @pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_document_holds_every_section():
     document = json.loads(qc_pack.to_json(_full_pack()))
-    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/6"
+    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/7"
     assert document["reference"] == REFERENCE
     assert document["instances"] == [
         {
@@ -561,6 +583,7 @@ def test_the_document_holds_every_section():
             "reasons": [],
             "source_sha256": SOURCE_SHA256,
             "pixel_sha256": PIXEL_SHA256,
+            "contour_sha256": CONTOUR_SHA256,
         },
         {
             "position": 1,
@@ -571,6 +594,7 @@ def test_the_document_holds_every_section():
             "reasons": ["conflicting instance"],
             "source_sha256": None,
             "pixel_sha256": None,
+            "contour_sha256": None,
         },
     ]
     (residual,) = document["residual_findings"]

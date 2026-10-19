@@ -66,7 +66,7 @@ from __future__ import annotations
 
 import dataclasses
 import math
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
@@ -151,10 +151,35 @@ class DoseBlock:
         numpy.ndarray
             Of bool, one for each point.
         """
+        slices, rows, columns = self.pixels(points)
+        kept = np.zeros(len(slices), dtype=bool)
+        for index in np.unique(slices[slices >= 0]):
+            chosen = slices == index
+            kept[chosen] = self.slices[index].kept[rows[chosen], columns[chosen]]
+        return kept
+
+    def pixels(self, points: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return the nearest pixel of the nearest slice to each point, within
+        half the slices' spacing, where it has one.
+
+        Parameters
+        ----------
+        points : numpy.ndarray
+            The x, y, and z of each point in rows, in millimetres.
+
+        Returns
+        -------
+        tuple of numpy.ndarray
+            Of int, one for each point: the index of the slice in
+            :attr:`slices`, or -1 where no slice's pixel is near enough, and
+            the pixel's row and column, which are 0 where there is none.
+        """
         points = np.asarray(points, dtype=float).reshape(-1, 3)
-        kept = np.zeros(len(points), dtype=bool)
+        found = np.full(len(points), -1)
+        found_rows = np.zeros(len(points), dtype=int)
+        found_columns = np.zeros(len(points), dtype=int)
         if not self.slices or not len(points):
-            return kept
+            return found, found_rows, found_columns
         orientation = self.slices[0].orientation
         normal = np.cross(orientation[:3], orientation[3:])
         heights = np.array([np.dot(each.position, normal) for each in self.slices])
@@ -177,7 +202,7 @@ class DoseBlock:
         near = np.abs(along - heights[nearest]) <= reach
         for index in np.unique(nearest[near]):
             each = self.slices[order[index]]
-            chosen = near & (nearest == index)
+            chosen = np.flatnonzero(near & (nearest == index))
             offset = points[chosen] - np.asarray(each.position)
             columns = np.rint(
                 offset @ np.asarray(each.orientation[:3]) / each.spacing[1]
@@ -185,27 +210,29 @@ class DoseBlock:
             rows = np.rint(offset @ np.asarray(each.orientation[3:]) / each.spacing[0])
             height, width = each.kept.shape
             within = (rows >= 0) & (rows < height) & (columns >= 0) & (columns < width)
-            found = np.zeros(len(rows), dtype=bool)
-            found[within] = each.kept[
-                rows[within].astype(int), columns[within].astype(int)
-            ]
-            kept[chosen] = found
-        return kept
+            chosen = chosen[within]
+            found[chosen] = order[index]
+            found_rows[chosen] = rows[within].astype(int)
+            found_columns[chosen] = columns[within].astype(int)
+        return found, found_rows, found_columns
 
 
 def find_dose_blocks(
     records: Mapping[int, InstanceRecord],
     read: Callable[[int], bytes | None],
     outcomes: Mapping[str, SeriesDefacing],
+    iods: Collection[str] = (RT_DOSE,),
 ) -> dict[str, DoseBlock]:
     """Return the block of each Frame of Reference whose RT Dose instances
     the run sets to zero there, by its UID.
 
     That is each frame in which exactly one series is defaced, as
     :func:`~.face_blocks.find_face_blocks`' ``outcomes`` give them, and
-    which an RT Dose of the run names as its only frame. A frame whose
-    series' slices can no longer be read has none, so that its RT Dose
-    instances stay held.
+    which an RT Dose of the run names as its only frame, or an instance of
+    any other of ``iods``, whose instances
+    :mod:`~pymedphys._dicom.deidentify.region_defacing` cleans in the same
+    block. A frame whose series' slices can no longer be read has none, so
+    that its instances stay held.
     """
     defaced: dict[str, list[str]] = {}
     for uid, outcome in outcomes.items():
@@ -213,7 +240,7 @@ def find_dose_blocks(
             defaced.setdefault(outcome.frame, []).append(uid)
     named = set()
     for record in records.values():
-        if record.iod == RT_DOSE:
+        if record.iod in iods:
             frames = frames_of(record)
             if len(frames) == 1:
                 named |= frames
