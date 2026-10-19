@@ -197,6 +197,7 @@ from .pixel_cleaning import (
     finder_description,
     redaction_problem,
 )
+from .dose_defacing import RT_DOSE, DoseBlock, RtDoseDefacer, find_dose_blocks
 from .face_blocks import (
     CT_IMAGE,
     CtDefacer,
@@ -205,6 +206,7 @@ from .face_blocks import (
     Defaced,
     find_defaced,
     find_face_blocks,
+    frames_of,
 )
 from .pixel_risk import assess_pixel_risk, series_evidence
 from .run_qc import (
@@ -810,9 +812,14 @@ class InstanceTransform:
     slice that cannot be is sequestered. A slice of a series with a
     target's contour in its block is not defaced, and is held for review
     (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`). An RT
-    Structure Set, RT Dose, or PET instance in a defaced series' Frame of
-    Reference, naming none, or referring to a defaced slice, is held
-    whatever its verdict
+    Dose whose only Frame of Reference is that of one defaced series is
+    written with its dose set to zero in the series' block, less the
+    cavity that defacing keeps (:class:`~.dose_defacing.RtDoseDefacer`), or,
+    where the dose there is too great, written as received and held
+    (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`). Any other
+    RT Structure Set, RT Dose with pixel data, or PET instance in a defaced
+    series' Frame of Reference, naming none, or referring to a defaced
+    slice, is held whatever its verdict
     (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
     since the run does not yet clean it of the face. An
     instance that can show a
@@ -931,6 +938,7 @@ class InstanceTransform:
         self._face_review = face_review
         self._face_blocks: dict[str, SeriesDefacing] = {}
         self._defaced = Defaced()
+        self._dose_blocks: dict[str, DoseBlock] = {}
         self._face_block_counts = None if face_review is None else FaceBlockCounts()
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
         self.reporter = ReleaseReporter(
@@ -963,13 +971,16 @@ class InstanceTransform:
         finds them, and counted for the release report. A run calls it with
         the records of the instances that it will transform, by run
         position, and a function that gives each file as its first pass
-        read it, once, before it transforms any.
+        read it, once, before it transforms any. It also finds the block in
+        which each RT Dose of a defaced frame is set to zero
+        (:func:`~pymedphys._dicom.deidentify.dose_defacing.find_dose_blocks`).
         """
         if self._face_block_counts is None:
             return
         self._face_blocks = find_face_blocks(records, read)
         self._face_block_counts.record(self._face_blocks.values())
         self._defaced = find_defaced(records, self._face_blocks)
+        self._dose_blocks = find_dose_blocks(records, read, self._face_blocks)
 
     def written_check(
         self, graph: ReferenceGraph, written: Mapping[int, InstanceRecord]
@@ -1057,14 +1068,45 @@ class InstanceTransform:
         return None if reason is None else HeldVisualFeatures(reason)
 
     def _frame_hold(
-        self, iod: IOD, record: InstanceRecord
+        self,
+        iod: IOD,
+        record: InstanceRecord,
+        dataset: pydicom.Dataset,
+        dose: DoseBlock | None,
     ) -> HeldVisualFeatures | None:
         """Return why an instance that the run does not yet clean of the
         face is held, where it defaces the instance's frame
-        (:meth:`~.face_blocks.Defaced.holds`)."""
-        if not self._defaced.holds(iod.name, record):
+        (:meth:`~.face_blocks.Defaced.holds`).
+
+        An RT Dose without pixel data is not held for its frame, nor one
+        that the run sets to zero in its frame's block, unless it refers to
+        a defaced slice of another series.
+        """
+        if iod.name == RT_DOSE and not any(tag in dataset for tag in PIXEL_DATA_TAGS):
+            return None
+        if dose is not None:
+            if not dose.holds(self._defaced, record):
+                return None
+        elif not self._defaced.holds(iod.name, record):
             return None
         return HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
+
+    def _dose_block(
+        self, iod: IOD, record: InstanceRecord, dataset: pydicom.Dataset
+    ) -> DoseBlock | None:
+        """Return the block of an RT Dose's only Frame of Reference, if the
+        run sets its dose to zero there.
+
+        None for an RT Dose without pixel data, such as one of dose-volume
+        histograms alone, which has no grid to place and need not have the
+        attributes that would place one.
+        """
+        if iod.name != RT_DOSE or not any(tag in dataset for tag in PIXEL_DATA_TAGS):
+            return None
+        frames = frames_of(record)
+        if len(frames) != 1:
+            return None
+        return self._dose_blocks.get(next(iter(frames)))
 
     def _defacing(self, iod: IOD, record: InstanceRecord) -> SeriesDefacing | None:
         """Return the outcome of a CT slice's series, if it has one."""
@@ -1078,15 +1120,21 @@ class InstanceTransform:
         source: SourceEvidence,
         dataset: pydicom.Dataset,
         defacing: SeriesDefacing | None,
-    ) -> tuple[Redaction | None, bool]:
+        dose: DoseBlock | None,
+    ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool]:
         """Return the instance's Pixel Data blacked out under Clean Pixel Data,
-        and its face block written as air under Clean Recognizable Visual
-        Features, and whether a reviewer approved the regions.
+        and, under Clean Recognizable Visual Features, a CT slice's face
+        block written as air or an RT Dose's set to zero, with why an RT
+        Dose's is not, and whether a reviewer approved the regions.
 
-        None where neither applies, or the instance has no top-level pixel
-        data. The regions are those that the redaction review approved for
-        the source file, by its SHA-256, otherwise those that the finder
-        finds, and none without Clean Pixel Data.
+        The redaction is None where nothing applies, or the instance has no
+        top-level pixel data. The regions are those that the redaction
+        review approved for the source file, by its SHA-256, otherwise those
+        that the finder finds, and none without Clean Pixel Data. An RT Dose
+        whose grid :class:`~.dose_defacing.RtDoseDefacer` cannot set to
+        zero, or holds, is blacked out as though it had no block, with
+        :attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME` or
+        the defacer's reason.
 
         Raises
         ------
@@ -1096,19 +1144,43 @@ class InstanceTransform:
             :class:`~.pixel_cleaning.PixelDataRefused`.
         """
         block = None if defacing is None else defacing.block
-        if self._finder is None and block is None:
-            return None, False
+        if self._finder is None and block is None and dose is None:
+            return None, None, False
         approved = None
         if self._finder is not None and self._redaction_review is not None:
             digest = hashlib.sha256(data).digest()
             if digest in self._redaction_review.rejected:
                 raise _Refused(TransformReason.REDACTION_REJECTED)
             approved = self._redaction_review.approved.get(digest)
+        reviewed = approved is not None
         try:
+            if dose is not None:
+                try:
+                    defacer = RtDoseDefacer(dose, dataset)
+                    redaction = (
+                        black_out(source, dataset, self._finder, defacer)
+                        if approved is None
+                        else black_out_reviewed(source, dataset, approved, defacer)
+                    )
+                    why = defacer.held
+                except PixelDataRefused:
+                    redaction = None
+                    why = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
+                if why is not None:
+                    redaction = None
+                    if approved is not None:
+                        redaction = black_out_reviewed(source, dataset, approved)
+                    elif self._finder is not None:
+                        redaction = black_out(source, dataset, self._finder)
+                return redaction, why, reviewed
             defacer = None if block is None else CtDefacer(block, dataset)
             if approved is not None:
-                return black_out_reviewed(source, dataset, approved, defacer), True
-            return black_out(source, dataset, self._finder, defacer), False
+                return (
+                    black_out_reviewed(source, dataset, approved, defacer),
+                    None,
+                    True,
+                )
+            return black_out(source, dataset, self._finder, defacer), None, False
         except PixelDataRefused as refused:
             raise _Refused(refused.reason) from None
 
@@ -1233,11 +1305,14 @@ class InstanceTransform:
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
         defacing = self._defacing(iod, record)
+        dose = self._dose_block(iod, record, dataset)
         qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         chosen = {CLEAN_DESCRIPTORS} if satisfied else set()
         try:
             qc = (*qc, *_retained(source, plan))
-            redaction, reviewed = self._black_out(data, source, dataset, defacing)
+            redaction, undefaced, reviewed = self._black_out(
+                data, source, dataset, defacing, dose
+            )
             # The markers write no pixel data, so the face review is of the
             # pixel data that this plan writes.
             writing = _without_bitstream_metadata(
@@ -1249,11 +1324,12 @@ class InstanceTransform:
                 if defacing is not None and defacing.held
                 else self._face_hold(data, dataset, iod, writing)
             )
-            holds = [
-                held
-                for held in (face, self._frame_hold(iod, record))
-                if held is not None
-            ]
+            frame = (
+                self._frame_hold(iod, record, dataset, dose)
+                if undefaced is None
+                else HeldVisualFeatures(undefaced)
+            )
+            holds = [held for held in (face, frame) if held is not None]
             for held in holds:
                 evidence = _held(evidence, held)
             if not holds and self._face_review is not None:

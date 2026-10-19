@@ -30,6 +30,7 @@ import types
 from collections.abc import Callable, Iterable, Mapping
 
 from . import compound_actions, conformance_values, keys, markers
+from .dose_defacing import DOSE_FRACTION
 from .codes import load_context_group
 from .conformance import (
     CLEAN_DESCRIPTORS_FALLBACK,
@@ -715,10 +716,19 @@ _REVIEW_CONDITIONS = {
         "while a target in another "
         "Frame of Reference that its structure set does not tie to them, "
         "such as one on a registered MR, does not hold it, and so is "
-        "each RT Structure Set, RT Dose, and PET "
-        "instance, with or without pixel data, that is in a defaced series' "
+        "each RT Structure Set, RT Dose with pixel data, and PET "
+        "instance that is in a defaced series' "
         "Frame of Reference, names none, or refers to a defaced slice, which "
-        "the run does not yet clean. A verdict on such an instance, given "
+        "the run does not yet clean. An RT Dose in the Frame of Reference of "
+        "only one defaced series, with native pixel data of no negative value "
+        "on a grid placed as PS3.3 Section C.8.8.3.2 defines, is cleaned "
+        "instead: its dose in that region, "
+        "less the cranial cavity kept, is set to zero, never recalculated, "
+        "and its dose-volume histograms are kept as received; where the "
+        f"greatest dose set to zero would be more than {DOSE_FRACTION:.0%} of "
+        "the grid's "
+        "greatest, it is not set to zero, and the RT Dose is held for review. "
+        "A verdict on an instance held for either reason, given "
         "beside the defaced images, does not cover it in a later run"
     ),
 }

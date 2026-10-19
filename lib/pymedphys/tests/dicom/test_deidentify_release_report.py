@@ -208,7 +208,7 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "source_gaps",
         "structural_checks",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/20"
+    assert document["format"] == "pymedphys-deid-release-report/21"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS

@@ -230,7 +230,8 @@ HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
             "a CT slice of a series with a treatment target in the region that "
             "defacing would set to air; or it is an RT Structure Set, RT Dose, "
             "or PET instance beside a CT series that the run defaced, which the "
-            "run does not yet clean"
+            "run does not yet clean, or an RT Dose beside one with too much dose "
+            "in the region set to air to set that dose to zero"
         ),
         "release": (
             "the release gate requires QC review, for other text that the "
