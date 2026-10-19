@@ -76,18 +76,22 @@ for the release report (:class:`FaceBlockCounts`), by series, never naming
 one.
 
 Within the block, :class:`CtDefacer` keeps each pixel of Pixel Padding
-Value or its range, and each pixel inside the cranial cavity, which bone at
-:data:`~pymedphys._dicom.deidentify.defacing.BONE` Hounsfield units or more
-encloses within the slice, so that the brain in front of the block's plane
-is kept. Padding is never taken for bone, so it cannot close a ring around
-the face. The cavity is kept only more than :data:`CAVITY_FLOOR`
-millimetres above the higher globe's centre, above the orbits, so that bone
-enclosing an orbit within a slice, or a thin orbital roof that the slice's
-bone does not seal, keeps no part of an eye. Where no bone encloses the
-cavity within a slice, the block is air to the top of the slice. Where
-air's stored value is itself padding, the pixels written are padding, which
-a viewer shows as outside the image, as the air before the face is in most
-scans.
+Value or its range, and each pixel of the brain within the cranial cavity,
+which bone at :data:`~pymedphys._dicom.deidentify.defacing.BONE` Hounsfield
+units or more encloses within the slice, so that the brain in front of the
+block's plane is kept: the cavity's pixels above
+:data:`~pymedphys._dicom.deidentify.defacing.BODY` Hounsfield units that
+join, within the slice, such pixels behind the plane, and the pixels that
+they enclose. So the air of a frontal sinus, which bone also encloses, is
+written as air, as is any tissue lining it. Padding is never taken for
+bone, so it cannot close a ring around the face. The cavity is kept only
+more than :data:`CAVITY_FLOOR` millimetres above the higher globe's centre,
+above the orbits, so that bone enclosing an orbit within a slice, or a thin
+orbital roof that the slice's bone does not seal, keeps no part of an eye.
+Where no bone encloses the cavity within a slice, the block is air to the
+top of the slice. Where air's stored value is itself padding, the pixels
+written are padding, which a viewer shows as outside the image, as the air
+before the face is in most scans.
 
 Beyond CT Image instances, the run cleans the same region of an RT Dose
 that :mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero there,
@@ -978,10 +982,21 @@ def _kept(
         padded = (stored >= low) & (stored <= high)
     # Padding is never bone, whatever Hounsfield units its stored value
     # would give, so that it cannot close a ring around the face.
-    bone = (stored * slope + intercept >= defacing.BONE) & ~padded
-    cavity = scipy.ndimage.binary_fill_holes(bone) & ~bone
+    hounsfield = stored * slope + intercept
+    bone = (hounsfield >= defacing.BONE) & ~padded
     floor = max(globe[2] for globe in block.globes) + CAVITY_FLOOR
-    return cavity & (_heights(each) > floor), padded
+    cavity = scipy.ndimage.binary_fill_holes(bone) & ~bone & (_heights(each) > floor)
+    # Of the cavity, only the brain: its tissue that joins, within the slice,
+    # its tissue behind the block's plane, with what that encloses, such as
+    # bone within it. Bone also encloses the air of a frontal sinus in its
+    # wall, which, kept, would differ from air written around it only by
+    # noise, and any tissue lining it, which joins none behind the plane.
+    tissue = cavity & (hounsfield > defacing.BODY)
+    labels, _ = scipy.ndimage.label(tissue)
+    inside = block.slice_mask(each.position, each.orientation, each.spacing, each.shape)
+    joined = np.unique(labels[tissue & ~inside])
+    brain = np.isin(labels, joined[joined > 0])
+    return scipy.ndimage.binary_fill_holes(brain) & ~padded, padded
 
 
 def _heights(each: _Slice) -> np.ndarray:
