@@ -19,6 +19,7 @@
 # pylint: disable = too-many-lines
 
 import dataclasses
+import gc
 import io
 import json
 import logging
@@ -1399,6 +1400,53 @@ def test_the_same_value_from_two_instances_is_reported_once_per_place():
     result = find_residuals(data, [NAME_SOURCE, NAME_SOURCE, ID_SOURCE])
 
     assert len(result.findings) == 1
+
+
+def test_a_set_of_values_is_grouped_once_and_judged_in_the_order_given(monkeypatch):
+    # Two names from the same attribute, one of them the other's UTF-8 bytes
+    # read as ISO 8859-1, match at the same byte as the same form, and the
+    # value given first decides the encoding reported.
+    as_latin_1 = _source("(0010,0010)", "PN", "MÃ¼LLER^ANNA")
+    as_utf_8 = _source("(0010,0010)", "PN", "MüLLER^ANNA")
+    data = b"by " + "MüLLER^ANNA".encode("utf-8") + b" on"
+    monkeypatch.setattr(residuals, "_PLAN", [])
+    prepared = mock.Mock(wraps=residuals._prepared)  # pylint: disable = protected-access
+    monkeypatch.setattr(residuals, "_prepared", prepared)
+
+    def encodings(*values):
+        return [f.encoding for f in find_residuals(data, values).findings]
+
+    assert encodings(as_latin_1, as_utf_8) == ["latin-1"]
+    assert encodings(as_utf_8, as_latin_1) == ["utf-8"]
+    assert encodings(as_latin_1, as_utf_8, as_utf_8) == ["latin-1"]
+    # Grouped for the first search alone.
+    assert prepared.call_count == 2
+
+
+def test_another_set_of_values_is_grouped_afresh(monkeypatch):
+    monkeypatch.setattr(residuals, "_PLAN", [])
+    prepared = mock.Mock(wraps=residuals._prepared)  # pylint: disable = protected-access
+    monkeypatch.setattr(residuals, "_prepared", prepared)
+    first = _source("(0010,0020)", "LO", "ID00001")
+    second = _source("(0010,0020)", "LO", "ID00002")
+
+    for values in ([first], [first, second], [second], [first]):
+        find_residuals(b"", values)
+
+    assert prepared.call_count == 5
+
+
+def test_grouped_forms_are_dropped_once_a_value_is_gone(monkeypatch):
+    monkeypatch.setattr(residuals, "_PLAN", [])
+    kept = residuals._PLAN  # pylint: disable = protected-access
+    value = _source("(0010,0010)", "PN", "OKAPI^XENOCRATES")
+    find_residuals(b"", [value])
+    assert kept
+
+    del value
+    gc.collect()
+
+    assert not kept
 
 
 # What is not searched, and robustness.
