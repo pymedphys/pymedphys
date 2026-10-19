@@ -789,6 +789,37 @@ def _plan(
     return plan, list(range(len(values)))
 
 
+class _Order:
+    """The needles of each form that a search finds, in the order of the
+    values as given, sorted the first time that the form is found.
+
+    Only forms found are kept, by the scope of their group and the form, so
+    that bytes that start as a form does, but are none, keep nothing.
+    """
+
+    def __init__(self, plan: _Plan, bases: Sequence[int]) -> None:
+        self.owners = plan.owners
+        self.ranks = plan.ranks
+        self.bases = bases
+        self.found: dict[tuple[int, bytes], list[int]] = {}
+
+    def __call__(
+        self, scope: int, forms: dict[bytes, tuple[int, ...]], hit: bytes
+    ) -> Sequence[int]:
+        """Return the needles of ``hit`` in ``forms``, if it is one, in order."""
+        indices = forms.get(hit)
+        if indices is None:
+            return ()
+        ordered = self.found.get((scope, hit))
+        if ordered is None:
+            ordered = self.found[scope, hit] = sorted(indices, key=self.given)
+        return ordered
+
+    def given(self, index: int) -> int:
+        """Return a needle's index in the order of the values as given."""
+        return self.bases[self.owners[index]] + self.ranks[index]
+
+
 @functools.cache
 def _constant_keys(vr: str) -> frozenset[object]:
     """Return the written constants as D compares them for ``vr``."""
@@ -1010,23 +1041,8 @@ def _search(  # pylint: disable = too-many-arguments, too-many-positional-argume
     their needles' values as given, which ``bases`` holds: where the
     needles of the value at each place in ``plan`` start in that order.
     """
-    needles, owners, ranks = plan.needles, plan.owners, plan.ranks
-
-    # Each form's needles in the order of the values as given, by the scope
-    # of their group and the form, sorted the first time that it is found.
-    ordered: dict[tuple[int, bytes], list[int]] = {}
-
-    def judged(
-        scope: int, forms: dict[bytes, tuple[int, ...]], hit: bytes
-    ) -> list[int]:
-        """Return the needles of a form found, in the order of the values as given."""
-        indices = ordered.get((scope, hit))
-        if indices is None:
-            indices = ordered[scope, hit] = sorted(
-                forms.get(hit, ()),
-                key=lambda index: bases[owners[index]] + ranks[index],
-            )
-        return indices
+    needles = plan.needles
+    judged = _Order(plan, bases)
 
     starts = [span.start for span in spans]
     numbers = [*samples] + [

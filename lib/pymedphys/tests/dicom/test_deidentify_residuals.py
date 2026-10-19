@@ -1423,6 +1423,33 @@ def test_a_set_of_values_is_grouped_once_and_judged_in_the_order_given(monkeypat
     assert len(kept) == 1 and kept[0] is plan
 
 
+def test_only_forms_found_are_ordered_and_each_once(monkeypatch):
+    # Bytes that start as the form does, but are not it, keep nothing.
+    orders = []
+    results = []
+
+    class Recorded(residuals._Order):  # pylint: disable = protected-access
+        def __init__(self, *args):
+            super().__init__(*args)
+            orders.append(self)
+
+        def __call__(self, *args):
+            result = super().__call__(*args)
+            if result:
+                results.append(result)
+            return result
+
+    monkeypatch.setattr(residuals, "_Order", Recorded)
+    misses = b"".join(f"QUOKK{index:05d} ".encode() for index in range(200))
+    data = misses + b"QUOKKA0042 and QUOKKA0042"
+
+    find_residuals(data, [_source("(0010,0020)", "LO", "QUOKKA0042")])
+
+    (order,) = orders
+    assert len(order.found) == 1
+    assert len(results) == 2 and results[0] is results[1]
+
+
 def test_another_set_of_values_is_grouped_afresh(monkeypatch):
     monkeypatch.setattr(residuals, "_PLAN", [])
     kept = residuals._PLAN  # pylint: disable = protected-access
