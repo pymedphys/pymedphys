@@ -108,16 +108,16 @@ element of a private group is settled here, by the reviewed safe private
 rules (:func:`~pymedphys._dicom.deidentify.retained_private.private_actions`):
 a private creator or data element is kept (K), a private UID is
 replaced (U), private text is cleaned (C) where the policy also selects
-Clean Descriptors, or the element is removed (X). A private sequence that a rule
-keeps is kept as a container, so that each element in its items takes its
-own rule. So is a private sequence that no rule lists, which E.3.10 asks to
-be parsed, but the data set is planned again with it removed, with
+Clean Descriptors, or the element is removed (X). A private sequence that a
+rule keeps is kept as a container, so that each element in its items takes
+its own rule. So is a private sequence that no rule lists, which E.3.10 asks
+to be parsed, but the data set is planned again with it removed, with
 everything in it, where nothing in its items, at any depth, is kept,
 replaced, or cleaned but private creators: the sequence and its creator are
 kept only for what the parsing keeps. The plan gives the key by which each
-private value to clean is decided on, in :attr:`InstancePlan.private_texts`. A private data element that a rule keeps or
-replaces, written without its VR, in implicit VR or as UN, is read by the
-rule's VR.
+private value to clean is decided on, in :attr:`InstancePlan.private_texts`.
+A private data element that a rule keeps or replaces, written without its
+VR, in implicit VR or as UN, is read by the rule's VR.
 
 Making the plan reads no value but, under the Retain Safe Private Option,
 the private creators and the private values that a rule would keep, which

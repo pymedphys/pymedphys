@@ -212,8 +212,9 @@ class InstanceEdits:
         then those found while editing and collecting, in file order.
     read_as_latin_1 : tuple of ElementPath
         In file order, the path of each value, removed or replaced, or
-        private text to clean, that was read as ISO 8859-1, being text outside ISO 646 where no Specific
-        Character Set applies, so that its writer knows, and as evidence of
+        private text to clean, that was read as ISO 8859-1, being text
+        outside ISO 646 where no Specific Character Set applies, so that its
+        writer knows, and as evidence of
         how each collected value was read, whether or not the instance must
         be sequestered; ``()`` if there is none.
     registered_uids : tuple of ElementPath

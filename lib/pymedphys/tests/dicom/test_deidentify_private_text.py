@@ -376,6 +376,13 @@ def test_private_text_that_no_reviewer_decided_on_is_removed_and_listed():
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")
+def test_a_creator_removed_with_its_text_is_not_listed_as_retained():
+    result = _result(_transform(), _named("SENTINEL"))
+
+    assert not [item for item in result.qc if isinstance(item, RetainedText)]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01")
 def test_a_creator_is_kept_for_what_else_its_block_keeps():
     dataset = _slice((0x00191023, "DS", "39.375"), (0x0019109E, "LO", "SENTINEL"))
 
@@ -452,6 +459,29 @@ def test_a_parsed_sequence_holding_only_text_is_kept_only_for_kept_text():
         "(2001,0010)": "Philips Imaging DD 001",
         "(2001,105A)": "SENTINEL NOTE",
     }
+
+
+def test_a_parsed_sequence_goes_whole_with_kept_text_where_other_text_is_held():
+    item = pydicom.Dataset()
+    item.add_new(0x20010010, "LO", "Philips Imaging DD 001")
+    item.add_new(0x20011050, "LO", "ARROW")
+    item.add_new(0x2001105A, "ST", "SENTINEL NOTE")
+    dataset = synthetic.ct_slice(0)
+    dataset.add_new(0x70530010, "LO", PET)
+    dataset.add_new(0x705310F0, "SQ", pydicom.Sequence([item]))
+    marker = '(2001,"Philips Imaging DD 001",50) LO'
+
+    result = _result(_transform(_reviewed((marker, "ARROW", Review.KEEP))), dataset)
+
+    # The note is held, so it takes its action without Clean Descriptors,
+    # which removes the sequence that holds it, and the kept marker with it.
+    assert not _private(_written(result))
+    assert b"SENTINEL" not in result.data
+    assert {m.attribute: m.applied for m in _material(result)} == {
+        marker: False,
+        '(2001,"Philips Imaging DD 001",5A) ST': False,
+    }
+    assert not [item for item in result.qc if isinstance(item, RetainedText)]
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")
