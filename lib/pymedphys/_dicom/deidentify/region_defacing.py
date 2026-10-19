@@ -48,7 +48,14 @@ edges cross the plane along their line, as a simple polygon's do. Since
 each of the two parts lies on its own side of the vertical plane, each
 piece is disjoint from the others but for that plane, so the pieces of a
 CLOSEDPLANAR_XOR contour combine as the contour's own part outside the
-block does. Where the crossings cannot be paired, as for a polygon that
+block does. The closed contours of an ROI in one plane bound one region
+together, as a hole's contour does within its outer one, so where one of
+them is cut, each of them that enters the block is cut too, even one that
+enters only the kept cavity, so that a hole kept whole within the cavity
+never becomes a region that the cut outer contour no longer surrounds.
+Since each is cut to its part outside the same block, the region that they
+bound together, whether by exclusive or or by union, is cut to its part
+outside the block. Where the crossings cannot be paired, as for a polygon that
 crosses itself, the part is written as one polygon joined along the plane,
 which still lies outside the block. The first piece written of a contour
 keeps its Contour Number, and the others have none, since a number names
@@ -92,7 +99,8 @@ from .reasons import TransformReason, VisualFeaturesReason
 from .source import NATIVE_TRANSFER_SYNTAXES
 from .uids import normalise_uid
 
-CLOSED = frozenset({"CLOSED_PLANAR", "CLOSEDPLANAR_XOR"})
+CLOSED_PLANAR = "CLOSED_PLANAR"
+CLOSED = frozenset({CLOSED_PLANAR, "CLOSEDPLANAR_XOR"})
 OPEN = frozenset({"OPEN_PLANAR", "OPEN_NONPLANAR"})
 POINT = "POINT"
 # The largest magnitude, in millimetres, of a coordinate of a contour that
@@ -101,6 +109,11 @@ _FARTHEST = 1e6
 # The interval, in millimetres, at which a segment is sampled within the
 # block where the block reaches no slice.
 _STEP = 0.5
+# How far apart, in millimetres, and how far from parallel, as one less the
+# cosine of the angle between their normals, two closed contours may lie and
+# still be taken to lie in one plane, and so to bound one region together.
+_COPLANAR = 0.01
+_PARALLEL = 1e-6
 
 
 class ContoursRefused(Exception):
@@ -198,21 +211,62 @@ def cut_contours(
 def _written(
     region: DoseBlock, contours: pydicom.Sequence, step: float
 ) -> tuple[WrittenContour, ...] | None:
-    """Return one ROI's contours as written, or None where none is cut."""
+    """Return one ROI's contours as written, or None where none is cut.
+
+    Closed contours in one plane bound one region together, as a hole's
+    contour does within its outer one, so where one of them reaches the
+    face, each of them that enters the block is cut by it, and the region
+    that they bound together loses just its part in the block.
+    """
+    parsed = [_contour(contour) for contour in contours]
+    cutting = [_reaches_face(region, kind, points, step) for kind, points in parsed]
+    closed = [index for index, (kind, _) in enumerate(parsed) if kind in CLOSED]
+    for group in _coplanar([parsed[index][1] for index in closed]):
+        if any(cutting[closed[member]] for member in group):
+            for member in group:
+                cutting[closed[member]] = _enters(
+                    region.block, parsed[closed[member]][1]
+                )
+    if not any(cutting):
+        return None
     written: list[WrittenContour] = []
-    changed = False
-    for index, contour in enumerate(contours):
-        kind, points = _contour(contour)
-        pieces = _cut(region, kind, points, step)
-        if pieces is None:
+    for index, ((kind, points), cut) in enumerate(zip(parsed, cutting, strict=True)):
+        if not cut:
             written.append(WrittenContour(index))
             continue
-        changed = True
         written.extend(
             WrittenContour(index, _decimals(piece), first == 0)
-            for first, piece in enumerate(pieces)
+            for first, piece in enumerate(_pieces(region.block, kind, points))
         )
-    return tuple(written) if changed else None
+    return tuple(written)
+
+
+def _coplanar(polygons: list[np.ndarray]) -> list[list[int]]:
+    """Group polygons, by their indices, into those that lie in one plane,
+    within :data:`_COPLANAR` millimetres; a polygon without area is alone."""
+    groups: list[tuple[np.ndarray, float, list[int]]] = []
+    alone: list[list[int]] = []
+    for index, points in enumerate(polygons):
+        centred = points - points.mean(axis=0)
+        # Newell's method gives the polygon's normal, scaled by twice its area.
+        normal = np.cross(centred, np.roll(centred, -1, axis=0)).sum(axis=0)
+        length = float(np.linalg.norm(normal))
+        if not math.isfinite(length) or length <= 0:
+            alone.append([index])
+            continue
+        normal /= length
+        offset = float(normal @ points.mean(axis=0))
+        for other, other_offset, members in groups:
+            cosine = float(normal @ other)
+            if (
+                abs(cosine) >= 1 - _PARALLEL
+                and abs(math.copysign(offset, cosine) - other_offset) <= _COPLANAR
+            ):
+                members.append(index)
+                break
+        else:
+            groups.append((normal, offset, [index]))
+    return [members for _, _, members in groups] + alone
 
 
 def _contour(contour: pydicom.Dataset) -> tuple[str, np.ndarray]:
@@ -243,22 +297,42 @@ def _contour(contour: pydicom.Dataset) -> tuple[str, np.ndarray]:
     return kind, points
 
 
-def _cut(
-    region: DoseBlock, kind: str, points: np.ndarray, step: float
-) -> list[np.ndarray] | None:
-    """Return the pieces of a contour written in its place, or None where it
-    is written as received."""
-    if kind == POINT or len(points) == 1:
-        return [] if _defaced(region, points).any() else None
-    starts = points if kind in CLOSED else points[:-1]
-    ends = np.roll(points, -1, axis=0) if kind in CLOSED else points[1:]
-    if not _reaches(region, starts, ends, step):
-        return None
+def _segments(kind: str, points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return the starts and ends of a contour's segments, a closed
+    contour's last running back to its first point."""
     if kind in OPEN:
-        return _outside_polyline(region.block, points)
-    pieces = _clip(points, *_behind(region.block))
-    for part in _clip(points, *_ahead(region.block)):
-        pieces.extend(_clip(part, *_below(region.block)))
+        return points[:-1], points[1:]
+    return points, np.roll(points, -1, axis=0)
+
+
+def _reaches_face(
+    region: DoseBlock, kind: str, points: np.ndarray, step: float
+) -> bool:
+    """Whether a contour reaches a point that defacing writes as air, and so
+    is cut by the block."""
+    if kind == POINT or len(points) == 1:
+        return bool(_defaced(region, points).any())
+    return _reaches(region, *_segments(kind, points), step)
+
+
+def _enters(block: FaceBlock, points: np.ndarray) -> bool:
+    """Whether a closed contour's segments enter the open block, which,
+    since the block's part of the contour's plane is unbounded, is whether
+    the region it bounds meets the block."""
+    lower, upper = _intervals(block, *_segments(CLOSED_PLANAR, points))
+    return bool((lower < upper).any())
+
+
+def _pieces(block: FaceBlock, kind: str, points: np.ndarray) -> list[np.ndarray]:
+    """Return the pieces of a contour outside the block, written in its
+    place."""
+    if kind == POINT or len(points) == 1:
+        return []
+    if kind in OPEN:
+        return _outside_polyline(block, points)
+    pieces = _clip(points, *_behind(block))
+    for part in _clip(points, *_ahead(block)):
+        pieces.extend(_clip(part, *_below(block)))
     return [piece for piece in pieces if len(piece) >= 3]
 
 

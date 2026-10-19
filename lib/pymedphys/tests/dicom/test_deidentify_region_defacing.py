@@ -185,6 +185,111 @@ def test_an_edge_that_crosses_the_block_between_its_vertices_is_cut():
     assert all(_outside(piece).all() for piece in written)
 
 
+def _roi(contours):
+    """The contours written of one ROI's contours, each as its source index
+    and points, or None where none is cut."""
+    cut = cut_contours(_REGION, _structure_set(contours), _FRAME)
+    if not cut:
+        return None
+    ((_, written),) = list(cut.items())
+    return [
+        (
+            each.contour,
+            contours[each.contour][1]
+            if each.values is None
+            else np.array([float(v) for v in each.values]).reshape(-1, 3),
+        )
+        for each in written
+    ]
+
+
+def _region_of(polygons):
+    """The region that polygons in one plane bound together, by exclusive
+    or, as CLOSEDPLANAR_XOR contours do and nested CLOSED_PLANAR ones are
+    commonly read."""
+    region = shapely.geometry.Polygon()
+    for points in polygons:
+        region = region.symmetric_difference(_polygon(points))
+    return region
+
+
+_FACE_SIDE = shapely.geometry.box(-1000, -1000, 1000, 0)
+
+
+@pytest.mark.parametrize("kind", ["CLOSEDPLANAR_XOR", "CLOSED_PLANAR"])
+def test_a_hole_in_the_cavity_is_cut_with_the_contour_around_it(kind):
+    # The outer contour reaches the face; the hole lies in the kept cavity
+    # alone, so on its own it would be kept whole, and become a filled
+    # island once the outer contour is cut.
+    outer = _rectangle(-15, 15, -15, 15, 20)
+    hole = _rectangle(-4, 4, -9, -2, 20)
+    source = _region_of([outer, hole])
+
+    written = _roi([(kind, outer), (kind, hole)])
+
+    assert [index for index, _ in written] == [0]
+    got = _region_of([points for _, points in written])
+    expected = source.difference(_FACE_SIDE)
+    assert got.symmetric_difference(expected).area < 1e-6
+    assert not got.contains(shapely.geometry.Point(0, -5))
+
+
+def test_a_hole_that_crosses_the_plane_is_cut_with_the_contour_around_it():
+    outer = _rectangle(-15, 15, -15, 15, 20)
+    hole = _rectangle(-4, 4, -9, 6, 20)
+
+    written = _roi([("CLOSEDPLANAR_XOR", outer), ("CLOSEDPLANAR_XOR", hole)])
+
+    got = _region_of([points for _, points in written])
+    expected = _region_of([outer, hole]).difference(_FACE_SIDE)
+    assert got.symmetric_difference(expected).area < 1e-6
+    assert not got.contains(shapely.geometry.Point(0, 3))
+
+
+def test_contours_in_another_plane_are_not_cut_with_those_that_reach_the_face():
+    outer = _rectangle(-15, 15, -15, 15, 20)
+    # On the slice above, a contour and its hole within the cavity alone.
+    above = _rectangle(-4, 4, -9, -2, 30)
+    hole = _rectangle(-2, 2, -6, -4, 30)
+
+    written = _roi(
+        [
+            ("CLOSEDPLANAR_XOR", outer),
+            ("CLOSEDPLANAR_XOR", above),
+            ("CLOSEDPLANAR_XOR", hole),
+        ]
+    )
+
+    assert [index for index, _ in written] == [0, 1, 2]
+    assert np.array_equal(written[1][1], above)
+    assert np.array_equal(written[2][1], hole)
+
+
+def test_random_holes_leave_the_roi_its_part_outside_the_block():
+    rng = np.random.default_rng(20261019)
+    cut = 0
+    for _ in range(200):
+        # Rounded so that Contour Data hold them exactly.
+        x0, y0 = np.round(rng.uniform(-14, 0, 2), 3)
+        x1, y1 = np.round(rng.uniform(1, 14, 2), 3)
+        outer = _rectangle(x0, x1, y0, y1, 20)
+        hx0, hx1 = np.sort(np.round(rng.uniform(x0 + 0.5, x1 - 0.5, 2), 3))
+        hy0, hy1 = np.sort(np.round(rng.uniform(y0 + 0.5, y1 - 0.5, 2), 3))
+        hole = _rectangle(hx0, hx1, hy0, hy1, 20)
+        contours = [("CLOSEDPLANAR_XOR", outer), ("CLOSEDPLANAR_XOR", hole)]
+        source = _region_of([outer, hole])
+
+        written = _roi(contours)
+
+        if written is None:
+            continue
+        cut += 1
+        got = _region_of([points for _, points in written])
+        expected = source.difference(_FACE_SIDE)
+        assert got.symmetric_difference(expected).area < 1e-6
+    assert cut > 100, cut
+
+
 def test_a_contour_cut_in_two_is_written_as_two_numbered_once():
     # A U whose base is in the block leaves its two arms behind the plane.
     points = np.array(
