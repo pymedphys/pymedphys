@@ -290,8 +290,8 @@ def test_contours_in_parallel_planes_either_side_of_the_origin_are_apart(reverse
     mirrored = _rectangle(-4, 4, -9, -2, -20)
     mirrored = mirrored[::-1] if reverse else mirrored
 
-    assert sorted(region_defacing._coplanar([ring, mirrored])) == [[0], [1]]
-    assert region_defacing._coplanar([ring, ring[::-1]]) == [[0, 1]]
+    assert sorted(region_defacing._coplanar([ring, mirrored])[0]) == [[0], [1]]
+    assert region_defacing._coplanar([ring, ring[::-1]])[0] == [[0, 1]]
 
 
 def _turned(points, about_x, about_y, shift):
@@ -326,12 +326,77 @@ def test_oblique_contours_written_to_a_tenth_of_a_millimetre_share_a_plane():
             for points in (outer, hole, beside)
         )
 
-        assert region_defacing._coplanar([hole, ring]) == [[0, 1]]
-        assert region_defacing._coplanar([ring, hole[::-1]]) == [[0, 1]]
-        assert sorted(region_defacing._coplanar([ring, hole, beside])) == [
+        assert region_defacing._coplanar([hole, ring])[0] == [[0, 1]]
+        assert region_defacing._coplanar([ring, hole[::-1]])[0] == [[0, 1]]
+        assert sorted(region_defacing._coplanar([ring, hole, beside])[0]) == [
             [0, 1],
             [2],
         ]
+
+
+def _even_odd(rings, x, y):
+    """Whether (x, y) lies within an odd number of the rings, by counting
+    the edges that a ray from it along x crosses, as for any polygon."""
+    inside = False
+    for ring in rings:
+        for (x0, y0, _), (x1, y1, _) in zip(ring, np.roll(ring, -1, axis=0)):
+            if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+                inside = not inside
+    return inside
+
+
+@pytest.mark.parametrize("hole_first", [False, True], ids=["outer first", "hole first"])
+@pytest.mark.parametrize("reverse_hole", [False, True], ids=["hole", "hole reversed"])
+@pytest.mark.parametrize(
+    "reverse_outer", [False, True], ids=["outer", "outer reversed"]
+)
+def test_a_hole_in_a_bow_tie_is_cut_with_it(reverse_outer, reverse_hole, hole_first):
+    # A bow tie's lobes are wound oppositely, so its signed area is zero,
+    # yet it lies in one plane, and its left lobe holds the hole, which lies
+    # within the kept cavity alone.
+    outer = np.array(
+        [(-10, -10, 20), (10, 10, 20), (10, -10, 20), (-10, 10, 20)], float
+    )
+    hole = _rectangle(-4, -3, -2, -1, 20)
+    outer = outer[::-1] if reverse_outer else outer
+    hole = hole[::-1] if reverse_hole else hole
+    rings = [hole, outer] if hole_first else [outer, hole]
+
+    written = _roi([("CLOSEDPLANAR_XOR", ring) for ring in rings])
+
+    got = [points for _, points in written]
+    assert not _even_odd(rings, -3.5, -1.5)
+    assert not _even_odd(got, -3.5, -1.5)
+    # Nothing in the block is included, and what is outside it is as it was.
+    for x in np.arange(-11.25, 11.5, 0.5):
+        for y in np.arange(-11.25, 11.5, 0.5):
+            expected = y > 0 and _even_odd(rings, x, y)
+            assert _even_odd(got, x, y) == expected, (x, y)
+
+
+def test_a_closed_contour_in_no_one_plane_refuses_an_roi_that_is_cut():
+    bent = _rectangle(-4, 4, 2, 9, 20)
+    bent[2, 2] = 21
+
+    with pytest.raises(ContoursRefused):
+        cut_contours(
+            _REGION,
+            _structure_set(
+                [
+                    ("CLOSED_PLANAR", _rectangle(-15, 15, -15, 15, 20)),
+                    ("CLOSED_PLANAR", bent),
+                ]
+            ),
+            _FRAME,
+        )
+    # Where none of its ROI's contours is cut, it is kept as received.
+    assert not cut_contours(
+        _REGION,
+        _structure_set(
+            [("CLOSED_PLANAR", _rectangle(-15, 15, 2, 15, 20)), ("CLOSED_PLANAR", bent)]
+        ),
+        _FRAME,
+    )
 
 
 def test_a_hole_that_crosses_the_plane_is_cut_with_the_contour_around_it():

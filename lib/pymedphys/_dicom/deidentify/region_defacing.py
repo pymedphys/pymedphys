@@ -55,7 +55,10 @@ enters only the kept cavity, so that a hole kept whole within the cavity
 never becomes a region that the cut outer contour no longer surrounds.
 Since each is cut to its part outside the same block, the region that they
 bound together, whether by exclusive or or by union, is cut to its part
-outside the block. Where the crossings cannot be paired, as for a polygon that
+outside the block. A contour's plane is the one that best fits its points,
+found for any winding and for a contour that crosses itself, and where a
+closed contour of an ROI that is cut lies in no one plane, the structure
+set is refused. Where the crossings cannot be paired, as for a polygon that
 crosses itself, the part is written as one polygon joined along the plane,
 which still lies outside the block. The first piece written of a contour
 keeps its Contour Number, and the others have none, since a number names
@@ -219,12 +222,24 @@ def _written(
     Closed contours in one plane bound one region together, as a hole's
     contour does within its outer one, so where one of them reaches the
     face, each of them that enters the block is cut by it, and the region
-    that they bound together loses just its part in the block.
+    that they bound together loses just its part in the block. Where any
+    is cut, a closed contour that lies in no one plane is refused.
+
+    Raises
+    ------
+    ContoursRefused
+        Where a contour cannot be read, or a closed contour that lies in no
+        one plane is in an ROI of which a contour is cut.
     """
     parsed = [_contour(contour) for contour in contours]
     cutting = [_reaches_face(region, kind, points, step) for kind, points in parsed]
     closed = [index for index, (kind, _) in enumerate(parsed) if kind in CLOSED]
-    for group in _coplanar([parsed[index][1] for index in closed]):
+    groups, unplaced = _coplanar([parsed[index][1] for index in closed])
+    # A closed contour in no one plane cannot be decided with those it may
+    # bound a region with, so an ROI that is cut with one is refused.
+    if unplaced and any(cutting):
+        raise ContoursRefused()
+    for group in groups:
         if any(cutting[closed[member]] for member in group):
             for member in group:
                 cutting[closed[member]] = _enters(
@@ -244,29 +259,36 @@ def _written(
     return tuple(written)
 
 
-def _coplanar(polygons: list[np.ndarray]) -> list[list[int]]:
+def _coplanar(polygons: list[np.ndarray]) -> tuple[list[list[int]], list[int]]:
     """Group polygons, by their indices, into those that lie in one plane,
-    within :data:`_COPLANAR` millimetres; a polygon without area is alone.
+    within :data:`_COPLANAR` millimetres, and list those that lie in none.
 
-    Two polygons lie in one plane where their normals are within
-    :data:`_PARALLEL` of parallel and the line between their centres leaves
-    the plane of one or the other by no more than :data:`_COPLANAR`. The
-    distance is taken between the polygons, not from the origin, so that a
-    normal's error, larger for a small polygon, is not scaled by how far
-    from the origin they lie.
+    A polygon's plane is the one that fits its points best, its normal
+    the direction in which they spread least, so that it is found for any
+    winding, and for a polygon that crosses itself, such as a bow tie,
+    whose signed area may be zero. Two polygons lie in one plane where
+    their normals are within :data:`_PARALLEL` of parallel and the line
+    between their centres leaves the plane of one or the other by no more
+    than :data:`_COPLANAR`. The distance is taken between the polygons,
+    not from the origin, so that a normal's error, larger for a small
+    polygon, is not scaled by how far from the origin they lie. A polygon
+    whose points lie on one line bounds nothing and is alone; one with a
+    point farther than :data:`_COPLANAR` from its plane lies in none.
     """
     groups: list[tuple[np.ndarray, np.ndarray, list[int]]] = []
     alone: list[list[int]] = []
+    unplaced: list[int] = []
     for index, points in enumerate(polygons):
         centre = points.mean(axis=0)
         centred = points - centre
-        # Newell's method gives the polygon's normal, scaled by twice its area.
-        normal = np.cross(centred, np.roll(centred, -1, axis=0)).sum(axis=0)
-        length = float(np.linalg.norm(normal))
-        if not math.isfinite(length) or length <= 0:
+        _, spread, axes = np.linalg.svd(centred, full_matrices=False)
+        if len(spread) < 3 or not spread[1] > 1e-9 * spread[0]:
             alone.append([index])
             continue
-        normal /= length
+        normal = axes[2]
+        if not np.max(np.abs(centred @ normal)) <= _COPLANAR:
+            unplaced.append(index)
+            continue
         for other, other_centre, members in groups:
             apart = centre - other_centre
             if (
@@ -278,7 +300,7 @@ def _coplanar(polygons: list[np.ndarray]) -> list[list[int]]:
                 break
         else:
             groups.append((normal, centre, [index]))
-    return [members for _, _, members in groups] + alone
+    return [members for _, _, members in groups] + alone, unplaced
 
 
 def _contour(contour: pydicom.Dataset) -> tuple[str, np.ndarray]:
