@@ -338,7 +338,8 @@ def test_a_descriptor_is_read_only_in_its_dictionary_vr():
                 SourceValue(TOP, "UN", "CHEST CT"),
                 SourceValue(DIAGNOSES, "LO", "A\\B"),
                 SourceValue(comments, "LT", "A\\B"),
-            )
+            ),
+            read_as_latin_1=(),
         ),
         [TOP, DIAGNOSES, comments, STUDY],
     )

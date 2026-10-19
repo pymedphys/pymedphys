@@ -593,6 +593,9 @@ def descriptor_counts(material: Mapping[int, Sequence[object]]) -> DescriptorCou
         for item in material[position]:
             if isinstance(item, DescriptorMaterial):
                 queue.add(
-                    item.path.tag, item.sources, item.results, applied=item.applied
+                    item.attribute or item.path.tag,
+                    item.sources,
+                    item.results,
+                    applied=item.applied,
                 )
     return queue.report_counts()

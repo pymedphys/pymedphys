@@ -174,7 +174,7 @@ def test_a_block_declared_safe_keeps_what_the_handling_of_each_vr_keeps(
         "(0011,0010)": "K",
         "(0011,1001)": "K",  # a number
         "(0011,1002)": "K",  # a number string
-        "(0011,1003)": "X",  # text, which no reviewed cleaner cleans
+        "(0011,1003)": "X",  # text, cleaned only under Clean Descriptors
         "(0011,1004)": "X",  # a date
         # A UID is replaced where the file writes it as UI.
         "(0011,1005)": "U" if explicit else "X",

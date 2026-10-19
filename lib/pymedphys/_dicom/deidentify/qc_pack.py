@@ -53,7 +53,10 @@ A pack holds, for one run:
   mapped, emptied, or held for review, with why, and whether the element
   was written with those values or took its action without Clean
   Descriptors instead, for the audit of every value retained or changed and
-  the reviewer's list of values to decide on for later runs (D-009, D-036);
+  the reviewer's list of values to decide on for later runs (D-009, D-036),
+  each by the attribute that a decision on it names: its tag, or, for
+  private text under the Retain Safe Private Option, its private creator,
+  group, element within the block, and VR (D-035);
 - ``reference_findings``: each reference finding that the run reports
   without acting on it, such as a dangling reference, or a written reference
   to an instance that was not written, at each instance it names, with the
@@ -119,12 +122,12 @@ from .residuals import UnsearchedReason
 from .reviewed_descriptors import CleanedDescriptor
 from .reviewed_descriptors import Held as DescriptorHeld
 from .reviewed_descriptors import Outcome as DescriptorOutcome
-from .reviewed_descriptors import stripped
+from .reviewed_descriptors import is_private_descriptor, stripped
 from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/6"
+FORMAT = "pymedphys-deid-qc-pack/8"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 
@@ -725,6 +728,12 @@ class DescriptorEntry:
         because a value was held, no value had text, or a kept value was
         beside a mapped or emptied one, or because another attribute's action removed
         its sequence, it took its action without Clean Descriptors.
+    attribute : str or None
+        For private text under the Retain Safe Private Option, the key by
+        which a reviewer decides on its values
+        (:func:`~pymedphys._dicom.deidentify.reviewed_descriptors.private_descriptor`),
+        since its tag depends on the block that its creator reserves; None
+        for an attribute of the standard, which its tag names.
     """
 
     position: int
@@ -732,6 +741,7 @@ class DescriptorEntry:
     sources: tuple[str, ...]
     results: tuple[CleanedDescriptor, ...]
     applied: bool
+    attribute: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("a descriptor", self.position)
@@ -758,6 +768,13 @@ class DescriptorEntry:
             raise QcPackError(
                 f"a descriptor of instance {self.position} needs whether it was "
                 "applied as True or False"
+            )
+        if self.attribute is not None and not (
+            isinstance(self.attribute, str) and is_private_descriptor(self.attribute)
+        ):
+            raise QcPackError(
+                f"a descriptor of instance {self.position} needs None or a private "
+                "attribute's key as its attribute"
             )
         for source, result in zip(self.sources, self.results):
             problem = _descriptor_problem(source, result)
@@ -1503,6 +1520,7 @@ def pack_document(pack: QcPack) -> dict:
             {
                 "position": entry.position,
                 "element": str(entry.path),
+                "attribute": entry.attribute or entry.path.tag,
                 "applied": entry.applied,
                 "values": [
                     {

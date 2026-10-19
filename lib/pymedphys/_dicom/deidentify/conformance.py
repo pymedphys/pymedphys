@@ -501,9 +501,9 @@ class ConformanceStatement:
         Table E.1-1.
     safe_private : tuple of SafePrivateRule
         Under the Retain Safe Private Option, the rules of the chosen list
-        that can retain a private attribute, other than those for text,
-        which no reviewed cleaner cleans, in their file's order; otherwise
-        ``()``.
+        that can retain a private attribute, other than those for text
+        without the Clean Descriptors Option, whose cleaning alone retains
+        private text, in their file's order; otherwise ``()``.
     safe_private_list : SafePrivateList or None
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes; otherwise None.
@@ -817,13 +817,17 @@ def _roi_names(
 
 
 def _safe_private(rules: ElementRules | None) -> tuple[SafePrivateRule, ...]:
-    """Return the safe private rules that can retain an attribute, but for text."""
+    """Return the safe private rules that can retain an attribute.
+
+    Rules for text retain one only under Clean Descriptors, which cleans it.
+    """
     if rules is None or rules.safe_private is None:
         return ()
+    cleaned = _CLEAN_DESCRIPTORS in rules.policy.options
     return tuple(
         rule
         for rule in rules.safe_private.retained()
-        if rule.handling is not Handling.TEXT
+        if cleaned or rule.handling is not Handling.TEXT
     )
 
 

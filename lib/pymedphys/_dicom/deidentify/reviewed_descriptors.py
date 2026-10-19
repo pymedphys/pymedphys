@@ -29,7 +29,11 @@ that value: at the top level or in the items of a sequence, and in any
 instance. A value of an attribute whose VR allows several values, such as
 Admitting Diagnoses Description (0008,1080), is decided on alone, as each of
 its values is. The attributes a decision can be recorded for are those that
-:func:`descriptor_attributes` gives. ROI Name (3006,0026) is not one of them,
+:func:`descriptor_attributes` gives, and, under the Retain Safe Private
+Option, the private attributes whose text a safe private rule retains, each
+by its :func:`private_descriptor` key, which names its private creator, group,
+element within the block, and VR, since a private attribute's tag depends on
+the block that its creator reserves. ROI Name (3006,0026) is not one of them,
 since the reviewed-names list decides on it.
 
 What a kept or mapped value would write is checked for echoes of the
@@ -38,7 +42,8 @@ Name cleaning checks it, and held if it echoes one, since a reviewer may have
 decided on it for another patient. A value that the list does not cover is
 held too, unless the automatic tier of technique descriptors
 (:mod:`.technique_descriptors`) keeps it and it echoes no identifier: the
-list's decisions take precedence over that tier. Descriptor cleaning
+list's decisions take precedence over that tier, which keeps no private
+text, since its attributes are the standard's. Descriptor cleaning
 (:mod:`.descriptor_cleaning`) writes no element with a held value: the
 element takes its action without Clean Descriptors, and the confidential QC
 pack lists its values for a reviewer to decide on for later runs.
@@ -72,13 +77,15 @@ from typing import TYPE_CHECKING
 from . import custodian_lists, roi_names
 from .keys import DeidKey, warn_where_owner_only_modes_are_not_enforced
 from .reviewed_roi_names import Review
-from .standard import load_data_dictionary, load_table_e1_1
+from .standard import _RESERVED_ODD_GROUPS, load_data_dictionary, load_table_e1_1
 from .supplementary_actions import load_supplementary_actions
 
 if TYPE_CHECKING:
     from .technique_descriptors import TechniqueVocabulary
 
-FORMAT = "pymedphys-deid-reviewed-descriptors/1"
+FORMAT = "pymedphys-deid-reviewed-descriptors/2"
+# The earlier format, without private attributes, which a list may still be.
+_FORMATS = frozenset({"pymedphys-deid-reviewed-descriptors/1", FORMAT})
 # The domain of the list's keyed digest, which no other derivation uses.
 DIGEST_DOMAIN = "reviewed-descriptors"
 CLEAN_DESCRIPTORS = "clean_descriptors"
@@ -106,6 +113,13 @@ _TEXT = frozenset({"ST", "LT", "UT"})
 # NUL instead.
 _PADDING = " \x00"
 _PRINTABLE_ASCII = re.compile(r"[\x20-\x7e]+")
+# A private attribute's key: its group, its private creator, as safe private
+# rules compare it, its element within the block, and its VR, as TCIA's
+# Private Tag Dictionary writes a private attribute, with the VR after it.
+_PRIVATE_KEY = re.compile(
+    r'\(([0-9A-F]{4}),"([\x20-\x5b\x5d-\x7e]*[\x21-\x5b\x5d-\x7e])",'
+    r"([0-9A-F]{2})\) ([A-Z]{2})"
+)
 _NOT_ALPHANUMERIC = re.compile(r"[\W_]+")
 # The fewest letters and digits of an identifier, or a word of one, that is
 # looked for within a descriptor value's own; a shorter one, such as a
@@ -152,6 +166,55 @@ def descriptor_attributes() -> Mapping[str, str]:
     )
 
 
+def private_descriptor(group: int, creator: str, element: int, vr: str) -> str:
+    """Return the key by which a reviewer decides on a private attribute's text.
+
+    It is ``(gggg,"CREATOR",ee) VR``, such as
+    ``(0019,"GEMS_ACQU_01",9E) LO``: the attribute's group and private
+    creator, its element within the block, in upper-case hexadecimal, and its
+    VR, one of SH, LO, ST, LT, UC, and UT.
+
+    Raises
+    ------
+    ValueError
+        If the group is not open to private use, the creator is empty, ends
+        with a space, or holds a character other than printable ISO 646 or a
+        backslash, the element is not within a block, or the VR is not one
+        of those, since a safe private rule compares no other creator, and
+        cleans text of no other VR.
+    """
+    key = f'({group:04X},"{creator}",{element:02X}) {vr}'
+    if not 0 <= element <= 0xFF or descriptor_vr(key) is None:
+        raise ValueError("the private attribute's text cannot be decided on")
+    return key
+
+
+def descriptor_vr(attribute: str) -> str | None:
+    """Return the VR of an attribute whose values a reviewer can decide on, or None.
+
+    ``attribute`` is a tag of :func:`descriptor_attributes`, or the key of a
+    private attribute (:func:`private_descriptor`); any other gives None.
+    """
+    vr = descriptor_attributes().get(attribute)
+    if vr is not None:
+        return vr
+    match = _PRIVATE_KEY.fullmatch(attribute)
+    if match is None or match.group(4) not in MAX_CHARACTERS:
+        return None
+    group = int(match.group(1), 16)
+    if group % 2 == 0 or group in _RESERVED_ODD_GROUPS:
+        return None
+    return match.group(4)
+
+
+def is_private_descriptor(attribute: str) -> bool:
+    """Return whether an attribute is a private attribute's key."""
+    return (
+        attribute not in descriptor_attributes()
+        and descriptor_vr(attribute) is not None
+    )
+
+
 def stripped(value: str) -> str:
     """Return a value without its padding, as the list holds it."""
     return value.strip(_PADDING)
@@ -181,7 +244,7 @@ def _written_problem(to: str, vr: str) -> str | None:
 
 def _decision_problem(tag: object, value: object, decision: object) -> str | None:
     """Return why a decision cannot be recorded, without the value, or None."""
-    vr = descriptor_attributes().get(tag) if isinstance(tag, str) else None
+    vr = descriptor_vr(tag) if isinstance(tag, str) else None
     if vr is None:
         return "the attribute is not a descriptor that Clean Descriptors cleans"
     problem = _value_problem(value, vr)
@@ -285,9 +348,10 @@ class ReviewedDescriptors:
         ------
         ReviewedDescriptorsError
             If ``path`` is inside a protected directory, or an existing list
-            cannot be read, is not a :data:`FORMAT` file, or has a malformed
-            or repeated attribute, value, or decision. The message holds no
-            value.
+            cannot be read, is not a :data:`FORMAT` file, nor one of the
+            earlier format without a private attribute, which is read as
+            one, or has a malformed or repeated attribute, value, or
+            decision. The message holds no value.
         """
         resolved = custodian_lists.custodian_path(
             path,
@@ -315,7 +379,8 @@ class ReviewedDescriptors:
         Raises
         ------
         ReviewedDescriptorsError
-            If ``tag`` is not one of :func:`descriptor_attributes`; if
+            If ``tag`` is neither one of :func:`descriptor_attributes` nor
+            a private attribute's key (:func:`private_descriptor`); if
             ``value`` is empty or padded, or holds a character that its VR
             cannot hold in one value; if ``decision`` is not a
             :class:`ReviewedDescriptor`, or maps to a value that the VR
@@ -426,10 +491,16 @@ def _read(path: pathlib.Path) -> dict[str, dict[str, ReviewedDescriptor]]:
     if (
         not isinstance(document, dict)
         or document.keys() != {"format", "attributes"}
-        or document["format"] != FORMAT
+        or document["format"] not in _FORMATS
         or not isinstance(document["attributes"], dict)
     ):
         raise ReviewedDescriptorsError(f"the file is not a {FORMAT} file")
+    if document["format"] != FORMAT and any(
+        is_private_descriptor(tag) for tag in document["attributes"]
+    ):
+        raise ReviewedDescriptorsError(
+            f"a file of an earlier format than {FORMAT} has a private attribute"
+        )
     decisions: dict[str, dict[str, ReviewedDescriptor]] = {}
     for number, (tag, values) in enumerate(document["attributes"].items(), start=1):
         if not isinstance(values, dict) or not values:
@@ -512,7 +583,8 @@ def clean_descriptor_values(
     Parameters
     ----------
     tag : str
-        The attribute's tag, one of :func:`descriptor_attributes`.
+        The attribute's tag, one of :func:`descriptor_attributes`, or a
+        private attribute's key (:func:`private_descriptor`).
     values : sequence of str
         The element's decoded values, in order, with or without their
         padding: one for a VR that holds one value, or for an element with
@@ -525,7 +597,9 @@ def clean_descriptor_values(
         The automatic tier (:mod:`.technique_descriptors`), which keeps a
         value that the list does not cover where it is made only of
         vocabulary words. The list's decision takes precedence. Without it,
-        every value the list does not cover is held.
+        every value the list does not cover is held, as is every value of
+        a private attribute, since the vocabulary's attributes are the
+        standard's.
     empty_held : bool, optional
         Whether to empty a held value rather than hold it, as the user may
         choose explicitly so that the run proceeds.
@@ -541,9 +615,10 @@ def clean_descriptor_values(
         If ``values`` or ``identifiers`` is a single string, or holds
         anything but strings. The message holds no value.
     ValueError
-        If ``tag`` is not one of :func:`descriptor_attributes`.
+        If ``tag`` is neither one of :func:`descriptor_attributes` nor a
+        private attribute's key.
     """
-    if tag not in descriptor_attributes():
+    if descriptor_vr(tag) is None:
         raise ValueError(
             "the attribute is not a descriptor that Clean Descriptors cleans"
         )
@@ -627,7 +702,7 @@ class PendingDescriptor:
     Attributes
     ----------
     tag : str
-        The attribute's tag.
+        The attribute's tag, or a private attribute's key.
     value : str
         The value, without its padding. It is left out of the ``repr``.
     reasons : frozenset of Held

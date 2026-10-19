@@ -58,7 +58,14 @@ file holds it:
   - ``sequence``: kept as a container where the source holds its items, so
     that each element in them takes its own rule (E.3.10), and otherwise
     removed;
-  - ``text``: removed, since no reviewed cleaner applies to private text;
+  - ``text``: under Clean Descriptors, cleaned (C) where its VR is written,
+    so that its value is decoded as its VR and character set give it, as
+    descriptor cleaning
+    (:func:`~pymedphys._dicom.deidentify.descriptor_cleaning.clean_descriptors`)
+    cleans a free-text descriptor, by the reviewer's decisions on the values
+    of its :func:`~.reviewed_descriptors.private_descriptor` key, and
+    removed where it cleans none; otherwise removed, since no other reviewed
+    cleaner applies to private text;
   - ``remove``: removed.
 
   A value that does not pass its handling's check, a value where the rule
@@ -92,7 +99,8 @@ file holds it:
     form for. So a declared number or code string is kept, a declared UID
     replaced, and declared text and every value of another VR, such as a
     date, a name, or OB, OW, or UN data, removed, as E.3.10's "removed or
-    processed" allows.
+    processed" allows. Declared text is cleaned under Clean Descriptors, as
+    a rule's text is.
   - A sequence is parsed whatever (0008,0300) says of it, so that each
     element in its items is settled on its own merits.
 - A private sequence that no rule lists, in a block whose creator is
@@ -104,7 +112,7 @@ file holds it:
   or replaced but private creators. Such a sequence is listed in
   :attr:`PrivatePlan.parsed`.
 - A private creator is kept where an element of its block in the same data
-  set or item is kept or replaced, and removed otherwise.
+  set or item is kept, replaced, or cleaned, and removed otherwise.
 - Every other element of a private group is removed: a data element that
   is not a sequence and that neither a rule nor (0008,0300) declares safe,
   one whose block has no creator that is compared, and each element that PS3.5 Section 7.8.1 does not allow, at
@@ -134,6 +142,7 @@ import types
 from collections.abc import Mapping
 
 from .file_layout import ElementPath, Extent
+from .reviewed_descriptors import private_descriptor
 from .safe_private import (
     Basis,
     Handling,
@@ -148,6 +157,7 @@ from .values import values_problem, vm_problem
 KEEP = "K"
 REPLACE = "U"
 REMOVE = "X"
+CLEAN = "C"
 # The VR with which PS3.5 Section 7.8.1 writes a private creator.
 _CREATOR_VR = "LO"
 # The VRs of an element whose VR is not written, so that its rule's VR reads it.
@@ -158,6 +168,8 @@ _CREATOR_BYTES = frozenset(range(0x20, 0x7F)) - {ord("\\")}
 # The bytes of a CS, DS, or IS value that is checked: printable ISO 646.
 _STRING_BYTES = frozenset(range(0x20, 0x7F))
 _PADDING = b" \x00"
+# The text VRs whose values a backslash separates (PS3.5 Section 6.2).
+_MULTI_VALUED_TEXT = frozenset({"SH", "LO", "UC"})
 # The size of each value of a binary numeric VR, and of an attribute tag.
 _SIZES = types.MappingProxyType(
     {"AT": 4, "FD": 8, "FL": 4, "SL": 4, "SS": 2, "SV": 8, "UL": 4, "US": 2, "UV": 8}
@@ -240,11 +252,17 @@ class PrivatePlan:
     parsed : frozenset of ElementPath
         The private sequences that no rule lists, kept so that their items
         are parsed, which are removed where nothing in them is kept.
+    texts : mapping of ElementPath to str
+        The key (:func:`~.reviewed_descriptors.private_descriptor`) of each
+        private element whose text is cleaned.
     """
 
     actions: Mapping[ElementPath, str]
     vrs: Mapping[ElementPath, str]
     parsed: frozenset[ElementPath] = frozenset()
+    texts: Mapping[ElementPath, str] = dataclasses.field(
+        default_factory=lambda: types.MappingProxyType({})
+    )
 
 
 def private_actions(
@@ -269,7 +287,9 @@ def private_actions(
         Read-only: ``"K"``, ``"U"``, or ``"X"`` for each element of a
         private group, at every level of nesting, in file order, as the
         module describes. A private sequence that no rule lists is
-        ``"K"``, as parsed, whatever is kept in it.
+        ``"K"``, as parsed, whatever is kept in it. Text is removed, as
+        without Clean Descriptors; :func:`private_plan` gives the actions
+        under it.
     """
     return private_plan(source, rules).actions
 
@@ -278,6 +298,8 @@ def private_plan(
     source: SourceEvidence,
     rules: RuleList,
     unkept: frozenset[ElementPath] = frozenset(),
+    *,
+    clean_text: bool = False,
 ) -> PrivatePlan:
     """Return the actions of :func:`private_actions`, with the VRs that read them.
 
@@ -288,6 +310,10 @@ def private_plan(
     unkept : frozenset of ElementPath, optional
         The private sequences that no rule lists, and that the plan found
         nothing kept in, which are removed. Defaults to none.
+    clean_text : bool, optional
+        Whether the policy selects Clean Descriptors, so that text that a
+        rule retains, written with its VR, is cleaned (``"C"``) rather than
+        removed. Defaults to False.
 
     Returns
     -------
@@ -297,6 +323,7 @@ def private_plan(
     actions: dict[ElementPath, str] = {}
     vrs: dict[ElementPath, str] = {}
     parsed: set[ElementPath] = set()
+    texts: dict[ElementPath, str] = {}
     creators: dict[_Block, str | None] = {}
     kept: set[_Block] = set()
     declarations = _declarations(source)
@@ -325,7 +352,12 @@ def private_plan(
                     actions[path] = KEEP
                     parsed.add(path)
             else:
-                actions[path] = _action(source, path, rule)
+                actions[path] = _action(source, path, rule, clean_text)
+            if actions[path] == CLEAN:
+                assert rule is not None and creator is not None
+                texts[path] = private_descriptor(
+                    group, creator, element & 0xFF, rule.vr
+                )
             if actions[path] != REMOVE:
                 kept.add(block)
                 if (
@@ -345,6 +377,7 @@ def private_plan(
         types.MappingProxyType(actions),
         types.MappingProxyType(vrs),
         frozenset(parsed),
+        types.MappingProxyType(texts),
     )
 
 
@@ -620,7 +653,10 @@ def _code(value: bytes | None) -> str | None:
 
 
 def _action(
-    source: SourceEvidence, path: ElementPath, rule: SafePrivateRule | None
+    source: SourceEvidence,
+    path: ElementPath,
+    rule: SafePrivateRule | None,
+    clean_text: bool = False,
 ) -> str:
     """Return the action that settles a private data element's C."""
     if rule is None or not rule.handling.retains:
@@ -633,13 +669,29 @@ def _action(
         return REMOVE
     if container:
         return KEEP
-    if extent.undefined_length or rule.handling is Handling.TEXT:
+    if extent.undefined_length:
         return REMOVE
-    value = source.value_field(path)
+    return _value_action(source.value_field(path), extent.vr, rule, clean_text)
+
+
+def _value_action(
+    value: bytes, written: str | None, rule: SafePrivateRule, clean_text: bool
+) -> str:
+    """Return the action that settles a private value of a retaining rule."""
+    if rule.handling is Handling.TEXT:
+        # Text is decoded only by its VR as written. Its values are counted
+        # by their separators in its bytes, where a byte 5CH within a
+        # character of a multi-byte character set would add one, so the
+        # count errs only towards removing it.
+        text = value.rstrip(_PADDING)
+        separated = rule.vr in _MULTI_VALUED_TEXT
+        count = (len(text.split(b"\\")) if separated else 1) if text else 0
+        cleaned = clean_text and written == rule.vr
+        return CLEAN if cleaned and vm_problem(rule.vm, count) is None else REMOVE
     if rule.handling is Handling.UID:
         uids = value.rstrip(_PADDING)
         count = len(uids.split(b"\\")) if uids else 0
-        replaceable = extent.vr == "UI" and vm_problem(rule.vm, count) is None
+        replaceable = written == "UI" and vm_problem(rule.vm, count) is None
         return REPLACE if replaceable else REMOVE
     return KEEP if _valid(value, rule.vr, rule.vm) else REMOVE
 

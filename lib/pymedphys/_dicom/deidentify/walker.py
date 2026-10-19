@@ -107,13 +107,15 @@ Under the Retain Safe Private Option, the C that Table E.1-1 gives each
 element of a private group is settled here, by the reviewed safe private
 rules (:func:`~pymedphys._dicom.deidentify.retained_private.private_actions`):
 a private creator or data element is kept (K), a private UID is
-replaced (U), or the element is removed (X). A private sequence that a rule
+replaced (U), private text is cleaned (C) where the policy also selects
+Clean Descriptors, or the element is removed (X). A private sequence that a rule
 keeps is kept as a container, so that each element in its items takes its
 own rule. So is a private sequence that no rule lists, which E.3.10 asks to
 be parsed, but the data set is planned again with it removed, with
-everything in it, where nothing in its items, at any depth, is kept or
-replaced but private creators: the sequence and its creator are kept only
-for what the parsing keeps. A private data element that a rule keeps or
+everything in it, where nothing in its items, at any depth, is kept,
+replaced, or cleaned but private creators: the sequence and its creator are
+kept only for what the parsing keeps. The plan gives the key by which each
+private value to clean is decided on, in :attr:`InstancePlan.private_texts`. A private data element that a rule keeps or
 replaces, written without its VR, in implicit VR or as UN, is read by the
 rule's VR.
 
@@ -164,7 +166,8 @@ from .dummy_values import DUMMY_VRS, ICC_PROFILE
 from .element_rules import ElementRule, ElementRules, RuleSource
 from .file_layout import ElementPath
 from .iods import IOD
-from .retained_private import PrivatePlan, is_private_creator, private_plan
+from .policy import CLEAN_DESCRIPTORS
+from .retained_private import PrivatePlan, is_private, is_private_creator, private_plan
 from .source import SourceEvidence
 from .standard import dictionary_attribute
 
@@ -321,10 +324,20 @@ class InstancePlan:
     sequestrations : tuple of Sequestration
         Each reason found that the instance must be sequestered, in file
         order; ``()`` if there is none.
+    private_texts : mapping of ElementPath to str
+        Under the Retain Safe Private Option with Clean Descriptors, the key
+        (:func:`~pymedphys._dicom.deidentify.reviewed_descriptors.private_descriptor`)
+        by which each private element that the plan cleans is decided on;
+        empty otherwise. A plain dictionary, so that the plan pickles; it is
+        not to be changed.
     """
 
     elements: tuple[ElementPlan, ...]
     sequestrations: tuple[Sequestration, ...]
+    # A mapping is not hashable, so it is left out of the hash.
+    private_texts: Mapping[ElementPath, str] = dataclasses.field(
+        default_factory=dict, hash=False
+    )
 
     def to_decode(self) -> tuple[ElementPath, ...]:
         """Return the paths of the elements that a consumer must read, in file order."""
@@ -506,7 +519,14 @@ def _plan(
         elements.append(
             ElementPlan(path, vr, rule, action, None, consumers, removed_for, lapses)
         )
-    return InstancePlan(tuple(elements), tuple(sequestrations)), found
+    texts = {}
+    if private is not None and private.texts:
+        texts = {
+            element.path: private.texts[element.path]
+            for element in elements
+            if element.action == "C" and element.path in private.texts
+        }
+    return InstancePlan(tuple(elements), tuple(sequestrations), texts), found
 
 
 def _keeps_a_reference(plan: InstancePlan, source: SourceEvidence) -> bool:
@@ -553,15 +573,19 @@ def _unkept(
 ) -> frozenset[ElementPath]:
     """Return the parsed private sequences that the plan keeps nothing in.
 
-    What counts is an element kept or replaced, at any depth, that is not a
-    sequence, whose kept container holds no value of its own, or a private
-    creator, which is kept only for what its block keeps.
+    What counts is an element kept, replaced, or, for private text, cleaned,
+    at any depth, that is not a sequence, whose kept container holds no
+    value of its own, or a private creator, which is kept only for what its
+    block keeps.
     """
     holding: set[ElementPath] = set()
     for element in plan.elements:
         path = element.path
         if (
-            element.action in DESCENDED
+            (
+                element.action in DESCENDED
+                or (element.action == "C" and is_private(path.tag))
+            )
             and source.element(path).items is None
             and not is_private_creator(path.tag)
         ):
@@ -622,8 +646,11 @@ def plan_instance(
     -------
     InstancePlan
     """
+    clean_text = CLEAN_DESCRIPTORS in rules.policy.options
     private = (
-        None if rules.safe_private is None else private_plan(source, rules.safe_private)
+        None
+        if rules.safe_private is None
+        else private_plan(source, rules.safe_private, clean_text=clean_text)
     )
     plan, removals = _plan(
         source, rules, iod, _PlainRemovals(), content_items, private=private
@@ -638,7 +665,9 @@ def plan_instance(
             break
         # Each pass removes at least one more sequence, so the passes end.
         unkept |= found
-        private = private_plan(source, rules.safe_private, unkept)
+        private = private_plan(
+            source, rules.safe_private, unkept, clean_text=clean_text
+        )
         plan, _ = _plan(source, rules, iod, removals, content_items, private=private)
     lapsed = _lapsed(plan, source)
     if lapsed:

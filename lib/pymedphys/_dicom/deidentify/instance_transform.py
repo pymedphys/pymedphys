@@ -1171,6 +1171,7 @@ class InstanceTransform:
                     self.review_queue,
                     fallen_back,
                     cleaned_elsewhere=self._cleaned_elsewhere,
+                    private_texts=plan.private_texts,
                 )
             except DescriptorsRefused as refused:
                 withheld = retained | self._kept_descriptors(plan, edits)

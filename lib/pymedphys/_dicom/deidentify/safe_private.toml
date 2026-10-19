@@ -13,8 +13,8 @@
 #           values that are valid numbers of their VR.
 # code:     CS values made only of the characters that VR CS allows.
 # uid:      UI values, replaced as every other UID is (D-003).
-# text:     LO, LT, SH, ST, UC, and UT values, cleaned as descriptors are, and
-#           removed where no reviewed cleaner applies.
+# text:     LO, LT, SH, ST, UC, and UT values, cleaned as descriptors are
+#           under Clean Descriptors, and removed without it.
 # sequence: SQ values, whose items are parsed and each nested attribute
 #           handled on its own merits (E.3.10).
 # remove:   not retained: OB, OW, and UN values, and attributes for which the

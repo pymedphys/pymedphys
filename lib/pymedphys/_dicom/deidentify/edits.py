@@ -211,8 +211,8 @@ class InstanceEdits:
         Each reason found that the instance must be sequestered: the plan's,
         then those found while editing and collecting, in file order.
     read_as_latin_1 : tuple of ElementPath
-        In file order, the path of each value, removed or replaced, that was
-        read as ISO 8859-1, being text outside ISO 646 where no Specific
+        In file order, the path of each value, removed or replaced, or
+        private text to clean, that was read as ISO 8859-1, being text outside ISO 646 where no Specific
         Character Set applies, so that its writer knows, and as evidence of
         how each collected value was read, whether or not the instance must
         be sequestered; ``()`` if there is none.
@@ -368,17 +368,22 @@ def _read_planned(
     Text outside ISO 646 where no Specific Character Set applies is read as
     ISO 8859-1 where its rule removes or replaces it, as the maintainer
     decided on 1 October 2026; text to be cleaned cannot be decoded. The
-    flag says whether the value was read as ISO 8859-1.
+    flag says whether the value was read as ISO 8859-1. Private text to be
+    cleaned is read as removed text is, since cleaning removes it where it
+    cannot be decoded, rather than sequestering the instance.
     """
+    needs_value = element.consumers & _NEEDS_VALUE
+    if is_private(element.path.tag):
+        needs_value -= {Consumer.CLEANING}
     try:
         try:
             return reader.read(element.path), None, False
         except OutsideDefaultRepertoire:
-            if Consumer.CLEANING in element.consumers:
+            if Consumer.CLEANING in needs_value:
                 raise
             return reader.read(element.path, latin_1=True), None, True
     except UndecodableElement as error:
-        if element.consumers & _NEEDS_VALUE or _takes_pseudonym(element):
+        if needs_value or _takes_pseudonym(element):
             # A value that a reviewed dummy item is compared with is needed
             # by the D of the sequence that removes it.
             compared = Consumer.DUMMY_COMPARISON in element.consumers
