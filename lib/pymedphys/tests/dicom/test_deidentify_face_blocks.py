@@ -862,6 +862,83 @@ def test_a_structure_set_naming_frames_that_are_not_uids_is_searched_as_frameles
     assert _outcome(data).problem is SeriesProblem.TARGET_IN_BLOCK
 
 
+def test_a_malformed_frame_tied_to_the_slices_holds_the_series_from_behind():
+    # The set's frame and its target's are the same label, which is not a
+    # UID, and the frame's own list of contour images names one of the
+    # series' slices: the target, behind the plane, may be in a frame tied
+    # to the series, so the label still ties it.
+    rtss = pydicom.dcmread(
+        io.BytesIO(files.structure_set([("PTV", files.square((0, 0, 40)))]))
+    )
+    rtss.ReferencedFrameOfReferenceSequence[0].FrameOfReferenceUID = "FRAME"
+    _not_a_uid(rtss.StructureSetROISequence[0])
+    untied = files.written(rtss)
+    _frame_images(rtss.ReferencedFrameOfReferenceSequence[0])
+
+    assert _outcome(untied).problem is None
+    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def _repeated(roi: pydicom.Dataset, frame: str) -> pydicom.Dataset:
+    repeated = pydicom.Dataset()
+    repeated.ROINumber = roi.ROINumber
+    repeated.ReferencedFrameOfReferenceUID = frame
+    repeated.ROIName = "R2"
+    repeated.ROIGenerationAlgorithm = "MANUAL"
+    return repeated
+
+
+@pytest.mark.parametrize(
+    "frame",
+    [
+        "empty",
+        "absent",
+        "not-a-uid",
+        "several-frames",
+        "repeated-roi-number",
+        "undeclared",
+    ],
+)
+def test_a_target_in_the_block_in_a_set_of_another_frame_holds_where_its_frame_is_unsure(
+    frame,
+):
+    # The set declares only another frame, and is not tied to the series'
+    # slices, but the target's own frame does not say that it is in that
+    # frame, so it may be in the series', where its hull reaches the block.
+    elsewhere = files.ROOT + ".8"
+    rtss = _elsewhere_only([("PTV", files.square(_EYES_FRONT[0]))])
+    (roi,) = rtss.StructureSetROISequence
+    if frame == "empty":
+        roi.ReferencedFrameOfReferenceUID = ""
+    elif frame == "absent":
+        del roi.ReferencedFrameOfReferenceUID
+    elif frame == "not-a-uid":
+        _not_a_uid(roi)
+    elif frame == "several-frames":
+        _several(roi)
+    elif frame == "repeated-roi-number":
+        rtss.StructureSetROISequence.append(_repeated(roi, files.ROOT + ".11"))
+    else:
+        # A valid UID, but not one that the set declares.
+        roi.ReferencedFrameOfReferenceUID = files.ROOT + ".11"
+    data = files.written(rtss)
+
+    assert files.FRAME not in face_blocks.frames_of(InstanceRecord.from_file(data))
+    assert elsewhere in face_blocks.frames_of(InstanceRecord.from_file(data))
+    assert _outcome(data).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def test_a_set_of_another_frame_and_patient_is_not_searched_for_an_unsure_target():
+    rtss = _elsewhere_only([("PTV", files.square(_EYES_FRONT[0]))])
+    rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
+    rtss.PatientID = "H2"
+
+    # Its frames are not the series', it is not drawn on the series'
+    # slices, and it is another patient's, so its target cannot be in the
+    # series' frame.
+    assert _outcome(files.written(rtss)).problem is None
+
+
 def test_the_cavity_is_kept_only_above_its_floor():
     block = _outcome().block
     kept = {}

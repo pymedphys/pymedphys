@@ -37,15 +37,15 @@ masks. A series is defaced only where all of these hold:
   volume's superior end, which bounds the memory that a long volume needs;
   and
 - no contour of a target, an ROI whose RT ROI Interpreted Type is
-  :data:`TARGET_TYPES`, of an RT Structure Set of the run in the series'
+  :data:`TARGET_TYPES`, of any RT Structure Set of the run, in the series'
   Frame of Reference, or naming none, reaches the block, or has anything
   between its contours that does, as the convex hull of its contours
   judges it (:func:`_hull_reaches`); no target in another frame, whose
   contours cannot be placed without a registration, has a structure set
   that ties that frame to the series' slices (:func:`_targets_reach`), a
-  target whose ROI names no frame counting as one in the series' frame and
-  in each frame that its structure set declares; and every such structure
-  set can be read.
+  target whose ROI names no frame, or one that is malformed, counting as
+  one in the series' frame and in each frame that its structure set
+  declares; and every structure set can be read.
 
 Anything else that a series' data raises leaves the series undefaced, as
 unreadable, rather than stopping the run, and no message of it, which could
@@ -82,10 +82,10 @@ judged it from the defaced CT's previews
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), until
 the run can clean it too (:class:`Defaced`). So is one that names no Frame
 of Reference, in a run that defaces any series, or that refers to a defaced
-slice, whatever frame it declares. A structure set that names no Frame of
-Reference is likewise searched for targets in the block of every series,
-and a target in another frame holds a series whose slices its structure
-set ties to that frame, whatever other frames the set declares.
+slice, whatever frame it declares. Every structure set is searched for
+targets in the block of every series, and a target in another frame holds
+a series whose slices its structure set ties to that frame, whatever other
+frames the set declares.
 """
 
 from __future__ import annotations
@@ -264,40 +264,56 @@ def find_face_blocks(
     """
     series: dict[str, list[int]] = collections.defaultdict(list)
     slices: dict[str, set[str]] = collections.defaultdict(set)
-    structure_sets: dict[str, list[int]] = collections.defaultdict(list)
-    # Structure sets that name no Frame of Reference, which may be in any.
-    frameless: list[int] = []
-    # What each structure set refers to, such as the slices it is drawn on.
-    referred: dict[int, set[str]] = {}
+    structure_sets: list[int] = []
     for position, record in sorted(records.items()):
         if record.iod == CT_IMAGE and record.series is not None:
             series[record.series].append(position)
             if record.sop_instance:
                 slices[record.series].add(record.sop_instance)
         elif record.iod == RT_STRUCTURE_SET:
-            frames = frames_of(record)
-            for frame in frames:
-                structure_sets[frame].append(position)
-            # A value that is not a UID names no frame.
-            if not any(is_uid(frame) for frame in frames):
-                frameless.append(position)
-            referred[position] = {reference.target for reference in record.references}
+            structure_sets.append(position)
     outcomes = {}
     for uid, positions in series.items():
         outcome, frame = _series_outcome(positions, read)
         if outcome.block is not None and frame:
-            # Those in its frame, those that name none, and those drawn on
-            # its slices whatever frames they declare.
-            drawn = {
+            searched = [
                 position
-                for position, targets in referred.items()
-                if not targets.isdisjoint(slices[uid])
-            }
-            searched = sorted({*structure_sets.get(frame, []), *frameless, *drawn})
+                for position in structure_sets
+                if _searched(records[position], frame, slices[uid], positions, records)
+            ]
             if _target_in(outcome.block, frame, slices[uid], searched, read):
                 outcome = SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK)
         outcomes[uid] = outcome
     return outcomes
+
+
+def _searched(
+    structure_set: InstanceRecord,
+    frame: str,
+    slices: set[str],
+    positions: list[int],
+    records: Mapping[int, InstanceRecord],
+) -> bool:
+    """Whether a structure set is searched for targets in a series' block.
+
+    One in the series' Frame of Reference, naming no valid frame, or drawn
+    on its slices always is. So is any other of the same patient as the
+    series, or where either names none, since a target in it that names no
+    frame, or a malformed one, may be in the series' frame whatever frames
+    the set declares; one in another frame that the set does not tie to the
+    series' slices is passed over (:func:`_targets_reach`).
+    """
+    frames = frames_of(structure_set)
+    if frame in frames or not any(is_uid(each) for each in frames):
+        return True
+    if not slices.isdisjoint(ref.target for ref in structure_set.references):
+        return True
+    patients = {records[position].patient for position in positions}
+    return (
+        structure_set.patient is None
+        or None in patients
+        or structure_set.patient in patients
+    )
 
 
 def frames_of(record: InstanceRecord) -> frozenset[str]:
@@ -603,22 +619,27 @@ def _targets_reach(
     structure set does not tie to them, such as one of another scan, does
     not. A target whose ROI names no frame may be in the series' or in any
     frame that its structure set declares, so it is taken as each. So is
-    one whose ROI's frame is not one UID, or whose ROI Number is repeated
-    with another frame, which is also taken as each frame it names.
+    one whose ROI's frame is not one UID that its set declares, or whose
+    ROI Number is repeated with another frame, which is also taken as each
+    value it names, so that a malformed frame that the set ties to the
+    series' slices still holds it.
     """
     named: dict[int, set[str]] = collections.defaultdict(set)
     for item in dataset.get("StructureSetROISequence", []):
-        named[int(item.ROINumber)].add(_frame(item, "ReferencedFrameOfReferenceUID"))
+        named[int(item.ROINumber)] |= _frames(item, "ReferencedFrameOfReferenceUID")
     declared = {
-        _frame(item, "FrameOfReferenceUID")
+        frame
         for item in dataset.get("ReferencedFrameOfReferenceSequence", [])
+        for frame in _frames(item, "FrameOfReferenceUID")
     } - {""}
 
     def frames_of_roi(number: int) -> set[str]:
         frames = named.get(number, {""})
+        # An ROI's frame is one that its set declares (PS3.3 C.8.8.5), so
+        # one that is not is malformed too.
         return (
             frames
-            if len(frames) == 1 and "" not in frames
+            if len(frames) == 1 and frames <= declared
             else {"", *declared, *frames}
         )
 
@@ -664,18 +685,30 @@ def _tied_frames(
             for uid in _images(series)
         }
         if images & slices:
-            tied.add(_frame(use, "FrameOfReferenceUID"))
+            tied |= _frames(use, "FrameOfReferenceUID")
     return tied - {""}
 
 
-def _frame(item: pydicom.Dataset, keyword: str) -> str:
-    """An item's Frame of Reference UID without padding, or ``""`` where it
-    is absent, empty, of more than one value, or not a UID."""
+def _frames(item: pydicom.Dataset, keyword: str) -> set[str]:
+    """The Frames of Reference that an item's Frame of Reference UID may
+    name: the UID alone, where it is one; otherwise each of its values
+    without padding, as labels that can still tie a target to a frame, and
+    ``""`` for no frame, where it is absent, empty, of more than one value,
+    or not a UID."""
     value = item.get(keyword)
-    if not isinstance(value, str):
-        return ""
-    uid = normalise_uid(value)
-    return uid if is_uid(uid) else ""
+    if value is None:
+        values = []
+    elif isinstance(value, (str, bytes)):
+        values = [value]
+    else:
+        try:
+            values = list(value)
+        except TypeError:
+            values = [value]
+    labels = {normalise_uid(str(each)) for each in values} - {""}
+    if len(values) == 1 and len(labels) == 1 and is_uid(next(iter(labels))):
+        return labels
+    return {"", *labels}
 
 
 def _images(item: pydicom.Dataset) -> set[str]:
