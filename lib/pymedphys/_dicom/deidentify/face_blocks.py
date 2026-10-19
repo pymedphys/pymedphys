@@ -322,19 +322,26 @@ def _searched(
 def _same_patient(one: SubjectIdentity | None, other: SubjectIdentity | None) -> bool:
     """Whether two instances may be of the same patient.
 
-    They may unless both give one Patient ID and the two differ once
-    trimmed and case-folded. The Issuer of Patient ID is not compared,
-    since planning systems write their own or none, and a Patient ID that
-    is absent, empty, not text, or of several values matches any, so that
-    only a structure set that is clearly another patient's is passed over.
+    They may unless both give one Patient ID of printable ASCII
+    characters alone, without its padding, and the two differ without
+    case. A Patient ID that is absent, empty, not text, of several values,
+    or holds any other character, such as a control character, a letter
+    outside ASCII, or a fullwidth form, matches any, since text that may
+    be the same in another spelling cannot tell patients apart. The Issuer
+    of Patient ID is not compared, since planning systems write their own
+    or none. So only a structure set that is clearly another patient's is
+    passed over.
     """
-    ids = [
-        None if identity is None else identity.identifier.strip().casefold()
-        for identity in (one, other)
-    ]
-    if any(not each or "\\" in each for each in ids):
+    if one is None or other is None:
         return True
-    return ids[0] == ids[1]
+    ids = (one.identifier, other.identifier)
+    if not all(each.isascii() and each.isprintable() for each in ids):
+        return True
+    # An empty value or several values, which a backslash separates, tell
+    # nothing apart either.
+    if not all(each and "\\" not in each for each in ids):
+        return True
+    return ids[0].casefold() == ids[1].casefold()
 
 
 def frames_of(record: InstanceRecord) -> frozenset[str]:

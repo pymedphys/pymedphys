@@ -1016,14 +1016,100 @@ def test_a_set_of_another_frame_is_searched_for_an_unsure_target_by_patient(
     assert held is (SeriesProblem.TARGET_IN_BLOCK if searched else None)
 
 
-def test_a_series_slice_naming_no_patient_searches_a_set_of_another_frame():
+def _unsure_elsewhere(patient: str) -> bytes:
+    """A set of another frame, not drawn on the series' slices, whose PTV
+    in the block names no frame, with this Patient ID."""
     rtss = _elsewhere_only([("PTV", files.square(_EYES_FRONT[0]))])
     rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
-    rtss.PatientID = "H2"
+    rtss.SpecificCharacterSet = "ISO_IR 192"
+    rtss.PatientID = patient
+    return files.written(rtss)
 
-    held = _outcome(files.written(rtss), slices=_changed(_set("PatientID", "")))
+
+def _patient(patient: str):
+    def change(dataset):
+        dataset.SpecificCharacterSet = "ISO_IR 192"
+        dataset.PatientID = patient
+
+    return change
+
+
+def test_a_series_slice_naming_no_patient_searches_a_set_of_another_frame():
+    held = _outcome(_unsure_elsewhere("H2"), slices=_changed(_set("PatientID", "")))
 
     assert held.problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+@pytest.mark.parametrize(
+    ("series", "structure_set"),
+    [
+        ("H1", "H1\x00ZZ"),
+        ("H1", "H\x001"),
+        ("H1", "H1\x00\t"),
+        ("H1", "H1\x01"),
+        ("H1", "H1\x1b"),
+        ("H\u00e91", "He\u03011"),
+        ("H1", "\uff28\uff11"),
+        ("HI1", "H\u01311"),
+        ("H\u01311", "HI1"),
+    ],
+    ids=[
+        "nul-then-more",
+        "nul-inside",
+        "nul-then-tab",
+        "control-after",
+        "escape-after",
+        "decomposed",
+        "fullwidth",
+        "dotless-i",
+        "dotless-i-on-the-series",
+    ],
+)
+@pytest.mark.parametrize("side", ["set", "series", "one-slice"])
+def test_a_patient_id_other_than_plain_ascii_differs_from_none(
+    series, structure_set, side
+):
+    # Each pair may be the same Patient ID in another spelling, so neither
+    # tells the patients apart and the set is searched, whichever side
+    # gives which, and where only one slice of the series gives it.
+    if side == "series":
+        (series, structure_set) = (structure_set, series)
+    if side == "one-slice":
+        # One slice gives whichever of the pair is not plain ASCII, and the
+        # set and the other slices give two other Patient IDs.
+        plain = structure_set.isascii() and structure_set.isprintable()
+        slices = _changed(_patient(series if plain else structure_set))
+        structure_set = "H2"
+    else:
+        slices = _changed(_patient(series), every=True)
+
+    held = _outcome(_unsure_elsewhere(structure_set), slices=slices)
+
+    assert held.problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+@pytest.mark.parametrize(
+    ("patient", "searched"), [("H1", True), ("H3", True), ("H2", False)]
+)
+def test_a_set_of_another_frame_is_searched_for_the_patient_of_any_slice(
+    patient, searched
+):
+    # Half the series' slices give one Patient ID and half another: a set
+    # of either may be the same patient's, and one of neither is not.
+    slices = tuple(
+        files.written(_with_patient(data, "H3")) if index % 2 else data
+        for index, data in enumerate(_head_files())
+    )
+
+    held = _outcome(_unsure_elsewhere(patient), slices=slices).problem
+
+    assert held is (SeriesProblem.TARGET_IN_BLOCK if searched else None)
+
+
+def _with_patient(data: bytes, patient: str) -> pydicom.Dataset:
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    dataset.PatientID = patient
+    return dataset
 
 
 def test_the_cavity_is_kept_only_above_its_floor():
