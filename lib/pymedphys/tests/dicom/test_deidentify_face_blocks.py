@@ -15,8 +15,13 @@
 """Each CT series' face block in a run, and the air written there, on an
 analytic head. Every UID and value here is invented."""
 
+# The tests share the analytic head's files and the structure set
+# builders, so they stay in one module.
+# pylint: disable = too-many-lines
+
 from __future__ import annotations
 
+import copy
 import dataclasses
 import functools
 import io
@@ -673,15 +678,33 @@ def _slice_image() -> pydicom.Dataset:
     return image
 
 
-def _mixed(tie: str) -> bytes:
+def _frame_images(frame: pydicom.Dataset) -> None:
+    """List one of the series' slices as a contour image of the frame."""
+    series = pydicom.Dataset()
+    series.SeriesInstanceUID = files.ROOT + ".9"
+    series.ContourImageSequence = [_slice_image()]
+    study = pydicom.Dataset()
+    study.ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.1"
+    study.ReferencedSOPInstanceUID = files.ROOT + ".10"
+    study.RTReferencedSeriesSequence = [series]
+    frame.RTReferencedStudySequence = [study]
+
+
+def _mixed(tie: str, target_at=(0, 0, 40)) -> bytes:
     """A structure set with an organ in the series' frame drawn on one of
-    its slices, and a target behind the block in another frame, tied to
-    the series' slices as ``tie`` says."""
+    its slices, and a target in another frame, behind the block unless
+    placed elsewhere, tied to the series' slices as ``tie`` says."""
     elsewhere = files.ROOT + ".8"
     behind = files.square((0, 0, 40))
     rtss = pydicom.dcmread(
         io.BytesIO(
-            files.structure_set([("ORGAN", behind), ("ORGAN", behind), ("PTV", behind)])
+            files.structure_set(
+                [
+                    ("ORGAN", behind),
+                    ("ORGAN", behind),
+                    ("PTV", files.square(target_at)),
+                ]
+            )
         )
     )
     for roi in rtss.StructureSetROISequence[1:]:
@@ -698,14 +721,7 @@ def _mixed(tie: str) -> bytes:
     elif tie == "organ-in-its-frame":
         other_organ.ContourImageSequence = [_slice_image()]
     elif tie == "frame":
-        series = pydicom.Dataset()
-        series.SeriesInstanceUID = files.ROOT + ".9"
-        series.ContourImageSequence = [_slice_image()]
-        study = pydicom.Dataset()
-        study.ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.1"
-        study.ReferencedSOPInstanceUID = files.ROOT + ".10"
-        study.RTReferencedSeriesSequence = [series]
-        other.RTReferencedStudySequence = [study]
+        _frame_images(other)
     return files.written(rtss)
 
 
@@ -731,6 +747,369 @@ def test_a_target_in_another_frame_holds_the_series_only_if_tied_to_its_slices(
     # one tied to the series' slices holds it even though another ROI of
     # the set is in its frame, and one of another scan does not.
     assert _outcome(rtss).problem is (SeriesProblem.TARGET_IN_BLOCK if held else None)
+
+
+def test_an_untied_target_in_another_frame_does_not_hold_the_series_from_the_block():
+    # Its coordinates are of another frame, so its being where the series'
+    # block would be says nothing.
+    assert _outcome(_mixed("none", _EYES_FRONT[0])).problem is None
+    assert _outcome(_mixed("target", _EYES_FRONT[0])).problem is (
+        SeriesProblem.TARGET_IN_BLOCK
+    )
+
+
+def _elsewhere_only(rois) -> pydicom.Dataset:
+    return pydicom.dcmread(
+        io.BytesIO(files.structure_set(rois, frame=files.ROOT + ".8"))
+    )
+
+
+def test_a_set_in_another_frame_tied_only_by_its_frame_images_holds_the_series():
+    rtss = _elsewhere_only([("PTV", files.square((0, 0, 40)))])
+    _frame_images(rtss.ReferencedFrameOfReferenceSequence[0])
+
+    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+@pytest.mark.parametrize("unnamed", ["empty", "absent"])
+def test_a_target_naming_no_frame_in_a_set_in_another_frame_drawn_on_the_slices(
+    unnamed,
+):
+    rtss = _elsewhere_only([("PTV", files.square((0, 0, 40)))])
+    if unnamed == "empty":
+        rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
+    else:
+        del rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID
+    unreferenced = files.written(rtss)
+    rtss.ROIContourSequence[0].ContourSequence[0].ContourImageSequence = [
+        _slice_image()
+    ]
+
+    # Its hull misses the block, and it may be in the set's frame.
+    assert _outcome(unreferenced).problem is None
+    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def test_a_target_naming_no_frame_tied_only_by_its_frame_images_holds_the_series():
+    rtss = _elsewhere_only([("PTV", files.square((0, 0, 40)))])
+    del rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID
+    unreferenced = files.written(rtss)
+    _frame_images(rtss.ReferencedFrameOfReferenceSequence[0])
+
+    assert _outcome(unreferenced).problem is None
+    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def test_a_target_naming_no_frame_holds_the_series_where_another_frame_is_tied():
+    # In a set of the series' frame and another, whose own list of contour
+    # images ties it to the series' slices, a target behind the plane that
+    # names no frame may be in the other, so it holds the series, although
+    # its hull misses the block.
+    rtss = pydicom.dcmread(
+        io.BytesIO(files.structure_set([("PTV", files.square((0, 0, 40)))]))
+    )
+    rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
+    other = pydicom.Dataset()
+    other.FrameOfReferenceUID = files.ROOT + ".8"
+    rtss.ReferencedFrameOfReferenceSequence.append(other)
+    untied = files.written(rtss)
+    _frame_images(other)
+
+    assert _outcome(untied).problem is None
+    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def _several(roi: pydicom.Dataset) -> None:
+    roi.ReferencedFrameOfReferenceUID = [files.FRAME, files.ROOT + ".8"]
+
+
+def _not_a_uid(roi: pydicom.Dataset) -> None:
+    roi.ReferencedFrameOfReferenceUID = "FRAME"
+
+
+@pytest.mark.parametrize(
+    "malformed",
+    ["several-frames", "not-a-uid", "repeated-roi-number"],
+)
+def test_a_target_in_the_block_with_a_malformed_frame_holds_the_series(malformed):
+    rtss = pydicom.dcmread(
+        io.BytesIO(files.structure_set([("PTV", files.square(_EYES_FRONT[0]))]))
+    )
+    (roi,) = rtss.StructureSetROISequence
+    if malformed == "several-frames":
+        _several(roi)
+    elif malformed == "not-a-uid":
+        _not_a_uid(roi)
+    else:
+        # A second item for the same ROI Number, naming another frame: which
+        # one the target is in cannot be told.
+        repeated = pydicom.Dataset()
+        repeated.ROINumber = roi.ROINumber
+        repeated.ReferencedFrameOfReferenceUID = files.ROOT + ".8"
+        repeated.ROIName = "R2"
+        repeated.ROIGenerationAlgorithm = "MANUAL"
+        rtss.StructureSetROISequence.append(repeated)
+
+    # It may be in the series' frame, so its hull is judged, and reaches
+    # the block.
+    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def test_a_structure_set_naming_frames_that_are_not_uids_is_searched_as_frameless():
+    rtss = pydicom.dcmread(
+        io.BytesIO(files.structure_set([("PTV", files.square(_EYES_FRONT[0]))]))
+    )
+    rtss.ReferencedFrameOfReferenceSequence[0].FrameOfReferenceUID = "FRAME"
+    _not_a_uid(rtss.StructureSetROISequence[0])
+    data = files.written(rtss)
+
+    assert face_blocks.frames_of(InstanceRecord.from_file(data)) == {"FRAME"}
+    assert _outcome(data).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def test_a_malformed_frame_tied_to_the_slices_holds_the_series_from_behind():
+    # The set's frame and its target's are the same label, which is not a
+    # UID, and the frame's own list of contour images names one of the
+    # series' slices: the target, behind the plane, may be in a frame tied
+    # to the series, so the label still ties it.
+    rtss = pydicom.dcmread(
+        io.BytesIO(files.structure_set([("PTV", files.square((0, 0, 40)))]))
+    )
+    rtss.ReferencedFrameOfReferenceSequence[0].FrameOfReferenceUID = "FRAME"
+    _not_a_uid(rtss.StructureSetROISequence[0])
+    untied = files.written(rtss)
+    _frame_images(rtss.ReferencedFrameOfReferenceSequence[0])
+
+    assert _outcome(untied).problem is None
+    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def _repeated(roi: pydicom.Dataset, frame: str) -> pydicom.Dataset:
+    repeated = pydicom.Dataset()
+    repeated.ROINumber = roi.ROINumber
+    repeated.ReferencedFrameOfReferenceUID = frame
+    repeated.ROIName = "R2"
+    repeated.ROIGenerationAlgorithm = "MANUAL"
+    return repeated
+
+
+@pytest.mark.parametrize(
+    "frame",
+    [
+        "empty",
+        "absent",
+        "not-a-uid",
+        "several-frames",
+        "repeated-roi-number",
+        "undeclared",
+    ],
+)
+def test_a_target_in_the_block_in_a_set_of_another_frame_holds_where_its_frame_is_unsure(
+    frame,
+):
+    # The set declares only another frame, and is not tied to the series'
+    # slices, but the target's own frame does not say that it is in that
+    # frame, so it may be in the series', where its hull reaches the block.
+    elsewhere = files.ROOT + ".8"
+    rtss = _elsewhere_only([("PTV", files.square(_EYES_FRONT[0]))])
+    (roi,) = rtss.StructureSetROISequence
+    if frame == "empty":
+        roi.ReferencedFrameOfReferenceUID = ""
+    elif frame == "absent":
+        del roi.ReferencedFrameOfReferenceUID
+    elif frame == "not-a-uid":
+        _not_a_uid(roi)
+    elif frame == "several-frames":
+        _several(roi)
+    elif frame == "repeated-roi-number":
+        rtss.StructureSetROISequence.append(_repeated(roi, files.ROOT + ".11"))
+    else:
+        # A valid UID, but not one that the set declares.
+        roi.ReferencedFrameOfReferenceUID = files.ROOT + ".11"
+    data = files.written(rtss)
+
+    assert files.FRAME not in face_blocks.frames_of(InstanceRecord.from_file(data))
+    assert elsewhere in face_blocks.frames_of(InstanceRecord.from_file(data))
+    assert _outcome(data).problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+@pytest.mark.parametrize(
+    ("declarations", "held"),
+    [
+        ([["B"]], False),
+        ([["B", "C"]], True),
+        ([["B", "B"]], True),
+        ([["B", "C"], ["B"]], False),
+    ],
+    ids=["one", "several", "repeated", "several-and-one"],
+)
+def test_only_a_frame_declared_alone_makes_a_target_in_the_block_certain(
+    declarations, held
+):
+    # The target names frame B, and the set is not tied to the series'
+    # slices. A declaration of B among other values may be B, so it does
+    # not make the target certainly B's: it may be in the series' frame,
+    # where its hull reaches the block, unless B is also declared alone.
+    labels = {"B": files.ROOT + ".8", "C": files.ROOT + ".11"}
+    rtss = _elsewhere_only([("PTV", files.square(_EYES_FRONT[0]))])
+    (declared,) = rtss.ReferencedFrameOfReferenceSequence
+    for _ in declarations[1:]:
+        rtss.ReferencedFrameOfReferenceSequence.append(copy.deepcopy(declared))
+    for item, frames in zip(rtss.ReferencedFrameOfReferenceSequence, declarations):
+        values = [labels[frame] for frame in frames]
+        item.FrameOfReferenceUID = values[0] if len(values) == 1 else values
+
+    held_as = _outcome(files.written(rtss)).problem
+    assert held_as is (SeriesProblem.TARGET_IN_BLOCK if held else None)
+
+
+@pytest.mark.parametrize(
+    ("patient", "issuers", "searched"),
+    [
+        ("H2", None, False),
+        ("H1 ", None, True),
+        (" h1", None, True),
+        ("H2\\H3", None, True),
+        (None, None, True),
+        ("", None, True),
+        ("H1", ("A", None), True),
+        ("H1", (None, "A"), True),
+        ("H1", ("A", "A"), True),
+        ("H1", ("A", "B"), True),
+        ("H2", ("A", "A"), False),
+    ],
+    ids=[
+        "another",
+        "padded",
+        "other-case",
+        "several",
+        "set-absent",
+        "set-empty",
+        "set-issuer-only",
+        "series-issuer-only",
+        "same-issuer",
+        "other-issuer",
+        "another-same-issuer",
+    ],
+)
+def test_a_set_of_another_frame_is_searched_for_an_unsure_target_by_patient(
+    patient, issuers, searched
+):
+    rtss = _elsewhere_only([("PTV", files.square(_EYES_FRONT[0]))])
+    rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
+    if patient is None:
+        del rtss.PatientID
+    else:
+        rtss.PatientID = patient
+    (set_issuer, series_issuer) = issuers or (None, None)
+    if set_issuer is not None:
+        rtss.IssuerOfPatientID = set_issuer
+    slices = _head_files()
+    if series_issuer is not None:
+        slices = _changed(_set("IssuerOfPatientID", series_issuer), every=True)
+
+    # Its frames are not the series' and it is not drawn on the series'
+    # slices, so it is searched only where it may be the same patient's:
+    # only two Patient IDs that differ once trimmed and case-folded tell
+    # them apart, whatever the issuers.
+    held = _outcome(files.written(rtss), slices=slices).problem
+    assert held is (SeriesProblem.TARGET_IN_BLOCK if searched else None)
+
+
+def _unsure_elsewhere(patient: str) -> bytes:
+    """A set of another frame, not drawn on the series' slices, whose PTV
+    in the block names no frame, with this Patient ID."""
+    rtss = _elsewhere_only([("PTV", files.square(_EYES_FRONT[0]))])
+    rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
+    rtss.SpecificCharacterSet = "ISO_IR 192"
+    rtss.PatientID = patient
+    return files.written(rtss)
+
+
+def _patient(patient: str):
+    def change(dataset):
+        dataset.SpecificCharacterSet = "ISO_IR 192"
+        dataset.PatientID = patient
+
+    return change
+
+
+def test_a_series_slice_naming_no_patient_searches_a_set_of_another_frame():
+    held = _outcome(_unsure_elsewhere("H2"), slices=_changed(_set("PatientID", "")))
+
+    assert held.problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+@pytest.mark.parametrize(
+    ("series", "structure_set"),
+    [
+        ("H1", "H1\x00ZZ"),
+        ("H1", "H\x001"),
+        ("H1", "H1\x00\t"),
+        ("H1", "H1\x01"),
+        ("H1", "H1\x1b"),
+        ("H\u00e91", "He\u03011"),
+        ("H1", "\uff28\uff11"),
+        ("HI1", "H\u01311"),
+        ("H\u01311", "HI1"),
+    ],
+    ids=[
+        "nul-then-more",
+        "nul-inside",
+        "nul-then-tab",
+        "control-after",
+        "escape-after",
+        "decomposed",
+        "fullwidth",
+        "dotless-i",
+        "dotless-i-on-the-series",
+    ],
+)
+@pytest.mark.parametrize("side", ["set", "series", "one-slice"])
+def test_a_patient_id_other_than_plain_ascii_differs_from_none(
+    series, structure_set, side
+):
+    # Each pair may be the same Patient ID in another spelling, so neither
+    # tells the patients apart and the set is searched, whichever side
+    # gives which, and where only one slice of the series gives it.
+    if side == "series":
+        (series, structure_set) = (structure_set, series)
+    if side == "one-slice":
+        # One slice gives whichever of the pair is not plain ASCII, and the
+        # set and the other slices give two other Patient IDs.
+        plain = structure_set.isascii() and structure_set.isprintable()
+        slices = _changed(_patient(series if plain else structure_set))
+        structure_set = "H2"
+    else:
+        slices = _changed(_patient(series), every=True)
+
+    held = _outcome(_unsure_elsewhere(structure_set), slices=slices)
+
+    assert held.problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+@pytest.mark.parametrize(
+    ("patient", "searched"), [("H1", True), ("H3", True), ("H2", False)]
+)
+def test_a_set_of_another_frame_is_searched_for_the_patient_of_any_slice(
+    patient, searched
+):
+    # Half the series' slices give one Patient ID and half another: a set
+    # of either may be the same patient's, and one of neither is not.
+    slices = tuple(
+        files.written(_with_patient(data, "H3")) if index % 2 else data
+        for index, data in enumerate(_head_files())
+    )
+
+    held = _outcome(_unsure_elsewhere(patient), slices=slices).problem
+
+    assert held is (SeriesProblem.TARGET_IN_BLOCK if searched else None)
+
+
+def _with_patient(data: bytes, patient: str) -> pydicom.Dataset:
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    dataset.PatientID = patient
+    return dataset
 
 
 def test_the_cavity_is_kept_only_above_its_floor():

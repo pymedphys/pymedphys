@@ -187,8 +187,8 @@ class VisualFeaturesReason(enum.Enum):
     # data the run does not yet clean of the face, and which a reviewer may
     # have judged from the defaced CT
     UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
-    # a CT slice of a series whose face block holds a point of a target's
-    # contour, so that the series is not defaced
+    # a CT slice of a series whose face block a target may reach, so that
+    # the series is not defaced
     TARGET_IN_FACE_BLOCK = "target-in-face-block"
 
 
