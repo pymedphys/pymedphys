@@ -1423,6 +1423,25 @@ def test_a_set_of_values_is_grouped_once_and_judged_in_the_order_given(monkeypat
     assert len(kept) == 1 and kept[0] is plan
 
 
+def test_groups_are_searched_in_the_order_given(monkeypatch):
+    # The same bytes match a form of each name, in groups of their own, and
+    # the name given first decides the encoding reported, on a kept plan too.
+    as_latin_1 = _source("(0010,0010)", "PN", "MÃ¼LLER")
+    as_utf_8 = _source("(0010,0010)", "PN", "MüLLER^ANNA")
+    data = b"by " + "MüLLER^ANNA".encode("utf-8") + b" on"
+    monkeypatch.setattr(residuals, "_PLAN", [])
+    kept = residuals._PLAN  # pylint: disable = protected-access
+
+    def encodings(*values):
+        return [f.encoding for f in find_residuals(data, values).findings]
+
+    assert encodings(as_latin_1, as_utf_8) == ["latin-1"]
+    (plan,) = kept
+    assert encodings(as_utf_8, as_latin_1) == ["utf-8"]
+    assert encodings(as_latin_1, as_utf_8) == ["latin-1"]
+    assert kept[0] is plan
+
+
 def test_only_forms_found_are_ordered_and_each_once(monkeypatch):
     # Bytes that start as the form does, but are not it, keep nothing.
     orders = []
