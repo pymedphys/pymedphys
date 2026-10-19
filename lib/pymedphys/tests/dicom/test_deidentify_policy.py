@@ -37,6 +37,12 @@ SAFE_PRIVATE = "retain_safe_private"
 CLEAN_DESCRIPTORS = "clean_descriptors"
 BEAM_HOLD = "(300C,0127)"  # Beam Hold Transition DateTime
 TAG = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
+# The options that the presets select, in Table E.1-1's order.
+PRESET_OPTIONS = tuple(
+    option
+    for option in standard.OPTIONS
+    if any(option in options for options in policy.PRESETS.values())
+)
 
 
 def _rows():
@@ -84,18 +90,31 @@ def test_the_presets_are_the_designs_option_sets_in_the_tables_order():
     assert policy.MODIFIED_DATES == MODIFIED_DATES
 
 
-def test_the_presets_select_only_the_options_the_scope_targets():
-    assert policy.TARGET_OPTIONS == (
+def test_each_option_is_named_in_table_e1_1s_order():
+    assert (
+        policy.SAFE_PRIVATE,
+        policy.UIDS,
+        policy.DEVICE_IDENTITY,
+        policy.INSTITUTION_IDENTITY,
+        policy.PATIENT_CHARACTERISTICS,
+        policy.FULL_DATES,
+        policy.MODIFIED_DATES,
+        policy.CLEAN_DESCRIPTORS,
+        policy.CLEAN_STRUCTURED_CONTENT,
+        policy.CLEAN_GRAPHICS,
+    ) == standard.OPTIONS
+
+
+def test_the_presets_select_only_options_that_the_engine_applies():
+    assert PRESET_OPTIONS == (
         SAFE_PRIVATE,
         DEVICE_IDENTITY,
         PATIENT_CHARACTERISTICS,
         MODIFIED_DATES,
         CLEAN_DESCRIPTORS,
     )
-    in_order = tuple(o for o in standard.OPTIONS if o in policy.TARGET_OPTIONS)
-    assert policy.TARGET_OPTIONS == in_order
     for options in policy.PRESETS.values():
-        assert options == tuple(o for o in policy.TARGET_OPTIONS if o in options)
+        assert options == tuple(o for o in policy.ENGINE_OPTIONS if o in options)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-09")
@@ -141,9 +160,9 @@ def test_basic_clean_descriptors_is_the_basic_profile_with_clean_descriptors():
     # Clean Descriptors leaves identifiers and dates to the Profile.
     assert composed.actions["(0010,0010)"] == "Z"  # Patient's Name
     assert composed.actions["(0008,0020)"] == "Z"  # Study Date
-    # Its option is within the supported scope, and is valid as a custom set,
-    # which allows no conflict.
-    assert set(composed.options) <= set(policy.TARGET_OPTIONS)
+    # The engine applies its option, which is valid as a custom set, which
+    # allows no conflict.
+    assert set(composed.options) <= set(policy.ENGINE_OPTIONS)
     custom = policy.compose_custom_policy(composed.options)
     assert dict(custom.actions) == dict(composed.actions)
     # Defined and validated, but not enabled until its behaviour is.
@@ -308,16 +327,152 @@ def test_only_composing_an_enabled_preset_enables_a_policy(monkeypatch):
     assert hash(selected) == hash(policy.compose_policy())
 
 
+def test_no_option_is_enabled_yet():
+    # A custom option set is selected only once its options are (D-033).
+    assert policy.ENABLED_OPTIONS == frozenset()
+    message = (
+        "the custom option set is not enabled: the behaviour of the Basic "
+        "Profile (the basic preset) and the option clean_descriptors is not yet "
+        "implemented and validated; no option is enabled yet"
+    )
+    with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
+        policy.select_policy(options=[CLEAN_DESCRIPTORS])
+
+
+def test_every_enabled_option_is_one_that_the_engine_applies():
+    assert policy.ENABLED_OPTIONS <= set(policy.ENGINE_OPTIONS)
+
+
+def test_a_custom_option_set_of_enabled_options_is_selected(monkeypatch):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
+    monkeypatch.setattr(
+        policy, "ENABLED_OPTIONS", frozenset({DEVICE_IDENTITY, CLEAN_DESCRIPTORS})
+    )
+
+    selected = policy.select_policy(options=[CLEAN_DESCRIPTORS, DEVICE_IDENTITY])
+
+    assert selected == policy.compose_custom_policy(
+        [DEVICE_IDENTITY, CLEAN_DESCRIPTORS]
+    )
+    assert (selected.preset, selected.options) == (
+        None,
+        (DEVICE_IDENTITY, CLEAN_DESCRIPTORS),
+    )
+    assert selected.enabled and selected.claims_conformance
+    # No options is the Basic Profile alone, as a custom option set.
+    alone = policy.select_policy(options=())
+    assert alone.enabled and (alone.preset, alone.options) == (None, ())
+    assert dict(alone.actions) == _basic()
+    given = standard.load_table_e1_1()
+    assert not policy.compose_custom_policy([CLEAN_DESCRIPTORS], table=given).enabled
+
+
+@pytest.mark.parametrize(
+    "presets, options, selected, unenabled, status",
+    [
+        (
+            set(),
+            {CLEAN_DESCRIPTORS},
+            [CLEAN_DESCRIPTORS],
+            "the Basic Profile (the basic preset)",
+            "only clean_descriptors is enabled",
+        ),
+        (
+            {"basic-clean-descriptors"},
+            {CLEAN_DESCRIPTORS},
+            [CLEAN_DESCRIPTORS],
+            "the Basic Profile (the basic preset)",
+            "only clean_descriptors is enabled",
+        ),
+        (
+            {"basic", "basic-clean-descriptors"},
+            set(),
+            [CLEAN_DESCRIPTORS],
+            "the option clean_descriptors",
+            "no option is enabled yet",
+        ),
+        (
+            {"basic"},
+            {CLEAN_DESCRIPTORS, DEVICE_IDENTITY},
+            [PATIENT_CHARACTERISTICS, CLEAN_DESCRIPTORS],
+            "the option retain_patient_characteristics",
+            "only retain_device_identity and clean_descriptors are enabled",
+        ),
+        (
+            set(),
+            set(),
+            [PATIENT_CHARACTERISTICS, DEVICE_IDENTITY],
+            "the Basic Profile (the basic preset), the option "
+            "retain_device_identity, and the option retain_patient_characteristics",
+            "no option is enabled yet",
+        ),
+    ],
+    ids=[
+        "basic-not-enabled",
+        "its-options-preset-enabled",
+        "a-preset-enables-no-option",
+        "one-option-not-enabled",
+        "nothing-enabled",
+    ],
+)
+def test_the_refusal_of_a_custom_option_set_names_what_is_not_enabled(
+    monkeypatch, presets, options, selected, unenabled, status
+):
+    # Enabling a preset enables neither its options nor a custom option set.
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset(presets))
+    monkeypatch.setattr(policy, "ENABLED_OPTIONS", frozenset(options))
+    message = (
+        f"the custom option set is not enabled: the behaviour of {unenabled} is "
+        f"not yet implemented and validated; {status}"
+    )
+
+    with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
+        policy.select_policy(options=selected)
+
+
+def test_a_preset_and_a_custom_option_set_are_not_selected_together(monkeypatch):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
+    monkeypatch.setattr(policy, "ENABLED_OPTIONS", frozenset({CLEAN_DESCRIPTORS}))
+    message = "a policy is that of a preset or of a custom option set, not both"
+
+    with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
+        policy.select_policy("basic", options=[CLEAN_DESCRIPTORS])
+
+
+@pytest.mark.parametrize(
+    "options, error, match",
+    [
+        ([CLEAN_DESCRIPTORS, "retain_everything"], policy.PolicyError, "unknown"),
+        (CLEAN_DESCRIPTORS, TypeError, "not a single string"),
+        (
+            ["retain_longitudinal_full_dates", MODIFIED_DATES],
+            policy.PolicyError,
+            "mutually exclusive",
+        ),
+        ([DEVICE_IDENTITY, MODIFIED_DATES], policy.PolicyError, "no precedence"),
+    ],
+    ids=["unknown", "string", "exclusive", "conflicting"],
+)
+def test_enabling_every_option_still_refuses_a_set_that_cannot_conform(
+    monkeypatch, options, error, match
+):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
+    monkeypatch.setattr(policy, "ENABLED_OPTIONS", frozenset(standard.OPTIONS))
+
+    with pytest.raises(error, match=match):
+        policy.select_policy(options=options)
+
+
 @pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.parametrize(
     "options",
     [
         subset
-        for size in range(len(policy.TARGET_OPTIONS) + 1)
-        for subset in itertools.combinations(policy.TARGET_OPTIONS, size)
+        for size in range(len(PRESET_OPTIONS) + 1)
+        for subset in itertools.combinations(PRESET_OPTIONS, size)
     ],
 )
-def test_a_custom_option_set_is_validated_and_never_enabled(options):
+def test_a_custom_option_set_is_validated_and_not_yet_enabled(options):
     if {DEVICE_IDENTITY, MODIFIED_DATES} <= set(options):
         with pytest.raises(
             policy.PolicyError, match="no precedence.*only the tps-import preset"
@@ -404,47 +559,139 @@ def test_a_conflict_that_a_new_edition_adds_is_rejected(preset, tag, option, act
     assert "only the tps-import preset" not in str(raised.value)
 
 
-@pytest.mark.parametrize(
-    "option",
-    [
-        "retain_uids",
-        "retain_institution_identity",
-        "retain_longitudinal_full_dates",
-        "clean_structured_content",
-        "clean_graphics",
-    ],
-)
-def test_an_option_outside_the_supported_scope_is_rejected(option):
-    with pytest.raises(policy.PolicyError) as raised:
-        policy.compose_custom_policy([CLEAN_DESCRIPTORS, option])
+@pytest.mark.parametrize("option", standard.OPTIONS)
+def test_every_option_of_table_e1_1_can_be_composed(option):
+    composed = policy.compose_custom_policy([CLEAN_DESCRIPTORS, option])
 
-    message = str(raised.value)
-    assert option in message
-    assert ", ".join(policy.TARGET_OPTIONS[:-1]) in message
+    assert composed.options == tuple(
+        o for o in standard.OPTIONS if o in {CLEAN_DESCRIPTORS, option}
+    )
+    assert composed.preset is None
+    assert not composed.enabled
+    assert composed.claims_conformance
+
+
+def test_the_two_retain_longitudinal_temporal_information_options_are_exclusive():
+    message = (
+        "the options retain_longitudinal_full_dates and "
+        "retain_longitudinal_modified_dates are mutually exclusive (PS3.15 E.3.6)"
+    )
+    with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
+        policy.compose_custom_policy(
+            [MODIFIED_DATES, CLEAN_DESCRIPTORS, "retain_longitudinal_full_dates"]
+        )
+
+
+def test_the_engine_applies_the_options_that_it_marks_applied():
+    assert tuple(policy.ENGINE_APPLIES) == standard.ALL_OPTIONS
+    assert policy.ENGINE_OPTIONS == tuple(
+        o for o in standard.ALL_OPTIONS if policy.ENGINE_APPLIES[o]
+    )
+
+
+def test_the_pixel_options_follow_table_e1_1s():
+    # PS3.15 E.1.1 Note 11 leaves Clean Pixel Data and Clean Recognizable
+    # Visual Features out of Table E.1-1.
+    assert (
+        policy.CLEAN_PIXEL_DATA,
+        policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    ) == standard.PIXEL_OPTIONS
+    assert standard.ALL_OPTIONS == standard.OPTIONS + standard.PIXEL_OPTIONS
+    assert set(standard.PIXEL_OPTIONS).isdisjoint(standard.OPTIONS)
+
+
+@pytest.mark.parametrize("option", standard.PIXEL_OPTIONS)
+@pytest.mark.parametrize("preset", policy.PRESETS)
+def test_a_pixel_option_gives_no_attribute_an_action(option, preset):
+    options = policy.PRESETS[preset]
+    if preset == "tps-import":
+        # Its conflicts are resolved only by the preset itself.
+        options = tuple(o for o in options if o != DEVICE_IDENTITY)
+    without = policy.compose_custom_policy(options)
+
+    composed = policy.compose_custom_policy([option, *reversed(options)])
+
+    assert composed.options == (*without.options, option)
+    assert dict(composed.actions) == dict(without.actions)
+    assert dict(composed.supplementary_actions) == dict(without.supplementary_actions)
+    assert composed.resolved == without.resolved
+    assert composed.claims_conformance
+
+
+def test_both_pixel_options_follow_the_table_options_in_their_order():
+    composed = policy.compose_custom_policy(
+        [
+            policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+            CLEAN_DESCRIPTORS,
+            policy.CLEAN_PIXEL_DATA,
+            MODIFIED_DATES,
+        ]
+    )
+
+    assert composed.options == (
+        MODIFIED_DATES,
+        CLEAN_DESCRIPTORS,
+        policy.CLEAN_PIXEL_DATA,
+        policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    )
+
+
+@pytest.mark.parametrize("option", standard.PIXEL_OPTIONS)
+def test_the_engine_refuses_a_pixel_option_that_it_does_not_apply(option, monkeypatch):
+    composed = policy.compose_custom_policy([option])
+    # Whether the engine applies the option yet or not, a policy that selects
+    # it is refused while it is not applied.
+    unapplied = tuple(o for o in policy.ENGINE_OPTIONS if o != option)
+    monkeypatch.setattr(policy, "ENGINE_OPTIONS", unapplied)
+
+    with pytest.raises(policy.PolicyError, match=f"apply the option {option},"):
+        policy.refuse_unapplied_options(composed)
+
+
+def test_the_engine_applies_clean_recognizable_visual_features_but_no_preset_has_it():
+    option = policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES
+    composed = policy.compose_custom_policy([option])
+
+    assert option in policy.ENGINE_OPTIONS
+    policy.refuse_unapplied_options(composed)
+    assert not composed.enabled
+    assert all(option not in options for options in policy.PRESETS.values())
 
 
 @pytest.mark.parametrize(
     "options, named",
     [
         (
-            ["retain_longitudinal_full_dates", MODIFIED_DATES],
-            "the option retain_longitudinal_full_dates is",
+            ["retain_longitudinal_full_dates"],
+            "the option retain_longitudinal_full_dates, so a policy that selects it",
         ),
         (
-            ["retain_longitudinal_full_dates", "retain_uids"],
-            "the options retain_uids and retain_longitudinal_full_dates are",
+            ["retain_uids", "retain_longitudinal_full_dates", CLEAN_DESCRIPTORS],
+            "the options retain_uids and retain_longitudinal_full_dates, so a "
+            "policy that selects them",
         ),
     ],
 )
-def test_the_scope_error_agrees_in_number_with_its_options(options, named):
+def test_an_option_the_engine_does_not_yet_apply_is_refused_by_name(
+    monkeypatch, options, named
+):
+    # The refusal names the options, whichever the engine applies.
+    applied = (SAFE_PRIVATE, DEVICE_IDENTITY, CLEAN_DESCRIPTORS)
+    monkeypatch.setattr(policy, "ENGINE_OPTIONS", applied)
+    composed = policy.compose_custom_policy(options)
     message = (
-        f"{named} outside the supported scope; the supported options are "
-        "retain_safe_private, retain_device_identity, "
-        "retain_patient_characteristics, retain_longitudinal_modified_dates, "
-        "and clean_descriptors"
+        f"the engine does not yet apply {named} can be composed and described "
+        "but not applied; the engine applies retain_safe_private, "
+        "retain_device_identity, and clean_descriptors"
     )
+
     with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
-        policy.compose_custom_policy(options)
+        policy.refuse_unapplied_options(composed)
+
+
+@pytest.mark.parametrize("preset", policy.PRESETS)
+def test_no_preset_selects_an_option_the_engine_does_not_yet_apply(preset):
+    policy.refuse_unapplied_options(policy.compose_policy(preset))
 
 
 def test_an_unknown_preset_is_rejected():
@@ -465,7 +712,10 @@ def test_a_preset_must_be_named(preset):
 
 
 def test_an_unknown_option_is_rejected():
-    with pytest.raises(policy.PolicyError, match="'retain_everything'"):
+    message = "unknown options ['retain_everything']; the options are " + ", ".join(
+        standard.ALL_OPTIONS
+    )
+    with pytest.raises(policy.PolicyError, match=f"^{re.escape(message)}$"):
         policy.compose_custom_policy([CLEAN_DESCRIPTORS, "retain_everything"])
 
 

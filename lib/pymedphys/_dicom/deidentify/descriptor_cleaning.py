@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Clean Descriptors in the transform: ROI Names cleaned, others removed or replaced.
+"""Clean Descriptors in the transform: ROI Names and free text cleaned, others removed or replaced.
 
 Under a policy that selects the Clean Descriptors Option, the edits leave
-each attribute that Table E.1-1 gives C pending (D-009). This module settles
-them for one instance:
+each attribute that Table E.1-1 gives C pending (D-009), and the cleaners of
+the selected options settle those that they clean
+(:mod:`~pymedphys._dicom.deidentify.cleaners`, D-034). This module settles
+the rest for one instance:
 
 - Each ROI Name (3006,0026) of Structure Set ROI Sequence (3006,0020) is
   cleaned in both tiers by
@@ -31,27 +33,46 @@ them for one instance:
   Other Patient IDs that the edits collected. An institutional list, if
   the run has one, renames nothing: a held name is given the list's names
   that it matches, for its reviewer.
-- Every other attribute given C, which D-009 does not yet clean, takes its
-  action under the policy without Clean Descriptors. Where that action
-  removes or replaces it, the instance still satisfies the option, since
-  PS3.15 E.3.5 specifies what the option removes, not what it retains, and
-  E.1.1 makes Table E.1-1 the minimum actions; where it keeps it, the
-  instance does not.
+- Each value of a free-text descriptor, one of
+  :func:`~pymedphys._dicom.deidentify.reviewed_descriptors.descriptor_attributes`,
+  is given the decision of the custodian's reviewed descriptors list, or,
+  for a technique descriptor that the list does not cover, kept where it is
+  made only of words of the reviewed technique vocabulary (D-036), by
+  :func:`~pymedphys._dicom.deidentify.reviewed_descriptors.clean_descriptor_values`.
+  What a kept or mapped value would write is checked for echoes of the same
+  identifiers as ROI Names. An element is written with what cleaning gives
+  its values where no value is left uncleaned, at least one is written with
+  text, and no kept value is beside one that a reviewer mapped or emptied.
+  Every other
+  element takes its action under the policy without Clean Descriptors, as
+  below, and its values are listed for review, so that a reviewer can
+  record decisions for later runs. A descriptor that another selected
+  option's cleaner cleans, such as Allergies (0010,2110) under Retain
+  Patient Characteristics, is left to that cleaner, and what it leaves
+  pending is not cleaned here (D-038).
+- Every other attribute given C takes its action under the policy without
+  Clean Descriptors. Where that action removes or replaces it, the instance
+  still satisfies the option, since PS3.15 E.3.5 specifies what the option
+  removes, not what it retains, and E.1.1 makes Table E.1-1 the minimum
+  actions; where it keeps it, the instance does not.
 
 An instance satisfies Clean Descriptors only where no ROI Name was held or
-emptied without review, and no other attribute given C was kept. A ROI Name
-kept as it is, or renamed in the vocabulary's spelling, which the search,
-ignoring case, could otherwise find in what is written, is retained, so its
-source value is left out of the residual search, as D-027 has retained
-values dropped from it. A mapped name's source is still searched, since a
-reviewer's replacement need not resemble it.
+emptied without review, and no other attribute given C was kept but by a
+reviewer's decision or the technique vocabulary. A ROI Name kept as it is,
+or renamed in the vocabulary's spelling, which the search, ignoring case,
+could otherwise find in what is written, is retained, so its source value is
+left out of the residual search, as D-027 has retained values dropped from
+it, and so is a descriptor with a kept value. A mapped name's or value's
+source is still searched, since a reviewer's replacement need not resemble
+it, and so is an emptied value's; that is why neither is written beside a
+kept value.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import functools
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 
 from pymedphys._nomenclature import roi_list, tg263
 
@@ -60,6 +81,13 @@ from .file_layout import ElementPath
 from .policy import Policy, compose_custom_policy, compose_policy
 from .qc_pack import RoiNameOutcome
 from .reasons import DescriptorReason, HeldRoiName
+from .reviewed_descriptors import (
+    CleanedDescriptor,
+    ReviewedDescriptors,
+    clean_descriptor_values,
+    descriptor_attributes,
+)
+from .reviewed_descriptors import Outcome as DescriptorOutcome
 from .reviewed_roi_names import (
     CleanedRoiName,
     Outcome,
@@ -68,7 +96,9 @@ from .reviewed_roi_names import (
     clean_roi_names,
 )
 from .roi_names import InstitutionalNames, RoiNameVocabulary
-from .run_qc import RetainedText, RoiNameMaterial
+from .run_qc import DescriptorMaterial, RetainedText, RoiNameMaterial
+from .technique_descriptors import TechniqueVocabulary, load_technique_vocabulary
+from .walker import InstancePlan
 
 CLEAN_DESCRIPTORS = "clean_descriptors"
 _ROI_SEQUENCE = "(3006,0020)"
@@ -83,6 +113,12 @@ _REVIEWED = frozenset(
 # The outcomes whose written name the residual search, which ignores case,
 # could find for its source value.
 _WRITES_ITS_SOURCE = frozenset({Outcome.RENAMED, Outcome.KEPT})
+# The VRs whose values a backslash separates (PS3.5 Section 6.2).
+_MULTI_VALUED = frozenset({"SH", "LO", "UC"})
+# The outcomes of a descriptor value that write the source value itself.
+_KEEPS_ITS_SOURCE = frozenset(
+    {DescriptorOutcome.KEPT, DescriptorOutcome.KEPT_BY_VOCABULARY}
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -108,6 +144,14 @@ class DescriptorCleaning:
         held, and the QC pack shows its reviewer the names it matched
         (D-009). Since it changes no value written, the method digest does
         not cover it.
+    reviewed_descriptors : ReviewedDescriptors
+        The custodian's reviewed descriptors list for the site or project,
+        by default :meth:`ReviewedDescriptors.empty`.
+    technique : TechniqueVocabulary or None
+        The reviewed technique vocabulary (D-036), by default the one that
+        PyMedPhys bundles, or None, in which case no descriptor value is
+        kept without a reviewer's decision. The method digest covers it by
+        its SHA-256.
 
     Raises
     ------
@@ -122,10 +166,22 @@ class DescriptorCleaning:
     reviewed: ReviewedNames = dataclasses.field(repr=False)
     empty_held: bool = False
     institutional: roi_list.RoiList | None = dataclasses.field(default=None, repr=False)
+    reviewed_descriptors: ReviewedDescriptors = dataclasses.field(
+        default_factory=ReviewedDescriptors.empty, repr=False
+    )
+    technique: TechniqueVocabulary | None = dataclasses.field(
+        default_factory=load_technique_vocabulary, repr=False
+    )
 
     def __post_init__(self) -> None:
         if not isinstance(self.reviewed, ReviewedNames):
             raise TypeError("reviewed must be ReviewedNames")
+        if not isinstance(self.reviewed_descriptors, ReviewedDescriptors):
+            raise TypeError("reviewed_descriptors must be ReviewedDescriptors")
+        if self.technique is not None and not isinstance(
+            self.technique, TechniqueVocabulary
+        ):
+            raise TypeError("technique must be a TechniqueVocabulary or None")
         if not isinstance(self.empty_held, bool):
             raise TypeError("empty_held must be True or False")
         if self.institutional is not None and not isinstance(
@@ -165,21 +221,23 @@ class CleanedDescriptors:
         Whether the instance satisfies Clean Descriptors: no ROI Name held
         or emptied without review, and no other attribute given C kept.
     retained : frozenset of ElementPath
-        The ROI Names written with a value, which the residual search leaves
-        out.
+        The ROI Names written with a value, and the descriptors written with
+        a kept value, which the residual search leaves out.
     qc : tuple
-        The QC pack's material of the instance's ROI Names: what was written
-        for each, as :class:`~.run_qc.RoiNameMaterial`, and each kept source
-        name as :class:`~.run_qc.RetainedText`, in file order. Left out of
-        the ``repr``, since it holds source names.
+        The QC pack's material of the instance's ROI Names and free-text
+        descriptors: what was written for each name, as
+        :class:`~.run_qc.RoiNameMaterial`, and for each descriptor, as
+        :class:`~.run_qc.DescriptorMaterial`, and each kept source name or
+        descriptor value as :class:`~.run_qc.RetainedText`. Left out of the
+        ``repr``, since it holds source values.
     """
 
     edits: InstanceEdits
     held: tuple[HeldRoiName, ...]
     satisfied: bool
     retained: frozenset[ElementPath]
-    qc: tuple[RoiNameMaterial | RetainedText, ...] = dataclasses.field(
-        default=(), repr=False
+    qc: tuple[RoiNameMaterial | DescriptorMaterial | RetainedText, ...] = (
+        dataclasses.field(default=(), repr=False)
     )
 
 
@@ -207,12 +265,14 @@ def fallback_policy(policy: Policy) -> Policy:
     )
 
 
-def clean_descriptors(
+def clean_descriptors(  # pylint: disable = too-many-locals
     edits: InstanceEdits,
     cleaning: DescriptorCleaning,
     vocabulary: RoiNameVocabulary | None,
     queue: ReviewQueue,
     fallback: Callable[[], InstanceEdits],
+    *,
+    cleaned_elsewhere: Collection[str],
 ) -> CleanedDescriptors:
     """Settle each edit that the policy's C leaves pending in one instance.
 
@@ -228,7 +288,14 @@ def clean_descriptors(
         the confidential QC material.
     fallback : callable
         Returns the instance's edits under :func:`fallback_policy`; called
-        only where an attribute other than ROI Name is given C.
+        only where an attribute given C is neither a ROI Name nor a
+        descriptor that cleaning writes.
+    cleaned_elsewhere : collection of str
+        The tags of the attributes that the cleaners of the policy's other
+        options clean (:func:`~.cleaners.cleaners_for`). A descriptor among
+        them that its cleaner left pending is not cleaned, so it takes its
+        action without Clean Descriptors, which is that other option's C, so
+        it is left unsettled, as for Retain Patient Characteristics (D-038).
 
     Raises
     ------
@@ -243,13 +310,26 @@ def clean_descriptors(
     ]
     names = [edit for edit in pending if _is_roi_name(edit.path)]
     others = [edit for edit in pending if not _is_roi_name(edit.path)]
+    identifiers = _identifiers(edits)
+    texts_of = _descriptor_texts(edits, [edit.path for edit in others])
+    described = {
+        edit.path: clean_descriptor_values(
+            edit.path.tag,
+            texts_of[edit.path],
+            cleaning.reviewed_descriptors,
+            identifiers=identifiers,
+            vocabulary=cleaning.technique,
+        )
+        for edit in others
+        if edit.path in texts_of and edit.path.tag not in cleaned_elsewhere
+    }
     settled: dict[ElementPath, Edit] = {}
     held: list[HeldRoiName] = []
     retained: set[ElementPath] = set()
-    qc: list[RoiNameMaterial | RetainedText] = []
+    qc: list[RoiNameMaterial | DescriptorMaterial | RetainedText] = []
     satisfied = True
     if names:
-        texts, results = _cleaned_names(edits, names, cleaning, vocabulary)
+        texts, results = _cleaned_names(edits, names, cleaning, vocabulary, identifiers)
         for edit, text, result in zip(names, texts, results):
             qc.extend(_material(edit.path, text, result))
             if result.outcome is Outcome.HELD:
@@ -266,6 +346,15 @@ def clean_descriptors(
                 settled[edit.path] = dataclasses.replace(
                     edit, kind=EditKind.EMPTY, values=()
                 )
+    cleaned: dict[ElementPath, Edit] = {}
+    for edit in others:
+        values = _written(described.get(edit.path, ()))
+        if values is not None:
+            cleaned[edit.path] = dataclasses.replace(
+                edit, kind=EditKind.REPLACE, values=values
+            )
+    settled.update(cleaned)
+    others = [edit for edit in others if edit.path not in cleaned]
     if others:
         instead = _fallen_back(others, fallback())
         settled.update(instead)
@@ -275,6 +364,19 @@ def clean_descriptors(
         satisfied = satisfied and all(
             edit.kind is not EditKind.KEEP for edit in instead.values()
         )
+    for path, outcomes in described.items():
+        # A cleaned descriptor in a sequence that another's action removes
+        # (D-020) goes with it.
+        applied = path in cleaned and settled[path] is cleaned[path]
+        qc.append(DescriptorMaterial(path, tuple(texts_of[path]), outcomes, applied))
+        kept = [
+            result.value
+            for result in outcomes
+            if applied and result.outcome in _KEEPS_ITS_SOURCE and result.value
+        ]
+        if kept:
+            retained.add(path)
+            qc.extend(RetainedText(value, path) for value in kept)
     if names:
         # Only once the instance is settled, so that a refused instance adds
         # nothing to the review.
@@ -315,11 +417,151 @@ def _is_roi_name(path: ElementPath) -> bool:
     )
 
 
+def _identifiers(edits: InstanceEdits) -> list[str]:
+    """Return the identifiers that cleaned values are checked for echoes of.
+
+    Only the values that the edits collected: under every preset, each
+    person name and patient identifier is removed or replaced, so all are
+    collected. An option that keeps one would need to collect it here too.
+    """
+    return [
+        value.value
+        for value in edits.source_values
+        if isinstance(value.value, str)
+        and (value.vr == "PN" or value.source.tag in _IDENTIFIER_TAGS)
+    ]
+
+
+def _descriptor_texts(
+    edits: InstanceEdits, paths: Sequence[ElementPath]
+) -> dict[ElementPath, list[str]]:
+    """Return the values of each free-text descriptor that cleaning can read.
+
+    A descriptor is read where the edits collected its decoded source value
+    in the VR that the data dictionary gives it, split at backslashes where
+    that VR holds several values. Any other, such as one read as UN, takes
+    its action without the option.
+    """
+    attributes = descriptor_attributes()
+    sources = {value.source: value for value in edits.source_values}
+    texts = {}
+    for path in paths:
+        source = sources.get(path)
+        vr = attributes.get(path.tag)
+        if source is None or vr is None or source.vr != vr:
+            continue
+        if not isinstance(source.value, str):
+            continue
+        texts[path] = (
+            source.value.split("\\") if vr in _MULTI_VALUED else [source.value]
+        )
+    return texts
+
+
+def kept_descriptors(
+    plan: InstancePlan,
+    edits: InstanceEdits,
+    cleaning: DescriptorCleaning,
+    *,
+    cleaned_elsewhere: Collection[str],
+) -> frozenset[ElementPath]:
+    """Return the free-text descriptors of a withheld instance that cleaning would keep.
+
+    An instance withheld before its descriptors are cleaned is still edited
+    so that its values are collected for its subject's residual search
+    (D-027). A descriptor that cleaning would write with a value that a tier
+    keeps, by the rules of :func:`clean_descriptors`, is left out of that
+    collection, as it is from an instance that is written, so that the same
+    value written in another instance, such as the Series Description of the
+    rest of a series, is not found from it. A value that a reviewer maps or
+    empties, that no tier cleans, or that echoes an identifier stays in it.
+    So does a kept value in a sequence that also holds an attribute given C
+    that cleaning would not write, since that attribute's action without the
+    option may remove the sequence with both (D-020), which only an instance
+    that is written settles.
+
+    Parameters
+    ----------
+    plan : InstancePlan
+        The instance's plan, under a policy with Clean Descriptors.
+    edits : InstanceEdits
+        Its edits, with the values that they collected.
+    cleaning : DescriptorCleaning
+        What descriptors are cleaned with.
+    cleaned_elsewhere : collection of str
+        As for :func:`clean_descriptors`: descriptors that are not cleaned.
+
+    Returns
+    -------
+    frozenset of ElementPath
+        The descriptors whose values would be kept, each a retained value.
+    """
+    paths = [
+        element.path
+        for element in plan.elements
+        if element.action == "C" and not _is_roi_name(element.path)
+    ]
+    identifiers = _identifiers(edits)
+    texts_of = _descriptor_texts(
+        edits, [path for path in paths if path.tag not in cleaned_elsewhere]
+    )
+    written, kept = set(), set()
+    for path, texts in texts_of.items():
+        results = clean_descriptor_values(
+            path.tag,
+            texts,
+            cleaning.reviewed_descriptors,
+            identifiers=identifiers,
+            vocabulary=cleaning.technique,
+        )
+        if _written(results) is None:
+            continue
+        written.add(path)
+        if any(
+            result.outcome in _KEEPS_ITS_SOURCE and result.value for result in results
+        ):
+            kept.add(path)
+    fallen_back = [path for path in paths if path not in written]
+    return frozenset(
+        path
+        for path in kept
+        if not any(_shares_a_sequence(path, other) for other in fallen_back)
+    )
+
+
+def _shares_a_sequence(path: ElementPath, other: ElementPath) -> bool:
+    """Return whether ``path`` is in a sequence that holds, or is, ``other``."""
+    return any(
+        _within(path, ElementPath(other.items[:depth], tag))
+        for depth, (tag, _) in enumerate(other.items)
+    ) or _within(path, other)
+
+
+def _written(results: Sequence[CleanedDescriptor]) -> tuple[str, ...] | None:
+    """Return what is written for a descriptor's values, or None to fall back.
+
+    None where a value is not cleaned, where no value is written with text,
+    or where a kept value is written beside one that a reviewer mapped or
+    emptied, since the residual search leaves a kept value's whole element
+    out of its search, which would leave out that value's source too.
+    """
+    outcomes = {result.outcome for result in results}
+    if any(result.value is None for result in results):
+        return None
+    if outcomes & _KEEPS_ITS_SOURCE and outcomes - _KEEPS_ITS_SOURCE - {
+        DescriptorOutcome.EMPTY
+    }:
+        return None
+    values = tuple(result.value or "" for result in results)
+    return values if any(values) else None
+
+
 def _cleaned_names(
     edits: InstanceEdits,
     names: Sequence[Edit],
     cleaning: DescriptorCleaning,
     vocabulary: RoiNameVocabulary | None,
+    identifiers: Sequence[str],
 ) -> tuple[list[str], tuple[CleanedRoiName, ...]]:
     undecoded = {missing.path for missing in edits.not_collected}
     if any(edit.path in undecoded for edit in names):
@@ -333,15 +575,6 @@ def _cleaned_names(
         if not isinstance(value, str):
             raise DescriptorsRefused(DescriptorReason.UNDECODABLE_ROI_NAME)
         texts.append(value)
-    # Only the values that the edits collected: under every preset, each
-    # person name and patient identifier is removed or replaced, so all are
-    # collected. An option that keeps one would need to collect it here too.
-    identifiers = [
-        value.value
-        for value in edits.source_values
-        if isinstance(value.value, str)
-        and (value.vr == "PN" or value.source.tag in _IDENTIFIER_TAGS)
-    ]
     results = clean_roi_names(
         texts,
         vocabulary,

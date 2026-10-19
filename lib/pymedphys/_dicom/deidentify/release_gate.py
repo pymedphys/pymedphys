@@ -55,8 +55,13 @@ dictionary gives none. The file goes to QC review (:attr:`~Decision.QC_REVIEW`)
 when collection is incomplete for any other value, including a private
 value or one to which the dictionary gives no VR, or the search finds other
 text inside the data set, unless a kept standard term, code of a standard
-scheme, or equipment name, or a vendor's private creator, explains it
-(:func:`~pymedphys._dicom.deidentify.residual_exemptions.exemption`). Otherwise
+scheme, or equipment name, a vendor's private creator, or a value that an
+option of the run keeps explains it
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.exemption`). A date
+or datetime equal to a whole date, time, or datetime that an option keeps
+does not withhold the file either
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.retained_date`).
+Otherwise
 it may be released (:attr:`~Decision.RELEASE`). There is no setting that
 changes this.
 
@@ -89,7 +94,13 @@ import functools
 import re
 
 from .file_layout import ElementPath, Location, Region
-from .residual_exemptions import Exemption, KeptValues, exemption, source_values
+from .residual_exemptions import (
+    Exemption,
+    KeptValues,
+    exemption,
+    retained_date,
+    source_values,
+)
 from .residuals import (
     Finding,
     NotSearched,
@@ -98,6 +109,8 @@ from .residuals import (
     ValueKind,
     find_residuals,
 )
+from .residual_shifts import KINDS as SHIFTED_KINDS
+from .residual_shifts import shifted_date
 from .standard import ProfileTable, dictionary_attribute, load_table_e1_1
 
 # The PS3.6 groups of the patient, a visit, the study, and a procedure or
@@ -161,6 +174,11 @@ _RESIDUAL_KINDS = {
     ValueKind.DATE: ReasonCode.RESIDUAL_DATE,
     ValueKind.DATETIME: ReasonCode.RESIDUAL_DATETIME,
 }
+# The findings that kept values can explain: text, and dates and datetimes
+# equal to a date or time that an option keeps.
+_EXPLICABLE = frozenset(
+    {ReasonCode.RESIDUAL_TEXT, ReasonCode.RESIDUAL_DATE, ReasonCode.RESIDUAL_DATETIME}
+)
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -219,6 +237,11 @@ class Coverage:
     decoded_as_bytes : frozenset of ElementPath, optional
         The source paths of collected text read as ISO 8859-1, because it
         has bytes outside ISO 646 and no Specific Character Set applies.
+    options : tuple of str, optional
+        The options of the run's policy, which say which findings an option
+        can explain, such as one that a kept value explains, or a date that
+        Modified Dates shifted onto another source date. With none, no option
+        explains a finding.
 
     Raises
     ------
@@ -230,6 +253,7 @@ class Coverage:
     collected: tuple[SourceValue, ...]
     uncollected: tuple[Uncollected, ...] = ()
     decoded_as_bytes: frozenset[ElementPath] = frozenset()
+    options: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         for name, container, kind in (
@@ -237,6 +261,7 @@ class Coverage:
             ("collected", tuple, SourceValue),
             ("uncollected", tuple, Uncollected),
             ("decoded_as_bytes", frozenset, ElementPath),
+            ("options", tuple, str),
         ):
             given = getattr(self, name)
             if not isinstance(given, container) or not all(
@@ -286,6 +311,7 @@ class Coverage:
             decoded_as_bytes=frozenset().union(
                 *(each.decoded_as_bytes for each in coverages)
             ),
+            options=tuple(dict.fromkeys(o for c in coverages for o in c.options)),
         )
 
     def not_reported(self) -> tuple[ElementPath, ...]:
@@ -531,13 +557,22 @@ def release_condition(
     if not search.readable:
         reasons.append(ReleaseReason(Decision.WITHHOLD, ReasonCode.UNREADABLE_FILE))
     exempted = []
-    kept: KeptValues | None = None  # read only for a text finding
+    kept: KeptValues | None = None  # read only for a finding it may explain
     sources = source_values(coverage.collected)
     for each in search.findings:
+        if each.kind in SHIFTED_KINDS and shifted_date(
+            each, kept := kept or KeptValues(written), sources, coverage.options
+        ):
+            exempted.append((each, Exemption.SHIFTED_DATE))
+            continue
         reason = _finding_reason(each, identifiers)
-        if reason.code is ReasonCode.RESIDUAL_TEXT:
+        if reason.code in _EXPLICABLE:
             kept = kept or KeptValues(written)
-            why = exemption(each, kept, sources)
+            why = (
+                exemption(each, kept, sources, coverage.options)
+                if reason.code is ReasonCode.RESIDUAL_TEXT
+                else retained_date(each, kept, sources, coverage.options)
+            )
             if why is not None:
                 exempted.append((each, why))
                 continue

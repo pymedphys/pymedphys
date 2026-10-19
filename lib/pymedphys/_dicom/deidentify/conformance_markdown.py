@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+
 """Write the conformance statement of a policy as CommonMark.
 
 :func:`render_markdown` writes a
@@ -33,29 +35,32 @@ from .conformance import (
     CLEAN_DESCRIPTORS_FALLBACK,
     ENGINE_REMOVAL,
     FILE_META_WRITTEN,
+    GRAPHICS_NOT_CLEANED,
     OPTION_CODES,
     OVERLAY_GROUP,
-    PIXEL_OPTION_CODES,
     SEQUENCE_NOT_CLEANED,
     SEQUESTER,
     AttributeAction,
     ConformanceStatement,
 )
 from .conformance_values import code as _code
+from .conformance_safe_private import safe_private_section
 from .conformance_values import join as _join
 from .markers import PROFILE_CODE
-from .policy import TARGET_OPTIONS
+from .policy import CLEAN_PIXEL_DATA, CLEAN_STRUCTURED_CONTENT, ENGINE_OPTIONS, UIDS
+from .reviewed_descriptors import CLEAN_DESCRIPTORS
 from .reviewed_roi_names import Outcome, Review
 from .roi_names import Reason
 from .source import ENCAPSULATED_TRANSFER_SYNTAXES
 from .standard import (
     _RESERVED_ODD_GROUPS,
-    OPTIONS,
+    ALL_OPTIONS,
     PRIVATE_ATTRIBUTES_TAG,
     load_data_dictionary,
     load_table_e1_1a,
 )
 from .supplementary_actions import load_supplementary_actions
+from .technique_descriptors import load_technique_vocabulary
 
 _ROI_NAME_NAMED = "ROI Name (3006,0026)"
 # Why the automatic tier sends a ROI Name to review rather than renaming it.
@@ -199,7 +204,7 @@ def _claim(
             "Output may be described as de-identified in accordance with the "
             f"DICOM PS3.15 {statement.edition} Basic Application Level "
             f"Confidentiality Profile with {options}, for each instance whose "
-            "validated result satisfies them (D-011)."
+            "validated result satisfies them."
         ]
     lines = [f"This statement makes no PS3.15 conformance claim for {preset}:", ""]
     if not statement.enabled:
@@ -210,7 +215,7 @@ def _claim(
     if statement.resolved:
         lines.append(
             "- Its options give these attributes different actions, and it "
-            "applies one of them, leaving the other options unmet (D-007):"
+            "applies one of them, leaving the other options unmet:"
         )
         names = {e.tag: e.name for e in statement.attributes}
         for r in statement.resolved:
@@ -226,8 +231,10 @@ def _claim(
 
 
 def _private(statement: ConformanceStatement) -> list[str]:
-    """Describe the removal of private attributes, where the policy removes them."""
+    """Describe the removal or retention of private attributes (D-028, D-035)."""
     row = next(e for e in statement.attributes if e.tag == PRIVATE_ATTRIBUTES_TAG)
+    if statement.safe_private:
+        return safe_private_section(statement)
     if row.action != "X":
         return []
     return [
@@ -279,8 +286,7 @@ def _local_codes(named: Callable[[str], str]) -> list[str]:
         [
             f"{named(_MANUFACTURER)} is kept ({_code('K')}) too, since it names "
             "the maker of a product that many sites share, but a device made "
-            "in-house can carry the institution's name as its Manufacturer "
-            "(D-022). "
+            "in-house can carry the institution's name as its Manufacturer. "
         ]
         if _rule_action(_MANUFACTURER) == "K"
         else []
@@ -290,25 +296,25 @@ def _local_codes(named: Callable[[str], str]) -> list[str]:
         "",
         f"{_join(named(tag) for tag in _CODE_TAGS)} are kept ({_code('K')}) by "
         "their supplementary rules, whatever the coding scheme, so that coded "
-        "meaning survives (D-022). A code of a local coding scheme, whose "
+        "meaning survives. A code of a local coding scheme, whose "
         'Coding Scheme Designator begins with "99" or is "L" (PS3.3 Section '
         "8.2), can carry the institution's name or abbreviation in those "
         f"values{url}. "
         + "".join(manufacturer)
         + "Each such value, like every other string that the engine keeps, is "
         "listed among the retained strings of the run's confidential QC pack, "
-        "where a reviewer can find it (D-017).",
+        "where a reviewer can find it.",
         "",
         "The engine does not itself assess the residual risk of these values. "
         "The design accepts it for Manufacturer and Coding Scheme URL because "
         "such a value names an institution, not a patient, and for the codes "
-        "of local coding schemes requires this disclosure (D-022). The "
+        "of local coding schemes requires this disclosure. The "
         "`public-release` preset has a person review every distinct retained "
-        "string (D-017); the other presets keep these values without review. "
+        "string; the other presets keep these values without review. "
         "For the first release, the residual risk of the output, these values "
         "included, is for whoever releases the data to accept, which they may "
         "confirm, yes or no, in the attestation of the run's QC pack, under "
-        "the institution's governance (D-016).",
+        "the institution's governance.",
         "",
     ]
 
@@ -320,7 +326,12 @@ def _superseded(statement: ConformanceStatement) -> list[str]:
         if e.superseded_by:
             key = (e.superseded_by, e.policy_action)
             found.setdefault(key, []).append(f"{e.name} {e.tag}")
-    order = (ENGINE_REMOVAL, FILE_META_WRITTEN, SEQUENCE_NOT_CLEANED)
+    order = (
+        ENGINE_REMOVAL,
+        FILE_META_WRITTEN,
+        SEQUENCE_NOT_CLEANED,
+        GRAPHICS_NOT_CLEANED,
+    )
     lines = []
     for (reason, given), names in sorted(
         found.items(),
@@ -341,10 +352,11 @@ def _superseded(statement: ConformanceStatement) -> list[str]:
                 "File Meta Information Group Length (0002,0000), File Meta "
                 "Information Version (0002,0001), Media Storage SOP Class UID "
                 "(0002,0002), which is the instance's SOP Class UID, Media "
-                "Storage SOP Instance UID (0002,0003), which is the instance's "
-                "replacement SOP Instance UID, Transfer Syntax UID (0002,0010), "
+                "Storage SOP Instance UID (0002,0003), which is the SOP Instance "
+                "UID that the instance is written with, Transfer Syntax UID "
+                "(0002,0010), "
                 "and PyMedPhys's Implementation Class UID (0002,0012) and "
-                "Implementation Version Name (0002,0013) (D-025)."
+                "Implementation Version Name (0002,0013)."
             )
         elif reason == CLEAN_DESCRIPTORS_FALLBACK:
             text = (
@@ -352,13 +364,31 @@ def _superseded(statement: ConformanceStatement) -> list[str]:
                 f"{_ROI_NAME_NAMED} to which the policy gives {_code(given)} "
                 "takes the action that the policy gives it without Clean "
                 "Descriptors, at each place, which the maintainer decided on "
-                "6 October 2026 (D-009); the table gives that action for each "
-                f"of these {len(names)} attributes. Where that action removes "
+                "6 October 2026, unless it is a free-text descriptor "
+                "that cleaning writes, as Cleaning free-text descriptors "
+                "describes; the table gives that action for each of these "
+                f"{len(names)} attributes. Where that action removes "
                 "or replaces the attribute, the instance still meets the "
                 "option, since PS3.15 E.3.5 specifies what the option removes, "
                 "and Table E.1-1 gives the minimum actions; where it keeps the "
                 "attribute, the instance does not gain the option's code, as "
                 "Attributes inserted describes."
+            )
+        elif reason == GRAPHICS_NOT_CLEANED:
+            text = (
+                "No cleaner for overlays and curves is designed yet, so under "
+                "Clean Graphics each masked row to which the policy gives "
+                f"{_code(given)} takes its Basic Profile action, as the table "
+                f"shows: {_join(names)}. That action removes the attribute, and "
+                "removing Overlay Data removes every attribute of its overlay "
+                "group where the IOD's Overlay Plane Module is user-optional, "
+                "so the instance still meets the option, since PS3.15 "
+                "E.3.3 specifies what the option removes, and Table E.1-1 "
+                "gives the minimum actions. An overlay group without "
+                "Overlay Data may keep its overlay in unused bits of Pixel "
+                "Data, as PS3.3 allowed before 2004, which the engine does not "
+                "change, so under this option such an instance is sequestered "
+                "as `overlay-in-pixel-data`."
             )
         else:
             text = (
@@ -390,14 +420,14 @@ def _other(statement: ConformanceStatement, named: Callable[[str], str]) -> list
         "## Other elements",
         "",
         "Each element takes its action from the first of these that applies: "
-        "the engine's own removals (D-013, D-016, and D-025); the Private "
+        "the engine's own removals; the Private "
         f"Attributes row, for an element of an odd group other than {reserved}, "
         "which PS3.5 Section 7.8.1 does not allow for private use; the other "
         "rows of Table E.1-1, by exact tag and then by masked tag, where "
         "(50xx,eeee) and (60xx,eeee) match only the repeating groups 5000 to "
         "501E and 6000 to 601E (PS3.5 Section 7.6); the supplementary rules; "
         "U by the role of a UI attribute; and then the rules below, by the "
-        "attribute's VRs in the pinned data dictionary (D-022).",
+        "attribute's VRs in the pinned data dictionary.",
         "",
         "- The engine removes from every data set each element of groups "
         f"{_join(f'{group:04X}' for group in other.engine_groups)}, and each "
@@ -417,7 +447,7 @@ def _other(statement: ConformanceStatement, named: Callable[[str], str]) -> list
         "and Studies Containing Other Referenced Instances Sequence (0008,1200) of "
         "the Common Instance Reference Module are removed, with their items, "
         "where the instance keeps no other reference to an instance, since their "
-        "Type 1C conditions then do not hold (D-022).",
+        "Type 1C conditions then do not hold.",
         f"- Any other attribute is removed ({_code('X')}), as is an element "
         "that the pinned data dictionary does not list.",
         "",
@@ -463,8 +493,8 @@ def _roi_names(statement: ConformanceStatement) -> list[str]:
     return [
         "## Cleaning ROI names",
         "",
-        f"The policy gives {_ROI_NAME_NAMED} C, which is done in two tiers "
-        "(D-009). The first renames a name automatically against the TG-263 "
+        f"The policy gives {_ROI_NAME_NAMED} C, which is done in two tiers. "
+        "The first renames a name automatically against the TG-263 "
         "vocabulary; every other name takes a reviewer's decision.",
         "",
         automatic,
@@ -486,8 +516,8 @@ def _roi_names(statement: ConformanceStatement) -> list[str]:
         "source names verbatim, or one kept for a single run, and it is never "
         "written to the output. A run with a reviewed list records the list's "
         "keyed digest in its method digest, so that digest differs from the "
-        "one this statement gives, which describes the policy without a list "
-        "(D-024). What would then be written is checked again: a kept or "
+        "one this statement gives, which describes the policy without a list. "
+        "What would then be written is checked again: a kept or "
         "mapped name that echoes an identifier of the instance, and different "
         "names of one structure set that would be written as the same name, "
         "ignoring case, are held, as is a name the list does not cover. "
@@ -498,6 +528,181 @@ def _roi_names(statement: ConformanceStatement) -> list[str]:
         *(f"- {text}." for text in ROI_OUTCOMES.values()),
         "",
     ]
+
+
+# The rules by which the technique vocabulary keeps a value (D-036), as
+# technique_descriptors applies them.
+TECHNIQUE_RULES = (
+    "it is printable ISO 646 (ASCII), without control characters, and holds "
+    "no `^`, which separates the components of a person's name;",
+    "it holds no date or time, with any separators, including a clock time "
+    "written with an hour unit, as in `14H30` or `1430HRS`, no run of five or "
+    "more digits, and no digits that run on across separators from one word "
+    "into the next to five or more;",
+    "it has at most one bare number, a word of only digits, of at most three "
+    "digits before its decimal point and three after, other than two digits, "
+    "a point, and two digits from `10.00` up, which could be a time;",
+    "every other word is a reconstruction kernel of a reviewed prefix, two "
+    "digits, and at most one of the suffixes D, F, H, S, and U, as in "
+    "`B70f`, or is made of letter runs that are each a vocabulary word, or "
+    "two or three vocabulary words of at least three letters joined, and "
+    "digit runs of at most four digits before any decimal point and three "
+    "after that are not a year from 1900 to 2099, with at most one digit run "
+    "in a word, as in `T2`, `120KV`, and `0.625MM`;",
+    "a single letter after digits, in a word or as the next word, is a unit "
+    "or the `D` of `2D`, `3D`, or `4D`, and no two single-letter words are "
+    "next to each other, as initials are;",
+    "no letter run is a common personal name that is not a reviewed "
+    "exception, and no title (`MR`, `MRS`, or `MS`) comes before an "
+    "exception that is also a common name; and",
+    "it has a vocabulary word of at least two letters.",
+)
+
+
+def _descriptors(
+    statement: ConformanceStatement, named: Callable[[str], str]
+) -> list[str]:
+    """Describe how free-text descriptors are cleaned, under Clean Descriptors."""
+    if CLEAN_DESCRIPTORS not in statement.options:
+        return []
+    technique = sorted(load_technique_vocabulary().attributes)
+    reviews = _join((f"`{review.value}`" for review in Review), "or")
+    return [
+        "## Cleaning free-text descriptors",
+        "",
+        f"Each attribute other than {_ROI_NAME_NAMED} to which the policy "
+        "gives C under Clean Descriptors and whose VR is SH, LO, ST, LT, UC, "
+        "or UT, such as Series Description (0008,103E) or Protocol Name "
+        "(0018,1030), is a free-text descriptor, and its values are cleaned "
+        "where they can be, in two tiers. Each value of such "
+        "an element, once its padding is removed, takes the reviewer's "
+        f"decision, {reviews}, that the reviewed descriptors list holds for "
+        "exactly that value of that attribute; `empty` writes an empty value. "
+        "The list is the site's or project's, which the custodian keeps with "
+        "the key since it holds source values verbatim, and it is never "
+        "written to the output. A run records the list's keyed digest in its "
+        "method digest.",
+        "",
+        "A value that the list does not cover is kept without review only "
+        "where it is a value of a technique descriptor and every word of it "
+        "is in the reviewed technique vocabulary that PyMedPhys bundles, of "
+        "technique, anatomy, and equipment words, units, and the prefixes of "
+        "reconstruction kernels, whose SHA-256 the run's method digest "
+        "records. The technique descriptors are "
+        f"{_join(named(tag) for tag in technique)}. A value is read as "
+        "words, the runs of letters and digits between other characters, "
+        "with any decimal places, and kept only where it echoes no "
+        "identifier, as below, and:",
+        "",
+        *(f"- {rule}" for rule in TECHNIQUE_RULES),
+        "",
+        "The rules hold a value rather than keep it wherever they are unsure. "
+        "A value made only of vocabulary words can still be a person's name, "
+        "such as `HAND`, which is the residual risk of this tier.",
+        "",
+        "What a kept or mapped value would write is checked for echoes of the "
+        "instance's patient and other person identifiers, as for ROI Names, "
+        "and also for a whole identifier, or a word of one, of at least four "
+        "letters and digits among the value's letters and digits; a value "
+        "that echoes one is not cleaned. An element is written with what "
+        "cleaning gives its values only where every value is cleaned, at "
+        "least one is written with text, and no kept value is written beside "
+        "one that a reviewer mapped or emptied, whose source the residual "
+        "search must still look for. Every other such element takes the action that the "
+        "policy gives it without Clean Descriptors, as the Actions table "
+        "shows, and the confidential QC pack lists its values, so that a "
+        "reviewer can record decisions for later runs. A value kept is "
+        "left out of the residual search, as other retained values are.",
+        "",
+    ]
+
+
+def _cleaned(
+    statement: ConformanceStatement,
+    named: Callable[[str], str],
+    option: Callable[[str], str],
+) -> list[str]:
+    """Describe how each selected option's cleaner cleans its attributes."""
+    lines: list[str] = []
+    for cleaned in statement.cleaned:
+        tags = _join(named(tag) for tag in cleaned.tags)
+        settled = (
+            f"{tags}, which hold content items, and the engine cleans them by "
+            "their concept names."
+            if cleaned.option == CLEAN_STRUCTURED_CONTENT
+            else f"{tags}, wherever they are in the data set, and a reviewed "
+            "cleaner settles them."
+        )
+        lines += [
+            f"## Cleaning under the {option(cleaned.option)}",
+            "",
+            f"The policy gives C under this option to {settled} {cleaned.method}",
+            "",
+        ]
+    return lines
+
+
+# When an instance gains each option's code that it gains only after review.
+_REVIEW_CONDITIONS = {
+    markers.OPTION_CODES["clean_descriptors"]: (
+        f"only in an instance in which every {_ROI_NAME_NAMED} was renamed by "
+        "the automatic tier, was empty, or took a reviewer's "
+        "decision. Every other attribute given C is a free-text "
+        "descriptor that cleaning writes, or takes the action "
+        "that the policy gives it without Clean Descriptors, as the "
+        "Actions table shows; where that action removes "
+        "or replaces it, the instance still meets the option, since "
+        "PS3.15 E.3.5 specifies what the option removes, and Table "
+        "E.1-1 gives the minimum actions. An instance with a held "
+        "name, a name emptied without review, or another attribute "
+        "given C that that action keeps does not gain that code"
+    ),
+    markers.OPTION_CODES["clean_recognizable_visual_features"]: (
+        "only in an instance that cannot show a face, having no Pixel Data, "
+        "Float Pixel Data, or Double Float Pixel Data and not being an RT "
+        "Structure Set, or whose source file is, by its SHA-256, in a series "
+        "that a reviewer marked free of a recognisable face in the attested "
+        "QC pack of an earlier run of the same files, and whose pixel data, "
+        "by their SHA-256, are written as that run wrote them, which its "
+        "previews showed. Such an instance also "
+        "has Recognizable Visual Features (0028,0302) set to NO, as PS3.15 "
+        "E.3.2 requires, including in an IOD that does not define the "
+        "attribute, which of the supported IODs are RT Plan, RT Structure "
+        "Set, and MR Spectroscopy. There it is a standard attribute of a "
+        "Standard Extended SOP Class (PS3.2 Section 7.3), added to the top "
+        "level of the data set as an attribute of the instance, where every "
+        "PS3.3 module that defines it, such as the General Image Module, "
+        "places it. Any other instance that can show a face does not gain "
+        "that code, and is held for review, so it is never released. The "
+        "run also sets to air the region in front of a plane just behind the "
+        "centres of the eyes, from their lower edge up, of each CT Image "
+        "series in which it finds both eyes, keeping the cranial cavity "
+        "above the orbits; this alone never gains the code, a verdict on "
+        "a series seen before it was defaced does not cover it defaced, a "
+        "series with a PTV, CTV, or GTV in its Frame of Reference that "
+        "reaches that region, judged by the convex hull "
+        "of its contours so that anything interpolated between them "
+        "counts, or with such a target anywhere in another Frame of "
+        "Reference that its structure set ties to the series' slices by a "
+        "contour image, is held for review, a target naming no Frame of "
+        "Reference, or none that can be read as one UID that its structure "
+        "set declares alone, counting as one in the series' frame and in "
+        "each frame its set declares where that set is in the series' "
+        "frame, names none, refers to its slices, or does not give a "
+        "Patient ID that differs from the series', Patient IDs being "
+        "compared without padding or case, and one that is empty, of "
+        "several values, or holds a character other than printable ASCII "
+        "differing from none, "
+        "while a target in another "
+        "Frame of Reference that its structure set does not tie to them, "
+        "such as one on a registered MR, does not hold it, and so is "
+        "each RT Structure Set, RT Dose, and PET "
+        "instance, with or without pixel data, that is in a defaced series' "
+        "Frame of Reference, names none, or refers to a defaced slice, which "
+        "the run does not yet clean. A verdict on such an instance, given "
+        "beside the defaced images, does not cover it in a later run"
+    ),
+}
 
 
 def _inserted(
@@ -513,21 +718,8 @@ def _inserted(
             f"Designator `{markers.DCM}` and its Code Meaning, in this order: "
             f"{_join(coded(c) for c in found.codes)}"
         )
-        if found.review_codes:
-            codes += (
-                ", then "
-                f"{_join(coded(c) for c in found.review_codes)} only in an "
-                f"instance in which every {_ROI_NAME_NAMED} was renamed by "
-                "the automatic tier, was empty, or took a reviewer's "
-                "decision. Every other attribute given C takes the action "
-                "that the policy gives it without Clean Descriptors, as the "
-                "Actions table shows (D-009); where that action removes "
-                "or replaces it, the instance still meets the option, since "
-                "PS3.15 E.3.5 specifies what the option removes, and Table "
-                "E.1-1 gives the minimum actions. An instance with a held "
-                "name, a name emptied without review, or another attribute "
-                "given C that that action keeps does not gain that code"
-            )
+        for code in found.review_codes:
+            codes += f", then {coded(code)} " + _REVIEW_CONDITIONS[code]
         codes += (
             ". A code is not added where an item already present has the same "
             "Code Value and Coding Scheme Designator, and the same Coding "
@@ -541,7 +733,7 @@ def _inserted(
     order = _join(f"`{value}`" for value in markers.TEMPORAL_VALUES)
     return [
         "Every de-identified instance gains or updates these attributes, which "
-        "record what was done (PS3.15 E.1.1, E.2, and E.3.6; D-012). The values "
+        "record what was done (PS3.15 E.1.1, E.2, and E.3.6). The values "
         "added depend only on the policy, the method digest, the options that "
         "the instance satisfies, and the versions of the runtime, and never "
         "quote a value from the instance. Any value already present is kept "
@@ -591,6 +783,31 @@ def _compressed(statement: ConformanceStatement) -> list[str]:
         "frame truncated so far that it drops only whole code-blocks is not "
         "detected.",
         "",
+    ]
+
+
+def _retained_uids(
+    statement: ConformanceStatement, option: Callable[[str], str]
+) -> list[str]:
+    """Say what keeping UIDs does to referential integrity, where it applies."""
+    if UIDS not in statement.options:
+        return []
+    return [
+        "",
+        f"Under the {option(UIDS)}, each UID of an attribute to which "
+        "Table E.1-1 gives K under it is kept as it is, wherever it occurs, "
+        "and Media Storage SOP Instance UID (0002,0003) is the kept SOP "
+        "Instance UID. The UIDs of every other attribute are "
+        "replaced as described above, so a reference at such an attribute, "
+        "such as Multi-frame Source SOP Instance UID (0008,1167), no longer "
+        "names the kept UID of the instance that it named. Where that "
+        "instance is in the same run, the residual search finds the "
+        "reference's source value in its kept UIDs, and withholds it and "
+        "each instance that keeps a reference to it. Kept UIDs link "
+        "each instance to its source: anyone with access to the source "
+        "images, or to a database of them, can recover the patient's "
+        "identity from them (PS3.15 E.3.9). Output files are still named by "
+        "keyed replacement UIDs, so no source UID is in a file's name.",
     ]
 
 
@@ -648,13 +865,14 @@ def render_markdown(statement: ConformanceStatement) -> str:
         f"{meanings[PROFILE_CODE]} (DCM {PROFILE_CODE}).",
         f"- Options applied: {options}.",
         "- Options that PyMedPhys can compose into a policy: "
-        + _join(option(o) for o in TARGET_OPTIONS)
+        + _join(option(o) for o in ALL_OPTIONS)
         + ".",
-        "- Options that are not supported: "
-        + _join(
-            [option(o) for o in OPTIONS if o not in TARGET_OPTIONS]
-            + [coded(c) for c in PIXEL_OPTION_CODES]
-        )
+        "- Options whose policies the engine applies: "
+        + _join(option(o) for o in ENGINE_OPTIONS)
+        + "; it refuses a policy that selects any other.",
+        "- Options that are not supported, since the engine does not yet "
+        "apply them: "
+        + (_join(option(o) for o in ALL_OPTIONS if o not in ENGINE_OPTIONS) or "none")
         + ".",
         "",
         "## Conformance claim",
@@ -663,17 +881,24 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "",
         "## Method digest",
         "",
-        f"The method digest of {preset}, {vocabulary} and without a "
-        f"reviewed-names list, is "
-        f"`{statement.method_digest}` (D-024). It identifies the policy and "
-        "the PyMedPhys implementation and resources that apply it.",
+        f"The method digest of {preset}, {vocabulary}, without the technique "
+        "vocabulary of free-text descriptors, "
+        + (
+            "without a reviewed-names or reviewed descriptors list, and "
+            "without a text finder, "
+            if CLEAN_PIXEL_DATA in statement.options
+            else "and without a reviewed-names or reviewed descriptors list, "
+        )
+        + f"is `{statement.method_digest}`. "
+        "It identifies the policy and the PyMedPhys implementation "
+        "and resources that apply it.",
         "",
         "## Supported instances",
         "",
         f"Instances of the {_join(statement.iods)} IODs, of these Storage SOP "
         "Classes and in these transfer syntaxes, are de-identified. Every "
         "other instance is sequestered: it is not written, and is excluded "
-        "from any claim (D-010).",
+        "from any claim.",
         "",
         *_table(
             ("SOP Class UID", "SOP Class", "IOD"),
@@ -690,8 +915,8 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "",
         "Each attribute takes the action that Table E.1-1 gives it under the "
         "selected options; an attribute that the table omits takes that of "
-        "its supplementary rule (D-022 and D-023), or, for a UI attribute, "
-        "U by its UID role (D-003). The actions are those of Table E.1-1a:",
+        "its supplementary rule, or, for a UI attribute, "
+        "U by its UID role. The actions are those of Table E.1-1a:",
         "",
         *_table(
             ("Action", "Meaning"),
@@ -704,13 +929,14 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "X, Z, and D that the action offers, and in X/Z/U*, U takes the place "
         "of D. X/Z on a Type 1 or 1C attribute gives D, the dummy value that "
         "Z may write. An attribute that the IOD does not define at that place "
-        "counts as Type 3 (D-020).",
+        "counts as Type 3.",
         "",
-        "The Type also decides what three plain actions do (D-020). A plain D "
+        "The Type also decides what three plain actions do. A plain D "
         "gives X where the IOD does not define the attribute at that place, "
         "as Note 13 after Table E.1-1a says, and a plain Z on a Type 1 or 1C "
         "attribute gives D. Clinical Trial Protocol Ethics Committee Name "
-        "(0012,0081), which Table E.1-1 gives D, is removed, since it is Type "
+        "(0012,0081), which Table E.1-1 gives D, or K under the Retain "
+        "Institution Identity Option, is removed, since it is Type "
         "1C, required if Clinical Trial Protocol Ethics Committee Approval "
         "Number (0012,0082) is present, which the table removes, and PS3.5 "
         "Section 7.4.2 does not allow it otherwise. A plain X always removes "
@@ -755,6 +981,8 @@ def render_markdown(statement: ConformanceStatement) -> str:
         *_other(statement, named),
         *_local_codes(named),
         *_roi_names(statement),
+        *_descriptors(statement, named),
+        *_cleaned(statement, named, option),
         *conformance_values.values_written(named),
         "",
         *conformance_values.dates_and_times(statement, named, option),
@@ -766,7 +994,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "## Referential integrity",
         "",
         f"Each run has its own {bits}-bit key, from a cryptographically secure "
-        "generator, which is discarded after the run (D-004). Replacement UIDs "
+        "generator, which is discarded after the run. Replacement UIDs "
         "and patient pseudonyms are each derived from the source as an "
         "HMAC-SHA256 under that key, in a domain of their own. Within a run, "
         "every occurrence of a source UID therefore gets the same replacement, "
@@ -775,13 +1003,14 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "subject gets the same pseudonyms. Across runs they are not "
         "consistent: de-identifying the same study in two runs gives unrelated "
         "replacements, and no map from source to replacement values is kept.",
+        *_retained_uids(statement, option),
         "",
         "## Encrypted Attributes",
         "",
         "No attribute is placed in an Encrypted Attributes Data Set for later "
         "re-identification: the engine writes no Encrypted Attributes "
         "Sequence (0400,0500), and no other data from which identities could "
-        "be recovered (D-013). No transfer syntax therefore encodes such a "
+        "be recovered. No transfer syntax therefore encodes such a "
         "data set, and no key is selected to encrypt one. The engine uses no "
         f"public keys; its only key is the run's {bits}-bit key.",
         "",
@@ -789,7 +1018,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "",
         *conformance_values.release_report(),
         "",
-        *conformance_values.qc_pack(named),
+        *conformance_values.qc_pack(statement, named),
     ]
     if statement.pending:
         lines += ["", "## Not yet described", ""]

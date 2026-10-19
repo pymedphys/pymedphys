@@ -20,7 +20,10 @@ A reviewer who has worked through a run's QC pack
 directory, labelled with its format, :data:`FORMAT`. The attestation names
 the reviewer and when they attested, states whether they reviewed what D-017
 requires (every distinct retained string, every series, and every instance in
-high-risk categories), and gives the outcome. It is bound to the pack by the
+high-risk categories), and gives the outcome. It may also give a face verdict
+for any of the pack's series, by the series' first run position: whether the
+reviewer saw a recognisable face in its previews, such as the renders of its
+skin surface (D-017). It is bound to the pack by the
 SHA-256 of the pack's file, which records the SHA-256 of each of its image
 previews, so a pack or preview changed after it was attested is detected. A pack is attested once: the file is never overwritten.
 
@@ -29,6 +32,11 @@ and sits beside the review material. The release report records only
 :func:`attestation_record`: the pack's opaque reference and the outcome
 (D-016). An outcome of attested needs every review that D-017 requires; a
 reviewer who could not complete them records a rejection.
+
+A face verdict is the reviewer's judgement of what the previews show, and
+the pack records the SHA-256 of each source file of the series, so the
+verdict is bound, through the pack, to the files the reviewer saw. A series
+without a verdict has none; the outcome does not depend on the verdicts.
 
 The person releasing the data may also confirm, yes or no, that the output
 was checked for its intended use and that its residual risk was accepted
@@ -54,13 +62,14 @@ import json
 import os
 import re
 import stat
+from collections.abc import Mapping
 from pathlib import Path
 
 from . import qc_pack, qc_store
 from .qc_pack import QcPackError
 
 # The format of the attestation document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-attestation/1"
+FORMAT = "pymedphys-deid-qc-attestation/2"
 ATTESTATION_FILE = "attestation.json"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
@@ -76,6 +85,39 @@ class Outcome(enum.Enum):
     ATTESTED = "attested"  # the reviewer found the output fit for release
     REJECTED = "rejected"  # the reviewer did not
     NOT_ATTESTED = "not-attested"  # no reviewer has attested to the pack
+
+
+class Face(enum.Enum):
+    """A reviewer's face verdict on a series, from its previews."""
+
+    ABSENT = "absent"  # the reviewer saw no recognisable face
+    PRESENT = "present"  # the reviewer saw a recognisable face
+
+
+@dataclasses.dataclass(frozen=True)
+class FaceVerdict:
+    """A reviewer's face verdict on one series of the pack.
+
+    Attributes
+    ----------
+    series : int
+        The run position of the series' first instance, as the pack's
+        ``series`` lists it.
+    face : Face
+    """
+
+    series: int
+    face: Face
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.series, int)
+            or isinstance(self.series, bool)
+            or self.series < 0
+        ):
+            raise QcPackError("a face verdict needs its series' first run position")
+        if not isinstance(self.face, Face):
+            raise QcPackError(f"the face verdict on series {self.series} needs a Face")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -128,6 +170,9 @@ class Attestation:
     intended_use_checked, residual_risk_accepted : bool or None
         The releaser's confirmations, as the module describes; ``None``
         where not stated.
+    faces : tuple of FaceVerdict
+        The face verdicts, by series in run position order, each series
+        once; empty where the reviewer gave none.
     """
 
     reference: str
@@ -138,6 +183,7 @@ class Attestation:
     attested_at: datetime.datetime
     intended_use_checked: bool | None = None
     residual_risk_accepted: bool | None = None
+    faces: tuple[FaceVerdict, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -154,7 +200,8 @@ class Attestation:
             raise QcPackError("an attestation needs its Coverage")
         if self.outcome is Outcome.ATTESTED and not self.coverage.complete:
             raise QcPackError(
-                "an outcome of attested needs every review that D-017 requires"
+                "an outcome of attested needs every retained string, series, "
+                "and high-risk instance reviewed"
             )
         if not isinstance(self.reviewer, str) or not self.reviewer.strip():
             raise QcPackError("an attestation needs its reviewer")
@@ -163,6 +210,15 @@ class Attestation:
         ) or self.attested_at.utcoffset() != datetime.timedelta(0):
             raise QcPackError("an attestation needs its time in UTC")
         _check_confirmations(self.intended_use_checked, self.residual_risk_accepted)
+        if not isinstance(self.faces, tuple) or not all(
+            isinstance(verdict, FaceVerdict) for verdict in self.faces
+        ):
+            raise QcPackError("an attestation's face verdicts must be FaceVerdicts")
+        series = [verdict.series for verdict in self.faces]
+        if series != sorted(set(series)):
+            raise QcPackError(
+                "an attestation gives each series at most one face verdict, in order"
+            )
 
     def __repr__(self) -> str:
         return (
@@ -225,6 +281,10 @@ def attestation_document(attestation: Attestation) -> dict:
             "intended_use_checked": attestation.intended_use_checked,
             "residual_risk_accepted": attestation.residual_risk_accepted,
         },
+        "faces": [
+            {"series": verdict.series, "face": verdict.face.value}
+            for verdict in attestation.faces
+        ],
     }
 
 
@@ -237,6 +297,7 @@ def attest(
     attested_at: datetime.datetime | None = None,
     intended_use_checked: bool | None = None,
     residual_risk_accepted: bool | None = None,
+    faces: Mapping[int, Face] | None = None,
 ) -> Attestation:
     """Attest to a QC pack, and write the attestation beside it.
 
@@ -255,6 +316,10 @@ def attest(
     intended_use_checked, residual_risk_accepted : bool, optional
         The releaser's confirmations, as the module describes; not stated
         if not given.
+    faces : mapping of int to Face, optional
+        A face verdict for each series that the reviewer judged, by the run
+        position of its first instance, as the pack's ``series`` lists it;
+        none if not given.
 
     Returns
     -------
@@ -264,8 +329,9 @@ def attest(
     ------
     QcPackError
         If the directory holds no QC pack, the pack is not of its format, a
-        preview that it lists is missing or changed, or it has already been
-        attested; or for any reason that
+        preview that it lists is missing or changed, a face verdict names a
+        run position that does not begin one of the pack's series, or it has
+        already been attested; or for any reason that
         :class:`Attestation` gives.
     """
     directory = Path(pack_directory)
@@ -273,6 +339,15 @@ def attest(
     reference = _reference_of(data)
     if not _previews_intact(directory, data):
         raise QcPackError("a preview of the QC pack is missing or changed")
+    verdicts = _face_verdicts({} if faces is None else faces)
+    firsts = _firsts(data)
+    unknown = [verdict.series for verdict in verdicts if verdict.series not in firsts]
+    if unknown:
+        raise QcPackError(
+            "a face verdict names run position "
+            + ", ".join(str(series) for series in unknown)
+            + ", which begins none of the QC pack's series"
+        )
     attestation = Attestation(
         reference=reference,
         pack_digest=hashlib.sha256(data).hexdigest(),
@@ -286,6 +361,7 @@ def attest(
         ),
         intended_use_checked=intended_use_checked,
         residual_risk_accepted=residual_risk_accepted,
+        faces=verdicts,
     )
     text = json.dumps(attestation_document(attestation), indent=2, ensure_ascii=True)
     try:
@@ -295,6 +371,29 @@ def attest(
     except OSError as error:
         raise qc_store.os_error("the attestation could not be written", error) from None
     return attestation
+
+
+def _face_verdicts(faces: Mapping[int, Face]) -> tuple[FaceVerdict, ...]:
+    """Return face verdicts by series in run position order, after checking them."""
+    if not isinstance(faces, Mapping):
+        raise QcPackError("faces must map a series' first run position to a Face")
+    verdicts = [FaceVerdict(series, face) for series, face in faces.items()]
+    return tuple(sorted(verdicts, key=lambda verdict: verdict.series))
+
+
+def _firsts(data: bytes) -> frozenset[int]:
+    """Return the first run position of each series that the pack lists."""
+    document = json.loads(data.decode("ascii"))  # _reference_of has parsed it
+    series = document.get("series")
+    if not isinstance(series, list):
+        raise QcPackError("the QC pack is not of its format")
+    firsts = set()
+    for entry in series:
+        positions = entry.get("positions") if isinstance(entry, dict) else None
+        if not isinstance(positions, list) or not positions:
+            raise QcPackError("the QC pack is not of its format")
+        firsts.add(positions[0])
+    return frozenset(firsts)
 
 
 def attestation_record(pack_directory: os.PathLike | str) -> AttestationRecord:
@@ -321,10 +420,44 @@ def attestation_record(pack_directory: os.PathLike | str) -> AttestationRecord:
     """
     directory = Path(pack_directory)
     data = _pack_bytes(directory)
+    attestation = _attestation_of(directory, data)
+    if attestation is None:
+        return AttestationRecord(_reference_of(data), Outcome.NOT_ATTESTED)
+    return AttestationRecord(
+        attestation.reference,
+        attestation.outcome,
+        attestation.intended_use_checked,
+        attestation.residual_risk_accepted,
+    )
+
+
+def attested_pack(pack_directory: os.PathLike | str) -> tuple[Attestation, bytes]:
+    """Return a QC pack's attestation and the bytes of the pack it attests.
+
+    Both are checked as :func:`attestation_record` checks them, so the pack
+    is the one that the attestation's digest binds, unchanged, with every
+    preview it lists.
+
+    Raises
+    ------
+    QcPackError
+        If the directory holds no QC pack, or no attestation; or for any
+        reason that :func:`attestation_record` gives.
+    """
+    directory = Path(pack_directory)
+    data = _pack_bytes(directory)
+    attestation = _attestation_of(directory, data)
+    if attestation is None:
+        raise QcPackError("the QC pack has not been attested")
+    return attestation, data
+
+
+def _attestation_of(directory: Path, data: bytes) -> Attestation | None:
+    """Return the pack's checked attestation, or None if it has none."""
     reference = _reference_of(data)
     content = _read(directory / ATTESTATION_FILE, "the attestation")
     if content is None:
-        return AttestationRecord(reference, Outcome.NOT_ATTESTED)
+        return None
     attestation = _attestation_from(content)
     if attestation.reference != reference:
         raise QcPackError("the attestation is for another QC pack")
@@ -332,12 +465,7 @@ def attestation_record(pack_directory: os.PathLike | str) -> AttestationRecord:
         data
     ).hexdigest() or not _previews_intact(directory, data):
         raise QcPackError("the QC pack changed after it was attested")
-    return AttestationRecord(
-        reference,
-        attestation.outcome,
-        attestation.intended_use_checked,
-        attestation.residual_risk_accepted,
-    )
+    return attestation
 
 
 def _attestation_from(content: bytes) -> Attestation:
@@ -349,7 +477,12 @@ def _attestation_from(content: bytes) -> Attestation:
             # An attestation written before the releaser's confirmations
             # has none, which reads as not stated.
             releaser = document.get("releaser", {})
-            if isinstance(coverage, dict) and isinstance(releaser, dict):
+            faces = document["faces"]
+            if (
+                isinstance(coverage, dict)
+                and isinstance(releaser, dict)
+                and isinstance(faces, list)
+            ):
                 if set(releaser) - {"intended_use_checked", "residual_risk_accepted"}:
                     raise QcPackError("the attestation is not of its format")
                 return Attestation(
@@ -363,6 +496,10 @@ def _attestation_from(content: bytes) -> Attestation:
                     ),
                     intended_use_checked=releaser.get("intended_use_checked"),
                     residual_risk_accepted=releaser.get("residual_risk_accepted"),
+                    faces=tuple(
+                        FaceVerdict(verdict["series"], Face(verdict["face"]))
+                        for verdict in faces
+                    ),
                 )
     # UnicodeError and QcPackError are ValueErrors; TypeError covers wrong
     # types and Coverage's unknown or missing fields.

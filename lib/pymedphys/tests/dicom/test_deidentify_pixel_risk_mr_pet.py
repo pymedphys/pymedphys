@@ -110,7 +110,7 @@ def test_one_multi_frame_mr_or_pet_image_can_be_a_volume(
 
 
 @pytest.mark.parametrize("sop_class, indicator", MULTI_FRAME)
-def test_multi_frame_mr_and_pet_frames_add_up_and_localizers_do_not(
+def test_multi_frame_mr_and_pet_frames_add_up_and_localizers_are_apart(
     sop_class, indicator
 ):
     one = _image(sop_class, 0, NumberOfFrames=1)
@@ -120,7 +120,9 @@ def test_multi_frame_mr_and_pet_frames_add_up_and_localizers_do_not(
         (indicator, (0, 1), None)
     }
     localizer = _image(sop_class, 2, NumberOfFrames=5, ImageType=LOCALIZER)
-    assert not pixel_risk.assess_series([one, localizer])
+    assert _series_found(pixel_risk.assess_series([one, localizer])) == {
+        (Indicator.LOCALIZER, (1,), None)
+    }
 
 
 def test_per_frame_anatomy_of_an_enhanced_mr_image_can_name_the_head():

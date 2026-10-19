@@ -753,18 +753,9 @@ def _with_character_set(dataset, value, vr="CS"):
     return dataset
 
 
-@pytest.mark.parametrize(
-    "value, vr",
-    [
-        ("ISO_IR 999", "CS"),  # not a Defined Term of PS3.3 C.12.1.1.2
-        (["ISO 2022 IR 999", "ISO 2022 IR 998"], "CS"),
-        (["ISO_IR 100", "ISO_IR 192"], "CS"),  # ISO_IR 192 allows no extensions
-        ("ISO_IR 100", "LO"),  # a VR that the pinned dictionary does not give
-    ],
-    ids=["not-a-term", "two-not-terms", "no-extensions", "not-cs"],
-)
-def test_an_unsupported_character_set_sequesters_by_its_path(value, vr):
-    dataset = _with_character_set(_plan_with_sentinels(), value, vr)
+def test_a_character_set_that_cannot_be_read_sequesters_by_its_path():
+    # A VR that the pinned dictionary does not give.
+    dataset = _with_character_set(_plan_with_sentinels(), "ISO_IR 100", "LO")
     result = _transformed(dataset)
 
     # The walker's reason for an item's character set (D-010), never no SOP
@@ -773,17 +764,64 @@ def test_an_unsupported_character_set_sequesters_by_its_path(value, vr):
     assert "SENTINEL" not in repr(result)
 
 
+_UNSUPPORTED_VALUES = pytest.mark.parametrize(
+    "value",
+    [
+        "ISO_IR 999",  # not a Defined Term of PS3.3 C.12.1.1.2
+        "iso_ir 100",  # a misspelt one
+        ["ISO 2022 IR 999", "ISO 2022 IR 998"],
+        ["ISO_IR 100", "ISO_IR 192"],  # ISO_IR 192 allows no extensions
+    ],
+    ids=["not-a-term", "misspelt", "two-not-terms", "no-extensions"],
+)
+
+
+@_UNSUPPORTED_VALUES
+def test_text_in_iso_646_is_read_under_an_unsupported_character_set(value):
+    # Text with no byte from 0x80 and no escape reads the same in every
+    # character set, so the instance is read in the Default Character
+    # Repertoire, and no codec is guessed (D-010).
+    transformed = _transformed(_with_character_set(synthetic.rt_plan(), value))
+
+    assert isinstance(transformed, run.Transformed)
+    evidence = transformed.evidence
+    assert isinstance(evidence, Coverage)
+    assert not evidence.decoded_as_bytes  # pylint: disable=no-member
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@_UNSUPPORTED_VALUES
+def test_text_outside_iso_646_under_an_unsupported_character_set_is_not_guessed(
+    value,
+):
+    # As where no Specific Character Set is given: a removed name with a byte
+    # from 0x80 is read as ISO 8859-1, which withholds the file.
+    plan = _with_character_set(
+        _with_latin_1(synthetic.rt_plan(), _PATIENTS_NAME), value
+    )
+    transformed = _transformed(plan)
+    assert isinstance(transformed, run.Transformed)
+
+    evidence = transformed.evidence
+    assert isinstance(evidence, Coverage)
+    path = _top("(0010,0010)")
+    assert evidence.decoded_as_bytes == frozenset({path})  # pylint: disable=no-member
+    result = ReleaseGate()(transformed.data, evidence, (evidence,))
+    reason = ReleaseReason(Decision.WITHHOLD, ReasonCode.READ_AS_LATIN_1, path)
+    assert reason in result.reasons
+
+
 def test_an_unsupported_character_set_keeps_the_scope_reason_first():
     nm = synthetic.instance(
         synthetic.NM_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
     )
-    result = _transformed(_with_character_set(nm, "ISO_IR 999"))
+    result = _transformed(_with_character_set(nm, "ISO_IR 100", "LO"))
 
     assert result == run.Sequestered(
         (UnsupportedIod("Nuclear Medicine Image"), _UNSUPPORTED_CHARACTER_SET)
     )
 
-    plan = _with_character_set(_plan_with_sentinels(), "ISO_IR 999")
+    plan = _with_character_set(_plan_with_sentinels(), "ISO_IR 100", "LO")
     plan.SOPClassUID = _UNLISTED_SOP_CLASS
     result = _transformed(plan)
 
@@ -833,7 +871,7 @@ def _plan_label_kept_in_a_dose(tmp_path, plan_class=None, character_set=None):
     if plan_class is not None:
         plan.SOPClassUID = plan_class
     if character_set is not None:
-        _with_character_set(plan, character_set)
+        _with_character_set(plan, *character_set)
     dose = synthetic.rt_dose()
     dose.DoseUnits = _SHARED  # kept as it is (K)
     return _source(tmp_path, [plan, dose])
@@ -847,7 +885,8 @@ def test_a_sibling_that_gives_no_evidence_withholds_its_subject(
     # Without the plan's coverage, the dose's search could not look for the
     # plan's label, which the dose keeps (D-027).
     no_iod = _UNLISTED_SOP_CLASS if cause == "no-iod" else None
-    character_set = "ISO_IR 999" if cause == "character-set" else None
+    # A Specific Character Set that cannot be read, with a VR other than CS.
+    character_set = ("ISO_IR 100", "LO") if cause == "character-set" else None
     discovery = _plan_label_kept_in_a_dose(tmp_path, no_iod, character_set)
     transform = _transform()
     if cause == "raises":
@@ -1495,13 +1534,20 @@ def test_a_run_writes_the_qc_pack_of_the_transform_and_gate(tmp_path):
     assert registered in pack["drops"]
 
 
-def test_transform_for_selects_an_enabled_preset_only(monkeypatch):
+def test_transform_for_selects_an_enabled_policy_only(monkeypatch):
     with pytest.raises(PolicyError):
         transform_for("basic", KEY)
+    with pytest.raises(PolicyError):
+        transform_for(key=KEY, options=["clean_descriptors"])
 
     policy = compose_policy("basic")
-    made = []
-    monkeypatch.setattr(instance_transform, "select_policy", lambda preset: policy)
+    made, selected = [], []
+
+    def select(preset, options=None):
+        selected.append((preset, options))
+        return policy
+
+    monkeypatch.setattr(instance_transform, "select_policy", select)
     monkeypatch.setattr(
         instance_transform,
         "InstanceTransform",
@@ -1511,8 +1557,10 @@ def test_transform_for_selects_an_enabled_preset_only(monkeypatch):
 
     transform_for(key=KEY, cleaning=cleaning)
     transform_for("basic")
+    transform_for(key=KEY, options=("clean_descriptors",))
 
-    (given, generated) = made
+    assert selected == [(None, None), ("basic", None), (None, ("clean_descriptors",))]
+    (given, generated, _) = made
     assert given == (policy, KEY, None, {"cleaning": cleaning})
     assert generated[3] == {"cleaning": None}
     assert generated[0] is policy and generated[1] != KEY

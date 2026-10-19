@@ -19,7 +19,9 @@ They are here, apart from :mod:`~pymedphys._dicom.deidentify.run` and
 them, so that :mod:`~pymedphys._dicom.deidentify.release_report` can name
 them without importing either; and those of descriptor cleaning, which
 :mod:`~pymedphys._dicom.deidentify.descriptor_cleaning` re-exports, since
-it imports the QC pack, which imports the release report.
+it imports the QC pack, which imports the release report; and those of the
+face review (:mod:`~pymedphys._dicom.deidentify.face_review`), for the same
+reason.
 """
 
 from __future__ import annotations
@@ -61,7 +63,8 @@ class TransformReason(enum.Enum):
     # new value does not fit it
     UNWRITABLE_ELEMENT = "unwritable-element"
     # no replacement Patient ID, Study, Series, or SOP Instance UID to name
-    # the output by (D-016)
+    # the output by (D-016), or, for a UID that the policy keeps, no valid
+    # UID to write and name it by (D-040)
     UNNAMED_OUTPUT = "unnamed-output"
     # the output file cannot be read back as a source file
     UNREADABLE_OUTPUT = "unreadable-output"
@@ -78,8 +81,8 @@ class TransformReason(enum.Enum):
     # the output no longer holds, or holds empty, an attribute that the IOD
     # requires where its source held it (MIDI-BP-03)
     REQUIRED_ATTRIBUTE_LOST = "required-attribute-lost"
-    # compressed pixel data whose decoder is not installed, so its frames
-    # cannot be checked
+    # compressed pixel data whose decoder is not installed, or cannot be run,
+    # so its frames cannot be checked
     NO_DECODER = "no-decoder"
     # compressed pixel data whose Basic or Extended Offset Table does not give
     # where its frames start (PS3.5 Section A.4)
@@ -101,6 +104,24 @@ class TransformReason(enum.Enum):
     # compressed pixel data whose frames, with metadata segments cut, do not
     # decode to the same pixels as before
     CUT_CHANGED_PIXELS = "cut-changed-pixels"
+    # under Clean Graphics, an overlay group without Overlay Data (60xx,3000),
+    # whose overlay may lie in unused bits of Pixel Data, which the engine
+    # does not change
+    OVERLAY_IN_PIXEL_DATA = "overlay-in-pixel-data"
+    # under Clean Pixel Data, compressed Pixel Data, which the engine does not
+    # yet black out (D-037)
+    COMPRESSED_PIXEL_DATA = "compressed-pixel-data"
+    # under Clean Pixel Data, top-level Float Pixel Data or Double Float Pixel
+    # Data, or native Pixel Data that cannot be read as frames of stored
+    # values: a layout other than whole bytes of 8, 16, or 32 bits with its
+    # High Bit one less than Bits Stored, a photometric interpretation other
+    # than MONOCHROME1, MONOCHROME2, or 8-bit RGB, a length that does not fit
+    # its frames, or bits above Bits Stored that hold more than the value's
+    # sign, such as an overlay (D-037)
+    UNCLEANABLE_PIXEL_DATA = "uncleanable-pixel-data"
+    # under Clean Pixel Data, written Pixel Data that differs from its source
+    # other than by the blacked-out regions (D-037)
+    REDACTION_MISMATCH = "redaction-mismatch"
 
 
 class DescriptorReason(enum.Enum):
@@ -113,9 +134,70 @@ class DescriptorReason(enum.Enum):
     UNSETTLED_DESCRIPTOR = "unsettled-descriptor"
 
 
+class PixelDataReason(enum.Enum):
+    """Why a pixel option holds an instance for review."""
+
+    # Clean Pixel Data blacked out text that the detector found; review
+    # checks the regions and looks for text that it missed (D-037)
+    TEXT_BLACKED_OUT = "text-blacked-out"
+    # Clean Pixel Data's detector found no text; review looks for text that
+    # it missed (D-037)
+    NO_TEXT_FOUND = "no-text-found"
+
+
 @dataclasses.dataclass(frozen=True)
 class HeldRoiName:
     """A ROI Name held for review, by its path and reason, never its value."""
 
     path: ElementPath
     reason: Reason
+
+
+@dataclasses.dataclass(frozen=True)
+class HeldPixelData:
+    """An instance held for review because its pixel data await review."""
+
+    reason: PixelDataReason
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.reason, PixelDataReason):
+            raise TypeError("a held instance's pixel data need their reason")
+
+
+class VisualFeaturesReason(enum.Enum):
+    """Why an instance that can show a face does not satisfy the option.
+
+    The Clean Recognizable Visual Features Option, under which such an
+    instance is held for review.
+    """
+
+    # the reviewer saw a recognisable face in its series' previews
+    FACE_PRESENT = "face-present"
+    # no reviewer's verdict covers its source file: its series has no
+    # verdict, the file is not one that the review saw, or the reviewed run
+    # held it beside a CT series that it defaced, so the verdict was of the
+    # defaced images rather than of the file
+    NO_FACE_VERDICT = "no-face-verdict"
+    # its series is marked absent, but the run writes other pixel data of it
+    # than the reviewed run did, such as a CT slice defaced since the
+    # reviewer saw it as received, so the verdict is not of what it releases
+    OTHER_PIXEL_DATA = "face-verdict-on-other-pixel-data"
+    # an RT Structure Set, RT Dose, or PET instance in the Frame of
+    # Reference of a CT series that the run defaces, whose outline or pixel
+    # data the run does not yet clean of the face, and which a reviewer may
+    # have judged from the defaced CT
+    UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
+    # a CT slice of a series whose face block a target may reach, so that
+    # the series is not defaced
+    TARGET_IN_FACE_BLOCK = "target-in-face-block"
+
+
+@dataclasses.dataclass(frozen=True)
+class HeldVisualFeatures:
+    """An instance held for review because it does not satisfy the option."""
+
+    reason: VisualFeaturesReason
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.reason, VisualFeaturesReason):
+            raise TypeError("a held instance's visual features need their reason")

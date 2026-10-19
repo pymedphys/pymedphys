@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One statement describes every option the engine applies, so it is long.
+
 """Generate the conformance statement of a policy, as PS3.15 E.1.3 requires.
 
 The statement is generated from the policy, the pinned tables, and the
@@ -25,7 +28,8 @@ writes it as CommonMark:
   codes, and the options that are not supported;
 - whether the policy can claim conformance, and why not where it cannot;
 - the method digest of the policy (D-024), the vocabulary it covers, and
-  the absence of a reviewed-names list;
+  the absence of the technique vocabulary and of a reviewed-names or
+  reviewed descriptors list;
 - the supported IODs, their Storage SOP Classes, and the transfer
   syntaxes they are read in (D-010);
 - the action that the engine applies to each attribute of Table E.1-1, of
@@ -37,6 +41,12 @@ writes it as CommonMark:
   reason;
 - the rules that give every other element its action
   (:mod:`~pymedphys._dicom.deidentify.element_rules`, D-022);
+- how the cleaner of each selected option that has one cleans the attributes
+  that the policy gives C (:mod:`~pymedphys._dicom.deidentify.cleaners`,
+  D-034);
+- under the Retain Safe Private Option, the safe private attributes that
+  the reviewed rules can retain
+  (:mod:`~pymedphys._dicom.deidentify.retained_private`);
 - the values that Z, D, and U write (D-003, D-005, and D-021);
 - how dates and times are handled, by the policy's Retain Longitudinal
   Temporal Information Option, or without one (D-006, D-007, and D-023);
@@ -65,7 +75,10 @@ from pymedphys import _version
 from pymedphys._nomenclature import tg263
 
 from . import compound_actions, markers, roi_names
+from .cleaners import cleaners_for
 from .codes import load_context_group
+from .content_items import CONTENT_ITEM_SEQUENCES
+from .content_items import METHOD as CONTENT_ITEMS_METHOD
 from .descriptor_cleaning import fallback_policy
 from .element_rules import (
     _ENGINE_GROUPS,
@@ -78,40 +91,36 @@ from .element_rules import (
 )
 from .iods import IOD, load_iod_tables
 from .method_digest import digest_inputs, method_digest
-from .policy import Policy, PolicyError, ResolvedConflict
+from .policy import (
+    CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    CLEAN_PIXEL_DATA,
+    CLEAN_STRUCTURED_CONTENT,
+    SAFE_PRIVATE,
+    Policy,
+    PolicyError,
+    ResolvedConflict,
+)
+from .safe_private import Handling, SafePrivateRule
 from .scope import SUPPORTED_IODS, SUPPORTED_TRANSFER_SYNTAXES, classify
 from .sop_classes import load_storage_sop_classes
 from .standard import (
     MUTUALLY_EXCLUSIVE,
+    PRIVATE_ATTRIBUTES_TAG,
     dictionary_attribute,
     load_data_dictionary,
     load_table_e1_1,
     load_table_e1_1a,
 )
 from .supplementary_actions import TEXT_VRS, UNCOVERED_TEXT_ACTION
-from .temporal_roles import load_temporal_roles
+from .temporal_roles import TemporalRole, load_temporal_roles
 from .uid_registry import load_uid_values
 from .uid_roles import UIDRole, load_uid_roles
 from .walker import DESCENDED
 
-# The CID 7050 code of each option of Table E.1-1: those of the supported
-# options from the markers, and those of the others, which the statement
-# names as not supported.
-OPTION_CODES: Mapping[str, str] = types.MappingProxyType(
-    {
-        **markers.OPTION_CODES,
-        "retain_uids": "113110",
-        "retain_institution_identity": "113112",
-        "retain_longitudinal_full_dates": "113106",
-        "clean_structured_content": "113104",
-        "clean_graphics": "113103",
-    }
-)
-
-# The CID 7050 codes of Clean Pixel Data and Clean Recognizable Visual
-# Features, which PS3.15 E.1.1 Note 11 leaves out of Table E.1-1. Neither is
-# supported, and the statement names both as not supported.
-PIXEL_OPTION_CODES: tuple[str, ...] = ("113101", "113102")
+# The CID 7050 code of each option that a policy can compose: those of
+# Table E.1-1, then Clean Pixel Data and Clean Recognizable Visual Features,
+# which PS3.15 E.1.1 Note 11 leaves out of the table.
+OPTION_CODES: Mapping[str, str] = markers.OPTION_CODES
 
 _REPEATING = re.compile(r"^\((50|60)xx,")
 _CONCRETE_TAG = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
@@ -138,25 +147,29 @@ SEQUENCE_NOT_CLEANED = "sequence not cleaned"
 # Under Clean Descriptors, an attribute other than ROI Name given C takes the
 # action that the policy gives it without that option (D-009).
 CLEAN_DESCRIPTORS_FALLBACK = "clean descriptors fallback"
+# Under Clean Graphics, a masked row given C, an overlay's or a curve's, takes
+# its Basic Profile action (D-041).
+GRAPHICS_NOT_CLEANED = "graphics not cleaned"
 
 
 # What the statement cannot yet describe from the engine, whatever the
 # policy. Each is to be generated once the engine decides it; none remains.
 PENDING: tuple[str, ...] = ()
-# Pending only for a policy whose element rules the engine refuses.
-PENDING_REFUSED = (
+# Pending only for a policy that selects an option the engine does not yet
+# apply.
+PENDING_UNAPPLIED = (
     "The actions that the engine applies under this policy, which it refuses "
-    "until reviewed rules say which private attributes are safe to retain: "
-    "the actions above are those that the policy gives, and the rules for "
-    "elements that no row covers are not listed."
+    "because it does not yet apply every selected option: the actions above "
+    "are those that the policy gives, and the rules for elements that no row "
+    "covers are not listed."
 )
-# Pending only for a policy that gives an attribute other than ROI Name C that
-# Clean Descriptors' fallback does not settle (D-009).
+# Pending only for a policy that gives C to an attribute other than ROI Name
+# that neither a cleaner of a selected option (D-034) nor Clean Descriptors'
+# fallback (D-009) settles.
 PENDING_CLEANING = (
     "The manner of cleaning each attribute other than ROI Name (3006,0026) "
-    "to which the policy gives C, including how dates and times are modified "
-    "and how retained patient characteristics are cleaned (PS3.15 E.3.5, "
-    "E.3.6, and E.3.7; D-007, D-009)."
+    "to which the policy gives C and which no cleaner above cleans (PS3.15 "
+    "Table E.1-1a)."
 )
 # Pending only for a policy that selects Clean Descriptors and whose other
 # options cannot be composed without it.
@@ -164,9 +177,10 @@ PENDING_FALLBACK = (
     "A run under this policy, which the engine refuses: an attribute other "
     "than ROI Name (3006,0026) to which the policy gives C takes the action "
     "that the policy gives it without Clean Descriptors, and its other "
-    "options cannot be composed into a policy without that option (D-009)."
+    "options cannot be composed into a policy without that option."
 )
-# Pending only for a policy that selects Retain Safe Private.
+# Pending only for a policy that selects Retain Safe Private and an option
+# that the engine does not yet apply, whose element rules it refuses.
 PENDING_SAFE_PRIVATE = (
     "The safe private attributes that the policy retains, and the basis on "
     "which each is retained (PS3.15 E.3.10)."
@@ -174,12 +188,28 @@ PENDING_SAFE_PRIVATE = (
 # Pending only for tps-import, whose Z writes a synthetic birth date.
 PENDING_BIRTH_DATES = (
     "The synthetic birth date that Z writes to Patient's Birth Date "
-    "(0010,0030) in place of a zero-length value (D-008, D-021)."
+    "(0010,0030) in place of a zero-length value."
+)
+# Pending only for a policy that selects Clean Pixel Data.
+PENDING_PIXEL_DATA = (
+    "When an instance claims the Clean Pixel Data Option, and how a "
+    "reviewer's decisions on its blacked-out regions are applied (PS3.15 "
+    "E.3.1)."
 )
 _TPS_IMPORT = "tps-import"
 _FULL_DATES = "retain_longitudinal_full_dates"
 _ROI_NAME = "(3006,0026)"
 _CLEAN_DESCRIPTORS = "clean_descriptors"
+# The options that an instance satisfies, or not, by its own outcome, whose
+# codes are therefore not among those that every instance gains.
+_REVIEWED_OPTIONS = (
+    _CLEAN_DESCRIPTORS,
+    CLEAN_PIXEL_DATA,
+    CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+)
+# Those whose codes an instance gains once it satisfies them, since no
+# instance yet claims Clean Pixel Data.
+_CLAIMED_AFTER_REVIEW = (_CLEAN_DESCRIPTORS, CLEAN_RECOGNIZABLE_VISUAL_FEATURES)
 # The Retain Longitudinal Temporal Information Options, and the VRs of a date,
 # time, or datetime.
 _TEMPORAL_OPTIONS = next(o for o in MUTUALLY_EXCLUSIVE if _FULL_DATES in o)
@@ -255,8 +285,8 @@ class AttributeAction:
     superseded_by : str
         Why the engine applies ``action`` in place of ``policy_action``:
         :data:`ENGINE_REMOVAL`, :data:`FILE_META_WRITTEN`, or
-        :data:`SEQUENCE_NOT_CLEANED`, or :data:`CLEAN_DESCRIPTORS_FALLBACK`;
-        otherwise
+        :data:`SEQUENCE_NOT_CLEANED`, :data:`GRAPHICS_NOT_CLEANED`, or
+        :data:`CLEAN_DESCRIPTORS_FALLBACK`; otherwise
         ``""``.
     """
 
@@ -319,12 +349,18 @@ class TemporalHandling:
     actions : tuple of tuple of str and int
         Each action listed for those attributes, with how many have it, most
         first and then in the order of the actions.
+    roles : tuple of tuple of str and int
+        Each temporal role of those of them that the policy gives C, by its
+        name in the roles file, with how many have it, in the order of
+        :class:`~pymedphys._dicom.deidentify.temporal_roles.TemporalRole`;
+        ``()`` where it gives none C.
     """
 
     option: str
     attributes: int
     other_attributes: tuple[str, ...]
     actions: tuple[tuple[str, int], ...]
+    roles: tuple[tuple[str, int], ...] = ()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -356,14 +392,19 @@ class InsertedMarkers:
     codes : tuple of str
         The CID 7050 Code Values of the items that De-identification Method
         Code Sequence (0012,0064) gains in every instance: the Basic
-        Profile's and each selected option's that the policy applies, or none
-        for a policy that claims no conformance.
+        Profile's and each selected option's that the policy applies, but
+        Clean Descriptors', Clean Pixel Data's, and Clean Recognizable Visual
+        Features', or none for a policy that claims no conformance. No
+        instance yet claims Clean Pixel Data (D-037).
     review_codes : tuple of str
-        The Code Values that it gains only in an instance in which every
-        ROI Name was renamed, was empty, or took a reviewer's decision, and
-        whose other attributes given C are removed or replaced:
-        Clean Descriptors', where the policy selects it and can claim
-        conformance.
+        The Code Values that it gains only in an instance that satisfies
+        their options, in the policy's order, where the policy can claim
+        conformance: Clean Descriptors', where the policy selects it, in an
+        instance in which every ROI Name was renamed, was empty, or took a
+        reviewer's decision, and whose other attributes given C are removed
+        or replaced; and Clean Recognizable Visual Features', where the
+        policy selects it, in an instance that cannot show a face or whose
+        source file the face review found free of one.
     temporal : str
         Longitudinal Temporal Information Modified (0028,0303), unless the
         value already present is stricter.
@@ -394,6 +435,31 @@ class RoiNameCleaning:
 
 
 @dataclasses.dataclass(frozen=True)
+class CleanedAttributes:
+    """How the cleaner of a selected option cleans the attributes given C (D-034).
+
+    Under Clean Structured Content, it is how the engine cleans the content
+    items of the sequences that the policy gives C (D-047).
+
+    Attributes
+    ----------
+    option : str
+        The option, such as ``"retain_device_identity"``.
+    tags : tuple of str
+        The attributes that the policy gives C and the cleaner cleans,
+        wherever they are in the data set, or, under Clean Structured
+        Content, the sequences whose content items are cleaned, in the order
+        of their tags.
+    method : str
+        How the cleaner cleans them, naming no value.
+    """
+
+    option: str
+    tags: tuple[str, ...]
+    method: str
+
+
+@dataclasses.dataclass(frozen=True)
 class ConformanceStatement:
     """What the conformance statement of a policy describes.
 
@@ -412,8 +478,9 @@ class ConformanceStatement:
     resolved : tuple of ResolvedConflict
         The conflicts between options that the preset resolves.
     method_digest : str
-        The policy's method digest under the vocabulary given, without a
-        reviewed-names list (D-024).
+        The policy's method digest under the vocabulary given, without the
+        technique vocabulary or a reviewed-names or reviewed descriptors
+        list (D-024).
     vocabulary_digest : str or None
         The content digest of the vocabulary's entries, or None without one.
     iods, sop_classes, transfer_syntaxes : tuple
@@ -428,6 +495,15 @@ class ConformanceStatement:
     roi_names : RoiNameCleaning or None
         How ROI Names are cleaned, or None where the policy does not give
         ROI Name C.
+    cleaned : tuple of CleanedAttributes
+        How the cleaner of each selected option that has one cleans the
+        attributes that the policy gives C, in the order of the options in
+        Table E.1-1.
+    safe_private : tuple of SafePrivateRule
+        Under the Retain Safe Private Option, the reviewed rules that can
+        retain a private attribute, other than those for text, which no
+        reviewed cleaner cleans, in the rules file's order; otherwise
+        ``()``.
     markers : InsertedMarkers
         The parts of the markers that the policy decides.
     temporal : TemporalHandling
@@ -452,6 +528,8 @@ class ConformanceStatement:
     attributes: tuple[AttributeAction, ...]
     other_elements: OtherElements | None
     roi_names: RoiNameCleaning | None
+    cleaned: tuple[CleanedAttributes, ...]
+    safe_private: tuple[SafePrivateRule, ...]
     markers: InsertedMarkers
     temporal: TemporalHandling
     pending: tuple[str, ...]
@@ -524,6 +602,11 @@ def _places(
         elsewhere = compound_actions.resolve(action, "3")
     elif action in _PLAIN_ELSEWHERE:
         elsewhere = _PLAIN_ELSEWHERE[action]
+    elif tag in compound_actions.LAPSED_CONDITIONS and action == "K":
+        # Clinical Trial Protocol Ethics Committee Name, which Retain
+        # Institution Identity gives K, is removed wherever it is, as its
+        # Type 1C condition never holds in the output (D-020).
+        elsewhere = "X"
     else:
         return (), ""
     # A tag of a repeating group, such as (60xx,0022), is looked up as that of
@@ -554,13 +637,21 @@ def _attribute(  # pylint: disable=too-many-arguments
 ) -> AttributeAction:
     """Return the action that the engine applies to one listed attribute."""
     # A masked tag is looked up as one of the tags it covers, as for its
-    # places; one that stays masked, such as (50xx,xxxx), keeps the policy's
-    # action, which its row gives every tag it covers.
+    # places; one that stays masked, such as (50xx,xxxx), takes the action
+    # that the rules give its row, which applies to every tag it covers.
     concrete = _REPEATING.sub(r"(\g<1>00,", tag)
-    if rules is None or not _CONCRETE_TAG.fullmatch(concrete):
+    if rules is not None and given == "C" and tag in CONTENT_ITEM_SEQUENCES:
+        # The engine cleans the sequence's content items by their concept
+        # names, and gives it its Basic Profile action where it cannot keep
+        # them (D-047).
+        return AttributeAction(tag, name, rule, given)
+    if rules is not None and _CONCRETE_TAG.fullmatch(concrete):
+        applied = rules.rule(concrete)
+    elif rules is not None and rule == TABLE_E1_1:
+        applied = ElementRule(tag, RuleSource.TABLE, rules.row_action(tag), tag)
+    else:
         places = _places(tag, given, sequence_action)
         return AttributeAction(tag, name, rule, given, *places)
-    applied = rules.rule(concrete)
     if applied.action == given:
         places = _places(tag, given, sequence_action)
         return AttributeAction(tag, name, rule, given, *places)
@@ -576,8 +667,11 @@ def _reason(applied: ElementRule, given: str) -> str:
     # Information in place of the source's (D-025).
     if applied.source is RuleSource.ENGINE:
         return FILE_META_WRITTEN if applied.tag.startswith("(0002,") else ENGINE_REMOVAL
-    # The element rules give a sequence to which the policy gives C its Basic
-    # Profile action.
+    # The element rules give a masked row to which the policy gives C, which
+    # only Clean Graphics does, its Basic Profile action.
+    if given == "C" and applied.source is RuleSource.TABLE and "x" in applied.entry:
+        return GRAPHICS_NOT_CLEANED
+    # And a sequence to which the policy gives C.
     attribute = dictionary_attribute(applied.tag)
     if (
         given == "C"
@@ -685,11 +779,17 @@ def _temporal(
         attribute = dictionary_attribute(tag)
         if attribute is None or not set(attribute.vrs) <= _TEMPORAL_VRS:
             others.append(tag)
+    cleaned = [roles[tag].role for tag in roles if actions[tag] == "C"]
     return TemporalHandling(
         option=next((o for o in policy.options if o in _TEMPORAL_OPTIONS), ""),
         attributes=len(roles),
         other_attributes=tuple(sorted(others)),
         actions=tuple(sorted(counts.items(), key=lambda item: (-item[1], item[0]))),
+        roles=tuple(
+            (role.value, cleaned.count(role))
+            for role in TemporalRole
+            if role in cleaned
+        ),
     )
 
 
@@ -712,25 +812,69 @@ def _roi_names(
     return RoiNameCleaning(edition)
 
 
+def _safe_private(rules: ElementRules | None) -> tuple[SafePrivateRule, ...]:
+    """Return the safe private rules that can retain an attribute, but for text."""
+    if rules is None or rules.safe_private is None:
+        return ()
+    return tuple(
+        rule
+        for rule in rules.safe_private.retained()
+        if rule.handling is not Handling.TEXT
+    )
+
+
+def _cleaned(
+    policy: Policy, attributes: Iterable[AttributeAction]
+) -> tuple[CleanedAttributes, ...]:
+    """Return how each cleaner of the policy cleans the attributes given C.
+
+    Under Clean Structured Content, the content items of the sequences that
+    hold them are cleaned by their concept names (D-047), after the
+    cleaners of the options before it in Table E.1-1.
+    """
+    given_c = {entry.tag for entry in attributes if entry.action == "C"}
+    cleaned = [
+        CleanedAttributes(
+            cleaner.option, tuple(sorted(cleaner.tags & given_c)), cleaner.method
+        )
+        for cleaner in cleaners_for(policy)
+        if cleaner.tags & given_c
+    ]
+    sequences = given_c & CONTENT_ITEM_SEQUENCES.keys()
+    if CLEAN_STRUCTURED_CONTENT in policy.options and sequences:
+        cleaned.append(
+            CleanedAttributes(
+                CLEAN_STRUCTURED_CONTENT, tuple(sorted(sequences)), CONTENT_ITEMS_METHOD
+            )
+        )
+    return tuple(cleaned)
+
+
 def _markers(policy: Policy, digest: str) -> InsertedMarkers:
     """Return the parts of the markers that the policy decides.
 
     They are those that :func:`markers.markers_for` gives an instance that
     satisfies every selected option it can without review: all but Clean
-    Descriptors and any option that the policy records as unmet.
+    Descriptors, Clean Pixel Data, which no instance yet claims (D-037),
+    Clean Recognizable Visual Features, and any option that the policy
+    records as unmet.
     """
     unmet = {option for resolution in policy.resolved for option in resolution.unmet}
     satisfied = [
         option
         for option in policy.options
-        if option != _CLEAN_DESCRIPTORS and option not in unmet
+        if option not in _REVIEWED_OPTIONS and option not in unmet
     ]
     found = markers.markers_for(policy, digest, satisfied=satisfied)
-    review = policy.claims_conformance and _CLEAN_DESCRIPTORS in policy.options
+    reviewed = [o for o in policy.options if o in _CLAIMED_AFTER_REVIEW]
     return InsertedMarkers(
         method=found.method[1],
         codes=tuple(code.code_value for code in found.method_codes),
-        review_codes=(OPTION_CODES[_CLEAN_DESCRIPTORS],) if review else (),
+        review_codes=(
+            tuple(OPTION_CODES[o] for o in reviewed)
+            if policy.claims_conformance
+            else ()
+        ),
         temporal=found.temporal_information_modified,
     )
 
@@ -750,8 +894,10 @@ def conformance_statement(
         the published baseline digest of a preset (D-024). It must be given
         by name, as for
         :func:`~pymedphys._dicom.deidentify.method_digest.method_digest`.
-        The digest is always computed without a reviewed-names list, which
-        is a site's confidential resource, and the statement says so.
+        The digest is always computed without a reviewed-names list or a
+        reviewed descriptors list, which are a site's confidential
+        resources, and without the technique vocabulary, as D-024's
+        published baseline is, and the statement says so.
 
     Returns
     -------
@@ -802,15 +948,26 @@ def conformance_statement(
     except PolicyError:
         rules = None
     attributes = tuple(_fallen_back(policy, rules, _attributes(policy, rules)))
-    actions = {entry.action for entry in attributes if entry.tag != _ROI_NAME}
+    safe_private = SAFE_PRIVATE in policy.options
+    cleaned = _cleaned(policy, attributes)
+    # The safe private rules settle the C of private attributes.
+    by_cleaner = {tag for each in cleaned for tag in each.tags} | (
+        {PRIVATE_ATTRIBUTES_TAG} if rules is not None and safe_private else set()
+    )
+    actions = {
+        entry.action
+        for entry in attributes
+        if entry.tag != _ROI_NAME and entry.tag not in by_cleaner
+    }
     pending = PENDING + tuple(
         item
         for item, applies in (
-            (PENDING_REFUSED, rules is None),
+            (PENDING_UNAPPLIED, rules is None),
             (PENDING_CLEANING, "C" in actions),
             (PENDING_FALLBACK, not _falls_back(policy)),
-            (PENDING_SAFE_PRIVATE, "retain_safe_private" in policy.options),
+            (PENDING_SAFE_PRIVATE, rules is None and safe_private),
             (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
+            (PENDING_PIXEL_DATA, CLEAN_PIXEL_DATA in policy.options),
         )
         if applies
     )
@@ -824,7 +981,8 @@ def conformance_statement(
         load_context_group(7050),
         load_context_group(7005),
     )
-    # A statement describes a policy, never a site's reviewed-names list.
+    # A statement describes a policy, never a site's reviewed lists, and
+    # gives D-024's baseline, without the technique vocabulary.
     digest = method_digest(policy, vocabulary=vocabulary, reviewed_roi_names=None)
     return ConformanceStatement(
         engine_version=_version.__version__,
@@ -843,6 +1001,8 @@ def conformance_statement(
         attributes=attributes,
         other_elements=None if rules is None else _other_elements(),
         roi_names=_roi_names(attributes, vocabulary),
+        cleaned=cleaned,
+        safe_private=_safe_private(rules),
         markers=_markers(policy, digest),
         temporal=_temporal(policy, attributes),
         pending=pending,

@@ -373,6 +373,30 @@ def test_another_private_value_found_in_a_local_designator_goes_to_review(
     assert not condition.exempted
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "items, value, decision",
+    [
+        ((("(0008,0300)", 0),), _vendor(), Decision.RELEASE),
+        ((("(0008,0300)", 0),), "ZARQUON 01", Decision.QC_REVIEW),
+        ((), _vendor(), Decision.QC_REVIEW),  # not in (0008,0300)
+    ],
+)
+def test_a_private_creator_reference_to_a_vendor_creator_is_released(
+    items, value, decision
+):
+    written = _written(_element(0x00090010, "LO", value))
+    source = SourceValue(ElementPath(items, "(0008,0302)"), "LO", value)
+    coverage = Coverage(planned=frozenset({source.source}), collected=(source,))
+
+    condition = release_condition(coverage, written)
+
+    assert condition.decision is decision
+    assert [why for _, why in condition.exempted] == (
+        [Exemption.VENDOR_CREATOR] if decision is Decision.RELEASE else []
+    )
+
+
 def test_a_vendor_creator_is_exempt_only_if_every_pooled_value_is_a_vendors():
     # A subject's files can hold different creators at the same place.
     written = _written(_element(0x00080070, "LO", f"{_vendor()} ZARQUON 01"))

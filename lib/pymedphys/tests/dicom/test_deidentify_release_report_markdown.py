@@ -234,6 +234,7 @@ def test_the_sections_follow_the_documents_order():
         "## Sequestered instances",
         "## Instances held for review",
         "## ROI names",
+        "## Descriptors",
         "## Reference findings",
         "## Pixel data risks",
         "## Values not searched",
@@ -308,13 +309,13 @@ def test_the_pixel_risks_are_counted_by_disposition_risk_and_indicator():
         "| `held-for-review` | `reconstructable-face` | `ct-volume` | `1` |",
         "| `held-for-review` | `reconstructable-face` | `head-or-neck` | `1` |",
     ]
-    assert "pixel data are not inspected" in section
+    assert "pixel data are not inspected for them" in section
 
 
 def test_an_empty_run_says_so_in_each_run_section():
     markdown = to_markdown(release_report.to_json(_report()))
     assert "No QC pack was written for this run." in markdown
-    assert markdown.count("None.") == 10
+    assert markdown.count("None.") == 12
     run = markdown.split("## QC review", 1)[1].split("## Structural checks", 1)[0]
     assert "|" not in run
 

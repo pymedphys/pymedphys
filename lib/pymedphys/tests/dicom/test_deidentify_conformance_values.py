@@ -17,6 +17,7 @@
 import collections
 import dataclasses
 import functools
+import re
 import struct
 
 from pymedphys._imports import pytest
@@ -296,14 +297,22 @@ def test_dates_take_their_listed_actions_without_a_temporal_option(preset):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.deid_requirement("PS3.15-E.3.6-04")
 @pytest.mark.parametrize("preset", ["tps-import", "public-release"])
-def test_dates_under_modified_dates_are_cleaned_and_their_manner_is_pending(preset):
+def test_dates_under_modified_dates_are_modified_by_role_as_described(preset):
     statement = _statement(preset)
     assert statement.temporal.option == policy.MODIFIED_DATES
-    assert conformance.PENDING_CLEANING in statement.pending
+    roles = temporal_roles.load_temporal_roles().rules
+    actions = {e.tag: e.action for e in statement.attributes}
+    counts = collections.Counter(
+        roles[tag].role.value for tag in roles if actions[tag] == "C"
+    )
+    assert dict(statement.temporal.roles) == dict(counts)
     section = _section(preset, "Dates and times")
-    assert "Retain Longitudinal Temporal Information with Modified Dates" in section
-    assert "is not yet described" in section
+    assert "Retain Longitudinal Temporal Information Modified Dates" in section
+    assert f"gives C to {sum(counts.values())} of them" in section
+    assert "is not yet described" not in section
+    assert "`MODIFIED`" in section
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
@@ -408,7 +417,7 @@ def test_the_release_report_names_sequestered_instances_by_label(preset):
     assert release_report.LABEL_PATTERN.fullmatch(first)
     assert f"from `{first}` to `S-n`" in section
     assert "order drawn at random" in section
-    assert "(D-026)" in section
+    assert "a label says nothing of the instance or its place in the run." in section
     stages = release_report._SEQUESTERING  # pylint: disable = protected-access
     assert set(conformance_values.STAGES) == set(stages)
     for stage, codes in stages.items():
@@ -424,7 +433,7 @@ def test_the_release_report_counts_held_instances_by_stage(preset):
     held = section.split("counts the instances held for review", 1)[1]
     stages = release_report._HOLDING  # pylint: disable = protected-access
     assert set(conformance_values.HOLDING_STAGES) == set(stages)
-    assert "(D-009)" in held
+    assert held.startswith(", by the stage that held each and its reason code")
     for stage, codes in stages.items():
         line = held.split(f"- `{stage}`: ", 1)[1].split(" - ", 1)[0]
         assert line.startswith(conformance_values.HOLDING_STAGES[stage])
@@ -532,7 +541,7 @@ def _empty_coverage():
 def test_the_release_report_counts_roi_names_by_outcome(preset):
     section = _section(preset, "Release report")
     counted = section.split("counts the ROI Names", 1)[1].split("\n\n", 1)[0]
-    assert "(D-009)" in counted
+    assert "whether then held or emptied unreviewed" in counted
     assert "naming none of them" in counted
     for outcome in reviewed_roi_names.Outcome:
         assert f"`{outcome.value}`" in counted, outcome
@@ -543,7 +552,7 @@ def test_the_release_report_counts_reported_reference_findings_by_kind(preset):
     section = _section(preset, "Release report")
     counted = section.split("reference finding that the run reports", 1)[1]
     counted = counted.split("\n\n", 1)[0]
-    assert "naming none of them (D-026)" in counted
+    assert "naming none of them." in counted
     for kind in release_report.REPORTED_FINDINGS:
         assert f"`{kind.value}`" in counted, kind
 
@@ -573,7 +582,7 @@ def test_the_release_report_counts_pixel_risks_by_risk_and_indicator(preset):
     section = _section(preset, "Release report")
     counted = section.split("that show each risk in their pixel data", 1)[1]
     counted = counted.split("\n\n", 1)[0]
-    assert "names none of them (D-015)" in counted
+    assert "names none of them." in counted
     assert "the pixel data are not inspected" in counted
     for code in (*Risk, *Indicator):
         assert f"`{code.value}`" in counted, code
@@ -585,7 +594,7 @@ def test_every_reason_that_the_release_report_counts_is_described(preset):
     assert set(conformance_values.UNSEARCHED_REASONS) == set(residuals.UnsearchedReason)
     section = _section(preset, "Release report")
     assert "by attribute" in section
-    assert "(D-027)" in section
+    assert "each reason however many of its forms that reason left out." in section
     for reason in residuals.UnsearchedReason:
         assert (
             f"- `{reason.value}`: {conformance_values.UNSEARCHED_REASONS[reason]}."
@@ -618,7 +627,7 @@ def test_per_instance_detail_is_only_in_the_qc_pack(preset):
     assert "no source value or original path" in section
     assert (
         "Only the confidential QC pack maps labels to source instances and lists "
-        "each value not searched by instance and place (D-016)." in section
+        "each value not searched by instance and place." in section
     )
 
 
@@ -633,8 +642,8 @@ def test_nothing_of_the_run_is_pending(preset):
     for done in (
         "search each written file",
         "the run itself sequesters",
-        "D-015",
-        "D-017",
+        "head or neck",
+        "retained string",
         "CT volume",
         "write this statement",
     ):
@@ -657,19 +666,21 @@ def test_the_qc_pack_lists_what_the_run_keeps_for_review(preset):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
-def test_the_qc_pack_lists_each_ct_mr_and_pet_volume(preset):
+def test_the_qc_pack_lists_each_ct_mr_pet_and_rt_dose_volume(preset):
     section = _section(preset, "QC pack")
     for indicator in (
         *pixel_risk.VOLUME_INDICATORS,
+        pixel_risk.Indicator.LOCALIZER,
         pixel_risk.Indicator.HEAD_OR_NECK,
         pixel_risk.Indicator.UNREADABLE,
     ):
         assert f"`{indicator.value}`" in section
-    assert "`ct-volume`, `mr-volume`, or `pet-volume`" in section
+    assert "`ct-volume`, `mr-volume`, `pet-volume`, or `rt-dose-volume`" in section
     assert (
-        "each CT, MR, and PET volume among the instances that are released or held"
-        in section
+        "each CT, MR, PET, and RT Dose volume among the instances that are "
+        "released or held" in section
     )
+    assert "localizers among them, which can show the face in profile" in section
     assert "PS3.16 Annex L" in section
     assert "Series Instance UID (0020,000E), which it never writes" in section
     assert "assesses only the released and held instances" in section
@@ -722,3 +733,23 @@ def test_the_report_describes_what_a_run_always_writes(preset):
         "this statement of its policy, which holds no instance value, as "
         f"`{run_report.CONFORMANCE_STATEMENT}`"
     ) in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize(
+    "preset_name, options",
+    [(name, None) for name in policy.PRESETS]
+    + [(None, (option,)) for option in policy.ALL_OPTIONS],
+)
+def test_the_statement_cites_no_design_decision_by_number(preset_name, options):
+    # A reader of the statement has no design document to look a number up in,
+    # so the statement says what each decision requires instead.
+    selected = (
+        policy.compose_policy(preset_name)
+        if options is None
+        else policy.compose_custom_policy(options)
+    )
+    text = conformance_markdown.render_markdown(
+        conformance.conformance_statement(selected, vocabulary=None)
+    )
+    assert re.search(r"\bD-\d{3}\b", text) is None

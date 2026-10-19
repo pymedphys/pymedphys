@@ -153,6 +153,7 @@ SLOW_TEST_FILES = frozenset(
     {
         "lib/pymedphys/tests/delivery/test_deliverydata_trf_dicom_round_trip.py",
         "lib/pymedphys/tests/dicom/test_anonymise.py",
+        "lib/pymedphys/tests/dicom/test_deidentify_text_detection.py",
         "lib/pymedphys/tests/experimental/pseudonymisation/test_pseudonymisation.py",
         "lib/pymedphys/tests/gamma/test_agnew_mcgarry.py",
         "lib/pymedphys/tests/metersetmap/test_metersetmap_regression.py",
@@ -167,8 +168,10 @@ SLOW_TEST_FILES = frozenset(
 DOCTEST_FILES = frozenset(
     {
         "lib/pymedphys/_dev/deid_tables/ps3_3.py",
+        "lib/pymedphys/_dicom/deidentify/ae_titles.py",
         "lib/pymedphys/_dicom/deidentify/common_instance_reference.py",
         "lib/pymedphys/_dicom/deidentify/compound_actions.py",
+        "lib/pymedphys/_dicom/deidentify/content_items.py",
         "lib/pymedphys/_dicom/deidentify/dates.py",
         "lib/pymedphys/_dicom/deidentify/diagnostics.py",
         "lib/pymedphys/_dicom/deidentify/dicom_validation.py",
@@ -184,6 +187,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/method_digest.py",
         "lib/pymedphys/_dicom/deidentify/midi_answer_key.py",
         "lib/pymedphys/_dicom/deidentify/output_names.py",
+        "lib/pymedphys/_dicom/deidentify/patient_characteristics.py",
         "lib/pymedphys/_dicom/deidentify/pixel_risk.py",
         "lib/pymedphys/_dicom/deidentify/preservation.py",
         "lib/pymedphys/_dicom/deidentify/preserving_writer.py",
@@ -195,6 +199,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/release_gate.py",
         "lib/pymedphys/_dicom/deidentify/release_report.py",
         "lib/pymedphys/_dicom/deidentify/residuals.py",
+        "lib/pymedphys/_dicom/deidentify/retained_uids.py",
         "lib/pymedphys/_dicom/deidentify/runtime.py",
         "lib/pymedphys/_dicom/deidentify/scope.py",
         "lib/pymedphys/_dicom/deidentify/sequences.py",

@@ -537,9 +537,21 @@ def _collected_name(evidence):
     )
 
 
+def _aborting_image():
+    """An image whose frame made GDCM end the process that decoded it, as the
+    campaign found: libjpeg warns while it reads the frame's header, here of
+    a JFIF segment of version 2.01, and GDCM 3.2 then aborts."""
+    jpeg = compressed.with_jfif_version(
+        compressed.jpeg_lossless(_frame(), precision=12), (2, 1)
+    )
+    sv1 = compressed.JPEG_LOSSLESS_SV1
+    return compressed.ct_image(sv1, [jpeg], rows=32, columns=32, bits=12, name=NAME)
+
+
 # A fifth of the profile's examples, since each runs a whole instance.
 @hypothesis.settings(SETTINGS, max_examples=max(SETTINGS.max_examples // 5, 20))
 @hypothesis.given(st.one_of(_planted(), mutated(_decodable_images(), near=b"\xff")))
+@hypothesis.example(_aborting_image())
 def test_an_image_is_transformed_or_withheld_and_a_release_holds_no_name(data):
     try:
         record = InstanceRecord.from_file(data)

@@ -50,6 +50,16 @@ site passes the checks above if it replaces any value at that site in its
 input. So a value that is missing from a site that holds others, or values
 that have moved between the items of one sequence, are not reported.
 
+Where the run's policy keeps an attribute's UIDs, as the Retain UIDs Option
+keeps SOP Instance UID and Referenced SOP Instance UID (0008,1155), the
+input's own UID is what must be written there, in place of its replacement
+in each check above, and an input's UID written there is not reported as
+one. A reference at an
+attribute that the policy does not keep, such as Multi-frame Source SOP
+Instance UID (0008,1167), is still the replacement of its input's, so where
+the instance that it named was written with its own SOP Instance UID kept,
+it names nothing written and is reported as unresolved (D-040).
+
 A UID that the pinned tables register
 (:func:`~pymedphys._dicom.deidentify.uids.well_known_uids`) is its own
 replacement, as :func:`~pymedphys._dicom.deidentify.uids.transform_uid`
@@ -93,8 +103,9 @@ class WrittenFindingKind(enum.Enum):
         A written SOP Instance UID, Series Instance UID, Study Instance UID,
         or value at a reference site is a UID of one of the run's inputs, at
         an identity or reference site of any input, that the pinned tables
-        do not register: a source UID was written where its replacement was
-        required. There is one finding for each written instance and
+        do not register, at an attribute whose UIDs the policy does not keep:
+        a source UID was written where its replacement was required. There
+        is one finding for each written instance and
         attribute, whose ``count`` is the number of distinct such values
         there. It is reported in place of the mismatch that it also is.
     MISMATCHED_IDENTIFIER
@@ -167,7 +178,11 @@ class WrittenFinding:
 
 
 def verify_written_references(
-    key: DeidKey, graph: ReferenceGraph, written: Mapping[int, InstanceRecord]
+    key: DeidKey,
+    graph: ReferenceGraph,
+    written: Mapping[int, InstanceRecord],
+    *,
+    retained: frozenset[str] = frozenset(),
 ) -> tuple[WrittenFinding, ...]:
     """Check that what a run wrote refers to itself as its inputs did.
 
@@ -182,6 +197,11 @@ def verify_written_references(
         the input it was written from. An input that was not written, such
         as one that was sequestered or a duplicate that was written once,
         has no entry.
+    retained : frozenset of str, optional
+        The tags of the attributes whose UIDs the run's policy keeps
+        (:func:`~pymedphys._dicom.deidentify.retained_uids.retained_uid_tags`),
+        at which each input's own UID must be written. Defaults to none, as
+        under the Basic Profile.
 
     Returns
     -------
@@ -208,9 +228,14 @@ def verify_written_references(
     registered = well_known_uids()
     replacements: dict[str, str] = {}
 
-    def replace(value: str) -> str:
-        if not value:
-            return ""
+    def replace(value: str, tag: str) -> str:
+        """Return what must be written at ``tag`` for the input's ``value``.
+
+        That is the value itself where the policy keeps the attribute's
+        UIDs, and its replacement elsewhere.
+        """
+        if not value or tag in retained:
+            return value
         if value not in replacements:
             replacements[value] = transform_uid(key, UIDRole.INSTANCE, value)[0]
         return replacements[value]
@@ -252,18 +277,18 @@ def verify_written_references(
             value = source.identifier(level)
             identifier = record.identifier(level)
             if value is None:
-                if identifier in originals:
+                if identifier in originals and tag not in retained:
                     findings.append(
                         WrittenFinding(
                             WrittenFindingKind.ORIGINAL_UID, ((position,),), (tag,), 1
                         )
                     )
                 continue
-            if identifier == replace(value):
+            if identifier == replace(value, tag):
                 replaced[identifier][value].add(position)
                 continue
             kind = WrittenFindingKind.MISMATCHED_IDENTIFIER
-            if identifier in originals:
+            if identifier in originals and tag not in retained:
                 kind = WrittenFindingKind.ORIGINAL_UID
             findings.append(WrittenFinding(kind, ((position,),), (tag,), 1))
 
@@ -271,7 +296,7 @@ def verify_written_references(
         expected: dict[tuple[str, ...], dict[str, set[str]]] = {}
         for reference in source.references:
             expected.setdefault(reference.site.attribute, {}).setdefault(
-                replace(reference.target), set()
+                replace(reference.target, reference.site.tag), set()
             ).add(reference.target)
         problems: dict[tuple[WrittenFindingKind, tuple[str, ...]], set[str]] = (
             collections.defaultdict(set)
@@ -281,7 +306,7 @@ def verify_written_references(
             sources = expected.get(site.attribute, {})
             if value not in sources:
                 kind = WrittenFindingKind.MISMATCHED_REFERENCE
-                if value in originals:
+                if value in originals and site.tag not in retained:
                     kind = WrittenFindingKind.ORIGINAL_UID
                 problems[kind, site.attribute].add(value)
                 continue

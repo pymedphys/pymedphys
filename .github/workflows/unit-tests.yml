@@ -355,7 +355,7 @@ jobs:
           set -euxo pipefail
           mkdir -p test-results
           export PYMEDPHYS_DICOM_VALIDATION_REPORT="${GITHUB_WORKSPACE}/test-results/dicom-validation"
-          # One process: each preset's run and validation is a module-scoped
+          # One process: each policy's run and validation is a module-scoped
           # fixture, which workers would each repeat.
           uv run -- pymedphys dev tests --dicom-validators \
             lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus.py \
@@ -369,9 +369,9 @@ jobs:
           set -euo pipefail
           for report in test-results/dicom-validation/*/dicom-validation.md; do
             [ -f "${report}" ] || continue
-            preset=$(basename "$(dirname "${report}")")
+            run=$(basename "$(dirname "${report}")")
             {
-              echo "## Preset ${preset}"
+              echo "## Run ${run}"
               echo
               # Each report's headings, one level down.
               sed 's/^#/##/' "${report}"

@@ -100,7 +100,7 @@ def test_the_attestation_is_written_beside_the_pack(pack):
     written = pack / qc_attestation.ATTESTATION_FILE
     digest = hashlib.sha256((pack / qc_store.PACK_FILE).read_bytes()).hexdigest()
     assert json.loads(written.read_text("ascii")) == {
-        "format": "pymedphys-deid-qc-attestation/1",
+        "format": "pymedphys-deid-qc-attestation/2",
         "reference": REFERENCE,
         "pack_digest": digest,
         "outcome": "attested",
@@ -112,6 +112,7 @@ def test_the_attestation_is_written_beside_the_pack(pack):
         "reviewer": REVIEWER,
         "attested_at": "2026-10-02T17:30:00+00:00",
         "releaser": {"intended_use_checked": None, "residual_risk_accepted": None},
+        "faces": [],
     }
     assert attestation.pack_digest == digest
     if os.name == "posix":
@@ -125,7 +126,10 @@ def test_attested_needs_every_review_that_d_017_requires(pack):
             **{**qc_attestation.dataclasses.asdict(COMPLETE), missing: False}
         )
         assert not partial.complete
-        with pytest.raises(QcPackError, match="every review that D-017 requires"):
+        with pytest.raises(
+            QcPackError,
+            match="needs every retained string, series, and high-risk instance reviewed",
+        ):
             _attest(pack, Outcome.ATTESTED, partial)
     assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
     rejected = _attest(pack, Outcome.REJECTED, Coverage(False, False, False))
@@ -172,6 +176,7 @@ def test_an_attestation_for_another_pack_is_detected(pack):
         b"[]",
         b'{"format": "x"}',
         b'{"format": "pymedphys-deid-qc-attestation/1"}',
+        b'{"format": "pymedphys-deid-qc-attestation/2"}',
     ],
 )
 def test_a_malformed_attestation_is_refused(pack, content):

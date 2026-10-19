@@ -100,6 +100,8 @@ def test_an_attestation_is_recorded_beside_the_pack(pack):
         "  every instance in high-risk categories: reviewed",
         "  checked for its intended use: not stated",
         "  residual risk accepted: not stated",
+        "  series without a recognisable face: 0",
+        "  series with a recognisable face: 0",
         "the release report published with the run is unchanged",
     ]
     _assert_quotes_nothing(stdout, stderr)
@@ -166,7 +168,9 @@ def test_attested_without_every_review_records_nothing(pack, missing):
     )
 
     assert status == command.EXIT_NOT_RECORDED
-    assert "every review that D-017 requires" in stderr
+    assert (
+        "needs every retained string, series, and high-risk instance reviewed" in stderr
+    )
     assert "nothing was recorded" in stderr
     assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
     assert not stdout

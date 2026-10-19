@@ -17,6 +17,7 @@ all = [
     'natsort',
     'numba',
     'numpy',
+    'onnxruntime',
     'pandas',
     'Pillow',
     'plotly',
@@ -120,6 +121,7 @@ tests = [
     'natsort',
     'numba',
     'numpy',
+    'onnxruntime',
     'pandas',
     'Pillow',
     'plotly',
@@ -151,6 +153,11 @@ tests = [
     'watchdog',
     'xlrd',
     'xmltodict',
+]
+text-detection = [
+    'numpy',
+    'onnxruntime',
+    'scipy',
 ]
 trf = [
     'attrs',
