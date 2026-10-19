@@ -15,8 +15,13 @@
 """Each CT series' face block in a run, and the air written there, on an
 analytic head. Every UID and value here is invented."""
 
+# The tests share the analytic head's files and the structure set
+# builders, so they stay in one module.
+# pylint: disable = too-many-lines
+
 from __future__ import annotations
 
+import copy
 import dataclasses
 import functools
 import io
@@ -928,15 +933,97 @@ def test_a_target_in_the_block_in_a_set_of_another_frame_holds_where_its_frame_i
     assert _outcome(data).problem is SeriesProblem.TARGET_IN_BLOCK
 
 
-def test_a_set_of_another_frame_and_patient_is_not_searched_for_an_unsure_target():
+@pytest.mark.parametrize(
+    ("declarations", "held"),
+    [
+        ([["B"]], False),
+        ([["B", "C"]], True),
+        ([["B", "B"]], True),
+        ([["B", "C"], ["B"]], False),
+    ],
+    ids=["one", "several", "repeated", "several-and-one"],
+)
+def test_only_a_frame_declared_alone_makes_a_target_in_the_block_certain(
+    declarations, held
+):
+    # The target names frame B, and the set is not tied to the series'
+    # slices. A declaration of B among other values may be B, so it does
+    # not make the target certainly B's: it may be in the series' frame,
+    # where its hull reaches the block, unless B is also declared alone.
+    labels = {"B": files.ROOT + ".8", "C": files.ROOT + ".11"}
+    rtss = _elsewhere_only([("PTV", files.square(_EYES_FRONT[0]))])
+    (declared,) = rtss.ReferencedFrameOfReferenceSequence
+    for _ in declarations[1:]:
+        rtss.ReferencedFrameOfReferenceSequence.append(copy.deepcopy(declared))
+    for item, frames in zip(rtss.ReferencedFrameOfReferenceSequence, declarations):
+        values = [labels[frame] for frame in frames]
+        item.FrameOfReferenceUID = values[0] if len(values) == 1 else values
+
+    held_as = _outcome(files.written(rtss)).problem
+    assert held_as is (SeriesProblem.TARGET_IN_BLOCK if held else None)
+
+
+@pytest.mark.parametrize(
+    ("patient", "issuers", "searched"),
+    [
+        ("H2", None, False),
+        ("H1 ", None, True),
+        (" h1", None, True),
+        ("H2\\H3", None, True),
+        (None, None, True),
+        ("", None, True),
+        ("H1", ("A", None), True),
+        ("H1", (None, "A"), True),
+        ("H1", ("A", "A"), True),
+        ("H1", ("A", "B"), True),
+        ("H2", ("A", "A"), False),
+    ],
+    ids=[
+        "another",
+        "padded",
+        "other-case",
+        "several",
+        "set-absent",
+        "set-empty",
+        "set-issuer-only",
+        "series-issuer-only",
+        "same-issuer",
+        "other-issuer",
+        "another-same-issuer",
+    ],
+)
+def test_a_set_of_another_frame_is_searched_for_an_unsure_target_by_patient(
+    patient, issuers, searched
+):
+    rtss = _elsewhere_only([("PTV", files.square(_EYES_FRONT[0]))])
+    rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
+    if patient is None:
+        del rtss.PatientID
+    else:
+        rtss.PatientID = patient
+    (set_issuer, series_issuer) = issuers or (None, None)
+    if set_issuer is not None:
+        rtss.IssuerOfPatientID = set_issuer
+    slices = _head_files()
+    if series_issuer is not None:
+        slices = _changed(_set("IssuerOfPatientID", series_issuer), every=True)
+
+    # Its frames are not the series' and it is not drawn on the series'
+    # slices, so it is searched only where it may be the same patient's:
+    # only two Patient IDs that differ once trimmed and case-folded tell
+    # them apart, whatever the issuers.
+    held = _outcome(files.written(rtss), slices=slices).problem
+    assert held is (SeriesProblem.TARGET_IN_BLOCK if searched else None)
+
+
+def test_a_series_slice_naming_no_patient_searches_a_set_of_another_frame():
     rtss = _elsewhere_only([("PTV", files.square(_EYES_FRONT[0]))])
     rtss.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
     rtss.PatientID = "H2"
 
-    # Its frames are not the series', it is not drawn on the series'
-    # slices, and it is another patient's, so its target cannot be in the
-    # series' frame.
-    assert _outcome(files.written(rtss)).problem is None
+    held = _outcome(files.written(rtss), slices=_changed(_set("PatientID", "")))
+
+    assert held.problem is SeriesProblem.TARGET_IN_BLOCK
 
 
 def test_the_cavity_is_kept_only_above_its_floor():

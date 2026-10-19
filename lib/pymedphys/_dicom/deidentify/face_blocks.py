@@ -37,15 +37,16 @@ masks. A series is defaced only where all of these hold:
   volume's superior end, which bounds the memory that a long volume needs;
   and
 - no contour of a target, an ROI whose RT ROI Interpreted Type is
-  :data:`TARGET_TYPES`, of any RT Structure Set of the run, in the series'
-  Frame of Reference, or naming none, reaches the block, or has anything
+  :data:`TARGET_TYPES`, of any RT Structure Set of the run searched for the
+  series (:func:`_searched`), in the series' Frame of Reference, or naming
+  none, reaches the block, or has anything
   between its contours that does, as the convex hull of its contours
   judges it (:func:`_hull_reaches`); no target in another frame, whose
   contours cannot be placed without a registration, has a structure set
   that ties that frame to the series' slices (:func:`_targets_reach`), a
   target whose ROI names no frame, or one that is malformed, counting as
   one in the series' frame and in each frame that its structure set
-  declares; and every structure set can be read.
+  declares; and every structure set searched for it can be read.
 
 Anything else that a series' data raises leaves the series undefaced, as
 unreadable, rather than stopping the run, and no message of it, which could
@@ -82,10 +83,12 @@ judged it from the defaced CT's previews
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), until
 the run can clean it too (:class:`Defaced`). So is one that names no Frame
 of Reference, in a run that defaces any series, or that refers to a defaced
-slice, whatever frame it declares. Every structure set is searched for
-targets in the block of every series, and a target in another frame holds
-a series whose slices its structure set ties to that frame, whatever other
-frames the set declares.
+slice, whatever frame it declares. A structure set is searched for targets
+in the block of a series where it is in the series' frame, names no valid
+frame, or is drawn on its slices, and otherwise unless it and every slice
+give Patient IDs that differ, and a target in another frame holds a series
+whose slices its structure set ties to that frame, whatever other frames
+the set declares.
 """
 
 from __future__ import annotations
@@ -111,6 +114,7 @@ from .pixel_cleaning import (
     layout_of,
     stored_range,
 )
+from .pseudonyms import SubjectIdentity
 from .reasons import TransformReason
 from .references import InstanceRecord
 from .source import NATIVE_TRANSFER_SYNTAXES
@@ -297,23 +301,40 @@ def _searched(
     """Whether a structure set is searched for targets in a series' block.
 
     One in the series' Frame of Reference, naming no valid frame, or drawn
-    on its slices always is. So is any other of the same patient as the
-    series, or where either names none, since a target in it that names no
-    frame, or a malformed one, may be in the series' frame whatever frames
-    the set declares; one in another frame that the set does not tie to the
-    series' slices is passed over (:func:`_targets_reach`).
+    on its slices always is. So is any other of the same patient as a
+    slice of the series (:func:`_same_patient`), since a target in it that
+    names no frame, or a malformed one, may be in the series' frame
+    whatever frames the set declares; one in another frame that the set
+    does not tie to the series' slices is passed over
+    (:func:`_targets_reach`).
     """
     frames = frames_of(structure_set)
     if frame in frames or not any(is_uid(each) for each in frames):
         return True
     if not slices.isdisjoint(ref.target for ref in structure_set.references):
         return True
-    patients = {records[position].patient for position in positions}
-    return (
-        structure_set.patient is None
-        or None in patients
-        or structure_set.patient in patients
+    return any(
+        _same_patient(structure_set.patient, records[position].patient)
+        for position in positions
     )
+
+
+def _same_patient(one: SubjectIdentity | None, other: SubjectIdentity | None) -> bool:
+    """Whether two instances may be of the same patient.
+
+    They may unless both give one Patient ID and the two differ once
+    trimmed and case-folded. The Issuer of Patient ID is not compared,
+    since planning systems write their own or none, and a Patient ID that
+    is absent, empty, not text, or of several values matches any, so that
+    only a structure set that is clearly another patient's is passed over.
+    """
+    ids = [
+        None if identity is None else identity.identifier.strip().casefold()
+        for identity in (one, other)
+    ]
+    if any(not each or "\\" in each for each in ids):
+        return True
+    return ids[0] == ids[1]
 
 
 def frames_of(record: InstanceRecord) -> frozenset[str]:
@@ -619,7 +640,8 @@ def _targets_reach(
     structure set does not tie to them, such as one of another scan, does
     not. A target whose ROI names no frame may be in the series' or in any
     frame that its structure set declares, so it is taken as each. So is
-    one whose ROI's frame is not one UID that its set declares, or whose
+    one whose ROI's frame is not one UID that its set declares alone, as
+    one UID in one item, or whose
     ROI Number is repeated with another frame, which is also taken as each
     value it names, so that a malformed frame that the set ties to the
     series' slices still holds it.
@@ -627,11 +649,14 @@ def _targets_reach(
     named: dict[int, set[str]] = collections.defaultdict(set)
     for item in dataset.get("StructureSetROISequence", []):
         named[int(item.ROINumber)] |= _frames(item, "ReferencedFrameOfReferenceUID")
-    declared = {
-        frame
+    declarations = [
+        _frames(item, "FrameOfReferenceUID")
         for item in dataset.get("ReferencedFrameOfReferenceSequence", [])
-        for frame in _frames(item, "FrameOfReferenceUID")
-    } - {""}
+    ]
+    # Every label a declaration gives may be a frame, but only one UID
+    # declared alone makes an ROI's frame certain.
+    declared = set().union(*declarations) - {""}
+    certain = {frame for each in declarations if "" not in each for frame in each}
 
     def frames_of_roi(number: int) -> set[str]:
         frames = named.get(number, {""})
@@ -639,7 +664,7 @@ def _targets_reach(
         # one that is not is malformed too.
         return (
             frames
-            if len(frames) == 1 and frames <= declared
+            if len(frames) == 1 and frames <= certain
             else {"", *declared, *frames}
         )
 
