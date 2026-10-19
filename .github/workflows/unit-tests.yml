@@ -84,7 +84,7 @@ jobs:
 
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-${{ matrix.os }}-${{ matrix.python-version }}
           path: test-results/*
@@ -153,7 +153,7 @@ jobs:
 
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-extra-${{ matrix.extra }}
           path: test-results/*.xml
@@ -200,7 +200,7 @@ jobs:
 
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-dependency-floors
           path: test-results/*.xml
@@ -302,7 +302,7 @@ jobs:
 
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-pydicom-${{ matrix.pydicom }}
           path: test-results/*.xml
@@ -311,7 +311,7 @@ jobs:
 
       - name: Upload pydicom coverage
         if: ${{ !cancelled() && steps.evidence.outcome == 'success' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pydicom-coverage-${{ matrix.pydicom }}
           path: test-results/pydicom-coverage-${{ matrix.pydicom }}.json
@@ -395,7 +395,7 @@ jobs:
 
       - name: Upload the validation reports
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dicom-validation
           path: test-results/*
