@@ -13,8 +13,6 @@ attrs==26.1.0
     #   jsonschema
     #   pymedphys
     #   referencing
-backports-tarfile==1.2.0 ; python_full_version < '3.12'
-    # via jaraco-context
 certifi==2026.7.22
     # via requests
 cffi==2.1.1 ; platform_python_implementation != 'PyPy' and sys_platform == 'linux'
@@ -29,9 +27,7 @@ cloudpickle==3.1.2
     # via joblib
 colorama==0.4.6 ; sys_platform == 'win32'
     # via tqdm
-contourpy==1.3.3 ; python_full_version < '3.12'
-    # via matplotlib
-contourpy==1.4.0 ; python_full_version >= '3.12'
+contourpy==1.4.0
     # via matplotlib
 cryptography==50.0.2 ; sys_platform == 'linux'
     # via secretstorage
@@ -51,8 +47,6 @@ idna==3.20
     #   requests
 imageio==2.38.1
     # via pymedphys
-importlib-metadata==9.0.1 ; python_full_version < '3.12'
-    # via keyring
 itsdangerous==2.2.0
     # via streamlit
 jaraco-classes==3.4.0
@@ -98,23 +92,7 @@ natsort==8.4.0
     # via pymedphys
 numba==0.68.0
     # via pymedphys
-numpy==2.4.6 ; python_full_version < '3.12'
-    # via
-    #   contourpy
-    #   imageio
-    #   matplotlib
-    #   numba
-    #   pandas
-    #   pydeck
-    #   pylibjpeg
-    #   pylibjpeg-openjpeg
-    #   pymedphys
-    #   scikit-learn
-    #   scipy
-    #   shapely
-    #   streamlit
-    #   tifffile
-numpy==2.5.4 ; python_full_version >= '3.12'
+numpy==2.5.4
     # via
     #   contourpy
     #   imageio
@@ -199,11 +177,7 @@ rpds-py==2026.9.1
     #   referencing
 scikit-learn==1.9.1
     # via pymedphys
-scipy==1.17.1 ; python_full_version < '3.12'
-    # via
-    #   pymedphys
-    #   scikit-learn
-scipy==1.18.1 ; python_full_version >= '3.12'
+scipy==1.18.1
     # via
     #   pymedphys
     #   scikit-learn
@@ -221,9 +195,7 @@ streamlit==1.65.0
     # via pymedphys
 threadpoolctl==3.7.0
     # via scikit-learn
-tifffile==2026.3.3 ; python_full_version < '3.12'
-    # via imageio
-tifffile==2026.9.20 ; python_full_version >= '3.12'
+tifffile==2026.9.20
     # via imageio
 timeago==1.0.16
     # via pymedphys
@@ -259,6 +231,4 @@ xlrd==2.0.2
     # via pymedphys
 xmltodict==1.0.4
     # via pymedphys
-zipp==4.1.1 ; python_full_version < '3.12'
-    # via importlib-metadata
 .[user]
