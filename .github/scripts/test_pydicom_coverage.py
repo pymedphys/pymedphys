@@ -44,7 +44,7 @@ class CoveragePlanMixin:
             "role": "minimum",
             "requested": "3.0.2",
             "quick": False,
-            "python_matrix": ["3.11", "3.12", "3.13", "3.14"],
+            "python_matrix": ["3.12", "3.13", "3.14"],
             "extra_args": "",
             "commit": COMMIT,
         }
@@ -62,12 +62,12 @@ class CoveragePlanningTests(CoveragePlanMixin, unittest.TestCase):
                 self.assertEqual(plan["commit"], COMMIT)
 
     def test_quick_always_selects_the_baseline_despite_a_custom_full_matrix(self):
-        self.assertEqual(self.plan(quick=True, python_matrix=["3.11"])["mode"], "reuse")
+        self.assertEqual(self.plan(quick=True, python_matrix=["3.12"])["mode"], "reuse")
 
     def test_unproven_equivalence_executes_each_requested_role(self):
         cases = (
             {"requested": "3.1.0"},
-            {"python_matrix": ["3.11", "3.12"]},
+            {"python_matrix": ["3.12", "3.13"]},
             {"python_matrix": ["3.14.1"]},
             {"extra_args": "-k selected"},
             {"extra_args": " "},

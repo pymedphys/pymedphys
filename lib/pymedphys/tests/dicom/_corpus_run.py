@@ -360,11 +360,7 @@ class CorpusRun:
     redaction_review: (
         Callable[[corpus_module.SyntheticCorpus], RedactionReview] | None
     ) = None
-    # A factory, since dataclasses refuse a default they cannot hash, which
-    # a mapping proxy is before Python 3.12.
-    withheld: Mapping[str, Withheld] = dataclasses.field(
-        default_factory=lambda: BASIC_WITHHELD
-    )
+    withheld: Mapping[str, Withheld] = BASIC_WITHHELD
     kept: frozenset[str] | None = None
     codes: frozenset[str] | None = None
     roi_names: tuple[str, ...] | None = ("",)

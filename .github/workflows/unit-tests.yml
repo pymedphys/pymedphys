@@ -6,7 +6,7 @@ on:
       python-matrix:
         required: false
         type: string
-        default: '["3.11", "3.12", "3.13", "3.14"]'
+        default: '["3.12", "3.13", "3.14"]'
       extra-pytest-args:
         required: false
         type: string
@@ -160,14 +160,16 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # The declared minimum versions of NumPy (1.26) and pandas (2.0) are checked
-  # together, whichever matrix runs. Python 3.11 is the only supported version
-  # with wheels for both: NumPy 1.26 has none for Python 3.13 or later, and
-  # pandas 2.0 none for 3.12 or later or built against NumPy 2.
+  # The declared minimum versions of NumPy (2.0) and pandas (2.2.2) are
+  # checked together, whichever matrix runs. Python 3.12 is the only supported
+  # version with wheels for both: neither has any for Python 3.13 or later.
   dependency-floors:
     name: NumPy and pandas minimum versions
     timeout-minutes: 30
     runs-on: ubuntu-latest
+    env:
+      # PyMedPhys's extras to install, whose requirements the check below counts.
+      PYMEDPHYS_EXTRAS: tests
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -177,23 +179,73 @@ jobs:
       - uses: ./.github/actions/setup-project
         with:
           cache-data: 'true'
-          python-version: '3.11'
-          extras: 'tests'
+          python-version: '3.12'
+          extras: ${{ env.PYMEDPHYS_EXTRAS }}
 
       - name: Run unit tests at the minimum NumPy and pandas versions
         id: tests
         shell: bash
         env:
-          NUMPY_FLOOR: '1.26.4'
-          PANDAS_FLOOR: '2.0.3'
+          NUMPY_FLOOR: '2.0.2'
+          PANDAS_FLOOR: '2.2.2'
         run: |
           set -euxo pipefail
           mkdir -p test-results
-          # Reuse the locked environment and overlay only NumPy and pandas.
-          # Invoke Python so it imports them from uv's overlay environment,
-          # and fail if the overlay did not take effect.
-          overlay=(uv run --no-sync --with "numpy==${NUMPY_FLOOR}" --with "pandas==${PANDAS_FLOOR}" --)
+          # Reuse the locked environment and overlay NumPy and pandas, together
+          # with the locked packages that require a newer NumPy, which the
+          # overlay resolves to their latest releases that accept the NumPy
+          # minimum. Invoke Python so it imports them from uv's overlay
+          # environment, and fail if the overlay did not take effect.
+          overlay=(uv run --no-sync --with "numpy==${NUMPY_FLOOR}" --with "pandas==${PANDAS_FLOOR}" --with tifffile --)
           "${overlay[@]}" python -c 'import os, numpy, pandas; assert (numpy.__version__, pandas.__version__) == (os.environ["NUMPY_FLOOR"], os.environ["PANDAS_FLOOR"]), (numpy.__version__, pandas.__version__)'
+          # Fail if an installed package's requirements are not met, such as
+          # a newly locked package that requires a newer NumPy; add it to the
+          # overlay.
+          "${overlay[@]}" python - <<'EOF'
+          import importlib.metadata
+          import os
+          import sys
+
+          from packaging.requirements import Requirement
+          from packaging.utils import canonicalize_name
+
+          # The first distribution of each name on sys.path is the one imported.
+          found = {}
+          for dist in importlib.metadata.distributions():
+              found.setdefault(canonicalize_name(dist.metadata["Name"]), dist)
+          # Count each distribution's requirements under no extra and under each
+          # extra requested of it: PyMedPhys's installed extras, and those that
+          # counted requirements request in turn.
+          extras = {name: {""} for name in found}
+          extras["pymedphys"].update(map(canonicalize_name, os.environ["PYMEDPHYS_EXTRAS"].split()))
+          counted = {}
+          pending = list(found)
+          while pending:
+              name = pending.pop()
+              for line in found[name].requires or ():
+                  requirement = Requirement(line)
+                  marker = requirement.marker
+                  if marker and not any(marker.evaluate({"extra": extra}) for extra in extras[name]):
+                      continue
+                  counted[name, line] = requirement
+                  required_name = canonicalize_name(requirement.name)
+                  requested = set(map(canonicalize_name, requirement.extras))
+                  if required_name in found and not requested <= extras[required_name]:
+                      extras[required_name] |= requested
+                      pending.append(required_name)
+          unmet = []
+          for (name, _), requirement in sorted(counted.items()):
+              dist = found[name]
+              required = found.get(canonicalize_name(requirement.name))
+              if required is None:
+                  unmet.append(f"{name} {dist.version} requires {requirement}; not installed")
+              elif not requirement.specifier.contains(required.version, prereleases=True):
+                  unmet.append(
+                      f"{name} {dist.version} requires {requirement}; found {required.version}"
+                  )
+          print("\n".join(unmet) or "Every installed package's requirements are met")
+          sys.exit(bool(unmet))
+          EOF
           "${overlay[@]}" python -m pymedphys dev tests -m "not slow" \
             -n 2 --dist worksteal --durations=15 \
             --junitxml="${GITHUB_WORKSPACE}/test-results/junit-dependency-floors.xml"

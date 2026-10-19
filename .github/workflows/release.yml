@@ -293,7 +293,7 @@ jobs:
         shell: bash
         env:
           OSES: ubuntu-latest windows-latest macos-latest
-          PYTHONS: 3.11 3.12 3.13 3.14
+          PYTHONS: 3.12 3.13 3.14
         run: |
           set -euo pipefail
           shopt -s nullglob

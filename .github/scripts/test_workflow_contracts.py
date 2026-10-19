@@ -343,7 +343,7 @@ class WorkflowContractTests(unittest.TestCase):
         )
         for os_name in ("ubuntu-latest", "windows-latest", "macos-latest"):
             with self.subTest(os=os_name):
-                self.assertTrue(fnmatch.fnmatchcase(f"junit-{os_name}-3.11", pattern))
+                self.assertTrue(fnmatch.fnmatchcase(f"junit-{os_name}-3.12", pattern))
         for name in (
             "junit-extra-dicom",
             "junit-dependency-floors",
