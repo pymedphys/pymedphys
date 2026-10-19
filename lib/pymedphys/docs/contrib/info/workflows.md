@@ -231,11 +231,12 @@ packages with `uv run --no-sync --with numpy==1.26.4 --with pandas==2.1.1`.
 The overlay also takes SciPy, contourpy, tifffile, and pylibjpeg-openjpeg,
 whose locked versions require NumPy 2, at their latest releases that accept
 NumPy 1.26. The job fails first if the overlay did not take effect, and then if
-any installed package's requirements are missing or not met, apart from those
-that only an extra adds; when a newly locked package requires NumPy 2, add it
-to the overlay. It uploads its JUnit
-report as `junit-dependency-floors`. A failure fails the unit-test workflow and
-therefore the required CI or release summary.
+any installed package's requirements are missing or not met, including those
+of the extras the job installs PyMedPhys with and of the extras that those
+requirements request; when a newly locked package requires NumPy 2, add it to
+the overlay. It uploads its JUnit report as `junit-dependency-floors`. A
+failure fails the unit-test workflow and therefore the required CI or release
+summary.
 
 The `pydicom-versions` job runs the de-identification tests (the
 `test_deidentify_*` modules in `tests/dicom` and `tests/dev/test_deid_tables.py`,
