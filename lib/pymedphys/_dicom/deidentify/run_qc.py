@@ -547,8 +547,9 @@ def _written_sha256(
 
     The contours' is None too where the file has contours that the pack's
     contour sheet does not show, and the pixel data's where the file has
-    pixel data of which the pack's previews do not draw every frame, as
-    they draw no RT Dose's, so that no verdict releases either unseen.
+    pixel data of which the pack's previews that could show a face do not
+    draw every frame, as none yet does an RT Dose's, so that no verdict
+    releases either unseen.
     """
     digests: dict[str, str | None] = {"pixel_sha256": None, "contour_sha256": None}
     try:

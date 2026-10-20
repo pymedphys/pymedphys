@@ -145,6 +145,7 @@ from .face_review import (
     FaceReview,
     carries_visual_features,
     contour_data_sha256,
+    is_rt_dose,
     pixel_data_sha256,
 )
 from .file_layout import ElementPath
@@ -1085,8 +1086,8 @@ class InstanceTransform:
 
         Nothing holds an instance without a face review, or one that cannot
         show a face. The review is of the source file, and of the pixel data
-        and contours that ``writing`` writes. An RT Dose with pixel data is
-        held whatever its verdict, since no preview yet shows its doses as
+        and contours that ``writing`` writes. An RT Dose with pixel data, by
+        its IOD, SOP Class UID, or Modality, is held whatever its verdict, since no preview yet shows its doses as
         they could show a face (D-017), as a QC pack records by giving it no
         pixel data digest.
         """
@@ -1101,7 +1102,7 @@ class InstanceTransform:
         )
         if (
             reason is None
-            and iod.name == RT_DOSE
+            and (iod.name == RT_DOSE or is_rt_dose(dataset))
             and any(tag in dataset for tag in PIXEL_DATA_TAGS)
         ):
             reason = VisualFeaturesReason.OTHER_PIXEL_DATA

@@ -918,10 +918,10 @@ def test_a_target_in_the_block_holds_the_head_ct(targeted):
     for name in _IN_FRAME:
         if name in _DOSE:
             assert outcomes[name] == ("held-for-review", None), name
-            assert (
+            visual = {r for r in reasons[name] if isinstance(r, HeldVisualFeatures)}
+            assert visual == {
                 HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
-                in (reasons[name])
-            )
+            }, name
             continue
         assert not any(isinstance(r, HeldVisualFeatures) for r in reasons[name])
         disposition, dataset = outcomes[name]

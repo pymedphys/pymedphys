@@ -111,7 +111,8 @@ ROI_VOXELS = 128
 ROI_MINIMUM_VOXEL = 0.5  # millimetres
 GUTTER_PIXELS = 8
 # The tallest contour sheet that is shown: an ROI's row is at most 257
-# voxels tall, so at least about 120 ROI items, and more where they are
+# voxels tall, so at least about 120 ROI items in one frame, falling to
+# about 103 in ten frames each with a guide, and more where they are
 # shorter. A taller one is not drawn or shown, so that its set is held
 # rather than shown in an image that a viewer may scale down or refuse.
 MAXIMUM_SHEET_PIXELS = 32768

@@ -24,9 +24,10 @@ and the pack records the SHA-256 of each source file of each series. A
 second run of the same files under a policy that selects the option is
 given that pack (:func:`read_face_review`). The pack also records the
 SHA-256 of the pixel data of each file that the first run wrote
-(:func:`pixel_data_sha256`), only where its previews draw every frame of
-them, which they do of no RT Dose, and the second run holds pixel data of
-more frames than they listed;
+(:func:`pixel_data_sha256`), only where previews that could show a face
+draw every frame of them, which none yet does of an RT Dose
+(:func:`is_rt_dose`), and the second run holds pixel data of more frames
+than they listed;
 and of the contours of each RT Structure Set that it wrote
 (:func:`contour_data_sha256`), only where its contour sheet shows them. An
 instance that carries visual features (:func:`carries_visual_features`)
@@ -65,6 +66,7 @@ from .qc_pack import (
     QcPackError,
     pictured_frames,
 )
+from .qc_surfaces import RT_DOSE_STORAGE
 from .reasons import VisualFeaturesReason
 
 # Float Pixel Data (7FE0,0008), Double Float Pixel Data (7FE0,0009), and
@@ -498,6 +500,27 @@ def _floats(value: object) -> list[float]:
     if isinstance(value, (list, tuple, pydicom.multival.MultiValue)):
         return [float(each) for each in value]
     return [float(value)]
+
+
+def is_rt_dose(dataset: pydicom.Dataset) -> bool:
+    """Whether an instance is an RT Dose, which no QC pack preview shows as
+    it could show a face (D-017).
+
+    Its SOP Class UID being RT Dose Storage, or its Modality being RTDOSE,
+    makes it one, so that a file of either alone is never counted as shown,
+    nor released under the option. A value that cannot be read is neither.
+    """
+    for keyword, value in (
+        ("SOPClassUID", RT_DOSE_STORAGE),
+        ("Modality", "RTDOSE"),
+    ):
+        try:
+            if str(dataset.get(keyword) or "").strip() == value:
+                return True
+        # Whatever reading the value raises, it is not the one sought.
+        except Exception:  # pylint: disable = broad-exception-caught
+            continue
+    return False
 
 
 def carries_visual_features(dataset: pydicom.Dataset, iod: str) -> bool:

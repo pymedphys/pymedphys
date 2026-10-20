@@ -198,6 +198,13 @@ def _dose_planes(count=4):
     ]
 
 
+def _relabelled(data, modality):
+    """A file with its Modality replaced."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    dataset.Modality = modality
+    return files.written(dataset)
+
+
 def test_no_rt_dose_is_shown():
     # A grid's isodose render lists every frame, and its cine strip every
     # frame of a short grid, but the render cannot show a face, and the cine
@@ -215,6 +222,13 @@ def test_no_rt_dose_is_shown():
     assert {PreviewKind.SERIES_MIP, PreviewKind.SERIES_SURFACE} <= kinds
     assert framed == {position: {0} for position in range(4)}
     assert found.pixels_shown == frozenset()
+    # Its SOP Class or its Modality alone makes a file an RT Dose: a short
+    # grid labelled CT, and a short CT instance labelled RTDOSE, which would
+    # each be shown otherwise.
+    for data in (_relabelled(_dose(12), "CT"), _relabelled(_frames(12), "RTDOSE")):
+        found, framed = _shown({0: data})
+        assert framed[0] == set(range(12))
+        assert found.pixels_shown == frozenset()
 
 
 def _thin(block=None, count=40):
@@ -414,7 +428,7 @@ def test_a_review_holds_pixel_data_with_more_frames_than_its_pack_showed():
     )
     contours = bytes.fromhex(NO_CONTOURS_SHA256)
     assert review.hold_reason(source, pixels, contours, 16) is None
-    for frames in (17, 40, None):
+    for frames in (0, 17, 40, None):
         assert (
             review.hold_reason(source, pixels, contours, frames)
             is VisualFeaturesReason.OTHER_PIXEL_DATA
@@ -541,8 +555,12 @@ def test_a_verdict_of_absent_releases_pixel_data_whose_every_frame_was_shown():
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
-def test_a_run_holds_an_rt_dose_whatever_its_review_says():
-    data = _dose(12)
+@pytest.mark.parametrize(
+    "data",
+    [_dose(12), _relabelled(_frames(12), "RTDOSE")],
+    ids=["rt-dose", "ct-labelled-rtdose"],
+)
+def test_a_run_holds_an_rt_dose_whatever_its_review_says(data):
     record = InstanceRecord.from_file(data)
     source = hashlib.sha256(data).digest()
     transform = InstanceTransform(
@@ -555,8 +573,8 @@ def test_a_run_holds_an_rt_dose_whatever_its_review_says():
     assert isinstance(unseen, Transformed)
     written = read_source(unseen.data).dataset()
     pixels = pixel_data_sha256(written)
-    # A review that binds the verdict to the grid's every frame, as no pack
-    # does, still does not release it.
+    # A review that binds the verdict to every frame, as no pack does of an
+    # RT Dose by its SOP Class or Modality, still does not release it.
     held = InstanceTransform(
         _policy(),
         KEY,
@@ -571,6 +589,7 @@ def test_a_run_holds_an_rt_dose_whatever_its_review_says():
         unvalidated_policy=True,
     )(data, record)
     assert isinstance(held, Transformed)
+    assert isinstance(held.evidence, HeldEvidence)
     assert getattr(held.evidence, "held") == (
         HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA),
     )

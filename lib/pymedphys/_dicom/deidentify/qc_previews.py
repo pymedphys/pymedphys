@@ -121,6 +121,7 @@ from pymedphys._imports import pydicom
 
 from .pixel_decoding import DECODING_PLUGINS, decoder_available
 from . import qc_contours, qc_surfaces
+from .face_review import is_rt_dose
 from .qc_pack import (
     NotPreviewedEntry,
     NotPreviewedReason,
@@ -193,8 +194,8 @@ class _Instance:
     # one byte of padding; the bytes beyond them are in no frame a preview
     # can show. Encapsulated Pixel Data are taken as whole here.
     whole: bool = True
-    # Whether it is an RT Dose, by its SOP Class UID or Modality, which no
-    # preview shows as it could show a face (D-017).
+    # Whether it is an RT Dose (face_review.is_rt_dose), which no preview
+    # shows as it could show a face (D-017).
     dose: bool = False
 
 
@@ -404,10 +405,6 @@ def _described(
         modality = str(dataset.get("Modality") or "").strip()
     except Exception:  # pylint: disable = broad-exception-caught
         modality = ""
-    try:
-        sop_class = str(dataset.get("SOPClassUID") or "")
-    except Exception:  # pylint: disable = broad-exception-caught
-        sop_class = ""
     colour = photometric in _COLOUR and samples == 3 and allocated == 8
     if not colour and not (photometric in _MONOCHROME and samples == 1):
         return NotPreviewedReason.UNSUPPORTED
@@ -440,7 +437,7 @@ def _described(
         grid=None if colour else _dose_grid(dataset, spacing, (rows, columns), frames),
         frame=_uid(dataset, "FrameOfReferenceUID"),
         whole=whole,
-        dose=sop_class == qc_surfaces.RT_DOSE_STORAGE or modality == "RTDOSE",
+        dose=is_rt_dose(dataset),
     )
 
 
