@@ -112,8 +112,10 @@ tomlkit, and other libraries, run the method but are not part of it, so the
 same inputs give the same digest in every environment. A text finder's
 regions are what the method writes, and neither ONNX Runtime nor NumPy and
 SciPy promise the same output from one version to the next, so the text
-detector's description includes their versions. The engine is to record the
-runtime's versions separately, as provenance of each run. Runtime software
+detector's description includes their versions. The engine records the
+Python implementation and version and the versions of pydicom and tomlkit
+separately, as provenance of each run; other libraries' versions reach the
+release report only within a text finder's description. Runtime software
 can affect execution, so equal digests show that these inputs are equal, not
 that two runs executed identically or wrote the same output; reproducing or
 auditing a run also needs its recorded runtime environment.

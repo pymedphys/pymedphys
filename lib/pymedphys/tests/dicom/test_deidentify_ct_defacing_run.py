@@ -18,6 +18,10 @@ Dose, and PET in the same Frame of Reference, the RT Structure Set replaced
 by one of the head, one RT Dose by a grid over the head, and the PET Image
 by two slices of the head. Every UID and value here is invented."""
 
+# The tests share one run of the analytic head and its helpers, so they stay
+# in one module.
+# pylint: disable = too-many-lines
+
 from __future__ import annotations
 
 import contextlib
