@@ -54,6 +54,7 @@ from pymedphys._dicom.deidentify.reasons import (
 from pymedphys._dicom.deidentify.redaction_review import read_redaction_review
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.release_gate import ReleaseReason
+from pymedphys._dicom.deidentify.text_detection import TextBox
 
 from . import _synthetic_head as head
 from . import _synthetic_head_dicom as files
@@ -237,6 +238,7 @@ def _runs(
     eyes_away=False,
     without_ct=False,
     accepted=False,
+    revised=None,
     dose=None,
     edges=False,
 ):
@@ -249,9 +251,11 @@ def _runs(
     face review that gives no verdicts; attest the pack with the head's
     series, and those of the RT Structure Set, RT Dose, and PET in its
     frame, marked absent, and, if ``accepted``, the regions of each of the
-    head's CT and PET slices that the pack previews accepted; and run it again under
-    the option and ``others``, given those verdicts, without the head's
-    slices if ``without_ct``."""
+    head's CT and PET slices that the pack previews accepted, or, if
+    ``revised``, those of each of its CT slices, revised with that region
+    added in their first frame; and run it again under the option and
+    ``others``, given those verdicts, without the head's slices if
+    ``without_ct``."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -337,14 +341,19 @@ def _runs(
                 for p in s["positions"]
             )
         ]
+        verdict = (
+            {"redaction": Redaction.ACCEPTED}
+            if revised is None
+            else {"redaction": Redaction.REVISED, "regions": ((0, (revised,)),)}
+        )
         redactions = (
             [
-                RedactionVerdict(position, Redaction.ACCEPTED)
+                RedactionVerdict(position, **verdict)
                 for position in previewed_redactions(reviewed.qc_pack.read_bytes())
                 if names[position].startswith("01-head")
-                or names[position] in _PET_SLICES
+                or (revised is None and names[position] in _PET_SLICES)
             ]
-            if accepted
+            if accepted or revised is not None
             else []
         )
         _attest(
@@ -358,7 +367,9 @@ def _runs(
         transform = _transform(
             others,
             read_face_review(reviewed.qc_pack.parent),
-            read_redaction_review(reviewed.qc_pack.parent) if accepted else None,
+            read_redaction_review(reviewed.qc_pack.parent)
+            if accepted or revised is not None
+            else None,
         )
         second = run.run(
             run.discover(instances),
@@ -448,6 +459,16 @@ def fixture_with_pixel_data():
 @pytest.fixture(name="accepted", scope="module")
 def fixture_accepted():
     with _runs(CLEAN_PIXEL_DATA, first=(CLEAN_PIXEL_DATA,), accepted=True) as found:
+        yield found
+
+
+# A region of the reviewer's own, within the head on each of its slices.
+_REVISED = TextBox(46, 36, 51, 45)
+
+
+@pytest.fixture(name="revised", scope="module")
+def fixture_revised():
+    with _runs(CLEAN_PIXEL_DATA, first=(CLEAN_PIXEL_DATA,), revised=_REVISED) as found:
         yield found
 
 
@@ -907,6 +928,31 @@ def test_with_both_options_reviewed_the_head_ct_is_released_with_both(accepted):
         assert len(np.unique(written[corner])) == 1, index
     assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
     assert report["redaction_review"] is not None
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01", "PS3.15-E.3.2-01")
+def test_a_revised_region_that_changes_a_defaced_slice_holds_it_for_its_face(
+    revised,
+):
+    slices, outcomes, reasons, report = revised
+    region = np.zeros(_SCAN.shape, dtype=bool)
+    region[_REVISED.top : _REVISED.bottom, _REVISED.left : _REVISED.right] = True
+
+    # The face verdict is on the pixel data that the first run wrote, without
+    # the reviewer's region. The region covers more than the fill, so the
+    # second run writes other pixel data, which the verdict does not cover:
+    # each slice is held for its face, and not for its text, which the
+    # reviewer approved.
+    for index, data in enumerate(slices):
+        name = _head_name(index)
+        before = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+        source = pydicom.pixels.pixel_array(before)
+        assert np.any(source[region] != source.min()), index
+        assert outcomes[name] == ("held-for-review", None), index
+        assert reasons[name] == {
+            HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+        }, index
+    assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")

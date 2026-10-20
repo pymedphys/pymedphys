@@ -51,10 +51,11 @@ a series given both verdicts, a verdict with an outcome of rejected, a
 redaction verdict on a position that the
 pack does not list as cleaned and previewed, an instance given more than
 one redaction verdict, a revised instance without a region, and a region
-that is empty, in a frame that the instance does not hold, or given for an
-instance not revised are each refused, and nothing is written. A region
-past the frame's rows or columns, which the pack does not record, is
-refused when the verdicts are applied.
+that is empty, in a frame that the instance does not hold, past the Rows or
+Columns that the pack records for it, or given for an instance not revised
+are each refused, and nothing is written. The run that applies the verdicts
+checks each region against its frame again, and sequesters an instance
+whose region goes past it.
 
 The release report published with the run is not changed. It records the
 outcome when the run wrote it, not attested, since no reviewer had seen the

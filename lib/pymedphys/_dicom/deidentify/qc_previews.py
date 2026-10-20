@@ -56,7 +56,12 @@ frame with such regions, also from the file as received:
   pixels, inside the region, so that the outline hides nothing next to a
   region, where text that a region only partly covered would show; the two
   images are windowed together, from the frame as received, so the fill
-  appears as it would beside the rest. Each file is decoded once, frame by
+  appears as it would beside the rest. A monochrome frame as written is
+  then shown again, after another gutter, windowed from the smallest value
+  to the largest of the frame as received, or of the frame as written where
+  it has no regions, the full range in which the text finder searches it,
+  since the percentile window shows text at or near either extreme as white
+  or black with whatever else lies there. Each file is decoded once, frame by
   frame, and each frame's image is encoded as soon as it is drawn, so only
   one frame of an instance is held decoded at a time. An instance whose
   source cannot be shown beside it, because the source cannot be read or
@@ -73,7 +78,8 @@ and how many frames its series or instance has.
 
 Monochrome pixel data are rescaled by Rescale Slope and Rescale Intercept,
 where both can be read, and windowed from the 0.5th to the 99.5th percentile
-of what the preview shows, leaving out the stored values that Pixel Padding
+of what the preview shows, other than a redaction preview's full-range
+image, leaving out the stored values that Pixel Padding
 Value and Pixel Padding Range Limit name, which are shown black; MONOCHROME1 is inverted so that higher values are darker. Colour
 pixel data with 8 bits allocated are shown as RGB: as they are, or converted
 from YBR_FULL or YBR_FULL_422 by pydicom, while JPEG 2000's YBR_ICT and
@@ -728,24 +734,43 @@ def _redaction_image(
     instance: _Instance, after: np.ndarray, before: np.ndarray | None, boxes
 ) -> np.ndarray:
     """A frame as written, in grey if monochrome, or, with regions, in
-    colour beside the frame as received, both windowed from it."""
-    if before is None:
-        if instance.colour:
+    colour beside the frame as received, both windowed from it.
+
+    A monochrome frame as written is shown again over its full range, from
+    the smallest value to the largest of the frame as received, or as
+    written where it has no regions, as the text finder searches it, so
+    that text at or near the extremes, which the percentile window shows
+    as white or black with whatever else lies there, stands apart.
+    """
+    if instance.colour:
+        if before is None:
             return after
-        return _grey(after, _window(after), instance.inverted)
-    shown = [before, after]
-    if not instance.colour:
-        window = _window(before)
-        shown = [
-            np.repeat(
-                _grey(image, window, instance.inverted)[..., np.newaxis], 3, axis=2
-            )
+        return _beside([_outlined(image, boxes) for image in (before, after)])
+    reference = after if before is None else before
+    windows = (_window(reference), _full_range(reference))
+    shown = [_grey(after, window, instance.inverted) for window in windows]
+    if before is None:
+        return _beside(shown)
+    shown.insert(0, _grey(before, windows[0], instance.inverted))
+    return _beside(
+        [
+            _outlined(np.repeat(image[..., np.newaxis], 3, axis=2), boxes)
             for image in shown
         ]
-    shown = [_outlined(image, boxes) for image in shown]
-    gutter = np.empty((shown[0].shape[0], _GUTTER_PIXELS, 3), np.uint8)
-    gutter[...] = _GUTTER
-    return np.hstack([shown[0], gutter, shown[1]])
+    )
+
+
+def _beside(images: list[np.ndarray]) -> np.ndarray:
+    """Lay images of one shape out from left to right, with a grey gutter
+    between each and the next."""
+    gutter = np.empty(
+        (images[0].shape[0], _GUTTER_PIXELS, *images[0].shape[2:]), np.uint8
+    )
+    gutter[...] = _GUTTER if images[0].ndim == 3 else _GUTTER[0]
+    laid: list[np.ndarray] = []
+    for image in images:
+        laid.extend([gutter, image] if laid else [image])
+    return np.hstack(laid)
 
 
 def _outlined(image: np.ndarray, boxes) -> np.ndarray:
@@ -817,6 +842,16 @@ def _window(values: np.ndarray) -> tuple[float, float]:
     low, high = (float(value) for value in np.percentile(finite, _PERCENTILES))
     # A uniform image is shown mid-grey, so that it stands out from the
     # black around the tiles.
+    return (low, high) if high > low else (low - 0.5, low + 0.5)
+
+
+def _full_range(values: np.ndarray) -> tuple[float, float]:
+    """The window from the smallest value to the largest, under which no
+    value is clipped."""
+    finite = values[np.isfinite(values)]
+    if finite.size == 0:
+        return -0.5, 0.5
+    low, high = float(finite.min()), float(finite.max())
     return (low, high) if high > low else (low - 0.5, low + 0.5)
 
 
