@@ -35,21 +35,23 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
   row of :data:`GUTTER_PIXELS` for an item without contours.
 
 Each region is sampled to cubic voxels over the extent of what it draws,
-with a voxel more on each side across and below, so that its edge and its
-lowest point are drawn. A frame's united region has voxels of
+with a voxel more on each side across, and up to a voxel more below, so
+that its edge and its lowest point are drawn. A frame's united region has voxels of
 :data:`~.qc_surfaces.MINIMUM_VOXEL` millimetres, enlarged where needed to
 keep each axis within :data:`~.qc_surfaces.MAXIMUM_VOXELS` voxels, as
 :mod:`~.qc_surfaces` samples a volume. An ROI alone has the finer of the
 voxels that a united region of its own extent would have and those that
 keep its extent within :data:`ROI_VOXELS`, but none finer than
 :data:`ROI_MINIMUM_VOXEL`, so that a small ROI is seen in detail, and an
-ROI far from another no coarser than if it were alone. Each slice of voxels is the region of the contours' plane that
-covers it: each plane of an ROI, the mean height of its closed contours
-that lie within :data:`COPLANAR` millimetres of one another in height,
-covers half the distance to the ROI's next plane above and below it, or
-half the median distance between its planes, or half a voxel where that is
-more, where the next is farther than twice that median or there is none. A
-slice of voxels that none of an ROI's planes covers holds none of it. In a
+ROI far from another no coarser than if it were alone. Each slice of
+voxels is the region of the contours' plane that covers it: each plane of
+an ROI, the mean height of its closed contours that lie within
+:data:`COPLANAR` millimetres of one another in height, covers half the
+distance to the ROI's next plane above and below it, or half the median
+distance between its planes, or half a voxel where that is more, where
+the next is farther than twice that median or there is none. A slice of
+voxels that none of an ROI's planes covers holds none of its region, but
+may hold a mark, below, of a contour within half a voxel of it. In a
 plane, an ROI's region is the even-odd fill
 (:func:`~pymedphys._geometry.rasters.even_odd`) of its closed contours there,
 so that a contour within another is a hole, whether the contours are
@@ -107,6 +109,10 @@ LONGEST = 2000.0
 ROI_VOXELS = 128
 ROI_MINIMUM_VOXEL = 0.5  # millimetres
 GUTTER_PIXELS = 8
+# The tallest contour sheet that is shown, about 390 ROI items; a taller one
+# is not shown, so that its set is held rather than shown in an image that a
+# viewer may scale down or refuse.
+MAXIMUM_SHEET_PIXELS = 32768
 
 # As a redaction preview's outline and gutter.
 _OUTLINE = (255, 0, 255)
@@ -165,10 +171,17 @@ class RoiContours:
         ]
         for line in [*self.lines, *(np.vstack([ring, ring[:1]]) for ring in rings)]:
             sampled.append(line[-1:])
-            for start, end in zip(line[:-1], line[1:]):
-                count = max(1, math.ceil(float(np.linalg.norm(end - start)) / step))
-                fractions = np.arange(count)[:, np.newaxis] / count
-                sampled.append(start + fractions * (end - start))
+            starts, steps = line[:-1], np.diff(line, axis=0)
+            counts = np.maximum(
+                1, np.ceil(np.linalg.norm(steps, axis=1) / step).astype(np.intp)
+            )
+            # Each segment's points from its start, at fractions of it.
+            segment = np.repeat(np.arange(len(starts)), counts)
+            first = np.cumsum(counts) - counts
+            fractions = (np.arange(int(counts.sum())) - first[segment]) / counts[
+                segment
+            ]
+            sampled.append(starts[segment] + fractions[:, np.newaxis] * steps[segment])
         return np.concatenate(sampled)
 
     def __repr__(self) -> str:

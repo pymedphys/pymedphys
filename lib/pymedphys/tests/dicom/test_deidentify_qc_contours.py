@@ -347,7 +347,7 @@ def test_every_point_of_an_roi_is_drawn_in_its_own_row(seed):
 
 
 def test_the_lowest_of_many_planes_and_an_open_contour_s_lower_end_are_drawn():
-    rings = _roi(*[_closed(files.circle((0, 0, 2.5 * k), 30.0)) for k in range(100)])
+    rings = _roi(*[_closed(files.circle((0, 0, 2.5 * k), 30.0)) for k in range(104)])
     grid, _ = _own_mask(rings)
     planes = qc_contours._planes(rings)
     covered = qc_contours._covering(planes, grid.zs, grid.voxel)
@@ -364,8 +364,10 @@ def test_the_lowest_of_many_planes_and_an_open_contour_s_lower_end_are_drawn():
             [[0.0, 0.0, 0.0], [40.0, 0.0, 0.0], [0.0, 0.0, 0.0], [40.0, 0.0, 0.0]]
         ),
         np.column_stack([np.linspace(-30, 30, 24), np.zeros(24), np.zeros(24)]),
+        # A square traversed twice, which the even-odd rule leaves empty.
+        np.vstack([files.square((0.0, 0.0, 0.0), 15.0)] * 2),
     ],
-    ids=["out-and-back", "collinear"],
+    ids=["out-and-back", "collinear", "doubled"],
 )
 def test_a_closed_contour_that_bounds_no_area_is_drawn_as_its_line(ring):
     grid, inside = _own_mask(_roi(_closed(ring)))
@@ -515,6 +517,19 @@ def test_every_structure_set_with_contours_is_previewed_whatever_its_risk():
     found = qc_previews.previews_of({3: written}, set())
     assert [p.kind for p in found.previews] == [PreviewKind.STRUCTURE_SET_CONTOURS]
     assert found.contours_shown == {3}
+
+
+def test_a_sheet_taller_than_any_shown_is_not_shown(monkeypatch):
+    written = _structure_set([[_closed(files.circle((0, 0, 0), 9.0))]] * 3)
+    (sheet,) = qc_previews.previews_of({3: written}, {3}).previews
+    height = int.from_bytes(sheet.png[20:24], "big")
+    monkeypatch.setattr(qc_contours, "MAXIMUM_SHEET_PIXELS", height - 1)
+    found = qc_previews.previews_of({3: written}, {3})
+    assert not found.previews
+    assert found.contours_shown == frozenset()
+    assert found.not_previewed == (
+        NotPreviewedEntry(3, NotPreviewedReason.CONTOURS_NOT_SHOWN),
+    )
 
 
 def test_contours_that_a_sheet_does_not_draw_are_not_shown():
