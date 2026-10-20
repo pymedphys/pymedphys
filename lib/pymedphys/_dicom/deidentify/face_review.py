@@ -24,9 +24,10 @@ and the pack records the SHA-256 of each source file of each series. A
 second run of the same files under a policy that selects the option is
 given that pack (:func:`read_face_review`). The pack also records the
 SHA-256 of the pixel data of each file that the first run wrote
-(:func:`pixel_data_sha256`), which its previews show, and of the contours of
-each RT Structure Set that it wrote (:func:`contour_data_sha256`), only
-where its contour sheet shows them. An
+(:func:`pixel_data_sha256`), only where its previews show every frame of
+them, and the second run holds pixel data of more frames than they listed;
+and of the contours of each RT Structure Set that it wrote
+(:func:`contour_data_sha256`), only where its contour sheet shows them. An
 instance that carries visual features (:func:`carries_visual_features`)
 satisfies the option only where the SHA-256 of its source file is that of
 an instance of a series marked absent, and the pixel data and contours that
@@ -61,6 +62,7 @@ from .qc_pack import (
     NotPreviewedReason,
     PreviewKind,
     QcPackError,
+    pictured_frames,
 )
 from .reasons import VisualFeaturesReason
 
@@ -70,6 +72,7 @@ PIXEL_DATA_TAGS = (0x7FE00008, 0x7FE00009, 0x7FE00010)
 # The IOD whose contours can trace a face, although it has no pixel data.
 _RT_STRUCTURE_SET = "RT Structure Set"
 _SHA256 = re.compile(r"[0-9a-f]{64}")
+_NO_PIXELS = bytes.fromhex(NO_PIXELS_SHA256)
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -100,6 +103,11 @@ class FaceReview:
     absent_contours : frozenset of (bytes, bytes)
         Likewise, with the :func:`contour_data_sha256` of that file's
         contours.
+    absent_frames : frozenset of (bytes, bytes, int), optional
+        For each pair in ``absent_pixels`` other than of no pixel data, how
+        many frames, from the first, the pack's previews showed of it; an
+        instance with more is held. :func:`read_face_review` always gives
+        it; None, the default, bounds no instance's frames.
     """
 
     reference: str
@@ -107,6 +115,7 @@ class FaceReview:
     present: frozenset[bytes]
     absent_pixels: frozenset[tuple[bytes, bytes]] = frozenset()
     absent_contours: frozenset[tuple[bytes, bytes]] = frozenset()
+    absent_frames: frozenset[tuple[bytes, bytes, int]] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not re.fullmatch(
@@ -130,6 +139,21 @@ class FaceReview:
                     "a face review's pixel data and contours are SHA-256 "
                     "digests of files marked absent"
                 )
+        if self.absent_frames is not None and (
+            not isinstance(self.absent_frames, frozenset)
+            or not all(
+                isinstance(each, tuple)
+                and len(each) == 3
+                and each[:2] in self.absent_pixels
+                and isinstance(each[2], int)
+                and not isinstance(each[2], bool)
+                and each[2] >= 1
+                for each in self.absent_frames
+            )
+        ):
+            raise QcPackError(
+                "a face review's frames shown are counts of pixel data marked absent"
+            )
 
     def __repr__(self) -> str:
         return (
@@ -138,7 +162,11 @@ class FaceReview:
         )
 
     def hold_reason(
-        self, digest: bytes, pixels: bytes | None, contours: bytes | None
+        self,
+        digest: bytes,
+        pixels: bytes | None,
+        contours: bytes | None,
+        frames: int | None = None,
     ) -> VisualFeaturesReason | None:
         """Return why an instance cannot claim the option.
 
@@ -152,6 +180,11 @@ class FaceReview:
         contours : bytes or None
             The :func:`contour_data_sha256` of the contours that the run
             writes of it, or None where that cannot be found.
+        frames : int, optional
+            How many frames the pixel data that the run writes have, or None
+            where that cannot be found. Where ``absent_frames`` is given,
+            pixel data other than none are held unless the pack showed at
+            least this many of their frames.
 
         Returns
         -------
@@ -159,13 +192,25 @@ class FaceReview:
             None where the reviewer marked its series absent, and not also a
             series with the same file present, which a pack never holds, and
             the run writes the pixel data and contours that the reviewed run
-            wrote of it.
+            wrote of it, and the pack showed every frame of those pixel data.
         """
         if digest in self.present:
             return VisualFeaturesReason.FACE_PRESENT
         if digest not in self.absent:
             return VisualFeaturesReason.NO_FACE_VERDICT
         if (digest, pixels) not in self.absent_pixels:
+            return VisualFeaturesReason.OTHER_PIXEL_DATA
+        # Pixel data with more frames than the pack showed were not all seen.
+        if (
+            self.absent_frames is not None
+            and pixels != _NO_PIXELS
+            and not any(
+                (source, written) == (digest, pixels)
+                and frames is not None
+                and frames <= shown
+                for source, written, shown in self.absent_frames
+            )
+        ):
             return VisualFeaturesReason.OTHER_PIXEL_DATA
         if (digest, contours) not in self.absent_contours:
             return VisualFeaturesReason.OTHER_CONTOURS
@@ -223,24 +268,30 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
     absent = {each for each in by_face[Face.ABSENT] if not each[3]}
     return FaceReview(
         attestation.reference,
-        frozenset(source for source, _, _, _ in absent),
-        frozenset(source for source, _, _, _ in by_face[Face.PRESENT]),
+        frozenset(each[0] for each in absent),
+        frozenset(each[0] for each in by_face[Face.PRESENT]),
         frozenset(
-            (source, pixels) for source, pixels, _, _ in absent if pixels is not None
+            (source, pixels) for source, pixels, *_ in absent if pixels is not None
         ),
         frozenset(
             (source, contours)
-            for source, _, contours, _ in absent
+            for source, _, contours, *_ in absent
             if contours is not None
+        ),
+        frozenset(
+            (source, pixels, shown)
+            for source, pixels, _, _, shown in absent
+            if pixels is not None and shown is not None
         ),
     )
 
 
 # A source file's SHA-256, those of the pixel data and the contours written
-# of it, if any, and whether a verdict of absent leaves it out: where the run
+# of it, if any, whether a verdict of absent leaves it out: where the run
 # held it beside a CT series that it defaced, as received, or the pack could
-# not show its contours.
-_File = tuple[bytes, bytes | None, bytes | None, bool]
+# not show its contours; and how many frames of pixel data other than none
+# its previews showed, from the first, where it has their digest.
+_File = tuple[bytes, bytes | None, bytes | None, bool, int | None]
 # Those holds' reasons as the QC pack words them, which run_qc.reason_text
 # gives.
 UNDEFACED_TEXT = (
@@ -283,9 +334,12 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
             # contour sheet showed.
             if contours not in (None, NO_CONTOURS_SHA256) and position not in shown:
                 raise malformed
-            # Likewise, pixel data's binds it only to pixel data previewed.
-            if pixels not in (None, NO_PIXELS_SHA256) and position not in pictured:
-                raise malformed
+            # Likewise, pixel data's binds it only to the frames previewed.
+            frames = None
+            if pixels not in (None, NO_PIXELS_SHA256):
+                if position not in pictured:
+                    raise malformed
+                frames = pictured[position]
             digests[position] = (
                 bytes.fromhex(digest),
                 None if pixels is None else bytes.fromhex(pixels),
@@ -293,6 +347,7 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
                 UNDEFACED_TEXT in reasons
                 or DOSE_IN_FACE_BLOCK_TEXT in reasons
                 or position in unshown,
+                frames,
             )
     files: dict[int, frozenset[_File]] = {}
     for entry in series:
@@ -305,20 +360,25 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
     return files
 
 
-def _previews(document: dict) -> tuple[set[int], set[int], set[int]]:
+def _previews(document: dict) -> tuple[set[int], set[int], dict[int, int]]:
     """The run positions whose contours a pack's contour sheet shows, those
-    that it lists as not shown, and those that another preview shows and
-    that it does not list as not previewed."""
+    that it lists as not shown, and how many frames of each other position
+    its other previews show, as :func:`~.qc_pack.pictured_frames` counts
+    them."""
     malformed = QcPackError("the QC pack is not of its format")
     previews, missing = document.get("previews"), document.get("not_previewed")
     if not isinstance(previews, list) or not isinstance(missing, list):
         raise malformed
-    shown, unshown, pictured = set(), set(), set()
+    shown, unshown, framed = set(), set(), []
     for preview in previews:
         if not isinstance(preview, dict) or not isinstance(preview.get("frames"), list):
             raise malformed
         if not all(
-            isinstance(frame, dict) and isinstance(frame.get("position"), int)
+            isinstance(frame, dict)
+            and all(
+                isinstance(frame.get(key), int) and not isinstance(frame[key], bool)
+                for key in ("position", "frame")
+            )
             for frame in preview["frames"]
         ):
             raise malformed
@@ -326,14 +386,21 @@ def _previews(document: dict) -> tuple[set[int], set[int], set[int]]:
             if not preview["frames"]:
                 raise malformed
             shown.add(preview["frames"][0]["position"])
-        else:
-            pictured.update(frame["position"] for frame in preview["frames"])
+        framed.append(
+            (
+                preview.get("kind"),
+                [(frame["position"], frame["frame"]) for frame in preview["frames"]],
+            )
+        )
     for entry in missing:
         if not isinstance(entry, dict):
             raise malformed
-        pictured.discard(entry.get("position"))
         if entry.get("reason") == NotPreviewedReason.CONTOURS_NOT_SHOWN.value:
             unshown.add(entry.get("position"))
+    pictured = pictured_frames(
+        framed,
+        {entry.get("position") for entry in missing},
+    )
     return shown, unshown, pictured
 
 

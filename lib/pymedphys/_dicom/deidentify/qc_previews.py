@@ -125,6 +125,7 @@ from .qc_pack import (
     Preview,
     PreviewKind,
     RedactionEntry,
+    pictured_frames,
 )
 from .uids import normalise_uid
 
@@ -186,6 +187,10 @@ class _Instance:
     modality: str
     grid: qc_surfaces.Grid | None  # an RT Dose grid that a surface render shows
     frame: str | None  # Frame of Reference UID
+    # Whether its native Pixel Data hold no more than its frames, with at most
+    # one byte of padding; the bytes beyond them are in no frame a preview
+    # can show. Encapsulated Pixel Data are taken as whole here.
+    whole: bool = True
 
 
 @dataclasses.dataclass(frozen=True)
@@ -211,9 +216,10 @@ class PreviewSet:
         shows.
     pixels_shown : frozenset of int
         The run positions of the files with pixel data every frame of which
-        a preview other than a contour sheet shows, as a volume's projection
-        and surface render show each of its slices, and that are not listed
-        as not previewed.
+        a preview other than a contour sheet lists, and that are not listed
+        as not previewed, and whose native Pixel Data hold no more than
+        their frames. A volume's projection and surface render list each of
+        its slices, which they sample.
     """
 
     previews: tuple[Preview, ...]
@@ -281,13 +287,11 @@ def previews_of(
         if instance.position in redactions:
             source, entry = redactions[instance.position]
             images.extend(_redaction_images(instance, source, entry, decoded))
-    # A frame that only a contour sheet lists is the volume it is drawn
-    # with, which the sheet shows only as a surface.
-    framed: dict[int, set[int]] = {}
-    for kind, frames, _, _ in images:
-        if kind is not PreviewKind.STRUCTURE_SET_CONTOURS:
-            for position, frame in frames:
-                framed.setdefault(position, set()).add(frame)
+    # Every frame of an instance must be among those of previews other than
+    # contour sheets.
+    pictured = pictured_frames(
+        ((kind.value, frames) for kind, frames, _, _ in images), refused
+    )
     width = max(4, len(str(len(images))))
     previews = tuple(
         Preview(f"P-{number:0{width}d}.png", kind, frames, total, encoded)
@@ -303,8 +307,7 @@ def previews_of(
         frozenset(
             instance.position
             for instance in instances
-            if instance.position not in refused
-            and framed.get(instance.position, set()) >= set(range(instance.frames))
+            if instance.whole and pictured.get(instance.position) == instance.frames
         ),
     )
 
@@ -389,6 +392,13 @@ def _described(
         return NotPreviewedReason.UNREADABLE
     spacing = _spacing(dataset)
     uid = dataset.get("SeriesInstanceUID")
+    whole = True
+    if not plugin:
+        try:
+            expected = pydicom.pixels.utils.get_expected_length(dataset, "bytes")
+            whole = len(dataset.PixelData) <= expected + 1
+        except Exception:  # pylint: disable = broad-exception-caught
+            whole = False
     return _Instance(
         position=position,
         data=data,
@@ -406,6 +416,7 @@ def _described(
         modality=modality,
         grid=None if colour else _dose_grid(dataset, spacing, (rows, columns), frames),
         frame=_uid(dataset, "FrameOfReferenceUID"),
+        whole=whole,
     )
 
 

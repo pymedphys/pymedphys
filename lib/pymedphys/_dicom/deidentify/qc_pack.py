@@ -110,7 +110,7 @@ import hashlib
 import json
 import re
 import secrets
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from pathlib import PurePosixPath
 
 from . import pixel_risk, residuals, roi_names
@@ -1412,15 +1412,16 @@ class QcPack:
 
     def _check_pixel_previews(self) -> None:
         """An instance's pixel data's SHA-256, other than that of none, is
-        recorded only where a preview other than a contour sheet shows it
-        and it is not listed as not previewed, so that no verdict releases
-        pixel data that no one saw."""
-        pictured = {
-            position
-            for preview in self.previews
-            if preview.kind is not PreviewKind.STRUCTURE_SET_CONTOURS
-            for position, _ in preview.frames
-        } - {entry.position for entry in self.not_previewed}
+        recorded only where previews other than contour sheets show its
+        frames from the first, with none missing, and it is not listed as not
+        previewed, so that no verdict releases pixel data that no one saw.
+        The pack does not record how many frames an instance has, so a run
+        under the option holds one with more than its previews list
+        (:meth:`~.face_review.FaceReview.hold_reason`)."""
+        pictured = pictured_frames(
+            ((preview.kind.value, preview.frames) for preview in self.previews),
+            {entry.position for entry in self.not_previewed},
+        )
         if any(
             entry.pixel_sha256 not in (None, NO_PIXELS_SHA256)
             and entry.position not in pictured
@@ -1525,6 +1526,43 @@ class QcPack:
             f"not_previewed={len(self.not_previewed)}, "
             f"source_gaps={len(self.source_gaps)}, series={len(self.series)})"
         )
+
+
+def pictured_frames(
+    previews: Iterable[tuple[str, Iterable[tuple[int, int]]]],
+    not_previewed: Collection[int],
+) -> dict[int, int]:
+    """Return how many frames of each run position a pack's previews show,
+    from its first frame with none missing.
+
+    Parameters
+    ----------
+    previews : iterable of (str, iterable of (int, int))
+        Each preview's kind, as a :class:`PreviewKind` value, and the
+        frames it lists, by run position and frame index.
+    not_previewed : collection of int
+        The run positions listed as not previewed, which are left out.
+
+    Returns
+    -------
+    dict of int to int
+        For each position whose frames those previews list from frame 0
+        with none missing, how many they list. A contour sheet's frames do
+        not count, since it shows the volume that it is drawn with only as a
+        surface.
+    """
+    contours = PreviewKind.STRUCTURE_SET_CONTOURS.value
+    framed: dict[int, set[int]] = {}
+    for kind, frames in previews:
+        if kind == contours:
+            continue
+        for position, frame in frames:
+            framed.setdefault(position, set()).add(frame)
+    return {
+        position: len(frames)
+        for position, frames in framed.items()
+        if position not in not_previewed and frames == set(range(len(frames)))
+    }
 
 
 def _check_position(what: str, position: object) -> None:
