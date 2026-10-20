@@ -1087,9 +1087,9 @@ class InstanceTransform:
         Nothing holds an instance without a face review, or one that cannot
         show a face. The review is of the source file, and of the pixel data
         and contours that ``writing`` writes. An RT Dose with pixel data, by
-        its IOD, SOP Class UID, or Modality, is held whatever its verdict, since no preview yet shows its doses as
-        they could show a face (D-017), as a QC pack records by giving it no
-        pixel data digest.
+        its IOD, SOP Class UID, or Modality, is held whatever its verdict,
+        since no preview yet shows its doses as they could show a face
+        (D-017), as a QC pack records by giving it no pixel data digest.
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):

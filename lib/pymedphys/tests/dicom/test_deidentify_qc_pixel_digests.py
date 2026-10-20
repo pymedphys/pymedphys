@@ -205,6 +205,47 @@ def _relabelled(data, modality):
     return files.written(dataset)
 
 
+class _Unreadable(pydicom.Dataset):
+    """A data set whose Modality cannot be read."""
+
+    def get(self, key, default=None):
+        if key == "Modality":
+            raise ValueError("unreadable")
+        return super().get(key, default)
+
+
+def test_an_rt_dose_is_known_by_its_class_or_a_modality_that_may_be_rtdose():
+    def instance(modality=None, sop_class=files.CT_IMAGE_STORAGE, kind=pydicom.Dataset):
+        dataset = kind()
+        dataset.SOPClassUID = sop_class
+        if modality is not None:
+            dataset.Modality = modality
+        return dataset
+
+    assert face_review.is_rt_dose(instance(sop_class=files.RT_DOSE_STORAGE))
+    assert face_review.is_rt_dose(instance("CT", files.RT_DOSE_STORAGE))
+    # Any spelling that may be RTDOSE: another case, several values, a
+    # character outside printable ASCII, padding aside, or none readable.
+    for modality in (
+        "RTDOSE",
+        "rtdose",
+        "RtDose ",
+        ["RTDOSE", "CT"],
+        ["CT", "RTDOSE"],
+        "RTDOS\u00c9",
+        "\uff32\uff34\uff24\uff2f\uff33\uff25",
+        "\0RTDOSE",
+        "RT\x01DOSE",
+        "CT\u00e9",
+    ):
+        assert face_review.is_rt_dose(instance(modality)), modality
+    assert face_review.is_rt_dose(instance("CT", kind=_Unreadable))
+    # A missing or empty Modality says nothing about dose, and another
+    # modality, padded or not, is not RTDOSE.
+    for modality in (None, "", "CT", "CT ", "RTPLAN", "RTDOSE2"):
+        assert not face_review.is_rt_dose(instance(modality)), modality
+
+
 def test_no_rt_dose_is_shown():
     # A grid's isodose render lists every frame, and its cine strip every
     # frame of a short grid, but the render cannot show a face, and the cine
@@ -557,8 +598,14 @@ def test_a_verdict_of_absent_releases_pixel_data_whose_every_frame_was_shown():
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
 @pytest.mark.parametrize(
     "data",
-    [_dose(12), _relabelled(_frames(12), "RTDOSE")],
-    ids=["rt-dose", "ct-labelled-rtdose"],
+    [
+        _dose(12),
+        _relabelled(_frames(12), "RTDOSE"),
+        _relabelled(_frames(12), "rtdose"),
+        _relabelled(_frames(12), ["RTDOSE", "CT"]),
+        _relabelled(_frames(12), "\0RTDOSE"),
+    ],
+    ids=["rt-dose", "ct-rtdose", "ct-lower-case", "ct-two-values", "ct-nul"],
 )
 def test_a_run_holds_an_rt_dose_whatever_its_review_says(data):
     record = InstanceRecord.from_file(data)

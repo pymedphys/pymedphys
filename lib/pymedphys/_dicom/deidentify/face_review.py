@@ -506,23 +506,51 @@ def is_rt_dose(dataset: pydicom.Dataset) -> bool:
     """Whether an instance is an RT Dose, which no QC pack preview shows as
     it could show a face (D-017).
 
-    Its SOP Class UID being RT Dose Storage, or its Modality being RTDOSE,
-    makes it one, so that a file of either alone is never counted as shown,
-    nor released under the option. A value that cannot be read is neither.
+    Its SOP Class UID being RT Dose Storage, or its Modality possibly being
+    RTDOSE (:func:`_dose_modality`), makes it one, so that a file of either
+    alone is never counted as shown, nor released under the option. A SOP
+    Class UID that cannot be read leaves the Modality to decide.
     """
-    return (
-        _text(dataset, "SOPClassUID") == RT_DOSE_STORAGE
-        or _text(dataset, "Modality") == "RTDOSE"
-    )
+    return _sop_class(dataset) == RT_DOSE_STORAGE or _dose_modality(dataset)
 
 
-def _text(dataset: pydicom.Dataset, keyword: str) -> str:
-    """An attribute's value as stripped text, or "" where it cannot be read."""
+def _sop_class(dataset: pydicom.Dataset) -> str:
+    """The SOP Class UID as stripped text, or "" where it cannot be read."""
     try:
-        return str(dataset.get(keyword) or "").strip()
-    # Whatever reading the value raises, it is not a value sought.
+        return str(dataset.get("SOPClassUID") or "").strip()
+    # Whatever reading the value raises, it names no class.
     except Exception:  # pylint: disable = broad-exception-caught
         return ""
+
+
+def _dose_modality(dataset: pydicom.Dataset) -> bool:
+    """Whether the Modality may be RTDOSE.
+
+    It may where it cannot be read, is not text, holds more than one value,
+    holds a character outside printable ASCII once its padding is gone, such
+    as a control character, a letter outside ASCII, or a fullwidth form, or
+    is RTDOSE in any case, since text that may be RTDOSE in another spelling
+    cannot rule it out, as :mod:`~pymedphys._dicom.deidentify.face_blocks`
+    compares Patient IDs. A missing or empty Modality says nothing about
+    dose, so it is not.
+    """
+    try:
+        value = dataset.get("Modality")
+        if value is None:
+            return False
+        if isinstance(value, (list, tuple, pydicom.multival.MultiValue)):
+            if len(value) > 1:
+                return True
+            value = value[0] if value else ""
+        if not isinstance(value, str):
+            return True
+        text = value.rstrip(" \0").lstrip(" ")
+    # Whatever reading the value raises, it may be RTDOSE.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return True
+    if not (text.isascii() and text.isprintable()) or "\\" in text:
+        return True
+    return text.casefold() == "rtdose"
 
 
 def carries_visual_features(dataset: pydicom.Dataset, iod: str) -> bool:
