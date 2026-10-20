@@ -304,14 +304,74 @@ def test_points_and_open_contours_are_drawn_as_marks():
     assert inside.sum() == 1 + 21
 
 
-def test_an_roi_alone_is_sampled_finer_than_the_union_and_never_coarser():
-    small = _roi(*[_closed(files.circle((0, 0, z), 10.0)) for z in (0.0, 3.0)])
+def test_an_roi_alone_is_sampled_finely_and_as_if_it_were_alone():
     # 20 mm across in at most ROI_VOXELS voxels, but none under 0.5 mm.
-    alone = qc_contours._grid([small], qc_contours.ROI_VOXELS, 0.5, coarsest=2.0)
-    assert alone.voxel == pytest.approx(0.5)
-    large = _roi(*[_closed(files.circle((0, 0, z), 200.0)) for z in (0.0, 3.0)])
-    bounded = qc_contours._grid([large], qc_contours.ROI_VOXELS, 0.5, coarsest=2.0)
-    assert bounded.voxel == pytest.approx(2.0)
+    assert qc_contours._roi_voxel(20.0) == pytest.approx(0.5)
+    # A large ROI is sampled no coarser than a volume of its extent is.
+    assert qc_contours._roi_voxel(300.0) == pytest.approx(2.0)
+    assert qc_contours._roi_voxel(600.0) == pytest.approx(
+        qc_contours._united_voxel(600.0)
+    )
+    # A marker far from the outline coarsens the united row, not the
+    # outline's own row.
+    body = [_closed(files.ellipse((0, 0, z), (150, 120))) for z in range(-90, 91, 3)]
+    far = [("POINT", np.array([[0.0, 900.0, 0.0]]))]
+    alone = _sheet_rows(
+        qc_contours.contour_sheet(
+            qc_contours.contours_of(_read(_structure_set([body])))
+        )
+    )
+    both = _sheet_rows(
+        qc_contours.contour_sheet(
+            qc_contours.contours_of(_read(_structure_set([body, far])))
+        )
+    )
+    # Each row is padded with black to the sheet's width.
+    width = min(both[1].shape[1], alone[1].shape[1])
+    assert (both[1][:, :width] == alone[1][:, :width]).all()
+    assert not both[1][:, width:].any() and not alone[1][:, width:].any()
+    assert both[0].shape != alone[0].shape or (both[0] != alone[0]).any()
+
+
+def _own_mask(roi):
+    grid = qc_contours._grid([roi], qc_contours._roi_voxel)
+    return grid, qc_contours._mask([roi], grid, [qc_contours._planes(roi)])
+
+
+@pytest.mark.parametrize("seed", range(20))
+def test_every_point_of_an_roi_is_drawn_in_its_own_row(seed):
+    generator = np.random.default_rng(seed)
+    points = generator.uniform(-75, 75, (generator.integers(2, 5), 3))
+    _, inside = _own_mask(_roi(*[("POINT", point[np.newaxis]) for point in points]))
+    assert inside.sum() == len(points)
+
+
+def test_the_lowest_of_many_planes_and_an_open_contour_s_lower_end_are_drawn():
+    rings = _roi(*[_closed(files.circle((0, 0, 2.5 * k), 30.0)) for k in range(100)])
+    grid, _ = _own_mask(rings)
+    planes = qc_contours._planes(rings)
+    covered = qc_contours._covering(planes, grid.zs, grid.voxel)
+    assert set(covered[covered >= 0]) == set(range(len(planes)))
+    line = np.array([[0.0, 0.0, 0.0], [10.0, 0.0, 37.3]])
+    grid, inside = _own_mask(_roi(("OPEN_NONPLANAR", line)))
+    assert inside[-1].any() and grid.zs[-1] <= 0.0
+
+
+@pytest.mark.parametrize(
+    "ring",
+    [
+        np.array(
+            [[0.0, 0.0, 0.0], [40.0, 0.0, 0.0], [0.0, 0.0, 0.0], [40.0, 0.0, 0.0]]
+        ),
+        np.column_stack([np.linspace(-30, 30, 24), np.zeros(24), np.zeros(24)]),
+    ],
+    ids=["out-and-back", "collinear"],
+)
+def test_a_closed_contour_that_bounds_no_area_is_drawn_as_its_line(ring):
+    grid, inside = _own_mask(_roi(_closed(ring)))
+    # Every voxel along its length, at most a voxel apart.
+    length = float(np.ptp(ring[:, 0]))
+    assert inside.sum() >= length / grid.voxel
 
 
 def _sheet_rows(sheet):
