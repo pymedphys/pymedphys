@@ -116,6 +116,41 @@ def test_a_polygon_within_chosen_pixels_alone_is_one_ring_as_it_was():
     assert sorted(map(tuple, joined)) == sorted(map(tuple, ring[:, :2]))
 
 
+def test_a_vertex_on_a_pixel_corner_leaves_no_piece_without_area():
+    grid = pixel_grids.PixelGrid((-8.0, -9.0, 4.0), _AXIAL, (1.0, 1.0))
+    chosen = np.zeros((30, 30), dtype=bool)
+    chosen[16, 16] = True
+    ring = np.array([(9.5, 3.5, 4), (5.5, 9.5, 4), (6.5, 0.5, 4)], float)
+
+    pieces = pixel_grids.within_pixels(ring, grid, chosen)
+
+    assert all(abs(polygons.signed_area(piece)) > 1e-9 for piece in pieces)
+    samples = np.column_stack(
+        [
+            np.linspace(7.55, 8.45, 10).repeat(10),
+            np.tile(np.linspace(6.55, 7.45, 10), 10),
+        ]
+    )
+    samples = np.column_stack([samples, np.full(len(samples), 4.0)])
+    assert np.array_equal(
+        even_odd(pieces, samples),
+        even_odd([ring], samples) & _nearest_chosen(grid, chosen, samples),
+    )
+
+
+@pytest.mark.parametrize(
+    "chosen",
+    [np.array([[0, 2]]), np.array([[0.0, 0.5]])],
+    ids=["integers", "floats"],
+)
+def test_chosen_pixels_must_be_bool(chosen):
+    grid = pixel_grids.PixelGrid((0.0, 0.0, 0.0), _AXIAL, (1.0, 1.0))
+    ring = np.array([(0, 0, 0), (1, 0, 0), (0.5, 0.5, 0)], float)
+
+    with pytest.raises(TypeError, match="bool"):
+        pixel_grids.within_pixels(ring, grid, chosen)
+
+
 def test_a_polygon_beyond_the_grid_has_no_part_in_it():
     grid = pixel_grids.PixelGrid((0.0, 0.0, 0.0), _AXIAL, (1.0, 1.0))
 

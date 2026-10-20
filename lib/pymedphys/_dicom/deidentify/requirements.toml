@@ -105,7 +105,7 @@ implementation = [
 note = '''
 The markers of an instance are computed from its policy, the de-identification method digest, and the options it satisfies, and added to a copy of its data set (D-012).
 Patient Identity Removed is set to YES.
-De-identification Method keeps its values and, unless they already include the pair as two consecutive values, gains two: the method digest, 64 lowercase hexadecimal digits, which fit one LO value, computed from the policy and everything the engine could apply, including its own source and rule files, whether or not the policy's options use them, and then a readable value naming PyMedPhys, its version, the PS3.15 edition, and the preset.
+De-identification Method keeps its values and, unless they already include the pair as two consecutive values, gains two: the method digest, 64 lowercase hexadecimal digits, which fit one LO value, computed from the policy and everything the engine could apply, including its own source and rule files and the source files of the PyMedPhys modules it imports, whether or not the policy's options use them, and then a readable value naming PyMedPhys, its version, the PS3.15 edition, and the preset.
 The digest identifies the policy and the PyMedPhys implementation and resources that apply it, not the runtime environment, which Software Versions records instead, so upgrading Python, pydicom, or tomlkit leaves it unchanged (D-012, D-024).
 The digest is PyMedPhys's own provenance, added beside the readable description that this paragraph allows; PS3.15 does not require it.
 De-identification Method Code Sequence keeps its items and gains the CID 7050 codes of the Basic Profile and of each satisfied option that it does not already hold.

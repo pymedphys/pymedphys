@@ -229,8 +229,13 @@ def coplanar(
 
 def signed_area(points: np.ndarray) -> float:
     """The area that a ring bounds, by its x and y, positive where it runs
-    anticlockwise as seen from positive z."""
-    x, y = points[:, 0], points[:, 1]
+    anticlockwise as seen from positive z.
+
+    The points are taken relative to their mean, so that a ring far from the
+    origin loses no more precision than one near it.
+    """
+    x = points[:, 0] - points[:, 0].mean()
+    y = points[:, 1] - points[:, 1].mean()
     return float(np.dot(x, np.roll(y, -1)) - np.dot(np.roll(x, -1), y)) / 2
 
 
@@ -332,9 +337,11 @@ def dissolve(
     lies on it; edges that two rings share, running opposite ways, are
     dropped; and what is left is chained into rings, turning as far left as
     can be at a point where more than one edge leaves, keeping to the
-    region on its left, so that rings that touch at a point are kept apart.
-    A point between two edges along one line is dropped, unless it is one
-    of ``kept``.
+    region on its left. A ring that passes through a point more than once,
+    as where two holes, or a hole and the outer boundary, touch at a point,
+    is split there into rings that each pass through it once. A point
+    between two edges along one line is dropped, unless it is one of
+    ``kept``.
 
     Parameters
     ----------
@@ -343,15 +350,23 @@ def dissolve(
     kept : numpy.ndarray
         Points, in rows of x and y, to write as they are where they remain.
     tolerance : float
-        How far apart two points may be and be taken as one.
+        How far apart two points may be and be taken as one, above zero.
 
     Returns
     -------
     list of numpy.ndarray or None
         The region's rings, outer ones anticlockwise and holes clockwise,
-        whose signed areas sum to the pieces'; None where they do not, or a
-        ring cannot be closed, so that the caller can keep the pieces.
+        none passing through a point twice, whose signed areas sum to the
+        pieces'; None where they do not, or a ring cannot be closed, so that
+        the caller can keep the pieces.
+
+    Raises
+    ------
+    ValueError
+        If ``tolerance`` is not a finite number above zero.
     """
+    if not (math.isfinite(tolerance) and tolerance > 0):
+        raise ValueError("the tolerance must be a finite number above zero")
     points = np.concatenate([np.asarray(kept, float).reshape(-1, 2)] + pieces)
     identity = _cluster(points, tolerance)
     first = len(np.asarray(kept).reshape(-1, 2))
@@ -380,10 +395,11 @@ def dissolve(
         np.asarray(
             [
                 position[each]
-                for each in _straightened(ring, position, original, tolerance)
+                for each in _straightened(loop, position, original, tolerance)
             ]
         )
         for ring in rings
+        for loop in _loops(ring)
     ]
     written = [ring for ring in written if len(ring) >= 3]
     total = sum(signed_area(piece) for piece in pieces)
@@ -475,6 +491,28 @@ def _chain(edges: list[tuple[int, int]], position: dict) -> list[list[int]] | No
                 return None
         rings.append(ring)
     return rings
+
+
+def _loops(ring: list[int]) -> list[list[int]]:
+    """Split a ring, by its points, at each point it passes through more
+    than once, into rings that each pass through it once."""
+    loops = []
+    path: list[int] = []
+    where: dict[int, int] = {}
+    for each in ring:
+        if each in where:
+            # The ring has come back to a point: what it passed through
+            # since is a ring of its own.
+            start = where[each]
+            loops.append(path[start:])
+            for passed in path[start + 1 :]:
+                del where[passed]
+            del path[start + 1 :]
+        else:
+            where[each] = len(path)
+            path.append(each)
+    loops.append(path)
+    return loops
 
 
 def _turn(incoming: np.ndarray, outgoing: np.ndarray) -> float:

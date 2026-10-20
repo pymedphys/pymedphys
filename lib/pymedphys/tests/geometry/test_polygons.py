@@ -169,3 +169,61 @@ def test_points_within_the_tolerance_are_one():
     (ring,) = _dissolved(pieces)
 
     assert polygons.signed_area(ring) == pytest.approx(2.0)
+
+
+def _unit_squares(size, left_out, first=None):
+    """Anticlockwise unit squares of a block, less those left out, with
+    ``first``, if given, before the rest."""
+    pieces = [
+        _square(x, y, x + 1, y + 1)
+        for x in range(size)
+        for y in range(size)
+        if (x, y) not in left_out
+    ]
+    return pieces if first is None else [first, *pieces]
+
+
+@pytest.mark.parametrize(
+    ("pieces", "areas"),
+    [
+        (_unit_squares(4, {(1, 1), (2, 2)}), [-1.0, -1.0, 16.0]),
+        (_unit_squares(3, {(1, 1), (2, 2)}), [-1.0, 8.0]),
+        (
+            _unit_squares(
+                3,
+                {(1, 1), (2, 2), (2, 1)},
+                first=np.roll(_square(2, 1, 3, 2), -3, axis=0),
+            ),
+            [-1.0, 8.0],
+        ),
+    ],
+    ids=["holes-meeting-at-a-point", "hole-meeting-the-outside", "another-order"],
+)
+def test_rings_that_touch_at_a_point_are_kept_apart(pieces, areas):
+    rings = _dissolved(pieces)
+
+    assert sorted(polygons.signed_area(ring) for ring in rings) == pytest.approx(areas)
+    for ring in rings:
+        assert len({tuple(point) for point in ring}) == len(ring)
+        assert polygons.is_simple(np.column_stack([ring, np.zeros(len(ring))]))
+    grid = np.stack(
+        np.meshgrid(np.linspace(-0.25, 4.25, 19), np.linspace(-0.25, 4.25, 19)), -1
+    ).reshape(-1, 2)
+    assert np.array_equal(even_odd(rings, grid), even_odd(pieces, grid))
+
+
+def test_pieces_far_from_the_origin_join():
+    pieces = [
+        _square(3000.1, -3000.6, 3000.8, -2999.7),
+        _square(3000.8, -3000.6, 3001.5, -2999.7),
+    ]
+
+    (ring,) = _dissolved(pieces)
+
+    assert polygons.signed_area(ring) == pytest.approx(2 * 0.7 * 0.9)
+
+
+@pytest.mark.parametrize("tolerance", [0.0, -1e-9, float("nan"), float("inf")])
+def test_a_dissolve_needs_a_tolerance_above_zero(tolerance):
+    with pytest.raises(ValueError, match="tolerance"):
+        polygons.dissolve([_square(0, 0, 1, 1)[:, :2]], np.empty((0, 2)), tolerance)

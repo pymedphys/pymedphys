@@ -99,9 +99,11 @@ def _read_again():
     """Start and end this module with the engine's files and tables unread."""
     # pylint: disable = protected-access
     method_digest._file_digests.cache_clear()
+    method_digest._outside_digests.cache_clear()
     method_digest._table_digests.cache_clear()
     yield
     method_digest._file_digests.cache_clear()
+    method_digest._outside_digests.cache_clear()
     method_digest._table_digests.cache_clear()
 
 
@@ -294,9 +296,14 @@ def test_the_report_holds_no_path_of_the_installed_engine(basic, tmp_path, monke
 
     assert SENTINEL not in text and "SENTINEL" not in text
     assert str(tmp_path) not in text and tmp_path.as_posix() not in text
+    # pylint: disable = protected-access
+    outside = method_digest._outside_digests(
+        method_digest.PYMEDPHYS_DIR.resolve(), method_digest.OUTSIDE_MODULES
+    )
     assert set(json.loads(text)["method"]["engine_files"]) == {
         *ENGINE_FILES,
         *(f"_standard/{path.name}" for path in (engine / "_standard").glob("*.json")),
+        *outside,
     }
 
 
