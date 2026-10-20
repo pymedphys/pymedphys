@@ -18,6 +18,10 @@ Dose, and PET in the same Frame of Reference, the RT Structure Set replaced
 by one of the head, one RT Dose by a grid over the head, and the PET Image
 by two slices of the head. Every UID and value here is invented."""
 
+# The runs share the head, its ROIs, and the fixtures that review one run of
+# the collection, so they stay in one module.
+# pylint: disable = too-many-lines
+
 from __future__ import annotations
 
 import contextlib
@@ -55,6 +59,7 @@ from pymedphys._dicom.deidentify.reasons import (
 from pymedphys._dicom.deidentify.redaction_review import read_redaction_review
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.release_gate import ReleaseReason
+from pymedphys._dicom.deidentify.text_detection import TextBox
 
 from . import _synthetic_head as head
 from . import _synthetic_head_dicom as files
@@ -243,12 +248,17 @@ class _Reviewed:
 
 
 @contextlib.contextmanager
-def _runs(*others, without_ct=False, accepted=False, **first_run):
+def _runs(*others, without_ct=False, accepted=False, revised=None, **first_run):
     """Run the collection as :func:`_reviewed` does, given ``first_run``, and
     again as :func:`_second` does, given the rest."""
     with _reviewed(**first_run) as reviewed:
         yield _second(
-            reviewed, *others, name="r", without_ct=without_ct, accepted=accepted
+            reviewed,
+            *others,
+            name="r",
+            without_ct=without_ct,
+            accepted=accepted,
+            revised=revised,
         )
 
 
@@ -351,26 +361,34 @@ def _reviewed(first=None, target=False, eyes_away=False, dose=None, edges=False)
         shutil.rmtree(directory, ignore_errors=True)
 
 
-def _second(reviewed, *others, name, without_ct=False, accepted=False):
+def _second(reviewed, *others, name, without_ct=False, accepted=False, revised=None):
     """Attest a copy of the reviewed run's pack, in ``name`` beside it, with
     the head's series, and those of the RT Structure Set, RT Dose, and PET
     in its frame, marked absent, and, if ``accepted``, the regions of each
-    of the head's slices that the pack previews accepted; and run the
-    collection again under the option and ``others``, given those verdicts,
-    without the head's slices if ``without_ct``.
+    of the head's CT and PET slices that the pack previews accepted, or, if
+    ``revised``, those of each of its CT slices, revised with that region
+    added in their first frame; and run the collection again under the
+    option and ``others``, given those verdicts, without the head's slices
+    if ``without_ct``.
 
     The run that it reviews, and the files that it ran, are left as they
     were, so that one reviewed run serves several second runs."""
     directory = reviewed.directory / name
     pack = directory / "qc1"
     shutil.copytree(reviewed.pack.parent, pack)
+    verdict = (
+        {"redaction": Redaction.ACCEPTED}
+        if revised is None
+        else {"redaction": Redaction.REVISED, "regions": ((0, (revised,)),)}
+    )
     redactions = (
         [
-            RedactionVerdict(position, Redaction.ACCEPTED)
+            RedactionVerdict(position, **verdict)
             for position in previewed_redactions(reviewed.pack.read_bytes())
             if reviewed.names[position].startswith("01-head")
+            or (revised is None and reviewed.names[position] in _PET_SLICES)
         ]
-        if accepted
+        if accepted or revised is not None
         else []
     )
     _attest(pack, dict.fromkeys(reviewed.marked, Face.ABSENT), redactions=redactions)
@@ -385,7 +403,7 @@ def _second(reviewed, *others, name, without_ct=False, accepted=False):
     transform = _transform(
         others,
         read_face_review(pack),
-        read_redaction_review(pack) if accepted else None,
+        read_redaction_review(pack) if accepted or revised is not None else None,
     )
     second = run.run(
         run.discover(instances),
@@ -427,8 +445,8 @@ def _transform(options, face_review, redaction_review=None):
 
 
 # The runs that the defaced and without_ct runs review, and those that the
-# with_pixel_data and accepted runs review, are the same, so each is made
-# once.
+# with_pixel_data, accepted, and revised runs review, are the same, so each
+# is made once.
 @pytest.fixture(name="reviewed_low", scope="module")
 def fixture_reviewed_low():
     with _reviewed(first=(), dose=_dose(_LOW)) as found:
@@ -485,6 +503,17 @@ def fixture_with_pixel_data(reviewed_with_pixel_data):
 @pytest.fixture(name="accepted", scope="module")
 def fixture_accepted(reviewed_with_pixel_data):
     return _second(reviewed_with_pixel_data, CLEAN_PIXEL_DATA, name="a", accepted=True)
+
+
+# A region of the reviewer's own, within the head on each of its slices.
+_REVISED = TextBox(46, 36, 51, 45)
+
+
+@pytest.fixture(name="revised", scope="module")
+def fixture_revised(reviewed_with_pixel_data):
+    return _second(
+        reviewed_with_pixel_data, CLEAN_PIXEL_DATA, name="v", revised=_REVISED
+    )
 
 
 def _block(slices):
@@ -943,3 +972,54 @@ def test_with_both_options_reviewed_the_head_ct_is_released_with_both(accepted):
         assert len(np.unique(written[corner])) == 1, index
     assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
     assert report["redaction_review"] is not None
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01", "PS3.15-E.3.2-01")
+def test_a_revised_region_that_changes_a_defaced_slice_holds_it_for_its_face(
+    revised,
+):
+    slices, outcomes, reasons, report = revised
+    region = np.zeros(_SCAN.shape, dtype=bool)
+    region[_REVISED.top : _REVISED.bottom, _REVISED.left : _REVISED.right] = True
+
+    # The face verdict is on the pixel data that the first run wrote, without
+    # the reviewer's region. The region covers more than the fill, so the
+    # second run writes other pixel data, which the verdict does not cover:
+    # each slice is held for its face, and not for its text, which the
+    # reviewer approved.
+    for index, data in enumerate(slices):
+        name = _head_name(index)
+        before = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+        source = pydicom.pixels.pixel_array(before)
+        assert np.any(source[region] != source.min()), index
+        assert outcomes[name] == ("held-for-review", None), index
+        assert reasons[name] == {
+            HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+        }, index
+    assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_with_both_options_reviewed_the_head_pet_is_released_with_both(accepted):
+    slices, outcomes, reasons, _ = accepted
+    block = _block(slices)
+    corner = np.zeros(_PET_GRID["shape"], dtype=bool)
+    corner[0:2, 0:3] = True
+
+    # The reviewer accepted the regions of each PET slice, set to zero
+    # activity in the block, so the second run blacks out the pack's regions
+    # and sets the block to zero again, writing the pixel data the reviewer
+    # saw, and releases each slice with both options' codes.
+    for name, z in _PET_SLICES.items():
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", (name, reasons[name])
+        assert dataset.BurnedInAnnotation == "NO"
+        assert dataset.RecognizableVisualFeatures == "NO"
+        assert _codes(dataset)[-3:] == [markers.PROFILE_CODE, "113101", CODE]
+        source, written = _pet_uptake(z), dataset.pixel_array
+        inside = block.contains(_pet_points(z))
+        untouched = ~inside & ~corner
+        assert np.array_equal(written[untouched], source[untouched]), name
+        assert np.all((written[inside] == 0) | (written[inside] == source[inside]))
+        assert (written[inside] != source[inside]).any(), name
+        assert len(np.unique(written[corner])) == 1, name

@@ -41,6 +41,8 @@ GLOBE_RADIUS = 12.0
 GLOBE_X = 32.0
 GLOBE_Y = -66.0
 GLOBE_Z = 20.0
+SINUS_CENTRE = (0.0, -89.0, 62.0)
+SINUS_AXES = (12.0, 3.5, 6.0)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -63,6 +65,10 @@ class Head:
     # Whether a bolus of soft-tissue density, 8 mm thick, lies over the
     # eyes and forehead.
     bolus: bool = False
+    # Whether a frontal sinus, of air walled in by a thickened frontal bone
+    # under a mound of soft tissue, lies ahead of the brain at the midline,
+    # from 56 to 68 mm superior.
+    sinus: bool = False
     noise: float = 10.0  # the standard deviation, in Hounsfield units
     seed: int = 0
 
@@ -89,9 +95,15 @@ def hounsfield(points: np.ndarray, head: Head = Head()) -> np.ndarray:
         values[over & (z > 0) & (z < 70)] = SOFT_TISSUE
     values[_inside(x, y, z, (0, 0, 10), (75, 95, 130))] = SOFT_TISSUE
     values[_inside(x, y, z, (0, -100, -15), (12, 22, 30))] = SOFT_TISSUE  # nose
+    if head.sinus:
+        values[_inside(x, y, z, SINUS_CENTRE, (23, 11, 13))] = SOFT_TISSUE
     if head.skull:
         values[_inside(x, y, z, (0, 0, 40), (68, 88, 85))] = BONE
-    values[_inside(x, y, z, (0, 0, 40), (62, 82, 79))] = BRAIN
+    brain = _inside(x, y, z, (0, 0, 40), (62, 82, 79))
+    values[brain] = BRAIN
+    if head.sinus:
+        values[_inside(x, y, z, SINUS_CENTRE, (20, 8, 10)) & ~brain] = BONE
+        values[_inside(x, y, z, SINUS_CENTRE, SINUS_AXES)] = AIR
     for side, present in zip((-1, 1), head.eyes):
         centre = (side * GLOBE_X, GLOBE_Y + 6, GLOBE_Z)
         if head.orbits:

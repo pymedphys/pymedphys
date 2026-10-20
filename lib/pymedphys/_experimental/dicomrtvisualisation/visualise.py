@@ -1059,4 +1059,4 @@ updated_fig = update_figure(
 )
 
 # Display the updated figure
-st.plotly_chart(updated_fig, use_container_width=True, height=800)
+st.plotly_chart(updated_fig, width="stretch", height=800)

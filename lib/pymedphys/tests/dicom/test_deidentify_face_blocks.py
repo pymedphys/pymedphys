@@ -1153,6 +1153,98 @@ def test_a_skull_open_in_the_slice_keeps_no_brain():
     assert CtDefacer(block, dataset).mask(0, stored).mask[brain].all()
 
 
+def _with_frontal_sinus(scan, stored, *, lining=False):
+    """Thicken the frontal bone at the midline of the slice at 60 mm and
+    hollow a sinus of air in it, which bone walls in, with a lump of tissue
+    on its wall if ``lining``; return the sinus, and the lump."""
+    points = scan.points(0)
+    x, y = points[..., 0], points[..., 1]
+    boss = (x / 20) ** 2 + ((y + 88) / 8) ** 2 <= 1
+    stored[boss & (head.hounsfield(points) != head.BRAIN)] = head.BONE + 1024
+    sinus = (x / 12) ** 2 + ((y + 89) / 3.5) ** 2 <= 1
+    stored[sinus] = head.AIR + 1024
+    lump = sinus & (np.hypot(x - 8, y + 89) <= 3)
+    if lining:
+        stored[lump] = head.SOFT_TISSUE + 1024
+    return sinus, lump
+
+
+@pytest.mark.parametrize("lining", [False, True], ids=["air", "lined"])
+def test_a_frontal_sinus_walled_by_bone_is_written_as_air(lining):
+    block = _outcome().block
+    scan, dataset, stored = _slice_at(60.0)
+    points = scan.points(0)
+    sinus, lump = _with_frontal_sinus(scan, stored, lining=lining)
+    brain = (head.hounsfield(points) == head.BRAIN) & block.contains(points)
+
+    mask = CtDefacer(block, dataset).mask(0, stored)
+
+    # The sinus, and any tissue lining it, joins none of the brain behind
+    # the block's plane, so it is written as air, though bone encloses it;
+    # the brain is kept.
+    assert sinus.sum() >= 10 and block.contains(points[sinus]).all()
+    assert mask.mask[sinus].all()
+    assert lump.any() and mask.mask[lump].all()
+    assert brain.any() and not mask.mask[brain].any()
+
+
+def test_the_frontal_sinus_of_a_head_is_written_as_air_on_every_slice():
+    scan = head.axial(
+        spacing=2.0, thickness=3.0, extent=((-100, 100), (-130, 110), (-60, 120))
+    )
+    sinus_head = head.Head(noise=0.0, sinus=True)
+    data = tuple(files.ct_files(scan, sinus_head))
+    outcome = _outcome(slices=data)
+    floor = head.GLOBE_Z + face_blocks.CAVITY_FLOOR
+    sinus_seen = brain_kept = 0
+
+    for index, each in enumerate(data):
+        dataset = pydicom.dcmread(io.BytesIO(each))
+        stored = np.asarray(dataset.pixel_array)
+        points = scan.points(index)
+        values = head.hounsfield(points, sinus_head)
+        inside = outcome.block.contains(points) & (points[..., 2] > floor)
+        sinus = inside & _in_sinus(points)
+        brain = inside & (values == head.BRAIN)
+        mask = CtDefacer(outcome.block, dataset).mask(0, stored)
+        if mask is None:
+            assert not inside.any(), index
+            continue
+        # Every voxel of the sinus is written as air, as the bone around it
+        # is, rather than kept, where its noise would set it apart from the
+        # air written around it; the brain beside it is kept.
+        assert mask.mask[sinus].all(), index
+        assert not mask.mask[brain].any(), index
+        sinus_seen += int(sinus.sum())
+        brain_kept += int(brain.sum())
+
+    assert outcome.problem is None
+    assert sinus_seen >= 50 and brain_kept > 0
+
+
+def _in_sinus(points):
+    (x0, y0, z0), (a, b, c) = head.SINUS_CENTRE, head.SINUS_AXES
+    x, y, z = points[..., 0] - x0, points[..., 1] - y0, points[..., 2] - z0
+    return (x / a) ** 2 + (y / b) ** 2 + (z / c) ** 2 <= 1
+
+
+def test_bone_that_the_kept_brain_encloses_is_written_as_air():
+    block = _outcome().block
+    scan, dataset, stored = _slice_at(60.0)
+    points = scan.points(0)
+    brain = (head.hounsfield(points) == head.BRAIN) & block.contains(points)
+    # A calcification within the brain ahead of the block's plane.
+    island = np.hypot(points[..., 0], points[..., 1] + 72) <= 3
+    stored[island] = head.BONE + 1024
+
+    mask = CtDefacer(block, dataset).mask(0, stored)
+
+    # Bone is never cavity, so the brain around it keeps none of it.
+    assert island.any() and (island <= brain).all()
+    assert mask.mask[island].all()
+    assert not mask.mask[brain & ~island].any()
+
+
 def test_padding_that_reads_as_bone_closes_no_ring():
     block = _outcome().block
     scan, dataset, stored = _slice_at(60.0, padding=2000)

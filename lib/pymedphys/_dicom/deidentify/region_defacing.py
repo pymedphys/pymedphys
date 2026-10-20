@@ -87,10 +87,10 @@ and every Enhanced PET or Legacy Converted Enhanced PET image, stays held.
 
 from __future__ import annotations
 
-import collections
 import dataclasses
 import math
 
+from pymedphys._geometry.polygons import clip, coplanar
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
@@ -234,7 +234,7 @@ def _written(
     parsed = [_contour(contour) for contour in contours]
     cutting = [_reaches_face(region, kind, points, step) for kind, points in parsed]
     closed = [index for index, (kind, _) in enumerate(parsed) if kind in CLOSED]
-    groups, unplaced = _coplanar([parsed[index][1] for index in closed])
+    groups, unplaced = coplanar([parsed[index][1] for index in closed], _COPLANAR)
     # A closed contour in no one plane cannot be decided with those it may
     # bound a region with, so an ROI that is cut with one is refused.
     if unplaced and any(cutting):
@@ -257,67 +257,6 @@ def _written(
             for first, piece in enumerate(_pieces(region.block, kind, points))
         )
     return tuple(written)
-
-
-def _coplanar(polygons: list[np.ndarray]) -> tuple[list[list[int]], list[int]]:
-    """Group polygons, by their indices, into those that lie in one plane,
-    within :data:`_COPLANAR` millimetres, and list those that lie in none.
-
-    A polygon's plane is the one that fits its points best, its normal
-    the direction in which they spread least, so that it is found for any
-    winding, and for a polygon that crosses itself, such as a bow tie,
-    whose signed area may be zero. Two polygons lie in one plane where
-    every point of one lies within :data:`_COPLANAR` of the other's plane,
-    which holds for a small hole, whose own normal is uncertain, in a
-    large contour's plane. Each pair is compared, and groups that share a
-    polygon are joined, so that no polygon is kept from a group by the
-    order in which they are given. A polygon whose points lie on one line
-    bounds nothing and is alone; one with a point farther than
-    :data:`_COPLANAR` from its own plane lies in none.
-    """
-    planes: dict[int, tuple[np.ndarray, np.ndarray]] = {}
-    alone: list[list[int]] = []
-    unplaced: list[int] = []
-    for index, points in enumerate(polygons):
-        centre = points.mean(axis=0)
-        _, spread, axes = np.linalg.svd(points - centre, full_matrices=False)
-        if len(spread) < 3 or not spread[1] > 1e-9 * spread[0]:
-            alone.append([index])
-        elif not np.max(np.abs((points - centre) @ axes[2])) <= _COPLANAR:
-            unplaced.append(index)
-        else:
-            planes[index] = (axes[2], centre)
-
-    def within(polygon: int, plane: int) -> bool:
-        normal, centre = planes[plane]
-        return bool(np.max(np.abs((polygons[polygon] - centre) @ normal)) <= _COPLANAR)
-
-    root = {index: index for index in planes}
-
-    def find(index: int) -> int:
-        while root[index] != index:
-            root[index] = root[root[index]]
-            index = root[index]
-        return index
-
-    placed = sorted(planes)
-    for position, one in enumerate(placed):
-        for other in placed[position + 1 :]:
-            # A polygon's centre's signed distance from a plane is the mean
-            # of its points', so where the centre lies farther, so does some
-            # point, and the polygon is not in that plane.
-            near = (
-                abs(float(planes[other][0] @ (planes[one][1] - planes[other][1])))
-                <= _COPLANAR
-                or abs(float(planes[one][0] @ (planes[other][1] - planes[one][1])))
-                <= _COPLANAR
-            )
-            if near and (within(one, other) or within(other, one)):
-                root[find(one)] = find(other)
-    groups: dict[int, list[int]] = collections.defaultdict(list)
-    for index in placed:
-        groups[find(index)].append(index)
-    return sorted(groups.values()) + alone, unplaced
 
 
 def _contour(contour: pydicom.Dataset) -> tuple[str, np.ndarray]:
@@ -381,9 +320,9 @@ def _pieces(block: FaceBlock, kind: str, points: np.ndarray) -> list[np.ndarray]
         return []
     if kind in OPEN:
         return _outside_polyline(block, points)
-    pieces = _clip(points, *_behind(block))
-    for part in _clip(points, *_ahead(block)):
-        pieces.extend(_clip(part, *_below(block)))
+    pieces = clip(points, *_behind(block))
+    for part in clip(points, *_ahead(block)):
+        pieces.extend(clip(part, *_below(block)))
     return [piece for piece in pieces if len(piece) >= 3]
 
 
@@ -474,112 +413,6 @@ def _defaced(region: DoseBlock, points: np.ndarray) -> np.ndarray:
             block.contains(centres) & ~each.kept[rows[chosen], columns[chosen]]
         )
     return defaced
-
-
-def _clip(points: np.ndarray, normal: np.ndarray, offset: float) -> list[np.ndarray]:
-    """Return the polygons of a polygon's part in the closed half-space where
-    a point's dot product with ``normal`` is at most ``offset``.
-
-    A vertex on the plane is taken to lie outside, so that the edges into
-    and out of it cross the plane there, as the polygon's would if the
-    vertex lay just beyond it.
-    """
-    distance = points @ normal - offset
-    inside = distance < 0
-    if inside.all():
-        return [points]
-    if not inside.any():
-        return []
-    # Each event: 0 for a vertex kept, 1 where an edge leaves the half-space,
-    # and 2 where one enters it, with its point.
-    events: list[tuple[int, np.ndarray]] = []
-    count = len(points)
-    for index in range(count):
-        following = (index + 1) % count
-        if inside[index]:
-            events.append((0, points[index]))
-        if inside[index] != inside[following]:
-            near, far = distance[index], distance[following]
-            if far == 0:
-                crossing = points[following]
-            elif near == 0:
-                crossing = points[index]
-            else:
-                crossing = points[index] + near / (near - far) * (
-                    points[following] - points[index]
-                )
-            events.append((1 if inside[index] else 2, crossing))
-    joined = [point for _, point in events]
-    start = next(i for i, (kind, _) in enumerate(events) if kind == 2)
-    chains = _chains(events[start:] + events[:start])
-    rings = None if chains is None else _rings(points, normal, chains)
-    if rings is None:
-        return [np.asarray(joined)]
-    return rings
-
-
-def _chains(events: list[tuple[int, np.ndarray]]) -> list[list[np.ndarray]] | None:
-    """Split a polygon's events, starting with an entry, into chains, each
-    from an entry through the vertices kept to the next exit; None where
-    they do not run so."""
-    chains: list[list[np.ndarray]] = []
-    ended = True
-    for kind, point in events:
-        if (kind == 2) != ended:
-            return None
-        if kind == 2:
-            chains.append([])
-        chains[-1].append(point)
-        ended = kind == 1
-    return chains if ended else None
-
-
-def _rings(
-    points: np.ndarray, normal: np.ndarray, chains: list[list[np.ndarray]]
-) -> list[np.ndarray] | None:
-    """Join a polygon's chains into polygons along the plane, or None where
-    their crossings cannot be paired.
-
-    The crossings lie on the line where the plane meets the polygon's own.
-    In order along it, each pair, the first and second, the third and
-    fourth, and so on, bounds a stretch of the line within the polygon, so
-    each pair is an exit and an entry, and each polygon runs along the
-    plane from a chain's exit to the entry of its pair.
-    """
-    centred = points - points.mean(axis=0)
-    # Newell's method gives the polygon's normal, scaled by twice its area.
-    plane = np.cross(centred, np.roll(centred, -1, axis=0)).sum(axis=0)
-    line = np.cross(plane, normal)
-    length = float(np.linalg.norm(line))
-    if not math.isfinite(length) or length <= 0:
-        return None
-    line /= length
-    crossings = sorted(
-        [(float(chain[0] @ line), 2, index) for index, chain in enumerate(chains)]
-        + [(float(chain[-1] @ line), 1, index) for index, chain in enumerate(chains)],
-        key=lambda crossing: crossing[0],
-    )
-    partner: dict[int, int] = {}
-    for first, second in zip(crossings[::2], crossings[1::2]):
-        if first[1] == second[1]:
-            return None
-        exit_, entry = (first, second) if first[1] == 1 else (second, first)
-        partner[exit_[2]] = entry[2]
-    rings = []
-    joined: set[int] = set()
-    for index in range(len(chains)):
-        if index in joined:
-            continue
-        ring: list[np.ndarray] = []
-        current = index
-        while current not in joined:
-            joined.add(current)
-            ring.extend(chains[current])
-            current = partner[current]
-        if current != index:
-            return None
-        rings.append(np.asarray(ring))
-    return rings
 
 
 def _outside_polyline(block: FaceBlock, points: np.ndarray) -> list[np.ndarray]:

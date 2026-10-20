@@ -72,9 +72,10 @@ A pack holds, for one run:
   the instances that show each (D-015, D-017);
 - ``redactions``: each released or held instance whose Pixel Data the
   Clean Pixel Data Option cleaned, with why it is held, its number of
-  frames, and the regions blacked out in each frame, by frame index from 0,
-  each as ``[top, left, bottom, right]`` in pixels from the frame's top left
-  corner, with the bottom row and right column excluded, for the review of
+  frames, its Rows and Columns, and the regions blacked out in each frame,
+  by frame index from 0, each as ``[top, left, bottom, right]`` in pixels
+  from the frame's top left corner, with the bottom row and right column
+  excluded, for the review of
   every frame that the option requires. Each frame with regions is
   previewed as received, so under the option the pack holds the burned-in
   text that the release lacks;
@@ -127,7 +128,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/8"
+FORMAT = "pymedphys-deid-qc-pack/9"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 
@@ -1007,14 +1008,20 @@ class RedactionEntry:
         Why it is held for review.
     frames : int
         How many frames its Pixel Data holds.
+    rows, columns : int
+        Its Rows and Columns, which each of its frames has, so that an
+        attestation can refuse a region past them (D-048).
     regions : tuple of (int, tuple of TextBox)
         Each frame with a region, by frame index from 0, in order, with its
-        regions, sorted, each once; none where no text was found.
+        regions, sorted, each once, and each within its rows and columns;
+        none where no text was found.
     """
 
     position: int
     reason: PixelDataReason
     frames: int
+    rows: int
+    columns: int
     regions: tuple[tuple[int, tuple[TextBox, ...]], ...]
 
     def __post_init__(self) -> None:
@@ -1031,12 +1038,25 @@ class RedactionEntry:
             raise QcPackError(
                 f"cleaned instance {self.position} needs its number of frames"
             )
+        if not all(_is_count(size) for size in (self.rows, self.columns)):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs its Rows and Columns"
+            )
         if not isinstance(self.regions, tuple) or not all(
             _is_frame_regions(entry, self.frames) for entry in self.regions
         ):
             raise QcPackError(
                 f"cleaned instance {self.position} needs regions of its frames, "
                 "each a frame index with sorted, distinct boxes"
+            )
+        if any(
+            box.bottom > self.rows or box.right > self.columns
+            for _, boxes in self.regions
+            for box in boxes
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} has a region past its Rows "
+                "or Columns"
             )
         indices = [index for index, _ in self.regions]
         if indices != sorted(set(indices)):
@@ -1049,6 +1069,10 @@ class RedactionEntry:
                 f"cleaned instance {self.position} has regions exactly where "
                 "text was blacked out"
             )
+
+
+def _is_count(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 1
 
 
 def _is_frame_regions(entry: object, frames: int) -> bool:
@@ -1596,6 +1620,8 @@ def pack_document(pack: QcPack) -> dict:
                 "position": entry.position,
                 "reason": entry.reason.value,
                 "frames": entry.frames,
+                "rows": entry.rows,
+                "columns": entry.columns,
                 "regions": [
                     {
                         "frame": index,
