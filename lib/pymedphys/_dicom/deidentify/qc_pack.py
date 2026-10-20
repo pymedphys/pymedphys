@@ -130,12 +130,15 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/10"
+FORMAT = "pymedphys-deid-qc-pack/11"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
 # contours: of a count of no ROI Contour Sequence items.
 NO_CONTOURS_SHA256 = hashlib.sha256(bytes(8)).hexdigest()
+# The SHA-256 that face_review.pixel_data_sha256 gives a file without pixel
+# data: of nothing.
+NO_PIXELS_SHA256 = hashlib.sha256(b"").hexdigest()
 
 # The directory, beside the pack's file, that holds its previews.
 PREVIEW_DIRECTORY = "previews"
@@ -250,7 +253,9 @@ class InstanceEntry:
         a released or held input, as the gate read it, in lower-case
         hexadecimal, which binds a series' face verdict to the pixel data
         that the run wrote; ``None`` for any other input, or one whose
-        written file the gate did not hand over or could not be read.
+        written file the gate did not hand over or could not be read, or
+        whose pixel data the pack's previews do not show in every frame,
+        so that no verdict releases them.
     contour_sha256 : str, optional
         Likewise, the :func:`~.face_review.contour_data_sha256` of the file
         written, which binds a series' face verdict to the contours that
@@ -1403,6 +1408,27 @@ class QcPack:
             )
         self._check_redaction_previews()
         self._check_contour_previews()
+        self._check_pixel_previews()
+
+    def _check_pixel_previews(self) -> None:
+        """An instance's pixel data's SHA-256, other than that of none, is
+        recorded only where a preview other than a contour sheet shows it
+        and it is not listed as not previewed, so that no verdict releases
+        pixel data that no one saw."""
+        pictured = {
+            position
+            for preview in self.previews
+            if preview.kind is not PreviewKind.STRUCTURE_SET_CONTOURS
+            for position, _ in preview.frames
+        } - {entry.position for entry in self.not_previewed}
+        if any(
+            entry.pixel_sha256 not in (None, NO_PIXELS_SHA256)
+            and entry.position not in pictured
+            for entry in self.instances
+        ):
+            raise QcPackError(
+                "an instance's pixel data's SHA-256 needs a preview that shows them"
+            )
 
     def _check_contour_previews(self) -> None:
         """An instance's contours' SHA-256, other than that of none, is

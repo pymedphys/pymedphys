@@ -75,6 +75,7 @@ from pymedphys._dicom.deidentify.policy import (
 from pymedphys._dicom.deidentify.qc_attestation import Coverage, Face, Outcome
 from pymedphys._dicom.deidentify.qc_pack import (
     NO_CONTOURS_SHA256,
+    NO_PIXELS_SHA256,
     Disposition,
     InstanceEntry,
     Preview,
@@ -122,24 +123,29 @@ def fixture_pack(tmp_path):
 
 
 def _sheeted(instances):
-    """A pack of these instances, with a contour sheet for each whose
-    contours' SHA-256 it records, as the pack needs."""
-    contoured = [
-        entry.position
+    """A pack of these instances, with a preview of each whose pixel data's
+    SHA-256 it records, and a contour sheet of each whose contours', as the
+    pack needs."""
+    shown = [
+        (PreviewKind.INSTANCE, entry.position)
+        for entry in instances
+        if entry.pixel_sha256 not in (None, NO_PIXELS_SHA256)
+    ] + [
+        (PreviewKind.STRUCTURE_SET_CONTOURS, entry.position)
         for entry in instances
         if entry.contour_sha256 not in (None, NO_CONTOURS_SHA256)
     ]
-    sheets = tuple(
+    previews = tuple(
         Preview(
             f"P-{number:04d}.png",
-            PreviewKind.STRUCTURE_SET_CONTOURS,
+            kind,
             ((position, 0),),
             1,
             qc_previews.png(np.zeros((2, 2), np.uint8)),
         )
-        for number, position in enumerate(contoured, 1)
+        for number, (kind, position) in enumerate(shown, 1)
     )
-    return QcPack(REFERENCE, instances, series=SERIES, previews=sheets)
+    return QcPack(REFERENCE, instances, series=SERIES, previews=previews)
 
 
 def _sha(*numbers):

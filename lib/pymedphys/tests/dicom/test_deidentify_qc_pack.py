@@ -64,8 +64,9 @@ RETAINED = "QUILLON CLINIC CT"
 REFERENCE = "A-" + "0123456789abcdef" * 2
 OUTPUT = PurePosixPath("ZQ0001/2.25.1/2.25.2/2.25.3.dcm")
 SOURCE_SHA256 = "0f" * 32
-PIXEL_SHA256 = "1e" * 32
-# A CT's, of no contours; another needs a contour sheet that shows them.
+# The digests of an instance without pixel data or contours, such as an RT
+# Plan's; others need previews that show them.
+PIXEL_SHA256 = qc_pack.NO_PIXELS_SHA256
 CONTOUR_SHA256 = qc_pack.NO_CONTOURS_SHA256
 
 POSIX_ONLY = pytest.mark.skipif(os.name != "posix", reason="POSIX file modes")
@@ -572,7 +573,7 @@ def test_a_search_gives_entries_with_excerpts_and_omissions():
 @pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_document_holds_every_section():
     document = json.loads(qc_pack.to_json(_full_pack()))
-    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/10"
+    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/11"
     assert document["reference"] == REFERENCE
     assert document["instances"] == [
         {

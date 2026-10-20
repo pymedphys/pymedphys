@@ -37,7 +37,7 @@ from pymedphys._imports import pydicom
 
 from . import pixel_risk, qc_contours, qc_pack, qc_previews, residuals
 from .iod_conformance import SourceGap
-from .face_review import contour_data_sha256, pixel_data_sha256
+from .face_review import PIXEL_DATA_TAGS, contour_data_sha256, pixel_data_sha256
 from .file_layout import ElementPath
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .reasons import PixelDataReason
@@ -433,7 +433,11 @@ def qc_pack_of(
     instances = tuple(
         dataclasses.replace(
             entry,
-            **_written_sha256(written[position], position in previews.contours_shown),
+            **_written_sha256(
+                written[position],
+                position in previews.contours_shown,
+                position in previews.pixels_shown,
+            ),
         )
         if position in written
         else entry
@@ -535,12 +539,16 @@ def assessed_series(
     return assessed
 
 
-def _written_sha256(written: bytes, contours_shown: bool) -> dict[str, str | None]:
+def _written_sha256(
+    written: bytes, contours_shown: bool, pixels_shown: bool
+) -> dict[str, str | None]:
     """Return the SHA-256 of a written file's pixel data and contours, as an
     instance entry's fields, each None if unreadable.
 
     The contours' is None too where the file has contours that the pack's
-    contour sheet does not show, so that no verdict releases them unseen.
+    contour sheet does not show, and the pixel data's where the file has
+    pixel data of which the pack's previews do not show every frame, so
+    that no verdict releases either unseen.
     """
     digests: dict[str, str | None] = {"pixel_sha256": None, "contour_sha256": None}
     try:
@@ -549,7 +557,9 @@ def _written_sha256(written: bytes, contours_shown: bool) -> dict[str, str | Non
     # verdict clears it, and the pack is still written.
     except Exception:  # pylint: disable = broad-exception-caught
         return digests
-    taken = [("pixel_sha256", pixel_data_sha256)]
+    taken = []
+    if pixels_shown or not any(tag in dataset for tag in PIXEL_DATA_TAGS):
+        taken.append(("pixel_sha256", pixel_data_sha256))
     if contours_shown or not qc_contours.has_contours(dataset):
         taken.append(("contour_sha256", contour_data_sha256))
     for field, digest in taken:

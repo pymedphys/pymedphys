@@ -477,16 +477,19 @@ def test_a_high_risk_structure_set_without_contours_still_has_no_pixel_data():
     )
     # It has no contour to show, so its contours' digest, of none, stands.
     assert found.contours_shown == frozenset()
-    assert run_qc._written_sha256(written, False)["contour_sha256"] == (
+    assert run_qc._written_sha256(written, False, False)["contour_sha256"] == (
         NO_CONTOURS_SHA256
     )
 
 
 def test_the_digest_of_contours_that_are_not_shown_is_left_out():
     written = _structure_set([[_closed(files.circle((0, 0, 0), 9.0))]])
-    shown = run_qc._written_sha256(written, True)
+    shown = run_qc._written_sha256(written, True, False)
     assert shown["contour_sha256"] not in (None, NO_CONTOURS_SHA256)
-    assert run_qc._written_sha256(written, False) == {**shown, "contour_sha256": None}
+    assert run_qc._written_sha256(written, False, False) == {
+        **shown,
+        "contour_sha256": None,
+    }
 
 
 @pytest.mark.parametrize(

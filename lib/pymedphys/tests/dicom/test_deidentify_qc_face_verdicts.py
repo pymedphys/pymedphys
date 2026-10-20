@@ -321,14 +321,17 @@ def test_a_written_file_that_cannot_be_read_has_no_digests(monkeypatch, digester
     }
     digests = run_qc._written_sha256  # pylint: disable = protected-access
     # A file without contours has the digest of none, shown or not.
-    assert digests(data, False) == expected
+    assert digests(data, False, True) == expected
     monkeypatch.setattr(run_qc, digester, fails)
     # Whatever taking a digest raises, the pack is still built, and no
     # verdict can clear the instance, which lacks that digest; nor one that
     # cannot be read.
     field = "pixel_sha256" if digester == "pixel_data_sha256" else "contour_sha256"
-    assert digests(data, False) == {**expected, field: None}
-    assert digests(b"not DICOM", True) == {"pixel_sha256": None, "contour_sha256": None}
+    assert digests(data, False, True) == {**expected, field: None}
+    assert digests(b"not DICOM", True, True) == {
+        "pixel_sha256": None,
+        "contour_sha256": None,
+    }
 
 
 # The attestation's verdicts.

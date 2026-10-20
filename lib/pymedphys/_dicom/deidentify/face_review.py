@@ -57,6 +57,7 @@ from pymedphys._imports import pydicom
 from .qc_attestation import Face, Outcome, attested_pack
 from .qc_pack import (
     NO_CONTOURS_SHA256,
+    NO_PIXELS_SHA256,
     NotPreviewedReason,
     PreviewKind,
     QcPackError,
@@ -198,8 +199,8 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         release nothing; if either is not of its format, or the attestation
         is for another pack; if the pack or a preview changed after it was
         attested; or if a verdict names a series that the pack does not
-        list, or an instance's contours' SHA-256 has no contour sheet that
-        shows them. The message names no path and no value.
+        list, or an instance's contours' or pixel data's SHA-256 has no
+        preview that shows them. The message names no path and no value.
     """
     attestation, data = attested_pack(pack_directory)
     if attestation.outcome is not Outcome.ATTESTED:
@@ -259,7 +260,7 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
     series = document.get("series")
     if not isinstance(instances, list) or not isinstance(series, list):
         raise malformed
-    shown, unshown = _contour_previews(document)
+    shown, unshown, pictured = _previews(document)
     digests: dict[int, _File] = {}
     for instance in instances:
         if not isinstance(instance, dict):
@@ -282,6 +283,9 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
             # contour sheet showed.
             if contours not in (None, NO_CONTOURS_SHA256) and position not in shown:
                 raise malformed
+            # Likewise, pixel data's binds it only to pixel data previewed.
+            if pixels not in (None, NO_PIXELS_SHA256) and position not in pictured:
+                raise malformed
             digests[position] = (
                 bytes.fromhex(digest),
                 None if pixels is None else bytes.fromhex(pixels),
@@ -301,30 +305,36 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
     return files
 
 
-def _contour_previews(document: dict) -> tuple[set[int], set[int]]:
-    """The run positions whose contours a pack's contour sheet shows, and
-    those that it lists as not shown."""
+def _previews(document: dict) -> tuple[set[int], set[int], set[int]]:
+    """The run positions whose contours a pack's contour sheet shows, those
+    that it lists as not shown, and those that another preview shows and
+    that it does not list as not previewed."""
     malformed = QcPackError("the QC pack is not of its format")
     previews, missing = document.get("previews"), document.get("not_previewed")
     if not isinstance(previews, list) or not isinstance(missing, list):
         raise malformed
-    shown, unshown = set(), set()
+    shown, unshown, pictured = set(), set(), set()
     for preview in previews:
         if not isinstance(preview, dict) or not isinstance(preview.get("frames"), list):
             raise malformed
+        if not all(
+            isinstance(frame, dict) and isinstance(frame.get("position"), int)
+            for frame in preview["frames"]
+        ):
+            raise malformed
         if preview.get("kind") == PreviewKind.STRUCTURE_SET_CONTOURS.value:
-            first = preview["frames"][0] if preview["frames"] else None
-            if not isinstance(first, dict) or not isinstance(
-                first.get("position"), int
-            ):
+            if not preview["frames"]:
                 raise malformed
-            shown.add(first["position"])
+            shown.add(preview["frames"][0]["position"])
+        else:
+            pictured.update(frame["position"] for frame in preview["frames"])
     for entry in missing:
         if not isinstance(entry, dict):
             raise malformed
+        pictured.discard(entry.get("position"))
         if entry.get("reason") == NotPreviewedReason.CONTOURS_NOT_SHOWN.value:
             unshown.add(entry.get("position"))
-    return shown, unshown
+    return shown, unshown, pictured
 
 
 def pixel_data_sha256(dataset: pydicom.Dataset) -> bytes:

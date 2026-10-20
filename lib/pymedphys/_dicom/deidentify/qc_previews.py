@@ -209,11 +209,17 @@ class PreviewSet:
     contours_shown : frozenset of int
         The run positions of the files with contours that a contour sheet
         shows.
+    pixels_shown : frozenset of int
+        The run positions of the files with pixel data every frame of which
+        a preview other than a contour sheet shows, as a volume's projection
+        and surface render show each of its slices, and that are not listed
+        as not previewed.
     """
 
     previews: tuple[Preview, ...]
     not_previewed: tuple[NotPreviewedEntry, ...]
     contours_shown: frozenset[int] = frozenset()
+    pixels_shown: frozenset[int] = frozenset()
 
 
 def previews_of(
@@ -275,6 +281,13 @@ def previews_of(
         if instance.position in redactions:
             source, entry = redactions[instance.position]
             images.extend(_redaction_images(instance, source, entry, decoded))
+    # A frame that only a contour sheet lists is the volume it is drawn
+    # with, which the sheet shows only as a surface.
+    framed: dict[int, set[int]] = {}
+    for kind, frames, _, _ in images:
+        if kind is not PreviewKind.STRUCTURE_SET_CONTOURS:
+            for position, frame in frames:
+                framed.setdefault(position, set()).add(frame)
     width = max(4, len(str(len(images))))
     previews = tuple(
         Preview(f"P-{number:0{width}d}.png", kind, frames, total, encoded)
@@ -287,6 +300,12 @@ def previews_of(
             for position, reason in sorted(refused.items())
         ),
         frozenset(contoured),
+        frozenset(
+            instance.position
+            for instance in instances
+            if instance.position not in refused
+            and framed.get(instance.position, set()) >= set(range(instance.frames))
+        ),
     )
 
 
