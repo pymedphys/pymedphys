@@ -702,6 +702,33 @@ def test_a_contour_with_a_repeated_point_keeps_its_part_in_the_kept_brain(repeat
     assert _polygon(written).intersection(_CAVITY).area > 1
 
 
+def test_a_contour_on_slices_with_short_direction_cosines_keeps_the_kept_brain():
+    # Face finding takes direction cosines within 1e-4 of unit length, so a
+    # slice's normal is judged by its direction alone.
+    short = (0.99994, 0.0, 0.0, 0.0, 0.99994, 0.0)
+    region = DoseBlock(
+        _BLOCK,
+        tuple(
+            KeptSlice(each.position, short, each.spacing, each.kept)
+            for each in _REGION.slices
+        ),
+    )
+    points = _rectangle(-10, 10, -15, 10, 20)
+
+    cut = cut_contours(region, _structure_set([("CLOSED_PLANAR", points)]), _FRAME)
+
+    ((_, written),) = list(cut.items())
+    got = _region_of(
+        [np.array([float(v) for v in each.values]).reshape(-1, 3) for each in written]
+    )
+    # The pixels centred on the plane now lie 1.2 um ahead of it, in the
+    # block, so the contour loses their row, as the CT does, and the kept
+    # brain's squares move by up to 2 um.
+    expected = _polygon(points).difference(_FACE_SIDE.difference(_CAVITY))
+    assert got.symmetric_difference(expected).area < 0.1
+    assert got.intersection(_CAVITY).area > 100
+
+
 def test_contours_of_a_plane_at_more_than_one_z_are_cut_by_the_whole_block():
     # The hole lies 0.1 mm above the outer contour, in its plane by the
     # grouping, but not in one slice's, so neither keeps the kept brain.

@@ -34,8 +34,9 @@ is kept whole. Each segment is sampled within the block at intervals of
 half the smallest pixel spacing of those slices. A point with no such pixel
 counts where it lies in the block.
 
-A closed contour that reaches the face loses only what defacing writes as
-air, as the CT does, where it can be cut so (:class:`_Spare`): where the
+A closed contour that reaches the face loses what defacing writes as air,
+as the CT does, and the squares of padding pixels in the block, which the
+CT leaves as they are, where it can be cut so (:class:`_Spare`): where the
 closed contours of its ROI in its plane are each simple, a point that
 repeats the one before it aside, all lie at one z above the block's axial
 plane, and have one nearest slice, an axial one with pixels that defacing
@@ -288,13 +289,14 @@ def _written(
         # in it.
         polygons = [_distinct(parsed[index][1]) for index in members]
         spare = _Spare.of(region, polygons)
-        cuts = None if spare is None else [spare.cut(each) for each in polygons]
-        if cuts is None or any(each is None for each in cuts):
+        cuts = [] if spare is None else [spare.cut(each) for each in polygons]
+        joined = [each for each in cuts if each is not None]
+        if len(joined) != len(members):
             for index in members:
                 cutting[index] = _enters(region.block, parsed[index][1])
             continue
-        for index, each in zip(members, cuts, strict=True):
-            cutting[index], spared[index] = each
+        for index, (cut, pieces) in zip(members, joined, strict=True):
+            cutting[index], spared[index] = cut, pieces
     if not any(cutting):
         return None
     written: list[WrittenContour] = []
@@ -348,8 +350,15 @@ class _Spare:
             return None
         each = region.slices[int(found[0])]
         orientation = np.asarray(each.orientation, dtype=float)
+        # Direction cosines may fall short of unit length within a tolerance,
+        # so the normal's tilt is judged by its direction alone.
         normal = np.cross(orientation[:3], orientation[3:])
-        if not each.kept.any() or abs(abs(normal[2]) - 1) > ALIGNMENT_TOLERANCE:
+        length = float(np.linalg.norm(normal))
+        if (
+            not each.kept.any()
+            or length <= 0
+            or abs(abs(normal[2]) / length - 1) > ALIGNMENT_TOLERANCE
+        ):
             return None
         inside = region.block.slice_mask(
             each.position, each.orientation, each.spacing, each.kept.shape
@@ -401,9 +410,8 @@ def _distinct(points: np.ndarray) -> np.ndarray:
     one before it, the last point being before the first, so that a contour
     whose first point is written again at its end can still be simple."""
     repeated = (points == np.roll(points, 1, axis=0)).all(axis=1)
-    if repeated.all():
-        return points[:1]
-    return points[~repeated]
+    distinct: np.ndarray = points[:1] if repeated.all() else points[~repeated]
+    return distinct
 
 
 def _contour(contour: pydicom.Dataset) -> tuple[str, np.ndarray]:
