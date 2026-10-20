@@ -267,8 +267,9 @@ def is_simple(points: np.ndarray) -> bool:
             (rows[:, None] == 0) & (np.arange(count)[None, :] == count - 1)
         )
         # Two edges can meet only where their closed bounding boxes do, so
-        # only those pairs are tested, which spares the exact tests of the
-        # many pairs of edges far apart along one line.
+        # only those pairs are tested exactly and can count as meeting, which
+        # spares the exact tests of the many pairs of edges far apart along
+        # one line; every pair is still tested with rounding.
         boxes = np.ones(later.shape, dtype=bool)
         for axis in (0, 1):
             boxes &= np.minimum(a[..., axis], b[..., axis]) <= np.maximum(
@@ -310,7 +311,8 @@ def _side(
 ) -> np.ndarray:
     """The sign of :func:`_cross`, broadcast, found exactly for the points as
     given, where ``where`` holds, wherever rounding could have changed it,
-    as it can for points in a line that no axis runs along."""
+    as it can for points in a line that no axis runs along. Where ``where``
+    does not hold, the sign is as rounded, which callers mask away."""
     left = (one[..., 0] - origin[..., 0]) * (other[..., 1] - origin[..., 1])
     right = (one[..., 1] - origin[..., 1]) * (other[..., 0] - origin[..., 0])
     cross = left - right

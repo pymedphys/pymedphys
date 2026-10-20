@@ -139,8 +139,8 @@ def test_turned_rings_with_edges_in_one_line_are_simple():
 
 
 def test_a_ring_that_touches_itself_on_a_turned_line_is_not_simple():
-    # Its first point lies on its fourth edge, every point on y = 3x but the
-    # second and third, though rounding leaves the cross product not zero.
+    # Its fourth point lies on its first edge, every point on y = 3x but the
+    # third and fifth, though rounding leaves the cross product not zero.
     ring = np.array(
         [
             [3.6195273440350184e-16, 1.0858582032105055e-15],
@@ -152,6 +152,28 @@ def test_a_ring_that_touches_itself_on_a_turned_line_is_not_simple():
     )
 
     assert not polygons.is_simple(ring)
+
+
+def test_edges_far_apart_along_one_turned_line_are_not_tested_exactly(
+    monkeypatch,
+):
+    # Two runs of 400 points along parallel lines turned to y = 3x, joined
+    # at their ends; testing every pair of edges exactly took about 200,000
+    # exact tests.
+    steps = np.arange(400) * 1.7
+    line = np.stack([steps * 0.1, steps * 0.3], axis=1)
+    ring = np.concatenate([line, line[::-1] + np.array([-5.0, 1.0])])
+    exact = polygons._exact_side  # pylint: disable = protected-access
+    calls = []
+
+    def counted(*points):
+        calls.append(points)
+        return exact(*points)
+
+    monkeypatch.setattr(polygons, "_exact_side", counted)
+
+    assert polygons.is_simple(ring)
+    assert len(calls) < 4 * len(ring)
 
 
 def _exact_side(origin, one, other):
