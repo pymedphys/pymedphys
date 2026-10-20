@@ -466,9 +466,9 @@ def attest(
         run position that does not begin one of the pack's series, a
         redaction verdict names an instance that the pack's ``redactions``
         does not list, or lists as not previewed, or gives a region in a
-        frame that its Pixel Data do not hold, or it has already been
-        attested; if an outcome of rejected is given a verdict; or for any
-        reason that :class:`Attestation` gives.
+        frame that its Pixel Data do not hold, or past its Rows or Columns,
+        or it has already been attested; if an outcome of rejected is given
+        a verdict; or for any reason that :class:`Attestation` gives.
     """
     directory = Path(pack_directory)
     data = _pack_bytes(directory)
@@ -498,10 +498,22 @@ def attest(
                 f"a redaction verdict names run position {verdict.position}, "
                 "which the QC pack does not list as cleaned and previewed"
             )
-        if any(index >= cleaned[verdict.position] for index, _ in verdict.regions):
+        shape = cleaned[verdict.position]
+        if any(index >= shape.frames for index, _ in verdict.regions):
             raise QcPackError(
                 f"the redaction verdict on run position {verdict.position} gives "
                 "a region in a frame that its Pixel Data do not hold"
+            )
+        # Refused here, before the pack's only attestation is written, as
+        # well as on the later run, which sequesters the instance (D-048).
+        if any(
+            box.bottom > shape.rows or box.right > shape.columns
+            for _, boxes in verdict.regions
+            for box in boxes
+        ):
+            raise QcPackError(
+                f"the redaction verdict on run position {verdict.position} gives "
+                f"a region past its {shape.rows} Rows or {shape.columns} Columns"
             )
     attestation = Attestation(
         reference=reference,
@@ -551,8 +563,18 @@ def _redaction_verdicts(
     return tuple(sorted(verdicts, key=lambda verdict: verdict.position))
 
 
-def previewed_redactions(data: bytes) -> dict[int, int]:
-    """Return how many frames each cleaned instance holds, by run position,
+@dataclasses.dataclass(frozen=True)
+class CleanedShape:
+    """How many frames a cleaned instance holds, and the Rows and Columns
+    that each of them has, as the QC pack lists them."""
+
+    frames: int
+    rows: int
+    columns: int
+
+
+def previewed_redactions(data: bytes) -> dict[int, CleanedShape]:
+    """Return the shape of each cleaned instance's frames, by run position,
     for the instances that the QC pack ``data`` previewed.
 
     A cleaned instance that the pack lists as not previewed is left out,
@@ -576,15 +598,20 @@ def previewed_redactions(data: bytes) -> dict[int, int]:
         if not isinstance(position, int):
             raise QcPackError("the QC pack is not of its format")
         hidden.add(position)
-    frames = {}
+    shapes = {}
     for entry in redactions:
-        position = entry.get("position") if isinstance(entry, dict) else None
-        count = entry.get("frames") if isinstance(entry, dict) else None
-        if not isinstance(position, int) or not isinstance(count, int):
+        if not isinstance(entry, dict):
+            raise QcPackError("the QC pack is not of its format")
+        position = entry.get("position")
+        sizes = [entry.get(name) for name in ("frames", "rows", "columns")]
+        if not isinstance(position, int) or not all(
+            isinstance(size, int) and not isinstance(size, bool) and size >= 1
+            for size in sizes
+        ):
             raise QcPackError("the QC pack is not of its format")
         if position not in hidden:
-            frames[position] = count
-    return frames
+            shapes[position] = CleanedShape(*sizes)
+    return shapes
 
 
 def redaction_previews(pack_directory: os.PathLike | str) -> dict[tuple[int, int], str]:
