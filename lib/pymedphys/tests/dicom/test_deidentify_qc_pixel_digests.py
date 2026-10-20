@@ -215,7 +215,7 @@ class _Unreadable(pydicom.Dataset):
 
 
 class _Given(pydicom.Dataset):
-    """A data set whose Modality reads as a value no file gives."""
+    """A data set whose Modality reads as a value no file passing run 1 gives."""
 
     given: object = None
 
