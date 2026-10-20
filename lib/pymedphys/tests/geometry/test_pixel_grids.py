@@ -139,6 +139,28 @@ def test_a_vertex_on_a_pixel_corner_leaves_no_piece_without_area():
 
 
 @pytest.mark.parametrize(
+    "orientation",
+    [_AXIAL, _turned(30)],
+    ids=["axial", "turned 30"],
+)
+def test_a_self_crossing_ring_within_a_pixel_keeps_its_region(orientation):
+    grid = pixel_grids.PixelGrid((0.0, 0.0, 0.0), orientation, (1.0, 1.0))
+    bow_tie = np.array([(-0.4, -0.4), (0.4, 0.4), (0.4, -0.4), (-0.4, 0.4)])
+    along_row, down_column = np.asarray(orientation[:3]), np.asarray(orientation[3:])
+    ring = bow_tie[:, :1] * along_row + bow_tie[:, 1:] * down_column
+    assert polygons.signed_area(ring) == pytest.approx(0, abs=1e-12)
+
+    pieces = pixel_grids.within_pixels(ring, grid, np.ones((1, 1), dtype=bool))
+
+    samples = np.array([(-0.3, 0.0), (0.3, 0.0), (0.0, 0.3), (0.0, -0.3)])
+    samples = samples[:, :1] * along_row + samples[:, 1:] * down_column
+    assert even_odd([ring], samples).tolist() == [True, True, False, False]
+    assert np.array_equal(
+        even_odd([piece[:, :2] for piece in pieces], samples), even_odd([ring], samples)
+    )
+
+
+@pytest.mark.parametrize(
     "chosen",
     [np.array([[0, 2]]), np.array([[0.0, 0.5]])],
     ids=["integers", "floats"],

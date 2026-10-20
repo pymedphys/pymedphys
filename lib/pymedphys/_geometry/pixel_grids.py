@@ -30,10 +30,12 @@ import dataclasses
 
 from pymedphys._imports import numpy as np
 
-from .polygons import clip, signed_area
+from .polygons import clip
 
 # The area, in pixels, at or below which a piece bounds nothing: a sliver
 # that rounding leaves where a ring's vertex lies on a pixel's corner.
+# Pieces are measured by :func:`_area_bound`, so that a self-crossing
+# piece's opposite windings cannot cancel to below it.
 NO_AREA = 1e-9
 
 
@@ -117,8 +119,9 @@ def within_pixels(
         are the ring's region within the chosen squares: for each run of
         chosen pixels along a row, the ring's part within the run's
         rectangle, each with the ring's winding where the ring is simple.
-        A piece whose area is at most :data:`NO_AREA` of a pixel's is left
-        out.
+        A piece is left out only where its region's area is at most
+        :data:`NO_AREA` of a pixel's, by a bound that a self-crossing
+        piece's opposite windings do not cancel.
 
     Raises
     ------
@@ -155,11 +158,23 @@ def within_pixels(
         if not rest:
             break
     return [
-        piece for piece in pieces if len(piece) >= 3 and _area(grid, piece) > NO_AREA
+        piece
+        for piece in pieces
+        if len(piece) >= 3 and _area_bound(grid, piece) > NO_AREA
     ]
 
 
-def _area(grid: PixelGrid, piece: np.ndarray) -> float:
-    """The area of a piece, in pixels, by its projection onto the grid."""
+def _area_bound(grid: PixelGrid, piece: np.ndarray) -> float:
+    """An upper bound of the area, in pixels, of a piece's region by its
+    projection onto the grid: the absolute areas of the triangles from its
+    mean point to each of its edges, summed.
+
+    A point's winding number about the piece is the sum of its signed
+    windings about those triangles, so the region where it is not zero
+    lies within them, whereas the piece's signed area can cancel to zero
+    over a self-crossing piece's lobes.
+    """
     rows, columns = grid.indices(piece)
-    return abs(signed_area(np.column_stack([columns, rows])))
+    x = columns - columns.mean()
+    y = rows - rows.mean()
+    return float(np.abs(x * np.roll(y, -1) - np.roll(x, -1) * y).sum()) / 2
