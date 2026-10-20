@@ -24,8 +24,9 @@ and the pack records the SHA-256 of each source file of each series. A
 second run of the same files under a policy that selects the option is
 given that pack (:func:`read_face_review`). The pack also records the
 SHA-256 of the pixel data of each file that the first run wrote
-(:func:`pixel_data_sha256`), only where its previews show every frame of
-them, and the second run holds pixel data of more frames than they listed;
+(:func:`pixel_data_sha256`), only where its previews draw every frame of
+them, which they do of no RT Dose, and the second run holds pixel data of
+more frames than they listed;
 and of the contours of each RT Structure Set that it wrote
 (:func:`contour_data_sha256`), only where its contour sheet shows them. An
 instance that carries visual features (:func:`carries_visual_features`)
@@ -192,7 +193,8 @@ class FaceReview:
             None where the reviewer marked its series absent, and not also a
             series with the same file present, which a pack never holds, and
             the run writes the pixel data and contours that the reviewed run
-            wrote of it, and the pack showed every frame of those pixel data.
+            wrote of it, and the pack showed every frame of those pixel data,
+            which it records only where its previews draw them all.
         """
         if digest in self.present:
             return VisualFeaturesReason.FACE_PRESENT
@@ -207,7 +209,7 @@ class FaceReview:
             and not any(
                 (source, written) == (digest, pixels)
                 and frames is not None
-                and frames <= shown
+                and 1 <= frames <= shown
                 for source, written, shown in self.absent_frames
             )
         ):

@@ -254,8 +254,8 @@ class InstanceEntry:
         hexadecimal, which binds a series' face verdict to the pixel data
         that the run wrote; ``None`` for any other input, or one whose
         written file the gate did not hand over or could not be read, or
-        whose pixel data the pack's previews do not show in every frame,
-        so that no verdict releases them.
+        whose pixel data the pack's previews do not draw in every frame,
+        as they draw no RT Dose's, so that no verdict releases them.
     contour_sha256 : str, optional
         Likewise, the :func:`~.face_review.contour_data_sha256` of the file
         written, which binds a series' face verdict to the contours that

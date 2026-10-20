@@ -263,6 +263,16 @@ def test_a_run_binds_each_series_to_the_digests_of_its_source_files(tmp_path):
             ).hex()
             for file in corpus.files
         }
+        # No preview shows an RT Dose as it could show a face.
+        doses = {
+            file.manifest.name
+            for file in corpus.files
+            if (dataset := pydicom.dcmread(instances / file.manifest.name)).get(
+                "Modality"
+            )
+            == "RTDOSE"
+            and "PixelData" in dataset
+        }
     finally:
         shutil.rmtree(directory, ignore_errors=True)
 
@@ -280,9 +290,9 @@ def test_a_run_binds_each_series_to_the_digests_of_its_source_files(tmp_path):
     for entry in entries:
         name = Path(entry["source"]).name
         reviewable = entry["position"] in reviewed
-        assert entry["pixel_sha256"] == (pixels[name] if reviewable else None), entry[
-            "position"
-        ]
+        assert entry["pixel_sha256"] == (
+            pixels[name] if reviewable and name not in doses else None
+        ), entry["position"]
         assert entry["contour_sha256"] == (contours[name] if reviewable else None), (
             entry["position"]
         )

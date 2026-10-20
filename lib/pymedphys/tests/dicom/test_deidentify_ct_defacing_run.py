@@ -18,10 +18,16 @@ Dose, and PET in the same Frame of Reference, the RT Structure Set replaced
 by one of the head, one RT Dose by a grid over the head, and the PET Image
 by two slices of the head. Every UID and value here is invented."""
 
+# The runs share the head, its ROIs, and the fixtures that review one run of
+# the collection, so they stay in one module.
+# pylint: disable = too-many-lines
+
 from __future__ import annotations
 
 import contextlib
 import copy
+import hashlib
+import io
 import json
 import shutil
 import tempfile
@@ -32,6 +38,7 @@ from pymedphys._imports import pydicom, pytest, shapely
 
 from pymedphys._dicom.deidentify import dose_defacing, face_blocks, markers, run
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
+from pymedphys._dicom.deidentify.dose_defacing import RT_DOSE
 from pymedphys._dicom.deidentify.face_review import FaceReview, read_face_review
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
@@ -54,6 +61,7 @@ from pymedphys._dicom.deidentify.reasons import (
 from pymedphys._dicom.deidentify.redaction_review import read_redaction_review
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.release_gate import ReleaseReason
+from pymedphys._dicom.deidentify.run_results import Transformed
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
 from . import _synthetic_head as head
@@ -242,6 +250,7 @@ def _runs(
     dose=None,
     edges=False,
     dose_alone=False,
+    written=None,
 ):
     """Run the collection, with its CT slices replaced by the head's, its RT
     Structure Set by the head's ROIs, or by a target in the block if
@@ -257,7 +266,9 @@ def _runs(
     ``revised``, those of each of its CT slices, revised with that region
     added in their first frame; and run it again under the option and
     ``others``, given those verdicts, without the head's slices if
-    ``without_ct``."""
+    ``without_ct``. Where ``written`` is given, put in it the file that
+    the second run wrote of each RT Dose, by its source's name, read, so
+    that a test can read one held for review."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -374,6 +385,7 @@ def _runs(
             read_redaction_review(reviewed.qc_pack.parent)
             if accepted or revised is not None
             else None,
+            recorded=None if written is None else {},
         )
         second = run.run(
             run.discover(instances),
@@ -400,13 +412,38 @@ def _runs(
             if outcome.position == entry["position"]
         }
         report = json.loads((directory / "r2" / "release-report.json").read_text())
+        if written is not None:
+            written.update(
+                {
+                    Path(entry["source"]).name: pydicom.dcmread(
+                        io.BytesIO(transform.recorded[entry["source_sha256"]])
+                    )
+                    for entry in pack
+                    if entry.get("source_sha256") in transform.recorded
+                }
+            )
         yield slices, outcomes, reasons, report
     finally:
         shutil.rmtree(directory, ignore_errors=True)
 
 
-def _transform(options, face_review, redaction_review=None):
-    return InstanceTransform(
+class _Recording(InstanceTransform):
+    """A transform that keeps the file it writes of each RT Dose, by its
+    source's SHA-256 in hexadecimal."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.recorded = {}
+
+    def __call__(self, data, record):
+        result = super().__call__(data, record)
+        if isinstance(result, Transformed) and record.iod == RT_DOSE:
+            self.recorded[hashlib.sha256(data).hexdigest()] = result.data
+        return result
+
+
+def _transform(options, face_review, redaction_review=None, recorded=None):
+    return (InstanceTransform if recorded is None else _Recording)(
         _policy(*options),
         KEY,
         face_review=face_review,
@@ -422,14 +459,15 @@ def fixture_defaced():
         yield found
 
 
-# With the RT Dose instances that cannot be placed or have no grid, which
-# its run holds or releases alike, so that one run tests them all.
 @pytest.fixture(name="dose_alone", scope="module")
 def fixture_dose_alone():
-    with _runs(first=(), dose=_dose(_LOW), dose_alone=True) as found:
-        yield found
+    written = {}
+    with _runs(first=(), dose=_dose(_LOW), dose_alone=True, written=written) as found:
+        yield (*found, written)
 
 
+# With the RT Dose instances that cannot be placed or have no grid, which
+# its run holds or releases alike, so that one run tests them all.
 @pytest.fixture(name="hot", scope="module")
 def fixture_hot():
     with _runs(first=(), dose=_dose(_HIGHEST), edges=True) as found:
@@ -558,10 +596,11 @@ def test_a_head_ct_marked_absent_as_received_is_held_where_defaced(
         for entry in report["held_for_review"]
         if entry["stage"] == "visual-features"
     }
-    # So are the PET slices, which the run sets to zero in the block.
+    # So are the PET slices, which the run sets to zero in the block, and
+    # the RT Dose instances, which no preview shows as they could show a face.
     assert counts[VisualFeaturesReason.OTHER_PIXEL_DATA.value] == changed + len(
         _PET_SLICES
-    )
+    ) + len(_DOSE)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
@@ -712,35 +751,35 @@ def test_the_head_structure_set_and_pet_seen_as_received_are_held_once_cut(
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
 @pytest.mark.parametrize("fixture", ["defaced", "as_received"])
-def test_rt_dose_behind_the_block_is_released_unchanged(fixture, request):
+def test_rt_dose_behind_the_block_is_held_whatever_its_verdict(fixture, request):
     _, outcomes, reasons, _ = request.getfixturevalue(fixture)
     names = _DOSE[1:] if fixture == "defaced" else _DOSE
 
     # The synthetic collection's grids lie behind the block, so nothing of
-    # them is set to zero, and the verdicts of absent on them, on the pixel
-    # data written, release them. The RT Dose for review is held by its
-    # release gate alone.
+    # them is set to zero, but no preview shows a dose grid as it could show
+    # a face, so the verdicts of absent on them do not release them. The RT
+    # Dose for review is held by its release gate too.
     for name in names:
-        assert not any(isinstance(r, HeldVisualFeatures) for r in reasons[name])
-        if name == _DOSE[1]:
-            assert outcomes[name] == ("held-for-review", None)
-            assert reasons[name]
-            assert all(isinstance(r, ReleaseReason) for r in reasons[name])
-        else:
-            disposition, dataset = outcomes[name]
-            assert disposition == "released", name
-            assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+        assert outcomes[name] == ("held-for-review", None), name
+        visual = {r for r in reasons[name] if isinstance(r, HeldVisualFeatures)}
+        assert visual == {HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)}
+        others = reasons[name] - visual
+        assert bool(others) == (name == _DOSE[1]), name
+        assert all(isinstance(r, ReleaseReason) for r in others)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
-def test_low_dose_in_the_block_is_set_to_zero_there_and_released(dose_alone):
-    slices, outcomes, reasons, _ = dose_alone
+def test_low_dose_in_the_block_is_set_to_zero_there_and_held(dose_alone):
+    slices, outcomes, reasons, _, written = dose_alone
     block = _block(slices)
-    disposition, dataset = outcomes[_DOSE[0]]
 
-    assert disposition == "released", reasons[_DOSE[0]]
-    assert dataset.RecognizableVisualFeatures == "NO"
-    assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+    # Alone in its series, under a verdict of absent, it is still held, since
+    # no preview shows a dose grid as it could show a face.
+    assert outcomes[_DOSE[0]] == ("held-for-review", None)
+    assert reasons[_DOSE[0]] == {
+        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+    }
+    dataset = written[_DOSE[0]]
     points = rtdose.voxel_positions(dataset)
     written = dataset.pixel_array
     source = _dose(_LOW)
@@ -762,9 +801,9 @@ def test_low_dose_in_the_block_is_set_to_zero_there_and_released(dose_alone):
 def test_a_grid_set_to_zero_that_the_previews_do_not_show_whole_is_held(defaced):
     _, outcomes, reasons, _ = defaced
 
-    # Its series' cine strip shows 16 of its frames and the other grid's,
-    # and its isodose render cannot show a face, so the pack has no digest
-    # of its pixel data, and the verdict of absent does not release it.
+    # Its series' cine strip shows 16 of its series' 17 frames, and its
+    # isodose render cannot show a face, so the pack has no digest of its
+    # pixel data, and the verdict of absent does not release it.
     assert outcomes[_DOSE[0]] == ("held-for-review", None)
     assert reasons[_DOSE[0]] == {
         HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
@@ -874,13 +913,20 @@ def test_a_target_in_the_block_holds_the_head_ct(targeted):
     }
     assert counts["target-in-face-block"] == len(slices)
     # With no series defaced, the RT instances marked absent are released,
-    # but for the RT Dose that its release gate holds for review.
+    # but for the RT Dose instances, which no preview shows as they could
+    # show a face, one of which its release gate holds for review too.
     for name in _IN_FRAME:
+        if name in _DOSE:
+            assert outcomes[name] == ("held-for-review", None), name
+            assert (
+                HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+                in (reasons[name])
+            )
+            continue
         assert not any(isinstance(r, HeldVisualFeatures) for r in reasons[name])
-        if name != _DOSE[1]:
-            disposition, dataset = outcomes[name]
-            assert disposition == "released", name
-            assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", name
+        assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
 
 
 def test_an_eye_drawn_away_from_the_globes_holds_the_head_ct(eyes_away):

@@ -29,7 +29,13 @@ from pathlib import Path
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import face_review, qc_previews, run, run_qc
+from pymedphys._dicom.deidentify import (
+    face_review,
+    qc_previews,
+    qc_surfaces,
+    run,
+    run_qc,
+)
 from pymedphys._dicom.deidentify.face_review import (
     FaceReview,
     pixel_data_sha256,
@@ -176,14 +182,80 @@ def _dose(frames):
     )
 
 
-def test_a_dose_grid_is_shown_only_in_the_frames_of_its_cine():
-    # Its isodose render lists every frame, but cannot show a face.
-    found, framed = _shown({0: _dose(30)})
-    assert PreviewKind.SERIES_SURFACE in {preview.kind for preview in found.previews}
-    assert framed[0] == set(range(30))
+def _dose_planes(count=4):
+    """A series of single-frame RT Dose planes, 3 mm apart."""
+    stored = np.zeros((1, 20, 20), np.uint32)
+    stored[:, 5:15, 5:15] = 1000
+    return [
+        files.dose(
+            stored,
+            position=(-50.0, -50.0, 3.0 * index),
+            spacing=(5.0, 5.0),
+            offsets=[0.0],
+            instance=f"{files.ROOT}.6.{index + 1}",
+        )
+        for index in range(count)
+    ]
+
+
+def test_no_rt_dose_is_shown():
+    # A grid's isodose render lists every frame, and its cine strip every
+    # frame of a short grid, but the render cannot show a face, and the cine
+    # strip is windowed to the highest doses, which can leave a low dose
+    # outlining the skin black.
+    for frames in (30, 12):
+        found, framed = _shown({0: _dose(frames)})
+        assert PreviewKind.SERIES_SURFACE in {p.kind for p in found.previews}
+        assert framed[0] == set(range(frames))
+        assert found.pixels_shown == frozenset()
+    # A series of planes forms a volume, whose projection and Otsu surface
+    # list every plane, but no more show a face than the isodose render.
+    found, framed = _shown(dict(enumerate(_dose_planes())))
+    kinds = {preview.kind for preview in found.previews}
+    assert {PreviewKind.SERIES_MIP, PreviewKind.SERIES_SURFACE} <= kinds
+    assert framed == {position: {0} for position in range(4)}
     assert found.pixels_shown == frozenset()
-    found, _ = _shown({0: _dose(12)})
-    assert found.pixels_shown == {0}
+
+
+def _thin(block=None, count=40):
+    """A series of axial CT slices of air, 0.5 mm apart, with soft tissue in
+    part of slice ``block``."""
+    template = _slices()[0]
+    written = {}
+    for index in range(count):
+        dataset = pydicom.dcmread(io.BytesIO(files.written(template)))
+        dataset.SOPInstanceUID = f"{template.SOPInstanceUID}.{index + 1}"
+        dataset.file_meta.MediaStorageSOPInstanceUID = dataset.SOPInstanceUID
+        dataset.InstanceNumber = index + 1
+        dataset.ImagePositionPatient = [*template.ImagePositionPatient[:2], 0.5 * index]
+        rows, columns = dataset.Rows, dataset.Columns
+        # Stored values less the intercept of -1024: air, then 0 HU.
+        stored = np.full((rows, columns), 24, "<i2")
+        if index == block:
+            stored[rows // 4 : rows // 2, columns // 4 : columns // 2] = 1024
+        dataset.PixelData = stored.tobytes()
+        written[index] = files.written(dataset)
+    return written
+
+
+def test_renders_draw_every_slice_of_a_volume_whose_slices_are_closer_than_their_pixels():
+    previews = {}
+    for block in (None, 5):
+        found, _ = _shown(_thin(block))
+        assert found.pixels_shown == set(range(40))
+        previews[block] = {
+            preview.kind: preview.png
+            for preview in found.previews
+            if preview.kind in (PreviewKind.SERIES_MIP, PreviewKind.SERIES_SURFACE)
+        }
+    # Sampled by nearest neighbour alone, the projection's 5 mm pixels and
+    # the render's 2 mm voxels would take neither slice 5.
+    heights = np.arange(40) * 0.5
+    assert 5 not in qc_surfaces.sampled_indices(heights, 2, 2.0)
+    assert 5 not in qc_previews._nearest(heights, np.arange(4) * 5.0)
+    assert set(previews[None]) == {PreviewKind.SERIES_MIP, PreviewKind.SERIES_SURFACE}
+    for kind, image in previews[None].items():
+        assert previews[5][kind] != image, kind
 
 
 def test_frames_count_only_from_the_first_with_none_missing():
@@ -395,14 +467,15 @@ def test_a_run_holds_an_instance_whose_frames_its_pack_did_not_all_show():
     assert not isinstance(transformed(40).evidence, HeldEvidence)
 
 
-def _verdict_run(data):
-    """Run a file alone under ``basic``, attest its series absent, and run
-    it again under the option; return the first pack's entry and the second
-    run's outcome."""
+def _verdict_run(*data):
+    """Run files alone under ``basic``, attest their series absent, and run
+    them again under the option; return the first pack's entries and the
+    second run's outcomes."""
     directory = Path(tempfile.mkdtemp(prefix="p"))
     try:
         (directory / "in").mkdir()
-        (directory / "in" / "image.dcm").write_bytes(data)
+        for index, each in enumerate(data):
+            (directory / "in" / f"image-{index:02d}.dcm").write_bytes(each)
         first = run.run(
             run.discover(directory / "in"),
             directory / "r1",
@@ -411,7 +484,10 @@ def _verdict_run(data):
             qc_destination=directory / "qc1",
         )
         pack = json.loads(first.qc_pack.read_text("utf-8"))
-        _attest(first.qc_pack.parent, {pack["series"][0]["positions"][0]: Face.ABSENT})
+        _attest(
+            first.qc_pack.parent,
+            {series["positions"][0]: Face.ABSENT for series in pack["series"]},
+        )
         transform = InstanceTransform(
             _policy(),
             KEY,
@@ -426,28 +502,75 @@ def _verdict_run(data):
             qc_destination=directory / "qc2",
             reporter=transform.reporter,
         )
-        return pack["instances"][0], second.outcomes[0]
+        return pack["instances"], second.outcomes
     finally:
         shutil.rmtree(directory, ignore_errors=True)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
-@pytest.mark.parametrize("make, count", [(_frames, 40), (_longer, 1), (_dose, 30)])
-def test_a_verdict_of_absent_holds_pixel_data_that_the_pack_did_not_show(make, count):
-    # Frames beyond the cine, bytes beyond the frames, and a dose grid that
-    # only its isodose render shows in full.
-    entry, outcome = _verdict_run(make(count))
-    assert entry["pixel_sha256"] is None
-    assert outcome.status.value == "held-for-review"
-    # Its verdict was on a series whose pixel data the pack has no digest
-    # of, so it is held as pixel data other than those reviewed.
-    assert outcome.reasons == (
-        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA),
-    )
+@pytest.mark.parametrize(
+    "data",
+    [
+        [_frames(40)],
+        [_longer(1)],
+        [_dose(30)],
+        [_dose(12)],
+        _dose_planes(),
+    ],
+    ids=["frames", "bytes", "grid", "short-grid", "planes"],
+)
+def test_a_verdict_of_absent_holds_pixel_data_that_the_pack_did_not_show(data):
+    # Frames beyond the cine, bytes beyond the frames, and RT Dose, which
+    # no preview shows as it could show a face.
+    entries, outcomes = _verdict_run(*data)
+    assert len(outcomes) == len(data)
+    for entry, outcome in zip(entries, outcomes):
+        assert entry["pixel_sha256"] is None
+        assert outcome.status.value == "held-for-review"
+        # Its verdict was on a series whose pixel data the pack has no
+        # digest of, so it is held as pixel data other than those reviewed.
+        assert outcome.reasons == (
+            HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA),
+        )
 
 
 def test_a_verdict_of_absent_releases_pixel_data_whose_every_frame_was_shown():
-    for data in (_frames(12), _dose(12)):
-        entry, outcome = _verdict_run(data)
-        assert entry["pixel_sha256"] is not None
-        assert outcome.status.value == "released"
+    (entry,), (outcome,) = _verdict_run(_frames(12))
+    assert entry["pixel_sha256"] is not None
+    assert outcome.status.value == "released"
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_a_run_holds_an_rt_dose_whatever_its_review_says():
+    data = _dose(12)
+    record = InstanceRecord.from_file(data)
+    source = hashlib.sha256(data).digest()
+    transform = InstanceTransform(
+        _policy(),
+        KEY,
+        face_review=FaceReview(REFERENCE, frozenset({source}), frozenset()),
+        unvalidated_policy=True,
+    )
+    unseen = transform(data, record)
+    assert isinstance(unseen, Transformed)
+    written = read_source(unseen.data).dataset()
+    pixels = pixel_data_sha256(written)
+    # A review that binds the verdict to the grid's every frame, as no pack
+    # does, still does not release it.
+    held = InstanceTransform(
+        _policy(),
+        KEY,
+        face_review=FaceReview(
+            REFERENCE,
+            frozenset({source}),
+            frozenset(),
+            frozenset({(source, pixels)}),
+            frozenset({(source, face_review.contour_data_sha256(written))}),
+            frozenset({(source, pixels, 12)}),
+        ),
+        unvalidated_policy=True,
+    )(data, record)
+    assert isinstance(held, Transformed)
+    assert getattr(held.evidence, "held") == (
+        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA),
+    )

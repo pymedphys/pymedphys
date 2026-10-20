@@ -38,7 +38,9 @@ frame with such regions, also from the file as received:
   multi-frame volume, such as an Enhanced CT image, is shown by its cine
   strip only. It is projected along the anterior-posterior axis and shown
   with the patient's head at the top and right on the viewer's left, sampled
-  to square pixels by nearest neighbour, at most :data:`MIP_PIXELS` a side;
+  to square pixels by nearest neighbour, at most :data:`MIP_PIXELS` a side,
+  each slice also taken into the pixel nearest it by the maximum, so that
+  every slice is drawn where slices are closer than the pixels;
 - a sheet of renders of the skin surface of each such volume, and of each
   RT Dose instance of two or more frames whose grid lies along the patient's
   axes, from the front, the two obliques, and the two profiles, as
@@ -191,6 +193,9 @@ class _Instance:
     # one byte of padding; the bytes beyond them are in no frame a preview
     # can show. Encapsulated Pixel Data are taken as whole here.
     whole: bool = True
+    # Whether it is an RT Dose, by its SOP Class UID or Modality, which no
+    # preview shows as it could show a face (D-017).
+    dose: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -216,12 +221,18 @@ class PreviewSet:
         shows.
     pixels_shown : frozenset of int
         The run positions of the files with pixel data every frame of which
-        a preview that could show a face lists, and that are not listed as
+        a preview that could show a face draws, and that are not listed as
         not previewed, and whose native Pixel Data hold no more than their
-        frames. A volume's projection and surface render list each of its
-        slices, which they sample. A contour sheet, and the isodose render
-        of an RT Dose grid, which D-017 finds inconclusive, list frames that
-        they cannot show a face in, so their frames do not count.
+        frames, other than RT Dose instances. A volume's projection and
+        surface render draw each of its slices, by its maximum where slices
+        are closer than their pixels. A contour sheet, and the isodose
+        render of an RT Dose grid, which D-017 finds inconclusive, list
+        frames that they cannot show a face in, so their frames do not
+        count. No preview yet shows an RT Dose as it could show a face: its
+        cine strip is windowed to its highest doses, which can leave a low
+        dose outlining the skin black, and the renders of a series of its
+        planes find their surface by Otsu's threshold, which D-017's
+        reasoning makes as inconclusive as the isodose render.
     """
 
     previews: tuple[Preview, ...]
@@ -294,7 +305,7 @@ def previews_of(
             source, entry = redactions[instance.position]
             images.extend(_redaction_images(instance, source, entry, decoded))
     # Only previews that could show a face count, and every frame of an
-    # instance must be among theirs.
+    # instance must be among theirs; none yet shows an RT Dose so.
     pictured = pictured_frames(
         ((kind.value, frames) for kind, frames, _, _ in images), refused
     )
@@ -313,7 +324,9 @@ def previews_of(
         frozenset(
             instance.position
             for instance in instances
-            if instance.whole and pictured.get(instance.position) == instance.frames
+            if instance.whole
+            and not instance.dose
+            and pictured.get(instance.position) == instance.frames
         ),
     )
 
@@ -391,6 +404,10 @@ def _described(
         modality = str(dataset.get("Modality") or "").strip()
     except Exception:  # pylint: disable = broad-exception-caught
         modality = ""
+    try:
+        sop_class = str(dataset.get("SOPClassUID") or "")
+    except Exception:  # pylint: disable = broad-exception-caught
+        sop_class = ""
     colour = photometric in _COLOUR and samples == 3 and allocated == 8
     if not colour and not (photometric in _MONOCHROME and samples == 1):
         return NotPreviewedReason.UNSUPPORTED
@@ -423,6 +440,7 @@ def _described(
         grid=None if colour else _dose_grid(dataset, spacing, (rows, columns), frames),
         frame=_uid(dataset, "FrameOfReferenceUID"),
         whole=whole,
+        dose=sop_class == qc_surfaces.RT_DOSE_STORAGE or modality == "RTDOSE",
     )
 
 
@@ -1168,7 +1186,17 @@ class _Projection:
             count = math.floor(extents[dimension] / step + 1e-6) + 1
             wanted = np.arange(count) * step
             nearest = _nearest(coordinates[axis], wanted)
-            image = np.take(image, nearest, axis=dimension)
+            sampled = np.take(image, nearest, axis=dimension)
+            if axis == 0:
+                # Each slice is also taken into the pixel nearest it by its
+                # maximum, so that every slice is drawn where slices are
+                # closer than the pixels.
+                np.fmax.at(
+                    np.moveaxis(sampled, dimension, 0),
+                    _nearest(wanted, coordinates[axis]),
+                    np.moveaxis(image, dimension, 0),
+                )
+            image = sampled
         vertical, horizontal = (volume.directions[axis] for axis in axes)
         if vertical[2] > 0:  # increasing index runs superior, so flip
             image = image[::-1]
@@ -1181,6 +1209,8 @@ class _Projection:
 
 def _nearest(coordinates: np.ndarray, wanted: np.ndarray) -> np.ndarray:
     """The index of the coordinate nearest each wanted one; coordinates ascend."""
+    if len(coordinates) == 1:
+        return np.zeros(len(wanted), np.intp)
     right = np.clip(np.searchsorted(coordinates, wanted), 1, len(coordinates) - 1)
     left = right - 1
     closer_left = (wanted - coordinates[left]) <= (coordinates[right] - wanted)

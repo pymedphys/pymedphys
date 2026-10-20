@@ -47,6 +47,7 @@ from pymedphys._dicom.deidentify import (
     run_qc,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
+from pymedphys._dicom.deidentify.dose_defacing import RT_DOSE
 from pymedphys._dicom.deidentify.face_review import (
     DOSE_IN_FACE_BLOCK_TEXT,
     UNDEFACED_TEXT,
@@ -999,7 +1000,9 @@ def test_a_verdict_releases_compressed_pixel_data_as_the_reviewed_run_wrote_them
             face_review=FaceReview(REFERENCE, frozenset({source}), frozenset()),
             unvalidated_policy=True,
         )(file.data, record)
-        if not isinstance(unseen, Transformed):
+        # No preview shows an RT Dose as it could show a face, so a run
+        # holds it whatever its verdict.
+        if not isinstance(unseen, Transformed) or record.iod == RT_DOSE:
             continue
         # Marked absent, but with no pixel data seen, it is held; given the
         # pixel data that this run wrote, with each codestream's metadata
