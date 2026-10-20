@@ -266,7 +266,7 @@ def previews_of(
         images.extend(_encoded(_series_images(series, decoded, guides)))
     for position, contours in sorted(contoured.items()):
         sheet = _contour_image(position, contours, guides)
-        if sheet[3].shape[0] > qc_contours.MAXIMUM_SHEET_PIXELS:
+        if sheet is None:
             refused[position] = NotPreviewedReason.CONTOURS_NOT_SHOWN
             continue
         images.extend(_encoded([sheet]))
@@ -772,7 +772,9 @@ def _contour_image(
     """The contour sheet of a structure set, drawn in each Frame of
     Reference of its ROIs with the surface of a volume in that frame: of a
     series that the structure set references, if there is one, or else the
-    first."""
+    first; or None where it would be taller than
+    :data:`~.qc_contours.MAXIMUM_SHEET_PIXELS`, which is then not drawn, to
+    spare the time and memory of drawing it."""
     chosen: dict[str | None, qc_contours.Guide] = {}
     frames: list[tuple[int, int]] = [(position, 0)]
     for frame in contours.frames:
@@ -784,6 +786,8 @@ def _contour_image(
         if found is not None:
             chosen[frame] = found[0]
             frames.extend(each for each in found[1] if each not in frames)
+    if qc_contours.sheet_height(contours, chosen) > qc_contours.MAXIMUM_SHEET_PIXELS:
+        return None
     return (
         PreviewKind.STRUCTURE_SET_CONTOURS,
         tuple(frames),

@@ -376,6 +376,19 @@ def test_a_closed_contour_that_bounds_no_area_is_drawn_as_its_line(ring):
     assert inside.sum() >= length / grid.voxel
 
 
+def test_marks_are_taken_along_a_segment_a_whole_number_of_steps_long():
+    # Sides of 3, 4, and 5 mm, at 0.25 mm: 12, 16, and 20 steps, and the
+    # point that closes the ring.
+    triangle = np.array([[0.0, 0.0], [3.0, 0.0], [3.0, 4.0]])
+    marks = qc_contours.RoiContours(closed=((2.0, triangle),)).marks(0.25)
+    assert marks.shape == (12 + 16 + 20 + 1, 3)
+    assert (marks[:, 2] == 2.0).all()
+    for vertex in triangle:
+        assert (marks[:, :2] == vertex).all(axis=1).any()
+    ordered = np.vstack([marks[1:], marks[:1]])
+    assert np.linalg.norm(np.diff(ordered, axis=0), axis=1).max() <= 0.25 + 1e-12
+
+
 def _sheet_rows(sheet):
     """Each row of a sheet between the grey gutters, from the top."""
     gutters = np.flatnonzero((sheet == (128, 128, 128)).all(axis=(1, 2)))
@@ -433,6 +446,48 @@ def test_each_frame_has_its_own_united_row_and_each_item_its_own_row():
     assert not rows[3].any() and rows[3].shape[0] == qc_contours.GUTTER_PIXELS
     # Items that are the same are drawn the same.
     assert (rows[2] == rows[5]).all() and (rows[2] == rows[4]).all()
+
+
+def test_a_sheet_s_height_is_found_without_drawing_it():
+    ring = [_closed(files.circle((0, 0, z), 20.0)) for z in (0.0, 3.0)]
+    far = [("POINT", np.array([[0.0, 900.0, 0.0]]))]
+    sets = [
+        _structure_set([[_closed(_section(z)) for z in _HEIGHTS]]),
+        _structure_set(
+            [ring, [], ring, far],
+            frames=[files.FRAME, files.FRAME, files.ROOT + ".9", files.FRAME],
+        ),
+    ]
+    generator = np.random.default_rng(0)
+    for _ in range(5):
+        sets.append(
+            _structure_set(
+                [
+                    [
+                        _closed(files.circle((*centre[:2], z), radius))
+                        for z in np.arange(centre[2], centre[2] + length, 2.5)
+                    ]
+                    for centre, radius, length in zip(
+                        generator.uniform(-60, 60, (4, 3)),
+                        generator.uniform(2, 40, 4),
+                        generator.uniform(3, 50, 4),
+                    )
+                ]
+            )
+        )
+    zs, ys, xs = (
+        np.arange(60.0, -61.0, -4.0),
+        np.arange(-80.0, 81.0, 4.0),
+        np.arange(-70.0, 71.0, 4.0),
+    )
+    guide = qc_contours.Guide(np.ones((len(zs), len(ys), len(xs)), bool), zs, ys, xs)
+    for data in sets:
+        contours = qc_contours.contours_of(_read(data))
+        for guides in ({}, {files.FRAME: guide}):
+            assert (
+                qc_contours.sheet_height(contours, guides)
+                == (qc_contours.contour_sheet(contours, guides).shape[0])
+            )
 
 
 def test_a_sheet_needs_a_contour():
@@ -524,6 +579,12 @@ def test_a_sheet_taller_than_any_shown_is_not_shown(monkeypatch):
     (sheet,) = qc_previews.previews_of({3: written}, {3}).previews
     height = int.from_bytes(sheet.png[20:24], "big")
     monkeypatch.setattr(qc_contours, "MAXIMUM_SHEET_PIXELS", height - 1)
+
+    def drawn(*_):
+        raise AssertionError("a sheet over the bound is drawn")
+
+    # Its height is found without drawing it.
+    monkeypatch.setattr(qc_contours, "contour_sheet", drawn)
     found = qc_previews.previews_of({3: written}, {3})
     assert not found.previews
     assert found.contours_shown == frozenset()
@@ -716,3 +777,16 @@ def test_a_verdict_releases_a_structure_set_only_where_its_contours_were_shown()
     assert pack["instances"][0]["contour_sha256"] is None
     # Its verdict was on none of its contours, so it gives none.
     assert HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT) in outcome.reasons
+
+
+def test_a_verdict_does_not_release_a_structure_set_whose_sheet_is_too_tall(
+    monkeypatch,
+):
+    written = _structure_set([[_closed(files.circle((0, 0, z), 30.0)) for z in (0, 3)]])
+    monkeypatch.setattr(qc_contours, "MAXIMUM_SHEET_PIXELS", 1)
+    pack, outcome = _verdict_run(written)
+    assert pack["previews"] == []
+    assert pack["not_previewed"] == [{"position": 0, "reason": "contours-not-shown"}]
+    assert pack["instances"][0]["contour_sha256"] is None
+    assert HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT) in outcome.reasons
+    assert outcome.status.value != "released"
