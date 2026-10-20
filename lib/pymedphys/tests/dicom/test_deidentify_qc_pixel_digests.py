@@ -214,6 +214,17 @@ class _Unreadable(pydicom.Dataset):
         return super().get(key, default)
 
 
+class _Given(pydicom.Dataset):
+    """A data set whose Modality reads as a value no file gives."""
+
+    given: object = None
+
+    def get(self, key, default=None):
+        if key == "Modality":
+            return self.given
+        return super().get(key, default)
+
+
 def test_an_rt_dose_is_known_by_its_class_or_a_modality_that_may_be_rtdose():
     def instance(modality=None, sop_class=files.CT_IMAGE_STORAGE, kind=pydicom.Dataset):
         dataset = kind()
@@ -232,6 +243,7 @@ def test_an_rt_dose_is_known_by_its_class_or_a_modality_that_may_be_rtdose():
         "RtDose ",
         ["RTDOSE", "CT"],
         ["CT", "RTDOSE"],
+        ["CT", "MR"],
         "RTDOS\u00c9",
         "\uff32\uff34\uff24\uff2f\uff33\uff25",
         "\0RTDOSE",
@@ -240,6 +252,11 @@ def test_an_rt_dose_is_known_by_its_class_or_a_modality_that_may_be_rtdose():
     ):
         assert face_review.is_rt_dose(instance(modality)), modality
     assert face_review.is_rt_dose(instance("CT", kind=_Unreadable))
+    # A value that is not text, or text of several values, may be RTDOSE.
+    for given in (b"RTDOSE", b"CT", 7, "RTDOSE\\CT", "CT\\MR"):
+        dataset = instance(kind=_Given)
+        dataset.given = given
+        assert face_review.is_rt_dose(dataset), given
     # A missing or empty Modality says nothing about dose, and another
     # modality, padded or not, is not RTDOSE.
     for modality in (None, "", "CT", "CT ", "RTPLAN", "RTDOSE2"):
