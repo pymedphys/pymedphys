@@ -171,7 +171,8 @@ _SAME_POINT = 1e-9
 # clipping at that edge does but for rounding.
 _ON_EDGE = 1e-6
 # The most times that the pieces of one contour are split to free it of
-# holes; each split frees it of at least one.
+# holes; each split frees it of at least one, except where joining takes
+# points within a hair of each other as one.
 _MOST_SPLITS = 256
 
 
@@ -474,10 +475,11 @@ def _without_holes(
     column of the holes' points, each side joined again, and so on until no
     ring bounds one. A hole that the edge crosses or touches becomes a notch
     in the rings beside it, and none lies wholly on the edge's lower side,
-    so, but where joining takes points within a hair of each other as one,
-    each split leaves at least one hole fewer. Return None where the pieces
-    of a side cannot be joined, the edge would miss the hole, a ring is not
-    simple, or ``_MOST_SPLITS`` splits leave a hole.
+    so each split leaves at least one hole fewer, except where joining takes
+    points within a hair of each other as one, where ``_MOST_SPLITS`` still
+    bounds the splits. Return None where the pieces of a side cannot be
+    joined, the edge would miss the hole, a ring is not simple, or
+    ``_MOST_SPLITS`` splits leave a hole.
     """
     z = float(ring[0, 2])
     written: list[np.ndarray] = []

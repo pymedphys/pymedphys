@@ -256,22 +256,30 @@ def is_simple(points: np.ndarray) -> bool:
     block = max(1, (1 << 22) // count)
     for first in range(0, count, block):
         rows = np.arange(first, min(first + block, count))
-        meet = _meet(
-            starts[rows, None], ends[rows, None], starts[None, :], ends[None, :]
+        a, b, c, d = (
+            starts[rows, None],
+            ends[rows, None],
+            starts[None, :],
+            ends[None, :],
         )
         later = np.arange(count)[None, :] > rows[:, None]
         neighbours = (np.arange(count)[None, :] == rows[:, None] + 1) | (
             (rows[:, None] == 0) & (np.arange(count)[None, :] == count - 1)
         )
-        if (meet & later & ~neighbours).any():
-            return False
-        if (
-            _overlap(
-                starts[rows, None], ends[rows, None], starts[None, :], ends[None, :]
+        # Two edges can meet only where their closed bounding boxes do, so
+        # only those pairs are tested, which spares the exact tests of the
+        # many pairs of edges far apart along one line.
+        boxes = np.ones(later.shape, dtype=bool)
+        for axis in (0, 1):
+            boxes &= np.minimum(a[..., axis], b[..., axis]) <= np.maximum(
+                c[..., axis], d[..., axis]
             )
-            & later
-            & neighbours
-        ).any():
+            boxes &= np.minimum(c[..., axis], d[..., axis]) <= np.maximum(
+                a[..., axis], b[..., axis]
+            )
+        if _meet(a, b, c, d, boxes & later & ~neighbours).any():
+            return False
+        if _overlap(a, b, c, d, later & neighbours).any():
             return False
     return True
 
@@ -288,19 +296,26 @@ def _cross(origin: np.ndarray, one: np.ndarray, other: np.ndarray) -> np.ndarray
 # Shewchuk's bound on the rounding error of :func:`_cross`, relative to the
 # sum of its two products' magnitudes, for doubles ("Adaptive Precision
 # Floating-Point Arithmetic and Fast Robust Geometric Predicates", 1997, as
-# ccwerrboundA). A cross product of less magnitude may have the wrong sign.
+# ccwerrboundA), which assumes that no product underflows, as none does but
+# for points within about 1e-154 of each other. A cross product of less
+# magnitude than the bound may have the wrong sign.
 _CROSS_ERROR = (3 + 16 * 2.0**-53) * 2.0**-53
 
 
-def _side(origin: np.ndarray, one: np.ndarray, other: np.ndarray) -> np.ndarray:
+def _side(
+    origin: np.ndarray,
+    one: np.ndarray,
+    other: np.ndarray,
+    where: np.ndarray | bool = True,
+) -> np.ndarray:
     """The sign of :func:`_cross`, broadcast, found exactly for the points as
-    given wherever rounding could have changed it, as it can for points in
-    a line that no axis runs along."""
+    given, where ``where`` holds, wherever rounding could have changed it,
+    as it can for points in a line that no axis runs along."""
     left = (one[..., 0] - origin[..., 0]) * (other[..., 1] - origin[..., 1])
     right = (one[..., 1] - origin[..., 1]) * (other[..., 0] - origin[..., 0])
     cross = left - right
     side: np.ndarray = np.array(np.sign(cross))
-    unsure = np.abs(cross) < _CROSS_ERROR * (np.abs(left) + np.abs(right))
+    unsure = (np.abs(cross) < _CROSS_ERROR * (np.abs(left) + np.abs(right))) & where
     if unsure.any():
         shape = cross.shape + (2,)
         o, p, q = (
@@ -341,10 +356,17 @@ def _between(start: np.ndarray, end: np.ndarray, point: np.ndarray) -> np.ndarra
     return between
 
 
-def _meet(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> np.ndarray:
-    """Whether segments ab and cd share a point, ends included."""
-    first, second = _side(a, b, c), _side(a, b, d)
-    third, fourth = _side(c, d, a), _side(c, d, b)
+def _meet(
+    a: np.ndarray,
+    b: np.ndarray,
+    c: np.ndarray,
+    d: np.ndarray,
+    where: np.ndarray | bool = True,
+) -> np.ndarray:
+    """Whether segments ab and cd share a point, ends included, where
+    ``where`` holds; false elsewhere."""
+    first, second = _side(a, b, c, where), _side(a, b, d, where)
+    third, fourth = _side(c, d, a, where), _side(c, d, b, where)
     proper = (first * second < 0) & (third * fourth < 0)
     touching = (
         ((first == 0) & _between(a, b, c))
@@ -352,19 +374,25 @@ def _meet(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> np.ndar
         | ((third == 0) & _between(c, d, a))
         | ((fourth == 0) & _between(c, d, b))
     )
-    meet: np.ndarray = proper | touching
+    meet: np.ndarray = (proper | touching) & where
     return meet
 
 
-def _overlap(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> np.ndarray:
+def _overlap(
+    a: np.ndarray,
+    b: np.ndarray,
+    c: np.ndarray,
+    d: np.ndarray,
+    where: np.ndarray | bool = True,
+) -> np.ndarray:
     """Whether neighbouring segments ab and cd, sharing a vertex, also share
-    more than it: they lie along one line and double back over each
-    other."""
-    collinear = (_side(a, b, c) == 0) & (_side(a, b, d) == 0)
+    more than it: they lie along one line and double back over each other,
+    where ``where`` holds; false elsewhere."""
+    collinear = (_side(a, b, c, where) == 0) & (_side(a, b, d, where) == 0)
     forward = (b[..., 0] - a[..., 0]) * (d[..., 0] - c[..., 0]) + (
         b[..., 1] - a[..., 1]
     ) * (d[..., 1] - c[..., 1])
-    overlap: np.ndarray = collinear & (forward < 0)
+    overlap: np.ndarray = collinear & (forward < 0) & where
     return overlap
 
 
