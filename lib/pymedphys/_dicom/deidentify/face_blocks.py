@@ -89,12 +89,13 @@ parts it from the brain within the slice; where its back wall reads below
 :data:`~pymedphys._dicom.deidentify.defacing.BONE` Hounsfield units in a
 slice, as a thin wall can, its lining can join the brain, and the sinus is
 kept, as is a sinus whose lining or fluid reaches behind the plane, since
-any tissue of the cavity behind the plane counts as brain. A slice with no brain behind the plane, such as a coronal slice
-ahead of it, keeps none. Padding is never taken for bone, so it cannot
-close a ring around the face. The cavity is kept only
-more than :data:`CAVITY_FLOOR` millimetres above the higher globe's centre,
-above the orbits, so that bone enclosing an orbit within a slice, or a thin
-orbital roof that the slice's bone does not seal, keeps no part of an eye.
+any tissue of the cavity behind the plane counts as brain. A slice with
+no brain behind the plane, such as a coronal slice ahead of it, keeps
+none. Padding is never taken for bone, so it cannot close a ring around
+the face. The cavity is kept only more than :data:`CAVITY_FLOOR`
+millimetres above the higher globe's centre, above the orbits, so that
+bone enclosing an orbit within a slice, or a thin orbital roof that the
+slice's bone does not seal, keeps no part of an eye.
 Where no bone encloses the cavity within a slice, the block is air to the
 top of the slice. Where air's stored value is itself padding, the pixels
 written are padding, which a viewer shows as outside the image, as the air
