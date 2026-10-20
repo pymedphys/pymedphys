@@ -729,6 +729,43 @@ def test_a_contour_on_slices_with_short_direction_cosines_keeps_the_kept_brain()
     assert got.intersection(_CAVITY).area > 100
 
 
+def _holed_slice(z: float) -> KeptSlice:
+    """As :func:`_kept_slice`, but with kept pixels at x from -5 to 5 mm and
+    y from -8 to -1 mm, but for the one at (0, -4), as of bone within the
+    cavity, which defacing writes as air."""
+    x = np.arange(-20, 21)[None, :]
+    y = np.arange(-20, 21)[:, None]
+    kept = (np.abs(x) <= 5) & (y >= -8) & (y <= -1) & ~((x == 0) & (y == -4))
+    return KeptSlice((-20.0, -20.0, z), files.AXIAL, (1.0, 1.0), kept & (z > 15))
+
+
+@pytest.mark.parametrize("kind", ["CLOSED_PLANAR", "CLOSEDPLANAR_XOR"])
+def test_a_hole_that_a_cut_makes_is_written_only_where_its_type_encodes_it(kind):
+    # A reader may fill each CLOSED_PLANAR contour alone, so a hole around
+    # the pixel written as air could not be written as a contour of its
+    # own; CLOSEDPLANAR_XOR contours combine by exclusive or, so it can.
+    region = DoseBlock(_BLOCK, tuple(_holed_slice(z) for z in _CT_Z))
+    points = _rectangle(-8, 8, -9, 5, 20)
+
+    cut = cut_contours(region, _structure_set([(kind, points)]), _FRAME)
+
+    ((_, written),) = list(cut.items())
+    rings = [
+        np.array([float(v) for v in each.values]).reshape(-1, 3) for each in written
+    ]
+    air = shapely.geometry.box(-0.5, -4.5, 0.5, -3.5)
+    if kind == "CLOSED_PLANAR":
+        # Cut by the whole block, each contour filled alone.
+        assert len(rings) == 1
+        assert _polygon(rings[0]).equals(_polygon(_rectangle(-8, 8, 0, 5, 20)))
+        assert all(_polygon(each).intersection(air).area == 0 for each in rings)
+    else:
+        assert sorted(round(signed_area(each), 9) for each in rings) == [-1, 176]
+        got = _region_of(rings)
+        assert got.intersection(air).area < 1e-9
+        assert math.isclose(got.area, 175)
+
+
 def test_contours_of_a_plane_at_more_than_one_z_are_cut_by_the_whole_block():
     # The hole lies 0.1 mm above the outer contour, in its plane by the
     # grouping, but not in one slice's, so neither keeps the kept brain.

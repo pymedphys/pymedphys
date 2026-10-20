@@ -50,9 +50,13 @@ squares is found exactly, a row of pixels at a time
 are joined into rings along the edges that they share
 (:func:`~pymedphys._geometry.polygons.dissolve`), outer rings winding as
 the source contour does and holes the other way, each its own contour of
-the same type. Where the pieces of any of them cannot be joined, all of
-them are cut by the whole block instead. A contour whose region loses no
-area by this is written as received.
+the same type. Where the pieces of any of them cannot be joined, or where
+a CLOSED_PLANAR contour's would bound a hole, as a pixel written as air
+within the kept cavity makes one, all of them are cut by the whole block
+instead: CLOSEDPLANAR_XOR contours combine by exclusive or, so a hole
+there is a contour of its own, but a reader may fill each CLOSED_PLANAR
+contour alone, filling the hole. A contour whose region loses no area by
+this is written as received.
 
 Any other contour that reaches the face is cut by the block's two planes,
 so that what is written of it lies outside the block or on its boundary,
@@ -289,7 +293,14 @@ def _written(
         # in it.
         polygons = [_distinct(parsed[index][1]) for index in members]
         spare = _Spare.of(region, polygons)
-        cuts = [] if spare is None else [spare.cut(each) for each in polygons]
+        cuts = (
+            []
+            if spare is None
+            else [
+                spare.cut(each, parsed[index][0])
+                for index, each in zip(members, polygons, strict=True)
+            ]
+        )
         joined = [each for each in cuts if each is not None]
         if len(joined) != len(members):
             for index in members:
@@ -350,7 +361,7 @@ class _Spare:
             return None
         each = region.slices[int(found[0])]
         orientation = np.asarray(each.orientation, dtype=float)
-        # Direction cosines may fall short of unit length within a tolerance,
+        # Direction cosines may differ from unit length within a tolerance,
         # so the normal's tilt is judged by its direction alone.
         normal = np.cross(orientation[:3], orientation[3:])
         length = float(np.linalg.norm(normal))
@@ -369,14 +380,18 @@ class _Spare:
             each.kept | ~inside,
         )
 
-    def cut(self, points: np.ndarray) -> tuple[bool, list[np.ndarray]] | None:
+    def cut(
+        self, points: np.ndarray, kind: str
+    ) -> tuple[bool, list[np.ndarray]] | None:
         """Return whether a closed contour's region meets the block where
         defacing writes air, and so is cut, and the polygons written in its
         place: its part outside the block (:func:`_pieces`), joined with
         its part in the block in the squares of the pixels that defacing
         does not write as air, where it has one, into rings, outer ones
         winding as the contour does and holes the other way. Return None
-        where the pieces cannot be joined into rings.
+        where the pieces cannot be joined into rings, or where they would
+        bound a hole in a contour of Contour Geometric Type ``kind``
+        CLOSED_PLANAR, which a contour of its own cannot exclude there.
         """
         clockwise = signed_area(points) <= 0
         ring = points[::-1] if clockwise else points
@@ -396,7 +411,10 @@ class _Spare:
             rings = dissolve(
                 [piece[:, :2] for piece in outside + kept], ring[:, :2], _SAME_POINT
             )
-            if rings is None:
+            # Each ring is anticlockwise here but a hole's.
+            if rings is None or (
+                kind == CLOSED_PLANAR and any(signed_area(each) < 0 for each in rings)
+            ):
                 return None
             z = float(ring[0, 2])
             written = [np.column_stack([each, np.full(len(each), z)]) for each in rings]
