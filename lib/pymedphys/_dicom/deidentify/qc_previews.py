@@ -279,7 +279,11 @@ def previews_of(
     for series in _series(instances):
         images.extend(_encoded(_series_images(series, decoded, guides)))
     for position, contours in sorted(contoured.items()):
-        images.extend(_encoded([_contour_image(position, contours, guides)]))
+        sheet = _contour_image(position, contours, guides)
+        if sheet[3].shape[0] > qc_contours.MAXIMUM_SHEET_PIXELS:
+            refused[position] = NotPreviewedReason.CONTOURS_NOT_SHOWN
+            continue
+        images.extend(_encoded([sheet]))
     for instance in instances:
         if instance.position in high_risk:
             image = _instance_image(instance, decoded)
@@ -305,7 +309,7 @@ def previews_of(
             NotPreviewedEntry(position, reason)
             for position, reason in sorted(refused.items())
         ),
-        frozenset(contoured),
+        frozenset(contoured) - frozenset(refused),
         frozenset(
             instance.position
             for instance in instances
