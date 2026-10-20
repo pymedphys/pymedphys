@@ -27,7 +27,9 @@ renders:
   Offset Vector, whose axes lie along the patient's three directions and
   whose frames are evenly spaced.
 
-Enhanced multi-frame images and RT Structure Set contours are not rendered.
+Enhanced multi-frame images are not rendered.
+:mod:`~pymedphys._dicom.deidentify.qc_contours` renders RT Structure Set
+contours by :func:`views`.
 
 The surface encloses the voxels at or above a threshold, applied after
 Rescale Slope and Rescale Intercept, or after Dose Grid Scaling for RT Dose:
@@ -216,15 +218,20 @@ class Surface:
             inside = np.nan_to_num(self._samples, nan=-np.inf) >= level
         return np.transpose(inside, [self._grid.axes.index(axis) for axis in (2, 1, 0)])
 
+    @property
+    def sampled(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """For each of the volume's axes, the index sampled at each voxel
+        along its patient axis, from superior, anterior, and the patient's
+        right."""
+        first, second, third = self._taken
+        return first, second, third
+
     def image(self) -> np.ndarray | None:
         """The views side by side, as 8-bit grey, or None if a slice is missing."""
         inside = self.mask()
         if inside is None:
             return None
-        tiles = [_shaded(_depths(inside, view)) for view in VIEWS]
-        gap = np.zeros((tiles[0].shape[0], _GAP_PIXELS), np.uint8)
-        parts = [part for tile in tiles for part in (gap, tile)][1:]
-        return np.concatenate(parts, axis=1)
+        return side_by_side(views(inside))
 
     def _level(self) -> float | None:
         threshold = self._grid.threshold
@@ -233,6 +240,34 @@ class Surface:
         if threshold is Threshold.DOSE:
             return DOSE_FRACTION * self._peak if self._peak > 0 else None
         return _otsu(self._samples, padding=True)
+
+
+def views(inside: np.ndarray) -> list[np.ndarray]:
+    """Render voxels from each direction of :data:`VIEWS`, as the module
+    describes, each as 8-bit grey.
+
+    ``inside`` is indexed from superior, from anterior, and from the
+    patient's right, as :meth:`Surface.mask` gives it.
+    """
+    return [_shaded(depths) for depths in view_depths(inside)]
+
+
+def view_depths(inside: np.ndarray) -> list[np.ndarray]:
+    """For each direction of :data:`VIEWS`, the depth along each ray of the
+    first voxel in ``inside``, or -1 where a ray meets none.
+
+    Each is indexed from superior, and across from the viewer's left, as
+    the tiles of :func:`views` are.
+    """
+    return [_depths(inside, view) for view in VIEWS]
+
+
+def side_by_side(tiles: Sequence[np.ndarray]) -> np.ndarray:
+    """Lay the tiles of one height out from left to right, each separated
+    from the next by black columns."""
+    gap = np.zeros((tiles[0].shape[0], _GAP_PIXELS, *tiles[0].shape[2:]), np.uint8)
+    parts = [part for tile in tiles for part in (gap, tile)][1:]
+    return np.concatenate(parts, axis=1)
 
 
 def voxel_side(

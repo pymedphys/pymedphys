@@ -350,10 +350,12 @@ implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/pixel_cleaning.py",
   "_dicom/deidentify/qc_attestation.py",
+  "_dicom/deidentify/qc_contours.py",
   "_dicom/deidentify/region_defacing.py",
 ]
 note = '''
 The engine claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file and of the pixel data, and an RT Structure Set's contours, that the run writes of it, or one that cannot show a face (D-046).
+The QC pack shows each RT Structure Set's contours, as written, on a contour sheet, and records their SHA-256 only where it shows them, so a verdict releases only contours that the reviewer saw, and a set whose contours it cannot show is held (D-017).
 Every other instance that can show a face, with pixel data or as an RT Structure Set, is held for review and never released, so no released instance that claims the option has the visual information that the paragraph requires to be removed or distorted.
 Under the option, the engine also writes air into the face block of each CT series in which it finds one, keeping the cranial cavity above the orbits, and holds a series with a target in its block or an eye ROI away from the globes it found, and each RT Structure Set, RT Dose with pixel data, or PET instance in a defaced series' Frame of Reference, naming none, or referring to a defaced slice, which it does not clean (D-050), but for an RT Dose in the frame of only one defaced series, whose dose in that series' block, less the cavity kept, it sets to zero, or holds where that dose is too great (D-051), and an RT Structure Set or single-frame PET image in such a frame, whose contours that reach the face it cuts by the block, and whose activity in the block, less the cavity kept, it sets to zero (D-052); a defaced instance still claims the option only where a reviewer found no recognisable face in it as defaced.
 '''
@@ -1085,6 +1087,7 @@ implementation = [
   "_dicom/deidentify/head_and_neck_regions.toml",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/run_qc.py",
+  "_dicom/deidentify/qc_contours.py",
   "_dicom/deidentify/qc_pack.py",
   "_dicom/deidentify/qc_previews.py",
   "_dicom/deidentify/qc_surfaces.py",
@@ -1093,6 +1096,7 @@ note = '''
 Recognizable Visual Features of YES, an RT Structure Set's contours of an ROI whose interpreted type or name is EXTERNAL, BODY, or SKIN, the patient's outline, or BOLUS or FIXATION, which lie on it, every CT, MR, PET, and RT Dose volume, single-frame or enhanced, whatever its slice spacing, and every CT, MR, and PET localizer, which can show the face in profile, are reported as indicators of a reconstructable face, and a volume or localizer that names a region of the head or neck as showing it.
 Each run lists each instance's indicators and each series' indicators, assessed over its released and held instances, in its QC pack for review.
 The QC pack renders the skin surface of each volume that it projects, and the 5% isodose surface of each RT Dose grid of two or more frames, from the front, both obliques, and both profiles, so that the reviewer sees the face that a recognition system would. A dose render that shows no face is inconclusive, since lower doses can keep an outline that the 5% isodose misses.
+It renders each RT Structure Set's contours as written from the same directions, each frame's ROIs united and each ROI alone, drawn with the surface of a volume in their frame, so that the reviewer sees a face that an outline traces (D-017).
 Remaining: the `public-release` assessment and face review (M4).
 '''
 

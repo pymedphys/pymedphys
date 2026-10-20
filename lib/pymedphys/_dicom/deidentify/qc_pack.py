@@ -81,8 +81,10 @@ A pack holds, for one run:
   text that the release lacks;
 - ``previews``: each image preview, by its file in the previews directory
   beside the pack, with what it shows and the file's SHA-256, so that an
-  attestation of the pack covers them; and ``not_previewed``: each instance
-  whose pixel data could not be previewed, with why (D-017). The images are
+  attestation of the pack covers them, among them a contour sheet of each
+  instance with contours, such as an RT Structure Set; and
+  ``not_previewed``: each instance whose pixel data could not be previewed,
+  or whose contours could not be shown, with why (D-017). The images are
   made by :mod:`~pymedphys._dicom.deidentify.qc_previews`.
 - ``source_gaps``: each instance whose source lacks an attribute that its
   IOD unconditionally requires, with each such attribute's place and Type,
@@ -128,9 +130,12 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/9"
+FORMAT = "pymedphys-deid-qc-pack/10"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
+# The SHA-256 that face_review.contour_data_sha256 gives a file without
+# contours: of a count of no ROI Contour Sequence items.
+NO_CONTOURS_SHA256 = hashlib.sha256(bytes(8)).hexdigest()
 
 # The directory, beside the pack's file, that holds its previews.
 PREVIEW_DIRECTORY = "previews"
@@ -249,7 +254,8 @@ class InstanceEntry:
     contour_sha256 : str, optional
         Likewise, the :func:`~.face_review.contour_data_sha256` of the file
         written, which binds a series' face verdict to the contours that
-        the run wrote.
+        the run wrote; also ``None`` for a file with contours that no
+        contour sheet shows, so that no verdict releases them.
     """
 
     position: int
@@ -842,6 +848,9 @@ class PreviewKind(enum.Enum):
     # a frame that Clean Pixel Data cleaned, at full resolution, with its
     # regions outlined: as received beside as written where it has any
     REDACTION = "redaction"
+    # renders of an RT Structure Set's contours, as written, united in each
+    # frame with the image series that they lie on, and of each ROI alone
+    STRUCTURE_SET_CONTOURS = "structure-set-contours"
 
 
 class NotPreviewedReason(enum.Enum):
@@ -859,6 +868,10 @@ class NotPreviewedReason(enum.Enum):
     # beside its written file: unreadable, undecodable, or of another shape,
     # number of frames, or colour
     SOURCE_NOT_SHOWN = "source-not-shown"
+    # an instance with contours, such as an RT Structure Set, that a contour
+    # sheet cannot show: unreadable, or with a contour that it does not draw,
+    # so its verdict gives it none
+    CONTOURS_NOT_SHOWN = "contours-not-shown"
 
 
 PREVIEW_NAME = re.compile(r"P-[0-9]{4,}\.png")
@@ -1389,6 +1402,38 @@ class QcPack:
                 "for review"
             )
         self._check_redaction_previews()
+        self._check_contour_previews()
+
+    def _check_contour_previews(self) -> None:
+        """An instance's contours' SHA-256, other than that of none, is
+        recorded only where a contour sheet shows them, so that no verdict
+        releases contours that no one saw."""
+        shown = {
+            preview.frames[0][0]
+            for preview in self.previews
+            if preview.kind is PreviewKind.STRUCTURE_SET_CONTOURS
+        }
+        if any(
+            entry.contour_sha256 not in (None, NO_CONTOURS_SHA256)
+            and entry.position not in shown
+            for entry in self.instances
+        ):
+            raise QcPackError(
+                "an instance's contours' SHA-256 needs a contour sheet that shows them"
+            )
+        unshown = {
+            entry.position
+            for entry in self.not_previewed
+            if entry.reason is NotPreviewedReason.CONTOURS_NOT_SHOWN
+        }
+        if unshown & shown or any(
+            entry.position in unshown and entry.contour_sha256 is not None
+            for entry in self.instances
+        ):
+            raise QcPackError(
+                "an instance whose contours are not shown has neither a contour "
+                "sheet nor its contours' SHA-256"
+            )
 
     def _check_redaction_previews(self) -> None:
         """Each cleaned instance has a redaction preview of each frame, in

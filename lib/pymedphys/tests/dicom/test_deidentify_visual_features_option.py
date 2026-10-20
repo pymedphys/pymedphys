@@ -17,6 +17,10 @@
 Every name, path, and data set here is invented or synthetic.
 """
 
+# The option's review, claims, and holds share these packs and runs, so they
+# stay in one module.
+# pylint: disable = too-many-lines
+
 import dataclasses
 import datetime
 import hashlib
@@ -27,6 +31,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
@@ -34,6 +39,7 @@ from pymedphys._dicom.deidentify import (
     conformance_markdown,
     markers,
     qc_attestation,
+    qc_previews,
     qc_store,
     release_report,
     release_report_markdown,
@@ -68,8 +74,11 @@ from pymedphys._dicom.deidentify.policy import (
 )
 from pymedphys._dicom.deidentify.qc_attestation import Coverage, Face, Outcome
 from pymedphys._dicom.deidentify.qc_pack import (
+    NO_CONTOURS_SHA256,
     Disposition,
     InstanceEntry,
+    Preview,
+    PreviewKind,
     QcPack,
     QcPackError,
 )
@@ -106,10 +115,31 @@ def fixture_pack(tmp_path):
     instances = tuple(
         _released(n) if n == 3 else _with_written(_released(n), n) for n in range(5)
     )
-    written = QcPack(REFERENCE, instances, series=SERIES)
+    written = _sheeted(instances)
     return qc_store.write_qc_pack(
         written, tmp_path / "secretdir-qc", release_directory=release
     ).parent
+
+
+def _sheeted(instances):
+    """A pack of these instances, with a contour sheet for each whose
+    contours' SHA-256 it records, as the pack needs."""
+    contoured = [
+        entry.position
+        for entry in instances
+        if entry.contour_sha256 not in (None, NO_CONTOURS_SHA256)
+    ]
+    sheets = tuple(
+        Preview(
+            f"P-{number:04d}.png",
+            PreviewKind.STRUCTURE_SET_CONTOURS,
+            ((position, 0),),
+            1,
+            qc_previews.png(np.zeros((2, 2), np.uint8)),
+        )
+        for number, position in enumerate(contoured, 1)
+    )
+    return QcPack(REFERENCE, instances, series=SERIES, previews=sheets)
 
 
 def _sha(*numbers):
@@ -213,7 +243,7 @@ def test_a_verdict_of_absent_leaves_out_a_file_held_because_its_frame_was_deface
     release = tmp_path / "release"
     release.mkdir()
     directory = qc_store.write_qc_pack(
-        QcPack(REFERENCE, instances, series=SERIES),
+        _sheeted(instances),
         tmp_path / "qc",
         release_directory=release,
     ).parent
@@ -249,7 +279,7 @@ def test_a_verdict_of_present_still_covers_a_file_held_because_its_frame_was_def
     release = tmp_path / "release"
     release.mkdir()
     directory = qc_store.write_qc_pack(
-        QcPack(REFERENCE, instances, series=SERIES),
+        _sheeted(instances),
         tmp_path / "qc",
         release_directory=release,
     ).parent
@@ -428,8 +458,11 @@ def test_contours_are_digested_by_roi_type_and_value():
         _contoured([("OPEN_PLANAR", square[:3]), ("OPEN_PLANAR", square[3:])])
     )
     # Without contours, every data set gives one digest, as one with an
-    # empty ROI Contour Sequence does.
+    # empty ROI Contour Sequence, or with ROIs without contours, does.
     assert contour_data_sha256(pydicom.Dataset()) == contour_data_sha256(_contoured())
+    assert contour_data_sha256(pydicom.Dataset()) == contour_data_sha256(
+        _contoured([], [])
+    )
     assert one != contour_data_sha256(pydicom.Dataset())
 
 
