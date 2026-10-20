@@ -30,7 +30,11 @@ import dataclasses
 
 from pymedphys._imports import numpy as np
 
-from .polygons import clip
+from .polygons import clip, signed_area
+
+# The area, in pixels, at or below which a piece bounds nothing: a sliver
+# that rounding leaves where a ring's vertex lies on a pixel's corner.
+NO_AREA = 1e-9
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -112,8 +116,18 @@ def within_pixels(
         Rings that meet one another only at their boundaries and together
         are the ring's region within the chosen squares: for each run of
         chosen pixels along a row, the ring's part within the run's
-        rectangle, each with the ring's winding.
+        rectangle, each with the ring's winding where the ring is simple.
+        A piece whose area is at most :data:`NO_AREA` of a pixel's is left
+        out.
+
+    Raises
+    ------
+    TypeError
+        If ``chosen`` is not an array of bool.
     """
+    chosen = np.asarray(chosen)
+    if chosen.dtype != bool:
+        raise TypeError("the chosen pixels must be an array of bool")
     rows, columns = grid.indices(points)
     height, width = chosen.shape
     first = max(int(np.floor(rows.min() + 0.5)), 0)
@@ -140,4 +154,12 @@ def within_pixels(
                     pieces.extend(clip(part, right_normal, right))
         if not rest:
             break
-    return [piece for piece in pieces if len(piece) >= 3]
+    return [
+        piece for piece in pieces if len(piece) >= 3 and _area(grid, piece) > NO_AREA
+    ]
+
+
+def _area(grid: PixelGrid, piece: np.ndarray) -> float:
+    """The area of a piece, in pixels, by its projection onto the grid."""
+    rows, columns = grid.indices(piece)
+    return abs(signed_area(np.column_stack([columns, rows])))
