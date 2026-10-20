@@ -35,13 +35,15 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
   row of :data:`GUTTER_PIXELS` for an item without contours.
 
 Each region is sampled to cubic voxels over the extent of what it draws,
-with a voxel more on each side across. A frame's united region has voxels
-of :data:`~.qc_surfaces.MINIMUM_VOXEL` millimetres, enlarged where needed
-to keep each axis within :data:`~.qc_surfaces.MAXIMUM_VOXELS` voxels, as
-:mod:`~.qc_surfaces` samples a volume. An ROI alone has the finer of those
-voxels and those that keep its own extent within :data:`ROI_VOXELS`, but
-none finer than :data:`ROI_MINIMUM_VOXEL`, so that a small ROI is seen in
-detail. Each slice of voxels is the region of the contours' plane that
+with a voxel more on each side across and below, so that its edge and its
+lowest point are drawn. A frame's united region has voxels of
+:data:`~.qc_surfaces.MINIMUM_VOXEL` millimetres, enlarged where needed to
+keep each axis within :data:`~.qc_surfaces.MAXIMUM_VOXELS` voxels, as
+:mod:`~.qc_surfaces` samples a volume. An ROI alone has the finer of the
+voxels that a united region of its own extent would have and those that
+keep its extent within :data:`ROI_VOXELS`, but none finer than
+:data:`ROI_MINIMUM_VOXEL`, so that a small ROI is seen in detail, and an
+ROI far from another no coarser than if it were alone. Each slice of voxels is the region of the contours' plane that
 covers it: each plane of an ROI, the mean height of its closed contours
 that lie within :data:`COPLANAR` millimetres of one another in height,
 covers half the distance to the ROI's next plane above and below it, or
@@ -54,9 +56,11 @@ so that a contour within another is a hole, whether the contours are
 CLOSED_PLANAR or CLOSEDPLANAR_XOR. The voxel nearest each point of a POINT
 contour, or of a closed contour of fewer than three points, which bounds
 nothing, is filled as a mark, and so is the voxel nearest each point along
-an open contour's segments, taken at most half a voxel apart, so that a
-marker such as an isocentre, or a line, is drawn where it lies, and alone
-in its own ROI's row, where no other ROI hides it.
+an open contour's segments, and a closed contour's, taken at most half a
+voxel apart, so that a marker such as an isocentre, or a line, is drawn
+where it lies, and alone in its own ROI's row, where no other ROI hides it,
+and a closed contour that bounds no area, such as one that doubles back on
+itself, is drawn as its line.
 
 A sheet is drawn only of contours that it can show (:func:`contours_of`):
 each of Contour Geometric Type CLOSED_PLANAR, CLOSEDPLANAR_XOR, OPEN_PLANAR,
@@ -77,7 +81,7 @@ from __future__ import annotations
 
 import dataclasses
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 
 from pymedphys._geometry.rasters import even_odd
 from pymedphys._imports import numpy as np
@@ -151,10 +155,15 @@ class RoiContours:
         return np.concatenate([*rings, *self.lines, self.points])
 
     def marks(self, step: float) -> np.ndarray:
-        """Its points, and points along each open contour's segments at most
+        """Its points, and points along each open contour's segments, and
+        each closed contour's, its last point joined to its first, at most
         ``step`` apart, as x, y, and z, of shape (m, 3)."""
         sampled = [self.points]
-        for line in self.lines:
+        rings = [
+            np.column_stack([ring, np.full(len(ring), height)])
+            for height, ring in self.closed
+        ]
+        for line in [*self.lines, *(np.vstack([ring, ring[:1]]) for ring in rings)]:
             sampled.append(line[-1:])
             for start, end in zip(line[:-1], line[1:]):
                 count = max(1, math.ceil(float(np.linalg.norm(end - start)) / step))
@@ -384,12 +393,10 @@ def contour_sheet(
     # slices.
     planes = [_planes(roi) for roi in contours.rois]
     rows = []
-    voxels: dict[str | None, float] = {}
     for frame in contours.frames:
         chosen = [i for i, roi in enumerate(contours.rois) if roi.frame == frame]
         rois = [contours.rois[i] for i in chosen]
-        grid = _grid(rois, qc_surfaces.MAXIMUM_VOXELS, qc_surfaces.MINIMUM_VOXEL)
-        voxels[frame] = grid.voxel
+        grid = _grid(rois, _united_voxel)
         shown = [planes[i] for i in chosen]
         rows.append(_rgb(_views(_mask(rois, grid, shown))))
         guide = guides.get(frame)
@@ -404,7 +411,7 @@ def contour_sheet(
             continue
         key = _key(roi)
         if key not in rendered:
-            grid = _grid([roi], ROI_VOXELS, ROI_MINIMUM_VOXEL, voxels[roi.frame])
+            grid = _grid([roi], _roi_voxel)
             rendered[key] = _rgb(_views(_mask([roi], grid, [own])))
         rows.append(rendered[key])
     return _stacked(rows)
@@ -434,21 +441,30 @@ def _of(guide: Guide) -> _Grid:
     return _Grid(guide.zs, guide.ys, guide.xs)
 
 
-def _grid(
-    rois: Sequence[RoiContours],
-    maximum_voxels: int,
-    minimum: float,
-    coarsest: float = math.inf,
-) -> _Grid:
-    """The voxels over the extent of what the ROIs draw: the finer of
-    ``coarsest`` and the side that keeps each axis within
-    ``maximum_voxels``, but none finer than ``minimum``."""
+def _united_voxel(extent: float) -> float:
+    """The side of a united region's voxels, as a volume's surface render
+    samples one of that extent."""
+    return max(qc_surfaces.MINIMUM_VOXEL, extent / (qc_surfaces.MAXIMUM_VOXELS - 1))
+
+
+def _roi_voxel(extent: float) -> float:
+    """The side of an ROI's own voxels: the finer of those that a united
+    region of its extent would have and those that keep it within
+    ``ROI_VOXELS``, but none finer than ``ROI_MINIMUM_VOXEL``, so that an ROI
+    far from another is sampled as if alone."""
+    return max(ROI_MINIMUM_VOXEL, min(extent / (ROI_VOXELS - 1), _united_voxel(extent)))
+
+
+def _grid(rois: Sequence[RoiContours], voxel_of: Callable[[float], float]) -> _Grid:
+    """The voxels over the extent of what the ROIs draw, of the side that
+    ``voxel_of`` gives for its longest axis."""
     points = np.concatenate([roi.coordinates() for roi in rois])
     low, high = points.min(axis=0), points.max(axis=0)
-    extent = float((high - low).max())
-    voxel = max(minimum, min(coarsest, extent / (maximum_voxels - 1)))
-    # A voxel more on each side across, so that a region's edge is drawn.
-    low[:2] -= voxel
+    voxel = voxel_of(float((high - low).max()))
+    # A voxel more on each side across, and below, where the slices, which
+    # start at the top, would otherwise stop short of the lowest point, so
+    # that a region's edge and every point are drawn.
+    low -= voxel
     high[:2] += voxel
 
     def axis(start: float, length: float) -> np.ndarray:

@@ -1123,6 +1123,7 @@ implementation = [
   "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/qc_attestation.py",
+  "_dicom/deidentify/qc_contours.py",
   "_dicom/deidentify/qc_pack.py",
   "_dicom/deidentify/qc_previews.py",
   "_dicom/deidentify/qc_retained.py",
