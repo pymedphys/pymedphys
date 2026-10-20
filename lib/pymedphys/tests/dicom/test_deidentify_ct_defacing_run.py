@@ -251,10 +251,11 @@ def _runs(
     face review that gives no verdicts; attest the pack with the head's
     series, and those of the RT Structure Set, RT Dose, and PET in its
     frame, marked absent, and, if ``accepted``, the regions of each of the
-    head's slices that the pack previews accepted, or, if ``revised``,
-    revised with that region added in their first frame; and run it again
-    under the option and ``others``, given those verdicts, without the
-    head's slices if ``without_ct``."""
+    head's CT and PET slices that the pack previews accepted, or, if
+    ``revised``, those of each of its CT slices, revised with that region
+    added in their first frame; and run it again under the option and
+    ``others``, given those verdicts, without the head's slices if
+    ``without_ct``."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -350,6 +351,7 @@ def _runs(
                 RedactionVerdict(position, **verdict)
                 for position in previewed_redactions(reviewed.qc_pack.read_bytes())
                 if names[position].startswith("01-head")
+                or (revised is None and names[position] in _PET_SLICES)
             ]
             if accepted or revised is not None
             else []
@@ -951,3 +953,29 @@ def test_a_revised_region_that_changes_a_defaced_slice_holds_it_for_its_face(
             HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
         }, index
     assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_with_both_options_reviewed_the_head_pet_is_released_with_both(accepted):
+    slices, outcomes, reasons, _ = accepted
+    block = _block(slices)
+    corner = np.zeros(_PET_GRID["shape"], dtype=bool)
+    corner[0:2, 0:3] = True
+
+    # The reviewer accepted the regions of each PET slice, set to zero
+    # activity in the block, so the second run blacks out the pack's regions
+    # and sets the block to zero again, writing the pixel data the reviewer
+    # saw, and releases each slice with both options' codes.
+    for name, z in _PET_SLICES.items():
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", (name, reasons[name])
+        assert dataset.BurnedInAnnotation == "NO"
+        assert dataset.RecognizableVisualFeatures == "NO"
+        assert _codes(dataset)[-3:] == [markers.PROFILE_CODE, "113101", CODE]
+        source, written = _pet_uptake(z), dataset.pixel_array
+        inside = block.contains(_pet_points(z))
+        untouched = ~inside & ~corner
+        assert np.array_equal(written[untouched], source[untouched]), name
+        assert np.all((written[inside] == 0) | (written[inside] == source[inside]))
+        assert (written[inside] != source[inside]).any(), name
+        assert len(np.unique(written[corner])) == 1, name
