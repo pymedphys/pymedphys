@@ -39,7 +39,8 @@ as the CT does, and the squares of padding pixels in the block, which the
 CT leaves as they are, where it can be cut so (:class:`_Spare`): where the
 closed contours of its ROI in its plane are each simple, a point that
 repeats the one before it aside, all lie at one z above the block's axial
-plane, and have one nearest slice, an axial one with pixels that defacing
+plane, and every point within them has one nearest slice, whether or not
+it lies within the slice's pixels, an axial one with pixels that defacing
 keeps in the block. Each of them is then written as its part behind the
 block's vertical plane joined with its part ahead of that plane within the
 squares of that slice's pixels that defacing does not write as air, those
@@ -350,14 +351,27 @@ class _Spare:
         slice of the series within half its spacing, with pixels kept in
         the block."""
         z = float(polygons[0][0, 2])
-        if not z > region.block.inferior_limit or any(
-            (points[:, 2] != z).any() or not is_simple(points) for points in polygons
+        if (
+            not region.slices
+            or not z > region.block.inferior_limit
+            or any(
+                (points[:, 2] != z).any() or not is_simple(points)
+                for points in polygons
+            )
         ):
             return None
-        # A point beyond the slice's pixels has none kept, as for the cut.
-        found = np.unique(region.pixels(np.concatenate(polygons))[0])
-        found = found[found >= 0]
-        if len(found) != 1:
+        # Every point of the polygons, and so every point within them, since
+        # its height along the slices' normal lies between theirs, must have
+        # one nearest slice, whether or not it lies within the slice's
+        # pixels: a point beyond them has none kept, as for the cut.
+        points = np.concatenate(polygons)
+        normal = np.cross(
+            region.slices[0].orientation[:3], region.slices[0].orientation[3:]
+        )
+        along = points @ normal
+        ends = points[[int(np.argmin(along)), int(np.argmax(along))]]
+        found = np.unique(region.nearest_slices(ends))
+        if len(found) != 1 or found[0] < 0:
             return None
         each = region.slices[int(found[0])]
         orientation = np.asarray(each.orientation, dtype=float)

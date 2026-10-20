@@ -16,6 +16,10 @@
 in, a defaced CT series' face block. Every UID and value here is
 invented."""
 
+# The tests share the face block, its kept slices, and the structure set
+# helpers, so they stay in one module.
+# pylint: disable = too-many-lines
+
 from __future__ import annotations
 
 import itertools
@@ -764,6 +768,59 @@ def test_a_hole_that_a_cut_makes_is_written_only_where_its_type_encodes_it(kind)
         got = _region_of(rings)
         assert got.intersection(air).area < 1e-9
         assert math.isclose(got.area, 175)
+
+
+def test_a_contour_nearer_two_tilted_slices_is_cut_by_the_whole_block():
+    # Slices tilted within face finding's tolerance, 2 mm apart along their
+    # normal, keep the same pixels but for one bone pixel of the upper. An
+    # axial triangle near their midpoint, its lower corners beyond their
+    # pixels, has its one corner within them nearest the lower slice, but
+    # points within it nearest the upper, so no one slice's pixels decide it.
+    tilt = 0.00008
+    orientation = (1.0, 0.0, 0.0, 0.0, math.sqrt(1 - tilt**2), tilt)
+    normal = np.cross(orientation[:3], orientation[3:])
+    lower = np.array([-20.0, -20.0, 40.0])
+    x = np.arange(-20, 21)[None, :]
+    y = np.arange(-20, 21)[:, None]
+    kept = (np.abs(x) <= 5) & (y >= -10) & (y <= -1)
+    bone = kept & ~((x == 0) & (y == -8))
+    region = DoseBlock(
+        _BLOCK,
+        (
+            KeptSlice(tuple(lower), orientation, (1.0, 1.0), kept),
+            KeptSlice(tuple(lower + 2 * normal), orientation, (1.0, 1.0), bone),
+        ),
+    )
+    z = 41.0012800032041
+    points = np.array([(-30, -15, z), (30, -15, z), (0, 10, z)], float)
+
+    cut = cut_contours(region, _structure_set([("CLOSED_PLANAR", points)]), _FRAME)
+
+    ((_, written),) = list(cut.items())
+    got = shapely.ops.unary_union(
+        [
+            _polygon(np.array([float(v) for v in each.values]).reshape(-1, 3))
+            for each in written
+        ]
+    )
+    # No point within what is written and in the block is one that defacing
+    # writes as air, by the nearest pixel of the nearest slice, the removed
+    # bone pixel's among them.
+    grid = np.array(
+        [
+            (px, py, z)
+            for px in np.arange(-25, 25, 0.25) + 0.01
+            for py in np.arange(-16, 11, 0.25) + 0.01
+            if got.contains(shapely.geometry.Point(px, py))
+            and _BLOCK.contains(np.array([[px, py, z]]))[0]
+        ]
+    )
+    # pylint: disable = protected-access
+    assert not len(grid) or not region_defacing._defaced(region, grid).any()
+    assert not got.contains(shapely.geometry.Point(0, -8))
+    assert got.equals(
+        _polygon(points).intersection(shapely.geometry.box(-50, 0, 50, 50))
+    )
 
 
 def test_contours_of_a_plane_at_more_than_one_z_are_cut_by_the_whole_block():
